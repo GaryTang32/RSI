@@ -21,9 +21,11 @@ a hand-tuned smaller grid also does) from the policy's within-round decisions.
     python experiments/dream-rsi/e3_dream_vs_fixed.py [--llm sim|claude:haiku] [--seeds N] [--quick]
         [--domains synthetic,sumdiff,circlepack,lasso]
 """
-import numpy as np
 import json
+import time
 from pathlib import Path
+
+import numpy as np
 
 from _common import (RESULTS, agent_of, best_at, calls_to, developer_of, domain_of, figure, fmt, paired, parse_args,
                      pmap, sandbox_of, save, summ)
@@ -181,6 +183,58 @@ def analyse(rows, dom_name, rounds_eq):
             "replay_cpu_s": summ([dr[s]["replay_cpu_s"] for s in seeds])}
 
 
+def make_verdicts(results: dict, raw: list) -> dict:
+    """Verdict per domain from the analysed results (also used by ``--reverdict``)."""
+    verdicts = {}
+    for d, r in results.items():
+        baf = r["best_at_budget_fraction"]
+        at_budget = baf[1.0] if 1.0 in baf else baf["1.0"]          # float key in memory, str key from JSON
+        full = at_budget["dream_minus_fixed"]
+        eq = r["equal_rounds"]
+        better = full["lo"] > 0
+        comparable = full["lo"] > -0.01 * max(1e-9, abs(at_budget["fixed"]["mean"] or 1))
+        worse = full["hi"] < 0
+        fewer = (eq["dream_calls"]["mean"] or 0) < (eq["fixed_calls"]["mean"] or 0)
+        verdicts[d] = ("REPRODUCED: better at equal budget (CI above 0)" if better else
+                       "PARTIAL: comparable at equal budget (CI within 1% below 0)" if comparable else
+                       "NOT reproduced: worse at equal budget (CI below 0)" if worse else
+                       f"INCONCLUSIVE at equal budget: difference {full['mean_diff']:+.4g} [{full['lo']:+.4g}, "
+                       f"{full['hi']:+.4g}] spans more than 1% in both directions (n={full['n']})") + \
+            (f"; fewer calls at equal rounds ({eq['dream_calls']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f})"
+             if fewer else "; not fewer calls at equal rounds")
+        if "controls" in r:
+            c = r["controls"]
+            dm = c["dream_minus_hindsight_best"]
+            rel = ("Dream still beats it" if dm["lo"] > 0 else "it beats Dream" if dm["hi"] < 0 else "they tie")
+            verdicts[d] += (f"; control: against the best fixed grid chosen in hindsight ({c['hindsight_best_fixed_grid']}, "
+                            f"optimistic for Fixed) Dream is {dm['mean_diff']:+.4f} [{dm['lo']:+.4f}, {dm['hi']:+.4f}]: "
+                            f"{rel}. Tuning the fixed grid closes {100 * (c['share_of_gap_closed_by_tuning'] or 0):.0f}% "
+                            "of the gap to the paper's fixed baseline, so the equal-budget gain comes mainly from "
+                            "spending fewer calls per round (which Dream learns without hindsight tuning), not from "
+                            "better within-round decisions")
+    if "lasso" in results and "holdout" in results["lasso"]:
+        h = results["lasso"]["holdout"]
+        fx_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "fixed"]
+        dr_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "dream"]
+        h["dream_minus_fixed"] = paired(fx_h, dr_h)
+        hd = h["dream_minus_fixed"]
+        if verdicts["lasso"].startswith("REPRODUCED") and not hd["lo"] > 0:
+            # the search score is a max over noisy runtime measurements: without held-out support a CI
+            # above 0 on it is not evidence of a better solver
+            verdicts["lasso"] = "PARTIAL: search score better at equal budget but NOT on the held-out re-measurement" + \
+                verdicts["lasso"][len("REPRODUCED: better at equal budget (CI above 0)"):]
+        verdicts["lasso"] += (f"; held-out re-measurement of the final programs (1/s): fixed {fmt(h['fixed_score'], 1)} "
+                              f"vs dream {fmt(h['dream_score'], 1)}, diff {hd['mean_diff']:+.1f} [{hd['lo']:+.1f}, "
+                              f"{hd['hi']:+.1f}] (seed program {fmt(h['seed_score'], 1)})")
+        if "rows" in h:
+            hr = h["rows"]
+            verdicts["lasso"] += (f"; rows: Dream faster than Fixed on {hr['dream_vs_fixed_wins']}/{hr['n_pairs']} "
+                                  f"(seed, instance) pairs; final programs faster than scikit-learn's lasso_path on "
+                                  f"{hr['finals_faster_than_sklearn']['fixed']}/{hr['n_pairs']} (Fixed) and "
+                                  f"{hr['finals_faster_than_sklearn']['dream']}/{hr['n_pairs']} (Dream) - the paper's "
+                                  "'beats sklearn on every dataset' does not reproduce with numpy programs")
+    return verdicts
+
 DEFAULT_DOMAINS = "synthetic,sumdiff,circlepack,lasso"
 
 
@@ -212,8 +266,19 @@ def replot(raw, png):
 
 
 def main():
-    a = parse_args("E3 Dream-RSI vs Recursive Fixed Exploration", default_seeds=20, extra=lambda ap: ap.add_argument(
-        "--domains", default=DEFAULT_DOMAINS))
+    a = parse_args("E3 Dream-RSI vs Recursive Fixed Exploration", default_seeds=20, extra=lambda ap: (
+        ap.add_argument("--domains", default=DEFAULT_DOMAINS),
+        ap.add_argument("--reverdict", action="store_true",
+                        help="recompute the verdicts of an existing result file without running anything")))
+    if a.reverdict:
+        path = Path(a.out or RESULTS / "e3_dream_vs_fixed.json")
+        d = json.loads(path.read_text())
+        d["verdict"] = make_verdicts(d["results"], d["raw"])
+        d["verdict_recomputed"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        path.write_text(json.dumps(d, indent=1, default=str))
+        for k, v in d["verdict"].items():
+            print(f"verdict [{k}]: {v}")
+        return
     doms = a.domains.split(",")
     n_seeds = {"synthetic": a.seeds, "sumdiff": max(2, a.seeds // 2), "circlepack": max(2, a.seeds // 4),
                "lasso": max(2, a.seeds // 5)}
@@ -274,48 +339,7 @@ def main():
         ax.legend(fontsize=7)
     fig.tight_layout()
     fig.savefig(png, dpi=130)
-    verdicts = {}
-    for d, r in results.items():
-        full = r["best_at_budget_fraction"][1.0]["dream_minus_fixed"]
-        eq = r["equal_rounds"]
-        better = full["lo"] > 0
-        comparable = full["lo"] > -0.01 * max(1e-9, abs(r["best_at_budget_fraction"][1.0]["fixed"]["mean"] or 1))
-        fewer = (eq["dream_calls"]["mean"] or 0) < (eq["fixed_calls"]["mean"] or 0)
-        verdicts[d] = ("REPRODUCED: better at equal budget (CI above 0)" if better else
-                       "PARTIAL: comparable at equal budget" if comparable else "NOT reproduced at equal budget") + \
-            (f"; fewer calls at equal rounds ({eq['dream_calls']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f})"
-             if fewer else "; not fewer calls at equal rounds")
-        if "controls" in r:
-            c = r["controls"]
-            dm = c["dream_minus_hindsight_best"]
-            rel = ("Dream still beats it" if dm["lo"] > 0 else "it beats Dream" if dm["hi"] < 0 else "they tie")
-            verdicts[d] += (f"; control: against the best fixed grid chosen in hindsight ({c['hindsight_best_fixed_grid']}, "
-                            f"optimistic for Fixed) Dream is {dm['mean_diff']:+.4f} [{dm['lo']:+.4f}, {dm['hi']:+.4f}]: "
-                            f"{rel}. Tuning the fixed grid closes {100 * (c['share_of_gap_closed_by_tuning'] or 0):.0f}% "
-                            "of the gap to the paper's fixed baseline, so the equal-budget gain comes mainly from "
-                            "spending fewer calls per round (which Dream learns without hindsight tuning), not from "
-                            "better within-round decisions")
-    if "lasso" in results and "holdout" in results["lasso"]:
-        h = results["lasso"]["holdout"]
-        fx_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "fixed"]
-        dr_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "dream"]
-        h["dream_minus_fixed"] = paired(fx_h, dr_h)
-        hd = h["dream_minus_fixed"]
-        if verdicts["lasso"].startswith("REPRODUCED") and not hd["lo"] > 0:
-            # the search score is a max over noisy runtime measurements: without held-out support a CI
-            # above 0 on it is not evidence of a better solver
-            verdicts["lasso"] = "PARTIAL: search score better at equal budget but NOT on the held-out re-measurement" + \
-                verdicts["lasso"][len("REPRODUCED: better at equal budget (CI above 0)"):]
-        verdicts["lasso"] += (f"; held-out re-measurement of the final programs (1/s): fixed {fmt(h['fixed_score'], 1)} "
-                              f"vs dream {fmt(h['dream_score'], 1)}, diff {hd['mean_diff']:+.1f} [{hd['lo']:+.1f}, "
-                              f"{hd['hi']:+.1f}] (seed program {fmt(h['seed_score'], 1)})")
-        if "rows" in h:
-            hr = h["rows"]
-            verdicts["lasso"] += (f"; rows: Dream faster than Fixed on {hr['dream_vs_fixed_wins']}/{hr['n_pairs']} "
-                                  f"(seed, instance) pairs; final programs faster than scikit-learn's lasso_path on "
-                                  f"{hr['finals_faster_than_sklearn']['fixed']}/{hr['n_pairs']} (Fixed) and "
-                                  f"{hr['finals_faster_than_sklearn']['dream']}/{hr['n_pairs']} (Dream) - the paper's "
-                                  "'beats sklearn on every dataset' does not reproduce with numpy programs")
+    verdicts = make_verdicts(results, raw)
     for d, v in verdicts.items():
         print(f"verdict [{d}]: {v}")
     out_path = a.out or str(RESULTS / "e3_dream_vs_fixed.json")

@@ -29,7 +29,7 @@ from typing import Callable, Optional, Sequence
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore, Ledger, Node
 from ..core.llm import LLM, Usage
-from .adapter import DomainAdapter, EvalBatch
+from .adapter import DomainAdapter, EvalBatch, resolve_splits
 from .config import Config
 from .merge import MergeProposer
 from .reflection import ReflectionProposer, reflection_seed
@@ -107,15 +107,16 @@ class GEPAEngine:
                 raise ValueError("need llm_propose (the reflection LM) or a proposer")
             proposer = ReflectionProposer(llm_propose, template=cfg.reflection_template, system=cfg.reflection_system)
         self.proposer = proposer
-        # splits: D_feedback and D_pareto (None/missing val -> D_train, multi-task mode)
-        splits = adapter.domain.tasks.splits
-        tr = cfg.train_split if cfg.train_split in splits else ("train" if "train" in splits else cfg.train_split)
+        # splits: D_feedback and D_pareto (None/missing/empty val -> D_train, multi-task mode)
+        tr, vs = resolve_splits(adapter.domain, cfg.train_split, cfg.val_split)
         self.train_ids = adapter.ids(tr)
-        vs = cfg.val_split if (cfg.val_split and cfg.val_split in splits) else None
         self.val_ids = adapter.ids(vs) if vs else list(self.train_ids)
         self.split_names = {"train": tr, "val": vs or tr}
         if not self.train_ids:
             raise ValueError(f"train split {tr!r} is empty")
+        # "perfect" minibatch for the skip rule: the domain's best possible score unless configured
+        self.perfect_score = cfg.perfect_score if cfg.perfect_score is not None else \
+            float(getattr(adapter.domain, "score_range", (0.0, 1.0))[1])
         # persistence
         self.out_dir = Path(out_dir) if out_dir else None
         self.store = ArtifactStore(self.out_dir / "artifacts") if self.out_dir else None
@@ -153,7 +154,7 @@ class GEPAEngine:
     # ----------------------------------------------------------------- usage --
     def _llms(self) -> list[LLM]:
         out, seen = [], set()
-        for l in (self.llm_propose, self.llm_task):
+        for l in (self.llm_propose, self.llm_task, getattr(self.critic, "llm", None)):
             if l is not None and id(l) not in seen:
                 seen.add(id(l))
                 out.append(l)
@@ -186,12 +187,31 @@ class GEPAEngine:
         seeds = [self._mb_seed(self.state.i, role, j) for j in range(len(ids))]
         return self.adapter.evaluate(ids, cand, True, seeds)
 
+    def evaluate_merge_subsample(self, cand: Artifact, ids: list[str]) -> list[float]:
+        """Scores of a merged child on its D_pareto subsample, charged once per id.
+
+        With ``cache_evaluation`` the draw is the child's D_pareto draw (``val_seed``), so its
+        later full evaluation re-uses it and is charged only for the other ids (reference
+        ``cached_evaluate_full``). Without it the subsample draw is fresh and the later full
+        evaluation re-runs every id, as the uncached reference does - the draw that decided
+        the merge is not re-used as the child's D_pareto score."""
+        if self.cfg.cache_evaluation:
+            scores, _ = self.evaluate_val(cand, ids, "merge_subsample")
+            return [scores[t] for t in ids]
+        self._charge("merge_subsample", len(ids))
+        seeds = [self._mb_seed(self.state.i, "merge", j) for j in range(len(ids))]
+        eb = self.adapter.evaluate(ids, cand, False, seeds)
+        self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + eb.n_infra
+        return list(eb.scores)
+
     def evaluate_val(self, cand: Artifact, ids: list[str], phase: str) -> tuple[dict, Optional[dict]]:
         n = len(ids)
         if self.cfg.cache_evaluation:
             n = sum(1 for t in ids if (cand.id, t) not in self._val_cache)
         self._charge(phase, n)
         eb = self.adapter.evaluate(ids, cand, False, [self.cfg.val_seed] * len(ids))
+        if eb.n_infra:     # still failing after retries: scored 0 (conservative), counted and reported
+            self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + eb.n_infra
         scores = dict(zip(ids, eb.scores))
         for t, s in scores.items():
             self._val_cache[(cand.id, t)] = s
@@ -271,9 +291,22 @@ class GEPAEngine:
         if self.merge and st.extra.get("merge"):
             self.merge.set_state(st.extra["merge"])
         self._usage_prior = st.extra.get("usage") or {}
+        self._prune_ledger(st.i)
         self._val_cache = {(a, t): s for a, t, s in st.extra.get("val_cache", [])}
         self.resumed_at = st.i
         return True
+
+    def _prune_ledger(self, last_iter: int) -> None:
+        """Drop ledger nodes written by the killed (unsaved) iteration so that a resumed run
+        whose proposer is not deterministic leaves no orphan node behind."""
+        path = self.out_dir / "ledger.jsonl"
+        keep = [n for n in self.ledger.nodes() if int(n.meta.get("iteration", n.round)) <= last_iter]
+        if len(keep) == len(self.ledger):
+            return
+        tmp = path.with_name("ledger.jsonl.tmp")
+        tmp.write_text("".join(json.dumps(n.to_json(), default=str) + "\n" for n in keep))
+        tmp.replace(path)
+        self.ledger = Ledger(path)
 
     # ------------------------------------------------------------------ loop --
     def initialize(self) -> None:
@@ -293,15 +326,13 @@ class GEPAEngine:
 
     def run(self) -> SearchState:
         self.initialize()
-        it = 0
         while True:
             reason = self.stopper(self)
             if reason:
                 self.stop_reason = reason
                 break
-            if it % max(self.cfg.save_every, 1) == 0:
+            if (self.state.i + 1) % max(self.cfg.save_every, 1) == 0:
                 self._save()
-            it += 1
             try:
                 self._iteration()
             except BudgetExhausted as e:
@@ -311,6 +342,9 @@ class GEPAEngine:
                 break
         self._save()
         return self.state
+
+    def _count_infra(self, n: int) -> None:
+        self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + n
 
     def _finish_entry(self, entry: dict) -> None:
         st = self.state
@@ -335,8 +369,7 @@ class GEPAEngine:
         if self.merge is not None:
             if self.merge.should_attempt():
                 entry["invoked_merge"] = True
-                prop = self.merge.propose(
-                    st, lambda c, ids: [self.evaluate_val(c, ids, "merge_subsample")[0][t] for t in ids])
+                prop = self.merge.propose(st, self.evaluate_merge_subsample)
                 self.merge.last_iter_found_new_program = False
                 if prop is not None:
                     entry.update(merged=True, merged_entities=[*prop.parents, prop.ancestor],
@@ -371,7 +404,11 @@ class GEPAEngine:
         if not before.trajectories:
             entry["event"] = "skip_no_trajectories"
             return self._finish_entry(entry)
-        if cfg.skip_perfect_score and all(s >= cfg.perfect_score for s in before.scores):
+        if before.n_infra:          # a backend outage must not decide a minibatch comparison
+            self._count_infra(before.n_infra)
+            entry["event"] = "skip_infra_error"
+            return self._finish_entry(entry)
+        if cfg.skip_perfect_score and all(s >= self.perfect_score for s in before.scores):
             entry["event"] = "skip_perfect"
             return self._finish_entry(entry)
         comps = self.comp_selector(st, k)
@@ -399,6 +436,10 @@ class GEPAEngine:
         st.n_proposals += 1
         after = self.evaluate_minibatch(child, ids, "child")
         entry["new_subsample_scores"] = after.scores
+        if after.n_infra:
+            self._count_infra(after.n_infra)
+            entry["event"] = "skip_infra_error"
+            return self._finish_entry(entry)
         if self.acceptance.accept(before.scores, after.scores):
             idx = self.full_eval_and_add(child, [k], "reflective", "val_reflective",
                                          {"components": comps, "sub_before": sum(before.scores),

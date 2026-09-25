@@ -1,6 +1,6 @@
 {
  "experiment": "e2_budget_bias",
- "written_at": "2026-09-24 21:49:52",
+ "written_at": "2026-09-25 02:57:12",
  "config": {
   "landscape_seeds": 30,
   "experiments": 100
@@ -85,39 +85,49 @@
      "seed": 0,
      "params_M_base": 0.05,
      "params_M_final": 0.045,
-     "steps_base": 230.0,
-     "steps_final": 277.0,
+     "steps_base": 266.0,
+     "steps_final": 282.0,
      "kept": [
       "ACTIVATION 'tanh' -> 'relu'",
       "SEED 42 -> 397",
       "CONTEXT 6 -> 4",
       "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
-      "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
       "LR 0.024 -> 0.048"
      ],
-     "recorded_gain": 0.8448309940347158
+     "recorded_gain": 0.7552578766307865,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
     },
     {
      "kind": "wallclock",
      "seed": 1,
      "params_M_base": 0.05,
      "params_M_final": 0.05,
-     "steps_base": 234.0,
-     "steps_final": 226.0,
+     "steps_base": 260.0,
+     "steps_final": 266.0,
      "kept": [
       "INIT_SCALE 1.0 -> 1.4",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
       "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
-      "HIDDEN 128 -> 64",
-      "HIDDEN 64 -> 128",
-      "ACTIVATION 'tanh' -> 'relu'"
+      "INIT_SCALE 1.4 -> 0.98",
+      "SEED 42 -> 397"
      ],
-     "recorded_gain": 0.6772462336187655
+     "recorded_gain": 0.666862586730927,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
     }
    ],
    "params_ratio_final_over_base": {
@@ -147,7 +157,13 @@
       "CONTEXT 6 -> 4",
       "LR 0.003 -> 0.006"
      ],
-     "recorded_gain": 1.0906878988439517
+     "recorded_gain": 1.0906878988439517,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
     },
     {
      "kind": "tokens",
@@ -165,7 +181,13 @@
       "WARMDOWN_RATIO 0.5 -> 0.7",
       "HIDDEN 128 -> 256"
      ],
-     "recorded_gain": 0.8521828179371016
+     "recorded_gain": 0.8521828179371016,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
     }
    ],
    "params_ratio_final_over_base": {
@@ -176,18 +198,18 @@
    }
   },
   "horizon": {
-   "baseline_bpb_1x": 3.6838017231220563,
-   "baseline_bpb_4x": 3.031455577819419,
+   "baseline_bpb_1x": 3.643469479508248,
+   "baseline_bpb_4x": 2.99765268138421,
    "gain_1x": {
-    "mean": 0.7395189736751675,
-    "lo": 0.7001623250110272,
-    "hi": 0.7788756223393078,
+    "mean": 0.7174370969679571,
+    "lo": 0.6682441496435505,
+    "hi": 0.7666300442923637,
     "n": 2
    },
    "gain_4x": {
-    "mean": 0.3253393221347487,
-    "lo": 0.27834263101516754,
-    "hi": 0.37233601325432986,
+    "mean": 0.25105609955381203,
+    "lo": 0.18045092692916676,
+    "hi": 0.3216612721784573,
     "n": 2
    }
   }
@@ -211,8 +233,8 @@
    4.5600000000000005
   ],
   "tinylm_gain_1x_vs_4x": [
-   0.7395189736751675,
-   0.3253393221347487
+   0.7174370969679571,
+   0.25105609955381203
   ],
   "claim_reproduced": true
  },

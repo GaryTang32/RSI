@@ -34,6 +34,7 @@ from ..core.evaluate import Evaluator
 from ..core.ledger import ArtifactStore, Ledger, Node
 from ..core.llm import LLM, extract_code_blocks
 from ..core.run import ImprovementResult
+from .adapter import resolve_splits
 from .engine import merge_usage
 from .strategies import EpochShuffledBatchSampler
 
@@ -88,9 +89,11 @@ class ScalarRLBaseline:
         self.evaluator = Evaluator(domain, llm_task, workers=1)
         self.rng = random.Random(cfg.seed)
         self.np_rng = np.random.default_rng(cfg.seed)
-        self.train_ids = [t.id for t in domain.tasks.split(cfg.train_split)]
-        vs = cfg.val_split if cfg.val_split and cfg.val_split in domain.tasks.splits else None
+        tr, vs = resolve_splits(domain, cfg.train_split, cfg.val_split)
+        self.train_ids = [t.id for t in domain.tasks.split(tr)]
         self.val_ids = [t.id for t in domain.tasks.split(vs)] if vs else list(self.train_ids)
+        if not self.train_ids:
+            raise ValueError(f"train split {tr!r} is empty")
         self.vocab = vocabulary or self._vocabulary()
         self.theta0 = {c: np.full(len(self.vocab[c]), math.log(cfg.init_p / (1 - cfg.init_p))) for c in self.components}
         self.theta = {c: v.copy() for c, v in self.theta0.items()}

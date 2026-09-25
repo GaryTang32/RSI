@@ -95,7 +95,9 @@ class FrontierTracker:
 
     Keys: ``instance`` -> one per validation id; ``objective`` -> one per objective
     (candidate's mean over validation); ``hybrid`` -> both; ``cartesian`` -> one per
-    (validation id, objective). ``>`` replaces the winners, ``==`` joins them.
+    (validation id, objective). ``>`` replaces the winners, ``==`` joins them. Without
+    objective scores ``hybrid`` and ``cartesian`` fall back to instance keys (the
+    ``optimize_anything`` behaviour); ``objective`` raises ``ValueError``.
     """
 
     def __init__(self, frontier_type: str = "instance") -> None:
@@ -128,6 +130,9 @@ class FrontierTracker:
                obj_scores: Optional[Mapping[str, Mapping[str, float]]] = None) -> dict:
         """Add program ``idx``; returns ``{"won": [...], "tied": [...], "displaced": {key: [...]}}``."""
         delta = {"won": [], "tied": [], "displaced": {}}
+        if self.frontier_type == "objective" and not any(obj_scores.values() if obj_scores else ()):
+            raise ValueError("frontier_type='objective' needs objective scores from the evaluator "
+                             "(Trial.meta['objectives'] or DomainAdapter(objective_fn=...))")
         for key, s in self._keys(val_scores, obj_scores):
             prev = self.best.get(key)
             if prev is None or s > prev:

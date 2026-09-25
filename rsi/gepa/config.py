@@ -12,7 +12,8 @@ class Config:
     Defaults follow ``gepa.optimize`` / the paper: minibatch b = 3, Pareto candidate
     selection over per-instance frontier keys, round-robin module selection, strict
     minibatch improvement, merge off (``use_merge=True`` = "GEPA+Merge", at most 5
-    merges, 5-id subsample, overlap floor 5), perfect-score skip on, seed 0.
+    merges, 5-id subsample, overlap floor 5), perfect-score skip on (perfect = the
+    domain's maximum score, i.e. 1.0 for [0, 1] metrics), seed 0.
     """
 
     # budget / splits
@@ -34,7 +35,8 @@ class Config:
     top_k: int = 5
     beam_n: int = 4
     skip_perfect_score: bool = True
-    perfect_score: float = 1.0
+    perfect_score: Optional[float] = None        # None -> domain.score_range[1] (1.0 for [0, 1] scores, the
+    #                                              gepa.optimize default)
 
     # merge (GEPA+Merge)
     use_merge: bool = False
@@ -81,5 +83,9 @@ class Config:
             raise ValueError("minibatch_size must be >= 1")
         if self.budget_mode not in ("reference_soft", "hard"):
             raise ValueError("budget_mode must be 'reference_soft' or 'hard'")
-        if self.skip_perfect_score and self.perfect_score is None:
-            raise ValueError("perfect_score must be provided when skip_perfect_score is True")
+        if self.module_selector not in ("round_robin", "all"):
+            raise ValueError("module_selector must be 'round_robin' or 'all'")
+        if self.merge_cap_mode not in ("reference_soft", "hard"):
+            raise ValueError("merge_cap_mode must be 'reference_soft' or 'hard'")
+        if self.feedback not in ("full", "score_only", "none"):
+            raise ValueError("feedback must be 'full', 'score_only' or 'none'")

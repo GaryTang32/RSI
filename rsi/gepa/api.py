@@ -50,6 +50,8 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
         "candidates": st.candidates_table(), "frontier": st.frontier.to_json(),
         "best_history": st.best_history, "resumed_at": eng.resumed_at,
         "merge": eng.merge.get_state() if eng.merge else None,
+        "perfect_score": eng.perfect_score, "n_infra_errors": int(st.extra.get("n_infra", 0)),
+        "n_infra_retries": getattr(eng.adapter, "n_infra_retries", 0),
     }
     res = ImprovementResult(method=method, baseline=st.candidates[0], best=st.candidates[b], ledger=eng.ledger,
                             trajectory=traj, usage=eng.usage_snapshot(), stop_reason=eng.stop_reason,

@@ -21,7 +21,7 @@ from ..core.evaluate import Evaluator
 from ..core.ledger import Ledger, Node
 from ..core.llm import LLM
 from ..core.run import ImprovementResult
-from .adapter import DomainAdapter
+from .adapter import DomainAdapter, resolve_splits
 from .api import default_components, run
 from .config import Config
 from .engine import merge_usage
@@ -34,8 +34,10 @@ def _usage(*llms) -> dict:
 
 
 def _splits(domain: Domain, train: str, val: Optional[str]) -> tuple[list[str], list[str]]:
-    tr = [t.id for t in domain.tasks.split(train)]
-    vs = val if val and val in domain.tasks.splits else None
+    trn, vs = resolve_splits(domain, train, val)
+    tr = [t.id for t in domain.tasks.split(trn)]
+    if not tr:
+        raise ValueError(f"train split {trn!r} is empty")
     return tr, ([t.id for t in domain.tasks.split(vs)] if vs else list(tr))
 
 
@@ -202,10 +204,11 @@ class FewShotDemoOptimizer:
         cfg, dom = self.cfg, self.domain
         # (1) bootstrap demos: run the seed on training examples, keep perfect traces
         pool: list[tuple] = []           # (task, output or None)
+        perfect = float(getattr(dom, "score_range", (0.0, 1.0))[1])
         if cfg.bootstrap:
             for tid in self.train[: cfg.max_bootstrap]:
                 tr = self._run(self.seed, tid, 7919)
-                if tr.score >= 1.0:
+                if tr.score >= perfect:
                     pool.append((dom.tasks.get(tid), tr.output))
         if cfg.labeled_demos:
             pool += [(dom.tasks.get(t), None) for t in self.train]
