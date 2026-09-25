@@ -255,123 +255,373 @@ class ParametricMutator(PolicyDeveloper):
 DEVELOPER_SYSTEM = ("You are a careful controller-development engineer. You write deterministic, prefix-only "
                     "exploration policies in Python. You never solve the scientific task itself.")
 
+#: Listing 2 [paper:App.B.2 L2:1-273], verbatim. Runtime substitutions: ``{method_file}``,
+#: ``{history_dir}`` and ``{trace_pool}`` (the context-file paths), ``see.policy.api`` /
+#: ``see.policy.observation_signal`` -> this framework's ``policy_api`` module, and the objective
+#: paragraph L2:12-22 (``{objective_text}``), which is L2's own text under ``objective="pareto"`` and
+#: states the Eq. 1 selection score otherwise (the paper never says which of the two produced its
+#: results, spec §8.15). Everything this reimplementation adds is in ``FRAMEWORK_NOTES`` below it.
 DEVELOPER_PROMPT = """\
-You are improving one **prefix-only exploration policy**. Edit only `{method_file}` and implement
-`OptimalPolicy.solve(self, question, budget=None)`. Do not solve the scientific task and do not edit
-any other program.
+You are improving one **prefix-only exploration policy**. Edit only
+``{method_file}`` and implement ``OptimalPolicy.solve(self, question, budget=None)``.
+Do not solve the scientific task and do not edit any other program.
 
 ## Objective: quality, work, and parallelism
-The environment is a frozen, irregular branch x attempt grid. A policy opens a root or refines the next
-cell of an already-open branch. Each revealed cell costs one probe. The policy sees only the cells it has
-revealed so far; unrevealed scores are unknown.
+
+The environment is a frozen, irregular branch×attempt grid. A policy opens a root
+or refines the next cell of an already-open branch. Each revealed cell costs one
+probe. The policy sees only the cells it has revealed so far; unrevealed scores are
+unknown.
 
 {objective_text}
 
-Therefore choose only promising probes, but batch independent promising probes whenever possible
-(W = question.max_parallelism = {W}). A local implementation failure does not by itself prove that its
-parent direction is poor. Weigh recovery value against new roots and ordinary refinements while keeping
-batches parallel.
+A local implementation failure does not by itself prove that its parent direction
+is poor. Weigh recovery value against new roots and ordinary refinements while
+keeping batches parallel.
 
-## API (module `policy_api`; its source is in the context file api/policy_api.py)
-question.reset(); question.observed() -> dict[str, Observation]  # revealed prefix only
-question.legal_actions() -> list[str]  # roots + opened-branch frontiers
-question.legal_roots() -> list[str]    # unopened roots only
-question.opened_branches() -> list[int]; question.meta(cell_id) -> CellMeta  # .branch .attempt .parent_id .seq .tags
-question.probe_batch(cells, on_reveal=...) -> list[Observation]; question.baseline_score; question.max_parallelism
-Observation supplies branch, attempt, score, evaluated, valid, fail_class, error, delta_vs_baseline,
-delta_vs_parent, n_valid, n_total. Helpers: branch_promising, branch_failed_hard, probe_improved_vs_parent,
-probe_improved_vs_baseline, branch_trajectories, is_repairable, lerp, clamp.
+## API
 
-**Success semantics:** an evaluated observation with `error is None` and `fail_class == "ok"` is a successful
-evaluation, even when `valid == False`. Never label it repairable solely because `valid` is false. A
-*successful anchor* is the best historical score from such a successful evaluation.
-Do **not** use `question.best_so_far` or `question.budget_spent`; derive every statistic from
-`question.observed()`. Any other attribute access is a guard violation that disqualifies the policy.
+question.reset()
+question.observed() -> dict[str, Observation] # revealed prefix only
+question.legal_actions() -> list[str] # roots + opened-branch frontiers
+question.legal_roots() -> list[str] # unopened roots only
+question.opened_branches() -> list[int]
+question.meta(cell_id) -> CellMeta # .branch .attempt .parent_id .seq .tags
+question.probe_batch(cells, on_reveal=...) -> list[Observation]
+question.baseline_score
+question.max_parallelism
+
+``Observation`` supplies ``branch``, ``attempt``, ``score``, ``evaluated``, ``valid``,
+``fail_class``, ``error``, ``delta_vs_baseline``, ``delta_vs_parent``, ``n_valid``, and
+``n_total``.
+Use the helpers in ``policy_api`` (the paper's ``see.policy.observation_signal``) when useful:
+``branch_promising``, ``branch_failed_hard``, ``probe_improved_vs_parent``, and
+``probe_improved_vs_baseline``.
+
+**Success semantics:** an evaluated observation with ``error is None`` and
+``fail_class == "ok"`` is a successful evaluation, even when ``valid == False`` or
+``n_valid``/``n_total`` are unavailable. Never label it repairable solely because
+``valid`` is false. A *successful anchor* below means the best historical score
+from such a successful evaluation.
+
+Do **not** use ``question.best_so_far`` or ``question.budget_spent`` to decide what
+to explore; they are bookkeeping only. Derive any decision statistic from
+``question.observed()`` instead.
 
 ## Required branch trajectory and failure interpretation
-For each opened branch, reconstruct its ordered prefix trajectory: successful anchor, score trend,
-regressions, failure/repair sequence, explored versus remaining depth. Before closing a failed frontier,
-classify it as hard-unrecoverable (fail_class env_error/dependency/hard), repairable implementation failure
-(correctness, compile_other, constraint, timeout, resource), weak-but-underexplored, or repeatedly
-unpromising after sufficient valid evidence. A later successful result reopens the branch.
+
+For each opened branch, reconstruct its ordered prefix trajectory, not only its
+latest observation or best score: successful anchor, score trend, regressions,
+failure/repair sequence, and explored versus remaining depth.
+
+Before closing or deprioritizing a failed frontier, classify it as
+hard-unrecoverable, repairable implementation failure, weak-but-underexplored, or
+repeatedly unpromising after sufficient valid evidence. Output/correctness mismatch,
+shared-memory/resource limits, and variable/code, mask/layout/shape errors are
+normally repairable. Do not infer algorithmic failure from one such error.
+``n_valid == 0`` and ``branch_failed_hard(obs)`` are signals, not unconditional
+closure: use ``fail_class`` and ``error`` to distinguish a repairable zero-valid
+failure from an environment/dependency failure. ``compile_other`` alone is not
+permanently hard. Classify the current failure episode: a later successful result
+reopens the branch and cancels closure based only on an earlier failure.
 
 ## Required batch decision loop
-1. Read the prefix, reconstruct trajectories, close only branches with cumulative evidence.
-2. Rank legal roots and frontiers using only prefix-derived signals.
-3. Rank repairable failures and underexplored frontiers in deterministic queues (trajectory, recoverability,
-   remaining depth, repeated failures, beta).
-4. Build one dynamic portfolio batch of up to max_parallelism distinct legal cells: exploitation, exploration
-   (new roots or underexplored branches) and at most one recovery. Never sample randomly and do not default to
-   a singleton merely because its top candidate is clear.
-5. Stop (return an empty batch) only after considering the whole revealed portfolio.
-A batch must contain distinct cells that are all legal before the call, may contain several roots and/or one
-frontier from each opened branch, never a parent and its child. Do not use a fixed widen-all / deepen-all wave.
+
+At each decision round:
+
+1. Read the prefix, reconstruct trajectories, and close only branches with
+cumulative evidence of being hard-unrecoverable or repeatedly unpromising.
+2. Rank legal roots and legal branch frontiers using only prefix-derived signals:
+successful anchor, parent→child gain, complete branch trajectory, actual success
+versus failure evidence,
+failure recoverability, prior repair outcomes, remaining depth, and cross-branch
+comparison.
+3. Rank actual repairable failures and underexplored frontiers in deterministic
+queues using trajectory, recoverability, remaining depth, repeated failures, and
+beta. A repairable failure retains eligibility unless cumulative evidence lowers
+its relative priority.
+4. Build one **dynamic portfolio** batch of independent candidates, up to
+``question.max_parallelism``: exploitation (strong normal refinements),
+exploration (new roots or underexplored branches), and at most one recovery
+(an actual repairable failure). When multiple roles are eligible, give
+exploration and justified recovery representation before filling remaining slots
+by priority; adapt this to prefix evidence rather than fixed quotas. Recovery
+must not displace normal successful refinements or leave workers idle. Never
+sample randomly, and do not default to a singleton merely because its top
+candidate is clear.
+5. Stop only after considering the whole revealed portfolio: active, underexplored,
+recoverable, unopened, and remaining legal candidates. Do not stop while an
+eligible high-priority recovery or underexplored candidate remains; every
+remaining action needs an evidence-based decision to continue, reserve, or close.
+
+A batch must contain distinct cells that are all legal *before* the call. It may
+contain several roots and/or one frontier from each opened branch. It must never
+contain a parent and its child together. Do not use a fixed widen-all / deepen-all
+wave schedule: adapt batch composition after every revealed prefix.
+
+Minimal structure:
+
+from policy_api import (
+    LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,
+)
+
+def solve(self, question, budget=None):
+    question.reset()
+    res, closed = SimResult(), set()
+    while not _budget_done(question, budget):
+        prefix = question.observed()
+        update_closed(closed, prefix, question)
+        batch = select_batch(prefix, question, closed)
+        if not batch:
+            break
+        question.probe_batch(
+            batch,
+            on_reveal=lambda _: _record_curve(res, question),
+        )
+    return finalize_result(question, res)
 
 ## Hard constraints
-- Keep `NAME = "OptimalPolicy"` and `class OptimalPolicy(LLMDesignedMethod)`; imports only from policy_api,
-  math, statistics, collections, itertools, functools, heapq, bisect, dataclasses, typing. No file access,
-  no getattr/eval/exec, no introspection.
-- Prefix-only: never use unrevealed scores, a true optimum, hardcoded winning cell ids, absolute score targets
-  or internal trace data. Keep all thresholds relative to the prefix; never use absolute score cutoffs.
-- Replay calls with budget=None. Always terminate when no batch is selected.
-- Call `question.reset()` once, at the start of `solve()`, before the first probe. A reset after probing is a
-  guard violation (it would let a policy explore, remember and replay the best path) and disqualifies it.
+
+- Keep ``NAME = "OptimalPolicy"`` and implement
+``class OptimalPolicy(LLMDesignedMethod)`` in ``{method_file}`` only.
+- **Prefix-only:** decisions may use revealed observations, ``baseline_score``, legal
+sets, structural ``meta``, and helper signals. Never use unrevealed scores, a true
+optimum, hardcoded winning cell ids, absolute score targets, or internal trace data.
+- Every prune, widen, deepen, batch, and stop decision must be explainable from the
+current prefix. Shallow weak scores are not enough to discard a branch: deeper
+attempts can recover. A repairable latest failure must not erase its historical
+successful anchor or by itself cause permanent starvation.
+- Replay calls with ``budget=None``. Always terminate when no batch is selected; do
+not assume a budget cap exists.
+- A selected batch must be legal, have no duplicate ids, and contain at most
+``question.max_parallelism`` cells.
 
 ## Beta: fixed per run, adaptive across cycles
-Read exactly one scalar in __init__: `beta = float(self.config.get("beta", <default>))`, route every
-behavioural threshold through one `_schedule(beta) -> dict` (high beta = more width, deeper patience, weaker
-pruning; low beta = fewer probes, earlier stagnation stops, stronger pruning). Never change beta inside
-solve(). Choose the baked-in default from the live manifests and beta sweeps in the context: live best still
-improving -> keep the prior default unless its sweep clearly shows a better nearby beta; plateaued and higher
-beta reaches higher attainment at reasonable cost -> raise by about 0.1-0.2; a high default already tried
-through a plateau with no attainment gain -> lower by a small step; insufficient or conflicting -> about 0.6.
+
+Read exactly one scalar in ``__init__``:
+
+beta = float(self.config.get("beta", <sensible_default>))
+
+Beta has three distinct roles. Do not conflate them:
+
+1. **Within one replay or live episode:** beta is fixed. Route every behavioral
+threshold through one ``_schedule(beta) -> dict``. High beta means more width,
+deeper patience, and weaker pruning. Low beta means fewer probes, earlier
+stagnation stops, and stronger pruning. Never change beta from observations inside
+``solve()``. Route recovery eligibility, reserve threshold, and waiting through
+the same schedule: high beta is more patient; low beta remains selective without
+treating one repairable failure as automatic closure.
+2. **During offline evaluation:** eval sweeps a fixed beta grid. This measures whether
+the policy exposes a real attainment/work/parallelism trade-off; it is not online
+beta adaptation.
+3. **When proposing the next policy version:** choose the baked-in default beta once,
+using evidence from earlier *live* cycles and their beta sweeps. That default will
+remain fixed throughout the next live exploration episode.
+
+Keep all thresholds relative to the prefix; never use absolute score cutoffs.
+
+Use the following cross-cycle default-beta rule. Read the most recent 2–3
+**live** ``{trace_pool}/iter*/live_cycle_manifest.json`` sidecars (and ``_current``
+when present) for each iteration's final best score and actual baked-in beta. Read
+the matching archived ``beta_sweep.json`` values (``pareto.reward``, AUC, parallel
+penalty, and the per-beta frontier). Scores alone do not establish that beta caused a
+change, so always use both sources:
+
+- live best is still improving: keep the prior default beta unless its sweep clearly
+shows a better nearby beta;
+- live best has plateaued, and higher beta reaches higher attainment for a reasonable
+work/parallelism cost in the sweep: raise the default by a small step (about
+0.1–0.2, clamped to [0, 1]);
+- a high default beta has already been tried through a plateau, and high-beta sweep
+points add work without higher attainment: lower it by a small step;
+- history is insufficient or evidence conflicts: use a moderately exploratory default
+(about 0.6), rather than pretending the replay ceiling is a live stopping signal.
+
+The beta sweep is non-degenerate only if beta changes the attainment/work trade-off.
+It also reveals whether the policy batches. Do not select the default simply as the
+smallest beta that reaches a frozen trace's known ceiling.
 
 ## Required next-cycle grid planning
-Implement the deterministic `plan_grid(self, context) -> GridPlan(branch_count=..., refine_count=...,
-reason=...)` on every path (never None). It runs before a new live grid, uses only context.history (earlier
-live manifests), fallback/hard caps and worker cap; 1 <= branch_count <= context.hard_max_branch_count,
-0 <= refine_count <= context.hard_max_refine_count. In replay, a plan beyond context.trace_branch_count /
-context.trace_refine_count is out of support and cannot earn replay reward. Widen when many roots improve early
-while depth stalls or when all directions plateau; deepen when gains arrive late; shrink on repeated hard
-failures; conservative bootstrap when history is insufficient.
+
+Every proposed policy **must** implement this deterministic method:
+
+from policy_api import GridPlan, GridPlanningContext
+
+def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+    ...
+
+This method runs **before** a new live grid is created. It does not make a
+within-episode decision and must never inspect a current episode's outcomes.
+It must always return a non-``None`` ``GridPlan``: do not inherit the template
+stub and do not delegate grid choice to the runner's fallback. When history is
+empty or insufficient, still return an explicit conservative bootstrap plan
+derived from the context's fallback/hard-cap fields, with a factual reason.
+
+``GridPlan(branch_count=W, refine_count=R)`` accepts arbitrary integers, not a
+fixed set of presets. It creates branches ``0..W-1`` and attempts ``0..R``; ``R`` is
+the number of refinements allowed after each root. The runner validates
+``1 <= W <= context.hard_max_branch_count`` and
+``0 <= R <= context.hard_max_refine_count``. In replay, a requested plan beyond the
+frozen trace's ``context.trace_branch_count`` or ``context.trace_refine_count`` is
+out of support and cannot earn replay reward.
+
+Use only the prefix-safe facts in ``context``:
+
+- ``history``: completed earlier live manifests, including prior planned/effective
+grids, actual opened width/depth, probe work, decision rounds, scores, and beta;
+- fallback/hard caps and worker cap;
+- replay structural support fields. Do not read raw trace outcomes or a current
+cycle result inside ``plan_grid``.
+
+Choose width versus depth from evidence, not a default preference:
+
+- many semantically distinct roots improve early while deeper refinements stall:
+increase width and reduce/hold depth;
+- high gains arrive late on a small, repeatable set of directions: reduce/hold width
+and increase depth;
+- all explored directions plateau after sufficient depth while meaningful direction
+classes remain uncovered: increase width;
+- repeated hard, unrecoverable failures or strongly redundant directions: reduce
+width and depth conservatively;
+- conflicting or insufficient history: return an explicit conservative bootstrap
+plan derived from the context, and state that evidence is insufficient.
+
+Include a short, factual ``reason`` in every plan. ``plan_grid`` answers
+how many directions to make available; the direction provider assigns those new
+roots their directions, and ``solve`` still decides which legal roots/frontiers to
+open, refine, prune, or stop. Do not choose roots merely because their branch id is
+small. The runtime grid is the hard bound: controller thresholds may use less, but
+can never create branches or attempts beyond the effective plan. Before finishing,
+verify that the edited ``method.py`` contains an override of ``plan_grid`` that
+returns ``GridPlan(branch_count=..., refine_count=..., reason=...)`` on every path.
 
 ## Learn from history without leaking outcomes
-Earlier versions are in the context files history/r####_*/ (code, report.json, proposal_results/beta_sweep.json).
-Start from a strong recent policy (the current artifact below is the strongest so far), retain mechanisms that
-raised the objective, and make a concrete change when progress stalls. history/baseline/ is the parallel-refine
-floor to beat. proposal_results/policy_execution_traces.jsonl holds one replay episode per (frozen trace, beta):
-use it to diagnose serial batches, premature stops, over-pruning or wasted probes. It is between-round feedback
-only: never copy a trace-specific branch, cell id, score, or target into policy logic.
+
+Earlier rounds are in ``{history_dir}/r####_*/``. Read their policy code and
+``proposal_results/beta_sweep.json``. Start from a strong recent policy, retain
+mechanisms that raised ``pareto.reward``, and make a concrete change when progress
+stalls. A legacy AUC-only sweep is useful code history but is not numerically
+comparable to the current reward. The baseline under ``{history_dir}/baseline/`` is
+a parallel-refine floor to beat.
+
+Each current-objective round also archives
+``proposal_results/policy_execution_traces.jsonl``: one replay episode per
+``(frozen trace, beta)``. Use it to diagnose general behavior -- serial batches,
+premature stops, over-pruning, or wasted probes -- from the prefix state, selected
+batch, and revealed outcomes at each decision round. It is **between-round feedback
+only**: never read it inside ``solve()``, and never copy a trace-specific branch,
+cell id, score, or target into policy logic.
+
+``{trace_pool}``, if present, may be read only outside ``solve()``. Prefer the
+``live_cycle_manifest.json`` sidecars over raw replay outcomes for the per-iteration
+live trend. Never copy trace scores, targets, or cell ids into policy logic.
 
 ## Deliverable
-Write the complete policy in `{method_file}` with a short module docstring (prefix signals, batch rule, beta
-schedule, default-beta rationale, grid-planning rule, safeguards against over-pruning, over-stopping, permanent
-starvation after repairable failures, and serial probes).
+
+Write a complete adaptive policy in ``{method_file}``. Include a short module
+docstring describing its prefix signals, batch rule, beta schedule, default-beta
+rationale, grid-planning rule (if implemented), and safeguards against
+over-pruning, over-stopping, permanent starvation after repairable failures, and
+serial probes. Before finishing, verify trajectory-based ranking, the stated
+success semantics, non-automatic zero-valid closure, deterministic recovery
+competition, and portfolio-level stop.
 """
+
+#: what this reimplementation adds to Listing 2 (none of it is in the paper's prompt): where the
+#: context files are, the import allow-list and the sandbox rules its runner enforces
+FRAMEWORK_NOTES = """\
+
+---
+# Framework notes (this reimplementation's runner; not part of the paper's prompt)
+
+- Context files: ``{history_dir}/r####_<label>/`` holds each earlier version's ``method.py``, ``report.json`` and
+  ``proposal_results/beta_sweep.json``; the version shown as the current artifact (the strongest so far) also has
+  ``proposal_results/policy_execution_traces.jsonl`` (first {trace_rows} episodes). ``{history_dir}/baseline/method.py`` is
+  parallel refine. Live manifests are ``{trace_pool}/iter<t>/live_cycle_manifest.json``. The API source is
+  ``api/policy_api.py``: import it as ``from policy_api import ...`` (it also offers ``branch_trajectories``,
+  ``is_repairable``, ``lerp`` and ``clamp``). There is no ``_current`` manifest.
+- Workers: W = question.max_parallelism = {W}.
+- Allowed imports: {imports}. No file access, no ``getattr``/``eval``/``exec``/``compile``, no introspection
+  (``__class__``, ``__dict__``, ``globals()`` ...). Any other attribute of ``question`` is a guard violation.
+- Call ``question.reset()`` once, at the start of ``solve()``, before the first probe: a reset after probing is a
+  guard violation (it would let a policy explore, remember and replay the best path).
+- Every episode (one frozen trace at one beta, or one live search) runs in a fresh policy process: module-level and
+  class-level state does not survive between episodes. The static check therefore rejects ``global``/``nonlocal``,
+  mutating module-level objects or shared class attributes from inside a method, and ``lru_cache``/``cache``.
+- Live searches call ``solve(question, budget)`` with the round's agent-call budget; replay calls with
+  ``budget=None``. A disqualified episode (violation, illegal batch, crash) scores below every honest one.
+"""
+
+#: L2:12-22, verbatim (``lambda`` is reported with its value)
+PARETO_OBJECTIVE = """\
+The evaluator sweeps your single ``beta`` knob and ranks the resulting curve by:
+
+pareto.reward = pareto.auc - lambda * parallel_penalty      (lambda = {lam:g})
+
+``pareto.auc`` rewards reaching high per-trace attainment with few **total probes**.
+``parallel_penalty`` is the mean of
+``effective_sequential_rounds / total_probes`` over the sweep. For a batch of size
+``k`` with ``W = question.max_parallelism`` workers, it costs one decision round and
+``ceil(k / W)`` effective sequential rounds. A serial policy has penalty near 1;
+useful full batches approach ``1/W``. Therefore choose only promising probes, but
+batch independent promising probes whenever possible."""
+
+#: the same paragraph when versions are selected by the paper's Eq. 1 (framework default)
+EQ1_OBJECTIVE = """\
+The evaluator replays your policy at its baked-in default ``beta`` on every frozen trace and ranks it by
+the mean replay score (the paper's Eq. 1):
+
+V = best - {beta1:g} * N + {beta2:g} * N / max(1, k)
+
+``best`` is the best revealed successful score normalized per trace (0 = the trace's root, 1 = the best
+score recorded in that trace), ``N`` the number of revealed cells (probes) and ``k`` the number of decision
+rounds (non-empty batches). It also sweeps your single ``beta`` knob for feedback (``beta_sweep.json``):
+pareto.reward = pareto.auc - lambda * parallel_penalty (lambda = {lam:g}); ``pareto.auc`` rewards reaching
+high per-trace attainment with few **total probes**; ``parallel_penalty`` is the mean of
+``effective_sequential_rounds / total_probes`` over the sweep, where a batch of size ``k`` with
+``W = question.max_parallelism`` workers costs one decision round and ``ceil(k / W)`` effective sequential
+rounds (a serial policy has penalty near 1; useful full batches approach ``1/W``). Therefore choose only
+promising probes, but batch independent promising probes whenever possible."""
 
 
 def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1) -> str:
+    """The objective paragraph of Listing 2 (L2:12-22) for the objective actually used for selection."""
     if objective == "pareto":
-        return ("The evaluator sweeps your single `beta` knob and ranks the resulting curve by\n"
-                f"pareto.reward = pareto.auc - {lam:g} * parallel_penalty\n"
-                "pareto.auc rewards reaching high per-trace attainment with few total probes. parallel_penalty is "
-                "the mean of effective_sequential_rounds / total_probes over the sweep; a batch of k cells costs "
-                "ceil(k / W) sequential rounds. A serial policy has penalty near 1; full batches approach 1/W.")
-    return ("The evaluator replays your policy (at its default beta) on every frozen trace and ranks it by the "
-            f"mean replay score V = best - {beta1:g} * N + {beta2:g} * N / max(1, k), where best is the best revealed "
-            "score normalized per trace (0 = root, 1 = best recorded), N the number of revealed cells and k the "
-            "number of decision rounds (non-empty batches). It also sweeps beta for feedback (beta_sweep.json).")
+        return PARETO_OBJECTIVE.format(lam=lam)
+    return EQ1_OBJECTIVE.format(beta1=beta1, beta2=beta2, lam=lam)
+
+
+def developer_prompt(objective: str, W: int, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
+                     trace_rows: Optional[int] = None, method_file: str = POLICY_FILE, history_dir: str = "history",
+                     trace_pool: str = "trace_pool") -> str:
+    """Listing 2 (verbatim, runtime paths and the objective paragraph filled in) + the framework notes."""
+    from .guard import ALLOWED_IMPORTS
+
+    body = DEVELOPER_PROMPT.format(method_file=method_file, history_dir=history_dir, trace_pool=trace_pool,
+                                   objective_text=objective_text(objective, beta1, beta2, lam))
+    notes = FRAMEWORK_NOTES.format(history_dir=history_dir, trace_pool=trace_pool, W=W,
+                                   trace_rows="all" if trace_rows is None else f"at most {trace_rows}",
+                                   imports=", ".join(sorted(i for i in ALLOWED_IMPORTS if i != "__future__")))
+    return body + notes
 
 
 class LLMPolicyDeveloper(PolicyDeveloper):
-    """Listing-2 policy developer over an LLM or any :class:`rsi.core.Editor`."""
+    """Listing-2 policy developer over an LLM or any :class:`rsi.core.Editor`.
+
+    Context files mirror the paper's layout, and by default nothing is capped: every earlier
+    version's ``history/r####_*/`` (code, report, ``beta_sweep.json`` and
+    ``policy_execution_traces.jsonl``) and every live manifest. ``max_history`` (versions) and
+    ``max_trace_rows`` (episodes per version) are non-default caps to bound prompt length."""
 
     name = "llm"
 
     def __init__(self, editor: Editor | LLM, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
-                 max_history: int = 6, max_trace_rows: int = 12, repair_rounds: int = 1, role: str = "developer",
-                 leakage_check: bool = True) -> None:
-        self.editor = RewriteEditor(editor) if isinstance(editor, LLM) else editor
+                 max_history: Optional[int] = None, max_trace_rows: Optional[int] = None, repair_rounds: int = 1,
+                 role: str = "developer", leakage_check: bool = True, max_context_chars: int = 400_000) -> None:
+        # a single-completion editor gets every context file inline; the core editor's 60k-char default
+        # would silently cut the oldest history (and the API source) once every version's traces are in
+        self.editor = RewriteEditor(editor, max_context_chars=max_context_chars) if isinstance(editor, LLM) \
+            else editor
         self.beta1, self.beta2, self.lam = beta1, beta2, lam
         self.max_history, self.max_trace_rows = max_history, max_trace_rows
         self.repair_rounds, self.role = repair_rounds, role
@@ -380,20 +630,31 @@ class LLMPolicyDeveloper(PolicyDeveloper):
     def context_files(self, ctx: DevContext, base: VersionRecord) -> dict[str, str]:
         from . import policy_api
 
-        files = {"history/baseline/method.py": ctx.baseline_code}
-        for v in (ctx.history + ctx.versions)[-self.max_history:]:
+        # order = what survives an editor's context budget: API, live manifests, baseline, then the
+        # version history newest first
+        files = {}
+        with open(policy_api.__file__) as f:
+            files["api/policy_api.py"] = f.read()
+        for m in ctx.manifests:
+            files[f"trace_pool/iter{int(m.get('iteration', 0)):02d}/live_cycle_manifest.json"] = json.dumps(m, default=float)
+        files["history/baseline/method.py"] = ctx.baseline_code
+        latest: dict[int, VersionRecord] = {}
+        for v in list(ctx.history) + list(ctx.versions):      # later entries (this phase's reports) win
+            latest[v.index] = v
+        versions = sorted(latest.values(), key=lambda v: v.index, reverse=True)
+        if self.max_history is not None:
+            versions = versions[:self.max_history] + ([base] if base.index not in
+                                                      {v.index for v in versions[:self.max_history]} else [])
+        for v in versions:
             d = f"history/r{v.index:04d}_{v.label or 'v'}"
             files[f"{d}/method.py"] = v.code
             if v.report is not None:
                 files[f"{d}/report.json"] = json.dumps(v.report.summary(), default=float, indent=1)
                 if getattr(v.report, "sweep", None):
                     files[f"{d}/proposal_results/beta_sweep.json"] = json.dumps(v.report.sweep, default=float)
-        if base.report is not None:
-            files["proposal_results/policy_execution_traces.jsonl"] = base.report.traces_jsonl(self.max_trace_rows)
-        for m in ctx.manifests:
-            files[f"trace_pool/iter{int(m.get('iteration', 0)):02d}/live_cycle_manifest.json"] = json.dumps(m, default=float)
-        with open(policy_api.__file__) as f:
-            files["api/policy_api.py"] = f.read()
+                rows = v.report.traces_jsonl(self.max_trace_rows)
+                if rows:
+                    files[f"{d}/proposal_results/policy_execution_traces.jsonl"] = rows
         return files
 
     def _screen(self, code: str, ctx: DevContext) -> tuple[CheckResult, list[str]]:
@@ -409,9 +670,8 @@ class LLMPolicyDeveloper(PolicyDeveloper):
 
     def revise(self, ctx: DevContext, *, seed: int = 0) -> Revision:
         base = strongest(ctx.versions)
-        instructions = DEVELOPER_PROMPT.format(method_file=POLICY_FILE, W=ctx.W,
-                                               objective_text=objective_text(ctx.objective, self.beta1, self.beta2,
-                                                                             self.lam))
+        instructions = developer_prompt(ctx.objective, ctx.W, beta1=self.beta1, beta2=self.beta2, lam=self.lam,
+                                        trace_rows=self.max_trace_rows)
         files = self.context_files(ctx, base)
         art = policy_artifact(base.code)
         usage = Usage()

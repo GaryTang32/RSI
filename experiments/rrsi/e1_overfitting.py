@@ -4,7 +4,12 @@ HarnessWorld (Tier 1, analytic ground truth): H_0 vs unregularized evolution vs 
 same proposer, same budget (T = 20 rounds x m = 2 candidates), N seeds (a fresh world per
 seed). Measures the loop's own final measured evolve score, true E[S] on evolve / ID
 held-out / OOD, and tokens per trial; paired (same seed) differences with bootstrap CIs.
-A robustness arm switches the world's context-dilution assumption off.
+A robustness arm switches the world's context-dilution assumption off. Every main arm uses
+the HEURISTIC analyst (F_t from a deterministic clusterer over grader feedback: the offline
+default when no analyst LLM is given, ``Config.analyst="auto"``); a second robustness arm
+runs both arms with the paper's three-lens LLM analyst path (digesters + aggregator, served
+offline by the HarnessWorld mock) to show the verdicts do not hinge on that plumbing. The
+AgentQA mock has no digester/aggregator responses, so AgentQA stays on the heuristic analyst.
 
 AgentQA (the shared harness domain, SimModel as the frozen model, scripted mock
 proposer): the same two arms on 5 suite seeds, transfer measured on held-out and
@@ -32,12 +37,18 @@ def main():
     n_rob = min(a.seeds, 20)
     jobs += [{"seed": s, "arm": arm, "label": f"{arm}|no_context_penalty", "cfg": {"T": T}, "llm": a.llm,
               "world": {"context_penalty": 0.0}} for s in range(n_rob) for arm in arms]
+    jobs += [{"seed": s, "arm": arm, "label": f"{arm}|llm_analyst", "cfg": {"T": T, "analyst": "llm"}, "llm": a.llm}
+             for s in range(n_rob) for arm in arms]
     rows = pmap(run_hw, jobs, a.workers if a.llm == "sim" else 1)
     hw = summarize(rows)
     pd = {m: paired(rows, "unregularized", "full", m) for m in
           ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain", "unseen_gain", "token_ratio")}
     pd_rob = {m: paired(rows, "unregularized|no_context_penalty", "full|no_context_penalty", m) for m in
               ("evolve_gain", "holdout_gain", "ood_gain", "token_ratio")}
+    pd_llm = {m: paired(rows, "unregularized|llm_analyst", "full|llm_analyst", m) for m in
+              ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain", "token_ratio")}
+    analyst_modes = {lab: sorted({str(r.get("analyst_mode")) for r in rows if r["label"] == lab})
+                     for lab in dict.fromkeys(r["label"] for r in rows)}
     # AgentQA second domain
     aq_seeds = min(5, a.seeds) if a.llm == "sim" else 1
     aq_jobs = [{"seed": s, "arm": arm, "label": arm, "cfg": {"T": 8 if not a.quick else 4}, "llm": a.llm}
@@ -62,10 +73,19 @@ def main():
                                     "keep argmax iff S' > S_t",
                    "agentqa": {"seeds": aq_seeds, "T": 8, "task_model": "SimModel", "proposer": a.llm}},
         "harnessworld": {"summary": hw, "paired_full_minus_unregularized": pd,
-                         "robustness_no_context_penalty": {"summary": {k: v for k, v in hw.items() if "|" in k},
+                         "analyst_mode_per_arm": analyst_modes,
+                         "robustness_no_context_penalty": {"summary": {k: v for k, v in hw.items()
+                                                                       if k.endswith("|no_context_penalty")},
                                                            "paired": pd_rob},
+                         "robustness_llm_analyst": {
+                             "summary": {k: v for k, v in hw.items() if k.endswith("|llm_analyst")},
+                             "paired": pd_llm,
+                             "checks": {"rrsi_higher_true_ood": pd_llm["ood_gain"]["lo"] > 0,
+                                        "rrsi_cheaper": pd_llm["token_ratio"]["hi"] < 0,
+                                        "unregularized_highest_true_evolve": pd_llm["evolve_gain"]["hi"] < 0}},
                          "curves": mean_curves([r for r in rows if "|" not in r["label"]])},
         "agentqa": {"summary": aq, "paired_full_minus_unregularized": aq_pd,
+                    "analyst_mode": sorted({str(r.get("analyst_mode")) for r in aq_rows}),
                     "leaky_final": {arm: sum(r["leaky_final"] for r in aq_rows if r["arm"] == arm) for arm in arms},
                     "rows": aq_rows},
         "table_points": {lab: {m: fmt(hw[lab][m]) if m != "token_ratio" else f"{hw[lab][m]['mean']:.2f}x"

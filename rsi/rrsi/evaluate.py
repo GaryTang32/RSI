@@ -13,7 +13,11 @@ Rollouts run through :class:`rsi.core.Evaluator` (parallel, optional per-trial d
 cache, infra failures -> missing). Each evaluation *job* draws its own trial seeds
 (derived from the job name), so re-measuring an unchanged harness gives an
 independent sample, exactly as re-running a job does in the released code. Rewards
-may carry weights (``trial.meta["weight"]``, Harvey-LAB style criteria counts).
+may carry weights (Harvey-LAB style criteria counts): ``trial.meta["weight"]``, else the
+task's ``Task.meta["weight"]``, else 1. A MISSING trial (infrastructure failure, or a
+trial that never came back) carries its task's weight, as the code's workspace adapter
+gives it the task's criteria count, so a weighted domain cannot look better by losing
+the trials of its heavy tasks either.
 """
 from __future__ import annotations
 
@@ -149,21 +153,36 @@ def _compact_trial(tr, trace_chars: int) -> dict:
     return d
 
 
+def _task_weight(trs, declared: Optional[float]) -> float:
+    """The weight of one task: ``Task.meta["weight"]`` if the domain declares it, else the weight its
+    graded trials reported, else 1.0 (every coding / engineering trial has weight 1 in the code)."""
+    if declared is not None:
+        return float(declared)
+    for tr in trs:
+        if not (tr.error and str(tr.error).startswith("infra:")) and "weight" in (tr.meta or {}):
+            return float(tr.meta["weight"])
+    return 1.0
+
+
 def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars: int = 3000,
-              keep_trials: bool = True) -> Measurement:
-    """Convert an :class:`rsi.core.EvalResult` to a stored :class:`Measurement`."""
+              keep_trials: bool = True, task_weights: Optional[dict] = None) -> Measurement:
+    """Convert an :class:`rsi.core.EvalResult` to a stored :class:`Measurement`.
+    ``task_weights``: optional ``{task_id: weight}`` (``Task.meta["weight"]``) for weighted domains."""
     per: dict[str, TaskResult] = {}
     trials: dict[str, list[dict]] = {}
     fam: dict[str, list[float]] = {}
     meta_sums: dict[str, list[float]] = {}
     steps, errors, n = [], 0, 0
+    task_weights = task_weights or {}
     for tid, trs in ev.trials.items():
         rewards, weights, tokens, miss = [], [], [], 0
+        w_task = _task_weight(trs, task_weights.get(tid))
         for tr in trs:
             is_missing = bool(tr.error and str(tr.error).startswith("infra:"))
             miss += is_missing
             rewards.append(0.0 if is_missing else float(tr.score))
-            weights.append(float((tr.meta or {}).get("weight", 1.0)))
+            # a missing trial carries its task's weight (code: workspace adapter), a graded one its own
+            weights.append(w_task if is_missing else float((tr.meta or {}).get("weight", w_task)))
             tokens.append(None if is_missing else (tr.tokens or None))
             steps.append(tr.steps)
             errors += bool(tr.error)
@@ -174,7 +193,7 @@ def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars
         # pad to k: trials that never came back are missing with reward 0 (full denominator)
         while len(rewards) < ev.k:
             rewards.append(0.0)
-            weights.append(1.0)
+            weights.append(w_task)
             tokens.append(None)
             miss += 1
         per[tid] = TaskResult(rewards, weights, tokens, miss)
@@ -214,7 +233,10 @@ class Measurer:
                 seeds: Optional[Sequence[int]] = None, keep_trials: bool = True) -> Measurement:
         seeds = list(seeds) if seeds is not None else job_seeds(job, k, self.run_seed)
         ev = self.evaluator.evaluate(artifact, split, k, seeds=seeds)
-        return from_core(ev, job, seeds=seeds, trace_chars=self.trace_chars, keep_trials=keep_trials)
+        weights = {tid: t.meta["weight"] for tid, t in self.domain.tasks.tasks.items()
+                   if tid in ev.trials and isinstance(t.meta, dict) and "weight" in t.meta}
+        return from_core(ev, job, seeds=seeds, trace_chars=self.trace_chars, keep_trials=keep_trials,
+                         task_weights=weights)
 
 
 def null_sd_theory(m: Measurement) -> float:

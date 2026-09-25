@@ -105,7 +105,11 @@ class Eq1Objective:
     beta1: float = 0.01
     beta2: float = 0.005
     normalize: bool = True
-    support: str = "clip"               # "clip" | "no_reward"
+    # out-of-support plans (beyond the frozen trace's width/depth): "no_reward" (default) = Listing 2's
+    # "cannot earn replay reward" (quality at the floor, probes still cost); "clip" = the plan is
+    # intersected with the support and scored as if it had asked for less (non-default: E2 shows it
+    # over-estimates such plans by +0.14)
+    support: str = "no_reward"
     disqualified_margin: float = 1.0
     name: str = "eq1"
 
@@ -142,6 +146,11 @@ class ParetoSweepObjective:
     beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
     lam: float = 0.1
     name: str = "pareto"
+    #: "no_reward" (default, Listing 2): an out-of-support episode attains 0; "clip": plan ∩ support
+    support: str = "no_reward"
+
+    def attainment(self, e: EpisodeResult) -> float:
+        return 0.0 if (self.support == "no_reward" and e.out_of_support) else e.attainment
 
     def sweep(self, by_beta: dict[float, Sequence[EpisodeResult]]) -> dict:
         pts = []
@@ -151,7 +160,7 @@ class ParetoSweepObjective:
                 continue
             pen = [(e.eff_rounds / e.N) if (e.N > 0 and not e.disqualified) else 1.0 for e in eps]
             pts.append({"beta": b, "probes_frac": float(np.mean([e.probe_frac for e in eps])),
-                        "attainment": float(np.mean([e.attainment for e in eps])),
+                        "attainment": float(np.mean([self.attainment(e) for e in eps])),
                         "N": float(np.mean([e.N for e in eps])), "k": float(np.mean([e.k for e in eps])),
                         "mean_batch": float(np.mean([e.mean_batch for e in eps])),
                         "parallel_penalty": float(np.mean(pen)),

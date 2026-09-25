@@ -1,13 +1,8 @@
 {
  "verdict": "reject",
  "reasons": [
-  "precheck: hard-coded evaluation data '2119981'",
-  "precheck: hard-coded evaluation data '2695810'",
-  "precheck: hard-coded evaluation data '3886910'",
-  "precheck: hard-coded evaluation data 'Sawyer'",
-  "precheck: hard-coded evaluation data 'Taylor'",
-  "precheck: hard-coded evaluation data 'Blake'"
+  "[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions"
  ],
  "risk_notes": [],
- "stage": "precheck"
+ "stage": "llm"
 }

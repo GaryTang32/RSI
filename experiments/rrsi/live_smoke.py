@@ -8,6 +8,7 @@ tagged, screened, smoke-tested, evaluated and adjudicated, and reports per-role 
 cost. ``--llm sim`` runs the same pipeline with the scripted mock.
 
     python experiments/rrsi/live_smoke.py --llm claude:haiku
+    python experiments/rrsi/live_smoke.py --llm claude:haiku --cache-dir .rsi_cache/rrsi_live_v2   # fresh cache
     python experiments/rrsi/live_smoke.py --llm claude:haiku --cache-only   # $0 replay, fails on a cache miss
 
 ``--cache-only`` replays the recorded live run against the CURRENT code: the backend behind the
@@ -47,10 +48,12 @@ def main():
     a = parse_args("live smoke run of RRSI", default_seeds=1,
                    extra=lambda ap: (ap.add_argument("--T", type=int, default=2),
                                      ap.add_argument("--max-usd", type=float, default=1.0),
+                                     ap.add_argument("--cache-dir", default=None,
+                                                     help="LLM cache directory (default .rsi_cache/rrsi)"),
                                      ap.add_argument("--cache-only", action="store_true")))
     suite = make_suite(n_evolve=12, n_holdout=12, n_ood_per_family=3, seed=0)
     dom = AgentQADomain(suite)
-    llm = search_llm(a.llm, agentqa=True)
+    llm = search_llm(a.llm, agentqa=True, cache_dir=a.cache_dir)
     if a.cache_only:
         if not isinstance(llm, CachedLLM):
             raise SystemExit("--cache-only needs --llm claude:<model>")
@@ -73,7 +76,9 @@ def main():
            "stop_reason": res.stop_reason, "trajectory": res.trajectory, "usage": res.usage,
            "transfer": {s: {k: v["S"] for k, v in rep["splits"][s].items()} for s in rep["splits"]},
            "proposals": props, "critic": crit, "diffs": diffs, "final_files": sorted(res.best.files),
-           "delta": res.meta.get("delta"), "out_dir": str(out_dir)}
+           "delta": res.meta.get("delta"), "out_dir": str(out_dir), "cache_dir": str(getattr(llm, "dir", "")),
+           "spend": res.meta.get("spend"),
+           "cache_hits_misses": [getattr(llm, "hits", None), getattr(llm, "misses", None)]}
     if a.cache_only:
         rec_p = Path(__file__).resolve().parents[2] / "results" / "rrsi" / "live_smoke.json"
         rec = json.loads(rec_p.read_text()) if rec_p.exists() else {}

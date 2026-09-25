@@ -64,6 +64,12 @@ def _reply(files: dict, comp: str, hyp: str) -> str:
 
 def proposer(prompt, system, seed, i):
     if "strict reviewer" in (system or ""):
+        # the LLM review's REJECT rule 1 (LEAKAGE: expected outputs or answers hard-coded); as in the code, a
+        # literal answer table is the reviewer's to catch - the deterministic precheck holds task ids / patterns
+        added = "\n".join(l for l in prompt.split("=== DIFF ===")[-1].splitlines() if l.startswith("+"))
+        if "ANSWERS = {" in added:
+            return json.dumps({"verdict": "reject", "reasons": ["LEAKAGE: hard-codes practice answers"],
+                               "risk_notes": []})
         return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
     P = parse_sections(prompt)
     d, src = P["directives"], P["files"].get("solve.py", "")
@@ -96,7 +102,7 @@ def test_rrsi_runs_unchanged_on_a_new_function_domain(tmp_path):
     assert res.meta["delta"] > 0                                     # calibrated by the within-task bootstrap
     assert "strip().lower()" in res.best["solve.py"] and "ANSWERS" not in res.best["solve.py"]
     a0 = json.loads((tmp_path / "n" / "r0" / "A" / "critic_a0.json").read_text())
-    assert a0["verdict"] == "reject" and a0["stage"] == "precheck"   # evolve answers caught before evaluation
+    assert a0["verdict"] == "reject" and a0["stage"] == "llm"        # evolve answers caught before evaluation
     recs = [json.loads(line) for line in (tmp_path / "n" / "history.jsonl").read_text().splitlines()]
     assert {r["component"] for r in recs if r.get("edit_id")} <= set(res.meta["K"])
     assert {"proposer", "critic"} <= set(res.usage)
@@ -104,6 +110,18 @@ def test_rrsi_runs_unchanged_on_a_new_function_domain(tmp_path):
     assert rep["splits"]["holdout"]["final"]["S"] > rep["splits"]["holdout"]["H0"]["S"] + 0.3
     assert rep["splits"]["ood"]["final"]["S"] > rep["splits"]["ood"]["H0"]["S"] + 0.3
     assert rep["non_regression"]["final"] and rep["fresh_rollouts_in_win_tie_loss_pass"] == 0
+
+
+def test_answer_denylist_is_an_opt_in_precheck_extension(tmp_path):
+    """Claims audit N3: the code's precheck holds task ids and patterns, not the practice answers. With
+    Config.precheck_answers=True (documented extension) the same leak is caught deterministically."""
+    dom = make_domain()
+    res = run(dom, SEED, llm_propose=MockLLM(proposer), config=Config(T=1, workers=1, precheck_answers=True),
+              out_dir=tmp_path / "x")
+    a0 = json.loads((tmp_path / "x" / "r0" / "A" / "critic_a0.json").read_text())
+    assert a0["verdict"] == "reject" and a0["stage"] == "precheck"
+    assert any("hard-coded evaluation data" in r for r in a0["reasons"])
+    assert "ANSWERS" not in res.best["solve.py"]
 
 
 def test_unregularized_arm_keeps_the_leak_on_the_new_domain(tmp_path):

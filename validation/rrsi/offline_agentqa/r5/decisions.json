@@ -2,11 +2,11 @@
  {
   "variant": "A",
   "admissible": false,
-  "reason": "below noise-adjusted floor: S'=0.4750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472)",
-  "S": 0.475,
-  "C": 768.1,
-  "delta_S": -0.275,
-  "delta_C": -0.6666666666666667,
+  "reason": "critic_reject",
+  "S": null,
+  "C": null,
+  "delta_S": null,
+  "delta_C": null,
   "novelty": 0,
   "guards": []
  },

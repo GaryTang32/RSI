@@ -45,7 +45,10 @@ GENERIC_SIGNALS: list[tuple[str, list[str]]] = [
     ("subagent", [r"\bsubcall\(", r"sub_agent", r"subagent"]),
 ]
 
-#: Tag aliases between common vocabularies (e.g. AgentQA calls client tools "tool").
+#: Tag aliases between common vocabularies (e.g. AgentQA calls client tools "tool"). Used (a) to map the
+#: generic structural signals onto a domain's own component names, and (b) only with ``aliases=True``
+#: (``Config.component_aliases``, an extension) to accept a DECLARED tag outside K. By default a declared
+#: tag outside K is bounced by done() and re-tagged from the diff, as in the code.
 ALIASES = {"client_tool": "tool", "tool": "client_tool", "tools": "tool", "prompts": "prompt",
            "control": "control_flow", "skills": "skill", "subagents": "subagent", "agents": "subagent"}
 
@@ -82,7 +85,9 @@ class Taxonomy:
 
     def __init__(self, components: Sequence[str] = tuple(K), structural: Sequence[str] = tuple(K_STR),
                  path_hints: Optional[dict[str, list[str]]] = None,
-                 signals: Optional[list[tuple[str, list[str]]]] = None, *, trust_code_tags: bool = False) -> None:
+                 signals: Optional[list[tuple[str, list[str]]]] = None, *, trust_code_tags: bool = False,
+                 aliases: bool = False) -> None:
+        self.aliases = aliases
         self.K = list(components)
         self.K_str = [c for c in structural if c in self.K]
         self.path_hints = {c: list(v) for c, v in (path_hints or {}).items() if c in self.K}
@@ -95,11 +100,11 @@ class Taxonomy:
         self._path_order = [c for c in order if c in self.path_hints]
 
     @classmethod
-    def from_domain(cls, domain) -> "Taxonomy":
+    def from_domain(cls, domain, *, aliases: bool = False) -> "Taxonomy":
         comps = dict(getattr(domain, "components", None) or {})
         if not comps:
             sig = list(getattr(domain, "component_signals", []) or [])
-            return cls(K, K_STR, {}, sig, trust_code_tags=not sig)
+            return cls(K, K_STR, {}, sig, trust_code_tags=not sig, aliases=aliases)
         structural = list(getattr(domain, "structural_components", ()) or [c for c in K_STR if c in comps])
         paths: dict[str, list[str]] = {}
         regs: list[tuple[str, list[str]]] = list(getattr(domain, "component_signals", []) or [])
@@ -110,7 +115,7 @@ class Taxonomy:
                 paths[c] = globs
             if rx:
                 regs.append((c, rx))
-        return cls(list(comps), structural, paths, regs)
+        return cls(list(comps), structural, paths, regs, aliases=aliases)
 
     # ------------------------------------------------------------------ evidence --
     def _generic(self) -> list[tuple[str, list[str]]]:
@@ -158,10 +163,15 @@ class Taxonomy:
                 return comp
         return default
 
-    def canonical(self, declared: Optional[str]) -> str:
-        d = (declared or "").strip().lower()
-        if d not in self.K and ALIASES.get(d) in self.K:
-            d = ALIASES[d]
+    def canonical(self, declared: Optional[str], strip: bool = True) -> str:
+        """The declared tag as the code reads it: lower-cased (and stripped, as ``normalize`` does; done()
+        validation lower-cases only). An alias ("tool" for "client_tool") is mapped into K only when the
+        taxonomy was built with ``aliases=True``; otherwise it stays outside K and is bounced / re-tagged."""
+        d = str(declared or "").lower()
+        if strip:
+            d = d.strip()
+        if self.aliases and d not in self.K and ALIASES.get(d.strip()) in self.K:
+            d = ALIASES[d.strip()]
         return d
 
     def normalize(self, declared: Optional[str], diff: str) -> str:

@@ -1,6 +1,62 @@
 [
  {
-  "task_id": "hw-e-022",
+  "task_id": "hw-e-008",
+  "lens": "failure",
+  "family": "extract",
+  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
+  "narrative": "Missed 15/16 rubric criteria (family=extract, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 15/16 rubric criteria (family=extract, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-056",
+  "lens": "failure",
+  "family": "extract",
+  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
+  "narrative": "Missed 15/16 rubric criteria (family=extract, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 15/16 rubric criteria (family=extract, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-011",
+  "lens": "failure",
+  "family": "format",
+  "blocker": "Missed #/# rubric criteria (family=format, surface=text).",
+  "narrative": "Missed 15/16 rubric criteria (family=format, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 15/16 rubric criteria (family=format, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-019",
+  "lens": "failure",
+  "family": "format",
+  "blocker": "Missed #/# rubric criteria (family=format, surface=text).",
+  "narrative": "Missed 15/16 rubric criteria (family=format, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 15/16 rubric criteria (family=format, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-046",
   "lens": "failure",
   "family": "plan",
   "blocker": "Missed #/# rubric criteria (family=plan, surface=text).",
@@ -14,89 +70,33 @@
   "needed_instead": ""
  },
  {
-  "task_id": "hw-e-036",
+  "task_id": "hw-e-073",
   "lens": "failure",
-  "family": "extract",
-  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
-  "narrative": "Missed 14/16 rubric criteria (family=extract, surface=text).",
+  "family": "arith",
+  "blocker": "Missed #/# rubric criteria (family=arith, surface=tool).",
+  "narrative": "Missed 15/16 rubric criteria (family=arith, surface=tool).",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Missed 14/16 rubric criteria (family=extract, surface=text)."
+    "quote": "Missed 15/16 rubric criteria (family=arith, surface=tool)."
    }
   ],
   "needed_instead": ""
  },
  {
-  "task_id": "hw-e-044",
-  "lens": "failure",
-  "family": "extract",
-  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
-  "narrative": "Missed 14/16 rubric criteria (family=extract, surface=text).",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Missed 14/16 rubric criteria (family=extract, surface=text)."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "hw-e-076",
-  "lens": "failure",
-  "family": "extract",
-  "blocker": "Missed #/# rubric criteria (family=extract, surface=tool).",
-  "narrative": "Missed 14/16 rubric criteria (family=extract, surface=tool).",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Missed 14/16 rubric criteria (family=extract, surface=tool)."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "hw-e-008",
-  "lens": "failure",
-  "family": "extract",
-  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
-  "narrative": "Missed 14/16 rubric criteria (family=extract, surface=text).",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Missed 14/16 rubric criteria (family=extract, surface=text)."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "hw-e-019",
-  "lens": "failure",
-  "family": "format",
-  "blocker": "Missed #/# rubric criteria (family=format, surface=text).",
-  "narrative": "Missed 14/16 rubric criteria (family=format, surface=text).",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Missed 14/16 rubric criteria (family=format, surface=text)."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "hw-e-006",
+  "task_id": "hw-e-048",
   "lens": "success",
-  "family": "plan",
+  "family": "extract",
   "habits": [
    {
-    "habit": "clean_plan",
+    "habit": "clean_extract",
     "where_shown": "final"
    }
   ],
   "risk_if_removed": "regressions on passing tasks"
  },
  {
-  "task_id": "hw-e-024",
+  "task_id": "hw-e-004",
   "lens": "success",
   "family": "extract",
   "habits": [

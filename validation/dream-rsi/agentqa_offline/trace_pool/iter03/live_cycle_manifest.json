@@ -27,8 +27,9 @@
  "gain_late": 0.0,
  "fail_frac": 0.0,
  "hard_fail_frac": 0.0,
- "policy": "86e922d1a333",
+ "policy": "e226619df852",
  "agent_calls": 8,
  "plan_reason": "live best plateaued: widen to cover new directions",
- "plan_error": null
+ "plan_error": null,
+ "round_budget": 9
 }

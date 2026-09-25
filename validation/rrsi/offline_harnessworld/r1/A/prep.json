@@ -1,35 +1,36 @@
 {
- "artifact_id": "5fab64531d4388c872682fb3afd92ae54eb247f41aad6f28582aec94ea5f990f",
+ "artifact_id": "0f28a375c8535e7aff2072bc604d0707439b03072ab6f922b3e35de5ad718af7",
  "edits": [
   {
    "id": "C1",
-   "component": "config",
-   "hypothesis": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "memory",
+   "hypothesis": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-039"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "nul_08",
+   "mechanism_id": "har_09",
    "prune": false,
-   "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
-   "declared_component": "config"
+   "mechanism": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "memory"
   },
   {
    "id": "C2",
    "component": "context_mgmt",
    "hypothesis": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-022",
-    "hw-e-042"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
@@ -40,42 +41,24 @@
   },
   {
    "id": "C3",
-   "component": "output_plumbing",
-   "hypothesis": "[nul_13] Answer-line extractor: Answer-line extractor (rewording of existing guidance).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "control_flow",
+   "hypothesis": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-039"
-   ],
-   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
-   "regression_risk": "extra tokens",
-   "mechanism_id": "nul_13",
-   "prune": false,
-   "mechanism": "[nul_13] Answer-line extractor: Answer-line extractor (rewording of existing guidance).",
-   "declared_component": "output_plumbing"
-  },
-  {
-   "id": "C4",
-   "component": "prompt",
-   "hypothesis": "[har_03] Short worked example of the procedure: Short worked example of the procedure; aimed at extract, arith tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
-   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
-   "trigger_condition": "tasks of the targeted families",
-   "predicted_affected": [
+    "hw-e-078",
     "hw-e-008",
-    "hw-e-036",
-    "hw-e-040"
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_03",
+   "mechanism_id": "gen_04",
    "prune": false,
-   "mechanism": "[har_03] Short worked example of the procedure: Short worked example of the procedure; aimed at extract, arith tasks.",
-   "declared_component": "prompt"
+   "mechanism": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks.",
+   "declared_component": "control_flow"
   }
  ],
  "diff_path": "r1/A/diff.patch",
- "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower; [nul_10] Drop stale observations: Drop stale observations (r; [nul_13] Answer-line extractor: Answer-line extractor (rewor; [har_03] Short worked example of the procedure: Short worked"
+ "mechanism": "[har_09] Semantic memory of general procedures: Semantic mem; [nul_10] Drop stale observations: Drop stale observations (r; [gen_04] Bounded self-verification pass: Bounded self-verifi"
 }

@@ -1,11 +1,11 @@
---- a/agents/str_04.py
-+++ b/agents/str_04.py
+--- a/agents/har_11.py
++++ b/agents/har_11.py
 @@ -0,0 +1,5 @@
-+# mechanism: str_04
++# mechanism: har_11
 +# component: subagent
-+# title: Planner sub-call
-+"""Planner sub-call; aimed at extract, plan, format tasks."""
-+enable("str_04")
++# title: Bounded checker sub-call
++"""Bounded checker sub-call; aimed at extract, arith, format tasks."""
++enable("har_11")
 --- a/control/cos_09.py
 +++ b/control/cos_09.py
 @@ -0,0 +1,5 @@
@@ -14,19 +14,19 @@
 +# title: Retry once on malformed output
 +"""Early exit when the answer is certain; runs extra model passes (self-consistency / long reasoning)."""
 +enable("cos_09")
---- a/control/gen_13.py
-+++ b/control/gen_13.py
+--- a/output/nul_03.py
++++ b/output/nul_03.py
 @@ -0,0 +1,5 @@
-+# mechanism: gen_13
-+# component: control_flow
-+# title: Bounded self-verification pass
-+"""Bounded self-verification pass; aimed at extract, arith, plan, format tasks."""
-+enable("gen_13")
---- a/memory/har_09.py
-+++ b/memory/har_09.py
++# mechanism: nul_03
++# component: output_plumbing
++# title: Head/tail truncation of long tool output
++"""Head/tail truncation of long tool output (rewording of existing guidance)."""
++enable("nul_03")
+--- a/prompts/gen_01.md
++++ b/prompts/gen_01.md
 @@ -0,0 +1,5 @@
-+# mechanism: har_09
-+# component: memory
-+# title: Semantic memory of general procedures
-+"""Semantic memory of general procedures; aimed at extract, arith, plan, format tasks."""
-+enable("har_09")
++# mechanism: gen_01
++# component: prompt
++# title: Role and scope statement
++"""Role and scope statement; aimed at extract tasks."""
++enable("gen_01")

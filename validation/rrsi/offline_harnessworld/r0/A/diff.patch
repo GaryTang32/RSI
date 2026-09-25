@@ -1,8 +1,8 @@
---- a/memory/har_05.py
-+++ b/memory/har_05.py
+--- a/context/gen_14.py
++++ b/context/gen_14.py
 @@ -0,0 +1,5 @@
-+# mechanism: har_05
-+# component: memory
-+# title: Semantic memory of general procedures
-+"""Semantic memory of general procedures; aimed at plan, format tasks."""
-+enable("har_05")
++# mechanism: gen_14
++# component: context_mgmt
++# title: Pin the task statement
++"""Pin the task statement; aimed at extract, format tasks."""
++enable("gen_14")

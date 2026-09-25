@@ -1,26 +1,62 @@
 {
- "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+ "artifact_id": "5830e63f4d6568ed3b660b14eb665842c3b6ea9d1be264d78b0eeaaf341f8f05",
  "edits": [
   {
    "id": "C1",
-   "component": "output_plumbing",
-   "hypothesis": "[nar_02] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "component": "control_flow",
+   "hypothesis": "[cos_00] Stop-condition guard: Bounded self-verification pass; runs extra model passes (self-consistency / long reasoning).",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
     "hw-e-022",
-    "hw-e-036",
-    "hw-e-044"
+    "hw-e-078",
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "nar_02",
+   "mechanism_id": "cos_00",
    "prune": false,
-   "mechanism": "[nar_02] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
-   "declared_component": "output_plumbing"
+   "mechanism": "[cos_00] Stop-condition guard: Bounded self-verification pass; runs extra model passes (self-consistency / long reasoning).",
+   "declared_component": "control_flow"
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-078",
+    "hw-e-083"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_03",
+   "prune": false,
+   "mechanism": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks.",
+   "declared_component": "context_mgmt"
+  },
+  {
+   "id": "C3",
+   "component": "config",
+   "hypothesis": "[nul_14] Tighter step limit: Tighter step limit (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-083"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_14",
+   "prune": false,
+   "mechanism": "[nul_14] Tighter step limit: Tighter step limit (rewording of existing guidance).",
+   "declared_component": "config"
   }
  ],
  "diff_path": "r6/B/diff.patch",
- "mechanism": "[nar_02] Collapse repeated log lines: Collapse repeated log "
+ "mechanism": "[cos_00] Stop-condition guard: Bounded self-verification pas; [gen_03] Summarize old turns: Summarize old turns; aimed at ; [nul_14] Tighter step limit: Tighter step limit (rewording o"
 }

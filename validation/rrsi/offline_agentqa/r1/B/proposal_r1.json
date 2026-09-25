@@ -1,6 +1,6 @@
 {
  "status": "done",
- "summary": "[aq:checker] Bounded checker sub-call",
+ "summary": "[aq:checker] Bounded checker sub-call; [aq:null_reword] Reword the system prompt",
  "edits": [
   {
    "id": "C1",
@@ -11,22 +11,38 @@
    "trigger_condition": "every question",
    "predicted_affected": [
     "evolve-numeric-005",
-    "evolve-numeric-012",
-    "evolve-numeric-017"
+    "evolve-numeric-016",
+    "evolve-numeric-000"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
    "mechanism": "[aq:checker] Bounded checker sub-call"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:null_reword] Reword the system prompt",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:null_reword] Reword the system prompt"
   }
  ],
- "mechanism": "[aq:checker] Bounded checker sub-call",
- "targets_mode": "wrong final answers",
- "n_changes": 2,
+ "mechanism": "[aq:checker] Bounded checker sub-call; [aq:null_reword] Reword the system prompt",
+ "targets_mode": "wrong final answers, wrong final answers",
+ "n_changes": 3,
  "log": [
   {
    "turn": 0,
    "action": "done",
-   "n_changes": 2,
+   "n_changes": 3,
    "blocked": [],
    "error": null
   }

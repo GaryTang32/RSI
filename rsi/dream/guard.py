@@ -20,7 +20,18 @@ constraints [paper:App.B.2 L2:131-143]. Three layers:
 3. :func:`static_check` - AST lint before a policy is ever run: ``NAME`` + class
    present, ``solve`` and ``plan_grid`` overridden, ``plan_grid`` never returns
    None, allow-listed imports only, no forbidden names (``best_so_far``,
-   ``budget_spent``, ``open``, ``exec``, introspection hooks ...).
+   ``budget_spent``, ``open``, ``exec``, introspection hooks ...), and no state that
+   could outlive an episode (``global``/``nonlocal``, module-level or class objects
+   mutated from inside a function, ``lru_cache``/``cache``).
+
+"Replay resets the policy's per-rollout state" [paper:§3 p.5]: every episode (one
+frozen world at one beta, or one live search) starts from a FRESH policy namespace.
+In-process the module is re-executed per episode; in the subprocess sandbox every
+episode runs in a fresh ``fork()`` of a process that has only imported the module,
+so nothing a policy writes during one episode - instance, class or module state,
+caches, the ``random`` state - can reach the next one (claims audit N1: a policy
+that memoised the recorded best per world in a module-level dict walked straight to
+it on its next visit and won the beta sweep).
 """
 from __future__ import annotations
 
@@ -52,7 +63,144 @@ FORBIDDEN_NAMES = {"best_so_far", "budget_spent", "open", "exec", "eval", "compi
                    "__globals__", "__closure__", "__code__", "__builtins__", "__subclasses__", "__mro__",
                    "f_back", "f_locals", "f_globals", "gi_frame"}
 #: attribute names a policy may never touch (bare local variables with these names are fine)
-FORBIDDEN_ATTRS = {"_t", "_st", "_obs", "tree", "_tree", "hidden", "trace_pool"}
+FORBIDDEN_ATTRS = {"_t", "_st", "_obs", "tree", "_tree", "hidden", "trace_pool", "__class__", "__bases__", "__base__",
+                   "__dict__"}
+#: methods that mutate a container in place (a call on a module-level object = cross-episode state)
+MUTATING_METHODS = {"append", "extend", "insert", "pop", "popitem", "remove", "clear", "update", "setdefault", "add",
+                    "discard", "appendleft", "extendleft", "popleft", "sort", "reverse", "rotate", "difference_update",
+                    "intersection_update", "symmetric_difference_update", "__setitem__", "__delitem__", "__iadd__"}
+#: calls on the ``random`` module that read or write its process-wide generator state
+RANDOM_STATE_CALLS = {"seed", "setstate", "getstate"}
+#: memoising decorators (a cache that outlives the call is state that outlives the episode)
+CACHE_DECORATORS = {"lru_cache", "cache", "cached_property"}
+
+
+def _root(node):
+    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Starred)):
+        node = node.value
+    return node
+
+
+def _bound_names(fn) -> set:
+    """Names local to a function or lambda: parameters + every name it (or a nested scope) binds."""
+    a = fn.args
+    names = {x.arg for x in a.posonlyargs + a.args + a.kwonlyargs}
+    names |= {x.arg for x in (a.vararg, a.kwarg) if x is not None}
+    body = fn.body if isinstance(fn.body, list) else [fn.body]
+    for stmt in body:
+        for n in ast.walk(stmt):
+            if isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del)):
+                names.add(n.id)
+            elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                names.add(n.name)
+            elif isinstance(n, ast.arg):
+                names.add(n.arg)
+            elif isinstance(n, (ast.Import, ast.ImportFrom)):
+                names |= {(x.asname or x.name).split(".")[0] for x in n.names}
+            elif isinstance(n, ast.ExceptHandler) and n.name:
+                names.add(n.name)
+    return names
+
+
+class _EpisodeStateLint(ast.NodeVisitor):
+    """Flags code that could carry information from one episode to the next: ``global`` /
+    ``nonlocal``, and - inside a function - stores into, or in-place mutation of, anything that
+    is not local to that function (a module-level dict, an imported module, a class object),
+    stores through ``type(...)``/``super()``, and memoising decorators. Best effort: the real
+    guarantee is the fresh namespace per episode (see the module docstring)."""
+
+    def __init__(self) -> None:
+        self.scopes: list[set] = []
+        self.errors: list[str] = []
+
+    def _err(self, node, what: str) -> None:
+        self.errors.append(f"cross-episode state (line {getattr(node, 'lineno', '?')}): {what}; replay resets the "
+                           "policy's per-rollout state, so keep per-episode state on self inside solve()")
+
+    def _shared(self, name: str) -> bool:
+        return bool(self.scopes) and not any(name in s for s in self.scopes)
+
+    def visit_FunctionDef(self, node) -> None:
+        for d in node.decorator_list:
+            f = d.func if isinstance(d, ast.Call) else d
+            nm = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", None)
+            if nm in CACHE_DECORATORS:
+                self._err(d, f"memoising decorator @{nm}")
+        self.scopes.append(_bound_names(node))
+        for stmt in node.body:
+            self.visit(stmt)
+        self.scopes.pop()
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_Lambda(self, node) -> None:
+        self.scopes.append(_bound_names(node))
+        self.visit(node.body)
+        self.scopes.pop()
+
+    def visit_Global(self, node) -> None:
+        self._err(node, f"'global {', '.join(node.names)}'")
+
+    def visit_Nonlocal(self, node) -> None:
+        self._err(node, f"'nonlocal {', '.join(node.names)}'")
+
+    def _target(self, t) -> None:
+        if isinstance(t, (ast.Tuple, ast.List)):
+            for e in t.elts:
+                self._target(e)
+            return
+        if isinstance(t, ast.Starred):
+            self._target(t.value)
+            return
+        if not self.scopes or not isinstance(t, (ast.Attribute, ast.Subscript)):
+            return
+        r = _root(t)
+        if isinstance(r, ast.Name):
+            if self._shared(r.id):
+                self._err(t, f"assignment into the non-local object {r.id!r}")
+        else:
+            self._err(t, "assignment through an expression (e.g. type(self).x or super().x)")
+
+    def visit_Assign(self, node) -> None:
+        for t in node.targets:
+            self._target(t)
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node) -> None:
+        self._target(node.target)
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node) -> None:
+        self._target(node.target)
+        self.generic_visit(node)
+
+    def visit_Delete(self, node) -> None:
+        for t in node.targets:
+            self._target(t)
+        self.generic_visit(node)
+
+    def visit_For(self, node) -> None:
+        self._target(node.target)
+        self.generic_visit(node)
+
+    def visit_With(self, node) -> None:
+        for it in node.items:
+            if it.optional_vars is not None:
+                self._target(it.optional_vars)
+        self.generic_visit(node)
+
+    def visit_Call(self, node) -> None:
+        f = node.func
+        if self.scopes and isinstance(f, ast.Attribute) and f.attr in MUTATING_METHODS:
+            r = _root(f.value)
+            if isinstance(r, ast.Name) and self._shared(r.id):
+                self._err(node, f"in-place mutation {r.id}...{f.attr}() of a non-local object")
+        if isinstance(f, ast.Attribute) and f.attr in RANDOM_STATE_CALLS and isinstance(f.value, ast.Name) \
+                and f.value.id == "random":
+            # the module-level generator is process state: seeding / saving / restoring it can carry a
+            # message between episodes of one process (use a local random.Random(seed) instead)
+            self._err(node, f"random.{f.attr}() touches the shared module-level random state")
+        self.generic_visit(node)
 
 
 # =========================================================================== static check
@@ -113,7 +261,55 @@ def static_check(code: str) -> CheckResult:
             errors.append(f"forbidden name {node.id!r}")
         elif isinstance(node, ast.Attribute) and node.attr in (FORBIDDEN_NAMES | FORBIDDEN_ATTRS):
             errors.append(f"forbidden attribute .{node.attr}")
+    lint = _EpisodeStateLint()
+    lint.visit(tree)
+    errors.extend(lint.errors)
+    errors.extend(_class_state_errors(tree))
     return CheckResult(not errors, sorted(set(errors)), warnings)
+
+
+_MUTABLE_CALLS = {"dict", "list", "set", "defaultdict", "deque", "Counter", "OrderedDict", "bytearray"}
+
+
+def _class_state_errors(tree: ast.Module) -> list[str]:
+    """A class attribute holding a mutable container that methods mutate through ``self`` without
+    ever rebinding it per instance (``cache = {}`` in the class body, ``self.cache[k] = v`` in solve)
+    is shared by every instance, i.e. by every episode that uses the class object."""
+    out = []
+    for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+        mutable = set()
+        for st in cls.body:
+            if isinstance(st, (ast.Assign, ast.AnnAssign)):
+                val = st.value
+                is_mut = isinstance(val, (ast.Dict, ast.List, ast.Set, ast.DictComp, ast.ListComp, ast.SetComp)) or (
+                    isinstance(val, ast.Call) and getattr(val.func, "id", getattr(val.func, "attr", None)) in _MUTABLE_CALLS)
+                if is_mut:
+                    tgts = st.targets if isinstance(st, ast.Assign) else [st.target]
+                    mutable |= {t.id for t in tgts if isinstance(t, ast.Name)}
+        if not mutable:
+            continue
+        rebound, mutated = set(), {}
+        for n in ast.walk(cls):
+            if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == "self" \
+                    and n.attr in mutable:
+                if isinstance(n.ctx, ast.Store):
+                    rebound.add(n.attr)
+        for n in ast.walk(cls):
+            tgt = None
+            if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Delete)):
+                for t in (n.targets if isinstance(n, (ast.Assign, ast.Delete)) else [n.target]):
+                    if isinstance(t, ast.Subscript) or isinstance(n, ast.AugAssign):
+                        tgt = t.value if isinstance(t, ast.Subscript) else t
+            elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in MUTATING_METHODS:
+                tgt = n.func.value
+            if isinstance(tgt, ast.Attribute) and isinstance(tgt.value, ast.Name) and tgt.value.id == "self" \
+                    and tgt.attr in mutable and tgt.attr not in rebound:
+                mutated.setdefault(tgt.attr, getattr(n, "lineno", "?"))
+        for name, line in sorted(mutated.items()):
+            out.append(f"cross-episode state (line {line}): class attribute {cls.name}.{name} is a shared mutable "
+                       "container mutated through self; replay resets the policy's per-rollout state, so create "
+                       "it per instance (self.{0} = ... in __init__ or solve)".format(name))
+    return out
 
 
 # ============================================================================ endpoint
@@ -183,11 +379,23 @@ class SolveOutcome:
         return bool(self.violations or self.batch_errors or self.error)
 
 
+_COMPILED: dict[str, types.CodeType] = {}
+
+
 def _load_class(code: str):
+    """Execute the policy module in a NEW namespace and return its class. Code objects are
+    immutable, so the compiled module is cached; every call still gets fresh module globals,
+    fresh class objects and fresh module-level containers."""
     sys.modules.setdefault("policy_api", policy_api)
+    compiled = _COMPILED.get(code)
+    if compiled is None:
+        compiled = compile(code, "method.py", "exec")
+        if len(_COMPILED) > 256:
+            _COMPILED.clear()
+        _COMPILED[code] = compiled
     mod = types.ModuleType("dream_policy_method")
     mod.__dict__["__file__"] = "method.py"
-    exec(compile(code, "method.py", "exec"), mod.__dict__)  # noqa: S102 - trusted template path
+    exec(compiled, mod.__dict__)  # noqa: S102 - trusted template path
     name = mod.__dict__.get("NAME", "OptimalPolicy")
     cls = mod.__dict__.get(name)
     if cls is None:
@@ -196,20 +404,41 @@ def _load_class(code: str):
 
 
 class InProcessSession:
-    """Runs a trusted policy in this process (still only through the PrefixGuard proxy)."""
+    """Runs a trusted policy in this process (still only through the PrefixGuard proxy).
+
+    :meth:`begin_episode` re-executes the module, so an episode never sees module-level,
+    class-level or instance state left by an earlier episode ("replay resets the policy's
+    per-rollout state"). In-process this cannot isolate state kept in *other* modules
+    (``policy_api``, the standard library); :func:`static_check` rejects the obvious routes and the
+    subprocess runner forks a fresh process per episode."""
 
     def __init__(self, code: str) -> None:
         self.code = code
         self._cls = None
         self.load_error: Optional[str] = None
+        self._used = False
+        self.episodes = 0
+        self._load()
+
+    def _load(self) -> None:
         try:
-            self._cls = _load_class(code)
+            self._cls = _load_class(self.code)
+            self.load_error = None
         except Exception as e:  # noqa: BLE001
-            self.load_error = f"{type(e).__name__}: {e}"
+            self._cls, self.load_error = None, f"{type(e).__name__}: {e}"
+        self._used = False
+
+    def begin_episode(self) -> Optional[str]:
+        """Start a new episode in a fresh module namespace (reloaded only if the current one was used)."""
+        if self._used:
+            self._load()
+        self.episodes += 1
+        return self.load_error
 
     def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
         if self._cls is None:
             return None, self.load_error
+        self._used = True
         try:
             plan = self._cls(dict(config)).plan_grid(GridPlanningContext.from_dict(context.to_dict()))
         except Exception as e:  # noqa: BLE001
@@ -225,6 +454,7 @@ class InProcessSession:
               unguarded: bool = False) -> SolveOutcome:
         if self._cls is None:
             return SolveOutcome(None, self.load_error)
+        self._used = True
         guard = PrefixGuard(question, strict=strict)
         proxy = question if unguarded else QuestionProxy(guard.transport)
         t0 = time.process_time()
@@ -292,24 +522,47 @@ def transport(op, **kw):
     send({"req": op, **kw})
     m = recv()
     return m.get("resp", {})
+def episode():
+    # one EPISODE runs in a fork() of this process: the policy module exactly as it was right after
+    # import, so nothing written during an earlier episode (module / class / instance state, caches,
+    # the random state) exists here - "replay resets the policy's per-rollout state"
+    send({"episode": os.getpid()})
+    while True:
+        cmd = recv(); c = cmd.get("cmd")
+        if c in ("end", "exit"):
+            os._exit(0)
+        try:
+            pol = cls(cmd.get("config") or {})
+            if c == "plan_grid":
+                plan = pol.plan_grid(policy_api.GridPlanningContext.from_dict(cmd["context"]))
+                send({"result": plan.to_dict() if plan is not None else None})
+            elif c == "solve":
+                res = pol.solve(policy_api.QuestionProxy(transport), cmd.get("budget"))
+                send({"result": res.to_dict() if hasattr(res, "to_dict") else None})
+            else:
+                send({"exception": "unknown command %r" % (c,)})
+        except policy_api.GuardViolation as e:
+            send({"violation": str(e)})
+        except policy_api.BatchError as e:
+            send({"batch_error": str(e)})
+        except BaseException:
+            send({"exception": traceback.format_exc(limit=6)})
 while True:
     cmd = recv(); c = cmd.get("cmd")
     if c == "exit":
         break
-    try:
-        pol = cls(cmd.get("config") or {})
-        if c == "plan_grid":
-            plan = pol.plan_grid(policy_api.GridPlanningContext.from_dict(cmd["context"]))
-            send({"result": plan.to_dict() if plan is not None else None})
-        elif c == "solve":
-            res = pol.solve(policy_api.QuestionProxy(transport), cmd.get("budget"))
-            send({"result": res.to_dict() if hasattr(res, "to_dict") else None})
-    except policy_api.GuardViolation as e:
-        send({"violation": str(e)})
-    except policy_api.BatchError as e:
-        send({"batch_error": str(e)})
-    except BaseException:
-        send({"exception": traceback.format_exc(limit=6)})
+    if c != "begin":
+        send({"exception": "command %r outside an episode" % (c,)})
+        continue
+    sys.stderr.flush()
+    pid = os.fork()
+    if pid == 0:
+        try:
+            episode()
+        finally:
+            os._exit(0)
+    _, status = os.waitpid(pid, 0)
+    send({"closed": True, "status": status})
 '''
 
 
@@ -323,7 +576,8 @@ def _preexec(cpu_s: int, mem_mb: int):
 
 
 class SubprocessSession:
-    """One sandboxed child process per policy version, reused across episodes."""
+    """One sandboxed child process per policy version; every episode runs in a fresh ``fork()``
+    of it (:meth:`begin_episode`), so no state survives from one episode to the next."""
 
     def __init__(self, code: str, *, timeout_s: float = 30.0, cpu_s: int = 900, mem_mb: int = 1024) -> None:
         self.code = code
@@ -336,17 +590,25 @@ class SubprocessSession:
         self.proc: Optional[subprocess.Popen] = None
         self.load_error: Optional[str] = None
         self._buf = b""
+        self._episode = False
+        self.episodes = 0
         self._start()
 
     # ---- process management
     def _start(self) -> None:
-        env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ and k != "PYTHONPATH"}
-        env.update({"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "PYTHONDONTWRITEBYTECODE": "1"})
+        # a scrubbed environment (no inherited PYTHON* variable) with a FIXED string-hash seed: an LLM-written
+        # policy that iterates a set of cell ids must choose the same batch in every process, or its replay
+        # value changes between evaluations (seen in the live validation run sumdiff_live_c). "-s -P" = the
+        # isolation of "-I" without "-E", which would also ignore PYTHONHASHSEED.
+        env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ and not k.startswith("PYTHON")}
+        env.update({"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONHASHSEED": "0", "PYTHONNOUSERSITE": "1"})
         self._err = open(self.dir / "stderr.txt", "wb")
-        self.proc = subprocess.Popen([sys.executable, "-I", "_child.py"], cwd=self.dir, env=env,
+        self.proc = subprocess.Popen([sys.executable, "-s", "-P", "_child.py"], cwd=self.dir, env=env,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, bufsize=0,
                                      preexec_fn=_preexec(self.cpu_s, self.mem_mb))
         self._buf = b""
+        self._episode = False
         msg = self._recv(self.timeout_s)
         if msg is None or "ready" not in msg:
             self.load_error = (msg or {}).get("fatal") or self._stderr_tail() or "policy process failed to start"
@@ -369,6 +631,7 @@ class SubprocessSession:
             except subprocess.TimeoutExpired:
                 pass
             self.proc = None
+        self._episode = False
 
     def _send(self, obj: dict) -> None:
         assert self.proc is not None and self.proc.stdin is not None
@@ -401,15 +664,59 @@ class SubprocessSession:
             self._start()
         return self.proc is not None
 
+    def _end_episode(self) -> None:
+        if not self._episode or self.proc is None:
+            self._episode = False
+            return
+        self._episode = False
+        try:
+            self._send({"cmd": "end"})
+            msg = self._recv(self.timeout_s)
+        except OSError:
+            msg = None
+        if msg is None or "closed" not in msg:
+            self._kill()
+
+    def begin_episode(self) -> Optional[str]:
+        """End the current episode (its forked process exits) and fork a fresh one."""
+        if not self._ensure():
+            return self.load_error
+        self._end_episode()
+        if not self._ensure():
+            return self.load_error
+        try:
+            self._send({"cmd": "begin"})
+            msg = self._recv(self.timeout_s)
+        except OSError:
+            msg = None
+        if msg is None or "episode" not in msg:
+            self._kill()
+            return "could not start a policy episode: " + str((msg or {}).get("exception") or self._stderr_tail(300))
+        self._episode = True
+        self.episodes += 1
+        return None
+
+    def _ready(self) -> Optional[str]:
+        """An open episode to talk to (one is started if none is open)."""
+        if not self._ensure():
+            return self.load_error or "policy process failed to start"
+        if not self._episode:
+            return self.begin_episode()
+        return None
+
     # ---- API (same as InProcessSession)
     def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
-        if not self._ensure():
-            return None, self.load_error
+        err = self._ready()
+        if err:
+            return None, err
         self._send({"cmd": "plan_grid", "config": config, "context": context.to_dict()})
         msg = self._recv(self.timeout_s)
         if msg is None:
             self._kill()
             return None, "plan_grid timed out"
+        if "closed" in msg:
+            self._episode = False
+            return None, f"policy episode process died (status {msg.get('status')}): {self._stderr_tail(300)}"
         if msg.get("result") is None:
             return None, msg.get("exception") or msg.get("violation") or "plan_grid returned None"
         try:
@@ -421,8 +728,9 @@ class SubprocessSession:
               unguarded: bool = False) -> SolveOutcome:
         if unguarded:
             raise ValueError("the subprocess sandbox cannot run a policy unguarded")
-        if not self._ensure():
-            return SolveOutcome(None, self.load_error)
+        err = self._ready()
+        if err:
+            return SolveOutcome(None, err)
         guard = PrefixGuard(question, strict=strict)
         t0 = time.time()
         policy_s = 0.0          # time spent waiting on the POLICY (excludes parent-side work such as the
@@ -442,6 +750,10 @@ class SubprocessSession:
                 self._send({"resp": json.loads(json.dumps(guard.handle(op, **msg), default=float))})
                 continue
             wall = policy_s
+            if "closed" in msg:      # the episode's process died (e.g. its CPU limit): a policy crash
+                self._episode = False
+                return SolveOutcome(None, f"policy episode process died (status {msg.get('status')}): "
+                                          f"{self._stderr_tail(300)}", guard.violations, guard.batch_errors, wall)
             if "result" in msg:
                 res = SimResult.from_dict(msg["result"]) if isinstance(msg["result"], dict) else SimResult()
                 return SolveOutcome(res, None, guard.violations, guard.batch_errors, wall)
@@ -454,6 +766,11 @@ class SubprocessSession:
                                 guard.violations, guard.batch_errors, wall)
 
     def close(self) -> None:
+        if self.proc is not None:
+            try:
+                self._end_episode()
+            except Exception:  # noqa: BLE001
+                pass
         if self.proc is not None:
             try:
                 self._send({"cmd": "exit"})

@@ -14,8 +14,9 @@ python experiments/rrsi/validate_rrsi.py offline_agentqa
 python experiments/rrsi/validate_rrsi.py offline_harnessworld
 python experiments/rrsi/validate_rrsi.py live_agentqa --max-usd 2.0 --max-wall-min 32
 # (the recorded live run was interrupted once and continued with --resume --max-usd 1.5 --max-wall-min 25)
-python experiments/rrsi/validate_rrsi_stepcheck.py     # stage-B independent step check -> <run>/stepcheck.json
+python experiments/rrsi/validate_rrsi_stepcheck.py     # independent step check -> <run>/stepcheck.json
 python experiments/rrsi/validate_rrsi_replay.py        # $0 offline-cache replay of live_agentqa on the current code
+# (after the claims-audit fixes the replay misses every proposer call by design: the prompts changed)
 ```
 
 The stage-B adversarial audit of all three runs (step verdicts, paper alignment, inconsistency register, fixes) is in `AUDIT.md`.
@@ -29,99 +30,75 @@ How to read the tables:
 
 ## 1. `offline_agentqa`: AgentQA, SimModel task model, scripted proposer and critic
 
-> **Re-run in the stage-B audit (see `AUDIT.md`).** The stage-B audit found two bugs that changed what this
-> run did: the scripted proposer declared a self-consistency edit that its own tool edit had overwritten
-> (phantom credit in L_t), and the heuristic analyst ranked *solved* tasks as the top "failure mode" from
-> round 3 on. Both were fixed and this run was redone from scratch (same seed artifact, fresh directory; the
-> mocks are deterministic, so no LLM cache is involved). The first run is kept, unchanged, as
-> `offline_agentqa_superseded/` for reference. Because the mock seeds its RNG on the prompt text, the fix
-> gives a different realization, not a corrected copy of the old one.
+> **Regenerated after the claims-audit fixes** (`docs/claims/rrsi.md`, "Fix log"). The fixes change the proposer's prompt: no δ, S*, S_t or T in the directives, symbolic β/w in SKILL.md, and the BASELINE row in L_t. They also change the precheck, which now holds task ids and patterns only, not the practice answers. The mock seeds its RNG on the prompt, so this is a new realization. The stage-B run described in earlier versions of this file is in git history at `02b830e`; the stage-A run is kept as `offline_agentqa_superseded/`.
 
 **Setup.**
-- **Domain.** `make_suite(seed=0)`: 20 evolve and 20 holdout questions from the practice family `numeric`, plus 24 OOD questions (6 each from the never-seen families `dates`, `numbertheory`, `strings`, `lists`). One holdout question (`holdout-numeric-012`, "sum of the decimal digits of 44!") is the same question as `evolve-numeric-017`: a small evolve/holdout overlap in the domain generator (reported as a core change request; it is not an RRSI step).
+- **Domain.** `make_suite(seed=0)`: 20 evolve and 19 holdout questions from the practice family `numeric`, plus 24 OOD questions (6 each from the never-seen families `dates`, `numbertheory`, `strings`, `lists`). The suite is de-duplicated across splits; the stage-B overlap `evolve-numeric-017` = `holdout-numeric-012` is gone.
 - **Seed.** `AgentQADomain.seed_artifact()`: `harness.py` makes one direct model call and returns the last line. `system.md` is "You are a helpful assistant." and `task.md` is `{question}`.
 - **Models.** The frozen task model is `SimModel`. `AgentQAMockLLM` (scripted) is the proposer and the critic. The analyst is the deterministic heuristic.
 - **Config.** T = 8, m = 2, k = 2; paper defaults otherwise (b_min..b_max = 1..4, w = 3, m_draft = 1, β0 = 0.10, β1 = 40, w_s = 100, w_c = 15, w_n = 0.5, n_prune = 4, repair_rounds = 5). δ is calibrated.
 
-**Spend.** $0 (all mocks), 1.7 s. 1,317 loop LLM calls (1,270 task, 35 proposer, 12 critic), 480 rollouts; the shadow monitor made 440 more task calls, metered separately.
+**Spend.** $0 (all mocks), 7 s. 762 loop LLM calls (712 task, 31 proposer, 19 critic), 360 rollouts. The shadow monitor's task calls are metered separately.
 
-**Seed vs final** (`transfer_report`, k = 2) and a k = 10 reference re-evaluation (`reference_k10.json`, stage B):
+**Seed vs final** (`transfer_report`, k = 2) and the k = 10 reference re-evaluation (`reference_k10.json`):
 
-| split | H0 | final (r6A) | paired diff [95% CI] | k = 10: H0 → r0B → r1A → r6A (tokens of r6A) |
+| split | H0 | final (r2A) | paired diff [95% CI] | k = 10: H0 → r0A → r2A |
 |---|---|---|---|---|
-| evolve | 0.350 | 0.675 | +0.325 [+0.075, +0.575] | 0.350 → 0.565 → 0.610 → 0.605 (626 vs H0 736) |
-| holdout | 0.425 | 0.575 | +0.150 [−0.025, +0.325] | 0.390 → 0.550 → 0.635 → 0.655 |
-| ood | 0.375 | 0.604 | +0.229 [+0.104, +0.375] | 0.442 → 0.600 → 0.621 → 0.617 |
+| evolve | 0.350 | 0.925 | +0.575 [+0.375, +0.750] | 0.350 → 0.980 → 0.955 |
+| holdout | 0.395 | 0.974 | +0.579 [+0.474, +0.684] | 0.389 → 0.932 → 0.932 |
+| ood | 0.375 | 0.979 | +0.604 [+0.438, +0.771] | 0.442 → 0.946 → 0.938 |
 
-**What the loop did, round by round** (every number below is re-derived from raw trials by `experiments/rrsi/validate_rrsi_stepcheck.py`).
+Tokens per trial: 736 (H0) → 1,235 (r0A) → 1,293 (r2A). Shadow monitor (holdout / OOD, k = 1): H0 0.42 / 0.42, r0A 0.95 / 0.88, r2A 1.00 / 1.00.
 
-- **Setup.** Baseline S = 0.375 (15/40). δ = 0.147 (within-task bootstrap, sd_null = 0.0736; the closed-form plug-in gives 0.0750).
-- **r0** (b_t = 4). r0A = the harmful "use Python" skill card (the harness cannot run code): S = 0.000 < floor 0.228, rejected. r0B = 4 edits (null reword, verbose persona, 3-sample self-consistency, step-by-step): S = 0.550, dS = +0.175 > δ, dC = +2.07 ≤ 0.10 + 40·0.175 = 7.10 → admissible, **kept** (S* = 0.550). True gain (k = 10) +0.215; the costly persona and the null reword hitchhiked on the self-consistency gain, which the cost rule allows at this dS (spec §8.4).
-- **r1** (b_t = 4). r1A = answer-format line: S = 0.750, dS = +0.200 > δ, dC = +0.02 → **kept** (S* = 0.750). r1B = checker sub-call: S = 0.650, within band, shaped = +5.22 → admissible but LOST (argmax S'). True value of r1A ≈ 0.61: the 0.75 is a lucky draw (winner's curse, spec §8.1), and every later round is judged against it.
-- **r2.** Both variants bundled the Python tool with the checker sub-call (and verify); the checker re-answers without the tool, S = 0.575 (below floor 0.603) and 0.625 (shaped −10.8): rejected. Correct, but the Python tool, the best single mechanism in this domain, is now "rejected" in L_t through shared bundle credit and the mock never tries it alone again (spec §8.4).
-- **r3.** Both variants drew the leaky answer table (`memory/answers.json`, keyed on practice questions). The precheck rejected both on the 7-digit answers (`2119981`, `3886910`, ...); the repair removed the table and shipped nothing, so both were dropped as `critic_reject`. Never evaluated.
-- **r4** (b_t = 3). Two "verify" prompt edits: S = 0.750 (dS 0, shaped −0.30) and 0.675 (shaped −7.8): rejected.
-- **r5** (b_t = 2, σ = 1: S_5 − S_2 = 0 ≤ δ; U_t = {tool, memory}, B holds the reserved slot). r5A = prune of self-consistency: S = 0.475 < floor, rejected. r5B could only fill the slot with the leak: critic_reject.
-- **r6** (σ = 1). r6A = **prune of the verbose persona**: S = 0.650, dS = −0.100 (inside the band), dC = −0.73 → shaped = −10.0 + 10.9 = +0.92 > 0 → admissible and **kept**; S_t drops to 0.650 while S* stays 0.750 (floor 0.603 still binds on S*). The k = 10 reference shows this was right: r6A = 0.605 / 0.655 / 0.617 (evolve / holdout / OOD) vs r1A 0.610 / 0.635 / 0.621, at 27% of the tokens. The measured −0.10 was noise on top of r1A's lucky 0.75. r6B: leak again, critic_reject.
-- **r7** (σ = 1). r7A re-adds the persona: S = 0.650, dS 0, dC +2.68 → shaped −40.2, rejected. r7B: leak, critic_reject.
-- **Net.** Three acceptances. The final harness (self-consistency + step-by-step + answer format, persona pruned) is a real gain (k = 10: +0.26 evolve, +0.27 holdout, +0.18 OOD) and is *lighter* than H_0 (626 vs 736 tokens/trial), because the within-band cost rule let the loop prune the persona the r0 bundle had smuggled in. The leak was blocked in 4 variants. It never found the Python tool alone (see r2).
+**What the loop did, round by round** (every number is re-derived from raw trials by `experiments/rrsi/validate_rrsi_stepcheck.py`).
 
-**Audit.** `rsi.rrsi.audit`: 253 pass, 0 fail, 0 unverifiable, 14 info. Independent stage-B step check (`stepcheck.json`): 224 correct, 8 questionable, 1 wrong (the domain's evolve/holdout question overlap), 0 unverifiable.
+- **Setup.** Baseline S = 0.375 (15/40). δ = 0.147 (within-task bootstrap, sd_null = 0.0736).
+- **r0** (b_t = 4). r0A = Python tool + verbose persona: S = 0.950, dS = +0.575 > δ, dC = +0.68 ≤ 0.10 + 40·0.575 = 23.1, so **kept** (S* = 0.950). r0B = persona alone: S = 0.575, admissible, LOST. The costly persona hitchhiked on the tool's gain (spec §8.4).
+- **r1.** Both first drafts carried the leaky answer table (`memory/answers.json`, keyed on practice questions). The precheck holds no answers, as in the code; the LLM review rejected both drafts, and the repair removed the table. r1A (step-by-step + null reword + verify): dS = 0, dC = +0.05, shaped −0.68, rejected. r1B (checker sub-call + reword): S = 0.625 < floor 0.803, rejected.
+- **r2.** r2A and r2B (r2B after a leak rejection and a repair) = the "write Python" skill card + the answer format: S = 0.975, dS = +0.025 inside the band, dC = +0.05, ν = 1 (skill, never accepted before): shaped = +2.30, so both are admissible. The exact tie goes to the first, and **r2A is kept** (S* = 0.975). k = 10 shows r2A is really a touch *worse* than r0A (0.955 vs 0.980 evolve, equal holdout, 0.938 vs 0.946 OOD) at +4.7% tokens: the novelty bonus admitted a neutral structural addition (spec §8.5–8.6), and the measured 0.975 is a winner's-curse draw.
+- **r3–r5.** The mock's clean ideas are used up and every draft is the leak. The LLM review rejected all six; the repair had nothing clean left to ship, so all were dropped as `critic_reject` without an evaluation. σ = 1 from r4 (S_4 − S_1 = 0.025 ≤ δ); U_t = {tool, memory}, and B holds the reserved slot, which the mock cannot fill (no `tool` idea; its only `memory` idea is the leak).
+- **r6.** r6A (verify): S = 0.925, dS = −0.05, shaped −5.36, rejected. r6B: leak, `critic_reject`.
+- **r7.** r7A (null reword): dS = −0.025, shaped −2.57, rejected. r7B: the done() contract bounced its reserved slot and then 4 zero-change submissions, and the leak draft that followed was rejected (`critic_reject`).
+- **Net.** Two acceptances. The final harness (Python tool + persona + skill card + answer format) is a large real gain (k = 10: +0.61 evolve, +0.54 holdout, +0.50 OOD) at 1.76× H_0's tokens. No within-band prune happened in this realization, so, unlike the stage-B realization, it is not lighter than H_0. The leak was blocked before evaluation in all 11 of its drafts.
+
+**Audit.** `rsi.rrsi.audit`: 230 pass, 0 fail, 0 unverifiable, 12 info (7 repairs that shipped nothing, 5 done() bounces). Independent step check (`stepcheck.json`): 237 correct, 7 questionable (the k = 2 bootstrap under-covers; B_t lists `subagent` with no machinery in r2–r7), 0 wrong, 0 unverifiable.
 
 ## 2. `offline_harnessworld`: HarnessWorld, simulated policy, parametric mock LLM
 
+> **Regenerated after the claims-audit fixes** (same reason as §1; the stage-B run is in git history at `02b830e`).
+
 **Setup.**
 - **Domain.** `make_domain(seed=0)`: 100 evolve, 100 holdout and 100 OOD tasks (OOD uses shifted families), 16 rubric criteria each.
-- **Seed.** `HarnessWorldDomain.seed_artifact()`: `harness.md` plus two generic mechanisms (`gen_09`, `gen_11`).
+- **Seed.** `HarnessWorldDomain.seed_artifact()`: `harness.md` plus two generic mechanisms.
 - **Policy.** Simulated STRONG policy.
 - **LLM.** `HarnessWorldMockLLM` plays proposer, critic (catch rate 0.8 on obfuscated leaks), digesters and analyst, so the *LLM analyst path* is exercised.
 - **Config.** T = 10, m = 2, k = 2, defaults otherwise.
 - **Ground truth.** Analytic E[S] and E[C] for every evaluated candidate are recorded in the trace as report-only data.
 
-**Spend.** $0. 141 search-LLM calls, 4,000 rollouts, 1.2 s.
+**Spend.** $0. 139 search-LLM calls (80 digester, 10 analyst, 27 proposer, 22 critic), 4,200 rollouts, 2 s.
 
 **Seed vs final.** Transfer at k = 2; the last column is the analytic ground truth.
 
-| split | H0 | final | paired diff [95% CI] | analytic E[S], H0 → final |
+| split | H0 | final (r9B) | paired diff [95% CI] | analytic E[S], H0 → final |
 |---|---|---|---|---|
-| evolve | 0.472 | 0.528 | +0.057 [+0.036, +0.078] | 0.464 → 0.519 |
-| holdout | 0.527 | 0.587 | +0.060 [+0.037, +0.083] | 0.528 → 0.581 |
-| ood | 0.402 | 0.424 | +0.022 [−0.003, +0.046] | 0.403 → 0.410 |
+| evolve | 0.472 | 0.647 | +0.175 [+0.151, +0.200] | 0.464 → 0.638 |
+| holdout | 0.527 | 0.683 | +0.156 [+0.132, +0.181] | 0.528 → 0.691 |
+| ood | 0.402 | 0.506 | +0.104 [+0.079, +0.129] | 0.403 → 0.503 |
 
-E[C] per trial: 2,145 → 3,452 (×1.61).
+E[C] per trial: 2,145 → 9,023 (×4.21), 16 active mechanisms (H0: 2).
 
-**What the loop did.** δ = 0.0159 (bootstrap, k = 2, 100 tasks).
+**What the loop did.** δ = 0.0159 (bootstrap, k = 2, 100 tasks). The round-by-round table with the ground truth of every candidate is in `AUDIT.md` §2.2. In short:
+- **Keeps (7):** r0A (context pin), r3A (structured search tool + costly prompt + the narrow `nar_04`), r5B, r6A (planner sub-call), r7A (critic sub-call), r8A (verification skill) and r9B (code-runner tool + the harmful `har_05`, kept inside the band on ν = 1). All seven are truly better on evolve (+0.0025 to +0.051). r9B lowers OOD by 0.015.
+- **Rejections (11):** all truly worse or null on evolve. 8 by the floor, 3 by the shaped rule (r6B is a null at +47% tokens).
+- **Admissible but LOST (2):** r3B (the reserved code-runner tool, truly +0.019) lost to r3A (+0.030). r8B is a prune of the structured search tool, cheaper and inside the band: shaped +1.57, truth −0.016. It lost to r8A.
+- **Leaks:** the precheck (evolve task ids + `hw-e-\d{3}`) rejected 5 literal-leak drafts (r0B, r1A, r1B, r3A, r8A). They are keyed by task ids, so the fix that removed the answer key changes nothing here. The LLM review rejected 2 obfuscated hash-keyed drafts (r0B's repair, r6A). All were repaired; none was evaluated.
+- σ = 1 only at r3 (U_t = {config, client_tool}); the reserved slot was honoured by r3B.
 
-- **r0 to r3.**
-  - All 7 evaluated candidates were *truly* worse, with true dE[S] on evolve between −0.006 and −0.036. All 7 were rejected: 4 by the floor, 3 by the shaped rule.
-  - Leaks: over the whole run the precheck rejected 7 drafts with literal answer tables (r0A, r1B, r2A, r3B, r4B, r6A, r8B) and the scripted LLM critic rejected 1 obfuscated hash-keyed table (r9A, `obf_00`). Every one was removed by a repair or dropped, and none was ever evaluated.
-  - B_t grows with every tried component that has not produced a gain. By r3 it lists 7 of 9 components, most with empty machinery lists (spec §8.3).
-  - **r3B wasted 5 proposer calls:**
-    1. It filled its reserved slot (U_t = {client_tool, skill}) with a *leaky* skill.
-    2. The precheck rejected it.
-    3. The repair removed the leak, and with it the only U_t edit.
-    4. The done() contract then bounced the draft 4 times. The mock repair does not re-read the bounce log.
-    5. The variant was dropped as `critic_reject`.
-- **r4** (σ = 1, B reserved).
-  - r4A = costly prompt + generic context + decaying context. S = 0.4963, dS = +0.031 > δ, dC = +0.53 ≤ 1.34, so admissible.
-  - r4B = structured search tool (the reserved slot, honoured). S = 0.4947, dS = +0.029, dC = +0.025, so admissible.
-  - argmax S' keeps **r4A**, by 0.0016 (0.1·δ).
-  - Ground truth: r4A is +0.027 on evolve and **+0.016 on OOD at ×1.55 tokens**. r4B was +0.021 on evolve and **+0.041 on OOD at ×1.06 tokens**. The step is correct under the rule ("argmax S' among admissible, not the shaped score", spec §4.3), but on noise the rule chose the dearer candidate that transfers worse.
-- **r6.** r6B, the *narrow* mechanism `nar_02` (practice-only by construction), was **kept**: dS = +0.027, dC = +0.035.
-  - Truth: evolve +0.028, holdout +0.028, **OOD −0.010**.
-  - Nothing in RRSI can see this. The floor and the cost rule read evolve only, and the critic has no leak to find.
-- **r5, r7, r8, r9.** All rejections were truly worse candidates:
-  - r8B is a null mechanism (true +0.0002) that costs +1.8% tokens; the shaped rule rejected it.
-  - r9A is a prune of `dec_00` (true −0.020); the floor rejected it (0.5056 < 0.5069).
+**Audit.** 360 pass, 0 fail, 0 unverifiable, 7 info (the ground truth of the 7 keeps). Step check: 335 correct, 10 questionable (the k = 2 bootstrap δ under-covers; B_t lists components with no machinery to prune in r1–r9), 0 wrong.
 
-**Decision quality against ground truth.**
-- 19 evaluated candidates.
-- All 17 rejected candidates were truly worse or null on evolve.
-- Both kept candidates were truly better on evolve; one of them is worse on OOD.
+## 3. `live_agentqa`: AgentQA, Claude Haiku everywhere (pre-fix code)
 
-**Audit.** 350 pass, 0 fail, 0 unverifiable, 6 info (4 done() bounces and 2 ground-truth notes on the keeps). Stage-B step check: 301 correct, 10 questionable (the k = 2 bootstrap δ under-covers; B_t lists 1-8 components with no machinery to prune in r1-r9), 0 wrong. The stage-B fixes do not touch this run: a from-scratch re-run on the fixed code gives an identical history.
-
-## 3. `live_agentqa`: AgentQA, Claude Haiku everywhere
+> **Recorded on the pre-fix code.** This run predates the claims-audit fixes. Its proposer saw δ, S*, S_t, T and the numeric β/w (N2); its L_t lacked the BASELINE row (N5); its precheck held the evolve answers (N3), which is why it caught `570186` below. It was **not** re-run: a faithful rerun costs about $2.8, the whole live cap. A $0 replay on the fixed code misses every proposer call by design (`live_agentqa/replay_current_code.json`). On the fixed code, the r0A leak below passes the faithful precheck (as it would pass the code's), and the Haiku critic rejects it under REJECT rule 1, naming all three copied answers (fresh cache, 1 call, $0.025; `AUDIT.md` §2.3). A new live run on the fixed code is `results/rrsi/live_smoke.json`.
 
 **Setup.**
 - **Domain.** `make_suite(n_evolve=12, n_holdout=12, n_ood_per_family=3, seed=0)`: 12 evolve and 12 holdout `numeric` questions, 12 OOD questions (3 each from `dates`, `numbertheory`, `strings`, `lists`).

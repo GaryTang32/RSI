@@ -21,31 +21,28 @@
  },
  "prune_set": [
   {
-   "component": "config",
-   "recent_best_gain": -0.02031,
-   "accepted_edits_in_incumbent": []
-  },
-  {
-   "component": "control_flow",
-   "recent_best_gain": -0.02594,
-   "accepted_edits_in_incumbent": []
+   "component": "client_tool",
+   "recent_best_gain": null,
+   "accepted_edits_in_incumbent": [
+    {
+     "t": 3,
+     "edit_id": "C1",
+     "hypothesis": "[str_10] Structured search tool: Structured search tool; aimed at arith, plan tasks.",
+     "delta_S": 0.04125
+    }
+   ]
   },
   {
    "component": "memory",
-   "recent_best_gain": -0.08563,
+   "recent_best_gain": null,
    "accepted_edits_in_incumbent": []
   },
   {
-   "component": "skill",
-   "recent_best_gain": -0.02594,
-   "accepted_edits_in_incumbent": []
-  },
-  {
-   "component": "subagent",
-   "recent_best_gain": -0.01531,
+   "component": "output_plumbing",
+   "recent_best_gain": -0.01812,
    "accepted_edits_in_incumbent": []
   }
  ],
  "delta": 0.01594,
- "S_star": 0.5228125
+ "S_star": 0.61875
 }

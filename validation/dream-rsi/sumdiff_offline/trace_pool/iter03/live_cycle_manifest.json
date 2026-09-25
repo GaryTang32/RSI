@@ -27,8 +27,9 @@
  "gain_late": 0.0,
  "fail_frac": 0.0,
  "hard_fail_frac": 0.0,
- "policy": "b4361e9cf50d",
+ "policy": "bfcd4ca1f0bb",
  "agent_calls": 7,
  "plan_reason": "live best still improving with balanced gains: hold the grid",
- "plan_error": null
+ "plan_error": null,
+ "round_budget": 15
 }

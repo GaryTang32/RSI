@@ -1,81 +1,80 @@
 {
  "status": "done",
- "summary": "[lea_08] Practice answer cache: Return remembered answers fo; [gen_05] Bounded self-verification pass: Bounded self-verifi; [har_10] Raise the per-step output cap: Raise the per-step o; [nul_11] Ask for units and formats: Ask for units and format",
+ "summary": "[cos_05] Bounded checker sub-call: Bounded checker sub-call;; [har_14] Procedure card: verification: Procedure card: verif; [nul_01] Checklist of constraints: Checklist of constraints ; [har_08] Planner sub-call: Planner sub-call; aimed at extrac",
  "edits": [
   {
    "id": "C1",
-   "component": "control_flow",
-   "hypothesis": "[lea_08] Practice answer cache: Return remembered answers for tasks seen during practice.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "subagent",
+   "hypothesis": "[cos_05] Bounded checker sub-call: Bounded checker sub-call; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-021"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_08",
+   "mechanism_id": "cos_05",
    "prune": false,
-   "mechanism": "[lea_08] Practice answer cache: Return remembered answers for tasks seen during practice."
+   "mechanism": "[cos_05] Bounded checker sub-call: Bounded checker sub-call; runs extra model passes (self-consistency / long reasoning)."
   },
   {
    "id": "C2",
-   "component": "control_flow",
-   "hypothesis": "[gen_05] Bounded self-verification pass: Bounded self-verification pass; aimed at arith, plan tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "skill",
+   "hypothesis": "[har_14] Procedure card: verification: Procedure card: verification; aimed at extract, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-022",
-    "hw-e-042",
-    "hw-e-078"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "gen_05",
+   "mechanism_id": "har_14",
    "prune": false,
-   "mechanism": "[gen_05] Bounded self-verification pass: Bounded self-verification pass; aimed at arith, plan tasks."
+   "mechanism": "[har_14] Procedure card: verification: Procedure card: verification; aimed at extract, plan, format tasks."
   },
   {
    "id": "C3",
-   "component": "config",
-   "hypothesis": "[har_10] Raise the per-step output cap: Raise the per-step output cap; aimed at extract, arith, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "prompt",
+   "hypothesis": "[nul_01] Checklist of constraints: Checklist of constraints (rewording of existing guidance).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-008",
-    "hw-e-036"
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_10",
+   "mechanism_id": "nul_01",
    "prune": false,
-   "mechanism": "[har_10] Raise the per-step output cap: Raise the per-step output cap; aimed at extract, arith, format tasks."
+   "mechanism": "[nul_01] Checklist of constraints: Checklist of constraints (rewording of existing guidance)."
   },
   {
    "id": "C4",
-   "component": "prompt",
-   "hypothesis": "[nul_11] Ask for units and formats: Ask for units and formats (rewording of existing guidance).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "subagent",
+   "hypothesis": "[har_08] Planner sub-call: Planner sub-call; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-039"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "nul_11",
+   "mechanism_id": "har_08",
    "prune": false,
-   "mechanism": "[nul_11] Ask for units and formats: Ask for units and formats (rewording of existing guidance)."
+   "mechanism": "[har_08] Planner sub-call: Planner sub-call; aimed at extract, arith, plan, format tasks."
   }
  ],
- "mechanism": "[lea_08] Practice answer cache: Return remembered answers fo; [gen_05] Bounded self-verification pass: Bounded self-verifi; [har_10] Raise the per-step output cap: Raise the per-step o; [nul_11] Ask for units and formats: Ask for units and format",
- "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_",
+ "mechanism": "[cos_05] Bounded checker sub-call: Bounded checker sub-call;; [har_14] Procedure card: verification: Procedure card: verif; [nul_01] Checklist of constraints: Checklist of constraints ; [har_08] Planner sub-call: Planner sub-call; aimed at extrac",
+ "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family",
  "n_changes": 4,
  "log": [
   {

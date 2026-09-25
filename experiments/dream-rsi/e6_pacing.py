@@ -18,15 +18,17 @@ from _common import agent_of, developer_of, domain_of, figure, fmt, parse_args, 
 
 from rsi.dream import Config, run
 
-SET = {"synthetic": dict(grid=(6, 4), rounds=12, M=6), "sumdiff": dict(grid=(5, 3), rounds=10, M=4)}
+#: W = the grid's width: every workspace of pi_1 runs in parallel (claims audit N4; W was 4)
+SET = {"synthetic": dict(grid=(6, 4), W=6, rounds=12, M=6), "sumdiff": dict(grid=(5, 3), W=5, rounds=10, M=4)}
 
 
 def one(job):
     d, seed, dream, llm, quick = job
     st = SET[d]
     dom = domain_of(d, seed)
-    cfg = Config(rounds=6 if quick else st["rounds"], W=4, branch_count=st["grid"][0], refine_count=st["grid"][1],
-                 M=st["M"], dream=dream, sandbox=sandbox_of(llm), seed=seed, agent_workers=1 if llm == "sim" else 4)
+    cfg = Config(rounds=6 if quick else st["rounds"], W=st["W"], branch_count=st["grid"][0],
+                 refine_count=st["grid"][1], M=st["M"], dream=dream, sandbox=sandbox_of(llm), seed=seed,
+                 agent_workers=1 if llm == "sim" else st["W"])
     res = run(dom, config=cfg, agent=agent_of(dom, llm), developer=developer_of(llm) if dream else None)
     tr = res.trajectory
     return {"domain": d, "seed": seed, "arm": "dream" if dream else "fixed", "calls": [r["calls"] for r in tr],

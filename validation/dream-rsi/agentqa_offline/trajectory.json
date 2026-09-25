@@ -18,6 +18,7 @@
    3,
    3
   ],
+  "round_budget": 9,
   "policy": "2f081731b8",
   "beta": 0.6,
   "online_error": null,
@@ -64,7 +65,7 @@
     "batch_errors": []
    }
   },
-  "wall_s": 0.634
+  "wall_s": 1.1
  },
  {
   "iteration": 2,
@@ -76,7 +77,7 @@
   "plan": {
    "branch_count": 3,
    "refine_count": 2,
-   "reason": "live best still improving with balanced gains: hold the grid"
+   "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"
   },
   "N": 6,
   "k": 2,
@@ -84,7 +85,8 @@
    3,
    3
   ],
-  "policy": "275618a0f6",
+  "round_budget": 9,
+  "policy": "925f048be8",
   "beta": 0.6,
   "online_error": null,
   "violations": [],
@@ -131,7 +133,7 @@
     "batch_errors": []
    }
   },
-  "wall_s": 1.195
+  "wall_s": 2.138
  },
  {
   "iteration": 3,
@@ -152,7 +154,8 @@
    3,
    2
   ],
-  "policy": "86e922d1a3",
+  "round_budget": 9,
+  "policy": "e226619df8",
   "beta": 0.6,
   "online_error": null,
   "violations": [],
@@ -200,12 +203,12 @@
     "batch_errors": []
    }
   },
-  "wall_s": 1.764
+  "wall_s": 3.177
  },
  {
   "iteration": 4,
-  "calls": 10,
-  "cum_calls": 33,
+  "calls": 9,
+  "cum_calls": 32,
   "round_best": 1.0,
   "best": 1.0,
   "root": 1.0,
@@ -214,18 +217,18 @@
    "refine_count": 2,
    "reason": "live best plateaued: widen to cover new directions"
   },
-  "N": 10,
-  "k": 4,
+  "N": 9,
+  "k": 3,
   "batch_sizes": [
    3,
    3,
-   3,
-   1
+   3
   ],
-  "policy": "86e922d1a3",
+  "round_budget": 9,
+  "policy": "e226619df8",
   "beta": 0.6,
   "online_error": null,
   "violations": [],
-  "wall_s": 1.858
+  "wall_s": 3.32
  }
 ]

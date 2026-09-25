@@ -1,0 +1,314 @@
+{
+ "run": "sumdiff_live_c",
+ "global_checks": [
+  {
+   "check": "seed program re-graded independently",
+   "result": "PASS",
+   "detail": "trace S=0.910491, independent=0.910491 (ok)"
+  },
+  {
+   "check": "run starts from the untouched seed artifact",
+   "result": "PASS",
+   "detail": "ed8962e6b1"
+  },
+  {
+   "check": "agent calls: sum of attempts over worlds = cost meter = trajectory",
+   "result": "PASS",
+   "detail": "18 attempts, meter 18"
+  },
+  {
+   "check": "call budget respected",
+   "result": "PASS",
+   "detail": "18 <= 18"
+  },
+  {
+   "check": "returned best = best of every recorded successful attempt and the seed",
+   "result": "PASS",
+   "detail": "1.046752"
+  }
+ ],
+ "cycles": [
+  {
+   "cycle": 1,
+   "policy": {
+    "label": "initial",
+    "rev": "r0000",
+    "id": "2f081731b8",
+    "default_beta": 0.6
+   },
+   "plan": [
+    3,
+    2
+   ],
+   "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+   "N": 9,
+   "k": 3,
+   "batch_sizes": [
+    3,
+    3,
+    3
+   ],
+   "legal_left_at_stop": 0,
+   "round_best": 1.0280613744592875,
+   "best_before": 0.9104910395109694,
+   "parse_artifacts": [],
+   "best_after": 1.0280613744592875,
+   "fail_classes": {
+    "ok": 9
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (3, 2) used (3, 2): parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 0.910491 vs best so far 0.910491"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "3 rounds, batch sizes [3, 3, 3]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "0.910491 -> 1.028061 (trace: 0.910491 -> 1.028061, kept t1/b2.a2)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 3] vs replay [3, 3, 3]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    },
+    {
+     "check": "dream t=1: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
+     "result": "PASS",
+     "detail": "4 versions x 1 worlds"
+    },
+    {
+     "check": "dream t=1: every version re-replayed from history/ gives the recorded V (deterministic replay)",
+     "result": "PASS",
+     "detail": "r0000=0.9250, r0001=0.9250, r0002=0.9250, r0003=0.7163"
+    },
+    {
+     "check": "dream t=1: selected = argmax V (incumbent kept on ties) and deployed next cycle",
+     "result": "PASS",
+     "detail": "V=[0.925, 0.925, 0.925, 0.716323], selected [0], expected 0, next cycle deploys r0000"
+    },
+    {
+     "check": "dream t=1: each revision's trace diff = history code diff (base -> revision)",
+     "result": "PASS",
+     "detail": "3 revisions"
+    },
+    {
+     "check": "dream t=1: deployed policy passes the static check and copies no trace-specific id/score",
+     "result": "PASS",
+     "detail": "r0000 clean"
+    }
+   ],
+   "dream": {
+    "t": 1,
+    "V": [
+     0.925,
+     0.925,
+     0.925,
+     0.716323
+    ],
+    "selected": 0,
+    "reason": "argmax replay value (incumbent included); V = [0.925, 0.925, 0.925, 0.716323]",
+    "versions": [
+     {
+      "rev": 0,
+      "label": "initial",
+      "V": 0.925,
+      "V_rereplay": 0.925,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.0,
+       "k": 3.0,
+       "mean_batch": 3.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 1,
+      "label": "t1m1",
+      "V": 0.925,
+      "V_rereplay": 0.925,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.0,
+       "k": 3.0,
+       "mean_batch": 3.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 2,
+      "label": "t1m2",
+      "V": 0.925,
+      "V_rereplay": 0.925,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.0,
+       "k": 3.0,
+       "mean_batch": 3.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 3,
+      "label": "t1m3",
+      "V": 0.716323,
+      "V_rereplay": 0.7163226629691685,
+      "diag": {
+       "attainment": 0.7613226629691684,
+       "N": 6.0,
+       "k": 2.0,
+       "mean_batch": 3.0,
+       "wasted_probe_frac": 0.5,
+       "missed_ceiling_rate": 1.0
+      }
+     }
+    ],
+    "revisions": [
+     {
+      "rev": "r0001_t1m1",
+      "parent": "r0000",
+      "change": "Implement adaptive prefix-only policy: trajectory-based ranking with beta-scheduled thresholds, portfolio batch selection (exploit/explore/recover), adaptive grid planning, and early stopping based on branch analysis",
+      "diff_ok": true,
+      "diff_lines": 292,
+      "screen": [
+       true,
+       true
+      ],
+      "error": null,
+      "static_ok": true
+     },
+     {
+      "rev": "r0002_t1m2",
+      "parent": "r0001",
+      "change": "Implement recovery tier for repairable failures and restructure batch selection with adaptive tier-based portfolio building instead of fixed quotas",
+      "diff_ok": true,
+      "diff_lines": 293,
+      "screen": [
+       true,
+       true
+      ],
+      "error": null,
+      "static_ok": true
+     },
+     {
+      "rev": "r0003_t1m3",
+      "parent": "r0002",
+      "change": "Improve portfolio balance, recovery scoring, early stopping, and grid planning: prioritize all three tiers (exploit, recovery, explore) in batches; refine recovery scores by fail-type fixability; add early stopping when open branches plateau with weak recovery; adapt grid planning to history when av",
+      "diff_ok": true,
+      "diff_lines": 329,
+      "screen": [
+       true,
+       true
+      ],
+      "error": null,
+      "static_ok": true
+     }
+    ],
+    "chosen": "r0000",
+    "default_beta_chosen": 0.6
+   }
+  },
+  {
+   "cycle": 2,
+   "policy": {
+    "label": "initial",
+    "rev": "r0000",
+    "id": "2f081731b8",
+    "default_beta": 0.6
+   },
+   "plan": [
+    3,
+    2
+   ],
+   "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+   "N": 9,
+   "k": 3,
+   "batch_sizes": [
+    3,
+    3,
+    3
+   ],
+   "legal_left_at_stop": 0,
+   "round_best": 1.0467524040140475,
+   "best_before": 1.0280613744592875,
+   "parse_artifacts": [],
+   "best_after": 1.0467524040140475,
+   "fail_classes": {
+    "ok": 9
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (3, 2) used (3, 2): parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 1.028061 vs best so far 1.028061"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "3 rounds, batch sizes [3, 3, 3]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "1.028061 -> 1.046752 (trace: 1.028061 -> 1.046752, kept t2/b0.a1)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 3] vs replay [3, 3, 3]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    }
+   ]
+  }
+ ],
+ "monitor": [],
+ "ground_truth": [],
+ "audit_wall_s": 3.7
+}

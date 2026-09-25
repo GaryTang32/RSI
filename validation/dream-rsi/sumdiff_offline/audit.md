@@ -36,7 +36,7 @@ Dreaming after cycle 1: V = [0.865, 0.91, 0.91, 0.91], selected index 1 (r0001);
 
 | version | change | diff lines | screens | re-replay V |
 |---|---|---|---|---|
-| r0001_t1m1 | rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; ceiling reached wi | 110 | [True] | 0.91 |
+| r0001_t1m1 | rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; ceiling reached wi | 252 | [True] | 0.91 |
 | r0002_t1m2 | ceiling reached with many probes: try a cheaper search (patience); perturb w_trend -> 0.8054; perturb plan_depth_step -> 3 | 8 | [True] | 0.91 |
 | r0003_t1m3 | ceiling reached with many probes: try a cheaper search (patience); perturb max_width_lo -> 0.8235; perturb explore_on_stall -> 0.8285 | 6 | [True] | 0.91 |
 
@@ -44,11 +44,11 @@ Ground truth (fresh online searches, 8 seeds per version): versions [0, 1, 2, 3]
 
 ## Cycle 2
 
-Deployed policy `r0001` (t1m1, default beta 0.6); plan 3 x 5 (live best still improving with balanced gains: hold the grid); N = 12 attempts in k = 5 rounds, batches [3, 3, 3, 2, 1]; 2 planned cells left unprobed at stop; outcomes {'ok': 12}; best 1.000000 -> 1.017204.
+Deployed policy `r0001` (t1m1, default beta 0.6); plan 3 x 5 (one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid); N = 12 attempts in k = 5 rounds, batches [3, 3, 3, 2, 1]; 2 planned cells left unprobed at stop; outcomes {'ok': 12}; best 1.000000 -> 1.017204.
 
 | check | result | detail |
 |---|---|---|
-| plan used within hard caps (and = requested clamped) | PASS | requested (3, 4) used (3, 4): live best still improving with balanced gains: hold the grid |
+| plan used within hard caps (and = requested clamped) | PASS | requested (3, 4) used (3, 4): one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallb |
 | live root = best program so far (root='best') | PASS | root 1.000000 vs best so far 1.000000 |
 | online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree | PASS | 5 rounds, batch sizes [3, 3, 3, 2, 1] |
 | every attempt's trace diff = parent -> child program diff from the snapshot store | PASS | 12/12 match |

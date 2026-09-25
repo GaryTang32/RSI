@@ -1,25 +1,25 @@
 {
  "status": "done",
- "summary": "prune: [aq:persona] Detailed analyst persona",
+ "summary": "[aq:verify] Ask to double-check before answering",
  "edits": [
   {
    "id": "C1",
    "component": "prompt",
-   "hypothesis": "prune: [aq:persona] Detailed analyst persona",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
    "targets_mode": "wrong final answers",
    "why_not_lower_lever": "n/a",
    "trigger_condition": "every question",
    "predicted_affected": [
-    "evolve-numeric-002",
-    "evolve-numeric-004",
-    "evolve-numeric-006"
+    "evolve-numeric-011",
+    "evolve-numeric-000",
+    "evolve-numeric-001"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
-   "mechanism": "prune: [aq:persona] Detailed analyst persona"
+   "mechanism": "[aq:verify] Ask to double-check before answering"
   }
  ],
- "mechanism": "prune: [aq:persona] Detailed analyst persona",
+ "mechanism": "[aq:verify] Ask to double-check before answering",
  "targets_mode": "wrong final answers",
  "n_changes": 1,
  "log": [

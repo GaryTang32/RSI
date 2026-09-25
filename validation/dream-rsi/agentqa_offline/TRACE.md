@@ -1,13 +1,12 @@
 # agentqa_offline (dream-rsi)
 
-## Setup and summary
-**Run start.** seed `498c3a8834`; config: `{"rounds": 4, "W": 3, "branch_count": 3, "refine_count": 2, "hard_max_branch": 12, "hard_max_refine": 12, "K1": null, "K2": null, "M": 4, "m_semantics": "versions", "objective": "eq1", "beta1": 0.01, "beta2": 0.005, "normalize": true, "support": "clip", "lam": 0.1, "beta_grid": [0.2, 0.4, 0.6, 0.8, 1.0], "sweep": true, "root_mode": "earliest", "hide_missing": false, "selector": "argmax", "include_incumbent": true, "holdout_frac": 0.34, "noise_z": 2.0, "margin_floor": 0.01, "sandbox": "subprocess", "policy_timeout_s": 30.0, "root": "best", "dream": true, "dream_last": false, "guidance": false, "guidance_strength": 0.8, "max_calls": null, "agent_workers": null, "leakage_check": true, "seed": 0, "trace": true, "shadow_monitor": true, "shadow_k": 1, "shadow_workers": 2}`
+## Setup
+**Run start.** seed `498c3a8834`; config: `{"rounds": 4, "W": 3, "branch_count": 3, "refine_count": 2, "hard_max_branch": 12, "hard_max_refine": 12, "K1": null, "K2": null, "M": 4, "m_semantics": "versions", "objective": "eq1", "beta1": 0.01, "beta2": 0.005, "normalize": true, "support": "no_reward", "lam": 0.1, "beta_grid": [0.2, 0.4, 0.6, 0.8, 1.0], "sweep": true, "root_mode": "earliest", "hide_missing": false, "selector": "argmax", "include_incumbent": true, "holdout_frac": 0.34, "noise_z": 2.0, "margin_floor": 0.01, "sandbox": "subprocess", "policy_timeout_s": 30.0, "root": "best", "dream": true, "dream_last": false, "guidance": false, "guidance_strength": 0.8, "max_calls": null, "round_budget": "fallback", "agent_history_cycles": null, "agent_workers": null, "leakage_check": true, "seed": 0, "trace": true, "shadow_monitor": tr`
 
 **Noise band.** delta=None (none, z=None); paper rule: argmax of the mean replay score over ALL worlds, incumbent included (replay is deterministic, so a version's V has no sampling noise; the online search itself is stochastic and has no noise band in the paper)
 
 **Baseline evaluation** `seed`: S=0.2500, C=735.2500 tokens/trial, n_tasks=8, k=1
-
-**Run end:** `{"stop_reason": "rounds", "seed_score": 0.25, "best_score": 1.0, "best_artifact": "f254389ae0", "final_policy": "86e922d1a3", "calls_per_cycle": [9, 6, 8, 10], "cost": {"agent_calls": 33, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.5370392799377441, "online_rounds": 12, "online_wall_s": 0.36900758743286133, "replay_episodes": 60, "replay_cpu_s": 0.12898401062133724, "replay_wall_s": 0.9282488822937012, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "replay_ms_per_episode": 2.1497335103556208}, "loop_usage": {"task": {"calls": 128, "input_tokens": 5466, "output_tokens": 34888, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 40354}}, "shadow_usage": {"task": {"calls": 48, "input_tokens": 2071, "output_tokens": 19787, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 21858}, "_total": {"calls": 48, "input_tokens": 2071, "output_tokens": 19787, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 21858}}}`
+  per-task: evolve-numeric-000=0.0000, evolve-numeric-001=0.0000, evolve-numeric-002=0.0000, evolve-numeric-003=0.0000, evolve-numeric-004=1.0000, evolve-numeric-005=0.0000, evolve-numeric-006=1.0000, evolve-numeric-007=0.0000
 
 ## Round 0
 **Shadow monitor (never shown to the loop)** `seed` (decision score 0.2500): holdout: S=0.3750; ood: S=0.5000
@@ -15,11 +14,11 @@
 ## Round 1
 **State at round start:** `{"live_cycle": 1, "deployed_policy": {"label": "initial", "rev": "r0000", "id": "2f081731b8", "default_beta": 0.6}, "plan_requested": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "plan_used": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "tool", "1": "verify", "2": "format"}, "live_root": {"artifact": "498c3a8834", "score": 0.25, "mode": "best"}, "best_so_far": 0.25, "n_worlds": 0, "n_manifests": 0, "n_versions_evaluated": 0, "rev_counter": 1, "agent_calls_used": 0, "developer_calls_used": 0, "replay_episodes_so_far": 0, "usd_so_far": 0.0, "guidance": null}`
 
-**note:** `{"what": "online_round", "online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a0", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.5, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a0", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.5, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [1.0], "1": [0.625], "2": [0.5]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.5, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [1.0], "1": [0.625], "2": [0.5]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.5, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [1.0, 1.0], "1": [0.625, 0.625], "2": [0.5, 0.5]}}, "legal_n": 3, "batch": ["b0.a2", "b1.a2", "b2.a2"], "revealed": [{"cell": "b0.a2", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a2", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a2", "score": 0.25, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [1.0, 1.0], "1": [0.625, 0.625], "2": [0.5, 0.5]}}, "legal_n": 3, "batch": ["b0.a2", "b1.a2", "b2.a2"], "revealed": [{"cell": "b0.a2", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a2", "score": 0.625, "fail_class": "ok"}, {"cell": "b2.a2", "score": 0.25, "fail_class": "ok"}], "empty": []}`
 
 ### Proposal `t1/b0.a0` (parent `t1/root`)
 - **claimed change:** # tool
@@ -253,7 +252,7 @@
 **Eval `t1/b2.a2`** on evolve: S=0.2500, C=735.2500, errors=0.0, missing=0
   per-task: evolve-numeric-000=0.0000, evolve-numeric-001=0.0000, evolve-numeric-002=0.0000, evolve-numeric-003=0.0000, evolve-numeric-004=1.0000, evolve-numeric-005=0.0000, evolve-numeric-006=1.0000, evolve-numeric-007=0.0000
 
-**note:** `{"what": "online_summary", "N": 9, "k": 3, "batch_sizes": [3, 3, 3], "agent_calls": 9, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           1.00  R1    1.00  R2    1.00  R3\n1           0.62  R1    0.62  R2    0.62  R3\n2           0.50  R1    0.50  R2    0.25  R3"}`
+- *online_summary*: `{"N": 9, "k": 3, "batch_sizes": [3, 3, 3], "agent_calls": 9, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           1.00  R1    1.00  R2    1.00  R3\n1           0.62  R1    0.62  R2    0.62  R3\n2           0.50  R1    0.50  R2    0.25  R3"}`
 
 **Gate on `t1/b0.a0`: ADMISSIBLE** - round's best successful attempt replaces the best program iff strictly greater
   arithmetic: `{"round_best": 1.0, "best_before": 0.25, "rule": "round_best > best_before", "delta": 0.75}`
@@ -262,7 +261,7 @@
 
 **Shadow monitor (never shown to the loop)** `t1/b0.a0` (decision score 1.0000): holdout: S=0.7500; ood: S=0.8750
 
-**note:** `{"what": "live_cycle_manifest", "manifest": {"iteration": 1, "planned_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "effective_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "opened_width": 3, "max_depth": 2, "probe_work": 9, "decision_rounds": 3, "batch_sizes": [3, 3, 3], "root_score": 0.25, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 1.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "2f081731b815", "agent_calls": 9, "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)", "plan_error": null}}`
+- *live_cycle_manifest*: `{"manifest": {"iteration": 1, "planned_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "effective_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "opened_width": 3, "max_depth": 2, "probe_work": 9, "decision_rounds": 3, "batch_sizes": [3, 3, 3], "root_score": 0.25, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 1.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "2f081731b815", "agent_calls": 9, "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)", "plan_error": null, "`
 
 **Eval `r0000_initial`** on replay worlds H_1 (1): S=0.9250, C=None, errors=0, missing=0
   per-task: iter01=0.9250
@@ -284,7 +283,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -1,37 +1,241 @@
+@@ -1,37 +1,247 @@
 -"""Parallel refine (pi_1, the paper's initial policy and the Recursive Fixed Exploration baseline).
 -
 -"launches multiple independent exploration workspaces in parallel, with each workspace
@@ -321,7 +320,8 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 +
 +Grid planning: plan_grid reads only earlier live manifests: widen when the live best
 +plateaued or roots improved early while depth stalled; deepen when gains came late;
-+shrink on repeated hard failures; conservative bootstrap without history.
++shrink on repeated hard failures; conservative bootstrap (the fallback grid) without history, and
++with a single manifest when its gains are balanced (one manifest shows no live-best trend).
 +
 +Safeguards: a repairable failure never closes a branch by itself and a later success
 +reopens it (closure is recomputed from the full trajectory each round); no closure
@@ -365,9 +365,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 +def _schedule(beta):
 +    P = PARAMS
 +    return {
-+        "open_frac": lerp(P["open_lo"], P["open_hi"], beta),
-+        "max_width": lerp(P["max_width_lo"], P["max_width_hi"], beta),
-+        "patience"
++        "open_frac": lerp(P["open_l
 ...[truncated]
 ```
 
@@ -385,7 +383,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -45,22 +45,22 @@
+@@ -46,22 +46,22 @@
      'open_hi': 1.0,
      'max_width_lo': 0.6,
      'max_width_hi': 1.0,
@@ -432,7 +430,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -43,19 +43,19 @@
+@@ -44,19 +44,19 @@
      'default_beta': 0.6,
      'open_lo': 0.5,
      'open_hi': 1.0,
@@ -481,16 +479,16 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 
 **Decision:** kept `r0003_t1m3`; incumbent `r0000_initial` -> `r0003_t1m3`. argmax replay value (incumbent included); V = [0.925, 0.933333, 0.933333, 0.941667]
 
-**note:** `{"what": "beta_sweep", "policy": "r0003_t1m3", "reward": 0.286786, "auc": 0.333333, "parallel_penalty": 0.465476, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.6667, "attainment": 1.0, "N": 6.0, "k": 4.0, "mean_batch": 1.5, "parallel_penalty": 0.6667, "disqualified": 0, "V_eq1": 0.9475}, {"beta": 0.4, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": 2.3333, "parallel_penalty": 0.4286, "disqualified": 0, "V_eq1": 0.9417}, {"beta": 0.6, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": 2.3333, "parallel_penalty": 0.4286, "disqualified": 0, "V_eq1": 0.9417}, {"beta": 0.8, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": 2.3333, "parallel_penalty": 0.4286, "disqualified": 0, "V_eq1": 0.9417}, {"beta": 1.0, "probes_frac": 0.8889, "attainment": 1.0, "N": 8.0, "k": 3.0, "mean_batch": 2.6667, "parallel_penalty": 0.375, "disqualified": 0, "V_eq1": 0.9333}]}`
+- *beta_sweep*: `{"policy": "r0003_t1m3", "reward": 0.286786, "auc": 0.333333, "parallel_penalty": 0.465476, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.6667, "attainment": 1.0, "N": 6.0, "k": 4.0, "mean_batch": 1.5, "parallel_penalty": 0.6667, "disqualified": 0, "V_eq1": 0.9475}, {"beta": 0.4, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": 2.3333, "parallel_penalty": 0.4286, "disqualified": 0, "V_eq1": 0.9417}, {"beta": 0.6, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": 2.3333, "parallel_penalty": 0.4286, "disqualified": 0, "V_eq1": 0.9417}, {"beta": 0.8, "probes_frac": 0.7778, "attainment": 1.0, "N": 7.0, "k": 3.0, "mean_batch": `
 
-**State after round:** `{"deployed_policy": {"label": "t1m3", "rev": "r0003", "id": "275618a0f6", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 1, "world_sizes": [9], "cost": {"agent_calls": 9, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.14285850524902344, "online_rounds": 3, "online_wall_s": 0.10105633735656738, "replay_episodes": 10, "replay_cpu_s": 0.027618335488891588, "replay_wall_s": 0.2800717353820801, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "replay_ms_per_episode": 2.7618335488891588}, "trajectory_row": {"iteration": 1, "calls": 9, "cum_calls": 9, "round_best": 1.0, "best": 1.0, "root": 0.25, "plan": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "N": 9, "k": 3, "batch_sizes": [3, 3, 3], "policy": "2f081731b8", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 0.634}, "dream": [0.925, 0.933333, 0.933333, 0.941667]}`
+**State after round:** `{"deployed_policy": {"label": "t1m3", "rev": "r0003", "id": "925f048be8", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 1, "world_sizes": [9], "cost": {"agent_calls": 9, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.2507028579711914, "online_rounds": 3, "online_wall_s": 0.15320134162902832, "replay_episodes": 10, "replay_cpu_s": 0.052211861009033134, "replay_wall_s": 0.5105736255645752, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "developer_revisions": 3, "replay_ms_per_episode": 5.221186100903314, "llm_calls_total": 12, "usd_total": 0.0, "developer_usd_share": null}, "trajectory_row": {"iteration": 1, "calls": 9, "cum_calls": 9, "round_best": 1.0, "best": 1.0, "root": 0.25, "plan": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "N": 9, "k": 3, "batch_sizes": [3, 3, 3], "round_budget": 9, "policy": "2f081731b8", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 1.1}, "dream": [0.925, 0.933333, 0.933333, 0.941667]}`
 
 ## Round 2
-**State at round start:** `{"live_cycle": 2, "deployed_policy": {"label": "t1m3", "rev": "r0003", "id": "275618a0f6", "default_beta": 0.6}, "plan_requested": {"branch_count": 3, "refine_count": 2, "reason": "live best still improving with balanced gains: hold the grid"}, "plan_used": {"branch_count": 3, "refine_count": 2, "reason": "live best still improving with balanced gains: hold the grid"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "reason", "1": "verify", "2": "simplify"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 1, "n_manifests": 1, "n_versions_evaluated": 4, "rev_counter": 4, "agent_calls_used": 9, "developer_calls_used": 0, "replay_episodes_so_far": 10, "usd_so_far": 0.0, "guidance": null}`
+**State at round start:** `{"live_cycle": 2, "deployed_policy": {"label": "t1m3", "rev": "r0003", "id": "925f048be8", "default_beta": 0.6}, "plan_requested": {"branch_count": 3, "refine_count": 2, "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"}, "plan_used": {"branch_count": 3, "refine_count": 2, "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "reason", "1": "verify", "2": "simplify"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 1, "n_manifests": 1, "n_versions_evaluated": 4, "rev_counter": 4, "agent_calls_used": 9, "developer_calls_used": 0, "replay_episodes_so_far": 10, "usd_so_far": 0.0, "guidance": null}`
 
-**note:** `{"what": "online_round", "online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.25, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.25, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.875], "1": [0.875], "2": [0.25]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.25, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.875], "1": [0.875], "2": [0.25]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.25, "fail_class": "ok"}], "empty": []}`
 
 ### Proposal `t2/b0.a0` (parent `t2/root`)
 - **claimed change:** # reason
@@ -592,14 +590,14 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 **Eval `t2/b2.a1`** on evolve: S=0.2500, C=735.2500, errors=0.0, missing=0
   per-task: evolve-numeric-000=0.0000, evolve-numeric-001=0.0000, evolve-numeric-002=0.0000, evolve-numeric-003=0.0000, evolve-numeric-004=1.0000, evolve-numeric-005=0.0000, evolve-numeric-006=1.0000, evolve-numeric-007=0.0000
 
-**note:** `{"what": "online_summary", "N": 6, "k": 2, "batch_sizes": [3, 3], "agent_calls": 6, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.88  R1    0.88  R2            \n1           0.88  R1    0.88  R2            \n2           0.25  R1    0.25  R2            "}`
+- *online_summary*: `{"N": 6, "k": 2, "batch_sizes": [3, 3], "agent_calls": 6, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.88  R1    0.88  R2            \n1           0.88  R1    0.88  R2            \n2           0.25  R1    0.25  R2            "}`
 
 **Gate on `t2/b0.a0`: REJECTED** - round's best successful attempt replaces the best program iff strictly greater
   arithmetic: `{"round_best": 0.875, "best_before": 1.0, "rule": "round_best > best_before", "delta": -0.125}`
 
 **Decision:** kept `None`; incumbent `t1/b0.a0` -> `t1/b0.a0`. best program unchanged at 1
 
-**note:** `{"what": "live_cycle_manifest", "manifest": {"iteration": 2, "planned_grid": {"branch_count": 3, "refine_count": 2, "reason": "live best still improving with balanced gains: hold the grid"}, "effective_grid": {"branch_count": 3, "refine_count": 2, "reason": "live best still improving with balanced gains: hold the grid"}, "opened_width": 3, "max_depth": 1, "probe_work": 6, "decision_rounds": 2, "batch_sizes": [3, 3], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "275618a0f678", "agent_calls": 6, "plan_reason": "live best still improving with balanced gains: hold the grid", "plan_error": null}}`
+- *live_cycle_manifest*: `{"manifest": {"iteration": 2, "planned_grid": {"branch_count": 3, "refine_count": 2, "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"}, "effective_grid": {"branch_count": 3, "refine_count": 2, "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"}, "opened_width": 3, "max_depth": 1, "probe_work": 6, "decision_rounds": 2, "batch_sizes": [3, 3], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "925f048be86b", "`
 
 **Eval `r0003_t1m3`** on replay worlds H_2 (2): S=0.4483, C=None, errors=0, missing=0
   per-task: iter01=0.9417, iter02=-0.0450
@@ -621,7 +619,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -46,15 +46,15 @@
+@@ -47,15 +47,15 @@
      'max_width_lo': 0.8235,
      'max_width_hi': 1.0,
      'patience_lo': 0.5,
@@ -658,7 +656,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -46,15 +46,15 @@
+@@ -47,15 +47,15 @@
      'max_width_lo': 0.8235,
      'max_width_hi': 1.0,
      'patience_lo': 0.5,
@@ -695,7 +693,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -46,19 +46,19 @@
+@@ -47,19 +47,19 @@
      'max_width_lo': 0.8235,
      'max_width_hi': 1.0,
      'patience_lo': 0.5,
@@ -743,18 +741,18 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 
 **Decision:** kept `r0005_t2m2`; incumbent `r0003_t1m3` -> `r0005_t2m2`. argmax replay value (incumbent included); V = [0.448333, 0.448333, 0.455, 0.455]
 
-**note:** `{"what": "beta_sweep", "policy": "r0005_t2m2", "reward": 0.043095, "auc": 0.083333, "parallel_penalty": 0.402381, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 3.5, "mean_batch": 1.75, "parallel_penalty": 0.5833, "disqualified": 0, "V_eq1": 0.4487}, {"beta": 0.4, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 2.0, "mean_batch": 3.0, "parallel_penalty": 0.3333, "disqualified": 0, "V_eq1": 0.455}, {"beta": 0.6, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 2.0, "mean_batch": 3.0, "parallel_penalty": 0.3333, "disqualified": 0, "V_eq1": 0.455}, {"beta": 0.8, "probes_frac": 0.8889, "attainment": 0.5, "N": 6.5, "k": 2.5, "mean_batch": 2.6667, "parallel_penalty": 0.381, "disqualified": 0, "V_eq1": 0.4483}, {"beta": 1.0, "probes_frac": 0.8889, "attainment": 0.5, "N": 6.5, "k": 2.5, "mean_batch": 2.6667, "parallel_penalty": 0.381, "disqualified": 0, "V_eq1": 0.4483}]}`
+- *beta_sweep*: `{"policy": "r0005_t2m2", "reward": 0.043095, "auc": 0.083333, "parallel_penalty": 0.402381, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 3.5, "mean_batch": 1.75, "parallel_penalty": 0.5833, "disqualified": 0, "V_eq1": 0.4487}, {"beta": 0.4, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 2.0, "mean_batch": 3.0, "parallel_penalty": 0.3333, "disqualified": 0, "V_eq1": 0.455}, {"beta": 0.6, "probes_frac": 0.8333, "attainment": 0.5, "N": 6.0, "k": 2.0, "mean_batch": 3.0, "parallel_penalty": 0.3333, "disqualified": 0, "V_eq1": 0.455}, {"beta": 0.8, "probes_frac": 0.8889, "attainment": 0.5, "N": 6.5, "k": 2.5, "mean_batch": 2.6667,`
 
-**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "86e922d1a3", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 2, "world_sizes": [9, 6], "cost": {"agent_calls": 15, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.339005708694458, "online_rounds": 5, "online_wall_s": 0.198746919631958, "replay_episodes": 30, "replay_cpu_s": 0.06971066240502921, "replay_wall_s": 0.6082718372344971, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "replay_ms_per_episode": 2.323688746834307}, "trajectory_row": {"iteration": 2, "calls": 6, "cum_calls": 15, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 3, "refine_count": 2, "reason": "live best still improving with balanced gains: hold the grid"}, "N": 6, "k": 2, "batch_sizes": [3, 3], "policy": "275618a0f6", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 1.195}, "dream": [0.448333, 0.448333, 0.455, 0.455]}`
+**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "e226619df8", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 2, "world_sizes": [9, 6], "cost": {"agent_calls": 15, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.6714296340942383, "online_rounds": 5, "online_wall_s": 0.3775660991668701, "replay_episodes": 30, "replay_cpu_s": 0.13136666995300322, "replay_wall_s": 1.0783095359802246, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "developer_revisions": 6, "replay_ms_per_episode": 4.378888998433441, "llm_calls_total": 21, "usd_total": 0.0, "developer_usd_share": null}, "trajectory_row": {"iteration": 2, "calls": 6, "cum_calls": 15, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 3, "refine_count": 2, "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"}, "N": 6, "k": 2, "batch_sizes": [3, 3], "round_budget": 9, "policy": "925f048be8", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 2.138}, "dream": [0.448333, 0.448333, 0.455, 0.455]}`
 
 ## Round 3
-**State at round start:** `{"live_cycle": 3, "deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "86e922d1a3", "default_beta": 0.6}, "plan_requested": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_used": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "simplify", "1": "format", "2": "tool", "3": "reason"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 2, "n_manifests": 2, "n_versions_evaluated": 8, "rev_counter": 7, "agent_calls_used": 15, "developer_calls_used": 0, "replay_episodes_so_far": 30, "usd_so_far": 0.0, "guidance": null}`
+**State at round start:** `{"live_cycle": 3, "deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "e226619df8", "default_beta": 0.6}, "plan_requested": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_used": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "simplify", "1": "format", "2": "tool", "3": "reason"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 2, "n_manifests": 2, "n_versions_evaluated": 8, "rev_counter": 7, "agent_calls_used": 15, "developer_calls_used": 0, "replay_episodes_so_far": 30, "usd_so_far": 0.0, "guidance": null}`
 
-**note:** `{"what": "online_round", "online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 4, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.25, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 1.0, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 4, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.25, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 1.0, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.25], "1": [1.0], "2": [1.0]}}, "legal_n": 4, "batch": ["b3.a0", "b1.a1", "b2.a1"], "revealed": [{"cell": "b3.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.875, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.25], "1": [1.0], "2": [1.0]}}, "legal_n": 4, "batch": ["b3.a0", "b1.a1", "b2.a1"], "revealed": [{"cell": "b3.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b2.a1", "score": 0.875, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [0.25], "1": [1.0, 0.875], "2": [1.0, 0.875], "3": [0.875]}}, "legal_n": 4, "batch": ["b3.a1", "b0.a1"], "revealed": [{"cell": "b3.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b0.a1", "score": 0.25, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [0.25], "1": [1.0, 0.875], "2": [1.0, 0.875], "3": [0.875]}}, "legal_n": 4, "batch": ["b3.a1", "b0.a1"], "revealed": [{"cell": "b3.a1", "score": 0.875, "fail_class": "ok"}, {"cell": "b0.a1", "score": 0.25, "fail_class": "ok"}], "empty": []}`
 
 ### Proposal `t3/b0.a0` (parent `t3/root`)
 - **claimed change:** # simplify
@@ -912,14 +910,14 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 **Eval `t3/b0.a1`** on evolve: S=0.2500, C=735.2500, errors=0.0, missing=0
   per-task: evolve-numeric-000=0.0000, evolve-numeric-001=0.0000, evolve-numeric-002=0.0000, evolve-numeric-003=0.0000, evolve-numeric-004=1.0000, evolve-numeric-005=0.0000, evolve-numeric-006=1.0000, evolve-numeric-007=0.0000
 
-**note:** `{"what": "online_summary", "N": 8, "k": 3, "batch_sizes": [3, 3, 2], "agent_calls": 8, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.25  R1    0.25  R3            \n1           1.00  R1    0.88  R2            \n2           1.00  R1    0.88  R2            \n3           0.88  R2    0.88  R3            "}`
+- *online_summary*: `{"N": 8, "k": 3, "batch_sizes": [3, 3, 2], "agent_calls": 8, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.25  R1    0.25  R3            \n1           1.00  R1    0.88  R2            \n2           1.00  R1    0.88  R2            \n3           0.88  R2    0.88  R3            "}`
 
 **Gate on `t3/b1.a0`: REJECTED** - round's best successful attempt replaces the best program iff strictly greater
   arithmetic: `{"round_best": 1.0, "best_before": 1.0, "rule": "round_best > best_before", "delta": 0.0}`
 
 **Decision:** kept `None`; incumbent `t1/b0.a0` -> `t1/b0.a0`. best program unchanged at 1
 
-**note:** `{"what": "live_cycle_manifest", "manifest": {"iteration": 3, "planned_grid": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "effective_grid": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "opened_width": 4, "max_depth": 1, "probe_work": 8, "decision_rounds": 3, "batch_sizes": [3, 3, 2], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "86e922d1a333", "agent_calls": 8, "plan_reason": "live best plateaued: widen to cover new directions", "plan_error": null}}`
+- *live_cycle_manifest*: `{"manifest": {"iteration": 3, "planned_grid": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "effective_grid": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "opened_width": 4, "max_depth": 1, "probe_work": 8, "decision_rounds": 3, "batch_sizes": [3, 3, 2], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "e226619df852", "agent_calls": 8, "plan_reason": "live best plateaued: widen to cover new directions", "plan_error": null, "round_budget": 9}}`
 
 **Eval `r0005_t2m2`** on replay worlds H_3 (3): S=0.2811, C=None, errors=0, missing=0
   per-task: iter01=0.9550, iter02=-0.0450, iter03=-0.0667
@@ -941,7 +939,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -43,14 +43,14 @@
+@@ -44,14 +44,14 @@
      'default_beta': 0.6,
      'open_lo': 0.5,
      'open_hi': 1.0,
@@ -978,7 +976,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -43,14 +43,14 @@
+@@ -44,14 +44,14 @@
      'default_beta': 0.6,
      'open_lo': 0.5,
      'open_hi': 1.0,
@@ -1015,7 +1013,7 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 ```diff
 --- a/method.py
 +++ b/method.py
-@@ -43,22 +43,22 @@
+@@ -44,22 +44,22 @@
      'default_beta': 0.6,
      'open_lo': 0.5,
      'open_hi': 1.0,
@@ -1068,20 +1066,18 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 
 **Decision:** kept `None`; incumbent `r0005_t2m2` -> `r0005_t2m2`. argmax replay value (incumbent included); V = [0.281111, 0.276667, 0.276667, 0.276667]
 
-**note:** `{"what": "beta_sweep", "policy": "r0005_t2m2", "reward": -0.002288, "auc": 0.037037, "parallel_penalty": 0.393254, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 3.3333, "mean_batch": 2.0556, "parallel_penalty": 0.5139, "disqualified": 0, "V_eq1": 0.2769}, {"beta": 0.4, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 2.3333, "mean_batch": 2.8889, "parallel_penalty": 0.3472, "disqualified": 0, "V_eq1": 0.2811}, {"beta": 0.6, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 2.3333, "mean_batch": 2.8889, "parallel_penalty": 0.3472, "disqualified": 0, "V_eq1": 0.2811}, {"beta": 0.8, "probes_frac": 0.9259, "attainment": 0.3333, "N": 7.0, "k": 2.6667, "mean_batch": 2.6667, "parallel_penalty": 0.379, "disqualified": 0, "V_eq1": 0.2767}, {"beta": 1.0, "probes_frac": 0.9259, "attainment": 0.3333, "N": 7.0, "k": 2.6667, "mean_batch": 2.6667, "parallel_penalty": 0.379, "disqualified": 0, "V_eq1": 0.2767}]}`
+- *beta_sweep*: `{"policy": "r0005_t2m2", "reward": -0.002288, "auc": 0.037037, "parallel_penalty": 0.393254, "degenerate": false, "points": [{"beta": 0.2, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 3.3333, "mean_batch": 2.0556, "parallel_penalty": 0.5139, "disqualified": 0, "V_eq1": 0.2769}, {"beta": 0.4, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 2.3333, "mean_batch": 2.8889, "parallel_penalty": 0.3472, "disqualified": 0, "V_eq1": 0.2811}, {"beta": 0.6, "probes_frac": 0.8889, "attainment": 0.3333, "N": 6.6667, "k": 2.3333, "mean_batch": 2.8889, "parallel_penalty": 0.3472, "disqualified": 0, "V_eq1": 0.2811}, {"beta": 0.8, "probes_frac": 0.9259, "attainment": 0.3333, `
 
-**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "86e922d1a3", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 3, "world_sizes": [9, 6, 8], "cost": {"agent_calls": 23, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.49662208557128906, "online_rounds": 8, "online_wall_s": 0.3397066593170166, "replay_episodes": 60, "replay_cpu_s": 0.12898401062133724, "replay_wall_s": 0.9282488822937012, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "replay_ms_per_episode": 2.1497335103556208}, "trajectory_row": {"iteration": 3, "calls": 8, "cum_calls": 23, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "N": 8, "k": 3, "batch_sizes": [3, 3, 2], "policy": "86e922d1a3", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 1.764}, "dream": [0.281111, 0.276667, 0.276667, 0.276667]}`
+**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "e226619df8", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 3, "world_sizes": [9, 6, 8], "cost": {"agent_calls": 23, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.9271697998046875, "online_rounds": 8, "online_wall_s": 0.5952193737030029, "replay_episodes": 60, "replay_cpu_s": 0.2568028179625244, "replay_wall_s": 1.7086083889007568, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "developer_revisions": 9, "replay_ms_per_episode": 4.2800469660420735, "llm_calls_total": 32, "usd_total": 0.0, "developer_usd_share": null}, "trajectory_row": {"iteration": 3, "calls": 8, "cum_calls": 23, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 4, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "N": 8, "k": 3, "batch_sizes": [3, 3, 2], "round_budget": 9, "policy": "e226619df8", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 3.177}, "dream": [0.281111, 0.276667, 0.276667, 0.276667]}`
 
 ## Round 4
-**State at round start:** `{"live_cycle": 4, "deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "86e922d1a3", "default_beta": 0.6}, "plan_requested": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_used": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "reason", "1": "tool", "2": "simplify", "3": "format", "4": "verify"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 3, "n_manifests": 3, "n_versions_evaluated": 12, "rev_counter": 10, "agent_calls_used": 23, "developer_calls_used": 0, "replay_episodes_so_far": 60, "usd_so_far": 0.0, "guidance": null}`
+**State at round start:** `{"live_cycle": 4, "deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "e226619df8", "default_beta": 0.6}, "plan_requested": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_used": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "plan_error": null, "plan_note": null, "W": 3, "max_calls_this_round": null, "directions": {"0": "reason", "1": "tool", "2": "simplify", "3": "format", "4": "verify"}, "live_root": {"artifact": "f254389ae0", "score": 1.0, "mode": "best"}, "best_so_far": 1.0, "n_worlds": 3, "n_manifests": 3, "n_versions_evaluated": 12, "rev_counter": 10, "agent_calls_used": 23, "developer_calls_used": 0, "replay_episodes_so_far": 60, "usd_so_far": 0.0, "guidance": null}`
 
-**note:** `{"what": "online_round", "online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 5, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.25, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 1, "prefix_seen": {"n": 0, "branches": {}}, "legal_n": 5, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 0.25, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.875], "1": [1.0], "2": [0.25]}}, "legal_n": 5, "batch": ["b3.a0", "b1.a1", "b0.a1"], "revealed": [{"cell": "b3.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b0.a1", "score": 0.875, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 2, "prefix_seen": {"n": 3, "branches": {"0": [0.875], "1": [1.0], "2": [0.25]}}, "legal_n": 5, "batch": ["b3.a0", "b1.a1", "b0.a1"], "revealed": [{"cell": "b3.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b0.a1", "score": 0.875, "fail_class": "ok"}], "empty": []}`
 
-**note:** `{"what": "online_round", "online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [0.875, 0.875], "1": [1.0, 1.0], "2": [0.25], "3": [1.0]}}, "legal_n": 5, "batch": ["b4.a0", "b3.a1", "b2.a1"], "revealed": [{"cell": "b4.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b3.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a1", "score": 1.0, "fail_class": "ok"}], "empty": []}`
-
-**note:** `{"what": "online_round", "online_round": 4, "prefix_seen": {"n": 9, "branches": {"0": [0.875, 0.875], "1": [1.0, 1.0], "2": [0.25, 1.0], "3": [1.0, 1.0], "4": [0.875]}}, "legal_n": 5, "batch": ["b4.a1"], "revealed": [{"cell": "b4.a1", "score": 0.625, "fail_class": "ok"}], "empty": []}`
+- *online_round*: `{"online_round": 3, "prefix_seen": {"n": 6, "branches": {"0": [0.875, 0.875], "1": [1.0, 1.0], "2": [0.25], "3": [1.0]}}, "legal_n": 5, "batch": ["b4.a0", "b3.a1", "b2.a1"], "revealed": [{"cell": "b4.a0", "score": 0.875, "fail_class": "ok"}, {"cell": "b3.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a1", "score": 1.0, "fail_class": "ok"}], "empty": []}`
 
 ### Proposal `t4/b0.a0` (parent `t4/root`)
 - **claimed change:** # reason
@@ -1241,36 +1237,16 @@ Leakage screen terms (best cell ids / scores of every world): ['1.0000', 'b0.a0'
 **Eval `t4/b2.a1`** on evolve: S=1.0000, C=102.2500, errors=0.0, missing=0
   per-task: evolve-numeric-000=1.0000, evolve-numeric-001=1.0000, evolve-numeric-002=1.0000, evolve-numeric-003=1.0000, evolve-numeric-004=1.0000, evolve-numeric-005=1.0000, evolve-numeric-006=1.0000, evolve-numeric-007=1.0000
 
-### Proposal `t4/b4.a1` (parent `t4/b4.a0`)
-- **claimed change:** # simplify
-- **details:** `{"branch": 4, "attempt": 1, "online_round": 4, "direction": "verify", "context": {"direction": {"direction": "verify"}, "lineage": 1, "siblings": 8, "history": 23, "parent_score": 0.875, "direction_guidance": "Direction assigned to this branch: verify."}, "blocked_files": [], "usage": {"tokens": 0, "usd": 0.0}, "diff_empty": false}`
-**Actual diff:**
-```diff
---- a/harness.py
-+++ b/harness.py
-@@ -1,7 +1,7 @@
- """Harness (generated by the discovery agent from its mechanism knobs)."""
- import re
- 
--KNOBS = {'tool': True, 'verify': True}
-+KNOBS = {'tool': False, 'verify': True}
- 
- 
- def _code(reply):
-
-```
-
-
-**Eval `t4/b4.a1`** on evolve: S=0.6250, C=744.8750, errors=0.0, missing=0
-  per-task: evolve-numeric-000=0.0000, evolve-numeric-001=0.0000, evolve-numeric-002=1.0000, evolve-numeric-003=1.0000, evolve-numeric-004=1.0000, evolve-numeric-005=1.0000, evolve-numeric-006=0.0000, evolve-numeric-007=1.0000
-
-**note:** `{"what": "online_summary", "N": 10, "k": 4, "batch_sizes": [3, 3, 3, 1], "agent_calls": 10, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.88  R1    0.88  R2            \n1           1.00  R1    1.00  R2            \n2           0.25  R1    1.00  R3            \n3           1.00  R2    1.00  R3            \n4           0.88  R3    0.62  R4            "}`
+- *online_summary*: `{"N": 9, "k": 3, "batch_sizes": [3, 3, 3], "agent_calls": 9, "online_error": null, "violations": [], "truncated_batch": null, "grid": "branch     attempt 1   attempt 2   attempt 3\n0           0.88  R1    0.88  R2            \n1           1.00  R1    1.00  R2            \n2           0.25  R1    1.00  R3            \n3           1.00  R2    1.00  R3            \n4           0.88  R3                        "}`
 
 **Gate on `t4/b1.a0`: REJECTED** - round's best successful attempt replaces the best program iff strictly greater
   arithmetic: `{"round_best": 1.0, "best_before": 1.0, "rule": "round_best > best_before", "delta": 0.0}`
 
 **Decision:** kept `None`; incumbent `t1/b0.a0` -> `t1/b0.a0`. best program unchanged at 1
 
-**note:** `{"what": "live_cycle_manifest", "manifest": {"iteration": 4, "planned_grid": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "effective_grid": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "opened_width": 5, "max_depth": 1, "probe_work": 10, "decision_rounds": 4, "batch_sizes": [3, 3, 3, 1], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "86e922d1a333", "agent_calls": 10, "plan_reason": "live best plateaued: widen to cover new directions", "plan_error": null}}`
+- *live_cycle_manifest*: `{"manifest": {"iteration": 4, "planned_grid": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "effective_grid": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "opened_width": 5, "max_depth": 1, "probe_work": 9, "decision_rounds": 3, "batch_sizes": [3, 3, 3], "root_score": 1.0, "round_best": 1.0, "final_best": 1.0, "beta": 0.6, "gain_early": 0.0, "gain_late": 0.0, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "e226619df852", "agent_calls": 9, "plan_reason": "live best plateaued: widen to cover new directions", "plan_error": null, "round_budget": 9}}`
 
-**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "86e922d1a3", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 4, "world_sizes": [9, 6, 8, 10], "cost": {"agent_calls": 33, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.5370392799377441, "online_rounds": 12, "online_wall_s": 0.36900758743286133, "replay_episodes": 60, "replay_cpu_s": 0.12898401062133724, "replay_wall_s": 0.9282488822937012, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "replay_ms_per_episode": 2.1497335103556208}, "trajectory_row": {"iteration": 4, "calls": 10, "cum_calls": 33, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "N": 10, "k": 4, "batch_sizes": [3, 3, 3, 1], "policy": "86e922d1a3", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 1.858}, "dream": null}`
+**State after round:** `{"deployed_policy": {"label": "t2m2", "rev": "r0005", "id": "e226619df8", "default_beta": 0.6}, "best_score": 1.0, "best_artifact": "f254389ae0", "n_worlds": 4, "world_sizes": [9, 6, 8, 9], "cost": {"agent_calls": 32, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.9636592864990234, "online_rounds": 11, "online_wall_s": 0.6222174167633057, "replay_episodes": 60, "replay_cpu_s": 0.2568028179625244, "replay_wall_s": 1.7086083889007568, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "developer_revisions": 9, "replay_ms_per_episode": 4.2800469660420735, "llm_calls_total": 41, "usd_total": 0.0, "developer_usd_share": null}, "trajectory_row": {"iteration": 4, "calls": 9, "cum_calls": 32, "round_best": 1.0, "best": 1.0, "root": 1.0, "plan": {"branch_count": 5, "refine_count": 2, "reason": "live best plateaued: widen to cover new directions"}, "N": 9, "k": 3, "batch_sizes": [3, 3, 3], "round_budget": 9, "policy": "e226619df8", "beta": 0.6, "online_error": null, "violations": [], "wall_s": 3.32}, "dream": null}`
+
+## Summary
+**Run end:** `{"stop_reason": "rounds", "seed_score": 0.25, "best_score": 1.0, "best_artifact": "f254389ae0", "final_policy": "e226619df8", "calls_per_cycle": [9, 6, 8, 9], "cost": {"agent_calls": 32, "agent_tokens": 0, "agent_usd": 0.0, "eval_s": 0.9636592864990234, "online_rounds": 11, "online_wall_s": 0.6222174167633057, "replay_episodes": 60, "replay_cpu_s": 0.2568028179625244, "replay_wall_s": 1.7086083889007568, "developer_calls": 0, "developer_tokens": 0, "developer_usd": 0.0, "developer_revisions": 9, "replay_ms_per_episode": 4.2800469660420735, "llm_calls_total": 41, "usd_total": 0.0, "developer_usd_share": null}, "loop_usage": {"task": {"calls": 120, "input_tokens": 5165, "output_tokens": 29230, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 34395}}, "shadow_usage": {"task": {"calls": 48, "input_tokens": 2071, "output_tokens": 19787, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 21858}, "_total": {"calls": 48, "input_tokens": 2071, "output_tokens": 19787, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 21858}}}`

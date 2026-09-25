@@ -1,6 +1,8 @@
 # Dream-RSI: claim-by-claim audit of `rsi.dream`
 
-This page checks our implementation against every claim made about Dream-RSI. The claims come from the paper "Dream-RSI: Recursive Self-Improvement through Evolving Worlds" (arXiv 2609.14858, 36 pages, including Appendices A–C) and from the user's overview page. It covers mechanisms, every table and figure number, the qualitative findings and the caveats. It is an audit only: no code was changed.
+This page checks our implementation against every claim made about Dream-RSI. The claims come from the paper "Dream-RSI: Recursive Self-Improvement through Evolving Worlds" (arXiv 2609.14858, 36 pages, including Appendices A–C) and from the user's overview page. It covers mechanisms, every table and figure number, the qualitative findings and the caveats.
+
+**Status (after the fixes).** The audit itself changed no code. Every open finding was then fixed, documented or classified, and every affected experiment was re-run with the fixed code: see **§5 Fix log**. The verdicts, evidence and counts below are the post-fix ones; where a verdict changed, the row says "was …".
 
 **Sources used.**
 - The paper, full text: `scratchpad/papers/dream-rsi.txt`. Page numbers below are the PDF's printed page numbers. `L1:n` and `L2:n` are line *n* of the prompt Listings 1 and 2 (App. B).
@@ -170,7 +172,9 @@ Abbreviations: `q.py` = `rsi/dream/question.py`, `obj.py` = `rsi/dream/objective
 
 ## 3. Newly found mismatches (not in the spec, the impl notes or AUDIT.md)
 
-**N1. The no-peeking guard can be bypassed with module-level memory across episodes (M7, M8, M18).** This is a real bug.
+As found by the audit, with the code references of that time. Each item's **status after the fixes** is in its first line; the details are in §5.
+
+**N1. The no-peeking guard can be bypassed with module-level memory across episodes (M7, M8, M18).** This is a real bug. *Status: fixed. Every episode now runs in a fresh policy namespace in both runners, and the static check rejects the pattern (§5).*
 - **Root cause.**
   - `ReplayEvaluator.evaluate` opens one runner session per policy (`ev.py:195`).
   - It replays every world with the default beta, and then replays *the same worlds again* for every sweep beta, all in that one session (`ev.py:197-203`).
@@ -187,7 +191,7 @@ Abbreviations: `q.py` = `rsi/dream/question.py`, `obj.py` = `rsi/dream/objective
   - Or have `static_check` reject module-level mutable containers, `global`/`nonlocal`, class-attribute mutation and `functools.lru_cache`/`cache` decorators.
 - **Scope.** The earlier reviews caught the `reset()` variant of this attack (`peek_reset`) but not this one.
 
-**N2. The Listing-2 developer prompt is a condensed paraphrase, not the paper's prompt (M26).**
+**N2. The Listing-2 developer prompt is a condensed paraphrase, not the paper's prompt (M26).** *Status: fixed. The prompt is now verbatim Listing 2, and our additions are in a separate block (§5).*
 - **Method.** A sentence coverage check (`prompt_cov.py`), then targeted phrase checks.
 - **L2 rules with no counterpart in `DEVELOPER_PROMPT` (`dev.py:258-350`):**
   - *Anti-over-pruning* (L2:136-139): "Every prune, widen, deepen, batch, and stop decision must be explainable from the current prefix. Shallow weak scores are not enough to discard a branch: deeper attempts can recover. A repairable latest failure must not erase its historical successful anchor or by itself cause permanent starvation." The Deliverable's docstring list still names "permanent starvation" safeguards, but the constraint itself is gone.
@@ -221,27 +225,27 @@ Abbreviations: `q.py` = `rsi/dream/question.py`, `obj.py` = `rsi/dream/objective
 - **Additions in ours that are not in L2** (harmless): the import allow-list, the reset rule, the explicit fail-class lists and the Eq. 1 objective text.
 - **Impact.** Offline experiments are unaffected, because the mock developer edits `PARAMS`. Live LLM-written policies were developed under a weaker prompt. That may be part of why all six stage-A haiku policies probed the full grid, and why one live-b policy closed a branch after two flat results.
 
-**N3. Per-round budgets are not held identical (M21).**
+**N3. Per-round budgets are not held identical (M21).** *Status: fixed. The default per-round budget is now Fixed's (§5).*
 - **Paper:** "Dream-RSI maintains identical per-round budgets" (§4 p.7).
 - **Ours:** Dream's `plan_grid` may grow the grid up to `hard_max` 12 × 12 (`loop.py:56-57`), while Fixed runs 5 × 4 or 6 × 5.
 - **E3:** 182 of 541 Dream round plans exceed Fixed's per-round grid, and 3 synthetic rounds spent 34 calls against Fixed's 30.
 - **Effect:** small, because equal *total* budgets are enforced. But it is a protocol difference from the paper, and it could favour Dream once plateaus trigger widening.
 - **Fix:** set `hard_max` to the fallback grid in the Dream arm.
 
-**N4. E3 and E6 set W (4) below the fixed grid's width (5–6) (M22).** The paper's π₁ runs all workspaces in parallel (10 workspaces with 10 workers, or 32 with 32). Ours staggers the roots over two rounds. `w_check.py` re-ran E3's synthetic arm with W = 6: Fixed 0.857 → Dream 0.912 (20/20 wins), identical to W = 4. So the verdicts stand; the mismatch should still be documented or fixed.
+**N4. E3 and E6 set W (4) below the fixed grid's width (5–6) (M22).** The paper's π₁ runs all workspaces in parallel (10 workspaces with 10 workers, or 32 with 32). Ours staggers the roots over two rounds. `w_check.py` re-ran E3's synthetic arm with W = 6: Fixed 0.857 → Dream 0.912 (20/20 wins), identical to W = 4. So the verdicts stand; the mismatch should still be documented or fixed. *Status: fixed. E3, E5 and E6 now use W = grid width; the re-run verdicts are unchanged (§5).*
 
-**N5. Listing-1 omissions and a self-contradiction (M25).** `EXPLORATION_PROMPT` (`agent.py:220-263`):
+**N5. Listing-1 omissions and a self-contradiction (M25).** *Status: fixed. The prompt is now verbatim Listing 1, and the history is complete by default (§5).* `EXPLORATION_PROMPT` (`agent.py:220-263` at the time):
 - It drops the "Never execute pkill, kill, killall" line. This matters when `EditorAgent` wraps a shell-capable `AgentEditor`.
 - It drops "not just recent cycles or the current branch", "Look at the shape of what's been tried" and "(not just guessed from the proposal)".
 - It shows the baseline only as a score, where L1:9 reads the `$baseline_dir` proposals.
 - It tells the agent it sees the history "in full, not a sample", while the code shows at most 30 records per section, the last 8 cycles and 600-char proposals. The caps themselves are documented; the false assurance in the prompt is not.
 
-**N6. Paper-internal overclaims not recorded in the spec.**
+**N6. Paper-internal overclaims not recorded in the spec.** *Status: documented. These are paper-level, not code defects; Q22 stays CONTRADICTED, and Q14 and Q21 carry the notes.*
 - (a) The introduction's "In mathematical optimization … it matches or surpasses strong baselines within 1k generations" (§1 p.3) is contradicted by Table 1's autocorrelation column: Dream is worse than SimpleTES and AlphaEvolve.
 - (b) "fewer than 1,000 generations" for math, while Fixed's stated budget for 10 rounds is 10 × 110 = 1,100. So the "<1k" can describe only Dream's arm, and Dream's math call counts are never reported.
 - (c) The §1 abstract-level "outperforms … strong baselines" on Lasso holds on the arithmetic mean only. SimpleTES is faster on 4/6 datasets for every Dream and Fixed row.
 
-**N7. "Almost for free" leaves out the developer's cost (L2).** The paper and the overview price dreaming at "zero execution cost". In all three of our live runs, the dreaming stage's LLM calls were 13–30% of total spend. That is cheap relative to the agent, but not free, and it grows with M.
+**N7. "Almost for free" leaves out the developer's cost (L2).** The paper and the overview price dreaming at "zero execution cost". In all three of our live runs, the dreaming stage's LLM calls were 13–30% of total spend. That is cheap relative to the agent, but not free, and it grows with M. *Status: fixed in our cost story. The meter now counts developer requests and the whole LLM bill, and E3 reports calls including the developer (§5). The paper's claim itself stays PARTIAL (L2).*
 
 **Checked and not a mismatch.**
 - Per-world normalization of Eq. 1 did not change any of the 9 recorded dreaming decisions (`raw_vs_norm.py`).

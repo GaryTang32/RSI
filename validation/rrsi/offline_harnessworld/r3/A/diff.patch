@@ -1,16 +1,24 @@
---- a/output/nar_03.py
-+++ b/output/nar_03.py
+--- a/context/nar_04.py
++++ b/context/nar_04.py
 @@ -0,0 +1,5 @@
-+# mechanism: nar_03
-+# component: output_plumbing
-+# title: Collapse repeated log lines
-+"""Collapse repeated log lines; aimed at extract, arith, plan, format tasks."""
-+enable("nar_03")
---- a/skills/har_12/SKILL.md
-+++ b/skills/har_12/SKILL.md
++# mechanism: nar_04
++# component: context_mgmt
++# title: Summarize old turns
++"""Summarize old turns; aimed at arith, plan, format tasks."""
++enable("nar_04")
+--- a/prompts/cos_06.md
++++ b/prompts/cos_06.md
 @@ -0,0 +1,5 @@
-+# mechanism: har_12
-+# component: skill
-+# title: Procedure card: estimation
-+"""Procedure card: estimation; aimed at extract, format tasks."""
-+enable("har_12")
++# mechanism: cos_06
++# component: prompt
++# title: Short worked example of the procedure
++"""Role and scope statement; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_06")
+--- a/tools/str_10.py
++++ b/tools/str_10.py
+@@ -0,0 +1,5 @@
++# mechanism: str_10
++# component: client_tool
++# title: Structured search tool
++"""Structured search tool; aimed at arith, plan tasks."""
++enable("str_10")

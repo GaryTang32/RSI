@@ -1,24 +1,24 @@
 {
  "status": "done",
- "summary": "[cos_06] Short worked example of the procedure: Role and sco; [gen_02] Drop stale observations: Drop stale observations; a; [dec_00] Keep the last N tool results verbatim: Keep the las",
+ "summary": "[nar_03] Collapse repeated log lines: Collapse repeated log ; [gen_02] Drop stale observations: Drop stale observations; a; [har_18] Procedure card: parsing: Procedure card: parsing; a",
  "edits": [
   {
    "id": "C1",
-   "component": "prompt",
-   "hypothesis": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "component": "output_plumbing",
+   "hypothesis": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-042"
+    "hw-e-008",
+    "hw-e-056",
+    "hw-e-011"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "cos_06",
+   "mechanism_id": "nar_03",
    "prune": false,
-   "mechanism": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning)."
+   "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks."
   },
   {
    "id": "C2",
@@ -28,9 +28,9 @@
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
+    "hw-e-011",
     "hw-e-019",
-    "hw-e-022",
-    "hw-e-042"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
@@ -40,24 +40,24 @@
   },
   {
    "id": "C3",
-   "component": "context_mgmt",
-   "hypothesis": "[dec_00] Keep the last N tool results verbatim: Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)",
+   "component": "skill",
+   "hypothesis": "[har_18] Procedure card: parsing: Procedure card: parsing; aimed at extract, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-008",
+    "hw-e-056",
+    "hw-e-011"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "dec_00",
+   "mechanism_id": "har_18",
    "prune": false,
-   "mechanism": "[dec_00] Keep the last N tool results verbatim: Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)"
+   "mechanism": "[har_18] Procedure card: parsing: Procedure card: parsing; aimed at extract, plan, format tasks."
   }
  ],
- "mechanism": "[cos_06] Short worked example of the procedure: Role and sco; [gen_02] Drop stale observations: Drop stale observations; a; [dec_00] Keep the last N tool results verbatim: Keep the las",
+ "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log ; [gen_02] Drop stale observations: Drop stale observations; a; [har_18] Procedure card: parsing: Procedure card: parsing; a",
  "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
  "n_changes": 3,
  "log": [

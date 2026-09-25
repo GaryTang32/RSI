@@ -1,8 +1,16 @@
---- a/agents/har_04.py
-+++ b/agents/har_04.py
+--- a/agents/cos_08.py
++++ b/agents/cos_08.py
 @@ -0,0 +1,5 @@
-+# mechanism: har_04
++# mechanism: cos_08
 +# component: subagent
-+# title: Critic sub-call on final answer
-+"""Critic sub-call on final answer; aimed at extract, arith tasks."""
-+enable("har_04")
++# title: Bounded checker sub-call
++"""Planner sub-call; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_08")
+--- a/control/har_15.py
++++ b/control/har_15.py
+@@ -0,0 +1,5 @@
++# mechanism: har_15
++# component: control_flow
++# title: Early exit when the answer is certain
++"""Early exit when the answer is certain; aimed at extract, arith, plan, format tasks."""
++enable("har_15")

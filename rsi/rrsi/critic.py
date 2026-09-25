@@ -5,9 +5,19 @@ task names, entity names, task-specific values, answers or other suite-specific 
 as well as degenerate, grader-gaming, undeclared-bundling, runtime-leaking or unbounded
 edits. Two layers:
 
-1. deterministic prechecks: :class:`rsi.core.LeakageCritic` denylist over the ADDED lines
-   of the diff (the domain's leakage terms: evolve task ids, entities, literal answers)
-   plus regexes (generic credential patterns + ``Domain.critic_patterns``);
+1. deterministic prechecks, as in the code: the decision split's TASK IDS (the coding
+   adapter's task-name denylist), the domain's ``critic_patterns`` (id patterns, grader and
+   reference-solution artefacts, ...), the generic credential pattern, and the generic
+   grader-artefact patterns of this in-process framework (harness code importing ``rsi``,
+   touching ``sys.modules`` or walking the call stack to the grader: the analogue of the
+   code's per-domain "verifier / reward file" patterns). Literal ANSWERS and entity names are
+   NOT in the precheck by default: as in the code, they are left to the LLM review (REJECT
+   rule 1). ``precheck_answers=True`` (``Config.precheck_answers``, an extension) adds
+   :meth:`rsi.core.Domain.leakage_terms` (ids + answers + entities): a deterministic answer
+   key the paper's critic does not have.
+   The scan covers the diff's ADDED lines (``scope="added"``, deviation 4: a removal or an
+   unchanged context line never encodes anything, while the code's whole-diff grep also
+   rejects an edit that DELETES flagged content); ``scope="diff"`` is the code's grep;
 2. an LLM review of intent and content (the code's six REJECT rules), up to 3 parse
    attempts; unparseable output fails closed.
 
@@ -19,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Optional, Sequence
 
 from ..core.critic import LeakageCritic, added_lines
@@ -97,19 +108,35 @@ class RRSICritic:
     Parameters
     ----------
     domain:
-        supplies ``leakage_terms(split)``, ``describe()`` and optional ``critic_patterns``
+        supplies the decision split's task ids, ``describe()`` and optional ``critic_patterns``
         (list of ``(regex, why)``) and ``critic_brief``.
     llm:
         reviewer backend (role ``"critic"``); ``None`` = deterministic precheck only.
     terms, patterns:
-        extra denylist terms / ``(regex, why)`` patterns.
+        extra denylist terms / ``(regex, why)`` patterns. ``terms`` given explicitly replaces the
+        domain's terms.
+    precheck_answers:
+        extension (default off, as in the code): also deny :meth:`Domain.leakage_terms` (the decision
+        split's literal answers and entities, besides its ids).
+    scope:
+        ``"added"`` (default; added diff lines) or ``"diff"`` (the whole diff, as the code greps it).
     """
 
     def __init__(self, domain=None, llm: Optional[LLM] = None, *, terms: Optional[Sequence[str]] = None,
                  patterns: Sequence[tuple[str, str]] = (), domain_brief: Optional[str] = None,
-                 leakage_split: str = "evolve", parse_attempts: int = 3, min_term_len: int = 4) -> None:
+                 leakage_split: str = "evolve", parse_attempts: int = 3, min_term_len: int = 4,
+                 precheck_answers: bool = False, scope: str = "added") -> None:
+        if scope not in ("added", "diff"):
+            raise ValueError(f"precheck scope must be 'added' or 'diff', not {scope!r}")
         self.llm = llm
-        dom_terms = list(domain.leakage_terms(leakage_split)) if (domain is not None and terms is None) else []
+        self.scope = scope
+        self.precheck_answers = precheck_answers
+        dom_terms: list[str] = []
+        if domain is not None and terms is None:
+            if precheck_answers:
+                dom_terms = list(domain.leakage_terms(leakage_split))
+            else:
+                dom_terms = sorted({str(t.id) for t in domain.tasks.split(leakage_split, allow_sealed=True)})
         dom_pats = list(getattr(domain, "critic_patterns", []) or []) if domain is not None else []
         self.patterns = list(GENERIC_PATTERNS) + dom_pats + list(patterns)
         self._why = {p: why for p, why in self.patterns}
@@ -126,9 +153,23 @@ class RRSICritic:
         #: the latest review's LLM exchange (payload + every raw reply) - for the run trace
         self.last_exchange: dict = {}
 
+    def _hits(self, diff: str) -> list[str]:
+        if self.scope == "added":
+            return self.denylist.denylist_hits(diff)
+        # the code's grep over the WHOLE diff (headers, context and removed lines included)
+        hay = diff or ""
+        low = hay if self.denylist.case_sensitive else hay.lower()
+        hits = []
+        for t in self.denylist.terms:
+            needle = t if self.denylist.case_sensitive else t.lower()
+            if re.search(r"(?<![\w.])" + re.escape(needle) + r"(?!\w)(?!\.\d)", low):
+                hits.append(t)
+        hits += [f"/{p.pattern}/" for p in self.denylist.patterns if p.search(hay)]
+        return hits
+
     def precheck(self, diff: str) -> list[str]:
         hits = []
-        for h in self.denylist.denylist_hits(diff):
+        for h in self._hits(diff):
             if h.startswith("/") and h.endswith("/") and h[1:-1] in self._why:
                 hits.append(self._why[h[1:-1]])
             else:

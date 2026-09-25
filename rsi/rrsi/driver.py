@@ -7,6 +7,8 @@
 * consecutive infrastructure failures (a round raising) stop the driver after
   ``MAX_CONSECUTIVE_INFRA = 3`` so a broken environment cannot burn the whole budget.
   (The code re-launches the next round; we retry the same round, which is resume-safe.)
+* a USD budget is checked against the whole run directory's spend, including what
+  earlier (killed) processes of the same run paid (:mod:`rsi.rrsi.spend`).
 
 :func:`run` is the package's uniform entry point returning :class:`rsi.core.ImprovementResult`.
 """
@@ -23,7 +25,7 @@ from ..core.domain import Domain
 from ..core.editors import Editor
 from ..core.gates import Gate
 from ..core.llm import LLM, Usage
-from ..core.run import Budget, ImprovementResult, usd_of
+from ..core.run import Budget, ImprovementResult
 from .config import Config
 from .frontier import read_json
 from .loop import RRSIRun
@@ -41,7 +43,10 @@ def drive(r: RRSIRun, T: Optional[int] = None, start: int = 0, budget: Optional[
     t0 = time.time()
     resumed = r.frontier.exists()
     r.trace.run_start(r, budget, resumed=resumed)
-    stop = _drive(r, T, start, budget, resumed)
+    try:
+        stop = _drive(r, T, start, budget, resumed)
+    finally:
+        r.spend.checkpoint()
     r.trace.run_end(r, stop, time.time() - t0)
     return stop
 
@@ -60,8 +65,9 @@ def _drive(r: RRSIRun, T: Optional[int], start: int, budget: Optional[Budget], r
         if (r.out / "STOP").exists() or (budget and budget.stop_dir and Path(budget.stop_dir, "STOP").exists()):
             return "stop_file"
         if budget is not None:
+            r.spend.checkpoint()
             why = budget.exhausted(rounds=r.frontier.settled_rounds(), rollouts=r.measurer.n_rollouts,
-                                   usd=usd_of(*_llms(r)))
+                                   usd=r.spend.total())
             if why:
                 return why
         if r.frontier.settled_rounds() >= t + 1:
@@ -83,11 +89,7 @@ def _drive(r: RRSIRun, T: Optional[int], start: int, budget: Optional[Budget], r
 
 
 def _llms(r: RRSIRun) -> list[LLM]:
-    out: list[LLM] = []
-    for l in (r.llm_task, r.llm_propose, r.llm_critic, r.llm_analyst):
-        if l is not None and all(l is not x for x in out):
-            out.append(l)
-    return out
+    return r.llms()
 
 
 def merged_usage(llms: Sequence[LLM]) -> dict:
@@ -121,6 +123,7 @@ def result(r: RRSIRun, stop_reason: str = "") -> ImprovementResult:
     meta = {"frontier": {k: fr[k] for k in ("incumbent", "S_star")}, "calibration": read_json(r.out / "calibration.json"),
             "delta": r.delta() if (r.cfg.delta is not None or (r.out / "calibration.json").exists()) else None,
             "switches": r.sw.to_json(), "config": r.cfg.dump(), "n_rollouts": r.measurer.n_rollouts,
+            "spend": r.spend.summary(), "analyst_mode": r.analyst.mode,
             "K": r.tax.K, "K_str": r.tax.K_str,
             "critic": None if critic is None else {"reviews": critic.n_reviews, "precheck_rejects": critic.n_precheck_rejects,
                                                    "llm_rejects": critic.n_llm_rejects}}

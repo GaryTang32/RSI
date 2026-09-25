@@ -2,25 +2,25 @@
  "domain": "harnessworld",
  "incumbent": {
   "t": 10,
-  "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
-  "job": "r6B",
-  "S": 0.5228125,
-  "C": 3462.515,
+  "artifact_id": "411f2c4f49a5e3451115f7cdcb6ed6d900dc5f30c4e3b876c56ab681974e5b9c",
+  "job": "r9B",
+  "S": 0.64625,
+  "C": 8980.17,
   "extra": {
-   "steps": 7.0,
+   "steps": 17.0,
    "error_rate": 0.0,
    "families": {
-    "extract": 0.54375,
-    "arith": 0.5325,
-    "plan": 0.52125,
-    "format": 0.49375
+    "extract": 0.61625,
+    "arith": 0.72,
+    "plan": 0.56375,
+    "format": 0.685
    },
-   "n_mechanisms": 6.0
+   "n_mechanisms": 16.0
   },
   "variant": "B",
-  "node": "r6B"
+  "node": "r9B"
  },
- "S_star": 0.5228125,
+ "S_star": 0.64625,
  "trajectory": [
   {
    "t": 0,
@@ -44,202 +44,202 @@
   },
   {
    "t": 1,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
-   "job": "base",
-   "node": "H0",
-   "variant": null,
+   "S": 0.478125,
+   "C": 2277.07,
+   "artifact_id": "4e7d838fceb653c90fcb18f7fe83b80ed09bd314774e9d0d8f15fd33beb2fb5c",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
    "extra": {
-    "steps": 3.0,
+    "steps": 4.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.4775,
-     "arith": 0.515,
-     "plan": 0.425,
-     "format": 0.44375
+     "extract": 0.52875,
+     "arith": 0.50875,
+     "plan": 0.4175,
+     "format": 0.4575
     },
-    "n_mechanisms": 2.0
+    "n_mechanisms": 3.0
    }
   },
   {
    "t": 2,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
-   "job": "base",
-   "node": "H0",
-   "variant": null,
+   "S": 0.478125,
+   "C": 2277.07,
+   "artifact_id": "4e7d838fceb653c90fcb18f7fe83b80ed09bd314774e9d0d8f15fd33beb2fb5c",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
    "extra": {
-    "steps": 3.0,
+    "steps": 4.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.4775,
-     "arith": 0.515,
-     "plan": 0.425,
-     "format": 0.44375
+     "extract": 0.52875,
+     "arith": 0.50875,
+     "plan": 0.4175,
+     "format": 0.4575
     },
-    "n_mechanisms": 2.0
+    "n_mechanisms": 3.0
    }
   },
   {
    "t": 3,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
-   "job": "base",
-   "node": "H0",
-   "variant": null,
+   "S": 0.478125,
+   "C": 2277.07,
+   "artifact_id": "4e7d838fceb653c90fcb18f7fe83b80ed09bd314774e9d0d8f15fd33beb2fb5c",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
    "extra": {
-    "steps": 3.0,
+    "steps": 4.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.4775,
-     "arith": 0.515,
-     "plan": 0.425,
-     "format": 0.44375
+     "extract": 0.52875,
+     "arith": 0.50875,
+     "plan": 0.4175,
+     "format": 0.4575
     },
-    "n_mechanisms": 2.0
+    "n_mechanisms": 3.0
    }
   },
   {
    "t": 4,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
-   "job": "base",
-   "node": "H0",
-   "variant": null,
+   "S": 0.519375,
+   "C": 3487.93,
+   "artifact_id": "941441722b4c58400b69dbd59b0c81dd96b2fe1b77ffbc9cd0cc0b110a5b2f9b",
+   "job": "r3A",
+   "node": "r3A",
+   "variant": "A",
    "extra": {
-    "steps": 3.0,
+    "steps": 7.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.4775,
-     "arith": 0.515,
-     "plan": 0.425,
-     "format": 0.44375
+     "extract": 0.50125,
+     "arith": 0.56,
+     "plan": 0.50375,
+     "format": 0.5125
     },
-    "n_mechanisms": 2.0
+    "n_mechanisms": 6.0
    }
   },
   {
    "t": 5,
-   "S": 0.49625,
-   "C": 3346.935,
-   "artifact_id": "42ba26e49b9595d97c61f4a3ca0928ed0b725ac762dc6242c27771f4d7289c16",
-   "job": "r4A",
-   "node": "r4A",
+   "S": 0.519375,
+   "C": 3487.93,
+   "artifact_id": "941441722b4c58400b69dbd59b0c81dd96b2fe1b77ffbc9cd0cc0b110a5b2f9b",
+   "job": "r3A",
+   "node": "r3A",
    "variant": "A",
    "extra": {
-    "steps": 6.0,
+    "steps": 7.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.485,
-     "arith": 0.51625,
-     "plan": 0.48,
-     "format": 0.50375
+     "extract": 0.50125,
+     "arith": 0.56,
+     "plan": 0.50375,
+     "format": 0.5125
     },
-    "n_mechanisms": 5.0
+    "n_mechanisms": 6.0
    }
   },
   {
    "t": 6,
-   "S": 0.49625,
-   "C": 3346.935,
-   "artifact_id": "42ba26e49b9595d97c61f4a3ca0928ed0b725ac762dc6242c27771f4d7289c16",
-   "job": "r4A",
-   "node": "r4A",
-   "variant": "A",
+   "S": 0.56,
+   "C": 4000.755,
+   "artifact_id": "05823e6b00580f9789b3c9439febf4d0f11ac6bd29c5a14302d426d32235a88e",
+   "job": "r5B",
+   "node": "r5B",
+   "variant": "B",
    "extra": {
-    "steps": 6.0,
+    "steps": 10.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.485,
-     "arith": 0.51625,
-     "plan": 0.48,
-     "format": 0.50375
+     "extract": 0.5375,
+     "arith": 0.6575,
+     "plan": 0.5175,
+     "format": 0.5275
     },
-    "n_mechanisms": 5.0
+    "n_mechanisms": 9.0
    }
   },
   {
    "t": 7,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
-   "job": "r6B",
-   "node": "r6B",
-   "variant": "B",
+   "S": 0.5890625,
+   "C": 4284.55,
+   "artifact_id": "7439af9bbf83354f633bc38bff04341459b5eb982d130c727f980ff9a98e2b5e",
+   "job": "r6A",
+   "node": "r6A",
+   "variant": "A",
    "extra": {
-    "steps": 7.0,
+    "steps": 12.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.54375,
-     "arith": 0.5325,
-     "plan": 0.52125,
-     "format": 0.49375
+     "extract": 0.6025,
+     "arith": 0.63875,
+     "plan": 0.525,
+     "format": 0.59
     },
-    "n_mechanisms": 6.0
+    "n_mechanisms": 11.0
    }
   },
   {
    "t": 8,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
-   "job": "r6B",
-   "node": "r6B",
-   "variant": "B",
+   "S": 0.61875,
+   "C": 7843.62,
+   "artifact_id": "c41d77e4c8691e4f4cf1677a1716c40b95b77812048ad77d31c5adbe66be820a",
+   "job": "r7A",
+   "node": "r7A",
+   "variant": "A",
    "extra": {
-    "steps": 7.0,
+    "steps": 14.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.54375,
-     "arith": 0.5325,
-     "plan": 0.52125,
-     "format": 0.49375
+     "extract": 0.60625,
+     "arith": 0.6625,
+     "plan": 0.5975,
+     "format": 0.60875
     },
-    "n_mechanisms": 6.0
+    "n_mechanisms": 13.0
    }
   },
   {
    "t": 9,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
-   "job": "r6B",
-   "node": "r6B",
-   "variant": "B",
+   "S": 0.635625,
+   "C": 8767.245,
+   "artifact_id": "54a2ff3d5915a06b9d84920456682eee84bf243fe179bf90c589267d730b1e01",
+   "job": "r8A",
+   "node": "r8A",
+   "variant": "A",
    "extra": {
-    "steps": 7.0,
+    "steps": 15.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.54375,
-     "arith": 0.5325,
-     "plan": 0.52125,
-     "format": 0.49375
+     "extract": 0.59625,
+     "arith": 0.68875,
+     "plan": 0.605,
+     "format": 0.6525
     },
-    "n_mechanisms": 6.0
+    "n_mechanisms": 14.0
    }
   },
   {
    "t": 10,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
-   "job": "r6B",
-   "node": "r6B",
+   "S": 0.64625,
+   "C": 8980.17,
+   "artifact_id": "411f2c4f49a5e3451115f7cdcb6ed6d900dc5f30c4e3b876c56ab681974e5b9c",
+   "job": "r9B",
+   "node": "r9B",
    "variant": "B",
    "extra": {
-    "steps": 7.0,
+    "steps": 17.0,
     "error_rate": 0.0,
     "families": {
-     "extract": 0.54375,
-     "arith": 0.5325,
-     "plan": 0.52125,
-     "format": 0.49375
+     "extract": 0.61625,
+     "arith": 0.72,
+     "plan": 0.56375,
+     "format": 0.685
     },
-    "n_mechanisms": 6.0
+    "n_mechanisms": 16.0
    }
   }
  ],
@@ -276,6 +276,13 @@
   "trace_chars": 3000,
   "max_digests": 8,
   "analyst": "llm",
+  "tie_eps": 0.0,
+  "proposer_numbers": false,
+  "precheck_answers": false,
+  "precheck_scope": "added",
+  "component_aliases": false,
+  "smoke_n": 2,
+  "smoke_require_score": false,
   "workers": 2,
   "trial_cache": false,
   "smoke": true,

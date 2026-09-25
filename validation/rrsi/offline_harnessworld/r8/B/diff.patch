@@ -1,8 +1,8 @@
---- a/config/nul_04.py
-+++ b/config/nul_04.py
-@@ -0,0 +1,5 @@
-+# mechanism: nul_04
-+# component: config
-+# title: Longer tool timeout
-+"""Longer tool timeout (rewording of existing guidance)."""
-+enable("nul_04")
+--- a/tools/str_10.py
++++ b/tools/str_10.py
+@@ -1,5 +0,0 @@
+-# mechanism: str_10
+-# component: client_tool
+-# title: Structured search tool
+-"""Structured search tool; aimed at arith, plan tasks."""
+-enable("str_10")

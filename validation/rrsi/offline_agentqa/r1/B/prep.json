@@ -1,5 +1,5 @@
 {
- "artifact_id": "619974a240b04987ec016cb5afbf00247a737ae17e8dca2f468dc21ce8971b2f",
+ "artifact_id": "f9766c69d2d9218e7d084934251a316ce118aae4f1031d4f0325116831111690",
  "edits": [
   {
    "id": "C1",
@@ -10,15 +10,32 @@
    "trigger_condition": "every question",
    "predicted_affected": [
     "evolve-numeric-005",
-    "evolve-numeric-012",
-    "evolve-numeric-017"
+    "evolve-numeric-016",
+    "evolve-numeric-000"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
    "mechanism": "[aq:checker] Bounded checker sub-call",
    "declared_component": "subagent"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:null_reword] Reword the system prompt",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:null_reword] Reword the system prompt",
+   "declared_component": "prompt"
   }
  ],
  "diff_path": "r1/B/diff.patch",
- "mechanism": "[aq:checker] Bounded checker sub-call"
+ "mechanism": "[aq:checker] Bounded checker sub-call; [aq:null_reword] Reword the system prompt"
 }

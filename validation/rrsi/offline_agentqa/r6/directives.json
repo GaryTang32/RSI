@@ -20,57 +20,22 @@
  "prune_set": [
   {
    "component": "control_flow",
-   "recent_best_gain": -0.125,
+   "recent_best_gain": null,
    "accepted_edits_in_incumbent": [
-    {
-     "t": 0,
-     "edit_id": "C3",
-     "hypothesis": "[aq:self_consistency] Three samples with a majority vote",
-     "delta_S": 0.175
-    }
-   ]
-  },
-  {
-   "component": "prompt",
-   "recent_best_gain": 0.0,
-   "accepted_edits_in_incumbent": [
-    {
-     "t": 0,
-     "edit_id": "C1",
-     "hypothesis": "[aq:null_reword] Reword the system prompt",
-     "delta_S": 0.175
-    },
     {
      "t": 0,
      "edit_id": "C2",
-     "hypothesis": "[aq:persona] Detailed analyst persona",
-     "delta_S": 0.175
-    },
-    {
-     "t": 0,
-     "edit_id": "C4",
-     "hypothesis": "[aq:step_by_step] Ask for step-by-step reasoning",
-     "delta_S": 0.175
-    },
-    {
-     "t": 1,
-     "edit_id": "C1",
-     "hypothesis": "[aq:answer_format] State the final-answer format",
-     "delta_S": 0.2
+     "hypothesis": "[aq:python_tool] Compute with the Python tool and report its output",
+     "delta_S": 0.575
     }
    ]
   },
   {
-   "component": "skill",
-   "recent_best_gain": null,
-   "accepted_edits_in_incumbent": []
-  },
-  {
    "component": "subagent",
-   "recent_best_gain": -0.125,
+   "recent_best_gain": null,
    "accepted_edits_in_incumbent": []
   }
  ],
  "delta": 0.147196,
- "S_star": 0.75
+ "S_star": 0.975
 }

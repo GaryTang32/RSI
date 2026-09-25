@@ -1,17 +1,8 @@
 {
  "verdict": "reject",
  "reasons": [
-  "precheck: hard-coded evaluation data 'ans-00d02a'",
-  "precheck: hard-coded evaluation data 'ans-0e2032'",
-  "precheck: hard-coded evaluation data 'ans-124148'",
-  "precheck: hard-coded evaluation data 'ans-2d37a2'",
-  "precheck: hard-coded evaluation data 'ans-37b5b6'",
-  "precheck: hard-coded evaluation data 'ans-38e02c'",
-  "precheck: hard-coded evaluation data 'ans-5381ba'",
-  "precheck: hard-coded evaluation data 'ans-5d7386'",
-  "precheck: hard-coded evaluation data 'ans-7939ed'",
-  "precheck: hard-coded evaluation data 'ans-7a7517'"
+  "LEAKAGE / RUNTIME MEMORY LEAKAGE: mechanism obf_04 injects a lookup table keyed by task identity; that is memorization, not a general improvement"
  ],
  "risk_notes": [],
- "stage": "precheck"
+ "stage": "llm"
 }

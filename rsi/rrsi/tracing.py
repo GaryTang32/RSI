@@ -142,9 +142,10 @@ def gate_math(cand_ev: Measurement, inc_ev: Measurement, novelty: int, S_star: f
     S, C, S_t, C_t = cand_ev.S, cand_ev.C, inc_ev.S, inc_ev.C
     dS = S - S_t
     dC = relative_cost_change(C, C_t)
-    band = dS > delta + 1e-9
-    m = {"S_prime": S, "C_prime": C, "S_t": S_t, "C_t": C_t, "S_star": S_star, "delta": delta,
-         "floor": S_star - delta, "above_floor": S >= S_star - delta - 1e-9, "dS": dS, "dC": dC, "nu": novelty,
+    eps = float(getattr(cfg, "tie_eps", 0.0) or 0.0)          # 0.0: raw float comparisons, as in the code
+    band = dS > delta + eps
+    m = {"S_prime": S, "C_prime": C, "S_t": S_t, "C_t": C_t, "S_star": S_star, "delta": delta, "tie_eps": eps,
+         "floor": S_star - delta, "above_floor": S >= S_star - delta - eps, "dS": dS, "dC": dC, "nu": novelty,
          "gain_above_band": band, "branch": "cost_rule" if band else "within_band_shaped",
          "cost_limit": cfg.beta0 + cfg.beta1 * dS, "shaped": cfg.w_s * dS - cfg.w_c * dC + cfg.w_n * novelty,
          "params": {"beta0": cfg.beta0, "beta1": cfg.beta1, "w_s": cfg.w_s, "w_c": cfg.w_c, "w_n": cfg.w_n}}
@@ -226,11 +227,7 @@ class RRSITrace:
 
     @staticmethod
     def _llms(r) -> list[LLM]:
-        out: list[LLM] = []
-        for l in (r.llm_task, r.llm_propose, r.llm_critic, r.llm_analyst):
-            if l is not None and all(l is not x for x in out):
-                out.append(l)
-        return out
+        return r.llms()
 
     def spend(self, r) -> dict:
         tot = 0.0
@@ -240,7 +237,11 @@ class RRSITrace:
                 by[role] = round(by.get(role, 0.0) + u.cost_usd, 6)
                 tot += u.cost_usd
         mon = self.monitor_llm.meter.total().cost_usd if self.monitor_llm is not None else 0.0
-        return {"loop_usd": round(tot, 6), "by_role_usd": by, "shadow_monitor_usd": round(mon, 6)}
+        out = {"loop_usd": round(tot, 6), "by_role_usd": by, "shadow_monitor_usd": round(mon, 6)}
+        led = getattr(r, "spend", None)
+        if led is not None:          # budget view: earlier processes of this run + this one (rsi.rrsi.spend)
+            out["budget_view"] = led.summary()
+        return out
 
     def truth(self, r, artifact) -> Optional[dict]:
         fn = getattr(r.domain, "audit_truth", None)

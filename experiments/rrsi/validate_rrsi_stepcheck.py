@@ -17,6 +17,7 @@ The formulas (docs/methods/rrsi.md section 4):
     floor = S* - delta,  S* = max trajectory
     c     = dC <= b0 + b1 dS             if dS > delta
             w_s dS - w_c dC + w_n nu > 0  otherwise
+            (raw float comparisons, as the code makes them; the run's Config.tie_eps if it set one)
     winner = argmax S' over admissible (first on ties), else H_t
     T_t   = components of measured edits (rounds < t);  U_t = K \\ T_t
     sigma = 1[S_t - S_{t-w} <= delta] (t >= w)
@@ -81,6 +82,10 @@ class Rows(list):
 def check_run(run: str) -> dict:
     out, ev, hist, cfgj = load(run)
     cfg, K, K_str = cfgj["config"], cfgj["K"], cfgj["K_str"]
+    # post-fix runs record Config.tie_eps (default 0.0: raw float comparisons, as in the released code);
+    # runs made before the fix used rsi.core's 1e-9 tie tolerance
+    post_fix = "tie_eps" in cfg
+    eps = float(cfg["tie_eps"]) if post_fix else EPS
     rows = Rows()
     dom = domain_for(run)
     # ---- sealed material: ids, question texts and answers of holdout / ood ----------------
@@ -172,7 +177,7 @@ def check_run(run: str) -> dict:
                  f"S*={rs['S_star']:.4f}")
         # sigma
         w = cfg["w"]
-        sig = int(t >= w and traj[t] - traj[t - w] <= delta + EPS)
+        sig = int(t >= w and traj[t] - traj[t - w] <= delta + eps)
         rows.add(step, "sigma_t = 1[S_t - S_{t-w} <= delta]", sig == rs["sigma_t"],
                  f"expected {sig}, traced {rs['sigma_t']}" + (f" (S_t-S_t-w={traj[t] - traj[t - w]:+.4f})" if t >= w else ""))
         # T_t, U_t from the per-edit history of rounds < t
@@ -243,17 +248,28 @@ def check_run(run: str) -> dict:
                     dirs = {}
                 ok_dirs = (dirs.get("b_t") == rs["b_t"] and dirs.get("untried") == rs["untried_U_t"]
                            and bool(dirs.get("reserved_slot")) == (c[-1] in rs["reserved_variants"])
-                           and sorted(dirs.get("prune_components") or []) == sorted(x["component"] for x in rs["prune_B_t"])
-                           and abs(dirs.get("S_star", -1) - rs["S_star"]) < 1e-5 and abs(dirs.get("delta", -1) - delta) < 1e-5)
-                rows.add(cs, "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round", ok_dirs,
+                           and sorted(dirs.get("prune_components") or []) == sorted(x["component"] for x in rs["prune_B_t"]))
+                rows.add(cs, "proposer saw b_t, U_t, reserved flag, B_t of this round", ok_dirs,
                          f"prompt directives b_t={dirs.get('b_t')} reserved={dirs.get('reserved_slot')} "
                          f"prune={dirs.get('prune_components')}")
+                numbers = {k: dirs[k] for k in ("delta", "S_star", "S_incumbent", "T") if k in dirs}
+                if cfg.get("proposer_numbers"):
+                    rows.add(cs, "proposer saw S*, delta (Config.proposer_numbers extension)",
+                             abs(dirs.get("S_star", -1) - rs["S_star"]) < 1e-5 and abs(dirs.get("delta", -1) - delta) < 1e-5,
+                             f"{numbers}")
+                else:
+                    # the released proposer context never shows the noise band, S* or the incumbent's score
+                    rows.add(cs, "proposer was NOT shown delta, S*, S_t or T (code: symbolic rules only)",
+                             not numbers if post_fix else "questionable",
+                             f"numeric thresholds in the prompt: {numbers}" + ("" if post_fix else
+                             " (pre-fix code: claims audit N2, fixed)"))
                 hs = sec.get("edit_history", "")
                 try:
                     shown = json.loads(hs.split("\n", 1)[1]) if "\n" in hs else []
                 except json.JSONDecodeError:
                     shown = None
-                recs = [r for r in hist if r.get("edit_id") and r["t"] < t]
+                # the code renders EVERY record, the BASELINE row included (it counts as unmeasured)
+                recs = [r for r in hist if (r.get("edit_id") and r["t"] < t) or r.get("outcome") == "BASELINE"]
                 exp, unm = [], 0
                 for r in reversed(recs):
                     if r.get("delta_S") is None:
@@ -263,10 +279,14 @@ def check_run(run: str) -> dict:
                     exp.append(r)
                     if len(exp) >= cfg["history_render_n"]:
                         break
-                exp = [(r["t"], r["variant"], r["edit_id"]) for r in reversed(exp)]
+                exp = [(r["t"], r["variant"], r.get("edit_id")) for r in reversed(exp)]
                 got = None if shown is None else [(r.get("t"), r.get("variant"), r.get("edit_id")) for r in shown]
-                rows.add(cs, "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
-                         got == exp, f"shown {len(got or [])} rows, expected {len(exp)}")
+                ok_hist = got == exp
+                if not ok_hist and not post_fix and got == [x for x in exp if x[2] is not None]:
+                    ok_hist = "questionable"                       # pre-fix render dropped BASELINE (claims N5)
+                rows.add(cs, "proposer saw the evidence-aware history L_t (all measured edits of rounds < t, "
+                             "BASELINE row included as in the code)", ok_hist,
+                         f"shown {len(got or [])} rows, expected {len(exp)}")
             # redraws of ideas falsified earlier (mocks tag ideas as [aq:...] / [xxx_nn])
             done_all = [p for p in props if str(p.get("outcome", "")).startswith("done")]
             if done_all:
@@ -343,15 +363,15 @@ def check_run(run: str) -> dict:
             nu_comps = {r["component"] for r in hist if r["t"] == t and r["variant"] == c[-1] and r.get("edit_id")}
             acc_before = {r["component"] for r in hist if r.get("accepted") and r.get("edit_id") and r["t"] < t}
             nu = sum(1 for x in nu_comps if x in K_str and x not in acc_before)
-            floor_ok = S1 >= S_star - delta - EPS
-            if dS > delta + EPS:
+            floor_ok = S1 >= S_star - delta - eps
+            if dS > delta + eps:
                 branch, lim = "cost_rule", cfg["beta0"] + cfg["beta1"] * dS
-                c_ok = dC <= lim + EPS
+                c_ok = dC <= lim + eps
                 why = f"dC={dC:+.4f} <= {lim:.4f}"
             else:
                 branch = "shaped"
                 sh = cfg["w_s"] * dS - cfg["w_c"] * dC + cfg["w_n"] * nu
-                c_ok = sh > EPS
+                c_ok = sh > eps
                 why = f"shaped={cfg['w_s']}*{dS:+.4f} - {cfg['w_c']}*{dC:+.4f} + {cfg['w_n']}*{nu} = {sh:+.3f}"
             adm = floor_ok and c_ok
             cand_S[c] = (S1, C1, adm)
@@ -370,7 +390,7 @@ def check_run(run: str) -> dict:
         adm = [(c, v[0]) for c, v in cand_S.items() if v[2] and c.startswith(step)]
         win = None
         for c, s in adm:                                            # first on ties, variant order
-            if win is None or s > win[1] + EPS:
+            if win is None or s > win[1] + eps:
                 win = (c, s)
         rows.add(step, "winner = argmax S' over admissible (else keep H_t)",
                  (win[0] if win else None) == dec["kept"], f"expected {win[0] if win else None}, loop kept {dec['kept']}")

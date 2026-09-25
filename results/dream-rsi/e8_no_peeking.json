@@ -1,6 +1,6 @@
 {
  "experiment": "e8_no_peeking",
- "created": "2026-09-25 05:53:22",
+ "created": "2026-09-25 17:09:03",
  "config": {
   "worlds": 8,
   "online_worlds": 40,
@@ -104,7 +104,244 @@
    "replay_minus_online_guard_off": 0.23689904255803734
   }
  },
+ "cross_episode_memory": {
+  "runs": {
+   "inprocess|shared|honest_adaptive": {
+    "pareto_reward": 0.4164627527456438,
+    "auc": 0.4520367609400884,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.5292,
+     0.5583,
+     0.6958,
+     0.7333,
+     0.8167
+    ],
+    "attainment_by_beta": [
+     0.925,
+     0.925,
+     0.948,
+     0.948,
+     1.0
+    ]
+   },
+   "inprocess|shared|parallel_refine": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "inprocess|shared|memo_module": {
+    "pareto_reward": 0.3453171456961951,
+    "auc": 0.4078171456961951,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.2667,
+     0.2667,
+     0.2667,
+     0.2667,
+     0.2667
+    ],
+    "attainment_by_beta": [
+     0.5561,
+     0.5561,
+     0.5561,
+     0.5561,
+     0.5561
+    ]
+   },
+   "inprocess|fresh|honest_adaptive": {
+    "pareto_reward": 0.4164627527456438,
+    "auc": 0.4520367609400884,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.5292,
+     0.5583,
+     0.6958,
+     0.7333,
+     0.8167
+    ],
+    "attainment_by_beta": [
+     0.925,
+     0.925,
+     0.948,
+     0.948,
+     1.0
+    ]
+   },
+   "inprocess|fresh|parallel_refine": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "inprocess|fresh|memo_module": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "subprocess|shared|honest_adaptive": {
+    "pareto_reward": 0.4164627527456438,
+    "auc": 0.4520367609400884,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.5292,
+     0.5583,
+     0.6958,
+     0.7333,
+     0.8167
+    ],
+    "attainment_by_beta": [
+     0.925,
+     0.925,
+     0.948,
+     0.948,
+     1.0
+    ]
+   },
+   "subprocess|shared|parallel_refine": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "subprocess|shared|memo_module": {
+    "pareto_reward": 0.3453171456961951,
+    "auc": 0.4078171456961951,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.2667,
+     0.2667,
+     0.2667,
+     0.2667,
+     0.2667
+    ],
+    "attainment_by_beta": [
+     0.5561,
+     0.5561,
+     0.5561,
+     0.5561,
+     0.5561
+    ]
+   },
+   "subprocess|fresh|honest_adaptive": {
+    "pareto_reward": 0.4164627527456438,
+    "auc": 0.4520367609400884,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     0.5292,
+     0.5583,
+     0.6958,
+     0.7333,
+     0.8167
+    ],
+    "attainment_by_beta": [
+     0.925,
+     0.925,
+     0.948,
+     0.948,
+     1.0
+    ]
+   },
+   "subprocess|fresh|parallel_refine": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "subprocess|fresh|memo_module": {
+    "pareto_reward": -0.02666666666666667,
+    "auc": 0.0,
+    "disqualified": 0,
+    "probes_frac_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "attainment_by_beta": [
+     1.0,
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "static_check_ok": false,
+  "static_check_errors": [
+   "cross-episode state (line 59): assignment into the non-local object '_MEMO'; replay resets the policy's per-rollout state, so keep per-episode state on self inside solve()"
+  ],
+  "verdict": "attack REPRODUCED without isolation and BLOCKED by the fix: static check rejects memo_module; inprocess: one namespace for all episodes (pre-fix) memo +0.3453 vs its own honest behaviour (parallel refine) -0.0267, inflated by +0.3720 (beats the honest adaptive policy +0.4165: False); fresh namespace per episode memo -0.0267 = parallel refine -0.0267; subprocess: one namespace for all episodes (pre-fix) memo +0.3453 vs its own honest behaviour (parallel refine) -0.0267, inflated by +0.3720 (beats the honest adaptive policy +0.4165: False); fresh namespace per episode memo -0.0267 = parallel refine -0.0267"
+ },
  "pick_without_guard": "oracle",
  "pick_with_guard": "honest_adaptive",
- "verdict": "REPRODUCED: without the guard selection picks oracle; with it, honest_adaptive. oracle (static check rejects it): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.119 over its online value (honest -0.024); online +0.273 vs honest +0.242 (its online fallback happens to be competitive, so the damage is a mis-estimated value, not an online collapse); the guard disqualifies it in 8/8 worlds; peek_reset (static check passes): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.237 over its online value (honest -0.024); online +0.155 vs honest +0.242 (the replay advantage does not survive online); the guard disqualifies it in 8/8 worlds"
+ "verdict": "REPRODUCED: without the guard selection picks oracle; with it, honest_adaptive. oracle (static check rejects it): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.119 over its online value (honest -0.024); online +0.273 vs honest +0.242 (its online fallback happens to be competitive, so the damage is a mis-estimated value, not an online collapse); the guard disqualifies it in 8/8 worlds; peek_reset (static check passes): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.237 over its online value (honest -0.024); online +0.155 vs honest +0.242 (the replay advantage does not survive online); the guard disqualifies it in 8/8 worlds; cross-episode memory (memo_module, Pareto sweep): attack REPRODUCED without isolation and BLOCKED by the fix: static check rejects memo_module; inprocess: one namespace for all episodes (pre-fix) memo +0.3453 vs its own honest behaviour (parallel refine) -0.0267, inflated by +0.3720 (beats the honest adaptive policy +0.4165: False); fresh namespace per episode memo -0.0267 = parallel refine -0.0267; subprocess: one namespace for all episodes (pre-fix) memo +0.3453 vs its own honest behaviour (parallel refine) -0.0267, inflated by +0.3720 (beats the honest adaptive policy +0.4165: False); fresh namespace per episode memo -0.0267 = parallel refine -0.0267"
 }

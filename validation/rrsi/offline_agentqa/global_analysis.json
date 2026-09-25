@@ -2,38 +2,18 @@
  "failure_modes": [
   {
    "mode": "numeric__incorrect_extracted_answer_v_expected_v",
-   "n_tasks": 11,
+   "n_tasks": 1,
    "affected_tasks": [
-    "evolve-numeric-002",
-    "evolve-numeric-005",
-    "evolve-numeric-009",
-    "evolve-numeric-003",
-    "evolve-numeric-004",
-    "evolve-numeric-006",
-    "evolve-numeric-007",
-    "evolve-numeric-008",
-    "evolve-numeric-010",
-    "evolve-numeric-011",
-    "evolve-numeric-013"
+    "evolve-numeric-011"
    ],
-   "loss": 7.0,
+   "loss": 0.5,
    "description": "tasks of kind 'numeric' end with: Incorrect. Extracted answer <v>; expected <v>.",
    "needed_instead": "a general mechanism that fixes this outcome",
    "representative_evidence": [
     {
-     "task_id": "evolve-numeric-002",
+     "task_id": "evolve-numeric-011",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer '2695710'; expected '2695810'."
-    },
-    {
-     "task_id": "evolve-numeric-005",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '109'; expected '99'."
-    },
-    {
-     "task_id": "evolve-numeric-009",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '1364'; expected '364'."
+     "quote": "Incorrect. Extracted answer '3887010'; expected '3886910'."
     }
    ]
   }
@@ -41,7 +21,7 @@
  "success_habits": [
   {
    "habit": "clean_numeric",
-   "n_tasks": 9,
+   "n_tasks": 19,
    "description": "passing tasks of kind 'numeric' finish cleanly",
    "risk_if_broken": "regressions on currently solved tasks"
   }

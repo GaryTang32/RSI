@@ -1,5 +1,5 @@
 {
- "policy": "b4361e9cf5",
+ "policy": "bfcd4ca1f0",
  "label": "incumbent",
  "objective": "eq1",
  "value": 0.914556,
@@ -26,7 +26,7 @@
   "errors": [],
   "batch_errors": []
  },
- "cpu_s": 0.0104,
- "wall_s": 0.0599,
+ "cpu_s": 0.0185,
+ "wall_s": 0.0999,
  "n_episodes": 3
 }

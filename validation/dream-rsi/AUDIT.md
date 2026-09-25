@@ -167,9 +167,9 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 | M10 | plan_grid before the live grid, only earlier manifests, deterministic (L2:190–242) | re-executed on manifests < t: 13/13 equal | faithful. Label issue: a single manifest is called "improving" (open, minor). |
 | M11 | Default beta ≈ 0.6 when evidence is insufficient; cross-cycle rule (L2:169–188) | hand-checked for all offline phases; LLM policies bake in 0.6 | faithful |
 | M12 | Beta sweep / Pareto objective (L2:12–22, 145–188) | runs use Eq. 1; the sweep is feedback only (degenerate for π₁, flagged) | documented deviation (spec §8.15: the paper never says which objective it used) |
-| M13 | Listing 1 prompt (App. B.1) | the text is followed; single-completion adaptation; history capped at 8 cycles / 30 records per section; **proposals clipped to 600 chars** (now documented); errors head-only during stage A (fixed) | documented deviation + inconsistent-fixed |
-| M14 | Listing 2 prompt + prefix-only rules (App. B.2) | followed; context layout mirrors the paper; static check + leakage screen + 1 repair round (framework additions) | faithful |
-| M15 | Out-of-support plans "cannot earn replay reward" | default `support="clip"`; 0 out-of-support episodes in these runs | documented deviation, not exercised |
+| M13 | Listing 1 prompt (App. B.1) | at the time: the text was followed in condensed form; single-completion adaptation; history capped at 8 cycles / 30 records per section; **proposals clipped to 600 chars**; errors head-only during stage A (fixed). After the claims audit (§8): verbatim Listing 1 (incl. the pkill line), full history by default | inconsistent-fixed |
+| M14 | Listing 2 prompt + prefix-only rules (App. B.2) | at the time: a condensed paraphrase (the claims audit found ≈20 dropped rules; this audit had called it faithful). After the fix (§8): verbatim Listing 2 + framework notes; static check + leakage screen + 1 repair round (framework additions) | inconsistent-fixed |
+| M15 | Out-of-support plans "cannot earn replay reward" | at the time: default `support="clip"`; 0 out-of-support episodes in these runs. Now the default is `no_reward` (§8) | faithful (after the fix) |
 | M16 | Developer "start from a strong recent policy" (L2:247) | 27/27 revisions start from the strongest (value, recency) | faithful |
 | M17 | Dream after the last cycle | skipped (`dream_last=False`) | documented deviation |
 | M18 | Root of round t (unspecified in the paper) | best program so far (13/13 roots verified) | documented choice |
@@ -224,19 +224,25 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 | `dream_last=False` | documented-deviation | impl §8.7 |
 | Root of round t = best program | documented-deviation | paper unspecified (spec §3.3) |
 | Direction provider | documented-deviation | paper unspecified |
-| Out-of-support = clip | documented-deviation | not exercised (0 episodes) |
+| Out-of-support plans | faithful (was documented-deviation "clip") | since the claims-audit fix the default is Listing 2's "cannot earn replay reward" (`support="no_reward"`, Eq. 1 and the Pareto sweep); "clip" is a non-default option. See §8 |
 | Eq. 1 used, Pareto sweep feedback only | documented-deviation | spec §8.15 |
-| Listing-1 history caps (8 cycles, 30 records) | documented-deviation | impl §8.16 |
-| Proposal text clipped at 600 chars in the agent's history | documented-deviation (was undocumented; documented by stage B) | `AttemptRecord.render(max_chars=600)` |
+| Listing-1 history caps (8 cycles, 30 records) | faithful (was documented-deviation) | claims audit N5/M4: every earlier search, every record, full `proposal.md` by default; caps are non-default and announced in the prompt (§8) |
+| Proposal text clipped at 600 chars in the agent's history | faithful (was documented-deviation) | same fix: `AttemptRecord.render_dir` shows the full proposal by default (§8) |
 | Reply-parser trailing `===` / fence | inconsistent-fixed | F1; re-run clean |
 | Traceback head-only in the agent prompt | inconsistent-fixed | F2 |
 | Repaired revision claim = fix only | inconsistent-fixed | F3 |
 | Mutator claims of no-op moves | inconsistent-fixed | stage A |
 | Leading ```` ```python ```` fence left in a file | inconsistent-fixed | F4 (stage B) |
 | Repair prompt without the offending line | inconsistent-fixed | F5 (stage B) |
-| Root cause in `rsi.core.parse_file_blocks` | inconsistent-open (core) | worked around locally; core change request |
-| Adaptive template labels one manifest "live best still improving" | inconsistent-open (minor, label only) | 2 questionable plan steps; the plans are identical to the bootstrap |
-| Replay ranks against online value (frugality bias, one world at t=1) | inconsistent-open (paper-level, spec §8.2/8.4) | `sumdiff_offline` t=1: −0.0028 gain [−0.0046, −0.0012] over 40 searches |
+| Root cause in `rsi.core.parse_file_blocks` | inconsistent-fixed (core) | fixed in `rsi.core` after this audit: lone / trailing fences and `===` terminators are stripped (checked: all three observed reply shapes now parse to clean code); the local workaround stays as a second line of defence |
+| Adaptive template labels one manifest "live best still improving" | inconsistent-fixed | §8: with one manifest the template no longer claims a trend; balanced gains → "evidence insufficient … conservative bootstrap"; both offline runs re-recorded, their cycle-2 plan steps are now correct |
+| Replay ranks against online value (frugality bias, one world at t=1) | faithful (paper-level weakness, documented) | our selection rule IS the paper's argmax; the bias is the method's (spec §8.2/§8.4). Re-measured on the re-recorded `sumdiff_offline` (§8). Mitigations: the restored Listing-2 prompt carries the paper's own guard ("do not select the default simply as the smallest beta that reaches a frozen trace's known ceiling"); `selector="guarded"` (non-default, not the paper's rule; E9) |
+| No-peeking through state kept across replay episodes (claims audit N1) | inconsistent-fixed | §8: fresh policy namespace per episode in both runners + static-check rules; the auditor's memo cheater now scores exactly like parallel refine |
+| Listing-2 developer prompt condensed (≈20 rules dropped; claims audit N2) | inconsistent-fixed | §8: verbatim Listing 2 + a separate "framework notes" block; every version's history and traces in the context |
+| Listing-1 prompt: pkill line and phrases missing, false "in full" claim (claims audit N5) | inconsistent-fixed | §8: verbatim Listing 1; directories rendered inline; `baseline/proposal.md` shown |
+| Dream's per-round budget above Fixed's (claims audit N3) | inconsistent-fixed | §8: `Config.round_budget="fallback"` (default) = Fixed's per-round calls; checked per cycle by the step audit |
+| W below the fixed grid's width in E3/E6 (claims audit N4) | inconsistent-fixed | E3/E5/E6 now run W = grid width (every workspace in parallel) |
+| Policy developer's cost outside the cost story (claims audit N7) | inconsistent-fixed | `CostMeter.developer_revisions`, `llm_calls_total`, `developer_usd_share`; E3 reports LLM calls incl. developer requests |
 | Replay independence of sibling context (§8.3) | unverifiable | sibling copying observed; counterfactuals not generated |
 | Online value of the live dreaming decision (`sumdiff_live_b` r0001) | unverifiable | no live ground truth within the budget |
 | Paper headline results (8 tasks, Gemini, 110/640 calls per round, 5–10 rounds) | unverifiable | scale; official code unreleased |

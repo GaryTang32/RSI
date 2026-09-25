@@ -1,8 +1,16 @@
---- a/tools/str_05.py
-+++ b/tools/str_05.py
+--- a/control/cos_03.py
++++ b/control/cos_03.py
 @@ -0,0 +1,5 @@
-+# mechanism: str_05
-+# component: client_tool
-+# title: Structured search tool
-+"""Structured search tool; aimed at extract, arith, format tasks."""
-+enable("str_05")
++# mechanism: cos_03
++# component: control_flow
++# title: Plan-then-act split
++"""Stop-condition guard; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_03")
+--- a/prompts/nul_09.md
++++ b/prompts/nul_09.md
+@@ -0,0 +1,5 @@
++# mechanism: nul_09
++# component: prompt
++# title: Concise reasoning directive
++"""Concise reasoning directive (rewording of existing guidance)."""
++enable("nul_09")

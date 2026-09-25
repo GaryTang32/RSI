@@ -3,27 +3,27 @@
  "b_t": 2,
  "sigma_t": 1,
  "delta": 0.147196,
- "S_star": 0.75,
- "S": 0.75,
- "C": 2304.3,
- "incumbent": "dca97b44b523369c4b4f16ea864feacafa49b31b79347befa6a57175c817b6f5",
+ "S_star": 0.975,
+ "S": 0.975,
+ "C": 1292.6,
+ "incumbent": "3a6492c84ecbb736ad5cc18736f60b5fe0300977ea77b78e685a901ade7f81d8",
  "winner": null,
  "n_candidates": 2,
- "n_screened": 1,
+ "n_screened": 0,
  "n_untried": 2,
  "prune_set": [
   "control_flow",
-  "skill"
+  "subagent"
  ],
  "decisions": [
   {
    "variant": "A",
    "admissible": false,
-   "reason": "below noise-adjusted floor: S'=0.4750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472)",
-   "S": 0.475,
-   "C": 768.1,
-   "delta_S": -0.275,
-   "delta_C": -0.6666666666666667,
+   "reason": "critic_reject",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
    "novelty": 0,
    "guards": []
   },
@@ -40,6 +40,7 @@
   }
  ],
  "gate_failures": {
+  "A": "critic_reject",
   "B": "critic_reject"
  }
 }

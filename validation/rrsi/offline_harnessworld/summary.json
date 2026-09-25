@@ -27,93 +27,93 @@
   },
   {
    "t": 1,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "S_star": 0.4653125,
+   "S": 0.478125,
+   "C": 2277.07,
+   "S_star": 0.478125,
    "b_t": 4,
    "sigma_t": 0,
-   "winner": null
+   "winner": "A"
   },
   {
    "t": 2,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "S_star": 0.4653125,
+   "S": 0.478125,
+   "C": 2277.07,
+   "S_star": 0.478125,
    "b_t": 4,
    "sigma_t": 0,
    "winner": null
   },
   {
    "t": 3,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "S_star": 0.4653125,
+   "S": 0.478125,
+   "C": 2277.07,
+   "S_star": 0.478125,
    "b_t": 4,
    "sigma_t": 0,
    "winner": null
   },
   {
    "t": 4,
-   "S": 0.4653125,
-   "C": 2184.66,
-   "S_star": 0.4653125,
+   "S": 0.519375,
+   "C": 3487.93,
+   "S_star": 0.519375,
    "b_t": 4,
-   "sigma_t": 1,
-   "winner": null
-  },
-  {
-   "t": 5,
-   "S": 0.49625,
-   "C": 3346.935,
-   "S_star": 0.49625,
-   "b_t": 3,
    "sigma_t": 1,
    "winner": "A"
   },
   {
-   "t": 6,
-   "S": 0.49625,
-   "C": 3346.935,
-   "S_star": 0.49625,
+   "t": 5,
+   "S": 0.519375,
+   "C": 3487.93,
+   "S_star": 0.519375,
    "b_t": 3,
    "sigma_t": 0,
    "winner": null
   },
   {
-   "t": 7,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "S_star": 0.5228125,
+   "t": 6,
+   "S": 0.56,
+   "C": 4000.755,
+   "S_star": 0.56,
    "b_t": 3,
    "sigma_t": 0,
    "winner": "B"
   },
   {
+   "t": 7,
+   "S": 0.5890625,
+   "C": 4284.55,
+   "S_star": 0.5890625,
+   "b_t": 3,
+   "sigma_t": 0,
+   "winner": "A"
+  },
+  {
    "t": 8,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "S_star": 0.5228125,
+   "S": 0.61875,
+   "C": 7843.62,
+   "S_star": 0.61875,
    "b_t": 2,
    "sigma_t": 0,
-   "winner": null
+   "winner": "A"
   },
   {
    "t": 9,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "S_star": 0.5228125,
+   "S": 0.635625,
+   "C": 8767.245,
+   "S_star": 0.635625,
    "b_t": 2,
    "sigma_t": 0,
-   "winner": null
+   "winner": "A"
   },
   {
    "t": 10,
-   "S": 0.5228125,
-   "C": 3462.515,
-   "S_star": 0.5228125,
+   "S": 0.64625,
+   "C": 8980.17,
+   "S_star": 0.64625,
    "b_t": 2,
    "sigma_t": 0,
-   "winner": null
+   "winner": "B"
   }
  ],
  "seed_vs_final": {
@@ -123,8 +123,8 @@
     "C": 2155.795
    },
    "final": {
-    "S": 0.528125,
-    "C": 3477.245
+    "S": 0.6465625,
+    "C": 9199.655
    }
   },
   "holdout": {
@@ -133,8 +133,8 @@
     "C": 2145.6
    },
    "final": {
-    "S": 0.5871875,
-    "C": 3420.08
+    "S": 0.6834375,
+    "C": 9065.475
    }
   },
   "ood": {
@@ -143,32 +143,32 @@
     "C": 2125.795
    },
    "final": {
-    "S": 0.42375,
-    "C": 3268.16
+    "S": 0.50625,
+    "C": 9122.565
    }
   }
  },
  "paired_final_vs_H0": {
   "evolve": {
-   "mean_diff": 0.0565625,
-   "lo": 0.035625,
-   "hi": 0.0784375,
+   "mean_diff": 0.175,
+   "lo": 0.1509375,
+   "hi": 0.1996875,
    "n": 100,
-   "p_better": 0.65
+   "p_better": 0.91
   },
   "holdout": {
-   "mean_diff": 0.06,
-   "lo": 0.036875,
-   "hi": 0.083125,
+   "mean_diff": 0.15625,
+   "lo": 0.131875,
+   "hi": 0.1812578124999999,
    "n": 100,
-   "p_better": 0.64
+   "p_better": 0.86
   },
   "ood": {
-   "mean_diff": 0.0215625,
-   "lo": -0.0034375,
-   "hi": 0.04625,
+   "mean_diff": 0.1040625,
+   "lo": 0.079375,
+   "hi": 0.1293828124999999,
    "n": 100,
-   "p_better": 0.6
+   "p_better": 0.77
   }
  },
  "analytic_expected": {
@@ -179,9 +179,9 @@
     "n_mechanisms": 2
    },
    "final": {
-    "S": 0.5192026886767108,
-    "C": 3452.1126790923045,
-    "n_mechanisms": 6
+    "S": 0.6378844301957445,
+    "C": 9023.125901576532,
+    "n_mechanisms": 16
    }
   },
   "holdout": {
@@ -191,9 +191,9 @@
     "n_mechanisms": 2
    },
    "final": {
-    "S": 0.5814553806209766,
-    "C": 3452.1126790923045,
-    "n_mechanisms": 6
+    "S": 0.6907889311888554,
+    "C": 9023.125901576532,
+    "n_mechanisms": 16
    }
   },
   "ood": {
@@ -203,9 +203,9 @@
     "n_mechanisms": 2
    },
    "final": {
-    "S": 0.4096177454238268,
-    "C": 3452.1126790923045,
-    "n_mechanisms": 6
+    "S": 0.503114013878756,
+    "C": 9023.125901576532,
+    "n_mechanisms": 16
    }
   }
  },
@@ -231,59 +231,59 @@
   "loop_usage": {
    "digester": {
     "calls": 80,
-    "input_tokens": 304429,
-    "output_tokens": 5981,
+    "input_tokens": 304941,
+    "output_tokens": 5968,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 310410
+    "total_tokens": 310909
    },
    "analyst": {
     "calls": 10,
-    "input_tokens": 55639,
-    "output_tokens": 5686,
+    "input_tokens": 55652,
+    "output_tokens": 5481,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 61325
+    "total_tokens": 61133
    },
    "proposer": {
-    "calls": 31,
-    "input_tokens": 424532,
-    "output_tokens": 18492,
+    "calls": 27,
+    "input_tokens": 357678,
+    "output_tokens": 17475,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 443024
+    "total_tokens": 375153
    },
    "critic": {
-    "calls": 20,
-    "input_tokens": 96420,
-    "output_tokens": 317,
+    "calls": 22,
+    "input_tokens": 108282,
+    "output_tokens": 382,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 96737
+    "total_tokens": 108664
    },
    "_total": {
-    "calls": 141,
-    "input_tokens": 881020,
-    "output_tokens": 30476,
+    "calls": 139,
+    "input_tokens": 826553,
+    "output_tokens": 29306,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 911496
+    "total_tokens": 855859
    }
   },
   "loop_usd": 0.0,
-  "loop_calls": 141
+  "loop_calls": 139
  },
  "critic": {
   "reviews": 27,
-  "precheck_rejects": 7,
-  "llm_rejects": 1
+  "precheck_rejects": 5,
+  "llm_rejects": 2
  },
- "n_rollouts": 4000,
+ "n_rollouts": 4200,
  "audit_summary": {
-  "pass": 350,
+  "pass": 360,
   "fail": 0,
   "unverifiable": 0,
-  "info": 6
+  "info": 7
  },
  "audit_failures": [],
  "rounds_table": [
@@ -310,116 +310,93 @@
    "candidates": [
     {
      "candidate": "r0A",
-     "claimed": "[har_05] Semantic memory of general procedures: Semantic mem",
+     "claimed": "[gen_14] Pin the task statement: Pin the task statement; aim",
      "components": [
-      "memory"
+      "context_mgmt"
      ],
      "files": [
-      "memory/har_05.py"
-     ],
-     "proposer_calls": 2,
-     "critic": [
-      "reject(precheck)",
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4391 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
-     "S": 0.4390625,
-     "dS": -0.026249999999999996,
-     "dC": 0.004643743191160172,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r0B",
-     "claimed": "[har_04] Critic sub-call on final answer: Critic sub-call on",
-     "components": [
-      "subagent"
-     ],
-     "files": [
-      "agents/har_04.py"
+      "context/gen_14.py"
      ],
      "proposer_calls": 1,
      "critic": [
       "accept(llm)"
      ],
-     "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-0.788 (<= 0)",
-     "S": 0.456875,
-     "dS": -0.008437500000000042,
-     "dC": 0.029604148929352935,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    }
-   ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r0A: below noise-adjusted floor: S'=0.4391 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159); r0B: cost rule failed: within band: shaped=-0.788 (<= 0)",
-   "monitor": {}
-  },
-  {
-   "t": 1,
-   "b_t": 4,
-   "sigma_t": 0,
-   "S_t": 0.4653125,
-   "S_star": 0.4653125,
-   "delta": 0.01594,
-   "untried": [
-    "prompt",
-    "control_flow",
-    "config",
-    "output_plumbing",
-    "context_mgmt",
-    "client_tool",
-    "skill"
-   ],
-   "reserved": [],
-   "prune": [
-    "memory",
-    "subagent"
-   ],
-   "candidates": [
-    {
-     "candidate": "r1A",
-     "claimed": "[nul_08] Lower sampling temperature for final answers: Lower; [nul_10] Drop stale observations: Drop stale observations (r; [nul_13] Answer-line extractor: Answer-line extractor (rewor; [har_03] Short worked example of the procedure: Short worked",
-     "components": [
-      "config",
-      "context_mgmt",
-      "output_plumbing",
-      "prompt"
-     ],
-     "files": [
-      "config/nul_08.py",
-      "context/nul_10.py",
-      "output/nul_13.py",
-      "prompts/har_03.md"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4300 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
-     "S": 0.43,
-     "dS": -0.035312500000000024,
-     "dC": 0.003934250638543415,
+     "admissible": true,
+     "reason": "admissible: S'=0.4781 >= S*-delta=0.4494; within band: shaped=+0.647 (> 0)",
+     "S": 0.478125,
+     "dS": 0.012812500000000004,
+     "dC": 0.042299488249887995,
      "nu": 0,
      "branch": "within_band_shaped",
      "gate_failure": null
     },
     {
-     "candidate": "r1B",
-     "claimed": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [har_19] Answer-line extractor: Answer-line extractor; aimed; [gen_12] Role and scope statement: Role and scope statement;",
+     "candidate": "r0B",
+     "claimed": "[har_15] Early exit when the answer is certain: Early exit w; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex",
      "components": [
-      "subagent",
-      "output_plumbing",
-      "prompt"
+      "control_flow",
+      "subagent"
      ],
      "files": [
-      "agents/cos_07.py",
-      "output/har_19.py",
-      "prompts/gen_12.md"
+      "agents/cos_08.py",
+      "control/har_15.py"
+     ],
+     "proposer_calls": 3,
+     "critic": [
+      "reject(precheck)",
+      "reject(llm)",
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.4288 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
+     "S": 0.42875,
+     "dS": -0.0365625,
+     "dC": 0.3637614090979833,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r0A",
+   "why": "argmax S' over the admissible set {'r0A': 0.478125} -> r0A (S'=0.4781); S* 0.4653 -> 0.4781",
+   "monitor": {
+    "holdout": 0.5325,
+    "ood": 0.405
+   }
+  },
+  {
+   "t": 1,
+   "b_t": 4,
+   "sigma_t": 0,
+   "S_t": 0.478125,
+   "S_star": 0.478125,
+   "delta": 0.01594,
+   "untried": [
+    "prompt",
+    "config",
+    "output_plumbing",
+    "client_tool",
+    "skill",
+    "memory"
+   ],
+   "reserved": [],
+   "prune": [
+    "control_flow",
+    "subagent"
+   ],
+   "candidates": [
+    {
+     "candidate": "r1A",
+     "claimed": "[har_09] Semantic memory of general procedures: Semantic mem; [nul_10] Drop stale observations: Drop stale observations (r; [gen_04] Bounded self-verification pass: Bounded self-verifi",
+     "components": [
+      "memory",
+      "context_mgmt",
+      "control_flow"
+     ],
+     "files": [
+      "context/nul_10.py",
+      "control/gen_04.py",
+      "memory/har_09.py"
      ],
      "proposer_calls": 2,
      "critic": [
@@ -427,188 +404,143 @@
       "accept(llm)"
      ],
      "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4234 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
-     "S": 0.4234375,
-     "dS": -0.041874999999999996,
-     "dC": 0.8499285930076078,
+     "reason": "below noise-adjusted floor: S'=0.4619 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159)",
+     "S": 0.461875,
+     "dS": -0.016250000000000042,
+     "dC": 0.024836741953475225,
      "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r1B",
+     "claimed": "[gen_04] Bounded self-verification pass: Bounded self-verifi; [cos_02] Pin the task statement: Drop stale observations; ru; [nul_10] Drop stale observations: Drop stale observations (r",
+     "components": [
+      "control_flow",
+      "context_mgmt",
+      "context_mgmt"
+     ],
+     "files": [
+      "context/cos_02.py",
+      "context/nul_10.py",
+      "control/gen_04.py"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-11.902 (<= 0)",
+     "S": 0.4671875,
+     "dS": -0.010937500000000044,
+     "dC": 0.7205377963786794,
+     "nu": 0,
      "branch": "within_band_shaped",
      "gate_failure": null
     }
    ],
    "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r1A: below noise-adjusted floor: S'=0.4300 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159); r1B: below noise-adjusted floor: S'=0.4234 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
+   "why": "no admissible candidate -> H_{t+1} = H_t; r1A: below noise-adjusted floor: S'=0.4619 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159); r1B: cost rule failed: within band: shaped=-11.902 (<= 0)",
    "monitor": {}
   },
   {
    "t": 2,
    "b_t": 4,
    "sigma_t": 0,
-   "S_t": 0.4653125,
-   "S_star": 0.4653125,
+   "S_t": 0.478125,
+   "S_star": 0.478125,
    "delta": 0.01594,
    "untried": [
-    "control_flow",
+    "prompt",
+    "config",
+    "output_plumbing",
     "client_tool",
     "skill"
    ],
    "reserved": [],
    "prune": [
-    "config",
-    "context_mgmt",
+    "control_flow",
     "memory",
-    "output_plumbing",
-    "prompt",
     "subagent"
    ],
    "candidates": [
     {
      "candidate": "r2A",
-     "claimed": "[gen_05] Bounded self-verification pass: Bounded self-verifi; [har_10] Raise the per-step output cap: Raise the per-step o; [nul_11] Ask for units and formats: Ask for units and format",
+     "claimed": "[cos_05] Bounded checker sub-call: Bounded checker sub-call;; [har_14] Procedure card: verification: Procedure card: verif; [nul_01] Checklist of constraints: Checklist of constraints ; [har_08] Planner sub-call: Planner sub-call; aimed at extrac",
      "components": [
-      "control_flow",
-      "config",
-      "prompt"
-     ],
-     "files": [
-      "config/har_10.py",
-      "control/gen_05.py",
-      "prompts/nul_11.md"
-     ],
-     "proposer_calls": 2,
-     "critic": [
-      "reject(precheck)",
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-2.111 (<= 0)",
-     "S": 0.4565625,
-     "dS": -0.008750000000000036,
-     "dC": 0.08242472512885309,
-     "nu": 0,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r2B",
-     "claimed": "[cos_09] Retry once on malformed output: Early exit when the; [str_04] Planner sub-call: Planner sub-call; aimed at extrac; [gen_13] Bounded self-verification pass: Bounded self-verifi; [har_09] Semantic memory of general procedures: Semantic mem",
-     "components": [
-      "control_flow",
       "subagent",
-      "control_flow",
-      "memory"
+      "skill",
+      "prompt",
+      "subagent"
      ],
      "files": [
-      "agents/str_04.py",
-      "control/cos_09.py",
-      "control/gen_13.py",
-      "memory/har_09.py"
+      "agents/cos_05.py",
+      "agents/har_08.py",
+      "prompts/nul_01.md",
+      "skills/har_14/SKILL.md"
      ],
      "proposer_calls": 1,
      "critic": [
       "accept(llm)"
      ],
      "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4363 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
-     "S": 0.43625,
-     "dS": -0.02906249999999999,
-     "dC": 0.9713868519586575,
+     "reason": "below noise-adjusted floor: S'=0.4075 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159)",
+     "S": 0.4075,
+     "dS": -0.07062500000000005,
+     "dC": 0.659198004453091,
      "nu": 2,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r2B",
+     "claimed": "[gen_01] Role and scope statement: Role and scope statement;; [har_11] Bounded checker sub-call: Bounded checker sub-call;; [cos_09] Retry once on malformed output: Early exit when the; [nul_03] Head/tail truncation of long tool output: Head/tail",
+     "components": [
+      "prompt",
+      "subagent",
+      "control_flow",
+      "output_plumbing"
+     ],
+     "files": [
+      "agents/har_11.py",
+      "control/cos_09.py",
+      "output/nul_03.py",
+      "prompts/gen_01.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.4363 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159)",
+     "S": 0.43625,
+     "dS": -0.041874999999999996,
+     "dC": 0.9108064310715084,
+     "nu": 1,
      "branch": "within_band_shaped",
      "gate_failure": null
     }
    ],
    "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r2A: cost rule failed: within band: shaped=-2.111 (<= 0); r2B: below noise-adjusted floor: S'=0.4363 < S*-delta=0.4494 (S* 0.4653 - delta 0.0159)",
+   "why": "no admissible candidate -> H_{t+1} = H_t; r2A: below noise-adjusted floor: S'=0.4075 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159); r2B: below noise-adjusted floor: S'=0.4363 < S*-delta=0.4622 (S* 0.4781 - delta 0.0159)",
    "monitor": {}
   },
   {
    "t": 3,
    "b_t": 4,
    "sigma_t": 1,
-   "S_t": 0.4653125,
-   "S_star": 0.4653125,
+   "S_t": 0.478125,
+   "S_star": 0.478125,
    "delta": 0.01594,
    "untried": [
-    "client_tool",
-    "skill"
-   ],
-   "reserved": [
-    "B"
-   ],
-   "prune": [
     "config",
-    "context_mgmt",
-    "control_flow",
-    "memory",
-    "output_plumbing",
-    "prompt",
-    "subagent"
-   ],
-   "candidates": [
-    {
-     "candidate": "r3A",
-     "claimed": "[har_12] Procedure card: estimation: Procedure card: estimat; [nar_03] Collapse repeated log lines: Collapse repeated log ",
-     "components": [
-      "skill",
-      "output_plumbing"
-     ],
-     "files": [
-      "output/nar_03.py",
-      "skills/har_12/SKILL.md"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-0.768 (<= 0)",
-     "S": 0.4596875,
-     "dS": -0.005624999999999991,
-     "dC": 0.047030201495885104,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r3B",
-     "claimed": "[lea_03] Practice answer cache: Return remembered answers fo; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex; [gen_07] Checklist of constraints: Checklist of constraints;; [gen_03] Summarize old turns: Summarize old turns; aimed at ",
-     "components": [],
-     "files": null,
-     "proposer_calls": 5,
-     "critic": [
-      "reject(precheck)"
-     ],
-     "admissible": false,
-     "reason": "critic_reject",
-     "S": null,
-     "dS": null,
-     "dC": null,
-     "nu": null,
-     "branch": null,
-     "gate_failure": "critic_reject"
-    }
-   ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r3A: cost rule failed: within band: shaped=-0.768 (<= 0); r3B: critic_reject",
-   "monitor": {}
-  },
-  {
-   "t": 4,
-   "b_t": 3,
-   "sigma_t": 1,
-   "S_t": 0.4653125,
-   "S_star": 0.4653125,
-   "delta": 0.01594,
-   "untried": [
     "client_tool"
    ],
    "reserved": [
     "B"
    ],
    "prune": [
-    "config",
-    "context_mgmt",
     "control_flow",
     "memory",
     "output_plumbing",
@@ -618,39 +550,17 @@
    ],
    "candidates": [
     {
-     "candidate": "r4A",
-     "claimed": "[cos_06] Short worked example of the procedure: Role and sco; [gen_02] Drop stale observations: Drop stale observations; a; [dec_00] Keep the last N tool results verbatim: Keep the las",
+     "candidate": "r3A",
+     "claimed": "[str_10] Structured search tool: Structured search tool; aim; [cos_06] Short worked example of the procedure: Role and sco; [nar_04] Summarize old turns: Summarize old turns; aimed at ",
      "components": [
+      "client_tool",
       "prompt",
-      "context_mgmt",
       "context_mgmt"
      ],
      "files": [
-      "context/dec_00.py",
-      "context/gen_02.py",
-      "prompts/cos_06.md"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": true,
-     "reason": "admissible: S'=0.4963 >= S*-delta=0.4494; dC=+0.532 <= beta0+beta1*dS=1.338",
-     "S": 0.49625,
-     "dS": 0.030937500000000007,
-     "dC": 0.5320164236082503,
-     "nu": 0,
-     "branch": "cost_rule",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r4B",
-     "claimed": "[str_05] Structured search tool: Structured search tool; aim",
-     "components": [
-      "client_tool"
-     ],
-     "files": [
-      "tools/str_05.py"
+      "context/nar_04.py",
+      "prompts/cos_06.md",
+      "tools/str_10.py"
      ],
      "proposer_calls": 2,
      "critic": [
@@ -658,33 +568,128 @@
       "accept(llm)"
      ],
      "admissible": true,
-     "reason": "admissible: S'=0.4947 >= S*-delta=0.4494; dC=+0.025 <= beta0+beta1*dS=1.275",
-     "S": 0.4946875,
-     "dS": 0.029374999999999984,
-     "dC": 0.02499931339430403,
+     "reason": "admissible: S'=0.5194 >= S*-delta=0.4622; dC=+0.532 <= beta0+beta1*dS=1.750",
+     "S": 0.519375,
+     "dS": 0.04125000000000001,
+     "dC": 0.5317623085807637,
+     "nu": 1,
+     "branch": "cost_rule",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r3B",
+     "claimed": "[nul_08] Lower sampling temperature for final answers: Lower; [str_02] Code runner tool: Code runner tool; aimed at arith,",
+     "components": [
+      "config",
+      "client_tool"
+     ],
+     "files": [
+      "config/nul_08.py",
+      "tools/str_02.py"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.5028 >= S*-delta=0.4622; dC=+0.118 <= beta0+beta1*dS=1.087",
+     "S": 0.5028125,
+     "dS": 0.024687499999999973,
+     "dC": 0.11812548582169191,
      "nu": 1,
      "branch": "cost_rule",
      "gate_failure": null
     }
    ],
-   "kept": "r4A",
-   "why": "argmax S' over the admissible set {'r4A': 0.49625, 'r4B': 0.4946875} -> r4A (S'=0.4963); S* 0.4653 -> 0.4963",
+   "kept": "r3A",
+   "why": "argmax S' over the admissible set {'r3A': 0.519375, 'r3B': 0.5028125} -> r3A (S'=0.5194); S* 0.4781 -> 0.5194",
    "monitor": {
-    "holdout": 0.55125,
-    "ood": 0.396875
+    "holdout": 0.569375,
+    "ood": 0.42625
    }
+  },
+  {
+   "t": 4,
+   "b_t": 3,
+   "sigma_t": 0,
+   "S_t": 0.519375,
+   "S_star": 0.519375,
+   "delta": 0.01594,
+   "untried": [],
+   "reserved": [],
+   "prune": [
+    "control_flow",
+    "memory",
+    "output_plumbing",
+    "skill",
+    "subagent"
+   ],
+   "candidates": [
+    {
+     "candidate": "r4A",
+     "claimed": "[nar_03] Collapse repeated log lines: Collapse repeated log ; [gen_02] Drop stale observations: Drop stale observations; a; [har_18] Procedure card: parsing: Procedure card: parsing; a",
+     "components": [
+      "output_plumbing",
+      "context_mgmt",
+      "skill"
+     ],
+     "files": [
+      "context/gen_02.py",
+      "output/nar_03.py",
+      "skills/har_18/SKILL.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.5012 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+     "S": 0.50125,
+     "dS": -0.018125000000000058,
+     "dC": 0.14863257003437572,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r4B",
+     "claimed": "[nul_09] Concise reasoning directive: Concise reasoning dire; [cos_03] Plan-then-act split: Stop-condition guard; runs ext",
+     "components": [
+      "prompt",
+      "control_flow"
+     ],
+     "files": [
+      "control/cos_03.py",
+      "prompts/nul_09.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.5003 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+     "S": 0.5003125,
+     "dS": -0.019062499999999982,
+     "dC": 0.5054516575734032,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r4A: below noise-adjusted floor: S'=0.5012 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159); r4B: below noise-adjusted floor: S'=0.5003 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+   "monitor": {}
   },
   {
    "t": 5,
    "b_t": 3,
    "sigma_t": 0,
-   "S_t": 0.49625,
-   "S_star": 0.49625,
+   "S_t": 0.519375,
+   "S_star": 0.519375,
    "delta": 0.01594,
    "untried": [],
    "reserved": [],
    "prune": [
-    "config",
     "control_flow",
     "memory",
     "output_plumbing",
@@ -694,15 +699,15 @@
    "candidates": [
     {
      "candidate": "r5A",
-     "claimed": "[har_14] Procedure card: verification: Procedure card: verif; [cos_03] Plan-then-act split: Stop-condition guard; runs ext; [gen_00] Raise the per-step output cap: Raise the per-step o",
+     "claimed": "[gen_06] Checklist of constraints: Checklist of constraints;; [har_01] Planner sub-call: Planner sub-call; aimed at extrac; [har_14] Procedure card: verification: Procedure card: verif",
      "components": [
-      "skill",
-      "control_flow",
-      "config"
+      "prompt",
+      "subagent",
+      "skill"
      ],
      "files": [
-      "config/gen_00.py",
-      "control/cos_03.py",
+      "agents/har_01.py",
+      "prompts/gen_06.md",
       "skills/har_14/SKILL.md"
      ],
      "proposer_calls": 1,
@@ -710,337 +715,351 @@
       "accept(llm)"
      ],
      "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4703 < S*-delta=0.4803 (S* 0.4963 - delta 0.0159)",
-     "S": 0.4703125,
-     "dS": -0.025937500000000002,
-     "dC": 0.5281160225699035,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r5B",
-     "claimed": "[gen_15] Short worked example of the procedure: Short worked; [har_08] Planner sub-call: Planner sub-call; aimed at extrac",
-     "components": [
-      "prompt",
-      "subagent"
-     ],
-     "files": [
-      "agents/har_08.py",
-      "prompts/gen_15.md"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-2.699 (<= 0)",
-     "S": 0.4809375,
-     "dS": -0.015312500000000007,
-     "dC": 0.11118829615752916,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    }
-   ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r5A: below noise-adjusted floor: S'=0.4703 < S*-delta=0.4803 (S* 0.4963 - delta 0.0159); r5B: cost rule failed: within band: shaped=-2.699 (<= 0)",
-   "monitor": {}
-  },
-  {
-   "t": 6,
-   "b_t": 3,
-   "sigma_t": 0,
-   "S_t": 0.49625,
-   "S_star": 0.49625,
-   "delta": 0.01594,
-   "untried": [],
-   "reserved": [],
-   "prune": [
-    "config",
-    "control_flow",
-    "memory",
-    "output_plumbing",
-    "skill",
-    "subagent"
-   ],
-   "candidates": [
-    {
-     "candidate": "r6A",
-     "claimed": "[har_01] Planner sub-call: Planner sub-call; aimed at extrac; [har_09] Semantic memory of general procedures: Semantic mem",
-     "components": [
-      "subagent",
-      "memory"
-     ],
-     "files": [
-      "agents/har_01.py",
-      "memory/har_09.py"
-     ],
-     "proposer_calls": 2,
-     "critic": [
-      "reject(precheck)",
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4106 < S*-delta=0.4803 (S* 0.4963 - delta 0.0159)",
-     "S": 0.410625,
-     "dS": -0.085625,
-     "dC": 0.09272513508628051,
+     "reason": "below noise-adjusted floor: S'=0.4541 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+     "S": 0.4540625,
+     "dS": -0.06531250000000005,
+     "dC": 0.14206993833018444,
      "nu": 2,
      "branch": "within_band_shaped",
      "gate_failure": null
     },
     {
-     "candidate": "r6B",
-     "claimed": "[nar_02] Collapse repeated log lines: Collapse repeated log ",
+     "candidate": "r5B",
+     "claimed": "[gen_00] Raise the per-step output cap: Raise the per-step o; [str_01] Procedure card: decomposition: Procedure card: deco; [nul_02] Retry once on malformed output: Retry once on malfo",
      "components": [
-      "output_plumbing"
+      "config",
+      "skill",
+      "control_flow"
      ],
      "files": [
-      "output/nar_02.py"
+      "config/gen_00.py",
+      "control/nul_02.py",
+      "skills/str_01/SKILL.md"
      ],
      "proposer_calls": 1,
      "critic": [
       "accept(llm)"
      ],
      "admissible": true,
-     "reason": "admissible: S'=0.5228 >= S*-delta=0.4803; dC=+0.035 <= beta0+beta1*dS=1.162",
-     "S": 0.5228125,
-     "dS": 0.02656249999999999,
-     "dC": 0.034533087735495294,
-     "nu": 0,
+     "reason": "admissible: S'=0.5600 >= S*-delta=0.5034; dC=+0.147 <= beta0+beta1*dS=1.725",
+     "S": 0.56,
+     "dS": 0.04062500000000002,
+     "dC": 0.1470284667410184,
+     "nu": 1,
      "branch": "cost_rule",
      "gate_failure": null
     }
    ],
-   "kept": "r6B",
-   "why": "argmax S' over the admissible set {'r6B': 0.5228125} -> r6B (S'=0.5228); S* 0.4963 -> 0.5228",
+   "kept": "r5B",
+   "why": "argmax S' over the admissible set {'r5B': 0.56} -> r5B (S'=0.5600); S* 0.5194 -> 0.5600",
    "monitor": {
-    "holdout": 0.57875,
-    "ood": 0.42875
+    "holdout": 0.629375,
+    "ood": 0.46625
    }
   },
   {
-   "t": 7,
-   "b_t": 2,
+   "t": 6,
+   "b_t": 3,
    "sigma_t": 0,
-   "S_t": 0.5228125,
-   "S_star": 0.5228125,
+   "S_t": 0.56,
+   "S_star": 0.56,
    "delta": 0.01594,
    "untried": [],
    "reserved": [],
    "prune": [
-    "config",
-    "control_flow",
     "memory",
-    "skill",
+    "output_plumbing",
     "subagent"
    ],
    "candidates": [
     {
-     "candidate": "r7A",
-     "claimed": "[nul_04] Longer tool timeout: Longer tool timeout (rewording; [cos_02] Pin the task statement: Drop stale observations; ru",
+     "candidate": "r6A",
+     "claimed": "[str_06] Planner sub-call: Planner sub-call; aimed at extrac; [nul_14] Tighter step limit: Tighter step limit (rewording o",
      "components": [
-      "config",
-      "context_mgmt"
-     ],
-     "files": [
-      "config/nul_04.py",
-      "context/cos_02.py"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.5025 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
-     "S": 0.5025,
-     "dS": -0.020312500000000067,
-     "dC": 0.747550552127572,
-     "nu": 0,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r7B",
-     "claimed": "[cos_02] Pin the task statement: Drop stale observations; ru; [har_17] Planner sub-call: Planner sub-call; aimed at extrac",
-     "components": [
-      "context_mgmt",
-      "subagent"
-     ],
-     "files": [
-      "agents/har_17.py",
-      "context/cos_02.py"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4775 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
-     "S": 0.4775,
-     "dS": -0.04531250000000003,
-     "dC": 0.7697035247500733,
-     "nu": 1,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    }
-   ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r7A: below noise-adjusted floor: S'=0.5025 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159); r7B: below noise-adjusted floor: S'=0.4775 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
-   "monitor": {}
-  },
-  {
-   "t": 8,
-   "b_t": 2,
-   "sigma_t": 0,
-   "S_t": 0.5228125,
-   "S_star": 0.5228125,
-   "delta": 0.01594,
-   "untried": [],
-   "reserved": [],
-   "prune": [
-    "config",
-    "control_flow",
-    "memory",
-    "skill",
-    "subagent"
-   ],
-   "candidates": [
-    {
-     "candidate": "r8A",
-     "claimed": "[gen_14] Pin the task statement: Pin the task statement; aim; [har_02] Two-phase draft and finalize: Two-phase draft and f",
-     "components": [
-      "context_mgmt",
-      "control_flow"
-     ],
-     "files": [
-      "context/gen_14.py",
-      "control/har_02.py"
-     ],
-     "proposer_calls": 1,
-     "critic": [
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.4869 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
-     "S": 0.486875,
-     "dS": -0.03593750000000001,
-     "dC": 0.04833480865786867,
-     "nu": 0,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    },
-    {
-     "candidate": "r8B",
-     "claimed": "[nul_04] Longer tool timeout: Longer tool timeout (rewording",
-     "components": [
+      "subagent",
       "config"
      ],
      "files": [
-      "config/nul_04.py"
-     ],
-     "proposer_calls": 2,
-     "critic": [
-      "reject(precheck)",
-      "accept(llm)"
-     ],
-     "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-0.582 (<= 0)",
-     "S": 0.5196875,
-     "dS": -0.0031250000000000444,
-     "dC": 0.017953712835901064,
-     "nu": 0,
-     "branch": "within_band_shaped",
-     "gate_failure": null
-    }
-   ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r8A: below noise-adjusted floor: S'=0.4869 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159); r8B: cost rule failed: within band: shaped=-0.582 (<= 0)",
-   "monitor": {}
-  },
-  {
-   "t": 9,
-   "b_t": 2,
-   "sigma_t": 0,
-   "S_t": 0.5228125,
-   "S_star": 0.5228125,
-   "delta": 0.01594,
-   "untried": [],
-   "reserved": [],
-   "prune": [
-    "client_tool",
-    "config",
-    "context_mgmt",
-    "control_flow",
-    "memory",
-    "prompt",
-    "skill",
-    "subagent"
-   ],
-   "candidates": [
-    {
-     "candidate": "r9A",
-     "claimed": "prune: [dec_00] Keep the last N tool results verbatim stoppe",
-     "components": [
-      "context_mgmt"
-     ],
-     "files": [
-      "context/dec_00.py"
+      "agents/str_06.py",
+      "config/nul_14.py"
      ],
      "proposer_calls": 2,
      "critic": [
       "reject(llm)",
       "accept(llm)"
      ],
-     "admissible": false,
-     "reason": "below noise-adjusted floor: S'=0.5056 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
-     "S": 0.505625,
-     "dS": -0.017187500000000022,
-     "dC": -0.05277233456028347,
-     "nu": 0,
-     "branch": "within_band_shaped",
+     "admissible": true,
+     "reason": "admissible: S'=0.5891 >= S*-delta=0.5441; dC=+0.071 <= beta0+beta1*dS=1.262",
+     "S": 0.5890625,
+     "dS": 0.02906249999999999,
+     "dC": 0.07093536095062059,
+     "nu": 1,
+     "branch": "cost_rule",
      "gate_failure": null
     },
     {
-     "candidate": "r9B",
-     "claimed": "[nul_06] Raise the per-step output cap: Raise the per-step o; [har_16] Scratchpad for intermediate results: Scratchpad for",
+     "candidate": "r6B",
+     "claimed": "[cos_00] Stop-condition guard: Bounded self-verification pas; [gen_03] Summarize old turns: Summarize old turns; aimed at ; [nul_14] Tighter step limit: Tighter step limit (rewording o",
      "components": [
-      "config",
-      "memory"
+      "control_flow",
+      "context_mgmt",
+      "config"
      ],
      "files": [
-      "config/nul_06.py",
-      "memory/har_16.py"
+      "config/nul_14.py",
+      "context/gen_03.py",
+      "control/cos_00.py"
      ],
      "proposer_calls": 1,
      "critic": [
       "accept(llm)"
      ],
      "admissible": false,
-     "reason": "cost rule failed: within band: shaped=-1.707 (<= 0)",
-     "S": 0.509375,
-     "dS": -0.013437499999999991,
-     "dC": 0.05756653761788766,
+     "reason": "cost rule failed: within band: shaped=-6.279 (<= 0)",
+     "S": 0.5684375,
+     "dS": 0.008437499999999987,
+     "dC": 0.4748316255306809,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r6A",
+   "why": "argmax S' over the admissible set {'r6A': 0.5890625} -> r6A (S'=0.5891); S* 0.5600 -> 0.5891",
+   "monitor": {
+    "holdout": 0.659375,
+    "ood": 0.480625
+   }
+  },
+  {
+   "t": 7,
+   "b_t": 2,
+   "sigma_t": 0,
+   "S_t": 0.5890625,
+   "S_star": 0.5890625,
+   "delta": 0.01594,
+   "untried": [],
+   "reserved": [],
+   "prune": [
+    "memory",
+    "output_plumbing"
+   ],
+   "candidates": [
+    {
+     "candidate": "r7A",
+     "claimed": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [dec_02] Ask for units and formats: Ask for units and format",
+     "components": [
+      "subagent",
+      "prompt"
+     ],
+     "files": [
+      "agents/cos_07.py",
+      "prompts/dec_02.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6188 >= S*-delta=0.5731; dC=+0.831 <= beta0+beta1*dS=1.287",
+     "S": 0.61875,
+     "dS": 0.029687499999999978,
+     "dC": 0.8306753334655914,
+     "nu": 0,
+     "branch": "cost_rule",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r7B",
+     "claimed": "[har_17] Planner sub-call: Planner sub-call; aimed at extrac; [har_03] Short worked example of the procedure: Short worked",
+     "components": [
+      "subagent",
+      "prompt"
+     ],
+     "files": [
+      "agents/har_17.py",
+      "prompts/har_03.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.5578 < S*-delta=0.5731 (S* 0.5891 - delta 0.0159)",
+     "S": 0.5578125,
+     "dS": -0.03125,
+     "dC": 0.0793537244284697,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r7A",
+   "why": "argmax S' over the admissible set {'r7A': 0.61875} -> r7A (S'=0.6188); S* 0.5891 -> 0.6188",
+   "monitor": {
+    "holdout": 0.665,
+    "ood": 0.508125
+   }
+  },
+  {
+   "t": 8,
+   "b_t": 2,
+   "sigma_t": 0,
+   "S_t": 0.61875,
+   "S_star": 0.61875,
+   "delta": 0.01594,
+   "untried": [],
+   "reserved": [],
+   "prune": [
+    "client_tool",
+    "memory",
+    "output_plumbing"
+   ],
+   "candidates": [
+    {
+     "candidate": "r8A",
+     "claimed": "[str_08] Procedure card: verification: Procedure card: verif",
+     "components": [
+      "skill"
+     ],
+     "files": [
+      "skills/str_08/SKILL.md"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6356 >= S*-delta=0.6028; dC=+0.118 <= beta0+beta1*dS=0.775",
+     "S": 0.635625,
+     "dS": 0.016874999999999973,
+     "dC": 0.1177549396834626,
+     "nu": 0,
+     "branch": "cost_rule",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r8B",
+     "claimed": "prune: [str_10] Structured search tool stopped earning its p",
+     "components": [
+      "client_tool"
+     ],
+     "files": [
+      "tools/str_10.py"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6147 >= S*-delta=0.6028; within band: shaped=+1.568 (> 0)",
+     "S": 0.6146875,
+     "dS": -0.004062499999999969,
+     "dC": -0.13160823701301183,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r8A",
+   "why": "argmax S' over the admissible set {'r8A': 0.635625, 'r8B': 0.6146875} -> r8A (S'=0.6356); S* 0.6188 -> 0.6356",
+   "monitor": {
+    "holdout": 0.6725,
+    "ood": 0.521875
+   }
+  },
+  {
+   "t": 9,
+   "b_t": 2,
+   "sigma_t": 0,
+   "S_t": 0.635625,
+   "S_star": 0.635625,
+   "delta": 0.01594,
+   "untried": [],
+   "reserved": [],
+   "prune": [
+    "client_tool",
+    "memory",
+    "output_plumbing"
+   ],
+   "candidates": [
+    {
+     "candidate": "r9A",
+     "claimed": "[gen_13] Bounded self-verification pass: Bounded self-verifi; [har_19] Answer-line extractor: Answer-line extractor; aimed",
+     "components": [
+      "control_flow",
+      "output_plumbing"
+     ],
+     "files": [
+      "control/gen_13.py",
+      "output/har_19.py"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-1.819 (<= 0)",
+     "S": 0.6240625,
+     "dS": -0.011562500000000031,
+     "dC": 0.044190620884895816,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r9B",
+     "claimed": "[str_11] Code runner tool: Code runner tool; aimed at extrac; [har_05] Semantic memory of general procedures: Semantic mem",
+     "components": [
+      "client_tool",
+      "memory"
+     ],
+     "files": [
+      "memory/har_05.py",
+      "tools/str_11.py"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6462 >= S*-delta=0.6197; within band: shaped=+1.198 (> 0)",
+     "S": 0.64625,
+     "dS": 0.010624999999999996,
+     "dC": 0.02428642064867575,
      "nu": 1,
      "branch": "within_band_shaped",
      "gate_failure": null
     }
    ],
-   "kept": null,
-   "why": "no admissible candidate -> H_{t+1} = H_t; r9A: below noise-adjusted floor: S'=0.5056 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159); r9B: cost rule failed: within band: shaped=-1.707 (<= 0)",
-   "monitor": {}
+   "kept": "r9B",
+   "why": "argmax S' over the admissible set {'r9B': 0.64625} -> r9B (S'=0.6462); S* 0.6356 -> 0.6462",
+   "monitor": {
+    "holdout": 0.68375,
+    "ood": 0.5225
+   }
   }
  ],
  "final_files": [
-  "context/dec_00.py",
-  "context/gen_02.py",
+  "agents/cos_07.py",
+  "agents/str_06.py",
+  "config/gen_00.py",
+  "config/nul_14.py",
   "context/gen_11.py",
+  "context/gen_14.py",
+  "context/nar_04.py",
+  "control/nul_02.py",
   "harness.md",
-  "output/nar_02.py",
+  "memory/har_05.py",
   "prompts/cos_06.md",
-  "prompts/gen_09.md"
+  "prompts/dec_02.md",
+  "prompts/gen_09.md",
+  "skills/str_01/SKILL.md",
+  "skills/str_08/SKILL.md",
+  "tools/str_10.py",
+  "tools/str_11.py"
  ],
  "trace_md": "/home/user/RSI/validation/rrsi/offline_harnessworld/TRACE.md",
- "wall_s": 1.2
+ "wall_s": 2.1
 }

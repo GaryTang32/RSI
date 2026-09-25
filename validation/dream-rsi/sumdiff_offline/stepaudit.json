@@ -1,8 +1,8 @@
 {
  "run": "sumdiff_offline",
  "counts": {
-  "correct": 107,
-  "questionable": 2
+  "correct": 112,
+  "questionable": 1
  },
  "steps": [
   {
@@ -182,6 +182,13 @@
   },
   {
    "round": 1,
+   "kind": "budget",
+   "step": "cycle 1 per-round call budget",
+   "verdict": "correct",
+   "evidence": "15 agent calls <= Fixed's per-round budget 15 (plan used 3 x 5 cells)"
+  },
+  {
+   "round": 1,
    "kind": "manifest",
    "step": "cycle 1 live_cycle_manifest",
    "verdict": "correct",
@@ -220,7 +227,7 @@
    "kind": "revision",
    "step": "r0001_t1m1",
    "verdict": "correct",
-   "evidence": "diff = own diff of history/r0000 -> history/r0001 (246 lines); base r0000 = strongest so far (value, recency); mutator moves ['rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule', 'ceiling reached with many probes: try a cheaper search (patience)', 'perturb plan_depth_step -> 2', 'perturb prune_lo -> 0.403']"
+   "evidence": "diff = own diff of history/r0000 -> history/r0001 (252 lines); base r0000 = strongest so far (value, recency); mutator moves ['rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule', 'ceiling reached with many probes: try a cheaper search (patience)', 'perturb plan_depth_step -> 2', 'perturb prune_lo -> 0.403']"
   },
   {
    "round": 1,
@@ -241,7 +248,7 @@
    "kind": "selection",
    "step": "cycle 1 policy selection",
    "verdict": "questionable",
-   "evidence": "JUDGEMENT: rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Frugality bias of the replay ceiling - spec \u00a78.2/\u00a78.4 || mechanical: own V [0.865, 0.91, 0.91, 0.91] -> argmax (incumbent kept on ties) r0001_t1m1; trace r0001_t1m1; next cycle deploys r0001; V(m*) - V(0) = +0.045000 >= 0"
+   "evidence": "JUDGEMENT: rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Re-measured on the run re-recorded after the claims-audit fixes (same decision, V 0.910 vs 0.865): 40 fresh searches (seeds 10097-10136), never more, less on 19/40, -0.0037 [-0.0058, -0.0018] at 8.0 vs 15 calls. Frugality bias of the replay ceiling - spec \u00a78.2/\u00a78.4 (paper-level: the argmax rule is the paper's) || mechanical: own V [0.865, 0.91, 0.91, 0.91] -> argmax (incumbent kept on ties) r0001_t1m1; trace r0001_t1m1; next cycle deploys r0001; V(m*) - V(0) = +0.045000 >= 0"
   },
   {
    "round": 1,
@@ -254,8 +261,8 @@
    "round": 2,
    "kind": "plan",
    "step": "cycle 2 plan_grid (r0001)",
-   "verdict": "questionable",
-   "evidence": "JUDGEMENT: the adaptive template calls a single live manifest 'live best still improving' (improving = len(history) < 2 or ...); spec \u00a74.5 treats insufficient history as a conservative bootstrap. Outcome identical here (hold = the fallback grid); the reason text is wrong || mechanical: own plan_grid on manifests of cycles < 2: (3, 4) ('live best still improving with balanced gains: hold the grid'); trace requested (3, 4), used (3, 4)"
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 2: (3, 4) ('one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid'); trace requested (3, 4), used (3, 4)"
   },
   {
    "round": 2,
@@ -396,6 +403,13 @@
    "step": "cycle 2 best-program gate",
    "verdict": "correct",
    "evidence": "own: round best 1.017204 at b0.a3 vs best before 1.0 -> accept=True; trace accept=True, best_after=1.017204, kept=t2/b0.a3"
+  },
+  {
+   "round": 2,
+   "kind": "budget",
+   "step": "cycle 2 per-round call budget",
+   "verdict": "correct",
+   "evidence": "12 agent calls <= Fixed's per-round budget 15 (plan used 3 x 5 cells)"
   },
   {
    "round": 2,
@@ -564,6 +578,13 @@
    "step": "cycle 3 best-program gate",
    "verdict": "correct",
    "evidence": "own: round best 1.017725 at b1.a0 vs best before 1.017204 -> accept=True; trace accept=True, best_after=1.017725, kept=t3/b1.a0"
+  },
+  {
+   "round": 3,
+   "kind": "budget",
+   "step": "cycle 3 per-round call budget",
+   "verdict": "correct",
+   "evidence": "7 agent calls <= Fixed's per-round budget 15 (plan used 3 x 5 cells)"
   },
   {
    "round": 3,
@@ -753,6 +774,13 @@
    "step": "cycle 4 best-program gate",
    "verdict": "correct",
    "evidence": "own: round best 1.019011 at b3.a2 vs best before 1.017725 -> accept=True; trace accept=True, best_after=1.019011, kept=t4/b3.a2"
+  },
+  {
+   "round": 4,
+   "kind": "budget",
+   "step": "cycle 4 per-round call budget",
+   "verdict": "correct",
+   "evidence": "9 agent calls <= Fixed's per-round budget 15 (plan used 4 x 3 cells)"
   },
   {
    "round": 4,

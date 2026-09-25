@@ -1,8 +1,24 @@
---- a/output/nar_02.py
-+++ b/output/nar_02.py
+--- a/config/nul_14.py
++++ b/config/nul_14.py
 @@ -0,0 +1,5 @@
-+# mechanism: nar_02
-+# component: output_plumbing
-+# title: Collapse repeated log lines
-+"""Collapse repeated log lines; aimed at extract, arith, plan, format tasks."""
-+enable("nar_02")
++# mechanism: nul_14
++# component: config
++# title: Tighter step limit
++"""Tighter step limit (rewording of existing guidance)."""
++enable("nul_14")
+--- a/context/gen_03.py
++++ b/context/gen_03.py
+@@ -0,0 +1,5 @@
++# mechanism: gen_03
++# component: context_mgmt
++# title: Summarize old turns
++"""Summarize old turns; aimed at plan, format tasks."""
++enable("gen_03")
+--- a/control/cos_00.py
++++ b/control/cos_00.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_00
++# component: control_flow
++# title: Stop-condition guard
++"""Bounded self-verification pass; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_00")

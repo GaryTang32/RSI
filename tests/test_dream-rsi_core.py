@@ -186,9 +186,13 @@ def test_normalized_eq1_and_pareto_sweep():
 def test_no_reward_for_out_of_support_plans():
     tree = chain_tree([[0.1, 0.5], [0.3, 0.31]])
     deep = code_of(rules(plan_w=2, plan_r=6))
-    clip = ReplayEvaluator(Eq1Objective(), W=2, runner="inprocess").evaluate(deep, [tree])
+    clip = ReplayEvaluator(Eq1Objective(support="clip"), W=2, runner="inprocess").evaluate(deep, [tree])
     nore = ReplayEvaluator(Eq1Objective(support="no_reward"), W=2, runner="inprocess").evaluate(deep, [tree])
     assert clip.episodes[0].out_of_support and clip.value > nore.value
+    # Listing 2's rule ("cannot earn replay reward") is the default since the claims-audit fix (M20)
+    dflt = ReplayEvaluator(Eq1Objective(), W=2, runner="inprocess").evaluate(deep, [tree])
+    from rsi.dream import Config
+    assert Eq1Objective().support == Config().support == "no_reward" and dflt.value == pytest.approx(nore.value)
 
 
 # ------------------------------------------------------------------ worlds from any ledger

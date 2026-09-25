@@ -199,7 +199,7 @@
       "parent": "r0000",
       "change": "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; ceiling reached with many probes: try a cheaper search (patience); perturb plan_depth_step -> 2; perturb prune_lo -> 0.403",
       "diff_ok": true,
-      "diff_lines": 110,
+      "diff_lines": 252,
       "screen": [
        true
       ],
@@ -295,14 +295,14 @@
    "policy": {
     "label": "t1m1",
     "rev": "r0001",
-    "id": "b4361e9cf5",
+    "id": "bfcd4ca1f0",
     "default_beta": 0.6
    },
    "plan": [
     3,
     4
    ],
-   "plan_reason": "live best still improving with balanced gains: hold the grid",
+   "plan_reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid",
    "N": 12,
    "k": 5,
    "batch_sizes": [
@@ -324,7 +324,7 @@
     {
      "check": "plan used within hard caps (and = requested clamped)",
      "result": "PASS",
-     "detail": "requested (3, 4) used (3, 4): live best still improving with balanced gains: hold the grid"
+     "detail": "requested (3, 4) used (3, 4): one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallb"
     },
     {
      "check": "live root = best program so far (root='best')",
@@ -550,7 +550,7 @@
    "policy": {
     "label": "t1m1",
     "rev": "r0001",
-    "id": "b4361e9cf5",
+    "id": "bfcd4ca1f0",
     "default_beta": 0.6
    },
    "plan": [
@@ -803,7 +803,7 @@
    "policy": {
     "label": "t1m1",
     "rev": "r0001",
-    "id": "b4361e9cf5",
+    "id": "bfcd4ca1f0",
     "default_beta": 0.6
    },
    "plan": [
@@ -1011,5 +1011,5 @@
    "selected_minus_incumbent_gain": null
   }
  ],
- "audit_wall_s": 26.5
+ "audit_wall_s": 40.0
 }

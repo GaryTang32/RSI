@@ -1,0 +1,35 @@
+{
+ "iteration": 2,
+ "planned_grid": {
+  "branch_count": 3,
+  "refine_count": 2,
+  "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+ },
+ "effective_grid": {
+  "branch_count": 3,
+  "refine_count": 2,
+  "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+ },
+ "opened_width": 3,
+ "max_depth": 2,
+ "probe_work": 9,
+ "decision_rounds": 3,
+ "batch_sizes": [
+  3,
+  3,
+  3
+ ],
+ "root_score": 1.0280613744592875,
+ "round_best": 1.0467524040140475,
+ "final_best": 1.0467524040140475,
+ "beta": 0.6,
+ "gain_early": 1.0,
+ "gain_late": 0.0,
+ "fail_frac": 0.0,
+ "hard_fail_frac": 0.0,
+ "policy": "2f081731b815",
+ "agent_calls": 9,
+ "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+ "plan_error": null,
+ "round_budget": 9
+}

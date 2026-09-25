@@ -8,7 +8,7 @@ Every check below is re-derived from the files on disk (trace.jsonl, trace_pool/
 |---|---|---|
 | seed program re-graded independently | PASS | trace S=0.250000, independent=0.250000 (ok) |
 | run starts from the untouched seed artifact | PASS | 498c3a8834 |
-| agent calls: sum of attempts over worlds = cost meter = trajectory | PASS | 33 attempts, meter 33 |
+| agent calls: sum of attempts over worlds = cost meter = trajectory | PASS | 32 attempts, meter 32 |
 | returned best = best of every recorded successful attempt and the seed | PASS | 1.000000 |
 
 ## Cycle 1
@@ -35,7 +35,7 @@ Dreaming after cycle 1: V = [0.925, 0.933333, 0.933333, 0.941667], selected inde
 
 | version | change | diff lines | screens | re-replay V |
 |---|---|---|---|---|
-| r0001_t1m1 | rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; wasted probes afte | 110 | [True] | 0.9333333333333333 |
+| r0001_t1m1 | rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; wasted probes afte | 252 | [True] | 0.9333333333333333 |
 | r0002_t1m2 | wasted probes after the final best: stop stagnating branches earlier; perturb w_trend -> 0.8054; perturb plan_depth_step -> 2 | 14 | [True] | 0.9333333333333333 |
 | r0003_t1m3 | wasted probes after the final best: stop stagnating branches earlier; perturb max_width_lo -> 0.8235; perturb explore_on_stall -> 0.8285 | 12 | [True] | 0.9416666666666667 |
 
@@ -43,11 +43,11 @@ Ground truth (fresh online searches, 8 seeds per version): versions [0, 1, 2, 3]
 
 ## Cycle 2
 
-Deployed policy `r0003` (t1m3, default beta 0.6); plan 3 x 3 (live best still improving with balanced gains: hold the grid); N = 6 attempts in k = 2 rounds, batches [3, 3]; 3 planned cells left unprobed at stop; outcomes {'ok': 6}; best 1.000000 -> 1.000000.
+Deployed policy `r0003` (t1m3, default beta 0.6); plan 3 x 3 (one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid); N = 6 attempts in k = 2 rounds, batches [3, 3]; 3 planned cells left unprobed at stop; outcomes {'ok': 6}; best 1.000000 -> 1.000000.
 
 | check | result | detail |
 |---|---|---|
-| plan used within hard caps (and = requested clamped) | PASS | requested (3, 2) used (3, 2): live best still improving with balanced gains: hold the grid |
+| plan used within hard caps (and = requested clamped) | PASS | requested (3, 2) used (3, 2): one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallb |
 | live root = best program so far (root='best') | PASS | root 1.000000 vs best so far 1.000000 |
 | online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree | PASS | 2 rounds, batch sizes [3, 3] |
 | every attempt's trace diff = parent -> child program diff from the snapshot store | PASS | 6/6 match |
@@ -99,21 +99,21 @@ Dreaming after cycle 3: V = [0.281111, 0.276667, 0.276667, 0.276667], selected i
 | r0008_t3m2 | premature stops (ceiling missed): more patience, weaker pruning, wider; perturb max_width_lo -> 0.5173; perturb prune_hi -> 0.2555 | 10 | [True] | 0.27666666666666667 |
 | r0009_t3m3 | premature stops (ceiling missed): more patience, weaker pruning, wider; perturb w_depth -> 0.0; perturb w_trend -> 1.1794 | 14 | [True] | 0.27666666666666667 |
 
-Ground truth (fresh online searches, 8 seeds per version): versions [5, 7, 8, 9], replay V [0.2811, 0.2767, 0.2767, 0.2767], online V [-0.0875, -0.0875, -0.0875, -0.0875], online mean gain [0.0, 0.0, 0.0, 0.0], online mean calls [10.0, 10.0, 10.0, 10.0]; Spearman(replay, online) = nan; selected r0005, best online r0005; incumbent kept
+Ground truth (fresh online searches, 8 seeds per version): versions [5, 7, 8, 9], replay V [0.2811, 0.2767, 0.2767, 0.2767], online V [-0.075, -0.075, -0.075, -0.075], online mean gain [0.0, 0.0, 0.0, 0.0], online mean calls [9.0, 9.0, 9.0, 9.0]; Spearman(replay, online) = nan; selected r0005, best online r0005; incumbent kept
 
 ## Cycle 4
 
-Deployed policy `r0005` (t2m2, default beta 0.6); plan 5 x 3 (live best plateaued: widen to cover new directions); N = 10 attempts in k = 4 rounds, batches [3, 3, 3, 1]; 5 planned cells left unprobed at stop; outcomes {'ok': 10}; best 1.000000 -> 1.000000.
+Deployed policy `r0005` (t2m2, default beta 0.6); plan 5 x 3 (live best plateaued: widen to cover new directions); N = 9 attempts in k = 3 rounds, batches [3, 3, 3]; 5 planned cells left unprobed at stop; outcomes {'ok': 9}; best 1.000000 -> 1.000000.
 
 | check | result | detail |
 |---|---|---|
 | plan used within hard caps (and = requested clamped) | PASS | requested (5, 2) used (5, 2): live best plateaued: widen to cover new directions |
 | live root = best program so far (root='best') | PASS | root 1.000000 vs best so far 1.000000 |
-| online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree | PASS | 4 rounds, batch sizes [3, 3, 3, 1] |
-| every attempt's trace diff = parent -> child program diff from the snapshot store | PASS | 10/10 match |
-| every attempt re-graded independently (own grader, fresh process) = recorded score | PASS | 10/10 match |
+| online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree | PASS | 3 rounds, batch sizes [3, 3, 3] |
+| every attempt's trace diff = parent -> child program diff from the snapshot store | PASS | 9/9 match |
+| every attempt re-graded independently (own grader, fresh process) = recorded score | PASS | 9/9 match |
 | best program = max(best so far, best successful attempt), strict improvement | PASS | 1.000000 -> 1.000000 (trace: 1.0 -> 1.0, kept None) |
-| replay fidelity: the recording policy replayed on its own world reveals exactly the online batches | PASS | online [3, 3, 3, 1] vs replay [3, 3, 3, 1] |
+| replay fidelity: the recording policy replayed on its own world reveals exactly the online batches | PASS | online [3, 3, 3] vs replay [3, 3, 3] |
 | manifest beta = baked-in default beta of the deployed code | PASS | beta 0.6 |
 
 ## Shadow monitor (sealed splits; never shown to the loop)
@@ -133,7 +133,7 @@ Deployed policy `r0005` (t2m2, default beta 0.6); plan 5 x 3 (live best plateaue
   9,
   6,
   8,
-  10
+  9
  ],
  "spend": {
   "loop_usd": 0.0,

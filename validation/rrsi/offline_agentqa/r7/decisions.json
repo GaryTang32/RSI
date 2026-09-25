@@ -2,11 +2,11 @@
  {
   "variant": "A",
   "admissible": false,
-  "reason": "cost rule failed: within band: shaped=-40.180 (<= 0)",
-  "S": 0.65,
-  "C": 2304.3,
-  "delta_S": 0.0,
-  "delta_C": 2.6786398467432955,
+  "reason": "cost rule failed: within band: shaped=-2.570 (<= 0)",
+  "S": 0.95,
+  "C": 1298.65,
+  "delta_S": -0.025000000000000022,
+  "delta_C": 0.00468048893702629,
   "novelty": 0,
   "guards": []
  },

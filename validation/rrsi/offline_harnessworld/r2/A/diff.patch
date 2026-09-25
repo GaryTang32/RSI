@@ -1,24 +1,32 @@
---- a/config/har_10.py
-+++ b/config/har_10.py
+--- a/agents/cos_05.py
++++ b/agents/cos_05.py
 @@ -0,0 +1,5 @@
-+# mechanism: har_10
-+# component: config
-+# title: Raise the per-step output cap
-+"""Raise the per-step output cap; aimed at extract, arith, format tasks."""
-+enable("har_10")
---- a/control/gen_05.py
-+++ b/control/gen_05.py
++# mechanism: cos_05
++# component: subagent
++# title: Bounded checker sub-call
++"""Bounded checker sub-call; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_05")
+--- a/agents/har_08.py
++++ b/agents/har_08.py
 @@ -0,0 +1,5 @@
-+# mechanism: gen_05
-+# component: control_flow
-+# title: Bounded self-verification pass
-+"""Bounded self-verification pass; aimed at arith, plan tasks."""
-+enable("gen_05")
---- a/prompts/nul_11.md
-+++ b/prompts/nul_11.md
++# mechanism: har_08
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, arith, plan, format tasks."""
++enable("har_08")
+--- a/prompts/nul_01.md
++++ b/prompts/nul_01.md
 @@ -0,0 +1,5 @@
-+# mechanism: nul_11
++# mechanism: nul_01
 +# component: prompt
-+# title: Ask for units and formats
-+"""Ask for units and formats (rewording of existing guidance)."""
-+enable("nul_11")
++# title: Checklist of constraints
++"""Checklist of constraints (rewording of existing guidance)."""
++enable("nul_01")
+--- a/skills/har_14/SKILL.md
++++ b/skills/har_14/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: har_14
++# component: skill
++# title: Procedure card: verification
++"""Procedure card: verification; aimed at extract, plan, format tasks."""
++enable("har_14")

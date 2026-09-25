@@ -1,6 +1,17 @@
 {
- "verdict": "accept",
- "reasons": [],
+ "verdict": "reject",
+ "reasons": [
+  "precheck: hard-coded evaluation data 'hw-e-003'",
+  "precheck: hard-coded evaluation data 'hw-e-005'",
+  "precheck: hard-coded evaluation data 'hw-e-013'",
+  "precheck: hard-coded evaluation data 'hw-e-014'",
+  "precheck: hard-coded evaluation data 'hw-e-024'",
+  "precheck: hard-coded evaluation data 'hw-e-028'",
+  "precheck: hard-coded evaluation data 'hw-e-038'",
+  "precheck: hard-coded evaluation data 'hw-e-043'",
+  "precheck: hard-coded evaluation data 'hw-e-049'",
+  "precheck: hard-coded evaluation data 'hw-e-053'"
+ ],
  "risk_notes": [],
- "stage": "llm"
+ "stage": "precheck"
 }

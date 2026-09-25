@@ -25,6 +25,7 @@ Runs::
     python experiments/dream-rsi/validate_dream.py sumdiff_offline    # mock agent + ParametricMutator
     python experiments/dream-rsi/validate_dream.py agentqa_offline    # AgentQA harness, SimModel (sealed splits)
     python experiments/dream-rsi/validate_dream.py sumdiff_live       # claude haiku: agent AND developer
+    python experiments/dream-rsi/validate_dream.py sumdiff_live_c     # claude haiku, restored prompts (claims fix)
     python experiments/dream-rsi/validate_dream.py <run> --audit-only # re-audit an existing run directory
 """
 from __future__ import annotations
@@ -129,6 +130,27 @@ def setup(name: str, reuse_cache: bool = False) -> dict:
                           "seed, fresh run dir, fresh CachedLLM). claude haiku as EditorAgent (Listing 1) and "
                           "LLMPolicyDeveloper (Listing 2); pi_1 = parallel refine 3 x 3 (refine_count 2), W = 3, "
                           "T = 2 live cycles, 3 LLM revisions in the one dreaming phase, max_calls = 18.")
+    if name == "sumdiff_live_c":
+        # claims-audit fix run: same setup as sumdiff_live_b, now with the verbatim Listing-1 / Listing-2
+        # prompts (full history, pkill line, baseline proposal.md; every Listing-2 rule), a fresh policy
+        # namespace per replay episode and Fixed's per-round budget (9 calls)
+        from rsi.domains.discovery import SumDiffDomain
+        dom = SumDiffDomain(sandboxed=True)
+        cache = OUT / f".cache_{name}"
+        if cache.exists() and not reuse_cache:
+            shutil.rmtree(cache)          # from scratch: a fresh LLM cache
+        llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache)
+        cfg = Config(rounds=2, W=3, branch_count=3, refine_count=2, hard_max_branch=4, hard_max_refine=3, M=3,
+                     m_semantics="revisions", seed=0, sandbox="subprocess", policy_timeout_s=60.0, max_calls=18)
+        return dict(domain=dom, task=dom, seed=dom.seed_artifact(), llm=llm, llm_task=None,
+                    agent=EditorAgent(llm, editable=[dom.program_file]), developer=LLMPolicyDeveloper(llm),
+                    config=cfg, cache=cache, kind="sumdiff", ground_truth=False,
+                    setup="Claims-audit fix run (after N1-N7): sumdiff_live_b's setup - untouched seed, fresh run "
+                          "dir, fresh CachedLLM, claude haiku as EditorAgent and LLMPolicyDeveloper, pi_1 = parallel "
+                          "refine 3 x 3 (refine_count 2), W = 3, T = 2, 3 LLM revisions, max_calls = 18 - now with "
+                          "the verbatim Listing-1 prompt (full history, baseline proposal.md, pkill line) and "
+                          "Listing-2 prompt (+ framework notes), a fresh policy namespace per replay episode, and "
+                          "the per-round budget = Fixed's 9 calls.")
     raise SystemExit(f"unknown run {name!r}")
 
 
@@ -418,7 +440,9 @@ def audit(name: str, s: dict, out: Path) -> dict:
         truncated = summ.get("truncated_batch")
         with runner.session(code_t) as sess:
             q = ReplayQuestion(w, cfg.W, plan, K=cfg.K2, root_mode=cfg.root_mode, hide_missing=cfg.hide_missing)
-            o = sess.solve({}, q)
+            # same inputs as online: the round's call budget too (a policy that stopped on it online must stop
+            # on it here; dreaming replays still pass budget=None, as Listing 2 says)
+            o = sess.solve({}, q, budget=getattr(cfg, "round_cap", None))
         rep_rounds = [sorted(x["cell"] for x in r["revealed"]) for r in q.round_log]
         onl_rounds = [sorted(n.id for n in by_round[k]) for k in sorted(by_round)]
         fid = rep_rounds == onl_rounds

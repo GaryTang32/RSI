@@ -1,45 +1,64 @@
 {
- "artifact_id": "4c8a7cb57bfc1cfbd8b934c35033e7204c1ca112cc763137efbffba5821578f7",
+ "artifact_id": "941441722b4c58400b69dbd59b0c81dd96b2fe1b77ffbc9cd0cc0b110a5b2f9b",
  "edits": [
   {
    "id": "C1",
-   "component": "skill",
-   "hypothesis": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "client_tool",
+   "hypothesis": "[str_10] Structured search tool: Structured search tool; aimed at arith, plan tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-008",
-    "hw-e-036"
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_12",
+   "mechanism_id": "str_10",
    "prune": false,
-   "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks.",
-   "declared_component": "skill"
+   "mechanism": "[str_10] Structured search tool: Structured search tool; aimed at arith, plan tasks.",
+   "declared_component": "client_tool"
   },
   {
    "id": "C2",
-   "component": "output_plumbing",
-   "hypothesis": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "prompt",
+   "hypothesis": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-022",
-    "hw-e-008"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "nar_03",
+   "mechanism_id": "cos_06",
    "prune": false,
-   "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
-   "declared_component": "output_plumbing"
+   "mechanism": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C3",
+   "component": "context_mgmt",
+   "hypothesis": "[nar_04] Summarize old turns: Summarize old turns; aimed at arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nar_04",
+   "prune": false,
+   "mechanism": "[nar_04] Summarize old turns: Summarize old turns; aimed at arith, plan, format tasks.",
+   "declared_component": "context_mgmt"
   }
  ],
  "diff_path": "r3/A/diff.patch",
- "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimat; [nar_03] Collapse repeated log lines: Collapse repeated log "
+ "mechanism": "[str_10] Structured search tool: Structured search tool; aim; [cos_06] Short worked example of the procedure: Role and sco; [nar_04] Summarize old turns: Summarize old turns; aimed at "
 }

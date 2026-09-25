@@ -8,7 +8,7 @@ maintenance commands (mirrors ``rrsi/loop.py``)::
       4. for each of m variants (drafted from the SAME incumbent):
              C_t^(v) ~ P_reg(. | H_t, F_t, L_t, b_t, E_t, B_t)   propose.Proposer (rsi.core Editor)
              Critic(H_t, C_t^(v)) with bounded repair          critic.RRSICritic
-             tag edits from the diff; liveness smoke           components.Taxonomy / Domain.smoke
+             tag edits from the diff; liveness smoke           components.Taxonomy / RRSIRun.smoke
       5. Evaluate(H', D_evolve, k) for the screened set       evaluate.Measurer (rsi.core Evaluator)
       6. admissibility, argmax, S*, history, attribution      selection.select_round (rsi.core gates)
       7. H_{t+1} and the frontier (settles the round)
@@ -48,6 +48,7 @@ from .history import History, append_lines, exploration, read_jsonl, stall_flag
 from .propose import Proposer, RRSIRewriteEditor
 from .schedule import edit_budget
 from .selection import Candidate, build_gates, select_round
+from .spend import SpendLedger
 from .switches import RegularizerSwitches
 from .tracing import RRSITrace
 
@@ -80,11 +81,15 @@ class RRSIRun:
         if not 1 <= self.cfg.m <= len(VARIANT_LABELS) or not 0 <= self.cfg.m_draft <= self.cfg.m:
             raise ValueError(f"need 1 <= m <= {len(VARIANT_LABELS)} and 0 <= m_draft <= m "
                              f"(got m={self.cfg.m}, m_draft={self.cfg.m_draft})")
+        if self.cfg.precheck_scope not in ("added", "diff"):
+            raise ValueError(f"Config.precheck_scope must be 'added' or 'diff' (got {self.cfg.precheck_scope!r})")
+        if self.cfg.smoke_n < 1:
+            raise ValueError(f"Config.smoke_n must be >= 1 (got {self.cfg.smoke_n})")
         self.out = Path(out_dir)
         self.out.mkdir(parents=True, exist_ok=True)
         self.verbose = verbose
         self.hooks = dict(hooks or {})
-        self.tax = Taxonomy.from_domain(domain)
+        self.tax = Taxonomy.from_domain(domain, aliases=self.cfg.component_aliases)
         self.llm_task, self.llm_propose = llm_task, llm_propose
         self.llm_critic = llm_critic if llm_critic is not None else llm_propose
         use_llm_analyst = self.cfg.analyst == "llm" or (self.cfg.analyst == "auto" and llm_analyst is not None)
@@ -102,7 +107,9 @@ class RRSIRun:
         self.measurer = Measurer(domain, llm_task, workers=self.cfg.workers, run_seed=self.cfg.seed,
                                  cache_dir=(self.out / "trials") if self.cfg.trial_cache else None,
                                  trace_chars=self.cfg.trace_chars)
-        self.critic = RRSICritic(domain, self.llm_critic, patterns=critic_patterns) if self.sw.critic else None
+        self.critic = RRSICritic(domain, self.llm_critic, patterns=critic_patterns,
+                                 precheck_answers=self.cfg.precheck_answers,
+                                 scope=self.cfg.precheck_scope) if self.sw.critic else None
         self.editor = editor or (RRSIRewriteEditor(llm_propose) if llm_propose is not None else None)
         if constitution is None:
             constitution = domain.rrsi_constitution() if hasattr(domain, "rrsi_constitution") \
@@ -113,6 +120,8 @@ class RRSIRun:
         dom_guards = getattr(domain, "rrsi_guards", ())
         self.guards = list(guards) + list(dom_guards() if callable(dom_guards) else dom_guards)
         self.gates = build_gates(self.cfg, self.sw, self.guards)
+        # USD spent on this run directory by every process (a resumed run's budget includes the killed one's)
+        self.spend = SpendLedger(self.out, self.llms)
         # per-iteration trace (write-only; see rsi.rrsi.tracing) and the sealed-split shadow monitor
         self.trace = RRSITrace(self.out, enabled=bool(self.cfg.trace), max_text=self.cfg.trace_max_text)
         if self.cfg.shadow_monitor:
@@ -126,7 +135,19 @@ class RRSIRun:
         if self.verbose:
             print(f"[rrsi:{getattr(self.domain, 'name', 'domain')}] {time.strftime('%H:%M:%S')} {msg}", flush=True)
 
+    def llms(self) -> list[LLM]:
+        """The distinct LLM backends of the loop (task, proposer, critic, analyst); the shadow
+        monitor's isolated task model is not one of them."""
+        out: list[LLM] = []
+        for l in (self.llm_task, self.llm_propose, self.llm_critic, self.llm_analyst):
+            if l is not None and all(l is not x for x in out):
+                out.append(l)
+        return out
+
     def _hook(self, event: str, **info) -> None:
+        # every hook point follows a persisted step: record the spend so far (a kill after this point
+        # cannot lose it from a resumed run's budget; see rsi.rrsi.spend)
+        self.spend.checkpoint()
         fn = self.hooks.get(event) or self.hooks.get("*")
         if fn is not None:
             fn(event, **info)
@@ -204,6 +225,7 @@ class RRSIRun:
             if ev is None:
                 raise RuntimeError(f"calibration evaluation {j} invalid: {why}")
             ev.save(self.eval_path(j))
+            self.spend.checkpoint()
             evals.append(ev)
         cal = _calibrate(evals, z=self.cfg.delta_z, reps=self.cfg.calibration_reps, seed=self.cfg.calibration_seed,
                          small_k_correction=self.cfg.bootstrap_small_k_correction)
@@ -268,6 +290,7 @@ class RRSIRun:
             report, digests = self.analyst.analyze(traces, inc_ev, inputs, prior, seed=_seed(cfg.seed, "an", t))
             write_json(digests_path, digests)
             write_json(report_path, report)
+            self.spend.checkpoint()
         write_json(self.out / "global_analysis.json", {"failure_modes": report.get("failure_modes"),
                                                        "success_habits": report.get("success_habits")})
         self.trace.analysis(self, t, report, digests, traces, inc_ev, report_reused)
@@ -417,11 +440,8 @@ class RRSIRun:
         variant_brief = (f"You are variant {vid} of round {t}. {cfg.m} variants are drafted independently from the "
                          f"same incumbent this round and each is evaluated on the full evolve set; the best "
                          f"admissible one becomes H_{t + 1}.")
-        directives = {"t": t, "T": cfg.T, "variant": vid, "b_t": budget, "reserved_slot": reserved,
-                      "untried": explore.get("untried") or [], "sigma_t": sigma,
-                      "prune_components": [p["component"] for p in prune], "delta": round(delta, 6),
-                      "S_star": round(S_star, 6), "S_incumbent": round(inc_ev.S, 6), "m": cfg.m,
-                      "trace_task_ids": list(traces)}
+        directives = self.round_directives(t, vid, budget, reserved, explore, sigma, prune, delta, S_star,
+                                           inc_ev.S, traces)
         diff_file = vdir / "diff.patch"
         diff_path = f"r{t}/{vid}/diff.patch"                       # relative to out_dir (relocatable runs)
 
@@ -502,18 +522,62 @@ class RRSIRun:
         # liveness smoke (not a selection rule)
         if self.sw.smoke and cfg.smoke:
             try:
-                err = self.domain.smoke(cand, self.llm_task)
+                err = self.smoke(cand)
             except Exception as ex:  # noqa: BLE001
                 err = f"smoke crashed: {ex!r}"
-            write_json(vdir / "smoke.json", {"ok": err is None, "error": err})
+            write_json(vdir / "smoke.json", {"ok": err is None, "error": err, "ids": self.smoke_ids()})
             self.trace.note(t, stage="smoke", candidate=f"r{t}{vid}", ok=err is None, error=err,
-                            rule="liveness only (not a selection rule)")
+                            ids=self.smoke_ids(), rule="liveness only (not a selection rule)")
             if err:
                 return finish("smoke_fail", str(err)[:600], edits, aid, mech)
         write_json(prep_path, {"artifact_id": aid, "edits": edits, "diff_path": diff_path, "mechanism": mech})
         self.log(f"{vid}: {len(edits)} edit(s) on {[e['component'] for e in edits]} -> {aid[:10]}")
         self._hook("drafted", t=t, variant=vid)
         return Candidate(vid, edits, diff_path=diff_path, artifact_id=aid, mechanism=mech)
+
+    def round_directives(self, t, vid, budget, reserved, explore, sigma, prune, delta, S_star, S_inc,
+                         traces) -> dict:
+        """The ``round_directives`` context section: a structured restatement of what the code's proposer
+        context carries anyway (round and variant from the variant brief, b_t from the edit-budget section,
+        sigma_t / U_t / the reserved slot from E_t, B_t from the prune section, the trace task ids from
+        list_traces). Like the code, it never shows the noise band delta, S*, the incumbent's score or T;
+        ``Config.proposer_numbers=True`` (an extension) adds them (the pre-fix layout, byte-identical)."""
+        d = {"t": t, "T": self.cfg.T, "variant": vid, "b_t": budget, "reserved_slot": reserved,
+             "untried": explore.get("untried") or [], "sigma_t": sigma,
+             "prune_components": [p["component"] for p in prune], "delta": round(delta, 6),
+             "S_star": round(S_star, 6), "S_incumbent": round(S_inc, 6), "m": self.cfg.m,
+             "trace_task_ids": list(traces)}
+        if not self.cfg.proposer_numbers:
+            for k in ("T", "delta", "S_star", "S_incumbent"):
+                d.pop(k)
+        return d
+
+    def smoke_ids(self) -> list[str]:
+        """Tasks of the liveness smoke: the domain's ``smoke`` split if it has one (the code's named smoke
+        tasks), else the first ``Config.smoke_n`` evolve tasks; ``smoke_n`` of them (code: 2 or 4)."""
+        sp = self.domain.tasks.splits
+        return list(sp.get("smoke") or sp.get("evolve") or [])[: self.cfg.smoke_n]
+
+    def smoke(self, cand: Artifact) -> Optional[str]:
+        """Liveness smoke (not a selection rule): does the candidate run at all? A domain that overrides
+        :meth:`rsi.core.Domain.smoke` keeps its own check (the code's smoke is per domain). Otherwise each
+        smoke task runs once at seed 0 and the smoke fails on any execution error or missing trial (code:
+        ``found < len(ids)`` or an exception), and with ``smoke_require_score`` (eng preset) also when the
+        mean score is not above the failure score (eng: ``mean_combined_score > 0``)."""
+        if type(self.domain).smoke is not Domain.smoke:
+            return self.domain.smoke(cand, self.llm_task)
+        errs, scores = [], []
+        for tid in self.smoke_ids():
+            tr = self.domain.run(cand, self.domain.tasks.get(tid), seed=0, llm=self.llm_task)
+            scores.append(tr.score)
+            if tr.error:
+                errs.append(f"{tid}: {tr.error}")
+        if errs:
+            return "; ".join(errs)[:600]
+        fail = float(getattr(self.domain, "failure_score", 0.0))
+        if self.cfg.smoke_require_score and scores and sum(scores) / len(scores) <= fail:
+            return f"smoke: mean score {sum(scores) / len(scores):.4f} is not above the failure score {fail}"
+        return None
 
     def _evaluate(self, t: int, c: Candidate, rdir: Path) -> None:
         ep = rdir / c.variant / "eval.json"

@@ -16,7 +16,7 @@
   "beta1": 0.01,
   "beta2": 0.005,
   "normalize": true,
-  "support": "clip",
+  "support": "no_reward",
   "lam": 0.1,
   "beta_grid": [
    0.2,
@@ -41,6 +41,8 @@
   "guidance": false,
   "guidance_strength": 0.8,
   "max_calls": null,
+  "round_budget": "fallback",
+  "agent_history_cycles": null,
   "agent_workers": null,
   "leakage_check": true,
   "seed": 0,
@@ -49,7 +51,7 @@
   "shadow_k": 1,
   "shadow_workers": 2
  },
- "wall_s": 1.9,
+ "wall_s": 3.3,
  "seed_score": 0.25,
  "best_score": 1.0,
  "stop_reason": "rounds",
@@ -57,7 +59,7 @@
   9,
   6,
   8,
-  10
+  9
  ],
  "best_per_cycle": [
   1.0,
@@ -160,28 +162,32 @@
  },
  "usage_by_role": {
   "task": {
-   "calls": 128,
-   "input_tokens": 5466,
-   "output_tokens": 34888,
+   "calls": 120,
+   "input_tokens": 5165,
+   "output_tokens": 29230,
    "cost_usd": 0.0,
    "latency_s": 0.0,
-   "total_tokens": 40354
+   "total_tokens": 34395
   }
  },
  "cost_meter": {
-  "agent_calls": 33,
+  "agent_calls": 32,
   "agent_tokens": 0,
   "agent_usd": 0.0,
-  "eval_s": 0.5370392799377441,
-  "online_rounds": 12,
-  "online_wall_s": 0.36900758743286133,
+  "eval_s": 0.9636592864990234,
+  "online_rounds": 11,
+  "online_wall_s": 0.6222174167633057,
   "replay_episodes": 60,
-  "replay_cpu_s": 0.12898401062133724,
-  "replay_wall_s": 0.9282488822937012,
+  "replay_cpu_s": 0.2568028179625244,
+  "replay_wall_s": 1.7086083889007568,
   "developer_calls": 0,
   "developer_tokens": 0,
   "developer_usd": 0.0,
-  "replay_ms_per_episode": 2.1497335103556208
+  "developer_revisions": 9,
+  "replay_ms_per_episode": 4.2800469660420735,
+  "llm_calls_total": 41,
+  "usd_total": 0.0,
+  "developer_usd_share": null
  },
  "spend": {
   "loop_usd": 0.0,

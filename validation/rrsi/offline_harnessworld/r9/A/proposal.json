@@ -1,45 +1,45 @@
 {
  "status": "done",
- "summary": "prune: [dec_00] Keep the last N tool results verbatim stoppe; [obf_00] Shortcut table: Reuse precomputed shortcuts for rec",
+ "summary": "[gen_13] Bounded self-verification pass: Bounded self-verifi; [har_19] Answer-line extractor: Answer-line extractor; aimed",
  "edits": [
   {
    "id": "C1",
-   "component": "context_mgmt",
-   "hypothesis": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place",
+   "component": "control_flow",
+   "hypothesis": "[gen_13] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, arith, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-022",
     "hw-e-008",
-    "hw-e-051"
+    "hw-e-036",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "dec_00",
-   "prune": true,
-   "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place"
+   "mechanism_id": "gen_13",
+   "prune": false,
+   "mechanism": "[gen_13] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, arith, plan, format tasks."
   },
   {
    "id": "C2",
-   "component": "memory",
-   "hypothesis": "[obf_00] Shortcut table: Reuse precomputed shortcuts for recurring problem shapes.",
+   "component": "output_plumbing",
+   "hypothesis": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-022",
     "hw-e-008",
-    "hw-e-051"
+    "hw-e-036",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "obf_00",
+   "mechanism_id": "har_19",
    "prune": false,
-   "mechanism": "[obf_00] Shortcut table: Reuse precomputed shortcuts for recurring problem shapes."
+   "mechanism": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks."
   }
  ],
- "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stoppe; [obf_00] Shortcut table: Reuse precomputed shortcuts for rec",
+ "mechanism": "[gen_13] Bounded self-verification pass: Bounded self-verifi; [har_19] Answer-line extractor: Answer-line extractor; aimed",
  "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
  "n_changes": 2,
  "log": [

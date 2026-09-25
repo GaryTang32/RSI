@@ -14,7 +14,7 @@
   {
    "check": "agent calls: sum of attempts over worlds = cost meter = trajectory",
    "result": "PASS",
-   "detail": "33 attempts, meter 33"
+   "detail": "32 attempts, meter 32"
   },
   {
    "check": "returned best = best of every recorded successful attempt and the seed",
@@ -46,6 +46,7 @@
    "legal_left_at_stop": 0,
    "round_best": 1.0,
    "best_before": 0.25,
+   "parse_artifacts": [],
    "best_after": 1.0,
    "fail_classes": {
     "ok": 9
@@ -191,7 +192,7 @@
       "parent": "r0000",
       "change": "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; wasted probes after the final best: stop stagnating branches earlier; perturb w_anchor -> 0.48; perturb plan_depth_step: unchanged at 1 (clamp/round)",
       "diff_ok": true,
-      "diff_lines": 110,
+      "diff_lines": 252,
       "screen": [
        true
       ],
@@ -287,14 +288,14 @@
    "policy": {
     "label": "t1m3",
     "rev": "r0003",
-    "id": "275618a0f6",
+    "id": "925f048be8",
     "default_beta": 0.6
    },
    "plan": [
     3,
     2
    ],
-   "plan_reason": "live best still improving with balanced gains: hold the grid",
+   "plan_reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid",
    "N": 6,
    "k": 2,
    "batch_sizes": [
@@ -304,6 +305,7 @@
    "legal_left_at_stop": 3,
    "round_best": 0.875,
    "best_before": 1.0,
+   "parse_artifacts": [],
    "best_after": 1.0,
    "fail_classes": {
     "ok": 6
@@ -312,7 +314,7 @@
     {
      "check": "plan used within hard caps (and = requested clamped)",
      "result": "PASS",
-     "detail": "requested (3, 2) used (3, 2): live best still improving with balanced gains: hold the grid"
+     "detail": "requested (3, 2) used (3, 2): one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallb"
     },
     {
      "check": "live root = best program so far (root='best')",
@@ -545,7 +547,7 @@
    "policy": {
     "label": "t2m2",
     "rev": "r0005",
-    "id": "86e922d1a3",
+    "id": "e226619df8",
     "default_beta": 0.6
    },
    "plan": [
@@ -563,6 +565,7 @@
    "legal_left_at_stop": 4,
    "round_best": 1.0,
    "best_before": 1.0,
+   "parse_artifacts": [],
    "best_after": 1.0,
    "fail_classes": {
     "ok": 8
@@ -762,10 +765,10 @@
       0.276667
      ],
      "online_V": [
-      -0.0875,
-      -0.0875,
-      -0.0875,
-      -0.0875
+      -0.075,
+      -0.075,
+      -0.075,
+      -0.075
      ],
      "online_gain": [
       0.0,
@@ -774,10 +777,10 @@
       0.0
      ],
      "online_calls": [
-      10.0,
-      10.0,
-      10.0,
-      10.0
+      9.0,
+      9.0,
+      9.0,
+      9.0
      ],
      "spearman_replay_vs_online": NaN,
      "selected": 5,
@@ -792,7 +795,7 @@
    "policy": {
     "label": "t2m2",
     "rev": "r0005",
-    "id": "86e922d1a3",
+    "id": "e226619df8",
     "default_beta": 0.6
    },
    "plan": [
@@ -800,20 +803,20 @@
     2
    ],
    "plan_reason": "live best plateaued: widen to cover new directions",
-   "N": 10,
-   "k": 4,
+   "N": 9,
+   "k": 3,
    "batch_sizes": [
     3,
     3,
-    3,
-    1
+    3
    ],
    "legal_left_at_stop": 5,
    "round_best": 1.0,
    "best_before": 1.0,
+   "parse_artifacts": [],
    "best_after": 1.0,
    "fail_classes": {
-    "ok": 10
+    "ok": 9
    },
    "checks": [
     {
@@ -829,17 +832,17 @@
     {
      "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
      "result": "PASS",
-     "detail": "4 rounds, batch sizes [3, 3, 3, 1]"
+     "detail": "3 rounds, batch sizes [3, 3, 3]"
     },
     {
      "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
      "result": "PASS",
-     "detail": "10/10 match"
+     "detail": "9/9 match"
     },
     {
      "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
      "result": "PASS",
-     "detail": "10/10 match"
+     "detail": "9/9 match"
     },
     {
      "check": "best program = max(best so far, best successful attempt), strict improvement",
@@ -849,7 +852,7 @@
     {
      "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
      "result": "PASS",
-     "detail": "online [3, 3, 3, 1] vs replay [3, 3, 3, 1]"
+     "detail": "online [3, 3, 3] vs replay [3, 3, 3]"
     },
     {
      "check": "manifest beta = baked-in default beta of the deployed code",
@@ -884,6 +887,7 @@
      }
     }
    },
+   "elapsed_s": 0.02,
    "note": "shadow evaluation - never shown to the loop"
   },
   {
@@ -910,6 +914,7 @@
      }
     }
    },
+   "elapsed_s": 0.196,
    "note": "shadow evaluation - never shown to the loop"
   }
  ],
@@ -1035,10 +1040,10 @@
     0.276667
    ],
    "online_V": [
-    -0.0875,
-    -0.0875,
-    -0.0875,
-    -0.0875
+    -0.075,
+    -0.075,
+    -0.075,
+    -0.075
    ],
    "online_gain": [
     0.0,
@@ -1047,10 +1052,10 @@
     0.0
    ],
    "online_calls": [
-    10.0,
-    10.0,
-    10.0,
-    10.0
+    9.0,
+    9.0,
+    9.0,
+    9.0
    ],
    "spearman_replay_vs_online": NaN,
    "selected": 5,
@@ -1059,5 +1064,5 @@
    "selected_minus_incumbent_gain": null
   }
  ],
- "audit_wall_s": 9.6
+ "audit_wall_s": 14.9
 }

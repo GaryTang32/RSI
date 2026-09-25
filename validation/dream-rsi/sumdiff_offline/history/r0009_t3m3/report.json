@@ -1,5 +1,5 @@
 {
- "policy": "a74c0e3b07",
+ "policy": "a04282d55d",
  "label": "t3m3",
  "objective": "eq1",
  "value": 0.914556,
@@ -26,7 +26,7 @@
   "errors": [],
   "batch_errors": []
  },
- "cpu_s": 0.0099,
- "wall_s": 0.0595,
+ "cpu_s": 0.0191,
+ "wall_s": 0.1225,
  "n_episodes": 3
 }

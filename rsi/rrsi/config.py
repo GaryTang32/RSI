@@ -44,7 +44,7 @@ PRESETS: dict[str, dict[str, Any]] = {
     # EngDesign: delta = 5 passes of 244; beta1 = 10% per pass; w_s = 1 per pass; guards on valid/no-payload.
     "eng": dict(T=40, k=4, m=2, b_min=1, b_max=4, w=3, m_draft=1, delta=0.020, delta_z=2.0, beta0=0.15,
                 beta1=24.4, w_s=244.0, w_c=2.0, w_n=0.5, n_prune=5, repair_rounds=5, invalid_missing_frac=0.15,
-                n_fail_traces=22, n_success_traces=6, eval_parallel=1,
+                n_fail_traces=22, n_success_traces=6, eval_parallel=1, smoke_n=4, smoke_require_score=True,
                 notes={"max_valid_rate_drop": 0.03, "max_no_payload_rise": 0.02, "smoke_n": 4}),
     # Overview page: "Illustrative settings: b_min = 1, b_max = 4, T = 10."
     "overview": dict(T=10, b_min=1, b_max=4),
@@ -93,6 +93,20 @@ class Config:
     trace_chars: int = 3000              # per-trace cap in stored evaluations / proposer context
     max_digests: int = 8                 # LLM analyst: digests per round (<= 8 per digest_many in the code)
     analyst: str = "auto"                # "auto" | "llm" | "heuristic"
+    # ---- fidelity options (defaults = the released code; the alternatives are documented extensions) ----
+    tie_eps: float = 0.0                 # Algorithm 2 comparisons on raw floats as in the code (0.0); 1e-9 treats
+    #                                      last-bit float differences as ties (rsi.core.TIE_EPS reading)
+    proposer_numbers: bool = False       # extension: also show delta, S*, S_t and T in the round directives and the
+    #                                      numeric beta/w in SKILL.md (the code states the rules symbolically only)
+    precheck_answers: bool = False       # extension: the precheck denylist also holds the decision split's literal
+    #                                      answers and entities (Domain.leakage_terms); code: task ids + patterns
+    precheck_scope: str = "added"        # "added": scan the diff's ADDED lines (ours, deviation 4: a removal is not
+    #                                      a leak); "diff": grep the whole diff incl. removed/context lines (code)
+    component_aliases: bool = False      # extension: accept tag aliases ("tool" -> "client_tool"); code: a declared
+    #                                      tag outside K is bounced by done() and re-tagged from the diff
+    smoke_n: int = 2                     # liveness smoke: tasks run once each (the domain's smoke split if it has
+    #                                      one, else the first smoke_n evolve tasks); code: 2 (coding, workspace), 4 (eng)
+    smoke_require_score: bool = False    # eng smoke: the smoke trials must also score above the failure score
     # ---- plumbing ---------------------------------------------------------
     workers: int = 4                     # rollouts in parallel inside one evaluation
     trial_cache: bool = False            # persist every trial under out_dir/trials (resume mid-evaluation)

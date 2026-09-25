@@ -1,8 +1,6 @@
 {
- "verdict": "reject",
- "reasons": [
-  "[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions"
- ],
+ "verdict": "accept",
+ "reasons": [],
  "risk_notes": [],
  "stage": "llm"
 }

@@ -21,36 +21,31 @@
  },
  "prune_set": [
   {
-   "component": "config",
-   "recent_best_gain": -0.00875,
-   "accepted_edits_in_incumbent": []
-  },
-  {
    "component": "control_flow",
-   "recent_best_gain": -0.00875,
+   "recent_best_gain": -0.01094,
    "accepted_edits_in_incumbent": []
   },
   {
    "component": "memory",
-   "recent_best_gain": -0.02906,
+   "recent_best_gain": -0.01625,
    "accepted_edits_in_incumbent": []
   },
   {
    "component": "output_plumbing",
-   "recent_best_gain": -0.00562,
+   "recent_best_gain": -0.01812,
    "accepted_edits_in_incumbent": []
   },
   {
    "component": "skill",
-   "recent_best_gain": -0.00562,
+   "recent_best_gain": -0.01812,
    "accepted_edits_in_incumbent": []
   },
   {
    "component": "subagent",
-   "recent_best_gain": -0.02906,
+   "recent_best_gain": -0.04188,
    "accepted_edits_in_incumbent": []
   }
  ],
  "delta": 0.01594,
- "S_star": 0.49625
+ "S_star": 0.519375
 }

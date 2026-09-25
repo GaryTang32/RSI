@@ -19,7 +19,7 @@ grids at the same call budget, and the best of them chosen in hindsight on the s
 a hand-tuned smaller grid also does) from the policy's within-round decisions.
 
     python experiments/dream-rsi/e3_dream_vs_fixed.py [--llm sim|claude:haiku] [--seeds N] [--quick]
-        [--domains synthetic,sumdiff,circlepack,lasso]
+        [--domains synthetic,sumdiff,circlepack,lasso,autocorr] [--objective eq1|pareto] [--no-controls]
 """
 import json
 import time
@@ -33,11 +33,17 @@ from _common import (RESULTS, agent_of, best_at, calls_to, developer_of, domain_
 from rsi.core import transfer_report
 from rsi.dream import Config, run
 
-SETTINGS = {  # grid (branches, refine), W, fixed rounds, M, seeds divisor
-    "synthetic": dict(grid=(6, 4), W=4, rounds=8, M=6, max_rounds=40),
-    "sumdiff": dict(grid=(5, 3), W=4, rounds=5, M=4, max_rounds=20),
-    "circlepack": dict(grid=(5, 3), W=4, rounds=5, M=4, max_rounds=20),
-    "lasso": dict(grid=(5, 3), W=4, rounds=5, M=4, max_rounds=20),
+#: grid (branches, refine), W, fixed rounds, M. W = the grid's width: pi_1 "launches multiple independent
+#: exploration workspaces in parallel" (10 workspaces / 10 workers for Pro) [paper:§4 p.7], so every root of
+#: the fixed grid runs in round 1 of its search (claims audit N4: W was 4 on 5-6-wide grids). Both arms
+#: share the per-round budget (Config.round_budget="fallback", claims audit N3). The math tasks run 10
+#: rounds in the paper; autocorr (added after the audit) follows that, the older domains keep 5.
+SETTINGS = {
+    "synthetic": dict(grid=(6, 4), W=6, rounds=8, M=6, max_rounds=40),
+    "sumdiff": dict(grid=(5, 3), W=5, rounds=5, M=4, max_rounds=20),
+    "circlepack": dict(grid=(5, 3), W=5, rounds=5, M=4, max_rounds=20),
+    "lasso": dict(grid=(5, 3), W=5, rounds=5, M=4, max_rounds=20),
+    "autocorr": dict(grid=(5, 3), W=5, rounds=10, M=4, max_rounds=40),
 }
 
 
@@ -48,6 +54,7 @@ CONTROL_GRIDS = [(6, 2), (6, 1), (4, 4), (4, 2), (3, 3)]
 def one(job):
     dom_name, seed, dream, llm, quick = job[:5]
     grid = job[5] if len(job) > 5 else None      # control arm: Fixed on another fixed grid
+    objective = job[6] if len(job) > 6 else "eq1"
     st = dict(SETTINGS[dom_name])
     if quick:
         st["rounds"] = min(st["rounds"], 4)
@@ -56,18 +63,25 @@ def one(job):
     budget = st["rounds"] * per_round
     g = grid or st["grid"]
     rounds = st["max_rounds"] if dream else (-(-budget // (g[0] * (g[1] + 1))) if grid else st["rounds"])
-    cfg = Config(rounds=rounds, W=st["W"], branch_count=g[0],
-                 refine_count=g[1], M=st["M"], dream=dream, sandbox=sandbox_of(llm), seed=seed,
-                 max_calls=budget, agent_workers=1 if llm == "sim" else st["W"])
+    cfg = Config(rounds=rounds, W=st["W"], branch_count=g[0], refine_count=g[1], M=st["M"], dream=dream,
+                 sandbox=sandbox_of(llm), seed=seed, max_calls=budget, agent_workers=1 if llm == "sim" else st["W"],
+                 objective=objective)
     res = run(dom, config=cfg, agent=agent_of(dom, llm), developer=developer_of(llm) if dream else None)
     curve = [(0, res.meta["seed_score"])] + [(r["cum_calls"], r["best"]) for r in res.trajectory]
     arm = "dream" if dream else (f"fixed_{g[0]}x{g[1]}" if grid else "fixed")
-    out = {"domain": dom_name, "seed": seed, "arm": arm, "budget": budget,
+    cost = res.usage["_cost"]
+    # developer requests per live round (one LLM call each with an LLM developer; the dreaming after
+    # round t is paid before round t + 1) - the paper's cost unit leaves them out (claims audit N7)
+    dev_per_round = [len(r.get("dream", {}).get("values", [None])) - 1 if "dream" in r else 0 for r in res.trajectory]
+    out = {"domain": dom_name, "seed": seed, "arm": arm, "budget": budget, "W": st["W"],
            "curve": curve, "calls_per_round": [r["calls"] for r in res.trajectory],
            "round_best": [r["round_best"] for r in res.trajectory], "rounds": len(res.trajectory),
            "final_best": res.meta["best_score"], "seed_score": res.meta["seed_score"],
-           "replay_episodes": res.usage["_cost"]["replay_episodes"], "replay_cpu_s": res.usage["_cost"]["replay_cpu_s"],
-           "developer_calls": res.usage["_cost"]["developer_calls"],
+           "replay_episodes": cost["replay_episodes"], "replay_cpu_s": cost["replay_cpu_s"],
+           "developer_calls": cost["developer_calls"], "developer_revisions": cost["developer_revisions"],
+           "developer_requests_per_round": dev_per_round, "llm_calls_total": cost["llm_calls_total"],
+           "round_budget": cfg.round_cap, "truncated_rounds": [w.meta.get("truncated_batch", {}).get("round")
+                                                                for w in res.meta["worlds"]],
            "plans": [r["plan"] for r in res.trajectory], "betas": [r["beta"] for r in res.trajectory]}
     if dom_name == "lasso":
         rep = transfer_report(dom, None, {"seed": res.baseline, "final": res.best}, splits=("holdout",), workers=1)
@@ -172,13 +186,33 @@ def analyse(rows, dom_name, rounds_eq):
     dr_calls = [sum(dr[s]["calls_per_round"][:R]) for s in seeds]
     fx_best = [max(fx[s]["round_best"][:R] + [fx[s]["seed_score"]]) for s in seeds]
     dr_best = [max(dr[s]["round_best"][:R] + [dr[s]["seed_score"]]) for s in seeds]
+    # the whole LLM bill at equal rounds: agent calls + the developer requests of the dreaming phases that
+    # preceded those rounds (claims audit N7)
+    dr_dev = [sum(dr[s]["developer_requests_per_round"][:max(0, R - 1)]) for s in seeds]
+    dr_llm = [a + b for a, b in zip(dr_calls, dr_dev)]
     eq = {"rounds": R, "fixed_calls": summ(fx_calls), "dream_calls": summ(dr_calls),
           "fixed_best": summ(fx_best), "dream_best": summ(dr_best), "best_diff": paired(fx_best, dr_best),
-          "calls_ratio_fixed_over_dream": summ([a / b for a, b in zip(fx_calls, dr_calls) if b])}
+          "calls_ratio_fixed_over_dream": summ([a / b for a, b in zip(fx_calls, dr_calls) if b]),
+          "dream_developer_requests": summ(dr_dev), "dream_llm_calls_incl_developer": summ(dr_llm),
+          "llm_calls_ratio_fixed_over_dream_incl_developer": summ([a / b for a, b in zip(fx_calls, dr_llm) if b])}
+    per_round = max((max(fx[s]["calls_per_round"]) for s in seeds), default=None)
+    plans_over = sum(1 for s in seeds for p in dr[s]["plans"]
+                     if p["branch_count"] * (p["refine_count"] + 1) > (dr[s]["round_budget"] or 10 ** 9))
+    n_plans = sum(len(dr[s]["plans"]) for s in seeds)
+    budget_check = {"per_round_budget": dr[seeds[0]]["round_budget"] if seeds else None,
+                    "fixed_per_round_calls": per_round,
+                    "dream_max_calls_in_a_round": max((max(dr[s]["calls_per_round"]) for s in seeds), default=None),
+                    "dream_plans_larger_than_the_budget": f"{plans_over}/{n_plans}",
+                    "dream_rounds_cut_by_the_budget": sum(1 for s in seeds for t in dr[s]["truncated_rounds"]
+                                                          if t is not None)}
     return {"seeds": seeds, "budget": budget, "best_at_budget_fraction": at, "calls_to_target": ctt,
             "dream_reached_target": f"{len(reached)}/{len(seeds)}",
             "calls_to_target_ratio": summ([c["ratio"] for c in ctt if c["ratio"]]),
             "equal_rounds": eq, "dream_rounds": summ([dr[s]["rounds"] for s in seeds]),
+            "per_round_budget_check": budget_check,
+            "developer_requests_at_equal_budget": summ([dr[s]["developer_revisions"] for s in seeds]),
+            "llm_calls_at_equal_budget": {"fixed": summ([fx[s]["llm_calls_total"] for s in seeds]),
+                                          "dream": summ([dr[s]["llm_calls_total"] for s in seeds])},
             "replay_episodes": summ([dr[s]["replay_episodes"] for s in seeds]),
             "replay_cpu_s": summ([dr[s]["replay_cpu_s"] for s in seeds])}
 
@@ -214,7 +248,11 @@ def make_verdicts(results: dict, raw: list) -> dict:
                        f"{full['hi']:+.4g}] (lower bound {lo_pct:+.1f}% of Fixed's gain; margin "
                        f"{100 * NONINF:.0f}%; n={full['n']})") + \
             (f"; fewer calls at equal rounds ({eq['dream_calls']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f})"
-             if fewer else "; not fewer calls at equal rounds")
+             if fewer else "; not fewer calls at equal rounds") + \
+            (f" ({eq['dream_llm_calls_incl_developer']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f} LLM calls "
+             f"counting the policy developer's {eq['dream_developer_requests']['mean']:.0f} requests)"
+             if eq.get("dream_llm_calls_incl_developer") and eq["dream_llm_calls_incl_developer"].get("mean")
+             is not None else "")
         if "controls" in r:
             c = r["controls"]
             dm = c["dream_minus_hindsight_best"]
@@ -258,7 +296,7 @@ def make_verdicts(results: dict, raw: list) -> dict:
                                   "'beats sklearn on every dataset' does not reproduce with numpy programs")
     return verdicts
 
-DEFAULT_DOMAINS = "synthetic,sumdiff,circlepack,lasso"
+DEFAULT_DOMAINS = "synthetic,sumdiff,circlepack,lasso,autocorr"
 
 
 def replot(raw, png):
@@ -291,6 +329,9 @@ def replot(raw, png):
 def main():
     a = parse_args("E3 Dream-RSI vs Recursive Fixed Exploration", default_seeds=20, extra=lambda ap: (
         ap.add_argument("--domains", default=DEFAULT_DOMAINS),
+        ap.add_argument("--objective", default="eq1", choices=("eq1", "pareto"),
+                        help="Dream's selection objective (the Fixed arm has none)"),
+        ap.add_argument("--no-controls", action="store_true", help="skip the synthetic hindsight fixed grids"),
         ap.add_argument("--reverdict", action="store_true",
                         help="recompute the verdicts of an existing result file without running anything")))
     if a.reverdict:
@@ -304,15 +345,15 @@ def main():
         return
     doms = a.domains.split(",")
     n_seeds = {"synthetic": a.seeds, "sumdiff": max(2, a.seeds // 2), "circlepack": max(2, a.seeds // 4),
-               "lasso": max(2, a.seeds // 5)}
+               "lasso": max(2, a.seeds // 5), "autocorr": max(2, a.seeds // 2)}
     if a.llm != "sim":
         n_seeds = {d: 1 for d in doms}
     results, raw = {}, []
     plt, png = figure("e3_dream_vs_fixed")
     fig, axes = plt.subplots(1, len(doms), figsize=(4.2 * len(doms), 3.5), squeeze=False)
     for i, d in enumerate(doms):
-        jobs = [(d, s, dream, a.llm, a.quick) for s in range(n_seeds[d]) for dream in (False, True)]
-        if d == "synthetic" and a.llm == "sim":
+        jobs = [(d, s, dream, a.llm, a.quick, None, a.objective) for s in range(n_seeds[d]) for dream in (False, True)]
+        if d == "synthetic" and a.llm == "sim" and not a.no_controls:
             jobs += [(d, s, False, a.llm, a.quick, g) for s in range(n_seeds[d]) for g in CONTROL_GRIDS]
         rows = pmap(one, jobs, 1 if d == "lasso" else a.workers)
         raw.extend(rows)
@@ -347,7 +388,9 @@ def main():
               f"ratio fixed/dream {fmt(res['calls_to_target_ratio'], 2)}")
         eq = res["equal_rounds"]
         print(f"   after {eq['rounds']} rounds: calls fixed {fmt(eq['fixed_calls'], 1)} dream {fmt(eq['dream_calls'], 1)};"
-              f" best fixed {fmt(eq['fixed_best'])} dream {fmt(eq['dream_best'])}")
+              f" best fixed {fmt(eq['fixed_best'])} dream {fmt(eq['dream_best'])}; dream incl. developer requests "
+              f"{fmt(eq['dream_llm_calls_incl_developer'], 1)} LLM calls")
+        print(f"   per-round budget: {res['per_round_budget_check']}")
         ax = axes[0][i]
         grid = np.linspace(0, res["budget"], 60)
         for arm, col in (("fixed", "#C44E52"), ("dream", "#4C72B0")):
@@ -373,7 +416,11 @@ def main():
         verdicts = {**prev.get("verdict", {}), **verdicts}
         n_seeds = {**prev.get("config", {}).get("seeds", {}), **n_seeds}
     save("e3_dream_vs_fixed", {"config": {"settings": SETTINGS, "seeds": n_seeds, "llm": a.llm, "quick": a.quick,
-                                          "objective": "eq1 beta1=0.01 beta2=0.005 normalized",
+                                          "objective": ("eq1 beta1=0.01 beta2=0.005 normalized" if a.objective == "eq1"
+                                                        else "pareto: pareto.auc - 0.1 * parallel_penalty over beta "
+                                                             "(0.2..1.0)"),
+                                          "round_budget": "fallback: Dream's per-round calls capped at Fixed's grid",
+                                          "W": "grid width (all workspaces in parallel)",
                                           "developer": "ParametricMutator" if a.llm == "sim" else a.llm},
                                "results": results, "raw": raw, "figure": str(png), "verdict": verdicts}, a.out)
     if prev:
