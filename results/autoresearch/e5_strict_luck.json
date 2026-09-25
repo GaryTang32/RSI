@@ -1,0 +1,486 @@
+{
+ "experiment": "e5_strict_luck",
+ "written_at": "2026-09-25 05:40:53",
+ "config": {
+  "landscape_seeds": 50,
+  "max_runs": 150,
+  "rules": [
+   "strict",
+   "rigor",
+   "rigor_pinned",
+   "noise_band",
+   "simplicity"
+  ],
+  "noise": {
+   "seed_sd": 0.002,
+   "nondeterminism_sd": 0.001,
+   "val_sd": 0.0015
+  }
+ },
+ "landscape": {
+  "strict": {
+   "n_keeps": {
+    "mean": 14.46,
+    "lo": 13.34,
+    "hi": 15.6,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.19151670479204466,
+    "lo": 0.16408492368391245,
+    "hi": 0.21848464873012677,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 3.0,
+    "lo": 2.46,
+    "hi": 3.58,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 1.18,
+    "lo": 0.84,
+    "hi": 1.56,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.00408591651430924,
+    "lo": 0.003523041776757811,
+    "hi": 0.004648332465265181,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.9563439075313983,
+    "lo": 0.9552081138652189,
+    "hi": 0.9575611783684105,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.06989266127173922,
+    "lo": 0.06867539043472691,
+    "hi": 0.07102845493791841,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 149.0,
+    "lo": 149.0,
+    "hi": 149.0,
+    "n": 50
+   }
+  },
+  "rigor": {
+   "n_keeps": {
+    "mean": 8.68,
+    "lo": 8.16,
+    "hi": 9.22,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.046380674880674884,
+    "lo": 0.028608898046398046,
+    "hi": 0.06597033938283937,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 0.42,
+    "lo": 0.26,
+    "hi": 0.58,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 0.26,
+    "lo": 0.12,
+    "hi": 0.42,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.0014577327422794762,
+    "lo": 0.0011244303918695765,
+    "hi": 0.0017742736570250297,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.9579232481557689,
+    "lo": 0.9568941868082931,
+    "hi": 0.9589890060218699,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.06831332064736857,
+    "lo": 0.06724756278126748,
+    "hi": 0.06934238199484438,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 111.62,
+    "lo": 109.7,
+    "hi": 113.5,
+    "n": 50
+   }
+  },
+  "rigor_pinned": {
+   "n_keeps": {
+    "mean": 10.98,
+    "lo": 10.28,
+    "hi": 11.7,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.12007048507048507,
+    "lo": 0.09255645743145742,
+    "hi": 0.14778297397047394,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 1.44,
+    "lo": 1.08,
+    "hi": 1.82,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 0.86,
+    "lo": 0.58,
+    "hi": 1.18,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.0034725868108538616,
+    "lo": 0.003015335497713682,
+    "hi": 0.003938549028771536,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.9575161235998394,
+    "lo": 0.9563263940259864,
+    "hi": 0.9588786973835497,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.06872044520329816,
+    "lo": 0.06735787141958773,
+    "hi": 0.06991017477715099,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 117.26,
+    "lo": 115.16,
+    "hi": 119.32,
+    "n": 50
+   }
+  },
+  "noise_band": {
+   "n_keeps": {
+    "mean": 5.86,
+    "lo": 5.42,
+    "hi": 6.3,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.01119047619047619,
+    "lo": 0.0,
+    "hi": 0.02571428571428571,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 0.06,
+    "lo": 0.0,
+    "hi": 0.14,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 0.02,
+    "lo": 0.0,
+    "hi": 0.06,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.0034582899276841017,
+    "lo": 0.0027668425131175648,
+    "hi": 0.004141856142690668,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.963272265381298,
+    "lo": 0.9618777218805176,
+    "hi": 0.9646870534479843,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.06296430342183973,
+    "lo": 0.06154951535515302,
+    "hi": 0.06435884692261985,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 144.0,
+    "lo": 144.0,
+    "hi": 144.0,
+    "n": 50
+   }
+  },
+  "simplicity": {
+   "n_keeps": {
+    "mean": 14.46,
+    "lo": 13.34,
+    "hi": 15.6,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.19151670479204466,
+    "lo": 0.16408492368391245,
+    "hi": 0.21848464873012677,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 3.0,
+    "lo": 2.46,
+    "hi": 3.58,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 1.18,
+    "lo": 0.84,
+    "hi": 1.56,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.00408591651430924,
+    "lo": 0.003523041776757811,
+    "hi": 0.004648332465265181,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.9563439075313983,
+    "lo": 0.9552081138652189,
+    "hi": 0.9575611783684105,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.06989266127173922,
+    "lo": 0.06867539043472691,
+    "hi": 0.07102845493791841,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 149.0,
+    "lo": 149.0,
+    "hi": 149.0,
+    "n": 50
+   }
+  }
+ },
+ "tinylm": {
+  "strict": {
+   "n_keeps": {
+    "mean": 8.666666666666666,
+    "lo": 6.0,
+    "hi": 12.0,
+    "n": 3
+   },
+   "seed_keeps": {
+    "mean": 1.3333333333333333,
+    "lo": 1.0,
+    "hi": 2.0,
+    "n": 3
+   },
+   "optimism_gap": {
+    "mean": 0.006560625823018047,
+    "lo": -0.00756186001118575,
+    "hi": 0.0190660214691194,
+    "n": 3
+   },
+   "honest_gain": {
+    "mean": 0.5784167066293241,
+    "lo": 0.428872683129804,
+    "hi": 0.8032692264834314,
+    "n": 3
+   },
+   "n_experiments": {
+    "mean": 26.0,
+    "lo": 26.0,
+    "hi": 26.0,
+    "n": 3
+   },
+   "runs": [
+    {
+     "rule": "strict",
+     "seed": 0,
+     "n_keeps": 12,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 1,
+     "recorded_best": 2.8478806077700916,
+     "honest_final": 2.856058323781212,
+     "honest_baseline": 3.6593275502646434,
+     "optimism_gap": 0.008177716011120495,
+     "honest_gain": 0.8032692264834314,
+     "kept": [
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "HIDDEN 128 -> 64",
+      "SEED 42 -> 397",
+      "HIDDEN 64 -> 128",
+      "WARMDOWN_RATIO 0.5 -> 0.3",
+      "ACTIVATION 'tanh' -> 'relu'",
+      "CONTEXT 6 -> 4",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "LR 0.024 -> 0.048",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+     ]
+    },
+    {
+     "rule": "strict",
+     "seed": 1,
+     "n_keeps": 8,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 2,
+     "recorded_best": 3.135720152151091,
+     "honest_final": 3.1547861736202103,
+     "honest_baseline": 3.657894383894947,
+     "optimism_gap": 0.0190660214691194,
+     "honest_gain": 0.5031082102747368,
+     "kept": [
+      "INIT_SCALE 1.0 -> 1.4",
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "LR 0.003 -> 0.006",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "TRAIN_SEQ_LEN 16 -> 8",
+      "CONTEXT 6 -> 4",
+      "SEED 42 -> 397",
+      "SEED 397 -> 402"
+     ]
+    },
+    {
+     "rule": "strict",
+     "seed": 2,
+     "n_keeps": 6,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 1,
+     "recorded_best": 3.251532457373562,
+     "honest_final": 3.243970597362376,
+     "honest_baseline": 3.67284328049218,
+     "optimism_gap": -0.00756186001118575,
+     "honest_gain": 0.428872683129804,
+     "kept": [
+      "ACTIVATION 'tanh' -> 'relu'",
+      "SEED 42 -> 397",
+      "HIDDEN 128 -> 64",
+      "TRAIN_SEQ_LEN 16 -> 8",
+      "DEPTH 1 -> 2",
+      "EMBED_DIM 16 -> 32"
+     ]
+    }
+   ]
+  },
+  "rigor": {
+   "n_keeps": {
+    "mean": 3.3333333333333335,
+    "lo": 2.0,
+    "hi": 5.0,
+    "n": 3
+   },
+   "seed_keeps": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 3
+   },
+   "optimism_gap": {
+    "mean": 0.013198708066626116,
+    "lo": 0.00798794493367394,
+    "hi": 0.018316907325027998,
+    "n": 3
+   },
+   "honest_gain": {
+    "mean": 0.5024100156073965,
+    "lo": 0.24332898396849956,
+    "hi": 0.6547091821938715,
+    "n": 3
+   },
+   "n_experiments": {
+    "mean": 13.333333333333334,
+    "lo": 12.0,
+    "hi": 14.0,
+    "n": 3
+   },
+   "runs": [
+    {
+     "rule": "rigor",
+     "seed": 0,
+     "n_keeps": 2,
+     "n_runs": 27,
+     "n_experiments": 14,
+     "seed_keeps": 0,
+     "recorded_best": 3.408373474996378,
+     "honest_final": 3.426690382321406,
+     "honest_baseline": 3.6700193662899054,
+     "optimism_gap": 0.018316907325027998,
+     "honest_gain": 0.24332898396849956,
+     "kept": [
+      "ACTIVATION 'tanh' -> 'relu'",
+      "EMBED_DIM 16 -> 32"
+     ]
+    },
+    {
+     "rule": "rigor",
+     "seed": 1,
+     "n_keeps": 5,
+     "n_runs": 27,
+     "n_experiments": 12,
+     "seed_keeps": 0,
+     "recorded_best": 3.0629749853676613,
+     "honest_final": 3.0709629303013353,
+     "honest_baseline": 3.6801548109611537,
+     "optimism_gap": 0.00798794493367394,
+     "honest_gain": 0.6091918806598184,
+     "kept": [
+      "INIT_SCALE 1.0 -> 1.4",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+     ]
+    },
+    {
+     "rule": "rigor",
+     "seed": 2,
+     "n_keeps": 3,
+     "n_runs": 27,
+     "n_experiments": 14,
+     "seed_keeps": 0,
+     "recorded_best": 3.0202971317103255,
+     "honest_final": 3.033588403651502,
+     "honest_baseline": 3.6882975858453735,
+     "optimism_gap": 0.013291271941176408,
+     "honest_gain": 0.6547091821938715,
+     "kept": [
+      "ACTIVATION 'tanh' -> 'relu'",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012"
+     ]
+    }
+   ]
+  }
+ },
+ "verdict": {
+  "strict_false_keep_rate": 0.19151670479204466,
+  "rigor_false_keep_rate": 0.046380674880674884,
+  "strict_seed_keeps_per_run": 1.18,
+  "rigor_seed_keeps_per_run": 0.26,
+  "strict_optimism_gap": 0.00408591651430924,
+  "rigor_optimism_gap": 0.0014577327422794762,
+  "strict_optimism_gap_ci_lo": 0.003523041776757811,
+  "true_final_strict": 0.9563439075313983,
+  "true_final_rigor": 0.9579232481557689,
+  "tinylm_strict_optimism_gap": 0.006560625823018047,
+  "tinylm_rigor_optimism_gap": 0.013198708066626116,
+  "strict_locks_in_luck": true,
+  "rigor_smaller_gap": true,
+  "honest_final_quality_tradeoff": "strict better at equal compute (rigor spends up to 3 runs per candidate: 112 vs 149 ideas tried)",
+  "claim_reproduced": true
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e5_strict_luck.png"
+}

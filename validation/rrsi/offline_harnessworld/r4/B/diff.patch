@@ -1,0 +1,8 @@
+--- a/tools/str_05.py
++++ b/tools/str_05.py
+@@ -0,0 +1,5 @@
++# mechanism: str_05
++# component: client_tool
++# title: Structured search tool
++"""Structured search tool; aimed at extract, arith, format tasks."""
++enable("str_05")

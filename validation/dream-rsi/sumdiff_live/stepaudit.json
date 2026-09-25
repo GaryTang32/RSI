@@ -1,0 +1,605 @@
+{
+ "run": "sumdiff_live",
+ "counts": {
+  "correct": 69,
+  "wrong": 15,
+  "questionable": 1
+ },
+ "steps": [
+  {
+   "round": 0,
+   "kind": "baseline",
+   "step": "seed evaluation",
+   "verdict": "correct",
+   "evidence": "trace S=0.910491, own re-grade=0.910491 (ok), mean of raw trials=0.9104910395109694, seed program == untouched domain seed: True"
+  },
+  {
+   "round": 1,
+   "kind": "plan",
+   "step": "cycle 1 plan_grid (r0000)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 1: (3, 3) ('parallel refine: fixed fallback grid (width x depth never adapts)'); trace requested (3, 3), used (3, 3)"
+  },
+  {
+   "round": 1,
+   "kind": "root",
+   "step": "cycle 1 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 0.910491 vs best so far 0.910491"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 3 batch ['b0.a2', 'b1.a2', 'b2.a2']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 4 batch ['b0.a3', 'b1.a3', 'b2.a3']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "12 probed cells vs 12 tree nodes"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (5 +/- lines); own re-grade 1.019736 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['anneal', 'hill']; claim names ['hill', 'anneal']"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a0",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (6 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 0.955162 (ok); context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['window', 'window']; claim names ['window']; also edits 3 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (5 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['anneal', 'hill']; claim names ['hill', 'anneal']; also edits 2 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a1",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (4 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.028616 (ok); context lineage=1, siblings=2, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (4 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); STAGES ['window', 'window'] -> ['window', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe']; also edits 4 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions []"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a1",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (5 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.019633 (ok); context lineage=1, siblings=2, history=0 (H_(t-1)); STAGES ['anneal', 'hill'] -> ['fringe', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe']; also edits 5 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a2",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (4 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.014185 (ok); context lineage=2, siblings=4, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.020182 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1)); STAGES ['window', 'anneal', 'hill'] -> ['anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 6 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a2",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (5 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.016302 (ok); context lineage=2, siblings=4, history=0 (H_(t-1)); STAGES ['fringe', 'hill'] -> ['grow', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 5 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions []"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a3",
+   "verdict": "questionable",
+   "evidence": "JUDGEMENT: the parent's SyntaxError was a reply-parser leftover, but the agent only saw the HEAD of the traceback (fixed after the run) and blamed the idea/ordering: 'reversed ... order, causing compilation failure' || mechanical: diff = own snapshot diff (7 +/- lines); own re-grade 1.011946 = recorded; context lineage=3, siblings=6, history=0 (H_(t-1)); STAGES [] -> ['anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'grow']; also edits 1 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions ['compilation', 'failure']"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a3",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.023749 = recorded; context lineage=3, siblings=6, history=0 (H_(t-1)); STAGES ['anneal', 'grow', 'hill'] -> ['grow', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 6 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a3",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (6 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.000000 (ok); context lineage=3, siblings=6, history=0 (H_(t-1)); STAGES ['grow', 'anneal', 'hill'] -> ['anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'grow']; also edits 6 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions []"
+  },
+  {
+   "round": 1,
+   "kind": "gate",
+   "step": "cycle 1 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.023749 at b1.a3 vs best before 0.910491 -> accept=True; trace accept=True, best_after=1.023749, kept=t1/b1.a3"
+  },
+  {
+   "round": 1,
+   "kind": "manifest",
+   "step": "cycle 1 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 12, 'decision_rounds': 4, 'round_best': 1.023749252415818, 'gain_early': 0.9645639784000751, 'fail_frac': 0.5, 'beta': 0.6, 'opened_width': 3, 'max_depth': 3, 'final_best': 1.023749252415818, 'agent_calls': 12}"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0000_initial",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0002_t1m2",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895]"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0000 -> history/r0001 (174 lines); base r0000 = strongest so far (value, recency); LLM claim: Implement adaptive trajectory-guided policy with smart batching, beta-controlled thresholds, and adaptive grid planning"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0002_t1m2",
+   "verdict": "wrong",
+   "evidence": "JUDGEMENT: developer first attempt rejected on a reply-parser leftover (trailing fence) reported only as 'invalid syntax, line N'; the repair round invented a cause ('indentation error on line 170'); change text = repair only || mechanical: diff = own diff of history/r0001 -> history/r0002 (112 lines); base r0001 = strongest so far (value, recency); LLM claim: Fix indentation error on line 170: `batch.append(cell)` under Priority 3 repair loop was not indented, causing syntax error.; 1 repair round(s)"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0002 -> history/r0003 (104 lines); base r0002 = strongest so far (value, recency); LLM claim: Prioritize recovery over exploration and fix soft-closure to spare branches with successful anchors"
+  },
+  {
+   "round": 1,
+   "kind": "selection",
+   "step": "cycle 1 policy selection",
+   "verdict": "correct",
+   "evidence": "own V [0.895, 0.895, 0.895, 0.895] -> argmax (incumbent kept on ties) r0000_initial; trace r0000_initial; next cycle deploys r0000; V(m*) - V(0) = +0.000000 >= 0"
+  },
+  {
+   "round": 1,
+   "kind": "beta_sweep",
+   "step": "cycle 1 beta sweep of r0000_initial",
+   "verdict": "correct",
+   "evidence": "own AUC 0.0000 / penalty 0.3333 / degenerate True vs trace 0.0 / 0.333333 / True (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 2,
+   "kind": "plan",
+   "step": "cycle 2 plan_grid (r0000)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 2: (3, 3) ('parallel refine: fixed fallback grid (width x depth never adapts)'); trace requested (3, 3), used (3, 3)"
+  },
+  {
+   "round": 2,
+   "kind": "root",
+   "step": "cycle 2 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.023749 vs best so far 1.023749"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 3 batch ['b0.a2', 'b1.a2', 'b2.a2']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 4 batch ['b0.a3', 'b1.a3', 'b2.a3']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "12 probed cells vs 12 tree nodes"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (7 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=12 (H_(t-1)); STAGES ['grow', 'anneal', 'hill'] -> ['anneal', 'anneal', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 7 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a0",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (8 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.000000 (ok); context lineage=0, siblings=0, history=12 (H_(t-1)); STAGES ['grow', 'anneal', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 8 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a0",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (8 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.000000 (ok); context lineage=0, siblings=0, history=12 (H_(t-1)); STAGES ['grow', 'anneal', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 8 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a1",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (10 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.000000 (ok); context lineage=1, siblings=2, history=12 (H_(t-1)); STAGES ['anneal', 'anneal', 'anneal', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 10 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (1 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 1 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions ['compile', 'formatting', 'markdown', 'stray', 'syntax']"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (240 +/- lines, trace clipped); own re-grade 1.030380 = recorded; context lineage=1, siblings=2, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 179 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions ['compilation', 'markdown', 'syntax']"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a2",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (7 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.000000 (ok); context lineage=2, siblings=4, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 7 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions []"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.000000 = recorded; context lineage=2, siblings=4, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 6 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (8 +/- lines); own re-grade 1.030417 = recorded; context lineage=2, siblings=4, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 8 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a3",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (24 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.020956 (ok); context lineage=3, siblings=6, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 22 code lines outside INIT/STAGES; parent failed on a parser leftover; its diagnosis mentions ['compilation', 'failure', 'markdown']"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a3",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (8 +/- lines); own re-grade 1.000000 = recorded; context lineage=3, siblings=6, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 8 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a3",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (10 +/- lines); own re-grade 1.010108 = recorded; context lineage=3, siblings=6, history=12 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['window', 'grow', 'anneal', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 10 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 2,
+   "kind": "gate",
+   "step": "cycle 2 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.030417 at b2.a2 vs best before 1.023749 -> accept=True; trace accept=True, best_after=1.030417, kept=t2/b2.a2"
+  },
+  {
+   "round": 2,
+   "kind": "manifest",
+   "step": "cycle 2 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 12, 'decision_rounds': 4, 'round_best': 1.0304168748055738, 'gain_early': 0.9945209819917495, 'fail_frac': 0.4166666666666667, 'beta': 0.6, 'opened_width': 3, 'max_depth': 3, 'final_best': 1.0304168748055738, 'agent_calls': 12}"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0000_initial",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895, 0.895]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0004_t2m1",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895, 0.895]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895, 0.895]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0006_t2m3",
+   "verdict": "correct",
+   "evidence": "V = 0.895000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.895, 0.895]"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0004_t2m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0000 -> history/r0004 (196 lines); base r0000 = strongest so far (value, recency); LLM claim: Implement success-rate-prioritized portfolio exploration with adaptive beta schedule and history-responsive grid planning"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0005_t2m2",
+   "verdict": "wrong",
+   "evidence": "JUDGEMENT: developer first attempt rejected on a reply-parser leftover (trailing fence) reported only as 'invalid syntax, line N'; the repair round invented a cause ('indentation ... line 230'); change text = repair only || mechanical: diff = own diff of history/r0004 -> history/r0005 (133 lines); base r0004 = strongest so far (value, recency); LLM claim: Fix syntax error at line 230 by ensuring proper indentation and file structure throughout solve() method; 1 repair round(s)"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0006_t2m3",
+   "verdict": "wrong",
+   "evidence": "JUDGEMENT: developer first attempt rejected on a reply-parser leftover (trailing fence) reported only as 'invalid syntax, line N'; the repair round invented a cause ('recovery_candidates sorting'); change text = repair only || mechanical: diff = own diff of history/r0005 -> history/r0006 (93 lines); base r0005 = strongest so far (value, recency); LLM claim: Fix syntax error in solve() method: correct recovery_candidates sorting to use proper key function indexing; 1 repair round(s)"
+  },
+  {
+   "round": 2,
+   "kind": "selection",
+   "step": "cycle 2 policy selection",
+   "verdict": "correct",
+   "evidence": "own V [0.895, 0.895, 0.895, 0.895] -> argmax (incumbent kept on ties) r0000_initial; trace r0000_initial; next cycle deploys r0000; V(m*) - V(0) = +0.000000 >= 0"
+  },
+  {
+   "round": 2,
+   "kind": "beta_sweep",
+   "step": "cycle 2 beta sweep of r0000_initial",
+   "verdict": "correct",
+   "evidence": "own AUC 0.0000 / penalty 0.3333 / degenerate True vs trace 0.0 / 0.333333 / True (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 3,
+   "kind": "plan",
+   "step": "cycle 3 plan_grid (r0000)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 3: (3, 3) ('parallel refine: fixed fallback grid (width x depth never adapts)'); trace requested (3, 3), used (3, 3)"
+  },
+  {
+   "round": 3,
+   "kind": "root",
+   "step": "cycle 3 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.030417 vs best so far 1.030417"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 3 batch ['b0.a2', 'b1.a2', 'b2.a2']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 4 batch ['b0.a3', 'b1.a3', 'b2.a3']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "12 probed cells vs 12 tree nodes"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (11 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'fringe', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 11 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (21 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 21 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (13 +/- lines); own re-grade 1.030253 = recorded; context lineage=0, siblings=0, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill', 'fringe']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 13 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (41 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'fringe', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 31 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (23 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 23 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (14 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill', 'fringe'] -> ['fringe', 'anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['fringe']; claim omits ['anneal', 'grow', 'window', 'hill']; also edits 14 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (36 +/- lines); own re-grade 1.027637 = recorded; context lineage=2, siblings=4, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names []; claim omits ['anneal', 'grow', 'window', 'hill']; also edits 24 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (9 +/- lines); own re-grade 1.000000 = recorded; context lineage=2, siblings=4, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'hill', 'anneal', 'grow', 'window', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'grow']; also edits 9 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 1.000000 = recorded; context lineage=2, siblings=4, history=24 (H_(t-1)); STAGES ['fringe', 'anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'fringe', 'window', 'anneal', 'grow', 'hill']; claim names ['window', 'fringe', 'grow']; claim omits ['anneal', 'hill']; also edits 2 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a3",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (39 +/- lines); own re-grade 1.011313 = recorded; context lineage=3, siblings=6, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names []; claim omits ['anneal', 'grow', 'window', 'hill']; also edits 31 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a3",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (37 +/- lines); own re-grade 1.017305 = recorded; context lineage=3, siblings=6, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names []; claim omits ['anneal', 'grow', 'window', 'hill']; also edits 26 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a3",
+   "verdict": "wrong",
+   "evidence": "diff = own snapshot diff (42 +/- lines); failure reproduced (error: SyntaxError: invalid syntax); HARNESS: SyntaxError is a reply-parser leftover (trailing fence/===); without it the program scores 1.014809 (ok); context lineage=3, siblings=6, history=24 (H_(t-1)); STAGES ['anneal', 'grow', 'fringe', 'window', 'anneal', 'grow', 'hill'] -> ['anneal', 'grow', 'window', 'anneal', 'grow', 'hill']; claim names ['hill', 'anneal', 'window', 'fringe', 'grow']; also edits 32 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 3,
+   "kind": "gate",
+   "step": "cycle 3 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.030253 at b2.a0 vs best before 1.030417 -> accept=False; trace accept=False, best_after=1.030417, kept=None"
+  },
+  {
+   "round": 3,
+   "kind": "manifest",
+   "step": "cycle 3 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 12, 'decision_rounds': 4, 'round_best': 1.0304168748055738, 'gain_early': 0.0, 'fail_frac': 0.08333333333333333, 'beta': 0.6, 'opened_width': 3, 'max_depth': 3, 'final_best': 1.030417, 'agent_calls': 12}"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-1 agent prompt rebuilt from disk state",
+   "verdict": "correct",
+   "evidence": "36/36 prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM cache: the agent saw exactly that and nothing else (no sealed data exists for this domain) [rebuilt with the pre-fix head-only error rendering the run used]"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
+   "verdict": "correct",
+   "evidence": "9/9 saved developer prompts hash to an entry of the fresh LLM cache; no manifest of a later live cycle in any prompt"
+  },
+  {
+   "round": null,
+   "kind": "cost",
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "calls per cycle own [12, 12, 12] vs trace [12, 12, 12]; meter 36; sum of per-attempt usd 2.0304 vs meter 2.0304; developer usd 0.8756 (9 calls); fresh cache: 45 entries, $2.9060 (= loop $2.9060)"
+  }
+ ]
+}

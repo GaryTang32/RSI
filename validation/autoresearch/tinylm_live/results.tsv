@@ -1,0 +1,12 @@
+commit	val_bpb	memory_gb	status	description
+906744c	2.829327	0.1	keep	baseline
+0abce28	2.895548	0.1	discard	Increase CONTEXT 6→10 and DEPTH 1→2
+568c10b	2.795149	0.1	keep	Reduce BATCH_SIZE 32 -> 24
+a14417d	2.776319	0.1	keep	Reduce BATCH_SIZE 24 -> 20 for more training steps in fixed budget
+cf01a07	2.750892	0.1	keep	Reduce BATCH_SIZE 20 -> 16 for more training steps
+82fcdc2	2.732962	0.1	keep	Reduce BATCH_SIZE 16 -> 12 for more training steps
+151c532	2.719324	0.1	keep	Reduce BATCH_SIZE 12 -> 10 for more training steps
+20f4498	2.712675	0.1	keep	Reduce BATCH_SIZE 10 -> 8 for more training steps
+518082c	2.708936	0.1	keep	Reduce BATCH_SIZE 8 -> 6 for more training steps
+927a904	2.727262	0.1	discard	Reduce BATCH_SIZE 6 -> 5 for more training steps
+6448d3e	2.687827	0.1	keep	Increase HIDDEN 128 -> 160 to better utilize the extra training steps from smaller batch size

@@ -1,0 +1,213 @@
+{
+ "experiment": "e1_progress_live_quick",
+ "written_at": "2026-09-24 21:31:57",
+ "config": {
+  "task": "tinylm",
+  "budget_s": 2.0,
+  "mode": "hardened",
+  "n_experiments": 8,
+  "seeds": [
+   0
+  ],
+  "llm": "claude:haiku",
+  "keep_rule": "strict"
+ },
+ "noise_band": {
+  "values": [
+   3.8042826130670635,
+   3.805460696238284,
+   3.8043383592177875
+  ],
+  "mean": 3.804693889507712,
+  "sd": 0.000664658807109624,
+  "delta": 0.0018799389987303064
+ },
+ "tinylm": {
+  "llm": {
+   "improvement": {
+    "mean": 0.6335283008664856,
+    "lo": 0.6335283008664856,
+    "hi": 0.6335283008664856,
+    "n": 1
+   },
+   "honest_improvement": {
+    "mean": 0.5148544769643482,
+    "lo": 0.5148544769643482,
+    "hi": 0.5148544769643482,
+    "n": 1
+   },
+   "keep_rate": {
+    "mean": 0.4444444444444444,
+    "lo": 0.4444444444444444,
+    "hi": 0.4444444444444444,
+    "n": 1
+   },
+   "experiments_per_hour": {
+    "mean": 40.91909540399064,
+    "lo": 40.91909540399064,
+    "hi": 40.91909540399064,
+    "n": 1
+   },
+   "runs": [
+    {
+     "arm": "llm",
+     "seed": 0,
+     "baseline": 3.8404781858228128,
+     "best": 3.206949884956327,
+     "improvement": 0.6335283008664856,
+     "keep_rate": 0.4444444444444444,
+     "n_keep": 4,
+     "n_crash": 0,
+     "experiments_per_hour": 40.91909540399064,
+     "reeval": {
+      "final": {
+       "mean": 3.318341005230016,
+       "lo": 3.2983280299942126,
+       "hi": 3.330496046554355,
+       "n": 3,
+       "values": [
+        3.2983280299942126,
+        3.330496046554355,
+        3.326198939141481
+       ],
+       "n_crash": 0,
+       "seeds": [
+        10000,
+        10001,
+        10002
+       ]
+      },
+      "baseline": {
+       "mean": 3.8331954821943643,
+       "lo": 3.803430545156264,
+       "hi": 3.851042426286991,
+       "n": 3,
+       "values": [
+        3.8451134751398386,
+        3.851042426286991,
+        3.803430545156264
+       ],
+       "n_crash": 0,
+       "seeds": [
+        10000,
+        10001,
+        10002
+       ]
+      },
+      "recorded_best": 3.206949884956327,
+      "optimism_gap": 0.11139112027368903
+     },
+     "crash_kinds": {},
+     "counters": {
+      "rejected": 0,
+      "duplicate": 0,
+      "invalid": 0,
+      "fix_attempts": 0,
+      "fixed": 0
+     },
+     "top_hits": [
+      {
+       "exp": 2,
+       "commit": "ca3f20e",
+       "description": "Increase learning rate from 0.003 to 0.008 for faster convergence in short budget",
+       "delta": 0.43672889344733035,
+       "metric": 3.4037492923754824
+      },
+      {
+       "exp": 4,
+       "commit": "7767fcf",
+       "description": "LR 0.008 -> 0.01 for further convergence speedup",
+       "delta": 0.18522704699215442,
+       "metric": 3.218522245383328
+      },
+      {
+       "exp": 7,
+       "commit": "05ebf0f",
+       "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%",
+       "delta": 0.011572360427000827,
+       "metric": 3.206949884956327
+      }
+     ],
+     "trajectory": [
+      {
+       "exp": 0,
+       "status": "keep",
+       "metric": 3.8404781858228128,
+       "description": "baseline"
+      },
+      {
+       "exp": 1,
+       "status": "discard",
+       "metric": 4.003009783011831,
+       "description": "increase DEPTH from 1 to 2 for deeper MLP"
+      },
+      {
+       "exp": 2,
+       "status": "keep",
+       "metric": 3.4037492923754824,
+       "description": "Increase learning rate from 0.003 to 0.008 for faster convergence in short budget"
+      },
+      {
+       "exp": 3,
+       "status": "discard",
+       "metric": 3.581542418362048,
+       "description": "Increase CONTEXT from 6 to 8 bytes for improved byte sequence context"
+      },
+      {
+       "exp": 4,
+       "status": "keep",
+       "metric": 3.218522245383328,
+       "description": "LR 0.008 -> 0.01 for further convergence speedup"
+      },
+      {
+       "exp": 5,
+       "status": "discard",
+       "metric": 3.2998145593135773,
+       "description": "LR 0.01 -> 0.012 for further convergence speedup"
+      },
+      {
+       "exp": 6,
+       "status": "discard",
+       "metric": 3.571069987890368,
+       "description": "BATCH_SIZE 32 -> 64 for lower-variance gradients in short budget"
+      },
+      {
+       "exp": 7,
+       "status": "keep",
+       "metric": 3.206949884956327,
+       "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%"
+      },
+      {
+       "exp": 8,
+       "status": "discard",
+       "metric": 3.4183135466217167,
+       "description": "Increase EMBED_DIM from 16 to 32 for richer byte embeddings"
+      }
+     ],
+     "audit_final": {
+      "exp": 7,
+      "commit": "05ebf0f",
+      "status": "keep",
+      "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%",
+      "metric": 3.206949884956327,
+      "test_iid": 3.3913829437142318,
+      "test_shift": 3.4577592335466005,
+      "loop_metric_rerun": 3.3189142046557496
+     },
+     "usage": {
+      "calls": 8,
+      "input_tokens": 77860,
+      "output_tokens": 63359,
+      "cost_usd": 0.47244300000000006
+     },
+     "results_tsv": "/tmp/rsi_autoresearch_runs/e1/tinylm_llm_0/results.tsv"
+    }
+   ]
+  }
+ },
+ "verdict": {
+  "beyond_noise_band": true,
+  "claim_reproduced": true
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e1_progress_live_quick.png"
+}

@@ -1,0 +1,51 @@
+{
+ "failure_modes": [
+  {
+   "mode": "numeric__incorrect_extracted_answer_v_expected_v",
+   "n_tasks": 10,
+   "affected_tasks": [
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-006",
+    "evolve-numeric-010",
+    "evolve-numeric-011",
+    "evolve-numeric-012",
+    "evolve-numeric-013",
+    "evolve-numeric-014",
+    "evolve-numeric-015",
+    "evolve-numeric-019"
+   ],
+   "loss": 5.0,
+   "description": "tasks of kind 'numeric' end with: Incorrect. Extracted answer <v>; expected <v>.",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-002",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '2694810'; expected '2695810'."
+    },
+    {
+     "task_id": "evolve-numeric-004",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '236'; expected '234'."
+    },
+    {
+     "task_id": "evolve-numeric-006",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '21'; expected '24'."
+    }
+   ]
+  }
+ ],
+ "capability_gaps": [],
+ "success_habits": [
+  {
+   "habit": "clean_numeric",
+   "n_tasks": 10,
+   "description": "passing tasks of kind 'numeric' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  }
+ ],
+ "n_digests": 20,
+ "analyst": "heuristic"
+}

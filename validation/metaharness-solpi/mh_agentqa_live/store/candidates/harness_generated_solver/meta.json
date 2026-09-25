@@ -1,0 +1,19 @@
+{
+ "name": "harness_generated_solver",
+ "artifact_id": "4efa727a7322787aefcb30721439b65d1ac79204374d451a7235f78c9dcfb26b",
+ "created_at": 1790338083.9326322,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Letting the model explain the approach (without writing code), then auto-generating and executing Python to implement that approach, separates reasoning from computation. This avoids model arithmetic errors while keeping harness robust to new problem types.",
+ "axis": "exploration",
+ "components": [
+  "reasoning-extraction",
+  "auto-code-generation",
+  "harness-execution-control"
+ ],
+ "parents_read": [],
+ "order": 5,
+ "reason": ""
+}

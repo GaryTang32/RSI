@@ -1,0 +1,366 @@
+{
+ "run": "solpi_agentworld_live_r2",
+ "setup": "AgentWorld seed 0, small: evolve 3 x 3 training families, holdout 3 x 2, ood 3 x 2 held-out families. Base = untouched harness. Agent backend = MockAgentLLM('A') (offline). Two free-form ideas (no registry mechanism): the mechanism proposer/implementer (LLMMechanismProposer) AND the independent reviewer (LLMReviewer: smoke + LLM contract review) are claude haiku behind a fresh CachedLLM; haiku writes each mechanism as a Python extension against the runtime hook API. Aggregate dual gate (2% / 2%), firewall on holdout. n_lineages 2, max_iters 2, ralph_max 2.",
+ "wall_s": 378.4,
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "base": {
+     "S": 1.0,
+     "C": 545286.0,
+     "steps": 16.11111111111111,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 545286.0,
+     "steps": 16.11111111111111,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 9,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "base": {
+     "S": 1.0,
+     "C": 200660.16666666666,
+     "steps": 9.5,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 200660.16666666666,
+     "steps": 9.5,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   },
+   "ood": {
+    "base": {
+     "S": 1.0,
+     "C": 197133.16666666666,
+     "steps": 11.166666666666666,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 197133.16666666666,
+     "steps": 11.166666666666666,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  "reference": "base",
+  "unseen_mean": {
+   "base": 1.0,
+   "composed": 1.0
+  }
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "base_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 545286.0,
+     "cost": 0.2721553555555556,
+     "steps": 16.11111111111111,
+     "eta": 0.2721553555555556
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 1293556.0,
+      "cost": 0.5551099333333332,
+      "steps": 25.666666666666668,
+      "eta": 0.5551099333333332
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 279068.0,
+      "cost": 0.19059363333333335,
+      "steps": 15.666666666666666,
+      "eta": 0.19059363333333335
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 63234.0,
+      "cost": 0.0707625,
+      "steps": 7.0,
+      "eta": 0.0707625
+     }
+    },
+    "n": 9
+   },
+   "oracle": {
+    "L1": 0.10623988750069387,
+    "L2": 0.7195625849347146
+   },
+   "chosen": [
+    "L2",
+    "L1"
+   ],
+   "lineages": [
+    {
+     "idea": "L2",
+     "kind": "general",
+     "title": "Condense long failing command logs to the lines that carry the failure, keeping the full log recallable",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "Intercept bash error outputs, extract critical failure lines, store full log in rt.store for recall, return condensed version to reduce context size and clarify errors",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "review",
+       "outcome": "rejected",
+       "error": "Critical path mismatch breaks recall mechanism (contract #3): The code stores the full log at `rt.store[f\"/{log_id}.txt\"]` but tells the agent to retrieve it from `/.solpi/{log_id}.txt`. These paths don't match, so the agent cannot actually recall the full log using the provided handle. This removes information without a working way to get it back.; This directly violates contract item 3: 'it never removes information the agent needs without a way to get it back (e.g. a handle to recall it)' \u2014 t"
+      },
+      {
+       "iteration": 1,
+       "change": "Intercept bash error outputs with long logs, extract failure-relevant lines (errors, stack traces, context), store full log in /.solpi/ with working recall path, return condensed version with cat inst",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "review",
+       "outcome": "rejected",
+       "error": "Critical: Storage path unverified \u2014 Code stores logs via `rt.store[store_path]` but instructs agent to recall via filesystem `cat /.solpi/full_log_{log_id}.txt`. If `rt.store` is in-memory storage (typical in frameworks), the `cat` command will fail silently, causing information loss without actual recall capability. This violates requirement 3.; Critical: No verification that recall path is accessible \u2014 The code doesn't create the `/.solpi/` directory, check write permissions, or verify that th"
+      }
+     ],
+     "n_iterations": 2
+    },
+    {
+     "idea": "L1",
+     "kind": "general",
+     "title": "Stop replaying large successful tool outputs in every later request; keep them recallable",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "Cache large tool outputs (>2000 chars) with compact summaries; retrieve via new tool to avoid replaying in context",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.892063492063492,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 545286.0,
+          "cand": 188203.22222222222,
+          "saving": 0.6548541091789956,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.2721553555555556,
+          "cand": 0.17439393333333333,
+          "saving": 0.3592118259905638,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.892063492063492,
+         "tokens": 188203.22222222222,
+         "cost": 0.17439393333333333,
+         "steps": 26.0,
+         "eta": 0.19549497864768683
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.6761904761904761,
+          "tokens": 442204.6666666667,
+          "cost": 0.3378362,
+          "steps": 48.0,
+          "eta": 0.4996169154929578
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 97015.0,
+          "cost": 0.1243722,
+          "steps": 19.333333333333332,
+          "eta": 0.1243722
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 25390.0,
+          "cost": 0.060973400000000004,
+          "steps": 10.666666666666666,
+          "eta": 0.060973400000000004
+         }
+        },
+        "n": 9
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "Compress large (>2000 char) tool outputs that replay identically in context, keeping first appearance intact",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "review",
+       "outcome": "rejected",
+       "error": "No recall mechanism for removed information: The contract explicitly requires 'keep them recallable', but the implementation provides no way to retrieve full content once deduplicated. Only hashes are stored (self.seen as a set), with no mapping back to original content or any API for the agent to recall it. This violates the core contract requirement.; Potential to reduce agent verification work: By removing content without recall, the agent cannot re-examine or re-verify duplicate tool outputs"
+      }
+     ],
+     "n_iterations": 2
+    }
+   ],
+   "frozen": [],
+   "frozen_ideas": [],
+   "heldout_passed": {},
+   "survivors": [],
+   "survivor_ideas": [],
+   "dropped_by_composition_check": [],
+   "composed_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 545286.0,
+     "cost": 0.2721553555555556,
+     "steps": 16.11111111111111,
+     "eta": 0.2721553555555556
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 1293556.0,
+      "cost": 0.5551099333333332,
+      "steps": 25.666666666666668,
+      "eta": 0.5551099333333332
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 279068.0,
+      "cost": 0.19059363333333335,
+      "steps": 15.666666666666666,
+      "eta": 0.19059363333333335
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 63234.0,
+      "cost": 0.0707625,
+      "steps": 7.0,
+      "eta": 0.0707625
+     }
+    },
+    "n": 9
+   },
+   "conflicts": [],
+   "gate_digest": "a2247cac594b7481",
+   "usage": {
+    "calls": 4,
+    "input_tokens": 6778,
+    "output_tokens": 24240,
+    "cost_usd": 0.127978,
+    "latency_s": 231.93263339996338,
+    "total_tokens": 31018
+   },
+   "seconds": 378.37374782562256
+  }
+ ],
+ "usage": {
+  "research": {
+   "calls": 4,
+   "input_tokens": 6778,
+   "output_tokens": 24240,
+   "cost_usd": 0.127978,
+   "latency_s": 231.93263339996338,
+   "total_tokens": 31018
+  },
+  "_total": {
+   "calls": 4,
+   "input_tokens": 6778,
+   "output_tokens": 24240,
+   "cost_usd": 0.127978,
+   "latency_s": 231.93263339996338,
+   "total_tokens": 31018
+  },
+  "task": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  },
+  "shadow_monitor": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  }
+ },
+ "spend": {
+  "loop": {
+   "usd": 0.1975,
+   "calls": 8
+  },
+  "shadow_monitor": {
+   "usd": 0.0,
+   "calls": 0
+  },
+  "cache_ground_truth": {
+   "entries": 8,
+   "usd": 0.1975,
+   "input_tokens": 14179,
+   "output_tokens": 36659
+  }
+ }
+}

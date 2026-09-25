@@ -1,0 +1,15 @@
+--- a/agents/checker.md
++++ b/agents/checker.md
+@@ -0,0 +1 @@
++You are a careful checker. Re-derive the answer independently and verify it.
+--- a/harness.py
++++ b/harness.py
+@@ -12,5 +12,8 @@
+         ls = [l for l in r.strip().splitlines() if l.strip()]
+         finals.append(ls[-1] if ls else '')
+     reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)
++    # [rrsi:checker] one bounded verification sub-call
++    guide = files.get("agents/checker.md", "")
++    reply = llm(guide + "\nQuestion: " + question + "\nDraft answer: " + reply.strip()[-300:] + "\nVerify the draft and give a final line ANSWER: <value>.", system=system)
+     lines = [line for line in reply.strip().splitlines() if line.strip()]
+     return lines[-1] if lines else ""

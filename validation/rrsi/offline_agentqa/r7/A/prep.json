@@ -1,0 +1,24 @@
+{
+ "artifact_id": "cd77860c0b5ab902f1cb48d10bf1c2d46704356cdbdb81ee05c01995e9dc5b80",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[aq:persona] Detailed analyst persona",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-009"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:persona] Detailed analyst persona",
+   "declared_component": "prompt"
+  }
+ ],
+ "diff_path": "r7/A/diff.patch",
+ "mechanism": "[aq:persona] Detailed analyst persona"
+}

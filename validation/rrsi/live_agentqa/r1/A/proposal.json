@@ -1,0 +1,35 @@
+{
+ "status": "done",
+ "summary": "Rewrite numeric verification instruction to make Python tool usage explicit and mandatory, not optional",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "prompt",
+   "hypothesis": "Replacing vague 'verify your result by reconsidering' with explicit 'you MUST write Python code, execute it, show output, and base answer on computed result' will force tool usage rather than mental math, reducing arithmetic cascading errors in failing numeric tasks",
+   "targets_mode": "numeric_computation_returns_incorrect_value and tool_output_verification_and_integration",
+   "why_not_lower_lever": "LLM ignores existing verification instruction ('check intermediate values make sense'); stronger directive language in system prompt is the lever. E3 from round 0 shows that detailed task-specific guidance is costly; this edit is more concise, shifting from optional ('verify...') to mandatory ('you MUST...' with concrete steps) without verbose examples.",
+   "trigger_condition": "Activates for every numeric problem in the prompt, making tool invocation non-negotiable rather than discretionary",
+   "predicted_affected": [
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks 001, 005, 006, 010 all show evidence of arithmetic errors or failure to invoke/trust tools; explicit 'you MUST' language removes ambiguity. (preservative) Passing tasks 000, 002, 008, 009 either already use Python (000, 009 are modular arithmetic that pass) or decompose step-by-step (002, 008 are ledger tasks); requiring Python code output won't regress them, just makes their existing strategy explicit. (transfer) Numeric problem-solving tasks across domains (digit sums, bit counting, powers, modular arithmetic) all benefit from mandatory tool grounding rather than mental math; the instruction is general-purpose and task-agnostic.",
+   "regression_risk": "Minimal. Passing tasks may see slight token increase if they now include explicit Python blocks for simple arithmetic (e.g., 002 ledger calculations), but correctness is not jeopardized. The instruction does not forbid mental math for trivial operations, only requires tools for 'numeric calculations,' which the LLM interprets as non-trivial. Only risk: if LLM generates spurious Python code for legitimately trivial operations, cost rises; mitigated by 'especially with large numbers, modular arithmetic, or powers' qualifier.",
+   "mechanism": "Replacing vague 'verify your result by reconsidering' with explicit 'you MUST write Python code, execute it, show output, and base answer on computed result' will force tool usage rather than mental math, reducing arithmetic cascading errors in failing numeric tasks"
+  }
+ ],
+ "mechanism": "Rewrite numeric verification instruction to make Python tool usage explicit and mandatory, not optional",
+ "targets_mode": "numeric_computation_returns_incorrect_value and tool_output_verification_and_integration",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

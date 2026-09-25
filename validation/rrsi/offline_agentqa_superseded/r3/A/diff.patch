@@ -1,0 +1,8 @@
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1,3 +1,5 @@
+ You are a helpful assistant.
+ 
+ Think step by step before answering.
++
++Double-check your arithmetic before giving the final answer.

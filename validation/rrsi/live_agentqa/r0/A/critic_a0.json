@@ -1,0 +1,8 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "precheck: hard-coded evaluation data '570186'"
+ ],
+ "risk_notes": [],
+ "stage": "precheck"
+}

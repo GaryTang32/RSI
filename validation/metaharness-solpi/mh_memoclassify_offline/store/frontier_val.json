@@ -1,0 +1,49 @@
+{
+ "ds_alpha/val": {
+  "best_system": "i06_0_param_char_budget_4500",
+  "score": 0.5416666666666666,
+  "cost": 6071.0
+ },
+ "ds_beta/val": {
+  "best_system": "i03_1_notes",
+  "score": 0.6458333333333334,
+  "cost": 5143.395833333333
+ },
+ "ds_gamma/val": {
+  "best_system": "i05_1_crossover",
+  "score": 0.625,
+  "cost": 1256.0
+ },
+ "_pareto": [
+  {
+   "system": "i06_0_param_char_budget_4500",
+   "score": 0.5902777777777777,
+   "val_accuracy": 59.0,
+   "context_cost": 5658.0
+  },
+  {
+   "system": "i05_1_crossover",
+   "score": 0.5694444444444445,
+   "val_accuracy": 56.9,
+   "context_cost": 1216.6666666666667
+  },
+  {
+   "system": "i01_1_label_list",
+   "score": 0.3819444444444445,
+   "val_accuracy": 38.2,
+   "context_cost": 428.3333333333333
+  },
+  {
+   "system": "no_memory",
+   "score": 0.1111111111111111,
+   "val_accuracy": 11.1,
+   "context_cost": 191.0
+  }
+ ],
+ "_best": {
+  "system": "i06_0_param_char_budget_4500",
+  "score": 0.5902777777777777
+ },
+ "_hypervolume": 11025.404779128088,
+ "_hv_ref_cost": 19496.979861111115
+}

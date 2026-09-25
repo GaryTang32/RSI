@@ -1,0 +1,75 @@
+{
+ "artifact_id": "b075092a205919e7c73b136520be79c504d249d20cef12eeabeac85d98209dd6",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:answer_format] State the final-answer format",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:answer_format] State the final-answer format",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[aq:persona] Detailed analyst persona",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:persona] Detailed analyst persona",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C4",
+   "component": "subagent",
+   "hypothesis": "[aq:checker] Bounded checker sub-call",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:checker] Bounded checker sub-call",
+   "declared_component": "subagent"
+  }
+ ],
+ "diff_path": "r1/A/diff.patch",
+ "mechanism": "[aq:verify] Ask to double-check before answering; [aq:answer_format] State the final-answer format; [aq:persona] Detailed analyst persona; [aq:checker] Bounded checker sub-call"
+}

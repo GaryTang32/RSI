@@ -1,0 +1,22 @@
+{
+ "name": "i03_0_notes",
+ "artifact_id": "6540f7d7ad21703b2a094478538fb79d654dda7a7c26d17846554f25696da86b",
+ "created_at": 1790343353.748326,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "i01_0_retrieve_topk",
+ "hypothesis": "Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost.",
+ "axis": "exploitation",
+ "components": [
+  "notes",
+  "axis:F"
+ ],
+ "parents_read": [
+  "i01_0_retrieve_topk"
+ ],
+ "order": 7,
+ "move": "notes",
+ "evidence": "mean context 2484 chars",
+ "reason": ""
+}

@@ -1,0 +1,138 @@
+{
+ "run": "sumdiff_live_b",
+ "setup": "Stage-B re-run of sumdiff_live AFTER the reply-parsing fixes, from scratch (untouched seed, fresh run dir, fresh CachedLLM). claude haiku as EditorAgent (Listing 1) and LLMPolicyDeveloper (Listing 2); pi_1 = parallel refine 3 x 3 (refine_count 2), W = 3, T = 2 live cycles, 3 LLM revisions in the one dreaming phase, max_calls = 18.",
+ "config": {
+  "rounds": 2,
+  "W": 3,
+  "branch_count": 3,
+  "refine_count": 2,
+  "hard_max_branch": 4,
+  "hard_max_refine": 3,
+  "K1": null,
+  "K2": null,
+  "M": 3,
+  "m_semantics": "revisions",
+  "objective": "eq1",
+  "beta1": 0.01,
+  "beta2": 0.005,
+  "normalize": true,
+  "support": "clip",
+  "lam": 0.1,
+  "beta_grid": [
+   0.2,
+   0.4,
+   0.6,
+   0.8,
+   1.0
+  ],
+  "sweep": true,
+  "root_mode": "earliest",
+  "hide_missing": false,
+  "selector": "argmax",
+  "include_incumbent": true,
+  "holdout_frac": 0.34,
+  "noise_z": 2.0,
+  "margin_floor": 0.01,
+  "sandbox": "subprocess",
+  "policy_timeout_s": 60.0,
+  "root": "best",
+  "dream": true,
+  "dream_last": false,
+  "guidance": false,
+  "guidance_strength": 0.8,
+  "max_calls": 18,
+  "agent_workers": null,
+  "leakage_check": true,
+  "seed": 0,
+  "trace": true,
+  "shadow_monitor": true,
+  "shadow_k": 1,
+  "shadow_workers": 2
+ },
+ "wall_s": 1173.0,
+ "seed_score": 0.9104910395109694,
+ "best_score": 1.0361377782299992,
+ "stop_reason": "rounds",
+ "calls_per_cycle": [
+  9,
+  8
+ ],
+ "best_per_cycle": [
+  1.0183243143690768,
+  1.0361377782299992
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.9104910395109694,
+     "C": 0.0,
+     "steps": 0.0,
+     "families": {
+      "sumdiff": 0.9104910395109694
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0361377782299992,
+     "C": 0.0,
+     "steps": 0.0,
+     "families": {
+      "sumdiff": 1.0361377782299992
+     },
+     "vs_reference": {
+      "mean_diff": 0.12564673871902976,
+      "lo": 0.12564673871902976,
+      "hi": 0.12564673871902976,
+      "n": 1,
+      "p_better": 1.0
+     }
+    }
+   }
+  },
+  "reference": "seed"
+ },
+ "usage_by_role": {
+  "agent": {
+   "calls": 17,
+   "input_tokens": 71644,
+   "output_tokens": 164458,
+   "cost_usd": 0.938645,
+   "latency_s": 1634.8185663223267,
+   "total_tokens": 236102
+  },
+  "developer": {
+   "calls": 3,
+   "input_tokens": 40878,
+   "output_tokens": 51573,
+   "cost_usd": 0.339594,
+   "latency_s": 517.8706023693085,
+   "total_tokens": 92451
+  }
+ },
+ "cost_meter": {
+  "agent_calls": 17,
+  "agent_tokens": 236102,
+  "agent_usd": 0.938645,
+  "eval_s": 2.49702525138855,
+  "online_rounds": 6,
+  "online_wall_s": 654.5993764400482,
+  "replay_episodes": 10,
+  "replay_cpu_s": 0.02836614283532729,
+  "replay_wall_s": 0.3024735450744629,
+  "developer_calls": 3,
+  "developer_tokens": 92451,
+  "developer_usd": 0.339594,
+  "replay_ms_per_episode": 2.8366142835327293
+ },
+ "spend": {
+  "loop_usd": 1.2782,
+  "shadow_monitor_usd": 0.0,
+  "report_usd": 0.0
+ },
+ "llm_cache": {
+  "hits": 0,
+  "misses": 20
+ },
+ "trace_md": "/home/user/RSI/validation/dream-rsi/sumdiff_live_b/TRACE.md"
+}

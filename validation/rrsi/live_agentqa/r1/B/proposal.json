@@ -1,0 +1,78 @@
+{
+ "status": "done",
+ "summary": "Enable Python code auto-execution (control_flow) + mandate code generation for complex problems + add magnitude sanity checking (prompt) to fix arithmetic errors in numeric computations",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "prompt",
+   "hypothesis": "Instructing LLM to generate Python code for large numbers, powers, and modular arithmetic will cause systematic structuring of computations and enable the harness to execute deterministic tool results instead of relying on mental arithmetic that produces cascading errors.",
+   "targets_mode": "numeric_computation_returns_incorrect_value (by mandating tool-based computation) and tool_output_verification_and_integration (by making code generation explicit and required)",
+   "why_not_lower_level": "The mechanism is pedagogical: the LLM needs clear instruction that code generation is MANDATORY for complex problems, not optional. Prose in the system prompt is the appropriate lever to override default mental-arithmetic behavior and set expectations.",
+   "trigger_condition": "When solving numeric problems involving large numbers (>9999), powers/exponents, or modular arithmetic",
+   "predicted_affected": [
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": {
+    "corrective": "Tasks 001 (modular exponentiation errors), 005 (wrong magnitude for 81^15), 006 (bit counting error), 010 (digit sum error) all involve large powers or modular arithmetic; mandating code generation would shift these from mental arithmetic to deterministic computation",
+    "preservative": "Tasks 000, 002, 008, 009 (passing) either don't require large numbers or already work with current approach; ANSWER: format habit is preserved; existing step-by-step decomposition is reinforced not replaced",
+    "transfer": "Mechanism is task-family agnostic and generalizes to dates (year arithmetic), list statistics (large sums), number theory (factorization) - any problem involving computation on large numbers"
+   },
+   "regression_risk": "If LLM writes incorrect code for simple problems where mental arithmetic would suffice, the harness might execute bad code. Mitigation: code execution only runs if code blocks exist; existing ANSWER: line is tried first; backwards compatible.",
+   "mechanism": "Instructing LLM to generate Python code for large numbers, powers, and modular arithmetic will cause systematic structuring of computations and enable the harness to execute deterministic tool results instead of relying on mental arithmetic that produces cascading errors."
+  },
+  {
+   "id": "E2",
+   "component": "control_flow",
+   "hypothesis": "Automatically detecting and executing Python code blocks from LLM responses will capture deterministic tool results, overriding incorrect mental arithmetic with verified outputs that are correctly integrated into the final answer.",
+   "targets_mode": "numeric_computation_returns_incorrect_value (via deterministic tool execution) and tool_output_verification_and_integration (via automatic output capture and extraction)",
+   "why_not_lower_level": "Mechanism requires parsing response structure (detecting ```python blocks), invoking external tools (tools.python()), extracting output, and routing results back to override ANSWER: line. This is control-flow plumbing that prose instructions cannot perform.",
+   "trigger_condition": "When LLM response contains one or more ```python code blocks",
+   "predicted_affected": [
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": {
+    "corrective": "Task 005 shows 'bash calls shown but output not visible'; Task 006 shows 'Python code blocks displayed but not properly integrated' - auto-execution harness-side fixes both by capturing and using tool output directly",
+    "preservative": "Passing tasks (000, 002, 008, 009) likely don't generate Python code blocks (no need if solving correctly) or already have correct ANSWER: lines; code execution only triggers when blocks exist and uses last-block-first strategy to avoid overriding simple solutions",
+    "transfer": "Generalizes to any domain where computation code appears in LLM response; mechanism is task-agnostic tool routing and numeric extraction"
+   },
+   "regression_risk": "If LLM writes incorrect code but correct ANSWER: line, auto-execution could replace correct answer with wrong output. Mitigation: only executes if code blocks present; passing tasks unlikely to have code blocks; conservative fallback to ANSWER: if code extraction fails.",
+   "mechanism": "Automatically detecting and executing Python code blocks from LLM responses will capture deterministic tool results, overriding incorrect mental arithmetic with verified outputs that are correctly integrated into the final answer."
+  },
+  {
+   "id": "E3",
+   "component": "prompt",
+   "hypothesis": "Adding explicit magnitude sanity-checking instruction (via logarithmic estimation) will teach LLM to detect implausibly-sized intermediate values before incorporating them into final answer, catching errors like treating 81^15 as 19-digit instead of expected ~29-digit result.",
+   "targets_mode": "intermediate_result_magnitude_validation (directly) and numeric_computation_returns_incorrect_value (by catching magnitude errors before propagation)",
+   "why_not_lower_level": "Mechanism is a reasoning technique (logarithmic magnitude estimation) that must be taught to the LLM. Control flow cannot estimate expected magnitude without understanding problem structure. Prose instruction embeds this habit into LLM reasoning.",
+   "trigger_condition": "When solving problems involving large powers, exponentials, or products where result magnitude is plausible-range-critical",
+   "predicted_affected": [
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": {
+    "corrective": "Task 005: 81^15 = 3^60 should have ~log₁₀(3^60)≈28.6 digits but agent reported 19-digit value; magnitude check via logarithm would flag this immediately as implausible before use",
+    "preservative": "Tasks 002, 008 (ledger math) don't involve powers/exponentials, won't trigger magnitude check. Tasks 000, 009 (modular exponentiation) would activate check but likely already produce correct magnitudes. Check is conditional on problem structure.",
+    "transfer": "Generalizes to any numeric domain with large numbers, powers, or multi-step calculations: number theory, large factorials, scientific notation, date arithmetic with large year values"
+   },
+   "regression_risk": "Extra reasoning on magnitude estimation could increase tokens for all problems. Mitigation: instruction is specifically conditional on 'large powers or exponentials', not applied universally; simpler problems skip this step.",
+   "mechanism": "Adding explicit magnitude sanity-checking instruction (via logarithmic estimation) will teach LLM to detect implausibly-sized intermediate values before incorporating them into final answer, catching errors like treating 81^15 as 19-digit instead of expected ~29-digit result."
+  }
+ ],
+ "mechanism": "Enable Python code auto-execution (control_flow) + mandate code generation for complex problems + add magnitude sanity checking (prompt) to fix arithmetic errors in numeric computations",
+ "targets_mode": "numeric_computation_returns_incorrect_value (by mandating tool-based computation) and tool_output_verification_and_integration (by making code generation explicit and required), numeric_computation_re",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

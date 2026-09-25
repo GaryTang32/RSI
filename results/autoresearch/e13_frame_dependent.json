@@ -1,0 +1,156 @@
+{
+ "experiment": "e13_frame_dependent",
+ "written_at": "2026-09-25 05:18:42",
+ "config": {
+  "task": "tabular",
+  "pairs": [
+   "bucket_count",
+   "bucket_freq",
+   "age_over_max",
+   "priority_zscore"
+  ],
+  "deterministic": true,
+  "llm": "sim"
+ },
+ "battery": {
+  "baseline": {
+   "cv": 0.734607,
+   "hardened_crash": null,
+   "flagged": false,
+   "iid": 0.7258862639622334,
+   "shift": 0.6605243901130488,
+   "audit_flags": null
+  },
+  "pairs": {
+   "bucket_count": {
+    "frame_dependent": {
+     "cv": 0.73416,
+     "hardened_crash": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows",
+     "flagged": true,
+     "iid": 0.7191681079584589,
+     "shift": 0.6586358856440635,
+     "audit_flags": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows"
+    },
+    "per_row_twin": {
+     "cv": 0.73416,
+     "hardened_crash": null,
+     "flagged": false,
+     "iid": 0.7251535264031116,
+     "shift": 0.6605958087423033,
+     "audit_flags": null
+    }
+   },
+   "bucket_freq": {
+    "frame_dependent": {
+     "cv": 0.73416,
+     "hardened_crash": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows",
+     "flagged": true,
+     "iid": 0.7251408620269276,
+     "shift": 0.659987413141113,
+     "audit_flags": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows"
+    },
+    "per_row_twin": {
+     "cv": 0.73416,
+     "hardened_crash": null,
+     "flagged": false,
+     "iid": 0.7251535264031116,
+     "shift": 0.6605958087423033,
+     "audit_flags": null
+    }
+   },
+   "age_over_max": {
+    "frame_dependent": {
+     "cv": 0.735395,
+     "hardened_crash": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows",
+     "flagged": true,
+     "iid": 0.7258175751961369,
+     "shift": 0.6600794263852889,
+     "audit_flags": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows"
+    },
+    "per_row_twin": {
+     "cv": 0.735395,
+     "hardened_crash": null,
+     "flagged": false,
+     "iid": 0.7259149792360655,
+     "shift": 0.6601741680118618,
+     "audit_flags": null
+    }
+   },
+   "priority_zscore": {
+    "frame_dependent": {
+     "cv": 0.738161,
+     "hardened_crash": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows",
+     "flagged": true,
+     "iid": 0.7286397457456608,
+     "shift": 0.6637981526640517,
+     "audit_flags": "frame-dependent features: featurize(random half) differs from featurize(full frame) on the same rows"
+    },
+    "per_row_twin": {
+     "cv": 0.738161,
+     "hardened_crash": null,
+     "flagged": false,
+     "iid": 0.7286281282753189,
+     "shift": 0.6637995096996654,
+     "audit_flags": null
+    }
+   }
+  }
+ },
+ "verdict": {
+  "mechanical_detection_rate": 1.0,
+  "mechanical_false_positive_rate": 0.0,
+  "prompt_rule_only_detection_rate": 0.0,
+  "max_abs_cv_difference_dependent_vs_twin": 0.0,
+  "iid_auc_dependent_minus_twin": {
+   "bucket_count": -0.005985418444652724,
+   "bucket_freq": -1.2664376183968429e-05,
+   "age_over_max": -9.740403992863911e-05,
+   "priority_zscore": 1.1617470341951375e-05
+  },
+  "worst_iid_damage": -0.005985418444652724,
+  "pairs": {
+   "bucket_count": {
+    "cv_gain_dependent": -0.0004469999999999752,
+    "cv_gain_twin": -0.0004469999999999752,
+    "iid_gain_dependent": -0.006718156003774567,
+    "iid_gain_twin": -0.0007327375591218432,
+    "shift_gain_dependent": -0.0018885044689852526,
+    "shift_gain_twin": 7.141862925452713e-05,
+    "flagged_dependent": true,
+    "flagged_twin": false
+   },
+   "bucket_freq": {
+    "cv_gain_dependent": -0.0004469999999999752,
+    "cv_gain_twin": -0.0004469999999999752,
+    "iid_gain_dependent": -0.0007454019353058117,
+    "iid_gain_twin": -0.0007327375591218432,
+    "shift_gain_dependent": -0.0005369769719357764,
+    "shift_gain_twin": 7.141862925452713e-05,
+    "flagged_dependent": true,
+    "flagged_twin": false
+   },
+   "age_over_max": {
+    "cv_gain_dependent": 0.0007880000000000109,
+    "cv_gain_twin": 0.0007880000000000109,
+    "iid_gain_dependent": -6.86887660965585e-05,
+    "iid_gain_twin": 2.8715273832080612e-05,
+    "shift_gain_dependent": -0.0004449637277598173,
+    "shift_gain_twin": -0.00035022210118695885,
+    "flagged_dependent": true,
+    "flagged_twin": false
+   },
+   "priority_zscore": {
+    "cv_gain_dependent": 0.003553999999999946,
+    "cv_gain_twin": 0.003553999999999946,
+    "iid_gain_dependent": 0.0027534817834273806,
+    "iid_gain_twin": 0.002741864313085429,
+    "shift_gain_dependent": 0.003273762551002979,
+    "shift_gain_twin": 0.003275119586616637,
+    "flagged_dependent": true,
+    "flagged_twin": false
+   }
+  },
+  "claim_reproduced": "partly: the mechanical per-row check flags 100% of the frame-dependent features and 0% of their per-row twins; CV cannot tell a feature from its twin (max |dCV| 0.0000); on the larger audit frame the worst frame-dependent feature loses 0.0060 hidden iid AUC vs its twin, the others are benign here - the damage is real but small in this synthetic world, and none of these features raises CV (no labels reach featurize, so the port's CV inflation cannot occur)"
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e13_frame_dependent.png"
+}

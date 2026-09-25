@@ -1,0 +1,244 @@
+{
+ "experiment": "e2_budget_bias",
+ "written_at": "2026-09-25 05:45:38",
+ "config": {
+  "landscape_seeds": 30,
+  "experiments": 100
+ },
+ "landscape": {
+  "wallclock": {
+   "final_rel_size": {
+    "mean": 0.24973958333333332,
+    "lo": 0.235546875,
+    "hi": 0.2635416666666667,
+    "n": 30
+   },
+   "share_smaller_than_baseline": 1.0
+  },
+  "tokens": {
+   "final_rel_size": {
+    "mean": 2.9466145833333335,
+    "lo": 2.7531119791666665,
+    "hi": 3.134635416666667,
+    "n": 30
+   },
+   "share_smaller_than_baseline": 0.0
+  },
+  "gain_vs_horizon": {
+   "1x": {
+    "mean": 0.06882042192000085,
+    "lo": 0.0670506322986372,
+    "hi": 0.070414503097022,
+    "n": 30
+   },
+   "4x": {
+    "mean": 0.00757635762065072,
+    "lo": 0.005371121671018904,
+    "hi": 0.009794489319317843,
+    "n": 30
+   },
+   "16x": {
+    "mean": -0.03653091607448264,
+    "lo": -0.039905019307140646,
+    "hi": -0.033040045107631436,
+    "n": 30
+   }
+  },
+  "machines": {
+   "slow_winner_rel_size": {
+    "mean": 0.17291666666666666,
+    "lo": 0.16197916666666667,
+    "hi": 0.1833365885416666,
+    "n": 30
+   },
+   "fast_winner_rel_size": {
+    "mean": 0.3528645833333333,
+    "lo": 0.3287760416666667,
+    "hi": 0.37734375,
+    "n": 30
+   },
+   "fast_machine_gain_of_slow_winner": {
+    "mean": 0.024842606270251703,
+    "lo": 0.02167769825884264,
+    "hi": 0.02794039502295994,
+    "n": 30
+   },
+   "fast_machine_gain_of_fast_winner": {
+    "mean": 0.03829816156466477,
+    "lo": 0.03705457289237768,
+    "hi": 0.03940022879815214,
+    "n": 30
+   },
+   "slow_machine_gain_of_slow_winner": {
+    "mean": 0.11358711318297304,
+    "lo": 0.11176425359582318,
+    "hi": 0.11527311672778212,
+    "n": 30
+   }
+  }
+ },
+ "tinylm": {
+  "wallclock": {
+   "runs": [
+    {
+     "kind": "wallclock",
+     "seed": 0,
+     "params_M_base": 0.05,
+     "params_M_final": 0.025,
+     "steps_base": 242.0,
+     "steps_final": 436.0,
+     "kept": [
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "HIDDEN 128 -> 64",
+      "SEED 42 -> 397",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "CONTEXT 6 -> 4",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "LR 0.024 -> 0.048"
+     ],
+     "recorded_gain": 0.7580936883656562,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "kind": "wallclock",
+     "seed": 1,
+     "params_M_base": 0.05,
+     "params_M_final": 0.05,
+     "steps_base": 246.0,
+     "steps_final": 267.0,
+     "kept": [
+      "INIT_SCALE 1.0 -> 1.4",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "HIDDEN 128 -> 64",
+      "HIDDEN 64 -> 128",
+      "ACTIVATION 'tanh' -> 'relu'"
+     ],
+     "recorded_gain": 0.7116498193138514,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    }
+   ],
+   "params_ratio_final_over_base": {
+    "mean": 0.75,
+    "lo": 0.5,
+    "hi": 1.0,
+    "n": 2
+   }
+  },
+  "tokens": {
+   "runs": [
+    {
+     "kind": "tokens",
+     "seed": 0,
+     "params_M_base": 0.05,
+     "params_M_final": 0.333,
+     "steps_base": 207.0,
+     "steps_final": 793.0,
+     "kept": [
+      "HIDDEN 128 -> 256",
+      "HIDDEN 256 -> 512",
+      "HIDDEN 512 -> 1024",
+      "ACTIVATION 'tanh' -> 'relu'",
+      "SEED 42 -> 397",
+      "BATCH_SIZE 32 -> 16",
+      "BATCH_SIZE 16 -> 8",
+      "CONTEXT 6 -> 4",
+      "LR 0.003 -> 0.006"
+     ],
+     "recorded_gain": 1.0906878988439517,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "kind": "tokens",
+     "seed": 1,
+     "params_M_base": 0.05,
+     "params_M_final": 0.123,
+     "steps_base": 207.0,
+     "steps_final": 207.0,
+     "kept": [
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "EMBED_DIM 16 -> 32",
+      "WARMDOWN_RATIO 0.5 -> 0.7",
+      "HIDDEN 128 -> 256"
+     ],
+     "recorded_gain": 0.8521828179371016,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    }
+   ],
+   "params_ratio_final_over_base": {
+    "mean": 4.5600000000000005,
+    "lo": 2.46,
+    "hi": 6.66,
+    "n": 2
+   }
+  },
+  "horizon": {
+   "baseline_bpb_1x": 3.6452458501127634,
+   "baseline_bpb_4x": 2.989352054735261,
+   "gain_1x": {
+    "mean": 0.7075701266145678,
+    "lo": 0.6795912807187503,
+    "hi": 0.7355489725103852,
+    "n": 2
+   },
+   "gain_4x": {
+    "mean": 0.24568502265509373,
+    "lo": 0.24354634704028832,
+    "hi": 0.24782369826989914,
+    "n": 2
+   }
+  }
+ },
+ "verdict": {
+  "landscape_final_size_wallclock": 0.24973958333333332,
+  "landscape_final_size_tokens": 2.9466145833333335,
+  "kept_configs_shrink_under_wallclock": true,
+  "landscape_gain_1x_4x_16x": [
+   0.06882042192000085,
+   0.00757635762065072,
+   -0.03653091607448264
+  ],
+  "gain_shrinks_at_longer_horizon": true,
+  "slow_winner_on_fast_machine_vs_fast_winner": [
+   0.024842606270251703,
+   0.03829816156466477
+  ],
+  "tinylm_params_ratio_wallclock_vs_tokens": [
+   0.75,
+   4.5600000000000005
+  ],
+  "tinylm_gain_1x_vs_4x": [
+   0.7075701266145678,
+   0.24568502265509373
+  ],
+  "claim_reproduced": true
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e2_budget_bias.png"
+}

@@ -1,0 +1,453 @@
+{
+ "config": {
+  "llm": "sim",
+  "seeds": 2,
+  "replicates": 4,
+  "ks": [
+   2
+  ],
+  "n_tasks_agentqa": 6,
+  "n_tasks_bernoulli": 18,
+  "z": 2.0,
+  "quick": true
+ },
+ "summary": {
+  "agentqa/k2": {
+   "clearance": {
+    "mean": 0.75,
+    "lo": 0.5,
+    "hi": 1.0,
+    "n": 2
+   },
+   "clearance_corrected": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 2
+   },
+   "clearance_analytic": {
+    "mean": 0.9521804694794509,
+    "lo": 0.951763635096204,
+    "hi": 0.9525973038626979,
+    "n": 2
+   },
+   "delta_ratio": {
+    "mean": 0.8331940188554008,
+    "lo": 0.8310998758450802,
+    "hi": 0.8352881618657213,
+    "n": 2
+   },
+   "strict_accept": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.5,
+    "n": 2
+   },
+   "strict_prefix_accept": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.5,
+    "n": 2
+   },
+   "min_gain_accept": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "min_gain_corrected_accept": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "S_mean": {
+    "mean": 0.36458333333333337,
+    "lo": 0.2916666666666667,
+    "hi": 0.4375,
+    "n": 2
+   },
+   "delta_boot_mean": {
+    "mean": 0.24560554055058353,
+    "lo": 0.19589211935111803,
+    "hi": 0.29531896175004907,
+    "n": 2
+   },
+   "delta_repeat": {
+    "mean": 0.2946278254943948,
+    "lo": 0.2357022603955159,
+    "hi": 0.3535533905932738,
+    "n": 2
+   },
+   "ties": 1,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "n_pairs": 4,
+   "floor_clear_pooled": {
+    "mean": 0.75,
+    "lo": 0.25,
+    "hi": 1.0
+   },
+   "floor_clear_corrected_pooled": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0
+   },
+   "strict_pooled": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.75
+   },
+   "min_gain_pooled": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "min_gain_corrected_pooled": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "k": 2,
+   "predicted_ratio": 0.7071067811865476,
+   "predicted_clearance": 0.9213503964748575
+  },
+  "bernoulli/k2": {
+   "clearance": {
+    "mean": 0.75,
+    "lo": 0.5,
+    "hi": 1.0,
+    "n": 2
+   },
+   "clearance_corrected": {
+    "mean": 0.75,
+    "lo": 0.5,
+    "hi": 1.0,
+    "n": 2
+   },
+   "clearance_analytic": {
+    "mean": 0.9216147208414927,
+    "lo": 0.8527678850053368,
+    "hi": 0.9904615566776485,
+    "n": 2
+   },
+   "delta_ratio": {
+    "mean": 0.8481009180052979,
+    "lo": 0.5241892773798074,
+    "hi": 1.1720125586307883,
+    "n": 2
+   },
+   "strict_accept": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.5,
+    "n": 2
+   },
+   "strict_prefix_accept": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.5,
+    "n": 2
+   },
+   "min_gain_accept": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "min_gain_corrected_accept": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "S_mean": {
+    "mean": 0.4340277777777778,
+    "lo": 0.4305555555555555,
+    "hi": 0.4375,
+    "n": 2
+   },
+   "delta_boot_mean": {
+    "mean": 0.16444040336261992,
+    "lo": 0.15949070782106578,
+    "hi": 0.16939009890417406,
+    "n": 2
+   },
+   "delta_repeat": {
+    "mean": 0.2296147925459693,
+    "lo": 0.13608276348795434,
+    "hi": 0.3231468216039843,
+    "n": 2
+   },
+   "ties": 1,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "n_pairs": 4,
+   "floor_clear_pooled": {
+    "mean": 0.75,
+    "lo": 0.25,
+    "hi": 1.0
+   },
+   "floor_clear_corrected_pooled": {
+    "mean": 0.75,
+    "lo": 0.25,
+    "hi": 1.0
+   },
+   "strict_pooled": {
+    "mean": 0.25,
+    "lo": 0.0,
+    "hi": 0.75
+   },
+   "min_gain_pooled": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "min_gain_corrected_pooled": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "k": 2,
+   "predicted_ratio": 0.7071067811865476,
+   "predicted_clearance": 0.9213503964748575
+  }
+ },
+ "verdicts": {
+  "C1[agentqa/k2]": "inconclusive (too few pairs): clearance 0.750 [0.250, 1.000] vs 0.975 claimed and 0.921 predicted by the small-k bias; with the sqrt(k/(k-1)) correction 1.000 [1.000, 1.000] (4 pairs)",
+  "C2[agentqa/k2]": "inconclusive (too few pairs): delta_boot / delta_repeat = 0.833 [0.831, 0.835] (claim 1.0, sqrt((k-1)/k) = 0.707; per-seed ratios)",
+  "C3[agentqa/k2]": "inconclusive (too few pairs): strict keeps 25.0% [0.0%, 75.0%] of null re-evaluations, MinGain(delta) 0.0% [0.0%, 0.0%], MinGain(corrected delta) 0.0% (one-sided z=2 target: 2.3%)",
+  "C4[agentqa/k2]": "0 of 1 exact ties differed in float; the pre-fix strict rule accepted 0, the fixed rule 0",
+  "C1[bernoulli/k2]": "inconclusive (too few pairs): clearance 0.750 [0.250, 1.000] vs 0.975 claimed and 0.921 predicted by the small-k bias; with the sqrt(k/(k-1)) correction 0.750 [0.250, 1.000] (4 pairs)",
+  "C2[bernoulli/k2]": "inconclusive (too few pairs): delta_boot / delta_repeat = 0.848 [0.524, 1.172] (claim 1.0, sqrt((k-1)/k) = 0.707; per-seed ratios)",
+  "C3[bernoulli/k2]": "inconclusive (too few pairs): strict keeps 25.0% [0.0%, 75.0%] of null re-evaluations, MinGain(delta) 0.0% [0.0%, 0.0%], MinGain(corrected delta) 0.0% (one-sided z=2 target: 2.3%)",
+  "C4[bernoulli/k2]": "0 of 1 exact ties differed in float; the pre-fix strict rule accepted 0, the fixed rule 0",
+  "C1[pooled/k2]": "inconclusive (too few pairs): 0.750 [0.375, 1.000] over 8 pairs of both domains (claim 0.975, small-k prediction 0.921)",
+  "C1-corrected[pooled/k2]": "inconclusive (too few pairs): 0.875 [0.625, 1.000] over 8 pairs of both domains (claim 0.975, small-k prediction 0.921)"
+ },
+ "wall_s": 2.6,
+ "per_seed": [
+  {
+   "kind": "agentqa",
+   "seed": 0,
+   "R": 4,
+   "k": 2,
+   "n_tasks": 6,
+   "S_mean": 0.2916666666666667,
+   "sd_null_repeat": 0.11785113019775795,
+   "delta_boot_mean": 0.19589211935111803,
+   "delta_repeat": 0.2357022603955159,
+   "delta_ratio": 0.8310998758450802,
+   "clearance": 0.5,
+   "clearance_corrected": 1.0,
+   "clearance_analytic": 0.951763635096204,
+   "strict_accept": 0.0,
+   "strict_prefix_accept": 0.0,
+   "min_gain_accept": 0.0,
+   "min_gain_corrected_accept": 0.0,
+   "ties": 1,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "usage": {
+    "calls": 48,
+    "input_tokens": 1480,
+    "output_tokens": 33944,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 35424
+   },
+   "rollouts": 48
+  },
+  {
+   "kind": "agentqa",
+   "seed": 1,
+   "R": 4,
+   "k": 2,
+   "n_tasks": 6,
+   "S_mean": 0.4375,
+   "sd_null_repeat": 0.1767766952966369,
+   "delta_boot_mean": 0.29531896175004907,
+   "delta_repeat": 0.3535533905932738,
+   "delta_ratio": 0.8352881618657213,
+   "clearance": 1.0,
+   "clearance_corrected": 1.0,
+   "clearance_analytic": 0.9525973038626979,
+   "strict_accept": 0.5,
+   "strict_prefix_accept": 0.5,
+   "min_gain_accept": 0.0,
+   "min_gain_corrected_accept": 0.0,
+   "ties": 0,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "usage": {
+    "calls": 48,
+    "input_tokens": 1192,
+    "output_tokens": 33944,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 35136
+   },
+   "rollouts": 48
+  },
+  {
+   "kind": "bernoulli",
+   "seed": 0,
+   "R": 4,
+   "k": 2,
+   "n_tasks": 18,
+   "S_mean": 0.4305555555555555,
+   "sd_null_repeat": 0.06804138174397717,
+   "delta_boot_mean": 0.15949070782106578,
+   "delta_repeat": 0.13608276348795434,
+   "delta_ratio": 1.1720125586307883,
+   "clearance": 1.0,
+   "clearance_corrected": 1.0,
+   "clearance_analytic": 0.9904615566776485,
+   "strict_accept": 0.5,
+   "strict_prefix_accept": 0.5,
+   "min_gain_accept": 0.0,
+   "min_gain_corrected_accept": 0.0,
+   "ties": 1,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "usage": {},
+   "rollouts": 144
+  },
+  {
+   "kind": "bernoulli",
+   "seed": 1,
+   "R": 4,
+   "k": 2,
+   "n_tasks": 18,
+   "S_mean": 0.4375,
+   "sd_null_repeat": 0.16157341080199214,
+   "delta_boot_mean": 0.16939009890417406,
+   "delta_repeat": 0.3231468216039843,
+   "delta_ratio": 0.5241892773798074,
+   "clearance": 0.5,
+   "clearance_corrected": 0.5,
+   "clearance_analytic": 0.8527678850053368,
+   "strict_accept": 0.0,
+   "strict_prefix_accept": 0.0,
+   "min_gain_accept": 0.0,
+   "min_gain_corrected_accept": 0.0,
+   "ties": 0,
+   "float_ties": 0,
+   "float_ties_accepted_prefix": 0,
+   "float_ties_accepted_fixed": 0,
+   "usage": {},
+   "rollouts": 144
+  }
+ ],
+ "pairs": {
+  "agentqa-k2-0": [
+   {
+    "dS": 0.0,
+    "delta": 0.1668423286392195,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": true,
+    "float_tie": false
+   },
+   {
+    "dS": -0.16666666666666669,
+    "delta": 0.16467528005994192,
+    "floor_clear": false,
+    "floor_clear_corrected": true,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   }
+  ],
+  "agentqa-k2-1": [
+   {
+    "dS": -0.25000000000000006,
+    "delta": 0.28491463996243044,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   },
+   {
+    "dS": 0.16666666666666669,
+    "delta": 0.23414586723572936,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": true,
+    "strict_prefix": true,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   }
+  ],
+  "bernoulli-k2-0": [
+   {
+    "dS": 0.1111111111111111,
+    "delta": 0.14903100140222078,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": true,
+    "strict_prefix": true,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   },
+   {
+    "dS": 0.0,
+    "delta": 0.134684429556896,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": true,
+    "float_tie": false
+   }
+  ],
+  "bernoulli-k2-1": [
+   {
+    "dS": -0.25000000000000006,
+    "delta": 0.1507315099123603,
+    "floor_clear": false,
+    "floor_clear_corrected": false,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   },
+   {
+    "dS": -0.1111111111111111,
+    "delta": 0.20263823269288714,
+    "floor_clear": true,
+    "floor_clear_corrected": true,
+    "strict": false,
+    "strict_prefix": false,
+    "min_gain": false,
+    "min_gain_corrected": false,
+    "tie": false,
+    "float_tie": false
+   }
+  ]
+ }
+}

@@ -1,0 +1,1083 @@
+{
+ "run": "offline_katas",
+ "wall_s": 1.9,
+ "hub": [
+  {
+   "asset_id": "sha256:219875064e8b2a7ee",
+   "gene": "gene_inclusive_boundaries",
+   "author": "agent0",
+   "status": "rejected",
+   "reasons": [
+    "uplift not established: U=+0.250 LCB=+0.250 < delta=0.498; R=+0.000"
+   ],
+   "U": 0.25,
+   "U_LCB": 0.25,
+   "delta": 0.49763811836355976,
+   "R": 0.0,
+   "n": 2,
+   "n_off": 4,
+   "adoptions": []
+  },
+  {
+   "asset_id": "sha256:8f13716f360d8f1b3",
+   "gene": "gene_datetime_not_manual_math",
+   "author": "agent0",
+   "status": "verified",
+   "reasons": [],
+   "U": 0.5,
+   "U_LCB": 0.5,
+   "delta": 0.45795931955708097,
+   "R": 0.0,
+   "n": 2,
+   "n_off": 4,
+   "adoptions": [
+    {
+     "consumer": "agent1",
+     "outcome": 1,
+     "epoch": 0,
+     "counted": true,
+     "uplift": 0.5,
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "asset_id": "sha256:726bccadd132a4d74",
+   "gene": "gene_capped_backoff",
+   "author": "agent0",
+   "status": "verified",
+   "reasons": [],
+   "U": 0.625,
+   "U_LCB": 0.5,
+   "delta": 0.45795931955708097,
+   "R": 0.0625,
+   "n": 2,
+   "n_off": 4,
+   "adoptions": [
+    {
+     "consumer": "agent1",
+     "outcome": 1,
+     "epoch": 0,
+     "counted": true,
+     "uplift": 0.5,
+     "reason": ""
+    }
+   ]
+  },
+  {
+   "asset_id": "sha256:bdf3463aa02c722a7",
+   "gene": "gene_unicode_normalize_casefold",
+   "author": "agent0",
+   "status": "verified",
+   "reasons": [],
+   "U": 0.5,
+   "U_LCB": 0.5,
+   "delta": 0.45993938825723035,
+   "R": 0.0,
+   "n": 2,
+   "n_off": 4,
+   "adoptions": [
+    {
+     "consumer": "agent1",
+     "outcome": 0,
+     "epoch": 0,
+     "counted": false,
+     "uplift": 0.0,
+     "reason": "uninformative: no headroom on the consumer's tasks (baseline at ceiling)"
+    }
+   ]
+  }
+ ],
+ "hub_metrics": {
+  "hub": "safe",
+  "epoch": 0,
+  "n_published": 4,
+  "n_promoted": 3,
+  "n_promoted_strict": 0,
+  "promotion_rate": 0.75,
+  "reuse_rate_published": 0.5,
+  "reuse_rate_promoted": 0.6666666666666666,
+  "never_reused_published": 0.5,
+  "never_reused_promoted": 0.33333333333333337,
+  "time_to_first_reuse": 0.0,
+  "adoption_success_rate": 1.0,
+  "credit_gini": 0.5,
+  "credit_top10_share": 1.0,
+  "vacuous_share_promoted": 0.0,
+  "duplicate_rate": 0.0,
+  "rank_validity": NaN,
+  "surfacing_validity": NaN,
+  "served_true_effect": NaN,
+  "consumer_uplift_measured": 0.5
+ },
+ "agent0": {
+  "stop_reason": "max_rounds",
+  "trajectory": [
+   {
+    "cycle": 1,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": "gene_datetime_not_manual_math",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 1306,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 2,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_normalize_casefold",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 1280,
+    "proposer_calls": 2,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000003",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 2,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 3,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": "gene_inclusive_boundaries",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 1222,
+    "proposer_calls": 3,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000005",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 3,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 4,
+    "task_id": "backoff_delays",
+    "family": "retry",
+    "signals": [
+     "task:retry",
+     "retry",
+     "backoff",
+     "schedule"
+    ],
+    "gene_id": "gene_capped_backoff",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 1214,
+    "proposer_calls": 4,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000007",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 5,
+    "task_id": "round_half_up",
+    "family": "rounding",
+    "signals": [
+     "task:rounding",
+     "rounding",
+     "money",
+     "precision"
+    ],
+    "gene_id": "gene_rounding_generic_288",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 0.0,
+    "task_success": false,
+    "solidified": false,
+    "composite": 0.95,
+    "tokens": 1075,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000009",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8
+   },
+   {
+    "cycle": 6,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": "gene_inclusive_boundaries",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 322,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": "rejected",
+    "event_id": "evt_agent0_000011",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8333333333333334
+   },
+   {
+    "cycle": 7,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": "gene_datetime_not_manual_math",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 345,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": "verified",
+    "event_id": "evt_agent0_000012",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8571428571428571
+   },
+   {
+    "cycle": 8,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_normalize_casefold",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 0.0,
+    "task_success": false,
+    "solidified": false,
+    "composite": 0.95,
+    "tokens": 339,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000013",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.75
+   },
+   {
+    "cycle": 9,
+    "task_id": "round_half_up",
+    "family": "rounding",
+    "signals": [
+     "task:rounding",
+     "rounding",
+     "money",
+     "precision"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 183,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000009",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.7777777777777778
+   },
+   {
+    "cycle": 10,
+    "task_id": "backoff_delays",
+    "family": "retry",
+    "signals": [
+     "task:retry",
+     "retry",
+     "backoff",
+     "schedule"
+    ],
+    "gene_id": "gene_capped_backoff",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 313,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": "verified",
+    "event_id": "evt_agent0_000015",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8
+   },
+   {
+    "cycle": 11,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_normalize_casefold",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 371,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": "verified",
+    "event_id": "evt_agent0_000016",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8
+   },
+   {
+    "cycle": 12,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": "gene_inclusive_boundaries",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 322,
+    "proposer_calls": 5,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000017",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 4,
+    "rolling_solve_rate": 0.8
+   }
+  ],
+  "genes": {
+   "gene_datetime_not_manual_math": "## Strategy gene gene_datetime_not_manual_math\nDomain keywords: dates, calendar\nSummary: Date bugs: parse with explicit formats and do arithmetic with datetime, never by hand.\nStrategy:\n1. Parse with date.fromisoformat or datetime.strptime and an explicit format such as '%m/%d/%Y'.\n2. Do date arithmetic with datetime.date and timedelta, never with hand-rolled day counts.\n3. Gregorian leap year: divisible by 4 and (not by 100, or by 400).\n4. Index weekday names with date.weekday() where Monday == 0.\nAVOID:\n- Assuming 365-day years or 30-day months.\n- Reading US dates as day/month: US order is month/day/year.\n",
+   "gene_unicode_normalize_casefold": "## Strategy gene gene_unicode_normalize_casefold\nDomain keywords: unicode, text-equality\nSummary: Compare, count and measure text only after Unicode normalization and casefolding.\nStrategy:\n1. Normalize every string with unicodedata.normalize('NFC', s) before comparing, counting or measuring.\n2. Use str.casefold(), not lower(), for case-insensitive comparison (German sharp s).\n3. To strip accents: normalize('NFD'), drop unicodedata.combining(c) marks, re-normalize NFC.\n4. Count visible characters by skipping combining marks after NFC.\nAVOID:\n- encode('ascii', 'ignore'): it deletes letters, not just accents.\n- Comparing raw strings: an accented letter can be one or two code points.\n",
+   "gene_inclusive_boundaries": "## Strategy gene gene_inclusive_boundaries\nDomain keywords: boundaries, ranges\nSummary: Boundary / off-by-one bugs: decide inclusivity explicitly and test the edges.\nStrategy:\n1. Restate every bound from the spec as inclusive or exclusive before coding.\n2. For an inclusive upper bound use <= and range(a, b + 1).\n3. Count partial groups (pages, chunks) with ceiling division -(-a // b).\n4. Test the edges: empty input, n == 0, one element, exact multiples, one past the end.\nAVOID:\n- lst[-n:] when n can be 0 (it returns the whole list).\n- Floor division when a partial group still counts.\n",
+   "gene_capped_backoff": "## Strategy gene gene_capped_backoff\nDomain keywords: retry, backoff\nSummary: Retry logic: cap every delay, count attempts exactly, retry only transient errors.\nStrategy:\n1. Cap every computed delay: min(cap, base * factor ** i).\n2. Count attempts as min(success_at, max_tries); None means all max_tries attempts.\n3. Retry only on 429 and 5xx server errors, and never on 501.\n4. Clamp lower jitter bounds at zero with max(0.0, ...).\nAVOID:\n- Uncapped exponential growth of delays.\n- Retrying on every status >= 400.\n"
+  },
+  "gene_validation": {
+   "gene_datetime_not_manual_math": [
+    "python smoke_test.py"
+   ],
+   "gene_unicode_normalize_casefold": [
+    "python smoke_test.py"
+   ],
+   "gene_inclusive_boundaries": [
+    "python smoke_test.py"
+   ],
+   "gene_capped_backoff": [
+    "python smoke_test.py"
+   ]
+  },
+  "audit_ok": true,
+  "rollouts": 17,
+  "proposer_calls": 5,
+  "quarantined": 0,
+  "quarantine_rejected": 0,
+  "trace_overhead_usd": 0.0,
+  "usage": {
+   "task": {
+    "calls": 137,
+    "input_tokens": 25890,
+    "output_tokens": 5674,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 31564
+   },
+   "proposer": {
+    "calls": 5,
+    "input_tokens": 2941,
+    "output_tokens": 782,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 3723
+   },
+   "_total": {
+    "calls": 142,
+    "input_tokens": 28831,
+    "output_tokens": 6456,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 35287
+   }
+  },
+  "transfer": {
+   "evolve": {
+    "no_genes": {
+     "S": 0.35,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 0.8,
+     "vs_reference": {
+      "mean_diff": 0.45,
+      "lo": 0.15,
+      "hi": 0.8,
+      "n": 5,
+      "p_better": 0.8
+     }
+    }
+   },
+   "holdout": {
+    "no_genes": {
+     "S": 0.4,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 0.9,
+     "vs_reference": {
+      "mean_diff": 0.5,
+      "lo": 0.25,
+      "hi": 0.7,
+      "n": 5,
+      "p_better": 0.8
+     }
+    }
+   }
+  }
+ },
+ "agent1": {
+  "stop_reason": "max_rounds",
+  "trajectory": [
+   {
+    "cycle": 1,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": "gene_datetime_not_manual_math",
+    "source": "hub",
+    "reused_asset_id": "sha256:8f13716f360d8f1b32047bd06a7f0f2bd6e5a1ea859ef8cfa5eec2485d4f1609",
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 345,
+    "proposer_calls": 0,
+    "hub_hit": true,
+    "quarantine": {
+     "promote": true,
+     "reason": "admissible and dS=+0.500 > 0",
+     "dS": 0.5,
+     "delta": 0.9833936299955163,
+     "n": 1
+    },
+    "published": null,
+    "event_id": "evt_agent1_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 2,
+    "task_id": "round_half_up",
+    "family": "rounding",
+    "signals": [
+     "task:rounding",
+     "rounding",
+     "money",
+     "precision"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 0.0,
+    "task_success": false,
+    "solidified": false,
+    "composite": 0.65,
+    "tokens": 152,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent1_000003",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 0.5
+   },
+   {
+    "cycle": 3,
+    "task_id": "backoff_delays",
+    "family": "retry",
+    "signals": [
+     "task:retry",
+     "retry",
+     "backoff",
+     "schedule"
+    ],
+    "gene_id": "gene_capped_backoff",
+    "source": "hub",
+    "reused_asset_id": "sha256:726bccadd132a4d7413f7c167c6bb3c626270e4c50ad885643eb458755a6d15e",
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 313,
+    "proposer_calls": 0,
+    "hub_hit": true,
+    "quarantine": {
+     "promote": true,
+     "reason": "admissible and dS=+0.500 > 0",
+     "dS": 0.5,
+     "delta": 0.9833936299955163,
+     "n": 1
+    },
+    "published": null,
+    "event_id": "evt_agent1_000005",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.6666666666666666
+   },
+   {
+    "cycle": 4,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 151,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent1_000004",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.75
+   },
+   {
+    "cycle": 5,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 175,
+    "proposer_calls": 0,
+    "hub_hit": true,
+    "quarantine": {
+     "promote": false,
+     "reason": "cost_rule: within band: shaped=-16.610 (<= 0)",
+     "dS": 0.0,
+     "delta": 0.0,
+     "n": 1
+    },
+    "published": null,
+    "event_id": "skip_agent1_000005",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.8
+   },
+   {
+    "cycle": 6,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 151,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent1_000006",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.8333333333333334
+   },
+   {
+    "cycle": 7,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": "gene_datetime_not_manual_math",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 345,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent1_000007",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.8571428571428571
+   },
+   {
+    "cycle": 8,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 175,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent1_000008",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 2,
+    "rolling_solve_rate": 0.875
+   }
+  ],
+  "genes": {
+   "gene_datetime_not_manual_math": "## Strategy gene gene_datetime_not_manual_math\nDomain keywords: dates, calendar\nSummary: Date bugs: parse with explicit formats and do arithmetic with datetime, never by hand.\nStrategy:\n1. Parse with date.fromisoformat or datetime.strptime and an explicit format such as '%m/%d/%Y'.\n2. Do date arithmetic with datetime.date and timedelta, never with hand-rolled day counts.\n3. Gregorian leap year: divisible by 4 and (not by 100, or by 400).\n4. Index weekday names with date.weekday() where Monday == 0.\nAVOID:\n- Assuming 365-day years or 30-day months.\n- Reading US dates as day/month: US order is month/day/year.\n",
+   "gene_capped_backoff": "## Strategy gene gene_capped_backoff\nDomain keywords: retry, backoff\nSummary: Retry logic: cap every delay, count attempts exactly, retry only transient errors.\nStrategy:\n1. Cap every computed delay: min(cap, base * factor ** i).\n2. Count attempts as min(success_at, max_tries); None means all max_tries attempts.\n3. Retry only on 429 and 5xx server errors, and never on 501.\n4. Clamp lower jitter bounds at zero with max(0.0, ...).\nAVOID:\n- Uncapped exponential growth of delays.\n- Retrying on every status >= 400.\n"
+  },
+  "gene_validation": {
+   "gene_datetime_not_manual_math": [
+    "python smoke_test.py"
+   ],
+   "gene_capped_backoff": [
+    "python smoke_test.py"
+   ]
+  },
+  "audit_ok": true,
+  "rollouts": 20,
+  "proposer_calls": 0,
+  "quarantined": 3,
+  "quarantine_rejected": 1,
+  "trace_overhead_usd": 0.0,
+  "usage": {
+   "task": {
+    "calls": 100,
+    "input_tokens": 15912,
+    "output_tokens": 3563,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 19475
+   },
+   "_total": {
+    "calls": 100,
+    "input_tokens": 15912,
+    "output_tokens": 3563,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 19475
+   }
+  },
+  "transfer": {
+   "evolve": {
+    "no_genes": {
+     "S": 0.35,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 0.55,
+     "vs_reference": {
+      "mean_diff": 0.2,
+      "lo": 0.0,
+      "hi": 0.5,
+      "n": 5,
+      "p_better": 0.4
+     }
+    }
+   },
+   "holdout": {
+    "no_genes": {
+     "S": 0.25,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 0.5,
+     "vs_reference": {
+      "mean_diff": 0.25,
+      "lo": 0.0,
+      "hi": 0.55,
+      "n": 5,
+      "p_better": 0.4
+     }
+    }
+   }
+  }
+ },
+ "monitor": {
+  "agent0": [
+   {
+    "round": 0,
+    "version": "seed(no genes)",
+    "artifact": "4ce5cbccd4",
+    "decision_score": null,
+    "sealed": {
+     "holdout": {
+      "S": 0.4,
+      "C": 163.85,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 0.5,
+       "dates": 0.5,
+       "rounding": 0.75,
+       "retry": 0.0
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 1,
+    "version": "library@c1",
+    "artifact": "bf666654f1",
+    "decision_score": 1.0,
+    "sealed": {
+     "holdout": {
+      "S": 0.5,
+      "C": 199.15,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 0.5,
+       "dates": 1.0,
+       "rounding": 0.75,
+       "retry": 0.0
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 2,
+    "version": "library@c2",
+    "artifact": "3d51b3222a",
+    "decision_score": 1.0,
+    "sealed": {
+     "holdout": {
+      "S": 0.6,
+      "C": 240.65,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 1.0,
+       "dates": 1.0,
+       "rounding": 0.75,
+       "retry": 0.0
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 3,
+    "version": "library@c3",
+    "artifact": "348b6a789d",
+    "decision_score": 1.0,
+    "sealed": {
+     "holdout": {
+      "S": 0.75,
+      "C": 276.2,
+      "families": {
+       "boundaries": 1.0,
+       "unicode": 1.0,
+       "dates": 1.0,
+       "rounding": 0.75,
+       "retry": 0.0
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 4,
+    "version": "library@c4",
+    "artifact": "7f4cea5335",
+    "decision_score": 1.0,
+    "sealed": {
+     "holdout": {
+      "S": 0.9,
+      "C": 307.25,
+      "families": {
+       "boundaries": 1.0,
+       "unicode": 1.0,
+       "dates": 1.0,
+       "rounding": 0.75,
+       "retry": 0.75
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   }
+  ],
+  "agent1": [
+   {
+    "round": 0,
+    "version": "seed(no genes)",
+    "artifact": "4ce5cbccd4",
+    "decision_score": null,
+    "sealed": {
+     "holdout": {
+      "S": 0.25,
+      "C": 157.45,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 0.25,
+       "dates": 0.5,
+       "rounding": 0.0,
+       "retry": 0.25
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 1,
+    "version": "library@c1",
+    "artifact": "fe447874a5",
+    "decision_score": 1.0,
+    "sealed": {
+     "holdout": {
+      "S": 0.35,
+      "C": 192.75,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 0.25,
+       "dates": 1.0,
+       "rounding": 0.0,
+       "retry": 0.25
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   },
+   {
+    "round": 3,
+    "version": "library@c3",
+    "artifact": "80eace0abd",
+    "decision_score": 0.6666666666666666,
+    "sealed": {
+     "holdout": {
+      "S": 0.5,
+      "C": 223.8,
+      "families": {
+       "boundaries": 0.25,
+       "unicode": 0.25,
+       "dates": 1.0,
+       "rounding": 0.0,
+       "retry": 1.0
+      }
+     }
+    },
+    "note": "shadow evaluation - never shown to the loop"
+   }
+  ]
+ }
+}

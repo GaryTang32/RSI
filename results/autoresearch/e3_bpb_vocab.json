@@ -1,0 +1,577 @@
+{
+ "experiment": "e3_bpb_vocab",
+ "written_at": "2026-09-25 05:08:53",
+ "config": {
+  "vocabs": [
+   256,
+   512,
+   1024,
+   2048
+  ],
+  "orders": [
+   1,
+   2,
+   3
+  ],
+  "bpe_sample_bytes": 400000,
+  "loop_experiments": 30,
+  "seeds": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "llm": "sim",
+  "keep_rule": "strict"
+ },
+ "battery": {
+  "alpha": 0.1,
+  "rows": {
+   "V256/n1": {
+    "vocab": 256,
+    "order": 1,
+    "val_bpb": 4.738836966751385,
+    "val_nats_per_token": 3.2847114826369657,
+    "n_tokens": 85526,
+    "bytes_per_token": 1.0,
+    "nats_total": 280928.2342640091
+   },
+   "V256/n2": {
+    "vocab": 256,
+    "order": 2,
+    "val_bpb": 3.782496072808821,
+    "val_nats_per_token": 2.6218264883464997,
+    "n_tokens": 85526,
+    "bytes_per_token": 1.0,
+    "nats_total": 224234.33224232274
+   },
+   "V256/n3": {
+    "vocab": 256,
+    "order": 3,
+    "val_bpb": 2.8740716090644027,
+    "val_nats_per_token": 1.992154632550376,
+    "n_tokens": 85526,
+    "bytes_per_token": 1.0,
+    "nats_total": 170381.01710350346
+   },
+   "V512/n1": {
+    "vocab": 512,
+    "order": 1,
+    "val_bpb": 3.8914386126925558,
+    "val_nats_per_token": 5.353243500579459,
+    "n_tokens": 43094,
+    "bytes_per_token": 1.984638232700608,
+    "nats_total": 230692.67541397118
+   },
+   "V512/n2": {
+    "vocab": 512,
+    "order": 2,
+    "val_bpb": 2.6481502340378156,
+    "val_nats_per_token": 3.6429183240056684,
+    "n_tokens": 43094,
+    "bytes_per_token": 1.984638232700608,
+    "nats_total": 156987.92225470027
+   },
+   "V512/n3": {
+    "vocab": 512,
+    "order": 3,
+    "val_bpb": 2.0134460205709175,
+    "val_nats_per_token": 2.7697897605870296,
+    "n_tokens": 43094,
+    "bytes_per_token": 1.984638232700608,
+    "nats_total": 119361.31994273746
+   },
+   "V1024/n1": {
+    "vocab": 1024,
+    "order": 1,
+    "val_bpb": 3.354815913096674,
+    "val_nats_per_token": 6.177565750787697,
+    "n_tokens": 32194,
+    "bytes_per_token": 2.656581971795987,
+    "nats_total": 198880.55178085912
+   },
+   "V1024/n2": {
+    "vocab": 1024,
+    "order": 2,
+    "val_bpb": 2.277470267548628,
+    "val_nats_per_token": 4.1937389972193895,
+    "n_tokens": 32194,
+    "bytes_per_token": 2.656581971795987,
+    "nats_total": 135013.233276481
+   },
+   "V1024/n3": {
+    "vocab": 1024,
+    "order": 3,
+    "val_bpb": 1.9556600711601293,
+    "val_nats_per_token": 3.601156960242935,
+    "n_tokens": 32194,
+    "bytes_per_token": 2.656581971795987,
+    "nats_total": 115935.64717806104
+   },
+   "V2048/n1": {
+    "vocab": 2048,
+    "order": 1,
+    "val_bpb": 2.996572932745422,
+    "val_nats_per_token": 6.783898019180533,
+    "n_tokens": 26186,
+    "bytes_per_token": 3.266096387382571,
+    "nats_total": 177643.15353026145
+   },
+   "V2048/n2": {
+    "vocab": 2048,
+    "order": 2,
+    "val_bpb": 2.1435285306456575,
+    "val_nats_per_token": 4.852703164404985,
+    "n_tokens": 26186,
+    "bytes_per_token": 3.266096387382571,
+    "nats_total": 127072.88506310893
+   },
+   "V2048/n3": {
+    "vocab": 2048,
+    "order": 3,
+    "val_bpb": 1.9839812044824516,
+    "val_nats_per_token": 4.491506285765197,
+    "n_tokens": 26186,
+    "bytes_per_token": 3.266096387382571,
+    "nats_total": 117614.58359904744
+   }
+  },
+  "by_order": {
+   "1": {
+    "vocab": [
+     256,
+     512,
+     1024,
+     2048
+    ],
+    "bpb": [
+     4.738836966751385,
+     3.8914386126925558,
+     3.354815913096674,
+     2.996572932745422
+    ],
+    "nats_per_token": [
+     3.2847114826369657,
+     5.353243500579459,
+     6.177565750787697,
+     6.783898019180533
+    ]
+   },
+   "2": {
+    "vocab": [
+     256,
+     512,
+     1024,
+     2048
+    ],
+    "bpb": [
+     3.782496072808821,
+     2.6481502340378156,
+     2.277470267548628,
+     2.1435285306456575
+    ],
+    "nats_per_token": [
+     2.6218264883464997,
+     3.6429183240056684,
+     4.1937389972193895,
+     4.852703164404985
+    ]
+   },
+   "3": {
+    "vocab": [
+     256,
+     512,
+     1024,
+     2048
+    ],
+    "bpb": [
+     2.8740716090644027,
+     2.0134460205709175,
+     1.9556600711601293,
+     1.9839812044824516
+    ],
+    "nats_per_token": [
+     1.992154632550376,
+     2.7697897605870296,
+     3.601156960242935,
+     4.491506285765197
+    ]
+   }
+  },
+  "pairwise_disagreement": 0.48484848484848486,
+  "pairwise_disagreement_across_vocabularies": 0.5925925925925926,
+  "pairwise_disagreement_same_vocabulary": 0.0,
+  "best_by_bpb": "V1024/n3",
+  "best_by_nats_per_token": "V256/n3",
+  "bpb_equals_byte_stream_likelihood_rank": true
+ },
+ "loop": {
+  "val_bpb": {
+   "final_val_bpb": {
+    "mean": 1.8571862074096444,
+    "lo": 1.8571859278250273,
+    "hi": 1.8571863472019534,
+    "n": 5
+   },
+   "final_test_iid_bpb": {
+    "mean": 1.9156324113430643,
+    "lo": 1.915632110562412,
+    "hi": 1.9156325617333902,
+    "n": 5
+   },
+   "final_vocab": {
+    "mean": 2048.0,
+    "lo": 2048.0,
+    "hi": 2048.0,
+    "n": 5
+   },
+   "share_final_vocab_above_256": 1.0,
+   "vocab_keeps": {
+    "mean": 3.0,
+    "lo": 3.0,
+    "hi": 3.0,
+    "n": 5
+   },
+   "runs": [
+    {
+     "metric": "val_bpb",
+     "seed": 0,
+     "final_vocab": 2048,
+     "final_order": 3,
+     "final_alpha": 0.011111,
+     "final_val_bpb": 1.8571863472019532,
+     "final_val_nats_per_token": 4.20445724659518,
+     "final_test_iid_bpb": 1.9156325617333902,
+     "n_keep": 7,
+     "kept": [
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.1 -> 0.033333",
+      "VOCAB 256 -> 512",
+      "VOCAB 512 -> 1024",
+      "VOCAB 1024 -> 2048",
+      "ALPHA 0.033333 -> 0.011111"
+     ],
+     "vocab_keeps": 3,
+     "vocab_tried": 12,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_bpb",
+     "seed": 1,
+     "final_vocab": 2048,
+     "final_order": 3,
+     "final_alpha": 0.011112,
+     "final_val_bpb": 1.85718564824041,
+     "final_val_nats_per_token": 4.204455664226276,
+     "final_test_iid_bpb": 1.9156318097817597,
+     "n_keep": 9,
+     "kept": [
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111",
+      "ALPHA 0.011111 -> 0.003704",
+      "VOCAB 256 -> 512",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "VOCAB 512 -> 1024",
+      "VOCAB 1024 -> 2048",
+      "ALPHA 0.003704 -> 0.011112"
+     ],
+     "vocab_keeps": 3,
+     "vocab_tried": 13,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_bpb",
+     "seed": 2,
+     "final_vocab": 2048,
+     "final_order": 3,
+     "final_alpha": 0.011111,
+     "final_val_bpb": 1.8571863472019532,
+     "final_val_nats_per_token": 4.20445724659518,
+     "final_test_iid_bpb": 1.9156325617333902,
+     "n_keep": 9,
+     "kept": [
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.011111 -> 0.033333",
+      "VOCAB 256 -> 512",
+      "VOCAB 512 -> 1024",
+      "VOCAB 1024 -> 2048",
+      "ALPHA 0.033333 -> 0.011111"
+     ],
+     "vocab_keeps": 3,
+     "vocab_tried": 12,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_bpb",
+     "seed": 3,
+     "final_vocab": 2048,
+     "final_order": 3,
+     "final_alpha": 0.011111,
+     "final_val_bpb": 1.8571863472019532,
+     "final_val_nats_per_token": 4.20445724659518,
+     "final_test_iid_bpb": 1.9156325617333902,
+     "n_keep": 7,
+     "kept": [
+      "VOCAB 256 -> 512",
+      "ALPHA 0.1 -> 0.033333",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "VOCAB 512 -> 1024",
+      "VOCAB 1024 -> 2048",
+      "ALPHA 0.033333 -> 0.011111"
+     ],
+     "vocab_keeps": 3,
+     "vocab_tried": 11,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_bpb",
+     "seed": 4,
+     "final_vocab": 2048,
+     "final_order": 3,
+     "final_alpha": 0.011111,
+     "final_val_bpb": 1.8571863472019532,
+     "final_val_nats_per_token": 4.20445724659518,
+     "final_test_iid_bpb": 1.9156325617333902,
+     "n_keep": 9,
+     "kept": [
+      "VOCAB 256 -> 512",
+      "VOCAB 512 -> 1024",
+      "VOCAB 1024 -> 2048",
+      "ALPHA 0.1 -> 0.3",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.3 -> 0.1",
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111"
+     ],
+     "vocab_keeps": 3,
+     "vocab_tried": 15,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    }
+   ]
+  },
+  "val_nats_per_token": {
+   "final_val_bpb": {
+    "mean": 2.8736114020712913,
+    "lo": 2.8736085704733556,
+    "hi": 2.8736143075683698,
+    "n": 5
+   },
+   "final_test_iid_bpb": {
+    "mean": 2.900502498946591,
+    "lo": 2.9004985444929585,
+    "hi": 2.900506556293247,
+    "n": 5
+   },
+   "final_vocab": {
+    "mean": 256.0,
+    "lo": 256.0,
+    "hi": 256.0,
+    "n": 5
+   },
+   "share_final_vocab_above_256": 0.0,
+   "vocab_keeps": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "runs": [
+    {
+     "metric": "val_nats_per_token",
+     "seed": 0,
+     "final_vocab": 256,
+     "final_order": 3,
+     "final_alpha": 0.033333,
+     "final_val_bpb": 2.873611328172149,
+     "final_val_nats_per_token": 1.9918355901476448,
+     "final_test_iid_bpb": 2.9005023960535685,
+     "n_keep": 3,
+     "kept": [
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.1 -> 0.033333"
+     ],
+     "vocab_keeps": 0,
+     "vocab_tried": 12,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_nats_per_token",
+     "seed": 1,
+     "final_vocab": 256,
+     "final_order": 3,
+     "final_alpha": 0.033291,
+     "final_val_bpb": 2.873616293832517,
+     "final_val_nats_per_token": 1.9918390320811286,
+     "final_test_iid_bpb": 2.9005093297863667,
+     "n_keep": 13,
+     "kept": [
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111",
+      "ALPHA 0.011111 -> 0.003704",
+      "ALPHA 0.003704 -> 0.001235",
+      "ALPHA 0.001235 -> 0.000412",
+      "ALPHA 0.000412 -> 0.000137",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.000137 -> 0.000411",
+      "ALPHA 0.000411 -> 0.001233",
+      "ALPHA 0.001233 -> 0.003699",
+      "ALPHA 0.003699 -> 0.011097",
+      "ALPHA 0.011097 -> 0.033291"
+     ],
+     "vocab_keeps": 0,
+     "vocab_tried": 7,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_nats_per_token",
+     "seed": 2,
+     "final_vocab": 256,
+     "final_order": 3,
+     "final_alpha": 0.033333,
+     "final_val_bpb": 2.873611328172149,
+     "final_val_nats_per_token": 1.9918355901476448,
+     "final_test_iid_bpb": 2.9005023960535685,
+     "n_keep": 5,
+     "kept": [
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.011111 -> 0.033333"
+     ],
+     "vocab_keeps": 0,
+     "vocab_tried": 11,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_nats_per_token",
+     "seed": 3,
+     "final_vocab": 256,
+     "final_order": 3,
+     "final_alpha": 0.033372,
+     "final_val_bpb": 2.873606732007493,
+     "final_val_nats_per_token": 1.9918324043290723,
+     "final_test_iid_bpb": 2.9004959767858853,
+     "n_keep": 11,
+     "kept": [
+      "ALPHA 0.1 -> 0.033333",
+      "ALPHA 0.033333 -> 0.011111",
+      "ALPHA 0.011111 -> 0.003704",
+      "ALPHA 0.003704 -> 0.001235",
+      "ALPHA 0.001235 -> 0.000412",
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.000412 -> 0.001236",
+      "ALPHA 0.001236 -> 0.003708",
+      "ALPHA 0.003708 -> 0.011124",
+      "ALPHA 0.011124 -> 0.033372"
+     ],
+     "vocab_keeps": 0,
+     "vocab_tried": 8,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "metric": "val_nats_per_token",
+     "seed": 4,
+     "final_vocab": 256,
+     "final_order": 3,
+     "final_alpha": 0.033333,
+     "final_val_bpb": 2.873611328172149,
+     "final_val_nats_per_token": 1.9918355901476448,
+     "final_test_iid_bpb": 2.9005023960535685,
+     "n_keep": 3,
+     "kept": [
+      "ORDER 1 -> 2",
+      "ORDER 2 -> 3",
+      "ALPHA 0.1 -> 0.033333"
+     ],
+     "vocab_keeps": 0,
+     "vocab_tried": 16,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     }
+    }
+   ]
+  }
+ },
+ "verdict": {
+  "loop_final_val_bpb_judged_by_bpb_vs_per_token": [
+   1.8571862074096444,
+   2.8736114020712913
+  ],
+  "loop_final_vocab_judged_by_bpb_vs_per_token": [
+   2048.0,
+   256.0
+  ],
+  "loop_hidden_test_bpb_judged_by_bpb_vs_per_token": [
+   1.9156324113430643,
+   2.900502498946591
+  ],
+  "pairwise_disagreement_across_vocabularies": 0.5925925925925926,
+  "pairwise_disagreement_same_vocabulary": 0.0,
+  "best_by_bpb": "V1024/n3",
+  "best_by_nats_per_token": "V256/n3",
+  "bpb_rank_equals_byte_stream_likelihood_rank": true,
+  "nats_per_token_rises_with_vocab_every_order": true,
+  "claim_reproduced": true
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e3_bpb_vocab.png"
+}

@@ -1,0 +1,33 @@
+{
+ "iteration": 2,
+ "planned_grid": {
+  "branch_count": 3,
+  "refine_count": 2,
+  "reason": "live best still improving with balanced gains: hold the grid"
+ },
+ "effective_grid": {
+  "branch_count": 3,
+  "refine_count": 2,
+  "reason": "live best still improving with balanced gains: hold the grid"
+ },
+ "opened_width": 3,
+ "max_depth": 1,
+ "probe_work": 6,
+ "decision_rounds": 2,
+ "batch_sizes": [
+  3,
+  3
+ ],
+ "root_score": 1.0,
+ "round_best": 1.0,
+ "final_best": 1.0,
+ "beta": 0.6,
+ "gain_early": 0.0,
+ "gain_late": 0.0,
+ "fail_frac": 0.0,
+ "hard_fail_frac": 0.0,
+ "policy": "275618a0f678",
+ "agent_calls": 6,
+ "plan_reason": "live best still improving with balanced gains: hold the grid",
+ "plan_error": null
+}

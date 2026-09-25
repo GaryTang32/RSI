@@ -1,0 +1,552 @@
+{
+ "run": "agentqa_offline",
+ "truth": "SimModel estimate: mean over 6 fresh seeds (offset 10000) per task on each split",
+ "checks": {
+  "gate_arithmetic": {
+   "passed": 7,
+   "of": 7
+  },
+  "diff_matches_store": {
+   "passed": 7,
+   "of": 7
+  },
+  "decision_matches_ledger": {
+   "passed": 7,
+   "of": 7
+  },
+  "val_eval_matches_ledger": {
+   "passed": 4,
+   "of": 4
+  },
+  "pareto_weights_recomputed": {
+   "passed": 20,
+   "of": 20
+  },
+  "round_robin_recomputed": {
+   "passed": 7,
+   "of": 7
+  },
+  "minibatch_epoch_disjoint": {
+   "passed": 20,
+   "of": 20
+  },
+  "val_eval_covers_D_pareto": {
+   "passed": 5,
+   "of": 5
+  },
+  "returned_best_is_argmax_val": {
+   "passed": 1,
+   "of": 1
+  },
+  "child_minibatch_same_ids_as_parent": {
+   "passed": 7,
+   "of": 7
+  }
+ },
+ "problems": [],
+ "rollouts_charged_in_trace": 121,
+ "rollouts_counted": 121,
+ "rows": [
+  {
+   "round": 0,
+   "rollouts_at_start": 8,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-009",
+    "evolve-numeric-001"
+   ],
+   "event": "rejected",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null,
+   "proposal": "x0",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 1.0,
+   "mb_after": 0.0,
+   "gate": false,
+   "truth_parent": {
+    "evolve": 0.4667,
+    "val": 0.4583,
+    "holdout": 0.3889,
+    "ood": 0.375
+   },
+   "truth_child": {
+    "evolve": 0.0,
+    "val": 0.0,
+    "holdout": 0.0,
+    "ood": 0.0
+   },
+   "true_gain": -0.3889,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 1,
+   "rollouts_at_start": 14,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "event": "rejected",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null,
+   "proposal": "x1",
+   "kind": "reflective",
+   "components": [
+    "prompts/solver.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 1.0,
+   "mb_after": 1.0,
+   "gate": false,
+   "truth_parent": {
+    "evolve": 0.4667,
+    "val": 0.4583,
+    "holdout": 0.3889,
+    "ood": 0.375
+   },
+   "truth_child": {
+    "evolve": 0.35,
+    "val": 0.3958,
+    "holdout": 0.2778,
+    "ood": 0.4583
+   },
+   "true_gain": -0.1111,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 2,
+   "rollouts_at_start": 20,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-004",
+    "evolve-numeric-000"
+   ],
+   "event": "rejected",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null,
+   "proposal": "x2",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 2.0,
+   "gate": false,
+   "truth_parent": {
+    "evolve": 0.4667,
+    "val": 0.4583,
+    "holdout": 0.3889,
+    "ood": 0.375
+   },
+   "truth_child": {
+    "evolve": 0.3667,
+    "val": 0.3333,
+    "holdout": 0.4444,
+    "ood": 0.5417
+   },
+   "true_gain": 0.0556,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 3,
+   "rollouts_at_start": 26,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-006",
+    "evolve-numeric-000"
+   ],
+   "event": "accepted",
+   "kept": "c1",
+   "incumbent": "c0->c1",
+   "new_val": 1.0,
+   "proposal": "x3",
+   "kind": "reflective",
+   "components": [
+    "prompts/solver.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 3.0,
+   "gate": true,
+   "monitor": {
+    "c1": {
+     "holdout": 1.0,
+     "ood": 1.0
+    }
+   },
+   "truth_parent": {
+    "evolve": 0.4667,
+    "val": 0.4583,
+    "holdout": 0.3889,
+    "ood": 0.375
+   },
+   "truth_child": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "true_gain": 0.4722,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 4,
+   "rollouts_at_start": 40,
+   "parent": "c1",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-003",
+    "evolve-numeric-008",
+    "evolve-numeric-009"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 5,
+   "rollouts_at_start": 43,
+   "parent": "c1",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-005",
+    "evolve-numeric-000"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 6,
+   "rollouts_at_start": 46,
+   "parent": "c1",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "event": "accepted",
+   "kept": "c2",
+   "incumbent": "c1->c1",
+   "new_val": 1.0,
+   "proposal": "x6",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 3.0,
+   "gate": true,
+   "truth_parent": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "truth_child": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "true_gain": 0.0,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 7,
+   "rollouts_at_start": 60,
+   "parent": "c2",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-001",
+    "evolve-numeric-004"
+   ],
+   "event": "accepted",
+   "kept": "c3",
+   "incumbent": "c1->c1",
+   "new_val": 0.875,
+   "proposal": "x7",
+   "kind": "reflective",
+   "components": [
+    "prompts/solver.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 3.0,
+   "gate": true,
+   "truth_parent": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "truth_child": {
+    "evolve": 0.85,
+    "val": 0.9167,
+    "holdout": 0.9167,
+    "ood": 0.8333
+   },
+   "true_gain": 0.0556,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 8,
+   "rollouts_at_start": 74,
+   "parent": "c2",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-005"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 9,
+   "rollouts_at_start": 77,
+   "parent": "c2",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-000",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 10,
+   "rollouts_at_start": 80,
+   "parent": "c2",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-009",
+    "evolve-numeric-007"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 11,
+   "rollouts_at_start": 83,
+   "parent": "c2",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-008",
+    "evolve-numeric-007"
+   ],
+   "event": "accepted",
+   "kept": "c4",
+   "incumbent": "c1->c1",
+   "new_val": 1.0,
+   "proposal": "x11",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 1,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 3.0,
+   "gate": true,
+   "truth_parent": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "truth_child": {
+    "evolve": 0.9167,
+    "val": 0.9792,
+    "holdout": 0.8611,
+    "ood": 0.9583
+   },
+   "true_gain": 0.0,
+   "true_gain_split": "holdout"
+  },
+  {
+   "round": 12,
+   "rollouts_at_start": 97,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-002",
+    "evolve-numeric-006"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 13,
+   "rollouts_at_start": 100,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-004",
+    "evolve-numeric-001",
+    "evolve-numeric-000"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 14,
+   "rollouts_at_start": 103,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-009",
+    "evolve-numeric-003"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 15,
+   "rollouts_at_start": 106,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-005",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 16,
+   "rollouts_at_start": 109,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-003",
+    "evolve-numeric-009",
+    "evolve-numeric-005"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 17,
+   "rollouts_at_start": 112,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-000",
+    "evolve-numeric-006",
+    "evolve-numeric-004"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 18,
+   "rollouts_at_start": 115,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-001",
+    "evolve-numeric-007"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  },
+  {
+   "round": 19,
+   "rollouts_at_start": 118,
+   "parent": "c4",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-008",
+    "evolve-numeric-007"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c1->c1",
+   "new_val": null
+  }
+ ],
+ "incumbent_changes_vs_truth": [
+  {
+   "round": 3,
+   "from": "c0",
+   "to": "c1",
+   "val_before": 0.375,
+   "val_after": 1.0,
+   "true_holdout_before": 0.3889,
+   "true_holdout_after": 0.8611,
+   "true_gain": 0.4722
+  }
+ ],
+ "gate_vs_truth": {
+  "n": 7,
+  "accepted": 4,
+  "rejected": 3,
+  "false_accepts (accepted, true gain <= 0)": 2,
+  "false_rejects (rejected, true gain > 0)": 1,
+  "split": "holdout"
+ }
+}

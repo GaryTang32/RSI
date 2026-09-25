@@ -1,0 +1,16 @@
+--- a/agents/har_08.py
++++ b/agents/har_08.py
+@@ -0,0 +1,5 @@
++# mechanism: har_08
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, arith, plan, format tasks."""
++enable("har_08")
+--- a/prompts/gen_15.md
++++ b/prompts/gen_15.md
+@@ -0,0 +1,5 @@
++# mechanism: gen_15
++# component: prompt
++# title: Short worked example of the procedure
++"""Short worked example of the procedure; aimed at extract, arith, format tasks."""
++enable("gen_15")

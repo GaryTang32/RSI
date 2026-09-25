@@ -1,0 +1,24 @@
+[
+ {
+  "variant": "A",
+  "admissible": false,
+  "reason": "below noise-adjusted floor: S'=0.4869 < S*-delta=0.5069 (S* 0.5228 - delta 0.0159)",
+  "S": 0.486875,
+  "C": 3629.875,
+  "delta_S": -0.03593750000000001,
+  "delta_C": 0.04833480865786867,
+  "novelty": 0,
+  "guards": []
+ },
+ {
+  "variant": "B",
+  "admissible": false,
+  "reason": "cost rule failed: within band: shaped=-0.582 (<= 0)",
+  "S": 0.5196875,
+  "C": 3524.68,
+  "delta_S": -0.0031250000000000444,
+  "delta_C": 0.017953712835901064,
+  "novelty": 0,
+  "guards": []
+ }
+]

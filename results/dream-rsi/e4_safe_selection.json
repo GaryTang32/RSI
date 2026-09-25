@@ -1,0 +1,147 @@
+{
+ "experiment": "e4_safe_selection",
+ "created": "2026-09-25 05:59:36",
+ "config": {
+  "rounds": 6,
+  "M": 4,
+  "grid": [
+   6,
+   4
+  ],
+  "W": 4,
+  "seeds": 15,
+  "developer": "ParametricMutator(sigma)"
+ },
+ "results": {
+  "sigma_0.2": {
+   "phases": 75,
+   "min_delta_with_incumbent": 0.0,
+   "regressions_with_incumbent": 0,
+   "regressions_without_incumbent": 4,
+   "regression_rate_without": 0.05333333333333334,
+   "mean_delta_with": {
+    "mean": 0.029173927234148755,
+    "lo": 0.018794106414486,
+    "hi": 0.04054235746717926,
+    "n": 75
+   },
+   "mean_delta_without": {
+    "mean": 0.023558168586174648,
+    "lo": 0.0059498038220458455,
+    "hi": 0.04042790473224652,
+    "n": 75
+   },
+   "worst_delta_without": -0.31510766666002077,
+   "incumbent_kept_rate": 0.4266666666666667,
+   "next_online_value_with": {
+    "mean": -0.06465798318122618,
+    "lo": -0.07844396116530165,
+    "hi": -0.05123722984096167,
+    "n": 75
+   },
+   "next_online_value_without": {
+    "mean": -0.05956539252471065,
+    "lo": -0.07228722016549102,
+    "hi": -0.047119078404136455,
+    "n": 75
+   },
+   "final_best_with": {
+    "mean": 0.7696462035368045,
+    "lo": 0.744093890161161,
+    "hi": 0.7955887770898142,
+    "n": 15
+   },
+   "final_best_without": {
+    "mean": 0.7705153737505991,
+    "lo": 0.7443974950227107,
+    "hi": 0.7966135835797994,
+    "n": 15
+   },
+   "final_best_diff_with_minus_without": {
+    "mean_diff": -0.0008691702137945493,
+    "lo": -0.003525360860599617,
+    "hi": 0.0012084162088156548,
+    "n": 15,
+    "p_better": 0.2
+   },
+   "calls_with": {
+    "mean": 105.26666666666667,
+    "lo": 95.86666666666666,
+    "hi": 117.13499999999998,
+    "n": 15
+   },
+   "calls_without": {
+    "mean": 102.6,
+    "lo": 93.93333333333334,
+    "hi": 113.33333333333333,
+    "n": 15
+   }
+  },
+  "sigma_0.6": {
+   "phases": 75,
+   "min_delta_with_incumbent": 0.0,
+   "regressions_with_incumbent": 0,
+   "regressions_without_incumbent": 9,
+   "regression_rate_without": 0.12,
+   "mean_delta_with": {
+    "mean": 0.02985263135262514,
+    "lo": 0.01939913227053578,
+    "hi": 0.041467021532598757,
+    "n": 75
+   },
+   "mean_delta_without": {
+    "mean": 0.02837407761798295,
+    "lo": 0.013756779015775593,
+    "hi": 0.04298310323089889,
+    "n": 75
+   },
+   "worst_delta_without": -0.30820453369028356,
+   "incumbent_kept_rate": 0.4,
+   "next_online_value_with": {
+    "mean": -0.06523122113081861,
+    "lo": -0.07769976028519708,
+    "hi": -0.053141907996171266,
+    "n": 75
+   },
+   "next_online_value_without": {
+    "mean": -0.06673126115283493,
+    "lo": -0.08016397813860444,
+    "hi": -0.05376843225471747,
+    "n": 75
+   },
+   "final_best_with": {
+    "mean": 0.7713912571750857,
+    "lo": 0.7451457326562015,
+    "hi": 0.7976733750883268,
+    "n": 15
+   },
+   "final_best_without": {
+    "mean": 0.7695874976614447,
+    "lo": 0.7435683386748767,
+    "hi": 0.7957931518057948,
+    "n": 15
+   },
+   "final_best_diff_with_minus_without": {
+    "mean_diff": 0.0018037595136409271,
+    "lo": 0.0,
+    "hi": 0.004390745131096615,
+    "n": 15,
+    "p_better": 0.13333333333333333
+   },
+   "calls_with": {
+    "mean": 105.66666666666667,
+    "lo": 97.66666666666667,
+    "hi": 115.26666666666667,
+    "n": 15
+   },
+   "calls_without": {
+    "mean": 106.13333333333334,
+    "lo": 97.13333333333334,
+    "hi": 116.8,
+    "n": 15
+   }
+  }
+ },
+ "figure": "/home/user/RSI/results/dream-rsi/e4_safe_selection.png",
+ "verdict": "REPRODUCED: with the incumbent as a candidate V* >= V0 in every phase; without it sigma_0.2: 4/75 phases regress, sigma_0.6: 9/75 phases regress"
+}

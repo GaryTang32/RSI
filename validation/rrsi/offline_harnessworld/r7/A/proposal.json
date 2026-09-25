@@ -1,0 +1,53 @@
+{
+ "status": "done",
+ "summary": "[nul_04] Longer tool timeout: Longer tool timeout (rewording; [cos_02] Pin the task statement: Drop stale observations; ru",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "config",
+   "hypothesis": "[nul_04] Longer tool timeout: Longer tool timeout (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-051",
+    "hw-e-019"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_04",
+   "prune": false,
+   "mechanism": "[nul_04] Longer tool timeout: Longer tool timeout (rewording of existing guidance)."
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-008",
+    "hw-e-051"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_02",
+   "prune": false,
+   "mechanism": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning)."
+  }
+ ],
+ "mechanism": "[nul_04] Longer tool timeout: Longer tool timeout (rewording; [cos_02] Pin the task statement: Drop stale observations; ru",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

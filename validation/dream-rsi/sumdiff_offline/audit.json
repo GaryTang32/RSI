@@ -1,0 +1,1015 @@
+{
+ "run": "sumdiff_offline",
+ "global_checks": [
+  {
+   "check": "seed program re-graded independently",
+   "result": "PASS",
+   "detail": "trace S=0.910491, independent=0.910491 (ok)"
+  },
+  {
+   "check": "run starts from the untouched seed artifact",
+   "result": "PASS",
+   "detail": "ed8962e6b1"
+  },
+  {
+   "check": "agent calls: sum of attempts over worlds = cost meter = trajectory",
+   "result": "PASS",
+   "detail": "43 attempts, meter 43"
+  },
+  {
+   "check": "returned best = best of every recorded successful attempt and the seed",
+   "result": "PASS",
+   "detail": "1.019011"
+  }
+ ],
+ "cycles": [
+  {
+   "cycle": 1,
+   "policy": {
+    "label": "initial",
+    "rev": "r0000",
+    "id": "2f081731b8",
+    "default_beta": 0.6
+   },
+   "plan": [
+    3,
+    4
+   ],
+   "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+   "N": 15,
+   "k": 5,
+   "batch_sizes": [
+    3,
+    3,
+    3,
+    3,
+    3
+   ],
+   "legal_left_at_stop": 0,
+   "round_best": 1.0,
+   "best_before": 0.9104910395109694,
+   "parse_artifacts": [],
+   "best_after": 1.0,
+   "fail_classes": {
+    "ok": 15
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (3, 4) used (3, 4): parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 0.910491 vs best so far 0.910491"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "5 rounds, batch sizes [3, 3, 3, 3, 3]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "15/15 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "15/15 match"
+    },
+    {
+     "check": "mock agent's claimed change = the stage its diff actually appends",
+     "result": "PASS",
+     "detail": "15/15 match; 4 attempts switched away from the branch direction (documented 25% mock behaviour)"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "0.910491 -> 1.000000 (trace: 0.910491 -> 1.0, kept t1/b1.a3)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 3, 3, 3] vs replay [3, 3, 3, 3, 3]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    },
+    {
+     "check": "dream t=1: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
+     "result": "PASS",
+     "detail": "4 versions x 1 worlds"
+    },
+    {
+     "check": "dream t=1: every version re-replayed from history/ gives the recorded V (deterministic replay)",
+     "result": "PASS",
+     "detail": "r0000=0.8650, r0001=0.9100, r0002=0.9100, r0003=0.9100"
+    },
+    {
+     "check": "dream t=1: selected = argmax V (incumbent kept on ties) and deployed next cycle",
+     "result": "PASS",
+     "detail": "V=[0.865, 0.91, 0.91, 0.91], selected [1], expected 1, next cycle deploys r0001"
+    },
+    {
+     "check": "dream t=1: each revision's trace diff = history code diff (base -> revision)",
+     "result": "PASS",
+     "detail": "3 revisions"
+    },
+    {
+     "check": "dream t=1: deployed policy passes the static check and copies no trace-specific id/score",
+     "result": "PASS",
+     "detail": "r0001 clean"
+    }
+   ],
+   "dream": {
+    "t": 1,
+    "V": [
+     0.865,
+     0.91,
+     0.91,
+     0.91
+    ],
+    "selected": 1,
+    "reason": "argmax replay value (incumbent included); V = [0.865, 0.91, 0.91, 0.91]",
+    "versions": [
+     {
+      "rev": 0,
+      "label": "initial",
+      "V": 0.865,
+      "V_rereplay": 0.865,
+      "diag": {
+       "attainment": 1.0,
+       "N": 15.0,
+       "k": 5.0,
+       "mean_batch": 3.0,
+       "wasted_probe_frac": 0.2,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 1,
+      "label": "t1m1",
+      "V": 0.91,
+      "V_rereplay": 0.91,
+      "diag": {
+       "attainment": 1.0,
+       "N": 10.0,
+       "k": 5.0,
+       "mean_batch": 2.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 2,
+      "label": "t1m2",
+      "V": 0.91,
+      "V_rereplay": 0.91,
+      "diag": {
+       "attainment": 1.0,
+       "N": 10.0,
+       "k": 5.0,
+       "mean_batch": 2.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 3,
+      "label": "t1m3",
+      "V": 0.91,
+      "V_rereplay": 0.91,
+      "diag": {
+       "attainment": 1.0,
+       "N": 10.0,
+       "k": 5.0,
+       "mean_batch": 2.0,
+       "wasted_probe_frac": 0.0,
+       "missed_ceiling_rate": 0.0
+      }
+     }
+    ],
+    "revisions": [
+     {
+      "rev": "r0001_t1m1",
+      "parent": "r0000",
+      "change": "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; ceiling reached with many probes: try a cheaper search (patience); perturb plan_depth_step -> 2; perturb prune_lo -> 0.403",
+      "diff_ok": true,
+      "diff_lines": 110,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0002_t1m2",
+      "parent": "r0001",
+      "change": "ceiling reached with many probes: try a cheaper search (patience); perturb w_trend -> 0.8054; perturb plan_depth_step -> 3",
+      "diff_ok": true,
+      "diff_lines": 8,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0003_t1m3",
+      "parent": "r0002",
+      "change": "ceiling reached with many probes: try a cheaper search (patience); perturb max_width_lo -> 0.8235; perturb explore_on_stall -> 0.8285",
+      "diff_ok": true,
+      "diff_lines": 6,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     }
+    ],
+    "chosen": "r0001",
+    "default_beta_chosen": 0.6,
+    "ground_truth": {
+     "t": 1,
+     "n_seeds": 8,
+     "scale": 0.016826827571586822,
+     "versions": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "replay_V": [
+      0.865,
+      0.91,
+      0.91,
+      0.91
+     ],
+     "online_V": [
+      0.6833,
+      0.4043,
+      0.4043,
+      0.4043
+     ],
+     "online_gain": [
+      0.01377,
+      0.00778,
+      0.00778,
+      0.00778
+     ],
+     "online_calls": [
+      15.0,
+      7.12,
+      7.12,
+      7.12
+     ],
+     "spearman_replay_vs_online": -1.0,
+     "selected": 1,
+     "online_best_version": 0,
+     "selected_minus_incumbent_online": {
+      "mean_diff": -0.2789591460498895,
+      "lo": -0.60195132184789,
+      "hi": 0.03316597876029644,
+      "n": 8,
+      "p_better": 0.5
+     },
+     "selected_minus_incumbent_gain": {
+      "mean_diff": -0.005993168762188195,
+      "lo": -0.011525178788084456,
+      "hi": -0.0006235875467712482,
+      "n": 8,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  {
+   "cycle": 2,
+   "policy": {
+    "label": "t1m1",
+    "rev": "r0001",
+    "id": "b4361e9cf5",
+    "default_beta": 0.6
+   },
+   "plan": [
+    3,
+    4
+   ],
+   "plan_reason": "live best still improving with balanced gains: hold the grid",
+   "N": 12,
+   "k": 5,
+   "batch_sizes": [
+    3,
+    3,
+    3,
+    2,
+    1
+   ],
+   "legal_left_at_stop": 2,
+   "round_best": 1.0172041085170362,
+   "best_before": 1.0,
+   "parse_artifacts": [],
+   "best_after": 1.0172041085170362,
+   "fail_classes": {
+    "ok": 12
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (3, 4) used (3, 4): live best still improving with balanced gains: hold the grid"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 1.000000 vs best so far 1.000000"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "5 rounds, batch sizes [3, 3, 3, 2, 1]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "12/12 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "12/12 match"
+    },
+    {
+     "check": "mock agent's claimed change = the stage its diff actually appends",
+     "result": "PASS",
+     "detail": "12/12 match; 0 attempts switched away from the branch direction (documented 25% mock behaviour)"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "1.000000 -> 1.017204 (trace: 1.0 -> 1.017204, kept t2/b0.a3)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 3, 2, 1] vs replay [3, 3, 3, 2, 1]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    },
+    {
+     "check": "dream t=2: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
+     "result": "PASS",
+     "detail": "4 versions x 2 worlds"
+    },
+    {
+     "check": "dream t=2: every version re-replayed from history/ gives the recorded V (deterministic replay)",
+     "result": "PASS",
+     "detail": "r0001=0.9010, r0004=0.9010, r0005=0.9010, r0006=0.8996"
+    },
+    {
+     "check": "dream t=2: selected = argmax V (incumbent kept on ties) and deployed next cycle",
+     "result": "PASS",
+     "detail": "V=[0.901, 0.901, 0.901, 0.899571], selected [0], expected 0, next cycle deploys r0001"
+    },
+    {
+     "check": "dream t=2: each revision's trace diff = history code diff (base -> revision)",
+     "result": "PASS",
+     "detail": "3 revisions"
+    },
+    {
+     "check": "dream t=2: deployed policy passes the static check and copies no trace-specific id/score",
+     "result": "PASS",
+     "detail": "r0001 clean"
+    }
+   ],
+   "dream": {
+    "t": 2,
+    "V": [
+     0.901,
+     0.901,
+     0.901,
+     0.899571
+    ],
+    "selected": 0,
+    "reason": "argmax replay value (incumbent included); V = [0.901, 0.901, 0.901, 0.899571]",
+    "versions": [
+     {
+      "rev": 1,
+      "label": "t1m1",
+      "V": 0.901,
+      "V_rereplay": 0.901,
+      "diag": {
+       "attainment": 1.0,
+       "N": 11.0,
+       "k": 5.0,
+       "mean_batch": 2.2,
+       "wasted_probe_frac": 0.041666666666666664,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 4,
+      "label": "t2m1",
+      "V": 0.901,
+      "V_rereplay": 0.901,
+      "diag": {
+       "attainment": 1.0,
+       "N": 11.0,
+       "k": 5.0,
+       "mean_batch": 2.2,
+       "wasted_probe_frac": 0.041666666666666664,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 5,
+      "label": "t2m2",
+      "V": 0.901,
+      "V_rereplay": 0.901,
+      "diag": {
+       "attainment": 1.0,
+       "N": 11.0,
+       "k": 5.0,
+       "mean_batch": 2.2,
+       "wasted_probe_frac": 0.041666666666666664,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 6,
+      "label": "t2m3",
+      "V": 0.899571,
+      "V_rereplay": 0.8995714285714286,
+      "diag": {
+       "attainment": 1.0,
+       "N": 11.0,
+       "k": 6.0,
+       "mean_batch": 1.9142857142857141,
+       "wasted_probe_frac": 0.041666666666666664,
+       "missed_ceiling_rate": 0.0
+      }
+     }
+    ],
+    "revisions": [
+     {
+      "rev": "r0004_t2m1",
+      "parent": "r0001",
+      "change": "ceiling reached with many probes: try a cheaper search (patience); perturb repairs_hi -> 2.3691; perturb prune_hi -> 0.7204",
+      "diff_ok": true,
+      "diff_lines": 8,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0005_t2m2",
+      "parent": "r0004",
+      "change": "ceiling reached with many probes: try a cheaper search (width); perturb repairs_hi -> 4.0; perturb max_width_lo -> 0.6155",
+      "diff_ok": true,
+      "diff_lines": 10,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0006_t2m3",
+      "parent": "r0005",
+      "change": "ceiling reached with many probes: try a cheaper search (width); perturb w_depth -> 0.0963; perturb max_width_lo -> 0.6014",
+      "diff_ok": true,
+      "diff_lines": 10,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     }
+    ],
+    "chosen": "r0001",
+    "default_beta_chosen": 0.6,
+    "ground_truth": {
+     "t": 2,
+     "n_seeds": 8,
+     "scale": 0.004228281633629205,
+     "versions": [
+      1,
+      4,
+      5,
+      6
+     ],
+     "replay_V": [
+      0.901,
+      0.901,
+      0.901,
+      0.899571
+     ],
+     "online_V": [
+      0.5932,
+      0.5932,
+      0.5932,
+      0.5914
+     ],
+     "online_gain": [
+      0.00285,
+      0.00285,
+      0.00285,
+      0.00285
+     ],
+     "online_calls": [
+      9.0,
+      9.0,
+      9.0,
+      9.0
+     ],
+     "spearman_replay_vs_online": 1.0,
+     "selected": 1,
+     "online_best_version": 1,
+     "selected_minus_incumbent_online": null,
+     "selected_minus_incumbent_gain": null
+    }
+   }
+  },
+  {
+   "cycle": 3,
+   "policy": {
+    "label": "t1m1",
+    "rev": "r0001",
+    "id": "b4361e9cf5",
+    "default_beta": 0.6
+   },
+   "plan": [
+    3,
+    4
+   ],
+   "plan_reason": "live best still improving with balanced gains: hold the grid",
+   "N": 7,
+   "k": 3,
+   "batch_sizes": [
+    3,
+    3,
+    1
+   ],
+   "legal_left_at_stop": 3,
+   "round_best": 1.017725331036038,
+   "best_before": 1.0172041085170362,
+   "parse_artifacts": [],
+   "best_after": 1.017725331036038,
+   "fail_classes": {
+    "ok": 7
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (3, 4) used (3, 4): live best still improving with balanced gains: hold the grid"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 1.017204 vs best so far 1.017204"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "3 rounds, batch sizes [3, 3, 1]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "7/7 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "7/7 match"
+    },
+    {
+     "check": "mock agent's claimed change = the stage its diff actually appends",
+     "result": "PASS",
+     "detail": "7/7 match; 2 attempts switched away from the branch direction (documented 25% mock behaviour)"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "1.017204 -> 1.017725 (trace: 1.017204 -> 1.017725, kept t3/b1.a0)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 1] vs replay [3, 3, 1]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    },
+    {
+     "check": "dream t=3: Eq.1 V_i and V recomputed from revealed cells (scores looked up in tree.json)",
+     "result": "PASS",
+     "detail": "4 versions x 3 worlds"
+    },
+    {
+     "check": "dream t=3: every version re-replayed from history/ gives the recorded V (deterministic replay)",
+     "result": "PASS",
+     "detail": "r0001=0.9146, r0007=0.9146, r0008=0.9126, r0009=0.9146"
+    },
+    {
+     "check": "dream t=3: selected = argmax V (incumbent kept on ties) and deployed next cycle",
+     "result": "PASS",
+     "detail": "V=[0.914556, 0.914556, 0.912631, 0.914556], selected [0], expected 0, next cycle deploys r0001"
+    },
+    {
+     "check": "dream t=3: each revision's trace diff = history code diff (base -> revision)",
+     "result": "PASS",
+     "detail": "3 revisions"
+    },
+    {
+     "check": "dream t=3: deployed policy passes the static check and copies no trace-specific id/score",
+     "result": "PASS",
+     "detail": "r0001 clean"
+    }
+   ],
+   "dream": {
+    "t": 3,
+    "V": [
+     0.914556,
+     0.914556,
+     0.912631,
+     0.914556
+    ],
+    "selected": 0,
+    "reason": "argmax replay value (incumbent included); V = [0.914556, 0.914556, 0.912631, 0.914556]",
+    "versions": [
+     {
+      "rev": 1,
+      "label": "t1m1",
+      "V": 0.914556,
+      "V_rereplay": 0.9145555555555557,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.666666666666666,
+       "k": 4.333333333333333,
+       "mean_batch": 2.244444444444445,
+       "wasted_probe_frac": 0.21825396825396826,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 7,
+      "label": "t3m1",
+      "V": 0.914556,
+      "V_rereplay": 0.9145555555555557,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.666666666666666,
+       "k": 4.333333333333333,
+       "mean_batch": 2.244444444444445,
+       "wasted_probe_frac": 0.21825396825396826,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 8,
+      "label": "t3m2",
+      "V": 0.912631,
+      "V_rereplay": 0.9126309523809524,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.666666666666666,
+       "k": 5.333333333333333,
+       "mean_batch": 1.8595238095238094,
+       "wasted_probe_frac": 0.26587301587301587,
+       "missed_ceiling_rate": 0.0
+      }
+     },
+     {
+      "rev": 9,
+      "label": "t3m3",
+      "V": 0.914556,
+      "V_rereplay": 0.9145555555555557,
+      "diag": {
+       "attainment": 1.0,
+       "N": 9.666666666666666,
+       "k": 4.333333333333333,
+       "mean_batch": 2.244444444444445,
+       "wasted_probe_frac": 0.21825396825396826,
+       "missed_ceiling_rate": 0.0
+      }
+     }
+    ],
+    "revisions": [
+     {
+      "rev": "r0007_t3m1",
+      "parent": "r0001",
+      "change": "ceiling reached with many probes: try a cheaper search (width); perturb max_width_lo -> 0.9123; perturb explore_on_stall -> 0.983",
+      "diff_ok": true,
+      "diff_lines": 10,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0008_t3m2",
+      "parent": "r0007",
+      "change": "ceiling reached with many probes: try a cheaper search (width); perturb prune_hi -> 1.1492; perturb repairs_lo -> 0.4732",
+      "diff_ok": true,
+      "diff_lines": 12,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     },
+     {
+      "rev": "r0009_t3m3",
+      "parent": "r0007",
+      "change": "ceiling reached with many probes: try a cheaper search (patience); perturb w_depth -> 0.0168; perturb plan_width_step: unchanged at 1 (clamp/round)",
+      "diff_ok": true,
+      "diff_lines": 6,
+      "screen": [
+       true
+      ],
+      "error": null,
+      "static_ok": true,
+      "noop_claimed_moves": []
+     }
+    ],
+    "chosen": "r0001",
+    "default_beta_chosen": 0.6,
+    "ground_truth": {
+     "t": 3,
+     "n_seeds": 8,
+     "scale": 0.0037070591146275422,
+     "versions": [
+      1,
+      7,
+      8,
+      9
+     ],
+     "replay_V": [
+      0.914556,
+      0.914556,
+      0.912631,
+      0.914556
+     ],
+     "online_V": [
+      0.4246,
+      0.4208,
+      0.4208,
+      0.4208
+     ],
+     "online_gain": [
+      0.00186,
+      0.00186,
+      0.00186,
+      0.00186
+     ],
+     "online_calls": [
+      9.0,
+      9.0,
+      9.0,
+      9.0
+     ],
+     "spearman_replay_vs_online": 0.3333333333333333,
+     "selected": 1,
+     "online_best_version": 1,
+     "selected_minus_incumbent_online": null,
+     "selected_minus_incumbent_gain": null
+    }
+   }
+  },
+  {
+   "cycle": 4,
+   "policy": {
+    "label": "t1m1",
+    "rev": "r0001",
+    "id": "b4361e9cf5",
+    "default_beta": 0.6
+   },
+   "plan": [
+    4,
+    2
+   ],
+   "plan_reason": "roots improved early while depth stalled: widen, trim depth",
+   "N": 9,
+   "k": 4,
+   "batch_sizes": [
+    3,
+    3,
+    2,
+    1
+   ],
+   "legal_left_at_stop": 3,
+   "round_best": 1.0190107355476399,
+   "best_before": 1.017725331036038,
+   "parse_artifacts": [],
+   "best_after": 1.0190107355476399,
+   "fail_classes": {
+    "ok": 9
+   },
+   "checks": [
+    {
+     "check": "plan used within hard caps (and = requested clamped)",
+     "result": "PASS",
+     "detail": "requested (4, 2) used (4, 2): roots improved early while depth stalled: widen, trim depth"
+    },
+    {
+     "check": "live root = best program so far (root='best')",
+     "result": "PASS",
+     "detail": "root 1.017725 vs best so far 1.017725"
+    },
+    {
+     "check": "online batches legal (<= W, one cell per branch, inside plan, parent first) and = recorded tree",
+     "result": "PASS",
+     "detail": "4 rounds, batch sizes [3, 3, 2, 1]"
+    },
+    {
+     "check": "every attempt's trace diff = parent -> child program diff from the snapshot store",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "every attempt re-graded independently (own grader, fresh process) = recorded score",
+     "result": "PASS",
+     "detail": "9/9 match"
+    },
+    {
+     "check": "mock agent's claimed change = the stage its diff actually appends",
+     "result": "PASS",
+     "detail": "9/9 match; 1 attempts switched away from the branch direction (documented 25% mock behaviour)"
+    },
+    {
+     "check": "best program = max(best so far, best successful attempt), strict improvement",
+     "result": "PASS",
+     "detail": "1.017725 -> 1.019011 (trace: 1.017725 -> 1.019011, kept t4/b3.a2)"
+    },
+    {
+     "check": "replay fidelity: the recording policy replayed on its own world reveals exactly the online batches",
+     "result": "PASS",
+     "detail": "online [3, 3, 2, 1] vs replay [3, 3, 2, 1]"
+    },
+    {
+     "check": "manifest beta = baked-in default beta of the deployed code",
+     "result": "PASS",
+     "detail": "beta 0.6"
+    }
+   ]
+  }
+ ],
+ "monitor": [],
+ "ground_truth": [
+  {
+   "t": 1,
+   "n_seeds": 8,
+   "scale": 0.016826827571586822,
+   "versions": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "replay_V": [
+    0.865,
+    0.91,
+    0.91,
+    0.91
+   ],
+   "online_V": [
+    0.6833,
+    0.4043,
+    0.4043,
+    0.4043
+   ],
+   "online_gain": [
+    0.01377,
+    0.00778,
+    0.00778,
+    0.00778
+   ],
+   "online_calls": [
+    15.0,
+    7.12,
+    7.12,
+    7.12
+   ],
+   "spearman_replay_vs_online": -1.0,
+   "selected": 1,
+   "online_best_version": 0,
+   "selected_minus_incumbent_online": {
+    "mean_diff": -0.2789591460498895,
+    "lo": -0.60195132184789,
+    "hi": 0.03316597876029644,
+    "n": 8,
+    "p_better": 0.5
+   },
+   "selected_minus_incumbent_gain": {
+    "mean_diff": -0.005993168762188195,
+    "lo": -0.011525178788084456,
+    "hi": -0.0006235875467712482,
+    "n": 8,
+    "p_better": 0.0
+   }
+  },
+  {
+   "t": 2,
+   "n_seeds": 8,
+   "scale": 0.004228281633629205,
+   "versions": [
+    1,
+    4,
+    5,
+    6
+   ],
+   "replay_V": [
+    0.901,
+    0.901,
+    0.901,
+    0.899571
+   ],
+   "online_V": [
+    0.5932,
+    0.5932,
+    0.5932,
+    0.5914
+   ],
+   "online_gain": [
+    0.00285,
+    0.00285,
+    0.00285,
+    0.00285
+   ],
+   "online_calls": [
+    9.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "spearman_replay_vs_online": 1.0,
+   "selected": 1,
+   "online_best_version": 1,
+   "selected_minus_incumbent_online": null,
+   "selected_minus_incumbent_gain": null
+  },
+  {
+   "t": 3,
+   "n_seeds": 8,
+   "scale": 0.0037070591146275422,
+   "versions": [
+    1,
+    7,
+    8,
+    9
+   ],
+   "replay_V": [
+    0.914556,
+    0.914556,
+    0.912631,
+    0.914556
+   ],
+   "online_V": [
+    0.4246,
+    0.4208,
+    0.4208,
+    0.4208
+   ],
+   "online_gain": [
+    0.00186,
+    0.00186,
+    0.00186,
+    0.00186
+   ],
+   "online_calls": [
+    9.0,
+    9.0,
+    9.0,
+    9.0
+   ],
+   "spearman_replay_vs_online": 0.3333333333333333,
+   "selected": 1,
+   "online_best_version": 1,
+   "selected_minus_incumbent_online": null,
+   "selected_minus_incumbent_gain": null
+  }
+ ],
+ "audit_wall_s": 26.5
+}

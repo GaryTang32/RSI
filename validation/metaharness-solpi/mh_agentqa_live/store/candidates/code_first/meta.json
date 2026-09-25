@@ -1,0 +1,19 @@
+{
+ "name": "code_first",
+ "artifact_id": "bdd8b5c9dd013aed2ac7ea96bc80079977a3362bac66d19c3dc3be2f0d58f737",
+ "created_at": 1790337941.7265458,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Mandating Python code generation and extracting from execution output, rather than parsing model text reasoning, ensures numeric accuracy. Computation-first is fundamentally more reliable than text-based reasoning.",
+ "axis": "exploration",
+ "components": [
+  "code-generation",
+  "execution-extraction",
+  "python-first"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}

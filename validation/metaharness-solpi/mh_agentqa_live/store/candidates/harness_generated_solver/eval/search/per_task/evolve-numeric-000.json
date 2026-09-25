@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Therefore, the remainder is **421**.').",
+  "output": "Therefore, the remainder is **421**.",
+  "tokens": 3877,
+  "cost_usd": 0.016065,
+  "steps": 1,
+  "latency_s": 0.001251220703125,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

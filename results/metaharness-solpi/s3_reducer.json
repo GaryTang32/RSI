@@ -1,0 +1,2008 @@
+{
+ "claim": "EPR receipts are verified byte-for-byte; unverifiable receipts fall back; savings on long logs [SoL-Pi code]",
+ "config": {
+  "llm": "sim",
+  "seeds": 5,
+  "h": [
+   0.0,
+   0.1,
+   0.3,
+   0.6,
+   1.0
+  ]
+ },
+ "bench": {
+  "deterministic": {
+   "n_logs": 13,
+   "outcomes": {
+    "accepted": 13
+   },
+   "accepted": 13,
+   "nonverbatim": 0,
+   "failure_logs": 13,
+   "failure_with_evidence": 13,
+   "bytes_in": 267059,
+   "bytes_out": 29026
+  },
+  "mock_h0.0": {
+   "n_logs": 52,
+   "outcomes": {
+    "accepted": 52
+   },
+   "accepted": 52,
+   "nonverbatim": 0,
+   "failure_logs": 52,
+   "failure_with_evidence": 52,
+   "bytes_in": 1068236,
+   "bytes_out": 116260
+  },
+  "mock_h0.1": {
+   "n_logs": 52,
+   "outcomes": {
+    "accepted": 47,
+    "invalid-json": 1,
+    "schema-mismatch": 2,
+    "unverifiable-quote": 2
+   },
+   "accepted": 47,
+   "nonverbatim": 0,
+   "failure_logs": 47,
+   "failure_with_evidence": 47,
+   "bytes_in": 998150,
+   "bytes_out": 105574
+  },
+  "mock_h0.3": {
+   "n_logs": 52,
+   "outcomes": {
+    "accepted": 35,
+    "invalid-json": 4,
+    "unverifiable-quote": 2,
+    "missing-failure-evidence": 4,
+    "schema-mismatch": 7
+   },
+   "accepted": 35,
+   "nonverbatim": 0,
+   "failure_logs": 35,
+   "failure_with_evidence": 35,
+   "bytes_in": 684810,
+   "bytes_out": 77739
+  },
+  "mock_h0.6": {
+   "n_logs": 52,
+   "outcomes": {
+    "accepted": 16,
+    "invalid-json": 5,
+    "unverifiable-quote": 5,
+    "missing-failure-evidence": 6,
+    "schema-mismatch": 20
+   },
+   "accepted": 16,
+   "nonverbatim": 0,
+   "failure_logs": 16,
+   "failure_with_evidence": 16,
+   "bytes_in": 350320,
+   "bytes_out": 33073
+  },
+  "mock_h1.0": {
+   "n_logs": 52,
+   "outcomes": {
+    "schema-mismatch": 27,
+    "invalid-json": 5,
+    "missing-failure-evidence": 8,
+    "unverifiable-quote": 12
+   },
+   "accepted": 0,
+   "nonverbatim": 0,
+   "failure_logs": 0,
+   "failure_with_evidence": 0,
+   "bytes_in": 0,
+   "bytes_out": 0
+  }
+ },
+ "agent_runs": {
+  "A:deterministic": {
+   "acceptance": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 92839.59000000001,
+    "lo": 86095.31999999999,
+    "hi": 99178.93500000001,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.4503621656491038,
+    "lo": 0.4456404059811822,
+    "hi": 0.45508392531702546,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.30402109873808403,
+    "lo": 0.2996999951753621,
+    "hi": 0.30829447698881923,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {}
+  },
+  "A:mock_h0.0": {
+   "acceptance": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 92826.23999999999,
+    "lo": 86082.49500000002,
+    "hi": 99165.09000000001,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.4502673701786729,
+    "lo": 0.44554270995365763,
+    "hi": 0.45499203040368813,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.30395359748694506,
+    "lo": 0.29962982990831954,
+    "hi": 0.30822948708969083,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {}
+  },
+  "A:mock_h0.1": {
+   "acceptance": {
+    "mean": 0.8648467949367789,
+    "lo": 0.8590780896897547,
+    "hi": 0.8706155001838031,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 75675.71,
+    "lo": 69341.76,
+    "hi": 82009.66,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.35629057629850147,
+    "lo": 0.35089138009042103,
+    "hi": 0.36210604540013386,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.2547401784694491,
+    "lo": 0.2507525368075053,
+    "hi": 0.2587278201313927,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 120
+   }
+  },
+  "A:mock_h0.3": {
+   "acceptance": {
+    "mean": 0.740826778067728,
+    "lo": 0.7367087617169773,
+    "hi": 0.7450962753403212,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 64864.990000000005,
+    "lo": 59445.185,
+    "hi": 70284.795,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.30693374947103297,
+    "lo": 0.3001551417542011,
+    "hi": 0.3137123571878647,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.2138594714024639,
+    "lo": 0.21049992755478417,
+    "hi": 0.21697621059720068,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 120,
+    "invalid-json": 92,
+    "missing-failure-evidence": 19
+   }
+  },
+  "A:mock_h0.6": {
+   "acceptance": {
+    "mean": 0.4603863818991716,
+    "lo": 0.45193192779385427,
+    "hi": 0.46755192373169907,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 32936.30500000001,
+    "lo": 30413.670000000002,
+    "hi": 35298.119999999995,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.1361983008664716,
+    "lo": 0.12950225087882952,
+    "hi": 0.1416786790677974,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.11140387802432768,
+    "lo": 0.10561105060124983,
+    "hi": 0.1159340602163124,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 147,
+    "missing-failure-evidence": 221,
+    "schema-mismatch": 98
+   }
+  },
+  "A:mock_h1.0": {
+   "acceptance": {
+    "mean": 0.05211313506529965,
+    "lo": 0.0410491522272743,
+    "hi": 0.06212539762263519,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": null,
+   "bytes_saved_per_task": {
+    "mean": 2275.7,
+    "lo": 1583.7599999999998,
+    "hi": 2971.535,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": -0.06224048824064378,
+    "lo": -0.06268165946935467,
+    "hi": -0.061922086834105085,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": -0.028924679903192713,
+    "lo": -0.03093907492235588,
+    "hi": -0.027209562812099648,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 267,
+    "schema-mismatch": 281,
+    "missing-failure-evidence": 165,
+    "invalid-json": 104
+   }
+  },
+  "B:deterministic": {
+   "acceptance": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 91125.01999999999,
+    "lo": 83072.23000000001,
+    "hi": 98740.79,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.5051690302958283,
+    "lo": 0.4946222384301112,
+    "hi": 0.515579973757421,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.44176460630744574,
+    "lo": 0.4362747114701288,
+    "hi": 0.4452740239563764,
+    "n": 5
+   },
+   "success_change": {
+    "mean": -0.004005952380952383,
+    "lo": -0.010142857142857143,
+    "hi": 0.0011250000000000648,
+    "n": 5
+   },
+   "fallbacks": {}
+  },
+  "B:mock_h0.0": {
+   "acceptance": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 91111.505,
+    "lo": 83059.435,
+    "hi": 98726.54,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.5050481136819117,
+    "lo": 0.4944974873357862,
+    "hi": 0.515465020918365,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.4416662172513678,
+    "lo": 0.4361726945696941,
+    "hi": 0.4451812802219635,
+    "n": 5
+   },
+   "success_change": {
+    "mean": -0.004005952380952383,
+    "lo": -0.010142857142857143,
+    "hi": 0.0011250000000000648,
+    "n": 5
+   },
+   "fallbacks": {}
+  },
+  "B:mock_h0.1": {
+   "acceptance": {
+    "mean": 0.856246364574538,
+    "lo": 0.8485964912280701,
+    "hi": 0.8638859180035651,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 68484.92,
+    "lo": 60964.40499999999,
+    "hi": 75513.08,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.4090176358226092,
+    "lo": 0.3940647809725587,
+    "hi": 0.4239704906726596,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.3739104572749556,
+    "lo": 0.3676247030142007,
+    "hi": 0.3800671463004221,
+    "n": 5
+   },
+   "success_change": {
+    "mean": -0.0001666666666666927,
+    "lo": -0.0030000000000000695,
+    "hi": 0.0028333333333333765,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 120
+   }
+  },
+  "B:mock_h0.3": {
+   "acceptance": {
+    "mean": 0.7449429183726819,
+    "lo": 0.7396946700237598,
+    "hi": 0.7497267759562842,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 61132.005000000005,
+    "lo": 54546.105,
+    "hi": 67244.95999999999,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.3679209746343928,
+    "lo": 0.34636685882385027,
+    "hi": 0.3905732317621465,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.33280457019340237,
+    "lo": 0.32239467640019315,
+    "hi": 0.34363375358186354,
+    "n": 5
+   },
+   "success_change": {
+    "mean": -0.0001666666666666927,
+    "lo": -0.0030000000000000695,
+    "hi": 0.0028333333333333765,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 120,
+    "invalid-json": 77,
+    "missing-failure-evidence": 19
+   }
+  },
+  "B:mock_h0.6": {
+   "acceptance": {
+    "mean": 0.4433172143497079,
+    "lo": 0.43298327828834343,
+    "hi": 0.45529780564263317,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": 1.0,
+   "bytes_saved_per_task": {
+    "mean": 28920.145,
+    "lo": 27272.620000000003,
+    "hi": 30405.754999999997,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.13729907710351957,
+    "lo": 0.12107384276280557,
+    "hi": 0.16233273165837053,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": 0.15902399717301358,
+    "lo": 0.14884304019675582,
+    "hi": 0.1734776229727399,
+    "n": 5
+   },
+   "success_change": {
+    "mean": -0.0020000000000000018,
+    "lo": -0.004000000000000048,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 137,
+    "missing-failure-evidence": 226,
+    "schema-mismatch": 96
+   }
+  },
+  "B:mock_h1.0": {
+   "acceptance": {
+    "mean": 0.05826368673194891,
+    "lo": 0.050167872347789966,
+    "hi": 0.06661003975227539,
+    "n": 5
+   },
+   "nonverbatim_in_accepted": 0,
+   "failure_evidence_rate": null,
+   "bytes_saved_per_task": {
+    "mean": 2133.3549999999996,
+    "lo": 1700.525,
+    "hi": 2566.185,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": -0.06764003302920289,
+    "lo": -0.06879785535629479,
+    "hi": -0.066482210702111,
+    "n": 5
+   },
+   "cost_saving": {
+    "mean": -0.009414212572849214,
+    "lo": -0.010785300483322383,
+    "hi": -0.008014807377914709,
+    "n": 5
+   },
+   "success_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "fallbacks": {
+    "unverifiable-quote": 257,
+    "schema-mismatch": 268,
+    "missing-failure-evidence": 162,
+    "invalid-json": 89
+   }
+  }
+ },
+ "per_seed": [
+  {
+   "seed": 0,
+   "backend": "A",
+   "base": {
+    "score": 1.0,
+    "tokens": 360997.175,
+    "cost": 0.2088791625,
+    "requests": 13.275,
+    "cache_read": 323428.0,
+    "cache_write": 33547.525,
+    "output": 4021.65,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 195797.75,
+    "cost": 0.14392145125,
+    "requests": 14.025,
+    "cache_read": 149515.85,
+    "cache_write": 40833.1,
+    "output": 5448.8,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 166,
+    "receipts": 166,
+    "nonverbatim": 0,
+    "failure_logs": 138,
+    "failure_with_evidence": 138,
+    "bytes_saved": 3189009,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 195829.275,
+    "cost": 0.14393465625,
+    "requests": 14.025,
+    "cache_read": 149544.375,
+    "cache_write": 40836.1,
+    "output": 5448.8,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 166,
+    "receipts": 166,
+    "nonverbatim": 0,
+    "failure_logs": 138,
+    "failure_with_evidence": 138,
+    "bytes_saved": 3188511,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 232784.475,
+    "cost": 0.15675733750000004,
+    "requests": 13.725,
+    "cache_read": 184534.5,
+    "cache_write": 42859.825,
+    "output": 5390.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 167,
+    "receipts": 143,
+    "nonverbatim": 0,
+    "failure_logs": 114,
+    "failure_with_evidence": 114,
+    "bytes_saved": 2575965,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 247082.225,
+    "cost": 0.163918535,
+    "requests": 13.7,
+    "cache_read": 197227.425,
+    "cache_write": 44605.575,
+    "output": 5249.225,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 168,
+    "receipts": 124,
+    "nonverbatim": 0,
+    "failure_logs": 99,
+    "failure_with_evidence": 99,
+    "bytes_saved": 2208555,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 16,
+     "missing-failure-evidence": 4
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 316187.0,
+    "cost": 0.1878587675,
+    "requests": 13.375,
+    "cache_read": 261927.775,
+    "cache_write": 49299.775,
+    "output": 4959.45,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 164,
+    "receipts": 73,
+    "nonverbatim": 0,
+    "failure_logs": 47,
+    "failure_with_evidence": 47,
+    "bytes_saved": 1137448,
+    "fallbacks": {
+     "unverifiable-quote": 29,
+     "missing-failure-evidence": 44,
+     "schema-mismatch": 18
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 383322.35,
+    "cost": 0.2148149375,
+    "requests": 13.275,
+    "cache_read": 323090.125,
+    "cache_write": 55350.575,
+    "output": 4881.65,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 163,
+    "receipts": 7,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 83018,
+    "fallbacks": {
+     "unverifiable-quote": 53,
+     "schema-mismatch": 53,
+     "missing-failure-evidence": 32,
+     "invalid-json": 18
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "backend": "B",
+   "base": {
+    "score": 1.0,
+    "tokens": 308422.2,
+    "cost": 0.38321520624999994,
+    "requests": 13.1,
+    "cache_read": 276946.975,
+    "cache_write": 28914.075,
+    "output": 2561.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 0.99375,
+    "tokens": 148315.175,
+    "cost": 0.21216633749999997,
+    "requests": 14.025,
+    "cache_read": 108386.45,
+    "cache_write": 35975.35,
+    "output": 3953.375,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 163,
+    "receipts": 163,
+    "nonverbatim": 0,
+    "failure_logs": 145,
+    "failure_with_evidence": 145,
+    "bytes_saved": 3055804,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 0.99375,
+    "tokens": 148348.55,
+    "cost": 0.21220070624999998,
+    "requests": 14.025,
+    "cache_read": 108416.75,
+    "cache_write": 35978.425,
+    "output": 3953.375,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 163,
+    "receipts": 163,
+    "nonverbatim": 0,
+    "failure_logs": 145,
+    "failure_with_evidence": 145,
+    "bytes_saved": 3055315,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 176542.675,
+    "cost": 0.23797123124999997,
+    "requests": 13.325,
+    "cache_read": 136958.425,
+    "cache_write": 35838.375,
+    "output": 3745.875,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 152,
+    "receipts": 128,
+    "nonverbatim": 0,
+    "failure_logs": 108,
+    "failure_with_evidence": 108,
+    "bytes_saved": 2179327,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 183573.4,
+    "cost": 0.24844058124999996,
+    "requests": 13.325,
+    "cache_read": 142851.475,
+    "cache_write": 37073.075,
+    "output": 3648.85,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 152,
+    "receipts": 114,
+    "nonverbatim": 0,
+    "failure_logs": 98,
+    "failure_with_evidence": 98,
+    "bytes_saved": 1981772,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 11,
+     "missing-failure-evidence": 3
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 251897.225,
+    "cost": 0.31229706874999996,
+    "requests": 13.075,
+    "cache_read": 204491.05,
+    "cache_write": 43976.675,
+    "output": 3429.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 158,
+    "receipts": 68,
+    "nonverbatim": 0,
+    "failure_logs": 53,
+    "failure_with_evidence": 53,
+    "bytes_saved": 1170057,
+    "fallbacks": {
+     "unverifiable-quote": 27,
+     "missing-failure-evidence": 46,
+     "schema-mismatch": 17
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 329218.95,
+    "cost": 0.38733732499999995,
+    "requests": 13.1,
+    "cache_read": 275564.125,
+    "cache_write": 50235.05,
+    "output": 3419.775,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 159,
+    "receipts": 9,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 59573,
+    "fallbacks": {
+     "unverifiable-quote": 51,
+     "schema-mismatch": 52,
+     "missing-failure-evidence": 32,
+     "invalid-json": 15
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "backend": "A",
+   "base": {
+    "score": 1.0,
+    "tokens": 425748.175,
+    "cost": 0.233064025,
+    "requests": 14.225,
+    "cache_read": 384732.0,
+    "cache_write": 36730.0,
+    "output": 4286.175,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 232220.3,
+    "cost": 0.16243674624999999,
+    "requests": 15.6,
+    "cache_read": 178357.075,
+    "cache_write": 47722.85,
+    "output": 6140.375,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 188,
+    "receipts": 188,
+    "nonverbatim": 0,
+    "failure_logs": 153,
+    "failure_with_evidence": 153,
+    "bytes_saved": 4075013,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 232259.85,
+    "cost": 0.16245236125,
+    "requests": 15.6,
+    "cache_read": 178393.275,
+    "cache_write": 47726.2,
+    "output": 6140.375,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 188,
+    "receipts": 188,
+    "nonverbatim": 0,
+    "failure_logs": 153,
+    "failure_with_evidence": 153,
+    "bytes_saved": 4074449,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 269762.225,
+    "cost": 0.17200966874999998,
+    "requests": 14.9,
+    "cache_read": 214452.375,
+    "cache_write": 49440.1,
+    "output": 5869.75,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 185,
+    "receipts": 161,
+    "nonverbatim": 0,
+    "failure_logs": 126,
+    "failure_with_evidence": 126,
+    "bytes_saved": 3349509,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 293812.375,
+    "cost": 0.181972035,
+    "requests": 14.775,
+    "cache_read": 236395.675,
+    "cache_write": 51764.2,
+    "output": 5652.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 185,
+    "receipts": 138,
+    "nonverbatim": 0,
+    "failure_logs": 106,
+    "failure_with_evidence": 106,
+    "bytes_saved": 2826244,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 18,
+     "missing-failure-evidence": 5
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 363976.0,
+    "cost": 0.20563828499999998,
+    "requests": 14.325,
+    "cache_read": 303552.675,
+    "cache_write": 55106.25,
+    "output": 5317.075,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 178,
+    "receipts": 84,
+    "nonverbatim": 0,
+    "failure_logs": 55,
+    "failure_with_evidence": 55,
+    "bytes_saved": 1429494,
+    "fallbacks": {
+     "unverifiable-quote": 30,
+     "missing-failure-evidence": 44,
+     "schema-mismatch": 20
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 452212.45,
+    "cost": 0.24066663874999997,
+    "requests": 14.225,
+    "cache_read": 384040.975,
+    "cache_write": 62990.625,
+    "output": 5180.85,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 177,
+    "receipts": 6,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 43647,
+    "fallbacks": {
+     "unverifiable-quote": 54,
+     "schema-mismatch": 58,
+     "missing-failure-evidence": 36,
+     "invalid-json": 23
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "backend": "B",
+   "base": {
+    "score": 0.9958333333333333,
+    "tokens": 360300.15,
+    "cost": 0.42638545624999996,
+    "requests": 14.1,
+    "cache_read": 326399.975,
+    "cache_write": 31163.675,
+    "output": 2736.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 0.9949999999999999,
+    "tokens": 185699.525,
+    "cost": 0.24268004375,
+    "requests": 15.65,
+    "cache_read": 137985.5,
+    "cache_write": 43253.675,
+    "output": 4460.35,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 192,
+    "receipts": 192,
+    "nonverbatim": 0,
+    "failure_logs": 168,
+    "failure_with_evidence": 168,
+    "bytes_saved": 3983058,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 0.9949999999999999,
+    "tokens": 185745.65,
+    "cost": 0.2427242375,
+    "requests": 15.65,
+    "cache_read": 138027.95,
+    "cache_write": 43257.35,
+    "output": 4460.35,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 192,
+    "receipts": 192,
+    "nonverbatim": 0,
+    "failure_logs": 168,
+    "failure_with_evidence": 168,
+    "bytes_saved": 3982482,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 0.9949999999999999,
+    "tokens": 220521.775,
+    "cost": 0.27103307499999996,
+    "requests": 14.975,
+    "cache_read": 173372.725,
+    "cache_write": 42905.55,
+    "output": 4243.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 176,
+    "receipts": 152,
+    "nonverbatim": 0,
+    "failure_logs": 133,
+    "failure_with_evidence": 133,
+    "bytes_saved": 3119394,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 0.9949999999999999,
+    "tokens": 235308.9,
+    "cost": 0.28744380625,
+    "requests": 14.95,
+    "cache_read": 186935.35,
+    "cache_write": 44275.025,
+    "output": 4098.525,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 176,
+    "receipts": 132,
+    "nonverbatim": 0,
+    "failure_logs": 116,
+    "failure_with_evidence": 116,
+    "bytes_saved": 2803300,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 15,
+     "missing-failure-evidence": 5
+    }
+   },
+   "mock_h0.6": {
+    "score": 0.9908333333333335,
+    "tokens": 314925.825,
+    "cost": 0.36069399375,
+    "requests": 14.15,
+    "cache_read": 262325.875,
+    "cache_write": 48912.925,
+    "output": 3687.025,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 165,
+    "receipts": 74,
+    "nonverbatim": 0,
+    "failure_logs": 57,
+    "failure_with_evidence": 57,
+    "bytes_saved": 1181846,
+    "fallbacks": {
+     "unverifiable-quote": 27,
+     "missing-failure-evidence": 45,
+     "schema-mismatch": 19
+    }
+   },
+   "mock_h1.0": {
+    "score": 0.9958333333333333,
+    "tokens": 384236.375,
+    "cost": 0.42943976250000004,
+    "requests": 14.1,
+    "cache_read": 325593.875,
+    "cache_write": 55042.1,
+    "output": 3600.4,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 166,
+    "receipts": 12,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 113068,
+    "fallbacks": {
+     "unverifiable-quote": 51,
+     "schema-mismatch": 52,
+     "missing-failure-evidence": 31,
+     "invalid-json": 20
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "backend": "A",
+   "base": {
+    "score": 1.0,
+    "tokens": 389280.375,
+    "cost": 0.22203123750000003,
+    "requests": 13.875,
+    "cache_read": 349423.375,
+    "cache_write": 35656.675,
+    "output": 4200.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 213691.1,
+    "cost": 0.15417518000000002,
+    "requests": 14.95,
+    "cache_read": 163183.9,
+    "cache_write": 44648.05,
+    "output": 5859.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 179,
+    "receipts": 179,
+    "nonverbatim": 0,
+    "failure_logs": 148,
+    "failure_with_evidence": 148,
+    "bytes_saved": 3651859,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 213729.65,
+    "cost": 0.15419025,
+    "requests": 14.95,
+    "cache_read": 163219.25,
+    "cache_write": 44651.25,
+    "output": 5859.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 179,
+    "receipts": 179,
+    "nonverbatim": 0,
+    "failure_logs": 148,
+    "failure_with_evidence": 148,
+    "bytes_saved": 3651322,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 248995.225,
+    "cost": 0.1651800325,
+    "requests": 14.45,
+    "cache_read": 197179.1,
+    "cache_write": 46101.8,
+    "output": 5714.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 178,
+    "receipts": 154,
+    "nonverbatim": 0,
+    "failure_logs": 121,
+    "failure_with_evidence": 121,
+    "bytes_saved": 2960902,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 267132.475,
+    "cost": 0.17433006874999998,
+    "requests": 14.425,
+    "cache_read": 213014.25,
+    "cache_write": 48543.4,
+    "output": 5574.825,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 179,
+    "receipts": 132,
+    "nonverbatim": 0,
+    "failure_logs": 104,
+    "failure_with_evidence": 104,
+    "bytes_saved": 2547501,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 19,
+     "missing-failure-evidence": 4
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 336510.125,
+    "cost": 0.19703986625,
+    "requests": 13.975,
+    "cache_read": 278677.8,
+    "cache_write": 52605.6,
+    "output": 5226.725,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 177,
+    "receipts": 81,
+    "nonverbatim": 0,
+    "failure_logs": 56,
+    "failure_with_evidence": 56,
+    "bytes_saved": 1358210,
+    "fallbacks": {
+     "unverifiable-quote": 30,
+     "missing-failure-evidence": 45,
+     "schema-mismatch": 21
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 413489.125,
+    "cost": 0.22829171749999996,
+    "requests": 13.875,
+    "cache_read": 348595.4,
+    "cache_write": 59772.025,
+    "output": 5121.7,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 176,
+    "receipts": 10,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 102793,
+    "fallbacks": {
+     "unverifiable-quote": 54,
+     "schema-mismatch": 58,
+     "missing-failure-evidence": 32,
+     "invalid-json": 22
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "backend": "B",
+   "base": {
+    "score": 1.0,
+    "tokens": 327175.15,
+    "cost": 0.40187850625,
+    "requests": 13.625,
+    "cache_read": 294366.075,
+    "cache_write": 30161.675,
+    "output": 2647.4,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 0.9851785714285715,
+    "tokens": 163296.05,
+    "cost": 0.22393291875000002,
+    "requests": 14.725,
+    "cache_read": 118585.8,
+    "cache_write": 40512.675,
+    "output": 4197.575,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 182,
+    "receipts": 182,
+    "nonverbatim": 0,
+    "failure_logs": 160,
+    "failure_with_evidence": 160,
+    "bytes_saved": 3662290,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 0.9851785714285715,
+    "tokens": 163336.9,
+    "cost": 0.22397289374999999,
+    "requests": 14.725,
+    "cache_read": 118623.25,
+    "cache_write": 40516.075,
+    "output": 4197.575,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 182,
+    "receipts": 182,
+    "nonverbatim": 0,
+    "failure_logs": 160,
+    "failure_with_evidence": 160,
+    "bytes_saved": 3661744,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 0.9949999999999999,
+    "tokens": 199941.4,
+    "cost": 0.254763825,
+    "requests": 14.3,
+    "cache_read": 155409.875,
+    "cache_write": 40485.45,
+    "output": 4046.075,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 170,
+    "receipts": 146,
+    "nonverbatim": 0,
+    "failure_logs": 125,
+    "failure_with_evidence": 125,
+    "bytes_saved": 2827450,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 0.9949999999999999,
+    "tokens": 218005.725,
+    "cost": 0.27589450000000004,
+    "requests": 14.275,
+    "cache_read": 171444.425,
+    "cache_write": 42642.75,
+    "output": 3918.55,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 173,
+    "receipts": 128,
+    "nonverbatim": 0,
+    "failure_logs": 108,
+    "failure_with_evidence": 108,
+    "bytes_saved": 2477424,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 15,
+     "missing-failure-evidence": 6
+    }
+   },
+   "mock_h0.6": {
+    "score": 0.9949999999999999,
+    "tokens": 285514.45,
+    "cost": 0.34107953125,
+    "requests": 13.725,
+    "cache_read": 234609.05,
+    "cache_write": 47296.925,
+    "output": 3608.475,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 169,
+    "receipts": 73,
+    "nonverbatim": 0,
+    "failure_logs": 56,
+    "failure_with_evidence": 56,
+    "bytes_saved": 1147226,
+    "fallbacks": {
+     "unverifiable-quote": 27,
+     "missing-failure-evidence": 45,
+     "schema-mismatch": 24
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 349856.825,
+    "cost": 0.40502425625000005,
+    "requests": 13.625,
+    "cache_read": 293665.45,
+    "cache_write": 52660.125,
+    "output": 3531.25,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 167,
+    "receipts": 11,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 103908,
+    "fallbacks": {
+     "unverifiable-quote": 51,
+     "schema-mismatch": 53,
+     "missing-failure-evidence": 33,
+     "invalid-json": 19
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "backend": "A",
+   "base": {
+    "score": 1.0,
+    "tokens": 375106.75,
+    "cost": 0.21391666250000002,
+    "requests": 13.475,
+    "cache_read": 336994.25,
+    "cache_write": 34013.575,
+    "output": 4098.925,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 208845.125,
+    "cost": 0.15055296125,
+    "requests": 14.55,
+    "cache_read": 159200.9,
+    "cache_write": 43954.3,
+    "output": 5689.925,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 173,
+    "receipts": 173,
+    "nonverbatim": 0,
+    "failure_logs": 141,
+    "failure_with_evidence": 141,
+    "bytes_saved": 3635086,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 208881.925,
+    "cost": 0.15056831375000002,
+    "requests": 14.55,
+    "cache_read": 159234.225,
+    "cache_write": 43957.775,
+    "output": 5689.925,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 173,
+    "receipts": 173,
+    "nonverbatim": 0,
+    "failure_logs": 141,
+    "failure_with_evidence": 141,
+    "bytes_saved": 3634567,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 243437.75,
+    "cost": 0.1605818675,
+    "requests": 13.925,
+    "cache_read": 192538.4,
+    "cache_write": 45422.825,
+    "output": 5476.525,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 170,
+    "receipts": 146,
+    "nonverbatim": 0,
+    "failure_logs": 114,
+    "failure_with_evidence": 114,
+    "bytes_saved": 2877760,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 262749.4,
+    "cost": 0.16950614875,
+    "requests": 13.925,
+    "cache_read": 209883.9,
+    "cache_write": 47538.125,
+    "output": 5327.375,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 170,
+    "receipts": 125,
+    "nonverbatim": 0,
+    "failure_logs": 99,
+    "failure_with_evidence": 99,
+    "bytes_saved": 2462213,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 19,
+     "missing-failure-evidence": 2
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 323506.2,
+    "cost": 0.1903278475,
+    "requests": 13.55,
+    "cache_read": 268087.05,
+    "cache_write": 50398.7,
+    "output": 5020.45,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 165,
+    "receipts": 76,
+    "nonverbatim": 0,
+    "failure_logs": 48,
+    "failure_with_evidence": 48,
+    "bytes_saved": 1240896,
+    "fallbacks": {
+     "unverifiable-quote": 29,
+     "missing-failure-evidence": 44,
+     "schema-mismatch": 16
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 398783.0,
+    "cost": 0.22017777125000002,
+    "requests": 13.475,
+    "cache_read": 336784.825,
+    "cache_write": 57043.425,
+    "output": 4954.75,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 165,
+    "receipts": 10,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 82925,
+    "fallbacks": {
+     "unverifiable-quote": 53,
+     "schema-mismatch": 54,
+     "missing-failure-evidence": 30,
+     "invalid-json": 18
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "backend": "B",
+   "base": {
+    "score": 0.9949999999999999,
+    "tokens": 325441.45,
+    "cost": 0.39413526249999997,
+    "requests": 13.25,
+    "cache_read": 293582.4,
+    "cache_write": 29287.05,
+    "output": 2572.0,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 156723.8,
+    "cost": 0.2189304625,
+    "requests": 14.45,
+    "cache_read": 113776.95,
+    "cache_write": 38868.95,
+    "output": 4077.9,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 172,
+    "receipts": 172,
+    "nonverbatim": 0,
+    "failure_logs": 149,
+    "failure_with_evidence": 149,
+    "bytes_saved": 3463976,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 156761.175,
+    "cost": 0.21896798125000005,
+    "requests": 14.45,
+    "cache_read": 113811.05,
+    "cache_write": 38872.225,
+    "output": 4077.9,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 172,
+    "receipts": 172,
+    "nonverbatim": 0,
+    "failure_logs": 149,
+    "failure_with_evidence": 149,
+    "bytes_saved": 3463460,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 187452.425,
+    "cost": 0.24517610625000003,
+    "requests": 13.85,
+    "cache_read": 145496.575,
+    "cache_write": 38054.575,
+    "output": 3901.275,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 160,
+    "receipts": 136,
+    "nonverbatim": 0,
+    "failure_logs": 116,
+    "failure_with_evidence": 116,
+    "bytes_saved": 2552624,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 200617.2,
+    "cost": 0.26122243125000005,
+    "requests": 13.825,
+    "cache_read": 157068.125,
+    "cache_write": 39742.675,
+    "output": 3806.4,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 163,
+    "receipts": 120,
+    "nonverbatim": 0,
+    "failure_logs": 103,
+    "failure_with_evidence": 103,
+    "bytes_saved": 2281421,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 17,
+     "missing-failure-evidence": 2
+    }
+   },
+   "mock_h0.6": {
+    "score": 0.9949999999999999,
+    "tokens": 288328.1,
+    "cost": 0.33746346250000003,
+    "requests": 13.325,
+    "cache_read": 239047.7,
+    "cache_write": 45816.25,
+    "output": 3464.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 159,
+    "receipts": 70,
+    "nonverbatim": 0,
+    "failure_logs": 50,
+    "failure_with_evidence": 50,
+    "bytes_saved": 1034207,
+    "fallbacks": {
+     "unverifiable-quote": 29,
+     "missing-failure-evidence": 45,
+     "schema-mismatch": 15
+    }
+   },
+   "mock_h1.0": {
+    "score": 0.9949999999999999,
+    "tokens": 347881.975,
+    "cost": 0.3981688,
+    "requests": 13.25,
+    "cache_read": 293115.0,
+    "cache_write": 51330.0,
+    "output": 3436.975,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 159,
+    "receipts": 8,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 79285,
+    "fallbacks": {
+     "unverifiable-quote": 53,
+     "schema-mismatch": 52,
+     "missing-failure-evidence": 30,
+     "invalid-json": 16
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "backend": "A",
+   "base": {
+    "score": 1.0,
+    "tokens": 417096.95,
+    "cost": 0.23304735999999998,
+    "requests": 14.45,
+    "cache_read": 375847.425,
+    "cache_write": 36869.2,
+    "output": 4380.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 1.0,
+    "tokens": 231350.225,
+    "cost": 0.1621397125,
+    "requests": 15.625,
+    "cache_read": 177780.0,
+    "cache_write": 47446.9,
+    "output": 6123.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 184,
+    "receipts": 184,
+    "nonverbatim": 0,
+    "failure_logs": 154,
+    "failure_with_evidence": 154,
+    "bytes_saved": 4016951,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 1.0,
+    "tokens": 231390.525,
+    "cost": 0.16215547749999998,
+    "requests": 15.625,
+    "cache_read": 177816.95,
+    "cache_write": 47450.25,
+    "output": 6123.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 184,
+    "receipts": 184,
+    "nonverbatim": 0,
+    "failure_logs": 154,
+    "failure_with_evidence": 154,
+    "bytes_saved": 4016399,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 271729.65,
+    "cost": 0.17319370625,
+    "requests": 15.0,
+    "cache_read": 215989.75,
+    "cache_write": 49799.975,
+    "output": 5939.925,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 190,
+    "receipts": 166,
+    "nonverbatim": 0,
+    "failure_logs": 131,
+    "failure_with_evidence": 131,
+    "bytes_saved": 3371006,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 293674.75,
+    "cost": 0.18355157625000001,
+    "requests": 15.0,
+    "cache_read": 235380.225,
+    "cache_write": 52516.975,
+    "output": 5777.55,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 190,
+    "receipts": 142,
+    "nonverbatim": 0,
+    "failure_logs": 111,
+    "failure_with_evidence": 111,
+    "bytes_saved": 2928485,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 20,
+     "missing-failure-evidence": 4
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 359266.05,
+    "cost": 0.20604148374999998,
+    "requests": 14.475,
+    "cache_read": 298938.325,
+    "cache_write": 54923.65,
+    "output": 5404.075,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 180,
+    "receipts": 84,
+    "nonverbatim": 0,
+    "failure_logs": 58,
+    "failure_with_evidence": 58,
+    "bytes_saved": 1421213,
+    "fallbacks": {
+     "unverifiable-quote": 29,
+     "missing-failure-evidence": 44,
+     "schema-mismatch": 23
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 442912.225,
+    "cost": 0.23913468375,
+    "requests": 14.45,
+    "cache_read": 375386.2,
+    "cache_write": 62221.125,
+    "output": 5304.9,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 181,
+    "receipts": 12,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 142757,
+    "fallbacks": {
+     "unverifiable-quote": 53,
+     "schema-mismatch": 58,
+     "missing-failure-evidence": 35,
+     "invalid-json": 23
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "backend": "B",
+   "base": {
+    "score": 1.0,
+    "tokens": 370184.475,
+    "cost": 0.435126375,
+    "requests": 14.3,
+    "cache_read": 335772.75,
+    "cache_write": 31629.5,
+    "output": 2782.225,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "deterministic": {
+    "score": 0.996875,
+    "tokens": 184050.925,
+    "cost": 0.2417939125,
+    "requests": 15.7,
+    "cache_read": 135731.075,
+    "cache_write": 43853.5,
+    "output": 4466.35,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 192,
+    "receipts": 192,
+    "nonverbatim": 0,
+    "failure_logs": 167,
+    "failure_with_evidence": 167,
+    "bytes_saved": 4059876,
+    "fallbacks": {}
+   },
+   "mock_h0.0": {
+    "score": 0.996875,
+    "tokens": 184098.55,
+    "cost": 0.24183914374999999,
+    "requests": 15.7,
+    "cache_read": 135774.975,
+    "cache_write": 43857.225,
+    "output": 4466.35,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 192,
+    "receipts": 192,
+    "nonverbatim": 0,
+    "failure_logs": 167,
+    "failure_with_evidence": 167,
+    "bytes_saved": 4059300,
+    "fallbacks": {}
+   },
+   "mock_h0.1": {
+    "score": 1.0,
+    "tokens": 215946.075,
+    "cost": 0.26882796875,
+    "requests": 14.975,
+    "cache_read": 169198.45,
+    "cache_write": 42486.575,
+    "output": 4261.05,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 180,
+    "receipts": 156,
+    "nonverbatim": 0,
+    "failure_logs": 132,
+    "failure_with_evidence": 132,
+    "bytes_saved": 3018189,
+    "fallbacks": {
+     "unverifiable-quote": 24
+    }
+   },
+   "mock_h0.3": {
+    "score": 1.0,
+    "tokens": 232967.65,
+    "cost": 0.28903051875,
+    "requests": 14.95,
+    "cache_read": 184275.05,
+    "cache_write": 44571.275,
+    "output": 4121.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 183,
+    "receipts": 137,
+    "nonverbatim": 0,
+    "failure_logs": 115,
+    "failure_with_evidence": 115,
+    "bytes_saved": 2682484,
+    "fallbacks": {
+     "unverifiable-quote": 24,
+     "invalid-json": 19,
+     "missing-failure-evidence": 3
+    }
+   },
+   "mock_h0.6": {
+    "score": 1.0,
+    "tokens": 319871.0,
+    "cost": 0.3651064625,
+    "requests": 14.35,
+    "cache_read": 266205.125,
+    "cache_write": 49893.6,
+    "output": 3772.275,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 174,
+    "receipts": 81,
+    "nonverbatim": 0,
+    "failure_logs": 60,
+    "failure_with_evidence": 60,
+    "bytes_saved": 1250693,
+    "fallbacks": {
+     "unverifiable-quote": 27,
+     "missing-failure-evidence": 45,
+     "schema-mismatch": 21
+    }
+   },
+   "mock_h1.0": {
+    "score": 1.0,
+    "tokens": 394637.625,
+    "cost": 0.43995176875,
+    "requests": 14.3,
+    "cache_read": 334824.25,
+    "cache_write": 56113.675,
+    "output": 3699.7,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "eligible": 173,
+    "receipts": 8,
+    "nonverbatim": 0,
+    "failure_logs": 0,
+    "failure_with_evidence": 0,
+    "bytes_saved": 70837,
+    "fallbacks": {
+     "unverifiable-quote": 51,
+     "schema-mismatch": 59,
+     "missing-failure-evidence": 36,
+     "invalid-json": 19
+    }
+   }
+  }
+ ],
+ "verdict": "REPRODUCED: 0 non-verbatim quotes in accepted receipts (yes); failure logs always carry failure evidence (yes); bench acceptance falls with h: h=0.0:1.00, h=0.1:0.90, h=0.3:0.67, h=0.6:0.31, h=1.0:0.00; bytes 267059 -> 29026",
+ "generated_at": "2026-09-25 06:42:48"
+}

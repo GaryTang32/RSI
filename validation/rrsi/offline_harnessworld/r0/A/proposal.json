@@ -1,0 +1,36 @@
+{
+ "status": "done",
+ "summary": "[lea_01] Practice answer cache: Return remembered answers fo",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "lea_01",
+   "prune": false,
+   "mechanism": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice."
+  }
+ ],
+ "mechanism": "[lea_01] Practice answer cache: Return remembered answers fo",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

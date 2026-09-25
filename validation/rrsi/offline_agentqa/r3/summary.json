@@ -1,0 +1,45 @@
+{
+ "t": 3,
+ "b_t": 4,
+ "sigma_t": 0,
+ "delta": 0.147196,
+ "S_star": 0.75,
+ "S": 0.75,
+ "C": 2304.3,
+ "incumbent": "dca97b44b523369c4b4f16ea864feacafa49b31b79347befa6a57175c817b6f5",
+ "winner": null,
+ "n_candidates": 2,
+ "n_screened": 0,
+ "n_untried": 2,
+ "prune_set": [
+  "skill"
+ ],
+ "decisions": [
+  {
+   "variant": "A",
+   "admissible": false,
+   "reason": "critic_reject",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
+   "novelty": 0,
+   "guards": []
+  },
+  {
+   "variant": "B",
+   "admissible": false,
+   "reason": "critic_reject",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
+   "novelty": 0,
+   "guards": []
+  }
+ ],
+ "gate_failures": {
+  "A": "critic_reject",
+  "B": "critic_reject"
+ }
+}

@@ -1,0 +1,20 @@
+{
+ "name": "explore-direct-pattern-computation",
+ "artifact_id": "780d5efab852e15e5d709983da9252a2ec8bef8c11f76789bf3e78e5de30a7a8",
+ "created_at": 1790339274.5274336,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "LLM-guided algorithm extraction (explore-tool-driven-computation) fails on complex multi-step problems. Directly parsing question text for computational patterns and generating precise Python code yields higher reliability than LLM planning. Pattern-first strategy with robust extraction fallback handles modular arithmetic, ledgers, digit/bit operations without LLM planning ambiguity.",
+ "axis": "exploration",
+ "components": [
+  "question_pattern_parsing",
+  "direct_code_generation",
+  "pattern_specific_executors",
+  "tool_first_execution"
+ ],
+ "parents_read": [],
+ "order": 7,
+ "reason": ""
+}

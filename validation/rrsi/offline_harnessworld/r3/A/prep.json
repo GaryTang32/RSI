@@ -1,0 +1,45 @@
+{
+ "artifact_id": "4c8a7cb57bfc1cfbd8b934c35033e7204c1ca112cc763137efbffba5821578f7",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "skill",
+   "hypothesis": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-008",
+    "hw-e-036"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_12",
+   "prune": false,
+   "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks.",
+   "declared_component": "skill"
+  },
+  {
+   "id": "C2",
+   "component": "output_plumbing",
+   "hypothesis": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nar_03",
+   "prune": false,
+   "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "output_plumbing"
+  }
+ ],
+ "diff_path": "r3/A/diff.patch",
+ "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimat; [nar_03] Collapse repeated log lines: Collapse repeated log "
+}

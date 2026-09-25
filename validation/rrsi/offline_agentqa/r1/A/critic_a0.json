@@ -1,0 +1,11 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "precheck: hard-coded evaluation data '2695810'",
+  "precheck: hard-coded evaluation data '570186'",
+  "precheck: hard-coded evaluation data 'Sawyer'",
+  "precheck: hard-coded evaluation data 'Taylor'"
+ ],
+ "risk_notes": [],
+ "stage": "precheck"
+}

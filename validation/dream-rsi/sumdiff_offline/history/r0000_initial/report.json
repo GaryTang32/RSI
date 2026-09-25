@@ -1,0 +1,30 @@
+{
+ "policy": "2f081731b8",
+ "label": "incumbent",
+ "objective": "eq1",
+ "value": 0.865,
+ "per_world": [
+  0.865
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 1.0,
+  "probes_frac": 1.0,
+  "N": 15.0,
+  "k": 5.0,
+  "mean_batch": 3.0,
+  "batch_fill": 1.0,
+  "missed_ceiling_rate": 0.0,
+  "wasted_probe_frac": 0.2,
+  "serial_round_frac": 0.0,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0043,
+ "wall_s": 0.055,
+ "n_episodes": 1
+}

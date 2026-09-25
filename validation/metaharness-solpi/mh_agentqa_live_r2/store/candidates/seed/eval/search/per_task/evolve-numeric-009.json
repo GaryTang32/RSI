@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'This gives x \u2261 **364** (mod 781)'; expected '364'.",
+  "output": "   This gives x \u2261 **364** (mod 781)",
+  "tokens": 3015,
+  "cost_usd": 0.011754999999999998,
+  "steps": 1,
+  "latency_s": 18.850200414657593,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -1,0 +1,156 @@
+{
+ "run": "solpi_agentworld_live_r4",
+ "method": "solpi",
+ "counts": {
+  "correct": 22,
+  "questionable": 2,
+  "wrong": 0,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 1,
+   "step": "baseline on the training screen",
+   "verdict": "correct",
+   "evidence": "S=1.0000 from 9 raw trials, tokens 545286, cost 0.2722; tasks = the whole evolve split (9)"
+  },
+  {
+   "round": 1,
+   "step": "oracle ranking + selection",
+   "verdict": "correct",
+   "evidence": "top-2 by (-estimate, id) = ['L2:0.720', 'L1:0.106']"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'Condense large bash failures to essential error/context lines, archive full logs', variant 0; actual diff touches ['extensions/condense_bash_failures.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 05 review (pass)",
+   "verdict": "correct",
+   "evidence": "right to pass: condenses only failing bash outputs >= 2000 chars, stores the full log under '/.solpi/bash_log_<call id>.txt' and points the agent at that path (readable), try/except fail-open; minor: drops the result's `details` | reviewer: Requirement 1 (harness-only): \u2713 Extension only modifies bash error output presentation (harness mechanism), with no task-specific content, evaluation data references, or environment assumptions. Keyword list (error, fail"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +66.5%, cost +45.7% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 3,
+   "step": "L1.0 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 3,
+   "step": "L1.0 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'Store large tool outputs in private store and replace them with brief references', variant 0; actual diff touches ['extensions/reduce_large_output_replay.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 3,
+   "step": "L1.0r1 04 re-implementation after review",
+   "verdict": "correct",
+   "evidence": "change 'reduce_large_output_replay', variant 0; actual diff touches ['extensions/reduce_large_output_replay.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 3,
+   "step": "L1.0 05 review (REJECT)",
+   "verdict": "questionable",
+   "evidence": "rejected on a theoretical MD5-collision objection (not a real contract risk); fix 16 routed it back and the repair (SHA-256 + content check) passed - the loop recovered, the verdict itself was a nitpick | reviewer: Contract #3 violation (potential): MD5 hash collisions could cause information loss. If two distinct tool outputs hash to the same value (astronomically unlikely but theoretically possible), the second output won't be st"
+  },
+  {
+   "round": 3,
+   "step": "L1.0r1 05 review (pass)",
+   "verdict": "correct",
+   "evidence": "pass: stores at '/.solpi/obs_<n>.txt' (readable), fail-open handlers; the gate then rejected it on the numbers | reviewer: Requirement 1 (only harness mechanisms): \u2713 Uses generic /.solpi/ storage, no task-specific content, no references to evaluation data or environments. Thresholding and hashing are structural, not task-aware.; Requirement "
+  },
+  {
+   "round": 3,
+   "step": "L1.0r1 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens -60.6%, cost -32.4% (need > 2%) -> no efficiency gain (loop: no efficiency gain)"
+  },
+  {
+   "round": 3,
+   "step": "L1.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 4,
+   "step": "L1.1 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of 37154f8501 (expected 37154f8501: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 4,
+   "step": "L1.1 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'Suppress large repeated tool outputs from context and store them recallably in r', variant 1; actual diff touches ['extensions/keep_large_observations_recallable.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 4,
+   "step": "L1.1r1 04 re-implementation after review",
+   "verdict": "correct",
+   "evidence": "no admissible candidate: no extensions/<name>.py in reply (Ralph repairs 2); grid exhausted -> lineage ends"
+  },
+  {
+   "round": 4,
+   "step": "L1.1 05 review (REJECT)",
+   "verdict": "questionable",
+   "evidence": "no try/except in the context handler, but AgentRuntime.project() already ignores a raising context handler, so behaviour is fail-open; recall path '/.solpi/obs_<n>.txt' is readable. Fix 16 routed it back; haiku's repair reply had no file block, so the iteration was (correctly) abandoned | reviewer: CRITICAL: No explicit fail-open error handling. The `filter_context` method lacks try-except wrapping around its logic. The contract requires 'on any exception keep the original behaviour', but any exception (from access"
+  },
+  {
+   "round": 4,
+   "step": "L1.1 decision",
+   "verdict": "correct",
+   "evidence": "rejected (expected rejected); review: rejected (CRITICAL: No explicit fail-open error handling. The `filter_context` method lacks try-except wrapping around its logic. The contract requires "
+  },
+  {
+   "round": 5,
+   "step": "firewall L2:Condense large bash failures to essen",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +38.4%, cost +24.5% saving -> accepted; sink agrees; kind=general"
+  },
+  {
+   "round": 5,
+   "step": "composition",
+   "verdict": "correct",
+   "evidence": "composed = union of ['L2'] (verified); screen S 1.000, tokens +66.5%, cost +45.7% saving"
+  },
+  {
+   "round": null,
+   "step": "shadow monitor (base + composed only, sealed splits, trace only)",
+   "verdict": "correct",
+   "evidence": "base_r1: holdout S=1.000, ood S=1.000; composed_r1: holdout S=1.000, ood S=1.000"
+  },
+  {
+   "round": null,
+   "step": "no sealed evaluation inside lineages",
+   "verdict": "correct",
+   "evidence": "9 distinct tasks evaluated by lineages, all in evolve"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "proposer+implementer (trace) $0.1450; reviewer = loop - proposer = $0.1310; loop meter $0.2760 = cache ground truth $0.2760"
+  }
+ ]
+}

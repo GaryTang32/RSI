@@ -1,0 +1,24 @@
+--- a/config/gen_00.py
++++ b/config/gen_00.py
+@@ -0,0 +1,5 @@
++# mechanism: gen_00
++# component: config
++# title: Raise the per-step output cap
++"""Raise the per-step output cap; aimed at extract, arith tasks."""
++enable("gen_00")
+--- a/control/cos_03.py
++++ b/control/cos_03.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_03
++# component: control_flow
++# title: Plan-then-act split
++"""Stop-condition guard; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_03")
+--- a/skills/har_14/SKILL.md
++++ b/skills/har_14/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: har_14
++# component: skill
++# title: Procedure card: verification
++"""Procedure card: verification; aimed at extract, plan, format tasks."""
++enable("har_14")

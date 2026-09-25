@@ -1,0 +1,23 @@
+{
+ "name": "i05_1_crossover",
+ "artifact_id": "203f4f27495deea89eae275baa95c8188051cc7cf078b8d8a37cb76a52d79b66",
+ "created_at": 1790343358.7148876,
+ "status": "evaluated",
+ "iteration": 5,
+ "kind": "candidate",
+ "base_system": "no_memory",
+ "hypothesis": "combine no_memory + i04_0_coverage",
+ "axis": "exploration",
+ "components": [
+  "crossover",
+  "axis:combo"
+ ],
+ "parents_read": [
+  "no_memory",
+  "i04_0_coverage"
+ ],
+ "order": 12,
+ "move": "crossover",
+ "evidence": "combine no_memory + i04_0_coverage",
+ "reason": ""
+}

@@ -1,0 +1,86 @@
+[
+ {
+  "task_id": "evolve-numeric-001",
+  "lens": "failure",
+  "blocker": "The agent computed remainder 627 for 19^763 mod 823, but the correct answer is 781.",
+  "narrative": "The agent attempted to use Python's pow(19, 763, 823) to compute the modular exponentiation, reporting a result of 627 instead of the correct value 781. Additionally, the output was formatted as equation text ('To verify: 19^763 ≡ 627 (mod 823)') rather than as a bare number or with an 'ANSWER:' prefix, which the grader extracted verbatim and scored as incorrect.",
+  "evidence": [
+   {
+    "where": "LLM REPLY, paragraph 1",
+    "quote": "The remainder when 19^763 is divided by 823 is **627**."
+   },
+   {
+    "where": "OUTPUT section",
+    "quote": "To verify: 19^763 ≡ 627 (mod 823)"
+   },
+   {
+    "where": "GRADING feedback",
+    "quote": "Extracted answer 'To verify: 19^763 ≡ 627 (mod 823)'; expected '781'"
+   }
+  ],
+  "verifier_evidence": "Incorrect. Extracted answer 'To verify: 19^763 ≡ 627 (mod 823)'; expected '781'.",
+  "capability_note": "The agent invoked bash with a Python code block containing pow(19, 763, 823), but the trajectory shows no actual tool output. If the bash invocation failed silently or was not executed by the harness, the LLM may have hallucinated the answer rather than receiving a real computation result.",
+  "needed_instead": "The agent needed to either verify the Python code executed and returned the correct value 781 (possibly by using the tools.python interface directly), or independently confirm the answer before output. The answer should also have been formatted as just '781' or 'ANSWER: 781' for reliable grader extraction.",
+  "family": "numeric"
+ },
+ {
+  "task_id": "evolve-numeric-004",
+  "lens": "failure",
+  "blocker": "Answer was not formatted as 'ANSWER: <value>' line, so grader extracted the entire summary sentence instead of the numeric value.",
+  "narrative": "The agent correctly computed 12^853 mod 558 using Python's pow() function and obtained the correct numeric result of 234. The answer was mentioned early in the response ('The remainder...is **234**') and embedded in the final summary sentence. However, the agent failed to explicitly format the answer as 'ANSWER: 234' on its own line, causing the grader to extract the last line verbatim: 'Combining these congruences gives **12^853 ≡ 234 (mod 558)**.' instead of just '234'.",
+  "evidence": [
+   {
+    "where": "GRADING / VERIFIER",
+    "quote": "Extracted answer 'Combining these congruences gives **12^853 ≡ 234 (mod 558)**.'; expected '234'."
+   },
+   {
+    "where": "OUTPUT section",
+    "quote": "Combining these congruences gives **12^853 ≡ 234 (mod 558)**."
+   }
+  ],
+  "verifier_evidence": "The grader looked for 'ANSWER: <value>' format, found none, and extracted the final output line as-is. Expected '234' but got the full sentence.",
+  "capability_note": "The agent successfully computed the correct numeric answer (234) and explained the solution method using Chinese Remainder Theorem and modular arithmetic.",
+  "needed_instead": "The agent should have ended its response with a dedicated line 'ANSWER: 234' or similar explicit answer marker to enable correct extraction by the grader, separate from explanatory text.",
+  "family": "numeric"
+ },
+ {
+  "task_id": "evolve-numeric-005",
+  "lens": "failure",
+  "blocker": "The Python computation of 81^15 produced an incorrect value, resulting in wrong digit sum (189 vs correct answer 99).",
+  "narrative": "The agent wrote Python code to compute 81**15 and sum its digits, but the tool execution output is not visible in the trajectory. The agent asserted 81^15 = 1350851717672992089 with digit sum 189. The verifier rejected this, confirming the correct digit sum is 99. The stated value for 81^15 is far too small: it has 19 digits when 81^15 = 3^60 should have ~29 digits, indicating a severe computational error.",
+  "evidence": [
+   {
+    "where": "llm call 1 REPLY code",
+    "quote": "result = 81**15"
+   },
+   {
+    "where": "llm call 1 REPLY breakdown",
+    "quote": "81^15 = 1350851717672992089"
+   },
+   {
+    "where": "OUTPUT",
+    "quote": "= **189**"
+   }
+  ],
+  "verifier_evidence": "Extracted answer '189'; expected '99'.",
+  "capability_note": "The stdout from Python execution is not shown in the trajectory, leaving unclear whether the error occurred during exponentiation or in how results were captured and reported.",
+  "needed_instead": "Correct computation of 81^15 (≈3.16 × 10^28) with accurate digit extraction and summation to yield 99.",
+  "family": "numeric"
+ },
+ {
+  "task_id": "evolve-numeric-008",
+  "lens": "success",
+  "habits": [
+   {
+    "habit": "Decompose multi-operation arithmetic into ordered numbered steps",
+    "where_shown": "REPLY: Steps 1–5 each show operation type, direct calculation (e.g. '99 × 65,957 = 6,529,743'), and running balance update"
+   },
+   {
+    "habit": "Highlight final answer with bold markup",
+    "where_shown": "REPLY final paragraph and OUTPUT: '**Final balance: 570,186**' (enables grader extraction without ANSWER: prefix)"
+   }
+  ],
+  "risk_if_removed": "Step-by-step structure is load-bearing. Removal leaves a bare number; this breaks (1) answer extraction confidence (grader relies on formatted context), (2) error traceability (intermediate totals prove each step), (3) generalizability (structured decomposition is reusable for other multi-operation numeric tasks). Verified correct: 75967 + 51149 − 77949 + 99×65957 − 95×78564 + 52×27978 = 570,186.",
+  "family": "numeric"
+ }
+]

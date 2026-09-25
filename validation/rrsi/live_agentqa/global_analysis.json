@@ -1,0 +1,47 @@
+{
+ "failure_modes": [
+  {
+   "mode": "numeric_computation_returns_incorrect_value",
+   "n_tasks": 4,
+   "affected_tasks": [
+    "evolve-numeric-001",
+    "evolve-numeric-006",
+    "evolve-numeric-005",
+    "evolve-numeric-010"
+   ],
+   "description": "Agent produces incorrect numeric result for final answer or critical intermediate values. Root causes vary: unverified manual arithmetic chains with cascading errors, failed tool output integration despite attempted tool use, or unvalidated intermediate results that propagate to incorrect final answer.",
+   "needed_instead": "Systematic tool-based verification for all intermediate numeric values; magnitude sanity checking to validate results are plausible before proceeding; explicit verification steps that catch arithmetic errors before final answer is formulated and submitted.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-001",
+     "where": "Modular exponentiation intermediate calculations",
+     "quote": "19^64 ≡ 508 (incorrect; should be 588), 19^128 ≡ 665 (incorrect; should be 84), 19^512 ≡ 538 (incorrect; should be 183). Agent does not invoke available Python tool for verification despite system prompt explicitly directing verification for modular arithmetic problems."
+    },
+    {
+     "task_id": "evolve-numeric-006",
+     "where": "Binary one-bit counting for large power",
+     "quote": "Extracted answer '38'; expected '24' (14-bit discrepancy indicating systematic error). Tool output shown in code but not properly integrated or validated before extracting final answer."
+    },
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "Large power computation and digit summation",
+     "quote": "81^15 computed as 1,350,851,717,672,992,089 (19 digits) when approximately 29 digits expected per log₁₀(81^15)≈28.6. Magnitude sanity check would have immediately flagged implausibility before using value for subsequent operations."
+    }
+   ]
+  }
+ ],
+ "success_habits": [
+  {
+   "habit": "structured_step_by_step_arithmetic_decomposition",
+   "n_tasks": 1,
+   "description": "Agent decomposes complex multi-step operations into isolated atomic calculations, explicitly presents intermediate result of each step, and incorporates values into a running balance or accumulator before proceeding to the next operation. Each calculation step is independently auditable.",
+   "risk_if_broken": "Removing step-by-step decomposition eliminates the opportunity for catching errors before propagation through subsequent steps. System prompt explicitly requires 'breaking down complex operations into individual calculations' for verification purposes. Without this structure, small arithmetic errors accumulate uncaught through the calculation chain into the final answer."
+  },
+  {
+   "habit": "final_answer_as_minimal_labeled_summary",
+   "n_tasks": 1,
+   "description": "Agent formats the final numeric answer as a dedicated standalone line using exact extraction format 'ANSWER: <numeric_value>' with no extraneous text, explanation, or surrounding context appearing on that line.",
+   "risk_if_broken": "Grader uses regex-based line extraction to locate and validate final answers; removing the exact 'ANSWER:' format causes extraction to fail or extract surrounding explanatory text instead of bare numeric value. System prompt explicitly specifies this format requirement; deviations cause parsing failure and automatic incorrect grading."
+  }
+ ]
+}

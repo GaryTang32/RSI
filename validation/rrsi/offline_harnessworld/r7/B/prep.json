@@ -1,0 +1,45 @@
+{
+ "artifact_id": "b4ce380e6f736fde536e1e49c997e6e67d223deee0ce82e65607d7abacf16c3a",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "context_mgmt",
+   "hypothesis": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-008",
+    "hw-e-051"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_02",
+   "prune": false,
+   "mechanism": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning).",
+   "declared_component": "context_mgmt"
+  },
+  {
+   "id": "C2",
+   "component": "subagent",
+   "hypothesis": "[har_17] Planner sub-call: Planner sub-call; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-008",
+    "hw-e-051"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_17",
+   "prune": false,
+   "mechanism": "[har_17] Planner sub-call: Planner sub-call; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "subagent"
+  }
+ ],
+ "diff_path": "r7/B/diff.patch",
+ "mechanism": "[cos_02] Pin the task statement: Drop stale observations; ru; [har_17] Planner sub-call: Planner sub-call; aimed at extrac"
+}

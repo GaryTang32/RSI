@@ -1,0 +1,16 @@
+--- a/output/nar_03.py
++++ b/output/nar_03.py
+@@ -0,0 +1,5 @@
++# mechanism: nar_03
++# component: output_plumbing
++# title: Collapse repeated log lines
++"""Collapse repeated log lines; aimed at extract, arith, plan, format tasks."""
++enable("nar_03")
+--- a/skills/har_12/SKILL.md
++++ b/skills/har_12/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: har_12
++# component: skill
++# title: Procedure card: estimation
++"""Procedure card: estimation; aimed at extract, format tasks."""
++enable("har_12")

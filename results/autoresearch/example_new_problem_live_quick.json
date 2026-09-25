@@ -1,0 +1,48 @@
+{
+ "experiment": "example_new_problem_live_quick",
+ "written_at": "2026-09-25 05:20:55",
+ "analysis": {
+  "n_rows": 7,
+  "n_experiments": 6,
+  "n_keep": 4,
+  "n_discard": 3,
+  "n_crash": 0,
+  "keep_rate": 0.5714285714285714,
+  "baseline": 0.274007767461117,
+  "best": 0.8777850011112384,
+  "improvement": 0.6037772336501214,
+  "total_keep_delta": 0.6037772336501214,
+  "improvement_pct": 220.35040803571388,
+  "experiments_per_hour": 54.51842549915173
+ },
+ "top_hits": [
+  {
+   "exp": 1,
+   "commit": "b6977dc",
+   "description": "Increase polynomial degree from 1 to 5",
+   "delta": 0.6027564553225613,
+   "metric": 0.8767642227836783
+  },
+  {
+   "exp": 5,
+   "commit": "0c69542",
+   "description": "Reduce ridge regularization from 1.0 to 0.5",
+   "delta": 0.0007342553506529681,
+   "metric": 0.8774984781343312
+  },
+  {
+   "exp": 6,
+   "commit": "9ee8745",
+   "description": "Reduce ridge regularization from 0.5 to 0.2",
+   "delta": 0.00028652297690712203,
+   "metric": 0.8777850011112384
+  }
+ ],
+ "best_train_py": "import numpy as np\nfrom evaluate import X_TRAIN, Y_TRAIN\n\nDEGREE = 5\nRIDGE = 0.2\nSCALE = 1.0\n\n\ndef features(x):\n    z = np.asarray(x, float) / SCALE\n    return np.vstack([z ** d for d in range(DEGREE + 1)]).T\n\n\nF = features(X_TRAIN)\nw = np.linalg.solve(F.T @ F + RIDGE * np.eye(F.shape[1]), F.T @ Y_TRAIN)\n\n\ndef predict(x):\n    return features(x) @ w\n",
+ "usage": {
+  "calls": 7,
+  "input_tokens": 18790,
+  "output_tokens": 36963,
+  "cost_usd": 0.20360499999999998
+ }
+}

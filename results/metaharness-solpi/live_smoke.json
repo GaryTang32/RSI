@@ -1,0 +1,236 @@
+{
+ "llm": "claude:haiku",
+ "parts": {
+  "metaharness": {
+   "candidates": [
+    {
+     "name": "no_memory",
+     "status": "evaluated",
+     "reason": null,
+     "base_system": null,
+     "hypothesis": null,
+     "search": 0.14035087719298245,
+     "context": 191.0
+    },
+    {
+     "name": "fewshot_all",
+     "status": "evaluated",
+     "reason": null,
+     "base_system": null,
+     "hypothesis": null,
+     "search": 0.47368421052631576,
+     "context": 8667.666666666666
+    },
+    {
+     "name": "correct_first_fewshot",
+     "status": "invalid",
+     "reason": "syntax error in src/memory.py: invalid syntax (memory.py, line 1)",
+     "base_system": "fewshot_all",
+     "hypothesis": "Examples correctly predicted during training provide clearer learning signals; prioritizing them (ordered by recency) improves in-context learning accuracy while maintaining context budget.",
+     "search": null,
+     "context": null
+    },
+    {
+     "name": "similarity_retrieval",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "fewshot_all",
+     "hypothesis": "Selecting only the K most similar training examples (via token overlap) to each input removes irrelevant noise, reduces prompt bloat, and improves signal-to-noise ratio without sacrificing accuracy.",
+     "search": 0.47368421052631576,
+     "context": 8667.666666666666
+    },
+    {
+     "name": "weighted_recency_correctness",
+     "status": "invalid",
+     "reason": "syntax error in src/memory.py: invalid syntax (memory.py, line 1)",
+     "base_system": "fewshot_all",
+     "hypothesis": "Recent examples provide fresh training context, and examples the model correctly predicted during training are stronger learning signals. A smooth exponential decay on recency combined with a correctness multiplier will weight high-signal examples higher, improving accuracy without exceeding context budget.",
+     "search": null,
+     "context": null
+    },
+    {
+     "name": "label_stratified_diverse",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "fewshot_all",
+     "hypothesis": "Ensuring diverse output labels in few-shot examples improves generalization. By stratifying retrieval to show one correct example per unique output label seen during training, the model learns varied output patterns rather than being biased by frequency, reducing overfitting to common labels.",
+     "search": 0.47368421052631576,
+     "context": 8667.666666666666
+    }
+   ],
+   "best": "fewshot_all",
+   "frontier": [
+    {
+     "system": "fewshot_all",
+     "score": 0.47368421052631576,
+     "val_accuracy": 47.4,
+     "context_cost": 8667.666666666666
+    },
+    {
+     "system": "label_stratified_diverse",
+     "score": 0.47368421052631576,
+     "val_accuracy": 47.4,
+     "context_cost": 8667.666666666666
+    },
+    {
+     "system": "similarity_retrieval",
+     "score": 0.47368421052631576,
+     "val_accuracy": 47.4,
+     "context_cost": 8667.666666666666
+    },
+    {
+     "system": "no_memory",
+     "score": 0.14035087719298245,
+     "val_accuracy": 14.0,
+     "context_cost": 191.0
+    }
+   ],
+   "test": {
+    "no_memory": 0.14285714285714285,
+    "fewshot_all": 0.5595238095238095,
+    "label_stratified_diverse": 0.5595238095238095,
+    "similarity_retrieval": 0.5595238095238095
+   },
+   "proposer_usage": {
+    "proposer": {
+     "calls": 2,
+     "input_tokens": 46035,
+     "output_tokens": 15384,
+     "cost_usd": 0.168972,
+     "latency_s": 156.46587014198303,
+     "total_tokens": 61419
+    },
+    "_total": {
+     "calls": 2,
+     "input_tokens": 46035,
+     "output_tokens": 15384,
+     "cost_usd": 0.168972,
+     "latency_s": 156.46587014198303,
+     "total_tokens": 61419
+    }
+   },
+   "iterations": [
+    {
+     "iteration": 1,
+     "best_score": 0.47368421052631576,
+     "n_candidates": 2,
+     "n_valid": 1,
+     "n_evaluated": 1,
+     "frontier_size": 3,
+     "hypervolume": 1600.7549707602343,
+     "files_read": 17,
+     "view_chars": 311476,
+     "read_chars": 235411,
+     "proposer_tokens": 30227,
+     "proposer_usd": 0.084541,
+     "error": null
+    },
+    {
+     "iteration": 2,
+     "best_score": 0.47368421052631576,
+     "n_candidates": 2,
+     "n_valid": 1,
+     "n_evaluated": 2,
+     "frontier_size": 4,
+     "hypervolume": 1600.7549707602343,
+     "files_read": 27,
+     "view_chars": 554334,
+     "read_chars": 172595,
+     "proposer_tokens": 31192,
+     "proposer_usd": 0.084431,
+     "error": null
+    }
+   ]
+  },
+  "epr": {
+   "n_logs": 4,
+   "outcomes": {
+    "accepted": 4
+   },
+   "accepted": 4,
+   "nonverbatim": 0,
+   "failure_logs": 4,
+   "failure_with_evidence": 4,
+   "bytes_in": 91825,
+   "bytes_out": 6028,
+   "usage": {
+    "reducer": {
+     "calls": 4,
+     "input_tokens": 40361,
+     "output_tokens": 19736,
+     "cost_usd": 0.179362,
+     "latency_s": 188.97555947303772,
+     "total_tokens": 60097
+    },
+    "_total": {
+     "calls": 4,
+     "input_tokens": 40361,
+     "output_tokens": 19736,
+     "cost_usd": 0.179362,
+     "latency_s": 188.97555947303772,
+     "total_tokens": 60097
+    }
+   }
+  },
+  "lineage": {
+   "frozen": false,
+   "iterations": [
+    {
+     "iteration": 0,
+     "change": "output_caching_family_c",
+     "variant": 0,
+     "ralph_errors": [
+      "TypeError: extensions/output_caching_family_c.py defines neither MECHANISM nor register(rt, config)",
+      "SyntaxError: unterminated string literal (detected at line 74) (output_caching_family_c.py, line 74)"
+     ],
+     "stage": "implementation",
+     "outcome": "abandoned",
+     "error": "exit check failed: SyntaxError: unterminated string literal (detected at line 74) (output_caching_family_c.py, line 74)"
+    },
+    {
+     "iteration": 1,
+     "change": "output_caching_family_c",
+     "variant": 1,
+     "ralph_errors": [
+      "TypeError: Extension.__init__() got an unexpected keyword argument 'size_threshold'",
+      "SyntaxError: invalid syntax (output_caching_family_c.py, line 1)"
+     ],
+     "stage": "implementation",
+     "outcome": "abandoned",
+     "error": "exit check failed: SyntaxError: invalid syntax (output_caching_family_c.py, line 1)"
+    }
+   ],
+   "code": null,
+   "usage": {
+    "proposer": {
+     "calls": 2,
+     "input_tokens": 3088,
+     "output_tokens": 15501,
+     "cost_usd": 0.080593,
+     "latency_s": 148.02330541610718,
+     "total_tokens": 18589
+    },
+    "implementer": {
+     "calls": 4,
+     "input_tokens": 7583,
+     "output_tokens": 9052,
+     "cost_usd": 0.052843,
+     "latency_s": 93.05618715286255,
+     "total_tokens": 16635
+    },
+    "_total": {
+     "calls": 6,
+     "input_tokens": 10671,
+     "output_tokens": 24553,
+     "cost_usd": 0.133436,
+     "latency_s": 241.07949256896973,
+     "total_tokens": 35224
+    }
+   }
+  }
+ },
+ "total_usd": 0.48177000000000003,
+ "seconds": 587.9564688205719,
+ "verdict": "live end-to-end OK: Meta-Harness evaluated 2 haiku-written candidates (best fewshot_all); EPR accepted 4/4 haiku receipts with 0 non-verbatim quotes; LLM lineage did not pass the gate; cost $0.482",
+ "generated_at": "2026-09-25 02:00:20"
+}

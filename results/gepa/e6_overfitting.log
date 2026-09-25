@@ -1,0 +1,2 @@
+[saved] /home/user/RSI/results/gepa/e6_overfitting.json
+q=0.15: gap (measured val - true test) with D_pareto = D_train by |train| [6, 15, 30, 60]: +0.424, +0.140, +0.063, +0.043; with a separate val: +0.031, +0.049, +0.040, +0.050; ticket-specific lines (val=train): 3.4, 4.1, 3.0, 2.6. Separate val significantly shrinks the gap at |train| = [6, 15, 30]. Claim 'few examples overfit; a separate validation set helps': REPRODUCED (test at |train|=6: separate 0.644 [0.614, 0.675] vs val=train 0.576 [0.536, 0.613]).

@@ -1,0 +1,6 @@
+[saved] /home/user/RSI/results/gepa/e12_saturation.json
+Oracle seed: accepted children per run oracle,slip0,skip 0.00 (seed returned 100%, true test 1.000 -> 1.000), oracle,slip0,noskip 0.00 (seed returned 100%, true test 1.000 -> 1.000), oracle,slip0.05,skip 12.20 (seed returned 60%, true test 0.950 -> 0.950). Train-memorising seed (noise-free, perfect on D_train, true test 0.000 [0.000, 0.000]): with D_pareto = D_train GEPA accepts 0.0 children, returns the seed 100% of the time and reports a validation score of 1.000 [1.000, 1.000]; with a separate validation set it also returns the seed (100%) - GEPA never reflects on D_pareto - but the reported validation score 0.000 [0.000, 0.000] exposes the problem. Claim '~0 accepted, the seed is returned': REPRODUCED with noise-free evaluation; with 5% rollout noise the strict minibatch gate admits noise-driven children (no noise margin), so the returned candidate can differ from the seed without being better.
+
+real	0m4.956s
+user	0m4.932s
+sys	0m0.024s

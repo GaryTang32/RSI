@@ -1,0 +1,19 @@
+{
+ "name": "code_generalized_extract",
+ "artifact_id": "0ef577444ea22027643fa8201c3745451a09d32b381fe01cc85e20e486573abc",
+ "created_at": 1790338185.7355275,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "code_first",
+ "hypothesis": "Removing math-specific language from system prompt and implementing flexible output extraction that handles strings, dates, lists (not just numbers) improves robustness across diverse problem types without sacrificing numeric accuracy.",
+ "axis": "exploitation",
+ "components": [
+  "code-generation",
+  "generalized-system-prompt",
+  "multi-type-extraction"
+ ],
+ "parents_read": [],
+ "order": 6,
+ "reason": ""
+}

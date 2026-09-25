@@ -1,0 +1,33 @@
+[llm call 1]
+SYSTEM: You are an expert Python programmer and mathematician. You excel at writing correct computational code.
+
+PROMPT: Solve this problem by writing Python code:
+
+Taylor's ledger starts at 75967. Add 51149, subtract 77949, add 99 payments of 65957, subtract 95 refunds of 78564, and add 52 deposits of 27978. What is the final balance?
+
+Write Python code that:
+1. Computes the answer
+2. Prints it with: print(ANSWER)
+
+Provide ONLY the Python code, no explanation.
+REPLY: ```python
+balance = 75967
+balance += 51149
+balance -= 77949
+balance += 99 * 65957
+balance -= 95 * 78564
+balance += 52 * 27978
+ANSWER = balance
+print(ANSWER)
+```
+[python]
+balance = 75967
+balance += 51149
+balance -= 77949
+balance += 99 * 65957
+balance -= 95 * 78564
+balance += 52 * 27978
+ANSWER = balance
+print(ANSWER)
+[output]
+570186

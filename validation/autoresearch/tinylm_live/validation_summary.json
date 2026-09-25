@@ -1,0 +1,170 @@
+{
+ "run": "tinylm_live",
+ "out_dir": "validation/autoresearch/tinylm_live",
+ "trace_md": "validation/autoresearch/tinylm_live/TRACE.md",
+ "stop_reason": "max_rounds",
+ "wall_s": 1130.5,
+ "baseline_val_bpb": 2.829327388617751,
+ "final_val_bpb": [
+  2.6878274079011892
+ ],
+ "analysis": {
+  "n_rows": 11,
+  "n_experiments": 10,
+  "n_keep": 9,
+  "n_discard": 2,
+  "n_crash": 0,
+  "keep_rate": 0.8181818181818182,
+  "baseline": 2.829327388617751,
+  "best": 2.6878274079011892,
+  "improvement": 0.14149998071656178,
+  "total_keep_delta": 0.14149998071656178,
+  "top_hits": [
+   {
+    "exp": 2,
+    "commit": "568c10b",
+    "description": "Reduce BATCH_SIZE 32 -> 24",
+    "delta": 0.03417866952717574,
+    "metric": 2.7951487190905753
+   },
+   {
+    "exp": 4,
+    "commit": "cf01a07",
+    "description": "Reduce BATCH_SIZE 20 -> 16 for more training steps",
+    "delta": 0.025426445054049562,
+    "metric": 2.7508922653056973
+   },
+   {
+    "exp": 10,
+    "commit": "6448d3e",
+    "description": "Increase HIDDEN 128 -> 160 to better utilize the extra training steps from smaller batch size",
+    "delta": 0.021108884195290667,
+    "metric": 2.6878274079011892
+   },
+   {
+    "exp": 3,
+    "commit": "a14417d",
+    "description": "Reduce BATCH_SIZE 24 -> 20 for more training steps in fixed budget",
+    "delta": 0.018830008730828407,
+    "metric": 2.776318710359747
+   },
+   {
+    "exp": 5,
+    "commit": "82fcdc2",
+    "description": "Reduce BATCH_SIZE 16 -> 12 for more training steps",
+    "delta": 0.017930103572529887,
+    "metric": 2.7329621617331674
+   },
+   {
+    "exp": 6,
+    "commit": "151c532",
+    "description": "Reduce BATCH_SIZE 12 -> 10 for more training steps",
+    "delta": 0.013638618499109967,
+    "metric": 2.7193235432340574
+   },
+   {
+    "exp": 7,
+    "commit": "20f4498",
+    "description": "Reduce BATCH_SIZE 10 -> 8 for more training steps",
+    "delta": 0.006648721726398854,
+    "metric": 2.7126748215076586
+   },
+   {
+    "exp": 8,
+    "commit": "518082c",
+    "description": "Reduce BATCH_SIZE 8 -> 6 for more training steps",
+    "delta": 0.0037385294111786926,
+    "metric": 2.70893629209648
+   }
+  ],
+  "improvement_pct": 5.001187960283756,
+  "experiments_per_hour": 33.38821073678275
+ },
+ "counters": {
+  "rejected": 0,
+  "duplicate": 0,
+  "invalid": 0,
+  "fix_attempts": 2,
+  "fixed": 1
+ },
+ "crash_kinds": {},
+ "noise": null,
+ "reeval": {
+  "final": {
+   "mean": 2.7054098418333274,
+   "lo": 2.7027498950890254,
+   "hi": 2.7083963953706855,
+   "n": 3,
+   "values": [
+    2.708396395370685,
+    2.7050832350402705,
+    2.702749895089025
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "baseline": {
+   "mean": 2.8327451392476313,
+   "lo": 2.815353459133839,
+   "hi": 2.844006120586458,
+   "n": 3,
+   "values": [
+    2.838875838022597,
+    2.8440061205864575,
+    2.815353459133839
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "mode": "hardened",
+  "recorded_best": 2.6878274079011892,
+  "optimism_gap": 0.01758243393213821
+ },
+ "n_kept_after_baseline": 8,
+ "shadow_baseline": {
+  "test_iid": {
+   "S": 2.8936357541786193
+  },
+  "test_shift": {
+   "S": 2.96233469768545
+  }
+ },
+ "shadow_final": {
+  "test_iid": {
+   "S": 2.7834343687434084
+  },
+  "test_shift": {
+   "S": 2.84430536515971
+  }
+ },
+ "usage_total": {
+  "calls": 12,
+  "input_tokens": 132121,
+  "output_tokens": 84982,
+  "cost_usd": 0.689044
+ },
+ "n_trace_events": 100,
+ "consistency": {
+  "ok": true,
+  "problems": [],
+  "checked": {
+   "rounds": 10,
+   "decisions": 10,
+   "gates": 10,
+   "monitors": 8,
+   "tsv_rows": 11
+  }
+ },
+ "agent": "LLMResearchAgent(RewriteEditor(claude-cli haiku))",
+ "cache_dir": "validation/autoresearch/.cache_tinylm_live",
+ "cache_hits": 0,
+ "cache_misses": 12
+}

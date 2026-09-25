@@ -1,0 +1,16 @@
+"""Evolved harness."""
+import re
+
+
+def solve(question, llm, tools, files):
+    system = files.get("prompts/system.md", "")
+    prompt = files["prompts/task.md"].replace("{question}", question)
+    # [rrsi:sc3] three samples, majority vote on the final line
+    finals = []
+    for _ in range(3):
+        r = llm(prompt, system=system)
+        ls = [l for l in r.strip().splitlines() if l.strip()]
+        finals.append(ls[-1] if ls else '')
+    reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)
+    lines = [line for line in reply.strip().splitlines() if line.strip()]
+    return lines[-1] if lines else ""

@@ -1,0 +1,24 @@
+{
+ "status": "done",
+ "summary": "",
+ "edits": [],
+ "mechanism": "",
+ "targets_mode": "",
+ "n_changes": 0,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 0,
+   "blocked": [],
+   "error": null
+  },
+  {
+   "turn": 1,
+   "action": "done",
+   "n_changes": 0,
+   "blocked": [],
+   "error": "no file blocks in reply"
+  }
+ ]
+}

@@ -1,0 +1,350 @@
+[
+ {
+  "round": 1,
+  "base_metrics": {
+   "agg": {
+    "score": 1.0,
+    "tokens": 545286.0,
+    "cost": 0.2721553555555556,
+    "steps": 16.11111111111111,
+    "eta": 0.2721553555555556
+   },
+   "fam": {
+    "repofix": {
+     "score": 1.0,
+     "tokens": 1293556.0,
+     "cost": 0.5551099333333332,
+     "steps": 25.666666666666668,
+     "eta": 0.5551099333333332
+    },
+    "buildfix": {
+     "score": 1.0,
+     "tokens": 279068.0,
+     "cost": 0.19059363333333335,
+     "steps": 15.666666666666666,
+     "eta": 0.19059363333333335
+    },
+    "logtriage": {
+     "score": 1.0,
+     "tokens": 63234.0,
+     "cost": 0.0707625,
+     "steps": 7.0,
+     "eta": 0.0707625
+    }
+   },
+   "n": 9
+  },
+  "oracle": {
+   "L1": 0.10623988750069387,
+   "L2": 0.7195625849347146
+  },
+  "chosen": [
+   "L2",
+   "L1"
+  ],
+  "lineages": [
+   {
+    "idea": "L2",
+    "kind": "general",
+    "title": "Condense long failing command logs to the lines that carry the failure, keeping the full log recallable",
+    "frozen": true,
+    "iterations": [
+     {
+      "iteration": 0,
+      "change": "Condense large bash failures to essential error/context lines, archive full logs for agent recall via rt.store",
+      "variant": 0,
+      "ralph_errors": [],
+      "stage": "validation",
+      "outcome": "frozen",
+      "gate": {
+       "accept": true,
+       "reason": "accepted",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 182838.0,
+         "saving": 0.6646933902575896,
+         "improved": true
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.1479116666666667,
+         "saving": 0.45651752336553525,
+         "improved": true
+        }
+       },
+       "per_family": {},
+       "spec_digest": "a2247cac594b7481"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "tokens": 182838.0,
+        "cost": 0.1479116666666667,
+        "steps": 16.11111111111111,
+        "eta": 0.1479116666666667
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "tokens": 289279.3333333333,
+         "cost": 0.22229056666666672,
+         "steps": 25.666666666666668,
+         "eta": 0.22229056666666672
+        },
+        "buildfix": {
+         "score": 1.0,
+         "tokens": 199378.0,
+         "cost": 0.1532993666666667,
+         "steps": 15.666666666666666,
+         "eta": 0.1532993666666667
+        },
+        "logtriage": {
+         "score": 1.0,
+         "tokens": 59856.666666666664,
+         "cost": 0.06814506666666668,
+         "steps": 7.0,
+         "eta": 0.06814506666666668
+        }
+       },
+       "n": 9
+      }
+     }
+    ],
+    "n_iterations": 1
+   },
+   {
+    "idea": "L1",
+    "kind": "general",
+    "title": "Stop replaying large successful tool outputs in every later request; keep them recallable",
+    "frozen": false,
+    "iterations": [
+     {
+      "iteration": 0,
+      "change": "reduce_large_output_replay",
+      "variant": 0,
+      "ralph_errors": [],
+      "review_repairs": [
+       {
+        "objection": "Contract #3 violation (potential): MD5 hash collisions could cause information loss. If two distinct tool outputs hash to the same value (astronomically unlikely but theoretically possible), the second output won't be stored, and the agent will receive a reference to the first output's path instead. The agent would then recall wrong information\u2014violating 'never removes information the agent needs without a way to get it back.' The code lacks collision detection or fallback to content verificatio",
+        "ralph_errors": [],
+        "error": null
+       }
+      ],
+      "stage": "validation",
+      "outcome": "gate_failed",
+      "gate": {
+       "accept": false,
+       "reason": "no efficiency gain",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 875485.2222222222,
+         "saving": -0.6055523564188742,
+         "improved": false
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.3604639222222221,
+         "saving": -0.3244785188459756,
+         "improved": false
+        }
+       },
+       "per_family": {},
+       "spec_digest": "a2247cac594b7481"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "tokens": 875485.2222222222,
+        "cost": 0.3604639222222221,
+        "steps": 25.555555555555557,
+        "eta": 0.3604639222222221
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "tokens": 2434266.6666666665,
+         "cost": 0.8787906333333332,
+         "steps": 50.333333333333336,
+         "eta": 0.8787906333333332
+        },
+        "buildfix": {
+         "score": 1.0,
+         "tokens": 167319.33333333334,
+         "cost": 0.14181383333333333,
+         "steps": 15.666666666666666,
+         "eta": 0.14181383333333333
+        },
+        "logtriage": {
+         "score": 1.0,
+         "tokens": 24869.666666666668,
+         "cost": 0.06078730000000001,
+         "steps": 10.666666666666666,
+         "eta": 0.06078730000000001
+        }
+       },
+       "n": 9
+      }
+     },
+     {
+      "iteration": 1,
+      "change": "Suppress large repeated tool outputs from context and store them recallably in rt.store, reducing token replay while preserving agent access via `cat /.solpi/obs_N.txt`",
+      "variant": 1,
+      "ralph_errors": [],
+      "review_repairs": [
+       {
+        "objection": "CRITICAL: No explicit fail-open error handling. The `filter_context` method lacks try-except wrapping around its logic. The contract requires 'on any exception keep the original behaviour', but any exception (from accessing message attributes, hashing, rt.store write, msg.with_content(), etc.) will propagate unhandled. Must wrap in try-except and return None on any error to satisfy the fail-open requirement.; CRITICAL: Unsuitable hash function for deduplication. Using Python's `hash()` function ",
+        "ralph_errors": [
+         "no extensions/<name>.py in reply",
+         "no extensions/<name>.py in reply"
+        ],
+        "error": "no extensions/<name>.py in reply"
+       }
+      ],
+      "stage": "review",
+      "outcome": "rejected",
+      "error": "CRITICAL: No explicit fail-open error handling. The `filter_context` method lacks try-except wrapping around its logic. The contract requires 'on any exception keep the original behaviour', but any exception (from accessing message attributes, hashing, rt.store write, msg.with_content(), etc.) will propagate unhandled. Must wrap in try-except and return None on any error to satisfy the fail-open requirement.; CRITICAL: Unsuitable hash function for deduplication. Using Python's `hash()` function "
+     }
+    ],
+    "n_iterations": 2
+   }
+  ],
+  "frozen": [
+   "L2:Condense large bash failures to essential error/context lines, archive full logs for agent recall via rt.store"
+  ],
+  "frozen_ideas": [
+   "L2"
+  ],
+  "heldout_passed": {
+   "L2:Condense large bash failures to essential error/context lines, archive full logs for agent recall via rt.store": true
+  },
+  "survivors": [
+   "L2:Condense large bash failures to essential error/context lines, archive full logs for agent recall via rt.store"
+  ],
+  "survivor_ideas": [
+   "L2"
+  ],
+  "dropped_by_composition_check": [],
+  "composed_metrics": {
+   "agg": {
+    "score": 1.0,
+    "tokens": 182838.0,
+    "cost": 0.1479116666666667,
+    "steps": 16.11111111111111,
+    "eta": 0.1479116666666667
+   },
+   "fam": {
+    "repofix": {
+     "score": 1.0,
+     "tokens": 289279.3333333333,
+     "cost": 0.22229056666666672,
+     "steps": 25.666666666666668,
+     "eta": 0.22229056666666672
+    },
+    "buildfix": {
+     "score": 1.0,
+     "tokens": 199378.0,
+     "cost": 0.1532993666666667,
+     "steps": 15.666666666666666,
+     "eta": 0.1532993666666667
+    },
+    "logtriage": {
+     "score": 1.0,
+     "tokens": 59856.666666666664,
+     "cost": 0.06814506666666668,
+     "steps": 7.0,
+     "eta": 0.06814506666666668
+    }
+   },
+   "n": 9
+  },
+  "conflicts": [],
+  "gate_digest": "a2247cac594b7481",
+  "heldout": [
+   {
+    "candidate": "L2:Condense large bash failures to essential error/context lines, archive full logs for agent recall via rt.store",
+    "artifact_id": "8a089b54598b8bd3de3c73b3dfcaa691a2abd04928b388452534063f46404a9a",
+    "passed": true,
+    "reason": "accepted",
+    "metrics": {
+     "agg": {
+      "score": 1.0,
+      "tokens": 123618.0,
+      "cost": 0.11100956666666667,
+      "steps": 9.5,
+      "eta": 0.11100956666666667
+     },
+     "fam": {
+      "configfix": {
+       "score": 1.0,
+       "tokens": 197651.66666666666,
+       "cost": 0.15715163333333335,
+       "steps": 15.0,
+       "eta": 0.15715163333333335
+      },
+      "datalookup": {
+       "score": 1.0,
+       "tokens": 49584.333333333336,
+       "cost": 0.06486750000000001,
+       "steps": 4.0,
+       "eta": 0.06486750000000001
+      }
+     },
+     "n": 6
+    },
+    "base_metrics": {
+     "agg": {
+      "score": 1.0,
+      "tokens": 200660.16666666666,
+      "cost": 0.14698076666666668,
+      "steps": 9.5,
+      "eta": 0.14698076666666668
+     },
+     "fam": {
+      "configfix": {
+       "score": 1.0,
+       "tokens": 351736.0,
+       "cost": 0.22909403333333336,
+       "steps": 15.0,
+       "eta": 0.22909403333333336
+      },
+      "datalookup": {
+       "score": 1.0,
+       "tokens": 49584.333333333336,
+       "cost": 0.06486750000000001,
+       "steps": 4.0,
+       "eta": 0.06486750000000001
+      }
+     },
+     "n": 6
+    }
+   }
+  ],
+  "usage": {
+   "calls": 5,
+   "input_tokens": 9677,
+   "output_tokens": 27055,
+   "cost_usd": 0.144952,
+   "latency_s": 253.36752605438232,
+   "total_tokens": 36732
+  },
+  "seconds": 526.4546556472778
+ }
+]

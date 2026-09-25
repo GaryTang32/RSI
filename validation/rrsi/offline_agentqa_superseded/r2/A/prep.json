@@ -1,0 +1,24 @@
+{
+ "artifact_id": "65de0ba851f0b6af08a8b9c8a9f6443a81acb3029496df2416f6788263dfca82",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "skill",
+   "hypothesis": "[aq:python_skill] Skill card: write Python for computations",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:python_skill] Skill card: write Python for computations",
+   "declared_component": "skill"
+  }
+ ],
+ "diff_path": "r2/A/diff.patch",
+ "mechanism": "[aq:python_skill] Skill card: write Python for computations"
+}

@@ -1,0 +1,7 @@
+
+Traceback (most recent call last):
+  File "/tmp/rsi_ar_tinylm_f89s88f7/train.py", line 143, in <module>
+    for x, y in train_loader:
+  File "/tmp/rsi_ar_tinylm_f89s88f7/prepare.py", line 182, in make_dataloader
+    raise PermissionError(f"hardened mode: only the 'train' split can be loaded for training, not {split!r}")
+PermissionError: hardened mode: only the 'train' split can be loaded for training, not 'val'

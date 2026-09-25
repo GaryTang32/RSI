@@ -1,0 +1,26 @@
+{
+ "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "output_plumbing",
+   "hypothesis": "[nar_02] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-036",
+    "hw-e-044"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nar_02",
+   "prune": false,
+   "mechanism": "[nar_02] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "output_plumbing"
+  }
+ ],
+ "diff_path": "r6/B/diff.patch",
+ "mechanism": "[nar_02] Collapse repeated log lines: Collapse repeated log "
+}

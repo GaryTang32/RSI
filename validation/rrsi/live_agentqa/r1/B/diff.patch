@@ -1,0 +1,91 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,12 +1,9 @@
+-"""Harness: extract ANSWER: marker or return last line."""
++"""Harness: auto-execute Python code blocks and extract ANSWER marker."""
+ import re
+ 
+ 
+-def solve(question, llm, tools, files):
+-    system = files.get("prompts/system.md", "")
+-    prompt = files["prompts/task.md"].replace("{question}", question)
+-    reply = llm(prompt, system=system)
+-    
++def extract_answer(reply):
++    """Extract answer from ANSWER: marker or last line."""
+     # Strategy 1: Look for ANSWER: pattern on any line
+     for line in reply.split('\n'):
+         if 'ANSWER:' in line:
+@@ -21,3 +18,57 @@
+     # Strategy 2: Fallback to last non-empty line
+     lines = [line.strip() for line in reply.strip().split('\n') if line.strip()]
+     return lines[-1] if lines else ""
++
++
++def extract_numeric_from_output(output):
++    """Extract the last numeric value from tool output."""
++    if not output or not output.strip():
++        return None
++    
++    lines = output.strip().split('\n')
++    for line in reversed(lines):
++        line = line.strip()
++        if not line:
++            continue
++        # Try to parse as integer or float
++        try:
++            # Remove common formatting characters
++            cleaned = line.replace(',', '').replace('(', '').replace(')', '').strip()
++            # Handle scientific notation and floats
++            val = float(cleaned)
++            # Convert to int if it's a whole number
++            if val % 1 == 0:
++                return str(int(val))
++            else:
++                return str(val)
++        except (ValueError, TypeError):
++            continue
++    return None
++
++
++def solve(question, llm, tools, files):
++    system = files.get("prompts/system.md", "")
++    prompt = files["prompts/task.md"].replace("{question}", question)
++    reply = llm(prompt, system=system)
++    
++    # Extract answer using current strategy
++    answer = extract_answer(reply)
++    
++    # NEW: If response contains Python code blocks, execute them to verify/obtain answer
++    code_blocks = re.findall(r'```python\s*(.*?)\s*```', reply, re.DOTALL)
++    if code_blocks:
++        # Try to execute code blocks in reverse order (last one first)
++        for code_block in reversed(code_blocks):
++            try:
++                result = tools.python(code_block)
++                if result and result.strip():
++                    # Try to extract numeric value from tool output
++                    extracted = extract_numeric_from_output(result)
++                    if extracted is not None:
++                        answer = extracted
++                        break
++            except Exception:
++                # Tool execution failed, continue to next code block
++                continue
++    
++    return answer
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -2,7 +2,11 @@
+ 
+ When solving numeric problems:
+ - Show all work step-by-step, breaking down complex operations into individual calculations
+-- For calculations involving large numbers or modular arithmetic, verify your result by reconsidering the approach or checking intermediate values make sense
++- For any calculation involving large numbers (numbers with more than 4 digits), powers, exponents, modular arithmetic, or complex multi-step operations:
++  * Write Python code in a code block to compute the result
++  * Show the code and your reasoning about what it computes
++  * Base your final answer on what the code would produce
++- For large powers or exponentials, verify magnitude plausibility: estimate the expected number of digits using logarithmic calculation (log₁₀(base^exponent)) and confirm your result has approximately that many digits. Flag any results that are implausibly large or small compared to this estimate.
+ - Be explicit about your reasoning so errors can be traced
+ 
+ CRITICAL OUTPUT FORMAT:

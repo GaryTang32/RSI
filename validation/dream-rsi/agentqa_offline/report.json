@@ -1,0 +1,193 @@
+{
+ "run": "agentqa_offline",
+ "setup": "AgentQA (shared harness domain) through DomainTask: untouched AgentQADomain.seed_artifact() (one direct model call, 'You are a helpful assistant.'); score = mean evolve S (8 numeric tasks, k = 1) with SimModel; sealed holdout (8) + ood (8: 2 per unseen family) scored only by the shadow monitor and the final transfer report. Agent = agentqa_mock_agent (one mechanism knob per attempt), developer = ParametricMutator; pi_1 = parallel refine 3 x 3, W = 3, T = 4, M = 4, Eq. 1 defaults, argmax.",
+ "config": {
+  "rounds": 4,
+  "W": 3,
+  "branch_count": 3,
+  "refine_count": 2,
+  "hard_max_branch": 12,
+  "hard_max_refine": 12,
+  "K1": null,
+  "K2": null,
+  "M": 4,
+  "m_semantics": "versions",
+  "objective": "eq1",
+  "beta1": 0.01,
+  "beta2": 0.005,
+  "normalize": true,
+  "support": "clip",
+  "lam": 0.1,
+  "beta_grid": [
+   0.2,
+   0.4,
+   0.6,
+   0.8,
+   1.0
+  ],
+  "sweep": true,
+  "root_mode": "earliest",
+  "hide_missing": false,
+  "selector": "argmax",
+  "include_incumbent": true,
+  "holdout_frac": 0.34,
+  "noise_z": 2.0,
+  "margin_floor": 0.01,
+  "sandbox": "subprocess",
+  "policy_timeout_s": 30.0,
+  "root": "best",
+  "dream": true,
+  "dream_last": false,
+  "guidance": false,
+  "guidance_strength": 0.8,
+  "max_calls": null,
+  "agent_workers": null,
+  "leakage_check": true,
+  "seed": 0,
+  "trace": true,
+  "shadow_monitor": true,
+  "shadow_k": 1,
+  "shadow_workers": 2
+ },
+ "wall_s": 1.9,
+ "seed_score": 0.25,
+ "best_score": 1.0,
+ "stop_reason": "rounds",
+ "calls_per_cycle": [
+  9,
+  6,
+  8,
+  10
+ ],
+ "best_per_cycle": [
+  1.0,
+  1.0,
+  1.0,
+  1.0
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.25,
+     "C": 735.25,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.25
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 102.25,
+     "steps": 3.0,
+     "families": {
+      "numeric": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.75,
+      "lo": 0.375,
+      "hi": 1.0,
+      "n": 8,
+      "p_better": 0.75
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.375,
+     "C": 729.75,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.375
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.75,
+     "C": 90.625,
+     "steps": 3.0,
+     "families": {
+      "numeric": 0.75
+     },
+     "vs_reference": {
+      "mean_diff": 0.375,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.375
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.5,
+     "C": 1757.25,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 1.0
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.875,
+     "C": 154.625,
+     "steps": 3.0,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 0.5,
+      "lists": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.375,
+      "lo": -0.125,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.4375,
+   "final": 0.8125
+  }
+ },
+ "usage_by_role": {
+  "task": {
+   "calls": 128,
+   "input_tokens": 5466,
+   "output_tokens": 34888,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 40354
+  }
+ },
+ "cost_meter": {
+  "agent_calls": 33,
+  "agent_tokens": 0,
+  "agent_usd": 0.0,
+  "eval_s": 0.5370392799377441,
+  "online_rounds": 12,
+  "online_wall_s": 0.36900758743286133,
+  "replay_episodes": 60,
+  "replay_cpu_s": 0.12898401062133724,
+  "replay_wall_s": 0.9282488822937012,
+  "developer_calls": 0,
+  "developer_tokens": 0,
+  "developer_usd": 0.0,
+  "replay_ms_per_episode": 2.1497335103556208
+ },
+ "spend": {
+  "loop_usd": 0.0,
+  "shadow_monitor_usd": 0.0,
+  "report_usd": 0.0
+ },
+ "llm_cache": null,
+ "trace_md": "/home/user/RSI/validation/dream-rsi/agentqa_offline/TRACE.md"
+}

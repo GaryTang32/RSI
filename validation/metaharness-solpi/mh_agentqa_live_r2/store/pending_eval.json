@@ -1,0 +1,29 @@
+{
+ "iteration": 3,
+ "candidates": [
+  {
+   "name": "exploit-enhanced-computation-verification",
+   "base_system": "exploit-expression-evaluation",
+   "hypothesis": "The expression verification is limited to basic arithmetic patterns. Extending pattern detection to cover bit operations, digit sums, modular arithmetic, and ledger calculations, then re-executing all detected computations via tools.python(), will catch computational errors that extraction misses and improve from 90% to near-perfect accuracy.",
+   "axis": "exploitation",
+   "components": [
+    "expanded_pattern_library",
+    "universal_tool_execution",
+    "multi_type_verification",
+    "ledger_pattern_detection"
+   ]
+  },
+  {
+   "name": "explore-direct-pattern-computation",
+   "base_system": "seed",
+   "hypothesis": "LLM-guided algorithm extraction (explore-tool-driven-computation) fails on complex multi-step problems. Directly parsing question text for computational patterns and generating precise Python code yields higher reliability than LLM planning. Pattern-first strategy with robust extraction fallback handles modular arithmetic, ledgers, digit/bit operations without LLM planning ambiguity.",
+   "axis": "exploration",
+   "components": [
+    "question_pattern_parsing",
+    "direct_code_generation",
+    "pattern_specific_executors",
+    "tool_first_execution"
+   ]
+  }
+ ]
+}

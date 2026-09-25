@@ -1,0 +1,8 @@
+--- a/agents/har_04.py
++++ b/agents/har_04.py
+@@ -0,0 +1,5 @@
++# mechanism: har_04
++# component: subagent
++# title: Critic sub-call on final answer
++"""Critic sub-call on final answer; aimed at extract, arith tasks."""
++enable("har_04")

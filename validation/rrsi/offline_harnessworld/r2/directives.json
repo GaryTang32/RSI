@@ -1,0 +1,57 @@
+{
+ "t": 2,
+ "b_t": 4,
+ "sigma_t": 0,
+ "tried": [
+  "config",
+  "context_mgmt",
+  "memory",
+  "output_plumbing",
+  "prompt",
+  "subagent"
+ ],
+ "explore": {
+  "sigma": 0,
+  "untried": [
+   "control_flow",
+   "client_tool",
+   "skill"
+  ],
+  "m_draft": 1,
+  "text": "Components not yet exercised in this run: ['control_flow', 'client_tool', 'skill']. Not mandatory this round (sigma_t = 0), but evidence about them is still missing."
+ },
+ "prune_set": [
+  {
+   "component": "config",
+   "recent_best_gain": -0.03531,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "context_mgmt",
+   "recent_best_gain": -0.03531,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "memory",
+   "recent_best_gain": -0.02625,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "output_plumbing",
+   "recent_best_gain": -0.03531,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "prompt",
+   "recent_best_gain": -0.03531,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "subagent",
+   "recent_best_gain": -0.00844,
+   "accepted_edits_in_incumbent": []
+  }
+ ],
+ "delta": 0.01594,
+ "S_star": 0.4653125
+}

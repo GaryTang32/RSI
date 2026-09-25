@@ -1,0 +1,12 @@
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1,3 +1,5 @@
+ You are a helpful assistant.
+ 
+ Think step by step before answering.
++
++When a question involves computation, write Python code that computes the answer.
+--- a/skills/python.md
++++ b/skills/python.md
+@@ -0,0 +1 @@
++When a question involves computation, write Python code that computes the answer.

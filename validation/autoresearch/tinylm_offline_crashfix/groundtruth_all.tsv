@@ -1,0 +1,4 @@
+commit	status	description	val_bpb	loop_metric_rerun	test_iid	test_shift
+906744c	keep	baseline	2.833938	2.839806	2.897063	2.964723
+58e7ec5	keep	LR 0.003 -> 0.006 (with a typo)	2.673361	2.669101	2.726736	2.775403
+d204cc0	keep	WARMDOWN_RATIO 0.5 -> 0.3	2.661717	2.660670	2.716154	2.768271

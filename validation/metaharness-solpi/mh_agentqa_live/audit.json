@@ -1,0 +1,241 @@
+{
+ "checks": {
+  "diff_matches_ledger_and_store": "6/6",
+  "eval_only_on_search_split": "6/6",
+  "frontier_recomputed_independently": "6/6",
+  "incumbent_is_top_pareto_point": "3/3",
+  "delta_arithmetic": "6/6",
+  "evaluated_iff_admissible": "6/6",
+  "proposal_changes_code": "6/6",
+  "changes_a_file_the_base_harness_has": "4/6",
+  "claimed_base_exists_and_visible": "6/6",
+  "test_results_only_after_finalize": "8/8",
+  "view_never_exposes_results": "1/1",
+  "monitor_only_new_incumbents": "4/4"
+ },
+ "all_passed": false,
+ "problems": [
+  "changes_a_file_the_base_harness_has: code_answer_marked only ADDS files ['src/harness.py', 'src/prompts/system.md', 'src/prompts/task.md'] - the harness it runs is unchanged",
+  "changes_a_file_the_base_harness_has: harness_generated_solver only ADDS files ['src/harness.py', 'src/prompts/system.md', 'src/prompts/task.md'] - the harness it runs is unchanged"
+ ],
+ "rows": [
+  {
+   "iteration": 0,
+   "baseline_incumbent": "seed",
+   "monitor": {
+    "holdout": 0.5,
+    "ood": 0.25
+   }
+  },
+  {
+   "iteration": 1,
+   "incumbent_before": "seed",
+   "view_files": 27,
+   "view_by_kind": {
+    "code": 3,
+    "traces": 10,
+    "per_task": 10,
+    "scores": 1,
+    "summaries": 0,
+    "run_files": 2,
+    "other": 1
+   },
+   "proposals": [
+    {
+     "name": "extract_formatted",
+     "base": "seed",
+     "claim": "Models emphasize final answers with **bold** formatting or isolated numbers on clear lines. Priority-based extraction (formatted \u2192 standalone numbers \u2192 last lin",
+     "files_changed": [
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.6,
+     "context_cost": 2332.5,
+     "on_frontier": false,
+     "dominated_by": [
+      "code_first"
+     ]
+    },
+    {
+     "name": "code_first",
+     "base": "seed",
+     "claim": "Mandating Python code generation and extracting from execution output, rather than parsing model text reasoning, ensures numeric accuracy. Computation-first is ",
+     "files_changed": [
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 1.0,
+     "context_cost": 1295.7,
+     "on_frontier": true,
+     "dominated_by": []
+    }
+   ],
+   "files_read": 27,
+   "files_read_by_kind": {
+    "code": 3,
+    "traces": 10,
+    "per_task": 10,
+    "scores": 1,
+    "summaries": 0,
+    "run_files": 2,
+    "other": 1
+   },
+   "proposer_usd": 0.063378,
+   "proposer_error": null,
+   "incumbent_after": "code_first",
+   "new_frontier_members": "code_first",
+   "monitor": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  },
+  {
+   "iteration": 2,
+   "incumbent_before": "code_first",
+   "view_files": 78,
+   "view_by_kind": {
+    "code": 9,
+    "traces": 30,
+    "per_task": 30,
+    "scores": 3,
+    "summaries": 0,
+    "run_files": 3,
+    "other": 3
+   },
+   "proposals": [
+    {
+     "name": "code_answer_marked",
+     "base": "code_first",
+     "claim": "Requiring the Python code to output a strict 'ANSWER=<value>' format and extracting using pattern matching (not regex on arbitrary text) eliminates ambiguity wh",
+     "files_changed": [
+      "src/harness.py",
+      "src/prompts/system.md",
+      "src/prompts/task.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 1.0,
+     "context_cost": 1295.7,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "harness_generated_solver",
+     "base": "seed",
+     "claim": "Letting the model explain the approach (without writing code), then auto-generating and executing Python to implement that approach, separates reasoning from co",
+     "files_changed": [
+      "src/harness.py",
+      "src/prompts/system.md",
+      "src/prompts/task.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5,
+     "context_cost": 2378.2,
+     "on_frontier": false,
+     "dominated_by": [
+      "code_answer_marked",
+      "code_first",
+      "extract_formatted"
+     ]
+    }
+   ],
+   "files_read": 76,
+   "files_read_by_kind": {
+    "code": 9,
+    "traces": 28,
+    "per_task": 30,
+    "scores": 3,
+    "summaries": 0,
+    "run_files": 3,
+    "other": 3
+   },
+   "proposer_usd": 0.094561,
+   "proposer_error": null,
+   "incumbent_after": "code_answer_marked",
+   "new_frontier_members": "code_answer_marked",
+   "monitor": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  },
+  {
+   "iteration": 3,
+   "incumbent_before": "code_answer_marked",
+   "view_files": 135,
+   "view_by_kind": {
+    "code": 21,
+    "traces": 50,
+    "per_task": 50,
+    "scores": 5,
+    "summaries": 0,
+    "run_files": 4,
+    "other": 5
+   },
+   "proposals": [
+    {
+     "name": "code_generalized_extract",
+     "base": "code_first",
+     "claim": "Removing math-specific language from system prompt and implementing flexible output extraction that handles strings, dates, lists (not just numbers) improves ro",
+     "files_changed": [
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 1.0,
+     "context_cost": 1216.2,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "code_with_classification",
+     "base": "code_first",
+     "claim": "Asking the model to classify problem type and computational approach before code generation produces better-quality code on first attempt by forcing explicit re",
+     "files_changed": [
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 1.0,
+     "context_cost": 3161.8,
+     "on_frontier": false,
+     "dominated_by": [
+      "code_answer_marked",
+      "code_first",
+      "code_generalized_extract"
+     ]
+    }
+   ],
+   "files_read": 77,
+   "files_read_by_kind": {
+    "code": 21,
+    "traces": 20,
+    "per_task": 22,
+    "scores": 5,
+    "summaries": 0,
+    "run_files": 4,
+    "other": 5
+   },
+   "proposer_usd": 0.09195,
+   "proposer_error": null,
+   "incumbent_after": "code_generalized_extract",
+   "new_frontier_members": "code_generalized_extract",
+   "monitor": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  }
+ ]
+}

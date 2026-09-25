@@ -1,0 +1,32 @@
+--- a/config/nul_08.py
++++ b/config/nul_08.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_08
++# component: config
++# title: Lower sampling temperature for final answers
++"""Lower sampling temperature for final answers (rewording of existing guidance)."""
++enable("nul_08")
+--- a/context/nul_10.py
++++ b/context/nul_10.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_10
++# component: context_mgmt
++# title: Drop stale observations
++"""Drop stale observations (rewording of existing guidance)."""
++enable("nul_10")
+--- a/output/nul_13.py
++++ b/output/nul_13.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_13
++# component: output_plumbing
++# title: Answer-line extractor
++"""Answer-line extractor (rewording of existing guidance)."""
++enable("nul_13")
+--- a/prompts/har_03.md
++++ b/prompts/har_03.md
+@@ -0,0 +1,5 @@
++# mechanism: har_03
++# component: prompt
++# title: Short worked example of the procedure
++"""Short worked example of the procedure; aimed at extract, arith tasks."""
++enable("har_03")

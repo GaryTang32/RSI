@@ -1,0 +1,16 @@
+--- a/config/nul_06.py
++++ b/config/nul_06.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_06
++# component: config
++# title: Raise the per-step output cap
++"""Raise the per-step output cap (rewording of existing guidance)."""
++enable("nul_06")
+--- a/memory/har_16.py
++++ b/memory/har_16.py
+@@ -0,0 +1,5 @@
++# mechanism: har_16
++# component: memory
++# title: Scratchpad for intermediate results
++"""Scratchpad for intermediate results; aimed at format tasks."""
++enable("har_16")

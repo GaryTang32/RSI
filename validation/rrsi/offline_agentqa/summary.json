@@ -1,0 +1,780 @@
+{
+ "run": "offline_agentqa",
+ "setup": {
+  "domain": "agentqa make_suite(seed=0) (20 evolve numeric, 20 holdout numeric, 24 ood in 4 unseen families)",
+  "seed_artifact": "AgentQADomain.seed_artifact() (one direct model call)",
+  "task_model": "sim-model",
+  "proposer_and_critic": "agentqa-mock",
+  "analyst": "heuristic (no analyst LLM)",
+  "config": {
+   "T": 8,
+   "m": 2,
+   "k": 2
+  },
+  "llm_cache": "none (deterministic mocks, nothing to cache)"
+ },
+ "stop_reason": "max_rounds",
+ "rounds": 8,
+ "trajectory": [
+  {
+   "t": 0,
+   "S": 0.375,
+   "C": 736.5,
+   "S_star": null,
+   "b_t": null,
+   "sigma_t": null,
+   "winner": null
+  },
+  {
+   "t": 1,
+   "S": 0.55,
+   "C": 2257.575,
+   "S_star": 0.55,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": "B"
+  },
+  {
+   "t": 2,
+   "S": 0.75,
+   "C": 2304.3,
+   "S_star": 0.75,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": "A"
+  },
+  {
+   "t": 3,
+   "S": 0.75,
+   "C": 2304.3,
+   "S_star": 0.75,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": null
+  },
+  {
+   "t": 4,
+   "S": 0.75,
+   "C": 2304.3,
+   "S_star": 0.75,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": null
+  },
+  {
+   "t": 5,
+   "S": 0.75,
+   "C": 2304.3,
+   "S_star": 0.75,
+   "b_t": 3,
+   "sigma_t": 0,
+   "winner": null
+  },
+  {
+   "t": 6,
+   "S": 0.75,
+   "C": 2304.3,
+   "S_star": 0.75,
+   "b_t": 2,
+   "sigma_t": 1,
+   "winner": null
+  },
+  {
+   "t": 7,
+   "S": 0.65,
+   "C": 626.4,
+   "S_star": 0.75,
+   "b_t": 2,
+   "sigma_t": 1,
+   "winner": "A"
+  },
+  {
+   "t": 8,
+   "S": 0.65,
+   "C": 626.4,
+   "S_star": 0.75,
+   "b_t": 2,
+   "sigma_t": 1,
+   "winner": null
+  }
+ ],
+ "seed_vs_final": {
+  "evolve": {
+   "H0": {
+    "S": 0.35,
+    "C": 736.1
+   },
+   "final": {
+    "S": 0.675,
+    "C": 626.375
+   }
+  },
+  "holdout": {
+   "H0": {
+    "S": 0.425,
+    "C": 732.35
+   },
+   "final": {
+    "S": 0.575,
+    "C": 616.45
+   }
+  },
+  "ood": {
+   "H0": {
+    "S": 0.375,
+    "C": 1760.9375
+   },
+   "final": {
+    "S": 0.6041666666666666,
+    "C": 701.5
+   }
+  }
+ },
+ "paired_final_vs_H0": {
+  "evolve": {
+   "mean_diff": 0.325,
+   "lo": 0.075,
+   "hi": 0.575,
+   "n": 20,
+   "p_better": 0.5
+  },
+  "holdout": {
+   "mean_diff": 0.15,
+   "lo": -0.025,
+   "hi": 0.325,
+   "n": 20,
+   "p_better": 0.45
+  },
+  "ood": {
+   "mean_diff": 0.22916666666666666,
+   "lo": 0.10416666666666667,
+   "hi": 0.375,
+   "n": 24,
+   "p_better": 0.4166666666666667
+  }
+ },
+ "analytic_expected": null,
+ "delta": 0.147196,
+ "calibration": {
+  "delta": 0.147196,
+  "z": 2.0,
+  "sd_null": 0.073598,
+  "sd_null_bootstrap": 0.073598,
+  "se_bootstrap": 0.052042,
+  "method": "bootstrap over trials of one base evaluation",
+  "n_evals": 1,
+  "k": 2,
+  "n_tasks": 20,
+  "S_base": 0.375,
+  "C_base": 736.5,
+  "small_k_correction": false,
+  "jobs": [
+   "base"
+  ]
+ },
+ "usage": {
+  "loop_usage": {
+   "task": {
+    "calls": 1270,
+    "input_tokens": 676341,
+    "output_tokens": 186086,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 862427
+   },
+   "proposer": {
+    "calls": 35,
+    "input_tokens": 370475,
+    "output_tokens": 16861,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 387336
+   },
+   "critic": {
+    "calls": 12,
+    "input_tokens": 20991,
+    "output_tokens": 186,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 21177
+   },
+   "_total": {
+    "calls": 1317,
+    "input_tokens": 1067807,
+    "output_tokens": 203133,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 1270940
+   }
+  },
+  "loop_usd": 0.0,
+  "loop_calls": 1317
+ },
+ "critic": {
+  "reviews": 21,
+  "precheck_rejects": 9,
+  "llm_rejects": 1
+ },
+ "n_rollouts": 480,
+ "audit_summary": {
+  "pass": 253,
+  "fail": 0,
+  "unverifiable": 0,
+  "info": 14
+ },
+ "audit_failures": [],
+ "rounds_table": [
+  {
+   "t": 0,
+   "b_t": 4,
+   "sigma_t": 0,
+   "S_t": 0.375,
+   "S_star": 0.375,
+   "delta": 0.147196,
+   "untried": [
+    "prompt",
+    "control_flow",
+    "tool",
+    "skill",
+    "memory",
+    "subagent"
+   ],
+   "reserved": [],
+   "prune": [],
+   "candidates": [
+    {
+     "candidate": "r0A",
+     "claimed": "[aq:python_skill] Skill card: write Python for computations",
+     "components": [
+      "skill"
+     ],
+     "files": [
+      "harness.py",
+      "prompts/system.md",
+      "skills/python.md"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(llm)",
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.0000 < S*-delta=0.2278 (S* 0.3750 - delta 0.1472)",
+     "S": 0.0,
+     "dS": -0.375,
+     "dC": -0.9124915139171758,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r0B",
+     "claimed": "[aq:null_reword] Reword the system prompt; [aq:persona] Detailed analyst persona; [aq:self_consistency] Three samples with a majority vote; [aq:step_by_step] Ask for step-by-step reasoning",
+     "components": [
+      "prompt",
+      "prompt",
+      "control_flow",
+      "prompt"
+     ],
+     "files": [
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.5500 >= S*-delta=0.2278; dC=+2.065 <= beta0+beta1*dS=7.100",
+     "S": 0.55,
+     "dS": 0.17500000000000004,
+     "dC": 2.065274949083503,
+     "nu": 0,
+     "branch": "cost_rule",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r0B",
+   "why": "argmax S' over the admissible set {'r0B': 0.55} -> r0B (S'=0.5500); S* 0.3750 -> 0.5500",
+   "monitor": {
+    "holdout": 0.65,
+    "ood": 0.5416666666666666
+   }
+  },
+  {
+   "t": 1,
+   "b_t": 4,
+   "sigma_t": 0,
+   "S_t": 0.55,
+   "S_star": 0.55,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory",
+    "subagent"
+   ],
+   "reserved": [],
+   "prune": [
+    "skill"
+   ],
+   "candidates": [
+    {
+     "candidate": "r1A",
+     "claimed": "[aq:answer_format] State the final-answer format",
+     "components": [
+      "prompt"
+     ],
+     "files": [
+      "prompts/task.md"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.7500 >= S*-delta=0.4028; dC=+0.021 <= beta0+beta1*dS=8.100",
+     "S": 0.75,
+     "dS": 0.19999999999999996,
+     "dC": 0.020696986811069563,
+     "nu": 0,
+     "branch": "cost_rule",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r1B",
+     "claimed": "[aq:checker] Bounded checker sub-call",
+     "components": [
+      "subagent"
+     ],
+     "files": [
+      "agents/checker.md",
+      "harness.py"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6500 >= S*-delta=0.4028; within band: shaped=+5.222 (> 0)",
+     "S": 0.65,
+     "dS": 0.09999999999999998,
+     "dC": 0.3518930711050575,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": "r1A",
+   "why": "argmax S' over the admissible set {'r1A': 0.75, 'r1B': 0.65} -> r1A (S'=0.7500); S* 0.5500 -> 0.7500",
+   "monitor": {
+    "holdout": 0.45,
+    "ood": 0.7083333333333334
+   }
+  },
+  {
+   "t": 2,
+   "b_t": 4,
+   "sigma_t": 0,
+   "S_t": 0.75,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [],
+   "prune": [
+    "skill"
+   ],
+   "candidates": [
+    {
+     "candidate": "r2A",
+     "claimed": "[aq:checker] Bounded checker sub-call; [aq:verify] Ask to double-check before answering; [aq:python_tool] Compute with the Python tool and report its output",
+     "components": [
+      "subagent",
+      "prompt",
+      "control_flow"
+     ],
+     "files": [
+      "agents/checker.md",
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.5750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472)",
+     "S": 0.575,
+     "dS": -0.17500000000000004,
+     "dC": -0.07884173067742922,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r2B",
+     "claimed": "[aq:verify] Ask to double-check before answering; [aq:python_tool] Compute with the Python tool and report its output; [aq:checker] Bounded checker sub-call",
+     "components": [
+      "prompt",
+      "control_flow",
+      "subagent"
+     ],
+     "files": [
+      "agents/checker.md",
+      "harness.py",
+      "prompts/system.md"
+     ],
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)",
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-10.818 (<= 0)",
+     "S": 0.625,
+     "dS": -0.125,
+     "dC": -0.07882003211387406,
+     "nu": 1,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r2A: below noise-adjusted floor: S'=0.5750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472); r2B: cost rule failed: within band: shaped=-10.818 (<= 0)",
+   "monitor": {}
+  },
+  {
+   "t": 3,
+   "b_t": 4,
+   "sigma_t": 0,
+   "S_t": 0.75,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [],
+   "prune": [
+    "skill"
+   ],
+   "candidates": [
+    {
+     "candidate": "r3A",
+     "claimed": "",
+     "components": [],
+     "files": null,
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)"
+     ],
+     "admissible": false,
+     "reason": "critic_reject",
+     "S": null,
+     "dS": null,
+     "dC": null,
+     "nu": null,
+     "branch": null,
+     "gate_failure": "critic_reject"
+    },
+    {
+     "candidate": "r3B",
+     "claimed": "",
+     "components": [],
+     "files": null,
+     "proposer_calls": 2,
+     "critic": [
+      "reject(precheck)"
+     ],
+     "admissible": false,
+     "reason": "critic_reject",
+     "S": null,
+     "dS": null,
+     "dC": null,
+     "nu": null,
+     "branch": null,
+     "gate_failure": "critic_reject"
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r3A: critic_reject; r3B: critic_reject",
+   "monitor": {}
+  },
+  {
+   "t": 4,
+   "b_t": 3,
+   "sigma_t": 0,
+   "S_t": 0.75,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [],
+   "prune": [
+    "skill"
+   ],
+   "candidates": [
+    {
+     "candidate": "r4A",
+     "claimed": "[aq:verify] Ask to double-check before answering",
+     "components": [
+      "prompt"
+     ],
+     "files": [
+      "prompts/system.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-0.296 (<= 0)",
+     "S": 0.75,
+     "dS": 0.0,
+     "dC": 0.01972399427157914,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r4B",
+     "claimed": "[aq:verify] Ask to double-check before answering",
+     "components": [
+      "prompt"
+     ],
+     "files": [
+      "prompts/system.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-7.796 (<= 0)",
+     "S": 0.675,
+     "dS": -0.07499999999999996,
+     "dC": 0.01972399427157914,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r4A: cost rule failed: within band: shaped=-0.296 (<= 0); r4B: cost rule failed: within band: shaped=-7.796 (<= 0)",
+   "monitor": {}
+  },
+  {
+   "t": 5,
+   "b_t": 2,
+   "sigma_t": 1,
+   "S_t": 0.75,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [
+    "B"
+   ],
+   "prune": [
+    "control_flow",
+    "skill"
+   ],
+   "candidates": [
+    {
+     "candidate": "r5A",
+     "claimed": "prune: [aq:self_consistency] Three samples with a majority vote",
+     "components": [
+      "control_flow"
+     ],
+     "files": [
+      "harness.py"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "below noise-adjusted floor: S'=0.4750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472)",
+     "S": 0.475,
+     "dS": -0.275,
+     "dC": -0.6666666666666667,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r5B",
+     "claimed": "",
+     "components": [],
+     "files": null,
+     "proposer_calls": 4,
+     "critic": [
+      "reject(precheck)"
+     ],
+     "admissible": false,
+     "reason": "critic_reject",
+     "S": null,
+     "dS": null,
+     "dC": null,
+     "nu": null,
+     "branch": null,
+     "gate_failure": "critic_reject"
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r5A: below noise-adjusted floor: S'=0.4750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472); r5B: critic_reject",
+   "monitor": {}
+  },
+  {
+   "t": 6,
+   "b_t": 2,
+   "sigma_t": 1,
+   "S_t": 0.75,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [
+    "B"
+   ],
+   "prune": [
+    "control_flow",
+    "prompt",
+    "skill",
+    "subagent"
+   ],
+   "candidates": [
+    {
+     "candidate": "r6A",
+     "claimed": "prune: [aq:persona] Detailed analyst persona",
+     "components": [
+      "prompt"
+     ],
+     "files": [
+      "prompts/system.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": true,
+     "reason": "admissible: S'=0.6500 >= S*-delta=0.6028; within band: shaped=+0.922 (> 0)",
+     "S": 0.65,
+     "dS": -0.09999999999999998,
+     "dC": -0.7281603957817993,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r6B",
+     "claimed": "[aq:answer_lookup] Remember answers seen during practice; [aq:answer_format] State the final-answer format",
+     "components": [],
+     "files": null,
+     "proposer_calls": 6,
+     "critic": [
+      "reject(precheck)"
+     ],
+     "admissible": false,
+     "reason": "critic_reject",
+     "S": null,
+     "dS": null,
+     "dC": null,
+     "nu": null,
+     "branch": null,
+     "gate_failure": "critic_reject"
+    }
+   ],
+   "kept": "r6A",
+   "why": "argmax S' over the admissible set {'r6A': 0.65} -> r6A (S'=0.6500); S* 0.7500 -> 0.7500",
+   "monitor": {
+    "holdout": 0.45,
+    "ood": 0.625
+   }
+  },
+  {
+   "t": 7,
+   "b_t": 2,
+   "sigma_t": 1,
+   "S_t": 0.65,
+   "S_star": 0.75,
+   "delta": 0.147196,
+   "untried": [
+    "tool",
+    "memory"
+   ],
+   "reserved": [
+    "B"
+   ],
+   "prune": [
+    "control_flow",
+    "prompt",
+    "skill",
+    "subagent"
+   ],
+   "candidates": [
+    {
+     "candidate": "r7A",
+     "claimed": "[aq:persona] Detailed analyst persona",
+     "components": [
+      "prompt"
+     ],
+     "files": [
+      "prompts/system.md"
+     ],
+     "proposer_calls": 1,
+     "critic": [
+      "accept(llm)"
+     ],
+     "admissible": false,
+     "reason": "cost rule failed: within band: shaped=-40.180 (<= 0)",
+     "S": 0.65,
+     "dS": 0.0,
+     "dC": 2.6786398467432955,
+     "nu": 0,
+     "branch": "within_band_shaped",
+     "gate_failure": null
+    },
+    {
+     "candidate": "r7B",
+     "claimed": "[aq:answer_lookup] Remember answers seen during practice",
+     "components": [],
+     "files": null,
+     "proposer_calls": 5,
+     "critic": [
+      "reject(precheck)"
+     ],
+     "admissible": false,
+     "reason": "critic_reject",
+     "S": null,
+     "dS": null,
+     "dC": null,
+     "nu": null,
+     "branch": null,
+     "gate_failure": "critic_reject"
+    }
+   ],
+   "kept": null,
+   "why": "no admissible candidate -> H_{t+1} = H_t; r7A: cost rule failed: within band: shaped=-40.180 (<= 0); r7B: critic_reject",
+   "monitor": {}
+  }
+ ],
+ "final_files": [
+  "harness.py",
+  "prompts/system.md",
+  "prompts/task.md"
+ ],
+ "trace_md": "/home/user/RSI/validation/rrsi/offline_agentqa/TRACE.md",
+ "wall_s": 1.7
+}

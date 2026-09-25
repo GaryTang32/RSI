@@ -1,0 +1,34 @@
+{
+ "status": "done",
+ "summary": "[aq:answer_lookup] Remember answers seen during practice",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "memory",
+   "hypothesis": "[aq:answer_lookup] Remember answers seen during practice",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-006"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:answer_lookup] Remember answers seen during practice"
+  }
+ ],
+ "mechanism": "[aq:answer_lookup] Remember answers seen during practice",
+ "targets_mode": "wrong final answers",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

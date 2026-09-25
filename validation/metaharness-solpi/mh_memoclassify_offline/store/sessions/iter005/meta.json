@@ -1,0 +1,75 @@
+{
+ "iteration": 5,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/i01_0_retrieve_topk/eval/search/scores.json",
+  "candidates/i01_0_retrieve_topk/src/memory.py",
+  "candidates/i01_1_label_list/eval/search/scores.json",
+  "candidates/i01_1_label_list/src/memory.py",
+  "candidates/i02_0_contrastive/eval/search/scores.json",
+  "candidates/i02_0_contrastive/src/memory.py",
+  "candidates/i02_1_coverage/eval/search/scores.json",
+  "candidates/i02_1_coverage/src/memory.py",
+  "candidates/i03_0_notes/eval/search/scores.json",
+  "candidates/i03_0_notes/src/memory.py",
+  "candidates/i03_1_notes/eval/search/scores.json",
+  "candidates/i03_1_notes/src/memory.py",
+  "candidates/i04_0_coverage/eval/search/scores.json",
+  "candidates/i04_0_coverage/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i04_0_coverage/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i04_0_coverage/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i04_0_coverage/src/memory.py",
+  "candidates/i04_1_param_char_budget_14000/eval/search/scores.json",
+  "candidates/i04_1_param_char_budget_14000/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 27,
+ "files_read_by_kind": {
+  "code": 10,
+  "traces": 6,
+  "scores": 11,
+  "other": 0
+ },
+ "view_files": 96,
+ "view_chars": 2941009,
+ "read_chars": 574171,
+ "error": null,
+ "seconds": 0.028,
+ "candidates": [
+  {
+   "name": "i05_0_notes_only",
+   "base_system": "i04_0_coverage",
+   "hypothesis": "Keyword notes for every label plus a handful of nearest demonstrations should match the full demonstration set at a fraction of the context.",
+   "axis": "exploitation",
+   "components": [
+    "notes_only",
+    "axis:F"
+   ]
+  },
+  {
+   "name": "i05_1_crossover",
+   "base_system": "no_memory",
+   "hypothesis": "combine no_memory + i04_0_coverage",
+   "axis": "exploration",
+   "components": [
+    "crossover",
+    "axis:combo"
+   ]
+  }
+ ]
+}

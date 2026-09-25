@@ -1,0 +1,24 @@
+[
+ {
+  "variant": "A",
+  "admissible": true,
+  "reason": "admissible: S'=0.7500 >= S*-delta=0.4028; dC=+0.021 <= beta0+beta1*dS=8.100",
+  "S": 0.75,
+  "C": 2304.3,
+  "delta_S": 0.19999999999999996,
+  "delta_C": 0.020696986811069563,
+  "novelty": 0,
+  "guards": []
+ },
+ {
+  "variant": "B",
+  "admissible": true,
+  "reason": "admissible: S'=0.6500 >= S*-delta=0.4028; within band: shaped=+5.222 (> 0)",
+  "S": 0.65,
+  "C": 3052.0,
+  "delta_S": 0.09999999999999998,
+  "delta_C": 0.3518930711050575,
+  "novelty": 1,
+  "guards": []
+ }
+]

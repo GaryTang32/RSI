@@ -1,0 +1,439 @@
+{
+ "run": "live_katas_r3",
+ "wall_s": 451.7,
+ "loop_wall_s": 442.0,
+ "hub": [
+  {
+   "asset_id": "sha256:3b03b055c3bb7bee2",
+   "gene": "gene_unicode_text_comparison",
+   "author": "agent0",
+   "status": "rejected",
+   "reasons": [
+    "uplift not established: U=+0.000 LCB=+0.000 >= delta=0.000 but LCB <= 0 (no established uplift); R=+0.000"
+   ],
+   "U": 0.0,
+   "U_LCB": 0.0,
+   "delta": 0.0,
+   "R": 0.0,
+   "n": 2,
+   "n_off": 2,
+   "adoptions": []
+  }
+ ],
+ "agent0": {
+  "stop_reason": "max_rounds",
+  "trajectory": [
+   {
+    "cycle": 1,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 1852,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 2,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_text_comparison",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 10894,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 2,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 3,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 1546,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000003",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 4,
+    "task_id": "backoff_delays",
+    "family": "retry",
+    "signals": [
+     "task:retry",
+     "retry",
+     "backoff",
+     "schedule"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 1703,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000004",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 5,
+    "task_id": "round_half_up",
+    "family": "rounding",
+    "signals": [
+     "task:rounding",
+     "rounding",
+     "money",
+     "precision"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 2302,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000005",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 6,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 1495,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000006",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 7,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 1509,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000007",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 8,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_text_comparison",
+    "source": "local",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": true,
+    "composite": 0.95,
+    "tokens": 2207,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": "rejected",
+    "event_id": "evt_agent0_000003",
+    "selection_mode": "selection",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 2,
+    "n_genes": 1,
+    "rolling_solve_rate": 1.0
+   }
+  ],
+  "genes": {
+   "gene_unicode_text_comparison": "## Strategy gene gene_unicode_text_comparison\nDomain keywords: unicode, text-equality, comparison, case\nSummary: Use proper Unicode normalization (NFC) and casefold() for text equality that ignores both representation and case differences.\nStrategy:\n1. Import unicodedata module.\n2. Apply NFC Unicode normalization to both input strings using unicodedata.normalize('NFC', ...).\n3. Use .casefold() (not .lower()) for proper Unicode case handling across scripts and edge cases (Turkish i, German \u00df, Greek sigma).\n4. Compare normalized, case-folded strings with ==.\n5. Test with combining characters (\u00e9 vs e+accent) and non-ASCII case-folding edge cases.\nAVOID:\n- Using .lower() instead of .casefold() for Unicode strings; casefold handles locale-dependent case rules and character expansion (\u00df\u2192ss).\n- Inconsistent or mixed normalization forms between inputs; always apply identical NFC to both.\n- Assuming ASCII case rules apply universally; validate against multi-script and combining-character inputs.\n"
+  },
+  "gene_validation": {
+   "gene_unicode_text_comparison": [
+    "python smoke_test.py",
+    "pytest -q smoke_test.py"
+   ]
+  },
+  "audit_ok": true,
+  "rollouts": 9,
+  "proposer_calls": 1,
+  "quarantined": 0,
+  "quarantine_rejected": 0,
+  "trace_overhead_usd": 0.126039,
+  "usage": {
+   "task": {
+    "calls": 47,
+    "input_tokens": 47319,
+    "output_tokens": 49255,
+    "cost_usd": 0.2935939999999999,
+    "latency_s": 517.2419435977936,
+    "total_tokens": 96574
+   },
+   "proposer": {
+    "calls": 1,
+    "input_tokens": 1578,
+    "output_tokens": 5646,
+    "cost_usd": 0.029807999999999998,
+    "latency_s": 55.40917634963989,
+    "total_tokens": 7224
+   },
+   "task:cached": {
+    "calls": 0,
+    "input_tokens": 7594,
+    "output_tokens": 7477,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 15071
+   },
+   "_total": {
+    "calls": 48,
+    "input_tokens": 48897,
+    "output_tokens": 54901,
+    "cost_usd": 0.3234019999999999,
+    "latency_s": 572.6511199474335,
+    "total_tokens": 103798
+   }
+  },
+  "transfer": {
+   "evolve": {
+    "no_genes": {
+     "S": 0.9,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 1.0,
+     "vs_reference": {
+      "mean_diff": 0.1,
+      "lo": 0.0,
+      "hi": 0.3,
+      "n": 5,
+      "p_better": 0.2
+     }
+    }
+   },
+   "holdout": {
+    "no_genes": {
+     "S": 1.0,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 1.0,
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 5,
+      "p_better": 0.0
+     }
+    }
+   }
+  }
+ },
+ "monitor": [
+  {
+   "round": 0,
+   "version": "seed(no genes)",
+   "artifact": "4ce5cbccd4",
+   "decision_score": null,
+   "sealed": {
+    "holdout": {
+     "S": 1.0,
+     "C": 1922.6,
+     "families": {
+      "boundaries": 1.0,
+      "unicode": 1.0,
+      "dates": 1.0,
+      "rounding": 1.0,
+      "retry": 1.0
+     }
+    }
+   },
+   "note": "shadow evaluation - never shown to the loop"
+  },
+  {
+   "round": 2,
+   "version": "library@c2",
+   "artifact": "e20182a48f",
+   "decision_score": 1.0,
+   "sealed": {
+    "holdout": {
+     "S": 1.0,
+     "C": 2099.7,
+     "families": {
+      "boundaries": 1.0,
+      "unicode": 1.0,
+      "dates": 1.0,
+      "rounding": 1.0,
+      "retry": 1.0
+     }
+    }
+   },
+   "note": "shadow evaluation - never shown to the loop"
+  }
+ ],
+ "llm_usage_all": {
+  "task": {
+   "calls": 49,
+   "input_tokens": 49697,
+   "output_tokens": 50721,
+   "cost_usd": 0.3033019999999999,
+   "latency_s": 534.5339229106903,
+   "total_tokens": 100418
+  },
+  "proposer": {
+   "calls": 1,
+   "input_tokens": 1578,
+   "output_tokens": 5646,
+   "cost_usd": 0.029807999999999998,
+   "latency_s": 55.40917634963989,
+   "total_tokens": 7224
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 44060,
+   "output_tokens": 41938,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 85998
+  },
+  "_total": {
+   "calls": 50,
+   "input_tokens": 95335,
+   "output_tokens": 98305,
+   "cost_usd": 0.3331099999999999,
+   "latency_s": 589.9430992603302,
+   "total_tokens": 193640
+  }
+ },
+ "cache": {
+  "hits": 46,
+  "misses": 50
+ }
+}

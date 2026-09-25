@@ -1,0 +1,153 @@
+{
+ "experiment": "live_smoke",
+ "generated_at": "2026-09-25 00:46:20",
+ "config": {
+  "llm": "claude:haiku",
+  "cycles": 8,
+  "mode": "safe",
+  "max_usd": 1.0
+ },
+ "trajectory": [
+  {
+   "cycle": 1,
+   "task_id": "chunk",
+   "source": "none",
+   "gene_id": null,
+   "task_score": 1.0,
+   "solidified": false,
+   "composite": 0.0,
+   "validation_ok": false
+  },
+  {
+   "cycle": 2,
+   "task_id": "money_total",
+   "source": "generated",
+   "gene_id": "gene_currency_integer_cents",
+   "task_score": 0.0,
+   "solidified": false,
+   "composite": 0.84,
+   "validation_ok": false
+  },
+  {
+   "cycle": 3,
+   "task_id": "round_half_up",
+   "source": "none",
+   "gene_id": null,
+   "task_score": 1.0,
+   "solidified": false,
+   "composite": 0.0,
+   "validation_ok": false
+  },
+  {
+   "cycle": 4,
+   "task_id": "strip_accents",
+   "source": "local",
+   "gene_id": "gene_unicode_nfkc_casefold",
+   "task_score": 1.0,
+   "solidified": true,
+   "composite": 0.96,
+   "validation_ok": true
+  },
+  {
+   "cycle": 5,
+   "task_id": "percent",
+   "source": "none",
+   "gene_id": null,
+   "task_score": 1.0,
+   "solidified": false,
+   "composite": 0.0,
+   "validation_ok": false
+  },
+  {
+   "cycle": 6,
+   "task_id": "pages_needed",
+   "source": "none",
+   "gene_id": null,
+   "task_score": 1.0,
+   "solidified": false,
+   "composite": 0.0,
+   "validation_ok": false
+  },
+  {
+   "cycle": 7,
+   "task_id": "same_text",
+   "source": "local",
+   "gene_id": "gene_unicode_nfkc_casefold",
+   "task_score": 1.0,
+   "solidified": true,
+   "composite": 0.95,
+   "validation_ok": true
+  },
+  {
+   "cycle": 8,
+   "task_id": "is_leap",
+   "source": "none",
+   "gene_id": null,
+   "task_score": 1.0,
+   "solidified": false,
+   "composite": 0.0,
+   "validation_ok": false
+  }
+ ],
+ "genes": [
+  "## Strategy gene gene_unicode_nfkc_casefold\nDomain keywords: unicode, text-equality, nfc-lower-fails\nSummary: After NFC+lower and NFD+casefold both fail independently, upgrade to NFKC (compatibility) normalization with casefold() for complete Unicode equivalence.\nStrategy:\n1. Replace 'NFC' with 'NFKC' in normalize() call\u2014NFKC handles compatibility decompositions (ligatures, variant forms, precomposed characters)\n2. Replace .lower() with .casefold()\u2014proper Unicode case-folding for edge cases (\u00df\u2192ss, \u0131\u2192i, etc.)\n3. Apply as: normalize('NFKC', text).casefold()\n4. Test with ligatures (\ufb01), combining marks, diacritics (\u00e9), and special case pairs\n5. If NFKC+casefold fails, try reverse order: text.casefold() then normalize('NFKC', ...)\nAVOID:\n- Staying with NFC when compatibility equivalences matter (ligatures, vertical forms, character variants)\n- Using .lower() alone without .casefold() for Unicode text\u2014casefold handles edge cases .lower() misses\n- Switching normalization forms without reconsidering case-folding strategy; both must evolve together\n"
+ ],
+ "gene_validations": {
+  "gene_unicode_nfkc_casefold": [
+   "python smoke_test.py"
+  ]
+ },
+ "audit": {
+  "ok": true,
+  "problems": [],
+  "n_checked": 40
+ },
+ "stop_reason": "max_rounds",
+ "holdout": {
+  "no_genes": 1.0,
+  "gene_library": 1.0
+ },
+ "holdout_paired": {
+  "mean_diff": 0.0,
+  "lo": 0.0,
+  "hi": 0.0,
+  "n": 10,
+  "p_better": 0.0
+ },
+ "usage": {
+  "task:cached": {
+   "calls": 26,
+   "input_tokens": 25073,
+   "output_tokens": 42675,
+   "cost_usd": 0.23844800000000002,
+   "latency_s": 418.4171438217163,
+   "total_tokens": 67748
+  },
+  "proposer": {
+   "calls": 1,
+   "input_tokens": 1579,
+   "output_tokens": 4633,
+   "cost_usd": 0.024744,
+   "latency_s": 48.04370856285095,
+   "total_tokens": 6212
+  },
+  "task": {
+   "calls": 3,
+   "input_tokens": 3672,
+   "output_tokens": 4999,
+   "cost_usd": 0.028666999999999998,
+   "latency_s": 52.953896284103394,
+   "total_tokens": 8671
+  },
+  "_total": {
+   "calls": 30,
+   "input_tokens": 30324,
+   "output_tokens": 52307,
+   "cost_usd": 0.29185900000000004,
+   "latency_s": 519.4147486686707,
+   "total_tokens": 82631
+  }
+ },
+ "wall_s": 102.0,
+ "loop_wall_s": 101.8
+}

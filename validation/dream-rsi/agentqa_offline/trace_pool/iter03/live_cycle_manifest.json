@@ -1,0 +1,34 @@
+{
+ "iteration": 3,
+ "planned_grid": {
+  "branch_count": 4,
+  "refine_count": 2,
+  "reason": "live best plateaued: widen to cover new directions"
+ },
+ "effective_grid": {
+  "branch_count": 4,
+  "refine_count": 2,
+  "reason": "live best plateaued: widen to cover new directions"
+ },
+ "opened_width": 4,
+ "max_depth": 1,
+ "probe_work": 8,
+ "decision_rounds": 3,
+ "batch_sizes": [
+  3,
+  3,
+  2
+ ],
+ "root_score": 1.0,
+ "round_best": 1.0,
+ "final_best": 1.0,
+ "beta": 0.6,
+ "gain_early": 0.0,
+ "gain_late": 0.0,
+ "fail_frac": 0.0,
+ "hard_fail_frac": 0.0,
+ "policy": "86e922d1a333",
+ "agent_calls": 8,
+ "plan_reason": "live best plateaued: widen to cover new directions",
+ "plan_error": null
+}

@@ -1,0 +1,6 @@
+--- a/prompts/task.md
++++ b/prompts/task.md
+@@ -1 +1,3 @@
+ {question}
++
++End your reply with a final line of the form 'ANSWER: <value>'.

@@ -1,0 +1,106 @@
+{
+ "checks": {
+  "gate_arithmetic_recomputed": "1/1",
+  "gate_used_base_metrics_of_round": "4/4",
+  "no_sealed_eval_in_lineages": "5/5",
+  "oracle_selection_recomputed": "1/1",
+  "variant_walk_rule": "0/0",
+  "firewall_trace_eq_sink_eq_driver": "1/1",
+  "firewall_verdict_recomputed": "0/0",
+  "only_firewall_survivors_composed": "1/1",
+  "composition_is_union": "0/0",
+  "diff_is_actual": "4/4"
+ },
+ "all_passed": true,
+ "problems": [],
+ "rows": [
+  {
+   "trace_round": 2,
+   "idea": "L2",
+   "kind_truth": "general",
+   "iteration": 0,
+   "change": "Intercept bash error outputs, extract critical failure lines, store full log in rt.store for recall, return condensed version to reduce context size and clarify errors",
+   "variant": 0,
+   "error": null,
+   "ralph_repairs": 0,
+   "files_changed": [
+    "extensions/condense_failing_logs.py",
+    "harness.json"
+   ],
+   "review": "reject: Critical path mismatch breaks recall mechanism (contract #3): The code stores the full log at `rt.store[f\"/{log_id}.txt\"]` but tells the agent to retrieve it fr",
+   "outcome": "rejected",
+   "next": "route back: next iteration"
+  },
+  {
+   "trace_round": 3,
+   "idea": "L2",
+   "kind_truth": "general",
+   "iteration": 1,
+   "change": "Intercept bash error outputs with long logs, extract failure-relevant lines (errors, stack traces, context), store full log in /.solpi/ with working recall path, return condensed version with cat inst",
+   "variant": 1,
+   "error": null,
+   "ralph_repairs": 0,
+   "files_changed": [
+    "extensions/condensed_error_logs.py",
+    "harness.json"
+   ],
+   "review": "reject: Critical: Storage path unverified \u2014 Code stores logs via `rt.store[store_path]` but instructs agent to recall via filesystem `cat /.solpi/full_log_{log_id}.txt`",
+   "outcome": "rejected",
+   "next": "lineage ends (max_iters)"
+  },
+  {
+   "trace_round": 4,
+   "idea": "L1",
+   "kind_truth": "general",
+   "iteration": 0,
+   "change": "Cache large tool outputs (>2000 chars) with compact summaries; retrieve via new tool to avoid replaying in context",
+   "variant": 0,
+   "error": null,
+   "ralph_repairs": 0,
+   "files_changed": [
+    "extensions/large_output_caching.py",
+    "harness.json"
+   ],
+   "review": "pass",
+   "gate": false,
+   "reason": "capability below floor",
+   "score": 0.8921,
+   "saving_tokens": 0.6549,
+   "saving_cost": 0.3592,
+   "cap_failed": true,
+   "outcome": "gate_failed",
+   "next": "route back to 01 with this candidate's rollouts"
+  },
+  {
+   "trace_round": 5,
+   "idea": "L1",
+   "kind_truth": "general",
+   "iteration": 1,
+   "change": "Compress large (>2000 char) tool outputs that replay identically in context, keeping first appearance intact",
+   "variant": 1,
+   "error": null,
+   "ralph_repairs": 0,
+   "files_changed": [
+    "extensions/deduplicate_outputs_in_context.py",
+    "harness.json"
+   ],
+   "review": "reject: No recall mechanism for removed information: The contract explicitly requires 'keep them recallable', but the implementation provides no way to retrieve full co",
+   "outcome": "rejected",
+   "next": "lineage ends (max_iters)"
+  }
+ ],
+ "firewall": [],
+ "ideas": {
+  "L2": {
+   "kind_truth": "general",
+   "frozen": false,
+   "survived": false
+  },
+  "L1": {
+   "kind_truth": "general",
+   "frozen": false,
+   "survived": false
+  }
+ },
+ "composed_extensions": []
+}
