@@ -1,0 +1,2 @@
+{"seed_score": 0.9104910395109694, "best_score": 1.0304168748055738, "calls_per_cycle": [12, 12, 12], "spend": {"loop_usd": 2.906, "shadow_monitor_usd": 0.0, "report_usd": 0.0}, "wall_s": 2352.7}
+audit: 3 FAIL ["dream t=1: each revision's trace diff = history code diff (base -> revision)", "every attempt's trace diff = parent -> child program diff from the snapshot store", "dream t=2: each revision's trace diff = history code diff (base -> revision)"]

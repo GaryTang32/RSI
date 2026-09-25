@@ -124,6 +124,10 @@ Runtime hook API (Python). An extension is a class `MECHANISM(Extension)` with `
 - rt.store: dict[path, text] private object store (bash can read paths under /.solpi/); rt.meter: TokenMeter
 - Message(role, content, tool_calls, tool_call_id, tool_name, is_error); m.with_content(text) copies a message.
 - ToolResult(content, is_error=False, details={}); raise ToolError(msg) for tool errors.
+Extension, ToolSpec, ToolResult, ToolError, Message and AgentRuntime are PRE-IMPORTED in the extension's namespace:
+do not import them (and do not import any agent SDK); only the Python standard library may be imported.
+A tool_result event has event.call (a ToolCall with .id, .name, .args) and event.result (a ToolResult); a tool
+message in `messages` has m.tool_call_id == event.call.id and m.tool_name == event.call.name.
 Mechanisms must fail open (on any exception keep the original behaviour) and must not hide information the agent
 needs to succeed; they must not mention particular tasks, files or environments."""
 
@@ -165,12 +169,14 @@ class LLMMechanismProposer:
             resp = self.llm.complete(prompt, role="proposer", seed=len(history))
             if not resp.ok:
                 return MechanismProposal(None, error=f"llm error: {resp.error}", usage=resp.usage)
-            return self._parse(resp.text, base, resp.usage, len(history))
+            out = self._parse(resp.text, base, resp.usage, len(history))
+            out.meta.update(prompt=prompt, reply=resp.text)
+            return out
         instr = (f"Implement ONE efficiency mechanism in this harness: {idea.title}. Goal: fewer tokens / lower cost "
                  f"at unchanged accuracy on unseen tasks. Evidence: {ev}. Earlier attempts:\n{self._history(history)}")
         p = self.editor.edit(base, instr, seed=len(history), role="proposer")
         return MechanismProposal(p.artifact if p.ok else None, change=p.change, usage=p.usage, error=p.error,
-                                 variant=len(history))
+                                 variant=len(history), meta={"prompt": instr, "reply": getattr(p, "raw", "")})
 
     def _parse(self, text, base, usage, variant) -> MechanismProposal:
         try:
@@ -202,7 +208,9 @@ class LLMMechanismProposer:
             return MechanismProposal(None, error=f"llm error: {resp.error}", usage=resp.usage)
         base = Artifact({k: v for k, v in prop.artifact.files.items() if not k.startswith("extensions/")})
         cfg = harness_config(base.files)
-        return self._parse(resp.text, base, resp.usage, prop.variant)
+        out = self._parse(resp.text, base, resp.usage, prop.variant)
+        out.meta.update(prompt=prompt, reply=resp.text)
+        return out
 
 
 REVIEW_PROMPT = """You are an independent reviewer in an auto-research loop. Check the implementation of the idea

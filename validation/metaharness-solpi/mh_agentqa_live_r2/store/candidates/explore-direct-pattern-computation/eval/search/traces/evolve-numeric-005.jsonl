@@ -1,0 +1,5 @@
+[python]
+n = 81**15
+print(sum(int(d) for d in str(n)))
+[output]
+99

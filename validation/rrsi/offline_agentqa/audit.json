@@ -1,9 +1,9 @@
 {
  "summary": {
-  "pass": 244,
+  "pass": 253,
   "fail": 0,
   "unverifiable": 0,
-  "info": 9
+  "info": 14
  },
  "checks": [
   {
@@ -109,112 +109,105 @@
    "status": "pass",
    "round": 0,
    "candidate": "r0A",
-   "detail": "4 edits, b_t=4"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "3 edits, b_t=4"
-  },
-  {
-   "check": "evaluated candidate passed the critic",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "2 review(s)"
-  },
-  {
-   "check": "S' = mean of raw trials",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S' = eval S'",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=0.375 re-derived=0.375"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=0.375 re-derived=0.375"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=0.625 re-derived=0.625"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "recorded=-0.8164969450101833 re-derived=-0.8164969450101833"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0A",
-   "detail": "floor 1.0000 >= 0.2278: True; cost rule dC=-0.8165 <= 25.1000: True -> True; loop said True (admissible: S'=1.0000 >= S*-delta=0.2278; dC=-0.816 <= beta0+beta1*dS=25.100)"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0B",
-   "detail": "3 edits, b_t=4"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
-   "round": 0,
-   "candidate": "r0B",
    "detail": "2 edits, b_t=4"
   },
   {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "1 edits, b_t=4"
+  },
+  {
    "check": "evaluated candidate passed the critic",
    "status": "pass",
    "round": 0,
-   "candidate": "r0B",
+   "candidate": "r0A",
    "detail": "2 review(s)"
   },
   {
    "check": "S' = mean of raw trials",
    "status": "pass",
    "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=0.0 re-derived=0.0"
+  },
+  {
+   "check": "gate S' = eval S'",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=0.0 re-derived=0.0"
+  },
+  {
+   "check": "gate S_t = incumbent S",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=0.375 re-derived=0.375"
+  },
+  {
+   "check": "gate S* = running max",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=0.375 re-derived=0.375"
+  },
+  {
+   "check": "gate delta = round delta",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "dS = S' - S_t",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=-0.375 re-derived=-0.375"
+  },
+  {
+   "check": "dC = (C' - C_t) / C_t",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "recorded=-0.9124915139171758 re-derived=-0.9124915139171758"
+  },
+  {
+   "check": "admissible = Alg. 2 re-derived",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0A",
+   "detail": "floor 0.0000 >= 0.2278: False; shaped 100.0*-0.3750 - 15.0*-0.9125 + 0.5*1 = -23.3126 > 0: False -> False; loop said False (below noise-adjusted floor: S'=0.0000 < S*-delta=0.2278 (S* 0.3750 - delta 0.1472))"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 0,
    "candidate": "r0B",
-   "detail": "recorded=0.5 re-derived=0.5"
+   "detail": "4 edits, b_t=4"
+  },
+  {
+   "check": "evaluated candidate passed the critic",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0B",
+   "detail": "1 review(s)"
+  },
+  {
+   "check": "S' = mean of raw trials",
+   "status": "pass",
+   "round": 0,
+   "candidate": "r0B",
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 0,
    "candidate": "r0B",
-   "detail": "recorded=0.5 re-derived=0.5"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "gate S_t = incumbent S",
@@ -242,56 +235,56 @@
    "status": "pass",
    "round": 0,
    "candidate": "r0B",
-   "detail": "recorded=0.125 re-derived=0.125"
+   "detail": "recorded=0.17500000000000004 re-derived=0.17500000000000004"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 0,
    "candidate": "r0B",
-   "detail": "recorded=0.024100475220638153 re-derived=0.024100475220638153"
+   "detail": "recorded=2.065274949083503 re-derived=2.065274949083503"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 0,
    "candidate": "r0B",
-   "detail": "floor 0.5000 >= 0.2278: True; shaped 100.0*+0.1250 - 15.0*+0.0241 + 0.5*0 = +12.1385 > 0: True -> True; loop said True (admissible: S'=0.5000 >= S*-delta=0.2278; within band: shaped=+12.138 (> 0))"
+   "detail": "floor 0.5500 >= 0.2278: True; cost rule dC=+2.0653 <= 7.1000: True -> True; loop said True (admissible: S'=0.5500 >= S*-delta=0.2278; dC=+2.065 <= beta0+beta1*dS=7.100)"
   },
   {
    "check": "winner = argmax S' over admissible (first on ties)",
    "status": "pass",
    "round": 0,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A' from admissible [('r0A', 1.0), ('r0B', 0.5)]"
+   "detail": "recorded='r0B' re-derived='r0B' from admissible [('r0B', 0.55)]"
   },
   {
    "check": "S* after = max(S*, S_{t+1})",
    "status": "pass",
    "round": 0,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "incumbent after",
    "status": "pass",
    "round": 0,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r0B' re-derived='r0B'"
   },
   {
    "check": "state incumbent = decision incumbent",
    "status": "pass",
    "round": 0,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r0B' re-derived='r0B'"
   },
   {
    "check": "shadow monitor scored the new incumbent",
    "status": "pass",
    "round": 0,
    "candidate": null,
-   "detail": "holdout: S=1.0000; ood: S=0.9167"
+   "detail": "holdout: S=0.6500; ood: S=0.5417"
   },
   {
    "check": "delta constant across rounds",
@@ -305,28 +298,28 @@
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r0B' re-derived='r0B'"
   },
   {
    "check": "S_t = measured S of the incumbent",
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "S* = running max of incumbent scores",
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "trajectory = incumbent score per settled round",
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded=[0.375, 1.0] re-derived=[0.375, 1.0]"
+   "detail": "recorded=[0.375, 0.55] re-derived=[0.375, 0.55]"
   },
   {
    "check": "b_t = Eq. (anneal)",
@@ -347,14 +340,14 @@
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded=['control_flow', 'prompt'] re-derived=['control_flow', 'prompt']"
+   "detail": "recorded=['control_flow', 'prompt', 'skill'] re-derived=['control_flow', 'prompt', 'skill']"
   },
   {
    "check": "U_t = K minus T_t",
    "status": "pass",
    "round": 1,
    "candidate": null,
-   "detail": "recorded=['tool', 'skill', 'memory', 'subagent'] re-derived=['tool', 'skill', 'memory', 'subagent']"
+   "detail": "recorded=['tool', 'memory', 'subagent'] re-derived=['tool', 'memory', 'subagent']"
   },
   {
    "check": "reserved variants = last m_draft when stalled",
@@ -368,42 +361,49 @@
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "4 edits, b_t=4"
+   "detail": "2 edits, b_t=4"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1A",
+   "detail": "1 edits, b_t=4"
   },
   {
    "check": "evaluated candidate passed the critic",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "1 review(s)"
+   "detail": "2 review(s)"
   },
   {
    "check": "S' = mean of raw trials",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=0.475 re-derived=0.475"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=0.475 re-derived=0.475"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S_t = incumbent S",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "gate S* = running max",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.55 re-derived=0.55"
   },
   {
    "check": "gate delta = round delta",
@@ -417,231 +417,252 @@
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=-0.525 re-derived=-0.525"
+   "detail": "recorded=0.19999999999999996 re-derived=0.19999999999999996"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "recorded=14.639104698483166 re-derived=14.639104698483166"
+   "detail": "recorded=0.020696986811069563 re-derived=0.020696986811069563"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 1,
    "candidate": "r1A",
-   "detail": "floor 0.4750 >= 0.8528: False; shaped 100.0*-0.5250 - 15.0*+14.6391 + 0.5*1 = -271.5866 > 0: False -> False; loop said False (below noise-adjusted floor: S'=0.4750 < S*-delta=0.8528 (S* 1.0000 - delta 0.1472))"
+   "detail": "floor 0.7500 >= 0.4028: True; cost rule dC=+0.0207 <= 8.1000: True -> True; loop said True (admissible: S'=0.7500 >= S*-delta=0.4028; dC=+0.021 <= beta0+beta1*dS=8.100)"
   },
   {
    "check": "shipped edits <= b_t",
    "status": "pass",
    "round": 1,
    "candidate": "r1B",
+   "detail": "2 edits, b_t=4"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "1 edits, b_t=4"
+  },
+  {
+   "check": "evaluated candidate passed the critic",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "2 review(s)"
+  },
+  {
+   "check": "S' = mean of raw trials",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S' = eval S'",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S_t = incumbent S",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.55 re-derived=0.55"
+  },
+  {
+   "check": "gate S* = running max",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.55 re-derived=0.55"
+  },
+  {
+   "check": "gate delta = round delta",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "dS = S' - S_t",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.09999999999999998 re-derived=0.09999999999999998"
+  },
+  {
+   "check": "dC = (C' - C_t) / C_t",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "recorded=0.3518930711050575 re-derived=0.3518930711050575"
+  },
+  {
+   "check": "admissible = Alg. 2 re-derived",
+   "status": "pass",
+   "round": 1,
+   "candidate": "r1B",
+   "detail": "floor 0.6500 >= 0.4028: True; shaped 100.0*+0.1000 - 15.0*+0.3519 + 0.5*1 = +5.2216 > 0: True -> True; loop said True (admissible: S'=0.6500 >= S*-delta=0.4028; within band: shaped=+5.222 (> 0))"
+  },
+  {
+   "check": "winner = argmax S' over admissible (first on ties)",
+   "status": "pass",
+   "round": 1,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A' from admissible [('r1A', 0.75), ('r1B', 0.65)]"
+  },
+  {
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "pass",
+   "round": 1,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "incumbent after",
+   "status": "pass",
+   "round": 1,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "state incumbent = decision incumbent",
+   "status": "pass",
+   "round": 1,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "shadow monitor scored the new incumbent",
+   "status": "pass",
+   "round": 1,
+   "candidate": null,
+   "detail": "holdout: S=0.4500; ood: S=0.7083"
+  },
+  {
+   "check": "delta constant across rounds",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "incumbent at round start = last decision's incumbent",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "S_t = measured S of the incumbent",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "S* = running max of incumbent scores",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "trajectory = incumbent score per settled round",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=[0.375, 0.55, 0.75] re-derived=[0.375, 0.55, 0.75]"
+  },
+  {
+   "check": "b_t = Eq. (anneal)",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=4 re-derived=4"
+  },
+  {
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=0 re-derived=0"
+  },
+  {
+   "check": "T_t = components of measured edits so far",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=['control_flow', 'prompt', 'skill', 'subagent'] re-derived=['control_flow', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "check": "U_t = K minus T_t",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=['tool', 'memory'] re-derived=['tool', 'memory']"
+  },
+  {
+   "check": "reserved variants = last m_draft when stalled",
+   "status": "pass",
+   "round": 2,
+   "candidate": null,
+   "detail": "recorded=[] re-derived=[]"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 2,
+   "candidate": "r2A",
+   "detail": "4 edits, b_t=4"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 2,
+   "candidate": "r2A",
    "detail": "3 edits, b_t=4"
   },
   {
    "check": "evaluated candidate passed the critic",
    "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "1 review(s)"
-  },
-  {
-   "check": "S' = mean of raw trials",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=0.625 re-derived=0.625"
-  },
-  {
-   "check": "gate S' = eval S'",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=0.625 re-derived=0.625"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=-0.375 re-derived=-0.375"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "recorded=2.1718460969293374 re-derived=2.1718460969293374"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 1,
-   "candidate": "r1B",
-   "detail": "floor 0.6250 >= 0.8528: False; shaped 100.0*-0.3750 - 15.0*+2.1718 + 0.5*1 = -69.5777 > 0: False -> False; loop said False (below noise-adjusted floor: S'=0.6250 < S*-delta=0.8528 (S* 1.0000 - delta 0.1472))"
-  },
-  {
-   "check": "winner = argmax S' over admissible (first on ties)",
-   "status": "pass",
-   "round": 1,
-   "candidate": null,
-   "detail": "recorded=None re-derived=None from admissible []"
-  },
-  {
-   "check": "S* after = max(S*, S_{t+1})",
-   "status": "pass",
-   "round": 1,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "incumbent after",
-   "status": "pass",
-   "round": 1,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "state incumbent = decision incumbent",
-   "status": "pass",
-   "round": 1,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "delta constant across rounds",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "incumbent at round start = last decision's incumbent",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "S_t = measured S of the incumbent",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "S* = running max of incumbent scores",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "trajectory = incumbent score per settled round",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0]"
-  },
-  {
-   "check": "b_t = Eq. (anneal)",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=4 re-derived=4"
-  },
-  {
-   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=0 re-derived=0"
-  },
-  {
-   "check": "T_t = components of measured edits so far",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=['control_flow', 'prompt', 'subagent'] re-derived=['control_flow', 'prompt', 'subagent']"
-  },
-  {
-   "check": "U_t = K minus T_t",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=['tool', 'skill', 'memory'] re-derived=['tool', 'skill', 'memory']"
-  },
-  {
-   "check": "reserved variants = last m_draft when stalled",
-   "status": "pass",
-   "round": 2,
-   "candidate": null,
-   "detail": "recorded=[] re-derived=[]"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "1 edits, b_t=4"
-  },
-  {
-   "check": "evaluated candidate passed the critic",
-   "status": "pass",
-   "round": 2,
-   "candidate": "r2A",
-   "detail": "1 review(s)"
+   "detail": "2 review(s)"
   },
   {
    "check": "S' = mean of raw trials",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=0.9 re-derived=0.9"
+   "detail": "recorded=0.575 re-derived=0.575"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=0.9 re-derived=0.9"
+   "detail": "recorded=0.575 re-derived=0.575"
   },
   {
    "check": "gate S_t = incumbent S",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S* = running max",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate delta = round delta",
@@ -655,63 +676,70 @@
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=-0.09999999999999998 re-derived=-0.09999999999999998"
+   "detail": "recorded=-0.17500000000000004 re-derived=-0.17500000000000004"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "recorded=0.3089160192378838 re-derived=0.3089160192378838"
+   "detail": "recorded=-0.07884173067742922 re-derived=-0.07884173067742922"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 2,
    "candidate": "r2A",
-   "detail": "floor 0.9000 >= 0.8528: True; shaped 100.0*-0.1000 - 15.0*+0.3089 + 0.5*1 = -14.1337 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-14.134 (<= 0))"
+   "detail": "floor 0.5750 >= 0.6028: False; shaped 100.0*-0.1750 - 15.0*-0.0788 + 0.5*1 = -15.8174 > 0: False -> False; loop said False (below noise-adjusted floor: S'=0.5750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472))"
   },
   {
    "check": "shipped edits <= b_t",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "1 edits, b_t=4"
+   "detail": "4 edits, b_t=4"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 2,
+   "candidate": "r2B",
+   "detail": "3 edits, b_t=4"
   },
   {
    "check": "evaluated candidate passed the critic",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "1 review(s)"
+   "detail": "2 review(s)"
   },
   {
    "check": "S' = mean of raw trials",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=0.9 re-derived=0.9"
+   "detail": "recorded=0.625 re-derived=0.625"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=0.9 re-derived=0.9"
+   "detail": "recorded=0.625 re-derived=0.625"
   },
   {
    "check": "gate S_t = incumbent S",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S* = running max",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate delta = round delta",
@@ -725,21 +753,21 @@
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=-0.09999999999999998 re-derived=-0.09999999999999998"
+   "detail": "recorded=-0.125 re-derived=-0.125"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "recorded=0.3089160192378838 re-derived=0.3089160192378838"
+   "detail": "recorded=-0.07882003211387406 re-derived=-0.07882003211387406"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 2,
    "candidate": "r2B",
-   "detail": "floor 0.9000 >= 0.8528: True; shaped 100.0*-0.1000 - 15.0*+0.3089 + 0.5*1 = -14.1337 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-14.134 (<= 0))"
+   "detail": "floor 0.6250 >= 0.6028: True; shaped 100.0*-0.1250 - 15.0*-0.0788 + 0.5*1 = -10.8177 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-10.818 (<= 0))"
   },
   {
    "check": "winner = argmax S' over admissible (first on ties)",
@@ -753,21 +781,21 @@
    "status": "pass",
    "round": 2,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "incumbent after",
    "status": "pass",
    "round": 2,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "state incumbent = decision incumbent",
    "status": "pass",
    "round": 2,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "delta constant across rounds",
@@ -781,28 +809,28 @@
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "S_t = measured S of the incumbent",
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "S* = running max of incumbent scores",
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "trajectory = incumbent score per settled round",
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0, 1.0]"
+   "detail": "recorded=[0.375, 0.55, 0.75, 0.75] re-derived=[0.375, 0.55, 0.75, 0.75]"
   },
   {
    "check": "b_t = Eq. (anneal)",
@@ -840,6 +868,13 @@
    "detail": "recorded=[] re-derived=[]"
   },
   {
+   "check": "proposer shipped nothing (done() with no edits and no file changes)",
+   "status": "info",
+   "round": 3,
+   "candidate": "r3A",
+   "detail": "critic repair 1; the candidate was dropped as critic_reject"
+  },
+  {
    "check": "shipped edits <= b_t",
    "status": "pass",
    "round": 3,
@@ -847,67 +882,25 @@
    "detail": "1 edits, b_t=4"
   },
   {
-   "check": "evaluated candidate passed the critic",
+   "check": "dropped candidate was not evaluated",
    "status": "pass",
    "round": 3,
    "candidate": "r3A",
-   "detail": "1 review(s)"
+   "detail": "gate failure critic_reject"
   },
   {
-   "check": "S' = mean of raw trials",
+   "check": "critic_reject follows a rejecting final verdict",
    "status": "pass",
    "round": 3,
    "candidate": "r3A",
-   "detail": "recorded=0.925 re-derived=0.925"
+   "detail": ""
   },
   {
-   "check": "gate S' = eval S'",
-   "status": "pass",
+   "check": "proposer shipped nothing (done() with no edits and no file changes)",
+   "status": "info",
    "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=0.925 re-derived=0.925"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=-0.07499999999999996 re-derived=-0.07499999999999996"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "recorded=0.23048464668886426 re-derived=0.23048464668886426"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3A",
-   "detail": "floor 0.9250 >= 0.8528: True; shaped 100.0*-0.0750 - 15.0*+0.2305 + 0.5*0 = -10.9573 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-10.957 (<= 0))"
+   "candidate": "r3B",
+   "detail": "critic repair 1; the candidate was dropped as critic_reject"
   },
   {
    "check": "shipped edits <= b_t",
@@ -917,67 +910,18 @@
    "detail": "1 edits, b_t=4"
   },
   {
-   "check": "evaluated candidate passed the critic",
+   "check": "dropped candidate was not evaluated",
    "status": "pass",
    "round": 3,
    "candidate": "r3B",
-   "detail": "1 review(s)"
+   "detail": "gate failure critic_reject"
   },
   {
-   "check": "S' = mean of raw trials",
+   "check": "critic_reject follows a rejecting final verdict",
    "status": "pass",
    "round": 3,
    "candidate": "r3B",
-   "detail": "recorded=0.975 re-derived=0.975"
-  },
-  {
-   "check": "gate S' = eval S'",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=0.975 re-derived=0.975"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=-0.025000000000000022 re-derived=-0.025000000000000022"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "recorded=0.11838697743248242 re-derived=0.11838697743248242"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 3,
-   "candidate": "r3B",
-   "detail": "floor 0.9750 >= 0.8528: True; shaped 100.0*-0.0250 - 15.0*+0.1184 + 0.5*0 = -4.2758 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-4.276 (<= 0))"
+   "detail": ""
   },
   {
    "check": "winner = argmax S' over admissible (first on ties)",
@@ -991,21 +935,21 @@
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "incumbent after",
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "state incumbent = decision incumbent",
    "status": "pass",
    "round": 3,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "delta constant across rounds",
@@ -1019,28 +963,28 @@
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "S_t = measured S of the incumbent",
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "S* = running max of incumbent scores",
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "trajectory = incumbent score per settled round",
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0, 1.0, 1.0]"
+   "detail": "recorded=[0.375, 0.55, 0.75, 0.75, 0.75] re-derived=[0.375, 0.55, 0.75, 0.75, 0.75]"
   },
   {
    "check": "b_t = Eq. (anneal)",
@@ -1054,7 +998,7 @@
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=1 re-derived=1"
+   "detail": "recorded=0 re-derived=0"
   },
   {
    "check": "T_t = components of measured edits so far",
@@ -1075,7 +1019,7 @@
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=['B'] re-derived=['B']"
+   "detail": "recorded=[] re-derived=[]"
   },
   {
    "check": "shipped edits <= b_t",
@@ -1096,28 +1040,28 @@
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=0.95 re-derived=0.95"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=0.95 re-derived=0.95"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S_t = incumbent S",
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S* = running max",
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate delta = round delta",
@@ -1131,35 +1075,91 @@
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=-0.050000000000000044 re-derived=-0.050000000000000044"
+   "detail": "recorded=0.0 re-derived=0.0"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "recorded=0.1187569367369588 re-derived=0.1187569367369588"
+   "detail": "recorded=0.01972399427157914 re-derived=0.01972399427157914"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 4,
    "candidate": "r4A",
-   "detail": "floor 0.9500 >= 0.8528: True; shaped 100.0*-0.0500 - 15.0*+0.1188 + 0.5*0 = -6.7814 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-6.781 (<= 0))"
+   "detail": "floor 0.7500 >= 0.6028: True; shaped 100.0*+0.0000 - 15.0*+0.0197 + 0.5*0 = -0.2959 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-0.296 (<= 0))"
   },
   {
-   "check": "proposer shipped nothing (done() with no edits and no file changes)",
-   "status": "info",
-   "round": 4,
-   "candidate": "r4B",
-   "detail": "the candidate is dropped as no_proposal"
-  },
-  {
-   "check": "dropped candidate was not evaluated",
+   "check": "shipped edits <= b_t",
    "status": "pass",
    "round": 4,
    "candidate": "r4B",
-   "detail": "gate failure no_proposal"
+   "detail": "1 edits, b_t=3"
+  },
+  {
+   "check": "evaluated candidate passed the critic",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "1 review(s)"
+  },
+  {
+   "check": "S' = mean of raw trials",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.675 re-derived=0.675"
+  },
+  {
+   "check": "gate S' = eval S'",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.675 re-derived=0.675"
+  },
+  {
+   "check": "gate S_t = incumbent S",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "gate S* = running max",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "gate delta = round delta",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "dS = S' - S_t",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=-0.07499999999999996 re-derived=-0.07499999999999996"
+  },
+  {
+   "check": "dC = (C' - C_t) / C_t",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "recorded=0.01972399427157914 re-derived=0.01972399427157914"
+  },
+  {
+   "check": "admissible = Alg. 2 re-derived",
+   "status": "pass",
+   "round": 4,
+   "candidate": "r4B",
+   "detail": "floor 0.6750 >= 0.6028: True; shaped 100.0*-0.0750 - 15.0*+0.0197 + 0.5*0 = -7.7959 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-7.796 (<= 0))"
   },
   {
    "check": "winner = argmax S' over admissible (first on ties)",
@@ -1173,21 +1173,21 @@
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "incumbent after",
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "state incumbent = decision incumbent",
    "status": "pass",
    "round": 4,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "delta constant across rounds",
@@ -1201,28 +1201,28 @@
    "status": "pass",
    "round": 5,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r1A' re-derived='r1A'"
   },
   {
    "check": "S_t = measured S of the incumbent",
    "status": "pass",
    "round": 5,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "S* = running max of incumbent scores",
    "status": "pass",
    "round": 5,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "trajectory = incumbent score per settled round",
    "status": "pass",
    "round": 5,
    "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0]"
+   "detail": "recorded=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75] re-derived=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75]"
   },
   {
    "check": "b_t = Eq. (anneal)",
@@ -1267,20 +1267,6 @@
    "detail": "1 edits, b_t=2"
   },
   {
-   "check": "done() bounce",
-   "status": "info",
-   "round": 5,
-   "candidate": "r5A",
-   "detail": "bounced: edits declared but zero file changes"
-  },
-  {
-   "check": "done() bounce",
-   "status": "info",
-   "round": 5,
-   "candidate": "r5A",
-   "detail": "bounced: edits declared but zero file changes"
-  },
-  {
    "check": "evaluated candidate passed the critic",
    "status": "pass",
    "round": 5,
@@ -1292,28 +1278,28 @@
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=0.95 re-derived=0.95"
+   "detail": "recorded=0.475 re-derived=0.475"
   },
   {
    "check": "gate S' = eval S'",
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=0.95 re-derived=0.95"
+   "detail": "recorded=0.475 re-derived=0.475"
   },
   {
    "check": "gate S_t = incumbent S",
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate S* = running max",
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "gate delta = round delta",
@@ -1327,21 +1313,42 @@
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=-0.050000000000000044 re-derived=-0.050000000000000044"
+   "detail": "recorded=-0.275 re-derived=-0.275"
   },
   {
    "check": "dC = (C' - C_t) / C_t",
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "recorded=0.23085460599334065 re-derived=0.23085460599334065"
+   "detail": "recorded=-0.6666666666666667 re-derived=-0.6666666666666667"
   },
   {
    "check": "admissible = Alg. 2 re-derived",
    "status": "pass",
    "round": 5,
    "candidate": "r5A",
-   "detail": "floor 0.9500 >= 0.8528: True; shaped 100.0*-0.0500 - 15.0*+0.2309 + 0.5*0 = -8.4628 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-8.463 (<= 0))"
+   "detail": "floor 0.4750 >= 0.6028: False; shaped 100.0*-0.2750 - 15.0*-0.6667 + 0.5*0 = -17.5000 > 0: False -> False; loop said False (below noise-adjusted floor: S'=0.4750 < S*-delta=0.6028 (S* 0.7500 - delta 0.1472))"
+  },
+  {
+   "check": "proposer shipped nothing (done() with no edits and no file changes)",
+   "status": "info",
+   "round": 5,
+   "candidate": "r5B",
+   "detail": "critic repair 1; the candidate was dropped as critic_reject"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 5,
+   "candidate": "r5B",
+   "detail": "1 edits, b_t=2"
+  },
+  {
+   "check": "reserved slot declares an untried component",
+   "status": "pass",
+   "round": 5,
+   "candidate": "r5B",
+   "detail": "declared ['memory'], U_t=['tool', 'memory']"
   },
   {
    "check": "done() bounce",
@@ -1355,392 +1362,483 @@
    "status": "info",
    "round": 5,
    "candidate": "r5B",
-   "detail": "bounced: done() contract violated: ['edits array is empty']"
+   "detail": "bounced: edits declared but zero file changes"
+  },
+  {
+   "check": "dropped candidate was not evaluated",
+   "status": "pass",
+   "round": 5,
+   "candidate": "r5B",
+   "detail": "gate failure critic_reject"
+  },
+  {
+   "check": "critic_reject follows a rejecting final verdict",
+   "status": "pass",
+   "round": 5,
+   "candidate": "r5B",
+   "detail": ""
+  },
+  {
+   "check": "winner = argmax S' over admissible (first on ties)",
+   "status": "pass",
+   "round": 5,
+   "candidate": null,
+   "detail": "recorded=None re-derived=None from admissible []"
+  },
+  {
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "pass",
+   "round": 5,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "incumbent after",
+   "status": "pass",
+   "round": 5,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "state incumbent = decision incumbent",
+   "status": "pass",
+   "round": 5,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "delta constant across rounds",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "incumbent at round start = last decision's incumbent",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded='r1A' re-derived='r1A'"
+  },
+  {
+   "check": "S_t = measured S of the incumbent",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "S* = running max of incumbent scores",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "trajectory = incumbent score per settled round",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75, 0.75] re-derived=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75, 0.75]"
+  },
+  {
+   "check": "b_t = Eq. (anneal)",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=2 re-derived=2"
+  },
+  {
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=1 re-derived=1"
+  },
+  {
+   "check": "T_t = components of measured edits so far",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=['control_flow', 'prompt', 'skill', 'subagent'] re-derived=['control_flow', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "check": "U_t = K minus T_t",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=['tool', 'memory'] re-derived=['tool', 'memory']"
+  },
+  {
+   "check": "reserved variants = last m_draft when stalled",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=['B'] re-derived=['B']"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "1 edits, b_t=2"
+  },
+  {
+   "check": "evaluated candidate passed the critic",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "1 review(s)"
+  },
+  {
+   "check": "S' = mean of raw trials",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S' = eval S'",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S_t = incumbent S",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "gate S* = running max",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "gate delta = round delta",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "dS = S' - S_t",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=-0.09999999999999998 re-derived=-0.09999999999999998"
+  },
+  {
+   "check": "dC = (C' - C_t) / C_t",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "recorded=-0.7281603957817993 re-derived=-0.7281603957817993"
+  },
+  {
+   "check": "admissible = Alg. 2 re-derived",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6A",
+   "detail": "floor 0.6500 >= 0.6028: True; shaped 100.0*-0.1000 - 15.0*-0.7282 + 0.5*0 = +0.9224 > 0: True -> True; loop said True (admissible: S'=0.6500 >= S*-delta=0.6028; within band: shaped=+0.922 (> 0))"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "2 edits, b_t=2"
+  },
+  {
+   "check": "reserved slot declares an untried component",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "declared ['memory', 'prompt'], U_t=['tool', 'memory']"
   },
   {
    "check": "done() bounce",
    "status": "info",
-   "round": 5,
-   "candidate": "r5B",
+   "round": 6,
+   "candidate": "r6B",
    "detail": "bounced: done() contract violated: [\"this variant holds a RESERVED EXPLORATION SLOT: at least one edit must be on a never-exercised component from ['tool', 'memory']\"]"
   },
   {
    "check": "done() bounce",
    "status": "info",
-   "round": 5,
-   "candidate": "r5B",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "bounced: edits declared but zero file changes"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "bounced: edits declared but zero file changes"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "bounced: edits declared but zero file changes"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "bounced: edits declared but zero file changes"
+  },
+  {
+   "check": "dropped candidate was not evaluated",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": "gate failure critic_reject"
+  },
+  {
+   "check": "critic_reject follows a rejecting final verdict",
+   "status": "pass",
+   "round": 6,
+   "candidate": "r6B",
+   "detail": ""
+  },
+  {
+   "check": "winner = argmax S' over admissible (first on ties)",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded='r6A' re-derived='r6A' from admissible [('r6A', 0.65)]"
+  },
+  {
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "incumbent after",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded='r6A' re-derived='r6A'"
+  },
+  {
+   "check": "state incumbent = decision incumbent",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "recorded='r6A' re-derived='r6A'"
+  },
+  {
+   "check": "shadow monitor scored the new incumbent",
+   "status": "pass",
+   "round": 6,
+   "candidate": null,
+   "detail": "holdout: S=0.4500; ood: S=0.6250"
+  },
+  {
+   "check": "delta constant across rounds",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "incumbent at round start = last decision's incumbent",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded='r6A' re-derived='r6A'"
+  },
+  {
+   "check": "S_t = measured S of the incumbent",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "S* = running max of incumbent scores",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "trajectory = incumbent score per settled round",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75, 0.75, 0.65] re-derived=[0.375, 0.55, 0.75, 0.75, 0.75, 0.75, 0.75, 0.65]"
+  },
+  {
+   "check": "b_t = Eq. (anneal)",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=2 re-derived=2"
+  },
+  {
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=1 re-derived=1"
+  },
+  {
+   "check": "T_t = components of measured edits so far",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=['control_flow', 'prompt', 'skill', 'subagent'] re-derived=['control_flow', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "check": "U_t = K minus T_t",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=['tool', 'memory'] re-derived=['tool', 'memory']"
+  },
+  {
+   "check": "reserved variants = last m_draft when stalled",
+   "status": "pass",
+   "round": 7,
+   "candidate": null,
+   "detail": "recorded=['B'] re-derived=['B']"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "1 edits, b_t=2"
+  },
+  {
+   "check": "evaluated candidate passed the critic",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "1 review(s)"
+  },
+  {
+   "check": "S' = mean of raw trials",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S' = eval S'",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S_t = incumbent S",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.65 re-derived=0.65"
+  },
+  {
+   "check": "gate S* = running max",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.75 re-derived=0.75"
+  },
+  {
+   "check": "gate delta = round delta",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.147196 re-derived=0.147196"
+  },
+  {
+   "check": "dS = S' - S_t",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=0.0 re-derived=0.0"
+  },
+  {
+   "check": "dC = (C' - C_t) / C_t",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "recorded=2.6786398467432955 re-derived=2.6786398467432955"
+  },
+  {
+   "check": "admissible = Alg. 2 re-derived",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7A",
+   "detail": "floor 0.6500 >= 0.6028: True; shaped 100.0*+0.0000 - 15.0*+2.6786 + 0.5*0 = -40.1796 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-40.180 (<= 0))"
+  },
+  {
+   "check": "shipped edits <= b_t",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7B",
+   "detail": "1 edits, b_t=2"
+  },
+  {
+   "check": "reserved slot declares an untried component",
+   "status": "pass",
+   "round": 7,
+   "candidate": "r7B",
+   "detail": "declared ['memory'], U_t=['tool', 'memory']"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 7,
+   "candidate": "r7B",
+   "detail": "bounced: done() contract violated: [\"this variant holds a RESERVED EXPLORATION SLOT: at least one edit must be on a never-exercised component from ['tool', 'memory']\"]"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 7,
+   "candidate": "r7B",
+   "detail": "bounced: done() contract violated: ['edits array is empty']"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 7,
+   "candidate": "r7B",
+   "detail": "bounced: done() contract violated: ['edits array is empty']"
+  },
+  {
+   "check": "done() bounce",
+   "status": "info",
+   "round": 7,
+   "candidate": "r7B",
    "detail": "bounced: done() contract violated: ['edits array is empty']"
   },
   {
    "check": "dropped candidate was not evaluated",
    "status": "pass",
-   "round": 5,
-   "candidate": "r5B",
-   "detail": "gate failure no_proposal"
-  },
-  {
-   "check": "winner = argmax S' over admissible (first on ties)",
-   "status": "pass",
-   "round": 5,
-   "candidate": null,
-   "detail": "recorded=None re-derived=None from admissible []"
-  },
-  {
-   "check": "S* after = max(S*, S_{t+1})",
-   "status": "pass",
-   "round": 5,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "incumbent after",
-   "status": "pass",
-   "round": 5,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "state incumbent = decision incumbent",
-   "status": "pass",
-   "round": 5,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "delta constant across rounds",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "incumbent at round start = last decision's incumbent",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "S_t = measured S of the incumbent",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "S* = running max of incumbent scores",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "trajectory = incumbent score per settled round",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]"
-  },
-  {
-   "check": "b_t = Eq. (anneal)",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=2 re-derived=2"
-  },
-  {
-   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=1 re-derived=1"
-  },
-  {
-   "check": "T_t = components of measured edits so far",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=['control_flow', 'prompt', 'skill', 'subagent'] re-derived=['control_flow', 'prompt', 'skill', 'subagent']"
-  },
-  {
-   "check": "U_t = K minus T_t",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=['tool', 'memory'] re-derived=['tool', 'memory']"
-  },
-  {
-   "check": "reserved variants = last m_draft when stalled",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=['B'] re-derived=['B']"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "1 edits, b_t=2"
-  },
-  {
-   "check": "evaluated candidate passed the critic",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "1 review(s)"
-  },
-  {
-   "check": "S' = mean of raw trials",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=0.95 re-derived=0.95"
-  },
-  {
-   "check": "gate S' = eval S'",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=0.95 re-derived=0.95"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=-0.050000000000000044 re-derived=-0.050000000000000044"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "recorded=8.273399926008137 re-derived=8.273399926008137"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6A",
-   "detail": "floor 0.9500 >= 0.8528: True; shaped 100.0*-0.0500 - 15.0*+8.2734 + 0.5*0 = -129.1010 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-129.101 (<= 0))"
-  },
-  {
-   "check": "proposer shipped nothing (done() with no edits and no file changes)",
-   "status": "info",
-   "round": 6,
-   "candidate": "r6B",
-   "detail": "the candidate is dropped as no_proposal"
-  },
-  {
-   "check": "dropped candidate was not evaluated",
-   "status": "pass",
-   "round": 6,
-   "candidate": "r6B",
-   "detail": "gate failure no_proposal"
-  },
-  {
-   "check": "winner = argmax S' over admissible (first on ties)",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=None re-derived=None from admissible []"
-  },
-  {
-   "check": "S* after = max(S*, S_{t+1})",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "incumbent after",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "state incumbent = decision incumbent",
-   "status": "pass",
-   "round": 6,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "delta constant across rounds",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "incumbent at round start = last decision's incumbent",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
-  },
-  {
-   "check": "S_t = measured S of the incumbent",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "S* = running max of incumbent scores",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "trajectory = incumbent score per settled round",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] re-derived=[0.375, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]"
-  },
-  {
-   "check": "b_t = Eq. (anneal)",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=2 re-derived=2"
-  },
-  {
-   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=1 re-derived=1"
-  },
-  {
-   "check": "T_t = components of measured edits so far",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=['control_flow', 'prompt', 'skill', 'subagent'] re-derived=['control_flow', 'prompt', 'skill', 'subagent']"
-  },
-  {
-   "check": "U_t = K minus T_t",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=['tool', 'memory'] re-derived=['tool', 'memory']"
-  },
-  {
-   "check": "reserved variants = last m_draft when stalled",
-   "status": "pass",
-   "round": 7,
-   "candidate": null,
-   "detail": "recorded=['B'] re-derived=['B']"
-  },
-  {
-   "check": "shipped edits <= b_t",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "1 edits, b_t=2"
-  },
-  {
-   "check": "evaluated candidate passed the critic",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "1 review(s)"
-  },
-  {
-   "check": "S' = mean of raw trials",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=0.95 re-derived=0.95"
-  },
-  {
-   "check": "gate S' = eval S'",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=0.95 re-derived=0.95"
-  },
-  {
-   "check": "gate S_t = incumbent S",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate S* = running max",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=1.0 re-derived=1.0"
-  },
-  {
-   "check": "gate delta = round delta",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=0.147196 re-derived=0.147196"
-  },
-  {
-   "check": "dS = S' - S_t",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=-0.050000000000000044 re-derived=-0.050000000000000044"
-  },
-  {
-   "check": "dC = (C' - C_t) / C_t",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "recorded=-0.13891971883092863 re-derived=-0.13891971883092863"
-  },
-  {
-   "check": "admissible = Alg. 2 re-derived",
-   "status": "pass",
-   "round": 7,
-   "candidate": "r7A",
-   "detail": "floor 0.9500 >= 0.8528: True; shaped 100.0*-0.0500 - 15.0*-0.1389 + 0.5*0 = -2.9162 > 0: False -> False; loop said False (cost rule failed: within band: shaped=-2.916 (<= 0))"
-  },
-  {
-   "check": "proposer shipped nothing (done() with no edits and no file changes)",
-   "status": "info",
    "round": 7,
    "candidate": "r7B",
-   "detail": "the candidate is dropped as no_proposal"
+   "detail": "gate failure critic_reject"
   },
   {
-   "check": "dropped candidate was not evaluated",
+   "check": "critic_reject follows a rejecting final verdict",
    "status": "pass",
    "round": 7,
    "candidate": "r7B",
-   "detail": "gate failure no_proposal"
+   "detail": ""
   },
   {
    "check": "winner = argmax S' over admissible (first on ties)",
@@ -1754,28 +1852,28 @@
    "status": "pass",
    "round": 7,
    "candidate": null,
-   "detail": "recorded=1.0 re-derived=1.0"
+   "detail": "recorded=0.75 re-derived=0.75"
   },
   {
    "check": "incumbent after",
    "status": "pass",
    "round": 7,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r6A' re-derived='r6A'"
   },
   {
    "check": "state incumbent = decision incumbent",
    "status": "pass",
    "round": 7,
    "candidate": null,
-   "detail": "recorded='r0A' re-derived='r0A'"
+   "detail": "recorded='r6A' re-derived='r6A'"
   },
   {
    "check": "sealed holdout/ood tasks never appear in search-LLM inputs",
    "status": "pass",
    "round": null,
    "candidate": null,
-   "detail": "37 prompts scanned for 87 sealed ids/questions; hits: []"
+   "detail": "47 prompts scanned for 87 sealed ids/questions; hits: []"
   }
  ]
 }

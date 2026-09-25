@@ -1,0 +1,59 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/fewshot_all/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/fewshot_all/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 11,
+ "files_read_by_kind": {
+  "code": 2,
+  "traces": 6,
+  "scores": 3,
+  "other": 0
+ },
+ "view_files": 20,
+ "view_chars": 579542,
+ "read_chars": 570330,
+ "error": null,
+ "seconds": 0.006,
+ "candidates": [
+  {
+   "name": "i01_0_retrieve_topk",
+   "base_system": "fewshot_all",
+   "hypothesis": "Showing only the demonstrations most similar to the query keeps the prompt inside the model's effective context and removes distracting examples, raising accuracy at lower context.",
+   "axis": "exploitation",
+   "components": [
+    "retrieve_topk",
+    "axis:C"
+   ]
+  },
+  {
+   "name": "i01_1_label_list",
+   "base_system": "no_memory",
+   "hypothesis": "Listing every label seen so far lets the model name labels without a retrieved example.",
+   "axis": "exploration",
+   "components": [
+    "label_list",
+    "axis:A"
+   ]
+  }
+ ]
+}

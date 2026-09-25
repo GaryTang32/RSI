@@ -198,7 +198,8 @@ class Lineage:
     def __init__(self, idea: Idea, *, evaluator: Evaluator, gate: DualGate, proposer: MechanismProposer,
                  reviewer: Reviewer, base: Artifact, base_metrics: Metrics, screen_split: str = "evolve",
                  rollout_tasks_per_family: int = 2, k: int = 1, max_iters: int = 4, ralph_max: int = 3,
-                 workdir: Optional[Path] = None, ledger: Optional[Ledger] = None, sweep: bool = False) -> None:
+                 workdir: Optional[Path] = None, ledger: Optional[Ledger] = None, sweep: bool = False,
+                 tracer=None) -> None:
         self.idea, self.ev, self.gate, self.proposer, self.reviewer = idea, evaluator, gate, proposer, reviewer
         self.base, self.base_metrics = base, base_metrics
         self.split, self.k, self.max_iters, self.ralph_max = screen_split, k, max_iters, ralph_max
@@ -206,6 +207,7 @@ class Lineage:
         self.workdir = workdir
         self.ledger = ledger
         self.sweep = sweep
+        self.tracer = tracer            # write-only audit trace (rsi.solpi.tracing.SolpiTracer) or None
         fams = gate.spec.families
         tasks = evaluator.domain.tasks.split(screen_split)
         self.screen = [t for t in tasks if fams is None or t.family in fams]
@@ -219,41 +221,65 @@ class Lineage:
         return out
 
     def run(self) -> LineageResult:
+        res = self._run()
+        if self.tracer is not None:
+            self.tracer.lineage_end(self, res)
+        return res
+
+    def _run(self) -> LineageResult:
         idea = self.idea
         history: list[dict] = []
         current = self.base
         usage = Usage()
         parent = None
         passing: list[FrozenCandidate] = []
+        tr = self.tracer
         for it in range(self.max_iters):
+            if tr is not None:
+                tr.lineage_iter_start(self, it, history)
             # 01 rollouts + 02 map-reduce analysis
             ro = self.ev.evaluate(current, self._rollout_tasks(), k=1, label="rollouts")
             evidence = reduce_findings([analyze(t) for trs in ro.trials.values() for t in trs])
+            if tr is not None:
+                tr.rollouts(current, ro, evidence)
             # 03 proposal (one mechanism) + 04 implementation (Ralph loop)
             prop = self.proposer.propose(idea, self.base, evidence, history)
             usage = usage + prop.usage
             prop, ralph_errors = implement(self.proposer, idea, prop, lambda a: self.ev.domain.smoke(a, self.ev.llm),
                                            self.ralph_max)
+            name = tr.proposal(self, it, prop, ralph_errors, self.base) if tr is not None else ""
             row: dict[str, Any] = {"iteration": it, "change": prop.change, "variant": prop.variant,
                                    "ralph_errors": ralph_errors}
             if prop.artifact is None or prop.error:
                 row.update(stage="implementation", outcome="abandoned", error=prop.error)
                 history.append(row)
                 self._log(row, None, parent)
-                if prop.meta.get("exhausted"):
+                stop = bool(prop.meta.get("exhausted"))
+                if tr is not None:
+                    tr.decision(self, name, row, False, "lineage ends (proposer exhausted)" if stop else
+                                ("next iteration (01 new rollouts)" if it + 1 < self.max_iters else
+                                 "lineage ends (max_iters)"))
+                if stop:
                     break
                 continue
             # 05 independent review
             ok, why = self.reviewer.review(idea, self.base, prop.artifact)
+            if tr is not None:
+                tr.review(name, ok, why, self.reviewer)
             if not ok:
                 row.update(stage="review", outcome="rejected", error=why)
                 history.append(row)
                 self._log(row, prop.artifact, parent)
+                if tr is not None:
+                    tr.decision(self, name, row, False, "route back: next iteration" if it + 1 < self.max_iters
+                                else "lineage ends (max_iters)")
                 continue
             # 06 in-trajectory validation on the training screen + dual gate
             vr = self.ev.evaluate(prop.artifact, self.screen, k=self.k, label="screen")
             m = metrics_from_eval(vr)
             g = self.gate.accept(self.base_metrics, m)
+            if tr is not None:
+                tr.validation(name, vr, m, g)
             row.update(stage="validation", outcome="frozen" if g.accept else "gate_failed", gate=g.to_json(),
                        metrics=m.to_json())
             history.append(row)
@@ -261,9 +287,15 @@ class Lineage:
             parent = node.id if node else parent
             if g.accept:
                 fc = FrozenCandidate(f"{idea.id}:{prop.change}", idea, prop.artifact, m, g, evidence, it + 1)
+                if tr is not None:
+                    tr.decision(self, name, row, True, "freeze; lineage ends" if not self.sweep else
+                                "passing variant recorded; sweep continues")
                 if not self.sweep:
                     return LineageResult(idea, fc, history, usage)
                 passing.append(fc)
+            elif tr is not None:
+                tr.decision(self, name, row, False, "route back to 01 with this candidate's rollouts"
+                            if it + 1 < self.max_iters else "lineage ends (max_iters)")
             current = prop.artifact
         if passing:
             # "among candidates that pass the capability floor, the loop retains nondominated results"

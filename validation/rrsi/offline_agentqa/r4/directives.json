@@ -1,7 +1,7 @@
 {
  "t": 4,
  "b_t": 3,
- "sigma_t": 1,
+ "sigma_t": 0,
  "tried": [
   "control_flow",
   "prompt",
@@ -9,26 +9,21 @@
   "subagent"
  ],
  "explore": {
-  "sigma": 1,
+  "sigma": 0,
   "untried": [
    "tool",
    "memory"
   ],
   "m_draft": 1,
-  "text": "STALL: the incumbent has not moved by more than the noise band over the last rounds (sigma_t = 1). 1 candidate slot(s) this round are RESERVED for exploratory edits on components the run has never exercised: ['tool', 'memory']. A variant holding a reserved slot must put at least one edit on one of those components."
+  "text": "Components not yet exercised in this run: ['tool', 'memory']. Not mandatory this round (sigma_t = 0), but evidence about them is still missing."
  },
  "prune_set": [
   {
    "component": "skill",
-   "recent_best_gain": -0.1,
-   "accepted_edits_in_incumbent": []
-  },
-  {
-   "component": "subagent",
    "recent_best_gain": -0.375,
    "accepted_edits_in_incumbent": []
   }
  ],
  "delta": 0.147196,
- "S_star": 1.0
+ "S_star": 0.75
 }

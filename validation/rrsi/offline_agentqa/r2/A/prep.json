@@ -1,24 +1,58 @@
 {
- "artifact_id": "65de0ba851f0b6af08a8b9c8a9f6443a81acb3029496df2416f6788263dfca82",
+ "artifact_id": "afbcf3bbe433dfbcda60524b900027463fcca38eedf3f2034812e3db87f660f7",
  "edits": [
   {
    "id": "C1",
-   "component": "skill",
-   "hypothesis": "[aq:python_skill] Skill card: write Python for computations",
+   "component": "subagent",
+   "hypothesis": "[aq:checker] Bounded checker sub-call",
    "targets_mode": "wrong final answers",
    "why_not_lower_lever": "n/a",
    "trigger_condition": "every question",
    "predicted_affected": [
-    "evolve-numeric-000",
-    "evolve-numeric-001",
-    "evolve-numeric-002"
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-006"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
-   "mechanism": "[aq:python_skill] Skill card: write Python for computations",
-   "declared_component": "skill"
+   "mechanism": "[aq:checker] Bounded checker sub-call",
+   "declared_component": "subagent"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-006"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "[aq:python_tool] Compute with the Python tool and report its output",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-006"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:python_tool] Compute with the Python tool and report its output",
+   "declared_component": "control_flow"
   }
  ],
  "diff_path": "r2/A/diff.patch",
- "mechanism": "[aq:python_skill] Skill card: write Python for computations"
+ "mechanism": "[aq:checker] Bounded checker sub-call; [aq:verify] Ask to double-check before answering; [aq:python_tool] Compute with the Python tool and report its output"
 }

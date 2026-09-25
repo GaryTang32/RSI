@@ -42,6 +42,12 @@ class Config:
     finalize: bool = True                      # run finalize() at the end of run()
     summaries: str = "auto"                    # write trace summaries: auto (only scores_summary) | always | never
     seed: int = 0
+    # audit trace (rsi.trace, write-only): on whenever out_dir is given to run()
+    trace: bool = True
+    shadow_monitor: bool = True                # score every new frontier _best on sealed holdout/ood (trace only)
+    shadow_splits: Optional[tuple[str, ...]] = None   # None -> the domain's sealed holdout/ood splits
+    shadow_k: int = 1
+    shadow_workers: int = 2
     notes: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:

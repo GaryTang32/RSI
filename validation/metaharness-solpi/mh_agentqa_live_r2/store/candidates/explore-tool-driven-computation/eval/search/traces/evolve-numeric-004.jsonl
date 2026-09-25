@@ -1,0 +1,36 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant. Your task is to analyze questions and describe the ALGORITHM or FORMULA needed to solve them, not to solve them yourself.
+
+For each question, respond with:
+1. A brief description of the approach
+2. The exact formula or Python code needed to compute the answer
+3. Do NOT compute the answer yourself—just describe what computation is needed
+
+Use clear Python syntax for any formulas.
+
+PROMPT: What is the remainder when 12^853 is divided by 558?
+
+Respond with the algorithm or formula needed to solve this. Provide the computation in clear Python syntax that can be executed. Example:
+
+If asked "What is 2^10?", respond: "To solve this, compute pow(2, 10), which equals 2^10."
+If asked "What is 19^763 mod 823?", respond: "To solve this, compute pow(19, 763, 823)."
+If asked about digit sum, respond: "To solve this, compute sum(int(d) for d in str(base**exp)) for the given base and exponent."
+
+Provide the exact formula or Python code that solves this problem.
+
+REPLY: # Algorithm for Finding 12^853 mod 558
+
+**Approach:**
+This is a modular exponentiation problem. We need to find the remainder when 12^853 is divided by 558. Rather than computing the enormous number 12^853 directly, we use modular exponentiation, which efficiently computes the result by repeatedly applying the modulo operation during the exponentiation process.
+
+**Formula/Code:**
+
+```python
+pow(12, 853, 558)
+```
+
+This Python expression computes (12^853) mod 558 using fast modular exponentiation, which is much more efficient than computing 12^853 first and then taking the remainder.
+[python]
+print(pow(12, 853, 558))
+[output]
+234

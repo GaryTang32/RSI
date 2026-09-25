@@ -439,11 +439,20 @@ class LLMPolicyDeveloper(PolicyDeveloper):
                 seen.extend(errors)
                 call["screen"] = {"ok": False, "errors": list(errors), "leak_hits": []}
                 continue
-            code = prop.artifact[POLICY_FILE]
+            from .agent import strip_reply_terminators    # local import: agent.py is a sibling module
+
+            fixed_art, cleaned = strip_reply_terminators(prop.artifact, [POLICY_FILE])
+            code = fixed_art[POLICY_FILE]
+            call["sanitized"] = cleaned
             chk, hits = self._screen(code, ctx)
             call["screen"] = {"ok": bool(chk.ok and not hits), "errors": list(chk.errors), "leak_hits": list(hits)}
             if chk.ok and not hits:
-                return Revision(code, prop.change or "llm revision", base.index, usage, None, chk,
+                # a repaired revision keeps the substantive claim of its first attempt: the repair
+                # reply's header only describes the fix, not the change against the base version
+                first = next((c.get("change") for c in calls if c.get("change")), "") if attempt else ""
+                change = (f"{first} [repaired: {prop.change}]" if first and first != prop.change
+                          else (prop.change or "llm revision"))
+                return Revision(code, change, base.index, usage, None, chk,
                                 {"hypothesis": prop.hypothesis[:1000], "repairs": attempt, "calls": calls,
                                  "context_files": {k: len(v) for k, v in files.items()}})
             errors = chk.errors + [f"code copies trace-specific data: {h!r}" for h in hits]

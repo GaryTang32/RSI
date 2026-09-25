@@ -175,3 +175,47 @@ def test_audit_rederives_every_step_and_catches_a_wrong_one(tmp_path):
     bad = audit_events(ev, domain=dom)
     failed = {r["check"] for r in bad["checks"] if r["status"] == "fail"}
     assert "admissible = Alg. 2 re-derived" in failed and "b_t = Eq. (anneal)" in failed
+
+
+# ------------------------------------------------------------ stage-B audit regressions
+_MARK = {"aq:self_consistency": "[rrsi:sc3]", "aq:python_tool": "[rrsi:tool]", "aq:checker": "[rrsi:checker]"}
+
+
+def test_agentqa_mock_never_declares_an_edit_a_later_edit_overwrote(tmp_path):
+    """Stage-B audit, offline_agentqa r0A: the mock bundled self-consistency (base=sc3) with the Python tool
+    (base=tool); the second rewrote solve() and erased the first, yet both were declared and L_t credited
+    '[aq:self_consistency] ... ACCEPTED'. Conflicting harness edits are no longer bundled: every declared
+    idea must be visible in the candidate's diff."""
+    from rsi.rrsi.mocks import AgentQAMockProfile
+    suite = make_suite(n_evolve=8, n_holdout=6, n_ood_per_family=2, seed=0)
+    dom = AgentQADomain(suite)
+    w = {i: 1e-6 for i in ("aq:answer_format", "aq:step_by_step", "aq:verify", "aq:persona", "aq:checker",
+                           "aq:python_skill", "aq:null_reword", "aq:answer_lookup")}
+    w.update({"aq:self_consistency": 1e6, "aq:python_tool": 1.0})   # sc3 first, then the tool would overwrite it
+    prop = AgentQAMockLLM(AgentQAMockProfile(fill_budget_p=1.0, weights=w))
+    run(dom, AgentQADomain.seed_artifact(), llm_task=SimModel(suite), llm_propose=prop,
+        config=Config(T=1, m=1, k=1, workers=1, seed=0, record_timestamps=False), out_dir=tmp_path)
+    recs = [json.loads(l) for l in (tmp_path / "history.jsonl").read_text().splitlines()]
+    cands = [r for r in recs if r.get("edit_id") and r.get("diff")]
+    assert cands
+    for r in cands:
+        diff = (tmp_path / r["diff"]).read_text()
+        for idea, mark in _MARK.items():
+            if f"[{idea}]" in (r.get("hypothesis") or "") and not r["hypothesis"].startswith("prune:"):
+                assert f"+    # {mark}" in diff, (idea, r["hypothesis"])
+    assert any("[aq:self_consistency]" in (r.get("hypothesis") or "") for r in cands)
+
+
+def test_heuristic_analyst_never_reports_solved_tasks_as_a_failure_mode():
+    """Stage-B audit, offline_agentqa r3-r7: with |D| <= n_fail_traces every task fills a "fail" slot, and the
+    heuristic analyst ranked 'numeric__correct_answer_v' (19 SOLVED tasks, loss 0) as the TOP failure mode of
+    F_t, which the proposer then targeted. Solved traces are success evidence, never a failure mode."""
+    from rsi.rrsi.analyst import Analyst
+    traces = {f"t{i}": {"task_id": f"t{i}", "family": "numeric", "_role": "fail", "score": 1.0,
+                        "feedback": f"Correct (answer '{i}')."} for i in range(5)}
+    traces["t9"] = {"task_id": "t9", "family": "numeric", "_role": "fail", "score": 0.0,
+                    "feedback": "Incorrect. Extracted answer '1'; expected '2'."}
+    a = Analyst(None, mode="heuristic")
+    rep = a.aggregate_heuristic(a.heuristic_digests(traces), {t: r["score"] for t, r in traces.items()})
+    assert [m["affected_tasks"] for m in rep["failure_modes"]] == [["t9"]]
+    assert rep["success_habits"] and rep["success_habits"][0]["n_tasks"] == 5

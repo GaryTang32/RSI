@@ -479,6 +479,7 @@ The mock sees only its prompt.
     - The `selector=` hook.
     - `optimize()` without a `valset` now selects multi-task mode explicitly (`val_split=None`, so no warning), and it ignores `train_split` / `val_split` from the passed config, because it builds its own suite.
 14. **RuleWorld is a simulator.** The rule semantics, the interference option and the mock reflection LM's behaviours (`ReflectionProfile`) are design choices [inferred from spec §9.2]. The interference world and the `p_scope` / `p_diagnose` behaviours were added during this work to test the local-optimum claim in more than one world. All four variants are reported.
+15. **Outage stopper (stage-B audit fix).** `Config.max_consecutive_infra_failures = 3` (default) adds the stopper `ConsecutiveInfraFailures`. It ends the run with `stop_reason="infra_outage"` after 3 consecutive iterations lost to the backend: `skip_infra_error`, or `no_proposal` where every reflection call failed with an LLM error. It is a safety net, not a stop condition, so a config with no other stopper still raises. The reference has no such stopper. There, an exception aborts the run and a swallowed failure is scored 0. Before this fix, the usage-limit-interrupted live run kept charging 3 rollouts per dead iteration. On the offline validation runs the fix changes nothing: re-run from scratch, their ledgers (apart from timestamps), trajectories, run logs and audits are byte-identical. Regression tests: `tests/test_gepa_validation_stageb.py`. Set it to `None` for the old behaviour.
 
 ## 6. Limitations
 
@@ -525,3 +526,12 @@ The live haiku run was stopped by its $1.20 USD guard after 51 of 100 rollouts. 
 **Findings.** All mechanics verified. The wrong steps are statistical, inherent to a strict gate on 3 single-draw examples and a 1-draw D_pareto argmax. None is an implementation error. Observations for follow-up:
 1. `skip_infra_error` iterations are charged against B, and no stopper ends a run on a sustained backend outage. The usage-limit-interrupted live attempt kept looping.
 2. Haiku's reflective rewrites overfit to the 3 minibatch items ("You are solving modular arithmetic problems…"). They were accepted on the minibatch and then scored below the seed on D_pareto. GEPA keeps them in the pool by design.
+
+**Stage-B independent audit** (`experiments/gepa/validate_gepa_stageb.py`, report `validation/gepa/AUDIT.md`). It re-derives every iteration of every run without using `rsi.gepa`:
+- it replays the shared RNG with the reference `EpochShuffledBatchSampler` imported from gepa-ai/gepa, together with an independent Alg. 2 and a merge proposer transcribed from `gepa/proposer/merge.py`;
+- it rebuilds each offline reflection prompt with the reference `prompt_renderer` from a re-execution of the parent minibatch;
+- it parses each raw reply with the reference `parse_proposal`;
+- it recomputes gates, frontier, incumbent, round-robin pointers, merge schedule and the budget identity from the raw scores.
+
+All 125 audited steps across the 6 run directories reproduce exactly: every parent draw, minibatch, merge triplet and subsample, and every prompt byte for byte. Verdicts: 89 correct, 26 questionable (statistical false accepts and rejects of the 3-example gate, plus 5 outage iterations that charged budget, now fixed), 0 wrong, 10 unverifiable (live, no ground truth).
+

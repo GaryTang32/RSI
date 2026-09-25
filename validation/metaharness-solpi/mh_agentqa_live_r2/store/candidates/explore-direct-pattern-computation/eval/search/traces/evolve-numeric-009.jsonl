@@ -1,0 +1,4 @@
+[python]
+print(pow(12, 869, 781))
+[output]
+364

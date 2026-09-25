@@ -1,0 +1,78 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 1585.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 1474.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 1540.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "explore-direct-pattern-computation",
+  "score": 1.0,
+  "cost": 0.0
+ },
+ "_pareto": [
+  {
+   "system": "exploit-expression-evaluation",
+   "score": 0.9,
+   "val_accuracy": 90.0,
+   "context_cost": 2228.8
+  },
+  {
+   "system": "explore-tool-driven-computation",
+   "score": 0.8,
+   "val_accuracy": 80.0,
+   "context_cost": 1516.3
+  },
+  {
+   "system": "explore-direct-pattern-computation",
+   "score": 0.7,
+   "val_accuracy": 70.0,
+   "context_cost": 0.0
+  }
+ ],
+ "_best": {
+  "system": "exploit-expression-evaluation",
+  "score": 0.9
+ },
+ "_hypervolume": 3605.398,
+ "_hv_ref_cost": 4422.12
+}

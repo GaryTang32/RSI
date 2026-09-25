@@ -1,0 +1,22 @@
+{
+ "name": "i06_1_label_list",
+ "artifact_id": "5ed0cbf23edd59f3feca53500a0095c3abfbb96dc495a93de54a1a821e46d927",
+ "created_at": 1790337673.8390918,
+ "status": "evaluated",
+ "iteration": 6,
+ "kind": "candidate",
+ "base_system": "i04_0_coverage",
+ "hypothesis": "Listing every label seen so far lets the model name labels without a retrieved example.",
+ "axis": "exploration",
+ "components": [
+  "label_list",
+  "axis:A"
+ ],
+ "parents_read": [
+  "i04_0_coverage"
+ ],
+ "order": 14,
+ "move": "label_list",
+ "evidence": "untried mechanism",
+ "reason": ""
+}

@@ -167,10 +167,16 @@ def audit_events(events: list[dict], domain=None) -> dict:
         for c in cands:
             props = [e["data"] for e in evs if e["kind"] == "proposal" and e["data"]["candidate"] == c]
             final = [p for p in props if str(p.get("outcome", "")).startswith("done: accepted")]
+            dropped = next((e["data"].get("gate_failure") for e in evs if e["kind"] == "note"
+                            and e["data"].get("stage") == "dropped before evaluation"
+                            and e["data"].get("candidate") == c), None)
             for p in props:
                 if str(p.get("outcome", "")) == "done: no file changes":
+                    # an initial call that ships nothing ends as no_proposal; a critic REPAIR that ships
+                    # nothing leaves the rejection standing (critic_reject). Report what actually happened.
                     A.add("proposer shipped nothing (done() with no edits and no file changes)", "info",
-                          "the candidate is dropped as no_proposal", t, c)
+                          f"{p.get('call_kind') or 'call'}; the candidate was dropped as "
+                          f"{dropped or 'no_proposal'}", t, c)
             for p in final:
                 n = len(p.get("declared_edits") or [])
                 A.add("shipped edits <= b_t", "pass" if n <= rs["b_t"] else "fail", f"{n} edits, b_t={rs['b_t']}",

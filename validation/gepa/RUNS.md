@@ -203,3 +203,14 @@ The three offline runs were re-run in this session with the current code. `rulew
 - Then the usage limit hit the task model too. From it 7 onwards every parent rollout failed, and the engine logged `skip_infra_error`.
   - It still **charged 3 rollouts per failed iteration** toward B (63 → 75 …).
   - The loop did not stop, because no stopper fires on consecutive infra failures. See the observations in the stage report.
+
+---
+
+## Stage-B errata (independent audit, see `AUDIT.md`)
+
+- **`ruleworld_offline`: the one false accept is at it 5, not it 6.** At it 5 the child c6 was accepted (minibatch 1.2 → 1.95), but its exact test gain over its parent c5 is 0.000. It added 2 ticket facts that help only the minibatch's own tickets.
+  - It 6 is a correct step: +0.046 over its parent c6.
+  - It 6 is, however, where the *incumbent* changed from c4 to c7 with a true test change of −0.012. That is an argmax-D_pareto winner's-curse event, not a gate error.
+- **`ruleworld_merge_offline`: the returned c33 is the 7th-best of the 40 pool members by exact test score** (0.847). The true best is c36 (0.884 test, D_pareto 0.881). This is winner's curse from a one-draw D_pareto argmax.
+- **Offline runs re-run from scratch after the stage-B fix** (the outage stopper). Their trajectories, run logs and audits are byte-identical to the runs above; the ledgers differ only in timestamps.
+

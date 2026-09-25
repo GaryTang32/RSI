@@ -62,8 +62,10 @@ class QuarantineGate:
         self.ev = Evaluator(domain, llm, workers=1, allow_sealed=True)
         self.rng = random.Random(seed)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
+        self.last: dict = {}           # the last A/B's EvalResults (for the run trace only; never read back)
 
     def test(self, g: Gene) -> QuarantineResult:
+        self.last = {}
         inj = injection_lint(g)
         if inj:
             return QuarantineResult(False, f"injection lint: {inj[0]}")
@@ -76,6 +78,7 @@ class QuarantineGate:
         scope = self.rng.sample(scope, min(self.n_max, len(scope)))
         base = self.ev.evaluate(self.harness, scope, self.k, label="quarantine")
         cand = self.ev.evaluate(self.injector.inject(self.harness, [g]), scope, self.k, label="quarantine")
+        self.last = {"base": base, "cand": cand}
         if self.delta is not None:
             noise = fixed_noise(self.delta)
         elif self.k >= 2:

@@ -1,0 +1,1458 @@
+{
+ "run": "solpi_agentworld_offline",
+ "setup": "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed holdout = 6 x 2 held-out families (configfix, datalookup) used only by the firewall; sealed ood = 8 x 2 held-out families (final, never touched by the protocol). Base = untouched Pi-like harness (no extensions). Agent backend = MockAgentLLM('A') (offline). Idea pool = all 10 AGENTWORLD_IDEAS (families C, P, D, T, R: 4 released mechanisms, 3 tricks, 2 do-less shortcuts, 1 dud). Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: score within 2% (relative) AND tokens or cost saving > 2%; firewall on holdout; compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.",
+ "wall_s": 6.9,
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "base": {
+     "S": 1.0,
+     "C": 449605.3333333333,
+     "steps": 14.416666666666666,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 229380.08333333334,
+     "steps": 18.041666666666668,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 24,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "base": {
+     "S": 1.0,
+     "C": 217299.33333333334,
+     "steps": 10.583333333333334,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 0.9880952380952381,
+     "C": 66590.33333333333,
+     "steps": 7.666666666666667,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 0.9761904761904763
+     },
+     "vs_reference": {
+      "mean_diff": -0.01190476190476191,
+      "lo": -0.035714285714285726,
+      "hi": 0.0,
+      "n": 12,
+      "p_better": 0.0
+     }
+    }
+   },
+   "ood": {
+    "base": {
+     "S": 1.0,
+     "C": 237584.0625,
+     "steps": 12.0,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 79824.0,
+     "steps": 8.8125,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 16,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  "reference": "base",
+  "unseen_mean": {
+   "base": 1.0,
+   "composed": 0.9940476190476191
+  }
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "base_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 449605.3333333333,
+     "cost": 0.24073210416666666,
+     "steps": 14.416666666666666,
+     "eta": 0.24073210416666666
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 994041.25,
+      "cost": 0.448002775,
+      "steps": 21.75,
+      "eta": 0.448002775
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 298897.25,
+      "cost": 0.20595993750000002,
+      "steps": 16.0,
+      "eta": 0.20595993750000002
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 55877.5,
+      "cost": 0.0682336,
+      "steps": 5.5,
+      "eta": 0.0682336
+     }
+    },
+    "n": 24
+   },
+   "oracle": {
+    "C23": 0.15349591389968484,
+    "P8": 0.2826086956521739,
+    "D1": 0.6615649408129116,
+    "C6": 0.47630593360703455,
+    "T3": 0.5992843253341963,
+    "T7": 0.5992843253341963,
+    "T11": 0.6615649408129116,
+    "P14": 0.2826086956521739,
+    "P20": 0.002298925655125029,
+    "R5": 0.002298925655125029
+   },
+   "chosen": [
+    "D1",
+    "T11",
+    "T3",
+    "T7",
+    "C6",
+    "P14",
+    "P8",
+    "C23",
+    "P20",
+    "R5"
+   ],
+   "lineages": [
+    {
+     "idea": "D1",
+     "kind": "general",
+     "title": "Delegate oversized result compression with deterministic fallback",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "evidence_preserving_reducer{\"reducer\": \"deterministic\"}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 231095.75,
+          "saving": 0.48600309456590074,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.16016330625,
+          "saving": 0.33468239807718486,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 231095.75,
+         "cost": 0.16016330625,
+         "steps": 15.75,
+         "eta": 0.16016330625
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 395249.75,
+          "cost": 0.24507833124999998,
+          "steps": 25.0,
+          "eta": 0.24507833124999998
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 242207.25,
+          "cost": 0.16752621250000002,
+          "steps": 16.75,
+          "eta": 0.16752621250000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55830.25,
+          "cost": 0.067885375,
+          "steps": 5.5,
+          "eta": 0.067885375
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 1
+    },
+    {
+     "idea": "T11",
+     "kind": "trick",
+     "title": "Run the test runner in quiet mode by default",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "pytest_quiet{}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 185892.79166666666,
+          "saving": 0.5865422896822101,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.14775023333333334,
+          "saving": 0.3862462431224335,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 185892.79166666666,
+         "cost": 0.14775023333333334,
+         "steps": 14.416666666666666,
+         "eta": 0.14775023333333334
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 202903.625,
+          "cost": 0.16905716250000002,
+          "steps": 21.75,
+          "eta": 0.16905716250000002
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 298897.25,
+          "cost": 0.20595993750000002,
+          "steps": 16.0,
+          "eta": 0.20595993750000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 1
+    },
+    {
+     "idea": "T3",
+     "kind": "trick",
+     "title": "Keep only the last lines of long command outputs",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "tail_trim{\"lines\": 20}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.8284722222222222,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 191602.25,
+          "saving": 0.5738434671593456,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.14534771666666668,
+          "saving": 0.39622628577184815,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.8284722222222222,
+         "tokens": 191602.25,
+         "cost": 0.14534771666666668,
+         "steps": 15.833333333333334,
+         "eta": 0.17544066387259014
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 272260.25,
+          "cost": 0.19885483750000002,
+          "steps": 21.75,
+          "eta": 0.19885483750000002
+         },
+         "buildfix": {
+          "score": 0.8291666666666666,
+          "tokens": 259032.375,
+          "cost": 0.17479911250000002,
+          "steps": 18.125,
+          "eta": 0.21081300000000003
+         },
+         "logtriage": {
+          "score": 0.65625,
+          "tokens": 43514.125,
+          "cost": 0.0623892,
+          "steps": 7.625,
+          "eta": 0.09506925714285715
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "tail_trim{\"lines\": 40}",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.8284722222222222,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 205269.66666666666,
+          "saving": 0.543444769338442,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.15101897083333335,
+          "saving": 0.37266792330790244,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.8284722222222222,
+         "tokens": 205269.66666666666,
+         "cost": 0.15101897083333335,
+         "steps": 15.833333333333334,
+         "eta": 0.18228610058675612
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 301037.0,
+          "cost": 0.2093257625,
+          "steps": 21.75,
+          "eta": 0.2093257625
+         },
+         "buildfix": {
+          "score": 0.8291666666666666,
+          "tokens": 268697.5,
+          "cost": 0.1799412125,
+          "steps": 18.125,
+          "eta": 0.21701452763819098
+         },
+         "logtriage": {
+          "score": 0.65625,
+          "tokens": 46074.5,
+          "cost": 0.0637899375,
+          "steps": 7.625,
+          "eta": 0.0972037142857143
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 2,
+       "change": "tail_trim{\"lines\": 120}",
+       "variant": 2,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.9166666666666666,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 241341.79166666666,
+          "saving": 0.46321412631522757,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.16396606666666666,
+          "saving": 0.318885749641653,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.9166666666666666,
+         "tokens": 241341.79166666666,
+         "cost": 0.16396606666666666,
+         "steps": 15.0,
+         "eta": 0.17887207272727274
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 427783.5,
+          "cost": 0.25551622500000004,
+          "steps": 21.75,
+          "eta": 0.25551622500000004
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 242098.0,
+          "cost": 0.16894905000000002,
+          "steps": 16.0,
+          "eta": 0.16894905000000002
+         },
+         "logtriage": {
+          "score": 0.75,
+          "tokens": 54143.875,
+          "cost": 0.06743292499999999,
+          "steps": 7.25,
+          "eta": 0.08991056666666665
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 3,
+       "change": "",
+       "variant": 3,
+       "ralph_errors": [
+        "variant grid exhausted",
+        "cannot repair: variant grid exhausted",
+        "cannot repair: cannot repair: variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      }
+     ],
+     "n_iterations": 4
+    },
+    {
+     "idea": "T7",
+     "kind": "trick",
+     "title": "Keep only the first lines of long command outputs",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "head_trim{\"lines\": 40}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.8284722222222222,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 214778.875,
+          "saving": 0.5222946458227067,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.15417240416666667,
+          "saving": 0.3595685764457569,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.8284722222222222,
+         "tokens": 214778.875,
+         "cost": 0.15417240416666667,
+         "steps": 16.291666666666668,
+         "eta": 0.18609242414082147
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 333710.75,
+          "cost": 0.221388525,
+          "steps": 23.25,
+          "eta": 0.221388525
+         },
+         "buildfix": {
+          "score": 0.8291666666666666,
+          "tokens": 264951.25,
+          "cost": 0.17807761249999998,
+          "steps": 18.125,
+          "eta": 0.21476696984924623
+         },
+         "logtriage": {
+          "score": 0.65625,
+          "tokens": 45674.625,
+          "cost": 0.063051075,
+          "steps": 7.5,
+          "eta": 0.09607782857142858
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "head_trim{\"lines\": 120}",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.8284722222222222,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 260673.125,
+          "saving": 0.42021789851247315,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.17445499583333332,
+          "saving": 0.27531478845649743,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.8284722222222222,
+         "tokens": 260673.125,
+         "cost": 0.17445499583333332,
+         "steps": 16.041666666666668,
+         "eta": 0.21057434534786254
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 432156.75,
+          "cost": 0.2608924375,
+          "steps": 22.5,
+          "eta": 0.2608924375
+         },
+         "buildfix": {
+          "score": 0.8291666666666666,
+          "tokens": 294157.5,
+          "cost": 0.19389885,
+          "steps": 18.125,
+          "eta": 0.23384785929648244
+         },
+         "logtriage": {
+          "score": 0.65625,
+          "tokens": 55705.125,
+          "cost": 0.0685737,
+          "steps": 7.5,
+          "eta": 0.10449325714285715
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 2,
+       "change": "",
+       "variant": 2,
+       "ralph_errors": [
+        "variant grid exhausted",
+        "cannot repair: variant grid exhausted",
+        "cannot repair: cannot repair: variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      }
+     ],
+     "n_iterations": 3
+    },
+    {
+     "idea": "C6",
+     "kind": "general",
+     "title": "Use layered context epochs and event-driven compaction",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "online_context_compact{\"cache_write_read_ratio\": 12.5}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 368963.2083333333,
+          "saving": 0.17936202936501347,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.23010708333333332,
+          "saving": 0.0441362853123125,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 368963.2083333333,
+         "cost": 0.23010708333333332,
+         "steps": 13.625,
+         "eta": 0.23010708333333332
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 811381.875,
+          "cost": 0.43134585000000003,
+          "steps": 21.5,
+          "eta": 0.43134585000000003
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 242289.125,
+          "cost": 0.18646557500000002,
+          "steps": 15.0,
+          "eta": 0.18646557500000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 53218.625,
+          "cost": 0.072509825,
+          "steps": 4.375,
+          "eta": 0.072509825
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 1
+    },
+    {
+     "idea": "P14",
+     "kind": "do_less",
+     "title": "Skip redundant re-verification after edits",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "no_verify{}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.901984126984127,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 294958.2916666667,
+          "saving": 0.3439617597952574,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.18190136666666668,
+          "saving": 0.24438259991807967,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.901984126984127,
+         "tokens": 294958.2916666667,
+         "cost": 0.18190136666666668,
+         "steps": 10.041666666666666,
+         "eta": 0.2016680351957765
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.9236607142857143,
+          "tokens": 676551.375,
+          "cost": 0.3528791875,
+          "steps": 16.0,
+          "eta": 0.38204416626389565
+         },
+         "buildfix": {
+          "score": 0.9583333333333333,
+          "tokens": 182673.0,
+          "cost": 0.1458653375,
+          "steps": 11.125,
+          "eta": 0.1522073086956522
+         },
+         "logtriage": {
+          "score": 0.8239583333333333,
+          "tokens": 25650.5,
+          "cost": 0.046959575,
+          "steps": 3.0,
+          "eta": 0.05699265739570165
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": 1,
+       "ralph_errors": [
+        "variant grid exhausted",
+        "cannot repair: variant grid exhausted",
+        "cannot repair: cannot repair: variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      }
+     ],
+     "n_iterations": 2
+    },
+    {
+     "idea": "P8",
+     "kind": "general",
+     "title": "Couple successful mutations to their verifier",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "action_fusion{}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 315845.125,
+          "saving": 0.2975058310399639,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.19786742499999999,
+          "saving": 0.17805967058298988,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 315845.125,
+         "cost": 0.19786742499999999,
+         "steps": 10.875,
+         "eta": 0.19786742499999999
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 675443.125,
+          "cost": 0.35495152500000005,
+          "steps": 16.0,
+          "eta": 0.35495152500000005
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 234426.125,
+          "cost": 0.18048322500000002,
+          "steps": 12.625,
+          "eta": 0.18048322500000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 37666.125,
+          "cost": 0.058167525,
+          "steps": 4.0,
+          "eta": 0.058167525
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 1
+    },
+    {
+     "idea": "C23",
+     "kind": "general",
+     "title": "Build observation packs before paying for full bodies",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 412078.75,
+          "saving": 0.08346560983855467,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.2537827125,
+          "saving": -0.054212164092156116,
+          "improved": false
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 412078.75,
+         "cost": 0.2537827125,
+         "steps": 15.916666666666666,
+         "eta": 0.2537827125
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 902437.625,
+          "cost": 0.43011243749999994,
+          "steps": 21.75,
+          "eta": 0.43011243749999994
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 311408.375,
+          "cost": 0.26927059999999997,
+          "steps": 20.5,
+          "eta": 0.26927059999999997
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 22390.25,
+          "cost": 0.061965099999999995,
+          "steps": 5.5,
+          "eta": 0.061965099999999995
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 1
+    },
+    {
+     "idea": "P20",
+     "kind": "do_less",
+     "title": "Cap the turn budget",
+     "frozen": true,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "turn_cap{\"max_turns\": 10}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.7547123015873015,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 144840.66666666666,
+          "saving": 0.6778493137685199,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.12386149166666667,
+          "saving": 0.4854799608243638,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.7547123015873015,
+         "tokens": 144840.66666666666,
+         "cost": 0.12386149166666667,
+         "steps": 8.5,
+         "eta": 0.16411749405192247
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.5370535714285715,
+          "tokens": 245360.5,
+          "cost": 0.184653275,
+          "steps": 10.0,
+          "eta": 0.3438265469659185
+         },
+         "buildfix": {
+          "score": 0.7270833333333333,
+          "tokens": 133284.0,
+          "cost": 0.1186976,
+          "steps": 10.0,
+          "eta": 0.16325171346704873
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "turn_cap{\"max_turns\": 16}",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.9139880952380953,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 276600.0,
+          "saving": 0.3847937746883192,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.18429168750000002,
+          "saving": 0.23445321870152847,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.9139880952380953,
+         "tokens": 276600.0,
+         "cost": 0.18429168750000002,
+         "steps": 11.916666666666666,
+         "eta": 0.20163466948876588
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.7982142857142858,
+          "tokens": 518261.625,
+          "cost": 0.300657525,
+          "steps": 15.5,
+          "eta": 0.37666267114093954
+         },
+         "buildfix": {
+          "score": 0.94375,
+          "tokens": 255660.875,
+          "cost": 0.1839839375,
+          "steps": 14.75,
+          "eta": 0.19494986754966886
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 2,
+       "change": "turn_cap{\"max_turns\": 24}",
+       "variant": 2,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.9836309523809524,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 394073.625,
+          "saving": 0.12351212100093709,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.22531332083333333,
+          "saving": 0.06404955162381831,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.9836309523809524,
+         "tokens": 394073.625,
+         "cost": 0.22531332083333333,
+         "steps": 13.791666666666666,
+         "eta": 0.2290628617246596
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.9508928571428572,
+          "tokens": 827446.125,
+          "cost": 0.40174642499999996,
+          "steps": 19.875,
+          "eta": 0.4224938929577464
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 298897.25,
+          "cost": 0.20595993750000002,
+          "steps": 16.0,
+          "eta": 0.20595993750000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      }
+     ],
+     "n_iterations": 3
+    },
+    {
+     "idea": "R5",
+     "kind": "dud",
+     "title": "Slim the system prompt",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "prompt_slim{}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "no efficiency gain",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 449288.1666666667,
+          "saving": 0.0007054335061267686,
+          "improved": false
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.24061807083333334,
+          "saving": 0.0004736939168461295,
+          "improved": false
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 449288.1666666667,
+         "cost": 0.24061807083333334,
+         "steps": 14.416666666666666,
+         "eta": 0.24061807083333334
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 993562.75,
+          "cost": 0.447856475,
+          "steps": 21.75,
+          "eta": 0.447856475
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 298545.25,
+          "cost": 0.20583893749999999,
+          "steps": 16.0,
+          "eta": 0.20583893749999999
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 55756.5,
+          "cost": 0.06815879999999999,
+          "steps": 5.5,
+          "eta": 0.06815879999999999
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": -1,
+       "ralph_errors": [
+        "variant grid exhausted",
+        "cannot repair: variant grid exhausted",
+        "cannot repair: cannot repair: variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      }
+     ],
+     "n_iterations": 2
+    }
+   ],
+   "frozen": [
+    "D1:evidence_preserving_reducer{\"reducer\": \"deterministic\"}",
+    "T11:pytest_quiet{}",
+    "C6:online_context_compact{\"cache_write_read_ratio\": 12.5}",
+    "P8:action_fusion{}",
+    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}",
+    "P20:turn_cap{\"max_turns\": 24}"
+   ],
+   "frozen_ideas": [
+    "D1",
+    "T11",
+    "C6",
+    "P8",
+    "C23",
+    "P20"
+   ],
+   "heldout_passed": {
+    "D1:evidence_preserving_reducer{\"reducer\": \"deterministic\"}": true,
+    "T11:pytest_quiet{}": false,
+    "C6:online_context_compact{\"cache_write_read_ratio\": 12.5}": false,
+    "P8:action_fusion{}": true,
+    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}": true,
+    "P20:turn_cap{\"max_turns\": 24}": false
+   },
+   "survivors": [
+    "D1:evidence_preserving_reducer{\"reducer\": \"deterministic\"}",
+    "P8:action_fusion{}",
+    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}"
+   ],
+   "survivor_ideas": [
+    "D1",
+    "P8",
+    "C23"
+   ],
+   "dropped_by_composition_check": [],
+   "composed_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 229380.08333333334,
+     "cost": 0.21932219583333334,
+     "steps": 18.041666666666668,
+     "eta": 0.21932219583333334
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 471033.875,
+      "cost": 0.37791635625,
+      "steps": 31.25,
+      "eta": 0.37791635625
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 192900.75,
+      "cost": 0.21447493750000002,
+      "steps": 18.375,
+      "eta": 0.21447493750000002
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 24205.625,
+      "cost": 0.06557529375,
+      "steps": 4.5,
+      "eta": 0.06557529375
+     }
+    },
+    "n": 24
+   },
+   "conflicts": [],
+   "gate_digest": "a2247cac594b7481",
+   "usage": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   },
+   "seconds": 6.867488861083984
+  }
+ ],
+ "usage": {
+  "research": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  },
+  "_total": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  },
+  "task": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  },
+  "shadow_monitor": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  }
+ }
+}

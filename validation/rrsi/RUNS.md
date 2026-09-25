@@ -14,7 +14,11 @@ python experiments/rrsi/validate_rrsi.py offline_agentqa
 python experiments/rrsi/validate_rrsi.py offline_harnessworld
 python experiments/rrsi/validate_rrsi.py live_agentqa --max-usd 2.0 --max-wall-min 32
 # (the recorded live run was interrupted once and continued with --resume --max-usd 1.5 --max-wall-min 25)
+python experiments/rrsi/validate_rrsi_stepcheck.py     # stage-B independent step check -> <run>/stepcheck.json
+python experiments/rrsi/validate_rrsi_replay.py        # $0 offline-cache replay of live_agentqa on the current code
 ```
+
+The stage-B adversarial audit of all three runs (step verdicts, paper alignment, inconsistency register, fixes) is in `AUDIT.md`.
 
 How to read the tables:
 - **S** is the mean exact-match reward (AgentQA) or the fraction of rubric criteria passed (HarnessWorld).
@@ -25,69 +29,44 @@ How to read the tables:
 
 ## 1. `offline_agentqa`: AgentQA, SimModel task model, scripted proposer and critic
 
+> **Re-run in the stage-B audit (see `AUDIT.md`).** The stage-B audit found two bugs that changed what this
+> run did: the scripted proposer declared a self-consistency edit that its own tool edit had overwritten
+> (phantom credit in L_t), and the heuristic analyst ranked *solved* tasks as the top "failure mode" from
+> round 3 on. Both were fixed and this run was redone from scratch (same seed artifact, fresh directory; the
+> mocks are deterministic, so no LLM cache is involved). The first run is kept, unchanged, as
+> `offline_agentqa_superseded/` for reference. Because the mock seeds its RNG on the prompt text, the fix
+> gives a different realization, not a corrected copy of the old one.
+
 **Setup.**
-- **Domain.** `make_suite(seed=0)`: 20 evolve and 20 holdout questions from the practice family `numeric`, plus 24 OOD questions (6 each from the never-seen families `dates`, `numbertheory`, `strings`, `lists`).
+- **Domain.** `make_suite(seed=0)`: 20 evolve and 20 holdout questions from the practice family `numeric`, plus 24 OOD questions (6 each from the never-seen families `dates`, `numbertheory`, `strings`, `lists`). One holdout question (`holdout-numeric-012`, "sum of the decimal digits of 44!") is the same question as `evolve-numeric-017`: a small evolve/holdout overlap in the domain generator (reported as a core change request; it is not an RRSI step).
 - **Seed.** `AgentQADomain.seed_artifact()`: `harness.py` makes one direct model call and returns the last line. `system.md` is "You are a helpful assistant." and `task.md` is `{question}`.
 - **Models.** The frozen task model is `SimModel`. `AgentQAMockLLM` (scripted) is the proposer and the critic. The analyst is the deterministic heuristic.
-- **Config.** T = 8, m = 2, k = 2. Everything else is the paper default: b_min..b_max = 1..4, w = 3, m_draft = 1, β0 = 0.10, β1 = 40, w_s = 100, w_c = 15, w_n = 0.5, n_prune = 4. δ is calibrated.
-- **LLM cache.** None. The mocks are deterministic, so there is nothing to cache.
+- **Config.** T = 8, m = 2, k = 2; paper defaults otherwise (b_min..b_max = 1..4, w = 3, m_draft = 1, β0 = 0.10, β1 = 40, w_s = 100, w_c = 15, w_n = 0.5, n_prune = 4, repair_rounds = 5). δ is calibrated.
 
-**Spend.** $0 (all mocks), 4.7 s wall time.
-- The loop made 1,102 LLM calls (1,065 task, 23 proposer, 14 critic) and 520 rollouts.
-- The shadow monitor made 132 more task calls, metered separately.
+**Spend.** $0 (all mocks), 1.7 s. 1,317 loop LLM calls (1,270 task, 35 proposer, 12 critic), 480 rollouts; the shadow monitor made 440 more task calls, metered separately.
 
-**Seed vs final.**
-- Transfer and paired CI: `rsi.core.transfer_report`, k = 2.
-- "Reference" is a k = 10 re-evaluation I ran afterwards to get less noisy numbers.
+**Seed vs final** (`transfer_report`, k = 2) and a k = 10 reference re-evaluation (`reference_k10.json`, stage B):
 
-| split | H0 | final | paired diff [95% CI] | reference, k = 10 (H0 → final) |
+| split | H0 | final (r6A) | paired diff [95% CI] | k = 10: H0 → r0B → r1A → r6A (tokens of r6A) |
 |---|---|---|---|---|
-| evolve | 0.350 | 0.850 | +0.500 [+0.275, +0.700] | 0.350 → 0.945 |
-| holdout | 0.425 | 1.000 | +0.575 [+0.450, +0.700] | 0.390 → 0.940 |
-| ood | 0.375 | 0.917 | +0.542 [+0.354, +0.708] | 0.442 → 0.908 |
+| evolve | 0.350 | 0.675 | +0.325 [+0.075, +0.575] | 0.350 → 0.565 → 0.610 → 0.605 (626 vs H0 736) |
+| holdout | 0.425 | 0.575 | +0.150 [−0.025, +0.325] | 0.390 → 0.550 → 0.635 → 0.655 |
+| ood | 0.375 | 0.604 | +0.229 [+0.104, +0.375] | 0.442 → 0.600 → 0.621 → 0.617 |
 
-Tokens per trial: 736 → 135 (−82%). The loop's own measurement is H0 = 0.375 → final incumbent `r0A` = 1.000. This is the same harness that the transfer pass measures at 0.850 on evolve. The δ below is roughly the size of that gap between two samples of one harness.
+**What the loop did, round by round** (every number below is re-derived from raw trials by `experiments/rrsi/validate_rrsi_stepcheck.py`).
 
-**What the loop did, round by round.**
+- **Setup.** Baseline S = 0.375 (15/40). δ = 0.147 (within-task bootstrap, sd_null = 0.0736; the closed-form plug-in gives 0.0750).
+- **r0** (b_t = 4). r0A = the harmful "use Python" skill card (the harness cannot run code): S = 0.000 < floor 0.228, rejected. r0B = 4 edits (null reword, verbose persona, 3-sample self-consistency, step-by-step): S = 0.550, dS = +0.175 > δ, dC = +2.07 ≤ 0.10 + 40·0.175 = 7.10 → admissible, **kept** (S* = 0.550). True gain (k = 10) +0.215; the costly persona and the null reword hitchhiked on the self-consistency gain, which the cost rule allows at this dS (spec §8.4).
+- **r1** (b_t = 4). r1A = answer-format line: S = 0.750, dS = +0.200 > δ, dC = +0.02 → **kept** (S* = 0.750). r1B = checker sub-call: S = 0.650, within band, shaped = +5.22 → admissible but LOST (argmax S'). True value of r1A ≈ 0.61: the 0.75 is a lucky draw (winner's curse, spec §8.1), and every later round is judged against it.
+- **r2.** Both variants bundled the Python tool with the checker sub-call (and verify); the checker re-answers without the tool, S = 0.575 (below floor 0.603) and 0.625 (shaped −10.8): rejected. Correct, but the Python tool, the best single mechanism in this domain, is now "rejected" in L_t through shared bundle credit and the mock never tries it alone again (spec §8.4).
+- **r3.** Both variants drew the leaky answer table (`memory/answers.json`, keyed on practice questions). The precheck rejected both on the 7-digit answers (`2119981`, `3886910`, ...); the repair removed the table and shipped nothing, so both were dropped as `critic_reject`. Never evaluated.
+- **r4** (b_t = 3). Two "verify" prompt edits: S = 0.750 (dS 0, shaped −0.30) and 0.675 (shaped −7.8): rejected.
+- **r5** (b_t = 2, σ = 1: S_5 − S_2 = 0 ≤ δ; U_t = {tool, memory}, B holds the reserved slot). r5A = prune of self-consistency: S = 0.475 < floor, rejected. r5B could only fill the slot with the leak: critic_reject.
+- **r6** (σ = 1). r6A = **prune of the verbose persona**: S = 0.650, dS = −0.100 (inside the band), dC = −0.73 → shaped = −10.0 + 10.9 = +0.92 > 0 → admissible and **kept**; S_t drops to 0.650 while S* stays 0.750 (floor 0.603 still binds on S*). The k = 10 reference shows this was right: r6A = 0.605 / 0.655 / 0.617 (evolve / holdout / OOD) vs r1A 0.610 / 0.635 / 0.621, at 27% of the tokens. The measured −0.10 was noise on top of r1A's lucky 0.75. r6B: leak again, critic_reject.
+- **r7** (σ = 1). r7A re-adds the persona: S = 0.650, dS 0, dC +2.68 → shaped −40.2, rejected. r7B: leak, critic_reject.
+- **Net.** Three acceptances. The final harness (self-consistency + step-by-step + answer format, persona pruned) is a real gain (k = 10: +0.26 evolve, +0.27 holdout, +0.18 OOD) and is *lighter* than H_0 (626 vs 736 tokens/trial), because the within-band cost rule let the loop prune the persona the r0 bundle had smuggled in. The leak was blocked in 4 variants. It never found the Python tool alone (see r2).
 
-- **Setup.**
-  - Baseline S = 0.375 (15 of 40 trials correct).
-  - δ = 0.147 (bootstrap within tasks, z = 2, sd_null = 0.0736). The audit's plug-in formula gives the same sd_null.
-  - Shadow monitor on H0: holdout 0.45, OOD 0.42.
-- **r0** (b_t = 4, σ = 0).
-  - **Leak blocked.** Both first drafts bundled the *leaky* answer table (`memory/answers.json`, keyed on practice questions, with the answers copied from grader feedback).
-    - The denylist precheck missed it: AgentQA answers are 3-digit numbers, below `LeakageCritic`'s 4-character minimum term length.
-    - The (scripted) LLM critic rejected both drafts, and one repair per variant removed the table.
-  - **Candidates.** r0A = self-consistency + step-by-step + Python tool. r0B = answer format + null reword.
-  - **Evaluation.**
-    - r0A: S = 1.000, dS = +0.625 > δ, dC = −0.82 ≤ β0 + β1·dS = 25.1, so admissible.
-    - r0B: S = 0.500, dS = +0.125 is *inside* the band; shaped score = 100·0.125 − 15·0.024 = +12.1 > 0, so also admissible.
-  - **Decision.** argmax S' → **r0A kept**. S* = 1.000. Shadow monitor: holdout 1.00, OOD 0.92.
-  - **Two steps that look wrong:**
-    - **(a) Phantom credit (mock bug).** The declared self-consistency edit is overwritten by the Python-tool edit, because both rewrite `solve()`. The kept harness has no majority vote, yet L_t records "[aq:self_consistency] … ACCEPTED ΔS +0.625". The scripted critic does not compare the declared edits with the diff; the real critic prompt's rule 2 ("no-op while claiming a mechanism") exists for this.
-    - **(b) Winner's curse.** 40/40 is a lucky draw: the harness's true success rate is about 0.945 (k = 10). The loop never re-measures the incumbent (faithful to the code), so S_t = S* = 1.000 for the rest of the run.
-- **r1** (b_t = 4). r1A (verify + format + persona + checker sub-call) scored 0.475 with tokens ×15.6. r1B (verify + checker + reword) scored 0.625. Both are below the floor S* − δ = 0.853. That is the right call: the checker sub-call re-answers without the tool and overrides the correct tool answer.
-- **r2.**
-  - B_t = {subagent}: tried, never improved, and holding no accepted machinery, so its list is empty.
-  - Both variants proposed the same harmful Python skill card. S = 0.900, dS = −0.10 (inside the band). Shaped = −10 − 4.6 + 0.5·ν(=1) = −14.1, so rejected.
-  - The two evaluations are independent samples: different seeds, different per-task trials, same S by coincidence.
-- **r3.** Two single prompt edits (verify, answer format) scored 0.925 and 0.975. Measured against the lucky 1.000, dS < 0. Shaped scores −11.0 and −4.3, both rejected.
-- **r4** (b_t = 3).
-  - σ_4 = 1 because S_4 − S_1 = 0 ≤ δ. U_t = {tool, memory}, so variant B holds the reserved slot.
-  - r4A (answer format) scored 0.95 and was rejected.
-  - r4B shipped nothing: the mock's only `memory` idea is the leak, and it has no `tool` idea. The candidate was dropped as `no_proposal`.
-- **r5 to r7** (b_t = 2). The same pattern repeats.
-  - A's prompt edits (verify, persona, a prune of step-by-step that saved 14% tokens) all measured 0.95 < 1.000, and the shaped rule rejected them (the prune scored −2.9).
-  - B lost its slot to the unsatisfiable reservation every round. In r5 that took 4 proposer calls, all bounced by the done() contract.
-- **Net.**
-  - One acceptance in 8 rounds.
-  - The final harness is a real improvement: at k = 10, holdout goes 0.39 → 0.94 and OOD 0.44 → 0.91, and it is about 5× cheaper.
-  - After round 0, all 10 evaluated candidates were compared with a ceiling measurement the incumbent does not truly have (2 fell below the floor, 8 failed the shaped rule on dS < 0). None could win on score. This is spec §8.1 ("winner's curse and ratcheting S*") observed directly.
-
-**Audit.** 244 pass, 0 fail, 0 unverifiable, 9 info.
-- The 9 info rows are the done() bounces and the empty reserved-slot drafts.
-- Re-derived every round: b_t, σ_t, T_t, U_t, the reserved variants, S and S* bookkeeping, Ŝ from raw trials, dS, dC, Algorithm 2, argmax, and the δ formulas.
-- No holdout or OOD id or question appears in any proposer or critic input.
+**Audit.** `rsi.rrsi.audit`: 253 pass, 0 fail, 0 unverifiable, 14 info. Independent stage-B step check (`stepcheck.json`): 224 correct, 8 questionable, 1 wrong (the domain's evolve/holdout question overlap), 0 unverifiable.
 
 ## 2. `offline_harnessworld`: HarnessWorld, simulated policy, parametric mock LLM
 
@@ -140,7 +119,7 @@ E[C] per trial: 2,145 → 3,452 (×1.61).
 - All 17 rejected candidates were truly worse or null on evolve.
 - Both kept candidates were truly better on evolve; one of them is worse on OOD.
 
-**Audit.** 350 pass, 0 fail, 0 unverifiable, 6 info (4 done() bounces and 2 ground-truth notes on the keeps).
+**Audit.** 350 pass, 0 fail, 0 unverifiable, 6 info (4 done() bounces and 2 ground-truth notes on the keeps). Stage-B step check: 301 correct, 10 questionable (the k = 2 bootstrap δ under-covers; B_t lists 1-8 components with no machinery to prune in r1-r9), 0 wrong. The stage-B fixes do not touch this run: a from-scratch re-run on the fixed code gives an identical history.
 
 ## 3. `live_agentqa`: AgentQA, Claude Haiku everywhere
 
@@ -197,6 +176,8 @@ Shadow monitor (write-only, same k = 1): H0 holdout 0.50 / OOD 0.33 → r0A hold
 - **Loop-measured vs re-measured cost.** The loop measured r0A at dC = +0.85 (C 2,075 → 3,835); the transfer pass measured evolve tokens ×3.6. At k = 1 per-trial token counts are noisy, and the shaped rule's decision (+3.95 vs 0) was sensitive to it: dC above ≈ 1.11 would have rejected r0A as well.
 - **Winner's curse** as in run 1: S* = 0.667 is a single k = 1 sample; the transfer pass measured the same harness at 0.750 on evolve.
 
-**Audit.** 76 pass, 0 fail, 0 unverifiable, 0 info.
+**Audit.** 76 pass, 0 fail, 0 unverifiable, 0 info. Stage-B step check: 61 correct, 1 questionable (δ from 3 evaluations at k = 1), 0 wrong.
+
+**Replay on the current (stage-B fixed) code.** `validate_rrsi_replay.py` re-ran this configuration from scratch with every LLM behind the run's own cache in offline mode (a miss would be an error, never a paid call): 107/107 cache hits (19 search, 88 task), $0, and the history, decisions, trajectory, δ and final incumbent are identical to the record (`live_agentqa/replay_current_code.json`). This also shows that the kill-and-resume did not change any decision compared with an uninterrupted run.
 
 

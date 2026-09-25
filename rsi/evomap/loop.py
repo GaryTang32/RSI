@@ -12,13 +12,15 @@ import random
 from pathlib import Path
 from typing import Optional
 
-from rsi.core import Artifact, Budget, Domain, ImprovementResult, Ledger, LLM, transfer_report
+from rsi.core import Artifact, Budget, Domain, Evaluator, ImprovementResult, Ledger, LLM, transfer_report
+from rsi.trace import RunTracer, ShadowMonitor
 
 from .agent import AgentNode
 from .config import Config
 from .inject import GeneRoutedDomain, Injector, library_artifact
 from .signals import TaskSignalExtractor
 from .store import LocalStore
+from .tracing import eval_payload, library_fingerprint
 
 
 def merged_usage(*llms: Optional[LLM]) -> dict:
@@ -53,7 +55,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         config: Optional[Config] = None, out_dir: Optional[str | Path] = None, hub=None,
         injector: Optional[Injector] = None, extractor: Optional[TaskSignalExtractor] = None,
         store: Optional[LocalStore] = None, executor=None, budget: Optional[Budget] = None,
-        name: str = "agent0") -> ImprovementResult:
+        name: str = "agent0", monitor: Optional[ShadowMonitor] = None) -> ImprovementResult:
     """Run ``config.cycles`` evolution cycles of one :class:`AgentNode` over the
     domain's decision split and return the evolved gene library.
 
@@ -72,6 +74,15 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         injection interface, signal extractor, validation executor (defaults:
         ``FileInjector``, ``TaskSignalExtractor``, the domain's ``validation_executor()``
         or a sandboxed subprocess).
+    monitor:
+        optional :class:`rsi.trace.ShadowMonitor` (by default one is attached over
+        :class:`GeneRoutedDomain` when the domain has holdout / ood splits and
+        ``config.shadow_monitor``). It scores each new library version for the trace only.
+
+    Tracing: with ``out_dir`` and ``config.trace`` every cycle is written to
+    ``out_dir/trace.jsonl`` (see :mod:`rsi.evomap.tracing`); render it with
+    ``rsi.trace.inspect(out_dir)``. Baseline and monitor rollouts are excluded from the
+    ``Budget`` usd check so tracing cannot change when the loop stops.
     """
     cfg = (config or Config()).resolved()
     out = Path(out_dir) if out_dir else None
@@ -79,11 +90,54 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         out.mkdir(parents=True, exist_ok=True)
     store = store or LocalStore(out / "store" if out else None, node_id=name)
     ledger = Ledger(out / "ledger.jsonl" if out else None)
+    tracer = RunTracer(out if (out and cfg.trace) else None, "evomap")
     agent = AgentNode(name, domain, seed_artifact, llm_task=llm_task, llm_propose=llm_propose, config=cfg,
-                      store=store, hub=hub, injector=injector, extractor=extractor, ledger=ledger, executor=executor)
+                      store=store, hub=hub, injector=injector, extractor=extractor, ledger=ledger, executor=executor,
+                      tracer=tracer)
     tasks = domain.tasks.split(cfg.split)
     if not tasks:
         raise ValueError(f"split {cfg.split!r} is empty")
+    llms = list({id(x): x for x in (llm_task, llm_propose) if x}.values())
+    overhead = [0.0]          # usd spent by trace-only evaluations (baseline, shadow monitor)
+
+    def _spent() -> float:
+        return sum(l.meter.total().cost_usd for l in llms)
+
+    def _overhead(fn):
+        u0 = _spent()
+        try:
+            return fn()
+        finally:
+            overhead[0] += _spent() - u0
+
+    last_fp = [library_fingerprint(library_genes(store))]
+    if tracer.enabled:
+        tracer.event("run_start", None, seed=seed_artifact.short_id, agent=name, domain=domain.name,
+                     config=cfg.to_json(), hub=getattr(hub, "name", None),
+                     splits={s: len(domain.tasks.splits[s]) for s in domain.tasks.splits},
+                     decision_split=cfg.split, heldout_split=cfg.heldout_split,
+                     resumed_library=[g.id for g in library_genes(store)],
+                     seed_files={p: seed_artifact[p][:600] for p in sorted(seed_artifact)},
+                     what_improves="the gene library (genes/library.json) routed into the frozen harness")
+        if cfg.trace_baseline_k > 0 and llm_task is not None:
+            ev = Evaluator(domain, llm_task, workers=max(1, cfg.monitor_workers))
+            r0 = _overhead(lambda: ev.evaluate(seed_artifact, cfg.split, cfg.trace_baseline_k, label="trace-baseline"))
+            tracer.event("baseline", None, **eval_payload("seed", r0,
+                                                          note="seed harness, no genes; trace only (not a loop input)"))
+            tracer.event("note", None, what="baseline per-task scores",
+                         per_task=r0.task_scores(), trials={t: [x.score for x in v] for t, v in r0.trials.items()})
+        tracer.event("noise", None, delta=None, mode="none",
+                     detail="the gene loop has no run-level noise band; each check carries its own: rsi-taskcheck "
+                            "paired bootstrap CI, quarantine delta from the consumer's A/B trials, hub delta from "
+                            "its bank trials (all recorded in the gate events)")
+        if monitor is None and cfg.shadow_monitor and llm_task is not None and \
+                any(s in domain.tasks.splits for s in ("holdout", "ood")):
+            monitor = ShadowMonitor(GeneRoutedDomain(domain, injector=injector, extractor=extractor), llm_task,
+                                    k=cfg.monitor_k, workers=max(1, cfg.monitor_workers))
+        if monitor is not None:
+            tracer.monitor = monitor
+            _overhead(lambda: tracer.kept(0, "seed(no genes)", library_artifact(seed_artifact, library_genes(store)),
+                                          None))
     rng = random.Random(cfg.seed)
     order: list = []
     budget = budget or Budget(max_rounds=cfg.cycles)
@@ -91,9 +145,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
     stop = "max_rounds"
     solved_window: list[int] = []
     for t in range(cfg.cycles):
-        r = budget.exhausted(rounds=t, rollouts=agent.n_rollouts,
-                             usd=sum(l.meter.total().cost_usd for l in {id(x): x for x in (llm_task, llm_propose)
-                                                                        if x}.values()))
+        r = budget.exhausted(rounds=t, rollouts=agent.n_rollouts, usd=_spent() - overhead[0])
         if r:
             stop = r
             break
@@ -107,6 +159,13 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         row = cr.to_json()
         row.update({"n_genes": len(library_genes(store)), "rolling_solve_rate": sum(solved_window) / len(solved_window)})
         traj.append(row)
+        if tracer.enabled and tracer.monitor is not None:
+            fp = library_fingerprint(library_genes(store))
+            if fp != last_fp[0]:
+                last_fp[0] = fp
+                _overhead(lambda: tracer.kept(cr.cycle, f"library@c{cr.cycle}",
+                                              library_artifact(seed_artifact, library_genes(store)),
+                                              row["rolling_solve_rate"]))
     agent.flush()
     genes = library_genes(store)
     best = library_artifact(seed_artifact, genes)
@@ -116,6 +175,15 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
             "proposer_calls": agent.proposer_calls, "rollouts": agent.n_rollouts, "quarantined": agent.n_quarantined,
             "quarantine_rejected": agent.n_quarantine_rejected, "mode": cfg.mode,
             "safe_mode_fixes": _safe_fixes(cfg), "evaluate_with": "rsi.evomap.GeneRoutedDomain(domain)"}
+    meta["trace_overhead_usd"] = overhead[0]
+    if tracer.enabled:
+        tracer.event("run_end", None, stop_reason=stop, cycles=len(traj), library=[g.id for g in genes],
+                     n_events=len(store.events), n_capsules=len(store.capsules), audit=audit.to_dict(),
+                     rollouts=agent.n_rollouts, proposer_calls=agent.proposer_calls,
+                     quarantined=agent.n_quarantined, quarantine_rejected=agent.n_quarantine_rejected,
+                     solve_rate=sum(r["task_success"] for r in traj) / max(1, len(traj)),
+                     usage=merged_usage(llm_task, llm_propose), trace_overhead_usd=overhead[0],
+                     best_artifact=best.short_id)
     res = ImprovementResult(method="evomap", baseline=seed_artifact, best=best, ledger=ledger, trajectory=traj,
                             usage=merged_usage(llm_task, llm_propose), stop_reason=stop,
                             out_dir=str(out) if out else None, meta=meta)

@@ -1,0 +1,22 @@
+{
+ "name": "i04_1_param_char_budget_14000",
+ "artifact_id": "aecf89fe101aa4d1f2f0cc0d42b8ac29e7097aa5786900acfdeaa1d285a05970",
+ "created_at": 1790337670.975537,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "i01_0_retrieve_topk",
+ "hypothesis": "Tuning char_budget to 14000 should balance recall and prompt length.",
+ "axis": "exploration",
+ "components": [
+  "param_char_budget_14000",
+  "axis:D"
+ ],
+ "parents_read": [
+  "i01_0_retrieve_topk"
+ ],
+ "order": 10,
+ "move": "param_char_budget_14000",
+ "evidence": "untried mechanism",
+ "reason": ""
+}

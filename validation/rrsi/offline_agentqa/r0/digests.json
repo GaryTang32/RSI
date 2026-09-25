@@ -239,44 +239,38 @@
  },
  {
   "task_id": "evolve-numeric-001",
-  "lens": "failure",
+  "lens": "success",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer 'The answer is 781.').",
-  "evidence": [
+  "habits": [
    {
-    "where": "grader",
-    "quote": "Correct (answer 'The answer is 781.')."
+    "habit": "clean_numeric",
+    "where_shown": "final"
    }
   ],
-  "needed_instead": ""
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
  },
  {
   "task_id": "evolve-numeric-011",
-  "lens": "failure",
+  "lens": "success",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer 'The answer is 3886910.').",
-  "evidence": [
+  "habits": [
    {
-    "where": "grader",
-    "quote": "Correct (answer 'The answer is 3886910.')."
+    "habit": "clean_numeric",
+    "where_shown": "final"
    }
   ],
-  "needed_instead": ""
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
  },
  {
   "task_id": "evolve-numeric-018",
-  "lens": "failure",
+  "lens": "success",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer 'The answer is 19.').",
-  "evidence": [
+  "habits": [
    {
-    "where": "grader",
-    "quote": "Correct (answer 'The answer is 19.')."
+    "habit": "clean_numeric",
+    "where_shown": "final"
    }
   ],
-  "needed_instead": ""
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
  }
 ]

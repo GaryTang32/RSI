@@ -1,0 +1,22 @@
+{
+ "name": "i06_0_param_char_budget_4500",
+ "artifact_id": "7bd9223a220518cc53c76d32238a6c44ab1b15641c587c7d70d02e952764bff6",
+ "created_at": 1790337673.3774433,
+ "status": "evaluated",
+ "iteration": 6,
+ "kind": "candidate",
+ "base_system": "i05_1_crossover",
+ "hypothesis": "Tuning char_budget to 4500 should balance recall and prompt length.",
+ "axis": "exploitation",
+ "components": [
+  "param_char_budget_4500",
+  "axis:D"
+ ],
+ "parents_read": [
+  "i05_1_crossover"
+ ],
+ "order": 13,
+ "move": "param_char_budget_4500",
+ "evidence": "untried mechanism",
+ "reason": ""
+}

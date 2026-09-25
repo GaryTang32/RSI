@@ -1,0 +1,21 @@
+[llm call 1]
+SYSTEM: You are an expert Python programmer and mathematician. You excel at writing correct computational code.
+
+PROMPT: Solve this problem by writing Python code:
+
+What is the remainder when 12^869 is divided by 781?
+
+Write Python code that:
+1. Computes the answer
+2. Prints it with: print(ANSWER)
+
+Provide ONLY the Python code, no explanation.
+REPLY: ```python
+ANSWER = pow(12, 869, 781)
+print(ANSWER)
+```
+[python]
+ANSWER = pow(12, 869, 781)
+print(ANSWER)
+[output]
+364

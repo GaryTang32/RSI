@@ -1,0 +1,77 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 11046,
+  "output_tokens": 8259,
+  "cost_usd": 0.063378,
+  "latency_s": 92.15673875808716,
+  "total_tokens": 19305
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/seed/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-005.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-006.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-007.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-008.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-009.jsonl"
+ ],
+ "n_files_read": 27,
+ "files_read_by_kind": {
+  "code": 3,
+  "traces": 20,
+  "scores": 3,
+  "other": 1
+ },
+ "view_files": 27,
+ "view_chars": 19426,
+ "read_chars": 19426,
+ "error": null,
+ "seconds": 92.159,
+ "candidates": [
+  {
+   "name": "extract_formatted",
+   "base_system": "seed",
+   "hypothesis": "Models emphasize final answers with **bold** formatting or isolated numbers on clear lines. Priority-based extraction (formatted \u2192 standalone numbers \u2192 last line) is more reliable than always taking the last line.",
+   "axis": "exploitation",
+   "components": [
+    "extraction",
+    "pattern-matching",
+    "formatting-aware"
+   ]
+  },
+  {
+   "name": "code_first",
+   "base_system": "seed",
+   "hypothesis": "Mandating Python code generation and extracting from execution output, rather than parsing model text reasoning, ensures numeric accuracy. Computation-first is fundamentally more reliable than text-based reasoning.",
+   "axis": "exploration",
+   "components": [
+    "code-generation",
+    "execution-extraction",
+    "python-first"
+   ]
+  }
+ ]
+}

@@ -35,8 +35,8 @@ from .config import Config
 from .merge import MergeProposer
 from .reflection import ReflectionProposer, reflection_seed
 from .state import SearchState
-from .stoppers import (BudgetStopper, Composite, FileStopper, MaxCandidateProposals, MaxIterations, MaxMetricCalls,
-                       MaxReflectionCost, NoImprovement, ScoreThreshold, Timeout)
+from .stoppers import (BudgetStopper, Composite, ConsecutiveInfraFailures, FileStopper, MaxCandidateProposals,
+                       MaxIterations, MaxMetricCalls, MaxReflectionCost, NoImprovement, ScoreThreshold, Timeout)
 from .strategies import make_acceptance, make_component_selector, make_selector, EpochShuffledBatchSampler
 from .frontier import pareto_frequencies
 from .tracing import SHADOW_PREFIX, make_tracer
@@ -154,6 +154,8 @@ class GEPAEngine:
         st.extend(stoppers)
         if not st:
             raise ValueError("no stop condition: set max_metric_calls, a budget or a stopper")
+        if cfg.max_consecutive_infra_failures is not None:      # a safety net, not a stop condition of its own
+            st.append(ConsecutiveInfraFailures(cfg.max_consecutive_infra_failures))
         self.stopper = Composite(st)
         self.state = SearchState(self.components, cfg.frontier_type)
         self.stop_reason = ""

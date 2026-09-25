@@ -48,7 +48,7 @@ from .reflection import (DEFAULT_TEMPLATE, OPTIMIZE_ANYTHING_TEMPLATE, Reflectio
                          render_samples)
 from .rl import BRAINSTORM_TEMPLATE, RLConfig, ScalarRLBaseline, run_scalar_rl
 from .state import PHASES, RolloutCounter, SearchState
-from .stoppers import (BudgetStopper, Composite, FileStopper, MaxCandidateProposals, MaxIterations, MaxMetricCalls,
+from .stoppers import (BudgetStopper, Composite, ConsecutiveInfraFailures, FileStopper, MaxCandidateProposals, MaxIterations, MaxMetricCalls,
                        MaxReflectionCost, NoImprovement, ScoreThreshold, Timeout)
 from .strategies import (AllComponents, BeamSearchSelector, CurrentBestSelector, EpochShuffledBatchSampler,
                          EpsilonGreedySelector, ImprovementOrEqual, NoiseMargin, ParetoSelector, RoundRobinComponents,
@@ -62,7 +62,7 @@ __all__ = [
     "DEFAULT_TEMPLATE", "OPTIMIZE_ANYTHING_TEMPLATE", "ReflectionProposer", "build_prompt", "parse_fenced",
     "render_samples", "PHASES", "RolloutCounter", "SearchState", "MaxMetricCalls", "MaxIterations", "Timeout",
     "FileStopper", "ScoreThreshold", "NoImprovement", "MaxCandidateProposals", "MaxReflectionCost", "BudgetStopper",
-    "Composite", "ParetoSelector", "CurrentBestSelector", "EpsilonGreedySelector", "TopKParetoSelector",
+    "Composite", "ConsecutiveInfraFailures", "ParetoSelector", "CurrentBestSelector", "EpsilonGreedySelector", "TopKParetoSelector",
     "BeamSearchSelector", "make_selector", "RoundRobinComponents", "AllComponents", "EpochShuffledBatchSampler",
     "StrictImprovement", "ImprovementOrEqual", "NoiseMargin",
     "RLConfig", "ScalarRLBaseline", "run_scalar_rl", "BRAINSTORM_TEMPLATE", "run_score_only", "run_best_of_n",

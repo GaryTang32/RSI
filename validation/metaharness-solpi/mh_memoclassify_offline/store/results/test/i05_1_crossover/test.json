@@ -1,0 +1,21 @@
+{
+ "split": "test",
+ "score": 0.6296296296296297,
+ "per_unit": {
+  "ds_alpha/test": 0.625,
+  "ds_beta/test": 0.6388888888888888,
+  "ds_gamma/test": 0.625
+ },
+ "per_unit_cost": {
+  "ds_alpha/test": 1539.0,
+  "ds_beta/test": 855.0,
+  "ds_gamma/test": 1256.0
+ },
+ "context_cost": 1216.6666666666667,
+ "tokens": 67540.33333333333,
+ "families": {
+  "ds_alpha": 0.625,
+  "ds_beta": 0.6388888888888888,
+  "ds_gamma": 0.625
+ }
+}

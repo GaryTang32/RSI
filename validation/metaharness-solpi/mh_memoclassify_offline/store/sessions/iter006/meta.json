@@ -1,0 +1,79 @@
+{
+ "iteration": 6,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/i01_0_retrieve_topk/eval/search/scores.json",
+  "candidates/i01_0_retrieve_topk/src/memory.py",
+  "candidates/i01_1_label_list/eval/search/scores.json",
+  "candidates/i01_1_label_list/src/memory.py",
+  "candidates/i02_0_contrastive/eval/search/scores.json",
+  "candidates/i02_0_contrastive/src/memory.py",
+  "candidates/i02_1_coverage/eval/search/scores.json",
+  "candidates/i02_1_coverage/src/memory.py",
+  "candidates/i03_0_notes/eval/search/scores.json",
+  "candidates/i03_0_notes/src/memory.py",
+  "candidates/i03_1_notes/eval/search/scores.json",
+  "candidates/i03_1_notes/src/memory.py",
+  "candidates/i04_0_coverage/eval/search/scores.json",
+  "candidates/i04_0_coverage/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i04_0_coverage/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i04_0_coverage/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i04_0_coverage/src/memory.py",
+  "candidates/i04_1_param_char_budget_14000/eval/search/scores.json",
+  "candidates/i04_1_param_char_budget_14000/src/memory.py",
+  "candidates/i05_0_notes_only/eval/search/scores.json",
+  "candidates/i05_0_notes_only/src/memory.py",
+  "candidates/i05_1_crossover/eval/search/scores.json",
+  "candidates/i05_1_crossover/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i05_1_crossover/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i05_1_crossover/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i05_1_crossover/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 31,
+ "files_read_by_kind": {
+  "code": 12,
+  "traces": 6,
+  "scores": 13,
+  "other": 0
+ },
+ "view_files": 115,
+ "view_chars": 3436442,
+ "read_chars": 636777,
+ "error": null,
+ "seconds": 0.019,
+ "candidates": [
+  {
+   "name": "i06_0_param_char_budget_4500",
+   "base_system": "i05_1_crossover",
+   "hypothesis": "Tuning char_budget to 4500 should balance recall and prompt length.",
+   "axis": "exploitation",
+   "components": [
+    "param_char_budget_4500",
+    "axis:D"
+   ]
+  },
+  {
+   "name": "i06_1_label_list",
+   "base_system": "i04_0_coverage",
+   "hypothesis": "Listing every label seen so far lets the model name labels without a retrieved example.",
+   "axis": "exploration",
+   "components": [
+    "label_list",
+    "axis:A"
+   ]
+  }
+ ]
+}

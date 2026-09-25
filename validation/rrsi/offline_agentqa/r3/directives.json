@@ -20,15 +20,10 @@
  "prune_set": [
   {
    "component": "skill",
-   "recent_best_gain": -0.1,
-   "accepted_edits_in_incumbent": []
-  },
-  {
-   "component": "subagent",
    "recent_best_gain": -0.375,
    "accepted_edits_in_incumbent": []
   }
  ],
  "delta": 0.147196,
- "S_star": 1.0
+ "S_star": 0.75
 }

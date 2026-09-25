@@ -42,39 +42,17 @@
      "quote": "Incorrect. Extracted answer 'The answer is 374.'; expected '364'."
     }
    ]
-  },
-  {
-   "mode": "numeric__correct_answer_v",
-   "n_tasks": 3,
-   "affected_tasks": [
-    "evolve-numeric-001",
-    "evolve-numeric-011",
-    "evolve-numeric-018"
-   ],
-   "loss": 0.0,
-   "description": "tasks of kind 'numeric' end with: Correct (answer <v>).",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-numeric-001",
-     "where": "grader",
-     "quote": "Correct (answer 'The answer is 781.')."
-    },
-    {
-     "task_id": "evolve-numeric-011",
-     "where": "grader",
-     "quote": "Correct (answer 'The answer is 3886910.')."
-    },
-    {
-     "task_id": "evolve-numeric-018",
-     "where": "grader",
-     "quote": "Correct (answer 'The answer is 19.')."
-    }
-   ]
   }
  ],
  "capability_gaps": [],
- "success_habits": [],
+ "success_habits": [
+  {
+   "habit": "clean_numeric",
+   "n_tasks": 3,
+   "description": "passing tasks of kind 'numeric' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  }
+ ],
  "n_digests": 20,
  "analyst": "heuristic"
 }

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-001",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'The remainder when 19^763 is divided by 823 is **181**.'; expected '781'.",
+  "output": "The remainder when 19^763 is divided by 823 is **181**.",
+  "tokens": 3687,
+  "cost_usd": 0.015115,
+  "steps": 1,
+  "latency_s": 0.005634307861328125,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

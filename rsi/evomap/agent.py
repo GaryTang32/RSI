@@ -26,16 +26,18 @@ from __future__ import annotations
 
 import random
 import zlib
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional
 
 from rsi.core import Artifact, Domain, Execution, Ledger, LLM, Node, Task, paired_diff_ci
+from rsi.trace import RunTracer
 
 from .assets import Gene, PersonalityState
 from .config import Config
 from .distill import Distiller, LeakageAuditor
 from .hub import Bundle, Decision, client_reuse_score, reuse_threshold
-from .inject import FileInjector, Injector, post_workspace, pre_workspace, task_text
+from .inject import FileInjector, Injector, library_artifact, post_workspace, pre_workspace, task_text
 from .memory import Advice, Outcome, OutcomeInferrer
 from .mutation import MutationBuilder, PersonalityModel, StrategyPolicy
 from .prompts import GENE_WRITER_SYSTEM, gene_writer_prompt, parse_gene
@@ -45,6 +47,7 @@ from .signals import (PlateauDetector, PlateauOverride, RunContext, SignalDedupe
                       signal_key)
 from .solidify import ConstraintChecker, CountedFilePolicy, RunState, Solidifier
 from .store import LocalStore
+from .tracing import eval_payload, gene_brief, injected_diff, loop_genes, trial_eval, validation_rows
 from .validation import CommandPolicy, SubprocessExecutor, ValidationRunner, VacuityDetector
 
 
@@ -94,8 +97,11 @@ class AgentNode:
                  extractor: Optional[TaskSignalExtractor] = None, ledger: Optional[Ledger] = None,
                  behavior: Optional[Behavior] = None, heldout_tasks: Optional[list] = None,
                  decision_tasks: Optional[list] = None, executor=None, counted: Optional[CountedFilePolicy] = None,
-                 cluster: Optional[str] = None) -> None:
+                 cluster: Optional[str] = None, tracer: Optional[RunTracer] = None) -> None:
         self.name = name
+        # write-only per-cycle trace (rsi.trace); the loop never reads it back
+        self.tracer = tracer if tracer is not None else RunTracer(None, "evomap")
+        self._last_proposal: dict = {}
         self.domain, self.harness = domain, harness
         self.llm_task, self.llm_propose = llm_task, llm_propose
         self.cfg = (config or Config()).resolved()
@@ -209,11 +215,24 @@ class AgentNode:
         k = self.cfg.taskcheck_k
         with_g = [sum(self._run(t, [gene], self.seed_base + s).score for s in range(k)) / k for t in scope]
         without = [sum(self._run(t, [], self.seed_base + s).score for s in range(k)) / k for t in scope]
+        if self.tracer.enabled:
+            for arm, vals in (("with", with_g), ("without", without)):
+                self.tracer.event("eval", self.t, candidate=f"taskcheck:{arm}:{gene.id}",
+                                  summary={"split": self.cfg.split, "S": sum(vals) / len(vals), "n_tasks": len(vals),
+                                           "k": k, "errors": 0, "missing": 0},
+                                  per_task={t.id: v for t, v in zip(scope, vals)},
+                                  stage="rsi-taskcheck (validation command): gene vs no gene, paired seeds")
         d = paired_diff_ci(without, with_g, alpha=self.cfg.taskcheck_alpha, reps=1000) if len(scope) > 1 else \
             {"mean_diff": with_g[0] - without[0], "lo": with_g[0] - without[0]}
         ok = d["mean_diff"] > 0 and d["lo"] > 0
         return (0 if ok else 1), (f"taskcheck n={len(scope)} k={k} with={sum(with_g) / len(with_g):.3f} "
                                   f"without={sum(without) / len(without):.3f} paired LCB={d['lo']:+.3f}")
+
+    def _proposer_tokens(self) -> int:
+        if self.llm_propose is None:
+            return 0
+        snap = self.llm_propose.meter.snapshot()
+        return int(sum(v.get("total_tokens", 0) for k, v in snap.items() if k.split(":")[0] == "proposer"))
 
     def _record_pending(self, cur_error: bool) -> None:
         p = self._pending
@@ -233,6 +252,14 @@ class AgentNode:
         cfg, hub = self.cfg, self.hub
         views = hub.search(signals, k=cfg.hub_k, consumer=self.name)
         views = [v for v in views if v.author != self.name]
+        tr = self.tracer
+        if tr.enabled:
+            tr.event("note", self.t, what="hub search (nothing local fits)" if cfg.hub_when != "always" else
+                     "hub search", signals=list(signals),
+                     views=[{"asset_id": v.asset_id[:24], "gene": (v.gene or {}).get("id"), "author": v.author,
+                             "status": v.status, "rank_score": v.score, "similarity": v.similarity,
+                             "exploration": v.exploration, "already_rejected": v.asset_id in self._rejected}
+                            for v in views])
         if not views:
             return None, None, None, False
         if cfg.reuse_mode in ("reference", "direct"):
@@ -260,16 +287,42 @@ class AgentNode:
         self.n_quarantined += 1
         q = self.quarantine.test(Gene.from_dict(b.gene))
         qd = {"promote": q.promote, "reason": q.reason, "dS": q.dS, "delta": q.delta, "n": q.n}
+        if tr.enabled:
+            self._trace_quarantine(v, b, q)
         if q.promote:
             g = self.store.promote_external(v.asset_id, validated=True)
-            hub.report_outcome(v.asset_id, self.name, 1, q.proof)
+            row = hub.report_outcome(v.asset_id, self.name, 1, q.proof)
+            if tr.enabled:
+                tr.event("note", self.t, what="adoption report sent to hub (outcome=1)", asset_id=v.asset_id[:24],
+                         hub_row=row, promoted_local_gene=g.id if g is not None else None)
             return g, v.asset_id, qd, True
         self.n_quarantine_rejected += 1
         self._rejected.add(v.asset_id)
         self.store.resolve_external(v.asset_id, "rejected", q.reason)
         if q.n > 0:
-            hub.report_outcome(v.asset_id, self.name, 0, q.proof)
+            row = hub.report_outcome(v.asset_id, self.name, 0, q.proof)
+            if tr.enabled:
+                tr.event("note", self.t, what="adoption report sent to hub (outcome=0)", asset_id=v.asset_id[:24],
+                         hub_row=row)
         return None, v.asset_id, qd, True
+
+    def _trace_quarantine(self, v, b, q) -> None:
+        tr, gid = self.tracer, (b.gene or {}).get("id")
+        last = self.quarantine.last
+        if "base" in last:
+            tr.event("eval", self.t, **eval_payload(f"quarantine:no_gene", last["base"],
+                                                   stage="consumer quarantine A/B, own held-out tasks"))
+            tr.event("eval", self.t, **eval_payload(f"quarantine:{gid}", last["cand"],
+                                                   stage="consumer quarantine A/B, own held-out tasks"))
+        tr.event("critic", self.t, candidate=f"hub:{gid}", accept=q.promote, stage="consumer quarantine",
+                 objections=[] if q.promote else [q.reason], asset_id=v.asset_id[:24], author=v.author)
+        tr.gate(self.t, f"quarantine:{gid}", q.promote, q.reason,
+                math={"rule": f"{self.quarantine.gate}: RRSIGate(floor S* - delta, cost rule) AND dS > 0"
+                      if self.quarantine.gate == "rrsi" else "paired LCB > 0",
+                      "S_no_gene": q.S_base, "S_gene": q.S_gene, "dS": q.dS, "delta": q.delta, "n_tasks": q.n,
+                      "k": self.quarantine.k, "min_tasks": self.quarantine.min_tasks,
+                      "C_no_gene": last["base"].cost if "base" in last else None,
+                      "C_gene": last["cand"].cost if "cand" in last else None})
 
     # ------------------------------------------------------------------ propose
     def _propose(self, task: Task, signals: list, trial) -> Optional[Gene]:
@@ -285,6 +338,7 @@ class AgentNode:
         self.proposer_calls += 1
         resp = self.llm_propose.complete(prompt, system=GENE_WRITER_SYSTEM, seed=self.seed_base + self.t,
                                          role="proposer")
+        self._last_proposal = {"prompt": prompt, "system": GENE_WRITER_SYSTEM, "reply": resp.text}
         task_sig = [s for s in signals if s.startswith("task:")]
         g = parse_gene(resp.text, default_id=f"gene_{self.name}_{self.t}", default_signals=task_sig,
                        default_validation=self.cfg.default_validation)
@@ -295,13 +349,72 @@ class AgentNode:
         if g.id in self.store.genes:
             g.id = f"{g.id}_{self.name}_{self.t}"
         g.provenance = {"kind": "evolved", "author": self.name, "cycle": self.t}
-        self.auditor.audit(g, public_text=task_text(self.domain, task),
-                           hidden_text=f"{task.target}\n{trial.feedback}")
+        leak = self.auditor.audit(g, public_text=task_text(self.domain, task),
+                                  hidden_text=f"{task.target}\n{trial.feedback}")
+        self._last_proposal["leakage_audit"] = getattr(leak, "__dict__", str(leak))
         return g
 
-    # ------------------------------------------------------------------ the cycle
+    # ------------------------------------------------------------------ tracing
+    def _snapshot(self) -> dict:
+        st, mem = self.store, self.store.memory
+        recent = st.recent_events(8)
+        d = {"cycles_done": self.t, "library": sorted(g.id for g in loop_genes(st)),
+             "library_version": st.gene_library_version(), "n_capsules": len(st.capsules),
+             "n_failed_capsules": len(st.failed_capsules), "n_events": len(st.events),
+             "last_event": st.last_event_id(),
+             "recent_outcomes": [e.outcome.get("status") for e in recent],
+             "memory_graph": dict(Counter(e.get("kind") for e in mem.events)),
+             "pending_outcome_gene": (self._pending or {}).get("gene_id") if self._pending else None,
+             "personality": self.personality.state.to_dict() if hasattr(self.personality, "state") else None,
+             "rollouts": self.n_rollouts, "proposer_calls": self.proposer_calls,
+             "quarantined": self.n_quarantined, "quarantine_rejected": self.n_quarantine_rejected,
+             "rejected_assets": len(self._rejected), "published_keys": len(self._published),
+             "external_candidates": len(st.external)}
+        hub = self.hub
+        if hub is not None and hasattr(hub, "records"):
+            d["hub"] = {"assets_by_status": dict(Counter(r.status for r in hub.records.values())),
+                        "credits": dict(getattr(hub.credits, "balance", {}) or {})}
+        return d
+
     def cycle(self, task: Task, seed: Optional[int] = None) -> CycleResult:
+        tr = self.tracer
+        if not tr.enabled:
+            return self._cycle(task, seed)
+        t = self.t + 1
+        genes0 = loop_genes(self.store)
+        lib0 = library_artifact(self.harness, genes0)
+        n_out0 = sum(1 for e in self.store.memory.events if e.get("kind") == "outcome")
+        tr.event("round_start", t, task=task.id, family=task.family, **self._snapshot())
+        cr = self._cycle(task, seed)
+        genes1 = loop_genes(self.store)
+        lib1 = library_artifact(self.harness, genes1)
+        new = sorted({g.id for g in genes1} - {g.id for g in genes0})
+        if new:
+            why = f"solidify succeeded: new gene(s) {new} ({cr.source}) added to the library"
+        elif cr.solidified:
+            why = (f"solidify succeeded with existing gene {cr.gene_id}: library unchanged except its learning "
+                   "record (learning_history / epigenetic marks / widened signals)")
+        elif cr.gene_id is None and cr.task_success:
+            why = "task solved without a gene: nothing to solidify (safe-mode skip); library unchanged"
+        elif cr.gene_id is None:
+            why = ("task not solved and no gene available (no local match, no hub asset adopted, no gene writer "
+                   "or no parsable gene): a failed event is recorded; library unchanged")
+        else:
+            why = (f"solidify failed ({cr.source} gene {cr.gene_id}): change rolled back; "
+                   + ("gene not stored" if cr.source in ("generated", "hub") else "only its failure record changed"))
+        tr.decision(t, kept=(new[0] if new else None), incumbent_before=lib0.short_id, incumbent_after=lib1.short_id,
+                    why=why, library_before=[g.id for g in genes0], library_after=[g.id for g in genes1],
+                    library_diff=lib0.diff(lib1)[:3000] if lib0.id != lib1.id else "")
+        outs = [e for e in self.store.memory.events if e.get("kind") == "outcome"]
+        tr.event("state", t, **self._snapshot(), memory_outcomes_written=[
+            {"gene": o.get("gene", {}).get("id"), "outcome": o.get("outcome")} for o in outs[n_out0:]],
+            cycle_result=cr.to_json())
+        return cr
+
+    # ------------------------------------------------------------------ the cycle
+    def _cycle(self, task: Task, seed: Optional[int] = None) -> CycleResult:
         cfg, st = self.cfg, self.store
+        tr = self.tracer
         self.t += 1
         st.clock.tick()
         seed = self.seed_base + self.t if seed is None else seed
@@ -329,6 +442,26 @@ class AgentNode:
                                    gene_successes=self._gene_successes() if cfg.failed_capsule_rule == "relative"
                                    else None)
         gene, source, reused, qd, hub_hit = dec.gene, ("local" if dec.gene is not None else "none"), None, None, False
+        if tr.enabled:
+            top = sorted(dec.scores.items(), key=lambda kv: -kv[1])[:6] if isinstance(dec.scores, dict) else []
+            text = (f"task {task.id} (family {task.family}); signals {signals}"
+                    + (f" (deduper suppressed {dd.suppressed})" if dd.suppressed else "")
+                    + f"; plateau={'%s/%s' % (plateau.active, plateau.severity)}; drift={drift}; "
+                    f"memory advice: preferred={advice.preferred_gene_id}, banned={sorted(advice.banned_gene_ids)}; "
+                    f"local selector: mode={dec.mode} -> {dec.gene.id if dec.gene else 'none'}"
+                    + (f" (top scores {top})" if top else "") + (f"; banned {sorted(dec.banned)}" if dec.banned else "")
+                    + ("; hub will be consulted" if self.hub is not None and (cfg.hub_when == "always" or gene is None)
+                       else ""))
+            tr.event("analysis", self.t, text=text, signals_raw=base_sig, signals=list(signals),
+                     dedup={"suppressed": dd.suppressed, "notes": dd.notes, "ban_gene": dd.ban_gene},
+                     plateau={"active": plateau.active, "severity": plateau.severity}, drift=drift,
+                     advice={"preferred": advice.preferred_gene_id, "banned": sorted(advice.banned_gene_ids),
+                             "ban_reasons": advice.ban_reasons, "total_attempts": advice.total_attempts,
+                             "scores": advice.scores},
+                     selector={"mode": dec.mode, "gene": dec.gene.id if dec.gene else None,
+                               "capsule": dec.capsule.id if dec.capsule else None, "alternatives": dec.alternatives,
+                               "reasons": dec.reasons, "scores": dec.scores, "banned": sorted(dec.banned),
+                               "drift_intensity": dec.drift_intensity, "memory_used": dec.memory_used})
         if self.hub is not None and (cfg.hub_when == "always" or gene is None):
             hg, aid, qd, hub_hit = self._consult_hub(signals, task)
             if hg is not None:
@@ -356,25 +489,69 @@ class AgentNode:
                                              "to reduce repeated errors and improve stability."})
         st.memory.record("attempt", gene={"id": gid0}, action={"id": f"act_{self.name}_{self.t:06d}", "drift": drift,
                                                               "selected_by": source, "selector": dec.mode})
-        ptok0 = self.llm_propose.meter.total().total_tokens if self.llm_propose is not None else 0
+        # proposer-role tokens only: when one LLM object is both solver and gene writer (live runs), its total
+        # meter also holds the solve calls, which are already counted via trial.tokens (they were double counted)
+        ptok0 = self._proposer_tokens()
         tokens = 0
+        ctx = {"mutation": mut.to_dict() if hasattr(mut, "to_dict") else str(mut),
+               "personality": pers.to_dict() if hasattr(pers, "to_dict") else str(pers),
+               "policy": {"preset": pol.preset, "max_files": pol.max_files, "force_innovate": pol.force_innovate,
+                          "cautious": pol.cautious, "directives": pol.directives}}
         if gene is not None:
+            if tr.enabled:
+                art = self.injector.inject(self.harness, [gene])
+                tr.proposal(self.t, gene.id, parent=st.gene_library_version(),
+                            change=(f"reuse local gene {gene.id} (selector {dec.mode})" if source == "local" else
+                                    f"use hub asset {str(reused)[:24]} as gene {gene.id} (quarantine promoted it)"),
+                            hypothesis=gene.summary, components=[f"gene:{gene.id}"],
+                            diff=injected_diff(self.harness, art), source=source, gene=gene_brief(gene), **ctx)
             trial = self._run(task, [gene], seed)
+            if tr.enabled:
+                tr.event("eval", self.t, **trial_eval(f"solve:{gene.id}", cfg.split, task, trial, seed=seed,
+                                                      attempt="with the selected gene"))
         else:
+            if tr.enabled:
+                tr.proposal(self.t, "no_gene", parent=st.gene_library_version(),
+                            change="no gene fits: solve from scratch with the bare harness", diff="",
+                            source="none", **ctx)
             trial = self._run(task, [], seed)
+            if tr.enabled:
+                tr.event("eval", self.t, **trial_eval("solve:no_gene", cfg.split, task, trial, seed=seed,
+                                                      attempt="scratch"))
             if cfg.propose and trial.score < cfg.success_threshold:
+                self._last_proposal = {}
                 g_new = self._propose(task, signals, trial)
+                if tr.enabled and self.llm_propose is not None:
+                    lp = self._last_proposal
+                    art = self.injector.inject(self.harness, [g_new]) if g_new is not None else self.harness
+                    tr.proposal(self.t, g_new.id if g_new else "unparsed", parent=st.gene_library_version(),
+                                prompt=lp.get("prompt", ""), reply=lp.get("reply", ""),
+                                change=f"gene writer wrote new gene {g_new.id}" if g_new else "",
+                                hypothesis=g_new.summary if g_new else "",
+                                components=[f"gene:{g_new.id}"] if g_new else [],
+                                diff=injected_diff(self.harness, art),
+                                error=None if g_new else "gene writer reply did not parse into a gene",
+                                source="generated", gene=gene_brief(g_new),
+                                leakage_audit=lp.get("leakage_audit"))
                 if g_new is not None:
                     gene, source = g_new, "generated"
                     if cfg.retry_after_propose:
                         tokens += trial.tokens
                         trial = self._run(task, [gene], seed + 7919)
+                        if tr.enabled:
+                            tr.event("eval", self.t, **trial_eval(f"solve:{gene.id}", cfg.split, task, trial,
+                                                                  seed=seed + 7919,
+                                                                  attempt="retry with the new gene"))
         tokens += trial.tokens
         if self.llm_propose is not None:
-            tokens += self.llm_propose.meter.total().total_tokens - ptok0
+            tokens += self._proposer_tokens() - ptok0
         solved = trial.score >= cfg.success_threshold
         self.last_gene = gene
         if gene is None and solved and cfg.skip_geneless_success:
+            if tr.enabled:
+                tr.gate(self.t, "no_gene", False, "safe mode: task solved without a gene -> nothing to solidify "
+                        "(skipped: no event, no capsule, no memory outcome)",
+                        math={"task_score": trial.score, "success_threshold": cfg.success_threshold})
             return self._skip(task, signals, dec, trial, tokens, reused, qd, hub_hit)
         if gene is None and cfg.mode == "faithful":
             gene = self._auto_gene(signals)
@@ -391,6 +568,8 @@ class AgentNode:
                       task_success=solved, hidden_score=trial.score, env=cfg.env,
                       validation_context={"gene": gene, "task": task})
         res = self.solidifier.solidify(rs)
+        if tr.enabled:
+            self._trace_solidify(rs, res, gene, solved, trial)
         if res.success and is_new:
             if source == "hub" and reused:
                 gene.parent = reused
@@ -424,6 +603,8 @@ class AgentNode:
             fr = self.distiller.last_failure_result
             if fr is not None and fr.ok and fr.gene is not None:
                 distilled = f"{distilled},{fr.gene.id}" if distilled else fr.gene.id
+        if tr.enabled and distilled:
+            tr.event("note", self.t, what="distiller produced gene(s)", genes=distilled)
         published = None
         if self.hub is not None and cfg.publish and self.behavior.publishes and res.success and gene is not None \
                 and rs.source_type != "reused" and (res.publishable or not cfg.publish_requires_eligibility):
@@ -443,6 +624,40 @@ class AgentNode:
                          res.validation.n_run)
         self.results.append(cr)
         return cr
+
+    def _trace_solidify(self, rs, res, gene, solved: bool, trial) -> None:
+        from .solidify import A2A_MAX_FILES, A2A_MAX_LINES, BROADCAST_SCORE, BROADCAST_STREAK, MIN_PUBLISH_SCORE
+        cfg = self.cfg
+        meta = res.event.meta or {}
+        val = res.validation
+        reasons = (res.constraints.violations + res.protocol_violations + list(meta.get("extra_failures") or [])
+                   + ([] if val.ok else ["validation_failed"]))
+        reason = ("keep: constraints ok, validation ok" + (", non-vacuous" if res.vacuity is not None else "")
+                  + (", own task solved" if cfg.require_task_success else "")) if res.success else \
+            "reject: " + ", ".join(reasons[:6])
+        math = {"keep_rule": (f"{cfg.mode}: constraints ok AND validation ok AND no protocol violation"
+                              + (" AND non-vacuous (lint + discriminative before/after)" if cfg.vacuity_check else "")
+                              + (" AND own graded task solved" if cfg.require_task_success else "")),
+                "constraints": {"ok": res.constraints.ok, "violations": res.constraints.violations,
+                                "warnings": res.constraints.warnings, "blast": res.constraints.blast},
+                "protocol_violations": res.protocol_violations,
+                "validation": {"ok": val.ok, "n_run": val.n_run, "n_passed": val.n_passed,
+                               "n_skipped": val.n_skipped, "blocked": val.blocked,
+                               "commands": validation_rows(val.report)},
+                "vacuity": res.vacuity.to_dict() if res.vacuity is not None else None,
+                "task_score": trial.score, "success_threshold": cfg.success_threshold, "task_solved": solved,
+                "extra_failures": meta.get("extra_failures"), "composite_score": res.score,
+                "failure_mode": list(res.failure_mode) if res.failure_mode else None,
+                "rolled_back": res.rolled_back,
+                "publish_eligibility": {"composite": res.score, "broadcast_score_min": BROADCAST_SCORE,
+                                        "publish_score_min": MIN_PUBLISH_SCORE,
+                                        "capsule_streak": res.capsule.success_streak if res.capsule else 0,
+                                        "streak_min": BROADCAST_STREAK,
+                                        "blast_limits": [A2A_MAX_FILES, A2A_MAX_LINES],
+                                        "eligible_to_broadcast": res.eligible_to_broadcast,
+                                        "publishable": res.publishable}}
+        self.tracer.gate(self.t, gene.id if gene is not None else "no_gene", res.success, reason, math=math,
+                         stage="solidify", event_id=res.event.id)
 
     def _skip(self, task: Task, signals: list, dec, trial, tokens: int, reused, qd, hub_hit) -> CycleResult:
         """Safe mode: solved without any gene -> nothing to solidify; logged as a ``skipped`` ledger node
@@ -490,4 +705,18 @@ class AgentNode:
         self._published.add(key)
         b = self.behavior.modify_bundle(self.make_bundle(gene, capsule, event, report, before, after), self)
         d: Decision = self.hub.publish(b, self.name)
+        tr = self.tracer
+        if tr.enabled:
+            bank = getattr(self.hub, "bank", None)
+            last = getattr(bank, "last", {}) or {}
+            if d.report and last:
+                for k, r in last.items():
+                    tr.event("eval", self.t, **eval_payload(f"hub-bank:{k}:{gene.id}", r,
+                                                           stage="hub verification on its hidden task bank"))
+            tr.gate(self.t, f"hub-publish:{gene.id}", d.accepted, f"hub {getattr(self.hub, 'name', '?')}: "
+                    f"{d.status}" + (f" - {'; '.join(map(str, d.reasons))}" if d.reasons else ""),
+                    math={k: v for k, v in (d.report or {}).items()
+                          if k in ("n", "n_off", "k", "U", "U_LCB", "delta", "R", "uplift_ok", "floor_ok", "verdict",
+                                   "base_in", "gene_in", "discriminative", "recomputed_blast", "reason")},
+                    stage="publish -> hub gate + verification", asset_id=(d.asset_id or "")[:24])
         return d.status

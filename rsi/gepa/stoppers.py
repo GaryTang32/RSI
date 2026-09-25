@@ -100,6 +100,30 @@ class BudgetStopper:
         return self.budget.exhausted(rounds=st.i + 1, rollouts=st.counter.total, usd=eng.usd())
 
 
+class ConsecutiveInfraFailures:
+    """Stop after ``n`` consecutive iterations lost to infrastructure failures: the parent or child
+    rollouts failed (``skip_infra_error``) or every reflection call failed with an LLM error
+    (``no_proposal`` whose rejected outputs are all ``llm error: ...``). Extension: the reference
+    has no such stopper (an exception there aborts the run, a swallowed one is scored 0)."""
+
+    def __init__(self, n: int) -> None:
+        if n < 1:
+            raise ValueError("n must be >= 1")
+        self.n = n
+
+    @staticmethod
+    def _is_infra(e: dict) -> bool:
+        if e.get("event") == "skip_infra_error":
+            return True
+        rej = e.get("rejected_outputs") or {}
+        return e.get("event") == "no_proposal" and bool(rej) and all(str(r).startswith("llm error")
+                                                                     for r in rej.values())
+
+    def __call__(self, eng) -> Optional[str]:
+        tail = eng.state.trace[-self.n:]
+        return "infra_outage" if len(tail) == self.n and all(self._is_infra(e) for e in tail) else None
+
+
 class Composite:
     def __init__(self, stoppers: Sequence[Callable], mode: str = "any") -> None:
         self.stoppers, self.mode = list(stoppers), mode

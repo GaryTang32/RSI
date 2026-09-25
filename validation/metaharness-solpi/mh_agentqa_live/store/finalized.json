@@ -1,0 +1,12 @@
+{
+ "status": "complete",
+ "systems": [
+  "seed",
+  "code_generalized_extract",
+  "extract_formatted",
+  "code_first"
+ ],
+ "started_at": 1790338270.5734472,
+ "failures": [],
+ "completed_at": 1790338335.7937365
+}

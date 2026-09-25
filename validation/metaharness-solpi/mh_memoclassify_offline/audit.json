@@ -1,0 +1,413 @@
+{
+ "checks": {
+  "diff_matches_ledger_and_store": "12/12",
+  "eval_only_on_search_split": "12/12",
+  "frontier_recomputed_independently": "12/12",
+  "incumbent_is_top_pareto_point": "6/6",
+  "delta_arithmetic": "12/12",
+  "evaluated_iff_admissible": "12/12",
+  "proposal_changes_code": "12/12",
+  "changes_a_file_the_base_harness_has": "12/12",
+  "claimed_base_exists_and_visible": "12/12",
+  "test_results_only_after_finalize": "6/6",
+  "view_never_exposes_results": "1/1",
+  "monitor_only_new_incumbents": "6/6"
+ },
+ "all_passed": true,
+ "problems": [],
+ "rows": [
+  {
+   "iteration": 0,
+   "baseline_incumbent": "fewshot_all",
+   "monitor": {
+    "ood": 0.5042
+   }
+  },
+  {
+   "iteration": 1,
+   "incumbent_before": "fewshot_all",
+   "view_files": 20,
+   "view_by_kind": {
+    "code": 2,
+    "traces": 6,
+    "per_task": 6,
+    "scores": 2,
+    "summaries": 0,
+    "run_files": 2,
+    "other": 2
+   },
+   "proposals": [
+    {
+     "name": "i01_0_retrieve_topk",
+     "base": "fewshot_all",
+     "claim": "Showing only the demonstrations most similar to the query keeps the prompt inside the model's effective context and removes distracting examples, raising accura",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5347,
+     "context_cost": 2484.4,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "i01_1_label_list",
+     "base": "no_memory",
+     "claim": "Listing every label seen so far lets the model name labels without a retrieved example.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.3819,
+     "context_cost": 428.3,
+     "on_frontier": true,
+     "dominated_by": []
+    }
+   ],
+   "files_read": 11,
+   "files_read_by_kind": {
+    "code": 2,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 2,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i01_0_retrieve_topk",
+   "new_frontier_members": "i01_0_retrieve_topk,i01_1_label_list",
+   "monitor": {
+    "ood": 0.6042
+   }
+  },
+  {
+   "iteration": 2,
+   "incumbent_before": "i01_0_retrieve_topk",
+   "view_files": 39,
+   "view_by_kind": {
+    "code": 4,
+    "traces": 12,
+    "per_task": 12,
+    "scores": 4,
+    "summaries": 0,
+    "run_files": 3,
+    "other": 4
+   },
+   "proposals": [
+    {
+     "name": "i02_0_contrastive",
+     "base": "i01_0_retrieve_topk",
+     "claim": "Adding demonstrations of the labels most often confused with the top retrieved labels (learned from online errors) helps the model separate near-duplicates.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5208,
+     "context_cost": 2467.0,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "i02_1_coverage",
+     "base": "no_memory",
+     "claim": "Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5069,
+     "context_cost": 3606.0,
+     "on_frontier": false,
+     "dominated_by": [
+      "i01_0_retrieve_topk",
+      "i02_0_contrastive"
+     ]
+    }
+   ],
+   "files_read": 15,
+   "files_read_by_kind": {
+    "code": 4,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 4,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i01_0_retrieve_topk",
+   "new_frontier_members": "i02_0_contrastive"
+  },
+  {
+   "iteration": 3,
+   "incumbent_before": "i01_0_retrieve_topk",
+   "view_files": 58,
+   "view_by_kind": {
+    "code": 6,
+    "traces": 18,
+    "per_task": 18,
+    "scores": 6,
+    "summaries": 0,
+    "run_files": 4,
+    "other": 6
+   },
+   "proposals": [
+    {
+     "name": "i03_0_notes",
+     "base": "i01_0_retrieve_topk",
+     "claim": "Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5347,
+     "context_cost": 3548.1,
+     "on_frontier": false,
+     "dominated_by": [
+      "i01_0_retrieve_topk",
+      "i03_1_notes"
+     ]
+    },
+    {
+     "name": "i03_1_notes",
+     "base": "i02_0_contrastive",
+     "claim": "Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5556,
+     "context_cost": 3522.5,
+     "on_frontier": true,
+     "dominated_by": []
+    }
+   ],
+   "files_read": 19,
+   "files_read_by_kind": {
+    "code": 6,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 6,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i03_1_notes",
+   "new_frontier_members": "i03_1_notes",
+   "monitor": {
+    "ood": 0.65
+   }
+  },
+  {
+   "iteration": 4,
+   "incumbent_before": "i03_1_notes",
+   "view_files": 77,
+   "view_by_kind": {
+    "code": 8,
+    "traces": 24,
+    "per_task": 24,
+    "scores": 8,
+    "summaries": 0,
+    "run_files": 5,
+    "other": 8
+   },
+   "proposals": [
+    {
+     "name": "i04_0_coverage",
+     "base": "i03_1_notes",
+     "claim": "Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5625,
+     "context_cost": 4669.6,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "i04_1_param_char_budget_14000",
+     "base": "i01_0_retrieve_topk",
+     "claim": "Tuning char_budget to 14000 should balance recall and prompt length.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5347,
+     "context_cost": 2484.4,
+     "on_frontier": true,
+     "dominated_by": []
+    }
+   ],
+   "files_read": 23,
+   "files_read_by_kind": {
+    "code": 8,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 8,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i04_0_coverage",
+   "new_frontier_members": "i04_0_coverage,i04_1_param_char_budget_14000",
+   "monitor": {
+    "ood": 0.6542
+   }
+  },
+  {
+   "iteration": 5,
+   "incumbent_before": "i04_0_coverage",
+   "view_files": 96,
+   "view_by_kind": {
+    "code": 10,
+    "traces": 30,
+    "per_task": 30,
+    "scores": 10,
+    "summaries": 0,
+    "run_files": 6,
+    "other": 10
+   },
+   "proposals": [
+    {
+     "name": "i05_0_notes_only",
+     "base": "i04_0_coverage",
+     "claim": "Keyword notes for every label plus a handful of nearest demonstrations should match the full demonstration set at a fraction of the context.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5486,
+     "context_cost": 1949.0,
+     "on_frontier": false,
+     "dominated_by": [
+      "i05_1_crossover"
+     ]
+    },
+    {
+     "name": "i05_1_crossover",
+     "base": "no_memory",
+     "claim": "combine no_memory + i04_0_coverage",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5694,
+     "context_cost": 1216.7,
+     "on_frontier": true,
+     "dominated_by": []
+    }
+   ],
+   "files_read": 27,
+   "files_read_by_kind": {
+    "code": 10,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 10,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i05_1_crossover",
+   "new_frontier_members": "i05_1_crossover",
+   "monitor": {
+    "ood": 0.625
+   }
+  },
+  {
+   "iteration": 6,
+   "incumbent_before": "i05_1_crossover",
+   "view_files": 115,
+   "view_by_kind": {
+    "code": 12,
+    "traces": 36,
+    "per_task": 36,
+    "scores": 12,
+    "summaries": 0,
+    "run_files": 7,
+    "other": 12
+   },
+   "proposals": [
+    {
+     "name": "i06_0_param_char_budget_4500",
+     "base": "i05_1_crossover",
+     "claim": "Tuning char_budget to 4500 should balance recall and prompt length.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5903,
+     "context_cost": 5658.0,
+     "on_frontier": true,
+     "dominated_by": []
+    },
+    {
+     "name": "i06_1_label_list",
+     "base": "i04_0_coverage",
+     "claim": "Listing every label seen so far lets the model name labels without a retrieved example.",
+     "files_changed": [
+      "memory.py"
+     ],
+     "error": null,
+     "admissible": true,
+     "gate_reason": "interface validation passed: evaluate and add to the population",
+     "score": 0.5625,
+     "context_cost": 4945.0,
+     "on_frontier": false,
+     "dominated_by": [
+      "i04_0_coverage",
+      "i05_1_crossover"
+     ]
+    }
+   ],
+   "files_read": 31,
+   "files_read_by_kind": {
+    "code": 12,
+    "traces": 6,
+    "per_task": 0,
+    "scores": 12,
+    "summaries": 0,
+    "run_files": 1,
+    "other": 0
+   },
+   "proposer_usd": 0.0,
+   "proposer_error": null,
+   "incumbent_after": "i06_0_param_char_budget_4500",
+   "new_frontier_members": "i06_0_param_char_budget_4500",
+   "monitor": {
+    "ood": 0.5583
+   }
+  }
+ ]
+}

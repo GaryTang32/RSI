@@ -1,0 +1,228 @@
+"""Adaptive exploration with plateau detection and improvement-trend-based recovery.
+
+Prefix signals: branch trajectories (anchors, recent failure rate, improvement trends),
+relative improvement vs baseline and parent. Batch rule: cold start opens all roots in parallel;
+warm start ranks frontiers by success rate and recent stability, assembles portfolio balancing
+exploitation (high-success branches with low recent failure), exploration (new roots), and
+recovery (repairable failures on improving branches only). Beta schedule: high beta (0.8-1.0)
+tolerates plateaus with deeper patience, attempts recovery broadly; low beta (0.0-0.2) aggressively
+closes plateaued branches and minimizes recovery to non-improving branches; default beta=0.6
+balances. Grid planning: widen on early gains, deepen on late gains, shrink on hard failures.
+Safeguards: (1) plateau detection at low beta closes stalled branches to reduce wasted probes;
+(2) recovery only on branches showing improvement trend (delta_vs_parent > 0 on latest success);
+(3) parallel batching maintained via fallback fill; (4) no early stopping beyond legal exhaustion;
+(5) high-beta configurations keep branches open longer, preserving exploration in uncertain
+domains.
+"""
+
+from policy_api import (
+    GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, is_repairable, branch_promising, branch_failed_hard,
+    probe_improved_vs_parent
+)
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+
+    def _schedule(self, beta):
+        """Adapt exploration and pruning thresholds by beta [0, 1].
+        
+        High beta (0.8-1.0): wider exploration, deeper patience, generous recovery.
+        Low beta (0.0-0.2): focused exploitation, earlier pruning, minimal recovery.
+        Default beta=0.6: balanced.
+        """
+        return {
+            "recovery_frac": 0.1 + 0.25 * beta,          # 0.1-0.35: recovery slots per batch
+            "hard_prune_depth": max(1, int(1 + 2 * beta)),  # 1-3: hard-failure threshold
+            "soft_prune_depth": max(2, int(2 + 3 * beta)),  # 2-5: soft-closure depth
+            "min_success_rate": 0.5 - 0.1 * beta,        # 0.4-0.5: exploit threshold
+            "plateau_patience": max(1, int(3 + 2 * beta)),  # 3-5: attempts before plateau close at low beta
+        }
+
+    def _branch_success_rate(self, traj):
+        """Fraction of successful probes in branch trajectory."""
+        if not traj:
+            return 0.0
+        n_success = sum(1 for o in traj if o.success)
+        return n_success / len(traj)
+
+    def _branch_recent_failure_rate(self, traj, window=3):
+        """Recent failure rate in sliding window (primary for ranking stability)."""
+        if not traj:
+            return 0.0
+        recent = traj[-min(window, len(traj)):]
+        return sum(1 for o in recent if not o.success) / len(recent)
+
+    def _is_branch_plateaued(self, traj):
+        """Detect if branch has plateaued: succeeded but latest success not improving."""
+        succ = [o for o in traj if o.success and o.score is not None]
+        if len(succ) < 2:
+            return False
+        # Plateaued if latest success is not better than previous best (within tolerance)
+        return succ[-1].score <= max(o.score for o in succ[:-1]) * 1.0005
+
+    def plan_grid(self, context):
+        """Adapt grid size (branches and depth) from history of gain timing and failures.
+        
+        Widen when roots show early, broad success → more parallelism opportunities.
+        Deepen when refinements yield late gains → depth is productive.
+        Shrink when hard failures dominate → environment issues, not agent.
+        """
+        if not context.history:
+            return GridPlan(int(context.fallback_branch_count),
+                          int(context.fallback_refine_count), "bootstrap")
+        
+        recent = context.history[-min(5, len(context.history)):]
+        early_gain_avg = sum(m.get("gain_early", 0.0) for m in recent) / len(recent)
+        late_gain_avg = sum(m.get("gain_late", 0.0) for m in recent) / len(recent)
+        hard_fail_avg = sum(m.get("hard_fail_frac", 0.0) for m in recent) / len(recent)
+        
+        branch_count = int(context.fallback_branch_count)
+        refine_count = int(context.fallback_refine_count)
+        reason = []
+        
+        if early_gain_avg > 0.7:
+            branch_count = min(int(context.hard_max_branch_count), int(branch_count * 1.15))
+            reason.append("widen: strong early gains")
+        
+        if late_gain_avg > 0.15:
+            refine_count = min(int(context.hard_max_refine_count), int(refine_count * 1.15))
+            reason.append("deepen: late gains present")
+        
+        if hard_fail_avg > 0.3:
+            branch_count = max(1, int(branch_count * 0.85))
+            reason.append("shrink: hard failures")
+        
+        return GridPlan(
+            min(int(context.hard_max_branch_count), max(1, branch_count)),
+            min(int(context.hard_max_refine_count), max(0, refine_count)),
+            "; ".join(reason) if reason else "stable"
+        )
+
+    def solve(self, question, budget=None):
+        """Portfolio-based exploration with plateau detection and trend-based recovery."""
+        question.reset()
+        res = SimResult()
+        sch = self._schedule(self.beta)
+        W = question.max_parallelism
+        
+        while not _budget_done(question, budget):
+            legal = question.legal_actions()
+            if not legal:
+                break
+            
+            prefix = question.observed()
+            
+            if not prefix:
+                # Cold start: open all available roots in parallel
+                roots = question.legal_roots()
+                batch = roots[:W]
+            else:
+                # Warm start: plateau-aware portfolio construction
+                trajs = branch_trajectories(prefix)
+                baseline = question.baseline_score
+                
+                # Identify branches to close
+                closed = set()
+                
+                # Hard failures (environment/dependency issues)
+                for bid, traj in trajs.items():
+                    if branch_failed_hard(traj, window=int(sch["hard_prune_depth"])):
+                        closed.add(bid)
+                
+                # Soft closure: never succeeded + many repairable failures at depth
+                for bid, traj in trajs.items():
+                    if bid not in closed and len(traj) >= int(sch["soft_prune_depth"]):
+                        has_success = any(o.success for o in traj)
+                        if not has_success:
+                            tail = traj[-max(1, int(sch["hard_prune_depth"])):]
+                            if tail and all(is_repairable(o) for o in tail):
+                                closed.add(bid)
+                
+                # Plateau closure (low beta only): close branches that plateau after patience depth
+                for bid, traj in trajs.items():
+                    if bid in closed or len(traj) < int(sch["plateau_patience"]):
+                        continue
+                    
+                    if self.beta < 0.5 and self._is_branch_plateaued(traj):
+                        # Plateau detected: check if no recent improvement
+                        succ = [o for o in traj if o.success]
+                        if len(succ) >= 2 and not probe_improved_vs_parent(succ[-1]):
+                            closed.add(bid)
+                
+                # Categorize legal actions by potential
+                roots_available = [c for c in legal if question.meta(c).attempt == 0]
+                exploit_candidates = []     # (cell, -sr, recent_fail_rate, -anchor)
+                recovery_candidates = []    # (cell, -anchor)
+                
+                for cell in legal:
+                    m = question.meta(cell)
+                    # Skip roots and closed branches
+                    if m.attempt == 0 or m.branch in closed:
+                        continue
+                    
+                    traj = trajs.get(m.branch)
+                    if not traj:
+                        continue
+                    
+                    sr = self._branch_success_rate(traj)
+                    recent_fail = self._branch_recent_failure_rate(traj)
+                    anchor = successful_anchor(traj)
+                    last_obs = traj[-1]
+                    
+                    # Exploitation: high success rate or branch is promising
+                    if sr >= sch["min_success_rate"] or branch_promising(traj, baseline):
+                        exploit_candidates.append((
+                            cell,
+                            -sr,  # Descending: prefer high success rate
+                            recent_fail,  # Ascending: prefer low recent failure
+                            -(anchor if anchor is not None else 0.0)
+                        ))
+                    # Recovery: repairable failure on branch with successful history and improvement trend
+                    # Only recover if latest success improved vs parent (delta_vs_parent > 0)
+                    elif is_repairable(last_obs) and anchor is not None:
+                        succ = [o for o in traj if o.success]
+                        if succ and probe_improved_vs_parent(succ[-1]):
+                            recovery_candidates.append((cell, -(anchor or 0.0)))
+                
+                # Sort candidates (by success rate desc, then recent fail rate asc, then anchor desc)
+                exploit_candidates.sort(key=lambda x: (x[1], x[2], x[3]))
+                recovery_candidates.sort(key=lambda x: x[1])
+                
+                # Build batch with slot allocation
+                batch = []
+                recovery_budget = max(0, round(W * sch["recovery_frac"]))
+                exploit_budget = W - recovery_budget
+                
+                # Priority 1: Exploit high-success branches with stable recent performance
+                for cell, _, _, _ in exploit_candidates[:exploit_budget]:
+                    batch.append(cell)
+                
+                # Priority 2: Explore new roots to fill exploitation slots
+                roots_needed = exploit_budget - len(batch)
+                for cell in roots_available[:roots_needed]:
+                    batch.append(cell)
+                
+                # Priority 3: Attempt recovery on improving branches (repairable failures with upside)
+                for cell, _ in recovery_candidates[:recovery_budget]:
+                    batch.append(cell)
+                
+                # Priority 4: Fallback fill (maintain parallelism)
+                if len(batch) < W:
+                    remaining = [c for c in legal if c not in batch]
+                    for cell in remaining:
+                        if len(batch) < W:
+                            batch.append(cell)
+            
+            if not batch:
+                break
+            
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        res.stopped = "no legal action" if not question.legal_actions() else "done"
+        return finalize_result(question, res)

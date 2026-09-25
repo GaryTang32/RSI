@@ -64,6 +64,10 @@ class Config:
     max_candidate_proposals: Optional[int] = None
     max_reflection_cost: Optional[float] = None
     timeout_s: Optional[float] = None
+    # stop after this many consecutive iterations lost to a backend outage (``skip_infra_error``, or a reflection
+    # call that failed with an LLM error); None = never. Extension (stage-B audit fix): without it a sustained
+    # outage keeps charging b rollouts per iteration until the rollout budget is gone.
+    max_consecutive_infra_failures: Optional[int] = 3
 
     # bookkeeping
     save_every: int = 1                          # write state.json every N iterations (resume granularity)

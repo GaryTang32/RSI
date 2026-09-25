@@ -2,22 +2,22 @@
  {
   "variant": "A",
   "admissible": false,
-  "reason": "cost rule failed: within band: shaped=-6.781 (<= 0)",
-  "S": 0.95,
-  "C": 151.2,
-  "delta_S": -0.050000000000000044,
-  "delta_C": 0.1187569367369588,
+  "reason": "cost rule failed: within band: shaped=-0.296 (<= 0)",
+  "S": 0.75,
+  "C": 2349.75,
+  "delta_S": 0.0,
+  "delta_C": 0.01972399427157914,
   "novelty": 0,
   "guards": []
  },
  {
   "variant": "B",
   "admissible": false,
-  "reason": "no_proposal",
-  "S": null,
-  "C": null,
-  "delta_S": null,
-  "delta_C": null,
+  "reason": "cost rule failed: within band: shaped=-7.796 (<= 0)",
+  "S": 0.675,
+  "C": 2349.75,
+  "delta_S": -0.07499999999999996,
+  "delta_C": 0.01972399427157914,
   "novelty": 0,
   "guards": []
  }

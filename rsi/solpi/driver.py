@@ -60,6 +60,16 @@ class Config:
     rounds: int = 1
     workers: int = 1
     seed: int = 0
+    # audit trace (rsi.trace, write-only): on whenever out_dir is given to run()
+    trace: bool = True
+    # score the base + each composed harness on sealed holdout/ood, into the trace only. Off by default:
+    # the protocol's contract is that the held-out split is touched only by the firewall (on the base and
+    # the frozen candidates) and the final split never; the audit monitor would add sealed-split runs.
+    # Validation runs switch it on explicitly (Config(shadow_monitor=True) or run(..., monitor=True)).
+    shadow_monitor: bool = False
+    shadow_splits: Optional[tuple[str, ...]] = None
+    shadow_k: int = 1
+    shadow_workers: int = 2
 
     def to_json(self) -> dict:
         d = asdict(self)
@@ -70,7 +80,7 @@ class Config:
 class AutoResearchDriver:
     def __init__(self, domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], ideas: Sequence[Idea],
                  proposer: MechanismProposer, reviewer: Optional[Reviewer] = None, config: Config = Config(),
-                 out_dir: Optional[str | Path] = None) -> None:
+                 out_dir: Optional[str | Path] = None, monitor=None) -> None:
         self.domain, self.seed, self.llm = domain, seed_artifact, llm_task
         self.pool = IdeaPool(ideas)
         self.proposer = proposer
@@ -82,6 +92,11 @@ class AutoResearchDriver:
         self.ledger = Ledger(self.out / "ledger.jsonl")
         # the lineages' evaluator can only see decision splits (sealed splits raise)
         self.ev = Evaluator(domain, llm_task, workers=config.workers)
+        # write-only audit trace: only when an out_dir is given (and config.trace)
+        from .tracing import make_tracer
+        self.tr = make_tracer(domain, self.out, enabled=bool(out_dir is not None and config.trace),
+                              monitor=config.shadow_monitor if monitor is None else monitor, llm_task=llm_task,
+                              splits=config.shadow_splits, k=config.shadow_k, workers=config.shadow_workers)
 
     def screen_tasks(self):
         fams = self.cfg.gate.families
@@ -89,6 +104,7 @@ class AutoResearchDriver:
 
     def base_metrics(self, art: Artifact) -> tuple[Metrics, list]:
         r = self.ev.evaluate(art, self.screen_tasks(), k=self.cfg.k, label="screen")
+        self._base_ev = r
         return metrics_from_eval(r), [t for trs in r.trials.values() for t in trs]
 
     def run_round(self, base: Artifact, rnd: int) -> dict:
@@ -96,13 +112,14 @@ class AutoResearchDriver:
         bm, trials = self.base_metrics(base)
         est = {i.id: oracle_estimate(i, trials) for i in self.pool.ideas}
         chosen = self.pool.select(self.cfg.n_lineages, est)
+        self.tr.base(rnd, base, self._base_ev, bm, est, chosen)
         results: list[LineageResult] = []
         for idea in chosen:
             lin = Lineage(idea, evaluator=self.ev, gate=self.gate, proposer=self.proposer, reviewer=self.reviewer,
                           base=base, base_metrics=bm, screen_split=self.cfg.screen_split,
                           rollout_tasks_per_family=self.cfg.rollout_tasks_per_family, k=self.cfg.k,
                           max_iters=self.cfg.max_iters, ralph_max=self.cfg.ralph_max, ledger=self.ledger,
-                          sweep=self.cfg.sweep)
+                          sweep=self.cfg.sweep, tracer=self.tr if self.tr.enabled else None)
             results.append(lin.run())
         frozen = [r.frozen for r in results if r.frozen is not None]
         passed = {}
@@ -135,6 +152,9 @@ class AutoResearchDriver:
                 kept.remove(f)
                 dropped.append(f.idea.id)
                 composed, cm = c2, m2
+        self.tr.firewall_and_compose(rnd, base, frozen, passed, heldout, kept, composed, conflicts, bm, cm, dropped,
+                                     bool(self.cfg.firewall and self.cfg.holdout_split and
+                                          self.cfg.holdout_split in self.domain.tasks.splits))
         usage = Usage()
         for r in results:
             usage = usage + r.usage
@@ -156,6 +176,7 @@ class AutoResearchDriver:
             "heldout": heldout, "composed": composed, "usage": usage.to_dict(), "seconds": time.time() - t0}
 
     def run(self) -> ImprovementResult:
+        self.tr.run_start(self)
         base = self.seed
         rounds = []
         for rnd in range(1, self.cfg.rounds + 1):
@@ -178,6 +199,10 @@ class AutoResearchDriver:
                                 stop_reason="rounds", out_dir=str(self.out),
                                 meta={"rounds": [{k: v for k, v in r.items() if k != "composed"} for r in rounds],
                                       "config": self.cfg.to_json(), "gate_digest": self.gate.digest})
+        if self.tr.monitor is not None and self.tr.monitor.ev.llm is not None:
+            usage["shadow_monitor"] = self.tr.monitor.ev.llm.meter.snapshot()
+        self.tr.run_end({"rounds": len(rounds), "survivors": [r["survivor_ideas"] for r in rounds],
+                         "best": res.best.short_id, "usage": usage, "stop_reason": res.stop_reason})
         (self.out / "rounds.json").write_text(json.dumps(res.meta["rounds"], indent=1, default=str))
         return res
 
@@ -185,7 +210,7 @@ class AutoResearchDriver:
 def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
         llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
         ideas: Optional[Sequence[Idea]] = None, proposer: Optional[MechanismProposer] = None,
-        reviewer: Optional[Reviewer] = None) -> ImprovementResult:
+        reviewer: Optional[Reviewer] = None, monitor=None) -> ImprovementResult:
     """Run the SoL-Pi research protocol on any :class:`rsi.core.Domain`.
 
     Parameters
@@ -224,5 +249,5 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         else:
             raise ValueError("pass llm_propose=... or proposer=... for this domain")
     drv = AutoResearchDriver(domain, seed_artifact, llm_task=llm_task, ideas=ideas, proposer=proposer,
-                             reviewer=reviewer, config=cfg, out_dir=out_dir)
+                             reviewer=reviewer, config=cfg, out_dir=out_dir, monitor=monitor)
     return drv.run()

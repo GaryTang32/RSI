@@ -1,45 +1,42 @@
 {
  "t": 4,
  "b_t": 3,
- "sigma_t": 1,
+ "sigma_t": 0,
  "delta": 0.147196,
- "S_star": 1.0,
- "S": 1.0,
- "C": 135.15,
- "incumbent": "4b8018674094b51e95ee9c374a3437ca40ba12b32369a28c88600c87a5ac5e64",
+ "S_star": 0.75,
+ "S": 0.75,
+ "C": 2304.3,
+ "incumbent": "dca97b44b523369c4b4f16ea864feacafa49b31b79347befa6a57175c817b6f5",
  "winner": null,
  "n_candidates": 2,
- "n_screened": 1,
+ "n_screened": 2,
  "n_untried": 2,
  "prune_set": [
-  "skill",
-  "subagent"
+  "skill"
  ],
  "decisions": [
   {
    "variant": "A",
    "admissible": false,
-   "reason": "cost rule failed: within band: shaped=-6.781 (<= 0)",
-   "S": 0.95,
-   "C": 151.2,
-   "delta_S": -0.050000000000000044,
-   "delta_C": 0.1187569367369588,
+   "reason": "cost rule failed: within band: shaped=-0.296 (<= 0)",
+   "S": 0.75,
+   "C": 2349.75,
+   "delta_S": 0.0,
+   "delta_C": 0.01972399427157914,
    "novelty": 0,
    "guards": []
   },
   {
    "variant": "B",
    "admissible": false,
-   "reason": "no_proposal",
-   "S": null,
-   "C": null,
-   "delta_S": null,
-   "delta_C": null,
+   "reason": "cost rule failed: within band: shaped=-7.796 (<= 0)",
+   "S": 0.675,
+   "C": 2349.75,
+   "delta_S": -0.07499999999999996,
+   "delta_C": 0.01972399427157914,
    "novelty": 0,
    "guards": []
   }
  ],
- "gate_failures": {
-  "B": "no_proposal"
- }
+ "gate_failures": {}
 }

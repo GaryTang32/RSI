@@ -13,7 +13,9 @@
 
 It honours b_t, reserved exploration slots (components in U_t), prune directives
 (reverting listed ideas), visible negative evidence (skips rejected ideas) and repair
-objections (drops the objected-to idea). Replies depend only on (prompt, seed).
+objections (drops the objected-to idea). Replies depend only on (prompt, seed). It never bundles two
+ideas that rewrite the same part of ``solve()`` (e.g. self-consistency and the Python tool), because the
+second would silently erase the first while both stay declared (phantom credit in L_t).
 """
 from __future__ import annotations
 
@@ -269,22 +271,42 @@ class AgentQAMockLLM(MockLLM):
         want_reserved = bool(d.get("reserved_slot")) and untried
         cur = dict(files)
         updates: dict = {}
+        # harness.py state fields (base / lookup / checker) already set by an edit of THIS candidate: a later
+        # idea that rewrites the same field would silently overwrite the earlier one, which would then be
+        # declared (and credited in L_t) without being in the diff. Such conflicting ideas are not drawn.
+        claimed: set = set()
+
+        def _fields(before: dict, upd: dict) -> set:
+            if "harness.py" not in upd or upd["harness.py"] is None:
+                return set()
+            a, b = harness_state(before.get("harness.py", "")), harness_state(upd["harness.py"])
+            return {k for k in a if a[k] != b[k]}
+
         for idea, pr in chosen:
             u = idea.revert(cur) or {}
+            claimed |= _fields(cur, u)
             updates.update(u)
             cur = {k: v for k, v in {**cur, **u}.items() if v is not None}
         while len(chosen) < n:
             def _pool(skip):
-                return [i for i in self.ideas.values() if i.id not in skip and all(i.id != c.id for c, _ in chosen)
-                        and (not want_reserved or i.component in untried
-                             or any(c.component in untried for c, _ in chosen))
-                        and i.apply(cur, ctx) is not None]
+                out = []
+                for i in self.ideas.values():
+                    if i.id in skip or any(i.id == c.id for c, _ in chosen):
+                        continue
+                    if want_reserved and i.component not in untried and not any(c.component in untried
+                                                                                for c, _ in chosen):
+                        continue
+                    u = i.apply(cur, ctx)
+                    if u is not None and not (_fields(cur, u) & claimed):
+                        out.append(i)
+                return out
             pool = _pool(avoid) or (_pool(set()) if not chosen else [])   # nothing new left: revisit refuted ideas
             if not pool:
                 break
             w = [self.profile.weights.get(i.id, i.weight) for i in pool]
             idea = rng.choices(pool, weights=w)[0]
             u = idea.apply(cur, ctx) or {}
+            claimed |= _fields(cur, u)
             updates.update(u)
             cur = {k: v for k, v in {**cur, **u}.items() if v is not None}
             chosen.append((idea, False))

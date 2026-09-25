@@ -57,7 +57,7 @@ Files in each run directory:
 |---|---|---|---|---|---|---|
 | `sumdiff_offline` | sum-difference, mock agent + ParametricMutator, 3 × 5 grid, W = 3, T = 4, M = 4 | 15, 12, 7, 9 (43 in total; fixed π₁ would use 60) | Γ 0.9105 → **1.0190** | none (single-instance problem) | 55 checks, 0 FAIL | $0 |
 | `agentqa_offline` (extra, exercises the monitor) | AgentQA harness via DomainTask, SimModel, agentqa mock agent + ParametricMutator, 3 × 3 grid, W = 3, T = 4, M = 4 | 9, 6, 8, 10 | S 0.250 → **1.000** (saturated at the first attempt) | holdout 0.375 → 0.750; ood 0.500 → 0.875 | 51 checks, 0 FAIL | $0 |
-| `sumdiff_live` | sum-difference, **claude haiku as discovery agent and policy developer**, 3 × 4 grid, W = 3, T = 3, 3 revisions per phase | LIVE_CALLS | LIVE_SCORES | none | LIVE_AUDIT | LIVE_SPEND |
+| `sumdiff_live` | sum-difference, **claude haiku as discovery agent and policy developer**, 3 × 4 grid, W = 3, T = 3, 3 revisions per phase | 12, 12, 12 (36 in total) | Γ 0.9105 → **1.0304** | none | 3 FAIL: 12 of 36 attempts lost to a reply-parsing artifact (fixed after the run); every other check passes | **$2.906** (agent $2.030, 36 calls; developer $0.876, 9 calls); 39.2 min |
 
 
 ## Run 1: `sumdiff_offline`
@@ -158,4 +158,113 @@ Files in each run directory:
 
 **Takeaway.** The run works end to end through a generic `rsi.core.Domain` with sealed splits, and it exercises the shadow monitor. Once the task saturates, however, it says little about dreaming.
 
-LIVE_SECTION_PLACEHOLDER
+
+## Run 3: `sumdiff_live`
+
+**Setup.**
+- Problem: sum-difference, from the untouched seed (Γ 0.9105).
+- **claude haiku** (`ClaudeCLI('haiku')` behind a fresh `CachedLLM`: 45 misses, 0 hits) plays both roles:
+  - discovery agent: `EditorAgent`, the Listing-1 prompt, one completion rewrites `construct.py`;
+  - policy developer: `LLMPolicyDeveloper`, the Listing-2 prompt, static check + leakage screen + 1 repair round.
+- π₁: parallel refine, 3 × 4 grid (depth 4), hard caps 4 × 4, W = 3, T = 3.
+- Dreaming: M = 3 revisions per phase (`m_semantics="revisions"`: incumbent + 3 LLM versions).
+- `max_calls` = 40. Programs and policies run in subprocess sandboxes.
+
+**Results.**
+- Γ 0.9105 → **1.0304** (best per cycle 1.0237, 1.0304, 1.0304).
+- Spend: **$2.906**, all loop spend (agent $2.030 for 36 calls; developer $0.876 for 9 calls, 3 of them repair rounds). There is no monitor or report LLM spend.
+- Wall time: 39.2 min (online 21 min, developer 18 min).
+- Replay: 30 episodes, 0.10 s CPU.
+- Haiku emits long hidden reasoning, 5–11k output tokens per agent call, so a call costs ~$0.056 and takes ~90 s.
+
+**What the loop did.**
+1. **Cycle 1 (π₁).**
+   - Online search: four batches of 3, 12 calls.
+   - Attempts: 6 succeeded (1.0197, 1.0, 1.0, 1.0202, 1.0119, **1.0237** at `t1/b1.a3`). **6 failed with `SyntaxError`**.
+   - The audit shows that every one of the 6 failures is a trailing `===` or closing fence that the reply parser (`rsi.core.parse_file_blocks`) left at the end of `construct.py`. Re-graded without that line they score 0.955, **1.0286**, 1.0196, 1.0142, 1.0163 and 1.0. One of them would have been the round's best.
+   - Worse, the agent was shown only the *head* of each traceback (`AttemptRecord.render` clipped the first 200 chars). The following attempts attributed the failures to their ideas, e.g. `t1/b0.a2`: "Replace failed anneal→fringe→hill with proven-mechanism pipeline". **These are wrong steps caused by the harness, not by the method.** Both are fixed after the run (see below).
+   - Dreaming on 1 world: V = [0.895, 0.895, 0.895, 0.895].
+     - r0001 is a 96-line rewrite into an "adaptive trajectory-guided" policy.
+     - r0002's first attempt failed the static check. The cause was again a trailing fence, but the error message only said "invalid syntax, line 188". The repair round "fixed an indentation error at line 170" (a wrong diagnosis) and rewrote 47 lines.
+     - r0003 is "prioritize recovery".
+     - Every version probes all 12 cells in replay (only the order inside a batch differs), so every version ties with π₁. **Incumbent kept** (tie rule).
+2. **Cycle 2 (π₁ again).**
+   - Online search: 12 calls, 5 more parse-artifact failures (re-graded: 1.0, 1.0, 1.0, 1.0, 1.0210).
+   - Attempt `t2/b1.a1` diagnosed "stray markdown formatting" correctly from what it saw.
+   - Best program: 1.0237 → **1.0304** at `t2/b2.a2`, a 6-stage anneal→grow→window→anneal→grow→hill recipe.
+   - Dreaming on 2 worlds: r0004 (portfolio rewrite), r0005 and r0006 (both first attempts failed on the same trailing fence, then were "repaired" on invented causes). All V = 0.895.
+     - r0005's own hypothesis even says "all betas explore identical cells because closing conditions never trigger". The beta sweep of the deployed π₁ is flagged `degenerate` (π₁ ignores beta).
+     - **Incumbent kept.**
+3. **Cycle 3 (π₁).**
+   - Online search: 12 calls, 11 succeeded, 1 parse artifact (re-graded 1.0148).
+   - Nothing beats 1.0304 (best attempt 1.0303). Several attempts collapse to Γ = 1.0 exactly, what the agent itself called the "4-element AP trap".
+   - No dreaming after the last cycle.
+
+**Is every step correct?**
+- **Correct, re-derived:**
+  - every attempt re-grades identically with my own Γ in a fresh process (the LLM programs are deterministic);
+  - every diff is the real change;
+  - every online batch is legal;
+  - each world replays exactly under π₁;
+  - every V is reproducible, and every selection is the argmax;
+  - no policy leaks trace ids or scores;
+  - 36 calls ≤ 40.
+- **Wrong, caused by the harness:**
+  - 12 of 36 attempts (33%) and all 3 developer syntax errors were reply-parsing artifacts;
+  - the agent could not see the cause of a failure;
+  - repaired developer revisions reported only the repair ("Fix indentation error …") as their claimed change, not their change against the base.
+- **Consequence for the method:** dreaming never changed the deployed policy. The live run is, in effect, **Recursive Fixed Exploration with extra developer spend ($0.88)**.
+- **Could the parse artifact have changed that?** I re-replayed the three first-attempt developer policies with the fence stripped ($0). They also score 0.895 on their phase's worlds, so no selection would have differed.
+- **Unverifiable:** whether any LLM policy would have done better *online*. That would need online re-runs, which the budget does not allow.
+
+**Fixes made after the run** (all in `rsi/dream/`; regression tests in `tests/test_dream-rsi_validation.py`; the offline runs' decisions are unchanged):
+1. `strip_reply_terminators` drops a trailing fence / bare `===` / `=== END ===` line from the editable `.py` files. It is applied in `EditorAgent` and in `LLMPolicyDeveloper`.
+2. `AttemptRecord.render` shows the *end* of an error, where a traceback states its cause.
+3. A repaired developer revision keeps its first attempt's claim: `<claim> [repaired: <fix>]`.
+
+The root cause sits in `rsi.core` and is listed as a core change request.
+
+## Audit against the paper (spec `docs/methods/dream-rsi.md`)
+
+**Aligned, and verified step by step in these traces:**
+- **Outer loop, §3.2.** Each cycle runs `plan_grid` → online rollout with the deployed policy → append the world and its manifest → dreaming (π_t^0 plus revisions, each replayed on *all* worlds) → argmax with the incumbent included → deploy. Every selection was re-derived, and every next cycle deploys the selected version.
+- **Replay, §3 p.5–6.**
+  - A root pick opens the earliest-created unrevealed branch (`root_mode="earliest"`).
+  - A leaf reveals its recorded child.
+  - Nothing outside the tree is generated.
+  - Re-replaying every world with the policy that recorded it reproduces the online batches exactly, in all 11 worlds of the three runs.
+  - Replay makes zero agent calls: the meter counts calls only in online rounds.
+- **Eq. 1.** V_i = best − β1·N + β2·N/max(1,k), recomputed for every version and world from the revealed cells. V is the mean over all worlds.
+- **Guarantee.** V^{m*} ≥ V^0 on replay holds in every phase. The paper promises nothing online, and the offline ground truth shows why that matters (next list).
+- **π₁ = parallel refine, §4.** All roots first, then deepen every branch; full 3 × 5 / 3 × 4 / 3 × 3 grids, batches of W.
+- **Cost unit, §4.** Cumulative discovery-agent calls; reconciled against the meter.
+- **Prefix-only rules, App. B.2.**
+  - Every deployed policy passes the static check and the leakage screen.
+  - The guard reported 0 violations.
+  - `plan_grid` reads only earlier manifests: the offline cycle-4 widening cites the manifests of cycles 1–3.
+- **"Start from a strong recent policy."** Revisions start from the strongest version so far (value, then recency).
+
+**Inconsistent with the paper, or not what the paper intends:**
+1. **Replay's frugality bias, spec §8.2 and §8.4.**
+   - In `sumdiff_offline` at t = 1 there is a single world. Replay ranked a stop-early policy above π₁ (0.910 vs 0.865). It could reach the recorded ceiling with 10 probes only because the ceiling value (Γ = 1.0) occurred in two branches of that one tree.
+   - On fresh online searches it found significantly less: gain −0.0060 [−0.0115, −0.0006] at 7.1 vs 15 calls. Spearman(replay, online) was −1 over the 4 versions.
+   - The paper's rule was followed exactly, and the step was still not an online improvement. The paper never validates replay against online value (spec §8.3). This run shows a case where they disagree.
+2. **Normalized Eq. 1 (framework default) versus the paper's raw mean.**
+   - When a live search finds nothing above its root (live cycle 3; AgentQA cycles 2–4), the world's ceiling equals its root. Every policy's quality term is then 0, and the world only rewards stopping early.
+   - Raw scores would give the same ranking here: every policy gets s_r. The effect is a property of Eq. 1 on flat worlds, not of normalization.
+   - Together with `root="best"` (unspecified in the paper), a saturated task makes dreaming optimize cost only.
+3. **The mock developer is not the paper's developer.**
+   - `ParametricMutator`'s first revision swaps in a hand-written adaptive template.
+   - Later revisions only perturb its PARAMS. In `sumdiff_offline` phases 2–3, every revision tied with the incumbent: its moves changed no decision on 3 × 5 worlds. The offline runs therefore show the machinery, not LLM "dreaming".
+   - In the live run, the 6 haiku-written policies also never beat π₁. The paper's claim that dreaming improves the policy is **not reproduced** at this scale: T = 3 on 3 × 4 grids. That is far below the paper's 10 × 11 / 32 × 20 grids and 5–10 rounds, so this is not evidence against the paper.
+4. **Dreaming after the last cycle is skipped** (`dream_last=False`). The paper's loop also revises after the final search, which cannot affect any search. The returned policy is the one deployed in the last search. Documented deviation.
+5. **Beta sweep.** Under Eq. 1 it is run for the deployed version only, and only as feedback. It is flagged `degenerate` whenever the deployed policy is π₁, which ignores beta. The Listing-2 Pareto objective is available (`objective="pareto"`) but not used in these runs.
+6. **M semantics.** The offline runs use M = 4 versions (3 revisions). The live run uses 3 revisions (4 candidates). The paper's own indexing is ambiguous (spec §3.2).
+7. **Listing-1 agent in the live run.** The paper's agent writes files with tools (Gemini CLI). Here one completion returns the whole file. That design is what exposed the reply-parsing failures, which do not exist in the paper's setup.
+8. **Replay independence (spec §8.3).** Online, the agent reads every sibling attempt (Listing 1). The live traces show agents copying the sibling's best recipe ("restore proven 6-stage pipeline …"), so recorded outcomes depend on which siblings were revealed. Replay assumes they do not. How much this biases replay cannot be verified from these runs: the counterfactual outcomes were never generated.
+
+**Unverifiable here:**
+- the paper's headline results (8 tasks, Gemini agents, 10+ round runs);
+- whether an LLM developer eventually produces a non-degenerate policy with more worlds and a larger grid;
+- the exact objective the paper's experiments used: Eq. 1 or the Pareto sweep (spec §8.15).
+

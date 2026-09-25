@@ -1,0 +1,708 @@
+{
+ "run": "agentqa_live_interrupted",
+ "have_reference_code": true,
+ "checks": {
+  "state_rollouts": "13/13",
+  "state_incumbent": "13/13",
+  "state_weights": "13/13",
+  "state_frontier_members": "13/13",
+  "state_pool": "13/13",
+  "parent_replay": "13/13",
+  "minibatch_replay_ref_sampler": "13/13",
+  "parent_eval_ids": "12/12",
+  "not_all_perfect": "11/11",
+  "round_robin": "6/6",
+  "proposal_parent_artifact": "5/5",
+  "prompt_template_verbatim": "5/5",
+  "prompt_has_b_examples": "5/5",
+  "prompt_no_val_or_sealed_inputs": "5/5",
+  "prompt_contains_minibatch_inputs": "5/5",
+  "child_equals_reference_parse": "5/5",
+  "other_files_unchanged": "5/5",
+  "diff_equals_store": "5/5",
+  "child_same_ids": "5/5",
+  "child_fresh_seeds": "5/5",
+  "gate_uses_eval_scores": "5/5",
+  "gate_recomputed": "5/5",
+  "decision": "5/5",
+  "ledger_rejected": "3/3",
+  "no_val_eval_for_rejected": "3/3",
+  "incumbent_after": "5/5",
+  "monitor_iff_incumbent_change": "5/5",
+  "skip_perfect_rule": "1/1",
+  "val_charge": "2/2",
+  "val_covers_pareto": "2/2",
+  "val_seed_fixed": "2/2",
+  "ledger_node": "2/2",
+  "no_proposal_has_error": "1/1"
+ },
+ "final": {
+  "rollouts": true,
+  "by_phase": true,
+  "returned_argmax": true,
+  "seed_artifact_untouched": true,
+  "budget_identity": true,
+  "budget_identity_value": 75,
+  "stop_timing_usd": {
+   "last_round_start_usd": 0.791042,
+   "final_loop_usd": 0.791042
+  },
+  "stop_reason": "(interrupted: no run_end)"
+ },
+ "steps": [
+  {
+   "round": 0,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-009",
+    "evolve-numeric-001"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 2.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "bd3ccdfa59b0cee9ae271f74e1eee26cd2d9329e3a32eed1dcbab987cad0204f",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": []
+  },
+  {
+   "round": 1,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    1.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    0.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 2.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "5abd89c8cf1acfcb4f35ef6765fa29e412bb16694afe62cb84ae76c39084d4d4",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": []
+  },
+  {
+   "round": 2,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-004",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 3,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-006",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "sum_before": 0.0,
+   "sum_after": 1.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 0.25,
+   "child_artifact": "e039a216634ad9af6b5bcaea8f261f1cbe8be270ea19abfdad373640eabfdab3",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [
+    [
+     "421",
+     "evolve"
+    ],
+    [
+     "421",
+     "smoke"
+    ]
+   ],
+   "task_ids_added": []
+  },
+  {
+   "round": 4,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-003",
+    "evolve-numeric-008",
+    "evolve-numeric-009"
+   ],
+   "mb_before": [
+    0.0,
+    1.0,
+    1.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    0.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 2.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "eac9679561ff96e4dce1effd3613fdd159d051c76e2f628ba85b805ab6935333",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": []
+  },
+  {
+   "round": 5,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-005",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "sum_before": 0.0,
+   "sum_after": 1.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 0.25,
+   "child_artifact": "9938989b96195191e059048d2adaf88cd0b3765ec5377f6a699d36341c910976",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": []
+  },
+  {
+   "round": 6,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "no_proposal_has_error": true
+   },
+   "notes": [
+    "no_proposal: prompts/solver.md: llm error: You've hit your session limit \u00b7 resets 9:10am (UTC)"
+   ],
+   "event": "no_proposal",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/solver.md"
+  },
+  {
+   "round": 7,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true
+   },
+   "notes": [
+    "skip_infra_error"
+   ],
+   "event": "skip_infra_error",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-001",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "round": 8,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true
+   },
+   "notes": [
+    "skip_infra_error"
+   ],
+   "event": "skip_infra_error",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-005"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "round": 9,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true
+   },
+   "notes": [
+    "skip_infra_error"
+   ],
+   "event": "skip_infra_error",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-000",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "round": 10,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true
+   },
+   "notes": [
+    "skip_infra_error"
+   ],
+   "event": "skip_infra_error",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-009",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "round": 11,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true
+   },
+   "notes": [
+    "skip_infra_error"
+   ],
+   "event": "skip_infra_error",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-008",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "round": 12,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true
+   },
+   "notes": [
+    "incomplete round (run killed before the parent evaluation was recorded)"
+   ],
+   "event": "incomplete",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0
+  }
+ ],
+ "verdicts": [
+  {
+   "round": 0,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live)"
+  },
+  {
+   "round": 1,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live)"
+  },
+  {
+   "round": 2,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 3,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live); task-specific content added (facts 0, answers [('421', 'evolve'), ('421', 'smoke')], ids [])"
+  },
+  {
+   "round": 4,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live)"
+  },
+  {
+   "round": 5,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live)"
+  },
+  {
+   "round": 6,
+   "verdict": "correct",
+   "why": ""
+  },
+  {
+   "round": 7,
+   "verdict": "questionable",
+   "why": "infra failure: rollouts charged, no proposal"
+  },
+  {
+   "round": 8,
+   "verdict": "questionable",
+   "why": "infra failure: rollouts charged, no proposal"
+  },
+  {
+   "round": 9,
+   "verdict": "questionable",
+   "why": "infra failure: rollouts charged, no proposal"
+  },
+  {
+   "round": 10,
+   "verdict": "questionable",
+   "why": "infra failure: rollouts charged, no proposal"
+  },
+  {
+   "round": 11,
+   "verdict": "questionable",
+   "why": "infra failure: rollouts charged, no proposal"
+  },
+  {
+   "round": 12,
+   "verdict": "unverifiable",
+   "why": "incomplete round (run killed before the parent evaluation was recorded)"
+  }
+ ],
+ "verdict_counts": {
+  "unverifiable": 6,
+  "correct": 2,
+  "questionable": 5
+ }
+}

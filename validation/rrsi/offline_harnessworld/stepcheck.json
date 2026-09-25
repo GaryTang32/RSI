@@ -1,0 +1,1937 @@
+{
+ "run": "offline_harnessworld",
+ "summary": {
+  "correct": 311,
+  "questionable": 10,
+  "wrong": 0,
+  "unverifiable": 0
+ },
+ "rows": [
+  {
+   "step": "domain",
+   "check": "sealed splits are disjoint from evolve (question text)",
+   "status": "correct",
+   "evidence": "disjoint"
+  },
+  {
+   "step": "baseline",
+   "check": "S_hat(H0) from raw trials == traced S == evals/base.json",
+   "status": "correct",
+   "evidence": "S=0.465313 traced=0.465313 disk=0.465313"
+  },
+  {
+   "step": "baseline",
+   "check": "C_hat(H0) from raw tokens",
+   "status": "correct",
+   "evidence": "C=2184.66 traced=2184.66"
+  },
+  {
+   "step": "noise",
+   "check": "bootstrap sd_null vs closed-form plug-in (within-task resampling)",
+   "status": "correct",
+   "evidence": "plug-in 0.007887 vs traced 0.007970 (rel 0.011); delta=0.01594"
+  },
+  {
+   "step": "noise",
+   "check": "plug-in within-task bootstrap under-covers at small k (faithful to code; E10)",
+   "status": "questionable",
+   "evidence": "k=2: unbiased sd_null 0.011154 vs plug-in 0.007887 (delta would be 0.0223 instead of 0.0159)"
+  },
+  {
+   "step": "r0",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 4, traced 4"
+  },
+  {
+   "step": "r0",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4653 (H0) S*=0.4653; traced S_t=0.4653 S*=0.4653"
+  },
+  {
+   "step": "r0",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0"
+  },
+  {
+   "step": "r0",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=[] U_t=['prompt', 'control_flow', 'config', 'output_plumbing', 'context_mgmt', 'client_tool', 'skill', 'memory', 'subagent']"
+  },
+  {
+   "step": "r0",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r0",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=[]; g={}"
+  },
+  {
+   "step": "r0",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r0",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "3 failure mode(s)"
+  },
+  {
+   "step": "r0",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=[]"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 0 rows, expected 0"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=4"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.439063 traced=0.439063"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4391 S_t=0.4653 dS=-0.0262 dC=+0.0046 floor=0.4494 (FAIL) shaped: shaped=100.0*-0.0262 - 15.0*+0.0046 + 0.5*1 = -2.195 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'memory', 'REJECTED')]"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=[]"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 0 rows, expected 0"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=4"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.456875 traced=0.456875"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4569 S_t=0.4653 dS=-0.0084 dC=+0.0296 floor=0.4494 (ok) shaped: shaped=100.0*-0.0084 - 15.0*+0.0296 + 0.5*1 = -0.788 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'subagent', 'REJECTED')]"
+  },
+  {
+   "step": "r0",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r0",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4653 traced=0.4653"
+  },
+  {
+   "step": "r1",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 4, traced 4"
+  },
+  {
+   "step": "r1",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4653 (H0) S*=0.4653; traced S_t=0.4653 S*=0.4653"
+  },
+  {
+   "step": "r1",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0"
+  },
+  {
+   "step": "r1",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['memory', 'subagent'] U_t=['prompt', 'control_flow', 'config', 'output_plumbing', 'context_mgmt', 'client_tool', 'skill']"
+  },
+  {
+   "step": "r1",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r1",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['memory', 'subagent']; g={'subagent': -0.0084, 'memory': -0.0262}"
+  },
+  {
+   "step": "r1",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['memory', 'subagent']"
+  },
+  {
+   "step": "r1",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r1",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "3 failure mode(s)"
+  },
+  {
+   "step": "r1",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=['memory', 'subagent']"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 2 rows, expected 2"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "4 edits, b_t=4"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.430000 traced=0.430000"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4300 S_t=0.4653 dS=-0.0353 dC=+0.0039 floor=0.4494 (FAIL) shaped: shaped=100.0*-0.0353 - 15.0*+0.0039 + 0.5*0 = -3.590 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'config', 'REJECTED'), ('C2', 'context_mgmt', 'REJECTED'), ('C3', 'output_plumbing', 'REJECTED'), ('C4', 'prompt', 'REJECTED')]"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=['memory', 'subagent']"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 2 rows, expected 2"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "3 edits, b_t=4"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.423438 traced=0.423438"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4234 S_t=0.4653 dS=-0.0419 dC=+0.8499 floor=0.4494 (FAIL) shaped: shaped=100.0*-0.0419 - 15.0*+0.8499 + 0.5*1 = -16.436 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'subagent', 'REJECTED'), ('C2', 'output_plumbing', 'REJECTED'), ('C3', 'prompt', 'REJECTED')]"
+  },
+  {
+   "step": "r1",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r1",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4653 traced=0.4653"
+  },
+  {
+   "step": "r2",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 4, traced 4"
+  },
+  {
+   "step": "r2",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4653 (H0) S*=0.4653; traced S_t=0.4653 S*=0.4653"
+  },
+  {
+   "step": "r2",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0"
+  },
+  {
+   "step": "r2",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['config', 'context_mgmt', 'memory', 'output_plumbing', 'prompt', 'subagent'] U_t=['control_flow', 'client_tool', 'skill']"
+  },
+  {
+   "step": "r2",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r2",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'context_mgmt', 'memory', 'output_plumbing', 'prompt', 'subagent']; g={'prompt': -0.0353, 'memory': -0.0262, 'context_mgmt': -0.0353, 'subagent': -0.0084, 'config': -0.0353, 'output_plumbing': -0.0353}"
+  },
+  {
+   "step": "r2",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'context_mgmt', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r2",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r2",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "3 failure mode(s)"
+  },
+  {
+   "step": "r2",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=['config', 'context_mgmt', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 9 rows, expected 9"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "3 edits, b_t=4"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.456562 traced=0.456562"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4566 S_t=0.4653 dS=-0.0088 dC=+0.0824 floor=0.4494 (ok) shaped: shaped=100.0*-0.0088 - 15.0*+0.0824 + 0.5*0 = -2.111 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r2/r2A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'control_flow', 'REJECTED'), ('C2', 'config', 'REJECTED'), ('C3', 'prompt', 'REJECTED')]"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=['config', 'context_mgmt', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 9 rows, expected 9"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "4 edits, b_t=4"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.436250 traced=0.436250"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4363 S_t=0.4653 dS=-0.0291 dC=+0.9714 floor=0.4494 (FAIL) shaped: shaped=100.0*-0.0291 - 15.0*+0.9714 + 0.5*2 = -16.477 nu=2 -> rej; loop said rej"
+  },
+  {
+   "step": "r2/r2B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'control_flow', 'REJECTED'), ('C2', 'subagent', 'REJECTED'), ('C3', 'control_flow', 'REJECTED'), ('C4', 'memory', 'REJECTED')]"
+  },
+  {
+   "step": "r2",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r2",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4653 traced=0.4653"
+  },
+  {
+   "step": "r3",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 4, traced 4"
+  },
+  {
+   "step": "r3",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4653 (H0) S*=0.4653; traced S_t=0.4653 S*=0.4653"
+  },
+  {
+   "step": "r3",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 1, traced 1 (S_t-S_t-w=+0.0000)"
+  },
+  {
+   "step": "r3",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'subagent'] U_t=['client_tool', 'skill']"
+  },
+  {
+   "step": "r3",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected ['B'], traced ['B']"
+  },
+  {
+   "step": "r3",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'subagent']; g={'prompt': -0.0088, 'memory': -0.0262, 'context_mgmt': -0.0353, 'control_flow': -0.0088, 'subagent': -0.0084, 'config': -0.0088, 'output_plumbing': -0.0353}"
+  },
+  {
+   "step": "r3",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r3",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r3",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "3 failure mode(s)"
+  },
+  {
+   "step": "r3",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=False prune=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 16 rows, expected 16"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=4"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.459688 traced=0.459688"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4597 S_t=0.4653 dS=-0.0056 dC=+0.0470 floor=0.4494 (ok) shaped: shaped=100.0*-0.0056 - 15.0*+0.0470 + 0.5*1 = -0.768 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r3/r3A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'skill', 'REJECTED'), ('C2', 'output_plumbing', 'REJECTED')]"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=4 reserved=True prune=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'subagent']"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 16 rows, expected 16"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "4 edits, b_t=4"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "critic-rejected candidate never evaluated",
+   "status": "correct",
+   "evidence": "1 review(s), last=precheck"
+  },
+  {
+   "step": "r3/r3B",
+   "check": "unevaluated candidate is inadmissible",
+   "status": "correct",
+   "evidence": "gate reason=critic_reject"
+  },
+  {
+   "step": "r3",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r3",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4653 traced=0.4653"
+  },
+  {
+   "step": "r4",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 3, traced 3"
+  },
+  {
+   "step": "r4",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4653 (H0) S*=0.4653; traced S_t=0.4653 S*=0.4653"
+  },
+  {
+   "step": "r4",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 1, traced 1 (S_t-S_t-w=+0.0000)"
+  },
+  {
+   "step": "r4",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=['client_tool']"
+  },
+  {
+   "step": "r4",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected ['B'], traced ['B']"
+  },
+  {
+   "step": "r4",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent']; g={'prompt': -0.0088, 'skill': -0.0056, 'memory': -0.0262, 'context_mgmt': -0.0353, 'control_flow': -0.0088, 'subagent': -0.0084, 'config': -0.0088, 'output_plumbing': -0.0056}"
+  },
+  {
+   "step": "r4",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "step": "r4",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r4",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "3 failure mode(s)"
+  },
+  {
+   "step": "r4",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=False prune=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 22 rows, expected 22"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "3 edits, b_t=3"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.496250 traced=0.496250"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4963 S_t=0.4653 dS=+0.0309 dC=+0.5320 floor=0.4494 (ok) cost_rule: dC=+0.5320 <= 1.3375 nu=0 -> adm; loop said adm"
+  },
+  {
+   "step": "r4/r4A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'prompt', 'ACCEPTED'), ('C2', 'context_mgmt', 'ACCEPTED'), ('C3', 'context_mgmt', 'ACCEPTED')]"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=True prune=['config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 22 rows, expected 22"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=3"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.494688 traced=0.494688"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4947 S_t=0.4653 dS=+0.0294 dC=+0.0250 floor=0.4494 (ok) cost_rule: dC=+0.0250 <= 1.2750 nu=1 -> adm; loop said adm"
+  },
+  {
+   "step": "r4/r4B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'client_tool', 'LOST')]"
+  },
+  {
+   "step": "r4",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected r4A, loop kept r4A"
+  },
+  {
+   "step": "r4",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4963 traced=0.4963"
+  },
+  {
+   "step": "r5",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 3, traced 3"
+  },
+  {
+   "step": "r5",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4963 (r4A) S*=0.4963; traced S_t=0.4963 S*=0.4963"
+  },
+  {
+   "step": "r5",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0 (S_t-S_t-w=+0.0309)"
+  },
+  {
+   "step": "r5",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=[]"
+  },
+  {
+   "step": "r5",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r5",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']; g={'prompt': 0.0309, 'skill': -0.0056, 'memory': -0.0291, 'context_mgmt': 0.0309, 'client_tool': 0.0294, 'control_flow': -0.0088, 'subagent': -0.0291, 'config': -0.0088, 'output_plumbing': -0.0056}"
+  },
+  {
+   "step": "r5",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r5",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r5",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "4 failure mode(s)"
+  },
+  {
+   "step": "r5",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=False prune=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 26 rows, expected 26"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "3 edits, b_t=3"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.470313 traced=0.470313"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4703 S_t=0.4963 dS=-0.0259 dC=+0.5281 floor=0.4803 (FAIL) shaped: shaped=100.0*-0.0259 - 15.0*+0.5281 + 0.5*1 = -10.015 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r5/r5A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'skill', 'REJECTED'), ('C2', 'control_flow', 'REJECTED'), ('C3', 'config', 'REJECTED')]"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=False prune=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 26 rows, expected 26"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=3"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.480938 traced=0.480938"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4809 S_t=0.4963 dS=-0.0153 dC=+0.1112 floor=0.4803 (ok) shaped: shaped=100.0*-0.0153 - 15.0*+0.1112 + 0.5*1 = -2.699 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r5/r5B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'prompt', 'REJECTED'), ('C2', 'subagent', 'REJECTED')]"
+  },
+  {
+   "step": "r5",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r5",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.4963 traced=0.4963"
+  },
+  {
+   "step": "r6",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 3, traced 3"
+  },
+  {
+   "step": "r6",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.4963 (r4A) S*=0.4963; traced S_t=0.4963 S*=0.4963"
+  },
+  {
+   "step": "r6",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0 (S_t-S_t-w=+0.0309)"
+  },
+  {
+   "step": "r6",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=[]"
+  },
+  {
+   "step": "r6",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r6",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']; g={'prompt': 0.0309, 'skill': -0.0056, 'memory': -0.0291, 'context_mgmt': 0.0309, 'client_tool': 0.0294, 'control_flow': -0.0088, 'subagent': -0.0153, 'config': -0.0088, 'output_plumbing': -0.0056}"
+  },
+  {
+   "step": "r6",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r6",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r6",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "4 failure mode(s)"
+  },
+  {
+   "step": "r6",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=False prune=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 31 rows, expected 31"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=3"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.410625 traced=0.410625"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4106 S_t=0.4963 dS=-0.0856 dC=+0.0927 floor=0.4803 (FAIL) shaped: shaped=100.0*-0.0856 - 15.0*+0.0927 + 0.5*2 = -8.953 nu=2 -> rej; loop said rej"
+  },
+  {
+   "step": "r6/r6A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'subagent', 'REJECTED'), ('C2', 'memory', 'REJECTED')]"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=3 reserved=False prune=['config', 'control_flow', 'memory', 'output_plumbing', 'skill', 'subagent']"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 31 rows, expected 31"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=3"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.522813 traced=0.522813"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.5228 S_t=0.4963 dS=+0.0266 dC=+0.0345 floor=0.4803 (ok) cost_rule: dC=+0.0345 <= 1.1625 nu=0 -> adm; loop said adm"
+  },
+  {
+   "step": "r6/r6B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'output_plumbing', 'ACCEPTED')]"
+  },
+  {
+   "step": "r6",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected r6B, loop kept r6B"
+  },
+  {
+   "step": "r6",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.5228 traced=0.5228"
+  },
+  {
+   "step": "r7",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 2, traced 2"
+  },
+  {
+   "step": "r7",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.5228 (r6B) S*=0.5228; traced S_t=0.5228 S*=0.5228"
+  },
+  {
+   "step": "r7",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0 (S_t-S_t-w=+0.0575)"
+  },
+  {
+   "step": "r7",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=[]"
+  },
+  {
+   "step": "r7",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r7",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'control_flow', 'memory', 'skill', 'subagent']; g={'prompt': 0.0309, 'skill': -0.0056, 'memory': -0.0856, 'context_mgmt': 0.0309, 'client_tool': 0.0294, 'control_flow': -0.0259, 'subagent': -0.0153, 'config': -0.0259, 'output_plumbing': 0.0266}"
+  },
+  {
+   "step": "r7",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r7",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r7",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "4 failure mode(s)"
+  },
+  {
+   "step": "r7",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 34 rows, expected 34"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=2"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.502500 traced=0.502500"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.5025 S_t=0.5228 dS=-0.0203 dC=+0.7476 floor=0.5069 (FAIL) shaped: shaped=100.0*-0.0203 - 15.0*+0.7476 + 0.5*0 = -13.245 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r7/r7A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'config', 'REJECTED'), ('C2', 'context_mgmt', 'REJECTED')]"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 34 rows, expected 34"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=2"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.477500 traced=0.477500"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4775 S_t=0.5228 dS=-0.0453 dC=+0.7697 floor=0.5069 (FAIL) shaped: shaped=100.0*-0.0453 - 15.0*+0.7697 + 0.5*1 = -15.577 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r7/r7B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'context_mgmt', 'REJECTED'), ('C2', 'subagent', 'REJECTED')]"
+  },
+  {
+   "step": "r7",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r7",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.5228 traced=0.5228"
+  },
+  {
+   "step": "r8",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 2, traced 2"
+  },
+  {
+   "step": "r8",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.5228 (r6B) S*=0.5228; traced S_t=0.5228 S*=0.5228"
+  },
+  {
+   "step": "r8",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0 (S_t-S_t-w=+0.0266)"
+  },
+  {
+   "step": "r8",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=[]"
+  },
+  {
+   "step": "r8",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r8",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['config', 'control_flow', 'memory', 'skill', 'subagent']; g={'prompt': 0.0309, 'skill': -0.0259, 'memory': -0.0856, 'context_mgmt': 0.0309, 'client_tool': 0.0294, 'control_flow': -0.0259, 'subagent': -0.0153, 'config': -0.0203, 'output_plumbing': 0.0266}"
+  },
+  {
+   "step": "r8",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r8",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r8",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "4 failure mode(s)"
+  },
+  {
+   "step": "r8",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 38 rows, expected 38"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=2"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.486875 traced=0.486875"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.4869 S_t=0.5228 dS=-0.0359 dC=+0.0483 floor=0.5069 (FAIL) shaped: shaped=100.0*-0.0359 - 15.0*+0.0483 + 0.5*0 = -4.319 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r8/r8A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'context_mgmt', 'REJECTED'), ('C2', 'control_flow', 'REJECTED')]"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 38 rows, expected 38"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=2"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:precheck', 'A:llm']"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.519687 traced=0.519687"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.5197 S_t=0.5228 dS=-0.0031 dC=+0.0180 floor=0.5069 (ok) shaped: shaped=100.0*-0.0031 - 15.0*+0.0180 + 0.5*0 = -0.582 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r8/r8B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'config', 'REJECTED')]"
+  },
+  {
+   "step": "r8",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r8",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.5228 traced=0.5228"
+  },
+  {
+   "step": "r9",
+   "check": "b_t = ceil(cosine anneal)",
+   "status": "correct",
+   "evidence": "expected 2, traced 2"
+  },
+  {
+   "step": "r9",
+   "check": "S_t / S* / trajectory chain",
+   "status": "correct",
+   "evidence": "S_t=0.5228 (r6B) S*=0.5228; traced S_t=0.5228 S*=0.5228"
+  },
+  {
+   "step": "r9",
+   "check": "sigma_t = 1[S_t - S_{t-w} <= delta]",
+   "status": "correct",
+   "evidence": "expected 0, traced 0 (S_t-S_t-w=+0.0266)"
+  },
+  {
+   "step": "r9",
+   "check": "T_t (measured components) and U_t = K \\ T_t",
+   "status": "correct",
+   "evidence": "T_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'output_plumbing', 'prompt', 'skill', 'subagent'] U_t=[]"
+  },
+  {
+   "step": "r9",
+   "check": "reserved variants = last m_draft when sigma=1 and U_t != {}",
+   "status": "correct",
+   "evidence": "expected [], traced []"
+  },
+  {
+   "step": "r9",
+   "check": "B_t = {l in T_t : g_t(l) <= 0}",
+   "status": "correct",
+   "evidence": "B_t=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'prompt', 'skill', 'subagent']; g={'prompt': -0.0153, 'skill': -0.0259, 'memory': -0.0856, 'context_mgmt': -0.0203, 'client_tool': None, 'control_flow': -0.0259, 'subagent': -0.0153, 'config': -0.0031, 'output_plumbing': 0.0266}"
+  },
+  {
+   "step": "r9",
+   "check": "B_t members with no accepted machinery to prune (spec 8.3: advisory, empty lists)",
+   "status": "questionable",
+   "evidence": "['client_tool', 'config', 'control_flow', 'memory', 'skill', 'subagent']"
+  },
+  {
+   "step": "r9",
+   "check": "analyst read only evolve traces of the incumbent; no sealed id/question in its I/O",
+   "status": "correct",
+   "evidence": "28 traces read; sealed hits=[]"
+  },
+  {
+   "step": "r9",
+   "check": "F_t failure modes contain no mode made only of SOLVED tasks",
+   "status": "correct",
+   "evidence": "4 failure mode(s)"
+  },
+  {
+   "step": "r9",
+   "check": "trace selection = n_fail lowest + n_success highest (not in fails) of the incumbent",
+   "status": "correct",
+   "evidence": "fail=22 (expected 22), win=6"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 40 rows, expected 40"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "1 edits, b_t=2"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['R:llm', 'A:llm']"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.505625 traced=0.505625"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.5056 S_t=0.5228 dS=-0.0172 dC=-0.0528 floor=0.5069 (FAIL) shaped: shaped=100.0*-0.0172 - 15.0*-0.0528 + 0.5*0 = -0.927 nu=0 -> rej; loop said rej"
+  },
+  {
+   "step": "r9/r9A",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'context_mgmt', 'REJECTED')]"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "no holdout/ood id or question in proposer/critic inputs",
+   "status": "correct",
+   "evidence": "hits=[]"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "status": "correct",
+   "evidence": "prompt directives b_t=2 reserved=False prune=['client_tool', 'config', 'context_mgmt', 'control_flow', 'memory', 'prompt', 'skill', 'subagent']"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
+   "status": "correct",
+   "evidence": "shown 40 rows, expected 40"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "declared edits <= b_t",
+   "status": "correct",
+   "evidence": "2 edits, b_t=2"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "evaluated diff carries no evolve answer / task id",
+   "status": "correct",
+   "evidence": "answers=[] ids=[]"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "every declared edit is present in the diff (no phantom credit in L_t)",
+   "status": "correct",
+   "evidence": "all present"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "evaluated only after a final critic accept",
+   "status": "correct",
+   "evidence": "critic trail=['A:llm']"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "S' from raw trials == traced == evals/<job>.json",
+   "status": "correct",
+   "evidence": "S'=0.509375 traced=0.509375"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "Algorithm 2 recomputed (floor on S*, cost/shaped rule, nu)",
+   "status": "correct",
+   "evidence": "S'=0.5094 S_t=0.5228 dS=-0.0134 dC=+0.0576 floor=0.5069 (ok) shaped: shaped=100.0*-0.0134 - 15.0*+0.0576 + 0.5*1 = -1.707 nu=1 -> rej; loop said rej"
+  },
+  {
+   "step": "r9/r9B",
+   "check": "history record matches (S, dS, dC, outcome)",
+   "status": "correct",
+   "evidence": "[('C1', 'config', 'REJECTED'), ('C2', 'memory', 'REJECTED')]"
+  },
+  {
+   "step": "r9",
+   "check": "winner = argmax S' over admissible (else keep H_t)",
+   "status": "correct",
+   "evidence": "expected None, loop kept None"
+  },
+  {
+   "step": "r9",
+   "check": "S* after = max(S*, S_{t+1})",
+   "status": "correct",
+   "evidence": "S*=0.5228 traced=0.5228"
+  },
+  {
+   "step": "monitor",
+   "check": "one shadow evaluation per new incumbent (H0 + each keep)",
+   "status": "correct",
+   "evidence": "monitor versions=['H0', 'r4A', 'r6B']; keeps=['H0', 'r4A', 'r6B']"
+  }
+ ]
+}

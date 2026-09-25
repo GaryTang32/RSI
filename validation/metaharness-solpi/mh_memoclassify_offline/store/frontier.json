@@ -1,0 +1,169 @@
+{
+ "systems": [
+  "no_memory",
+  "fewshot_all",
+  "i06_0_param_char_budget_4500",
+  "i05_1_crossover",
+  "i01_1_label_list",
+  "i03_1_notes"
+ ],
+ "splits": {
+  "test": {
+   "results": {
+    "no_memory": {
+     "split": "test",
+     "score": 0.14814814814814814,
+     "per_unit": {
+      "ds_alpha/test": 0.0,
+      "ds_beta/test": 0.4444444444444444,
+      "ds_gamma/test": 0.0
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 191.0,
+      "ds_beta/test": 191.0,
+      "ds_gamma/test": 191.0
+     },
+     "context_cost": 191.0,
+     "tokens": 21555.666666666668,
+     "families": {
+      "ds_alpha": 0.0,
+      "ds_beta": 0.4444444444444444,
+      "ds_gamma": 0.0
+     }
+    },
+    "fewshot_all": {
+     "split": "test",
+     "score": 0.523148148148148,
+     "per_unit": {
+      "ds_alpha/test": 0.5555555555555556,
+      "ds_beta/test": 0.4722222222222222,
+      "ds_gamma/test": 0.5416666666666666
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 7254.0,
+      "ds_beta/test": 30134.541666666668,
+      "ds_gamma/test": 15797.0
+     },
+     "context_cost": 17728.51388888889,
+     "tokens": 713539.6666666666,
+     "families": {
+      "ds_alpha": 0.5555555555555556,
+      "ds_beta": 0.4722222222222222,
+      "ds_gamma": 0.5416666666666666
+     }
+    },
+    "i06_0_param_char_budget_4500": {
+     "split": "test",
+     "score": 0.6342592592592593,
+     "per_unit": {
+      "ds_alpha/test": 0.6527777777777778,
+      "ds_beta/test": 0.6944444444444444,
+      "ds_gamma/test": 0.5555555555555556
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 6071.0,
+      "ds_beta/test": 5152.0,
+      "ds_gamma/test": 5751.0
+     },
+     "context_cost": 5658.0,
+     "tokens": 276712.6666666667,
+     "families": {
+      "ds_alpha": 0.6527777777777778,
+      "ds_beta": 0.6944444444444444,
+      "ds_gamma": 0.5555555555555556
+     }
+    },
+    "i05_1_crossover": {
+     "split": "test",
+     "score": 0.6296296296296297,
+     "per_unit": {
+      "ds_alpha/test": 0.625,
+      "ds_beta/test": 0.6388888888888888,
+      "ds_gamma/test": 0.625
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 1539.0,
+      "ds_beta/test": 855.0,
+      "ds_gamma/test": 1256.0
+     },
+     "context_cost": 1216.6666666666667,
+     "tokens": 67540.33333333333,
+     "families": {
+      "ds_alpha": 0.625,
+      "ds_beta": 0.6388888888888888,
+      "ds_gamma": 0.625
+     }
+    },
+    "i01_1_label_list": {
+     "split": "test",
+     "score": 0.40277777777777773,
+     "per_unit": {
+      "ds_alpha/test": 0.375,
+      "ds_beta/test": 0.4444444444444444,
+      "ds_gamma/test": 0.3888888888888889
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 506.0,
+      "ds_beta/test": 341.0,
+      "ds_gamma/test": 438.0
+     },
+     "context_cost": 428.3333333333333,
+     "tokens": 32275.0,
+     "families": {
+      "ds_alpha": 0.375,
+      "ds_beta": 0.4444444444444444,
+      "ds_gamma": 0.3888888888888889
+     }
+    },
+    "i03_1_notes": {
+     "split": "test",
+     "score": 0.6342592592592592,
+     "per_unit": {
+      "ds_alpha/test": 0.6111111111111112,
+      "ds_beta/test": 0.625,
+      "ds_gamma/test": 0.6666666666666666
+     },
+     "per_unit_cost": {
+      "ds_alpha/test": 2830.2083333333335,
+      "ds_beta/test": 5107.875,
+      "ds_gamma/test": 2618.1388888888887
+     },
+     "context_cost": 3518.740740740741,
+     "tokens": 185431.66666666666,
+     "families": {
+      "ds_alpha": 0.6111111111111112,
+      "ds_beta": 0.625,
+      "ds_gamma": 0.6666666666666666
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "i06_0_param_char_budget_4500",
+     "test_accuracy": 0.6342592592592593,
+     "context_cost": 5658.0
+    },
+    {
+     "system": "i03_1_notes",
+     "test_accuracy": 0.6342592592592592,
+     "context_cost": 3518.740740740741
+    },
+    {
+     "system": "i05_1_crossover",
+     "test_accuracy": 0.6296296296296297,
+     "context_cost": 1216.6666666666667
+    },
+    {
+     "system": "i01_1_label_list",
+     "test_accuracy": 0.40277777777777773,
+     "context_cost": 428.3333333333333
+    },
+    {
+     "system": "no_memory",
+     "test_accuracy": 0.14814814814814814,
+     "context_cost": 191.0
+    }
+   ]
+  }
+ }
+}

@@ -4,20 +4,26 @@
  "sigma_t": 0,
  "tried": [
   "control_flow",
-  "prompt"
+  "prompt",
+  "skill"
  ],
  "explore": {
   "sigma": 0,
   "untried": [
    "tool",
-   "skill",
    "memory",
    "subagent"
   ],
   "m_draft": 1,
-  "text": "Components not yet exercised in this run: ['tool', 'skill', 'memory', 'subagent']. Not mandatory this round (sigma_t = 0), but evidence about them is still missing."
+  "text": "Components not yet exercised in this run: ['tool', 'memory', 'subagent']. Not mandatory this round (sigma_t = 0), but evidence about them is still missing."
  },
- "prune_set": [],
+ "prune_set": [
+  {
+   "component": "skill",
+   "recent_best_gain": -0.375,
+   "accepted_edits_in_incumbent": []
+  }
+ ],
  "delta": 0.147196,
- "S_star": 1.0
+ "S_star": 0.55
 }

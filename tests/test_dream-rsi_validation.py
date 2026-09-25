@@ -197,3 +197,18 @@ def test_attempt_record_shows_the_cause_of_a_failure():
           '  File "/tmp/x/candidate.py", line 121\n    ===\n    ^^\nSyntaxError: invalid syntax')
     text = AttemptRecord("b0.a1", 0, 1, 2, "p", 0.0, "compile_other", tb).render()
     assert "SyntaxError: invalid syntax" in text and "===" in text
+
+
+def test_llm_developer_strips_a_trailing_fence_instead_of_a_repair_round():
+    """In the live run all 3 developer 'syntax errors' were a trailing ``` left by the reply parser;
+    the repair round then rewrote the policy on a wrong diagnosis. Now the fence is dropped."""
+    from rsi.core.llm import MockLLM
+    from rsi.dream.developer import DevContext, VersionRecord
+    from rsi.dream.policy import template_code
+
+    code = template_code("adaptive").replace('"default_beta": 0.6', '"default_beta": 0.7')
+    hdr = json.dumps({"change": "raise the default beta", "hypothesis": "h", "components": ["policy"]})
+    dev = LLMPolicyDeveloper(MockLLM(lambda p, s, seed, i: f"```json\n{hdr}\n```\n=== FILE: method.py ===\n{code}```\n"))
+    rev = dev.revise(DevContext(1, [VersionRecord(0, template_code("adaptive"))], [], [], "", "eq1", 3))
+    assert rev.ok and rev.meta["repairs"] == 0 and rev.change == "raise the default beta"
+    assert rev.meta["calls"][0]["sanitized"] == ["method.py"] and not rev.code.rstrip().endswith("```")

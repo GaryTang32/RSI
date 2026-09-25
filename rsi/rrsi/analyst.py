@@ -96,6 +96,14 @@ Aggregation rules:
 5. Do NOT prescribe code changes and do NOT attribute blame to model vs scaffold."""
 
 
+def _solved(rec: dict) -> bool:
+    """The trial reached the maximum reward (1.0): the task is solved, not a failure."""
+    try:
+        return float(rec.get("score")) >= 1.0 - 1e-9 and not rec.get("error")
+    except (TypeError, ValueError):
+        return False
+
+
 def build_traces(meas: Measurement, n_fail: int, n_success: int) -> dict[str, dict]:
     """Worst trial of the lowest-scoring tasks plus the best trial of the highest-scoring
     ones, from the incumbent's stored evaluation."""
@@ -164,7 +172,14 @@ class Analyst:
     def heuristic_digests(self, traces: dict[str, dict]) -> list[dict]:
         out = []
         for tid, rec in traces.items():
-            if rec.get("_role") == "fail" and rec.get("error") and not str(rec.get("error")).startswith("infra:"):
+            if rec.get("_role") == "fail" and _solved(rec):
+                # a "fail" slot filled by a task the incumbent SOLVES (|D| <= n_fail_traces, or few failures):
+                # it is evidence of a success habit, not a failure mode (the code's analyst LLM picks the lens
+                # per task from the score table; a deterministic clusterer must not call it a failure)
+                out.append({"task_id": tid, "lens": "success", "family": rec.get("family"),
+                            "habits": [{"habit": f"clean_{rec.get('family')}", "where_shown": "final"}],
+                            "risk_if_removed": "a change that disrupts this path regresses passing tasks"})
+            elif rec.get("_role") == "fail" and rec.get("error") and not str(rec.get("error")).startswith("infra:"):
                 out.append({"task_id": tid, "lens": "capability_gap", "family": rec.get("family"),
                             "wanted": "complete the task", "why_couldnt": signature(str(rec.get("error"))),
                             "evidence": [{"where": "execution", "quote": str(rec.get("error"))[:160]}]})
@@ -251,8 +266,10 @@ class Analyst:
         if self.mode != "llm":
             return self.aggregate_heuristic(heur_digests, scores), heur_digests
         task_inputs = task_inputs or {}
-        fails = [t for t, r in traces.items() if r.get("_role") == "fail"]
-        wins = [t for t, r in traces.items() if r.get("_role") != "fail"]
+        fails = [t for t, r in traces.items() if r.get("_role") == "fail" and not _solved(r)]
+        # solved tasks that filled a "fail" slot go to the success lens, after the genuine wins
+        wins = [t for t, r in traces.items() if r.get("_role") != "fail"] + \
+               [t for t, r in traces.items() if r.get("_role") == "fail" and _solved(r)]
         n_win = min(len(wins), max(1, self.max_digests // 4))
         reqs = [(t, "failure") for t in fails[: self.max_digests - n_win]] + [(t, "success") for t in wins[:n_win]]
         with ThreadPoolExecutor(max_workers=max(1, self.workers)) as ex:

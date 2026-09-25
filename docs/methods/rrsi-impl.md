@@ -268,6 +268,16 @@ The previous review's findings (§6.1) were re-checked and hold. This pass found
 8. **Missing experiment.** E11 (domain guards) had never been run. It is now `experiments/rrsi/e11_guards.py`, a third domain built through the public API with a user-supplied `MetricGuard`, and it reproduces.
 9. **Over-claiming corrected.** The notes said E5 was "reproduced (OOD non-inferior)". The check fails in 2 of 3 realizations, including at 50 seeds, so it is now marked partial. The E1 and E2 rows now report the realization flips.
 
+### 6.3 Stage-B validation audit (2026-09-25): bugs found and fixed
+
+An independent, adversarial step-by-step audit of the from-scratch validation runs (`validation/rrsi/AUDIT.md`) re-derived every step from raw trials with its own code (`experiments/rrsi/validate_rrsi_stepcheck.py`, which imports nothing from `rsi.rrsi`). Every Algorithm 2 decision, δ, b_t, σ_t, T_t/U_t, B_t, ν, S* and argmax matched in all three runs. It found and fixed:
+
+1. **Phantom credit in the AgentQA mock proposer.** It could bundle `[aq:self_consistency]` (base = sc3) with `[aq:python_tool]` (base = tool). The second rewrote `solve()` and erased the first, but both stayed declared, so L_t recorded "self-consistency ... ACCEPTED ΔS +0.625" for machinery that was not in the harness (`offline_agentqa` r0A). The mock no longer bundles two ideas that set the same harness field. Regression test: `test_agentqa_mock_never_declares_an_edit_a_later_edit_overwrote` (fails without the fix).
+2. **The heuristic analyst reported solved tasks as the top failure mode.** With |D| ≤ `n_fail_traces` (AgentQA: 20 ≤ 22) every task fills a "fail" slot, as in the code's `build_traces`. The heuristic clusterer then labelled solved traces "tasks end with: Correct (answer <v>)" and, from round 3 on, ranked it first in F_t (19 tasks, loss 0), so the proposer's `targets_mode` pointed at solved tasks. A trace whose reward is 1.0 is now success evidence. In LLM mode, solved fail-slot traces go to the success lens after the genuine wins (the code's analyst picks the lens per task from the score table). This leaves HarnessWorld and the recorded live run unchanged: a from-scratch HarnessWorld re-run gives an identical history, and the live run replays from its cache with 0 misses. Regression test: `test_heuristic_analyst_never_reports_solved_tasks_as_a_failure_mode`.
+3. **Audit message.** `audit.py` said "dropped as no_proposal" for a critic repair that shipped nothing. That candidate is in fact `critic_reject`. It now reports the recorded gate failure.
+
+`offline_agentqa` was re-run from scratch. Because the mock seeds its RNG on the prompt, the result is a different realization; the first run is kept as `validation/rrsi/offline_agentqa_superseded/`. **Not re-run:** the AgentQA parts of E1b, E12 and E13 in `results/rrsi/` (outside this audit's scope). Their AgentQA numbers come from the pre-fix mock and heuristic analyst. HarnessWorld results are unaffected.
+
 ## 7. Running the tests and experiments
 
 ```bash
@@ -280,7 +290,7 @@ python experiments/rrsi/e11_guards.py                     # domain guards, 30 se
 python experiments/rrsi/live_smoke.py --llm claude:haiku  # one small live run, cached in .rsi_cache/rrsi
 python experiments/rrsi/live_smoke.py --llm claude:haiku --cache-only   # $0 replay of the recorded run on the current code
 python experiments/rrsi/e1_overfitting.py --llm claude:haiku --seeds 1 --quick   # live showcase (costs money)
-python -m pytest -q tests/test_rrsi_validation.py         # trace coverage, write-only monitor, audit (~7 s)
+python -m pytest -q tests/test_rrsi_validation.py         # trace coverage, write-only monitor, audit, stage-B regressions (~7 s)
 python experiments/rrsi/validate_rrsi.py offline_agentqa  # from-scratch traced runs -> validation/rrsi/<run>/
 python experiments/rrsi/validate_rrsi.py offline_harnessworld
 python experiments/rrsi/validate_rrsi.py live_agentqa --max-usd 2.0   # haiku in every role (costs money)

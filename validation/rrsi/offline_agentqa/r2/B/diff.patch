@@ -1,12 +1,37 @@
+--- a/agents/checker.md
++++ b/agents/checker.md
+@@ -0,0 +1 @@
++You are a careful checker. Re-derive the answer independently and verify it.
+--- a/harness.py
++++ b/harness.py
+@@ -5,12 +5,15 @@
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+-    # [rrsi:sc3] three samples, majority vote on the final line
+-    finals = []
+-    for _ in range(3):
+-        r = llm(prompt, system=system)
+-        ls = [l for l in r.strip().splitlines() if l.strip()]
+-        finals.append(ls[-1] if ls else '')
+-    reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)
++    # [rrsi:tool] compute with the Python tool, then report its output
++    reply = llm(prompt + "\n\nWrite python code that prints the final answer, in a ```python block.", system=system)
++    blocks = re.findall(r"```python\n(.*?)```", reply, re.S)
++    if blocks:
++        out = tools.python(blocks[-1]).strip()
++        if out:
++            reply = llm("Question: " + question + "\nTool output: " + out.splitlines()[0] + "\nReply with a final line ANSWER: <value>.", system=system)
++    # [rrsi:checker] one bounded verification sub-call
++    guide = files.get("agents/checker.md", "")
++    reply = llm(guide + "\nQuestion: " + question + "\nDraft answer: " + reply.strip()[-300:] + "\nVerify the draft and give a final line ANSWER: <value>.", system=system)
+     lines = [line for line in reply.strip().splitlines() if line.strip()]
+     return lines[-1] if lines else ""
 --- a/prompts/system.md
 +++ b/prompts/system.md
-@@ -1,3 +1,5 @@
- You are a helpful assistant.
+@@ -3,3 +3,5 @@
+ You are a meticulous senior analyst. Guideline 1: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 2: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 3: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 4: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 5: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 6: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 7: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 8: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 9: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 10: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 11: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer. Guideline 12: consider every assumption, restate the constraints, weigh alternative readings of the question, and explain the reasoning in full sentences before settling on an answer.
  
  Think step by step before answering.
 +
-+When a question involves computation, write Python code that computes the answer.
---- a/skills/python.md
-+++ b/skills/python.md
-@@ -0,0 +1 @@
-+When a question involves computation, write Python code that computes the answer.
++Double-check your arithmetic before giving the final answer.

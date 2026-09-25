@@ -302,14 +302,16 @@ When the task's domain has sealed holdout/ood splits, `rsi.trace.ShadowMonitor` 
 **Validation runs** (`experiments/dream-rsi/validate_dream.py`, results and narratives in `validation/dream-rsi/RUNS.md`): `sumdiff_offline`, `agentqa_offline` and `sumdiff_live` (claude haiku as agent and developer). Each run directory holds an `audit.md` that re-derives every step from the files on disk. It re-grades every attempt with an independent Γ, rebuilds diffs from the snapshot store, checks batch legality and replay fidelity, recomputes Eq. 1, re-replays every version, and checks the argmax, the diffs, leakage and the call budget. Offline, it also checks each dreaming decision against fresh online searches.
 
 **Fixes made from what the traces showed:**
-1. **Reply-format lines kept by the parser.** `EditorAgent` now drops a trailing reply-format line (a closing fence, or a bare `===` / `=== END ===`) that `rsi.core.parse_file_blocks` leaves at the end of a file block (`strip_reply_terminators`). In the live run this turned 6 of 12 round-1 candidates into `SyntaxError`s. Re-graded without the stray line, they score 0.955–1.029; one of them would have been the round's best.
+1. **Reply-format lines kept by the parser.** `EditorAgent` and `LLMPolicyDeveloper` now drop a trailing reply-format line (a closing fence, or a bare `===` / `=== END ===`) that `rsi.core.parse_file_blocks` leaves at the end of a file block (`strip_reply_terminators`). In the live run this turned 12 of 36 candidates into `SyntaxError`s, 6 of them in round 1. Re-graded without the stray line, the round-1 candidates score 0.955–1.029, and one of them would have been the round's best. The same artifact caused all 3 developer syntax errors, whose repair rounds then rewrote the policy on an invented cause.
 2. **Failure text shown to the agent.** `AttemptRecord.render` now shows the *end* of an error, where a traceback states its cause. The agent used to see only the head of the traceback, so it blamed the failed ideas instead of the slip.
 3. **No-op mutator moves.** `ParametricMutator` no longer claims perturbations that clamping or rounding turned into no-ops.
+4. **Claims of repaired revisions.** A repaired developer revision keeps its first attempt's claim, as `<claim> [repaired: <fix>]`. Before, only the fix was reported as the change.
 
-Decisions of offline runs are unchanged by all three.
+Decisions of offline runs are unchanged by all four.
 
 **What the validation says about the method.** The offline ground truth confirms spec §8.2 and §8.4 on a concrete step:
 - At t = 1 (one world), replay preferred a frugal adaptive policy (V 0.910 vs 0.865), only because the recorded tree held the ceiling value in a second branch.
 - On fresh online searches that policy found significantly less: gain −0.0060 [−0.0115, −0.0006] at 7.1 vs 15 calls.
 - The paper's guarantee V^{m*} ≥ V^0 holds on replay only, as stated.
 - Later phases of the mock developer produce ties (PARAMS perturbations that change no decision), so the incumbent is kept.
+- In the live run (T = 3, 3 × 4 grids), all six haiku-written policies probe the full grid in replay and tie with π₁ (V = 0.895). Dreaming never changed the deployed policy, so the run is effectively Recursive Fixed Exploration.

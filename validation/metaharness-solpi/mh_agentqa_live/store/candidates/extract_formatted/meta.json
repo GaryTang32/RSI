@@ -1,0 +1,19 @@
+{
+ "name": "extract_formatted",
+ "artifact_id": "d44d769d9d46d79f6d48aef10363300a18914e092a90e257e8f38dd7fd92a558",
+ "created_at": 1790337889.1343894,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Models emphasize final answers with **bold** formatting or isolated numbers on clear lines. Priority-based extraction (formatted \u2192 standalone numbers \u2192 last line) is more reliable than always taking the last line.",
+ "axis": "exploitation",
+ "components": [
+  "extraction",
+  "pattern-matching",
+  "formatting-aware"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": ""
+}

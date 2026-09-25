@@ -13,6 +13,7 @@ from .config import Config
 from .loop import MetaHarnessLoop
 from .mock import MockProposer, library_for
 from .proposer import AgentProposer, LLMSummarizer, Proposer, RewriteProposer
+from .tracing import make_tracer, shadow_usage
 
 
 def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
@@ -39,7 +40,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
         baselines: Optional[dict[str, Artifact]] = None, proposer: Optional[Proposer] = None,
         proposer_kind: str = "auto", summarizer_llm: Optional[LLM] = None, leak_rate: float = 0.0,
-        finalize_llm: Optional[LLM] = None) -> ImprovementResult:
+        finalize_llm: Optional[LLM] = None, monitor=None) -> ImprovementResult:
     """Run Meta-Harness on any :class:`rsi.core.Domain`.
 
     Parameters
@@ -57,6 +58,13 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         :class:`Config` (iterations, k, history_mode, objectives, budget, leakage screen ...).
     out_dir:
         run directory (the experience store lives in ``out_dir/store``).
+
+    monitor:
+        the write-only shadow monitor of the audit trace (``<out_dir>/trace.jsonl``, written when
+        ``out_dir`` is given and ``config.trace``): None = ``config.shadow_monitor`` (auto: every new
+        frontier ``_best`` is scored on the domain's sealed holdout/ood splits), False = off, or an
+        :class:`rsi.trace.ShadowMonitor`. Its numbers go only to the trace; its model calls are metered
+        as ``shadow:*`` and reported separately in ``usage["shadow_monitor"]``.
 
     Returns an :class:`rsi.core.ImprovementResult` whose ``best`` is the highest-score
     Pareto point on the search split; ``meta`` holds the frontier, the evaluation
@@ -78,6 +86,13 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     seeds = [seed_name] if seed_name in pop else list(pop)
     loop = MetaHarnessLoop(domain, llm_task=llm_task, proposer=prop, config=cfg, out_dir=out, baselines=pop,
                            summarizer=summarizer, seed_names=seeds)
+    if out_dir is not None and cfg.trace:
+        loop.tr = make_tracer(loop, out, enabled=True, monitor=cfg.shadow_monitor if monitor is None else monitor,
+                              llm_task=llm_task, splits=cfg.shadow_splits, k=cfg.shadow_k,
+                              workers=cfg.shadow_workers)
+    loop.tr.run_start(seeds, extra={"proposer_kind": proposer_kind, "leak_rate": leak_rate,
+                                    "llm_task": getattr(llm_task, "name", None),
+                                    "llm_propose": getattr(llm_propose, "name", None)})
     loop.run()
     final = loop.finalize(llm=finalize_llm) if cfg.finalize else None
     fr = loop.store.frontier()
@@ -88,6 +103,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     if llm_propose is not None:
         usage["propose_llm"] = llm_propose.meter.snapshot()
     usage["_total"] = loop.proposer_usage.to_dict()
+    usage["shadow_monitor"] = shadow_usage(loop.tr)
     res = ImprovementResult(
         method="metaharness", baseline=pop.get(seed_name, seed_artifact), best=loop.store.artifact(best_name),
         ledger=loop.ledger, trajectory=loop.iter_rows, usage=usage,
@@ -96,5 +112,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
               "n_evaluated": loop.n_evaluated, "n_proposed": loop.n_proposed, "config": cfg.to_json(),
               "store": str(loop.store.root), "screen": ({"screened": loop.screen.n_screened,
                                                          "rejected": loop.screen.n_rejected} if loop.screen else None)})
+    loop.tr.run_end({"best_system": best_name, "stop_reason": res.stop_reason, "usage": usage,
+                     "final_status": (final or {}).get("status"), "curve": loop.curve})
     res.loop = loop  # type: ignore[attr-defined]
     return res

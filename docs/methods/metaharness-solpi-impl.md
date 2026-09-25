@@ -476,3 +476,22 @@ Neither method needed changes for either new domain beyond fix 6.
 - `AgentProposer.files_read` is the whole view, not the files the agent opened.
 - The history view hides earlier proposer transcripts; only `meta.json` is shown.
 - Code mechanisms run in-process. The meter check catches tampering with the efficiency grader, but it is not a sandbox.
+
+## 9. From-scratch validation with the audit trace (2026-09-25)
+
+Both loops now write the uniform `rsi.trace` audit trace whenever `out_dir` is given (`Config.trace`, default on):
+`rsi/metaharness/tracing.py` (`MHTracer`) and `rsi/solpi/tracing.py` (`SolpiTracer`, one trace round per lineage
+iteration, plus a base round and a firewall/composition round per driver round). The shadow monitor
+(`rsi.trace.ShadowMonitor`, calls metered as `shadow:*`) scores every new frontier `_best` (Meta-Harness, default
+on, sealed holdout/ood only - the `test` split is left to `finalize()`) and the base + each composed harness
+(SoL-Pi, **default off** because the protocol's contract test counts held-out runs; validation runs switch it on).
+`tests/test_metaharness-solpi_validation.py` proves the monitor and the trace are write-only (identical ledgers and
+results with monitor on / off / trace off, both methods).
+
+Runs, audits and the paper-alignment review are in `validation/metaharness-solpi/RUNS.md`
+(`experiments/metaharness-solpi/validate_metaharness_solpi.py`). Fixes that came out of it:
+
+| # | problem (found live) | fix |
+|---|---|---|
+| 12 | `RewriteProposer`/`AgentProposer`: haiku copied the history layout and wrote `agents/<name>/src/harness.py`. The candidate got dead files, the harness it actually ran was its base unchanged, and a whole iteration was wasted (both candidates). | `_collect` maps `src/<path>` to `<path>` when the base has no `src/` directory; the output instructions state the layout explicitly. |
+| 13 | `RUNTIME_API_DOC` (SoL-Pi LLM implementer) did not say that `Extension`, `ToolResult`, ... are pre-imported, nor how a tool-result event exposes the call id. Haiku imported them from an SDK (ImportError, lineage abandoned) and read `event.call_id` (AttributeError swallowed by fail-open: a no-op mechanism). | The doc states the pre-imports, "standard library only", and `event.call.id` / `m.tool_call_id`. |

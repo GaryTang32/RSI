@@ -1,0 +1,39 @@
+{
+ "wall_s": 242.1,
+ "hub": [],
+ "llm_usage_all": {
+  "task": {
+   "calls": 30,
+   "input_tokens": 28693,
+   "output_tokens": 33843,
+   "cost_usd": 0.19790800000000003,
+   "latency_s": 349.53752851486206,
+   "total_tokens": 62536
+  },
+  "proposer": {
+   "calls": 2,
+   "input_tokens": 3135,
+   "output_tokens": 4453,
+   "cost_usd": 0.0254,
+   "latency_s": 49.14795660972595,
+   "total_tokens": 7588
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 37768,
+   "output_tokens": 51994,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 89762
+  },
+  "_total": {
+   "calls": 32,
+   "input_tokens": 69596,
+   "output_tokens": 90290,
+   "cost_usd": 0.22330800000000003,
+   "latency_s": 398.685485124588,
+   "total_tokens": 159886
+  }
+ }
+}
+transfer {'evolve': {'no_genes': {'S': 0.9, 'vs_reference': None}, 'gene_library': {'S': 0.9, 'vs_reference': {'mean_diff': 0.0, 'lo': 0.0, 'hi': 0.0, 'n': 5, 'p_better': 0.0}}}, 'holdout': {'no_genes': {'S': 1.0, 'vs_reference': None}, 'gene_library': {'S': 1.0, 'vs_reference': {'mean_diff': 0.0, 'lo': 0.0, 'hi': 0.0, 'n': 5, 'p_better': 0.0}}}}

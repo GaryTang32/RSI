@@ -1,0 +1,66 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1078.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1097.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1362.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "extract_formatted",
+  "score": 1.0,
+  "cost": 1500.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "code_first",
+  "score": 1.0,
+  "cost": 1052.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1165.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1178.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "code_first",
+  "score": 1.0,
+  "cost": 1106.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "code_generalized_extract",
+  "score": 1.0,
+  "cost": 1404.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "code_first",
+  "score": 1.0,
+  "cost": 1058.0
+ },
+ "_pareto": [
+  {
+   "system": "code_generalized_extract",
+   "score": 1.0,
+   "val_accuracy": 100.0,
+   "context_cost": 1216.2
+  }
+ ],
+ "_best": {
+  "system": "code_generalized_extract",
+  "score": 1.0
+ },
+ "_hypervolume": 2262.7800000000007,
+ "_hv_ref_cost": 3478.9800000000005
+}

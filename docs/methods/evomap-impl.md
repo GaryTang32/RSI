@@ -303,3 +303,43 @@ A second engineer re-audited the code against the spec's pseudocode, formulas, d
 
 **Still open** (see §6): X5, X12, X14; marketplace, bounties, worker pool and the A2A envelope; canary; in-place genes; distilled Skill auto-publish; the §4.11 error-count and scan-time deltas. No live experiment was run beyond the original smoke run.
 
+
+## 10. Per-cycle trace and the from-scratch validation (`validation/evomap/`)
+
+**Tracing.** `run(..., out_dir=...)` writes `out_dir/trace.jsonl` in the `rsi.trace` schema (disable with
+`Config(trace=False)`); `rsi.trace.inspect(out_dir)` renders `TRACE.md`. `rsi/evomap/tracing.py` maps one agent
+cycle onto the uniform event kinds (`round` = cycle):
+
+| kind | what the gene loop records |
+|---|---|
+| `run_start` | config, seed-artifact id and files, splits, hub, resumed library |
+| `baseline` | the seed harness on the decision split, `trace_baseline_k` trials per task (per-task + raw trials) |
+| `noise` | "none": the loop has no run-level band; each check's own delta is in its gate |
+| `round_start` | library, capsules, failed capsules, event chain, memory-graph counts, pending outcome, personality, rollouts, quarantine counters, hub statuses and credits |
+| `analysis` | signals raw -> deduped, plateau / drift, memory advice (preferred, bans, reasons), the selector's mode, scores, alternatives, capsule |
+| `proposal` | the gene tried: local reuse, adopted hub asset, scratch attempt (`no_gene`) or a newly written gene with the writer's prompt, reply and leakage audit; `diff` = the actual change of the solver input (harness vs harness + injected card); mutation / personality / strategy policy |
+| `note` / `critic` | hub search results; the consumer quarantine verdict; adoption reports and the hub's reply (counted, spot-check, slash) |
+| `eval` | every graded rollout: solve attempts, `rsi-taskcheck` arms, quarantine A/B arms, hub-bank verification arms |
+| `gate` | solidify with every input of the keep rule (constraints, blast, each validation command + exit, vacuity lint + discriminative before/after, task score vs threshold, composite, failure mode, publish-eligibility numbers); hub publish verification (U, U_LCB, delta, R, bank S with / without); the quarantine A/B arithmetic |
+| `decision` | library version before / after (artifact ids), gene added, library diff, why |
+| `state` | the snapshot after the cycle + the memory-graph outcome actually written |
+| `monitor` | `ShadowMonitor` over `GeneRoutedDomain` on holdout / ood, for the seed library and every time the routed library content changes (`library_fingerprint`) |
+
+Trace-only rollouts (baseline, monitor) are subtracted from the `Budget` usd check (`meta["trace_overhead_usd"]`),
+so tracing cannot change when a run stops. `tests/test_evomap_validation.py` proves the trace and the monitor are
+write-only (identical trajectories, ledger statuses/scores/costs, libraries and hub records with and without them).
+
+**Katas `audit` scheme.** evolve = kata 0, val = kata 1, test (hub bank) = katas 2-3, holdout = kata 4 of each
+class. With five katas per class this is the only layout that has a practice split, consumer quarantine tasks, a hub
+bank with >= 2 in-scope tasks (TaskBank needs 2) and a sealed holdout at once; the consumer quarantine then has one
+in-scope task per gene, so validation runs set `quarantine_min_tasks=1` (default 3 is unsatisfiable on katas: the
+`hub` scheme used by the live experiment scripts has one val kata per class too).
+
+Runs, numbers and the step-by-step audit: `validation/evomap/RUNS.md`; script: `experiments/evomap/validate_evomap.py`.
+
+**Fixes from the traced runs** (details in `validation/evomap/RUNS.md`): the katas `smoke_test.py` is now
+pytest-collectable (the writer prompt offers `pytest -q`, which exited 5 and rejected a correct live gene);
+`UpliftLCB` also requires U_LCB > 0 (a bank at ceiling calibrated delta = 0 and verified a zero-uplift gene); a
+cycle's `tokens` no longer double-count solves when one LLM is both solver and gene writer. Open design questions:
+the SafeHub spot-check slashes honest no-gain (outcome 0) reports; an adopted hub gene is later re-published under
+the adopter's name (only the hub's dedup merge catches it).

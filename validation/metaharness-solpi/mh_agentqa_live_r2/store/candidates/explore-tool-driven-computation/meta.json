@@ -1,0 +1,19 @@
+{
+ "name": "explore-tool-driven-computation",
+ "artifact_id": "0a53338176ff6b125a26d3821131cde2a1ea8691ec1085a937a38a5b99a0d30d",
+ "created_at": 1790339134.5243192,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Separating reasoning from computation: LLM describes the algorithm needed to solve the problem, then the harness executes it via tools.python(). This eliminates LLM arithmetic errors and leverages tool reliability for all numeric operations while keeping reasoning in the LLM.",
+ "axis": "exploration",
+ "components": [
+  "algorithm_extraction",
+  "tool_execution_first",
+  "computation_delegation"
+ ],
+ "parents_read": [],
+ "order": 5,
+ "reason": ""
+}

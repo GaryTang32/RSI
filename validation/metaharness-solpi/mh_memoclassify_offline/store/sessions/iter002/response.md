@@ -1,0 +1,2 @@
+i02_0_contrastive: contrastive on i01_0_retrieve_topk (30/67 errors are recurring label confusions (e.g. ('ledor-vinpi', 'nurim-torji')))
+i02_1_coverage: coverage on no_memory (retrieval misses the gold label's demonstrations)

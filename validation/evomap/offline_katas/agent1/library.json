@@ -1,0 +1,145 @@
+{
+ "genes": [
+  {
+   "asset_id": "sha256:4b7c666dd8fa8523179533da4189fc0ba8d8cca9318ca4f6da9d0e0f5cb75fbc",
+   "avoid": [
+    "Assuming 365-day years or 30-day months.",
+    "Reading US dates as day/month: US order is month/day/year."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.15,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T21:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780003600.0
+    }
+   ],
+   "id": "gene_datetime_not_manual_math",
+   "learning_history": [
+    {
+     "at": "2026-05-28T21:26:40Z",
+     "learning_signals": [
+      "task:dates",
+      "dates",
+      "calendar",
+      "duration"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T03:26:40Z",
+     "learning_signals": [
+      "task:dates",
+      "dates",
+      "calendar",
+      "duration"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "parent": "sha256:8f13716f360d8f1b32047bd06a7f0f2bd6e5a1ea859ef8cfa5eec2485d4f1609",
+   "provenance": {
+    "author": "agent0",
+    "cycle": 1,
+    "kind": "external",
+    "parent_asset_id": "sha256:8f13716f360d8f1b32047bd06a7f0f2bd6e5a1ea859ef8cfa5eec2485d4f1609",
+    "source": "safe"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "dates",
+    "calendar"
+   ],
+   "strategy": [
+    "Parse with date.fromisoformat or datetime.strptime and an explicit format such as '%m/%d/%Y'.",
+    "Do date arithmetic with datetime.date and timedelta, never with hand-rolled day counts.",
+    "Gregorian leap year: divisible by 4 and (not by 100, or by 400).",
+    "Index weekday names with date.weekday() where Monday == 0."
+   ],
+   "summary": "Date bugs: parse with explicit formats and do arithmetic with datetime, never by hand.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  },
+  {
+   "asset_id": "sha256:c7cba0d017fd175f9ad66fcf67eeea78b8779cccca78a78ac23aaac6cd2a8aa7",
+   "avoid": [
+    "Uncapped exponential growth of delays.",
+    "Retrying on every status >= 400."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.1,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T23:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780010800.0
+    }
+   ],
+   "id": "gene_capped_backoff",
+   "learning_history": [
+    {
+     "at": "2026-05-28T23:26:40Z",
+     "learning_signals": [
+      "task:retry",
+      "retry",
+      "backoff",
+      "schedule"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "parent": "sha256:726bccadd132a4d7413f7c167c6bb3c626270e4c50ad885643eb458755a6d15e",
+   "provenance": {
+    "author": "agent0",
+    "cycle": 4,
+    "kind": "external",
+    "parent_asset_id": "sha256:726bccadd132a4d7413f7c167c6bb3c626270e4c50ad885643eb458755a6d15e",
+    "source": "safe"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "retry",
+    "backoff"
+   ],
+   "strategy": [
+    "Cap every computed delay: min(cap, base * factor ** i).",
+    "Count attempts as min(success_at, max_tries); None means all max_tries attempts.",
+    "Retry only on 429 and 5xx server errors, and never on 501.",
+    "Clamp lower jitter bounds at zero with max(0.0, ...)."
+   ],
+   "summary": "Retry logic: cap every delay, count attempts exactly, retry only transient errors.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  }
+ ]
+}

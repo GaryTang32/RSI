@@ -72,8 +72,8 @@ The full history of this run is under `{ctx}/` (read-only):
 
 AGENT_OUTPUT = """\
 For each of the {k} candidates create a directory `agents/<new_name>/` containing the COMPLETE harness files
-(same file layout as the candidates' `src/` directories; unchanged files may be omitted and are copied from
-the base system). Then write `pending_eval.json`:
+(same file layout as INSIDE the candidates' `src/` directories, e.g. `agents/<new_name>/harness.py`, not
+`agents/<new_name>/src/harness.py`; unchanged files may be omitted and are copied from the base system). Then write `pending_eval.json`:
 {{"iteration": {iteration}, "candidates": [{{"name": "<new_name>", "base_system": "<name of the system you started
 from>", "hypothesis": "<falsifiable claim>", "axis": "exploitation|exploration", "components": ["<tags>"]}}]}}
 Use new names (lowercase letters, digits, underscores) that do not exist yet."""
@@ -86,6 +86,8 @@ Reply with:
 2. For every candidate, the COMPLETE content of each file you change:
 === FILE: agents/<new_name>/<path> ===
 <entire file content>
+<path> is relative to the harness root, exactly as the files appear inside a candidate's src/ directory
+(e.g. agents/<new_name>/harness.py, NOT agents/<new_name>/src/harness.py).
 Files you omit are copied from the candidate's base_system. Use new names (lowercase, digits, underscores)."""
 
 
@@ -164,6 +166,11 @@ def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, A
         row = by_name.get(raw_name, {})
         base_name = str(row.get("base_system") or "")
         base = artifacts.get(base_name) or (next(iter(artifacts.values())) if artifacts else Artifact({}))
+        # the history shows sources under candidates/<name>/src/<path>; a proposer that copies that layout
+        # (agents/<name>/src/harness.py) would add dead files and leave the real harness unchanged
+        # (observed live with haiku, validation/metaharness-solpi/mh_agentqa_live) -> map src/<path> to <path>
+        if not any(p.startswith("src/") for p in base.files):
+            updates = {(p[4:] if p.startswith("src/") else p): t for p, t in updates.items()}
         art = base.with_files({p: (None if (t or "").strip() == "<<DELETE>>" else t) for p, t in updates.items()})
         name = safe_name(raw_name)
         if name in taken:

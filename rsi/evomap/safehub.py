@@ -98,8 +98,12 @@ class UpliftLCB(Gate):
             return Verdict(False, "too few paired tasks", {"n": len(ids)})
         d = paired_diff_ci([inc.per_task[i] for i in ids], [cand.per_task[i] for i in ids], alpha=self.alpha,
                            reps=self.reps, seed=ctx.round)
-        ok = d["lo"] >= ctx.delta
-        return Verdict(ok, f"U={d['mean_diff']:+.3f} LCB={d['lo']:+.3f} {'>=' if ok else '<'} delta={ctx.delta:.3f}",
+        # U_LCB >= delta AND U_LCB > 0: with a bank at ceiling (every baseline trial solved) the calibrated delta is
+        # 0 and `U_LCB >= delta` alone verified a gene with U = U_LCB = 0 (live validation run, RUNS.md)
+        ok = d["lo"] >= ctx.delta and d["lo"] > 0
+        why = (f"{'>=' if d['lo'] >= ctx.delta else '<'} delta={ctx.delta:.3f}"
+               + ("" if d["lo"] > 0 or d["lo"] < ctx.delta else " but LCB <= 0 (no established uplift)"))
+        return Verdict(ok, f"U={d['mean_diff']:+.3f} LCB={d['lo']:+.3f} {why}",
                        {"U": d["mean_diff"], "U_LCB": d["lo"], "n": d["n"]})
 
 
@@ -126,6 +130,7 @@ class TaskBank:
         self.ev = Evaluator(self.domain, self.llm, workers=self.workers, allow_sealed=True)
         self.tasks = self.domain.tasks.split(self.split, allow_sealed=True)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
+        self.last: dict = {}           # the last measure()'s EvalResults (for run traces only; never read back)
 
     def scope(self, g: Gene) -> tuple[list, list]:
         ins = [t for t in self.tasks if pattern_hits(g.signals_match, self._sig[t.id]) > 0]
@@ -144,6 +149,7 @@ class TaskBank:
         art = self.injector.inject(self.harness, [g])
         base_in = self.ev.evaluate(self.harness, ins, self.k, label="bank")
         gene_in = self.ev.evaluate(art, ins, self.k, label="bank")
+        self.last = {"base_in": base_in, "gene_in": gene_in}
         if self.delta is not None:
             delta = self.delta
         else:
@@ -155,6 +161,7 @@ class TaskBank:
         if off:
             base_off = self.ev.evaluate(self.harness, off, self.k, label="bank")
             gene_off = self.ev.evaluate(art, off, self.k, label="bank")
+            self.last.update(base_off=base_off, gene_off=gene_off)
             R = gene_off.score - base_off.score
             fv = NoiseFloor().check(Scored(gene_off.score), Scored(base_off.score),
                                     GateContext(best_score=base_off.score, delta=delta))
@@ -312,7 +319,8 @@ class SafeHub(_HubBase):
             rep["reason"] = f"mutation kill rate {disc.kill_rate:.2f} too low"
             return False, rep
         m = self.bank.measure(g, self.rng)
-        rep.update({k: m[k] for k in ("n", "n_off", "k", "seeds", "task_ids_hash", "U", "U_LCB", "R", "delta")
+        rep.update({k: m[k] for k in ("n", "n_off", "k", "seeds", "task_ids_hash", "U", "U_LCB", "R", "delta",
+                                       "uplift_ok", "floor_ok", "verdict", "base_in", "gene_in")
                     if k in m})
         if not m.get("accept"):
             rep["reason"] = m.get("reason") or f"uplift not established: {m.get('verdict', '')}; R={m.get('R', 0):+.3f}"

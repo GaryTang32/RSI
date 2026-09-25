@@ -1,0 +1,22 @@
+{
+ "name": "i01_0_retrieve_topk",
+ "artifact_id": "f5671d274434d0e125da109edbc4b7298b5ef6bc474a39fd5c79875474b4ef49",
+ "created_at": 1790337666.1705985,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "fewshot_all",
+ "hypothesis": "Showing only the demonstrations most similar to the query keeps the prompt inside the model's effective context and removes distracting examples, raising accuracy at lower context.",
+ "axis": "exploitation",
+ "components": [
+  "retrieve_topk",
+  "axis:C"
+ ],
+ "parents_read": [
+  "fewshot_all"
+ ],
+ "order": 3,
+ "move": "retrieve_topk",
+ "evidence": "96/144 prompts longer than 11000 chars (acc 0.48 vs 0.42 on short prompts)",
+ "reason": ""
+}

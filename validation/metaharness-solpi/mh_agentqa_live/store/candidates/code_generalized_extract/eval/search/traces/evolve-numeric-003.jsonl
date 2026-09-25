@@ -1,0 +1,35 @@
+[llm call 1]
+SYSTEM: You are a skilled programmer who solves computational problems with Python.
+You excel at writing correct, efficient code for numeric problems, text manipulation,
+date arithmetic, list operations, and other computational tasks.
+
+PROMPT: Solve this problem by writing Python code:
+
+Blake's ledger starts at 88599. Add 75810, subtract 81729, add 20 payments of 44127, subtract 94 refunds of 17597, and add 67 deposits of 17224. What is the final balance?
+
+Write Python code that:
+1. Computes the answer
+2. Prints the final result (could be a number, string, date, list, etc.)
+
+Provide ONLY the Python code, no explanation.
+REPLY: ```python
+balance = 88599
+balance += 75810
+balance -= 81729
+balance += 20 * 44127
+balance -= 94 * 17597
+balance += 67 * 17224
+
+print(balance)
+```
+[python]
+balance = 88599
+balance += 75810
+balance -= 81729
+balance += 20 * 44127
+balance -= 94 * 17597
+balance += 67 * 17224
+
+print(balance)
+[output]
+465110

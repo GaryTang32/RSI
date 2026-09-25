@@ -1,0 +1,67 @@
+{
+ "iteration": 3,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/i01_0_retrieve_topk/eval/search/scores.json",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i01_0_retrieve_topk/src/memory.py",
+  "candidates/i01_1_label_list/eval/search/scores.json",
+  "candidates/i01_1_label_list/src/memory.py",
+  "candidates/i02_0_contrastive/eval/search/scores.json",
+  "candidates/i02_0_contrastive/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i02_0_contrastive/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i02_0_contrastive/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i02_0_contrastive/src/memory.py",
+  "candidates/i02_1_coverage/eval/search/scores.json",
+  "candidates/i02_1_coverage/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 19,
+ "files_read_by_kind": {
+  "code": 6,
+  "traces": 6,
+  "scores": 7,
+  "other": 0
+ },
+ "view_files": 58,
+ "view_chars": 1665901,
+ "read_chars": 567237,
+ "error": null,
+ "seconds": 0.011,
+ "candidates": [
+  {
+   "name": "i03_0_notes",
+   "base_system": "i01_0_retrieve_topk",
+   "hypothesis": "Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost.",
+   "axis": "exploitation",
+   "components": [
+    "notes",
+    "axis:F"
+   ]
+  },
+  {
+   "name": "i03_1_notes",
+   "base_system": "i02_0_contrastive",
+   "hypothesis": "Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost.",
+   "axis": "exploration",
+   "components": [
+    "notes",
+    "axis:F"
+   ]
+  }
+ ]
+}

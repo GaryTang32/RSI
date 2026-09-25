@@ -107,6 +107,7 @@
    "max_candidate_proposals": null,
    "max_reflection_cost": null,
    "timeout_s": null,
+   "max_consecutive_infra_failures": 3,
    "save_every": 1,
    "diff_chars": 4000,
    "extra": {},

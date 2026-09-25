@@ -1,0 +1,373 @@
+{
+ "run": "solpi_agentworld_live",
+ "setup": "AgentWorld seed 0, small: evolve 3 x 3 training families, holdout 3 x 2, ood 3 x 2 held-out families. Base = untouched harness. Agent backend = MockAgentLLM('A') (offline). Two free-form ideas (no registry mechanism): the mechanism proposer/implementer (LLMMechanismProposer) AND the independent reviewer (LLMReviewer: smoke + LLM contract review) are claude haiku behind a fresh CachedLLM; haiku writes each mechanism as a Python extension against the runtime hook API. Aggregate dual gate (2% / 2%), firewall on holdout. n_lineages 2, max_iters 2, ralph_max 2.",
+ "wall_s": 532.3,
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "base": {
+     "S": 1.0,
+     "C": 545286.0,
+     "steps": 16.11111111111111,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 545286.0,
+     "steps": 16.11111111111111,
+     "families": {
+      "repofix": 1.0,
+      "buildfix": 1.0,
+      "logtriage": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 9,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "base": {
+     "S": 1.0,
+     "C": 200660.16666666666,
+     "steps": 9.5,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 200660.16666666666,
+     "steps": 9.5,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   },
+   "ood": {
+    "base": {
+     "S": 1.0,
+     "C": 197133.16666666666,
+     "steps": 11.166666666666666,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": null
+    },
+    "composed": {
+     "S": 1.0,
+     "C": 197133.16666666666,
+     "steps": 11.166666666666666,
+     "families": {
+      "configfix": 1.0,
+      "datalookup": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  "reference": "base",
+  "unseen_mean": {
+   "base": 1.0,
+   "composed": 1.0
+  }
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "base_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 545286.0,
+     "cost": 0.2721553555555556,
+     "steps": 16.11111111111111,
+     "eta": 0.2721553555555556
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 1293556.0,
+      "cost": 0.5551099333333332,
+      "steps": 25.666666666666668,
+      "eta": 0.5551099333333332
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 279068.0,
+      "cost": 0.19059363333333335,
+      "steps": 15.666666666666666,
+      "eta": 0.19059363333333335
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 63234.0,
+      "cost": 0.0707625,
+      "steps": 7.0,
+      "eta": 0.0707625
+     }
+    },
+    "n": 9
+   },
+   "oracle": {
+    "L1": 0.10623988750069387,
+    "L2": 0.7195625849347146
+   },
+   "chosen": [
+    "L2",
+    "L1"
+   ],
+   "lineages": [
+    {
+     "idea": "L2",
+     "kind": "general",
+     "title": "Condense long failing command logs to the lines that carry the failure, keeping the full log recallable",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "condense_failing_logs",
+       "variant": 0,
+       "ralph_errors": [
+        "ModuleNotFoundError: No module named 'anthropic.models'",
+        "ImportError: cannot import name 'ToolResult' from 'anthropic.types' (/usr/local/lib/python3.11/dist-packages/anthropic/types/__init__.py)"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "exit check failed: ImportError: cannot import name 'ToolResult' from 'anthropic.types' (/usr/local/lib/python3.11/dist-packages/anthropic/types/__init__.py)"
+      },
+      {
+       "iteration": 1,
+       "change": "condense_failing_logs",
+       "variant": 1,
+       "ralph_errors": [
+        "ImportError: cannot import name 'Extension' from 'anthropic' (/usr/local/lib/python3.11/dist-packages/anthropic/__init__.py)"
+       ],
+       "stage": "review",
+       "outcome": "rejected",
+       "error": "Criterion 3 violation: Full logs are stored in rt.store with an opaque key (bash_log_{id(event)}), but the agent has no discoverable way to retrieve them. The agent sees only a condensed string and '[... X lines omitted ...]' message, with no communicated key, tool, or mechanism to recall the full log. The requirement demands 'a way to get it back'\u2014storing data in an inaccessible keyspace does not satisfy this.; Information retrieval mechanism is broken: The agent cannot construct the storage ke"
+      }
+     ],
+     "n_iterations": 2
+    },
+    {
+     "idea": "L1",
+     "kind": "general",
+     "title": "Stop replaying large successful tool outputs in every later request; keep them recallable",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "large_output_cache",
+       "variant": 0,
+       "ralph_errors": [
+        "ModuleNotFoundError: No module named 'anthropic_sdk'"
+       ],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "no efficiency gain",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 545286.0,
+          "cand": 545286.0,
+          "saving": 0.0,
+          "improved": false
+         },
+         "cost": {
+          "base": 0.2721553555555556,
+          "cand": 0.2721553555555556,
+          "saving": 0.0,
+          "improved": false
+         }
+        },
+        "per_family": {},
+        "spec_digest": "a2247cac594b7481"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "tokens": 545286.0,
+         "cost": 0.2721553555555556,
+         "steps": 16.11111111111111,
+         "eta": 0.2721553555555556
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "tokens": 1293556.0,
+          "cost": 0.5551099333333332,
+          "steps": 25.666666666666668,
+          "eta": 0.5551099333333332
+         },
+         "buildfix": {
+          "score": 1.0,
+          "tokens": 279068.0,
+          "cost": 0.19059363333333335,
+          "steps": 15.666666666666666,
+          "eta": 0.19059363333333335
+         },
+         "logtriage": {
+          "score": 1.0,
+          "tokens": 63234.0,
+          "cost": 0.0707625,
+          "steps": 7.0,
+          "eta": 0.0707625
+         }
+        },
+        "n": 9
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "Cache large tool outputs separately and project summaries in context to eliminate token replay",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "review",
+       "outcome": "rejected",
+       "error": "Requirement 3 violation: No retrieval mechanism demonstrated. The mechanism stores outputs with reference keys (e.g., 'output_call_id') in rt.store and mentions these keys in summaries, but no tool, API, or capability is shown for the agent to actually fetch stored outputs. A reference handle alone is insufficient if the agent cannot act on it.; Lossy summarization without fallback: The _make_summary() function uses prefix (300 chars) + suffix (200 chars) elision for potentially large outputs. C"
+      }
+     ],
+     "n_iterations": 2
+    }
+   ],
+   "frozen": [],
+   "frozen_ideas": [],
+   "heldout_passed": {},
+   "survivors": [],
+   "survivor_ideas": [],
+   "dropped_by_composition_check": [],
+   "composed_metrics": {
+    "agg": {
+     "score": 1.0,
+     "tokens": 545286.0,
+     "cost": 0.2721553555555556,
+     "steps": 16.11111111111111,
+     "eta": 0.2721553555555556
+    },
+    "fam": {
+     "repofix": {
+      "score": 1.0,
+      "tokens": 1293556.0,
+      "cost": 0.5551099333333332,
+      "steps": 25.666666666666668,
+      "eta": 0.5551099333333332
+     },
+     "buildfix": {
+      "score": 1.0,
+      "tokens": 279068.0,
+      "cost": 0.19059363333333335,
+      "steps": 15.666666666666666,
+      "eta": 0.19059363333333335
+     },
+     "logtriage": {
+      "score": 1.0,
+      "tokens": 63234.0,
+      "cost": 0.0707625,
+      "steps": 7.0,
+      "eta": 0.0707625
+     }
+    },
+    "n": 9
+   },
+   "conflicts": [],
+   "gate_digest": "a2247cac594b7481",
+   "usage": {
+    "calls": 4,
+    "input_tokens": 6151,
+    "output_tokens": 28590,
+    "cost_usd": 0.14910099999999998,
+    "latency_s": 267.828665971756,
+    "total_tokens": 34741
+   },
+   "seconds": 532.331216096878
+  }
+ ],
+ "usage": {
+  "research": {
+   "calls": 4,
+   "input_tokens": 6151,
+   "output_tokens": 28590,
+   "cost_usd": 0.14910099999999998,
+   "latency_s": 267.828665971756,
+   "total_tokens": 34741
+  },
+  "_total": {
+   "calls": 4,
+   "input_tokens": 6151,
+   "output_tokens": 28590,
+   "cost_usd": 0.14910099999999998,
+   "latency_s": 267.828665971756,
+   "total_tokens": 34741
+  },
+  "task": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  },
+  "shadow_monitor": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  }
+ },
+ "spend": {
+  "loop": {
+   "usd": 0.2842,
+   "calls": 11
+  },
+  "shadow_monitor": {
+   "usd": 0.0,
+   "calls": 0
+  },
+  "cache_ground_truth": {
+   "entries": 11,
+   "usd": 0.2842,
+   "input_tokens": 20905,
+   "output_tokens": 52657
+  }
+ }
+}

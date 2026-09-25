@@ -1,56 +1,14 @@
 [
  {
-  "task_id": "evolve-numeric-000",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '421').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '421')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-001",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '781').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '781')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
   "task_id": "evolve-numeric-002",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '2695810').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '2694810'; expected '2695810'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '2695810')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-003",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '465110').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '465110')."
+    "quote": "Incorrect. Extracted answer '2694810'; expected '2695810'."
    }
   ],
   "needed_instead": ""
@@ -59,26 +17,12 @@
   "task_id": "evolve-numeric-004",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '234').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '236'; expected '234'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '234')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-005",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '99').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '99')."
+    "quote": "Incorrect. Extracted answer '236'; expected '234'."
    }
   ],
   "needed_instead": ""
@@ -87,54 +31,12 @@
   "task_id": "evolve-numeric-006",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '24').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '21'; expected '24'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '24')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-007",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '435').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '435')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-008",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '570186').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '570186')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-009",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '364').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '364')."
+    "quote": "Incorrect. Extracted answer '21'; expected '24'."
    }
   ],
   "needed_instead": ""
@@ -143,12 +45,12 @@
   "task_id": "evolve-numeric-010",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '100').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '110'; expected '100'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '100')."
+    "quote": "Incorrect. Extracted answer '110'; expected '100'."
    }
   ],
   "needed_instead": ""
@@ -157,12 +59,12 @@
   "task_id": "evolve-numeric-011",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '3886910').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '3885910'; expected '3886910'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '3886910')."
+    "quote": "Incorrect. Extracted answer '3885910'; expected '3886910'."
    }
   ],
   "needed_instead": ""
@@ -171,12 +73,12 @@
   "task_id": "evolve-numeric-012",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '264').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '164'; expected '264'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '264')."
+    "quote": "Incorrect. Extracted answer '164'; expected '264'."
    }
   ],
   "needed_instead": ""
@@ -185,12 +87,12 @@
   "task_id": "evolve-numeric-013",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '38').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '36'; expected '38'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '38')."
+    "quote": "Incorrect. Extracted answer '36'; expected '38'."
    }
   ],
   "needed_instead": ""
@@ -199,12 +101,12 @@
   "task_id": "evolve-numeric-014",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '2119981').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '2118981'; expected '2119981'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '2119981')."
+    "quote": "Incorrect. Extracted answer '2118981'; expected '2119981'."
    }
   ],
   "needed_instead": ""
@@ -213,54 +115,12 @@
   "task_id": "evolve-numeric-015",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '279').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '280'; expected '279'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '279')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-016",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '81').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '81')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-017",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '216').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '216')."
-   }
-  ],
-  "needed_instead": ""
- },
- {
-  "task_id": "evolve-numeric-018",
-  "lens": "failure",
-  "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '19').",
-  "evidence": [
-   {
-    "where": "grader",
-    "quote": "Correct (answer '19')."
+    "quote": "Incorrect. Extracted answer '280'; expected '279'."
    }
   ],
   "needed_instead": ""
@@ -269,14 +129,134 @@
   "task_id": "evolve-numeric-019",
   "lens": "failure",
   "family": "numeric",
-  "blocker": "Correct (answer <v>).",
-  "narrative": "Correct (answer '553').",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '1553'; expected '553'.",
   "evidence": [
    {
     "where": "grader",
-    "quote": "Correct (answer '553')."
+    "quote": "Incorrect. Extracted answer '1553'; expected '553'."
    }
   ],
   "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-000",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-001",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-003",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-005",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-007",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-008",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-009",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-016",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-017",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-018",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
  }
 ]

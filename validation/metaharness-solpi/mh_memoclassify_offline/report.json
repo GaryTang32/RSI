@@ -1,0 +1,422 @@
+{
+ "run": "mh_memoclassify_offline",
+ "setup": "MemoClassify seed 0 (scale 1.0): 3 search datasets (evolve = their val parts), sealed test = their test parts, sealed ood = 4 unseen datasets. Frozen model MemoLM-A (deterministic). H0 = the two untouched release baselines no_memory + fewshot_all (seed = fewshot_all). Proposer = MockProposer (offline, reads only what the view exposes). Config: N = 6 iterations, k = 2, history_mode = full, objectives (score, context_cost), validate on, no leakage screen (faithful), test evaluated once by finalize(). Shadow monitor on the sealed ood split.",
+ "wall_s": 13.5,
+ "best_system": "i06_0_param_char_budget_4500",
+ "frontier": [
+  {
+   "system": "i06_0_param_char_budget_4500",
+   "score": 0.5902777777777777,
+   "val_accuracy": 59.0,
+   "context_cost": 5658.0
+  },
+  {
+   "system": "i05_1_crossover",
+   "score": 0.5694444444444445,
+   "val_accuracy": 56.9,
+   "context_cost": 1216.6666666666667
+  },
+  {
+   "system": "i01_1_label_list",
+   "score": 0.3819444444444445,
+   "val_accuracy": 38.2,
+   "context_cost": 428.3333333333333
+  },
+  {
+   "system": "no_memory",
+   "score": 0.1111111111111111,
+   "val_accuracy": 11.1,
+   "context_cost": 191.0
+  }
+ ],
+ "final": {
+  "systems": [
+   "no_memory",
+   "fewshot_all",
+   "i06_0_param_char_budget_4500",
+   "i05_1_crossover",
+   "i01_1_label_list",
+   "i03_1_notes"
+  ],
+  "splits": {
+   "test": {
+    "results": {
+     "no_memory": {
+      "split": "test",
+      "score": 0.14814814814814814,
+      "per_unit": {
+       "ds_alpha/test": 0.0,
+       "ds_beta/test": 0.4444444444444444,
+       "ds_gamma/test": 0.0
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 191.0,
+       "ds_beta/test": 191.0,
+       "ds_gamma/test": 191.0
+      },
+      "context_cost": 191.0,
+      "tokens": 21555.666666666668,
+      "families": {
+       "ds_alpha": 0.0,
+       "ds_beta": 0.4444444444444444,
+       "ds_gamma": 0.0
+      }
+     },
+     "fewshot_all": {
+      "split": "test",
+      "score": 0.523148148148148,
+      "per_unit": {
+       "ds_alpha/test": 0.5555555555555556,
+       "ds_beta/test": 0.4722222222222222,
+       "ds_gamma/test": 0.5416666666666666
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 7254.0,
+       "ds_beta/test": 30134.541666666668,
+       "ds_gamma/test": 15797.0
+      },
+      "context_cost": 17728.51388888889,
+      "tokens": 713539.6666666666,
+      "families": {
+       "ds_alpha": 0.5555555555555556,
+       "ds_beta": 0.4722222222222222,
+       "ds_gamma": 0.5416666666666666
+      }
+     },
+     "i06_0_param_char_budget_4500": {
+      "split": "test",
+      "score": 0.6342592592592593,
+      "per_unit": {
+       "ds_alpha/test": 0.6527777777777778,
+       "ds_beta/test": 0.6944444444444444,
+       "ds_gamma/test": 0.5555555555555556
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 6071.0,
+       "ds_beta/test": 5152.0,
+       "ds_gamma/test": 5751.0
+      },
+      "context_cost": 5658.0,
+      "tokens": 276712.6666666667,
+      "families": {
+       "ds_alpha": 0.6527777777777778,
+       "ds_beta": 0.6944444444444444,
+       "ds_gamma": 0.5555555555555556
+      }
+     },
+     "i05_1_crossover": {
+      "split": "test",
+      "score": 0.6296296296296297,
+      "per_unit": {
+       "ds_alpha/test": 0.625,
+       "ds_beta/test": 0.6388888888888888,
+       "ds_gamma/test": 0.625
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 1539.0,
+       "ds_beta/test": 855.0,
+       "ds_gamma/test": 1256.0
+      },
+      "context_cost": 1216.6666666666667,
+      "tokens": 67540.33333333333,
+      "families": {
+       "ds_alpha": 0.625,
+       "ds_beta": 0.6388888888888888,
+       "ds_gamma": 0.625
+      }
+     },
+     "i01_1_label_list": {
+      "split": "test",
+      "score": 0.40277777777777773,
+      "per_unit": {
+       "ds_alpha/test": 0.375,
+       "ds_beta/test": 0.4444444444444444,
+       "ds_gamma/test": 0.3888888888888889
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 506.0,
+       "ds_beta/test": 341.0,
+       "ds_gamma/test": 438.0
+      },
+      "context_cost": 428.3333333333333,
+      "tokens": 32275.0,
+      "families": {
+       "ds_alpha": 0.375,
+       "ds_beta": 0.4444444444444444,
+       "ds_gamma": 0.3888888888888889
+      }
+     },
+     "i03_1_notes": {
+      "split": "test",
+      "score": 0.6342592592592592,
+      "per_unit": {
+       "ds_alpha/test": 0.6111111111111112,
+       "ds_beta/test": 0.625,
+       "ds_gamma/test": 0.6666666666666666
+      },
+      "per_unit_cost": {
+       "ds_alpha/test": 2830.2083333333335,
+       "ds_beta/test": 5107.875,
+       "ds_gamma/test": 2618.1388888888887
+      },
+      "context_cost": 3518.740740740741,
+      "tokens": 185431.66666666666,
+      "families": {
+       "ds_alpha": 0.6111111111111112,
+       "ds_beta": 0.625,
+       "ds_gamma": 0.6666666666666666
+      }
+     }
+    },
+    "_pareto": [
+     {
+      "system": "i06_0_param_char_budget_4500",
+      "test_accuracy": 0.6342592592592593,
+      "context_cost": 5658.0
+     },
+     {
+      "system": "i03_1_notes",
+      "test_accuracy": 0.6342592592592592,
+      "context_cost": 3518.740740740741
+     },
+     {
+      "system": "i05_1_crossover",
+      "test_accuracy": 0.6296296296296297,
+      "context_cost": 1216.6666666666667
+     },
+     {
+      "system": "i01_1_label_list",
+      "test_accuracy": 0.40277777777777773,
+      "context_cost": 428.3333333333333
+     },
+     {
+      "system": "no_memory",
+      "test_accuracy": 0.14814814814814814,
+      "context_cost": 191.0
+     }
+    ]
+   }
+  },
+  "status": "complete",
+  "failures": []
+ },
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed(fewshot_all)": {
+     "S": 0.4583333333333333,
+     "C": 605757.0,
+     "steps": 186.0,
+     "families": {
+      "ds_alpha": 0.4166666666666667,
+      "ds_beta": 0.3958333333333333,
+      "ds_gamma": 0.5625
+     },
+     "vs_reference": null
+    },
+    "no_memory": {
+     "S": 0.1111111111111111,
+     "C": 19096.333333333332,
+     "steps": 186.0,
+     "families": {
+      "ds_alpha": 0.0,
+      "ds_beta": 0.3333333333333333,
+      "ds_gamma": 0.0
+     },
+     "vs_reference": {
+      "mean_diff": -0.34722222222222227,
+      "lo": -0.5625,
+      "hi": -0.0625,
+      "n": 3,
+      "p_better": 0.0
+     }
+    },
+    "best=i06_0_param_char_budget_4500": {
+     "S": 0.5902777777777777,
+     "C": 241409.33333333334,
+     "steps": 186.0,
+     "families": {
+      "ds_alpha": 0.5416666666666666,
+      "ds_beta": 0.625,
+      "ds_gamma": 0.6041666666666666
+     },
+     "vs_reference": {
+      "mean_diff": 0.13194444444444442,
+      "lo": 0.04166666666666663,
+      "hi": 0.22916666666666666,
+      "n": 3,
+      "p_better": 1.0
+     }
+    }
+   },
+   "test": {
+    "seed(fewshot_all)": {
+     "S": 0.523148148148148,
+     "C": 713539.6666666666,
+     "steps": 210.0,
+     "families": {
+      "ds_alpha": 0.5555555555555556,
+      "ds_beta": 0.4722222222222222,
+      "ds_gamma": 0.5416666666666666
+     },
+     "vs_reference": null
+    },
+    "no_memory": {
+     "S": 0.14814814814814814,
+     "C": 21555.666666666668,
+     "steps": 210.0,
+     "families": {
+      "ds_alpha": 0.0,
+      "ds_beta": 0.4444444444444444,
+      "ds_gamma": 0.0
+     },
+     "vs_reference": {
+      "mean_diff": -0.375,
+      "lo": -0.5555555555555556,
+      "hi": -0.02777777777777779,
+      "n": 3,
+      "p_better": 0.0
+     }
+    },
+    "best=i06_0_param_char_budget_4500": {
+     "S": 0.6342592592592593,
+     "C": 276712.6666666667,
+     "steps": 210.0,
+     "families": {
+      "ds_alpha": 0.6527777777777778,
+      "ds_beta": 0.6944444444444444,
+      "ds_gamma": 0.5555555555555556
+     },
+     "vs_reference": {
+      "mean_diff": 0.11111111111111112,
+      "lo": 0.01388888888888895,
+      "hi": 0.2222222222222222,
+      "n": 3,
+      "p_better": 1.0
+     }
+    }
+   },
+   "ood": {
+    "seed(fewshot_all)": {
+     "S": 0.5041666666666667,
+     "C": 582230.5,
+     "steps": 187.0,
+     "families": {
+      "ood_delta": 0.6,
+      "ood_epsilon": 0.5333333333333333,
+      "ood_zeta": 0.5666666666666667,
+      "ood_eta": 0.31666666666666665
+     },
+     "vs_reference": null
+    },
+    "no_memory": {
+     "S": 0.175,
+     "C": 19658.25,
+     "steps": 187.0,
+     "families": {
+      "ood_delta": 0.38333333333333336,
+      "ood_epsilon": 0.0,
+      "ood_zeta": 0.0,
+      "ood_eta": 0.31666666666666665
+     },
+     "vs_reference": {
+      "mean_diff": -0.32916666666666666,
+      "lo": -0.55,
+      "hi": -0.10833333333333331,
+      "n": 4,
+      "p_better": 0.0
+     }
+    },
+    "best=i06_0_param_char_budget_4500": {
+     "S": 0.5583333333333333,
+     "C": 247534.5,
+     "steps": 187.0,
+     "families": {
+      "ood_delta": 0.6666666666666666,
+      "ood_epsilon": 0.5,
+      "ood_zeta": 0.48333333333333334,
+      "ood_eta": 0.5833333333333334
+     },
+     "vs_reference": {
+      "mean_diff": 0.05416666666666668,
+      "lo": -0.05833333333333332,
+      "hi": 0.1916666666666667,
+      "n": 4,
+      "p_better": 0.5
+     }
+    }
+   }
+  },
+  "reference": "seed(fewshot_all)",
+  "unseen_mean": {
+   "seed(fewshot_all)": 0.5041666666666667,
+   "no_memory": 0.175,
+   "best=i06_0_param_char_budget_4500": 0.5583333333333333
+  }
+ },
+ "n_evaluated": 12,
+ "n_proposed": 12,
+ "usage": {
+  "proposer": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  },
+  "task": {
+   "task": {
+    "calls": 11592,
+    "input_tokens": 10571629,
+    "output_tokens": 264939,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 10836568
+   },
+   "shadow:task": {
+    "calls": 4488,
+    "input_tokens": 5426889,
+    "output_tokens": 103332,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 5530221
+   },
+   "_total": {
+    "calls": 16080,
+    "input_tokens": 15998518,
+    "output_tokens": 368271,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 16366789
+   }
+  },
+  "_total": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  },
+  "shadow_monitor": {
+   "task": {
+    "calls": 4488,
+    "input_tokens": 5426889,
+    "output_tokens": 103332,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 5530221
+   },
+   "_total": {
+    "calls": 4488,
+    "input_tokens": 5426889,
+    "output_tokens": 103332,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 5530221
+   }
+  }
+ },
+ "report_usd": 0.0
+}

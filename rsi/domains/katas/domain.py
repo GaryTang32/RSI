@@ -287,8 +287,12 @@ class KatasDomain(Domain):
     # ------------------------------------------------------------------ hooks for rsi.evomap
     @staticmethod
     def smoke_script(k: Kata) -> str:
-        return "from solution import *\n\n" + "".join(f"assert {a}, {a!r}\n" for a in k.public) + \
-            "print('public tests passed')\n"
+        # a pytest-collectable test function AND a plain script: the gene-writer prompt allows both
+        # `python smoke_test.py` and `pytest -q smoke_test.py` (a module-level-assert script made pytest exit 5,
+        # "no tests collected", and a correct live gene was rejected - validation/evomap/RUNS.md)
+        return ("from solution import *\n\n\ndef test_public():\n"
+                + "".join(f"    assert {a}, {a!r}\n" for a in k.public)
+                + "\n\nif __name__ == '__main__':\n    test_public()\n    print('public tests passed')\n")
 
     def pre_workspace(self, task: Task) -> dict:
         k = KATA_BY_ID[task.id]

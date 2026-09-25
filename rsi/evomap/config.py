@@ -103,6 +103,12 @@ class Config:
     # evaluation
     eval_k: int = 1
     workers: int = 1
+    # tracing (rsi.trace; write-only: nothing below changes a keep / adoption decision)
+    trace: bool = True                       # write out_dir/trace.jsonl when out_dir is given
+    trace_baseline_k: int = 2                # trials per task of the seed-harness baseline on `split` (0 = skip)
+    shadow_monitor: bool = True              # score each new library version on sealed holdout / ood (audit only)
+    monitor_k: int = 1
+    monitor_workers: int = 2
 
     def resolved(self) -> "Config":
         c = dataclasses.replace(self)
