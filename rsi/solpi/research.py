@@ -123,14 +123,27 @@ class Reviewer(Protocol):
     def review(self, idea: Idea, base: Artifact, cand: Artifact) -> tuple[bool, str]: ...
 
 
+def heldout_only_families(domain) -> list[str]:
+    """Family names that occur only in sealed splits (metadata only; no task content is read)."""
+    from ..core.tasks import DECISION_SPLITS, SEALED_SPLITS
+    suite = domain.tasks
+    decision = {f for s in DECISION_SPLITS if s in suite.splits for f in suite.families(s)}
+    sealed = {f for s in SEALED_SPLITS if s in suite.splits for f in suite.families(s)}
+    return sorted(f for f in sealed - decision if f and f != "default")
+
+
 class SmokeReviewer:
     """Behavioural-contract review without an LLM: the candidate must run a smoke task
-    without crashing, keep the base harness files other than the mechanism config /
-    code, and contain no references to held-out material (denylist)."""
+    without crashing and its added lines must contain no references to held-out material
+    (a denylist of generic split words plus the names of task families that occur only in
+    the domain's sealed splits, e.g. AgentWorld's held-out ``configfix`` / ``datalookup``)."""
 
-    def __init__(self, domain, llm, forbidden: Sequence[str] = ("holdout", "heldout", "ood/", "test.json",
-                                                                 "datalookup")) -> None:
-        self.domain, self.llm, self.forbidden = domain, llm, [f.lower() for f in forbidden]
+    GENERIC_FORBIDDEN = ("holdout", "heldout", "ood/", "test.json")
+
+    def __init__(self, domain, llm, forbidden: Optional[Sequence[str]] = None) -> None:
+        if forbidden is None:
+            forbidden = list(self.GENERIC_FORBIDDEN) + heldout_only_families(domain)
+        self.domain, self.llm, self.forbidden = domain, llm, [f.lower() for f in forbidden if f]
 
     def review(self, idea, base, cand):
         diff = base.diff(cand).lower()

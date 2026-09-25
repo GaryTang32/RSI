@@ -1,6 +1,6 @@
 {
  "experiment": "example_new_problem",
- "written_at": "2026-09-25 02:36:10",
+ "written_at": "2026-09-25 05:50:42",
  "analysis": {
   "n_rows": 21,
   "n_experiments": 20,
@@ -13,7 +13,7 @@
   "improvement": 0.6043998571050639,
   "total_keep_delta": 0.6043998571050639,
   "improvement_pct": 220.5776364317231,
-  "experiments_per_hour": 28088.80340016119
+  "experiments_per_hour": 29562.99419332026
  },
  "top_hits": [
   {

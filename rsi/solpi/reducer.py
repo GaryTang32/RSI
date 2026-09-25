@@ -5,7 +5,8 @@ A ``tool_result`` handler, before the result enters history:
 
 * reducible results: ``bash(command)``, or ``edit``/``write`` with ``then_run``
   (the log is the suffix after the ``[then_run:*]`` marker); the command must
-  match :data:`DIAGNOSTIC_COMMAND`;
+  match :data:`DIAGNOSTIC_COMMAND`; when Pi truncated a large bash output, the
+  exact full log (``/tmp/pi-bash-*.log``) is used as the body (:func:`exact_body`);
 * ``bytes(body) < 4096`` -> unchanged; ``> 600,000`` chars -> fallback
   ``source-over-max-chars``; :data:`LIKELY_SECRET` -> ``likely-secret``;
 * the exact body is archived content-addressed (``objects/<sha[:2]>/<sha>.txt``);
@@ -274,13 +275,36 @@ class Reducible:
     project: Callable[[str], str]
 
 
-def reducible_tool_result(ev: ToolResultEvent) -> Optional[Reducible]:
+PI_BASH_LOG = re.compile(r"^pi-bash-[^/\\]+\.log$")
+FULL_OUTPUT_INLINE = re.compile(r"Full output:\s*([^\]\r\n]+)")
+PI_TMPDIR = "/tmp"
+
+
+def exact_body(inline: str, details: Optional[dict], store: Optional[dict]) -> str:
+    """``candidate.ts:exactBodyFromInline``: prefer the untruncated file Pi wrote for a large bash
+    result (``details.fullOutputPath`` or the inline ``Full output: <path>`` note) so evidence is
+    checked against the exact bytes the command produced, not a truncated preview. The path must be a
+    ``pi-bash-*.log`` directly in the temp dir (the runtime's store stands in for the file system)."""
+    path = (details or {}).get("fullOutputPath")
+    if not isinstance(path, str):
+        m = FULL_OUTPUT_INLINE.search(inline)
+        path = m.group(1).strip() if m else None
+    if not path or store is None:
+        return inline
+    head, _, base = path.rpartition("/")
+    if head != PI_TMPDIR or not PI_BASH_LOG.match(base):
+        return inline
+    text = store.get(path)
+    return text if isinstance(text, str) else inline
+
+
+def reducible_tool_result(ev: ToolResultEvent, store: Optional[dict] = None) -> Optional[Reducible]:
     name, args, content = ev.call.name, ev.call.args, ev.result.content
     if name == "bash":
         cmd = str(args.get("command") or "")
         if not cmd:
             return None
-        return Reducible(cmd, content, lambda receipt: receipt)
+        return Reducible(cmd, exact_body(content, ev.result.details, store), lambda receipt: receipt)
     if name not in ("edit", "write"):
         return None
     tr = args.get("then_run")
@@ -296,7 +320,7 @@ def reducible_tool_result(ev: ToolResultEvent) -> Optional[Reducible]:
     sep = re.match(r"^(?:\r?\n)+", suffix)
     sep_s = sep.group(0) if sep else "\n"
     body = suffix[len(sep.group(0)):] if sep else suffix
-    return Reducible(cmd, body, lambda receipt: content[:start] + sep_s + receipt)
+    return Reducible(cmd, exact_body(body, ev.result.details, store), lambda receipt: content[:start] + sep_s + receipt)
 
 
 class EvidencePreservingReducer(Extension):
@@ -337,7 +361,7 @@ class EvidencePreservingReducer(Extension):
                                                                                            else 1), path)
 
     def _on_result(self, ev: ToolResultEvent, rt: AgentRuntime) -> Optional[ToolResult]:
-        r = reducible_tool_result(ev)
+        r = reducible_tool_result(ev, rt.store)
         if r is None or not DIAGNOSTIC_COMMAND.search(r.command):
             return None
         body = r.body

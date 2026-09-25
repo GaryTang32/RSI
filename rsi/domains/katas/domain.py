@@ -5,7 +5,11 @@ At solve time every file under ``genes/`` or ``skills/`` (the strategy cards an
 agent injected) is appended to the system prompt, each wrapped in a
 ``--- guidance file: <path> ---`` delimiter. The model writes the function; the
 **hidden** asserts (never shown to agents; kept inside the domain object) grade
-it in a sandboxed subprocess: score 1 iff all hidden asserts pass.
+it: a sandboxed subprocess only evaluates the calls to the function and returns
+their values as canonical builtin data, and the asserts are evaluated in this
+(trusted) process - so the model's code cannot print a fake pass marker or
+return an always-equal object (:func:`check_asserts`). Score 1 iff all hidden
+asserts hold.
 
 Workspace hooks for validation: W0 = ``solution.py`` stub + ``smoke_test.py``
 (the public asserts), W1 = the model's solution + the same smoke test, so the
@@ -63,12 +67,146 @@ def make_suite(scheme: str = "default") -> TaskSuite:
     return TaskSuite(tasks, splits, name=f"katas-{scheme}")
 
 
-def _assert_runner(code: str, asserts: Sequence[str], module: bool = False) -> str:
-    lines = [code, "", "_ok = 0"]
-    for a in asserts:
-        lines += ["try:", f"    if ({a}):", "        _ok += 1", "except Exception:", "    pass"]
-    lines.append("print('__RSI_OK__', _ok)")
-    return "\n".join(lines) + "\n"
+# ----------------------------------------------------------------------------- locked grader
+# The model's code runs in a sandboxed child process that only EVALUATES the calls to the kata function and prints
+# their results as canonical builtin values; every comparison happens here, in the trusted parent. So a solution can
+# neither print a fake "passed" marker nor return an object whose __eq__ / __bool__ always says yes: to pass, the
+# child must hand back the correct values (hard-coding them would require the hidden asserts).
+_SAFE = {"len": len, "list": list, "tuple": tuple, "range": range, "sorted": sorted, "sum": sum, "min": min,
+         "max": max, "abs": abs, "round": round, "set": set, "dict": dict, "str": str, "int": int, "float": float,
+         "bool": bool, "any": any, "all": all}
+_VALS_MARK = "__RSI_VALS__"
+
+_CHILD = r"""
+import sys as _sys, json as _json
+_dumps, _write, _flush = _json.dumps, _sys.stdout.write, _sys.stdout.flush
+_type, _str, _sorted, _fhex, _repr = type, str, sorted, float.hex, repr
+_CODE = {code!r}
+_EXPRS = {exprs!r}
+
+def _canon(x, d=0):
+    if d > 30:
+        raise ValueError("nested too deep")
+    t = _type(x)
+    if t is bool:
+        return ["bool", x]
+    if x is None:
+        return ["none"]
+    if t is int:
+        return ["int", _str(x)]
+    if t is float:
+        return ["float", _fhex(x)]
+    if t is str:
+        return ["str", x]
+    if t is bytes:
+        return ["bytes", x.hex()]
+    if t in (list, tuple, set, frozenset):
+        items = [_canon(v, d + 1) for v in x]
+        if t in (set, frozenset):
+            items = _sorted(items, key=_dumps)
+        return [t.__name__, items]
+    if t is dict:
+        return ["dict", _sorted(([_canon(k, d + 1), _canon(v, d + 1)] for k, v in x.items()), key=_dumps)]
+    if (t.__module__, t.__name__) in (("decimal", "Decimal"), ("fractions", "Fraction")):
+        return [t.__name__.lower(), _str(x)]
+    raise TypeError("non-builtin result type")
+
+_ns = {{"__name__": "solution"}}
+try:
+    exec(compile(_CODE, "solution.py", "exec"), _ns)
+except BaseException:
+    pass
+_vals = []
+for _e in _EXPRS:
+    try:
+        _vals.append(_canon(eval(_e, _ns)))
+    except BaseException:
+        _vals.append(["err"])
+_write("{mark} " + _dumps(_vals) + "\n")
+_flush()
+"""
+
+
+def _decanon(c):
+    tag = c[0]
+    if tag == "bool":
+        return bool(c[1])
+    if tag == "none":
+        return None
+    if tag == "int":
+        return int(c[1])
+    if tag == "float":
+        return float.fromhex(c[1])
+    if tag == "str":
+        return str(c[1])
+    if tag == "bytes":
+        return bytes.fromhex(c[1])
+    if tag in ("list", "tuple", "set", "frozenset"):
+        items = [_decanon(v) for v in c[1]]
+        return {"list": list, "tuple": tuple, "set": set, "frozenset": frozenset}[tag](items)
+    if tag == "dict":
+        return {_decanon(k): _decanon(v) for k, v in c[1]}
+    if tag == "decimal":
+        from decimal import Decimal
+        return Decimal(c[1])
+    if tag == "fraction":
+        from fractions import Fraction
+        return Fraction(c[1])
+    raise ValueError(f"unknown value tag {tag!r}")
+
+
+def _split_assert(a: str, exprs: list) -> tuple:
+    """Replace every outermost non-builtin call in assert ``a`` by ``_v[i]``; the call's source goes to ``exprs``
+    (evaluated in the child). Returns (compiled predicate, indices it reads)."""
+    import ast
+
+    tree = ast.parse(a, mode="eval")
+    used: list[int] = []
+
+    class Lift(ast.NodeTransformer):
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Name) and node.func.id in _SAFE:
+                return self.generic_visit(node)
+            exprs.append(ast.unparse(node))
+            used.append(len(exprs) - 1)
+            return ast.copy_location(ast.Subscript(value=ast.Name("_v", ast.Load()),
+                                                   slice=ast.Constant(len(exprs) - 1), ctx=ast.Load()), node)
+
+    new = ast.fix_missing_locations(Lift().visit(tree))
+    return compile(new, "<assert>", "eval"), used
+
+
+def check_asserts(code: str, asserts: Sequence[str], *, timeout_s: float = 10.0) -> tuple[int, str]:
+    """Number of ``asserts`` that hold for ``code`` (see the locked-grader note above) and an error tail."""
+    exprs: list[str] = []
+    preds = [_split_assert(a, exprs) for a in asserts]
+    rr = run_python(_CHILD.format(code=code, exprs=exprs, mark=_VALS_MARK), timeout_s=timeout_s, mem_mb=512)
+    lines = [ln for ln in rr.stdout.splitlines() if ln.startswith(_VALS_MARK + " ")]
+    try:
+        raw = json.loads(lines[-1][len(_VALS_MARK) + 1:]) if lines else None
+        if not isinstance(raw, list) or len(raw) != len(exprs):
+            raise ValueError("malformed result line")
+    except ValueError:
+        return 0, (rr.stderr.strip().splitlines() or ["crashed"])[-1][:300]
+    vals, bad = [], set()
+    for i, c in enumerate(raw):
+        try:
+            if not (isinstance(c, list) and c) or c[0] == "err":
+                raise ValueError("call raised")
+            vals.append(_decanon(c))
+        except (ValueError, TypeError, KeyError, IndexError, ArithmeticError):
+            vals.append(None)
+            bad.add(i)
+    ok = 0
+    for code_obj, used in preds:
+        if bad.intersection(used):
+            continue
+        try:
+            ok += bool(eval(code_obj, {"__builtins__": {}, "_v": vals, **_SAFE}))  # noqa: S307 - trusted asserts
+        except Exception:  # noqa: BLE001 - an assert that raises does not hold
+            pass
+    err = "" if not bad else f"{len(bad)} call(s) raised or returned a non-builtin value"
+    return ok, err
 
 
 class KatasDomain(Domain):
@@ -123,9 +261,7 @@ class KatasDomain(Domain):
         with self._lock:
             if key in self._cache:
                 return self._cache[key]
-        rr = run_python(_assert_runner(code, asserts), timeout_s=self.timeout_s, mem_mb=512)
-        m = re.search(r"__RSI_OK__ (\d+)", rr.stdout)
-        res = (int(m.group(1)) if m else 0, "" if m else (rr.stderr.strip().splitlines() or ["crashed"])[-1][:300])
+        res = check_asserts(code, asserts, timeout_s=self.timeout_s)
         with self._lock:
             self._cache[key] = res
         return res

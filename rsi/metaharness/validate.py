@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import ast
-import multiprocessing as mp
 import os
 import traceback
 from dataclasses import dataclass, field
@@ -26,17 +25,6 @@ from ..core.critic import LeakageCritic
 #: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
                        "/solution")
-
-
-def _smoke_child(conn, domain, artifact, llm) -> None:
-    try:
-        err = domain.smoke(artifact, llm)
-    except Exception as e:  # noqa: BLE001
-        err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
-    try:
-        conn.send(err)
-    finally:
-        conn.close()
 
 
 @dataclass
@@ -101,7 +89,6 @@ class InterfaceValidator:
             except ProcessLookupError:
                 pass
             os.waitpid(pid, 0)
-        return (err is None), (err or "OK")
         return (err is None), (err or "OK")
 
 

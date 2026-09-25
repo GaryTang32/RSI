@@ -19,7 +19,8 @@ class Config:
     ablations (``scores_only``, ``scores_summary``) and the M2 baseline arms
     (``window`` = OPRO-style last-w (code, score) pairs; ``last_only`` =
     GEPA/TextGrad-style single-candidate reflection on the current best's traces;
-    ``seed_only`` = Best-of-N independent samples from the seed).
+    ``seed_only`` = Best-of-N independent samples from the seed: the view shows only the run's seed
+    harness, no scores and no other candidates).
     """
 
     iterations: int = 20                       # N

@@ -19,11 +19,14 @@ proposer reads.
 
 Context cost follows ``inner_loop.py:evaluate_memory``: per evaluated example,
 ``context_len = max(0, prompt_len - len(input))`` of the last ``call_llm``
-prompt; ``Execution.meta["context_chars"]`` is its mean (``memory_context_chars``).
+prompt; ``Execution.meta["context_chars"]`` is its mean (``memory_context_chars``). The last prompt is
+recorded by the domain's model wrapper (not by the candidate's ``call_llm`` bookkeeping, which a
+candidate could bypass or override).
 The grader (accuracy against labels) lives here, outside the artifact.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import threading
@@ -157,18 +160,28 @@ class MemoClassifyDomain(Domain):
         t0 = time.time()
 
         def call(prompt: str) -> str:
+            prompt = str(prompt)
             with lock:
                 state["calls"] += 1
                 i = state["calls"]
+                # context cost is measured HERE, on the domain side of the model boundary, so a candidate
+                # cannot hide injected context by bypassing MemorySystem.call_llm's bookkeeping
+                state["last_prompt"] = prompt
             if time.time() - t0 > self.max_wall_s:
                 raise HarnessTimeout(f"harness exceeded {self.max_wall_s}s")
-            resp = llm.complete(str(prompt), seed=seed * 100003 + i, role="task")
+            resp = llm.complete(prompt, seed=seed * 100003 + i, role="task")
             if not resp.ok:
                 raise RuntimeError(f"infra: llm backend error: {resp.error}")
             with lock:
                 state["tokens"] += resp.usage.total_tokens
                 state["usd"] += resp.usage.cost_usd
             return resp.text
+
+        def prompt_info() -> dict:
+            p = state.get("last_prompt")
+            if p is None:
+                return {"prompt_len": None, "prompt_hash": None, "prompt_text": None}
+            return {"prompt_len": len(p), "prompt_hash": hashlib.md5(p.encode()).hexdigest()[:8], "prompt_text": p}
 
         cls = load_memory_class(src)
         mem = cls(call)
@@ -183,7 +196,7 @@ class MemoClassifyDomain(Domain):
                     pred, meta = mem.predict(ex.text)
                     ok = normalize_label(pred) == ex.label
                     train_ok += ok
-                    info = mem.get_last_prompt_info()
+                    info = prompt_info()
                     records.append({"type": "step", "phase": "train", "step": b + j, "input_preview": ex.text[:200],
                                     "pred": str(pred)[:120], "tgt": ex.label, "ok": bool(ok),
                                     "prompt_len": info["prompt_len"], "prompt_hash": info["prompt_hash"]})
@@ -202,7 +215,7 @@ class MemoClassifyDomain(Domain):
         n_err_prompts = 0
         for i, ex in enumerate(ds.part(part)):
             pred, meta = mem.predict(ex.text)
-            info = mem.get_last_prompt_info()
+            info = prompt_info()
             plen = info["prompt_len"] or 0
             c = max(0, plen - len(ex.text))
             ctx.append(c)

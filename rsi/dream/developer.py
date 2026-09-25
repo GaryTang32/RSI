@@ -308,6 +308,8 @@ frontier from each opened branch, never a parent and its child. Do not use a fix
 - Prefix-only: never use unrevealed scores, a true optimum, hardcoded winning cell ids, absolute score targets
   or internal trace data. Keep all thresholds relative to the prefix; never use absolute score cutoffs.
 - Replay calls with budget=None. Always terminate when no batch is selected.
+- Call `question.reset()` once, at the start of `solve()`, before the first probe. A reset after probing is a
+  guard violation (it would let a policy explore, remember and replay the best path) and disqualifies it.
 
 ## Beta: fixed per run, adaptive across cycles
 Read exactly one scalar in __init__: `beta = float(self.config.get("beta", <default>))`, route every

@@ -116,6 +116,15 @@ def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
     return p
 
 
+def figure_path(name: str, args) -> Path:
+    """Where a figure goes: next to ``--out`` if given, else ``results/<slug>/<name>[_live].png`` (a live
+    showcase never overwrites the offline figure)."""
+    if getattr(args, "out", None):
+        return Path(args.out).with_suffix(".png")
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    return RESULTS / f"{name}{'_live' if getattr(args, 'live', False) else ''}.png"
+
+
 def plt():
     import matplotlib
     matplotlib.use("Agg")

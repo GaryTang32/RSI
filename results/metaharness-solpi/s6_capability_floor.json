@@ -577,5 +577,5 @@
   }
  },
  "verdict": "NOT REPRODUCED: efficiency-only admits 2.0 do-less shortcuts (success change -0.509 [-0.543, -0.467] train, -0.461 [-0.507, -0.420] held-out); the dual gate admits 1.0 (success change -0.073 [-0.115, -0.030] train, -0.002 [-0.005, 0.000] held-out) while keeping 4.0 general mechanisms. With the (inferred) composition re-check: 0.8 do-less kept, success change -0.002 [-0.005, 0.000] train / -0.007 [-0.021, 0.000] held-out, tokens -73% (floor holds for the stack)",
- "generated_at": "2026-09-25 02:08:49"
+ "generated_at": "2026-09-25 06:42:14"
 }

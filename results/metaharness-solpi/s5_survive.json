@@ -1996,7 +1996,97 @@
    }
   }
  },
- "verdict": "REPRODUCED: training-gate admissions (general/trick/do-less) = single_env_eta: 3.4/3.0/2.0; single_env_dual: 4.0/3.0/0.0; multi_aggregate: 4.0/1.8/1.0; multi_per_family: 3.6/1.6/0.0. Held-out family (backend A) capability ratio / eta saving WITH firewall: single_env_eta: 0.555/+0.27; single_env_dual: 1.000/+0.40; multi_aggregate: 1.000/+0.39; multi_per_family: 1.000/+0.39. WITHOUT firewall: single_env_eta: 0.542/+0.19; single_env_dual: 0.990/+0.28; multi_aggregate: 0.997/+0.27; multi_per_family: 0.992/+0.30. Backend B (fw): single_env_eta: 0.482/+0.29; single_env_dual: 0.956/+0.38; multi_aggregate: 0.988/+0.38; multi_per_family: 0.988/+0.38",
+ "paired_multi_minus_single_env_dual": {
+  "multi_aggregate": {
+   "A_fw_capability": {
+    "mean_diff": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5,
+    "p_better": 0.0
+   },
+   "A_fw_eta_saving": {
+    "mean_diff": -0.0042423856033996675,
+    "lo": -0.00963633195593967,
+    "hi": 0.0,
+    "n": 5,
+    "p_better": 0.0
+   },
+   "B_fw_capability": {
+    "mean_diff": 0.03125,
+    "lo": 0.0,
+    "hi": 0.06875,
+    "n": 5,
+    "p_better": 0.4
+   },
+   "B_fw_eta_saving": {
+    "mean_diff": -0.0006778454008669943,
+    "lo": -0.002492898629384577,
+    "hi": 0.00045936242678359387,
+    "n": 5,
+    "p_better": 0.2
+   },
+   "A_nofw_capability": {
+    "mean_diff": 0.00625,
+    "lo": 0.0,
+    "hi": 0.01875,
+    "n": 5,
+    "p_better": 0.2
+   },
+   "A_nofw_eta_saving": {
+    "mean_diff": -0.0012156981237395393,
+    "lo": -0.023734629514681506,
+    "hi": 0.01777726808913067,
+    "n": 5,
+    "p_better": 0.4
+   }
+  },
+  "multi_per_family": {
+   "A_fw_capability": {
+    "mean_diff": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5,
+    "p_better": 0.0
+   },
+   "A_fw_eta_saving": {
+    "mean_diff": -0.011710577751223417,
+    "lo": -0.02510154961974125,
+    "hi": -0.0015454124271296666,
+    "n": 5,
+    "p_better": 0.0
+   },
+   "B_fw_capability": {
+    "mean_diff": 0.03125,
+    "lo": 0.0,
+    "hi": 0.06875,
+    "n": 5,
+    "p_better": 0.4
+   },
+   "B_fw_eta_saving": {
+    "mean_diff": -0.009131367346294583,
+    "lo": -0.026038411237149763,
+    "hi": 0.0003062416178557292,
+    "n": 5,
+    "p_better": 0.2
+   },
+   "A_nofw_capability": {
+    "mean_diff": 0.0012499999999999955,
+    "lo": -0.015000000000000013,
+    "hi": 0.01875,
+    "n": 5,
+    "p_better": 0.2
+   },
+   "A_nofw_eta_saving": {
+    "mean_diff": 0.0229071438193047,
+    "lo": -0.03621854978496768,
+    "hi": 0.08203283742357707,
+    "n": 5,
+    "p_better": 0.6
+   }
+  }
+ },
+ "verdict": "PARTIAL: multi-family dual gate + firewall beats single-environment efficiency-only selection; vs the single-environment DUAL gate (same capability floor) the extra training environments give NO significant held-out gain (paired CIs include 0) and a significant loss somewhere. Training-gate admissions (general/trick/do-less) = single_env_eta: 3.4/3.0/2.0; single_env_dual: 4.0/3.0/0.0; multi_aggregate: 4.0/1.8/1.0; multi_per_family: 3.6/1.6/0.0. Held-out family (backend A) capability ratio / eta saving WITH firewall: single_env_eta: 0.555/+0.27; single_env_dual: 1.000/+0.40; multi_aggregate: 1.000/+0.39; multi_per_family: 1.000/+0.39. WITHOUT firewall: single_env_eta: 0.542/+0.19; single_env_dual: 0.990/+0.28; multi_aggregate: 0.997/+0.27; multi_per_family: 0.992/+0.30. Backend B (fw): single_env_eta: 0.482/+0.29; single_env_dual: 0.956/+0.38; multi_aggregate: 0.988/+0.38; multi_per_family: 0.988/+0.38",
  "caveat": "Environment families and the agent policy are simulations built for this test: which tricks break where is a property of the stated environment model (evidence position in outputs).",
- "generated_at": "2026-09-25 02:04:39"
+ "generated_at": "2026-09-25 06:40:55"
 }

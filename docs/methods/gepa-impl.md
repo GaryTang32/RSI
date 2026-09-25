@@ -39,7 +39,23 @@ The layout mirrors `gepa/src/gepa/{core,proposer,strategies}`.
 | `rsi/domains/ruleworld/domain.py` | `RuleWorldDomain(Domain)`: `execute`; a locked grader with μ_f ∈ {rich, symptom, score_only} and optional first-error-only; `reflective_record` (the reply module sees upstream notes); `rl_vocabulary`, `gold_text`, `demo_text`, `expected`; `make_domain(seed, feedback, **cfg)` | `rsi.core.Domain` |
 | `rsi/domains/ruleworld/mocks.py` | `RuleWorldReflectionLM` + `ReflectionProfile`: a mock reflection LM that uses only the information in its prompt (§9.2 Tier-1 mock). It also answers the few-shot baseline's grounded-proposal prompts. | `rsi.core.MockLLM` |
 
-The largest file, `rsi/gepa/engine.py`, has 420 lines.
+The largest file, `rsi/gepa/engine.py`, has 492 lines.
+
+**Tests.** Run them with `python -m pytest -q tests/test_gepa_core.py tests/test_gepa_engine.py tests/test_gepa_ruleworld.py tests/test_gepa_baselines.py tests/test_gepa_review.py`. There are 56 tests, all offline and deterministic, taking about 8 s.
+
+`tests/test_gepa_review.py` holds the adversarial-review tests:
+- A new unit-conversion domain built inline with `rsi.core.FunctionDomain`, with no GEPA-specific hooks. It covers:
+  - a split named `train`;
+  - a missing val split;
+  - objective scores from `Trial.meta["objectives"]`;
+  - a 0–10 score range;
+  - every selector, frontier type, acceptance rule and budget mode;
+  - merge, with and without caching;
+  - all four baselines.
+- The failure-surfacing warnings.
+- The `selector=` hook, including resume.
+
+The method needed no changes to run on this domain.
 
 **Run directory** (`out_dir`):
 - `state.json` is written atomically at the top of every iteration. It holds the pool, lineage, validation scores, frontier, rollout counters, and the RNG, sampler, merge and selector state.
@@ -109,7 +125,13 @@ print(res.best["support/triage.md"]); print(res.meta["report"]["splits"]["test"]
   - Worked example: `experiments/gepa/example_new_problem.py`, a record formatter. Its sealed test went from 0.00 to 1.00 in 300 rollouts offline.
   - `--task-llm claude:haiku` makes the formatter a real model.
 - **Multi-module systems.** Each prompt is its own file. RuleWorld has `prompts/triage.md` and `prompts/reply.md`; the AgentQA harness has `prompts/solver.md` and `prompts/reporter.md`. Module-specific feedback comes through `domain.reflective_record`.
-- **Guards.** `critic=rsi.core.LeakageCritic(domain.leakage_terms())` screens each rewrite before any rollout is spent. `Config(acceptance="noise_margin", noise_margin=δ)` adds an RRSI-style floor. Both are off by default.
+- **Guards.** `critic=rsi.core.LeakageCritic(domain.leakage_terms())` screens each rewrite before the child's minibatch rollouts are spent (the parent's minibatch was already run). `Config(acceptance="noise_margin", noise_margin=δ)` adds an RRSI-style floor. Both are off by default.
+- **Custom parent selection.** `run(..., selector=obj)` takes any object with `select(state) -> index`, as `gepa.optimize` accepts a `CandidateSelector` instance. It can also be a factory `f(rng)` that receives the engine's shared RNG. An optional `get_state` / `set_state` pair makes the selector resumable. E3 uses this hook for its tie-breaking control arm.
+- **Failures are never silent.**
+  - `meta` reports `n_exec_errors`, `seed_val_error_rate`, `n_infra_errors`, `n_reflection_failed` and `n_reflection_unparsed`.
+  - A `RuntimeWarning` fires when the seed raises on every D_pareto example, for example a forgotten `llm_task`.
+  - A second `RuntimeWarning` fires when every reflection-LM call failed.
+  - Without these warnings, both cases used to end as an ordinary "no improvement found" run.
 
 ## 3. Capability checklist → code → experiment → result
 
@@ -120,7 +142,7 @@ print(res.best["support/triage.md"]); print(res.meta["report"]["splits"]["test"]
 | 3 | Reflects in plain language and proposes better prompts | `ReflectionProposer` + verbatim meta-prompt (tested byte-for-byte against the spec) + `render_samples` + `parse_fenced` | Live smoke with `claude:haiku`: 8/8 fenced rewrites parsed and accepted; RuleWorld true test 0.00 → 0.73. **Implemented, live-demonstrated** |
 | 4 | "A score tells you that something failed; the trace tells you why" | Grader `feedback` + `reflective_record` (μ_f); RuleWorld μ_f ∈ {rich, symptom, score_only} | E2: rich 0.900 vs text-free 0.721, paired +0.179 [+0.146, +0.211]. **Reproduced** |
 | 5 | Test the new prompts | Strict minibatch gate, then full D_pareto evaluation (`full_eval_and_add`) | E5 (gate error rates, budget split); budget identity unit-tested. **Implemented** |
-| 6 | Keep every candidate best on at least one example (Pareto frontier) | `FrontierTracker` + `ParetoSelector` (set-cover pruning; reference probe vectors pass) | E3: large gains with coarse (binary) rewards (+0.60 / +0.75); not a general advantage with partial rewards. **Implemented; claim partially reproduced** |
+| 6 | Keep every candidate best on at least one example (Pareto frontier) | `FrontierTracker` + `ParetoSelector` (set-cover pruning; reference probe vectors pass) | E3: large gains over the reference SelectBestCandidate with coarse (binary) rewards (+0.60 / +0.75). The gain disappears against a greedy selector that breaks ties toward the newest candidate (not significant in all 8 cells), so it is a tie-breaking effect, not frontier diversity. Not a general advantage with partial rewards. **Implemented; claim partially reproduced, mechanism not reproduced** |
 | 7 | Combine complementary lessons | `MergeProposer` (Alg. 3–4, soft / hard cap) | E4: complementary merges beat both parents 94% of the time (+0.048); overlapping ones 19–26%. Net gain only with a rationed merge (hard cap: +0.014 [+0.003, +0.026] at B = 4000). **Reproduced qualitatively** |
 | 8 | Genetic-Pareto | Lineage DAG (`SearchState.parents`, ledger) + Pareto selection | – |
 | 9 | Beats GRPO with far fewer rollouts | `RolloutCounter` + `ScalarRLBaseline` + curves | E1: 5.7× / 6.1× fewer rollouts to reach 80% / 90% of the oracle; the GEPA curve dominates at every budget. This is inside the paper's 4–35× range but below the spec's ≥10× bar. **Partially reproduced** |
@@ -145,6 +167,9 @@ print(res.best["support/triage.md"]); print(res.meta["report"]["splits"]["test"]
 - Every script runs as `python experiments/gepa/<name>.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--workers W]`.
 - Each writes `results/gepa/<name>.json` (config, per-seed raw rows, summaries with CIs, verdict) and a PNG where useful.
 - `--llm claude:haiku` swaps the mock reflection LM for cached `claude -p`. The task models stay simulated.
+  - Live mode runs 1 seed with smaller budgets and fewer arms.
+  - The review ran every script's live code path end to end at zero cost, with `ClaudeCLI` stubbed and outputs sent to a scratch directory.
+  - Live runs of the experiments themselves were not made (see "Live smoke" below).
 - Runtimes: the full offline suite took about 13 min of wall-clock time on 3 workers; the largest script was E3 at 231 s.
 
 **The testbed (RuleWorld, Tier 1).**
@@ -189,13 +214,18 @@ The mock sees only its prompt.
 **Verdict.** Qualitatively reproduced: GEPA dominates, and the 6× ratio sits in the paper's "4–35×" range. The spec's "≥ 10×" is **not** met in this world.
 
 - RL eventually gets close: 0.902 at 24000 rollouts, against GEPA's 0.917 plateau. The reward here is dense (partial credit per property), which helps policy gradients.
-- The GEPA plateau below the oracle has two causes:
-  - memorised ticket facts: train failures get "solved" without a rule;
-  - rules for rare aspects that the train minibatches never reveal.
+- RL's curve moves in steps of about 1000 rollouts, because its returned prompt changes only at validation checkpoints (every 20 steps). That is the paper's GRPO protocol, but it adds up to about 1000 rollouts (about 500 on average) to each RL rollouts-to-target value. That inflates the 80% ratio by about 10% on average (5.7× could be about 5.2×), not by a factor.
+- Why GEPA plateaus below the oracle (0.917 against 0.95). The review attributed the residual per-aspect test loss of the returned prompts on seeds 0–3 at B = 6000; these runs are not in the results JSON.
+  - Every aspect already had a correct rule in all four seeds.
+  - The loss came almost entirely from conflicting aspects that were only partly resolved: a general rule plus conditioned rules for some families only.
+  - A smaller part came from rules that the mock scoped to the one family it saw fail (`p_scope`).
+  - Memorised ticket facts (3–9 lines per prompt) cost only prompt capacity, through dilution.
+  - An earlier version of this page blamed memorised facts and rare aspects that the minibatches never show. That diagnosis was wrong.
 
 **Tier-2 analogue (AgentQA).** Setup:
 - two-module harness with SimModel;
 - 5 seeds, B = 300;
+- ScalarRL is scaled down to fit B = 300: group 6, 2 instances per step, validation every 3 steps, lr = 2, and 12 brainstormed lines per component;
 - measured holdout accuracy over 20 questions and OOD accuracy over 20 questions from 4 unseen families.
 
 | arm | holdout | OOD |
@@ -232,31 +262,42 @@ The mock sees only its prompt.
 
 ### E3: candidate selection (`e3_selection`)
 
-**Setup.** 30 seeds per cell, 4 world variants, 7 arms, B ∈ {1500, 4000}. The figure is `e3_selection.png`.
+**Setup.**
+- 30 seeds per cell, 4 world variants, 8 arms, B ∈ {1500, 4000}. The figure is `e3_selection.png`.
+- The 8th arm, CurrentBest with ties broken toward the *newest* candidate, was added in review. It is a control that separates frontier diversity from tie-breaking.
+- The other 7 arms reproduced their earlier numbers exactly on rerun.
 
-| world @ B | Pareto | CurrentBest | BeamSearch(4) | ε-greedy | TopK-Pareto(5) | Pareto+all | CurrentBest+all |
-|---|---|---|---|---|---|---|---|
-| partial @1500 | 0.863 | 0.890 | 0.827 | 0.889 | 0.884 | **0.919** | 0.891 |
-| binary @1500 | 0.614 | 0.011 | 0.112 | 0.037 | 0.488 | **0.777** | 0.512 |
-| interference @1500 | 0.767 | 0.818 | 0.720 | 0.804 | 0.788 | **0.858** | 0.853 |
-| interference, undiagnosable @1500 | 0.722 | 0.724 | 0.674 | 0.742 | 0.742 | **0.765** | 0.731 |
-| partial @4000 | 0.906 | 0.903 | 0.910 | 0.909 | 0.906 | **0.927** | 0.897 |
-| binary @4000 | 0.770 | 0.025 | 0.507 | 0.160 | 0.690 | **0.801** | 0.659 |
-| interference @4000 | 0.872 | 0.868 | 0.871 | 0.874 | 0.871 | **0.897** | 0.870 |
-| interference, undiagnosable @4000 | 0.788 | 0.768 | 0.765 | 0.782 | 0.791 | **0.793** | 0.759 |
+| world @ B | Pareto | CurrentBest | CurrentBest, newest tie | BeamSearch(4) | ε-greedy | TopK-Pareto(5) | Pareto+all | CurrentBest+all |
+|---|---|---|---|---|---|---|---|---|
+| partial @1500 | 0.863 | 0.890 | 0.879 | 0.827 | 0.889 | 0.884 | **0.919** | 0.891 |
+| binary @1500 | 0.614 | 0.011 | 0.653 | 0.112 | 0.037 | 0.488 | **0.777** | 0.512 |
+| interference @1500 | 0.767 | 0.818 | 0.818 | 0.720 | 0.804 | 0.788 | **0.858** | 0.853 |
+| interference, undiagnosable @1500 | 0.722 | 0.724 | 0.727 | 0.674 | 0.742 | 0.742 | **0.765** | 0.731 |
+| partial @4000 | 0.906 | 0.903 | 0.896 | 0.910 | 0.909 | 0.906 | **0.927** | 0.897 |
+| binary @4000 | 0.770 | 0.025 | 0.768 | 0.507 | 0.160 | 0.690 | **0.801** | 0.659 |
+| interference @4000 | 0.872 | 0.868 | 0.863 | 0.871 | 0.874 | 0.871 | **0.897** | 0.870 |
+| interference, undiagnosable @4000 | 0.788 | 0.768 | 0.772 | 0.765 | 0.782 | 0.791 | **0.793** | 0.759 |
 
-**Paired Pareto − CurrentBest.**
+**Paired Pareto − CurrentBest (reference `idxmax`, ties go to the oldest candidate).**
 - Binary rewards: +0.603 [+0.547, +0.664] at B = 1500 and +0.745 [+0.679, +0.799] at B = 4000.
 - Undiagnosable interference at B = 4000: +0.021 [+0.003, +0.037].
 - Partial rewards at B = 1500: −0.027 [−0.046, −0.007].
 - Interference at B = 1500: −0.051 [−0.086, −0.015].
 - Every other cell is not significant.
 
-**Mechanism behind the binary result.**
-- With all-or-nothing rewards, no single one-module rewrite can strictly improve a 3-example minibatch from the seed. The accepted children tie the seed on validation.
-- `CurrentBest` breaks ties toward the oldest candidate, so it expands the seed forever. Its trees have depth about 1.5, and it was stalled for 476 of 484 iterations.
-- Set-cover pruning ranks tied candidates in ascending order, so Pareto effectively picks the *newest* tied candidate. It then drifts across the plateau (depth about 40).
-- This is exactly the paper's "SelectBestCandidate led to a local optimum after one iteration".
+**Paired Pareto − CurrentBest with newest-tie breaking (the control).**
+- Binary: −0.039 [−0.115, +0.040] at B = 1500 and +0.002 [−0.060, +0.069] at B = 4000.
+- Undiagnosable interference at B = 4000: +0.016 [−0.003, +0.035].
+- Interference at B = 1500: −0.051 [−0.088, −0.011].
+- **Pareto significantly beats this greedy selector in none of the 8 cells.**
+
+**Mechanism behind the binary result: tie-breaking on a validation plateau.**
+- With all-or-nothing rewards, a one-module rewrite can fix a minibatch example, so the strict gate accepts children.
+- It rarely makes a whole *validation* example right, though, so the accepted children tie their parent at validation mean 0.
+- The reference `CurrentBest` (`idxmax`) breaks ties toward the oldest candidate. It therefore re-expands the seed forever: tree depth about 1.5, stalled for 476 of 484 iterations. Every rewrite restarts from the seed text.
+- Set-cover pruning of fully tied candidates leaves the newest one. So Pareto, like the newest-tie control, keeps building on the latest accepted child and climbs out of the plateau: depth about 40 for Pareto, 60 for the control.
+- The control shows that the whole gain comes from this tie rule, not from keeping per-instance winners alive.
+- The paper's Fig. 4 ("SelectBestCandidate led to a local optimum after one iteration") is *consistent* with this mechanism, but neither the paper nor this experiment establishes it as the paper's cause.
 
 **Mechanism behind the partial-credit result.**
 - With partial credit, greedy hill-climbing on a decomposable reward is efficient.
@@ -267,12 +308,16 @@ The mock sees only its prompt.
 - CurrentBest: depth 18, 75 leaves ("broom" trees), stalled for 135 of 273 iterations.
 
 **Other findings.**
-- Updating every module per reflection (`module_selector="all"`) was the best arm in every world. This matches the FAQ's "large boost in rollout efficiency" (spec E9).
-- BeamSearch(4) is the weakest at small budgets, as in the paper's Table 3.
+- Updating every module per reflection (`module_selector="all"`) had the highest mean in every cell. That is consistent with the FAQ's "large boost in rollout efficiency" (spec E9). Not every pairwise difference is significant.
+- BeamSearch(4) was the weakest arm at B = 1500 in 3 of the 4 worlds (partial and both interference worlds). In the binary world, the reference CurrentBest and ε-greedy were weaker. The paper's Table 3 also ranks BeamSearch last in aggregate.
 
 **Verdict.**
-- **Reproduced where rewards are coarse** (plateaus), which is the paper's AIME and exact-match setting.
-- **Not reproduced as a general advantage** with fine-grained partial rewards. There, greedy is equal or better at small budgets.
+- **Partly reproduced.**
+  - Against the reference SelectBestCandidate (`idxmax`), Pareto wins big where rewards are coarse (plateaus), which is the paper's AIME / exact-match regime.
+  - It also wins slightly in one interference cell.
+  - It loses at small budgets with fine-grained partial rewards.
+- **Not reproduced: the claimed mechanism.** Once greedy breaks ties toward the newest candidate, Pareto is never significantly better, so "different strengths survive" is not what produces the gain in these worlds.
+- In short, the gain depends on how the greedy baseline breaks ties.
 
 ### E4: merge (`e4_merge`)
 
@@ -292,8 +337,10 @@ The mock sees only its prompt.
 - Merges consume 21–32% of the rollouts under the soft cap.
 
 **Verdict.** Qualitatively reproduced: merge combines complementary module lessons, and its net effect depends on budget and timing.
-- Merge hurts at the small budget.
-- Merge helps only when it is rationed.
+- At B = 1500 no merge arm differs significantly from GEPA. The reference soft cap 5 trends negative: −0.028 [−0.063, +0.004].
+- At B = 4000 only the rationed arms show a gain, and it is small but significant: hard cap 5 at +0.014 and soft cap 1 at +0.016. These arms accept about 5 merges and spend about 10% of rollouts on merge.
+- The unrationed soft caps (11–14 merges, 21–26% of rollouts) show no significant gain.
+- At B = 1500, soft cap 5 and soft cap 20 give identical runs. Merges pile up in `merges_due` before any valid triplet exists, so a cap of 5 never binds.
 - The reference soft cap lets accepted merges exceed `max_merge_invocations` in 63–87% of runs (cap 5) and in 100% of runs (cap 1). This reproduces [run:merge-cap-probe] and the paper's own budget-allocation diagnosis of the Qwen degradation.
 - **Not** reproduced: the spec's expectation that *early* merges are worse. Early merges gained more (+0.031 against +0.009 at B = 1500), because the complementary merges happen early.
 
@@ -337,6 +384,10 @@ The mock sees only its prompt.
 - With few examples, D_pareto = D_train reports near-perfect validation scores (1.0 at \|train\| = 6) that do not hold on test.
 - A separate validation set removes most of the gap and improves test at small \|train\|.
 - The large \|train\| = 60 test drop when D_pareto = D_train is a budget effect: each accepted child then costs 60 validation rollouts.
+- **Confound.** As spec E6 prescribes, the separate-val arm also has 30 extra examples, which it reaches only through their scores.
+  - Its gap reduction is mainly about honest measurement: the val score is no longer the training score.
+  - Part of its test gain (+0.068 [+0.040, +0.097] at \|train\| = 6) may come from the extra selection data, not from the separation itself.
+  - A split of the same total data was not run.
 
 ### E7: instruction-only against few-shot optimization (`e7_fewshot`)
 
@@ -418,7 +469,14 @@ The mock sees only its prompt.
 11. **Baselines are CPU analogues.**
     - ScalarRL is not LoRA-GRPO on an LLM. It is a GRPO-style group-relative REINFORCE on Bernoulli line-inclusion logits, using SGD and an L2 pull toward the initial logits as the KL proxy.
     - MIPRO-lite replaces Optuna TPE with softmax-over-mean categorical sampling. Its grounded-proposal prompt is ours.
-12. **RuleWorld is a simulator.** The rule semantics, the interference option and the mock reflection LM's behaviours (`ReflectionProfile`) are design choices [inferred from spec §9.2]. The interference world and the `p_scope` / `p_diagnose` behaviours were added during this work to test the local-optimum claim in more than one world. All four variants are reported.
+12. **Frontier fallbacks.**
+    - Without objective scores, `hybrid` and `cartesian` fall back to instance keys. For `hybrid` this matches `optimize_anything`, whose adapter returns empty objective dicts.
+    - In `gepa.optimize` the reference instead raises for all three objective-based types. `objective` raises here too.
+13. **Additions from the adversarial review.** None of these changes the search trajectory, so earlier results reproduce bit-for-bit.
+    - Execution-error and reflection-failure counters, plus the two warnings above.
+    - The `selector=` hook.
+    - `optimize()` without a `valset` now selects multi-task mode explicitly (`val_split=None`, so no warning), and it ignores `train_split` / `val_split` from the passed config, because it builds its own suite.
+14. **RuleWorld is a simulator.** The rule semantics, the interference option and the mock reflection LM's behaviours (`ReflectionProfile`) are design choices [inferred from spec §9.2]. The interference world and the `p_scope` / `p_diagnose` behaviours were added during this work to test the local-optimum claim in more than one world. All four variants are reported.
 
 ## 6. Limitations
 

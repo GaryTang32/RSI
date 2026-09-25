@@ -1,6 +1,6 @@
 {
  "experiment": "e8_no_peeking",
- "created": "2026-09-25 02:43:32",
+ "created": "2026-09-25 05:53:22",
  "config": {
   "worlds": 8,
   "online_worlds": 40,
@@ -9,12 +9,15 @@
    6,
    4
   ],
-  "objective": "raw Eq.1 beta1=0.01 beta2=0.005",
+  "objective": "raw Eq.1 beta1=0.01 beta2=0.005; disqualified = root - beta1*|grid| - 1",
   "root_mode": "addressable",
-  "llm": "not used"
+  "llm": "not used",
+  "llm_revision": null
  },
  "results": {
   "honest_adaptive": {
+   "static_check_ok": true,
+   "static_check_errors": [],
    "replay_guard_on": 0.21796006937399987,
    "replay_guard_off": 0.21796006937399987,
    "disqualified_on": 0,
@@ -28,6 +31,7 @@
     "n": 40
    },
    "online_N_unguarded": 20.35,
+   "online_disqualified_unguarded": 0,
    "online_guarded": {
     "mean": 0.2418833595620276,
     "lo": 0.2184835310978607,
@@ -35,10 +39,16 @@
     "n": 40
    },
    "online_N_guarded": 20.35,
+   "online_disqualified_guarded": 0,
    "replay_minus_online_guard_off": -0.023923290188027746
   },
   "oracle": {
-   "replay_guard_on": -1.0,
+   "static_check_ok": false,
+   "static_check_errors": [
+    "forbidden attribute .best_so_far",
+    "forbidden attribute .tree"
+   ],
+   "replay_guard_on": -1.1,
    "replay_guard_off": 0.391538920192377,
    "disqualified_on": 8,
    "violations_on": [
@@ -53,24 +63,48 @@
     "n": 40
    },
    "online_N_unguarded": 3.95,
+   "online_disqualified_unguarded": 0,
    "online_guarded": {
-    "mean": -1.0,
-    "lo": -1.0,
-    "hi": -1.0,
+    "mean": -1.1,
+    "lo": -1.1,
+    "hi": -1.1,
     "n": 40
    },
    "online_N_guarded": 0.0,
+   "online_disqualified_guarded": 40,
    "replay_minus_online_guard_off": 0.11883479847394363
+  },
+  "peek_reset": {
+   "static_check_ok": true,
+   "static_check_errors": [],
+   "replay_guard_on": -1.1,
+   "replay_guard_off": 0.391538920192377,
+   "disqualified_on": 8,
+   "violations_on": [
+    "reset() after probing (an episode may only be reset before its first probe)"
+   ],
+   "N_off": 4.375,
+   "attainment_off": 1.0,
+   "online_unguarded": {
+    "mean": 0.15463987763433967,
+    "lo": 0.1336804697759356,
+    "hi": 0.17541041270574054,
+    "n": 40
+   },
+   "online_N_unguarded": 30.0,
+   "online_disqualified_unguarded": 0,
+   "online_guarded": {
+    "mean": -1.1,
+    "lo": -1.1,
+    "hi": -1.1,
+    "n": 40
+   },
+   "online_N_guarded": 30.0,
+   "online_disqualified_guarded": 40,
+   "replay_minus_online_guard_off": 0.23689904255803734
   }
  },
  "pick_without_guard": "oracle",
  "pick_with_guard": "honest_adaptive",
- "oracle_static_check": {
-  "ok": false,
-  "errors": [
-   "forbidden attribute .best_so_far",
-   "forbidden attribute .tree"
-  ]
- },
- "verdict": "REPRODUCED: without the guard the peeking policy's replay score is inflated by +0.119 over its true online value (honest policy: -0.024) and it wins selection (+0.392 vs +0.218); online it scores +0.273 vs honest +0.242 - its no-peek fallback happens to be competitive here, so the damage is a mis-estimated value (+0.174 predicted advantage vs +0.031 realised), not an online collapse; the guard disqualifies it in 8/8 worlds and the static check rejects it before it runs"
+ "verdict": "REPRODUCED: without the guard selection picks oracle; with it, honest_adaptive. oracle (static check rejects it): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.119 over its online value (honest -0.024); online +0.273 vs honest +0.242 (its online fallback happens to be competitive, so the damage is a mis-estimated value, not an online collapse); the guard disqualifies it in 8/8 worlds; peek_reset (static check passes): unguarded replay +0.392 vs honest +0.218, i.e. inflated by +0.237 over its online value (honest -0.024); online +0.155 vs honest +0.242 (the replay advantage does not survive online); the guard disqualifies it in 8/8 worlds"
 }

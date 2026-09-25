@@ -2,6 +2,7 @@
 (plain dict candidates + a metric function), :func:`report` (sealed test reporting)."""
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
@@ -52,6 +53,12 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
         "merge": eng.merge.get_state() if eng.merge else None,
         "perfect_score": eng.perfect_score, "n_infra_errors": int(st.extra.get("n_infra", 0)),
         "n_infra_retries": getattr(eng.adapter, "n_infra_retries", 0),
+        "selector": getattr(eng.selector, "name", type(eng.selector).__name__),
+        # failures that would otherwise look like "no improvement found" (a run never hides them)
+        "n_exec_errors": int(st.extra.get("n_exec_errors", 0)),
+        "seed_val_error_rate": float(st.extra.get("seed_val_error_rate", 0.0)),
+        "n_reflection_failed": int(st.extra.get("n_reflection_failed", 0)),
+        "n_reflection_unparsed": int(st.extra.get("n_reflection_unparsed", 0)),
     }
     res = ImprovementResult(method=method, baseline=st.candidates[0], best=st.candidates[b], ledger=eng.ledger,
                             trajectory=traj, usage=eng.usage_snapshot(), stop_reason=eng.stop_reason,
@@ -65,7 +72,8 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
         components: Optional[Sequence[str]] = None, budget=None, proposer=None, adapter: Optional[DomainAdapter] = None,
         stoppers: Sequence[Callable] = (), callbacks: Sequence[Callable] = (), report_splits: Sequence[str] = (),
-        report_k: int = 1, verbose: bool = False, method: str = "gepa", critic=None) -> ImprovementResult:
+        report_k: int = 1, verbose: bool = False, method: str = "gepa", critic=None,
+        selector=None) -> ImprovementResult:
     """Optimize the named text components of ``seed_artifact`` on ``domain`` with GEPA.
 
     Parameters
@@ -93,7 +101,11 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     critic:
         optional pre-evaluation screen with ``screen(diff, change) -> CriticVerdict``
         (e.g. ``rsi.core.LeakageCritic(domain.leakage_terms())``): rejected rewrites cost
-        no rollouts and are logged as ``critic_rejected`` (RRSI guard; off by default).
+        no rollouts for the child and are logged as ``critic_rejected`` (RRSI guard; off by default).
+    selector:
+        optional custom candidate selector overriding ``config.candidate_selection``: an object
+        with ``select(state) -> candidate index`` (optionally ``get_state`` / ``set_state`` for
+        resume), or a factory ``f(rng) -> selector`` that receives the engine's shared RNG.
 
     Returns an :class:`rsi.core.ImprovementResult`: ``best`` = argmax mean D_pareto
     score, ``trajectory`` = one row per iteration, ``usage`` by role, ``meta`` with the
@@ -106,7 +118,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     comps = list(components or cfg.components or default_components(domain, seed_artifact))
     eng = GEPAEngine(adapter, seed_artifact, comps, llm_propose=llm_propose, config=cfg, out_dir=out_dir,
                      proposer=proposer, llm_task=llm_task, budget=budget, stoppers=stoppers, callbacks=callbacks,
-                     verbose=verbose, method=method, critic=critic)
+                     verbose=verbose, method=method, critic=critic, selector=selector)
     eng.run()
     res = build_result(eng, method)
     if report_splits:
@@ -162,7 +174,8 @@ def optimize(seed_candidate: dict[str, str], trainset: Sequence[Any], valset: Op
     runs the user's system with the candidate's texts on one example and grades it;
     ``output`` (the system's response / trace text) is shown to the reflection LM.
     Examples can be any JSON-able objects. ``testset`` (optional) is sealed and scored
-    only in the final report.
+    only in the final report. Without ``valset``, D_pareto = the trainset (GEPA's
+    multi-task / inference-time-search mode).
     """
     tasks, splits = [], {"evolve": [], "val": [], "test": []}
     for split, data in (("evolve", trainset), ("val", valset or []), ("test", testset or [])):
@@ -177,6 +190,7 @@ def optimize(seed_candidate: dict[str, str], trainset: Sequence[Any], valset: Op
     suite = TaskSuite(tasks, splits, name="optimize")
     dom = MetricDomain(suite, metric, description)
     seed = Artifact(seed_candidate)
-    cfg = config or Config()
+    # the suite built here names its splits evolve / val / test, whatever the config says
+    cfg = replace(config or Config(), train_split="evolve", val_split="val" if valset else None)
     return run(dom, seed, llm_propose=llm_propose, config=cfg, out_dir=out_dir, components=list(seed_candidate),
                report_splits=("test",) if testset else ())

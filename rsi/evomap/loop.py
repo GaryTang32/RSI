@@ -91,8 +91,9 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
     stop = "max_rounds"
     solved_window: list[int] = []
     for t in range(cfg.cycles):
-        r = budget.exhausted(rounds=t, usd=sum(l.meter.total().cost_usd for l in {id(x): x for x in
-                                                                                   (llm_task, llm_propose) if x}.values()))
+        r = budget.exhausted(rounds=t, rollouts=agent.n_rollouts,
+                             usd=sum(l.meter.total().cost_usd for l in {id(x): x for x in (llm_task, llm_propose)
+                                                                        if x}.values()))
         if r:
             stop = r
             break
@@ -112,7 +113,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
     audit = store.audit()
     meta = {"config": cfg.to_json(), "n_genes": len(genes), "genes": [g.id for g in genes],
             "n_events": len(store.events), "n_capsules": len(store.capsules), "audit": audit.to_dict(),
-            "proposer_calls": agent.proposer_calls, "quarantined": agent.n_quarantined,
+            "proposer_calls": agent.proposer_calls, "rollouts": agent.n_rollouts, "quarantined": agent.n_quarantined,
             "quarantine_rejected": agent.n_quarantine_rejected, "mode": cfg.mode,
             "safe_mode_fixes": _safe_fixes(cfg), "evaluate_with": "rsi.evomap.GeneRoutedDomain(domain)"}
     res = ImprovementResult(method="evomap", baseline=seed_artifact, best=best, ledger=ledger, trajectory=traj,
@@ -131,12 +132,20 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
 def _safe_fixes(cfg: Config) -> list[str]:
     if cfg.mode != "safe":
         return []
-    return ["validation runner: no silent skips; empty validation list FAILS",
-            "failed-capsule ban is relative: >= 2 failures AND more failures than successes (stochastic graders)",
-            "keep rule: validation must be discriminative (lint + before/after) and the agent's own graded task solved",
-            "memory-graph outcome = measured solidify outcome, recorded immediately (not the transcript's self-report)",
-            "hub assets quarantined and A/B-tested on the agent's own held-out tasks before use",
-            "distiller never adds a '--version' fallback validation"]
+    fixes = ["validation runner: no silent skips; empty validation list FAILS",
+             "failed-capsule ban is relative: >= 2 failures AND more failures than successes (stochastic graders)",
+             "keep rule: validation must be discriminative (lint + before/after) and the agent's own graded task "
+             "solved",
+             "memory-graph outcome = measured solidify outcome, recorded immediately (not the transcript's "
+             "self-report)",
+             "hub assets quarantined and A/B-tested on the agent's own held-out tasks before use",
+             "distiller never adds a '--version' fallback validation"]
+    if cfg.reject_memory:
+        fixes.append("a hub asset the quarantine rejected is never re-tested (no re-sampling until it passes)")
+    if not cfg.failure_distill:
+        fixes.append("no failure-distilled repair genes (their validation is filtered to an empty list, so they "
+                     "could never pass the safe keep rule)")
+    return fixes
 
 
 def evaluate_library(domain: Domain, llm: Optional[LLM], result: ImprovementResult, *,

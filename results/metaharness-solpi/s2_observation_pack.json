@@ -1915,5 +1915,5 @@
   "mean_pages": 13.683333333333334
  },
  "verdict": "PARTIAL: recall fidelity 100% over 300 payloads; fail-open ok; 8/8 configurations inside the -2% quality gate (e0_s1, e0_s2, e512_s1, e512_s2, e1024_s1, e1024_s2, e2048_s1, e2048_s2), 0 also inside the 10% bill-saving gate - the quality gate does not discriminate between configurations here",
- "generated_at": "2026-09-25 02:02:24"
+ "generated_at": "2026-09-25 06:46:06"
 }

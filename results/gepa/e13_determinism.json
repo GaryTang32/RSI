@@ -13,8 +13,8 @@
   {
    "domain": "ruleworld",
    "seed": 0,
-   "iterations": 52,
-   "n_candidates": 33,
+   "iterations": 59,
+   "n_candidates": 40,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -50,8 +50,8 @@
   {
    "domain": "ruleworld",
    "seed": 1,
-   "iterations": 37,
-   "n_candidates": 34,
+   "iterations": 58,
+   "n_candidates": 39,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -87,8 +87,8 @@
   {
    "domain": "ruleworld",
    "seed": 2,
-   "iterations": 43,
-   "n_candidates": 33,
+   "iterations": 54,
+   "n_candidates": 40,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -124,8 +124,8 @@
   {
    "domain": "ruleworld",
    "seed": 3,
-   "iterations": 45,
-   "n_candidates": 33,
+   "iterations": 67,
+   "n_candidates": 38,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -161,8 +161,8 @@
   {
    "domain": "ruleworld",
    "seed": 4,
-   "iterations": 57,
-   "n_candidates": 35,
+   "iterations": 70,
+   "n_candidates": 38,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -228,8 +228,8 @@
   {
    "domain": "agentqa",
    "seed": 1,
-   "iterations": 16,
-   "n_candidates": 6,
+   "iterations": 17,
+   "n_candidates": 7,
    "rerun_same_log": true,
    "rerun_same_candidates": true,
    "rerun_same_ledger": true,
@@ -261,5 +261,5 @@
  "all_resumes_identical": true,
  "reference_style_resumes_diverged": "7/7",
  "verdict": "7 runs (RuleWorld GEPA+Merge and AgentQA two-module): reruns byte-identical: True; 19 kill/resume cycles give the identical final state.json, run_log and candidate sequence: True. Resuming without the persisted RNG/sampler state (the reference's behaviour) diverged from the uninterrupted run in 7/7 cases. Claim (design goal): REPRODUCED.",
- "generated_at": "2026-09-25 00:17:16"
+ "generated_at": "2026-09-25 06:25:02"
 }

@@ -40,9 +40,12 @@ def main():
                  validation_hint=SAFE_HINT + ". The workspace contains only solution.py and smoke_test.py. Allowed "
                  "commands: `python <existing_script>.py` or `pytest -q <existing_file>.py`; inline code "
                  "(python -c) and shell syntax are BLOCKED by the command policy")
-    res = run(dom, seed_harness(), llm_task=llm, llm_propose=llm, config=cfg,
-              out_dir=ROOT / "results" / "evomap" / "live_smoke_run", budget=Budget(max_rounds=args.cycles,
-                                                                                     max_usd=args.max_usd))
+    # the run directory persists (and a re-run RESUMES) the agent's store; keep it next to --out when given, so a
+    # plumbing check (--llm mock-live --out /tmp/x.json) never touches the recorded live run
+    run_dir = Path(args.out).with_suffix("").parent / (Path(args.out).stem + "_run") if args.out else \
+        ROOT / "results" / "evomap" / "live_smoke_run"
+    res = run(dom, seed_harness(), llm_task=llm, llm_propose=llm, config=cfg, out_dir=run_dir,
+              budget=Budget(max_rounds=args.cycles, max_usd=args.max_usd))
     loop_s = time.time() - t0
     rep = evaluate_library(dom, llm, res, splits=("holdout",), k=1, workers=4)
     genes = read_library(res.best)

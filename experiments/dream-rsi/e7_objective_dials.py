@@ -14,12 +14,16 @@ work/attainment trade-off.
    (a monotone frontier), which is what makes the Listing-2 Pareto reward meaningful.
 3. Eq.1 vs the Pareto sweep reward as the selection objective (which candidate each picks).
 
-    python experiments/dream-rsi/e7_objective_dials.py [--quick]
+With ``--llm claude:haiku`` two policies written by the LLM developer join the candidate pool
+(sandboxed), and each one's beta sweep is checked for a non-degenerate dial (Listing 2: "The
+beta sweep is non-degenerate only if beta changes the attainment/work trade-off").
+
+    python experiments/dream-rsi/e7_objective_dials.py [--llm sim|claude:haiku] [--quick]
 """
 import random
 
 import numpy as np
-from _common import figure, parse_args, save, spearman
+from _common import figure, llm_policies, parse_args, runner_for, save, spearman
 
 from rsi.dream import (DreamRSILoop, Config, Eq1Objective, ParetoSweepObjective, ReplayEvaluator, adaptive, code_of,
                        rules)
@@ -60,8 +64,17 @@ def main():
     a = parse_args("E7 objective dials", default_seeds=8)
     worlds = [record(200 + i) for i in range(a.seeds)]
     pool = candidates(12 if a.quick else 40)
-    ev = ReplayEvaluator(Eq1Objective(), W=W, fallback=GRID, runner="inprocess")
-    eps = {name: ev.evaluate(code, worlds).episodes for name, code in pool.items()}
+    llm_pols = llm_policies(a.llm, worlds, n=2, W=W, fallback=GRID, objective=Eq1Objective())
+    pool.update(llm_pols)
+    evs = {r: ReplayEvaluator(Eq1Objective(), W=W, fallback=GRID, runner=r) for r in ("inprocess", "subprocess")}
+    eps = {name: evs[runner_for(name)].evaluate(code, worlds).episodes for name, code in pool.items()}
+    llm_dials = {}
+    for name, code in llm_pols.items():   # does the LLM-written policy expose a real beta dial?
+        swp = ReplayEvaluator(ParetoSweepObjective(), W=W, fallback=GRID, runner="subprocess").evaluate(code, worlds)
+        llm_dials[name] = {"degenerate_sweep": swp.sweep["degenerate"], "reward": swp.sweep["reward"],
+                           "points": [{k: p[k] for k in ("beta", "N", "attainment")} for p in swp.sweep["points"]]}
+        print(f"LLM policy {name}: beta sweep degenerate={swp.sweep['degenerate']}, "
+              + ", ".join(f"b={p['beta']:.1f}: N={p['N']:.1f} att={p['attainment']:.2f}" for p in swp.sweep["points"]))
     stats = {n: {"N": float(np.mean([e.N for e in es])), "k": float(np.mean([e.k for e in es])),
                  "batch": float(np.mean([e.mean_batch for e in es])),
                  "attainment": float(np.mean([e.attainment for e in es]))} for n, es in eps.items()}
@@ -147,7 +160,9 @@ def main():
                f"{rho_beta_att:+.2f})")
     print(verdict)
     save("e7_objective_dials", {"config": {"worlds": a.seeds, "W": W, "grid": GRID, "candidates": len(pool),
-                                           "beta1_grid": b1s, "beta2_grid": b2s, "llm": "not used (replay only)"},
+                                           "beta1_grid": b1s, "beta2_grid": b2s,
+                                           "llm": a.llm if a.llm != "sim" else "not used (replay only)"},
+                                "llm_policy_dials": llm_dials, "llm_policies": llm_pols,
                                 "candidate_stats": stats, "selection_grid": grid,
                                 "beta2_rows": rows_b2,
                                 "rho": {"beta1_N": rho_b1_N, "beta2_batch": rho_b2_batch, "beta2_rounds": rho_b2_k,

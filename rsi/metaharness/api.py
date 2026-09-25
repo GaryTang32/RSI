@@ -18,8 +18,14 @@ from .proposer import AgentProposer, LLMSummarizer, Proposer, RewriteProposer
 def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
                   leak_rate: float = 0.0) -> Proposer:
     """``auto``: ClaudeCLI -> coding agent (paper); any other LLM -> RewriteProposer;
-    None / plain MockLLM -> offline MockProposer for the domain's program library."""
-    if kind == "mock" or llm_propose is None or (type(llm_propose) is MockLLM):
+    None / plain MockLLM -> offline MockProposer for the domain's program library (a plain
+    MockLLM on a domain without a library is used as a scripted RewriteProposer backend)."""
+    has_lib = True
+    try:
+        library_for(domain)
+    except ValueError:
+        has_lib = False
+    if kind == "mock" or llm_propose is None or (type(llm_propose) is MockLLM and kind == "auto" and has_lib):
         return MockProposer(library_for(domain), leak_rate=leak_rate, seed=config.seed)
     if kind == "agent" or (kind == "auto" and isinstance(llm_propose, ClaudeCLI)):
         cli = llm_propose.inner if isinstance(llm_propose, CachedLLM) else llm_propose
@@ -68,8 +74,10 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
             summarizer = prop.lib.summarize
         else:
             summarizer = LLMSummarizer(summarizer_llm or llm_propose)
+    # Best-of-N ("independent samples from the seed"): the seed_only view shows the run's seed harness only
+    seeds = [seed_name] if seed_name in pop else list(pop)
     loop = MetaHarnessLoop(domain, llm_task=llm_task, proposer=prop, config=cfg, out_dir=out, baselines=pop,
-                           summarizer=summarizer)
+                           summarizer=summarizer, seed_names=seeds)
     loop.run()
     final = loop.finalize(llm=finalize_llm) if cfg.finalize else None
     fr = loop.store.frontier()

@@ -6,11 +6,14 @@ ground-truth function):
 * ``reuse_rate_published`` / ``reuse_rate_promoted`` - share of assets with >= 1
   non-author adoption (counted adoptions only on SafeHub); ``never_reused``;
 * ``time_to_first_reuse`` (median epochs), ``adoption_success_rate``;
-* ``consumer_uplift`` - mean measured (or true) uplift of adopted assets;
+* ``consumer_uplift`` - mean measured uplift of adoption reports; ``consumer_uplift_true`` - mean realized
+  true uplift per report (0 when a safe consumer's quarantine rejected the asset);
 * ``credit_gini`` / ``credit_top10_share`` over agents' *earned* credits;
 * ``vacuous_share_promoted`` - the discriminative check (+ lint) re-run on the
   promoted assets' proof material (assets without proof material count as
-  vacuous: nothing demonstrates that their validation discriminates);
+  vacuous: nothing demonstrates that their validation discriminates; strategy
+  genes validated only by ``rsi-taskcheck`` count as non-vacuous iff a hub-run
+  uplift test established them);
 * ``rank_validity`` - Spearman(rank score, ground-truth effect) over ranked assets
   (else vs later adoption success); ``duplicate_rate``.
 """
@@ -36,6 +39,12 @@ class ReuseMetrics:
     def is_vacuous(self, rec) -> bool:
         b = rec.bundle
         specs = list(b.gene.get("validation", []))
+        from .safehub import is_strategy_gene
+        if is_strategy_gene(Gene.from_dict(b.gene)):
+            # a strategy gene validated only by the agent-internal task check has no workspace test to re-run;
+            # it is non-vacuous iff a hub-run task-level uplift test established it (U_LCB >= delta)
+            hr = rec.hub_report or {}
+            return not (hr.get("U_LCB") is not None and hr.get("delta") is not None and hr["U_LCB"] >= hr["delta"])
         if b.pre_state is None or b.post_state is None:
             return True
         return self.vacuity.verdict(specs, b.pre_state, b.post_state, mutants=False).vacuous
@@ -85,9 +94,11 @@ class ReuseMetrics:
             xs = [s for a, s in ranked]
             ys = [self.truth(by[a].gene) for a, s in ranked]
             out["rank_validity"] = spearman(xs, ys)
-            upl = [self.truth(by[a["asset"]].gene) for a in
-                   [{"asset": r.asset_id} for r in recs for x in r.adoptions if x["consumer"] != r.author and
-                    (x.get("counted") or not counted_only)]]
+            # realized true uplift per adoption report: a naive consumer reports after USING the asset; a safe
+            # consumer's negative report means its quarantine rejected the asset, so it kept its incumbent (0)
+            upl = [self.truth(r.gene) if (not counted_only or x["outcome"] == 1) else 0.0
+                   for r in recs for x in r.adoptions
+                   if x["consumer"] != r.author and (x.get("counted") or not counted_only)]
             out["consumer_uplift_true"] = float(np.mean(upl)) if upl else float("nan")
         else:
             out["rank_validity"] = float("nan")

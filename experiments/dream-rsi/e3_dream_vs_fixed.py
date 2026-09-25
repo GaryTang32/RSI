@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from _common import (RESULTS, agent_of, best_at, calls_to, developer_of, domain_of, figure, fmt, paired, parse_args,
-                     pmap, sandbox_of, save, summ)
+                     pmap, sandbox_of, save, summ, tagged)
 
 from rsi.core import transfer_report
 from rsi.dream import Config, run
@@ -183,6 +183,10 @@ def analyse(rows, dom_name, rounds_eq):
             "replay_cpu_s": summ([dr[s]["replay_cpu_s"] for s in seeds])}
 
 
+#: non-inferiority margin for "comparable": a fraction of Fixed's mean gain over the seed program
+NONINF = 0.05
+
+
 def make_verdicts(results: dict, raw: list) -> dict:
     """Verdict per domain from the analysed results (also used by ``--reverdict``)."""
     verdicts = {}
@@ -191,15 +195,24 @@ def make_verdicts(results: dict, raw: list) -> dict:
         at_budget = baf[1.0] if 1.0 in baf else baf["1.0"]          # float key in memory, str key from JSON
         full = at_budget["dream_minus_fixed"]
         eq = r["equal_rounds"]
+        # non-inferiority margin relative to what the search achieves (Fixed's mean gain over the seed
+        # program), not to the raw score scale: "1% of the score" is 11% of the whole gain on circle
+        # packing but ~1% on Lasso, so the same label would mean very different things per domain
+        seed_mean = float(np.mean([x["seed_score"] for x in raw if x["domain"] == d and x["arm"] == "fixed"]))
+        gain = max(1e-12, (at_budget["fixed"]["mean"] or 0.0) - seed_mean)
+        margin = NONINF * gain
         better = full["lo"] > 0
-        comparable = full["lo"] > -0.01 * max(1e-9, abs(at_budget["fixed"]["mean"] or 1))
+        comparable = full["lo"] > -margin
         worse = full["hi"] < 0
         fewer = (eq["dream_calls"]["mean"] or 0) < (eq["fixed_calls"]["mean"] or 0)
+        lo_pct = 100.0 * full["lo"] / gain
         verdicts[d] = ("REPRODUCED: better at equal budget (CI above 0)" if better else
-                       "PARTIAL: comparable at equal budget (CI within 1% below 0)" if comparable else
+                       f"PARTIAL: comparable at equal budget (non-inferior: CI lower bound {lo_pct:+.1f}% of "
+                       f"Fixed's gain over the seed, margin {100 * NONINF:.0f}%)" if comparable else
                        "NOT reproduced: worse at equal budget (CI below 0)" if worse else
                        f"INCONCLUSIVE at equal budget: difference {full['mean_diff']:+.4g} [{full['lo']:+.4g}, "
-                       f"{full['hi']:+.4g}] spans more than 1% in both directions (n={full['n']})") + \
+                       f"{full['hi']:+.4g}] (lower bound {lo_pct:+.1f}% of Fixed's gain; margin "
+                       f"{100 * NONINF:.0f}%; n={full['n']})") + \
             (f"; fewer calls at equal rounds ({eq['dream_calls']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f})"
              if fewer else "; not fewer calls at equal rounds")
         if "controls" in r:
@@ -214,15 +227,25 @@ def make_verdicts(results: dict, raw: list) -> dict:
                             "better within-round decisions")
     if "lasso" in results and "holdout" in results["lasso"]:
         h = results["lasso"]["holdout"]
+        bl = results["lasso"]["best_at_budget_fraction"]
+        full_l = (bl[1.0] if 1.0 in bl else bl["1.0"])["dream_minus_fixed"]
         fx_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "fixed"]
         dr_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "dream"]
         h["dream_minus_fixed"] = paired(fx_h, dr_h)
         hd = h["dream_minus_fixed"]
+        ho_gain = max(1e-12, (h["fixed_score"]["mean"] or 0.0) - (h["seed_score"]["mean"] or 0.0))
         if verdicts["lasso"].startswith("REPRODUCED") and not hd["lo"] > 0:
             # the search score is a max over noisy runtime measurements: without held-out support a CI
             # above 0 on it is not evidence of a better solver
             verdicts["lasso"] = "PARTIAL: search score better at equal budget but NOT on the held-out re-measurement" + \
                 verdicts["lasso"][len("REPRODUCED: better at equal budget (CI above 0)"):]
+        elif verdicts["lasso"].startswith("PARTIAL: comparable") and not hd["lo"] > -NONINF * ho_gain:
+            # non-inferior on the (noisy, max-selected) search score, but the held-out re-measurement
+            # cannot rule out a loss larger than the margin: do not call it comparable
+            verdicts["lasso"] = ("INCONCLUSIVE: non-inferior on the search score but the held-out re-measurement "
+                                 f"cannot exclude a loss > {100 * NONINF:.0f}% of Fixed's held-out gain; search score "
+                                 f"difference {full_l['mean_diff']:+.4g} [{full_l['lo']:+.4g}, {full_l['hi']:+.4g}]"
+                                 f" (n={full_l['n']})" + verdicts["lasso"][verdicts["lasso"].index(")") + 1:])
         verdicts["lasso"] += (f"; held-out re-measurement of the final programs (1/s): fixed {fmt(h['fixed_score'], 1)} "
                               f"vs dream {fmt(h['dream_score'], 1)}, diff {hd['mean_diff']:+.1f} [{hd['lo']:+.1f}, "
                               f"{hd['hi']:+.1f}] (seed program {fmt(h['seed_score'], 1)})")
@@ -271,7 +294,7 @@ def main():
         ap.add_argument("--reverdict", action="store_true",
                         help="recompute the verdicts of an existing result file without running anything")))
     if a.reverdict:
-        path = Path(a.out or RESULTS / "e3_dream_vs_fixed.json")
+        path = Path(a.out or RESULTS / f"{tagged('e3_dream_vs_fixed')}.json")
         d = json.loads(path.read_text())
         d["verdict"] = make_verdicts(d["results"], d["raw"])
         d["verdict_recomputed"] = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -342,7 +365,7 @@ def main():
     verdicts = make_verdicts(results, raw)
     for d, v in verdicts.items():
         print(f"verdict [{d}]: {v}")
-    out_path = a.out or str(RESULTS / "e3_dream_vs_fixed.json")
+    out_path = a.out or str(RESULTS / f"{tagged('e3_dream_vs_fixed')}.json")
     prev = json.loads(Path(out_path).read_text()) if Path(out_path).exists() and a.domains != DEFAULT_DOMAINS else None
     if prev:  # merge a partial rerun (e.g. --domains lasso) into the full result file
         results = {**prev.get("results", {}), **results}

@@ -283,7 +283,10 @@ class ReplayQuestion(GridQuestion):
         return (not self.hide_missing) or self.tree.cell(branch, attempt) is not None
 
     def _meta(self, branch: int, attempt: int) -> CellMeta:
-        show_tags = self.root_mode == "addressable" or attempt > 0
+        # in "earliest" mode a legal root cell is only a slot (the reveal maps it to the earliest
+        # unrevealed recorded branch), so its tags would describe the wrong branch; once revealed,
+        # a cell's branch is known and its tags (e.g. the direction) are shown, as they are online
+        show_tags = self.root_mode == "addressable" or attempt > 0 or cell_id(branch, attempt) in self._revealed
         return self.tree.cell_meta(branch, attempt, with_tags=show_tags)
 
     def _complete(self) -> bool:

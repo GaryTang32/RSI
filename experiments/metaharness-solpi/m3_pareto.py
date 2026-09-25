@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import RESULTS, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
+from _common import RESULTS, figure_path, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
     table  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -101,7 +101,7 @@ def main():
     ax.set_title("M3 accuracy-context frontier")
     ax.legend(fontsize=7)
     f.tight_layout()
-    png = RESULTS / "m3_pareto.png"
+    png = figure_path("m3_pareto", ARGS)
     RESULTS.mkdir(parents=True, exist_ok=True)
     f.savefig(png, dpi=120)
     save("m3_pareto" + ("_live" if ARGS.live else ""), {

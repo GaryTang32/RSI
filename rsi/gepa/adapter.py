@@ -53,6 +53,8 @@ class EvalBatch:
     num_metric_calls: int = 0
     seeds: list[int] = field(default_factory=list)
     n_infra: int = 0                  # trials that still failed for infrastructure reasons after retries
+    n_errors: int = 0                 # trials whose execution raised (graded 0 by Domain.run), infra excluded
+    first_error: Optional[str] = None
 
 
 def is_infra_error(trial: Trial) -> bool:
@@ -147,9 +149,10 @@ class DomainAdapter:
             objs = [self.objective_fn(t, tr) for t, tr in zip(tasks, trials)]
         elif any("objectives" in (tr.meta or {}) for tr in trials):
             objs = [dict((tr.meta or {}).get("objectives", {})) for tr in trials]
+        errs = [str(tr.error) for tr in trials if tr.error and not is_infra_error(tr)]
         return EvalBatch(list(task_ids), [tr.output for tr in trials], [float(tr.score) for tr in trials],
                          trials if capture_traces else None, objs, len(jobs), list(seeds),
-                         sum(1 for tr in trials if is_infra_error(tr)))
+                         sum(1 for tr in trials if is_infra_error(tr)), len(errs), errs[0] if errs else None)
 
     # ----------------------------------------------------- reflective dataset --
     def default_record(self, task: Task, trial: Trial) -> dict:

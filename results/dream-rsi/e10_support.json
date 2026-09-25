@@ -1,6 +1,6 @@
 {
  "experiment": "e10_support",
- "created": "2026-09-24 23:07:31",
+ "created": "2026-09-25 05:56:06",
  "config": {
   "records": {
    "shallow_6x2": [
@@ -20,7 +20,8 @@
    "normalize": false
   },
   "W": 4,
-  "llm": "not used"
+  "llm": "not used",
+  "llm_policies": {}
  },
  "results": {
   "go_deeper_3x9": {

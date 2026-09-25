@@ -28,6 +28,13 @@ from rsi.core import CachedLLM, ClaudeCLI, paired_diff_ci, spearman, summarize_r
 
 RESULTS = ROOT / "results" / "dream-rsi"
 CACHE = ROOT / ".rsi_cache" / "dream-rsi"
+#: suffix for live-LLM result files (``e3_dream_vs_fixed__claude-haiku.json``), so a small live
+#: showcase never overwrites the full offline result the write-up cites; set by ``parse_args``
+RUN_TAG = ""
+
+
+def tagged(name: str) -> str:
+    return name if (not RUN_TAG or name.startswith("live_smoke")) else f"{name}__{RUN_TAG}"
 
 
 def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = None):
@@ -43,6 +50,8 @@ def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = N
     if a.seeds is None:
         a.seeds = 3 if a.quick else default_seeds
     if a.llm != "sim":
+        global RUN_TAG
+        RUN_TAG = a.llm.replace(":", "-")
         a.workers = 1
         if a.seeds > 2 and not a.quick:
             print("[note] live LLM: consider --seeds 1 --quick to bound cost", flush=True)
@@ -67,6 +76,42 @@ def developer_of(spec: str, **kw):
     if llm is None:
         return ParametricMutator(**kw)
     return LLMPolicyDeveloper(llm)
+
+
+def llm_policies(spec: str, worlds, *, n: int = 2, W: int = 4, fallback=(6, 4), base_code: Optional[str] = None,
+                 objective=None, root_mode: str = "earliest", hard_max=(16, 16)) -> dict:
+    """``n`` policies written by the LLM developer (Listing-2 prompt) for replay-only experiments:
+    a short dreaming chain on ``worlds`` starting from ``base_code`` (default: the adaptive
+    template); each revision starts from the strongest version so far and is scored in the
+    subprocess sandbox. Returns ``{"llm_1": code, ...}`` for the accepted revisions (empty
+    offline). LLM-written code must only ever be run with ``runner="subprocess"``."""
+    if spec == "sim":
+        return {}
+    from rsi.dream import DevContext, ReplayEvaluator, SubprocessRunner, VersionRecord, adaptive, code_of, parallel_refine
+
+    ev = ReplayEvaluator(objective, W=W, fallback=tuple(fallback), runner=SubprocessRunner(timeout_s=30),
+                         root_mode=root_mode, hard_max=tuple(hard_max))
+    dev = developer_of(spec)
+    inc = VersionRecord(0, base_code or code_of(adaptive()), label="incumbent")
+    inc.report = ev.evaluate(inc.code, worlds)
+    versions, out = [inc], {}
+    for m in range(n):
+        rev = dev.revise(DevContext(1, versions, [], [], code_of(parallel_refine()), "eq1", W,
+                                    first_in_phase=(m == 0)), seed=m)
+        if not rev.ok:
+            print(f"[llm policy {m + 1}] rejected: {rev.error}", flush=True)
+            continue
+        rec = VersionRecord(m + 1, rev.code, ev.evaluate(rev.code, worlds), rev.change, label=f"llm_{m + 1}")
+        versions.append(rec)
+        out[rec.label] = rev.code
+        print(f"[llm policy {m + 1}] replay V {rec.report.value:+.4f} (incumbent {inc.report.value:+.4f}): "
+              f"{rev.change[:120]}", flush=True)
+    return out
+
+
+def runner_for(name: str) -> str:
+    """Policies written by an LLM (named ``llm_*``) always run in the subprocess sandbox."""
+    return "subprocess" if name.startswith("llm_") else "inprocess"
 
 
 def domain_of(name: str, seed: int = 0, **kw):
@@ -130,7 +175,7 @@ def fmt(s: dict, p: int = 4) -> str:
 
 def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
     RESULTS.mkdir(parents=True, exist_ok=True)
-    p = Path(out) if out else RESULTS / f"{name}.json"
+    p = Path(out) if out else RESULTS / f"{tagged(name)}.json"
     payload = {"experiment": name, "created": time.strftime("%Y-%m-%d %H:%M:%S"), **payload}
     p.write_text(json.dumps(payload, indent=1, default=_default))
     print(f"[saved] {p}", flush=True)
@@ -152,7 +197,7 @@ def figure(name: str):
     import matplotlib.pyplot as plt
 
     RESULTS.mkdir(parents=True, exist_ok=True)
-    return plt, RESULTS / f"{name}.png"
+    return plt, RESULTS / f"{tagged(name)}.png"
 
 
 def best_at(curve, calls: float):

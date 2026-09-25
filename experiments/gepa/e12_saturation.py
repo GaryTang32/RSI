@@ -71,7 +71,7 @@ def main():
         summ[arm] = {k: summarize([float(r[k]) for r in rs]) for k in
                      ("accepted", "proposed", "skipped_perfect", "iterations", "returned_seed", "seed_test",
                       "best_test", "seed_train", "measured_val_of_returned")}
-    o = summ.get("oracle,slip0,skip") or summ[arms[0]]
+    o = summ.get("oracle,slip0,skip")        # the noise-free arm decides the claim (absent in live mode)
     out = {"experiment": "E12 saturation", "llm": a.llm, "config": {"budget": B, "seeds": a.seeds}, "summary": summ,
            "raw": rows,
            "verdict": ("Oracle seed: accepted children per run " + ", ".join(
@@ -87,10 +87,12 @@ def main():
                   f"- GEPA never reflects on D_pareto - but the reported validation score "
                   f"{fmt(summ['memorizer,slip0,separate_val']['measured_val_of_returned'])} exposes the problem"
                   if "memorizer,slip0,val=train" in summ else "")
-               + f". Claim '~0 accepted, the seed is returned': "
-                 f"{'REPRODUCED' if o['accepted']['mean'] < 0.5 and o['returned_seed']['mean'] > 0.9 else 'NOT reproduced'} "
-                 f"with noise-free evaluation; with 5% rollout noise the strict minibatch gate admits noise-driven "
-                 f"children (no noise margin), so the returned candidate can differ from the seed without being better.")}
+               + (f". Claim '~0 accepted, the seed is returned': "
+                  f"{'REPRODUCED' if o['accepted']['mean'] < 0.5 and o['returned_seed']['mean'] > 0.9 else 'NOT reproduced'} "
+                  f"with noise-free evaluation" if o else ". The noise-free arm was not run (live mode), so the claim "
+                  "is not assessed")
+               + "; with 5% rollout noise the strict minibatch gate admits noise-driven children (no noise margin), "
+                 "so the returned candidate can differ from the seed without being better.")}
     save("e12_saturation", out, a.out)
     print(out["verdict"])
 

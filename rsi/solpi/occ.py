@@ -285,9 +285,14 @@ class OnlineContextCompact(Extension):
         return None
 
     def context_tokens(self, rt: AgentRuntime) -> int:
+        """``extension.ts:contextTokens``: ``max(provider-reported context tokens, sum of visible-message
+        estimates + ceil(bytes(system prompt) / 4))``. The runtime's size of the last provider request
+        (system message with tool schemas included) stands in for ``getContextUsage().tokens``."""
         sys_tokens = math.ceil(len(rt.system_prompt.encode()) / 4)
         visible = sum(m.tokens() for m in self.observed if m.role != "system")
-        return int(visible + sys_tokens)
+        estimated = int(visible + sys_tokens)
+        reported = int(getattr(rt, "last_context_tokens", 0) or 0)
+        return max(reported, estimated) if reported > 0 else estimated
 
     def _before_request(self, msgs: list[Message], rt: AgentRuntime) -> None:
         self.state = record_provider_request(self.state, self.context_tokens(rt))

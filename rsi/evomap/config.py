@@ -8,13 +8,14 @@ porting notes):
     retries), process-score keep rule, memory-graph outcome recorded one cycle
     late and read from the executor's transcript first, hub hits used in
     ``reference`` mode (injected directly), distiller fallback validation
-    ``python --version``.
+    ``python --version``, failure-distilled repair genes (empty validation).
 
 ``safe`` (our fixes, each logged in the ImprovementResult meta)
     safe runner (no silent skips, empty list FAILS), vacuity detector (lint +
     discriminative) and the agent's own graded task result in the keep rule,
     outcome = the measured solidify outcome recorded immediately, hub assets
-    quarantined and re-tested on the agent's own held-out tasks before use.
+    quarantined and re-tested on the agent's own held-out tasks before use
+    (a rejected asset is never re-tested), no failure-distilled repair genes.
 
 Any field left ``None`` takes the mode's default (see :meth:`Config.resolved`).
 """
@@ -27,10 +28,12 @@ from typing import Optional
 MODE_DEFAULTS = {
     "faithful": {"outcome_source": "faithful", "outcome_timing": "next_cycle", "reuse_mode": "reference",
                  "hub_when": "always", "require_task_success": False, "vacuity_check": False,
-                 "failed_capsule_rule": "absolute", "carry_log_signals": True, "skip_geneless_success": False},
+                 "failed_capsule_rule": "absolute", "carry_log_signals": True, "skip_geneless_success": False,
+                 "failure_distill": True, "reject_memory": False},
     "safe": {"outcome_source": "safe", "outcome_timing": "immediate", "reuse_mode": "quarantine",
              "hub_when": "no_local", "require_task_success": True, "vacuity_check": True,
-             "failed_capsule_rule": "relative", "carry_log_signals": False, "skip_geneless_success": True},
+             "failed_capsule_rule": "relative", "carry_log_signals": False, "skip_geneless_success": True,
+             "failure_distill": False, "reject_memory": True},
 }
 
 
@@ -76,6 +79,8 @@ class Config:
     distill_every: int = 5
     distill_min_capsules: int = 10
     llm_distill: bool = False
+    failure_distill: Optional[bool] = None   # faithful: repair genes from >= 5 failed capsules (empty validation);
+    #                                          safe: off (such genes can never pass a discriminative keep rule)
     # hub
     publish: bool = True
     hub_when: Optional[str] = None           # always | no_local
@@ -90,6 +95,8 @@ class Config:
     quarantine_min_tasks: int = 3
     quarantine_gate: str = "rrsi"            # rrsi | lcb
     quarantine_delta: Optional[float] = None
+    reject_memory: Optional[bool] = None     # safe: never re-test an asset this agent's quarantine already rejected
+    #                                          (re-sampling held-out tasks until a useless asset passes = p-hacking)
     taskcheck_n: int = 4
     taskcheck_k: int = 1
     taskcheck_alpha: float = 0.2             # rsi-taskcheck passes iff the paired (1 - alpha) CI lower bound > 0

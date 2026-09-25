@@ -62,7 +62,11 @@ class AgentWorldDomain(Domain):
         tasks, splits = [], {"evolve": [], "holdout": [], "ood": [], "test": []}
 
         def add(split, fam, i):
-            n = rng.randint(*subtasks) if fam != "buildfix" else rng.randint(3, min(5, subtasks[1]))
+            if fam != "buildfix":
+                n = rng.randint(*subtasks)
+            else:                           # 3..5 files by default; small live/smoke configs cap it (>= 1)
+                hi = min(5, subtasks[1])
+                n = rng.randint(3, hi) if hi >= 3 else max(1, hi)
             tid = f"{split}-{fam}-{i:02d}"
             tasks.append(Task(tid, {"family": fam, "n_subtasks": n, "env_seed": rng.randint(0, 10 ** 6)}, None, fam))
             splits[split].append(tid)
@@ -124,6 +128,10 @@ class AgentWorldDomain(Domain):
         for ext in build_extensions(artifact.files, {"reducer_llm": self.reducer_llm, "seed": seed}):
             rt.add_extension(ext)
         res = rt.run(env.statement())
+        tamper = meter_tampering(rt, meter)
+        if tamper:
+            # the efficiency metrics are graded by this meter: a harness that swaps or patches it is a failed run
+            return Execution(error=f"harness tampered with the token meter: {tamper}", steps=rt.provider_requests)
         score = env.verify() if res.status != "context_overflow" else 0.0
         tot = meter.total()
         main = meter.by_role.get("main")
@@ -145,6 +153,21 @@ class AgentWorldDomain(Domain):
         out = execution.output or {}
         ok = execution.meta.get("subtasks_ok", [])
         return float(out.get("score", 0.0)), f"{sum(ok)}/{len(ok)} subtasks verified; run status {out.get('status')}"
+
+
+def meter_tampering(rt: AgentRuntime, meter: TokenMeter) -> str:
+    """Integrity check of the grader-side token meter after a run (code mechanisms run in-process):
+    the runtime must still bill through the domain's meter, its methods must be the class's, and
+    every main-agent provider request must be billed. Returns a reason or ''."""
+    if rt.meter is not meter:
+        return "runtime meter replaced"
+    patched = [k for k in ("request", "add_output", "simple", "total", "reset_cache") if k in vars(meter)]
+    if patched or type(meter) is not TokenMeter:
+        return f"meter methods overridden: {patched or type(meter).__name__}"
+    billed = sum(1 for u in meter.requests if u.role == "main")
+    if billed != rt.provider_requests or meter.by_role.get("main") is None and rt.provider_requests:
+        return f"{rt.provider_requests} provider requests but {billed} billed"
+    return ""
 
 
 def mechanism_audit(rt: AgentRuntime) -> dict:

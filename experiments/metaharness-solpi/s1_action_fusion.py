@@ -143,9 +143,9 @@ def main():
         summ["A"]["success_change"].get("mean_diff", -1) >= -0.01
     fewer = a["measured_request_reduction"]["lo"] > 0 and a["token_reduction"]["lo"] > 0
     verdict = ("REPRODUCED" if fewer and unchanged and safety["all_pass"] else "PARTIAL") + \
-        f": requests -{100 * a['measured_request_reduction']['mean']:.1f}% (oracle-predicted " \
-        f"-{100 * a['oracle_predicted_request_reduction']['mean']:.1f}%{' - close' if close else ''}), tokens " \
-        f"-{100 * a['token_reduction']['mean']:.1f}%, cost -{100 * a['cost_reduction']['mean']:.1f}%, success change " \
+        f": requests {-100 * a['measured_request_reduction']['mean']:+.1f}% (oracle-predicted " \
+        f"{-100 * a['oracle_predicted_request_reduction']['mean']:+.1f}%{' - close' if close else ''}), tokens " \
+        f"{-100 * a['token_reduction']['mean']:+.1f}%, cost {-100 * a['cost_reduction']['mean']:+.1f}%, success change " \
         f"{summ['A']['success_change'].get('mean_diff', float('nan')):+.3f}; safety checks " \
         f"{'pass' if safety['all_pass'] else 'FAIL'}" + \
         (f"; backend B uptake {summ['B']['fused_calls_per_task']['mean']:.1f} vs A " \

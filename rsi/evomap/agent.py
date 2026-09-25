@@ -128,8 +128,10 @@ class AgentNode:
         self.mutations = MutationBuilder()
         self.personality = PersonalityModel(PersonalityState())
         self.inferrer = OutcomeInferrer(cfg.outcome_source)
+        # validate_synth filters distilled validations through the mode's allowlist (Evolver's
+        # isValidationCommandAllowed; an EMPTY result is still accepted)
         self.distiller = Distiller(mode=cfg.mode, every=cfg.distill_every, min_capsules=cfg.distill_min_capsules,
-                                   command_policy=self.runner.policy if cfg.mode == "safe" else None)
+                                   command_policy=self.runner.policy)
         self.auditor = LeakageAuditor(domain.leakage_terms(cfg.split) if cfg.split in domain.tasks.splits else ())
         self.decision_tasks = decision_tasks if decision_tasks is not None else self._split(cfg.split)
         ho = heldout_tasks if heldout_tasks is not None else (self._split(cfg.heldout_split) or self.decision_tasks)
@@ -147,19 +149,32 @@ class AgentNode:
         self._pending: Optional[dict] = None
         self._last_trace = ""
         self._published: set = set()
+        self._reviewed: set = set()        # naive consumers review each hub asset once (hub_review_history)
+        self._rejected: set = set()        # safe consumers never re-test an asset their quarantine rejected
+        self.last_gene: Optional[Gene] = None   # the gene actually used in the last cycle (stored or not)
+        self._rollouts = 0
         self.proposer_calls = 0
         self.n_quarantined = 0
         self.n_quarantine_rejected = 0
 
     # ------------------------------------------------------------------ helpers
     def _split(self, name: Optional[str]) -> list:
+        """Tasks of a DECISION split (the agent practises on ``split`` and re-tests hub assets on
+        ``heldout_split``). A sealed split (holdout / ood / test) raises SealedSplitError: it must never
+        influence the agent's keep or adoption decisions."""
         if not name or name not in self.domain.tasks.splits:
             return []
-        return self.domain.tasks.split(name, allow_sealed=True)
+        return self.domain.tasks.split(name)
 
     def _run(self, task: Task, genes: list, seed: int):
         art = self.injector.inject(self.harness, genes) if genes else self.harness
+        self._rollouts += 1
         return self.domain.run(art, task, seed=seed, llm=self.llm_task)
+
+    @property
+    def n_rollouts(self) -> int:
+        """Fresh task rollouts this agent paid for: solves, rsi-taskcheck A/Bs and quarantine re-tests."""
+        return self._rollouts + (self.quarantine.ev.n_rollouts if self.quarantine is not None else 0)
 
     def _gene_successes(self) -> dict:
         out: dict = {}
@@ -229,6 +244,10 @@ class AgentNode:
             if b is None:
                 return None, None, None, False
             return Gene.from_dict(b.gene), best.asset_id, None, True
+        if cfg.reject_memory:
+            views = [v for v in views if v.asset_id not in self._rejected]
+            if not views:
+                return None, None, None, False
         v = views[0]
         b = hub.fetch(v.asset_id, self.name)
         if b is None:
@@ -236,6 +255,7 @@ class AgentNode:
         try:
             self.store.stage_external(b.gene, source=hub.name, hub_report_id=(v.asset_id or "")[:24])
         except ValueError:
+            self._rejected.add(v.asset_id)
             return None, v.asset_id, {"promote": False, "reason": "asset_id integrity check failed"}, True
         self.n_quarantined += 1
         q = self.quarantine.test(Gene.from_dict(b.gene))
@@ -245,6 +265,7 @@ class AgentNode:
             hub.report_outcome(v.asset_id, self.name, 1, q.proof)
             return g, v.asset_id, qd, True
         self.n_quarantine_rejected += 1
+        self._rejected.add(v.asset_id)
         self.store.resolve_external(v.asset_id, "rejected", q.reason)
         if q.n > 0:
             hub.report_outcome(v.asset_id, self.name, 0, q.proof)
@@ -292,6 +313,9 @@ class AgentNode:
             self._record_pending(cur_error=has_error(base_sig))
         dd = self.deduper.apply(base_sig, recent)
         signals = dd.signals
+        st.memory.record("signal", signal={"key": signal_key(signals), "signals": list(signals),
+                                           "error_signature": next((x for x in signals if x.startswith("errsig:")),
+                                                                   None)})
         plateau = self.plateau.override(recent) if cfg.plateau_override else PlateauOverride(False)
         drift = cfg.drift or (plateau.active and plateau.severity == "required")
         if plateau.active:
@@ -311,8 +335,27 @@ class AgentNode:
                 gene, source, reused = hg, "hub", aid
         pol = self.policy.adaptive(recent, gene, signals, self.t)
         pers = self.personality.select_for_run(drift, signals, self._recent_success())
-        mut = self.mutations.build(signals, gene, innovate_mode=drift or pol.force_innovate, personality=pers,
-                                   preset=pol.preset, clock_s=st.clock.now())
+        # §3.4: innovate mode also when creativity >= 0.75 and the last 6 outcomes are all successes with mean
+        # score >= 0.7 (which adds stable_success_plateau); high risk only for a known, rigorous, cautious persona
+        last6 = [e.outcome for e in st.recent_events(6)]
+        creative = (pers.creativity >= 0.75 and len(last6) == 6 and all(o.get("status") == "success" for o in last6)
+                    and sum(float(o.get("score", 0.0)) for o in last6) / 6 >= 0.7)
+        if creative and "stable_success_plateau" not in signals:
+            signals = signals + ["stable_success_plateau"]
+        allow_high = (drift and self.personality.known and pers.rigor >= 0.8 and pers.risk_tolerance <= 0.3
+                      and "log_error" not in signals)
+        # buildMutation resolves the preset WITHOUT signals (only the cycle-count rule applies there)
+        mut = self.mutations.build(signals, gene, innovate_mode=drift or pol.force_innovate or creative,
+                                   personality=pers, allow_high_risk=allow_high, preset=self.policy.resolve(self.t),
+                                   clock_s=st.clock.now())
+        gid0 = gene.id if gene is not None else None
+        st.memory.record("hypothesis", gene={"id": gid0},
+                         hypothesis={"id": f"hyp_{self.name}_{self.t:06d}", "predicted_outcome": "success",
+                                     "text": f"Given signal_key={signal_key(signals)[:160]} with {len(signals)} "
+                                             f"signals, selecting gene={gid0} under mode={mut.category} is expected "
+                                             "to reduce repeated errors and improve stability."})
+        st.memory.record("attempt", gene={"id": gid0}, action={"id": f"act_{self.name}_{self.t:06d}", "drift": drift,
+                                                              "selected_by": source, "selector": dec.mode})
         ptok0 = self.llm_propose.meter.total().total_tokens if self.llm_propose is not None else 0
         tokens = 0
         if gene is not None:
@@ -330,6 +373,7 @@ class AgentNode:
         if self.llm_propose is not None:
             tokens += self.llm_propose.meter.total().total_tokens - ptok0
         solved = trial.score >= cfg.success_threshold
+        self.last_gene = gene
         if gene is None and solved and cfg.skip_geneless_success:
             return self._skip(task, signals, dec, trial, tokens, reused, qd, hub_hit)
         if gene is None and cfg.mode == "faithful":
@@ -366,14 +410,20 @@ class AgentNode:
         self._last_trace = (trial.trace or "")[-4000:]
         self.personality.update_stats(pers, res.success, res.score)
         # naive consumers review the reused asset (self-assessed outcome)
-        if self.hub is not None and reused and cfg.reuse_mode in ("reference", "direct"):
+        if self.hub is not None and reused and cfg.reuse_mode in ("reference", "direct") \
+                and reused not in self._reviewed:            # §4.17: one review per asset
+            self._reviewed.add(reused)
             self.hub.report_outcome(reused, self.name, int(res.success),
                                     {"score": res.score, "violations": res.constraints.violations})
         distilled = None
         if res.success and cfg.distill:
-            dr = self.distiller.maybe_distill(st, llm=self.llm_propose if cfg.llm_distill else None)
+            dr = self.distiller.maybe_distill(st, llm=self.llm_propose if cfg.llm_distill else None,
+                                              failures=bool(cfg.failure_distill))
             if dr is not None and dr.ok and dr.gene is not None:
                 distilled = dr.gene.id
+            fr = self.distiller.last_failure_result
+            if fr is not None and fr.ok and fr.gene is not None:
+                distilled = f"{distilled},{fr.gene.id}" if distilled else fr.gene.id
         published = None
         if self.hub is not None and cfg.publish and self.behavior.publishes and res.success and gene is not None \
                 and rs.source_type != "reused" and (res.publishable or not cfg.publish_requires_eligibility):

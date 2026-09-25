@@ -4510,5 +4510,5 @@
   }
  ],
  "verdict": "b=3: validation share of rollouts 0.729 [0.719, 0.737] (claim '> 50%': REPRODUCED); false-accept rate by b: b=1 0.50, b=3 0.48, b=5 0.53, b=10 0.40 (not monotone in b); false-reject rates: b=1 0.10, b=3 0.20, b=5 0.21, b=10 0.30; iterations at B=3000: b=1 342, b=3 164, b=5 129, b=10 79. Best b for this budget: b=5 (0.910 [0.898, 0.921]). >= acceptance: test 0.899 [0.887, 0.910], false-accept 0.52; noise margin 0.1: test 0.909 [0.895, 0.922].",
- "generated_at": "2026-09-25 00:18:49"
+ "generated_at": "2026-09-25 06:24:44"
 }

@@ -14,15 +14,18 @@ The spec is `docs/methods/meta-harness-and-sol-pi.md`. Section numbers below (A3
 **Headline (offline, simulated worlds; details in §4).**
 
 Meta-Harness:
-- History ablation (M1): full history beats scores-only and scores+summaries. The median proposed candidate gains +3.4 and +2.4 points, with CIs that exclude 0.
-- Equal budget (M2): Meta-Harness has the best final search score of the four arms. It beats Best-of-N (+5.1 points) and GEPA-style reflection (+1.7) significantly; its lead over the OPRO-style window (+2.6) is not significant.
+- History ablation (M1, PARTIAL): full history beats scores-only and scores+summaries. The median proposed candidate gains +3.4 and +2.4 points, with CIs that exclude 0. The paper's second finding does not reproduce: here summaries help slightly over scores-only (+1.0 median, CI [0.4, 1.6]).
+- Equal budget (M2, PARTIAL): Meta-Harness has the best final search score of the four arms. It beats Best-of-N (+6.2 points; Best-of-N now samples only from the run's seed, see §8) and GEPA-style reflection (+1.7) significantly. Its lead over the OPRO-style window (+2.6) is not significant. The "10× fewer evaluations" claim does not reproduce.
 - Transfer (M4): the selected harness gains +10.2 points on unseen datasets and +13–16 points on an unseen model.
 - Leakage (M5): without a guard, leaky candidates reach the frontier and win selection in 100% of runs. The pilot-style screen rejects all of them.
 
 SoL-Pi:
-- All four mechanisms are faithful ports: the economics test vectors pass exactly, and EPR receipts never contain a non-verbatim quote under injected hallucination.
-- The full stack cuts tokens 56–75% and cost 19–66% at unchanged success (S7, PARTIAL). On backend A, EPR alone is cheaper than the full stack.
-- Surviving across environments (S5, REPRODUCED): a single-environment efficiency objective admits tricks and do-less shortcuts and loses 45% of held-out capability. The multi-family dual gate plus the held-out firewall keeps 100% of held-out capability at a 39% cost-per-score saving.
+- All four mechanisms are faithful ports: the economics test vectors pass exactly, and EPR receipts never contain a non-verbatim quote under injected hallucination. Since the review, EPR reduces the exact untruncated log and OCC prices `W = max(reported, estimated)`, as the release does (§8).
+- The full stack cuts tokens 54–68% and cost 16–61% at unchanged success (S7, PARTIAL). On backend A, EPR alone is cheaper than the full stack.
+- Surviving across environments (S5, PARTIAL):
+  - A single-environment efficiency objective admits tricks and do-less shortcuts and loses 45% of held-out capability. The multi-family dual gate plus the held-out firewall keeps 100% of held-out capability at a 39% cost-per-score saving.
+  - A single-environment *dual gate* with the same firewall does just as well: 100% capability and a 40% saving. Training on more families rejects more tricks at the gate (3.0 → 1.6–1.8), but it gives no significant held-out gain once the capability floor and the firewall are in place.
+  - What does the work here is the floor plus the firewall, not the environment diversity.
 - Capability floor (S6, NOT REPRODUCED against the predeclared criterion): the dual gate blocks one of the two do-less shortcuts, but a lenient turn cap still passes it in every seed. Composed with the other survivors, it costs 7 points of training success. An inferred composition re-check (`Config.validate_composition`) closes the gap.
 - Effect sizes are smaller than the papers', and several sub-claims reproduce only partially. They are marked below.
 
@@ -149,10 +152,10 @@ Offline there are ready-made idea pools and proposers for `agentworld` (`Library
 | 2 | Proposes new harness code (store / retrieve / present) | `MemorySystem` interface (`learn_from_batch` = store, `predict` prompt building = retrieve and present); whole-program candidates | M1–M5 | implemented |
 | 3 | New harness is evaluated on the tasks | `InterfaceValidator` → `Evaluator` on the search split | `test_interface_validator_catches_errors_and_hangs` | implemented (compile + forked smoke, 30 s kill) |
 | 4 | All logs saved to a new directory; loop repeats | `store.add_candidate / write_eval / log_session`, `evolution_summary.jsonl`, `MetaHarnessLoop.run` (resumable) | `test_views…`, `test_run_end_to_end_is_deterministic` | implemented |
-| 5 | Scale of feedback vs OPRO (window) / TextGrad (current only) | `history_mode` ∈ full / scores_summary / scores_only / window / last_only / seed_only | M1, M2 | M1 reproduced (small effect); M2 partial |
+| 5 | Scale of feedback vs OPRO (window) / TextGrad (current only) | `history_mode` ∈ full / scores_summary / scores_only / window / last_only / seed_only | M1, M2 | M1 partial: full history wins (small effect), but summaries do help over scores-only, unlike the paper. M2 partial |
 | 6 | +7.7 points over SOTA context management with 4× fewer context tokens | `context_cost` objective, `pareto_frontier`, `per_unit_best`, `hypervolume` | M3 | reproduced qualitatively: a frontier harness beats `fewshot_all` on test with ~6× less context in 100% of runs |
 | 7 | One harness improves maths on five models it wasn't tuned on | `rsi.core.transfer_report` over unseen datasets and an unseen model | M4 | reproduced qualitatively (selection model reported separately from MemoLM-B) |
-| 8 | Also tested on agentic coding | Domain-agnostic loop; runs on `agentqa` (agent harness with tools); AgentWorld harness configs are artifacts too | `test_runs_on_agentqa_second_domain` | partial: the TB2-style `AgentHarness` subclass validator is not implemented |
+| 8 | Also tested on agentic coding | Domain-agnostic loop; runs on `agentqa` (agent harness with tools); AgentWorld harness configs are artifacts too; any new `FunctionDomain` | `test_runs_on_agentqa_second_domain`, `test_metaharness_on_new_function_domain_with_scripted_llm` | partial: the TB2-style `AgentHarness` subclass validator is not implemented |
 | 9 | Practised best (93.0) but <1 point unseen | practised vs unseen gap in M5 / M4 | M4, M5 | reproduced as a mechanism (the gap appears when leakage is possible) |
 | 10 | Reading the full history is expensive | `sessions/iterNNN/meta.json`: `files_read`, `files_read_by_kind`, `view_chars`, `read_chars`, proposer usage | M1 read accounting; live smoke | full mode reads ~10× more history characters per iteration (541k vs 54k); live haiku proposer ≈ 23k input tokens / call |
 | 11 | No explicit check for test-specific edits | `Config.leakage_screen=False` by default; `LeakageScreen` (pilot) | M5 | reproduced |
@@ -168,17 +171,17 @@ Offline there are ready-made idea pools and proposers for `agentworld` (`Library
 |---|---|---|---|---|
 | 1 | Tokens are the bottleneck; efficiency metrics first-class | `TokenMeter` (prefix cache, per-kind tokens), `CostModel` (η) | S1–S7 | implemented |
 | 2 | Autoresearch-style loops on the harness across environments | `AutoResearchDriver`, `Lineage` (rollouts → map-reduce → one mechanism → Ralph loop → review → validation) over AgentWorld families | S5, S6; `test_protocol_end_to_end_agentworld` | implemented |
-| 3 | Keep only changes that survive everywhere | `DualGate` (`aggregate`; `per_family` literal option), `HoldoutFirewall`, held-out families, backend B | S5 | reproduced: held-out capability 1.00 with the multi-family gate and firewall vs 0.55 for a single-environment efficiency objective; tricks reaching the final stack drop from 3.0 to 0.2 |
+| 3 | Keep only changes that survive everywhere | `DualGate` (`aggregate`; `per_family` literal option), `HoldoutFirewall`, held-out families, backend B | S5 | partial:<br>• held-out capability is 1.00 with the multi-family gate and firewall, vs 0.55 for a single-environment efficiency objective;<br>• tricks reaching the final stack drop from 1.2 to 0.2;<br>• a single-environment *dual* gate with the firewall is statistically indistinguishable (1.00 capability; η saving 0.40 vs 0.39). |
 | 4 | Start from Pi (no patches; public extension API) | `AgentRuntime` base tools; mechanisms only through `register_tool` / `on` | tests | implemented |
 | 5 | More and more varied environments | families + `validity_filter`; `Config.rounds > 1` (next round from the composed base; experimental and **not evaluated**, as in the sources) | `test_every_environment_passes_the_validity_filter` | implemented (5 families, not 535 environments) |
 | 6 | What survives transfers | held-out families (configfix, datalookup) + backend B evaluation | S5, S7 | reproduced in simulation: firewall survivors keep 0.99 of held-out success on unseen backend B; the full stack keeps success on both backends |
 | 7 | Four mechanisms | `ActionFusion`, `OnlineContextCompact`, `ObservationPack`, `EvidencePreservingReducer` | S1–S4, mechanism tests | implemented (faithful ports) |
-| 8 | EdgeBench: −44.7..−49.0% tokens, ~−33% cost at ~94% of Pi's score, two backends | full stack on two backends | S7 | partial: full stack −56.5% tokens / −19.4% cost at 100% of base success (A, default); −56..−75% tokens and −19..−66% cost over 2 backends × 2 lengths; EPR alone is cheaper than the full stack on backend A |
+| 8 | EdgeBench: −44.7..−49.0% tokens, ~−33% cost at ~94% of Pi's score, two backends | full stack on two backends | S7 | partial:<br>• full stack −53.8% tokens / −15.6% cost at 100% of base success (A, default);<br>• −54..−68% tokens and −16..−61% cost over 2 backends × 2 lengths;<br>• EPR alone is cheaper than the full stack on backend A. |
 | 9 | Open code (~3k stars) | documentation pointer (NVlabs/SoL-Pi, MIT) | – | – |
 | 10 | Same quality for less cost; one benchmark / two models / one harness | dual gate (non-inferiority + efficiency), two backends, base-agnostic runtime | S5–S7 | implemented |
 | 11–12 | Agent-ring / timeline rows | whole stack | – | implemented |
 | 13 | Mechanisms useful for any long-running agent | extensions against the generic `AgentRuntime`, independent of the driver | `example_new_problem.py` part 2 | implemented |
-| 14 | Fight overfitting by surviving across environments | `DualGate` + `HoldoutFirewall` + training / held-out split | S5; `test_firewall_is_one_way_and_lineages_cannot_read_holdout` | implemented |
+| 14 | Fight overfitting by surviving across environments | `DualGate` + `HoldoutFirewall` + training / held-out split | S5; `test_firewall_is_one_way_and_lineages_cannot_read_holdout`; `test_solpi_protocol_on_new_function_domain` | implemented. In S5 the floor and the firewall carry the effect; extra training families add no significant held-out gain. |
 | 15 | Context compaction (summarise / drop old material) | OCC + ObservationPack | S2, S4 | implemented |
 | 16 | Make cost part of the decision | `TokenMeter`, `CostModel`, efficiency half of `DualGate` | S5, S6 | implemented; S6 shows the floor is needed (efficiency-only admits do-less shortcuts, −51 points success), but per-mechanism gating alone lets a lenient turn cap through |
 | (S9) | Held-out never feeds back | firewall owns the only unsealed evaluator; lineages hold no reference; each candidate evaluated once | test above | implemented |
@@ -193,7 +196,7 @@ Every script is `python experiments/metaharness-solpi/<name>.py [--llm sim|claud
 
 ### 4.1 Meta-Harness (MemoClassify, 10 seeds, 3 search datasets, MemoLM-A)
 
-**M1 (history ablation), N = 8, k = 2.** Verdict: REPRODUCED.
+**M1 (history ablation), N = 8, k = 2.** Verdict: PARTIAL. The main claim holds: full history beats both ablations on the median, with CIs excluding 0, and on the best candidate on average. The sub-claim that summaries are no better than scores-only does not hold. The review tightened the verdict rule so that REPRODUCED requires both parts; the numbers are unchanged after the rerun.
 
 | arm | median search | best search | selected test |
 |---|---|---|---|
@@ -201,20 +204,45 @@ Every script is `python experiments/metaharness-solpi/<name>.py [--llm sim|claud
 | scores_summary | 0.554 | 0.583 | 0.559 |
 | full | 0.578 | 0.618 | 0.575 |
 
-Paired full − scores_only: median +0.034 [0.016, 0.059], best +0.027 [0.000, 0.062]. Paired full − scores_summary: median +0.024 [0.005, 0.052], best +0.035 [0.008, 0.074]. Summaries vs scores-only: median +0.010 [0.004, 0.016], best −0.008 [−0.024, 0.008]. The paper found summaries no better than scores; here they help slightly on the median and not on the best.
+Paired differences:
+
+| comparison | median | best |
+|---|---|---|
+| full − scores_only | +0.034 [0.016, 0.059] | +0.027 [0.000, 0.062] (CI touches 0) |
+| full − scores_summary | +0.024 [0.005, 0.052] | +0.035 [0.008, 0.074] |
+| summaries − scores-only | +0.010 [0.004, 0.016] | −0.008 [−0.024, 0.008] |
+
+The paper found summaries no better than scores. Here they help slightly on the median and not on the best.
 
 Full mode reads about 5 trace files per iteration and about 10× more history characters. The effect is far smaller than the paper's (+15 points median). The offline proposer is a deterministic mock, so this shows that the views gate the information channel as designed, not how an LLM uses traces. Figure: `m1_history_ablation.png`.
 
-**M2 (equal budget, 20 evaluations).** Verdict: PARTIAL.
+**M2 (equal budget, 20 evaluations).** Verdict: PARTIAL. Rerun after the review fixed the Best-of-N arm.
+- Before the fix, the `seed_only` view showed both baselines, and because of dict order 77% of the samples mutated the zero-shot harness.
+- It now shows only the run's seed (`fewshot_all`), per "independent samples from the seed".
+- Best-of-N's final best moved from 0.568 to 0.558. The other arms are unchanged.
 
 | arm | final best (search) | selected harness (test) |
 |---|---|---|
-| Best-of-N | 0.568 | 0.561 |
+| Best-of-N | 0.558 | 0.543 |
 | OPRO window (w = 4) | 0.593 | 0.554 |
 | GEPA-style reflection | 0.602 | 0.563 |
 | Meta-Harness | 0.619 | 0.573 |
 
-Meta-Harness − other, paired: +0.051 [0.026, 0.079] vs Best-of-N, +0.026 [−0.003, 0.062] vs OPRO, and +0.017 [0.005, 0.032] vs GEPA-style. Meta-Harness has the highest mean and its curve is on top (`m2_equal_budget.png`), but the OPRO comparison is not significant. The paper's "matches others with 10× fewer evaluations" is not reproduced: the median number of evaluations Meta-Harness needs to match another arm's final value is 4–10.
+Meta-Harness has the highest mean and its curve is on top (`m2_equal_budget.png`), but the OPRO comparison is not significant. Paired differences, Meta-Harness − other:
+
+| vs | search | selected harness on test |
+|---|---|---|
+| Best-of-N | +0.062 [0.038, 0.084] | +0.031 [0.004, 0.055] |
+| OPRO | +0.026 [−0.003, 0.062] | +0.019 [0.003, 0.036] |
+| GEPA-style | +0.017 [0.005, 0.032] | +0.010 [−0.003, 0.023] |
+
+The paper's "matches others with 10× fewer evaluations" does not reproduce. Meta-Harness needs this many evaluations to match another arm's final value (medians over the seeds where it matches):
+
+| arm | evaluations | seeds where Meta-Harness never matches within 20 |
+|---|---|---|
+| Best-of-N | 4 | 1 of 10 |
+| OPRO | 7.5 | 2 of 10 |
+| GEPA-style | 10 | 1 of 10 |
 
 **M3 (Pareto).** Verdict: REPRODUCED for the frontier claims; the Pareto-vs-scalar objective difference is not significant.
 - The Pareto frontier holds 6.0 non-dominated harnesses on average.
@@ -263,20 +291,22 @@ On unseen datasets the gain is smaller than the search gain, as the claim predic
 - Accepted receipts contained **0 non-verbatim quotes** at every injected hallucination rate h ∈ {0, 0.1, 0.3, 0.6, 1.0}.
 - Failure logs always carried failure evidence.
 - Acceptance falls monotonically with h (bench: 1.00 / 0.90 / 0.67 / 0.31 / 0.00), with fallbacks distributed over invalid-json, schema-mismatch, unverifiable-quote and missing-failure-evidence.
-- With a faithful reducer (backend A): tokens −47.8%, cost −32.4%, success unchanged. Log bench bytes go from 267 KB to 29 KB.
+- With a faithful reducer on backend A, tokens fall 45.0% and cost 30.4%, with success unchanged. On the log bench, bytes go from 267 KB to 29 KB.
+- Rerun after the review. EPR now reduces the exact, untruncated log (`/tmp/pi-bash-*.log`) when Pi truncated the bash output, as `candidate.ts:exactBodyFromInline` does. Before, it reduced the 50 KB tail preview; the earlier figures were −47.8% tokens and −32.4% cost.
 
 **S4 Online Context Compact** (4 arms × 4 task-length bins × 2 backends, ranked by cost per score η). Verdict: REPRODUCED.
 - The economics test vectors pass exactly, and OCC never compacted with S ≤ 0 (0 violations).
 - OCC's η is within 5% of the best arm in 8/8 (backend, length) cells, and it is the best arm in 5 of them: A 12–16 and all four B cells.
 - OCC cost vs Pi's late compaction:
-  - backend A: +1.3%, +0.4%, −2.1%, +2.6% for 4–8, 8–12, 12–16 and 16–20 subtasks;
-  - backend B: −5.3%, −15.6%, −11.9%, −4.1%.
+  - backend A: +1.3%, +0.0%, −2.3%, +2.3% for 4–8, 8–12, 12–16 and 16–20 subtasks;
+  - backend B: −5.3%, −15.6%, −12.1%, −4.2%.
+  - This is the rerun with the release's `W = max(provider-reported, estimated)` (§8). Before, OCC used the estimate only; the numbers moved by at most 0.4 points.
 - On short backend-A sessions the plan-tool overhead is not repaid, so "never" and "late" (which do not compact there) tie for best.
-- Compacting at every boundary costs +26% vs late on average (+30..+49% on A).
+- Compacting at every boundary costs +28% vs late on average: +33..+49% on A and +8..+26% on B.
 - Never compacting overflows the 200k window in up to 40% of the longest runs, and those runs fail (success 0.60 on A 16–20).
 - Figure: `s4_occ.png`.
 
-**S5 survive across environments** (5 seeds; 10 ideas: 4 general, 3 environment-specific tricks, 2 do-less shortcuts, 1 dud). Verdict: REPRODUCED.
+**S5 survive across environments** (5 seeds; 10 ideas: 4 general, 3 environment-specific tricks, 2 do-less shortcuts, 1 dud). Verdict: PARTIAL. This was REPRODUCED before the review; the review added a direct test of environment diversity (see the end of this subsection).
 
 Four training protocols were compared, each followed by the held-out firewall (configfix, datalookup) and composition. Final-stack capability ratio and η saving were measured on the held-out families:
 
@@ -292,6 +322,15 @@ Four training protocols were compared, each followed by the held-out firewall (c
 - The firewall also raises η saving by 0.09–0.12, because it drops mechanisms that do not pay on the unseen families. OCC (C6) is rejected by the firewall in every run: held-out sessions are short, and the plan overhead is not repaid there.
 - The composed stack of survivors keeps 0.99 of held-out success on the unseen backend B.
 - Caveat: which tricks break where is a property of the simulated families (evidence position in outputs).
+
+**Is it the environments?** Hold the capability floor fixed and compare the multi-family protocols (c, d) with the single-family dual gate (b), pairing by seed. The held-out outcomes are statistically the same:
+
+| multi-family − single-family dual gate | backend A capability | backend A η saving | backend B capability |
+|---|---|---|---|
+| aggregate | +0.000 | −0.004 [−0.010, 0.000] | +0.031 [0.000, 0.069] |
+| per family | +0.000 | −0.012 [−0.025, −0.002] | +0.031 [0.000, 0.069] |
+
+More training families do reject more tricks at the gate: 3.0 are admitted with one family and 1.6–1.8 with three. But the aggregate multi-family gate admits the lenient turn cap (P20) in every seed, while the single-family gate never does. In this simulation the separation between tricks and general mechanisms comes from the capability floor and the held-out firewall. The claim that the extra environments make the survivors transfer better is not shown. Hence the verdict is PARTIAL.
 
 **S6 capability floor** (5 seeds, no firewall, to isolate the training gate). Verdict: NOT REPRODUCED under the predeclared criterion, which required 0 do-less shortcuts admitted by the dual gate and at most 2 points of composed training-success loss.
 
@@ -309,23 +348,25 @@ Four training protocols were compared, each followed by the held-out firewall (c
   - it kept the turn cap in 4 of 5 seeds.
 - The composition re-check is our addition. The sources gate mechanisms one at a time.
 
-**S7 composition** (full stack vs each mechanism alone; 5 seeds; 2 backends × {default, long} task lengths). Verdict: PARTIAL.
+**S7 composition** (full stack vs each mechanism alone; 5 seeds; 2 backends × {default, long} task lengths). Verdict: PARTIAL. Rerun after the EPR and OCC fidelity fixes (§8).
 
 | cell | +AF | +OP | +EPR | +OCC | full stack | full-stack success ratio |
 |---|---|---|---|---|---|---|
-| A default | −24.9% / −14.9% | −12.5% / +0.6% | −50.0% / **−34.6%** | −17.5% / −2.6% | −56.5% / −19.4% | 1.000 |
-| A long | −28.3% / −19.9% | −4.1% / +1.2% | −63.5% / **−52.2%** | −23.2% / −2.0% | −68.0% / −40.3% | 0.999 |
-| B default | −9.1% / −5.9% | −10.6% / −0.3% | −51.7% / −45.0% | −7.4% / +1.9% | −65.2% / **−46.7%** | 0.999 |
-| B long | −16.6% / −12.6% | −5.9% / −2.2% | −68.8% / −65.4% | −24.1% / −11.9% | −74.9% / **−66.2%** | 1.004 |
+| A default | −24.9% / −14.9% | −12.5% / +0.6% | −47.5% / **−32.8%** | −17.5% / −2.6% | −53.8% / −15.6% | 1.000 |
+| A long | −28.3% / −19.9% | −4.1% / +1.2% | −56.2% / **−45.9%** | −23.8% / −2.3% | −58.7% / −30.6% | 1.000 |
+| B default | −9.1% / −5.9% | −10.6% / −0.3% | −49.1% / −43.4% | −7.4% / +1.9% | −61.8% / **−44.4%** | 0.998 |
+| B long | −16.6% / −12.6% | −5.9% / −2.2% | −61.6% / −60.6% | −24.2% / −12.2% | −68.4% / **−61.2%** | 1.006 |
 
 Each cell is the token change / cost change vs the base harness; bold marks the cheapest arm.
 
 - Every mechanism saves tokens alone, and success is unchanged. The full stack saves the most tokens in every cell.
 - On cost the full stack is the cheapest arm only on backend B. On backend A, EPR alone is cheaper, because OP swap-ins and OCC compactions rewrite the cache prefix at ρ = 12.5.
-- Headline vs the paper: −56.5% tokens and −19.4% cost at 100% of base success (A, default), against EdgeBench's −44.7..−49.0% tokens and about −33% cost at about 94% of Pi's score.
+- Headline vs the paper: −53.8% tokens and −15.6% cost at 100% of base success (A, default), against EdgeBench's −44.7..−49.0% tokens and about −33% cost at about 94% of Pi's score. Before the review the A-default figures were −56.5% / −19.4%: EPR had reduced the truncated tail preview of large pytest logs, which understated their size.
 - Mechanism uptake differs by backend, as the blog reports:
-  - Action Fusion fires 3.32 times per triggered task on A vs 1.94 on B;
-  - OCC triggers in 4% of A-default tasks, 37% of A-long, 0% of B-default and 13% of B-long.
+  - Action Fusion fires 3.29 times per triggered task on A vs 1.91 on B;
+  - OCC triggers in 5% of A-default tasks, 37% of A-long, 0% of B-default and 18% of B-long.
+- A caveat found in the review: with the faithful exact-log EPR, the stand-in `DeterministicReducer` quotes the *first* 11 failure lines under the 12-item cap. On very long multi-failure pytest logs (16–20 failing tests, 80-turn cap) this drops the per-test summary lines, and repofix success falls (spot check: 0.97 → 0.88 on backend A). The S7 "long" cell (12–16 subtasks, 200-turn cap) is not affected. An LLM reducer that follows the instruction to "prefer … failing targets" may behave differently.
+
 
 ---
 

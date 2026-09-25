@@ -68,7 +68,10 @@ def live_stand_in():
 
     def respond(prompt, system, seed, i):
         target = writer if "STRATEGY GENE" in prompt or "Gene synthesis" in (system or "") else solver
-        return target.complete(prompt, system=system, seed=seed).text
+        text = target.complete(prompt, system=system, seed=seed).text
+        if target is solver and '"type": "EvolutionEvent"' in (system or ""):   # X15: an over-confident executor
+            text += '\n{"type": "EvolutionEvent", "outcome": {"status": "success", "score": 0.9}}'
+        return text
     return MockLLM(respond, name="mock-live")
 
 

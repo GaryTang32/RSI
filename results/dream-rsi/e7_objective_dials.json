@@ -1,6 +1,6 @@
 {
  "experiment": "e7_objective_dials",
- "created": "2026-09-24 23:02:49",
+ "created": "2026-09-25 05:56:15",
  "config": {
   "worlds": 8,
   "W": 4,
@@ -28,6 +28,8 @@
   ],
   "llm": "not used (replay only)"
  },
+ "llm_policy_dials": {},
+ "llm_policies": {},
  "candidate_stats": {
   "adaptive_r0": {
    "N": 14.625,

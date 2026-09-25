@@ -413,10 +413,11 @@ def as_task(domain, seed_artifact: Optional[Artifact] = None, llm_task=None, **k
     or ANY :class:`rsi.core.Domain` (wrapped by :class:`DomainTask`)."""
     from .agent import DomainTask
 
-    if isinstance(domain, DiscoveryTask):
-        return domain
-    if hasattr(domain, "as_task") and hasattr(domain, "evaluate_program"):
-        return domain.as_task()
+    if isinstance(domain, DiscoveryTask) or (hasattr(domain, "as_task") and hasattr(domain, "evaluate_program")):
+        if kw:
+            raise TypeError(f"task_kwargs {sorted(kw)} only apply to an rsi.core Domain wrapped by DomainTask; "
+                            "configure a DiscoveryTask / discovery domain directly")
+        return domain if isinstance(domain, DiscoveryTask) else domain.as_task()
     seed = seed_artifact if seed_artifact is not None else domain.seed_artifact()
     return DomainTask(domain, seed, llm_task, **kw)
 
@@ -461,7 +462,29 @@ def run(domain, seed_artifact: Optional[Artifact] = None, *, llm_task=None, llm_
     if developer is None:
         developer = LLMPolicyDeveloper(dev_llm, beta1=cfg.beta1, beta2=cfg.beta2, lam=cfg.lam,
                                        leakage_check=cfg.leakage_check) if dev_llm is not None else ParametricMutator()
+    # meter every LLM role, including LLMs inside an explicitly passed agent / developer / summarizer
+    llms = (llm_task, llm_propose, llm_develop, _llm_of(agent), _llm_of(developer), _llm_of(summarizer),
+            _llm_of(getattr(task, "evaluator", None)))
     loop = DreamRSILoop(task, agent, config=cfg, developer=developer, initial_policy=initial_policy,
-                        summarizer=summarizer, out_dir=out_dir, seed_artifact=seed_artifact,
-                        llms=(llm_task, llm_propose, llm_develop))
+                        summarizer=summarizer, out_dir=out_dir, seed_artifact=seed_artifact, llms=llms)
     return loop.run()
+
+
+def _llm_of(obj):
+    """The :class:`rsi.core.LLM` behind an agent / developer / summarizer / evaluator, if any
+    (``EditorAgent`` and ``LLMPolicyDeveloper`` wrap an Editor: ``RewriteEditor.llm`` or
+    ``AgentEditor.cli``)."""
+    from ..core.llm import LLM
+
+    if obj is None or isinstance(obj, LLM):
+        return obj
+    for attr in ("llm", "editor"):
+        x = getattr(obj, attr, None)
+        if isinstance(x, LLM):
+            return x
+        if x is not None:
+            for inner in ("llm", "cli"):
+                y = getattr(x, inner, None)
+                if isinstance(y, LLM):
+                    return y
+    return None

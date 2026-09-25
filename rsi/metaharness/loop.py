@@ -46,7 +46,8 @@ class MetaHarnessLoop:
                  summarizer: Optional[Callable[[dict], str]] = None,
                  leakage_screen: Optional[LeakageScreen] = None,
                  validator: Optional[InterfaceValidator] = None,
-                 on_eval: Optional[Callable[[dict], None]] = None) -> None:
+                 on_eval: Optional[Callable[[dict], None]] = None,
+                 seed_names: Optional[list[str]] = None) -> None:
         self.domain = domain
         self.llm_task = llm_task
         self.proposer = proposer
@@ -55,6 +56,8 @@ class MetaHarnessLoop:
         self.store = ExperienceStore(self.out / "store")
         self.ledger = Ledger(self.out / "ledger.jsonl")
         self.baselines = dict(baselines)
+        #: what the ``seed_only`` (Best-of-N) view exposes: the seed harness(es), default all baselines
+        self.seed_names = list(seed_names) if seed_names else list(self.baselines)
         self.summarizer = summarizer
         self.screen = leakage_screen if config.leakage_screen else None
         if config.leakage_screen and self.screen is None:
@@ -153,7 +156,7 @@ class MetaHarnessLoop:
             raise FinalizedError("run is finalised; start a new run to evolve further")
         self.store.clear_pending()
         pre_best = self.best_score()
-        view = self.store.view(self.cfg.history_mode, window=self.cfg.window, seeds=list(self.baselines))
+        view = self.store.view(self.cfg.history_mode, window=self.cfg.window, seeds=self.seed_names)
         visible = {n: self.store.artifact(n) for n in self.store.names()
                    if any(p.startswith(f"candidates/{safe_name(n)}/src/") for p in view)}
         k = self.cfg.k

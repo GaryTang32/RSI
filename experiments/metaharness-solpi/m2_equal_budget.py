@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import RESULTS, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
+from _common import RESULTS, figure_path, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
     table  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -75,9 +75,22 @@ def main():
     verdict = ("REPRODUCED" if wins and sig else "PARTIAL" if wins else "NOT REPRODUCED") + \
         f": Meta-Harness final best vs others (paired diffs) = " + \
         ", ".join(f"{a}: {cmp[a]['final_best'].get('mean_diff', float('nan')):+.3f}" for a in cmp)
+    reach_summary = {a: {"median_when_reached": float(np.median([x for x in v if x is not None]))
+                         if any(x is not None for x in v) else None,
+                         "n_seeds_never_reached": sum(x is None for x in v), "n_seeds": len(v)}
+                     for a, v in reach.items()}
+    # the paper's "matches the others with ~10x fewer evaluations" = MH reaches their FINAL value within
+    # budget/10 evaluations (in the median seed; a seed where MH never matches counts as budget + 1)
+    tenx = {a: float(np.median([x if x is not None else budget + 1 for x in v])) <= budget / 10
+            for a, v in reach.items()}
+    verdict += "; 10x-fewer-evaluations claim " + ("reproduced" if all(tenx.values()) else "NOT reproduced") + \
+        " (median evaluations MH needs to match each arm's final best: " + \
+        ", ".join(f"{a}: {float(np.median([x if x is not None else budget + 1 for x in v])):.1f}"
+                  for a, v in reach.items()) + f" of {budget}; never matched in " + \
+        ", ".join(f"{a}: {reach_summary[a]['n_seeds_never_reached']}/{len(v)}" for a, v in reach.items()) + " seeds)"
     print(table([[a, fmt(summ[a]["final_best"]), fmt(summ[a]["selected_test"]),
-                  f"{np.mean([x for x in reach.get(a, []) if x is not None]) if a in reach else float('nan'):.1f}"]
-                 for a in ARMS], ["arm", "final best (search)", "selected (test)", "MH evals to match"]))
+                  f"{reach_summary[a]['median_when_reached']}" if a in reach_summary else "-"]
+                 for a in ARMS], ["arm", "final best (search)", "selected (test)", "MH evals to match (median)"]))
     print("verdict:", verdict)
     fig = plt()
     f, ax = fig.subplots(figsize=(6.5, 4))
@@ -89,7 +102,7 @@ def main():
     ax.set_title(f"M2 equal budget ({ARGS.llm}, {ARGS.seeds} seeds, budget {budget})")
     ax.legend()
     f.tight_layout()
-    png = RESULTS / "m2_equal_budget.png"
+    png = figure_path("m2_equal_budget", ARGS)
     RESULTS.mkdir(parents=True, exist_ok=True)
     f.savefig(png, dpi=120)
     save("m2_equal_budget" + ("_live" if ARGS.live else ""), {
@@ -97,8 +110,10 @@ def main():
                  "[MH Table 4]",
         "config": {"llm": ARGS.llm, "seeds": ARGS.seeds, "budget": budget, "k": 2, "window": 4},
         "per_seed": rows, "summary": summ, "paired_vs_metaharness": cmp,
-        "metaharness_evals_to_match_final": reach, "verdict": verdict, "figure": str(png),
-        "caveat": "Offline arms share one deterministic MockProposer; differences come only from the history view."},
+        "metaharness_evals_to_match_final": reach, "evals_to_match_summary": reach_summary,
+        "verdict": verdict, "figure": str(png),
+        "caveat": "Offline arms share one deterministic MockProposer; differences come only from the history view. "
+                  "Best-of-N samples independently from the run's seed harness (fewshot_all) only."},
         ARGS.out)
 
 

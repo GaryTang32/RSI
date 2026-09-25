@@ -26,6 +26,18 @@ GRID = (5, 3)
 LIVE_GRID = (3, 1)      # --llm claude:*: 2 policies x 2 rounds x 6 calls = 24 real agent calls
 
 
+class CountingAgent:
+    """Wraps the frozen discovery agent and counts every call, so "replay makes zero agent
+    calls" is measured on the agent object itself rather than asserted."""
+
+    def __init__(self, inner):
+        self.inner, self.n = inner, 0
+
+    def attempt(self, ctx, *, seed):
+        self.n += 1
+        return self.inner.attempt(ctx, seed=seed)
+
+
 def one(job):
     dom_name, seed, policy, llm = job
     dom = domain_of(dom_name, seed)
@@ -35,8 +47,11 @@ def one(job):
                  agent_workers=1 if llm == "sim" else 4)
     out_dir = tempfile.mkdtemp(prefix="e1_")
     t0 = time.time()
-    res = run(dom, config=cfg, initial_policy=code, agent=agent_of(dom, llm), out_dir=out_dir)
+    agent = CountingAgent(agent_of(dom, llm))
+    res = run(dom, config=cfg, initial_policy=code, agent=agent, out_dir=out_dir)
     online_s = time.time() - t0
+    calls_after_online = agent.n
+    assert calls_after_online == res.usage["_cost"]["agent_calls"]
     rows = []
     led = Ledger(f"{out_dir}/discovery.jsonl")
     for mode in ("addressable", "earliest"):
@@ -58,11 +73,11 @@ def one(job):
                          "identical_after_ledger_roundtrip": r_lg.episodes[0].reveal_round == e.reveal_round,
                          "replay_ms_in_process": 1000 * r_in.cpu_s, "replay_ms_sandbox": 1000 * r_sb.wall_s,
                          "online_s_per_world": online_s / len(res.meta["worlds"]),
-                         "online_agent_calls": man["agent_calls"], "replay_agent_calls": 0})
-    # replay never touches the agent: count agent calls around a replay of the whole pool
-    before = res.usage["_cost"]["agent_calls"]
+                         "online_agent_calls": man["agent_calls"]})
+    # replay never touches the agent: the agent object's own call counter across every replay above
     ReplayEvaluator(W=4, fallback=g, runner="inprocess").evaluate(code, res.meta["worlds"])
-    assert res.usage["_cost"]["agent_calls"] == before
+    for r in rows:
+        r["replay_agent_calls"] = agent.n - calls_after_online
     return rows
 
 
@@ -104,10 +119,13 @@ def main():
     for d, v in by_dom.items():
         print(f"  {d:<11} online {fmt(v['online_s_per_world'], 3)} s/world vs replay {fmt(v['replay_ms_in_process'], 2)} ms"
               f" -> x{v['speedup_online_over_replay']['mean']:.0f}")
+    replay_calls = sum(r["replay_agent_calls"] for r in rows)
     verdict = ("REPRODUCED: every replay of the recording policy is identical to its live rollout "
-               f"({ok_in}/{n} in-process, {ok_sb}/{n} sandboxed, {ok_lg}/{n} via the ledger), zero agent calls, "
-               f"~{ms_in['mean']:.1f} ms per episode in-process") if ok_in == n and ok_sb == n and ok_lg == n else \
-        f"PARTIAL: {ok_in}/{n} identical in-process, {ok_sb}/{n} sandboxed, {ok_lg}/{n} via ledger"
+               f"({ok_in}/{n} in-process, {ok_sb}/{n} sandboxed, {ok_lg}/{n} via the ledger), {replay_calls} agent "
+               f"calls during replay (counted on the agent object), ~{ms_in['mean']:.1f} ms per episode in-process") \
+        if ok_in == n and ok_sb == n and ok_lg == n and replay_calls == 0 else \
+        f"PARTIAL: {ok_in}/{n} identical in-process, {ok_sb}/{n} sandboxed, {ok_lg}/{n} via ledger; " \
+        f"{replay_calls} agent calls during replay"
     save("e1_replay_fidelity", {"config": {"domains": doms, "policies": ["parallel_refine", "adaptive"],
                                            "grid": "%dx%d" % (GRID if a.llm == "sim" else LIVE_GRID), "W": 4,
                                            "rounds": 2, "llm": a.llm},

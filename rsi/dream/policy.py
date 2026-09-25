@@ -12,7 +12,9 @@ Built-in templates (``rsi/dream/policy_templates/``):
 * ``adaptive`` - the adaptive portfolio policy (Listing-2 decision loop) whose
   ``PARAMS`` block is what the mock developer mutates;
 * ``rules`` - hand-written strategies (overview demo, E2 zoo);
-* ``oracle`` - a deliberately cheating policy for the no-peeking experiment.
+* ``oracle`` - a deliberately cheating policy for the no-peeking experiment (reads the hidden tree);
+* ``peek_reset`` - a cheater that uses only the public API (explore, remember, ``reset()``, walk
+  to the remembered best); the guard forbids a reset after the first probe.
 """
 from __future__ import annotations
 

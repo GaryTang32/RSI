@@ -68,19 +68,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 192690.23333333334,
-    "cost": 0.14248644999999996,
-    "requests": 14.133333333333333,
-    "cache_read": 147700.0,
-    "cache_write": 39474.2,
-    "output": 5516.033333333334,
+    "tokens": 202800.6,
+    "cost": 0.14588354500000003,
+    "requests": 14.5,
+    "cache_read": 154749.6,
+    "cache_write": 42474.73333333333,
+    "output": 5576.266666666666,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.8,
-      "per_triggered_task": 5.416666666666667
+      "per_triggered_task": 5.333333333333333
      }
     }
    },
@@ -104,27 +104,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 161408.1,
-    "cost": 0.17023504166666664,
-    "requests": 12.566666666666666,
-    "cache_read": 103063.5,
-    "cache_write": 52624.73333333333,
-    "output": 5719.866666666667,
+    "tokens": 179760.26666666666,
+    "cost": 0.1813401566666667,
+    "requests": 13.233333333333333,
+    "cache_read": 116583.36666666667,
+    "cache_write": 57277.166666666664,
+    "output": 5899.733333333334,
     "compactions": 0.03333333333333333,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.9333333333333333,
-      "per_triggered_task": 3.2857142857142856
+      "per_triggered_task": 3.2142857142857144
      },
      "observation_pack": {
       "task_rate": 0.4666666666666667,
-      "per_triggered_task": 3.642857142857143
+      "per_triggered_task": 4.285714285714286
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 6.190476190476191
+      "per_triggered_task": 6.095238095238095
      },
      "online_context_compact": {
       "task_rate": 0.03333333333333333,
@@ -188,19 +188,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1126034.9166666667,
-    "cost": 0.5296309291666668,
-    "requests": 45.5,
-    "cache_read": 958656.8333333334,
-    "cache_write": 148667.66666666666,
-    "output": 18710.416666666668,
+    "tokens": 1359888.8333333333,
+    "cost": 0.6034001333333334,
+    "requests": 49.083333333333336,
+    "cache_read": 1103180.25,
+    "cache_write": 236597.0,
+    "output": 20111.583333333332,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 16.083333333333332
+      "per_triggered_task": 16.166666666666668
      }
     }
    },
@@ -224,31 +224,31 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 941734.75,
-    "cost": 0.6456051583333333,
-    "requests": 40.583333333333336,
-    "cache_read": 716471.8333333334,
-    "cache_write": 203886.58333333334,
-    "output": 21376.333333333332,
-    "compactions": 0.3333333333333333,
+    "tokens": 1346587.75,
+    "cost": 0.8203477666666666,
+    "requests": 49.083333333333336,
+    "cache_read": 1006017.5833333334,
+    "cache_write": 316170.5,
+    "output": 24399.666666666668,
+    "compactions": 0.4166666666666667,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 11.416666666666666
+      "per_triggered_task": 12.416666666666666
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 7.0
+      "per_triggered_task": 10.75
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.666666666666668
+      "per_triggered_task": 18.5
      },
      "online_context_compact": {
       "task_rate": 0.3333333333333333,
-      "per_triggered_task": 1.0
+      "per_triggered_task": 1.25
      }
     }
    }
@@ -308,19 +308,19 @@
    },
    "+EPR": {
     "score": 0.9888888888888888,
-    "tokens": 153418.0,
-    "cost": 0.21671760833333337,
-    "requests": 13.9,
-    "cache_read": 113300.6,
-    "cache_write": 36146.03333333333,
-    "output": 3971.366666666667,
+    "tokens": 165970.33333333334,
+    "cost": 0.22653091666666667,
+    "requests": 14.4,
+    "cache_read": 122963.66666666667,
+    "cache_write": 38907.0,
+    "output": 4099.666666666667,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.5
+      "per_triggered_task": 6.45
      }
     }
    },
@@ -344,27 +344,27 @@
    },
    "full": {
     "score": 0.9933333333333334,
-    "tokens": 110593.73333333334,
-    "cost": 0.2103244166666667,
-    "requests": 12.233333333333333,
-    "cache_read": 68690.53333333334,
-    "cache_write": 38136.73333333333,
-    "output": 3766.4666666666667,
+    "tokens": 125631.9,
+    "cost": 0.2228571666666667,
+    "requests": 12.833333333333334,
+    "cache_read": 79590.9,
+    "cache_write": 42122.6,
+    "output": 3918.4,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.7333333333333333,
-      "per_triggered_task": 1.9545454545454546
+      "per_triggered_task": 1.8181818181818181
      },
      "observation_pack": {
       "task_rate": 0.4666666666666667,
-      "per_triggered_task": 1.7857142857142858
+      "per_triggered_task": 1.8571428571428572
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7333333333333333,
-      "per_triggered_task": 5.2727272727272725
+      "per_triggered_task": 5.363636363636363
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -427,31 +427,31 @@
     }
    },
    "+EPR": {
-    "score": 0.9883814102564102,
-    "tokens": 940424.3333333334,
-    "cost": 0.8302876041666667,
-    "requests": 44.833333333333336,
-    "cache_read": 784719.25,
-    "cache_write": 142384.91666666666,
-    "output": 13320.166666666666,
+    "score": 1.0,
+    "tokens": 1239025.0833333333,
+    "cost": 0.9990414583333336,
+    "requests": 50.5,
+    "cache_read": 989883.75,
+    "cache_write": 234344.0,
+    "output": 14797.333333333334,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 15.916666666666666
+      "per_triggered_task": 17.25
      }
     }
    },
    "+OCC": {
     "score": 0.9935897435897436,
-    "tokens": 2223127.9166666665,
-    "cost": 2.081834604166667,
+    "tokens": 2217957.0833333335,
+    "cost": 2.072180104166667,
     "requests": 39.583333333333336,
-    "cache_read": 2088189.0,
-    "cache_write": 124572.41666666667,
-    "output": 10366.5,
+    "cache_read": 2084244.5833333333,
+    "cache_write": 123346.91666666667,
+    "output": 10365.583333333334,
     "compactions": 0.75,
     "overflow_rate": 0.0,
     "n": 12,
@@ -464,30 +464,30 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 796785.6666666666,
-    "cost": 0.8394724375,
-    "requests": 42.083333333333336,
-    "cache_read": 630148.6666666666,
-    "cache_write": 151200.41666666666,
-    "output": 15436.583333333334,
-    "compactions": 0.08333333333333333,
+    "tokens": 985184.75,
+    "cost": 0.9459412916666667,
+    "requests": 45.166666666666664,
+    "cache_read": 727535.0833333334,
+    "cache_write": 241415.33333333334,
+    "output": 16234.333333333334,
+    "compactions": 0.16666666666666666,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 4.666666666666667
+      "per_triggered_task": 4.416666666666667
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 4.5
+      "per_triggered_task": 6.0
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 16.25
+      "per_triggered_task": 17.083333333333332
      },
      "online_context_compact": {
-      "task_rate": 0.08333333333333333,
+      "task_rate": 0.16666666666666666,
       "per_triggered_task": 1.0
      }
     }
@@ -548,19 +548,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 217066.93333333332,
-    "cost": 0.1533089433333333,
-    "requests": 15.133333333333333,
-    "cache_read": 169039.3,
-    "cache_write": 42190.5,
-    "output": 5837.133333333333,
+    "tokens": 233645.16666666666,
+    "cost": 0.16021977999999998,
+    "requests": 15.7,
+    "cache_read": 180670.06666666668,
+    "cache_write": 46905.86666666667,
+    "output": 6069.233333333334,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.8,
-      "per_triggered_task": 5.625
+      "per_triggered_task": 5.833333333333333
      }
     }
    },
@@ -584,27 +584,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 207043.93333333332,
-    "cost": 0.209273395,
-    "requests": 14.533333333333333,
-    "cache_read": 136700.93333333332,
-    "cache_write": 63946.566666666666,
-    "output": 6396.433333333333,
+    "tokens": 204938.16666666666,
+    "cost": 0.203299575,
+    "requests": 14.466666666666667,
+    "cache_read": 132881.33333333334,
+    "cache_write": 65630.73333333334,
+    "output": 6426.1,
     "compactions": 0.06666666666666667,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.9666666666666667,
-      "per_triggered_task": 3.3793103448275863
+      "per_triggered_task": 3.413793103448276
      },
      "observation_pack": {
       "task_rate": 0.43333333333333335,
-      "per_triggered_task": 5.923076923076923
+      "per_triggered_task": 5.153846153846154
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 6.523809523809524
+      "per_triggered_task": 6.857142857142857
      },
      "online_context_compact": {
       "task_rate": 0.06666666666666667,
@@ -668,19 +668,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1330842.4166666667,
-    "cost": 0.6019166458333333,
-    "requests": 50.916666666666664,
-    "cache_read": 1140742.0833333333,
-    "cache_write": 169255.5,
-    "output": 20844.833333333332,
+    "tokens": 1544182.5,
+    "cost": 0.664756575,
+    "requests": 53.166666666666664,
+    "cache_read": 1252132.6666666667,
+    "cache_write": 270175.3333333333,
+    "output": 21874.5,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 18.166666666666668
+      "per_triggered_task": 18.833333333333332
      }
     }
    },
@@ -703,28 +703,28 @@
     }
    },
    "full": {
-    "score": 0.9947916666666666,
-    "tokens": 1055771.6666666667,
-    "cost": 0.70597085,
-    "requests": 43.083333333333336,
-    "cache_read": 806460.5,
-    "cache_write": 225712.75,
-    "output": 23598.416666666668,
+    "score": 1.0,
+    "tokens": 1420968.9166666667,
+    "cost": 0.8301657875,
+    "requests": 49.666666666666664,
+    "cache_read": 1056925.0833333333,
+    "cache_write": 338089.25,
+    "output": 25954.583333333332,
     "compactions": 0.4166666666666667,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 12.833333333333334
+      "per_triggered_task": 13.583333333333334
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.75
+      "per_triggered_task": 9.125
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 19.666666666666668
+      "per_triggered_task": 20.25
      },
      "online_context_compact": {
       "task_rate": 0.4166666666666667,
@@ -788,19 +788,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 178980.3,
-    "cost": 0.23384311666666674,
-    "requests": 14.633333333333333,
-    "cache_read": 136877.86666666667,
-    "cache_write": 37983.4,
-    "output": 4119.033333333334,
+    "tokens": 192581.03333333333,
+    "cost": 0.24461005000000005,
+    "requests": 15.066666666666666,
+    "cache_read": 146027.13333333333,
+    "cache_write": 42265.13333333333,
+    "output": 4288.766666666666,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.8
+      "per_triggered_task": 7.0
      }
     }
    },
@@ -823,28 +823,28 @@
     }
    },
    "full": {
-    "score": 0.9958333333333333,
-    "tokens": 131413.8,
-    "cost": 0.23220522500000002,
-    "requests": 13.433333333333334,
-    "cache_read": 85919.36666666667,
-    "cache_write": 41389.76666666667,
-    "output": 4104.666666666667,
+    "score": 0.9916666666666667,
+    "tokens": 144690.96666666667,
+    "cost": 0.24113736666666669,
+    "requests": 13.833333333333334,
+    "cache_read": 93010.76666666666,
+    "cache_write": 47429.0,
+    "output": 4251.2,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 2.1
+      "per_triggered_task": 2.0
      },
      "observation_pack": {
       "task_rate": 0.5333333333333333,
-      "per_triggered_task": 1.8125
+      "per_triggered_task": 1.875
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7333333333333333,
-      "per_triggered_task": 5.681818181818182
+      "per_triggered_task": 6.0
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -908,19 +908,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1124984.5,
-    "cost": 0.9594170416666666,
-    "requests": 49.75,
-    "cache_read": 949724.0833333334,
-    "cache_write": 160349.33333333334,
-    "output": 14911.083333333334,
+    "tokens": 1347257.5833333333,
+    "cost": 1.067181458333333,
+    "requests": 53.083333333333336,
+    "cache_read": 1065847.0,
+    "cache_write": 265534.8333333333,
+    "output": 15875.75,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.833333333333332
+      "per_triggered_task": 19.166666666666668
      }
     }
    },
@@ -943,28 +943,28 @@
     }
    },
    "full": {
-    "score": 0.9940476190476191,
-    "tokens": 874065.6666666666,
-    "cost": 0.9224061875000001,
-    "requests": 44.5,
-    "cache_read": 690688.3333333334,
-    "cache_write": 166535.41666666666,
-    "output": 16841.916666666668,
+    "score": 1.0,
+    "tokens": 1135887.0,
+    "cost": 1.068540020833333,
+    "requests": 49.083333333333336,
+    "cache_read": 844045.8333333334,
+    "cache_write": 273610.75,
+    "output": 18230.416666666668,
     "compactions": 0.16666666666666666,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 4.666666666666667
+      "per_triggered_task": 4.916666666666667
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 4.5
+      "per_triggered_task": 6.0
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.5
+      "per_triggered_task": 19.083333333333332
      },
      "online_context_compact": {
       "task_rate": 0.16666666666666666,
@@ -1028,19 +1028,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 201724.23333333334,
-    "cost": 0.14697836833333336,
-    "requests": 14.7,
-    "cache_read": 156997.3,
-    "cache_write": 39145.76666666667,
-    "output": 5581.166666666667,
+    "tokens": 210188.56666666668,
+    "cost": 0.1500817566666667,
+    "requests": 14.933333333333334,
+    "cache_read": 162028.2,
+    "cache_write": 42493.3,
+    "output": 5667.066666666667,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.7666666666666667,
-      "per_triggered_task": 5.304347826086956
+      "per_triggered_task": 5.391304347826087
      }
     }
    },
@@ -1064,27 +1064,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 185341.23333333334,
-    "cost": 0.1867252683333333,
-    "requests": 13.566666666666666,
-    "cache_read": 123883.46666666666,
-    "cache_write": 55521.433333333334,
-    "output": 5936.333333333333,
+    "tokens": 181993.46666666667,
+    "cost": 0.18157075999999997,
+    "requests": 13.466666666666667,
+    "cache_read": 119683.3,
+    "cache_write": 56400.76666666667,
+    "output": 5909.4,
     "compactions": 0.03333333333333333,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.9666666666666667,
-      "per_triggered_task": 3.0344827586206895
+      "per_triggered_task": 3.103448275862069
      },
      "observation_pack": {
       "task_rate": 0.4,
-      "per_triggered_task": 5.25
+      "per_triggered_task": 4.666666666666667
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 5.904761904761905
+      "per_triggered_task": 5.9523809523809526
      },
      "online_context_compact": {
       "task_rate": 0.03333333333333333,
@@ -1148,12 +1148,12 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1156874.9166666667,
-    "cost": 0.5432794125,
-    "requests": 46.75,
-    "cache_read": 979667.1666666666,
-    "cache_write": 157863.25,
-    "output": 19344.5,
+    "tokens": 1405831.75,
+    "cost": 0.6224630458333333,
+    "requests": 50.416666666666664,
+    "cache_read": 1137399.9166666667,
+    "cache_write": 247588.5,
+    "output": 20843.333333333332,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
@@ -1184,27 +1184,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 1079514.25,
-    "cost": 0.7029277,
-    "requests": 43.333333333333336,
-    "cache_read": 838943.5,
-    "cache_write": 217822.41666666666,
-    "output": 22748.333333333332,
+    "tokens": 1362295.3333333333,
+    "cost": 0.7957685208333335,
+    "requests": 48.25,
+    "cache_read": 1022468.75,
+    "cache_write": 315278.5,
+    "output": 24548.083333333332,
     "compactions": 0.3333333333333333,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 12.916666666666666
+      "per_triggered_task": 13.0
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 8.0
+      "per_triggered_task": 9.625
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 19.0
+      "per_triggered_task": 19.083333333333332
      },
      "online_context_compact": {
       "task_rate": 0.3333333333333333,
@@ -1267,20 +1267,20 @@
     }
    },
    "+EPR": {
-    "score": 0.9933333333333334,
-    "tokens": 162865.33333333334,
-    "cost": 0.22332775,
-    "requests": 14.3,
-    "cache_read": 121774.73333333334,
-    "cache_write": 37077.8,
-    "output": 4012.8,
+    "score": 0.9885714285714287,
+    "tokens": 168323.56666666668,
+    "cost": 0.22730135833333331,
+    "requests": 14.5,
+    "cache_read": 124173.0,
+    "cache_write": 40075.433333333334,
+    "output": 4075.133333333333,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.5
+      "per_triggered_task": 6.55
      }
     }
    },
@@ -1304,27 +1304,27 @@
    },
    "full": {
     "score": 0.9866666666666667,
-    "tokens": 120215.13333333333,
-    "cost": 0.22022525,
-    "requests": 12.866666666666667,
-    "cache_read": 77559.4,
-    "cache_write": 38766.73333333333,
-    "output": 3889.0,
+    "tokens": 129942.33333333333,
+    "cost": 0.22664173333333335,
+    "requests": 13.066666666666666,
+    "cache_read": 83014.53333333334,
+    "cache_write": 42972.53333333333,
+    "output": 3955.266666666667,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.8,
-      "per_triggered_task": 1.7083333333333333
+      "per_triggered_task": 1.8333333333333333
      },
      "observation_pack": {
       "task_rate": 0.5,
-      "per_triggered_task": 1.8666666666666667
+      "per_triggered_task": 1.9333333333333333
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7666666666666667,
-      "per_triggered_task": 5.0
+      "per_triggered_task": 5.173913043478261
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -1388,30 +1388,30 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1031466.25,
-    "cost": 0.8969250416666666,
-    "requests": 47.666666666666664,
-    "cache_read": 866314.9166666666,
-    "cache_write": 150911.33333333334,
-    "output": 14240.0,
+    "tokens": 1249932.1666666667,
+    "cost": 1.0070023750000001,
+    "requests": 51.083333333333336,
+    "cache_read": 993320.5,
+    "cache_write": 241466.16666666666,
+    "output": 15145.5,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.0
+      "per_triggered_task": 18.166666666666668
      }
     }
    },
    "+OCC": {
     "score": 0.9944444444444445,
-    "tokens": 2553798.6666666665,
-    "cost": 2.3076563125,
+    "tokens": 2551392.1666666665,
+    "cost": 2.2996658541666664,
     "requests": 41.333333333333336,
-    "cache_read": 2410092.8333333335,
-    "cache_write": 132801.91666666666,
-    "output": 10903.916666666666,
+    "cache_read": 2408857.75,
+    "cache_write": 131633.25,
+    "output": 10901.166666666666,
     "compactions": 0.75,
     "overflow_rate": 0.0,
     "n": 12,
@@ -1424,27 +1424,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 831673.3333333334,
-    "cost": 0.8825049375000001,
-    "requests": 43.25,
-    "cache_read": 653867.8333333334,
-    "cache_write": 161606.08333333334,
-    "output": 16199.416666666666,
+    "tokens": 1042145.0833333334,
+    "cost": 0.9982469166666665,
+    "requests": 46.833333333333336,
+    "cache_read": 772969.9166666666,
+    "cache_write": 251998.5,
+    "output": 17176.666666666668,
     "compactions": 0.16666666666666666,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 4.833333333333333
+      "per_triggered_task": 4.416666666666667
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 4.5
+      "per_triggered_task": 6.0
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.416666666666668
+      "per_triggered_task": 17.833333333333332
      },
      "online_context_compact": {
       "task_rate": 0.16666666666666666,
@@ -1508,19 +1508,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 215894.4,
-    "cost": 0.15383858333333336,
-    "requests": 15.1,
-    "cache_read": 168182.33333333334,
-    "cache_write": 41789.53333333333,
-    "output": 5922.533333333334,
+    "tokens": 221831.03333333333,
+    "cost": 0.155240765,
+    "requests": 15.233333333333333,
+    "cache_read": 171467.7,
+    "cache_write": 44438.03333333333,
+    "output": 5925.3,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.7666666666666667,
-      "per_triggered_task": 5.956521739130435
+      "per_triggered_task": 5.913043478260869
      }
     }
    },
@@ -1544,13 +1544,13 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 186466.7,
-    "cost": 0.1859482666666667,
-    "requests": 13.666666666666666,
-    "cache_read": 124010.5,
-    "cache_write": 56240.4,
-    "output": 6215.8,
-    "compactions": 0.03333333333333333,
+    "tokens": 200684.36666666667,
+    "cost": 0.2020903266666667,
+    "requests": 14.166666666666666,
+    "cache_read": 131122.8,
+    "cache_write": 63181.5,
+    "output": 6380.066666666667,
+    "compactions": 0.06666666666666667,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
@@ -1560,14 +1560,14 @@
      },
      "observation_pack": {
       "task_rate": 0.4,
-      "per_triggered_task": 4.583333333333333
+      "per_triggered_task": 5.416666666666667
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 6.571428571428571
+      "per_triggered_task": 6.619047619047619
      },
      "online_context_compact": {
-      "task_rate": 0.03333333333333333,
+      "task_rate": 0.06666666666666667,
       "per_triggered_task": 1.0
      }
     }
@@ -1628,66 +1628,66 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1248649.25,
-    "cost": 0.5754572625,
-    "requests": 49.166666666666664,
-    "cache_read": 1067656.4166666667,
-    "cache_write": 160842.58333333334,
-    "output": 20150.25,
+    "tokens": 1450228.0,
+    "cost": 0.6347326708333334,
+    "requests": 51.583333333333336,
+    "cache_read": 1173842.4166666667,
+    "cache_write": 255143.08333333334,
+    "output": 21242.5,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.083333333333332
+      "per_triggered_task": 18.333333333333332
      }
     }
    },
    "+OCC": {
     "score": 0.9947916666666666,
-    "tokens": 2624344.5,
-    "cost": 1.174236575,
+    "tokens": 2531760.1666666665,
+    "cost": 1.1596267166666665,
     "requests": 42.75,
-    "cache_read": 2439904.75,
-    "cache_write": 166427.25,
-    "output": 18012.5,
-    "compactions": 1.3333333333333333,
+    "cache_read": 2345900.25,
+    "cache_write": 167796.16666666666,
+    "output": 18063.75,
+    "compactions": 1.4166666666666667,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "online_context_compact": {
       "task_rate": 0.9166666666666666,
-      "per_triggered_task": 1.4545454545454546
+      "per_triggered_task": 1.5454545454545454
      }
     }
    },
    "full": {
     "score": 1.0,
-    "tokens": 1074674.0,
-    "cost": 0.7130307374999999,
-    "requests": 43.416666666666664,
-    "cache_read": 829682.3333333334,
-    "cache_write": 221612.66666666666,
-    "output": 23379.0,
-    "compactions": 0.4166666666666667,
+    "tokens": 1306625.0,
+    "cost": 0.7800917333333333,
+    "requests": 47.083333333333336,
+    "cache_read": 972124.0833333334,
+    "cache_write": 309671.0833333333,
+    "output": 24829.833333333332,
+    "compactions": 0.3333333333333333,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 12.916666666666666
+      "per_triggered_task": 13.0
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 7.75
+      "per_triggered_task": 8.375
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 19.0
+      "per_triggered_task": 19.333333333333332
      },
      "online_context_compact": {
-      "task_rate": 0.4166666666666667,
+      "task_rate": 0.3333333333333333,
       "per_triggered_task": 1.0
      }
     }
@@ -1748,19 +1748,19 @@
    },
    "+EPR": {
     "score": 0.9933333333333334,
-    "tokens": 168583.26666666666,
-    "cost": 0.23066806666666667,
-    "requests": 14.7,
-    "cache_read": 127235.63333333333,
-    "cache_write": 37159.666666666664,
-    "output": 4187.966666666666,
+    "tokens": 174243.23333333334,
+    "cost": 0.23437560833333337,
+    "requests": 14.833333333333334,
+    "cache_read": 130572.9,
+    "cache_write": 39444.23333333333,
+    "output": 4226.1,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.7
+      "per_triggered_task": 6.6
      }
     }
    },
@@ -1784,27 +1784,27 @@
    },
    "full": {
     "score": 0.9933333333333334,
-    "tokens": 124109.36666666667,
-    "cost": 0.22699984166666665,
-    "requests": 13.266666666666667,
-    "cache_read": 80524.06666666667,
-    "cache_write": 39577.63333333333,
-    "output": 4007.6666666666665,
+    "tokens": 138854.76666666666,
+    "cost": 0.2395955,
+    "requests": 13.766666666666667,
+    "cache_read": 89757.16666666667,
+    "cache_write": 44912.73333333333,
+    "output": 4184.866666666667,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.7,
-      "per_triggered_task": 2.0952380952380953
+      "per_triggered_task": 2.0
      },
      "observation_pack": {
       "task_rate": 0.5,
-      "per_triggered_task": 1.8666666666666667
+      "per_triggered_task": 2.066666666666667
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 5.809523809523809
+      "per_triggered_task": 6.095238095238095
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -1867,31 +1867,31 @@
     }
    },
    "+EPR": {
-    "score": 0.9930555555555555,
-    "tokens": 1110504.5833333333,
-    "cost": 0.9511213125000001,
-    "requests": 49.666666666666664,
-    "cache_read": 934776.0833333334,
-    "cache_write": 160809.08333333334,
-    "output": 14919.416666666666,
+    "score": 1.0,
+    "tokens": 1290914.5,
+    "cost": 1.0371522708333332,
+    "requests": 52.5,
+    "cache_read": 1026406.4166666666,
+    "cache_write": 248878.91666666666,
+    "output": 15629.166666666666,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 18.0
+      "per_triggered_task": 18.916666666666668
      }
     }
    },
    "+OCC": {
     "score": 0.9888888888888889,
-    "tokens": 2674742.6666666665,
-    "cost": 2.374838791666667,
+    "tokens": 2668967.25,
+    "cost": 2.358232729166667,
     "requests": 42.0,
-    "cache_read": 2531000.5,
-    "cache_write": 132491.5,
-    "output": 11250.666666666666,
+    "cache_read": 2527601.9166666665,
+    "cache_write": 130117.41666666667,
+    "output": 11247.916666666666,
     "compactions": 0.5833333333333334,
     "overflow_rate": 0.0,
     "n": 12,
@@ -1903,31 +1903,31 @@
     }
    },
    "full": {
-    "score": 0.9947916666666666,
-    "tokens": 881451.0833333334,
-    "cost": 0.9094447291666669,
-    "requests": 44.333333333333336,
-    "cache_read": 699146.6666666666,
-    "cache_write": 165651.58333333334,
-    "output": 16652.833333333332,
-    "compactions": 0.08333333333333333,
+    "score": 1.0,
+    "tokens": 1086050.6666666667,
+    "cost": 1.0397787083333334,
+    "requests": 47.916666666666664,
+    "cache_read": 810107.5,
+    "cache_write": 258227.16666666666,
+    "output": 17716.0,
+    "compactions": 0.16666666666666666,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 4.25
+      "per_triggered_task": 4.416666666666667
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 5.5
+      "per_triggered_task": 7.0
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.916666666666668
+      "per_triggered_task": 18.333333333333332
      },
      "online_context_compact": {
-      "task_rate": 0.08333333333333333,
+      "task_rate": 0.16666666666666666,
       "per_triggered_task": 1.0
      }
     }
@@ -1988,19 +1988,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 217816.93333333332,
-    "cost": 0.15406102166666663,
-    "requests": 15.133333333333333,
-    "cache_read": 169304.56666666668,
-    "cache_write": 42650.2,
-    "output": 5862.166666666667,
+    "tokens": 230670.2,
+    "cost": 0.159415865,
+    "requests": 15.566666666666666,
+    "cache_read": 178956.36666666667,
+    "cache_write": 45710.833333333336,
+    "output": 6003.0,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.7666666666666667,
-      "per_triggered_task": 5.913043478260869
+      "per_triggered_task": 5.695652173913044
      }
     }
    },
@@ -2024,30 +2024,30 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 169953.7,
-    "cost": 0.17361295166666668,
-    "requests": 12.966666666666667,
-    "cache_read": 109308.8,
-    "cache_write": 54795.76666666667,
-    "output": 5849.133333333333,
-    "compactions": 0.03333333333333333,
+    "tokens": 200462.6,
+    "cost": 0.20128795166666666,
+    "requests": 14.3,
+    "cache_read": 129741.63333333333,
+    "cache_write": 64459.4,
+    "output": 6261.566666666667,
+    "compactions": 0.06666666666666667,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.9,
-      "per_triggered_task": 3.6296296296296298
+      "per_triggered_task": 3.4444444444444446
      },
      "observation_pack": {
       "task_rate": 0.4666666666666667,
-      "per_triggered_task": 3.5714285714285716
+      "per_triggered_task": 4.785714285714286
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 6.428571428571429
+      "per_triggered_task": 6.285714285714286
      },
      "online_context_compact": {
-      "task_rate": 0.03333333333333333,
+      "task_rate": 0.06666666666666667,
       "per_triggered_task": 1.0
      }
     }
@@ -2108,19 +2108,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1197091.3333333333,
-    "cost": 0.5560340500000002,
-    "requests": 47.333333333333336,
-    "cache_read": 1014758.1666666666,
-    "cache_write": 162623.66666666666,
-    "output": 19709.5,
+    "tokens": 1505519.75,
+    "cost": 0.6530047291666667,
+    "requests": 52.416666666666664,
+    "cache_read": 1220855.4166666667,
+    "cache_write": 263030.8333333333,
+    "output": 21633.5,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.75
+      "per_triggered_task": 18.416666666666668
      }
     }
    },
@@ -2144,30 +2144,30 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 1155252.8333333333,
-    "cost": 0.7369235333333335,
-    "requests": 44.583333333333336,
-    "cache_read": 904838.5,
-    "cache_write": 226594.0,
-    "output": 23820.333333333332,
-    "compactions": 0.3333333333333333,
+    "tokens": 1408069.3333333333,
+    "cost": 0.838753516666667,
+    "requests": 49.583333333333336,
+    "cache_read": 1053273.8333333333,
+    "cache_write": 329174.6666666667,
+    "output": 25620.833333333332,
+    "compactions": 0.4166666666666667,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 12.916666666666666
+      "per_triggered_task": 13.5
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 7.75
+      "per_triggered_task": 10.25
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 18.666666666666668
+      "per_triggered_task": 19.333333333333332
      },
      "online_context_compact": {
-      "task_rate": 0.3333333333333333,
+      "task_rate": 0.4166666666666667,
       "per_triggered_task": 1.0
      }
     }
@@ -2228,19 +2228,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 174734.26666666666,
-    "cost": 0.231463125,
-    "requests": 14.466666666666667,
-    "cache_read": 132477.06666666668,
-    "cache_write": 38188.9,
-    "output": 4068.3,
+    "tokens": 182796.2,
+    "cost": 0.23626974166666667,
+    "requests": 14.7,
+    "cache_read": 137612.0,
+    "cache_write": 41072.566666666666,
+    "output": 4111.633333333333,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.75
+      "per_triggered_task": 6.55
      }
     }
    },
@@ -2264,27 +2264,27 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 117325.23333333334,
-    "cost": 0.21091892500000003,
-    "requests": 12.8,
-    "cache_read": 75042.86666666667,
-    "cache_write": 38374.23333333333,
-    "output": 3908.133333333333,
+    "tokens": 123609.06666666667,
+    "cost": 0.21764603333333338,
+    "requests": 12.9,
+    "cache_read": 77144.93333333333,
+    "cache_write": 42526.13333333333,
+    "output": 3938.0,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 30,
     "triggers": {
      "action_fusion": {
       "task_rate": 0.7,
-      "per_triggered_task": 1.8571428571428572
+      "per_triggered_task": 1.9047619047619047
      },
      "observation_pack": {
       "task_rate": 0.4666666666666667,
-      "per_triggered_task": 1.4285714285714286
+      "per_triggered_task": 1.6428571428571428
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 5.714285714285714
+      "per_triggered_task": 5.619047619047619
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -2348,19 +2348,19 @@
    },
    "+EPR": {
     "score": 1.0,
-    "tokens": 1055594.0,
-    "cost": 0.9130595208333333,
-    "requests": 48.0,
-    "cache_read": 889212.8333333334,
-    "cache_write": 152018.41666666666,
-    "output": 14362.75,
+    "tokens": 1349676.0833333333,
+    "cost": 1.0684880625,
+    "requests": 53.083333333333336,
+    "cache_read": 1073207.75,
+    "cache_write": 260651.08333333334,
+    "output": 15817.25,
     "compactions": 0.0,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 16.666666666666668
+      "per_triggered_task": 19.0
      }
     }
    },
@@ -2384,30 +2384,30 @@
    },
    "full": {
     "score": 1.0,
-    "tokens": 842758.1666666666,
-    "cost": 0.8933058541666665,
-    "requests": 43.75,
-    "cache_read": 665034.3333333334,
-    "cache_write": 161266.08333333334,
-    "output": 16457.75,
-    "compactions": 0.16666666666666666,
+    "tokens": 1083533.25,
+    "cost": 1.0497955833333334,
+    "requests": 48.0,
+    "cache_read": 799215.0,
+    "cache_write": 266635.0,
+    "output": 17683.25,
+    "compactions": 0.25,
     "overflow_rate": 0.0,
     "n": 12,
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 4.416666666666667
+      "per_triggered_task": 4.666666666666667
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 4.0
+      "per_triggered_task": 7.0
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.083333333333332
+      "per_triggered_task": 18.25
      },
      "online_context_compact": {
-      "task_rate": 0.16666666666666666,
+      "task_rate": 0.25,
       "per_triggered_task": 1.0
      }
     }
@@ -2491,15 +2491,15 @@
    },
    "+EPR": {
     "token_saving": {
-     "mean": 0.5003031051586607,
-     "lo": 0.48439386186838973,
-     "hi": 0.5178119933236095,
+     "mean": 0.47483879621157576,
+     "lo": 0.4625859807477554,
+     "hi": 0.48709161167539605,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.34568296596316744,
-     "lo": 0.3318285453961106,
-     "hi": 0.35953738653022416,
+     "mean": 0.32830357010228,
+     "lo": 0.3182456133428852,
+     "hi": 0.33836152686167476,
      "n": 5
     },
     "score_ratio": {
@@ -2511,7 +2511,7 @@
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.78,
-      "per_triggered_task": 5.643115942028986
+      "per_triggered_task": 5.633333333333334
      }
     }
    },
@@ -2543,15 +2543,15 @@
    },
    "full": {
     "token_saving": {
-     "mean": 0.5652884465493873,
-     "lo": 0.5414734054113705,
-     "hi": 0.5901832061915974,
+     "mean": 0.5375676468371939,
+     "lo": 0.5261593378921356,
+     "hi": 0.549022417011826,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.19362438468136794,
-     "lo": 0.15179143484879615,
-     "hi": 0.23545733451393974,
+     "mean": 0.15558598973598406,
+     "lo": 0.13656885248452877,
+     "hi": 0.1744538198385938,
      "n": 5
     },
     "score_ratio": {
@@ -2563,18 +2563,18 @@
     "triggers": {
      "action_fusion": {
       "task_rate": 0.9466666666666667,
-      "per_triggered_task": 3.3209998175515425
+      "per_triggered_task": 3.2903667214012047
      },
      "observation_pack": {
       "task_rate": 0.4333333333333334,
-      "per_triggered_task": 4.594139194139194
+      "per_triggered_task": 4.861721611721611
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7,
-      "per_triggered_task": 6.323809523809524
+      "per_triggered_task": 6.361904761904762
      },
      "online_context_compact": {
-      "task_rate": 0.039999999999999994,
+      "task_rate": 0.05333333333333333,
       "per_triggered_task": 1.0
      }
     }
@@ -2656,15 +2656,15 @@
    },
    "+EPR": {
     "token_saving": {
-     "mean": 0.6346608440742745,
-     "lo": 0.6262495807546904,
-     "hi": 0.6429323094740803,
+     "mean": 0.5617394956533991,
+     "lo": 0.5560342650505405,
+     "hi": 0.5674447262562575,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.5221520663667095,
-     "lo": 0.5131450529290368,
-     "hi": 0.5318651329703578,
+     "mean": 0.4585959001682653,
+     "lo": 0.4478566470623838,
+     "hi": 0.46736176067303836,
      "n": 5
     },
     "score_ratio": {
@@ -2676,21 +2676,21 @@
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.28333333333333
+      "per_triggered_task": 17.816666666666666
      }
     }
    },
    "+OCC": {
     "token_saving": {
-     "mean": 0.23209740939673482,
-     "lo": 0.22058702094783583,
-     "hi": 0.24615493562369659,
+     "mean": 0.2376245757227954,
+     "lo": 0.2270371849760112,
+     "hi": 0.248736299968001,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.02045838399653798,
-     "lo": 0.00889775613291988,
-     "hi": 0.033090581615581156,
+     "mean": 0.02289767206423955,
+     "lo": 0.00996932588834495,
+     "hi": 0.03582601824013414,
      "n": 5
     },
     "score_ratio": {
@@ -2702,45 +2702,45 @@
     "triggers": {
      "online_context_compact": {
       "task_rate": 0.9166666666666666,
-      "per_triggered_task": 1.509090909090909
+      "per_triggered_task": 1.527272727272727
      }
     }
    },
    "full": {
     "token_saving": {
-     "mean": 0.6799358900015917,
-     "lo": 0.6673940474314943,
-     "hi": 0.6927999349806729,
+     "mean": 0.5865730029436212,
+     "lo": 0.5705038058392118,
+     "hi": 0.6001111584870445,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.40313668884978515,
-     "lo": 0.39044155264502023,
-     "hi": 0.4194560418496411,
+     "mean": 0.30647345247005875,
+     "lo": 0.2699272435577165,
+     "hi": 0.3351788528126384,
      "n": 5
     },
     "score_ratio": {
-     "mean": 0.9989583333333332,
-     "lo": 0.996875,
+     "mean": 1.0,
+     "lo": 1.0,
      "hi": 1.0,
      "n": 5
     },
     "triggers": {
      "action_fusion": {
       "task_rate": 1.0,
-      "per_triggered_task": 12.599999999999998
+      "per_triggered_task": 13.1
      },
      "observation_pack": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 7.45
+      "per_triggered_task": 9.625
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 18.800000000000004
+      "per_triggered_task": 19.299999999999997
      },
      "online_context_compact": {
       "task_rate": 0.36666666666666664,
-      "per_triggered_task": 1.0
+      "per_triggered_task": 1.05
      }
     }
    }
@@ -2821,27 +2821,27 @@
    },
    "+EPR": {
     "token_saving": {
-     "mean": 0.5166327703339212,
-     "lo": 0.49539477330262843,
-     "hi": 0.5399042833908021,
+     "mean": 0.49058119375823245,
+     "lo": 0.46716863210250625,
+     "hi": 0.5126092435604116,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.4498026398800413,
-     "lo": 0.4360681513571979,
-     "hi": 0.4646275352149001,
+     "mean": 0.4338059286739112,
+     "lo": 0.4191769964812259,
+     "hi": 0.44831488245648365,
      "n": 5
     },
     "score_ratio": {
-     "mean": 0.9997839851024208,
-     "lo": 0.9960000000000001,
+     "mean": 0.9988316041500399,
+     "lo": 0.9931428571428572,
      "hi": 1.0033519553072625,
      "n": 5
     },
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 0.6666666666666666,
-      "per_triggered_task": 6.65
+      "per_triggered_task": 6.63
      }
     }
    },
@@ -2873,35 +2873,35 @@
    },
    "full": {
     "token_saving": {
-     "mean": 0.6517521837021797,
-     "lo": 0.6300194005073777,
-     "hi": 0.6734849668969818,
+     "mean": 0.6176856634692025,
+     "lo": 0.5944189134654662,
+     "hi": 0.6419177085723755,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.46670213620440953,
-     "lo": 0.4426402869463593,
-     "hi": 0.4907639854624598,
+     "mean": 0.44392312251763055,
+     "lo": 0.421462778270672,
+     "hi": 0.4685694030793683,
      "n": 5
     },
     "score_ratio": {
-     "mean": 0.9985115393467663,
-     "lo": 0.9922793296089385,
-     "hi": 1.0026966292134833,
+     "mean": 0.9976735505199507,
+     "lo": 0.992,
+     "hi": 1.0021379699956061,
      "n": 5
     },
     "triggers": {
      "action_fusion": {
       "task_rate": 0.7200000000000001,
-      "per_triggered_task": 1.9430519480519481
+      "per_triggered_task": 1.9112554112554112
      },
      "observation_pack": {
       "task_rate": 0.49333333333333335,
-      "per_triggered_task": 1.7520238095238096
+      "per_triggered_task": 1.875
      },
      "evidence_preserving_reducer": {
       "task_rate": 0.7266666666666668,
-      "per_triggered_task": 5.495670995670996
+      "per_triggered_task": 5.650367024280068
      },
      "online_context_compact": {
       "task_rate": 0.0,
@@ -2986,41 +2986,41 @@
    },
    "+EPR": {
     "token_saving": {
-     "mean": 0.6884914058438827,
-     "lo": 0.6855393643794738,
-     "hi": 0.6920229632290209,
+     "mean": 0.6159060673929593,
+     "lo": 0.60354680515984,
+     "hi": 0.6270754127535236,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.6541752388872238,
-     "lo": 0.6518676486798424,
-     "hi": 0.6577220985394372,
+     "mean": 0.6059572594066053,
+     "lo": 0.596694136567088,
+     "hi": 0.6151081714772506,
      "n": 5
     },
     "score_ratio": {
-     "mean": 1.0020485594990822,
-     "lo": 0.9947834598672587,
-     "hi": 1.0093136591309055,
+     "mean": 1.005774148001207,
+     "lo": 1.0011173184357542,
+     "hi": 1.0102685300236791,
      "n": 5
     },
     "triggers": {
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.083333333333336
+      "per_triggered_task": 18.500000000000004
      }
     }
    },
    "+OCC": {
     "token_saving": {
-     "mean": 0.24072658918564036,
-     "lo": 0.2234544216392349,
-     "hi": 0.2604304573267317,
+     "mean": 0.24153450501279142,
+     "lo": 0.22374705210010207,
+     "hi": 0.26191068531042144,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.11905440535837593,
-     "lo": 0.1047770941569911,
-     "hi": 0.136778933203624,
+     "mean": 0.12167836963633016,
+     "lo": 0.10555896963621376,
+     "hi": 0.14052256303009505,
      "n": 5
     },
     "score_ratio": {
@@ -3038,21 +3038,21 @@
    },
    "full": {
     "token_saving": {
-     "mean": 0.7494577611725394,
-     "lo": 0.7447046174224752,
-     "hi": 0.7533148921239746,
+     "mean": 0.6840603609303864,
+     "lo": 0.6806553924869109,
+     "hi": 0.6890718636190111,
      "n": 5
     },
     "cost_saving": {
-     "mean": 0.6617755689136683,
-     "lo": 0.658202168086858,
-     "hi": 0.6653489697404783,
+     "mean": 0.6121003070951163,
+     "lo": 0.6067090828647089,
+     "hi": 0.6166047470908981,
      "n": 5
     },
     "score_ratio": {
-     "mean": 1.003527662057432,
-     "lo": 0.9989363881086141,
-     "hi": 1.008021339012443,
+     "mean": 1.005774148001207,
+     "lo": 1.0011173184357542,
+     "hi": 1.0102685300236791,
      "n": 5
     },
     "triggers": {
@@ -3062,14 +3062,14 @@
      },
      "observation_pack": {
       "task_rate": 0.16666666666666666,
-      "per_triggered_task": 4.6
+      "per_triggered_task": 6.4
      },
      "evidence_preserving_reducer": {
       "task_rate": 1.0,
-      "per_triggered_task": 17.233333333333334
+      "per_triggered_task": 18.116666666666667
      },
      "online_context_compact": {
-      "task_rate": 0.13333333333333333,
+      "task_rate": 0.18333333333333332,
       "per_triggered_task": 1.0
      }
     }
@@ -3082,6 +3082,6 @@
   "B:default": true,
   "B:long": true
  },
- "verdict": "PARTIAL: full stack tokens -56.5%, cost -19.4% at 100.0% of base success (backend A, default length); full stack cheapest in 2/4 cells; every mechanism saves tokens standalone: True; Action Fusion fires less per triggered task on backend B: True",
- "generated_at": "2026-09-25 02:05:52"
+ "verdict": "PARTIAL: full stack tokens -53.8%, cost -15.6% at 100.0% of base success (backend A, default length); full stack cheapest in 2/4 cells; every mechanism saves tokens standalone: True; Action Fusion fires less per triggered task on backend B: True; full-stack success ratio per cell: A:default 1.000, A:long 1.000, B:default 0.998, B:long 1.006; EPR-alone success ratio per cell: A:default 1.000, A:long 1.000, B:default 0.999, B:long 1.006",
+ "generated_at": "2026-09-25 06:45:21"
 }

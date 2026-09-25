@@ -9,10 +9,14 @@ We report the Spearman rank correlation across a ~20-policy zoo, stratified by w
 a policy's plan fits inside the recorded support, and repeat with context coupling
 (outcomes depend on how many sibling attempts the agent read), which biases replay.
 
-    python experiments/dream-rsi/e2_offpolicy_validity.py [--seeds K] [--quick]
+With ``--llm claude:haiku`` two policies written by the LLM developer (Listing-2 prompt, a
+short dreaming chain on the recorded worlds) join the zoo; like every LLM-written policy they
+only ever run in the subprocess sandbox.
+
+    python experiments/dream-rsi/e2_offpolicy_validity.py [--llm sim|claude:haiku] [--seeds K] [--quick]
 """
 import numpy as np
-from _common import figure, fmt, parse_args, pmap, save, spearman, summ
+from _common import figure, fmt, llm_policies, parse_args, pmap, runner_for, save, spearman, summ
 
 from rsi.dream import (Config, DreamRSILoop, Eq1Objective, ReplayEvaluator, adaptive, code_of, parallel_refine,
                        rules)
@@ -45,7 +49,7 @@ def zoo():
 def online_value(job):
     name, code, seed, coupling = job
     dom = SyntheticDomain(SyntheticConfig(seed=seed, context_coupling=coupling))
-    cfg = Config(rounds=1, W=W, branch_count=GRID[0], refine_count=GRID[1], dream=False, sandbox="inprocess",
+    cfg = Config(rounds=1, W=W, branch_count=GRID[0], refine_count=GRID[1], dream=False, sandbox=runner_for(name),
                  seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1)
     loop = DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, initial_policy=code)
     res = loop.run()
@@ -60,14 +64,19 @@ def record(seed, coupling):
     return DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg).run().meta["worlds"][0]
 
 
-def study(policies, K, n_true, coupling, workers):
-    worlds = [record(100 + i, coupling) for i in range(K)]
-    ev = ReplayEvaluator(Eq1Objective(normalize=False, **OBJ), W=W, fallback=GRID, runner="inprocess",
-                         hard_max=(12, 12))
+def evaluators(runner):
+    ev = ReplayEvaluator(Eq1Objective(normalize=False, **OBJ), W=W, fallback=GRID, runner=runner, hard_max=(12, 12))
     ev_nr = ReplayEvaluator(Eq1Objective(normalize=False, support="no_reward", **OBJ), W=W, fallback=GRID,
-                            runner="inprocess", hard_max=(12, 12))
+                            runner=runner, hard_max=(12, 12))
+    return ev, ev_nr
+
+
+def study(policies, K, n_true, coupling, workers, worlds=None):
+    worlds = worlds or [record(100 + i, coupling) for i in range(K)]
+    evs = {r: evaluators(r) for r in ("inprocess", "subprocess")}
     replay, support, replay_nr = {}, {}, {}
     for name, code in policies.items():
+        ev, ev_nr = evs[runner_for(name)]
         rep = ev.evaluate(code, worlds)
         replay[name] = rep.value
         replay_nr[name] = ev_nr.evaluate(code, worlds).value
@@ -96,6 +105,10 @@ def main():
     a = parse_args("E2 off-policy validity", default_seeds=5)
     n_true = 20 if a.quick else 60
     pol = zoo()
+    if a.llm != "sim":   # LLM-written policies join the zoo (dreamed on the same recorded worlds)
+        rec_worlds = [record(100 + i, 0.0) for i in range(a.seeds)]
+        pol.update(llm_policies(a.llm, rec_worlds, n=2, W=W, fallback=GRID, hard_max=(12, 12),
+                                objective=Eq1Objective(normalize=False, **OBJ)))
     base = study(pol, a.seeds, n_true, 0.0, a.workers)
     coup = study(pol, a.seeds, n_true, 0.6, a.workers)
     # replay estimate vs number of recorded worlds (sampling noise of the simulator itself)
@@ -104,9 +117,8 @@ def main():
         rs = []
         for rep in range(3):
             worlds = [record(5000 + 100 * rep + i, 0.0) for i in range(k)]
-            ev = ReplayEvaluator(Eq1Objective(normalize=False, **OBJ), W=W, fallback=GRID, runner="inprocess",
-                                 hard_max=(12, 12))
-            vals = {n: ev.evaluate(c, worlds).value for n, c in pol.items()}
+            evs = {r: evaluators(r)[0] for r in ("inprocess", "subprocess")}
+            vals = {n: evs[runner_for(n)].evaluate(c, worlds).value for n, c in pol.items()}
             rs.append(spearman([vals[n] for n in pol], [base["true"][n] for n in pol]))
         by_k[k] = summ(rs)
     print(f"Spearman(replay, true) all={base['spearman_all']:.3f}  in-support={base['spearman_in_support']:.3f}")
@@ -143,7 +155,9 @@ def main():
         if ok else f"NOT reproduced: in-support Spearman {base['spearman_in_support']:.2f}"
     save("e2_offpolicy_validity", {"config": {"W": W, "recording_grid": GRID, "recorded_worlds": a.seeds,
                                               "true_value_worlds": n_true, "objective": OBJ | {"normalize": False},
-                                              "policies": list(pol), "llm": "not used (replay only)"},
+                                              "policies": list(pol),
+                                              "llm": a.llm if a.llm != "sim" else "not used (replay only)",
+                                              "llm_policies": {n: c for n, c in pol.items() if n.startswith("llm_")}},
                                    "independent": base, "context_coupling_0.6": coup,
                                    "spearman_vs_recorded_worlds": by_k, "figure": str(png), "verdict": verdict}, a.out)
     print(verdict)

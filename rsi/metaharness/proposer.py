@@ -234,6 +234,11 @@ class AgentProposer(Proposer):
         if prop.artifact is None:
             batch.error = prop.error or "agent produced no files"
             return batch
+        if prop.error and prop.error.startswith("agent error"):
+            # release: a failed or timed-out proposer (claude_wrapper returns ok=False, e.g. exit 124) skips the
+            # iteration even if pending_eval.json was already written [spec A3.2]
+            batch.error = prop.error
+            return batch
         files = {n: prop.artifact[n] for n in prop.artifact if n != "agents/README.md"}
         header: dict = {}
         if "pending_eval.json" in files:

@@ -23,6 +23,7 @@ import hashlib
 import json
 import random
 import time
+import warnings
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
@@ -78,7 +79,7 @@ class GEPAEngine:
                  llm_propose: Optional[LLM], config: Config, out_dir: Optional[str | Path] = None,
                  proposer=None, llm_task: Optional[LLM] = None, budget=None, stoppers: Sequence[Callable] = (),
                  callbacks: Sequence[Callable] = (), verbose: bool = False, method: str = "gepa",
-                 critic=None) -> None:
+                 critic=None, selector=None) -> None:
         config.validate()
         self.cfg = cfg = config
         self.adapter = adapter
@@ -94,8 +95,13 @@ class GEPAEngine:
         self.critic = critic            # optional pre-evaluation screen (e.g. rsi.core.LeakageCritic); off by default
         # one shared RNG, as in gepa.optimize
         self.rng = random.Random(cfg.seed)
-        self.selector = make_selector(cfg.candidate_selection, self.rng, epsilon=cfg.epsilon, top_k=cfg.top_k,
-                                      beam_n=cfg.beam_n)
+        if selector is None:
+            self.selector = make_selector(cfg.candidate_selection, self.rng, epsilon=cfg.epsilon, top_k=cfg.top_k,
+                                          beam_n=cfg.beam_n)
+        elif hasattr(selector, "select"):      # a CandidateSelector instance (as gepa.optimize accepts)
+            self.selector = selector
+        else:                                  # a factory: receives the engine's shared RNG
+            self.selector = selector(self.rng)
         self.comp_selector = make_component_selector(cfg.module_selector)
         self.sampler = EpochShuffledBatchSampler(cfg.minibatch_size, self.rng)
         self.acceptance = make_acceptance(cfg.acceptance, cfg.noise_margin)
@@ -185,7 +191,9 @@ class GEPAEngine:
         phase = "minibatch_parent" if role == "parent" else "minibatch_child"
         self._charge(phase, len(ids))
         seeds = [self._mb_seed(self.state.i, role, j) for j in range(len(ids))]
-        return self.adapter.evaluate(ids, cand, True, seeds)
+        eb = self.adapter.evaluate(ids, cand, True, seeds)
+        self._count("n_exec_errors", eb.n_errors)
+        return eb
 
     def evaluate_merge_subsample(self, cand: Artifact, ids: list[str]) -> list[float]:
         """Scores of a merged child on its D_pareto subsample, charged once per id.
@@ -201,7 +209,8 @@ class GEPAEngine:
         self._charge("merge_subsample", len(ids))
         seeds = [self._mb_seed(self.state.i, "merge", j) for j in range(len(ids))]
         eb = self.adapter.evaluate(ids, cand, False, seeds)
-        self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + eb.n_infra
+        self._count("n_infra", eb.n_infra)
+        self._count("n_exec_errors", eb.n_errors)
         return list(eb.scores)
 
     def evaluate_val(self, cand: Artifact, ids: list[str], phase: str) -> tuple[dict, Optional[dict]]:
@@ -210,8 +219,11 @@ class GEPAEngine:
             n = sum(1 for t in ids if (cand.id, t) not in self._val_cache)
         self._charge(phase, n)
         eb = self.adapter.evaluate(ids, cand, False, [self.cfg.val_seed] * len(ids))
-        if eb.n_infra:     # still failing after retries: scored 0 (conservative), counted and reported
-            self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + eb.n_infra
+        # infra failures still failing after retries are scored 0 (conservative), counted and reported;
+        # execution errors are graded failures (score 0) and are counted so a broken setup is visible
+        self._count("n_infra", eb.n_infra)
+        self._count("n_exec_errors", eb.n_errors)
+        self._last_val_errors = (eb.n_errors, eb.first_error, len(ids))
         scores = dict(zip(ids, eb.scores))
         for t, s in scores.items():
             self._val_cache[(cand.id, t)] = s
@@ -250,7 +262,7 @@ class GEPAEngine:
         st = self.state
         st.extra["rng"] = _rng_state_to_json(self.rng.getstate())
         st.extra["sampler"] = self.sampler.get_state()
-        st.extra["selector"] = self.selector.get_state()
+        st.extra["selector"] = self.selector.get_state() if hasattr(self.selector, "get_state") else {}
         st.extra["merge"] = self.merge.get_state() if self.merge else None
         st.extra["usage"] = self.usage_snapshot()
         st.extra["trace_len"] = len(st.trace)
@@ -287,7 +299,8 @@ class GEPAEngine:
             self.rng.setstate(_rng_state_from_json(st.extra["rng"]))
         if st.extra.get("sampler"):
             self.sampler.set_state(st.extra["sampler"])
-        self.selector.set_state(st.extra.get("selector") or {})
+        if hasattr(self.selector, "set_state"):
+            self.selector.set_state(st.extra.get("selector") or {})
         if self.merge and st.extra.get("merge"):
             self.merge.set_state(st.extra["merge"])
         self._usage_prior = st.extra.get("usage") or {}
@@ -320,6 +333,13 @@ class GEPAEngine:
                 (self.out_dir / f).unlink(missing_ok=True)
             self.ledger = Ledger(self.out_dir / "ledger.jsonl")
         self.full_eval_and_add(self.seed_artifact, [None], "baseline", "seed_val")
+        n_err, first, n = getattr(self, "_last_val_errors", (0, None, 0))
+        self.state.extra["seed_val_error_rate"] = n_err / n if n else 0.0
+        if n and n_err == n:
+            # not raised: GEPA can still repair prompts from the error traces (e.g. code-as-text components),
+            # but a missing llm_task or a broken domain would otherwise look like "no improvement found"
+            warnings.warn(f"GEPA: the seed artifact raised an execution error on all {n} D_pareto examples "
+                          f"(first: {first!r}). Check llm_task and the domain setup.", RuntimeWarning, stacklevel=3)
         if self.verbose:
             print(f"[gepa] seed val={self.state.agg_scores()[0]:.4f} |V|={len(self.val_ids)} "
                   f"|T|={len(self.train_ids)} components={self.components}")
@@ -341,10 +361,18 @@ class GEPAEngine:
                 self.stop_reason = "max_metric_calls(hard)"
                 break
         self._save()
+        failed = int(self.state.extra.get("n_reflection_failed", 0))
+        if self.state.n_reflection_calls and failed == self.state.n_reflection_calls:
+            warnings.warn(f"GEPA: all {failed} reflection-LM calls failed (see run_log 'rejected_outputs'); "
+                          "the result is the seed or earlier candidates only.", RuntimeWarning, stacklevel=3)
         return self.state
 
+    def _count(self, key: str, n: int) -> None:
+        if n:
+            self.state.extra[key] = self.state.extra.get(key, 0) + int(n)
+
     def _count_infra(self, n: int) -> None:
-        self.state.extra["n_infra"] = self.state.extra.get("n_infra", 0) + n
+        self._count("n_infra", n)
 
     def _finish_entry(self, entry: dict) -> None:
         st = self.state
@@ -418,6 +446,9 @@ class GEPAEngine:
         st.n_reflection_calls += res.calls
         if res.rejected:
             entry["rejected_outputs"] = {c: r[:200] for c, r in res.rejected.items()}
+            self._count("n_reflection_failed", sum(1 for r in res.rejected.values() if r.startswith("llm error")))
+            self._count("n_reflection_unparsed", sum(1 for r in res.rejected.values()
+                                                     if not r.startswith("llm error")))
         if not res.new_texts:
             entry["event"] = "no_proposal"
             return self._finish_entry(entry)

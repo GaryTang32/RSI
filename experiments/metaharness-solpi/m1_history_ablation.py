@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import RUNS, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, table  # noqa: E402
+from _common import RUNS, figure_path, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, table  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -80,12 +80,17 @@ def main():
                     cmp[f"full_minus_{a}"]["best"].get("mean_diff", 0) >= 0 for a in ("scores_only", "scores_summary"))
     ci_excl = all(cmp[f"full_minus_{a}"]["median"].get("lo", -1) > 0 for a in ("scores_only", "scores_summary"))
     summ_no_better = cmp["summary_minus_scores_only"]["median"].get("lo", 0) <= 0
-    verdict = ("REPRODUCED" if full_wins and ci_excl else "PARTIAL" if full_wins else "NOT REPRODUCED") + \
-        (": full history beats both ablations on median (CI excludes 0) and best" if full_wins and ci_excl else
-         ": full history is ahead on average but not significantly on every comparison" if full_wins else
+    best_sig = all(cmp[f"full_minus_{a}"]["best"].get("lo", -1) > 0 for a in ("scores_only", "scores_summary"))
+    # the spec's confirming outcome has two parts: full > both ablations (median and best) AND summaries no
+    # better than scores-only; REPRODUCED needs both, a failed sub-claim makes the verdict PARTIAL
+    verdict = ("REPRODUCED" if full_wins and ci_excl and summ_no_better else "PARTIAL" if full_wins
+               else "NOT REPRODUCED") + \
+        (": full history beats both ablations on median (CI excludes 0) and on best (mean)" if full_wins and ci_excl
+         else ": full history is ahead on average but not significantly on every comparison" if full_wins else
          ": full history does not beat the ablations") + \
-        ("; summaries no better than scores-only (CI includes 0 or below)" if summ_no_better else
-         "; summaries DO help over scores-only here")
+        ("" if best_sig else " (best-candidate CI touches or includes 0 in at least one comparison)") + \
+        ("; summaries no better than scores-only (CI includes 0 or below), as in the paper" if summ_no_better else
+         "; sub-claim NOT reproduced: summaries DO help over scores-only here (paper: they do not)")
     print(table([[a, fmt(summ[a]["median"]), fmt(summ[a]["best"]), fmt(summ[a]["n_above_zero_shot"], 1),
                   fmt(summ[a]["selected_test"]), fmt(summ[a]["trace_files_per_iter"], 1)] for a in ARMS],
                 ["arm", "median search", "best search", "#>zero-shot", "selected test", "trace files read/iter"]))
@@ -100,8 +105,7 @@ def main():
     ax.set_title(f"M1 history ablation ({ARGS.llm}, {ARGS.seeds} seeds)")
     ax.legend(fontsize=8)
     f.tight_layout()
-    out_png = Path(__file__).resolve().parents[2] / "results" / "metaharness-solpi" / "m1_history_ablation.png"
-    out_png.parent.mkdir(parents=True, exist_ok=True)
+    out_png = figure_path("m1_history_ablation", ARGS)
     f.savefig(out_png, dpi=120)
     save("m1_history_ablation" + ("" if not ARGS.live else "_live"), {
         "claim": "Full-history (raw traces) access is the key ingredient; summaries do not recover it [MH Table 3]",

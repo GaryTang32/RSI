@@ -12,7 +12,10 @@
       in safe mode, the source's discriminative checks only;
     * :meth:`llm_distill` - the §6.4 prompt fallback;
     * :meth:`distill_from_failures` - a defensive "repair gene" from >= 5 failed
-      capsules with a recurring pattern;
+      capsules with a recurring pattern (run after a successful solidify when
+      ``maybe_distill(..., failures=True)``; Evolver's heuristic gives it the
+      validation ``node --test``, ported as ``python --test``, which the command
+      policy filters out, so the gene ships with an EMPTY validation list);
     * :meth:`validate_synth` - the synthesized-gene validator rules.
 
 :class:`LeakageAuditor`
@@ -67,6 +70,7 @@ class Distiller:
         self.last_hash: Optional[str] = None
         self.last_fail_at: Optional[float] = None
         self.last_fail_hash: Optional[str] = None
+        self.last_failure_result: Optional[DistillResult] = None
 
     # ------------------------------------------------------------------ triggers
     def auto_trigger(self, store) -> bool:
@@ -81,13 +85,25 @@ class Distiller:
         good = [c for c in caps if c.outcome.get("status") == "success" and c.outcome.get("score", 1) >= self.min_score]
         return sum(1 for c in last10 if c.outcome.get("status") == "success") >= 7 and len(good) >= self.min_capsules
 
-    def maybe_distill(self, store, *, llm=None) -> Optional[DistillResult]:
-        """Run after a SUCCESSFUL solidify (CLI-handler timing)."""
+    def should_distill_from_failures(self, store) -> bool:
+        """>= ``failure_min`` failed capsules and >= ``failure_interval_h`` since the last failure distillation."""
+        if self.last_fail_at is not None and store.clock.now() - self.last_fail_at < self.failure_interval_h * 3600:
+            return False
+        return len(store.failed_capsules) >= self.failure_min
+
+    def maybe_distill(self, store, *, llm=None, failures: bool = False) -> Optional[DistillResult]:
+        """Run after a SUCCESSFUL solidify (CLI-handler timing): the success distiller (every 5th solidify or
+        ``should_distill``; heuristic first, LLM fallback when ``llm`` is given), then - with ``failures`` - the
+        failure distiller (``should_distill_from_failures``). Returns the success distiller's result; the failure
+        distiller's is kept in ``last_failure_result``."""
         res = None
+        self.last_failure_result = None
         if self.auto_trigger(store) or self.should_distill(store):
             res = self.auto_distill(store)
             if (res is None or not res.ok) and llm is not None:
                 res = self.llm_distill(store, llm)
+        if failures and self.should_distill_from_failures(store):
+            self.last_failure_result = self.distill_from_failures(store)
         return res
 
     # ------------------------------------------------------------------ heuristic synthesizer
@@ -152,34 +168,52 @@ class Distiller:
 
     # ------------------------------------------------------------------ failure distillation
     def distill_from_failures(self, store) -> DistillResult:
+        """Evolver's heuristic repair-gene synthesizer (``synthesizeRepairGeneFromFailures``): group the failed
+        capsules by failure reason, take the most frequent recurring group, and build a defensive GUARD/APPLY/
+        VERIFY/ROLLBACK gene whose ``signals_match`` are the group's top-4 trigger tokens plus <= 3 learning
+        signals. No LLM call."""
         fcs = store.failed_capsules
         if len(fcs) < self.failure_min:
-            return DistillResult(False, reason="too few failed capsules")
+            return DistillResult(False, reason="insufficient_failures")
         now = store.clock.now()
-        if self.last_fail_at is not None and now - self.last_fail_at < self.failure_interval_h * 3600:
-            return DistillResult(False, reason="failure distiller interval")
         h = sha256_text("|".join(fc["id"] for fc in fcs))
         if h == self.last_fail_hash:
-            return DistillResult(False, reason="failure data hash unchanged")
-        pat = Counter(r for fc in fcs for r in fc.get("failure_reason", []))
-        recurring = [p for p, n in pat.items() if n >= 2]
+            return DistillResult(False, reason="idempotent_skip")
+        groups: dict[str, list] = defaultdict(list)
+        for fc in fcs:
+            groups[str((fc.get("failure_reason") or ["unknown"])[0])].append(fc)
+        recurring = sorted(((k, v) for k, v in groups.items() if len(v) >= 2), key=lambda kv: (-len(kv[1]), kv[0]))
         if not recurring:
-            return DistillResult(False, reason="no recurring failure pattern")
-        sig = Counter(s for fc in fcs for s in fc.get("learning_signals", []))
-        top = recurring[0]
-        g = Gene(id="gene_repair_distilled_" + re.sub(r"[^a-z0-9]+", "_", top.lower())[:40].strip("_"),
-                 category="repair", signals_match=[s for s, _ in sig.most_common(5)],
-                 strategy=[f"Verify the preconditions that previously led to: {top}.",
-                           "Apply the safe, minimal action only after the guard passes.",
-                           "Run the validation commands before and after the change."],
-                 avoid=[f"Repeating the change that caused: {top}"],
-                 summary=f"Prevents {top} by ensuring guards pass before acting",
+            return DistillResult(False, reason="no_recurring_pattern")
+        reason, grp = recurring[0]
+        trig = Counter(str(t).lower() for fc in grp for t in (fc.get("trigger") or []))
+        sm = [t for t, _ in sorted(trig.items(), key=lambda kv: (-kv[1], kv[0]))[:4]]
+        learn: list[str] = []
+        for s in (str(x).lower() for fc in grp for x in fc.get("learning_signals", [])):
+            if s not in learn and len(learn) < 3:
+                learn.append(s)
+        sm = list(dict.fromkeys(sm + learn)) or ["error", "constraint_violation"]
+        viol = [v for v, _ in Counter(v for fc in grp for v in fc.get("constraint_violations", [])).most_common(3)]
+        summary = (f"Prevents repeated failure: {reason}" + (f" (guards against: {', '.join(viol)})" if viol else ""))
+        steps = ["GUARD: Check preconditions before making changes -- verify blast radius estimate is within limits.",
+                 "GUARD: Validate that target files are not in forbidden_paths before editing.",
+                 "APPLY: Make the smallest possible change to address the signal, favoring single-file patches.",
+                 "VERIFY: Run validation commands immediately after the change.",
+                 "ROLLBACK: If validation fails, revert all changes before proceeding."]
+        if viol:
+            steps.insert(2, f"GUARD: Previous failures involved \"{', '.join(viol)}\" -- add explicit checks to "
+                            "prevent recurrence.")
+        g = Gene(id="gene_repair_distilled_" + re.sub(r"[^a-z0-9]+", "_", reason.lower())[:40].strip("_"),
+                 category="repair", signals_match=sm, strategy=steps, summary=summary[:200],
+                 preconditions=[f"Repeated failure pattern detected in recent capsules ({len(grp)} occurrences)"],
                  constraints={"max_files": 8, "forbidden_paths": [".git", "node_modules"]},
-                 validation=[], provenance={"kind": "distilled", "from": "failures"})
+                 validation=["python --test"], provenance={"kind": "distilled", "from": "failures", "reason": reason})
         r = self.validate_synth(g, store.genes.values())
         if r.ok:
             self.last_fail_at, self.last_fail_hash = now, h
             store.upsert_gene(r.gene)
+            store.distiller_log.append({"at": store.clock.iso(), "gene": r.gene.id, "source": "failures",
+                                        "n": len(grp)})
         return r
 
     # ------------------------------------------------------------------ validator

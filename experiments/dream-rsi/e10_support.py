@@ -12,10 +12,14 @@ policy are scored (a) by replay on each record, under the two support rules (cli
 reward), and (b) by their true online value on fresh worlds (own plan, no clipping).
 Objective: Eq.1 on raw scores with beta1 = 0.002 (depth is worth paying for here).
 
-    python experiments/dream-rsi/e10_support.py [--seeds K] [--quick]
+With ``--llm claude:haiku`` a policy written by the LLM developer (dreamed on the shallow
+record) is added; it runs in the subprocess sandbox, and the experiment shows how far its
+shallow-record replay estimate is from its true online value.
+
+    python experiments/dream-rsi/e10_support.py [--llm sim|claude:haiku] [--seeds K] [--quick]
 """
 import numpy as np
-from _common import figure, fmt, parse_args, pmap, save, summ
+from _common import figure, fmt, llm_policies, parse_args, pmap, runner_for, save, summ
 
 from rsi.dream import Config, DreamRSILoop, Eq1Objective, ReplayEvaluator, adaptive, code_of, rules
 from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
@@ -32,16 +36,16 @@ def policies():
             "adaptive_deep": code_of(adaptive(default_beta=1.0, patience_lo=3.0, patience_hi=6.0))}
 
 
-def run1(code, seed, grid):
+def run1(code, seed, grid, runner="inprocess"):
     dom = SyntheticDomain(SyntheticConfig(seed=seed))
-    cfg = Config(rounds=1, W=W, branch_count=grid[0], refine_count=grid[1], dream=False, sandbox="inprocess",
+    cfg = Config(rounds=1, W=W, branch_count=grid[0], refine_count=grid[1], dream=False, sandbox=runner,
                  seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1)
     return DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, initial_policy=code).run()
 
 
 def online(job):
     name, code, seed = job
-    r = run1(code, seed, (6, 4)).trajectory[0]
+    r = run1(code, seed, (6, 4), runner_for(name)).trajectory[0]
     return name, r["round_best"] - OBJ["beta1"] * r["N"] + OBJ["beta2"] * r["N"] / max(1, r["k"]), r["N"]
 
 
@@ -52,6 +56,8 @@ def main():
     from rsi.dream import parallel_refine
     rec_code = code_of(parallel_refine())
     worlds = {k: [run1(rec_code, 700 + i, g).meta["worlds"][0] for i in range(a.seeds)] for k, g in RECORDS.items()}
+    pol.update(llm_policies(a.llm, worlds["shallow_6x2"], n=1, W=W, fallback=(6, 4), hard_max=(12, 12),
+                            objective=Eq1Objective(normalize=False, **OBJ)))
     true: dict[str, list] = {}
     probes: dict[str, list] = {}
     for n, v, N in pmap(online, [(n, c, 5000 + s) for n, c in pol.items() for s in range(n_true)], a.workers):
@@ -66,7 +72,7 @@ def main():
         for rk, ws in worlds.items():
             for rule in ("clip", "no_reward"):
                 ev = ReplayEvaluator(Eq1Objective(normalize=False, support=rule, **OBJ), W=W, fallback=(6, 4),
-                                     runner="inprocess", hard_max=(12, 12))
+                                     runner=runner_for(n), hard_max=(12, 12))
                 rep = ev.evaluate(code, ws)
                 row[f"replay_{rk}_{rule}"] = rep.value
                 row[f"out_of_support_{rk}"] = bool(any(e.out_of_support for e in rep.episodes))
@@ -93,15 +99,20 @@ def main():
     d = res["go_deeper_3x9"]
     under = d["error_shallow_6x2_clip"] < -0.01
     recovers = abs(d["error_deep_6x9_clip"]) < max(0.005, abs(d["error_shallow_6x2_clip"]) / 4)
-    verdict = (f"{'REPRODUCED' if under and recovers else 'PARTIAL'}: the go-deeper policy is underestimated on the "
-               f"shallow record (error {d['error_shallow_6x2_clip']:+.3f}; its plan is out of support) and the estimate "
-               f"recovers when the record covers its depth (error {d['error_deep_6x9_clip']:+.3f}); replay ranking on the "
+    e_sh, e_dp = d["error_shallow_6x2_clip"], d["error_deep_6x9_clip"]
+    verdict = (f"{'REPRODUCED' if under and recovers else 'PARTIAL'}: the go-deeper policy is "
+               f"{'underestimated' if e_sh < -0.01 else 'overestimated' if e_sh > 0.01 else 'about right'} on the "
+               f"shallow record (error {e_sh:+.3f}; its plan is out of support) and the estimate "
+               f"{'recovers' if recovers else 'does not recover'} when the record covers its depth (error {e_dp:+.3f}); "
+               f"replay ranking on the "
                f"shallow record {rank['shallow_6x2']} vs deep record {rank['deep_6x9']} vs true (population) {rank_true}. "
                "Errors are against the true online value on the same world seeds (common random numbers), so they "
                "isolate the support effect from world-sampling noise")
     print(verdict)
     save("e10_support", {"config": {"records": RECORDS, "recorded_worlds": a.seeds, "true_value_worlds": n_true,
-                                    "objective": OBJ | {"normalize": False}, "W": W, "llm": "not used"},
+                                    "objective": OBJ | {"normalize": False}, "W": W,
+                                    "llm": a.llm if a.llm != "sim" else "not used",
+                                    "llm_policies": {n: c for n, c in pol.items() if n.startswith("llm_")}},
                          "results": res, "ranking": {"true": rank_true, **rank}, "figure": str(png),
                          "verdict": verdict}, a.out)
 

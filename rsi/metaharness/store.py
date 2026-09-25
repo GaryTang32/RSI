@@ -24,7 +24,7 @@ they exist, spec A5)::
 (everything except ``results/`` and ``frontier.json``), ``scores_summary`` (code +
 scores + summaries, no traces), ``scores_only`` (code + scores), ``window``
 (last-w candidates' code + scores), ``last_only`` (the current best candidate's
-code, scores and traces), ``seed_only`` (the seed baselines' code). Views never
+code, scores and traces), ``seed_only`` (the run's seed harness code only - Best-of-N). Views never
 include test results - the operational isolation the release implements.
 """
 from __future__ import annotations
@@ -42,6 +42,13 @@ from ..core.artifact import Artifact
 from ..core.evaluate import EvalResult
 
 SEARCH = "search"
+
+
+def context_mean(cost: dict[str, float]) -> float:
+    """A system's context cost = mean over units of the NON-ZERO per-unit context (0 if all are zero),
+    as ``benchmark.py:print_frontier`` averages ``memory_context_chars`` over datasets."""
+    nz = [float(v) for v in cost.values() if v]
+    return float(sum(nz) / len(nz)) if nz else 0.0
 
 
 def safe_name(s: str) -> str:
@@ -113,7 +120,7 @@ class ExperienceStore:
         (base / "traces").mkdir(parents=True, exist_ok=True)
         per_unit = ev.task_scores()
         scores = {"split": split, "score": ev.score, "avg_val": round(100 * ev.score, 1), "per_unit": per_unit,
-                  "per_unit_cost": cost, "context_cost": float(sum(cost.values()) / max(1, len(cost))),
+                  "per_unit_cost": cost, "context_cost": context_mean(cost),
                   "tokens": ev.cost, "steps": ev.steps, "n_units": len(per_unit), "k": ev.k,
                   "error_rate": ev.error_rate, "n_missing": ev.n_missing, "families": ev.family_scores(),
                   **(extra or {})}
@@ -206,7 +213,7 @@ class ExperienceStore:
         d = self.results_dir / safe_name(split) / safe_name(name)
         d.mkdir(parents=True, exist_ok=True)
         res = {"split": split, "score": ev.score, "per_unit": ev.task_scores(), "per_unit_cost": cost,
-               "context_cost": float(sum(cost.values()) / max(1, len(cost))), "tokens": ev.cost,
+               "context_cost": context_mean(cost), "tokens": ev.cost,
                "families": ev.family_scores()}
         (d / "test.json").write_text(json.dumps(res, indent=1, default=float))
         return res

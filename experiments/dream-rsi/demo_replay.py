@@ -7,11 +7,16 @@ beta1 = 0.010, beta2 = 0.005. Prints Best / Attempts / Rounds / Score and the
 reveal-round map; also sweeps beta1/beta2 over the demo's slider ranges to show
 which strategy wins where.
 
-    python experiments/dream-rsi/demo_replay.py [--llm sim] [--quick]
-"""
-from _common import parse_args, save, figure  # noqa: I001
+With ``--llm claude:haiku`` the LLM policy developer (Listing-2 prompt) gets one dreaming
+step on this single world, starting from "refine everything", and its policy is replayed in
+the subprocess sandbox as a fourth row: can the developer find the demo's winner by itself?
 
-from rsi.dream import DEMO_EXPECTED, render_demo, run_demo
+    python experiments/dream-rsi/demo_replay.py [--llm sim|claude:haiku] [--quick]
+"""
+from _common import llm_policies, parse_args, save, figure  # noqa: I001
+
+from rsi.dream import (DEMO_EXPECTED, Eq1Objective, ReplayEvaluator, code_of, demo_tree, parallel_refine, render_demo,
+                       run_demo)
 
 
 def main():
@@ -47,7 +52,24 @@ def main():
     ax.legend(fontsize=7, loc="upper right")
     fig.tight_layout()
     fig.savefig(png, dpi=130)
-    save("demo_replay", {"config": {"W": 3, "beta1": 0.010, "beta2": 0.005, "runner": "subprocess", "llm": "not used"},
+    llm_rows = []
+    if a.llm != "sim":   # one dreaming step by the LLM developer on the demo world (subprocess sandbox)
+        obj = Eq1Objective(beta1=0.010, beta2=0.005, normalize=False)
+        pols = llm_policies(a.llm, [demo_tree()], n=2, W=3, fallback=(3, 4), base_code=code_of(parallel_refine()),
+                            objective=obj, root_mode="addressable")
+        ev = ReplayEvaluator(obj, W=3, fallback=(3, 4), runner="subprocess", root_mode="addressable")
+        for name, code in pols.items():
+            rep = ev.evaluate(code, [demo_tree()], label=name)
+            e = rep.episodes[0]
+            llm_rows.append({"strategy": f"LLM-written ({name})", "key": name, "best": e.best, "attempts": e.N,
+                             "rounds": e.k, "score": rep.value, "disqualified": e.disqualified,
+                             "reveal_round": e.reveal_round, "code": code})
+            print(f"{'LLM-written ' + name:<22}{e.best:>6.2f}{e.N:>10d}{e.k:>8d}{rep.value:>8.3f}"
+                  f"{'  (disqualified)' if e.disqualified else ''}")
+            print(demo_tree().render_grid(e.reveal_round, labels={0: "A", 1: "B", 2: "C"}))
+    save("demo_replay", {"config": {"W": 3, "beta1": 0.010, "beta2": 0.005, "runner": "subprocess",
+                                    "llm": a.llm if a.llm != "sim" else "not used"},
+                         "llm_rows": llm_rows,
                          "rows": [{"strategy": r.label, "key": r.key, "best": r.best, "attempts": r.attempts,
                                    "rounds": r.rounds, "score": r.score, "reveal_round": r.reveal_round} for r in rows],
                          "expected": DEMO_EXPECTED, "matches_overview": ok, "slider_grid_winners": wins,

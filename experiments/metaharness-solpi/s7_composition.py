@@ -74,7 +74,8 @@ def main():
             for n in names:
                 cell[n] = {"token_saving": summarize([-rel(r["base"], r[n], "tokens") for r in rs]),
                            "cost_saving": summarize([-rel(r["base"], r[n], "cost") for r in rs]),
-                           "score_ratio": summarize([r[n]["score"] / r["base"]["score"] for r in rs]),
+                           "score_ratio": summarize([r[n]["score"] / r["base"]["score"] if r["base"]["score"]
+                                                     else float("nan") for r in rs]),
                            "triggers": {m: {k: float(np.mean([r[n]["triggers"].get(m, {}).get(k, 0) for r in rs]))
                                             for k in ("task_rate", "per_triggered_task")}
                                         for m in MECHS.values() if any(m in r[n]["triggers"] for r in rs)}}
@@ -88,11 +89,15 @@ def main():
             summ["A:default"]["full"]["triggers"]["action_fusion"]["per_triggered_task"]
     a = summ["A:default"]["full"]
     verdict = ("REPRODUCED" if each_saves and all(full_cheapest.values()) else "PARTIAL") + \
-        f": full stack tokens -{100 * a['token_saving']['mean']:.1f}%, cost -{100 * a['cost_saving']['mean']:.1f}% " \
+        f": full stack tokens {-100 * a['token_saving']['mean']:+.1f}%, cost {-100 * a['cost_saving']['mean']:+.1f}% " \
         f"at {100 * a['score_ratio']['mean']:.1f}% of base success (backend A, default length); full stack cheapest " \
         f"in {sum(full_cheapest.values())}/{len(full_cheapest)} cells; every mechanism saves tokens standalone: " \
         f"{each_saves}" + ("" if lower_on_b is None else
-                           f"; Action Fusion fires less per triggered task on backend B: {lower_on_b}")
+                           f"; Action Fusion fires less per triggered task on backend B: {lower_on_b}") + \
+        "; full-stack success ratio per cell: " + \
+        ", ".join(f"{c} {summ[c]['full']['score_ratio']['mean']:.3f}" for c in summ) + \
+        "; EPR-alone success ratio per cell: " + \
+        ", ".join(f"{c} {summ[c]['+EPR']['score_ratio']['mean']:.3f}" for c in summ)
     print(table([[c, n, fmt(summ[c][n]["token_saving"], 3), fmt(summ[c][n]["cost_saving"], 3),
                   fmt(summ[c][n]["score_ratio"], 3)] for c in summ for n in names],
                 ["backend:length", "config", "token saving", "cost saving", "success ratio"]))

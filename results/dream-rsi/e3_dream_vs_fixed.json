@@ -36199,9 +36199,9 @@
  "figure": "/home/user/RSI/results/dream-rsi/e3_dream_vs_fixed.png",
  "verdict": {
   "synthetic": "REPRODUCED: better at equal budget (CI above 0); fewer calls at equal rounds (90 vs 150); control: against the best fixed grid chosen in hindsight (fixed_3x3, optimistic for Fixed) Dream is +0.0006 [-0.0095, +0.0107]: they tie. Tuning the fixed grid closes 99% of the gap to the paper's fixed baseline, so the equal-budget gain comes mainly from spending fewer calls per round (which Dream learns without hindsight tuning), not from better within-round decisions",
-  "sumdiff": "PARTIAL: comparable at equal budget (CI within 1% below 0); fewer calls at equal rounds (66 vs 100)",
-  "circlepack": "PARTIAL: comparable at equal budget (CI within 1% below 0); fewer calls at equal rounds (61 vs 100)",
-  "lasso": "INCONCLUSIVE at equal budget: difference +6.743 [-1.216, +17.53] spans more than 1% in both directions (n=4); fewer calls at equal rounds (75 vs 100); held-out re-measurement of the final programs (1/s): fixed 63.4 [56.5, 68.0] vs dream 61.3 [51.2, 67.5], diff -2.0 [-5.7, +2.2] (seed program 5.4 [5.4, 5.4]); rows: Dream faster than Fixed on 4/8 (seed, instance) pairs; final programs faster than scikit-learn's lasso_path on 0/8 (Fixed) and 0/8 (Dream) - the paper's 'beats sklearn on every dataset' does not reproduce with numpy programs"
+  "sumdiff": "PARTIAL: comparable at equal budget (non-inferior: CI lower bound -3.1% of Fixed's gain over the seed, margin 5%); fewer calls at equal rounds (66 vs 100)",
+  "circlepack": "PARTIAL: comparable at equal budget (non-inferior: CI lower bound -0.6% of Fixed's gain over the seed, margin 5%); fewer calls at equal rounds (61 vs 100)",
+  "lasso": "INCONCLUSIVE: non-inferior on the search score but the held-out re-measurement cannot exclude a loss > 5% of Fixed's held-out gain; search score difference +6.743 [-1.216, +17.53] (n=4); fewer calls at equal rounds (75 vs 100); held-out re-measurement of the final programs (1/s): fixed 63.4 [56.5, 68.0] vs dream 61.3 [51.2, 67.5], diff -2.0 [-5.7, +2.2] (seed program 5.4 [5.4, 5.4]); rows: Dream faster than Fixed on 4/8 (seed, instance) pairs; final programs faster than scikit-learn's lasso_path on 0/8 (Fixed) and 0/8 (Dream) - the paper's 'beats sklearn on every dataset' does not reproduce with numpy programs"
  },
- "verdict_recomputed": "2026-09-25 02:56:26"
+ "verdict_recomputed": "2026-09-25 05:51:47"
 }

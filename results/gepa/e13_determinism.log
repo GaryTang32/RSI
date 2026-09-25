@@ -1,2 +1,6 @@
 [saved] /home/user/RSI/results/gepa/e13_determinism.json
 7 runs (RuleWorld GEPA+Merge and AgentQA two-module): reruns byte-identical: True; 19 kill/resume cycles give the identical final state.json, run_log and candidate sequence: True. Resuming without the persisted RNG/sampler state (the reference's behaviour) diverged from the uninterrupted run in 7/7 cases. Claim (design goal): REPRODUCED.
+
+real	0m17.289s
+user	0m17.607s
+sys	0m7.479s

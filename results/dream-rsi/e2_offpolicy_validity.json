@@ -1,6 +1,6 @@
 {
  "experiment": "e2_offpolicy_validity",
- "created": "2026-09-24 22:52:48",
+ "created": "2026-09-25 05:56:40",
  "config": {
   "W": 4,
   "recording_grid": [
@@ -36,7 +36,8 @@
    "wider_10x4",
    "deep_serial_2x9"
   ],
-  "llm": "not used (replay only)"
+  "llm": "not used (replay only)",
+  "llm_policies": {}
  },
  "independent": {
   "replay": {

@@ -1,6 +1,6 @@
 {
  "experiment": "demo_replay",
- "created": "2026-09-24 22:48:51",
+ "created": "2026-09-25 05:56:01",
  "config": {
   "W": 3,
   "beta1": 0.01,
@@ -8,6 +8,7 @@
   "runner": "subprocess",
   "llm": "not used"
  },
+ "llm_rows": [],
  "rows": [
   {
    "strategy": "Refine everything",

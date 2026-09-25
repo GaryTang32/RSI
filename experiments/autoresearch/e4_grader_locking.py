@@ -305,14 +305,15 @@ def figure(summary, name, delta=None):
     ax.bar(xs + 0.27, [g(e, "hardened") for e in EXPLOITS], 0.27, color="#1e8e3e",
            label="hardened: gain (0 = rejected or crashed)")
     if delta:
-        ax.axhline(delta, color="grey", ls="--", lw=0.8, label=f"noise band ({delta:.3f})")
+        ax.axhline(delta, color="grey", ls="--", lw=0.8, label=f"wall-clock noise band ({delta:.3f}; budget_clock only)")
+        ax.axhline(DET_TOL, color="grey", ls=":", lw=0.8, label=f"equal-compute threshold ({DET_TOL:g})")
     ax.set_yscale("symlog", linthresh=0.05)
     ax.set_xticks(xs)
     ax.set_xticklabels([e.replace("exploit_", "") for e in EXPLOITS], rotation=20)
     ax.set_ylabel("val_bpb gain over the same-mode baseline (bits/byte)")
     ax.set_title("tinylm exploit battery (mean over seeds; equal-compute token-budget runs, paired wall-clock runs "
                  "for budget_clock)", fontsize=9)
-    ax.legend(fontsize=8)
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3)
     fig.tight_layout()
     path = RESULTS / f"{name}.png"
     RESULTS.mkdir(parents=True, exist_ok=True)

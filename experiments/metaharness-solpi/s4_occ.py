@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _agentworld import agg, backend, domain, row, trials_of  # noqa: E402
-from _common import RESULTS, fmt, parse_args, plt, pool_map, save, summarize, table  # noqa: E402
+from _common import RESULTS, figure_path, fmt, parse_args, plt, pool_map, save, summarize, table  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -128,7 +128,7 @@ def main():
         ax.legend(fontsize=8)
     f.suptitle("S4 compaction policies across trajectory lengths")
     f.tight_layout()
-    png = RESULTS / "s4_occ.png"
+    png = figure_path("s4_occ", ARGS)
     RESULTS.mkdir(parents=True, exist_ok=True)
     f.savefig(png, dpi=120)
     save("s4_occ" + ("_live" if ARGS.live else ""), {

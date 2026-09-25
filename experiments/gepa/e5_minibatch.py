@@ -74,14 +74,15 @@ def main():
                    "accept_rate", "iterations", "proposals", "accepted")} for arm, rs in by.items()}
     best_b = max([k for k in arms if "," not in k], key=lambda k: summ[k]["final_test"]["mean"])
     fa = {k: summ[k]["false_accept_rate"]["mean"] for k in arms if "," not in k}
-    fa_mono = all(x >= y - 0.02 for x, y in zip(list(fa.values()), list(fa.values())[1:]))
+    fa_mono = len(fa) > 1 and all(x >= y - 0.02 for x, y in zip(list(fa.values()), list(fa.values())[1:]))
     s3 = summ["b=3"]
     out = {"experiment": "E5 minibatch gate", "llm": a.llm, "config": {"budget": B, "seeds": a.seeds, "arms": ARMS},
            "summary": summ, "best_b_for_budget": best_b, "raw": rows,
            "verdict": (f"b=3: validation share of rollouts {fmt(s3['val_share'])} (claim '> 50%': "
                        f"{'REPRODUCED' if s3['val_share']['mean'] > 0.5 else 'NOT reproduced'}); false-accept rate by b: "
                        + ", ".join(f"{k} {v:.2f}" for k, v in fa.items())
-                       + f" ({'decreasing with b' if fa_mono else 'not monotone in b'}); false-reject rates: "
+                       + (f" ({'decreasing with b' if fa_mono else 'not monotone in b'})" if len(fa) > 1 else "")
+                       + "; false-reject rates: "
                        + ", ".join(f"{k} {summ[k]['false_reject_rate']['mean']:.2f}" for k in fa)
                        + f"; iterations at B={B}: " + ", ".join(f"{k} {summ[k]['iterations']['mean']:.0f}" for k in fa)
                        + f". Best b for this budget: {best_b} ({fmt(summ[best_b]['final_test'])}). "
