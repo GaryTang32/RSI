@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://evomap.ai/gep/schemas/gene.schema.json",
+  "title": "GEP Gene",
+  "description": "A reusable evolution strategy in the Genome Evolution Protocol",
+  "type": "object",
+  "required": ["type", "schema_version", "id", "category", "signals_match", "strategy", "constraints", "validation", "asset_id"],
+  "properties": {
+    "type": { "const": "Gene" },
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "id": { "type": "string", "minLength": 1 },
+    "category": { "type": "string", "enum": ["repair", "optimize", "innovate", "explore"] },
+    "signals_match": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "preconditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "strategy": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["max_files", "forbidden_paths"],
+      "properties": {
+        "max_files": { "type": "integer", "minimum": 1 },
+        "forbidden_paths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "validation": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "summary": { "type": "string" },
+    "epigenetic_marks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "learning_history": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": { "type": "string" },
+          "outcome": { "type": "string" },
+          "mode": { "type": "string" },
+          "reason_class": { "type": "string" },
+          "retryable": { "type": "boolean" },
+          "learning_signals": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "anti_patterns": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": { "type": "string" },
+          "mode": { "type": "string" },
+          "reason_class": { "type": "string" },
+          "learning_signals": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "routing_hint": {
+      "type": ["object", "null"],
+      "description": "Optional EvoX-side routing hints consumed by the gene -> router/tool-gate pipeline. Absent or empty (no recognized keys) means 'no opinion'; the router takes its historical fast path.",
+      "properties": {
+        "tier": { "type": "string", "enum": ["cheap", "mid", "expensive"] },
+        "reasoning_level": { "type": "string", "enum": ["off", "low", "medium", "high"] }
+      },
+      "additionalProperties": false
+    },
+    "tool_policy": {
+      "type": ["object", "null"],
+      "description": "Optional EvoX-side tool gate. When a list is present, severity defaults to 'warn'. An empty allow_only is invalid (it would block every tool), so producers MUST omit empty lists.",
+      "properties": {
+        "allow_only": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "deny": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "severity": { "type": "string", "enum": ["warn", "block"] }
+      },
+      "additionalProperties": false
+    },
+    "claims": {
+      "type": ["array", "null"],
+      "description": "Optional machine-decidable claims this gene asserts. Each claim is one coordinate of the five-coordinate evidence projection: what the gene guarantees, in a form a verifier can check. Absent means 'no explicit claim' — the gene projects only under its asset_id. Producers that cannot state a decidable claim MUST omit this rather than emit a vague string.",
+      "items": {
+        "type": "object",
+        "required": ["predicate"],
+        "properties": {
+          "predicate": { "type": "string", "minLength": 1, "description": "Decidable assertion, e.g. 'exit_code==0' or 'no_regression(bench/rounding)'." },
+          "kind": { "type": "string", "enum": ["behavioral", "structural", "performance", "safety"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "scope": {
+      "type": ["object", "null"],
+      "description": "Optional machine-decidable scope predicate — the coordinate that bounds where a claim holds. Keys must come from the runtime signal vocabulary (not free-form), so the resolver can decide membership. Absent means 'unscoped' (projects everywhere), which keeps the gene OUT of the strict K_auto subdomain.",
+      "properties": {
+        "signals": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1, "description": "Runtime signal tokens the scope is expressed over (resolver-vocabulary, not source identifiers)." },
+        "predicate": { "type": "string", "minLength": 1, "description": "Decidable scope expression over the signals, e.g. 'matches(rounding-v2)'." }
+      },
+      "additionalProperties": false
+    },
+    "runtime_profile": {
+      "type": ["object", "null"],
+      "description": "Optional runtime coordinate — the execution environment class under which the gene's claims were established and are expected to hold. Absent means 'runtime-agnostic'.",
+      "properties": {
+        "runtime": { "type": "string", "minLength": 1, "description": "Runtime class, e.g. 'node@22', 'python@3.12'." },
+        "env_class": { "type": "string", "enum": ["ci", "local", "prod", "sandbox"] }
+      },
+      "additionalProperties": false
+    },
+    "verifier_profile": {
+      "type": ["object", "null"],
+      "description": "Optional verifier coordinate — the verifier under whose judgement the claims were checked. Verifier-specific projection uses this axis; absent means 'no verifier binding' and disqualifies the record from strict K_auto.",
+      "properties": {
+        "verifier": { "type": "string", "minLength": 1, "description": "Verifier identity, e.g. 'gep-verify@1.4', 'npm-test'." },
+        "decision": { "type": "string", "enum": ["pass", "fail", "inconclusive"] }
+      },
+      "additionalProperties": false
+    },
+    "asset_id": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false
+}

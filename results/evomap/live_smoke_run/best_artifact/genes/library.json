@@ -1,0 +1,73 @@
+{
+ "genes": [
+  {
+   "asset_id": "sha256:c884023da98f0006fc687c8b4b4d59f200fcb63282236ca8661a5736a8fcbff2",
+   "avoid": [
+    "Staying with NFC when compatibility equivalences matter (ligatures, vertical forms, character variants)",
+    "Using .lower() alone without .casefold() for Unicode text\u2014casefold handles edge cases .lower() misses",
+    "Switching normalization forms without reconsidering case-folding strategy; both must evolve together"
+   ],
+   "category": "innovate",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.1,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-29T03:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780025200.0
+    }
+   ],
+   "id": "gene_unicode_nfkc_casefold",
+   "learning_history": [
+    {
+     "at": "2026-05-29T03:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison",
+      "consecutive_failure_streak_10",
+      "failure_loop_detected",
+      "ban_gene:gene_unicode_nfd_casefold",
+      "high_failure_ratio",
+      "force_innovation_after_repair_loop"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 7,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "unicode",
+    "text-equality",
+    "nfc-lower-fails"
+   ],
+   "strategy": [
+    "Replace 'NFC' with 'NFKC' in normalize() call\u2014NFKC handles compatibility decompositions (ligatures, variant forms, precomposed characters)",
+    "Replace .lower() with .casefold()\u2014proper Unicode case-folding for edge cases (\u00df\u2192ss, \u0131\u2192i, etc.)",
+    "Apply as: normalize('NFKC', text).casefold()",
+    "Test with ligatures (\ufb01), combining marks, diacritics (\u00e9), and special case pairs",
+    "If NFKC+casefold fails, try reverse order: text.casefold() then normalize('NFKC', ...)"
+   ],
+   "summary": "After NFC+lower and NFD+casefold both fail independently, upgrade to NFKC (compatibility) normalization with casefold() for complete Unicode equivalence.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1023 @@
+{
+ "experiment": "x0_domains",
+ "generated_at": "2026-09-25 00:13:17",
+ "config": {
+  "llm": "sim",
+  "seeds": 10,
+  "domains": [
+   "geneworld",
+   "katas",
+   "agentqa"
+  ],
+  "modes": [
+   "safe",
+   "faithful"
+  ]
+ },
+ "raw": [
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 0,
+   "n_genes": 7,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7395833333333334,
+   "usage_calls": 178,
+   "holdout_no_genes": 0.4583333333333333,
+   "holdout_library": 0.6041666666666666
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 1,
+   "n_genes": 8,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8020833333333334,
+   "usage_calls": 174,
+   "holdout_no_genes": 0.3958333333333333,
+   "holdout_library": 0.6666666666666666
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 2,
+   "n_genes": 6,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8854166666666666,
+   "usage_calls": 158,
+   "holdout_no_genes": 0.3472222222222222,
+   "holdout_library": 0.5277777777777778
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 3,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.75,
+   "usage_calls": 172,
+   "holdout_no_genes": 0.3263888888888889,
+   "holdout_library": 0.4444444444444444
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 4,
+   "n_genes": 7,
+   "audit_ok": true,
+   "loop_solve_rate": 0.78125,
+   "usage_calls": 174,
+   "holdout_no_genes": 0.3819444444444444,
+   "holdout_library": 0.6388888888888888
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 5,
+   "n_genes": 7,
+   "audit_ok": true,
+   "loop_solve_rate": 0.75,
+   "usage_calls": 178,
+   "holdout_no_genes": 0.4652777777777778,
+   "holdout_library": 0.5555555555555556
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 6,
+   "n_genes": 6,
+   "audit_ok": true,
+   "loop_solve_rate": 0.78125,
+   "usage_calls": 184,
+   "holdout_no_genes": 0.4444444444444444,
+   "holdout_library": 0.6388888888888888
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 7,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8020833333333334,
+   "usage_calls": 182,
+   "holdout_no_genes": 0.4722222222222222,
+   "holdout_library": 0.5902777777777778
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 8,
+   "n_genes": 8,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6770833333333334,
+   "usage_calls": 196,
+   "holdout_no_genes": 0.4513888888888889,
+   "holdout_library": 0.5694444444444444
+  },
+  {
+   "domain": "geneworld",
+   "mode": "safe",
+   "seed": 9,
+   "n_genes": 9,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7395833333333334,
+   "usage_calls": 186,
+   "holdout_no_genes": 0.3333333333333333,
+   "holdout_library": 0.5763888888888888
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 0,
+   "n_genes": 11,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5625,
+   "usage_calls": 118,
+   "holdout_no_genes": 0.4583333333333333,
+   "holdout_library": 0.7222222222222222
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 1,
+   "n_genes": 9,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5625,
+   "usage_calls": 114,
+   "holdout_no_genes": 0.3958333333333333,
+   "holdout_library": 0.6527777777777778
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 2,
+   "n_genes": 11,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6875,
+   "usage_calls": 120,
+   "holdout_no_genes": 0.3472222222222222,
+   "holdout_library": 0.6180555555555556
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 3,
+   "n_genes": 13,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6458333333333334,
+   "usage_calls": 122,
+   "holdout_no_genes": 0.3263888888888889,
+   "holdout_library": 0.5833333333333334
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 4,
+   "n_genes": 12,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6458333333333334,
+   "usage_calls": 122,
+   "holdout_no_genes": 0.3819444444444444,
+   "holdout_library": 0.6319444444444444
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 5,
+   "n_genes": 11,
+   "audit_ok": true,
+   "loop_solve_rate": 0.625,
+   "usage_calls": 120,
+   "holdout_no_genes": 0.4652777777777778,
+   "holdout_library": 0.6041666666666666
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 6,
+   "n_genes": 11,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6458333333333334,
+   "usage_calls": 124,
+   "holdout_no_genes": 0.4444444444444444,
+   "holdout_library": 0.7083333333333334
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 7,
+   "n_genes": 11,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6875,
+   "usage_calls": 118,
+   "holdout_no_genes": 0.4722222222222222,
+   "holdout_library": 0.6458333333333334
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 8,
+   "n_genes": 12,
+   "audit_ok": true,
+   "loop_solve_rate": 0.4895833333333333,
+   "usage_calls": 128,
+   "holdout_no_genes": 0.4513888888888889,
+   "holdout_library": 0.6319444444444444
+  },
+  {
+   "domain": "geneworld",
+   "mode": "faithful",
+   "seed": 9,
+   "n_genes": 12,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6145833333333334,
+   "usage_calls": 124,
+   "holdout_no_genes": 0.3333333333333333,
+   "holdout_library": 0.6458333333333334
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 0,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8666666666666667,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.3333333333333333,
+   "holdout_library": 0.7666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 1,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7666666666666667,
+   "usage_calls": 42,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.6333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 2,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8666666666666667,
+   "usage_calls": 42,
+   "holdout_no_genes": 0.39999999999999997,
+   "holdout_library": 0.7
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 3,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8666666666666667,
+   "usage_calls": 48,
+   "holdout_no_genes": 0.4666666666666667,
+   "holdout_library": 0.8333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 4,
+   "n_genes": 6,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7333333333333333,
+   "usage_calls": 48,
+   "holdout_no_genes": 0.4666666666666666,
+   "holdout_library": 0.8333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 5,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.9,
+   "usage_calls": 42,
+   "holdout_no_genes": 0.2333333333333333,
+   "holdout_library": 0.8999999999999998
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 6,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8666666666666667,
+   "usage_calls": 42,
+   "holdout_no_genes": 0.33333333333333337,
+   "holdout_library": 0.7
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 7,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7666666666666667,
+   "usage_calls": 46,
+   "holdout_no_genes": 0.5,
+   "holdout_library": 0.9666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 8,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7,
+   "usage_calls": 50,
+   "holdout_no_genes": 0.4333333333333333,
+   "holdout_library": 0.8666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "safe",
+   "seed": 9,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7666666666666667,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.3,
+   "holdout_library": 0.8666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 0,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6333333333333333,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.3333333333333333,
+   "holdout_library": 0.6666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 1,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.6666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 2,
+   "n_genes": 4,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6333333333333333,
+   "usage_calls": 38,
+   "holdout_no_genes": 0.39999999999999997,
+   "holdout_library": 0.5333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 3,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.9333333333333333,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.4666666666666667,
+   "holdout_library": 0.8666666666666666
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 4,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.4666666666666666,
+   "holdout_library": 0.6333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 5,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6333333333333333,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.2333333333333333,
+   "holdout_library": 0.7999999999999999
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 6,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6666666666666666,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.33333333333333337,
+   "holdout_library": 0.5333333333333332
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 7,
+   "n_genes": 4,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6,
+   "usage_calls": 38,
+   "holdout_no_genes": 0.5,
+   "holdout_library": 0.7333333333333333
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 8,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7333333333333333,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.4333333333333333,
+   "holdout_library": 0.8333333333333334
+  },
+  {
+   "domain": "katas",
+   "mode": "faithful",
+   "seed": 9,
+   "n_genes": 5,
+   "audit_ok": true,
+   "loop_solve_rate": 0.7666666666666667,
+   "usage_calls": 40,
+   "holdout_no_genes": 0.3,
+   "holdout_library": 0.8
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 0,
+   "n_genes": 1,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5,
+   "usage_calls": 1850,
+   "holdout_no_genes": 0.425,
+   "holdout_library": 0.475,
+   "ood_no_genes": 0.375,
+   "ood_library": 0.375
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 1,
+   "n_genes": 1,
+   "audit_ok": true,
+   "loop_solve_rate": 0.55,
+   "usage_calls": 1384,
+   "holdout_no_genes": 0.375,
+   "holdout_library": 0.45,
+   "ood_no_genes": 0.375,
+   "ood_library": 0.375
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 2,
+   "n_genes": 1,
+   "audit_ok": true,
+   "loop_solve_rate": 0.65,
+   "usage_calls": 1662,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.525,
+   "ood_no_genes": 0.4166666666666667,
+   "ood_library": 0.4166666666666667
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 3,
+   "n_genes": 1,
+   "audit_ok": true,
+   "loop_solve_rate": 0.9,
+   "usage_calls": 1278,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.45,
+   "ood_no_genes": 0.3958333333333333,
+   "ood_library": 0.3958333333333333
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 4,
+   "n_genes": 0,
+   "audit_ok": true,
+   "loop_solve_rate": 0.8,
+   "usage_calls": 1000,
+   "holdout_no_genes": 0.35,
+   "holdout_library": 0.35,
+   "ood_no_genes": 0.5416666666666666,
+   "ood_library": 0.5416666666666666
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 5,
+   "n_genes": 0,
+   "audit_ok": true,
+   "loop_solve_rate": 0.85,
+   "usage_calls": 902,
+   "holdout_no_genes": 0.5,
+   "holdout_library": 0.5,
+   "ood_no_genes": 0.4166666666666667,
+   "ood_library": 0.4166666666666667
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 6,
+   "n_genes": 0,
+   "audit_ok": true,
+   "loop_solve_rate": 0.65,
+   "usage_calls": 1098,
+   "holdout_no_genes": 0.325,
+   "holdout_library": 0.325,
+   "ood_no_genes": 0.4583333333333333,
+   "ood_library": 0.4583333333333333
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 7,
+   "n_genes": 0,
+   "audit_ok": true,
+   "loop_solve_rate": 0.65,
+   "usage_calls": 1196,
+   "holdout_no_genes": 0.35,
+   "holdout_library": 0.35,
+   "ood_no_genes": 0.5416666666666666,
+   "ood_library": 0.5416666666666666
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 8,
+   "n_genes": 1,
+   "audit_ok": true,
+   "loop_solve_rate": 0.65,
+   "usage_calls": 1084,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.425,
+   "ood_no_genes": 0.5,
+   "ood_library": 0.5
+  },
+  {
+   "domain": "agentqa",
+   "mode": "safe",
+   "seed": 9,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5,
+   "usage_calls": 1576,
+   "holdout_no_genes": 0.475,
+   "holdout_library": 0.45,
+   "ood_no_genes": 0.4375,
+   "ood_library": 0.4375
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 0,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6,
+   "usage_calls": 24,
+   "holdout_no_genes": 0.425,
+   "holdout_library": 0.475,
+   "ood_no_genes": 0.375,
+   "ood_library": 0.375
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 1,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.4,
+   "usage_calls": 26,
+   "holdout_no_genes": 0.375,
+   "holdout_library": 0.45,
+   "ood_no_genes": 0.375,
+   "ood_library": 0.375
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 2,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.4,
+   "usage_calls": 24,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.575,
+   "ood_no_genes": 0.4166666666666667,
+   "ood_library": 0.4166666666666667
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 3,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5,
+   "usage_calls": 26,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.25,
+   "ood_no_genes": 0.3958333333333333,
+   "ood_library": 0.3958333333333333
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 4,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.75,
+   "usage_calls": 24,
+   "holdout_no_genes": 0.35,
+   "holdout_library": 0.5,
+   "ood_no_genes": 0.5416666666666666,
+   "ood_library": 0.5416666666666666
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 5,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.4,
+   "usage_calls": 26,
+   "holdout_no_genes": 0.5,
+   "holdout_library": 0.225,
+   "ood_no_genes": 0.4166666666666667,
+   "ood_library": 0.4166666666666667
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 6,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.65,
+   "usage_calls": 24,
+   "holdout_no_genes": 0.325,
+   "holdout_library": 0.625,
+   "ood_no_genes": 0.4583333333333333,
+   "ood_library": 0.4583333333333333
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 7,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.5,
+   "usage_calls": 26,
+   "holdout_no_genes": 0.35,
+   "holdout_library": 0.375,
+   "ood_no_genes": 0.5416666666666666,
+   "ood_library": 0.5416666666666666
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 8,
+   "n_genes": 2,
+   "audit_ok": true,
+   "loop_solve_rate": 0.6,
+   "usage_calls": 24,
+   "holdout_no_genes": 0.4,
+   "holdout_library": 0.425,
+   "ood_no_genes": 0.5,
+   "ood_library": 0.5
+  },
+  {
+   "domain": "agentqa",
+   "mode": "faithful",
+   "seed": 9,
+   "n_genes": 3,
+   "audit_ok": true,
+   "loop_solve_rate": 0.55,
+   "usage_calls": 26,
+   "holdout_no_genes": 0.475,
+   "holdout_library": 0.65,
+   "ood_no_genes": 0.4375,
+   "ood_library": 0.4375
+  }
+ ],
+ "summary": {
+  "geneworld/safe": {
+   "n_genes": {
+    "mean": 6.6,
+    "lo": 5.6,
+    "hi": 7.5,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.7708333333333333,
+    "lo": 0.7395833333333333,
+    "hi": 0.803125,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 178.2,
+    "lo": 172.2,
+    "hi": 184.0,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.40763888888888883,
+    "lo": 0.3736111111111111,
+    "hi": 0.4409722222222222,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.58125,
+    "lo": 0.5416666666666667,
+    "hi": 0.6166666666666666,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.1736111111111111,
+    "lo": 0.13541666666666669,
+    "hi": 0.2125,
+    "n": 10,
+    "p_better": 1.0
+   }
+  },
+  "geneworld/faithful": {
+   "n_genes": {
+    "mean": 11.3,
+    "lo": 10.6,
+    "hi": 11.9,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.6166666666666666,
+    "lo": 0.578125,
+    "hi": 0.6510416666666666,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 121.0,
+    "lo": 118.8,
+    "hi": 123.2,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.40763888888888883,
+    "lo": 0.3736111111111111,
+    "hi": 0.4409722222222222,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.6444444444444444,
+    "lo": 0.6208333333333333,
+    "hi": 0.6715277777777777,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.23680555555555555,
+    "lo": 0.2027777777777778,
+    "hi": 0.2659722222222223,
+    "n": 10,
+    "p_better": 1.0
+   }
+  },
+  "katas/safe": {
+   "n_genes": {
+    "mean": 5.1,
+    "lo": 5.0,
+    "hi": 5.3,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.8099999999999999,
+    "lo": 0.7699999999999999,
+    "hi": 0.8500000000000002,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 44.0,
+    "lo": 42.0,
+    "hi": 46.2,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.3866666666666666,
+    "lo": 0.3366666666666666,
+    "hi": 0.4333333333333334,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.8066666666666664,
+    "lo": 0.7433333333333334,
+    "hi": 0.8633333333333333,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.41999999999999993,
+    "lo": 0.35,
+    "hi": 0.4966666666666667,
+    "n": 10,
+    "p_better": 1.0
+   }
+  },
+  "katas/faithful": {
+   "n_genes": {
+    "mean": 4.8,
+    "lo": 4.5,
+    "hi": 5.0,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.6900000000000001,
+    "lo": 0.6399999999999999,
+    "hi": 0.7533333333333333,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 39.6,
+    "lo": 39.0,
+    "hi": 40.0,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.3866666666666666,
+    "lo": 0.3366666666666666,
+    "hi": 0.4333333333333334,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.7066666666666667,
+    "lo": 0.6366666666666666,
+    "hi": 0.7766666666666666,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.31999999999999995,
+    "lo": 0.23666666666666664,
+    "hi": 0.41,
+    "n": 10,
+    "p_better": 1.0
+   }
+  },
+  "agentqa/safe": {
+   "n_genes": {
+    "mean": 0.7,
+    "lo": 0.3,
+    "hi": 1.1,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.6700000000000002,
+    "lo": 0.5900000000000001,
+    "hi": 0.7550000000000001,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 1303.0,
+    "lo": 1122.0,
+    "hi": 1492.4,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.4,
+    "lo": 0.36750000000000005,
+    "hi": 0.43499999999999994,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.43,
+    "lo": 0.39,
+    "hi": 0.4675000000000001,
+    "n": 10
+   },
+   "ood_no_genes": {
+    "mean": 0.4458333333333333,
+    "lo": 0.4104166666666666,
+    "hi": 0.4833333333333333,
+    "n": 10
+   },
+   "ood_library": {
+    "mean": 0.4458333333333333,
+    "lo": 0.4104166666666666,
+    "hi": 0.4833333333333333,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.03,
+    "lo": 0.0050000000000000044,
+    "hi": 0.057499999999999996,
+    "n": 10,
+    "p_better": 0.5
+   }
+  },
+  "agentqa/faithful": {
+   "n_genes": {
+    "mean": 2.5,
+    "lo": 2.2,
+    "hi": 2.8,
+    "n": 10
+   },
+   "audit_ok": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "loop_solve_rate": {
+    "mean": 0.5349999999999999,
+    "lo": 0.47000000000000003,
+    "hi": 0.6050000000000001,
+    "n": 10
+   },
+   "usage_calls": {
+    "mean": 25.0,
+    "lo": 24.4,
+    "hi": 25.6,
+    "n": 10
+   },
+   "holdout_no_genes": {
+    "mean": 0.4,
+    "lo": 0.36750000000000005,
+    "hi": 0.43499999999999994,
+    "n": 10
+   },
+   "holdout_library": {
+    "mean": 0.45499999999999996,
+    "lo": 0.3675,
+    "hi": 0.5375,
+    "n": 10
+   },
+   "ood_no_genes": {
+    "mean": 0.4458333333333333,
+    "lo": 0.4104166666666666,
+    "hi": 0.4833333333333333,
+    "n": 10
+   },
+   "ood_library": {
+    "mean": 0.4458333333333333,
+    "lo": 0.4104166666666666,
+    "hi": 0.4833333333333333,
+    "n": 10
+   },
+   "holdout_gain": {
+    "mean_diff": 0.05499999999999999,
+    "lo": -0.05500000000000001,
+    "hi": 0.1475,
+    "n": 10,
+    "p_better": 0.8
+   }
+  }
+ },
+ "verdict": {
+  "geneworld/safe_holdout_gain_ci_excludes_0": true,
+  "geneworld/faithful_holdout_gain_ci_excludes_0": true,
+  "katas/safe_holdout_gain_ci_excludes_0": true,
+  "katas/faithful_holdout_gain_ci_excludes_0": true,
+  "agentqa/safe_holdout_gain_ci_excludes_0": true,
+  "agentqa/faithful_holdout_gain_ci_excludes_0": false
+ }
+}

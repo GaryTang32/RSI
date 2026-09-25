@@ -1,0 +1,1130 @@
+{
+ "experiment": "x11_quarantine",
+ "generated_at": "2026-09-25 00:27:58",
+ "config": {
+  "llm": "sim",
+  "seeds": 12,
+  "mix": {
+   "honest": 0.5,
+   "freerider": 0.2,
+   "poisoner": 0.2,
+   "inflator": 0.1
+  }
+ },
+ "raw": [
+  {
+   "seed": 0,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.719047619047619,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 1,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7047619047619048,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 2,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.669047619047619,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 3,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7619047619047619,
+   "poisoned_cycles": 7,
+   "poisoned_cycle_share": 0.016666666666666666,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 4,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7571428571428571,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 5,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7357142857142858,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 6,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.6785714285714286,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 7,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7523809523809524,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 8,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7428571428571429,
+   "poisoned_cycles": 3,
+   "poisoned_cycle_share": 0.007142857142857143,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 9,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.6738095238095239,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 10,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7238095238095238,
+   "poisoned_cycles": 3,
+   "poisoned_cycle_share": 0.007142857142857143,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 11,
+   "arm": "isolated",
+   "consumer_solve_rate": 0.7357142857142858,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 0,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.1595238095238095,
+   "poisoned_cycles": 90,
+   "poisoned_cycle_share": 0.21428571428571427,
+   "poisoned_in_stores": 34,
+   "hub_gene_cycles": 337,
+   "hub_gene_true_uplift": -0.18010940635147374,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 1,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.20476190476190476,
+   "poisoned_cycles": 106,
+   "poisoned_cycle_share": 0.2523809523809524,
+   "poisoned_in_stores": 33,
+   "hub_gene_cycles": 315,
+   "hub_gene_true_uplift": -0.25611600467146695,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 2,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.1523809523809524,
+   "poisoned_cycles": 77,
+   "poisoned_cycle_share": 0.18333333333333332,
+   "poisoned_in_stores": 41,
+   "hub_gene_cycles": 339,
+   "hub_gene_true_uplift": -0.2553180433522715,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 3,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.15476190476190477,
+   "poisoned_cycles": 95,
+   "poisoned_cycle_share": 0.2261904761904762,
+   "poisoned_in_stores": 33,
+   "hub_gene_cycles": 327,
+   "hub_gene_true_uplift": -0.250882908346474,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 4,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.1761904761904762,
+   "poisoned_cycles": 119,
+   "poisoned_cycle_share": 0.2833333333333333,
+   "poisoned_in_stores": 43,
+   "hub_gene_cycles": 324,
+   "hub_gene_true_uplift": -0.24742145937828236,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 5,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.26666666666666666,
+   "poisoned_cycles": 155,
+   "poisoned_cycle_share": 0.36904761904761907,
+   "poisoned_in_stores": 58,
+   "hub_gene_cycles": 287,
+   "hub_gene_true_uplift": -0.24894829096498852,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 6,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.17142857142857143,
+   "poisoned_cycles": 109,
+   "poisoned_cycle_share": 0.25952380952380955,
+   "poisoned_in_stores": 37,
+   "hub_gene_cycles": 322,
+   "hub_gene_true_uplift": -0.25137962888772364,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 7,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.19047619047619047,
+   "poisoned_cycles": 89,
+   "poisoned_cycle_share": 0.2119047619047619,
+   "poisoned_in_stores": 32,
+   "hub_gene_cycles": 324,
+   "hub_gene_true_uplift": -0.26767619503999374,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 8,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.12380952380952381,
+   "poisoned_cycles": 99,
+   "poisoned_cycle_share": 0.2357142857142857,
+   "poisoned_in_stores": 38,
+   "hub_gene_cycles": 340,
+   "hub_gene_true_uplift": -0.26140165539200433,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 9,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.14761904761904762,
+   "poisoned_cycles": 64,
+   "poisoned_cycle_share": 0.1523809523809524,
+   "poisoned_in_stores": 24,
+   "hub_gene_cycles": 325,
+   "hub_gene_true_uplift": -0.2488431267229499,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 10,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.15476190476190477,
+   "poisoned_cycles": 77,
+   "poisoned_cycle_share": 0.18333333333333332,
+   "poisoned_in_stores": 38,
+   "hub_gene_cycles": 353,
+   "hub_gene_true_uplift": -0.2513790222530878,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 11,
+   "arm": "naive_direct",
+   "consumer_solve_rate": 0.23333333333333334,
+   "poisoned_cycles": 114,
+   "poisoned_cycle_share": 0.2714285714285714,
+   "poisoned_in_stores": 42,
+   "hub_gene_cycles": 305,
+   "hub_gene_true_uplift": -0.20301885302931708,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 0,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7261904761904762,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 6,
+   "hub_gene_true_uplift": 0.4590501741191492,
+   "quarantined": 369,
+   "quarantine_rejected": 363,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 1,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7071428571428572,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 3,
+   "hub_gene_true_uplift": 0.3799346841355618,
+   "quarantined": 380,
+   "quarantine_rejected": 376,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 2,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.6785714285714286,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 3,
+   "hub_gene_true_uplift": 0.45353182008484044,
+   "quarantined": 365,
+   "quarantine_rejected": 361,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 3,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7619047619047619,
+   "poisoned_cycles": 7,
+   "poisoned_cycle_share": 0.016666666666666666,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 3,
+   "hub_gene_true_uplift": 0.3609561991187567,
+   "quarantined": 393,
+   "quarantine_rejected": 390,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 4,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7523809523809524,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 4,
+   "hub_gene_true_uplift": 0.12100013157935921,
+   "quarantined": 388,
+   "quarantine_rejected": 383,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 5,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7357142857142858,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 398,
+   "quarantine_rejected": 398,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 6,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.6833333333333333,
+   "poisoned_cycles": 3,
+   "poisoned_cycle_share": 0.007142857142857143,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 5,
+   "hub_gene_true_uplift": 0.4364518062827242,
+   "quarantined": 392,
+   "quarantine_rejected": 387,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 7,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7571428571428571,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 7,
+   "hub_gene_true_uplift": 0.3630768289417895,
+   "quarantined": 359,
+   "quarantine_rejected": 349,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 8,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7428571428571429,
+   "poisoned_cycles": 3,
+   "poisoned_cycle_share": 0.007142857142857143,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 377,
+   "quarantine_rejected": 377,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 9,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.6761904761904762,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 5,
+   "hub_gene_true_uplift": 0.4504311379982142,
+   "quarantined": 371,
+   "quarantine_rejected": 365,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 10,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7238095238095238,
+   "poisoned_cycles": 3,
+   "poisoned_cycle_share": 0.007142857142857143,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 0,
+   "hub_gene_true_uplift": null,
+   "quarantined": 388,
+   "quarantine_rejected": 388,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 11,
+   "arm": "naive_quarantine",
+   "consumer_solve_rate": 0.7357142857142858,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 1,
+   "hub_gene_true_uplift": 0.12329761929171608,
+   "quarantined": 393,
+   "quarantine_rejected": 392,
+   "poisoners_promoted": 360
+  },
+  {
+   "seed": 0,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.719047619047619,
+   "poisoned_cycles": 5,
+   "poisoned_cycle_share": 0.011904761904761904,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 64,
+   "hub_gene_true_uplift": 0.3519123488388129,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 1,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7166666666666667,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 65,
+   "hub_gene_true_uplift": 0.37732646103572653,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 2,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.6619047619047619,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 58,
+   "hub_gene_true_uplift": 0.3331872164547701,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 3,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7452380952380953,
+   "poisoned_cycles": 7,
+   "poisoned_cycle_share": 0.016666666666666666,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 63,
+   "hub_gene_true_uplift": 0.34110946937405145,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 4,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.8047619047619048,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 59,
+   "hub_gene_true_uplift": 0.40219084113830755,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 5,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7523809523809524,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 55,
+   "hub_gene_true_uplift": 0.3801607310524603,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 6,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.6904761904761905,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 44,
+   "hub_gene_true_uplift": 0.40089765151846096,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 7,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7738095238095238,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 57,
+   "hub_gene_true_uplift": 0.3569757701320351,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 8,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7452380952380953,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 73,
+   "hub_gene_true_uplift": 0.34295709885336667,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 9,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.6642857142857143,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 57,
+   "hub_gene_true_uplift": 0.3740370056190182,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 10,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7166666666666667,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 48,
+   "hub_gene_true_uplift": 0.37259366253631854,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 11,
+   "arm": "safe_direct",
+   "consumer_solve_rate": 0.7571428571428571,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 79,
+   "hub_gene_true_uplift": 0.3839715433278233,
+   "quarantined": 0,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 0,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.719047619047619,
+   "poisoned_cycles": 5,
+   "poisoned_cycle_share": 0.011904761904761904,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 53,
+   "hub_gene_true_uplift": 0.3559606121825053,
+   "quarantined": 67,
+   "quarantine_rejected": 10,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 1,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7238095238095238,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 52,
+   "hub_gene_true_uplift": 0.38427008887019287,
+   "quarantined": 69,
+   "quarantine_rejected": 6,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 2,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.6571428571428571,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 39,
+   "hub_gene_true_uplift": 0.3144981446289735,
+   "quarantined": 50,
+   "quarantine_rejected": 7,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 3,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7428571428571429,
+   "poisoned_cycles": 7,
+   "poisoned_cycle_share": 0.016666666666666666,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 49,
+   "hub_gene_true_uplift": 0.3378964756735232,
+   "quarantined": 64,
+   "quarantine_rejected": 5,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 4,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.8023809523809524,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 53,
+   "hub_gene_true_uplift": 0.3991982508511475,
+   "quarantined": 58,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 5,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7523809523809524,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 48,
+   "hub_gene_true_uplift": 0.38040142336210697,
+   "quarantined": 53,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 6,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.6904761904761905,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 36,
+   "hub_gene_true_uplift": 0.39087032962999274,
+   "quarantined": 42,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 7,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7738095238095238,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 45,
+   "hub_gene_true_uplift": 0.36267283689600727,
+   "quarantined": 56,
+   "quarantine_rejected": 2,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 8,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7452380952380953,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 57,
+   "hub_gene_true_uplift": 0.34472850082973905,
+   "quarantined": 66,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 9,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.6666666666666666,
+   "poisoned_cycles": 0,
+   "poisoned_cycle_share": 0.0,
+   "poisoned_in_stores": 0,
+   "hub_gene_cycles": 50,
+   "hub_gene_true_uplift": 0.3771762788750712,
+   "quarantined": 59,
+   "quarantine_rejected": 2,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 10,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7166666666666667,
+   "poisoned_cycles": 4,
+   "poisoned_cycle_share": 0.009523809523809525,
+   "poisoned_in_stores": 2,
+   "hub_gene_cycles": 40,
+   "hub_gene_true_uplift": 0.3673292914068572,
+   "quarantined": 45,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  },
+  {
+   "seed": 11,
+   "arm": "safe_quarantine",
+   "consumer_solve_rate": 0.7571428571428571,
+   "poisoned_cycles": 2,
+   "poisoned_cycle_share": 0.004761904761904762,
+   "poisoned_in_stores": 1,
+   "hub_gene_cycles": 63,
+   "hub_gene_true_uplift": 0.38646734877210626,
+   "quarantined": 71,
+   "quarantine_rejected": 0,
+   "poisoners_promoted": 0
+  }
+ ],
+ "summary": {
+  "isolated": {
+   "consumer_solve_rate": {
+    "mean": 0.7212301587301587,
+    "lo": 0.7027777777777778,
+    "hi": 0.7382986111111112,
+    "n": 12
+   },
+   "poisoned_cycles": {
+    "mean": 2.25,
+    "lo": 1.1666666666666667,
+    "hi": 3.5,
+    "n": 12
+   },
+   "poisoned_cycle_share": {
+    "mean": 0.005357142857142858,
+    "lo": 0.002777777777777778,
+    "hi": 0.008333333333333331,
+    "n": 12
+   },
+   "poisoned_in_stores": {
+    "mean": 1.1666666666666667,
+    "lo": 0.75,
+    "hi": 1.5,
+    "n": 12
+   },
+   "hub_gene_cycles": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "hub_gene_true_uplift": {
+    "mean": null,
+    "lo": null,
+    "hi": null,
+    "n": 0
+   },
+   "quarantined": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "quarantine_rejected": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "poisoners_promoted": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   }
+  },
+  "naive_direct": {
+   "consumer_solve_rate": {
+    "mean": 0.17797619047619048,
+    "lo": 0.15773809523809526,
+    "hi": 0.20079365079365077,
+    "n": 12
+   },
+   "poisoned_cycles": {
+    "mean": 99.5,
+    "lo": 87.16666666666667,
+    "hi": 113.33333333333333,
+    "n": 12
+   },
+   "poisoned_cycle_share": {
+    "mean": 0.23690476190476187,
+    "lo": 0.20753968253968255,
+    "hi": 0.2698412698412698,
+    "n": 12
+   },
+   "poisoned_in_stores": {
+    "mean": 37.75,
+    "lo": 33.583333333333336,
+    "hi": 42.41874999999997,
+    "n": 12
+   },
+   "hub_gene_cycles": {
+    "mean": 324.8333333333333,
+    "lo": 314.9145833333333,
+    "hi": 333.75,
+    "n": 12
+   },
+   "hub_gene_true_uplift": {
+    "mean": -0.24354121619916946,
+    "lo": -0.25521189969549135,
+    "hi": -0.22794349144634105,
+    "n": 12
+   },
+   "quarantined": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "quarantine_rejected": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "poisoners_promoted": {
+    "mean": 360.0,
+    "lo": 360.0,
+    "hi": 360.0,
+    "n": 12
+   }
+  },
+  "naive_quarantine": {
+   "consumer_solve_rate": {
+    "mean": 0.7234126984126984,
+    "lo": 0.7063492063492064,
+    "hi": 0.7392857142857144,
+    "n": 12
+   },
+   "poisoned_cycles": {
+    "mean": 2.3333333333333335,
+    "lo": 1.25,
+    "hi": 3.5833333333333335,
+    "n": 12
+   },
+   "poisoned_cycle_share": {
+    "mean": 0.005555555555555556,
+    "lo": 0.002976190476190476,
+    "hi": 0.008531746031746031,
+    "n": 12
+   },
+   "poisoned_in_stores": {
+    "mean": 1.1666666666666667,
+    "lo": 0.75,
+    "hi": 1.5,
+    "n": 12
+   },
+   "hub_gene_cycles": {
+    "mean": 3.0833333333333335,
+    "lo": 1.8333333333333333,
+    "hi": 4.416666666666667,
+    "n": 12
+   },
+   "hub_gene_true_uplift": {
+    "mean": 0.34974782239467905,
+    "lo": 0.2589248909401291,
+    "hi": 0.42325551488266533,
+    "n": 9
+   },
+   "quarantined": {
+    "mean": 381.0833333333333,
+    "lo": 373.99791666666664,
+    "hi": 387.75,
+    "n": 12
+   },
+   "quarantine_rejected": {
+    "mean": 377.4166666666667,
+    "lo": 368.9166666666667,
+    "hi": 385.1666666666667,
+    "n": 12
+   },
+   "poisoners_promoted": {
+    "mean": 360.0,
+    "lo": 360.0,
+    "hi": 360.0,
+    "n": 12
+   }
+  },
+  "safe_direct": {
+   "consumer_solve_rate": {
+    "mean": 0.7289682539682539,
+    "lo": 0.7049603174603175,
+    "hi": 0.7521825396825398,
+    "n": 12
+   },
+   "poisoned_cycles": {
+    "mean": 1.8333333333333333,
+    "lo": 0.5833333333333334,
+    "hi": 3.25,
+    "n": 12
+   },
+   "poisoned_cycle_share": {
+    "mean": 0.004365079365079366,
+    "lo": 0.001388888888888889,
+    "hi": 0.007738095238095238,
+    "n": 12
+   },
+   "poisoned_in_stores": {
+    "mean": 0.8333333333333334,
+    "lo": 0.4166666666666667,
+    "hi": 1.25,
+    "n": 12
+   },
+   "hub_gene_cycles": {
+    "mean": 60.166666666666664,
+    "lo": 55.083333333333336,
+    "hi": 65.5020833333333,
+    "n": 12
+   },
+   "hub_gene_true_uplift": {
+    "mean": 0.3681099833234293,
+    "lo": 0.35570051628054894,
+    "hi": 0.3805425271279953,
+    "n": 12
+   },
+   "quarantined": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "quarantine_rejected": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   },
+   "poisoners_promoted": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   }
+  },
+  "safe_quarantine": {
+   "consumer_solve_rate": {
+    "mean": 0.7289682539682539,
+    "lo": 0.7049603174603174,
+    "hi": 0.7517906746031746,
+    "n": 12
+   },
+   "poisoned_cycles": {
+    "mean": 1.8333333333333333,
+    "lo": 0.5833333333333334,
+    "hi": 3.25,
+    "n": 12
+   },
+   "poisoned_cycle_share": {
+    "mean": 0.004365079365079366,
+    "lo": 0.001388888888888889,
+    "hi": 0.007738095238095238,
+    "n": 12
+   },
+   "poisoned_in_stores": {
+    "mean": 0.8333333333333334,
+    "lo": 0.4166666666666667,
+    "hi": 1.25,
+    "n": 12
+   },
+   "hub_gene_cycles": {
+    "mean": 48.75,
+    "lo": 44.5,
+    "hi": 53.0,
+    "n": 12
+   },
+   "hub_gene_true_uplift": {
+    "mean": 0.3667891318315186,
+    "lo": 0.3523346107738476,
+    "hi": 0.37972793320951165,
+    "n": 12
+   },
+   "quarantined": {
+    "mean": 58.333333333333336,
+    "lo": 53.083333333333336,
+    "hi": 63.416666666666664,
+    "n": 12
+   },
+   "quarantine_rejected": {
+    "mean": 2.6666666666666665,
+    "lo": 0.9166666666666666,
+    "hi": 4.666666666666667,
+    "n": 12
+   },
+   "poisoners_promoted": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 12
+   }
+  }
+ },
+ "paired_vs_isolated": {
+  "naive_direct": {
+   "mean_diff": -0.5432539682539682,
+   "lo": -0.5676587301587301,
+   "hi": -0.519047619047619,
+   "n": 12,
+   "p_better": 0.0
+  },
+  "naive_quarantine": {
+   "mean_diff": 0.002182539682539684,
+   "lo": 0.0001984126984126977,
+   "hi": 0.004365079365079368,
+   "n": 12,
+   "p_better": 0.5
+  },
+  "safe_direct": {
+   "mean_diff": 0.007738095238095229,
+   "lo": -0.0015873015873015817,
+   "hi": 0.01785714285714286,
+   "n": 12,
+   "p_better": 0.5833333333333334
+  },
+  "safe_quarantine": {
+   "mean_diff": 0.007738095238095229,
+   "lo": -0.001984126984126968,
+   "hi": 0.01785714285714285,
+   "n": 12,
+   "p_better": 0.5833333333333334
+  }
+ },
+ "paired_quarantine_minus_direct": {
+  "naive": {
+   "mean_diff": 0.5454365079365079,
+   "lo": 0.5220238095238094,
+   "hi": 0.5692460317460316,
+   "n": 12,
+   "p_better": 1.0
+  },
+  "safe": {
+   "mean_diff": 0.0,
+   "lo": -0.001388888888888884,
+   "hi": 0.0015873015873015817,
+   "n": 12,
+   "p_better": 0.16666666666666666
+  }
+ },
+ "verdict": {
+  "quarantine_blocks_poison_naive": true,
+  "direct_apply_harm_measurable_naive": true,
+  "no_regression_with_quarantine": true,
+  "safehub_alone_blocks_poison": true
+ }
+}

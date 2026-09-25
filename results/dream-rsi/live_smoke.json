@@ -1,0 +1,107 @@
+{
+ "experiment": "live_smoke",
+ "created": "2026-09-24 23:22:42",
+ "config": {
+  "rounds": 2,
+  "grid": [
+   3,
+   1
+  ],
+  "W": 3,
+  "M": 2,
+  "cache": "/home/user/RSI/.rsi_cache/dream-rsi"
+ },
+ "summary": {
+  "domain": "sumdiff",
+  "llm": "claude:haiku",
+  "wall_s": 621.4,
+  "out_dir": "/tmp/dream_live_nmjf84ta",
+  "seed_score": 0.9104910395109694,
+  "best_score": 1.0319952987060697,
+  "per_round": [
+   {
+    "iteration": 1,
+    "calls": 6,
+    "round_best": 1.0311260337493098,
+    "best": 1.0311260337493098,
+    "N": 6,
+    "k": 2,
+    "plan": {
+     "branch_count": 3,
+     "refine_count": 1,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    }
+   },
+   {
+    "iteration": 2,
+    "calls": 6,
+    "round_best": 1.0319952987060697,
+    "best": 1.0319952987060697,
+    "N": 6,
+    "k": 2,
+    "plan": {
+     "branch_count": 3,
+     "refine_count": 1,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    }
+   }
+  ],
+  "attempt_outcomes": {
+   "ok": 9,
+   "compile_other": 3
+  },
+  "dream_values": [
+   0.955,
+   0.955
+  ],
+  "dream_selected": 0,
+  "developer_change": [
+   "Implement adaptive exploration with trajectory-aware branch pruning, priority-ranked batch selection, beta-dependent thresholds, and history-responsive grid pla"
+  ],
+  "final_policy_passes_static_check": true,
+  "deployed_policy_changed": false,
+  "usage_by_role": {
+   "agent": {
+    "calls": 12,
+    "input_tokens": 45235,
+    "output_tokens": 111936,
+    "cost_usd": 0.619108,
+    "latency_s": 1124.368444442749,
+    "total_tokens": 157171
+   },
+   "developer": {
+    "calls": 1,
+    "input_tokens": 9491,
+    "output_tokens": 14889,
+    "cost_usd": 0.093418,
+    "latency_s": 152.64857172966003,
+    "total_tokens": 24380
+   },
+   "_total": {
+    "calls": 13,
+    "input_tokens": 54726,
+    "output_tokens": 126825,
+    "cost_usd": 0.712526,
+    "latency_s": 1277.017016172409,
+    "total_tokens": 181551
+   }
+  },
+  "cost": {
+   "agent_calls": 12,
+   "agent_tokens": 157171,
+   "agent_usd": 0.619108,
+   "eval_s": 0.8859357833862305,
+   "online_rounds": 4,
+   "online_wall_s": 468.3007080554962,
+   "replay_episodes": 8,
+   "replay_cpu_s": 0.018826957434326164,
+   "replay_wall_s": 0.1932673454284668,
+   "developer_calls": 1,
+   "developer_tokens": 24380,
+   "developer_usd": 0.093418,
+   "replay_ms_per_episode": 2.3533696792907706
+  },
+  "usd": 0.712526
+ },
+ "verdict": "live run completed: best 1.0320 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.713, 621s"
+}

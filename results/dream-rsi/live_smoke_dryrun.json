@@ -1,0 +1,81 @@
+{
+ "experiment": "live_smoke_dryrun",
+ "created": "2026-09-24 23:12:04",
+ "config": {
+  "rounds": 2,
+  "grid": [
+   3,
+   1
+  ],
+  "W": 3,
+  "M": 2,
+  "cache": "/home/user/RSI/.rsi_cache/dream-rsi"
+ },
+ "summary": {
+  "domain": "sumdiff",
+  "llm": "sim",
+  "wall_s": 0.6,
+  "out_dir": "/tmp/dream_live_rd_tpa1e",
+  "seed_score": 0.9104910395109694,
+  "best_score": 1.0,
+  "per_round": [
+   {
+    "iteration": 1,
+    "calls": 6,
+    "round_best": 0.9700503502213533,
+    "best": 0.9700503502213533,
+    "N": 6,
+    "k": 2,
+    "plan": {
+     "branch_count": 3,
+     "refine_count": 1,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    }
+   },
+   {
+    "iteration": 2,
+    "calls": 6,
+    "round_best": 1.0,
+    "best": 1.0,
+    "N": 6,
+    "k": 2,
+    "plan": {
+     "branch_count": 3,
+     "refine_count": 1,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    }
+   }
+  ],
+  "attempt_outcomes": {
+   "ok": 12
+  },
+  "dream_values": [
+   0.955,
+   0.955
+  ],
+  "dream_selected": 0,
+  "developer_change": [
+   "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; wasted probes afte"
+  ],
+  "final_policy_passes_static_check": true,
+  "deployed_policy_changed": false,
+  "usage_by_role": {},
+  "cost": {
+   "agent_calls": 12,
+   "agent_tokens": 0,
+   "agent_usd": 0.0,
+   "eval_s": 0.6371443271636963,
+   "online_rounds": 4,
+   "online_wall_s": 0.2723817825317383,
+   "replay_episodes": 8,
+   "replay_cpu_s": 0.015096278134277274,
+   "replay_wall_s": 0.16317081451416016,
+   "developer_calls": 0,
+   "developer_tokens": 0,
+   "developer_usd": 0.0,
+   "replay_ms_per_episode": 1.8870347667846592
+  },
+  "usd": 0
+ },
+ "verdict": "live run completed: best 1.0000 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.000, 1s"
+}

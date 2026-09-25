@@ -1,0 +1,265 @@
+{
+ "experiment": "E13 determinism and resume",
+ "llm": "sim",
+ "config": {
+  "seeds": 5,
+  "kills": [
+   3,
+   10,
+   25
+  ]
+ },
+ "raw": [
+  {
+   "domain": "ruleworld",
+   "seed": 0,
+   "iterations": 52,
+   "n_candidates": 33,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 3,
+     "resumed_at": 2,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 10,
+     "resumed_at": 9,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 25,
+     "resumed_at": 24,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 3,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "ruleworld",
+   "seed": 1,
+   "iterations": 37,
+   "n_candidates": 34,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 3,
+     "resumed_at": 2,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 10,
+     "resumed_at": 9,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 25,
+     "resumed_at": 24,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 3,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "ruleworld",
+   "seed": 2,
+   "iterations": 43,
+   "n_candidates": 33,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 3,
+     "resumed_at": 2,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 10,
+     "resumed_at": 9,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 25,
+     "resumed_at": 24,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 3,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "ruleworld",
+   "seed": 3,
+   "iterations": 45,
+   "n_candidates": 33,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 3,
+     "resumed_at": 2,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 10,
+     "resumed_at": 9,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 25,
+     "resumed_at": 24,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 3,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "ruleworld",
+   "seed": 4,
+   "iterations": 57,
+   "n_candidates": 35,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 3,
+     "resumed_at": 2,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 10,
+     "resumed_at": 9,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 25,
+     "resumed_at": 24,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 3,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "agentqa",
+   "seed": 0,
+   "iterations": 22,
+   "n_candidates": 5,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 2,
+     "resumed_at": 1,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 6,
+     "resumed_at": 5,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 2,
+    "same_candidates": false,
+    "same_log": false
+   }
+  },
+  {
+   "domain": "agentqa",
+   "seed": 1,
+   "iterations": 16,
+   "n_candidates": 6,
+   "rerun_same_log": true,
+   "rerun_same_candidates": true,
+   "rerun_same_ledger": true,
+   "resumes": [
+    {
+     "kill_at": 2,
+     "resumed_at": 1,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    },
+    {
+     "kill_at": 6,
+     "resumed_at": 5,
+     "same_state": true,
+     "same_log": true,
+     "same_candidates": true
+    }
+   ],
+   "reference_style_resume": {
+    "kill_at": 2,
+    "same_candidates": false,
+    "same_log": false
+   }
+  }
+ ],
+ "all_reruns_identical": true,
+ "n_resumes": 19,
+ "all_resumes_identical": true,
+ "reference_style_resumes_diverged": "7/7",
+ "verdict": "7 runs (RuleWorld GEPA+Merge and AgentQA two-module): reruns byte-identical: True; 19 kill/resume cycles give the identical final state.json, run_log and candidate sequence: True. Resuming without the persisted RNG/sampler state (the reference's behaviour) diverged from the uninterrupted run in 7/7 cases. Claim (design goal): REPRODUCED.",
+ "generated_at": "2026-09-25 00:17:16"
+}

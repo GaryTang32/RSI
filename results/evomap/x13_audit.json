@@ -1,0 +1,249 @@
+{
+ "experiment": "x13_audit",
+ "generated_at": "2026-09-25 00:12:36",
+ "config": {
+  "llm": "sim",
+  "seeds": 10,
+  "tampers": [
+   "field",
+   "restamped",
+   "restamped_gene",
+   "delete",
+   "swap",
+   "archive_bytes"
+  ]
+ },
+ "raw": [
+  {
+   "seed": 0,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 43,
+   "n_genes": 10,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 1,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 40,
+   "n_genes": 10,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 2,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 47,
+   "n_genes": 10,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 3,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 51,
+   "n_genes": 12,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 4,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 50,
+   "n_genes": 10,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 5,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 45,
+   "n_genes": 9,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 6,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 52,
+   "n_genes": 11,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 7,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 42,
+   "n_genes": 9,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 8,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 54,
+   "n_genes": 12,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  },
+  {
+   "seed": 9,
+   "roundtrip_identical": true,
+   "lineage_exact": true,
+   "ledger_chain_matches": true,
+   "capsules_linked": true,
+   "n_events": 53,
+   "n_genes": 12,
+   "detect_field": 1.0,
+   "detect_restamped": 1.0,
+   "detect_restamped_gene": 0.0,
+   "detect_delete": 1.0,
+   "detect_swap": 1.0,
+   "detect_archive_bytes": 1.0
+  }
+ ],
+ "summary": {
+  "roundtrip_identical": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "lineage_exact": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "ledger_chain_matches": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "capsules_linked": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "n_events": {
+   "mean": 47.7,
+   "lo": 44.8,
+   "hi": 50.5,
+   "n": 10
+  },
+  "n_genes": {
+   "mean": 10.5,
+   "lo": 9.9,
+   "hi": 11.2,
+   "n": 10
+  },
+  "detect_field": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "detect_restamped": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "detect_restamped_gene": {
+   "mean": 0.0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "n": 10
+  },
+  "detect_delete": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "detect_swap": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  },
+  "detect_archive_bytes": {
+   "mean": 1.0,
+   "lo": 1.0,
+   "hi": 1.0,
+   "n": 10
+  }
+ },
+ "verdict": {
+  "roundtrip_identical": true,
+  "lineage_exact": true,
+  "byte_and_field_tamper_detection_100pct": true,
+  "restamped_event_detected_by_hash_chain": 1.0,
+  "restamped_gene_needs_external_anchor": 0.0
+ }
+}

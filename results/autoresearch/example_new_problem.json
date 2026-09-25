@@ -1,0 +1,76 @@
+{
+ "experiment": "example_new_problem",
+ "written_at": "2026-09-24 22:24:08",
+ "analysis": {
+  "n_rows": 21,
+  "n_experiments": 20,
+  "n_keep": 8,
+  "n_discard": 13,
+  "n_crash": 0,
+  "keep_rate": 0.38095238095238093,
+  "baseline": 0.274007767461117,
+  "best": 0.8784076245661809,
+  "improvement": 0.6043998571050639,
+  "total_keep_delta": 0.6043998571050639,
+  "improvement_pct": 220.5776364317231,
+  "experiments_per_hour": 28412.477559741823
+ },
+ "top_hits": [
+  {
+   "exp": 6,
+   "commit": "ec50d2c",
+   "description": "DEGREE 1 -> 3",
+   "delta": 0.48022614906524064,
+   "metric": 0.754618680537392
+  },
+  {
+   "exp": 12,
+   "commit": "600179b",
+   "description": "DEGREE 3 -> 5",
+   "delta": 0.10086443569978631,
+   "metric": 0.8767642227836783
+  },
+  {
+   "exp": 8,
+   "commit": "589a61f",
+   "description": "SCALE 3.0 -> 1.0",
+   "delta": 0.02128110654649995,
+   "metric": 0.775899787083892
+  },
+  {
+   "exp": 14,
+   "commit": "fba8c6a",
+   "description": "SCALE 1.0 -> 0.333333",
+   "delta": 0.001101534204293042,
+   "metric": 0.8778657569879713
+  },
+  {
+   "exp": 20,
+   "commit": "1db2da3",
+   "description": "DEGREE 5 -> 7",
+   "delta": 0.0005044026508067567,
+   "metric": 0.8784076245661809
+  },
+  {
+   "exp": 1,
+   "commit": "dfe4fa2",
+   "description": "SCALE 1.0 -> 3.0",
+   "delta": 0.0003847640110343775,
+   "metric": 0.27439253147215137
+  },
+  {
+   "exp": 16,
+   "commit": "9e086e7",
+   "description": "RIDGE 1.0 -> 0.1",
+   "delta": 3.746492740286378e-05,
+   "metric": 0.8779032219153742
+  }
+ ],
+ "best_train_py": "import numpy as np\nimport evaluate\n\nDEGREE = 7\nRIDGE = 0.1\nSCALE = 0.333333\n\n\ndef features(x):\n    z = np.asarray(x, float) / SCALE\n    return np.vstack([z ** d for d in range(DEGREE + 1)]).T\n\n\nF = features(evaluate.X_TRAIN)\nw = np.linalg.solve(F.T @ F + RIDGE * np.eye(F.shape[1]), F.T @ evaluate.Y_TRAIN)\nevaluate.report(r2=evaluate.score(lambda x: features(x) @ w))\n",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ }
+}

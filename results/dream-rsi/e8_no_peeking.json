@@ -1,0 +1,76 @@
+{
+ "experiment": "e8_no_peeking",
+ "created": "2026-09-24 23:04:06",
+ "config": {
+  "worlds": 8,
+  "online_worlds": 40,
+  "W": 4,
+  "grid": [
+   6,
+   4
+  ],
+  "objective": "raw Eq.1 beta1=0.01 beta2=0.005",
+  "root_mode": "addressable",
+  "llm": "not used"
+ },
+ "results": {
+  "honest_adaptive": {
+   "replay_guard_on": 0.21796006937399987,
+   "replay_guard_off": 0.21796006937399987,
+   "disqualified_on": 0,
+   "violations_on": [],
+   "N_off": 20.875,
+   "attainment_off": 0.9479570845906036,
+   "online_unguarded": {
+    "mean": 0.2418833595620276,
+    "lo": 0.2184835310978607,
+    "hi": 0.26491054911577044,
+    "n": 40
+   },
+   "online_N_unguarded": 20.35,
+   "online_guarded": {
+    "mean": 0.2418833595620276,
+    "lo": 0.2184835310978607,
+    "hi": 0.26491054911577044,
+    "n": 40
+   },
+   "online_N_guarded": 20.35,
+   "replay_minus_online_guard_off": -0.023923290188027746
+  },
+  "oracle": {
+   "replay_guard_on": -1.0,
+   "replay_guard_off": 0.391538920192377,
+   "disqualified_on": 8,
+   "violations_on": [
+    "tree"
+   ],
+   "N_off": 4.375,
+   "attainment_off": 1.0,
+   "online_unguarded": {
+    "mean": 0.2727041217184334,
+    "lo": 0.246312365512268,
+    "hi": 0.30132334025442725,
+    "n": 40
+   },
+   "online_N_unguarded": 3.95,
+   "online_guarded": {
+    "mean": -1.0,
+    "lo": -1.0,
+    "hi": -1.0,
+    "n": 40
+   },
+   "online_N_guarded": 0.0,
+   "replay_minus_online_guard_off": 0.11883479847394363
+  }
+ },
+ "pick_without_guard": "oracle",
+ "pick_with_guard": "honest_adaptive",
+ "oracle_static_check": {
+  "ok": false,
+  "errors": [
+   "forbidden attribute .best_so_far",
+   "forbidden attribute .tree"
+  ]
+ },
+ "verdict": "REPRODUCED: without the guard the peeking policy's replay score is inflated by +0.119 over its true online value (honest policy: -0.024) and it wins selection (+0.392 vs +0.218); online it scores +0.273 vs honest +0.242 - its no-peek fallback happens to be competitive here, so the damage is a mis-estimated value (+0.174 predicted advantage vs +0.031 realised), not an online collapse; the guard disqualifies it in 8/8 worlds and the static check rejects it before it runs"
+}

@@ -5,3 +5,4 @@ __pycache__/
 /runs/
 /.cache/
 .rsi_cache/
+run.log

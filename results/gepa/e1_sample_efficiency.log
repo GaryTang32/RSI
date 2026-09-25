@@ -1,0 +1,4 @@
+[saved] /home/user/RSI/results/gepa/e1_sample_efficiency.json
+[saved] /home/user/RSI/results/gepa/e1_sample_efficiency.png
+GEPA reaches 80%/90% of the oracle test score after mean 851/1685 rollouts (mean; reached in 100%/100% of seeds) vs scalar RL (rl_lr=2.0) 5326/8824 (mean over seeds that reached it; reached 100%/85%); median per-seed ratio RL/GEPA = 5.7x (80%) and 6.1x (90%). Claim '>=10x fewer rollouts': NOT reproduced at 10x at the 80% target, NOT reproduced at 10x at the 90% target. GEPA curve >= RL curve at 7/7 budgets <= 6000. Final test at equal-or-larger RL budget: GEPA 0.917 [0.910, 0.923] (B=6000) vs RL 0.902 [0.881, 0.922] (B=24000).
+AgentQA (B=300, 5 seeds): holdout/OOD accuracy GEPA 0.900 [0.860, 0.950] / 0.900 [0.840, 0.950], ScoreOnly 0.950 [0.950, 0.950] / 0.990 [0.970, 1.000], ScalarRL 0.900 [0.870, 0.930] / 0.890 [0.850, 0.950] (seed harness 0.460 [0.380, 0.520] / 0.390 [0.310, 0.500]).

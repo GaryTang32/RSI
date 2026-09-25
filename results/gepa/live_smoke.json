@@ -1,0 +1,149 @@
+{
+ "experiment": "live smoke",
+ "llm": "claude:haiku",
+ "ruleworld": {
+  "budget": 300,
+  "stop_reason": "max_metric_calls",
+  "rollouts": 318,
+  "iterations": 8,
+  "events": {
+   "accepted": 8
+  },
+  "seed_val": 0.0,
+  "best_val": 0.7405555555555557,
+  "seed_test_true": 0.0,
+  "best_test_true": 0.7271812328895761,
+  "oracle_test_true": 0.9499999999999947,
+  "rejected_outputs": [],
+  "rules_detected": {
+   "triage": {
+    "fragile": [
+     "periwinkle"
+    ],
+    "hazardous": [
+     "hemlock"
+    ],
+    "perishable": [
+     "hematite"
+    ],
+    "oversized": [
+     "mahogany"
+    ],
+    "customized": [
+     "obsidian"
+    ],
+    "lithium": [
+     "aquamarine"
+    ],
+    "gift": [
+     "beryl"
+    ]
+   },
+   "reply": {
+    "express": [
+     "osmium"
+    ],
+    "bulk": [
+     "gneiss",
+     "gneiss",
+     "gneiss"
+    ],
+    "frozen": [
+     "gallium",
+     "gallium",
+     "gallium"
+    ],
+    "insured": [
+     "palladium"
+    ],
+    "luxury": [
+     "saffron"
+    ],
+    "recalled": [
+     "dolomite"
+    ],
+    "returned": [
+     "walnut",
+     "walnut",
+     "walnut"
+    ],
+    "rural": [
+     "zinnia"
+    ]
+   }
+  },
+  "ticket_facts_in_best": 0,
+  "best_prompts": {
+   "prompts/reply.md": "You are the reply module of an order-fulfillment assistant. Your role is to assign handling protocols to order properties that have not been handled by upstream modules.\n\nTASK OVERVIEW:\nFor each order ticket, you will receive a list of order properties and a list of properties already handled by upstream modules. Your task is to assign the appropriate handling protocol to each unhandled property.\n\nPROCESSING RULES:\n1. Only handle order properties that have NO upstream notes. Properties listed in \"Upstream notes from earlier modules\" have already been assigned and should be skipped.\n2. For each property you handle, output: '<property>: <protocol>'\n3. Apply these property-specific protocol assignments:\n   - express \u2192 osmium\n   - bulk \u2192 gneiss\n   - frozen \u2192 gallium\n   - insured \u2192 palladium\n   - luxury \u2192 saffron\n   - recalled \u2192 dolomite\n   - returned \u2192 walnut\n   - rural \u2192 zinnia\n4. For any other property with no specific rule in the list above, use the standard protocol.\n5. If there are no properties to handle (all have upstream notes), output: (no properties for this module)\n\nOUTPUT FORMAT:\n- List each property you handle with its assigned protocol\n- Use semicolon-separated format if multiple properties\n- Provide a trace showing your reasoning for each assignment, indicating whether the protocol was assigned via a specific rule or the standard protocol fallback\n- Format: <property>: <protocol> (<rule type>)\n\nEXAMPLE OUTPUT:\nreturned: walnut; frozen: gallium; bulk: gneiss\nTrace: returned -> walnut (specific rule); frozen -> gallium (specific rule); bulk -> gneiss (specific rule)\n",
+   "prompts/triage.md": "You are the triage module of an order-fulfillment assistant. For each order property mentioned in the input, check if it matches a protocol rule.\n\nApply the following property-to-protocol rules:\n- fragile \u2192 periwinkle\n- hazardous \u2192 hemlock\n- perishable \u2192 hematite\n- oversized \u2192 mahogany\n- customized \u2192 obsidian\n- lithium \u2192 aquamarine\n- gift \u2192 beryl\n\nFor each order property mentioned in the input, output '<property>: <protocol>' if it matches one of the above rules. Only output properties that have a matching rule from the list above. Do not output properties that do not match any rule, and do not assign or invent protocols for properties without explicit rules. If no properties match any rules, indicate that there are no properties for this module. Provide a trace showing how each property was matched to its protocol.\n"
+  },
+  "usage": {
+   "reflection": {
+    "calls": 8,
+    "input_tokens": 12420,
+    "output_tokens": 20235,
+    "cost_usd": 0.113595,
+    "latency_s": 222.46188473701477,
+    "total_tokens": 32655
+   },
+   "_total": {
+    "calls": 8,
+    "input_tokens": 12420,
+    "output_tokens": 20235,
+    "cost_usd": 0.113595,
+    "latency_s": 222.46188473701477,
+    "total_tokens": 32655
+   }
+  },
+  "ledger_nodes": 9
+ },
+ "agentqa": {
+  "budget": 80,
+  "stop_reason": "max_metric_calls",
+  "rollouts": 80,
+  "seed_val": 0.375,
+  "best_val": 0.5,
+  "holdout": {
+   "seed": 0.7,
+   "best": 0.6
+  },
+  "ood": {
+   "seed": 0.5833333333333334,
+   "best": 0.5
+  },
+  "best_prompts": {
+   "prompts/reporter.md": "Give the final answer to the question.\n",
+   "prompts/solver.md": "You are a helpful assistant specialized in solving mathematical and arithmetic problems with high precision.\n\nFor ledger balance calculations:\n1. Start with the initial balance\n2. Apply each operation sequentially in the order given\n3. When an operation involves repeated amounts (e.g., \"20 payments of 44127\"), multiply the count by the amount, then apply the operation\n4. Maintain full numerical precision throughout all intermediate calculations\n5. Show your work step-by-step to catch any errors\n\nFor modular arithmetic problems (remainders, divisors):\n1. Apply proper modular arithmetic principles (e.g., Fermat's Little Theorem, Euler's theorem, or repeated squaring for exponentiation)\n2. The final remainder must be: 0 \u2264 remainder < divisor\n3. Verify that your answer is mathematically valid (e.g., if dividing by 558, your remainder cannot be \u2265 558)\n4. Use efficient computational methods for large exponents\n\nGeneral requirements:\n- Calculate carefully and double-check all arithmetic, especially multiplications\n- Show intermediate calculation steps to verify accuracy\n- Be precise to the exact value - off-by-one errors are incorrect\n- Before finalizing your answer, verify that the result makes logical sense\n- For complex calculations, break them into smaller manageable pieces\n"
+  },
+  "usage": {
+   "reflection": {
+    "calls": 8,
+    "input_tokens": 28198,
+    "output_tokens": 12221,
+    "cost_usd": 0.08930300000000001,
+    "latency_s": 150.88833856582642,
+    "total_tokens": 40419
+   },
+   "task": {
+    "calls": 160,
+    "input_tokens": 37033,
+    "output_tokens": 111438,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 148471
+   },
+   "_total": {
+    "calls": 168,
+    "input_tokens": 65231,
+    "output_tokens": 123659,
+    "cost_usd": 0.08930300000000001,
+    "latency_s": 150.88833856582642,
+    "total_tokens": 188890
+   }
+  }
+ },
+ "total_cost_usd": 0.20289800000000002,
+ "wall_s": 373.8015854358673,
+ "verdict": "RuleWorld: true test 0.000 -> 0.727 (oracle 0.950) with 8 accepted of 8 proposals in 318 rollouts; AgentQA holdout {'seed': 0.7, 'best': 0.6} / OOD {'seed': 0.5833333333333334, 'best': 0.5}; cost $0.203, 374 s.",
+ "generated_at": "2026-09-25 00:23:31"
+}

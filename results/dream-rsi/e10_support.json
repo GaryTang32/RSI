@@ -1,0 +1,141 @@
+{
+ "experiment": "e10_support",
+ "created": "2026-09-24 23:07:31",
+ "config": {
+  "records": {
+   "shallow_6x2": [
+    6,
+    2
+   ],
+   "deep_6x9": [
+    6,
+    9
+   ]
+  },
+  "recorded_worlds": 8,
+  "true_value_worlds": 50,
+  "objective": {
+   "beta1": 0.002,
+   "beta2": 0.005,
+   "normalize": false
+  },
+  "W": 4,
+  "llm": "not used"
+ },
+ "results": {
+  "go_deeper_3x9": {
+   "true_population": {
+    "mean": 0.36578203854109986,
+    "lo": 0.3426754615853985,
+    "hi": 0.3886128925519176,
+    "n": 50
+   },
+   "true": {
+    "mean": 0.3134727680928797,
+    "lo": 0.24784208458469065,
+    "hi": 0.380376799935634,
+    "n": 8
+   },
+   "true_probes": 30.0,
+   "replay_shallow_6x2_clip": 0.3005441125301144,
+   "out_of_support_shallow_6x2": true,
+   "replay_shallow_6x2_no_reward": 0.191,
+   "error_shallow_6x2_clip": -0.01292865556276529,
+   "replay_deep_6x9_clip": 0.3134727680928797,
+   "out_of_support_deep_6x9": false,
+   "replay_deep_6x9_no_reward": 0.3134727680928797,
+   "error_deep_6x9_clip": 0.0
+  },
+  "shallow_6x2": {
+   "true_population": {
+    "mean": 0.3535448302403031,
+    "lo": 0.3425096405795511,
+    "hi": 0.3649914731457953,
+    "n": 50
+   },
+   "true": {
+    "mean": 0.3602357015331819,
+    "lo": 0.3342245914948094,
+    "hi": 0.3882928463519467,
+    "n": 8
+   },
+   "true_probes": 18.0,
+   "replay_shallow_6x2_clip": 0.3602357015331819,
+   "out_of_support_shallow_6x2": false,
+   "replay_shallow_6x2_no_reward": 0.3602357015331819,
+   "error_shallow_6x2_clip": 0.0,
+   "replay_deep_6x9_clip": 0.3602357015331819,
+   "out_of_support_deep_6x9": false,
+   "replay_deep_6x9_no_reward": 0.3602357015331819,
+   "error_deep_6x9_clip": 0.0
+  },
+  "adaptive": {
+   "true_population": {
+    "mean": 0.37030930516722826,
+    "lo": 0.356754983122596,
+    "hi": 0.3843480237168583,
+    "n": 50
+   },
+   "true": {
+    "mean": 0.37304774543288555,
+    "lo": 0.3361080511888893,
+    "hi": 0.4092659732536498,
+    "n": 8
+   },
+   "true_probes": 20.68,
+   "replay_shallow_6x2_clip": 0.353301943707211,
+   "out_of_support_shallow_6x2": true,
+   "replay_shallow_6x2_no_reward": 0.18237053571428574,
+   "error_shallow_6x2_clip": -0.019745801725674528,
+   "replay_deep_6x9_clip": 0.37304774543288555,
+   "out_of_support_deep_6x9": false,
+   "replay_deep_6x9_no_reward": 0.37304774543288555,
+   "error_deep_6x9_clip": 0.0
+  },
+  "adaptive_deep": {
+   "true_population": {
+    "mean": 0.3823580790965399,
+    "lo": 0.36602402190585315,
+    "hi": 0.39961372306326004,
+    "n": 50
+   },
+   "true": {
+    "mean": 0.38555299566179896,
+    "lo": 0.35136966747075254,
+    "hi": 0.41836146902477983,
+    "n": 8
+   },
+   "true_probes": 24.78,
+   "replay_shallow_6x2_clip": 0.36050718543354426,
+   "out_of_support_shallow_6x2": true,
+   "replay_shallow_6x2_no_reward": 0.18528125,
+   "error_shallow_6x2_clip": -0.025045810228254695,
+   "replay_deep_6x9_clip": 0.38555299566179896,
+   "out_of_support_deep_6x9": false,
+   "replay_deep_6x9_no_reward": 0.38555299566179896,
+   "error_deep_6x9_clip": 0.0
+  }
+ },
+ "ranking": {
+  "true": [
+   "adaptive_deep",
+   "adaptive",
+   "go_deeper_3x9",
+   "shallow_6x2"
+  ],
+  "shallow_6x2": [
+   "adaptive_deep",
+   "shallow_6x2",
+   "adaptive",
+   "go_deeper_3x9"
+  ],
+  "deep_6x9": [
+   "adaptive_deep",
+   "adaptive",
+   "shallow_6x2",
+   "go_deeper_3x9"
+  ]
+ },
+ "figure": "/home/user/RSI/results/dream-rsi/e10_support.png",
+ "verdict": "REPRODUCED: the go-deeper policy is underestimated on the shallow record (error -0.013; its plan is out of support) and the estimate recovers when the record covers its depth (error +0.000); replay ranking on the shallow record ['adaptive_deep', 'shallow_6x2', 'adaptive', 'go_deeper_3x9'] vs deep record ['adaptive_deep', 'adaptive', 'shallow_6x2', 'go_deeper_3x9'] vs true (population) ['adaptive_deep', 'adaptive', 'go_deeper_3x9', 'shallow_6x2']. Errors are against the true online value on the same world seeds (common random numbers), so they isolate the support effect from world-sampling noise"
+}
