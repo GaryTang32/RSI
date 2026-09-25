@@ -72,6 +72,10 @@ method also ships `experiments/<method>/example_new_problem.py` as a template.
   multiple seeds and report means with 95% bootstrap CIs.
 - `tests/`: offline and deterministic (`pytest`). Live smoke tests run with `pytest -m live`.
 
+## Step-by-step validation
+
+Each method was run from its untouched seed (offline and with live Claude Haiku, $10.55 total). Every iteration was traced (`rsi.trace`), and an independent auditor re-derived each step from the raw trial scores and checked the behaviour against the paper. Of 2,370 steps, 2,195 were verified correct and no gate decision was miscomputed. See [validation/README.md](validation/README.md), plus `validation/<method>/AUDIT.md` and the rendered `TRACE.md` files.
+
 ## Layout
 
 ```
