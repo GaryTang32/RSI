@@ -90,8 +90,23 @@ def strongest(versions: Sequence[VersionRecord]) -> VersionRecord:
 
 
 def default_beta_of(code: str, fallback: float = 0.6) -> float:
+    """The policy's baked-in default ``beta``: ``PARAMS["default_beta"]`` (templates), else the
+    literal default of ``self.config.get("beta", <literal>)`` (the Listing-2 idiom an LLM-written
+    policy uses), else ``fallback``. Recorded as the live manifest's actual beta."""
     p = get_params(code)
-    return float(p.get("default_beta", fallback))
+    if "default_beta" in p:
+        return float(p["default_beta"])
+    try:
+        import ast
+
+        for node in ast.walk(ast.parse(code)):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
+                    and len(node.args) == 2 and isinstance(node.args[0], ast.Constant) and node.args[0].value == "beta"
+                    and isinstance(node.args[1], ast.Constant) and isinstance(node.args[1].value, (int, float))):
+                return float(node.args[1].value)
+    except SyntaxError:
+        pass
+    return float(fallback)
 
 
 def choose_default_beta(prior: Optional[float], manifests: Sequence[dict], sweep: Optional[dict]) -> tuple[float, str]:
@@ -114,8 +129,17 @@ def choose_default_beta(prior: Optional[float], manifests: Sequence[dict], sweep
     if higher and max(p["attainment"] for p in higher) > cur["attainment"] + 0.02 and \
             min(p["probes_frac"] for p in higher) - cur["probes_frac"] < 0.35:
         return float(clamp(prior + 0.15, 0.0, 1.0)), "live best plateaued and higher beta reaches higher attainment: raise"
-    if prior >= 0.7 and higher and max(p["attainment"] for p in higher) <= cur["attainment"] + 1e-9:
-        return float(clamp(prior - 0.1, 0.0, 1.0)), "high default already tried through a plateau: lower"
+    if prior >= 0.7:
+        # "a high default has already been tried through a plateau and high-beta points add work
+        # without attainment": judged against the points above it, or - when the default sits at the
+        # top of the grid and nothing lies above - against the nearest point below it
+        no_gain_above = not higher or max(p["attainment"] for p in higher) <= cur["attainment"] + 1e-9
+        lower = [p for b, p in pts.items() if b < prior - 1e-9]
+        nb = max(lower, key=lambda p: p["beta"]) if lower else None
+        work_without_gain = bool(higher) or (nb is not None and cur["probes_frac"] > nb["probes_frac"] + 1e-9
+                                             and cur["attainment"] <= nb["attainment"] + 0.02)
+        if no_gain_above and work_without_gain:
+            return float(clamp(prior - 0.1, 0.0, 1.0)), "high default already tried through a plateau: lower"
     return 0.6, "evidence conflicts: moderately exploratory default 0.6"
 
 
