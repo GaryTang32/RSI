@@ -114,6 +114,7 @@ class ProgramDomain(Domain):
 
         class _Task(DiscoveryTask):
             name = dom.name
+            domain = dom          # the underlying rsi.core Domain (sealed splits -> shadow monitor)
 
             def describe(self):
                 return dom.describe()

@@ -1,0 +1,19 @@
+{
+ "verdict": "accept",
+ "reasons": [
+  "The diff itself contains no task-specific hard-coded knowledge: no task IDs, names, entity references, expected outputs, or magic constants. It is a domain-gated instruction ('When solving numeric problems:') that applies generally to all numeric problems.",
+  "No branching on task-identifying features. The system prompt is static text that doesn't conditionally adapt based on task names or properties—it simply states a general procedural requirement for the numeric domain.",
+  "The change from vague optional guidance ('verify by reconsidering') to explicit mandatory procedure ('you MUST write Python code, execute it, show output, base answer on computed result') is substantive and represents a real behavioral shift, not a no-op or dead code.",
+  "No grader gaming: the instruction does not attempt to detect, reconstruct, or influence the verifier, hard-code rubric thresholds, or game the output format. The 'ANSWER:' format requirement is unchanged.",
+  "No undeclared bundling: the single declared edit (E1) cleanly encompasses all changes in the diff—rewriting the verification instruction to mandate Python usage.",
+  "No runtime memory/skill leakage: this is a static system prompt modification with no new state persistence mechanism or task-specific data injection across trials.",
+  "No unbounded work: the instruction is a one-shot procedural directive ('Write Python code... Execute it...') with no retry loop, polling, or 'keep improving' gate."
+ ],
+ "risk_notes": [
+  "Token cost: the instruction may cause LLM to generate Python code even for trivial calculations, inflating token usage for passing tasks (mitigated by 'especially with large numbers, modular arithmetic, or powers' qualifier that implies flexibility for simple ops).",
+  "Directive strength: success depends on LLM correctly interpreting 'you MUST' as a binding requirement rather than weak suggestion; if LLM reverts to mental math when confident, the mechanism may not fully activate.",
+  "Transfer uncertainty: while numeric problem-solving should benefit universally from Python grounding, specific transfer to unfamiliar numeric domains (e.g., pure number-theory proofs where computation is secondary) is not guaranteed, though likely non-harmful.",
+  "Metadata references specific failing task IDs (001, 005, 006, 010) for retroactive justification—this is appropriate evolution methodology (analyzing failures to drive general improvements), not leakage, but confirms this edit was informed by specific task analysis."
+ ],
+ "stage": "llm"
+}

@@ -1,0 +1,31 @@
+{
+ "policy": "0884fcbf5e",
+ "label": "t2m3",
+ "objective": "eq1",
+ "value": 0.899571,
+ "per_world": [
+  0.90714,
+  0.892
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 1.0,
+  "probes_frac": 0.8333333333333333,
+  "N": 11.0,
+  "k": 6.0,
+  "mean_batch": 1.9142857142857141,
+  "batch_fill": 0.638095238095238,
+  "missed_ceiling_rate": 0.0,
+  "wasted_probe_frac": 0.041666666666666664,
+  "serial_round_frac": 0.3857142857142857,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0089,
+ "wall_s": 0.0573,
+ "n_episodes": 2
+}

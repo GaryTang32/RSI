@@ -1,0 +1,111 @@
+[
+ {
+  "i": 0,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/reporter.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "rollouts": 14,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 1
+ },
+ {
+  "i": 1,
+  "event": "accepted",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/solver.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.0,
+   0.0
+  ],
+  "new_program_idx": 1,
+  "rollouts": 28,
+  "n_candidates": 2,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 2
+ },
+ {
+  "i": 2,
+  "event": "accepted",
+  "selected_program_candidate": 1,
+  "components": [
+   "prompts/reporter.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.0,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 2,
+  "rollouts": 42,
+  "n_candidates": 3,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 3
+ },
+ {
+  "i": 3,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/reporter.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   1.0
+  ],
+  "new_subsample_scores": [
+   0.0,
+   0.0,
+   1.0
+  ],
+  "rollouts": 48,
+  "n_candidates": 3,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 3
+ },
+ {
+  "i": 4,
+  "event": "skip_perfect",
+  "selected_program_candidate": 0,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 51,
+  "n_candidates": 3,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 3
+ }
+]

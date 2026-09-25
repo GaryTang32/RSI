@@ -1,58 +1,31 @@
 {
  "failure_modes": [
   {
-   "mode": "answer_output_lacks_extraction_marker",
-   "n_tasks": 3,
-   "affected_tasks": [
-    "evolve-numeric-004",
-    "evolve-numeric-007",
-    "evolve-numeric-010"
-   ],
-   "description": "Agent produces numeric answer but embeds it in explanatory text, equation, or digit breakdown instead of providing a dedicated output line with extraction-friendly format. Grader extracts full surrounding context instead of bare value.",
-   "needed_instead": "Output a dedicated final line with explicit extraction marker format (e.g., 'ANSWER: <value>') or minimal labeled summary format ('**Descriptor: Value**') kept distinct from explanatory prose.",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-numeric-004",
-     "where": "GRADING feedback",
-     "quote": "Extracted answer 'Combining these congruences gives **12^853 ≡ 234 (mod 558)**.'; expected '234'."
-    },
-    {
-     "task_id": "evolve-numeric-007",
-     "where": "GRADING feedback",
-     "quote": "Extracted answer 'This gives x ≡ **435** (mod 584)'; expected '435'."
-    },
-    {
-     "task_id": "evolve-numeric-010",
-     "where": "GRADING feedback",
-     "quote": "Extracted answer '6 + 4 + 5 + 0 + 9 + 9 + 7 + 4 + 7 + 0 + 3 + 2 + 9 + 7 + 1 + 5 + 0 + 9 +' (incomplete digit sum)."
-    }
-   ]
-  },
-  {
    "mode": "numeric_computation_returns_incorrect_value",
-   "n_tasks": 3,
+   "n_tasks": 4,
    "affected_tasks": [
     "evolve-numeric-001",
+    "evolve-numeric-006",
     "evolve-numeric-005",
-    "evolve-numeric-006"
+    "evolve-numeric-010"
    ],
-   "description": "Tool execution or numeric operation produces incorrect result: modular exponentiation returns wrong remainder, large exponentiation yields value with incorrect digit magnitude, or bitwise count differs from expected by constant. Indicates either silent tool invocation failure (output not captured or corrupted) or LLM hallucination when tool output is unavailable.",
-   "needed_instead": "Verify tool output capture and check result reasonableness (e.g., validate digit count against order-of-magnitude formula, confirm bit-count range). Implement explicit error handling instead of proceeding with unverified results.",
+   "description": "Agent produces incorrect numeric result for final answer or critical intermediate values. Root causes vary: unverified manual arithmetic chains with cascading errors, failed tool output integration despite attempted tool use, or unvalidated intermediate results that propagate to incorrect final answer.",
+   "needed_instead": "Systematic tool-based verification for all intermediate numeric values; magnitude sanity checking to validate results are plausible before proceeding; explicit verification steps that catch arithmetic errors before final answer is formulated and submitted.",
    "representative_evidence": [
     {
      "task_id": "evolve-numeric-001",
-     "where": "Digest and GRADING",
-     "quote": "Computed 19^763 mod 823 = 627, expected 781. Trajectory shows no tool stdout, suggesting silent invocation failure or hallucinated result."
-    },
-    {
-     "task_id": "evolve-numeric-005",
-     "where": "Digest narrative",
-     "quote": "Computed 81^15 = 1350851717672992089 (19 digits, should be ~29). Digit sum 189 vs correct 99. Tool stdout not visible in trajectory."
+     "where": "Modular exponentiation intermediate calculations",
+     "quote": "19^64 ≡ 508 (incorrect; should be 588), 19^128 ≡ 665 (incorrect; should be 84), 19^512 ≡ 538 (incorrect; should be 183). Agent does not invoke available Python tool for verification despite system prompt explicitly directing verification for modular arithmetic problems."
     },
     {
      "task_id": "evolve-numeric-006",
-     "where": "GRADING feedback",
-     "quote": "Extracted answer 'Number of 1 bits: **26**'; expected '24'."
+     "where": "Binary one-bit counting for large power",
+     "quote": "Extracted answer '38'; expected '24' (14-bit discrepancy indicating systematic error). Tool output shown in code but not properly integrated or validated before extracting final answer."
+    },
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "Large power computation and digit summation",
+     "quote": "81^15 computed as 1,350,851,717,672,992,089 (19 digits) when approximately 29 digits expected per log₁₀(81^15)≈28.6. Magnitude sanity check would have immediately flagged implausibility before using value for subsequent operations."
     }
    ]
   }
@@ -60,23 +33,15 @@
  "success_habits": [
   {
    "habit": "structured_step_by_step_arithmetic_decomposition",
-   "n_tasks": 2,
-   "affected_tasks": [
-    "evolve-numeric-008",
-    "evolve-numeric-011"
-   ],
-   "description": "For multi-operation arithmetic, decompose into ordered numbered steps. Each step explicitly shows: operation type, direct calculation with operands and result (e.g., '99 × 65,957 = 6,529,743'), and running total update. Enables intermediate verification and error traceability.",
-   "risk_if_broken": "Removal eliminates error traceability; grader and human cannot verify each step independently. Also reduces extraction confidence if final line formatting becomes ambiguous. This structure is load-bearing for multi-operation numeric problems: breaking it cascades to answer extraction failures."
+   "n_tasks": 1,
+   "description": "Agent decomposes complex multi-step operations into isolated atomic calculations, explicitly presents intermediate result of each step, and incorporates values into a running balance or accumulator before proceeding to the next operation. Each calculation step is independently auditable.",
+   "risk_if_broken": "Removing step-by-step decomposition eliminates the opportunity for catching errors before propagation through subsequent steps. System prompt explicitly requires 'breaking down complex operations into individual calculations' for verification purposes. Without this structure, small arithmetic errors accumulate uncaught through the calculation chain into the final answer."
   },
   {
    "habit": "final_answer_as_minimal_labeled_summary",
-   "n_tasks": 2,
-   "affected_tasks": [
-    "evolve-numeric-008",
-    "evolve-numeric-011"
-   ],
-   "description": "Conclude response with a single final line formatted as '**[Descriptor]: [Numeric_value]**' (bold, no additional context). For example, '**Final balance: 570,186**'. This minimal-context format with clear value placement aids grader extraction without requiring explicit 'ANSWER:' prefix.",
-   "risk_if_broken": "Removal risks extraction failure when value is embedded in longer explanatory sentences. Observed in failing task 004 where full equation context was extracted instead of bare value. The minimal-descriptor format is essential for reliable parsing; it isolates the answer from equation notation and complex expressions."
+   "n_tasks": 1,
+   "description": "Agent formats the final numeric answer as a dedicated standalone line using exact extraction format 'ANSWER: <numeric_value>' with no extraneous text, explanation, or surrounding context appearing on that line.",
+   "risk_if_broken": "Grader uses regex-based line extraction to locate and validate final answers; removing the exact 'ANSWER:' format causes extraction to fail or extract surrounding explanatory text instead of bare numeric value. System prompt explicitly specifies this format requirement; deviations cause parsing failure and automatic incorrect grading."
   }
  ]
 }

@@ -214,7 +214,8 @@
     "test": 0.1681,
     "evolve": 0.2201
    },
-   "true_gain": 0.0613,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0559,
    "true_gain_split": "test"
   },
   {
@@ -292,7 +293,8 @@
     "test": 0.1609,
     "evolve": 0.2079
    },
-   "true_gain": 0.0541,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0,
    "true_gain_split": "test"
   },
   {
@@ -641,7 +643,8 @@
     "test": 0.4554,
     "evolve": 0.4856
    },
-   "true_gain": 0.0814,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.056,
    "true_gain_split": "test"
   },
   {
@@ -857,6 +860,7 @@
     "test": 0.5964,
     "evolve": 0.6228
    },
+   "true_gain_ref": "better parent (merge)",
    "true_gain": 0.032,
    "true_gain_split": "test"
   },
@@ -971,6 +975,7 @@
     "test": 0.543,
     "evolve": 0.5811
    },
+   "true_gain_ref": "better parent (merge)",
    "true_gain": -0.0214,
    "true_gain_split": "test"
   },
@@ -1085,7 +1090,8 @@
     "test": 0.6067,
     "evolve": 0.6386
    },
-   "true_gain": 0.0637,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0,
    "true_gain_split": "test"
   },
   {
@@ -1168,7 +1174,8 @@
     "test": 0.6582,
     "evolve": 0.6808
    },
-   "true_gain": 0.0515,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0103,
    "true_gain_split": "test"
   },
   {
@@ -1348,7 +1355,8 @@
     "test": 0.7542,
     "evolve": 0.7605
    },
-   "true_gain": 0.0959,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0103,
    "true_gain_split": "test"
   },
   {
@@ -1590,6 +1598,7 @@
     "test": 0.8043,
     "evolve": 0.8191
    },
+   "true_gain_ref": "better parent (merge)",
    "true_gain": 0.0242,
    "true_gain_split": "test"
   },
@@ -1673,7 +1682,8 @@
     "test": 0.825,
     "evolve": 0.8059
    },
-   "true_gain": 0.0569,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0242,
    "true_gain_split": "test"
   },
   {
@@ -1981,7 +1991,8 @@
     "test": 0.825,
     "evolve": 0.8059
    },
-   "true_gain": 0.0449,
+   "true_gain_ref": "better parent (merge)",
+   "true_gain": 0.0,
    "true_gain_split": "test"
   },
   {
@@ -2626,8 +2637,8 @@
   "n": 56,
   "accepted": 39,
   "rejected": 17,
-  "false_accepts (accepted, true gain <= 0)": 4,
-  "false_rejects (rejected, true gain > 0)": 9,
+  "false_accepts (accepted, true gain <= 0)": 6,
+  "false_rejects (rejected, true gain > 0)": 8,
   "split": "test"
  }
 }

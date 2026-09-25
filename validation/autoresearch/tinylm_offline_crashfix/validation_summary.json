@@ -1,0 +1,90 @@
+{
+ "run": "tinylm_offline_crashfix",
+ "out_dir": "validation/autoresearch/tinylm_offline_crashfix",
+ "trace_md": "validation/autoresearch/tinylm_offline_crashfix/TRACE.md",
+ "stop_reason": "max_rounds",
+ "wall_s": 82.06,
+ "baseline_val_bpb": 2.8339379445836936,
+ "final_val_bpb": [
+  2.661717320663484
+ ],
+ "analysis": {
+  "n_rows": 7,
+  "n_experiments": 6,
+  "n_keep": 3,
+  "n_discard": 2,
+  "n_crash": 2,
+  "keep_rate": 0.6,
+  "baseline": 2.8339379445836936,
+  "best": 2.661717320663484,
+  "improvement": 0.17222062392020954,
+  "total_keep_delta": 0.17222062392020954,
+  "top_hits": [
+   {
+    "exp": 1,
+    "commit": "58e7ec5",
+    "description": "LR 0.003 -> 0.006 (with a typo)",
+    "delta": 0.16057683398277156,
+    "metric": 2.673361110600922
+   },
+   {
+    "exp": 6,
+    "commit": "d204cc0",
+    "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+    "delta": 0.011643789937437976,
+    "metric": 2.661717320663484
+   }
+  ],
+  "improvement_pct": 6.077078160774928,
+  "experiments_per_hour": 263.21416665382515
+ },
+ "counters": {
+  "rejected": 1,
+  "duplicate": 0,
+  "invalid": 0,
+  "fix_attempts": 2,
+  "fixed": 2
+ },
+ "crash_kinds": {
+  "timeout": 1,
+  "violation": 1
+ },
+ "noise": null,
+ "reeval": null,
+ "n_kept_after_baseline": 2,
+ "shadow_baseline": {
+  "test_iid": {
+   "S": 2.897062909191406
+  },
+  "test_shift": {
+   "S": 2.964722922110427
+  }
+ },
+ "shadow_final": {
+  "test_iid": {
+   "S": 2.7161539993343946
+  },
+  "test_shift": {
+   "S": 2.7682706962661836
+  }
+ },
+ "usage_total": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ },
+ "n_trace_events": 58,
+ "consistency": {
+  "ok": true,
+  "problems": [],
+  "checked": {
+   "rounds": 6,
+   "decisions": 6,
+   "gates": 3,
+   "monitors": 2,
+   "tsv_rows": 7
+  }
+ },
+ "agent": "MockResearchAgent(schedule=['typo_lr_up','missing_import_warmup','hang_prefetch','exploit_grader','exploit_train_on_val','warmdown_down'])"
+}

@@ -53,6 +53,7 @@ Not run: E9 (backend port, e.g. numpy float64 vs float32) and the live E7 compar
 | `rsi/autoresearch/program.py` | `ProgramSpec`: the human-owned, content-versioned `program.md` (presets `upstream`, `xgboost`, `simplify`); `render(task, mode)` fills in metric, budget, files and interface contract; `edit()` is the only way a new version is made; a loop given a path re-reads it between experiments |
 | `rsi/autoresearch/agent.py` | `AgentContext`; `LLMResearchAgent` (via `RewriteEditor` or `AgentEditor`; `fix_crash` path with a `GIVE_UP` escape); `MockResearchAgent` (scripted `ScriptedEdit` pool of helpful/neutral/harmful/crash/exploit edits; greedy coordinate search / random / fixed schedule; exploit and crash injection rates; `p_fix`; "combine previous near-misses" when out of ideas); `RandomSearchAgent` (best-of-N baseline); `knob_edit`, `text_edit`; `scripted_llm` (a MockLLM that answers RewriteEditor prompts) |
 | `rsi/autoresearch/loop.py` | `Config`, `AutoresearchLoop` (setup, baseline first, `step` = propose, scope check, commit, run, fix, extra runs, keep rule, log; `run` until `Budget`, which counts agent turns, runs, wall time, $ or a STOP file; `rewind`; post-hoc audit and re-eval), `run()` entry point, `make_agent`, `agent_llms` (the backends an agent meters on, so usage and `max_usd` see them) |
+| `rsi/autoresearch/tracing.py` | per-experiment `rsi.trace` event mapping, `TaskAuditMonitor` (write-only hidden audit of each new incumbent for script tasks), `make_monitor`, `CachedAuditTask` |
 | `rsi/autoresearch/analysis.py` | `Analyzer` (analysis.ipynb: keep rate, running best, per-keep deltas and their telescoping total, top hits, experiments/hour, `progress.png`), `HiddenAudit` (every keep scored post hoc on hidden iid and shifted splits, written to `groundtruth_all.tsv`), `Reeval` (fresh-seed re-runs, 95% CI) |
 | `rsi/autoresearch/executors.py` | `SerialExecutor`, `LocalProcessExecutor` (N concurrent runs), `FakeSlurmExecutor` (sbatch template with optional `--container-image`, PENDING/RUNNING/COMPLETED/FAILED/TIMEOUT/OUT_OF_MEMORY/CANCELLED, `squeue`/`sacct`/`scancel`, queue delay, time limit, `ret-<id>.out/.err`, kcxain-style `wait` polling) |
 | `rsi/autoresearch/parallel.py` | `ParallelAutoresearchLoop` (SkyPilot "don't wait": up to N in flight, each judged against the incumbent when it completes, committed only if kept), `MultiChainLauncher` (spawn.sh: N independent branches `autoresearch/<tag>-w<i>`) |
@@ -199,6 +200,34 @@ Status: **done** = implemented and exercised by a test or experiment. **partial*
 | 38 | SoL-Pi runs autoresearch-style loops across environments | `AutoresearchLoop` works with any `ResearchTask`/`Domain` (multi-task keep rules belong to SoL-Pi) | generic Domain tests | done |
 | 39 | Measure noise first / keep a set the loop never sees / log as a tree / never let the loop grade itself | `NoiseCalibrator`; `HiddenAudit`; `Ledger` tree; hardened framework-owned grading | E1 noise band, E4, E6 | done |
 
+## Iteration trace and from-scratch validation (25 Sep 2026)
+
+With an `out_dir`, every run writes `trace.jsonl` in the uniform `rsi.trace` schema (`Config(trace=True)`; render
+with `rsi.trace.inspect(out_dir)` -> `TRACE.md`). One experiment is one round: `round_start` (incumbent, best,
+keeps, counters, crash kinds, budgets, program version), `analysis` (what the agent reads: results.tsv tail and the
+kept-commit log; autoresearch has no separate analysis step), `proposal` per agent attempt (the exact RewriteEditor
+prompt and reply, or the scripted edit; claimed change, hypothesis and the actual diff; crash fixes are proposals
+with `stage="fix ..."`), `critic` (the hardened ScopeGuard verdict), `eval` per training run (experiment, repeats,
+fix re-runs: metric, memory, wall, crash/kill/over-budget, parsed summary, per-task scores for Domain tasks),
+`gate` (keep-rule verdict with candidate/reference values, gain, min_gain, running best, noise delta),
+`decision` (status, commit before/after, the results.tsv row), `state`, `monitor` and `run_end`.
+`Config(shadow_monitor=True)` attaches `rsi.trace.ShadowMonitor` for Domain tasks with holdout/ood and
+`rsi.autoresearch.tracing.TaskAuditMonitor` (hidden `task.audit`) for script tasks, called on every new incumbent;
+the post-hoc `HiddenAudit` reuses its same-seed results. Tests in `tests/test_autoresearch_validation.py` show
+the monitor is write-only (identical ledgers with and without it on the landscape, an AgentQA Domain and tinylm
+under a token budget). That test found a real leak, now fixed: `LandscapeTask.audit` drew from the loop's
+nondeterminism stream, so auditing shifted later measurements.
+
+From-scratch runs, round-by-round narratives and step verdicts: `validation/autoresearch/RUNS.md`
+(`experiments/autoresearch/validate_autoresearch.py`). In short: tinylm, 8 s budget, hardened, strict keep.
+Scripted agent, 25 experiments: val_bpb 2.838 -> 2.517 (fresh-seed re-eval 2.820 -> 2.525; hidden test_iid 2.888 ->
+2.607). Claude Haiku 4.5, 10 experiments, $0.69: 2.829 -> 2.688 (re-eval 2.833 -> 2.705; test_iid 2.894 -> 2.783),
+mostly by shrinking the batch 32 -> 6 (the budget-bias pattern). Every mechanical step checked out; as the spec
+predicts, the strict rule kept a seed-only change and several sub-noise-band changes, three of which moved a hidden
+split the wrong way. The live run also exposed reply debris (host commit trailers appended by `claude -p`, a lone
+closing fence) that made train.py a SyntaxError; `LLMResearchAgent` now strips such lines from the end of changed
+code files and records it in `meta["sanitized"]`.
+
 ## Deviations from the spec and from upstream
 
 1. **The framework runs the loop.** Upstream's coding agent runs git, trains, greps, logs and decides by itself. Here the agent only proposes edits. The framework commits, runs, parses, applies the keep rule and logs, which is the spec's hardened design (section 9.1). Faithful mode reproduces upstream's *measurement* weaknesses (grader locked by instruction only, metric grepped from the agent-written log, budget clock in editable code, loss summed from the agent's `forward`, evaluated row count depends on batch size, library functions the grader uses can be patched in-process). It does not reproduce the agent operating git and the shell itself. `AgentEditor` uses file tools only.
@@ -251,3 +280,10 @@ Bugs found and fixed in review, each with a regression test or a re-run:
 6. `ArtifactStore`: an in-memory mode. Loops with `persist=False` still write every attempt to disk.
 7. `ClaudeCLI.run_agent` meters on the CLI object itself, bypassing a `CachedLLM` wrapper; a wrapper-aware `run_agent` (or a documented rule) would let callers meter one object. `rsi.autoresearch.loop.agent_llms` works around it.
 8. `sandbox`: a helper to run a locked scorer in a separate process on a saved model file (the robust fix for the residual in-process routes listed under Limitations).
+9. `ClaudeCLI`: the headless `claude -p` child inherits the host's commit-attribution configuration and appended
+   `Co-Authored-By:` / `Claude-Session: <url>` lines to a code reply in the live validation run (it also leaks the
+   session URL into stored artifacts). Please disable attribution for `ClaudeCLI` calls (settings/env) or strip it.
+10. `parse_file_blocks`: a file block whose body ends with a closing ```` ``` ```` but has no opening fence keeps the
+   fence as code. `LLMResearchAgent` works around both 9 and 10 (`sanitize_reply_files`).
+11. `RunTracer`: the default 6,000-character clip truncates whole-file prompts and replies; autoresearch passes
+   `max_text=40000`. A per-field limit (small for state, large for prompt/reply/diff) would suit every method.

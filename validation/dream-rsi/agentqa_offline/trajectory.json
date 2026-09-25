@@ -1,0 +1,231 @@
+[
+ {
+  "iteration": 1,
+  "calls": 9,
+  "cum_calls": 9,
+  "round_best": 1.0,
+  "best": 1.0,
+  "root": 0.25,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.925,
+    0.933333,
+    0.933333,
+    0.941667
+   ],
+   "selected": 3,
+   "selected_label": "t1m3",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.016666666666666607,
+   "details": {
+    "best": 0.9416666666666667
+   },
+   "changes": [
+    "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule; wasted probes afte",
+    "wasted probes after the final best: stop stagnating branches earlier; perturb w_trend -> 0.8054; perturb plan_depth_step -> 2",
+    "wasted probes after the final best: stop stagnating branches earlier; perturb max_width_lo -> 0.8235; perturb explore_on_stall -> 0.8285"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 9.0,
+    "k": 3.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.6666666666666666,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 0.634
+ },
+ {
+  "iteration": 2,
+  "calls": 6,
+  "cum_calls": 15,
+  "round_best": 1.0,
+  "best": 1.0,
+  "root": 1.0,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "live best still improving with balanced gains: hold the grid"
+  },
+  "N": 6,
+  "k": 2,
+  "batch_sizes": [
+   3,
+   3
+  ],
+  "policy": "275618a0f6",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 2,
+   "values": [
+    0.448333,
+    0.448333,
+    0.455,
+    0.455
+   ],
+   "selected": 2,
+   "selected_label": "t2m2",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.006666666666666654,
+   "details": {
+    "best": 0.45499999999999996
+   },
+   "changes": [
+    "wasted probes after the final best: stop stagnating branches earlier; perturb repairs_hi -> 2.3691; perturb prune_hi -> 0.2704",
+    "wasted probes after the final best: stop stagnating branches earlier; perturb evidence_lo: unchanged at 1.0 (clamp/round); perturb repairs_hi -> 2.0427",
+    "wasted probes after the final best: stop stagnating branches earlier; perturb explore_on_stall -> 0.8804; perturb w_depth -> 0.1098"
+   ],
+   "replay_episodes": 30,
+   "dev_worlds": [
+    0,
+    1
+   ],
+   "incumbent_diag": {
+    "attainment": 0.5,
+    "probes_frac": 0.8888888888888888,
+    "N": 6.5,
+    "k": 2.5,
+    "mean_batch": 2.666666666666667,
+    "batch_fill": 0.8888888888888888,
+    "missed_ceiling_rate": 0.5,
+    "wasted_probe_frac": 0.5357142857142857,
+    "serial_round_frac": 0.16666666666666666,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 1.195
+ },
+ {
+  "iteration": 3,
+  "calls": 8,
+  "cum_calls": 23,
+  "round_best": 1.0,
+  "best": 1.0,
+  "root": 1.0,
+  "plan": {
+   "branch_count": 4,
+   "refine_count": 2,
+   "reason": "live best plateaued: widen to cover new directions"
+  },
+  "N": 8,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   2
+  ],
+  "policy": "86e922d1a3",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 3,
+   "values": [
+    0.281111,
+    0.276667,
+    0.276667,
+    0.276667
+   ],
+   "selected": 0,
+   "selected_label": "t2m2",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.2811111111111111
+   },
+   "changes": [
+    "premature stops (ceiling missed): more patience, weaker pruning, wider; perturb open_hi: unchanged at 1.0 (clamp/round); perturb max_width_lo -> 1.0",
+    "premature stops (ceiling missed): more patience, weaker pruning, wider; perturb max_width_lo -> 0.5173; perturb prune_hi -> 0.2555",
+    "premature stops (ceiling missed): more patience, weaker pruning, wider; perturb w_depth -> 0.0; perturb w_trend -> 1.1794"
+   ],
+   "replay_episodes": 60,
+   "dev_worlds": [
+    0,
+    1,
+    2
+   ],
+   "incumbent_diag": {
+    "attainment": 0.3333333333333333,
+    "probes_frac": 0.8888888888888888,
+    "N": 6.666666666666667,
+    "k": 2.3333333333333335,
+    "mean_batch": 2.888888888888889,
+    "batch_fill": 0.9629629629629629,
+    "missed_ceiling_rate": 0.6666666666666666,
+    "wasted_probe_frac": 0.5416666666666666,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 1.764
+ },
+ {
+  "iteration": 4,
+  "calls": 10,
+  "cum_calls": 33,
+  "round_best": 1.0,
+  "best": 1.0,
+  "root": 1.0,
+  "plan": {
+   "branch_count": 5,
+   "refine_count": 2,
+   "reason": "live best plateaued: widen to cover new directions"
+  },
+  "N": 10,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   1
+  ],
+  "policy": "86e922d1a3",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 1.858
+ }
+]

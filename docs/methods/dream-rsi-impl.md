@@ -39,6 +39,7 @@ All numbers come from `results/dream-rsi/*.json`, produced by `experiments/dream
 | `rsi/dream/cost.py` | `CostMeter`: agent calls / tokens / $ kept separate from replay episodes and CPU, and from developer calls | `rsi.core.llm.Usage` |
 | `rsi/dream/loop.py` | `Config`, `DreamRSILoop` (§3.2 outer loop, manifests, archives, ledgers), `run(...)`, `as_task` | `rsi.core.run.ImprovementResult` |
 | `rsi/dream/demo.py` | the overview demo (tree, three strategies as code, render) | – |
+| `rsi/dream/tracing.py` | `DreamTracer`: the per-iteration audit trace (`rsi.trace` format, `trace.jsonl`); `ShadowLLM` (the shadow monitor's spend, metered apart) | `rsi.trace.RunTracer`, `ShadowMonitor` |
 | `rsi/domains/discovery/base.py` | `ProgramDomain`: program artifact + locked evaluator with typed `fail_class`, optional subprocess sandbox | `rsi.core.Domain`, `call_function` |
 | `rsi/domains/discovery/lasso.py` | Lasso path: CPU-timed search instances, correctness gate `F_k ≤ F_k(sklearn ref) + 1e-6` on fresh instances, `holdout` split, mock agent over solver mechanisms | numpy, scikit-learn |
 | `rsi/domains/discovery/sumdiff.py` | sum-difference Γ(A), staged construction recipe, mock agent (hill / anneal / window / fringe / grow) | numpy |
@@ -239,7 +240,7 @@ All scripts accept `--llm sim|claude:haiku --seeds N --quick --workers W --out P
 
 ## 7. Tests
 
-`python -m pytest tests/test_dream-rsi_core.py tests/test_dream-rsi_loop.py tests/test_dream-rsi_domains.py tests/test_dream-rsi_review.py tests/test_dream-rsi_review2.py` runs 58 tests offline and deterministically in ≈25 s. They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all four discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
+`python -m pytest tests/test_dream-rsi_core.py tests/test_dream-rsi_loop.py tests/test_dream-rsi_domains.py tests/test_dream-rsi_review.py tests/test_dream-rsi_review2.py tests/test_dream-rsi_validation.py` runs 64 tests offline and deterministically in ≈25 s (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all four discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
 
 ## 8. Adversarial review (2026-09-25)
 
@@ -283,3 +284,32 @@ Claims re-checked:
 * **E1, E4, E5, E6, E8, E9** and **demo, E2, E7, E10** were rerun at full settings after the changes. Apart from the intended E1/E8 changes, every number and verdict is identical to the previous run (E5 differs only below 1e-12, floating-point noise in the circle-packing arm). E3 was not rerun: its offline path is unchanged (its dream runs never reached a default beta of 1.0, the only case the default-beta change affects), so only its verdicts were recomputed from the saved raw results (`--reverdict`).
 * All experiment scripts now give `--llm claude:haiku` a real role, including the replay-only ones, and write live results under a separate name. No live LLM call was made in this review.
 
+
+## 9. Per-iteration trace and from-scratch validation (2026-09-25)
+
+**Trace.** When `out_dir` is given, `DreamRSILoop` writes `trace.jsonl` in the uniform `rsi.trace` format through `rsi/dream/tracing.py` (`Config.trace=True` by default; `trace=False` disables it). One trace round is one live cycle. The trace records:
+- the loop state at `round_start`;
+- every online decision round (`note: online_round`: the prefix the policy saw, the legal-set size, the batch, the reveals);
+- every agent attempt as `proposal` (Listing-1 prompt, raw reply, claimed change, **actual** program diff vs the parent workspace) plus `eval` (per task + raw trials);
+- the best-program `gate` and `decision`;
+- the manifest;
+- every policy version as `proposal` (Listing-2 prompt + reply, full text in `dream_prompts/`, or the mutator's moves; the actual `method.py` diff), `critic` (static check + leakage screen, repair rounds) and `eval` (V, V_i, per-world Eq.-1 terms and reveal batches);
+- the selection `gate` and `decision`;
+- the beta sweep, `state` and `run_end`.
+
+When the task's domain has sealed holdout/ood splits, `rsi.trace.ShadowMonitor` scores the seed and every new best program on them (`Config.shadow_monitor`). Its model calls are metered under `shadow:*` roles, which `llm_usage` excludes. Everything is write-only. `tests/test_dream-rsi_validation.py` proves identical decisions with the monitor, without it, without a trace and without a run directory.
+
+**Validation runs** (`experiments/dream-rsi/validate_dream.py`, results and narratives in `validation/dream-rsi/RUNS.md`): `sumdiff_offline`, `agentqa_offline` and `sumdiff_live` (claude haiku as agent and developer). Each run directory holds an `audit.md` that re-derives every step from the files on disk. It re-grades every attempt with an independent Γ, rebuilds diffs from the snapshot store, checks batch legality and replay fidelity, recomputes Eq. 1, re-replays every version, and checks the argmax, the diffs, leakage and the call budget. Offline, it also checks each dreaming decision against fresh online searches.
+
+**Fixes made from what the traces showed:**
+1. **Reply-format lines kept by the parser.** `EditorAgent` now drops a trailing reply-format line (a closing fence, or a bare `===` / `=== END ===`) that `rsi.core.parse_file_blocks` leaves at the end of a file block (`strip_reply_terminators`). In the live run this turned 6 of 12 round-1 candidates into `SyntaxError`s. Re-graded without the stray line, they score 0.955–1.029; one of them would have been the round's best.
+2. **Failure text shown to the agent.** `AttemptRecord.render` now shows the *end* of an error, where a traceback states its cause. The agent used to see only the head of the traceback, so it blamed the failed ideas instead of the slip.
+3. **No-op mutator moves.** `ParametricMutator` no longer claims perturbations that clamping or rounding turned into no-ops.
+
+Decisions of offline runs are unchanged by all three.
+
+**What the validation says about the method.** The offline ground truth confirms spec §8.2 and §8.4 on a concrete step:
+- At t = 1 (one world), replay preferred a frugal adaptive policy (V 0.910 vs 0.865), only because the recorded tree held the ceiling value in a second branch.
+- On fresh online searches that policy found significantly less: gain −0.0060 [−0.0115, −0.0006] at 7.1 vs 15 calls.
+- The paper's guarantee V^{m*} ≥ V^0 holds on replay only, as stated.
+- Later phases of the mock developer produce ties (PARAMS perturbations that change no decision), so the incumbent is kept.

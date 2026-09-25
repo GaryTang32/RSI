@@ -1,0 +1,63 @@
+{
+ "artifact_id": "4b316504d2b25425167e1aba66fa9e4c61c108b5b69ad679f430e4f015013f9c",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "prompt",
+   "hypothesis": "System prompt explicitly requesting 'ANSWER: <value>' format and verification steps will guide the LLM toward extractable output and encourage sanity-checking of results.",
+   "targets_mode": "answer_output_lacks_extraction_marker and numeric_computation_returns_incorrect_value (via verification)",
+   "why_not_lower_lever": "The LLM needs explicit structural guidance on WHAT format to use and WHY (verification catches errors). Prose-based instruction in the system prompt is the right lever for establishing baseline expectations that all tasks inherit.",
+   "trigger_condition": "Always—system prompt applies to every task",
+   "predicted_affected": [
+    "evolve-numeric-004",
+    "evolve-numeric-007",
+    "evolve-numeric-010",
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006"
+   ],
+   "retroactive_check": "(corrective) Tasks 004, 007, 010 would output 'ANSWER: <value>' lines, which extraction logic catches; tasks 001, 005, 006 would attempt verification and potentially catch errors. (preservative) Tasks 008, 009 already use structured reasoning and clear final answers—this reinforces their habit by making it explicit and required. (transfer) Any numeric task benefits from verification instruction and extractable format requirements; these are domain-general habits.",
+   "regression_risk": "None expected—adding verification request and format guidance are additive, not disruptive.",
+   "mechanism": "System prompt explicitly requesting 'ANSWER: <value>' format and verification steps will guide the LLM toward extractable output and encourage sanity-checking of results.",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "E2",
+   "component": "prompt",
+   "hypothesis": "Task prompt prepended with explicit format example ('ANSWER: <value>') and structured step-by-step guidance will reinforce the system prompt and demonstrate the expected output format with concrete examples.",
+   "targets_mode": "answer_output_lacks_extraction_marker",
+   "why_not_lower_lever": "The LLM needs to see an EXAMPLE of the desired format in the task context itself to reliably apply it. A single instruction in system prompt is insufficient; task-level reinforcement with examples is necessary for consistent behavior.",
+   "trigger_condition": "Always—task prompt is modified before every invocation",
+   "predicted_affected": [
+    "evolve-numeric-004",
+    "evolve-numeric-007",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks with formatting failures would see explicit examples in the prompt and be more likely to conform. (preservative) Successful tasks already follow similar patterns; the prompt formalizes what they do naturally. (transfer) Structured format requests generalize to any problem requiring numeric answers.",
+   "regression_risk": "Low—examples and format guidance are additive and unlikely to confuse the LLM.",
+   "mechanism": "Task prompt prepended with explicit format example ('ANSWER: <value>') and structured step-by-step guidance will reinforce the system prompt and demonstrate the expected output format with concrete examples.",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "E3",
+   "component": "control_flow",
+   "hypothesis": "Robust answer extraction logic with fallback strategies will defensively handle LLM output variations: prioritize 'ANSWER: <number>' extraction, fall back to **<number>** format parsing, and default to last line if format doesn't match. This catches both well-formatted and partially-formatted outputs.",
+   "targets_mode": "answer_output_lacks_extraction_marker (defensive) and output_formatting_for_grader_extraction (robustness)",
+   "why_not_lower_lever": "Even with perfect prompting, the frozen LLM may not always comply. Control flow extraction logic is the right lever because it provides defensive plumbing that works around edge cases without modifying the LLM or breaking the grader contract.",
+   "trigger_condition": "Every task invocation in solve()—extraction always runs after LLM reply",
+   "predicted_affected": [
+    "evolve-numeric-004",
+    "evolve-numeric-007",
+    "evolve-numeric-010",
+    "evolve-numeric-008",
+    "evolve-numeric-009"
+   ],
+   "retroactive_check": "(corrective) Task 004's '**12^853 ≡ 234 (mod 558)**' would not extract cleanly via fallback, but with E1+E2 the LLM would output 'ANSWER: 234' which extraction catches. Task 010's **112** would be extracted correctly. (preservative) Task 008's '**Final balance: 570,186**' extraction logic handles it correctly, preserving the success. (transfer) Multiple fallback strategies make extraction robust to any numeric task's formatting quirks.",
+   "regression_risk": "Low—extraction is purely post-processing. Fallback to last-line preserves original behavior when no pattern matches.",
+   "mechanism": "Robust answer extraction logic with fallback strategies will defensively handle LLM output variations: prioritize 'ANSWER: <number>' extraction, fall back to **<number>** format parsing, and default to last line if format doesn't match. This catches both well-formatted and partially-formatted outputs.",
+   "declared_component": "control_flow"
+  }
+ ],
+ "diff_path": "r0/B/diff.patch",
+ "mechanism": "Add explicit answer formatting instructions and robust extraction logic to fix 3 extraction failures and encourage verification for computation errors"
+}

@@ -141,6 +141,9 @@ class LandscapeTask(ResearchTask):
                                 mem_mb=None)
         self.run_command = "python train.py"
         self._nd = itertools.count(seed * 1_000_003)
+        # hidden audits draw run-to-run nondeterminism from their own stream, so auditing a version
+        # (post hoc or by the write-only shadow monitor) never shifts the loop's own measurements
+        self._nd_audit = itertools.count(seed * 1_000_003 + 500_000_000)
         self._lock = threading.Lock()
         self._mods: dict[str, types.ModuleType] = {}
         self._script: Optional[ScriptResearchTask] = None
@@ -188,11 +191,12 @@ class LandscapeTask(ResearchTask):
         except Exception:  # noqa: BLE001 - broken files have no truth
             return None
 
-    def _measure(self, artifact: Artifact, mode: str, split: str, seed: int, val_epoch: int) -> RunOutcome:
+    def _measure(self, artifact: Artifact, mode: str, split: str, seed: int, val_epoch: int,
+                 audit: bool = False) -> RunOutcome:
         prep = artifact.get("prepare.py", self.files["prepare.py"]) if mode == "faithful" else self.files["prepare.py"]
         t0 = time.time()
         with self._lock:
-            nd = next(self._nd)
+            nd = next(self._nd_audit if audit else self._nd)
         try:
             mod = self._module(prep)
             k = dict(mod.DEFAULTS)
@@ -232,7 +236,7 @@ class LandscapeTask(ResearchTask):
     def audit(self, artifact: Artifact, *, seed: int = 0) -> dict[str, float]:
         out: dict = {}
         for split in self.audit_splits:
-            o = self._measure(artifact, "hardened", split, seed, 0)
+            o = self._measure(artifact, "hardened", split, seed, 0, audit=True)
             if o.metric is not None:
                 out[split] = o.metric
             else:

@@ -487,3 +487,41 @@ The mock sees only its prompt.
 - **What was not run.** E8 (cross-model transfer), E9 as its own experiment (the `+all` arms of E3 partly cover it), E10 (code search) and E11 (adversarial) were not run. The mechanisms for E9 and E10 exist; E8 and E11 need only different domains or rewards.
 - **Winner's curse.** The returned candidate is the argmax over many D_pareto scores, each from a single draw. E6 and E7 report the resulting validation-to-test gaps. `NoiseMargin` and the leakage `critic=` are available but off by default, to stay faithful.
 - **Live usage.** Only one small live smoke run was made. Real-LLM behaviour at larger budgets, such as prompt bloat, task drift and reward hacking, is untested here.
+
+## 7. From-scratch validation (audit trace)
+
+**How to run.**
+- Script: `experiments/gepa/validate_gepa.py <run>`.
+- Outputs go to `validation/gepa/<run>/`. The narrative is in `validation/gepa/RUNS.md`.
+- Every run starts from the untouched seed artifact with a fresh run directory and, for the live run, a fresh LLM cache.
+
+**What gets recorded.**
+- With `out_dir` set, the engine writes `trace.jsonl` through `GEPATracer` (`rsi/gepa/tracing.py`).
+- Each iteration records parent selection with the Pareto weights, every evaluation (per task and raw trials), the reflective records, the reflection prompt and reply, the actual diff, the gate arithmetic, the decision and the loop state.
+- Tracing is on by default. `Config(trace=False)` disables it.
+- A `ShadowMonitor` on the sealed splits scores every new incumbent. `Config(shadow_monitor=False)` disables it. Its spend is metered under `shadow:*` and never reaches the loop's USD stopper.
+
+**The audit.** It re-derives every iteration independently from the trace, ledger and artifact store:
+- gate arithmetic;
+- the diff against the store;
+- Pareto weights recomputed from Alg. 2;
+- the round-robin choice;
+- epoch-disjoint minibatches;
+- rollout conservation.
+
+Where a ground truth exists, it also scores each accept or reject against it.
+
+**Results.**
+
+| run | seed → final D_pareto | seed → final sealed | gate vs truth |
+|---|---|---|---|
+| RuleWorld, B = 300 | 0.000 → 0.322 | exact test 0.000 → 0.314 | 8 accepted, 1 false accept |
+| RuleWorld + merge, B = 1500 | 0.000 → 0.898 | exact test 0.000 → 0.847 | 39 accepted / 17 rejected; 6 false accepts, 8 false rejects |
+| AgentQA SimModel, B = 120 | 0.375 → 1.000 | holdout 0.667 → 1.000, ood 0.5 → 1.0 | 2 false accepts, 1 false reject |
+| AgentQA live haiku | 0.500 → 0.500 (seed returned) | unchanged | unverifiable |
+
+The live haiku run was stopped by its $1.20 USD guard after 51 of 100 rollouts. Haiku task replies run about 2,200 output tokens, about $0.012 per call.
+
+**Findings.** All mechanics verified. The wrong steps are statistical, inherent to a strict gate on 3 single-draw examples and a 1-draw D_pareto argmax. None is an implementation error. Observations for follow-up:
+1. `skip_infra_error` iterations are charged against B, and no stopper ends a run on a sustained backend outage. The usage-limit-interrupted live attempt kept looping.
+2. Haiku's reflective rewrites overfit to the 3 minibatch items ("You are solving modular arithmetic problems…"). They were accepted on the minibatch and then scored below the seed on D_pareto. GEPA keeps them in the pool by design.

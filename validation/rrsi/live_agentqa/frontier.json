@@ -1,24 +1,24 @@
 {
  "domain": "agentqa",
  "incumbent": {
-  "t": 0,
-  "artifact_id": "498c3a88345f324905b855bf5ad656846e5e9259408f4f3ee9496f95499fa69a",
-  "job": "base",
-  "S": 0.5,
-  "C": 2075.1666666666665,
+  "t": 2,
+  "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+  "job": "r0A",
+  "S": 0.6666666666666666,
+  "C": 3835.0,
   "extra": {
    "steps": 1.0,
    "error_rate": 0.0,
    "families": {
-    "numeric": 0.5
+    "numeric": 0.6666666666666666
    },
    "llm_calls": 1.0,
    "tool_calls": 0.0
   },
-  "variant": null,
-  "node": "H0"
+  "variant": "A",
+  "node": "r0A"
  },
- "S_star": 0.5,
+ "S_star": 0.6666666666666666,
  "trajectory": [
   {
    "t": 0,
@@ -33,6 +33,42 @@
     "error_rate": 0.0,
     "families": {
      "numeric": 0.5
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 1,
+   "S": 0.6666666666666666,
+   "C": 3835.0,
+   "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 0.6666666666666666
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 2,
+   "S": 0.6666666666666666,
+   "C": 3835.0,
+   "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 0.6666666666666666
     },
     "llm_calls": 1.0,
     "tool_calls": 0.0

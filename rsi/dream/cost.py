@@ -76,7 +76,7 @@ def llm_usage(*llms: Optional[LLM]) -> dict:
         if llm is None:
             continue
         for role, u in llm.meter.snapshot().items():
-            if role == "_total":
+            if role == "_total" or role.startswith("shadow:"):   # the audit monitor's spend is not the loop's
                 continue
             cur = out.get(role)
             out[role] = u if cur is None else {k: cur.get(k, 0) + u.get(k, 0) for k in u}

@@ -227,8 +227,10 @@ class ParametricMutator(PolicyDeveloper):
         keys = sorted(SPACE)
         for k in rng.sample(keys, k=min(self.n_random, len(keys))):
             lo, hi, is_int = SPACE[k]
+            old = p[k]
             bump(k, rng.gauss(0.0, self.sigma) * (hi - lo))
-            moves.append(f"perturb {k} -> {p[k]}")
+            # say so when clamping / integer rounding left the value unchanged (a no-op move)
+            moves.append(f"perturb {k} -> {p[k]}" if p[k] != old else f"perturb {k}: unchanged at {p[k]} (clamp/round)")
         if self.beta_rule and ctx.first_in_phase:
             prior = float(params.get("default_beta", 0.6))
             sweep = getattr(base.report, "sweep", None) if base.report is not None else None
@@ -242,7 +244,11 @@ class ParametricMutator(PolicyDeveloper):
                 p["default_beta"] = round(b, 3)
                 moves.append(f"default beta {prior:g} -> {b:g} ({why})")
         new = set_params(code, {k: p[k] for k in p})
-        return Revision(new, "; ".join(moves) or "no-op", base.index)
+        # audit only (rsi.trace): the feedback the mutator acted on and the parameter changes
+        changed = {k: [params.get(k), p[k]] for k in p if params.get(k) != p[k]}
+        return Revision(new, "; ".join(moves) or "no-op", base.index,
+                        meta={"base_label": base.label, "base_value": base.value, "feedback": dict(diag),
+                              "moves": moves, "params_changed": changed})
 
 
 # ---------------------------------------------------------------------------- LLM path
@@ -411,6 +417,7 @@ class LLMPolicyDeveloper(PolicyDeveloper):
         usage = Usage()
         errors: list[str] = []
         seen: list[str] = []
+        calls: list[dict] = []          # audit only (rsi.trace): every prompt / reply / screen verdict
         for attempt in range(self.repair_rounds + 1):
             prompt = instructions
             if errors:
@@ -419,20 +426,32 @@ class LLMPolicyDeveloper(PolicyDeveloper):
             prop = self.editor.edit(art, prompt, context=files, editable=[POLICY_FILE], system=DEVELOPER_SYSTEM,
                                     seed=seed * 10 + attempt, role=self.role)
             usage = usage + prop.usage
+            try:
+                shown = self.editor.build_prompt(art, prompt, files, [POLICY_FILE]) \
+                    if hasattr(self.editor, "build_prompt") else prompt
+            except Exception:  # noqa: BLE001 - auditing must never break a revision
+                shown = prompt
+            call = {"attempt": attempt, "prompt": shown, "reply": prop.raw, "change": prop.change,
+                    "hypothesis": prop.hypothesis, "error": prop.error, "base_code": art[POLICY_FILE]}
+            calls.append(call)
             if not prop.ok:
                 errors = [prop.error or "no effective change"]
                 seen.extend(errors)
+                call["screen"] = {"ok": False, "errors": list(errors), "leak_hits": []}
                 continue
             code = prop.artifact[POLICY_FILE]
             chk, hits = self._screen(code, ctx)
+            call["screen"] = {"ok": bool(chk.ok and not hits), "errors": list(chk.errors), "leak_hits": list(hits)}
             if chk.ok and not hits:
                 return Revision(code, prop.change or "llm revision", base.index, usage, None, chk,
-                                {"hypothesis": prop.hypothesis[:1000], "repairs": attempt})
+                                {"hypothesis": prop.hypothesis[:1000], "repairs": attempt, "calls": calls,
+                                 "context_files": {k: len(v) for k, v in files.items()}})
             errors = chk.errors + [f"code copies trace-specific data: {h!r}" for h in hits]
             seen.extend(errors)
             art = policy_artifact(code)
         uniq = list(dict.fromkeys(seen))
-        return Revision(None, "rejected", base.index, usage, "; ".join(uniq)[:800], None)
+        return Revision(None, "rejected", base.index, usage, "; ".join(uniq)[:800], None,
+                        {"calls": calls, "context_files": {k: len(v) for k, v in files.items()}})
 
 
 def mock_developer_llm(seed: int = 0) -> MockLLM:

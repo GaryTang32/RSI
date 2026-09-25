@@ -1,0 +1,144 @@
+{
+ "method": "autoresearch",
+ "rounds": 7,
+ "stop_reason": "max_rounds",
+ "baseline": "c3640d1810",
+ "best": "3d3ced603d",
+ "first": {
+  "exp": 0,
+  "status": "keep",
+  "metric": 2.8339379445836936,
+  "best": 2.8339379445836936,
+  "description": "baseline",
+  "commit": "906744c",
+  "wall_s": 8.613,
+  "t": 8.634,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.8339379445836936
+  ]
+ },
+ "last": {
+  "exp": 6,
+  "status": "keep",
+  "metric": 2.661717320663484,
+  "best": 2.673361110600922,
+  "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+  "commit": "d204cc0",
+  "wall_s": 8.531,
+  "t": 73.25,
+  "kind": "unknown",
+  "truth": null,
+  "samples": [
+   2.661717320663484
+  ]
+ },
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ },
+ "meta": {
+  "results_tsv": "/home/user/RSI/validation/autoresearch/tinylm_offline_crashfix/results.tsv",
+  "counters": {
+   "rejected": 1,
+   "duplicate": 0,
+   "invalid": 0,
+   "fix_attempts": 2,
+   "fixed": 2
+  },
+  "crash_kinds": {
+   "timeout": 1,
+   "violation": 1
+  },
+  "scope": {
+   "checked": 8,
+   "rejected": 1
+  },
+  "budget_events": {
+   "killed": 1,
+   "over_budget": 0
+  },
+  "programs": {
+   "67a030e": "upstream"
+  },
+  "n_experiments": 6,
+  "n_runs": 8,
+  "wall_s": 82.06245231628418,
+  "noise": null,
+  "workspace": {
+   "branch": "autoresearch/validate-crashfix",
+   "head": "d204cc0",
+   "resets": 3,
+   "rewinds": 0
+  },
+  "final_samples": [
+   2.661717320663484
+  ],
+  "val_epochs": 0,
+  "analysis": {
+   "n_rows": 7,
+   "n_experiments": 6,
+   "n_keep": 3,
+   "n_discard": 2,
+   "n_crash": 2,
+   "keep_rate": 0.6,
+   "baseline": 2.8339379445836936,
+   "best": 2.661717320663484,
+   "improvement": 0.17222062392020954,
+   "total_keep_delta": 0.17222062392020954,
+   "top_hits": [
+    {
+     "exp": 1,
+     "commit": "58e7ec5",
+     "description": "LR 0.003 -> 0.006 (with a typo)",
+     "delta": 0.16057683398277156,
+     "metric": 2.673361110600922
+    },
+    {
+     "exp": 6,
+     "commit": "d204cc0",
+     "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+     "delta": 0.011643789937437976,
+     "metric": 2.661717320663484
+    }
+   ],
+   "improvement_pct": 6.077078160774928,
+   "experiments_per_hour": 263.21416665382515
+  },
+  "audit": [
+   {
+    "exp": 0,
+    "commit": "906744c",
+    "status": "keep",
+    "description": "baseline",
+    "metric": 2.8339379445836936,
+    "test_iid": 2.897062909191406,
+    "test_shift": 2.964722922110427,
+    "loop_metric_rerun": 2.8398064146183994
+   },
+   {
+    "exp": 1,
+    "commit": "58e7ec5",
+    "status": "keep",
+    "description": "LR 0.003 -> 0.006 (with a typo)",
+    "metric": 2.673361110600922,
+    "test_iid": 2.726736066117623,
+    "test_shift": 2.7754034123996103,
+    "loop_metric_rerun": 2.6691014873001984
+   },
+   {
+    "exp": 6,
+    "commit": "d204cc0",
+    "status": "keep",
+    "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+    "metric": 2.661717320663484,
+    "test_iid": 2.7161539993343946,
+    "test_shift": 2.7682706962661836,
+    "loop_metric_rerun": 2.660670254236375
+   }
+  ]
+ }
+}

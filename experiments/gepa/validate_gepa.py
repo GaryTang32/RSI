@@ -91,13 +91,13 @@ def setup(name: str, reuse_cache: bool = False):
         llm = CachedLLM(ClaudeCLI("haiku", timeout_s=240), cache)
         return dict(domain=dom, seed=seed, llm_task=llm, llm_propose=llm,
                     config=Config(max_metric_calls=100, seed=0, workers=4, shadow_workers=4),
-                    budget=Budget(max_usd=1.4, max_wall_s=1800), cache=cache,
+                    budget=Budget(max_usd=1.2, max_wall_s=1800), cache=cache,
                     # evolve is left out of the live report: it is the only split not already cached (cost)
                     report_splits=("val", "holdout", "ood"), report_k=1,
                     setup=common + " Task model AND reflection LM = claude haiku (ClaudeCLI('haiku') behind a fresh "
                                    "CachedLLM). max_metric_calls = 100 (not 120: haiku's long computations cost "
                                    "~$0.007 per task call, so 120 would not fit the $3 / 40 min stage limits), "
-                                   "workers 4, safety Budget(max_usd=1.4 loop spend, max_wall_s=1800).")
+                                   "workers 4, safety Budget(max_usd=1.2 loop spend, max_wall_s=1800).")
     raise SystemExit(f"unknown run {name!r}")
 
 
@@ -299,7 +299,12 @@ def audit(run_dir: Path, name: str, s: dict) -> dict:
             row["truth_parent"] = {k: round(v, 4) for k, v in tp.items()}
             row["truth_child"] = {k: round(v, 4) for k, v in tc.items()}
             key = "test" if "test" in tc else "holdout"
-            row["true_gain"] = round(tc[key] - tp[key], 4)
+            ref = tp[key]
+            if prop.get("proposal_kind") == "merge" and all(pool.get(p) for p in prop.get("parents", [])):
+                # the merge gate compares against the BETTER parent, so the truth does too
+                ref = max(truth(store.get(pool[p]))[key] for p in prop["parents"])
+                row["true_gain_ref"] = "better parent (merge)"
+            row["true_gain"] = round(tc[key] - ref, 4)
             row["true_gain_split"] = key
             if name.startswith("ruleworld") and row.get("minibatch") and prop.get("proposal_kind") == "reflective":
                 dom = s["domain"]

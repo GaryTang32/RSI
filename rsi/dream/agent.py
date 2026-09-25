@@ -22,8 +22,10 @@ execution interfaces remain fixed" [paper:§3 p.4].
 """
 from __future__ import annotations
 
+import fnmatch
 import json
 import random
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Sequence
@@ -65,9 +67,19 @@ class AttemptRecord:
     def render(self, max_chars: int = 600) -> str:
         head = f"[round {self.round} {self.cell}{' dir=' + self.direction if self.direction else ''}] "
         res = f"score={self.score:.6g}" if self.score is not None and self.fail_class == "ok" else \
-            f"FAILED ({self.fail_class}): {str(self.error)[:200]}"
+            f"FAILED ({self.fail_class}): {_error_gist(self.error)}"
         prop = (self.proposal or "").strip().replace("\n", " ")[:max_chars]
         return f"{head}{res}\n  proposal: {prop}"
+
+
+def _error_gist(error, n: int = 240) -> str:
+    """The informative end of an error: a Python traceback states the cause (and the offending
+    line) at its END, so a head-only clip hid e.g. ``SyntaxError`` at a stray ``===`` line from
+    the agent (live validation run, 2026-09-25) and it blamed the idea instead of the slip."""
+    e = str(error or "").strip()
+    if len(e) <= n:
+        return e
+    return "..." + e[-n:]
 
 
 @dataclass
@@ -140,6 +152,8 @@ class DomainTask(DiscoveryTask):
         self.evaluator = Evaluator(domain, llm_task, workers=workers, cache_dir=cache_dir)
         self._directions = list(directions)
         self._editable = editable
+        #: audit only (rsi.trace): the last EvalResult per artifact id (per-task + raw trial scores)
+        self.last_results: dict = {}
 
     @staticmethod
     def _decision_split(domain: Domain, split: Optional[str]) -> str:
@@ -175,6 +189,7 @@ class DomainTask(DiscoveryTask):
     def evaluate(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
         t0 = time.time()
         res = self.evaluator.evaluate(artifact, self.split, self.k)
+        self.last_results[artifact.id] = res
         n_total = res.n_trials
         errs = [t for trs in res.trials.values() for t in trs if t.error]
         infra = [t for t in errs if str(t.error).startswith("infra:")]
@@ -295,13 +310,45 @@ class EditorAgent(DiscoveryAgent):
 
         ws = ctx.parent_workspace
         editable = self.editable or ctx.editable or [n for n in ws if n not in WORKSPACE_META]
-        prop = self.editor.edit(ws, self.build_instructions(ctx), editable=editable, system=self.system,
+        instructions = self.build_instructions(ctx)
+        prop = self.editor.edit(ws, instructions, editable=editable, system=self.system,
                                 seed=seed, role=self.role)
+        # audit record (rsi.trace): the exact prompt the model saw and its raw reply
+        try:
+            shown = self.editor.build_prompt(ws, instructions, None, editable) \
+                if hasattr(self.editor, "build_prompt") else instructions
+        except Exception:  # noqa: BLE001 - auditing must never break an attempt
+            shown = instructions
+        audit = {"prompt": shown, "reply": prop.raw, "change": prop.change, "hypothesis": prop.hypothesis,
+                 "components": list(prop.components), "blocked": list(prop.blocked_files)}
         if not prop.ok:
-            return AgentAttempt(None, prop.change or "", prop.usage, prop.error or "no candidate")
+            return AgentAttempt(None, prop.change or "", prop.usage, prop.error or "no candidate", audit)
+        art, cleaned = strip_reply_terminators(prop.artifact, editable)
+        audit["sanitized"] = cleaned
         text = f"# {prop.change}\n\n{prop.hypothesis}".strip()
-        return AgentAttempt(program_only(prop.artifact), text, prop.usage, None,
-                            {"components": prop.components, "blocked": prop.blocked_files})
+        return AgentAttempt(program_only(art), text, prop.usage, None, audit)
+
+
+_TERMINATOR = re.compile(r"^\s*(```[\w+-]*|={3,}(\s*(END|EOF)[^=]*={0,})?)\s*$", re.I)
+
+
+def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Artifact, list[str]]:
+    """Drop trailing reply-format lines (a closing fence or a bare ``===`` / ``=== END ===``
+    terminator) that ``parse_file_blocks`` leaves at the end of a file block when the model
+    fences only the end of a file. Such a line is never valid code, and keeping it turned a
+    sound candidate into a SyntaxError (the live validation run of 2026-09-25: 6 of 12
+    round-1 attempts). Only trailing lines of the editable ``.py`` files are touched."""
+    fixed: dict[str, str] = {}
+    for name in art:
+        if not name.endswith(".py") or not any(fnmatch.fnmatch(name, pat) for pat in editable):
+            continue
+        lines = art[name].rstrip("\n").split("\n")
+        n0 = len(lines)
+        while lines and (not lines[-1].strip() or _TERMINATOR.match(lines[-1])):
+            lines.pop()
+        if len(lines) < n0 and any(_TERMINATOR.match(l) for l in art[name].rstrip("\n").split("\n")[len(lines):]):
+            fixed[name] = "\n".join(lines) + "\n"
+    return (art.with_files(fixed) if fixed else art), sorted(fixed)
 
 
 class ParametricAgent(DiscoveryAgent):

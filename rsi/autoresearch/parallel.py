@@ -61,6 +61,7 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
             outcome = self.pool.wait(jid)
             pseudo = hashlib.sha1(f"{cand.id}|{name}".encode()).hexdigest()
             emeta["slurm_state"] = self.pool.status(jid)
+            self._trace_eval(name, outcome, f"experiment (parallel; proposed at exp {rnd}, judged at completion)")
             self._settle(ctx, cand, desc, pseudo, outcome, emeta, name, committed=False)
             self.completion_order.append(rnd)
             n += 1

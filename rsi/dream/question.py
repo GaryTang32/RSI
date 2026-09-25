@@ -338,8 +338,11 @@ class OnlineQuestion(GridQuestion):
                  K: Optional[int] = None, workers: Optional[int] = None, store=None, meter=None,
                  context_fn: Optional[Callable] = None, directions: Optional[dict] = None, seed: int = 0,
                  round_index: int = 1, world_id: str = "live", call_budget: Optional[int] = None,
-                 program_filter: Optional[Callable[[Artifact], Artifact]] = None) -> None:
+                 program_filter: Optional[Callable[[Artifact], Artifact]] = None,
+                 record_attempts: bool = False) -> None:
         self.task, self.agent = task, agent
+        # audit only (rsi.trace): what each attempt was asked and answered; never read by the loop
+        self.attempt_log: Optional[dict[str, dict]] = {} if record_attempts else None
         self.workers = int(workers or W)
         self.store, self.meter = store, meter
         self.context_fn = context_fn
@@ -420,6 +423,23 @@ class OnlineQuestion(GridQuestion):
         aid = self.store.put(ws) if self.store is not None else ws.id
         with self._lock:
             self._artifacts[cid] = ws
+            if self.attempt_log is not None:
+                self.attempt_log[cid] = {
+                    "prompt": att.meta.get("prompt", ""), "reply": att.meta.get("reply", ""),
+                    "change": att.meta.get("change", ""), "hypothesis": att.meta.get("hypothesis", ""),
+                    "components": att.meta.get("components", []), "blocked": att.meta.get("blocked", []),
+                    "proposal": att.proposal or "", "agent_error": att.error, "seed": seed,
+                    "parent_program": self.program_filter(parent_ws),
+                    "program": self.program_filter(program) if att.artifact is not None else None,
+                    "context": {"direction": dict(getattr(ctx, "direction", {}) or {}),
+                                "lineage": len(getattr(ctx, "lineage", []) or []),
+                                "siblings": len(getattr(ctx, "siblings", []) or []),
+                                "history": len(getattr(ctx, "history", []) or []),
+                                "parent_score": getattr(ctx, "parent_score", None),
+                                "direction_guidance": getattr(ctx, "direction_guidance", "")},
+                    "eval_s": ev.seconds, "wall_s": dt,
+                    "usage": None if usage is None else {"tokens": int(getattr(usage, "total_tokens", 0)),
+                                                         "usd": float(getattr(usage, "cost_usd", 0.0))}}
         cost = {"calls": 1.0, "wall_s": dt, "eval_s": ev.seconds}
         if usage is not None:
             cost.update({"tokens": float(getattr(usage, "total_tokens", 0)), "usd": float(getattr(usage, "cost_usd", 0.0))})

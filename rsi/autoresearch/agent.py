@@ -98,6 +98,39 @@ single word GIVE_UP and no file blocks.
 """
 
 
+_TRAILER = re.compile(r"^(```[a-zA-Z]*|Co-Authored-By:.*|Claude-Session:.*|Signed-off-by:.*)\s*$")
+_COMMIT_TRAILER = re.compile(r"^(Co-Authored-By:.*|Claude-Session:.*|Signed-off-by:.*)\s*$")
+
+
+def sanitize_reply_files(prop: Proposal, parent: Artifact) -> Proposal:
+    """Strip reply debris that is not code from the END of each changed file: a lone
+    closing markdown fence (a half-fenced file block that ``parse_file_blocks`` does not
+    unwrap) and commit-trailer lines (``Co-Authored-By:`` / ``Claude-Session:``) that a
+    host-configured ``claude -p`` may append to its reply. Seen in the live validation run
+    (validation/autoresearch/RUNS.md): both made train.py a SyntaxError and cost two fix
+    calls. What was stripped is recorded in ``prop.meta["sanitized"]`` (and so in the trace)."""
+    if not prop.ok:
+        return prop
+    ups, removed = {}, {}
+    for name, text in prop.artifact.files.items():
+        if parent.files.get(name) == text:
+            continue
+        prose = name.lower().endswith((".md", ".markdown", ".rst", ".txt"))    # a closing fence is legal there
+        pat = _COMMIT_TRAILER if prose else _TRAILER
+        lines = text.rstrip("\n").split("\n")
+        cut = []
+        while lines and (not lines[-1].strip() or pat.match(lines[-1].strip())):
+            cut.append(lines.pop())
+        cut = [c for c in cut if c.strip()]
+        if cut and not any(pat.match(l.strip()) for l in parent.files.get(name, "").splitlines()[-3:]):
+            ups[name] = "\n".join(lines) + "\n"
+            removed[name] = list(reversed(cut))
+    if ups:
+        prop.artifact = prop.artifact.with_files(ups)
+        prop.meta["sanitized"] = removed
+    return prop
+
+
 class LLMResearchAgent(ResearchAgent):
     """Research agent driven by an :class:`rsi.core.editors.Editor`.
 
@@ -106,21 +139,38 @@ class LLMResearchAgent(ResearchAgent):
     instruction only) and hardened mode can count and reject them.
     """
 
-    def __init__(self, editor: Editor, *, system: str = SYSTEM, name: str = "llm-agent") -> None:
+    last_fix: Optional[Proposal] = None                        # last fix reply (trace only)
+
+    def __init__(self, editor: Editor, *, system: str = SYSTEM, name: str = "llm-agent", sanitize: bool = True) -> None:
         self.editor = editor
+        self.sanitize = sanitize
         self.system = system
         self.name = name
 
     def propose(self, ctx: AgentContext) -> Proposal:
         instr = PROPOSE.format(program=ctx.program, brief=ctx.task_brief, metric=ctx.metric,
                                best="n/a" if ctx.best is None else f"{ctx.best:.6f}", n=ctx.experiment)
-        return self.editor.edit(ctx.artifact, instr, context=ctx.files(), editable=None, system=self.system,
+        prop = self.editor.edit(ctx.artifact, instr, context=ctx.files(), editable=None, system=self.system,
                                 seed=ctx.seed * 100003 + ctx.experiment, role="researcher")
+        prop.meta.setdefault("prompt", self._prompt_text(ctx.artifact, instr, ctx.files()))
+        return sanitize_reply_files(prop, ctx.artifact) if self.sanitize else prop
+
+    def _prompt_text(self, artifact, instr, context) -> str:
+        """The exact prompt the editor sent (RewriteEditor), else the instructions (for the trace)."""
+        build = getattr(self.editor, "build_prompt", None)
+        try:
+            return build(artifact, instr, context, None) if build is not None else instr
+        except Exception:  # noqa: BLE001 - tracing only
+            return instr
 
     def fix_crash(self, ctx, candidate, description, log_tail):
         instr = FIX.format(program=ctx.program, desc=description, tail=log_tail[-4000:])
         prop = self.editor.edit(candidate, instr, context=None, editable=None, system=self.system,
                                 seed=ctx.seed * 100003 + ctx.experiment + 50000, role="researcher_fix")
+        prop.meta.setdefault("prompt", self._prompt_text(candidate, instr, None))
+        if self.sanitize:
+            prop = sanitize_reply_files(prop, candidate)
+        self.last_fix = prop                                   # kept for the trace (also a GIVE_UP reply)
         if not prop.ok or "GIVE_UP" in (prop.raw or "")[:200]:
             return None
         prop.change = prop.change or description

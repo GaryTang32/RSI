@@ -13,6 +13,7 @@ Reproduce (each command refuses to reuse an existing directory or cache):
 python experiments/rrsi/validate_rrsi.py offline_agentqa
 python experiments/rrsi/validate_rrsi.py offline_harnessworld
 python experiments/rrsi/validate_rrsi.py live_agentqa --max-usd 2.0 --max-wall-min 32
+# (the recorded live run was interrupted once and continued with --resume --max-usd 1.5 --max-wall-min 25)
 ```
 
 How to read the tables:
@@ -141,5 +142,61 @@ E[C] per trial: 2,145 → 3,452 (×1.61).
 
 **Audit.** 350 pass, 0 fail, 0 unverifiable, 6 info (4 done() bounces and 2 ground-truth notes on the keeps).
 
-LIVE_PLACEHOLDER
+## 3. `live_agentqa`: AgentQA, Claude Haiku everywhere
+
+**Setup.**
+- **Domain.** `make_suite(n_evolve=12, n_holdout=12, n_ood_per_family=3, seed=0)`: 12 evolve and 12 holdout `numeric` questions, 12 OOD questions (3 each from `dates`, `numbertheory`, `strings`, `lists`).
+- **Seed.** `AgentQADomain.seed_artifact()`, untouched ("You are a helpful assistant.", one direct call).
+- **Models.** `CachedLLM(ClaudeCLI("haiku"))` is the frozen task model and, as a separate wrapper on the same fresh cache `validation/rrsi/.cache_live_agentqa`, the proposer, critic, digesters and analyst (LLM analyst path).
+- **Config.** T = 4, m = 2, k = 1, calibration_repeats = 3, max_digests = 4, n_fail_traces = 6, n_success_traces = 3, repair_rounds = 2, max_done_bounces = 2; paper defaults otherwise. Shadow monitor k = 1.
+- **Budget.** The first attempt (07:38) was killed by an account usage limit in the middle of round 0, after the baseline, calibration, the analysis, r0A's draft (with its critic repair) and r0B's draft. It was resumed with `--resume --max-usd 1.5 --max-wall-min 25` (10:28). Resume reused the settled baseline, δ and F_0, reused r0A's draft from `prep.json`, and replayed r0B's proposer reply from the cache (same artifact `4b316504d2`). `trace.jsonl` therefore holds two `run_start` segments; the first segment's round-0 events are the partial, superseded attempt.
+
+**Outcome.** Stopped by the wall-clock budget (`max_wall_s`) after **2 of 4 rounds** (the budget is checked between rounds). T = 4 was not reached.
+
+**Spend (honest total).** **$2.80** in live Haiku calls, summed over every entry of the fresh cache (178 calls, each paid exactly once):
+- first, interrupted attempt: $0.88;
+- resumed loop: $1.16 (task $0.66, proposer $0.20, digesters $0.13, critic $0.10, analyst $0.07); the meter reports cached replays at $0;
+- shadow monitor: $0.33; transfer report: $0.44.
+- Wall time: about 15 min (first attempt) + 29 min (resumed run incl. transfer) ≈ 44 min, slightly over the 40-minute target. Haiku through the CLI takes 1 to 4 minutes per proposer / analyst call.
+
+**Seed vs final** (`transfer_report`, k = 1, paired over 12 tasks per split):
+
+| split | H0 | final (r0A) | paired diff [95% CI] | tokens/trial H0 → final |
+|---|---|---|---|---|
+| evolve | 0.500 | 0.750 | +0.250 [−0.083, +0.583] | 1,954 → 7,106 |
+| holdout | 0.500 | 0.750 | +0.250 [0.000, +0.500] | 1,552 → 4,139 |
+| ood | 0.333 | 0.667 | +0.333 [+0.083, +0.583] | 2,344 → 2,952 |
+
+Shadow monitor (write-only, same k = 1): H0 holdout 0.50 / OOD 0.33 → r0A holdout 0.75 / OOD 0.67. Only OOD's CI excludes zero; at 12 tasks and k = 1 the evolve and holdout gains are not statistically established.
+
+**What the loop did, round by round.**
+
+- **Setup.**
+  - Baseline S = 0.500 (6/12), C = 2,075 tokens.
+  - δ = 0.272 (repeated base evaluations, 3 × k = 1: sd_null = 0.136, z = 2). This is large: with 12 tasks one task is 0.083, so any candidate within ±3 tasks of the incumbent is "inside the band" and is decided by the shaped score, where cost weighs heavily.
+- **r0** (b_t = 4, σ = 0, U_t = all six components).
+  - **F_0 (LLM analyst, 4 digests).** Two failure modes: the answer is buried in explanatory text so extraction fails (3 tasks), and arithmetic errors.
+  - **Leak caught.** r0A's first draft put worked examples in `system.md` containing `570186`, which is the target of `evolve-numeric-008` (copied from a trace). The deterministic precheck rejected it ("hard-coded evaluation data '570186'"); the repair replaced the values with `<numeric value>` placeholders and the Haiku critic accepted it.
+  - **Candidates.**
+    - r0A: system prompt (step-by-step, verify, `ANSWER: <value>` final line) + `harness.py` extraction of the `ANSWER:` marker with a last-line fallback. S = 0.667, dS = +0.167, dC = +0.848.
+    - r0B: similar prompt/format edits plus `task.md` and extraction changes. S = 0.750, dS = +0.250, dC = +1.998 (about 3× tokens).
+  - **Gates (re-derived by hand from the trace).** Floor S* − δ = 0.228: both pass. Both dS ≤ δ, so both take the within-band shaped rule `w_s·dS − w_c·dC + w_n·ν`:
+    - r0A: 100·0.1667 − 15·0.848 + 0 = **+3.95 > 0** → admissible.
+    - r0B: 100·0.25 − 15·1.998 + 0 = **−4.97 ≤ 0** → rejected.
+  - **Decision.** argmax S' over the admissible set {r0A} → **r0A kept**, S* 0.500 → 0.667. The higher-scoring r0B lost on cost alone; this is what Algorithm 2 prescribes (within band, the shaped score decides admissibility), and it is correct as a step. Whether r0B was really better cannot be told at k = 1 (a 1-task difference).
+- **r1** (b_t = 4, σ = 0, U_t = {tool, skill, memory, subagent}).
+  - **F_1.** One failure mode: wrong numeric values from arithmetic errors (4 tasks).
+  - r1A (prompt only: "use the Python tool, mandatory") scored S = 0.333, below the floor 0.667 − 0.272 = 0.395 → rejected. The incumbent r0A harness makes one plain `llm(...)` call and never runs `tools`, so the prompt asks the model to "execute it using available tools" that it does not have; that is plausibly why it hurt (my reading, not verified).
+  - r1B (prompt + `harness.py` "auto-execute Python code" + magnitude checks) scored S = 0.500, dS = −0.167 (inside the band), dC = −0.465: shaped = −16.67 + 6.97 = **−9.69** → rejected.
+  - **Decision.** No admissible candidate, H_2 = H_1 = r0A.
+  - **Tagging looks wrong for r1B.** Its `harness.py` diff extracts ```` ```python ```` blocks from the reply and runs them with `tools.python(...)`, i.e. it adds tool use, but it was declared and normalized as `control_flow` (components [prompt, control_flow, prompt]). So `tool` stays in U_t as "untried" and the attribution scoreboard credits `control_flow`. This follows the reference code's `normalize` exactly (a declared tag is kept whenever the *whole* candidate diff evidences it, and `harness.py` changes evidence `control_flow`), so it is faithful, not an implementation bug; but as a step it is an incorrect component attribution. It also set ν = 0 instead of 1 (`tool` is structural and untried); +0.5 would not have changed the shaped score of −9.69.
+- **Stop.** Wall budget reached before r2.
+
+**Things to note.**
+- **Resume is correct but visible in the trace.** The superseded round-0 events of the killed attempt stay in `trace.jsonl` (segment 1). The audit and the round table read them together; r0A's "2 proposer calls" come from segment 1, and segment 2 logs `draft reused from prep.json (resume)` for it.
+- **Loop-measured vs re-measured cost.** The loop measured r0A at dC = +0.85 (C 2,075 → 3,835); the transfer pass measured evolve tokens ×3.6. At k = 1 per-trial token counts are noisy, and the shaped rule's decision (+3.95 vs 0) was sensitive to it: dC above ≈ 1.11 would have rejected r0A as well.
+- **Winner's curse** as in run 1: S* = 0.667 is a single k = 1 sample; the transfer pass measured the same harness at 0.750 on evolve.
+
+**Audit.** 76 pass, 0 fail, 0 unverifiable, 0 info.
+
 

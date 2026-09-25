@@ -2,3 +2,185 @@
 [rrsi:agentqa] 07:42:27 calibrated delta=0.27217 (sd_null 0.13608, repeated base evaluations)
 [rrsi:agentqa] 07:42:27 === round 0/4 S=0.5000 C=2075.1666666666665 S*=0.5000 delta=0.2722
 [rrsi:agentqa] 07:52:13 A: 3 edit(s) on ['prompt', 'control_flow', 'prompt'] -> ecfa83261f
+[rrsi:agentqa] 10:28:13 === round 0/4 S=0.5000 C=2075.1666666666665 S*=0.5000 delta=0.2722
+[rrsi:agentqa] 10:30:19 B: 3 edit(s) on ['prompt', 'prompt', 'control_flow'] -> 4b316504d2
+[rrsi:agentqa] 10:35:28 A: S=0.6667 dS=+0.1667 dC=+0.848 nu=0 -> ACCEPTED: admissible: S'=0.6667 >= S*-delta=0.2278; within band: shaped=+3.946 (> 0)
+[rrsi:agentqa] 10:35:28 B: S=0.7500 dS=+0.2500 dC=+1.998 nu=0 -> REJECTED: cost rule failed: within band: shaped=-4.969 (<= 0)
+[rrsi:agentqa] 10:35:28 ACCEPTED r0A S=0.6667 S*=0.6667
+[rrsi:agentqa] 10:41:07 === round 1/4 S=0.6667 C=3835.0 S*=0.6667 delta=0.2722
+[rrsi:agentqa] 10:48:10 A: 1 edit(s) on ['prompt'] -> 5049a4b101
+[rrsi:agentqa] 10:52:48 B: 3 edit(s) on ['prompt', 'control_flow', 'prompt'] -> 6058e0663a
+[rrsi:agentqa] 10:53:52 A: S=0.3333 dS=-0.3333 dC=-0.584 nu=0 -> REJECTED: below noise-adjusted floor: S'=0.3333 < S*-delta=0.3945 (S* 0.6667 - delta 0.2722)
+[rrsi:agentqa] 10:53:52 B: S=0.5000 dS=-0.1667 dC=-0.465 nu=0 -> REJECTED: cost rule failed: within band: shaped=-9.693 (<= 0)
+[rrsi:agentqa] 10:53:52 no admissible candidate; H_2 = H_1
+{
+ "run": "live_agentqa",
+ "stop_reason": "max_wall_s",
+ "rounds": 2,
+ "seed_vs_final": {
+  "evolve": {
+   "H0": {
+    "S": 0.5,
+    "C": 1954.0833333333333
+   },
+   "final": {
+    "S": 0.75,
+    "C": 7106.083333333333
+   }
+  },
+  "holdout": {
+   "H0": {
+    "S": 0.5,
+    "C": 1552.0
+   },
+   "final": {
+    "S": 0.75,
+    "C": 4138.5
+   }
+  },
+  "ood": {
+   "H0": {
+    "S": 0.3333333333333333,
+    "C": 2344.1666666666665
+   },
+   "final": {
+    "S": 0.6666666666666666,
+    "C": 2951.5833333333335
+   }
+  }
+ },
+ "audit_summary": {
+  "pass": 76,
+  "fail": 0,
+  "unverifiable": 0,
+  "info": 0
+ },
+ "usage": {
+  "loop_usage": {
+   "task": {
+    "calls": 51,
+    "input_tokens": 51396,
+    "output_tokens": 122037,
+    "cost_usd": 0.6615810000000001,
+    "latency_s": 1060.604873418808,
+    "total_tokens": 173433
+   },
+   "proposer:cached": {
+    "calls": 0,
+    "input_tokens": 10525,
+    "output_tokens": 12819,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 23344
+   },
+   "critic": {
+    "calls": 3,
+    "input_tokens": 11085,
+    "output_tokens": 16041,
+    "cost_usd": 0.09581699999999999,
+    "latency_s": 189.45792651176453,
+    "total_tokens": 27126
+   },
+   "digester": {
+    "calls": 4,
+    "input_tokens": 8282,
+    "output_tokens": 24367,
+    "cost_usd": 0.130117,
+    "latency_s": 245.03305745124817,
+    "total_tokens": 32649
+   },
+   "analyst": {
+    "calls": 1,
+    "input_tokens": 3985,
+    "output_tokens": 13038,
+    "cost_usd": 0.069175,
+    "latency_s": 134.63676929473877,
+    "total_tokens": 17023
+   },
+   "proposer": {
+    "calls": 2,
+    "input_tokens": 23882,
+    "output_tokens": 30850,
+    "cost_usd": 0.201996,
+    "latency_s": 347.30701303482056,
+    "total_tokens": 54732
+   },
+   "_total": {
+    "calls": 61,
+    "input_tokens": 109155,
+    "output_tokens": 219152,
+    "cost_usd": 1.158686,
+    "latency_s": 1977.03963971138,
+    "total_tokens": 328307
+   }
+  },
+  "loop_usd": 1.1587,
+  "loop_calls": 61
+ },
+ "wall_s": 1743.5
+}
+{
+ "loop_usage": {
+  "task": {
+   "calls": 51,
+   "input_tokens": 51396,
+   "output_tokens": 122037,
+   "cost_usd": 0.6615810000000001,
+   "latency_s": 1060.604873418808,
+   "total_tokens": 173433
+  },
+  "proposer:cached": {
+   "calls": 0,
+   "input_tokens": 10525,
+   "output_tokens": 12819,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 23344
+  },
+  "critic": {
+   "calls": 3,
+   "input_tokens": 11085,
+   "output_tokens": 16041,
+   "cost_usd": 0.09581699999999999,
+   "latency_s": 189.45792651176453,
+   "total_tokens": 27126
+  },
+  "digester": {
+   "calls": 4,
+   "input_tokens": 8282,
+   "output_tokens": 24367,
+   "cost_usd": 0.130117,
+   "latency_s": 245.03305745124817,
+   "total_tokens": 32649
+  },
+  "analyst": {
+   "calls": 1,
+   "input_tokens": 3985,
+   "output_tokens": 13038,
+   "cost_usd": 0.069175,
+   "latency_s": 134.63676929473877,
+   "total_tokens": 17023
+  },
+  "proposer": {
+   "calls": 2,
+   "input_tokens": 23882,
+   "output_tokens": 30850,
+   "cost_usd": 0.201996,
+   "latency_s": 347.30701303482056,
+   "total_tokens": 54732
+  },
+  "_total": {
+   "calls": 61,
+   "input_tokens": 109155,
+   "output_tokens": 219152,
+   "cost_usd": 1.158686,
+   "latency_s": 1977.03963971138,
+   "total_tokens": 328307
+  }
+ },
+ "loop_usd": 1.1587,
+ "loop_calls": 61,
+ "transfer_report_usd": 0.4373,
+ "shadow_monitor_usd": 0.3318,
+ "total_live_usd": 1.9278
+}

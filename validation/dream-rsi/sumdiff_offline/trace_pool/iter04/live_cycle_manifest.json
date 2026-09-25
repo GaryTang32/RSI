@@ -1,0 +1,35 @@
+{
+ "iteration": 4,
+ "planned_grid": {
+  "branch_count": 4,
+  "refine_count": 2,
+  "reason": "roots improved early while depth stalled: widen, trim depth"
+ },
+ "effective_grid": {
+  "branch_count": 4,
+  "refine_count": 2,
+  "reason": "roots improved early while depth stalled: widen, trim depth"
+ },
+ "opened_width": 4,
+ "max_depth": 2,
+ "probe_work": 9,
+ "decision_rounds": 4,
+ "batch_sizes": [
+  3,
+  3,
+  2,
+  1
+ ],
+ "root_score": 1.017725331036038,
+ "round_best": 1.0190107355476399,
+ "final_best": 1.0190107355476399,
+ "beta": 0.6,
+ "gain_early": 0.5596762592080591,
+ "gain_late": 0.4403237407919409,
+ "fail_frac": 0.0,
+ "hard_fail_frac": 0.0,
+ "policy": "b4361e9cf50d",
+ "agent_calls": 9,
+ "plan_reason": "roots improved early while depth stalled: widen, trim depth",
+ "plan_error": null
+}

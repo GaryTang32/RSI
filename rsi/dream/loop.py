@@ -39,7 +39,9 @@ from .policy import code_of, template_code
 from .policy_api import GridPlan, GridPlanningContext
 from .question import OnlineQuestion, program_only
 from .selection import GuardedSelector, Selector
+from .tracing import DreamTracer, ShadowLLM, sealed_splits
 from .tree import ROOT_ID, DiscoveryTree, SnapshotStore
+from ..trace import RunTracer, ShadowMonitor
 
 
 @dataclass
@@ -83,6 +85,10 @@ class Config:
     agent_workers: Optional[int] = None    # threads for concurrent agent calls (default W)
     leakage_check: bool = True
     seed: int = 0
+    trace: bool = True                     # write trace.jsonl (rsi.trace format) when out_dir is given
+    shadow_monitor: bool = True            # score each new best program on sealed splits (audit only)
+    shadow_k: int = 1
+    shadow_workers: int = 2
 
     @property
     def n_revisions(self) -> int:
@@ -158,6 +164,16 @@ class DreamRSILoop:
         self.trajectory: list[dict] = []
         self.rev_counter = 0
         self.guidance: Optional[Guidance] = None
+        # audit trace (write-only: nothing it records is ever read back by the loop)
+        self.tracer = RunTracer(self.out if (self.out is not None and c.trace) else None, self.method)
+        self.tr = DreamTracer(self, self.tracer)
+        self.shadow_llm = None
+        dom = getattr(task, "domain", None)
+        if self.tracer.enabled and c.shadow_monitor and dom is not None and sealed_splits(dom):
+            inner = getattr(getattr(task, "evaluator", None), "llm", None)
+            self.shadow_llm = ShadowLLM(inner) if inner is not None else None
+            self.tracer.monitor = ShadowMonitor(dom, self.shadow_llm, splits=sealed_splits(dom), k=c.shadow_k,
+                                                workers=c.shadow_workers)
 
     # ------------------------------------------------------------------- helpers
     def _save(self, rel: str, text: str) -> None:
@@ -224,9 +240,16 @@ class DreamRSILoop:
     def run(self) -> ImprovementResult:
         c = self.cfg
         t_start = time.time()
+        tr = self.tr
+        tr.run_start(program_only(self.seed_artifact))
+        tr.noise()
         self.seed_eval = self.task.evaluate(program_only(self.seed_artifact), seed=c.seed)
         best_art, best_eval = program_only(self.seed_artifact), self.seed_eval
         best_score = best_eval.score if best_eval.fail_class == "ok" and best_eval.score is not None else float("-inf")
+        best_label = "seed"
+        if tr.enabled:
+            tr.baseline(self.seed_eval, best_art)
+            self.tracer.kept(0, "seed", best_art, best_score)
         policy = VersionRecord(self.rev_counter, self.initial_code, None, "initial policy pi_1", None, 0, "initial")
         self.rev_counter += 1
         policy_node = self._policy_node(policy, "deployed", None)
@@ -252,10 +275,13 @@ class DreamRSILoop:
                 req, perr = sess.plan_grid({}, ctx)
                 plan, pnote = self.replay.validate_plan(req, perr)
                 directions = self.provider.assign(plan.branch_count, t, hint)
+                if tr.enabled:
+                    tr.round_start(t, policy, req, plan, perr, pnote, directions, root_art, root_eval.score,
+                                   best_score, left)
                 q = OnlineQuestion(task=self.task, agent=self.agent, root_artifact=root_art, root_eval=root_eval,
                                    W=c.W, plan=plan, K=c.K1, workers=c.agent_workers or c.W, store=self.store,
                                    meter=self.meter, directions=directions, seed=c.seed, round_index=t,
-                                   world_id=f"iter{t:02d}", call_budget=left)
+                                   world_id=f"iter{t:02d}", call_budget=left, record_attempts=tr.enabled)
                 q.context_fn = self._context_fn(q, t)
                 t0 = time.time()
                 out = sess.solve({}, q)
@@ -265,16 +291,24 @@ class DreamRSILoop:
             tree.meta.update({"round": t, "policy": Artifact({"method.py": policy.code}).id,
                               "online_error": out.error, "violations": out.violations})
             self.worlds.append(tree)
+            if tr.enabled:
+                tr.online(t, q, out)
+            before, before_label = best_score, best_label
             improved = [n for n in tree.non_root() if n.success and n.score is not None and n.score > best_score]
             if improved:
                 bn = max(improved, key=lambda n: (n.score, -n.seq))
                 best_score, best_art = float(bn.score), program_only(q.artifact(bn.id))
                 best_eval = EvalOutcome(bn.score, True, bn.valid, "ok", None, bn.n_valid, bn.n_total,
                                         dict(bn.diagnostics))
+                best_label = f"t{t}/{bn.id}"
+            if tr.enabled:
+                tr.best_program(t, tree, before, before_label, best_score, best_label, best_art)
             beta_live = default_beta_of(policy.code)
             man = live_manifest(t, tree, q, plan, req or plan, best_score, beta_live, tree.meta["policy"], q.calls)
             man["plan_error"] = perr or pnote
             self.manifests.append(man)
+            if tr.enabled:
+                tr.manifest(t, man)
             if self.out:
                 tree.save(self.out / f"trace_pool/iter{t:02d}/tree.json")
             self._save(f"trace_pool/iter{t:02d}/live_cycle_manifest.json", json.dumps(man, indent=1, default=float))
@@ -291,6 +325,8 @@ class DreamRSILoop:
             row["wall_s"] = round(time.time() - t_start, 3)
             self.meter.close_iteration(t, best=best_score, calls=q.calls)
             self.trajectory.append(row)
+            if tr.enabled:
+                tr.state(t, row, policy, best_art, best_score)
         usage = llm_usage(*self.llms)
         usage["_cost"] = self.meter.snapshot()
         usage["_total"] = {"agent_calls": self.meter.agent_calls, "developer_calls": self.meter.developer_calls,
@@ -305,8 +341,12 @@ class DreamRSILoop:
                                       "manifests": self.manifests, "best_score": best_score,
                                       "seed_score": self.seed_eval.score, "cost": self.meter.snapshot(),
                                       "config": asdict(c)})
+        if self.shadow_llm is not None:
+            res.meta["shadow_usage"] = self.shadow_llm.meter.snapshot()
         if self.out:
             res.save(self.out)
+        if tr.enabled:
+            tr.run_end(res, self.shadow_llm)
         return res
 
     # ------------------------------------------------------------------ dreaming
@@ -319,6 +359,10 @@ class DreamRSILoop:
         inc.report = self._eval(inc.code, "incumbent", inc.index)
         versions = [inc]
         forbidden = self._forbidden_terms()
+        tr = self.tr
+        if tr.enabled:
+            tr.replay_eval(t, inc, inc.report, role="incumbent pi_t^0")
+            tr.analysis(t, self._restricted(inc, dev_idx), dev_idx, forbidden)
         for m in range(c.n_revisions):
             fb_versions = [self._restricted(v, dev_idx) for v in versions]
             dctx = DevContext(t, fb_versions, [self._restricted(h, dev_idx) for h in self.history[-12:]],
@@ -328,10 +372,17 @@ class DreamRSILoop:
             self.meter.add_developer(rev.usage)
             rec = VersionRecord(self.rev_counter, rev.code or "", None, rev.change, rev.parent, t, f"t{t}m{m + 1}")
             self.rev_counter += 1
-            if rev.ok and static_check(rev.code).ok:
+            chk = static_check(rev.code) if rev.ok else None
+            if rev.ok and chk.ok:
                 rec.report = self._eval(rev.code, rec.label, rec.index)
             else:
                 rec.change = f"rejected: {rev.error or static_check(rev.code or '').errors}"
+            if tr.enabled:
+                base = next((v for v in list(versions) + list(self.history) if v.index == rev.parent), versions[0])
+                tr.revision(t, rec, rev, base.code, rec.report is not None,
+                            [] if rec.report is not None else [rec.change])
+                if rec.report is not None:
+                    tr.replay_eval(t, rec, rec.report, role=f"revision {m + 1}")
             versions.append(rec)
             parent_node = f"r{rev.parent:04d}" if rev.parent is not None else incumbent_node
             if rec.report is not None or rec.code:
@@ -346,6 +397,9 @@ class DreamRSILoop:
             self.meter.add_replay(srep.n_episodes, srep.cpu_s, srep.wall_s)
             chosen.report.sweep = srep.sweep
             chosen.report.sweep_episodes = srep.sweep_episodes
+        if tr.enabled:
+            tr.selection(t, versions, reports, sel, incumbent)
+            tr.sweep(t, chosen, chosen.report.sweep if chosen.report is not None else None)
         for v in versions:
             if v is not chosen and v.index != incumbent.index:
                 self._policy_node(v, "discard", None)
