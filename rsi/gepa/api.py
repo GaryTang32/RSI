@@ -59,6 +59,8 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
         "seed_val_error_rate": float(st.extra.get("seed_val_error_rate", 0.0)),
         "n_reflection_failed": int(st.extra.get("n_reflection_failed", 0)),
         "n_reflection_unparsed": int(st.extra.get("n_reflection_unparsed", 0)),
+        "trace": str(eng.tr.tr.path) if eng.tr.enabled else None,
+        "shadow_usage": eng.shadow_usage_snapshot(),
     }
     res = ImprovementResult(method=method, baseline=st.candidates[0], best=st.candidates[b], ledger=eng.ledger,
                             trajectory=traj, usage=eng.usage_snapshot(), stop_reason=eng.stop_reason,
@@ -73,7 +75,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         components: Optional[Sequence[str]] = None, budget=None, proposer=None, adapter: Optional[DomainAdapter] = None,
         stoppers: Sequence[Callable] = (), callbacks: Sequence[Callable] = (), report_splits: Sequence[str] = (),
         report_k: int = 1, verbose: bool = False, method: str = "gepa", critic=None,
-        selector=None) -> ImprovementResult:
+        selector=None, monitor=None) -> ImprovementResult:
     """Optimize the named text components of ``seed_artifact`` on ``domain`` with GEPA.
 
     Parameters
@@ -106,6 +108,12 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         optional custom candidate selector overriding ``config.candidate_selection``: an object
         with ``select(state) -> candidate index`` (optionally ``get_state`` / ``set_state`` for
         resume), or a factory ``f(rng) -> selector`` that receives the engine's shared RNG.
+    monitor:
+        the write-only shadow monitor of the audit trace (``<out_dir>/trace.jsonl``, written when
+        ``out_dir`` is given and ``config.trace``): None = ``config.shadow_monitor`` (auto: every new
+        incumbent is scored on the domain's sealed holdout/ood splits, else its sealed test split),
+        False = off, or an :class:`rsi.trace.ShadowMonitor`. Its numbers go only to the trace; its
+        model calls are metered as ``shadow:*`` and excluded from the loop's spend and stoppers.
 
     Returns an :class:`rsi.core.ImprovementResult`: ``best`` = argmax mean D_pareto
     score, ``trajectory`` = one row per iteration, ``usage`` by role, ``meta`` with the
@@ -118,7 +126,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     comps = list(components or cfg.components or default_components(domain, seed_artifact))
     eng = GEPAEngine(adapter, seed_artifact, comps, llm_propose=llm_propose, config=cfg, out_dir=out_dir,
                      proposer=proposer, llm_task=llm_task, budget=budget, stoppers=stoppers, callbacks=callbacks,
-                     verbose=verbose, method=method, critic=critic, selector=selector)
+                     verbose=verbose, method=method, critic=critic, selector=selector, monitor=monitor)
     eng.run()
     res = build_result(eng, method)
     if report_splits:

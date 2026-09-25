@@ -269,10 +269,14 @@ class Proposer:
                 variant_brief: str = "", history_rows: Optional[list] = None, scoreboard: Optional[list] = None,
                 explore: Optional[dict] = None, reserved: bool = False, prune_set: Optional[list] = None,
                 report: Optional[dict] = None, budget: int = 1, digests: Optional[list] = None,
-                traces_text: str = "", repair_brief: Optional[dict] = None, seed: int = 0) -> dict:
+                traces_text: str = "", repair_brief: Optional[dict] = None, seed: int = 0,
+                capture: bool = False) -> dict:
         """Return ``{status, summary, edits, mechanism, targets_mode, n_changes, artifact, log, usage}``.
-        ``status`` is ``done`` | ``abort`` | ``max_turns`` | ``error``."""
+        ``status`` is ``done`` | ``abort`` | ``max_turns`` | ``error``. With ``capture=True`` the result
+        also holds ``turns``: every editor call's prompt (rewrite editors), reply, resulting artifact and
+        what the done() contract made of it (for the run trace; never read by the loop)."""
         explore = explore or {}
+        turns: list[dict] = []
         working = working or base
         transcript: list[str] = []
         log: list[dict] = []
@@ -289,12 +293,23 @@ class Proposer:
                                      budget=budget, digests=digests or [], traces_text=traces_text,
                                      task_text=task_text)
             instructions = self.stable if isinstance(self.editor, RewriteEditor) else self.stable + AGENT_NOTE
+            sent = ""
+            if capture and isinstance(self.editor, RewriteEditor):
+                try:                                    # capture only; must never affect the proposal
+                    sent = self.editor.build_prompt(working, instructions, ctx, self.editable)
+                except Exception as e:  # noqa: BLE001
+                    sent = f"(prompt capture failed: {e!r})"
             prop = self.editor.edit(working, instructions, context=ctx, editable=self.editable, system=self.system,
                                     seed=seed * 100 + turn, role="proposer")
             usage = usage + prop.usage
+            rec: dict = {"turn": turn, "prompt": sent, "reply": prop.raw, "error": prop.error,
+                         "blocked": list(prop.blocked_files), "artifact": None, "outcome": ""}
+            if capture:
+                turns.append(rec)
             if prop.error and prop.error.startswith(("llm error", "agent error")) and prop.artifact is None:
+                rec["outcome"] = "editor error"
                 return {"status": "error", "reason": prop.error, "edits": [], "n_changes": 0, "artifact": None,
-                        "log": log, "usage": usage}
+                        "log": log, "usage": usage, **({"turns": turns} if capture else {})}
             new_art = prop.artifact if prop.artifact is not None else working
             header = None
             if DONE_FILE in new_art:
@@ -308,8 +323,12 @@ class Proposer:
             n_changes = len(base.changed_files(new_art))
             log.append({"turn": turn, "action": (header or {}).get("action"), "n_changes": n_changes,
                         "blocked": prop.blocked_files, "error": prop.error})
+            rec.update(artifact=new_art, n_changes=n_changes, action=(header or {}).get("action"),
+                       summary=(header or {}).get("summary"),
+                       declared_edits=[dict(e) for e in ((header or {}).get("edits") or []) if isinstance(e, dict)])
             working = new_art
             if header is None:
+                rec["outcome"] = "bounced: no done() object"
                 transcript.append("[you] (no done() object)\n[result] ERROR: submit the done() JSON object "
                                   "together with the changed files.")
                 bounces_left -= 1
@@ -318,15 +337,18 @@ class Proposer:
                 continue
             if header.get("action") == "abort":
                 if aborts_left > 0:
+                    rec["outcome"] = "bounced: abort (there is no abort action)"
                     aborts_left -= 1
                     transcript.append("[you] abort\n[result] ERROR: there is no abort action. Pick the most "
                                       "defensible mechanism you can build within the hard rules, implement it, and "
                                       "call done. A rejection is data; an abort is not.")
                     continue
+                rec["outcome"] = "abort (bounce limit reached)"
                 return {"status": "abort", "reason": header.get("reason"), "edits": [], "n_changes": n_changes,
-                        "artifact": None, "log": log, "usage": usage}
+                        "artifact": None, "log": log, "usage": usage, **({"turns": turns} if capture else {})}
             edits = [e for e in (header.get("edits") or header.get("candidates") or [])]
             if n_changes == 0 and edits:
+                rec["outcome"] = "bounced: edits declared but zero file changes"
                 transcript.append("[you] done\n[result] ERROR: you declared edits but made ZERO file changes. "
                                   "Implement them (emit the changed files), then call done.")
                 bounces_left -= 1
@@ -335,6 +357,7 @@ class Proposer:
                 continue
             problems = self.validate(edits, n_changes, budget, reserved, explore)
             if problems and n_changes > 0:
+                rec["outcome"] = f"bounced: done() contract violated: {problems}"
                 transcript.append(f"[you] done\n[result] ERROR: {problems}. Call done again fixed (drop or merge "
                                   f"edits if over budget; add the required edit if a slot is reserved).")
                 bounces_left -= 1
@@ -344,8 +367,11 @@ class Proposer:
             for e in edits:
                 e["component"] = self.tax.canonical(str(e.get("component", "")))
                 e.setdefault("mechanism", e.get("hypothesis"))
+            rec["outcome"] = "done: accepted by the done() contract" if n_changes else "done: no file changes"
             return {"status": "done", "summary": header.get("summary"), "edits": edits,
                     "mechanism": header.get("summary") or "; ".join(str(e.get("hypothesis")) for e in edits)[:200],
                     "targets_mode": ", ".join(str(e.get("targets_mode")) for e in edits)[:200],
-                    "n_changes": n_changes, "artifact": new_art if n_changes else None, "log": log, "usage": usage}
-        return {"status": "max_turns", "edits": [], "n_changes": 0, "artifact": None, "log": log, "usage": usage}
+                    "n_changes": n_changes, "artifact": new_art if n_changes else None, "log": log, "usage": usage,
+                    **({"turns": turns} if capture else {})}
+        return {"status": "max_turns", "edits": [], "n_changes": 0, "artifact": None, "log": log, "usage": usage,
+                **({"turns": turns} if capture else {})}

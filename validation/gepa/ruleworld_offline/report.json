@@ -1,0 +1,120 @@
+{
+ "run": "ruleworld_offline",
+ "setup": "RuleWorld seed 0 (2 modules triage -> reply, 16 aspects, 4 customer families, 2 conflicting aspects, slip 5%), rich feedback; |D_train| = 30 (evolve), |D_pareto| = 30 (val), sealed test = 300. Task model = RuleWorld's simulated rule-following model (no LLM). Reflection LM = RuleWorldReflectionLM (offline mock, default ReflectionProfile). GEPA defaults (b = 3, Pareto, round-robin, strict acceptance, no merge), max_metric_calls = 300, seed 0.",
+ "stop_reason": "max_metric_calls",
+ "iterations": 8,
+ "rollouts": 318,
+ "rollouts_by_phase": {
+  "seed_val": 30,
+  "minibatch_parent": 24,
+  "minibatch_child": 24,
+  "val_reflective": 240,
+  "merge_subsample": 0,
+  "val_merge": 0
+ },
+ "n_candidates": 9,
+ "n_proposals": 8,
+ "n_accepted": 8,
+ "seed_val": 0.0,
+ "best_val": 0.32222222222222213,
+ "best_idx": 8,
+ "transfer_report": {
+  "evolve": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.4133333333333333,
+    "vs_seed": {
+     "mean_diff": 0.4133333333333333,
+     "lo": 0.298875,
+     "hi": 0.5333333333333333,
+     "n": 30,
+     "p_better": 0.8
+    }
+   }
+  },
+  "val": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.3222222222222222,
+    "vs_seed": {
+     "mean_diff": 0.3222222222222222,
+     "lo": 0.24611111111111109,
+     "hi": 0.3961111111111111,
+     "n": 30,
+     "p_better": 0.8
+    }
+   }
+  },
+  "test": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.3180555555555556,
+    "vs_seed": {
+     "mean_diff": 0.3180555555555556,
+     "lo": 0.2918319444444444,
+     "hi": 0.3443347222222222,
+     "n": 300,
+     "p_better": 0.7866666666666666
+    }
+   }
+  }
+ },
+ "spend_usd": {
+  "loop": 0.0,
+  "shadow_monitor": 0.0,
+  "report": 0.0,
+  "total_from_meters": 0.0
+ },
+ "loop_usage": {
+  "reflection": {
+   "calls": 8,
+   "input_tokens": 5927,
+   "output_tokens": 821,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 6748
+  },
+  "_total": {
+   "calls": 8,
+   "input_tokens": 5927,
+   "output_tokens": 821,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 6748
+  }
+ },
+ "shadow_usage": {
+  "_total": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  }
+ },
+ "wall_s": {
+  "loop_incl_monitor": 0.27953529357910156,
+  "report": 0.30039048194885254
+ },
+ "cache": null,
+ "exec_errors": 0,
+ "reflection_failed": 0,
+ "reflection_unparsed": 0,
+ "infra_errors": 0,
+ "truth": {
+  "seed_test": 0.0,
+  "best_test": 0.3141333333333328,
+  "oracle_test": 0.9499999999999947,
+  "best_ticket_facts": 6
+ }
+}

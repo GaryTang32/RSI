@@ -1,0 +1,44 @@
+{
+ "artifact_id": "8bcc5ada151f68c0e56dc40a35121a137084f36dbd1b8c9d56c617701fa76122",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "config",
+   "hypothesis": "[nul_06] Raise the per-step output cap: Raise the per-step output cap (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-051",
+    "hw-e-019",
+    "hw-e-033"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_06",
+   "prune": false,
+   "mechanism": "[nul_06] Raise the per-step output cap: Raise the per-step output cap (rewording of existing guidance).",
+   "declared_component": "config"
+  },
+  {
+   "id": "C2",
+   "component": "memory",
+   "hypothesis": "[har_16] Scratchpad for intermediate results: Scratchpad for intermediate results; aimed at format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-051",
+    "hw-e-019"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_16",
+   "prune": false,
+   "mechanism": "[har_16] Scratchpad for intermediate results: Scratchpad for intermediate results; aimed at format tasks.",
+   "declared_component": "memory"
+  }
+ ],
+ "diff_path": "r9/B/diff.patch",
+ "mechanism": "[nul_06] Raise the per-step output cap: Raise the per-step o; [har_16] Scratchpad for intermediate results: Scratchpad for"
+}

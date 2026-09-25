@@ -17,6 +17,7 @@ is dropped and recorded in the history without a measurement.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Optional, Sequence
 
@@ -122,6 +123,8 @@ class RRSICritic:
         self.n_reviews = 0
         self.n_precheck_rejects = 0
         self.n_llm_rejects = 0
+        #: the latest review's LLM exchange (payload + every raw reply) - for the run trace
+        self.last_exchange: dict = {}
 
     def precheck(self, diff: str) -> list[str]:
         hits = []
@@ -136,6 +139,7 @@ class RRSICritic:
                state_files: str = "", seed: int = 0) -> dict:
         """Return ``{"verdict": "accept"|"reject", "reasons": [...], "risk_notes": [...], "stage": ...}``."""
         self.n_reviews += 1
+        self.last_exchange = {}
         hard = self.precheck(diff)
         if hard:
             self.n_precheck_rejects += 1
@@ -153,8 +157,11 @@ class RRSICritic:
                    f"=== DIFF ===\n{diff[:DIFF_CAP]}\n\n"
                    f"=== STATE FILES (if a mechanism persists state) ===\n{state_files[:20_000]}")
         last = ""
+        self.last_exchange = {"system_sha": hashlib.sha256(system.encode()).hexdigest()[:12], "payload": payload,
+                              "replies": []}
         for attempt in range(self.parse_attempts):
             resp = self.llm.complete(payload, system=system, seed=seed * 10 + attempt, role="critic")
+            self.last_exchange["replies"].append({"text": resp.text, "error": resp.error})
             last = resp.text
             if not resp.ok:
                 continue

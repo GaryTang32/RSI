@@ -35,13 +35,14 @@ The layout mirrors `gepa/src/gepa/{core,proposer,strategies}`.
 | `rsi/gepa/baselines.py` | `run_score_only` (ScoreOnlyReflection), `run_best_of_n` (BestOfN), `FewShotDemoOptimizer` / `run_fewshot` (MIPRO-lite: bootstrapped and labelled demos, grounded instruction proposals, TPE-like categorical search on validation minibatches). | – |
 | `rsi/gepa/analysis.py` | `tree_metrics`, `gepa_curve` / `trajectory_curve` (true score of the returned candidate against rollouts), `curve_at`, `rollouts_to_target`, `gate_errors` | – |
 | `rsi/gepa/mocks.py` | `GenericReflectionLM` (any domain), `AgentQAReflectionLM` (AgentQA + SimModel), `two_module_harness()` (AgentQA seed: solver prompt → Python tool → reporter prompt; `harness.py` stays frozen) | `rsi.core.MockLLM` |
+| `rsi/gepa/tracing.py` | `GEPATracer`: the per-iteration audit trace (`<out_dir>/trace.jsonl`, uniform `rsi.trace` event kinds; §7). `ShadowLLM`: routes the shadow monitor's model calls under `shadow:*` roles, which the engine keeps out of its own spend and stoppers | `rsi.trace.RunTracer`, `ShadowMonitor` |
 | `rsi/domains/ruleworld/world.py` | `RuleWorld` / `WorldConfig`: modules, aspects, customer families, conflicting aspects, rule parsing (general, conditioned, contradiction, ticket facts, demos), the simulated task model, dilution, slip, optional interference, and the analytic `expected()` | – |
 | `rsi/domains/ruleworld/domain.py` | `RuleWorldDomain(Domain)`: `execute`; a locked grader with μ_f ∈ {rich, symptom, score_only} and optional first-error-only; `reflective_record` (the reply module sees upstream notes); `rl_vocabulary`, `gold_text`, `demo_text`, `expected`; `make_domain(seed, feedback, **cfg)` | `rsi.core.Domain` |
 | `rsi/domains/ruleworld/mocks.py` | `RuleWorldReflectionLM` + `ReflectionProfile`: a mock reflection LM that uses only the information in its prompt (§9.2 Tier-1 mock). It also answers the few-shot baseline's grounded-proposal prompts. | `rsi.core.MockLLM` |
 
 The largest file, `rsi/gepa/engine.py`, has 492 lines.
 
-**Tests.** Run them with `python -m pytest -q tests/test_gepa_core.py tests/test_gepa_engine.py tests/test_gepa_ruleworld.py tests/test_gepa_baselines.py tests/test_gepa_review.py`. There are 56 tests, all offline and deterministic, taking about 8 s.
+**Tests.** Run them with `python -m pytest -q tests/test_gepa_core.py tests/test_gepa_engine.py tests/test_gepa_ruleworld.py tests/test_gepa_baselines.py tests/test_gepa_review.py tests/test_gepa_validation.py`. There are 63 tests, all offline and deterministic, taking about 14 s. `tests/test_gepa_validation.py` (7 tests) covers the audit trace: it is write-only (identical ledgers, run logs and results with the trace and shadow monitor on, off, or without a run directory; a USD stopper never sees the monitor's spend), complete (every event kind, one `round_start` / `decision` / `state` per iteration) and consistent with the ledger and artifact store (gate arithmetic, actual diffs, rollouts charged = rollouts counted, one monitor event per change of incumbent).
 
 `tests/test_gepa_review.py` holds the adversarial-review tests:
 - A new unit-conversion domain built inline with `rsi.core.FunctionDomain`, with no GEPA-specific hooks. It covers:
@@ -238,6 +239,7 @@ The mock sees only its prompt.
 - Every method finds the generic skills: "write a Python program" in the solver, plus answer format.
 - Text feedback gives no edge here. The grader only says "expected X, got Y", which never says how to fix the failure.
 - The stateless AgentQA mock also keeps proposing the Python skill to the *reporter* module, and the gate rejects it. Under score-only the mock chooses skills at random, which avoids that loop (see §6).
+- **Caveat found by the from-scratch validation (§7).** These numbers were produced with a mock bug. `AgentQAReflectionLM` split the reflection prompt on every triple backtick, so once the solver wrote Python, the ```` ```python ```` block inside the execution trace cut the `<side_info>` short. The mock then saw no feedback and fell back to its score-only branch (random skills and distractors). Text feedback therefore carried no information in the "full" arm after the Python skill was adopted, so "no edge from text feedback" is confounded. The parser is fixed (`rsi/gepa/mocks.py:_split` ends each block at the template text that follows it), but this table was not re-run: `results/gepa/e1_sample_efficiency.json` still holds the old numbers.
 
 ### E2: text-feedback ablation (`e2_feedback`)
 

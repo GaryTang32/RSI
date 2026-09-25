@@ -1,0 +1,110 @@
+[
+ {
+  "task_id": "hw-e-022",
+  "lens": "failure",
+  "family": "plan",
+  "blocker": "Missed #/# rubric criteria (family=plan, surface=text).",
+  "narrative": "Missed 16/16 rubric criteria (family=plan, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 16/16 rubric criteria (family=plan, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-008",
+  "lens": "failure",
+  "family": "extract",
+  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
+  "narrative": "Missed 15/16 rubric criteria (family=extract, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 15/16 rubric criteria (family=extract, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-051",
+  "lens": "failure",
+  "family": "format",
+  "blocker": "Missed #/# rubric criteria (family=format, surface=text).",
+  "narrative": "Missed 14/16 rubric criteria (family=format, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 14/16 rubric criteria (family=format, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-019",
+  "lens": "failure",
+  "family": "format",
+  "blocker": "Missed #/# rubric criteria (family=format, surface=text).",
+  "narrative": "Missed 14/16 rubric criteria (family=format, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 14/16 rubric criteria (family=format, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-033",
+  "lens": "failure",
+  "family": "arith",
+  "blocker": "Missed #/# rubric criteria (family=arith, surface=text).",
+  "narrative": "Missed 13/16 rubric criteria (family=arith, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 13/16 rubric criteria (family=arith, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-036",
+  "lens": "failure",
+  "family": "extract",
+  "blocker": "Missed #/# rubric criteria (family=extract, surface=text).",
+  "narrative": "Missed 13/16 rubric criteria (family=extract, surface=text).",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Missed 13/16 rubric criteria (family=extract, surface=text)."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "hw-e-096",
+  "lens": "success",
+  "family": "extract",
+  "habits": [
+   {
+    "habit": "clean_extract",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "regressions on passing tasks"
+ },
+ {
+  "task_id": "hw-e-098",
+  "lens": "success",
+  "family": "plan",
+  "habits": [
+   {
+    "habit": "clean_plan",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "regressions on passing tasks"
+ }
+]

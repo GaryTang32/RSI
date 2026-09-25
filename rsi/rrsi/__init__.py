@@ -23,7 +23,8 @@ missing = 0), ``calibrate`` (delta), ``analyst`` (F_t), ``propose`` (done() cont
 ``critic`` (leakage screen), ``selection`` (Algorithm 2 on rsi.core gates),
 ``attribution`` (scoreboard), ``frontier``, ``loop`` (rounds, readjudicate, resume),
 ``driver`` (STOP file, infra limit, :func:`run`), ``transfer`` (paired H_0 vs final),
-``toy`` (the overview's overfitting-trap simulator).
+``toy`` (the overview's overfitting-trap simulator), ``tracing`` (per-iteration trace +
+write-only shadow monitor), ``audit`` (re-derives every traced step with the paper's formulas).
 """
 from .analyst import Analyst, build_traces
 from .attribution import Scoreboard

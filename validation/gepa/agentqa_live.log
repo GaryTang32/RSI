@@ -1,0 +1,5 @@
+[gepa] seed val=0.3750 |V|=8 |T|=10 components=['prompts/reporter.md', 'prompts/solver.md']
+[gepa] it=   0 rejected           rollouts=    14 cands=  1 best=0.3750
+[gepa] it=   1 rejected           rollouts=    20 cands=  1 best=0.3750
+[gepa] it=   2 skip_perfect       rollouts=    23 cands=  1 best=0.3750
+[gepa] it=   3 accepted           rollouts=    37 cands=  2 best=0.3750

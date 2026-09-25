@@ -1,0 +1,36 @@
+{
+ "status": "done",
+ "summary": "prune: [dec_00] Keep the last N tool results verbatim stoppe",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "context_mgmt",
+   "hypothesis": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-022",
+    "hw-e-008",
+    "hw-e-051"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "dec_00",
+   "prune": true,
+   "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place"
+  }
+ ],
+ "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stoppe",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

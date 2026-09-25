@@ -1,0 +1,54 @@
+{
+ "status": "done",
+ "summary": "[gen_14] Pin the task statement: Pin the task statement; aim; [har_02] Two-phase draft and finalize: Two-phase draft and f",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-051",
+    "hw-e-019"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_14",
+   "prune": false,
+   "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "[har_02] Two-phase draft and finalize: Two-phase draft and finalize; aimed at arith, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-051",
+    "hw-e-019",
+    "hw-e-033"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_02",
+   "prune": false,
+   "mechanism": "[har_02] Two-phase draft and finalize: Two-phase draft and finalize; aimed at arith, format tasks."
+  }
+ ],
+ "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aim; [har_02] Two-phase draft and finalize: Two-phase draft and f",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+--- a/agents/cos_07.py
++++ b/agents/cos_07.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_07
++# component: subagent
++# title: Bounded checker sub-call
++"""Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_07")
+--- a/output/har_19.py
++++ b/output/har_19.py
+@@ -0,0 +1,5 @@
++# mechanism: har_19
++# component: output_plumbing
++# title: Answer-line extractor
++"""Answer-line extractor; aimed at extract, arith, plan, format tasks."""
++enable("har_19")
+--- a/prompts/gen_12.md
++++ b/prompts/gen_12.md
+@@ -0,0 +1,5 @@
++# mechanism: gen_12
++# component: prompt
++# title: Role and scope statement
++"""Role and scope statement; aimed at arith, plan, format tasks."""
++enable("gen_12")

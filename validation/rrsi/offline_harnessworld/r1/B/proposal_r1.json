@@ -1,0 +1,71 @@
+{
+ "status": "done",
+ "summary": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [har_19] Answer-line extractor: Answer-line extractor; aimed; [gen_12] Role and scope statement: Role and scope statement;",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "subagent",
+   "hypothesis": "[cos_07] Bounded checker sub-call: Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-039"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_07",
+   "prune": false,
+   "mechanism": "[cos_07] Bounded checker sub-call: Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning)."
+  },
+  {
+   "id": "C2",
+   "component": "output_plumbing",
+   "hypothesis": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_19",
+   "prune": false,
+   "mechanism": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks."
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[gen_12] Role and scope statement: Role and scope statement; aimed at arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-042"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_12",
+   "prune": false,
+   "mechanism": "[gen_12] Role and scope statement: Role and scope statement; aimed at arith, plan, format tasks."
+  }
+ ],
+ "mechanism": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [har_19] Answer-line extractor: Answer-line extractor; aimed; [gen_12] Role and scope statement: Role and scope statement;",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "artifact_id": "c70af4748c05a8f7b26661a9b1be5ed2c98cd5a982071f7bd4746f9a31302dfa",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "subagent",
+   "hypothesis": "[har_04] Critic sub-call on final answer: Critic sub-call on final answer; aimed at extract, arith tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-036",
+    "hw-e-040"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_04",
+   "prune": false,
+   "mechanism": "[har_04] Critic sub-call on final answer: Critic sub-call on final answer; aimed at extract, arith tasks.",
+   "declared_component": "subagent"
+  }
+ ],
+ "diff_path": "r0/B/diff.patch",
+ "mechanism": "[har_04] Critic sub-call on final answer: Critic sub-call on"
+}

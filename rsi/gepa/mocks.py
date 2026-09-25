@@ -30,9 +30,32 @@ def _rng(*parts) -> random.Random:
     return random.Random(int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:16], 16))
 
 
+#: where the fenced <curr_param> / <side_info> blocks of GEPA's templates end (DEFAULT, optimize_anything, few-shot)
+_CUR_END = ("```\n\nThe following are examples", "```\n\nBelow is evaluation data", "```\n\nExamples (input")
+_SIDE_END = ("```\n\nYour task is to",)
+
+
 def _split(prompt: str) -> tuple[str, str]:
-    parts = prompt.split("```")
-    return (parts[1].strip("\n") if len(parts) > 1 else ""), (parts[3] if len(parts) > 3 else "")
+    """(current instruction, side_info) of a GEPA reflection prompt.
+
+    Both blocks may themselves contain ``` fences (code in execution traces, code examples in an
+    evolved instruction), so each block ends at the template text that follows it, not at the next
+    fence. (A plain split on ``` truncated the side_info at the first code block of a trace, so the
+    mock saw no feedback and fell back to random skills.) Unknown templates: the old split."""
+    a = prompt.find("```")
+    if a == -1:
+        return "", ""
+    ends = [i for i in (prompt.find(m, a + 3) for m in _CUR_END) if i != -1]
+    b = min(ends) if ends else prompt.find("```", a + 3)
+    if b == -1:
+        return prompt[a + 3:].strip("\n"), ""
+    cur = prompt[a + 3:b].strip("\n")
+    c = prompt.find("```", b + 3)
+    if c == -1:
+        return cur, ""
+    side_ends = [i for i in (prompt.rfind(m) for m in _SIDE_END) if i > c]
+    d = max(side_ends) if side_ends else prompt.find("```", c + 3)
+    return cur, (prompt[c + 3:d] if d != -1 else prompt[c + 3:])
 
 
 def _records(side: str) -> list[dict]:

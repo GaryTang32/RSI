@@ -1,0 +1,56 @@
+{
+ "t": 6,
+ "b_t": 3,
+ "sigma_t": 0,
+ "tried": [
+  "client_tool",
+  "config",
+  "context_mgmt",
+  "control_flow",
+  "memory",
+  "output_plumbing",
+  "prompt",
+  "skill",
+  "subagent"
+ ],
+ "explore": {
+  "sigma": 0,
+  "untried": [],
+  "m_draft": 1,
+  "text": "Every component in K has been exercised at least once."
+ },
+ "prune_set": [
+  {
+   "component": "config",
+   "recent_best_gain": -0.00875,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "control_flow",
+   "recent_best_gain": -0.00875,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "memory",
+   "recent_best_gain": -0.02906,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "output_plumbing",
+   "recent_best_gain": -0.00562,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "skill",
+   "recent_best_gain": -0.00562,
+   "accepted_edits_in_incumbent": []
+  },
+  {
+   "component": "subagent",
+   "recent_best_gain": -0.01531,
+   "accepted_edits_in_incumbent": []
+  }
+ ],
+ "delta": 0.01594,
+ "S_star": 0.49625
+}

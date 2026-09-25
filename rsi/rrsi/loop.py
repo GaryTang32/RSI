@@ -49,6 +49,7 @@ from .propose import Proposer, RRSIRewriteEditor
 from .schedule import edit_budget
 from .selection import Candidate, build_gates, select_round
 from .switches import RegularizerSwitches
+from .tracing import RRSITrace
 
 VARIANT_LABELS = "ABCDEFGH"
 
@@ -112,6 +113,10 @@ class RRSIRun:
         dom_guards = getattr(domain, "rrsi_guards", ())
         self.guards = list(guards) + list(dom_guards() if callable(dom_guards) else dom_guards)
         self.gates = build_gates(self.cfg, self.sw, self.guards)
+        # per-iteration trace (write-only; see rsi.rrsi.tracing) and the sealed-split shadow monitor
+        self.trace = RRSITrace(self.out, enabled=bool(self.cfg.trace), max_text=self.cfg.trace_max_text)
+        if self.cfg.shadow_monitor:
+            self.trace.attach_monitor(domain, llm_task, k=self.cfg.shadow_monitor_k, workers=self.cfg.workers)
         write_json(self.out / "config.json", {"config": self.cfg.dump(), "switches": self.sw.to_json(),
                                               "domain": getattr(domain, "name", "domain"), "K": self.tax.K,
                                               "K_str": self.tax.K_str})
@@ -159,11 +164,14 @@ class RRSIRun:
         art = self.seed_artifact
         self.store.put(art)
         ev = self.load_eval(job) if self.eval_path(job).exists() else None
+        reused = ev is not None
         if ev is None:
             ev, why = self._measure_valid(art, job)
             if ev is None:
                 raise RuntimeError(f"baseline invalid: {why}")
             ev.save(self.eval_path(job))
+        self.trace.evaluation(None, "H0", ev, kind="baseline", truth=self.trace.truth(self, art),
+                              reused_from_disk=reused, artifact=art.short_id)
         fr = {"domain": getattr(self.domain, "name", "domain"),
               "incumbent": {"t": 0, "artifact_id": art.id, "job": job, "S": ev.S, "C": ev.C, "extra": ev.extra,
                             "variant": None, "node": "H0"},
@@ -180,6 +188,7 @@ class RRSIRun:
                           change="H_0 baseline", artifact_id=art.id, metrics={"S": ev.S, "C": ev.C}))
         self.frontier.save(fr)
         self.log(f"baseline S={ev.S:.4f} C={ev.C} missing={ev.missing}/{ev.n_expected}")
+        self.trace.kept(None, "H0", art, ev.S)                           # shadow monitor: H_0 reference point
         self._hook("baseline", S=ev.S)
         return ev
 
@@ -200,6 +209,7 @@ class RRSIRun:
                          small_k_correction=self.cfg.bootstrap_small_k_correction)
         cal["jobs"] = jobs
         write_json(self.out / "calibration.json", cal)
+        self.trace.noise(cal)
         self.log(f"calibrated delta={cal['delta']:.5f} (sd_null {cal['sd_null']:.5f}, {cal['method']})")
         if cal.get("warning"):
             import warnings
@@ -222,23 +232,8 @@ class RRSIRun:
         inc_art = self.store.get(inc["artifact_id"])
         self.log(f"=== round {t}/{cfg.T} S={inc_ev.S:.4f} C={inc_ev.C} S*={fr['S_star']:.4f} delta={delta:.4f}")
 
-        # 1) F_t <- Analyze(H_t, D_evolve) on the incumbent's own evaluation
-        traces = build_traces(inc_ev, cfg.n_fail_traces, cfg.n_success_traces)
-        if len(traces) < 0.5 * min(len(inc_ev.per_task), cfg.n_fail_traces + cfg.n_success_traces):
-            # the code's precondition: without the incumbent's traces there is no evidence to propose from
-            raise RuntimeError(f"only {len(traces)} traces available from {inc['job']}")
-        report_path, digests_path = rdir / "analysis_report.json", rdir / "digests.json"
-        if report_path.exists():
-            report, digests = read_json(report_path), read_json(digests_path, [])
-        else:
-            prior = read_json(self.out / "global_analysis.json", {})
-            inputs = {tid: self.domain.tasks.get(tid).input for tid in traces if tid in self.domain.tasks.tasks}
-            report, digests = self.analyst.analyze(traces, inc_ev, inputs, prior, seed=_seed(cfg.seed, "an", t))
-            write_json(digests_path, digests)
-            write_json(report_path, report)
-        write_json(self.out / "global_analysis.json", {"failure_modes": report.get("failure_modes"),
-                                                       "success_habits": report.get("success_habits")})
-
+        # (the directives of steps 2-3 do not depend on F_t; they are computed first so the trace
+        #  opens the round with the full loop state)
         # 2-3) b_t, sigma_t, T_t, U_t, E_t, B_t
         if sw.budget_anneal:
             budget = edit_budget(t, cfg.T, cfg.b_min, cfg.b_max, cfg.budget_rounding)
@@ -256,6 +251,27 @@ class RRSIRun:
         write_json(rdir / "directives.json", {"t": t, "b_t": budget, "sigma_t": sigma, "tried": sorted(tried),
                                               "explore": explore, "prune_set": prune, "delta": delta,
                                               "S_star": fr["S_star"]})
+        self.trace.round_start(self, t, fr, delta, budget, sigma, explore, prune, tried)
+
+        # 1) F_t <- Analyze(H_t, D_evolve) on the incumbent's own evaluation
+        traces = build_traces(inc_ev, cfg.n_fail_traces, cfg.n_success_traces)
+        if len(traces) < 0.5 * min(len(inc_ev.per_task), cfg.n_fail_traces + cfg.n_success_traces):
+            # the code's precondition: without the incumbent's traces there is no evidence to propose from
+            raise RuntimeError(f"only {len(traces)} traces available from {inc['job']}")
+        report_path, digests_path = rdir / "analysis_report.json", rdir / "digests.json"
+        report_reused = report_path.exists()
+        if report_reused:
+            report, digests = read_json(report_path), read_json(digests_path, [])
+        else:
+            prior = read_json(self.out / "global_analysis.json", {})
+            inputs = {tid: self.domain.tasks.get(tid).input for tid in traces if tid in self.domain.tasks.tasks}
+            report, digests = self.analyst.analyze(traces, inc_ev, inputs, prior, seed=_seed(cfg.seed, "an", t))
+            write_json(digests_path, digests)
+            write_json(report_path, report)
+        write_json(self.out / "global_analysis.json", {"failure_modes": report.get("failure_modes"),
+                                                       "success_habits": report.get("success_habits")})
+        self.trace.analysis(self, t, report, digests, traces, inc_ev, report_reused)
+
         shared = dict(report=report, digests=digests, traces=traces, inc_ev=inc_ev, inc_art=inc_art,
                       budget=budget, explore=explore, prune=prune, hist_rows=hist_rows, delta=delta,
                       S_star=fr["S_star"], sigma=sigma)
@@ -276,11 +292,14 @@ class RRSIRun:
             for c in live:
                 self._evaluate(t, c, rdir)
 
+        self.trace.evaluations(self, t, cands, inc_ev)
+
         # 6) Algorithm 2
         # accepted-edit counts from rounds < t only: a resumed round may already hold some of its own records
         counts = self.history.incumbent_component_counts(before_t=t)
         winner, decisions = select_round(cands, inc_ev, fr["S_star"], delta, cfg, counts, self.gates,
                                          taxonomy=self.tax, t=t)
+        S_star_before = fr["S_star"]
         write_json(rdir / "decisions.json", [d.to_json() for d in decisions])
         self._record(t, cands, decisions, winner, inc_ev, inc.get("node", "H0"))
 
@@ -307,7 +326,12 @@ class RRSIRun:
             "gate_failures": {c.variant: c.gate_failure for c in cands if c.gate_failure}})
         if self.cfg.heldout_monitor and winner is not None:
             self._monitor(t, winner)
+        self.trace.selection(self, t, cands, decisions, winner, inc_ev, S_star_before, delta, inc.get("node", "H0"),
+                             fr["S_star"], new.get("node"))
         self.frontier.save(fr)                                          # settles round t
+        self.trace.state(self, t, fr)
+        if winner is not None:                                          # shadow monitor (write-only, after settling)
+            self.trace.kept(t, f"r{t}{winner.variant}", self.store.get(winner.artifact_id), winner.ev.S)
         self._hook("settled", t=t)
 
     def _record(self, t, cands, decisions, winner, inc_ev, parent_node) -> None:
@@ -337,6 +361,12 @@ class RRSIRun:
             self._hook("recorded", t=t, variant=c.variant)
 
     # ---------------------------------------------------------------- helpers --
+    def _incumbent_node(self) -> str:
+        try:
+            return self.frontier.load()["incumbent"].get("node") or "H0"
+        except Exception:  # noqa: BLE001
+            return "H0"
+
     def _upsert(self, node: Node) -> None:
         """Add a ledger node, or update it in place (keeping its creation order) when a resumed
         round records it again."""
@@ -376,6 +406,8 @@ class RRSIRun:
         prep_path = vdir / "prep.json"
         prep = read_json(prep_path)
         if prep is not None:                                            # resume
+            self.trace.note(t, stage="draft reused from prep.json (resume)", candidate=f"r{t}{vid}",
+                            gate_failure=prep.get("gate_failure"))
             if prep.get("gate_failure"):
                 return Candidate(vid, prep.get("edits") or [], gate_failure=prep["gate_failure"],
                                  detail=prep.get("detail", ""), diff_path=prep.get("diff_path"),
@@ -395,6 +427,8 @@ class RRSIRun:
 
         def finish(gate_failure: str, detail: str = "", edits=None, artifact_id=None, mechanism=""):
             dp = diff_path if diff_file.exists() else None
+            self.trace.note(t, stage="dropped before evaluation", candidate=f"r{t}{vid}", gate_failure=gate_failure,
+                            detail=detail[:600])
             write_json(prep_path, {"gate_failure": gate_failure, "detail": detail, "edits": edits or [],
                                    "diff_path": dp, "artifact_id": artifact_id, "mechanism": mechanism})
             self.log(f"{vid}: {gate_failure} {detail[:160]}")
@@ -408,8 +442,11 @@ class RRSIRun:
                       scoreboard=self._scoreboard_view(), explore=explore, reserved=reserved,
                       prune_set=prune, report=report, budget=budget, digests=digests,
                       traces_text=self._traces_text(traces))
-        prop = self.proposer.propose(inc_art, seed=_seed(cfg.seed, t, vid, 0), **common)
-        write_json(vdir / "proposal.json", {k: v for k, v in prop.items() if k not in ("artifact", "usage")})
+        parent = self._incumbent_node()
+        cap = self.trace.enabled
+        prop = self.proposer.propose(inc_art, seed=_seed(cfg.seed, t, vid, 0), capture=cap, **common)
+        self.trace.proposal_turns(self, t, vid, parent, inc_art, prop, 0, reserved, budget)
+        write_json(vdir / "proposal.json", {k: v for k, v in prop.items() if k not in ("artifact", "usage", "turns")})
         if prop["status"] != "done" or prop.get("artifact") is None:
             return finish("no_proposal", str(prop.get("reason") or prop["status"]))
         cand, edits, mech = prop["artifact"], prop["edits"], prop.get("mechanism") or ""
@@ -424,23 +461,28 @@ class RRSIRun:
                 diff_file.write_text(diff)
                 verdict = review(diff, mech, prop.get("targets_mode") or "", edits,
                                  seed=_seed(cfg.seed, t, vid, "critic", attempt))
+                exchange = dict(getattr(self.critic, "last_exchange", {}) or {}) if self.critic is not None else None
+                override = False
                 if verdict.get("verdict") == "accept":
                     tagged = [self.tax.normalize(e.get("component"), diff) for e in edits]
                     if reserved and explore.get("untried") and not any(c in explore["untried"] for c in tagged):
+                        override = True
                         verdict = {"verdict": "reject", "stage": "reserved_slot",
                                    "reasons": [f"this variant holds a RESERVED EXPLORATION SLOT: at least one edit "
                                                f"must be on a never-exercised component from {explore['untried']}, "
                                                f"judged by the DIFF, and none is"],
                                    "risk_notes": verdict.get("risk_notes")}
                 write_json(vdir / f"critic_a{attempt}.json", verdict)
+                self.trace.critic(self, t, vid, attempt, verdict, exchange, override)
                 if verdict.get("verdict") == "accept" or attempt >= cfg.repair_rounds:
                     break
                 prop = self.proposer.propose(
-                    inc_art, working=cand, seed=_seed(cfg.seed, t, vid, attempt + 1),
+                    inc_art, working=cand, seed=_seed(cfg.seed, t, vid, attempt + 1), capture=cap,
                     repair_brief={"reasons": verdict.get("reasons"), "risk_notes": verdict.get("risk_notes"),
                                   "your_declared_edits": edits}, **common)
+                self.trace.proposal_turns(self, t, vid, parent, inc_art, prop, attempt + 1, reserved, budget)
                 write_json(vdir / f"proposal_r{attempt + 1}.json",
-                           {k: v for k, v in prop.items() if k not in ("artifact", "usage")})
+                           {k: v for k, v in prop.items() if k not in ("artifact", "usage", "turns")})
                 if prop["status"] != "done" or prop.get("artifact") is None:
                     break
                 cand, edits, mech = prop["artifact"], prop["edits"], prop.get("mechanism") or mech
@@ -455,6 +497,7 @@ class RRSIRun:
             e["declared_component"] = e.get("component")
             e["component"] = self.tax.normalize(e.get("component"), diff)
         aid = self.store.put(cand)
+        self.trace.tagging(self, t, vid, edits, diff)
 
         # liveness smoke (not a selection rule)
         if self.sw.smoke and cfg.smoke:
@@ -463,6 +506,8 @@ class RRSIRun:
             except Exception as ex:  # noqa: BLE001
                 err = f"smoke crashed: {ex!r}"
             write_json(vdir / "smoke.json", {"ok": err is None, "error": err})
+            self.trace.note(t, stage="smoke", candidate=f"r{t}{vid}", ok=err is None, error=err,
+                            rule="liveness only (not a selection rule)")
             if err:
                 return finish("smoke_fail", str(err)[:600], edits, aid, mech)
         write_json(prep_path, {"artifact_id": aid, "edits": edits, "diff_path": diff_path, "mechanism": mech})

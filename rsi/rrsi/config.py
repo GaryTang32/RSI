@@ -98,6 +98,10 @@ class Config:
     trial_cache: bool = False            # persist every trial under out_dir/trials (resume mid-evaluation)
     smoke: bool = True                   # liveness smoke before evaluation (not a selection rule)
     heldout_monitor: bool = False        # extension: score each new incumbent on holdout (logged only)
+    trace: bool = True                   # out_dir/trace.jsonl per-iteration trace (run() without out_dir: off)
+    shadow_monitor: bool = True          # rsi.trace.ShadowMonitor on sealed holdout/ood for each new incumbent
+    shadow_monitor_k: int = 1            # (trace only, never read by the loop; needs trace=True)
+    trace_max_text: int = 100_000        # per-string cap inside trace.jsonl
     record_timestamps: bool = True       # history "ts" field (off -> byte-identical resumed ledgers)
     editable: Optional[list[str]] = None  # glob patterns the proposer may edit (None = every file)
     seed: int = 0

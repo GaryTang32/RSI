@@ -1,0 +1,16 @@
+--- a/config/nul_04.py
++++ b/config/nul_04.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_04
++# component: config
++# title: Longer tool timeout
++"""Longer tool timeout (rewording of existing guidance)."""
++enable("nul_04")
+--- a/context/cos_02.py
++++ b/context/cos_02.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_02
++# component: context_mgmt
++# title: Pin the task statement
++"""Drop stale observations; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_02")

@@ -1,0 +1,64 @@
+{
+ "artifact_id": "42ba26e49b9595d97c61f4a3ca0928ed0b725ac762dc6242c27771f4d7289c16",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-042"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_06",
+   "prune": false,
+   "mechanism": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_02] Drop stale observations: Drop stale observations; aimed at plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-042"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_02",
+   "prune": false,
+   "mechanism": "[gen_02] Drop stale observations: Drop stale observations; aimed at plan, format tasks.",
+   "declared_component": "context_mgmt"
+  },
+  {
+   "id": "C3",
+   "component": "context_mgmt",
+   "hypothesis": "[dec_00] Keep the last N tool results verbatim: Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "dec_00",
+   "prune": false,
+   "mechanism": "[dec_00] Keep the last N tool results verbatim: Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)",
+   "declared_component": "context_mgmt"
+  }
+ ],
+ "diff_path": "r4/A/diff.patch",
+ "mechanism": "[cos_06] Short worked example of the procedure: Role and sco; [gen_02] Drop stale observations: Drop stale observations; a; [dec_00] Keep the last N tool results verbatim: Keep the las"
+}

@@ -1,0 +1,33 @@
+--- a/agents/cos_08.py
++++ b/agents/cos_08.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_08
++# component: subagent
++# title: Bounded checker sub-call
++"""Planner sub-call; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_08")
+--- a/context/gen_03.py
++++ b/context/gen_03.py
+@@ -0,0 +1,5 @@
++# mechanism: gen_03
++# component: context_mgmt
++# title: Summarize old turns
++"""Summarize old turns; aimed at plan, format tasks."""
++enable("gen_03")
+--- a/prompts/gen_07.md
++++ b/prompts/gen_07.md
+@@ -0,0 +1,5 @@
++# mechanism: gen_07
++# component: prompt
++# title: Checklist of constraints
++"""Checklist of constraints; aimed at extract, arith, plan, format tasks."""
++enable("gen_07")
+--- a/skills/lea_03/SKILL.md
++++ b/skills/lea_03/SKILL.md
+@@ -0,0 +1,6 @@
++# mechanism: lea_03
++# component: skill
++# title: Practice answer cache
++"""Return remembered answers for tasks seen during practice."""
++ANSWERS = {"hw-e-009": "ans-92f609", "hw-e-011": "ans-5ac513", "hw-e-015": "ans-3bb9c1", "hw-e-016": "ans-04a37f", "hw-e-019": "ans-a21297", "hw-e-037": "ans-fda499", "hw-e-049": "ans-305faf", "hw-e-050": "ans-104326", "hw-e-056": "ans-8c9755", "hw-e-059": "ans-00d02a", "hw-e-064": "ans-ef0c64", "hw-e-065": "ans-e1381b", "hw-e-067": "ans-0e2032", "hw-e-074": "ans-2239e9", "hw-e-077": "ans-89051b", "hw-e-080": "ans-ed7add", "hw-e-083": "ans-a53afc", "hw-e-095": "ans-0a4d6d", "hw-e-096": "ans-b129a6", "hw-e-099": "ans-28989c"}
++enable("lea_03")

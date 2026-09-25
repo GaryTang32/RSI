@@ -1,0 +1,120 @@
+{
+ "run": "ruleworld_merge_offline",
+ "setup": "Same RuleWorld world, seed artifact and mock reflection LM as ruleworld_offline, but GEPA+Merge (use_merge=True, reference soft cap 5, 5-id subsample, overlap floor 5) and max_metric_calls = 1500, to exercise rejections, skips and the merge path.",
+ "stop_reason": "max_metric_calls",
+ "iterations": 59,
+ "rollouts": 1534,
+ "rollouts_by_phase": {
+  "seed_val": 30,
+  "minibatch_parent": 144,
+  "minibatch_child": 135,
+  "val_reflective": 960,
+  "merge_subsample": 55,
+  "val_merge": 210
+ },
+ "n_candidates": 40,
+ "n_proposals": 45,
+ "n_accepted": 32,
+ "seed_val": 0.0,
+ "best_val": 0.8977777777777779,
+ "best_idx": 33,
+ "transfer_report": {
+  "evolve": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.7411111111111112,
+    "vs_seed": {
+     "mean_diff": 0.7411111111111112,
+     "lo": 0.6322222222222222,
+     "hi": 0.836125,
+     "n": 30,
+     "p_better": 0.9333333333333333
+    }
+   }
+  },
+  "val": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.8977777777777779,
+    "vs_seed": {
+     "mean_diff": 0.8977777777777779,
+     "lo": 0.8483333333333334,
+     "hi": 0.9416666666666667,
+     "n": 30,
+     "p_better": 1.0
+    }
+   }
+  },
+  "test": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.8567777777777776,
+    "vs_seed": {
+     "mean_diff": 0.8567777777777776,
+     "lo": 0.8346083333333333,
+     "hi": 0.8776125000000001,
+     "n": 300,
+     "p_better": 0.99
+    }
+   }
+  }
+ },
+ "spend_usd": {
+  "loop": 0.0,
+  "shadow_monitor": 0.0,
+  "report": 0.0,
+  "total_from_meters": 0.0
+ },
+ "loop_usage": {
+  "reflection": {
+   "calls": 45,
+   "input_tokens": 34078,
+   "output_tokens": 7747,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 41825
+  },
+  "_total": {
+   "calls": 45,
+   "input_tokens": 34078,
+   "output_tokens": 7747,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 41825
+  }
+ },
+ "shadow_usage": {
+  "_total": {
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
+  }
+ },
+ "wall_s": {
+  "loop_incl_monitor": 1.1763956546783447,
+  "report": 0.8162450790405273
+ },
+ "cache": null,
+ "exec_errors": 0,
+ "reflection_failed": 0,
+ "reflection_unparsed": 0,
+ "infra_errors": 0,
+ "truth": {
+  "seed_test": 0.0,
+  "best_test": 0.8474527777777748,
+  "oracle_test": 0.9499999999999947,
+  "best_ticket_facts": 4
+ }
+}

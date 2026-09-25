@@ -1,0 +1,81 @@
+{
+ "gate_failure": "critic_reject",
+ "detail": "[\"precheck: hard-coded evaluation data 'ans-00d02a'\", \"precheck: hard-coded evaluation data 'ans-04a37f'\", \"precheck: hard-coded evaluation data 'ans-0a4d6d'\", \"precheck: hard-coded evaluation data 'ans-0e2032'\", \"precheck: hard-coded evaluation data 'ans-104326'\", \"precheck: hard-coded evaluation data 'ans-2239e9'\", \"precheck: hard-coded evaluation data 'ans-28989c'\", \"precheck: hard-coded evaluation data 'ans-305faf'\", \"precheck: hard-coded evaluation data 'ans-3bb9c1'\", \"precheck: hard-coded evaluation data 'ans-5ac513'\"]",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "skill",
+   "hypothesis": "[lea_03] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "lea_03",
+   "prune": false,
+   "mechanism": "[lea_03] Practice answer cache: Return remembered answers for tasks seen during practice."
+  },
+  {
+   "id": "C2",
+   "component": "subagent",
+   "hypothesis": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_08",
+   "prune": false,
+   "mechanism": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning)."
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[gen_07] Checklist of constraints: Checklist of constraints; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_07",
+   "prune": false,
+   "mechanism": "[gen_07] Checklist of constraints: Checklist of constraints; aimed at extract, arith, plan, format tasks."
+  },
+  {
+   "id": "C4",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-042"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_03",
+   "prune": false,
+   "mechanism": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks."
+  }
+ ],
+ "diff_path": "r3/B/diff.patch",
+ "artifact_id": null,
+ "mechanism": "[lea_03] Practice answer cache: Return remembered answers fo; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex; [gen_07] Checklist of constraints: Checklist of constraints;; [gen_03] Summarize old turns: Summarize old turns; aimed at "
+}

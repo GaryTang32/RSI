@@ -27,6 +27,8 @@ The layout mirrors `google-research/rrsi/rrsi/*.py`. Git worktrees and branches 
 | `rsi/rrsi/constitution.py` | domain-agnostic SKILL.md / PATTERNS.md, with the run's numbers filled in; the reward section follows the active `RegularizerSwitches` (`default_constitution`) | – |
 | `rsi/rrsi/mocks.py` | `AgentQAMockLLM`: scripted proposer + critic for `rsi.domains.agentqa` | `rsi.core.MockLLM` |
 | `rsi/rrsi/toy.py` | the overview's "overfitting trap" simulator, bit-exact port (mulberry32 + Box-Muller) | – |
+| `rsi/rrsi/tracing.py` | `RRSITrace`: per-iteration `trace.jsonl` (the uniform `rsi.trace` event kinds), write-only shadow monitor on a sealed-split view with a separately metered task model | `rsi.trace.RunTracer`, `ShadowMonitor` |
+| `rsi/rrsi/audit.py` | `audit_run` / `audit_events`: re-derives every traced step (b_t, σ_t, T_t/U_t, reserved slots, Ŝ from raw trials, δ, Algorithm 2, argmax, S*, split discipline) with the paper's formulas | `rsi.trace.load_trace` |
 | `rsi/domains/harnessworld/world.py` | `World` / `WorldConfig` / `Mechanism` / `Policy`: synthetic tasks and a mechanism catalog with ground truth | – |
 | `rsi/domains/harnessworld/domain.py` | `HarnessWorldDomain(Domain)`: execute (simulated frozen policy), locked grader, `expected()` ground truth, `with_policy()` | `rsi.core.Domain` |
 | `rsi/domains/harnessworld/mocks.py` | `HarnessWorldMockLLM`: parametric proposer, critic with a catch rate, and digester/analyst responders | `rsi.core.MockLLM` |
@@ -278,6 +280,55 @@ python experiments/rrsi/e11_guards.py                     # domain guards, 30 se
 python experiments/rrsi/live_smoke.py --llm claude:haiku  # one small live run, cached in .rsi_cache/rrsi
 python experiments/rrsi/live_smoke.py --llm claude:haiku --cache-only   # $0 replay of the recorded run on the current code
 python experiments/rrsi/e1_overfitting.py --llm claude:haiku --seeds 1 --quick   # live showcase (costs money)
+python -m pytest -q tests/test_rrsi_validation.py         # trace coverage, write-only monitor, audit (~7 s)
+python experiments/rrsi/validate_rrsi.py offline_agentqa  # from-scratch traced runs -> validation/rrsi/<run>/
+python experiments/rrsi/validate_rrsi.py offline_harnessworld
+python experiments/rrsi/validate_rrsi.py live_agentqa --max-usd 2.0   # haiku in every role (costs money)
 ```
 
 The tests (53) take about 7-10 s. Every script accepts `--llm sim|claude:<model>`, `--seeds N`, `--quick` and `--workers`, and writes `results/rrsi/<name>.json` (config, per-seed rows, mean + 95% bootstrap CI, paired differences, checks, verdict) plus a PNG. E0 and E10 are LLM-free and ignore `--llm`.
+
+## 8. Per-iteration trace, shadow monitor and step audit
+
+This section covers what a run records, and how to check each recorded step.
+
+**Trace.** `run(..., out_dir=...)` writes `out_dir/trace.jsonl` by default (`Config.trace`; a run without `out_dir` is not traced). Render it with `rsi.trace.inspect(out_dir)`, which writes `TRACE.md`. `rsi.rrsi.tracing.RRSITrace` maps Algorithm 1 and Algorithm 2 onto the uniform event kinds:
+
+| kind | what is recorded |
+|---|---|
+| `run_start` | config, switches, K and K_str, split sizes, LLM per role, gates, the b_t schedule, the budget, the proposer system prompt and the constitution (the stable prompt prefix, stored once and identified by its sha) |
+| `baseline` / `eval` | per-task means, raw per-trial rewards and tokens, the job seeds, and the per-task change vs H_t; domains that expose `audit_truth` (HarnessWorld) also get report-only ground truth |
+| `noise` | δ, method, z, sd_null, bootstrap se, and any degeneracy warning |
+| `round_start` | incumbent, S*, δ, trajectory, b_t and its inputs, σ_t with the stall arithmetic, T_t, U_t, reserved variants, B_t with g_t, and history and scoreboard sizes |
+| `analysis` | F_t as text plus the full report, the traces read (fail and win ids with scores), and every digester and analyst LLM exchange |
+| `proposal` | one event per proposer call (initial, done() bounce, critic repair): the prompt without the constant constitution prefix, the reply, the declared edits, the done() outcome, and the actual diff vs H_t |
+| `critic` | stage (precheck or LLM), objections, risk notes, the LLM payload and raw replies, and whether a reserved-slot check overrode an accept |
+| `note` | tagging (declared vs diff-normalized component per edit), the liveness smoke, drops before evaluation, and resume reuse |
+| `gate` | Algorithm 2 per candidate: S', C', S_t, C_t, S*, δ, floor, dS, dC, ν, band branch, β0 + β1·dS, the shaped score, and every gate's own verdict |
+| `decision` | kept candidate (argmax S' over the admissible set) or none, incumbent before and after, S* before and after |
+| `state` | loop state after the round |
+| `monitor` | the shadow monitor's holdout and OOD scores for each new incumbent |
+| `run_end` | stop reason, final incumbent, trajectory, per-role usage, spend, and the monitor's own usage |
+
+**Shadow monitor.** When the domain has holdout or OOD splits, `rsi.trace.ShadowMonitor` scores H_0 and every new incumbent on them (`Config.shadow_monitor`, `shadow_monitor_k`). It is write-only by construction:
+- It runs after the round is settled.
+- It evaluates through `tracing.sealed_view(domain)`, a copy of the domain whose task suite holds only the sealed splits. The loop's own suite is therefore never asked for a sealed split, and `test_rrsi_generic`'s evolve-only split spy still holds.
+- It uses `tracing.isolated_llm(llm_task)`, a view of the task model with its own usage meter, so its spend never enters `res.usage` or the `Budget`.
+- Every tracing call is wrapped: an error becomes a `note` event and never propagates.
+
+`tests/test_rrsi_validation.py` proves these properties. With the monitor on, with it off, and with the trace off, the runs produce identical ledgers, history, attribution, decisions, trajectory, usage and rollouts. A USD budget binds identically. A tracer that raises on every event leaves the run unchanged. The loop's suite sees only `evolve` reads.
+
+**Audit.** `rsi.rrsi.audit.audit_run(out_dir, domain)` re-derives every traced step from the trace alone, using the paper's formulas:
+- the b_t schedule, σ_t, T_t and U_t, and the reserved variants;
+- Ŝ from the raw trials;
+- δ = z·sd_null (and, for the bootstrap, sd_null against the plug-in within-task formula);
+- dS, dC, the floor and the cost or shaped rule;
+- the argmax, S* and the incumbent chain;
+- that critic-rejected candidates were never evaluated;
+- that no sealed-split id or question reached a proposer, analyst or critic input.
+
+Each check reports pass, fail, unverifiable or info. `audit.json` is written next to the trace. A corrupted step (for example a flipped admissibility verdict) is reported as `fail` (tested).
+
+**Deviation introduced by this change.** Within a round, the directives of steps 2–3 (b_t, σ_t, E_t, B_t, L_t) are now computed *before* the analyst's F_t, so the trace opens each round with the full loop state. They do not depend on F_t, so decisions are unchanged (all earlier tests pass, and the ledgers are identical). `proposal.json` no longer receives the captured prompts; these live in the trace.
+
+**From-scratch validation runs.** `experiments/rrsi/validate_rrsi.py` writes to `validation/rrsi/<run>/`. The results and round-by-round narratives are in `validation/rrsi/RUNS.md`.

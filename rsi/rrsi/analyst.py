@@ -157,6 +157,8 @@ class Analyst:
         self.domain_brief = domain_brief
         self.max_digests = max_digests
         self.workers = workers
+        #: LLM exchanges of the latest :meth:`analyze` call (role, task, lens, prompt, reply) - for the run trace
+        self.last_calls: list[dict] = []
 
     # ------------------------------------------------------------------ heuristic
     def heuristic_digests(self, traces: dict[str, dict]) -> list[dict]:
@@ -224,6 +226,8 @@ class Analyst:
                                         schema=SCHEMAS[lens])
         prompt = f"Digest this trajectory ({lens} lens).\n\n{render_trace(rec, task_input)}\n\nReply with the JSON digest."
         resp = self.llm.complete(prompt, system=system, seed=seed, role="digester")
+        self.last_calls.append({"role": "digester", "task_id": tid, "lens": lens, "system": system, "prompt": prompt,
+                                "reply": resp.text, "error": resp.error})
         try:
             d = extract_json(resp.text)
             if isinstance(d, dict):
@@ -242,6 +246,7 @@ class Analyst:
                 prior: Optional[dict] = None, seed: int = 0) -> tuple[dict, list[dict]]:
         """Return (report F_t, digests)."""
         scores = meas.task_means()
+        self.last_calls = []
         heur_digests = self.heuristic_digests(traces)
         if self.mode != "llm":
             return self.aggregate_heuristic(heur_digests, scores), heur_digests
@@ -265,6 +270,8 @@ class Analyst:
             "Produce the report JSON now."])
         system = ANALYST_SYSTEM.format(domain_brief=self.domain_brief)
         resp = self.llm.complete(prompt, system=system, seed=seed, role="analyst")
+        self.last_calls.append({"role": "analyst", "system": system, "prompt": prompt, "reply": resp.text,
+                                "error": resp.error})
         try:
             rep = extract_json(resp.text)
             if not isinstance(rep, dict):

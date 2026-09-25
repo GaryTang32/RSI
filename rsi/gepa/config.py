@@ -70,6 +70,14 @@ class Config:
     diff_chars: int = 4000                       # ledger diff truncation
     extra: dict = field(default_factory=dict)
 
+    # audit trace (rsi.trace format, <out_dir>/trace.jsonl; write-only: never read by the loop)
+    trace: bool = True                           # on whenever out_dir is given
+    trace_max_text: int = 20000                  # per-string clip in trace.jsonl (prompts, replies, diffs)
+    shadow_monitor: bool = True                  # score each new incumbent on sealed splits, into the trace only
+    shadow_splits: Optional[list[str]] = None    # None -> sealed holdout/ood of the domain, else its sealed test
+    shadow_k: int = 1
+    shadow_workers: int = 4
+
     def to_json(self) -> dict:
         return asdict(self)
 

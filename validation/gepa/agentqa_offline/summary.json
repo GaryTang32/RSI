@@ -1,0 +1,330 @@
+{
+ "method": "gepa",
+ "rounds": 20,
+ "stop_reason": "max_metric_calls",
+ "baseline": "3d77b3d3bb",
+ "best": "27daec3be8",
+ "first": {
+  "i": 0,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/reporter.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   1.0
+  ],
+  "new_subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rollouts": 14,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.375,
+  "frontier_size": 1
+ },
+ "last": {
+  "i": 19,
+  "event": "skip_perfect",
+  "selected_program_candidate": 4,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 121,
+  "n_candidates": 5,
+  "best_idx": 1,
+  "best_val": 1.0,
+  "frontier_size": 5
+ },
+ "usage": {
+  "reflection": {
+   "calls": 7,
+   "input_tokens": 17776,
+   "output_tokens": 253,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 18029
+  },
+  "task": {
+   "calls": 242,
+   "input_tokens": 13037,
+   "output_tokens": 41102,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 54139
+  },
+  "_total": {
+   "calls": 249,
+   "input_tokens": 30813,
+   "output_tokens": 41355,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 72168
+  }
+ },
+ "meta": {
+  "config": {
+   "max_metric_calls": 120,
+   "budget_mode": "reference_soft",
+   "train_split": "evolve",
+   "val_split": "val",
+   "components": null,
+   "minibatch_size": 3,
+   "candidate_selection": "pareto",
+   "frontier_type": "instance",
+   "module_selector": "round_robin",
+   "acceptance": "strict_improvement",
+   "noise_margin": 0.0,
+   "epsilon": 0.1,
+   "top_k": 5,
+   "beam_n": 4,
+   "skip_perfect_score": true,
+   "perfect_score": null,
+   "use_merge": false,
+   "max_merge_invocations": 5,
+   "merge_val_overlap_floor": 5,
+   "merge_subsample_size": 5,
+   "merge_cap_mode": "reference_soft",
+   "merge_zero_weight": "uniform",
+   "reflection_template": null,
+   "reflection_system": null,
+   "feedback": "full",
+   "val_seed": 0,
+   "cache_evaluation": false,
+   "workers": 4,
+   "seed": 0,
+   "max_iterations": null,
+   "stop_at_score": null,
+   "no_improvement_patience": null,
+   "max_candidate_proposals": null,
+   "max_reflection_cost": null,
+   "timeout_s": null,
+   "save_every": 1,
+   "diff_chars": 4000,
+   "extra": {},
+   "trace": true,
+   "trace_max_text": 20000,
+   "shadow_monitor": true,
+   "shadow_splits": null,
+   "shadow_k": 1,
+   "shadow_workers": 4
+  },
+  "components": [
+   "prompts/reporter.md",
+   "prompts/solver.md"
+  ],
+  "splits": {
+   "train": "evolve",
+   "val": "val"
+  },
+  "n_train": 10,
+  "n_val": 8,
+  "rollouts": 121,
+  "rollouts_by_phase": {
+   "seed_val": 8,
+   "minibatch_parent": 60,
+   "minibatch_child": 21,
+   "val_reflective": 32,
+   "merge_subsample": 0,
+   "val_merge": 0
+  },
+  "iterations": 20,
+  "n_candidates": 5,
+  "n_proposals": 7,
+  "n_accepted": 4,
+  "n_merges_accepted": 0,
+  "n_reflection_calls": 7,
+  "best_idx": 1,
+  "best_val": 1.0,
+  "seed_val": 0.375,
+  "candidates": [
+   {
+    "idx": 0,
+    "artifact_id": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+    "parents": [
+     null
+    ],
+    "kind": "baseline",
+    "val_mean": 0.375,
+    "frontier_wins": 3,
+    "rollouts_at_discovery": 0,
+    "iteration": -1,
+    "depth": 0
+   },
+   {
+    "idx": 1,
+    "artifact_id": "27daec3be8c6626b6fcaa348e887d2e485b2384135e1eab21d99772418b8c82a",
+    "parents": [
+     0
+    ],
+    "kind": "reflective",
+    "val_mean": 1.0,
+    "frontier_wins": 8,
+    "rollouts_at_discovery": 32,
+    "iteration": 3,
+    "depth": 1
+   },
+   {
+    "idx": 2,
+    "artifact_id": "a5a7410801a1384d223debb665c1f3cdd93c4f4a3d03b1a7f4116e5c581ad734",
+    "parents": [
+     1
+    ],
+    "kind": "reflective",
+    "val_mean": 1.0,
+    "frontier_wins": 8,
+    "rollouts_at_discovery": 52,
+    "iteration": 6,
+    "depth": 2
+   },
+   {
+    "idx": 3,
+    "artifact_id": "cac897254ac9a805790116b10f76627aafa027f0639c8a231642f6eac6320b66",
+    "parents": [
+     2
+    ],
+    "kind": "reflective",
+    "val_mean": 0.875,
+    "frontier_wins": 7,
+    "rollouts_at_discovery": 66,
+    "iteration": 7,
+    "depth": 3
+   },
+   {
+    "idx": 4,
+    "artifact_id": "e1c4743bc96958c04e7bf10ed386b51813b0990dd538ae59354985b5531703f1",
+    "parents": [
+     2
+    ],
+    "kind": "reflective",
+    "val_mean": 1.0,
+    "frontier_wins": 8,
+    "rollouts_at_discovery": 89,
+    "iteration": 11,
+    "depth": 3
+   }
+  ],
+  "frontier": {
+   "frontier_type": "instance",
+   "best": {
+    "i:val-numeric-000": 1.0,
+    "i:val-numeric-001": 1.0,
+    "i:val-numeric-002": 1.0,
+    "i:val-numeric-003": 1.0,
+    "i:val-numeric-004": 1.0,
+    "i:val-numeric-005": 1.0,
+    "i:val-numeric-006": 1.0,
+    "i:val-numeric-007": 1.0
+   },
+   "progs": {
+    "i:val-numeric-000": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-001": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-002": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-003": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-004": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-005": [
+     1,
+     2,
+     4
+    ],
+    "i:val-numeric-006": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "i:val-numeric-007": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
+   }
+  },
+  "best_history": [
+   [
+    8,
+    0
+   ],
+   [
+    40,
+    1
+   ],
+   [
+    60,
+    1
+   ],
+   [
+    74,
+    1
+   ],
+   [
+    97,
+    1
+   ]
+  ],
+  "resumed_at": null,
+  "merge": null,
+  "perfect_score": 1.0,
+  "n_infra_errors": 0,
+  "n_infra_retries": 0,
+  "selector": "pareto",
+  "n_exec_errors": 0,
+  "seed_val_error_rate": 0.0,
+  "n_reflection_failed": 0,
+  "n_reflection_unparsed": 0,
+  "trace": "/home/user/RSI/validation/gepa/agentqa_offline/trace.jsonl",
+  "shadow_usage": {
+   "shadow:task": {
+    "calls": 40,
+    "input_tokens": 1969,
+    "output_tokens": 22484,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 24453
+   },
+   "_total": {
+    "calls": 40,
+    "input_tokens": 1969,
+    "output_tokens": 22484,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 24453
+   }
+  }
+ }
+}

@@ -55,6 +55,7 @@ class EvalBatch:
     n_infra: int = 0                  # trials that still failed for infrastructure reasons after retries
     n_errors: int = 0                 # trials whose execution raised (graded 0 by Domain.run), infra excluded
     first_error: Optional[str] = None
+    trials: Optional[list[Trial]] = None   # every trial (also without capture_traces), for the audit trace only
 
 
 def is_infra_error(trial: Trial) -> bool:
@@ -152,7 +153,8 @@ class DomainAdapter:
         errs = [str(tr.error) for tr in trials if tr.error and not is_infra_error(tr)]
         return EvalBatch(list(task_ids), [tr.output for tr in trials], [float(tr.score) for tr in trials],
                          trials if capture_traces else None, objs, len(jobs), list(seeds),
-                         sum(1 for tr in trials if is_infra_error(tr)), len(errs), errs[0] if errs else None)
+                         sum(1 for tr in trials if is_infra_error(tr)), len(errs), errs[0] if errs else None,
+                         trials)
 
     # ----------------------------------------------------- reflective dataset --
     def default_record(self, task: Task, trial: Trial) -> dict:

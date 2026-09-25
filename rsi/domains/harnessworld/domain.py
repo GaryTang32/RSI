@@ -79,6 +79,17 @@ class HarnessWorldDomain(Domain):
     def mechanisms(self, artifact: Artifact) -> list[str]:
         return [m.id for m in self.world.active(artifact.files)[0]]
 
+    def audit_truth(self, artifact: Artifact) -> dict:
+        """Report-only ground truth for run traces: analytic E[S] per split, E[C], and the kind of
+        every active mechanism (generic / leak / harmful ...) with whether its leak payload is live.
+        Never used by the loop."""
+        mechs, payload, extra = self.world.active(artifact.files)
+        exp = {s: self.world.expected(artifact.files, s, self.policy) for s in ("evolve", "holdout", "ood")}
+        return {"E_S": {s: round(v["S"], 5) for s, v in exp.items()}, "E_C": round(exp["evolve"]["C"], 1),
+                "mechanisms": [{"id": m.id, "kind": m.kind, "component": m.component,
+                                "payload_live": m.id in payload} for m in mechs],
+                "free_text_cost": round(extra, 4)}
+
     def regression_threshold(self, k: int) -> float:
         return 0.25
 

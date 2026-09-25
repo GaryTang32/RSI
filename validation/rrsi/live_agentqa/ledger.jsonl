@@ -1,0 +1,1 @@
+{"id": "H0", "parent": null, "round": 0, "kind": "baseline", "status": "keep", "score": 0.5, "cost": 2075.1666666666665, "change": "H_0 baseline", "artifact_id": "498c3a88345f324905b855bf5ad656846e5e9259408f4f3ee9496f95499fa69a", "diff": "", "metrics": {"S": 0.5, "C": 2075.1666666666665}, "meta": {}, "t": 1790321965.7184505, "seq": 0}

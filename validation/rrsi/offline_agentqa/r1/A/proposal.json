@@ -1,0 +1,82 @@
+{
+ "status": "done",
+ "summary": "[aq:verify] Ask to double-check before answering; [aq:answer_format] State the final-answer format; [aq:persona] Detailed analyst persona; [aq:checker] Bounded checker sub-call",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:answer_format] State the final-answer format",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:answer_format] State the final-answer format"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[aq:persona] Detailed analyst persona",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:persona] Detailed analyst persona"
+  },
+  {
+   "id": "C4",
+   "component": "subagent",
+   "hypothesis": "[aq:checker] Bounded checker sub-call",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:checker] Bounded checker sub-call"
+  }
+ ],
+ "mechanism": "[aq:verify] Ask to double-check before answering; [aq:answer_format] State the final-answer format; [aq:persona] Detailed analyst persona; [aq:checker] Bounded checker sub-call",
+ "targets_mode": "wrong final answers, wrong final answers, wrong final answers, wrong final answers",
+ "n_changes": 4,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 4,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

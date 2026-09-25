@@ -1,0 +1,81 @@
+{
+ "artifact_id": "5fab64531d4388c872682fb3afd92ae54eb247f41aad6f28582aec94ea5f990f",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "config",
+   "hypothesis": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-039"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_08",
+   "prune": false,
+   "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
+   "declared_component": "config"
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-042"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_10",
+   "prune": false,
+   "mechanism": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance).",
+   "declared_component": "context_mgmt"
+  },
+  {
+   "id": "C3",
+   "component": "output_plumbing",
+   "hypothesis": "[nul_13] Answer-line extractor: Answer-line extractor (rewording of existing guidance).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-039"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_13",
+   "prune": false,
+   "mechanism": "[nul_13] Answer-line extractor: Answer-line extractor (rewording of existing guidance).",
+   "declared_component": "output_plumbing"
+  },
+  {
+   "id": "C4",
+   "component": "prompt",
+   "hypothesis": "[har_03] Short worked example of the procedure: Short worked example of the procedure; aimed at extract, arith tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-036",
+    "hw-e-040"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_03",
+   "prune": false,
+   "mechanism": "[har_03] Short worked example of the procedure: Short worked example of the procedure; aimed at extract, arith tasks.",
+   "declared_component": "prompt"
+  }
+ ],
+ "diff_path": "r1/A/diff.patch",
+ "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower; [nul_10] Drop stale observations: Drop stale observations (r; [nul_13] Answer-line extractor: Answer-line extractor (rewor; [har_03] Short worked example of the procedure: Short worked"
+}

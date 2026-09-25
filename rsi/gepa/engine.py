@@ -38,6 +38,8 @@ from .state import SearchState
 from .stoppers import (BudgetStopper, Composite, FileStopper, MaxCandidateProposals, MaxIterations, MaxMetricCalls,
                        MaxReflectionCost, NoImprovement, ScoreThreshold, Timeout)
 from .strategies import make_acceptance, make_component_selector, make_selector, EpochShuffledBatchSampler
+from .frontier import pareto_frequencies
+from .tracing import SHADOW_PREFIX, make_tracer
 
 
 class BudgetExhausted(RuntimeError):
@@ -79,7 +81,7 @@ class GEPAEngine:
                  llm_propose: Optional[LLM], config: Config, out_dir: Optional[str | Path] = None,
                  proposer=None, llm_task: Optional[LLM] = None, budget=None, stoppers: Sequence[Callable] = (),
                  callbacks: Sequence[Callable] = (), verbose: bool = False, method: str = "gepa",
-                 critic=None, selector=None) -> None:
+                 critic=None, selector=None, monitor=None) -> None:
         config.validate()
         self.cfg = cfg = config
         self.adapter = adapter
@@ -156,6 +158,14 @@ class GEPAEngine:
         self.state = SearchState(self.components, cfg.frontier_type)
         self.stop_reason = ""
         self.resumed_at: Optional[int] = None
+        self._last_charge = 0
+        self._last_eb: Optional[EvalBatch] = None
+        # audit trace (write-only): trace.jsonl + optional shadow monitor on sealed splits.
+        # ``monitor``: None/True = auto (sealed holdout/ood, else test), False = off, or a ShadowMonitor.
+        self.tr = make_tracer(self, self.out_dir, enabled=cfg.trace, max_text=cfg.trace_max_text,
+                              monitor=monitor if monitor is not None else cfg.shadow_monitor,
+                              domain=adapter.domain, llm_task=llm_task, splits=cfg.shadow_splits, k=cfg.shadow_k,
+                              workers=cfg.shadow_workers)
 
     # ----------------------------------------------------------------- usage --
     def _llms(self) -> list[LLM]:
@@ -167,7 +177,15 @@ class GEPAEngine:
         return out
 
     def usage_snapshot(self) -> dict:
-        return merge_usage(self._usage_prior, *[l.meter.snapshot() for l in self._llms()])
+        """The loop's own spend by role (the shadow monitor's ``shadow:*`` roles excluded)."""
+        snaps = [{r: u for r, u in l.meter.snapshot().items() if not r.startswith(SHADOW_PREFIX)}
+                 for l in self._llms()]
+        return merge_usage({r: u for r, u in self._usage_prior.items() if not r.startswith(SHADOW_PREFIX)}, *snaps)
+
+    def shadow_usage_snapshot(self) -> dict:
+        """Spend of the write-only shadow monitor (reported, never part of the loop's budget)."""
+        return merge_usage(*[{r: u for r, u in l.meter.snapshot().items() if r.startswith(SHADOW_PREFIX)}
+                             for l in self._llms()])
 
     def usd(self) -> float:
         return float(self.usage_snapshot()["_total"]["cost_usd"])
@@ -186,6 +204,7 @@ class GEPAEngine:
         if self.cfg.budget_mode == "hard" and cap is not None and self.state.counter.total + n > cap:
             raise BudgetExhausted(f"{phase}: {self.state.counter.total}+{n} > {cap}")
         self.state.counter.add(phase, n)
+        self._last_charge = n
 
     def evaluate_minibatch(self, cand: Artifact, ids: list[str], role: str) -> EvalBatch:
         phase = "minibatch_parent" if role == "parent" else "minibatch_child"
@@ -193,6 +212,7 @@ class GEPAEngine:
         seeds = [self._mb_seed(self.state.i, role, j) for j in range(len(ids))]
         eb = self.adapter.evaluate(ids, cand, True, seeds)
         self._count("n_exec_errors", eb.n_errors)
+        self._last_eb = eb
         return eb
 
     def evaluate_merge_subsample(self, cand: Artifact, ids: list[str]) -> list[float]:
@@ -211,6 +231,7 @@ class GEPAEngine:
         eb = self.adapter.evaluate(ids, cand, False, seeds)
         self._count("n_infra", eb.n_infra)
         self._count("n_exec_errors", eb.n_errors)
+        self._last_eb = eb
         return list(eb.scores)
 
     def evaluate_val(self, cand: Artifact, ids: list[str], phase: str) -> tuple[dict, Optional[dict]]:
@@ -224,6 +245,7 @@ class GEPAEngine:
         self._count("n_infra", eb.n_infra)
         self._count("n_exec_errors", eb.n_errors)
         self._last_val_errors = (eb.n_errors, eb.first_error, len(ids))
+        self._last_eb = eb
         scores = dict(zip(ids, eb.scores))
         for t, s in scores.items():
             self._val_cache[(cand.id, t)] = s
@@ -238,7 +260,14 @@ class GEPAEngine:
                           meta: Optional[dict] = None) -> int:
         evals_before = self.state.counter.total
         scores, objs = self.evaluate_val(cand, self.val_ids, phase)
+        if self.tr.enabled:
+            idx_next = len(self.state.candidates)
+            self.tr.evaluation(None if kind == "baseline" else self.state.i, f"c{idx_next}", self._last_eb,
+                               self.val_ids, split=self.split_names["val"], phase=phase, charged=self._last_charge,
+                               kind="baseline" if kind == "baseline" else "eval", with_text=True,
+                               role="full D_pareto evaluation")
         idx, delta = self.state.add_candidate(cand, parents, scores, objs, kind, evals_before)
+        self._last_delta = delta
         if self.store is not None:
             self.store.put(cand)
         agg = self.state.agg_scores()[idx]
@@ -324,15 +353,22 @@ class GEPAEngine:
     # ------------------------------------------------------------------ loop --
     def initialize(self) -> None:
         if self._try_resume():
+            if self.tr.enabled:
+                self.tr.run_start(self.state.i)
             if self.verbose:
                 print(f"[gepa] resumed at iteration {self.state.i + 1} with {len(self.state.candidates)} candidates")
             return
+        if self.tr.enabled:
+            self.tr.run_start(None)
+            self.tr.noise()
         if self.out_dir is not None:
             self.out_dir.mkdir(parents=True, exist_ok=True)
             for f in ("run_log.jsonl", "ledger.jsonl"):
                 (self.out_dir / f).unlink(missing_ok=True)
             self.ledger = Ledger(self.out_dir / "ledger.jsonl")
         self.full_eval_and_add(self.seed_artifact, [None], "baseline", "seed_val")
+        if self.tr.enabled:
+            self.tr.kept_if_new_incumbent(None, None)        # shadow score of the seed (reference point)
         n_err, first, n = getattr(self, "_last_val_errors", (0, None, 0))
         self.state.extra["seed_val_error_rate"] = n_err / n if n else 0.0
         if n and n_err == n:
@@ -357,10 +393,15 @@ class GEPAEngine:
                 self._iteration()
             except BudgetExhausted as e:
                 self.state.trace[-1]["budget_exhausted"] = str(e)
+                if self.tr.enabled:
+                    self.tr.tr.event("note", self.state.i, what="hard budget cap",
+                                     text=f"BudgetExhausted mid-iteration ({e}); the partial iteration adds nothing")
                 self._finish_entry(self.state.trace[-1])
                 self.stop_reason = "max_metric_calls(hard)"
                 break
         self._save()
+        if self.tr.enabled:
+            self.tr.run_end(self.stop_reason)
         failed = int(self.state.extra.get("n_reflection_failed", 0))
         if self.state.n_reflection_calls and failed == self.state.n_reflection_calls:
             warnings.warn(f"GEPA: all {failed} reflection-LM calls failed (see run_log 'rejected_outputs'); "
@@ -380,6 +421,8 @@ class GEPAEngine:
         entry.update(rollouts=st.counter.total, n_candidates=len(st.candidates), best_idx=b,
                      best_val=st.agg_scores()[b], frontier_size=len(st.frontier.members()))
         self._append_trace(entry)
+        if self.tr.enabled:
+            self.tr.state(entry["i"])
         self._emit("iteration_end", engine=self, entry=entry)
         if self.verbose:
             ev = entry.get("event", "-")
@@ -393,21 +436,45 @@ class GEPAEngine:
         entry: dict = {"i": i, "iteration_id": f"it{i:05d}"}
         st.trace.append(entry)
         self._emit("iteration_start", engine=self, i=i)
+        tr = self.tr if self.tr.enabled else None          # audit trace: write-only, never read back
+        best_before = st.best_idx()
+        if tr:
+            tr.round_start(i)
         # ---- (1) merge
         if self.merge is not None:
             if self.merge.should_attempt():
                 entry["invoked_merge"] = True
                 prop = self.merge.propose(st, self.evaluate_merge_subsample)
                 self.merge.last_iter_found_new_program = False
+                if prop is None and tr:
+                    tr.tr.event("note", i, what="merge attempt",
+                                text="merge was due but no valid (i, j, ancestor) triplet was found; "
+                                     "falling through to reflective mutation (merges_due is not consumed)")
                 if prop is not None:
                     entry.update(merged=True, merged_entities=[*prop.parents, prop.ancestor],
                                  subsample_ids=prop.subsample_ids, id1_subsample_score=prop.sub_before[0],
                                  id2_subsample_score=prop.sub_before[1], new_program_subsample_scores=prop.sub_after)
-                    if sum(prop.sub_after) >= max(prop.sub_before):
+                    label = f"m{i}"
+                    merge_eb, merge_charge = self._last_eb, self._last_charge
+                    if tr:
+                        tr.merge_proposal(i, label, prop, st)
+                        if merge_eb is not None:
+                            tr.evaluation(i, label, merge_eb, prop.subsample_ids, split=self.split_names["val"],
+                                          phase="merge_subsample", charged=merge_charge,
+                                          role="merge subsample (D_pareto ids)")
+                    ok = sum(prop.sub_after) >= max(prop.sub_before)
+                    if tr:
+                        tr.gate_merge(i, label, prop, ok)
+                    if ok:
                         idx = self.full_eval_and_add(prop.candidate, list(prop.parents), "merge", "val_merge",
                                                      {"ancestor": prop.ancestor, "sources": list(prop.sources)})
                         self.merge.on_accepted()
                         entry.update(event="merge_accepted", new_program_idx=idx)
+                        if tr:
+                            tr.decision(i, event="merge_accepted", label=label, new_idx=idx, best_before=best_before,
+                                        why=f"merge accepted on its subsample; added to the pool as c{idx} after a "
+                                            f"full D_pareto evaluation", delta=self._last_delta)
+                            tr.kept_if_new_incumbent(i, best_before)
                         self._emit("merge_accepted", engine=self, idx=idx, proposal=prop)
                     else:
                         if self.store is not None:
@@ -418,30 +485,50 @@ class GEPAEngine:
                                              metrics={"sub_before": prop.sub_before, "sub_after": sum(prop.sub_after)},
                                              meta={"parents": list(prop.parents), "ancestor": prop.ancestor}))
                         entry["event"] = "merge_rejected"
+                        if tr:
+                            tr.decision(i, event="merge_rejected", label=label, new_idx=None, best_before=best_before,
+                                        why="merge rejected on its subsample (logged as ledger node m%d)" % i)
                         self._emit("merge_rejected", engine=self, proposal=prop)
                     self._finish_entry(entry)
                     return
             self.merge.last_iter_found_new_program = False
         # ---- (2) reflective mutation
+        weights = None
+        if tr and getattr(self.selector, "name", "") == "pareto":
+            weights = pareto_frequencies(st.frontier.mapping(), st.agg_scores())   # pure: what select() samples from
         k = self.selector.select(st)
         parent = st.candidates[k]
         ids = self.sampler.next_ids(self.train_ids, i)
         entry.update(selected_program_candidate=k, subsample_ids=list(ids))
+        if tr:
+            tr.selection(i, k, ids, weights if weights is not None else {k: 1})
         before = self.evaluate_minibatch(parent, ids, "parent")
         entry["subsample_scores"] = before.scores
+        label = f"x{i}"
+        if tr:
+            tr.evaluation(i, f"c{k}", before, ids, split=self.split_names["train"], phase="minibatch_parent",
+                          charged=self._last_charge, role="parent on the minibatch (with traces)")
+
+        def skip(event: str, why: str) -> None:
+            entry["event"] = event
+            if tr:
+                tr.decision(i, event=event, label=None, new_idx=None, best_before=best_before, why=why)
+            self._finish_entry(entry)
+
         if not before.trajectories:
-            entry["event"] = "skip_no_trajectories"
-            return self._finish_entry(entry)
+            return skip("skip_no_trajectories", "the parent evaluation returned no trajectories: nothing to reflect on")
         if before.n_infra:          # a backend outage must not decide a minibatch comparison
             self._count_infra(before.n_infra)
-            entry["event"] = "skip_infra_error"
-            return self._finish_entry(entry)
+            return skip("skip_infra_error", f"{before.n_infra} parent rollouts failed for infrastructure reasons")
         if cfg.skip_perfect_score and all(s >= self.perfect_score for s in before.scores):
-            entry["event"] = "skip_perfect"
-            return self._finish_entry(entry)
+            return skip("skip_perfect", f"every parent minibatch score >= perfect_score={self.perfect_score:g}: "
+                                        "no failure to learn from (reference skip rule)")
+        rr_before = st.rr[k]
         comps = self.comp_selector(st, k)
         entry["components"] = comps
         refl = self.adapter.make_reflective_dataset(parent, before, comps)
+        if tr:
+            tr.analysis(i, k, comps, refl, rr_before)
         res = self.proposer.propose(parent, refl, comps, seed_fn=lambda c: reflection_seed(cfg.seed, i, c))
         st.n_reflection_calls += res.calls
         if res.rejected:
@@ -450,11 +537,16 @@ class GEPAEngine:
             self._count("n_reflection_unparsed", sum(1 for r in res.rejected.values()
                                                      if not r.startswith("llm error")))
         if not res.new_texts:
-            entry["event"] = "no_proposal"
-            return self._finish_entry(entry)
+            if tr:
+                tr.reflective_proposal(i, label, k, parent, None, res, comps)
+            return skip("no_proposal", "the reflection LM returned no usable text for " + ", ".join(comps))
         child = parent.with_files(res.new_texts)
+        if tr:
+            tr.reflective_proposal(i, label, k, parent, child, res, comps)
         if self.critic is not None:          # RRSI-style guard: screen the diff before spending rollouts
             verdict = self.critic.screen(parent.diff(child), "reflective rewrite of " + ", ".join(comps))
+            if tr:
+                tr.critic(i, label, verdict)
             if not verdict.accept:
                 if self.store is not None:
                     self.store.put(child)
@@ -463,21 +555,32 @@ class GEPAEngine:
                                      artifact_id=child.id, diff=parent.diff(child)[: cfg.diff_chars],
                                      meta={"parents": [k], "components": comps, "stage": verdict.stage}))
                 entry.update(event="critic_rejected", objections=verdict.objections[:5])
-                return self._finish_entry(entry)
+                return skip("critic_rejected", "the critic rejected the rewrite before any child rollout")
         st.n_proposals += 1
         after = self.evaluate_minibatch(child, ids, "child")
         entry["new_subsample_scores"] = after.scores
+        if tr:
+            tr.evaluation(i, label, after, ids, split=self.split_names["train"], phase="minibatch_child",
+                          charged=self._last_charge, role="child on the same minibatch (fresh rollouts)")
         if after.n_infra:
             self._count_infra(after.n_infra)
-            entry["event"] = "skip_infra_error"
-            return self._finish_entry(entry)
-        if self.acceptance.accept(before.scores, after.scores):
+            return skip("skip_infra_error", f"{after.n_infra} child rollouts failed for infrastructure reasons")
+        accept = self.acceptance.accept(before.scores, after.scores)
+        if tr:
+            tr.gate_minibatch(i, label, before.scores, after.scores, accept, ids)
+        if accept:
             idx = self.full_eval_and_add(child, [k], "reflective", "val_reflective",
                                          {"components": comps, "sub_before": sum(before.scores),
                                           "sub_after": sum(after.scores), "subsample_ids": list(ids)})
             entry.update(event="accepted", new_program_idx=idx)
             if self.merge is not None:
                 self.merge.schedule_if_needed()
+            if tr:
+                tr.decision(i, event="accepted", label=label, new_idx=idx, best_before=best_before,
+                            why=f"child passed the minibatch gate; scored on all of D_pareto and added to the pool as "
+                                f"c{idx} (GEPA keeps every accepted child, whatever its D_pareto score)",
+                            delta=self._last_delta)
+                tr.kept_if_new_incumbent(i, best_before)
             self._emit("candidate_accepted", engine=self, idx=idx, parent=k, before=before, after=after, child=child)
         else:
             if self.store is not None:
@@ -488,5 +591,9 @@ class GEPAEngine:
                                  metrics={"sub_before": sum(before.scores), "sub_after": sum(after.scores)},
                                  meta={"parents": [k], "components": comps, "subsample_ids": list(ids)}))
             entry["event"] = "rejected"
+            if tr:
+                tr.decision(i, event="rejected", label=label, new_idx=None, best_before=best_before,
+                            why="child failed the minibatch gate: discarded (never scored on D_pareto; ledger node "
+                                f"x{i})")
             self._emit("candidate_rejected", engine=self, parent=k, before=before, after=after, child=child)
         self._finish_entry(entry)

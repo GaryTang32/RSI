@@ -1,0 +1,26 @@
+{
+ "artifact_id": "43e3f7b53e20620ab849cce35a51dec686f8ac722a6cd4d9bfc0873b9e368760",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "client_tool",
+   "hypothesis": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-008",
+    "hw-e-036"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "str_05",
+   "prune": false,
+   "mechanism": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks.",
+   "declared_component": "client_tool"
+  }
+ ],
+ "diff_path": "r4/B/diff.patch",
+ "mechanism": "[str_05] Structured search tool: Structured search tool; aim"
+}

@@ -1,0 +1,16 @@
+--- a/agents/har_01.py
++++ b/agents/har_01.py
+@@ -0,0 +1,5 @@
++# mechanism: har_01
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, plan, format tasks."""
++enable("har_01")
+--- a/memory/har_09.py
++++ b/memory/har_09.py
+@@ -0,0 +1,5 @@
++# mechanism: har_09
++# component: memory
++# title: Semantic memory of general procedures
++"""Semantic memory of general procedures; aimed at extract, arith, plan, format tasks."""
++enable("har_09")

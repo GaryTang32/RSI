@@ -1,0 +1,54 @@
+{
+ "status": "done",
+ "summary": "[str_05] Structured search tool: Structured search tool; aim; [lea_10] Practice answer cache: Return remembered answers fo",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "client_tool",
+   "hypothesis": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-008",
+    "hw-e-036"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "str_05",
+   "prune": false,
+   "mechanism": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "lea_10",
+   "prune": false,
+   "mechanism": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice."
+  }
+ ],
+ "mechanism": "[str_05] Structured search tool: Structured search tool; aim; [lea_10] Practice answer cache: Return remembered answers fo",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

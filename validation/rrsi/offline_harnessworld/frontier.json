@@ -1,0 +1,307 @@
+{
+ "domain": "harnessworld",
+ "incumbent": {
+  "t": 10,
+  "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+  "job": "r6B",
+  "S": 0.5228125,
+  "C": 3462.515,
+  "extra": {
+   "steps": 7.0,
+   "error_rate": 0.0,
+   "families": {
+    "extract": 0.54375,
+    "arith": 0.5325,
+    "plan": 0.52125,
+    "format": 0.49375
+   },
+   "n_mechanisms": 6.0
+  },
+  "variant": "B",
+  "node": "r6B"
+ },
+ "S_star": 0.5228125,
+ "trajectory": [
+  {
+   "t": 0,
+   "S": 0.4653125,
+   "C": 2184.66,
+   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 3.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.4775,
+     "arith": 0.515,
+     "plan": 0.425,
+     "format": 0.44375
+    },
+    "n_mechanisms": 2.0
+   }
+  },
+  {
+   "t": 1,
+   "S": 0.4653125,
+   "C": 2184.66,
+   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 3.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.4775,
+     "arith": 0.515,
+     "plan": 0.425,
+     "format": 0.44375
+    },
+    "n_mechanisms": 2.0
+   }
+  },
+  {
+   "t": 2,
+   "S": 0.4653125,
+   "C": 2184.66,
+   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 3.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.4775,
+     "arith": 0.515,
+     "plan": 0.425,
+     "format": 0.44375
+    },
+    "n_mechanisms": 2.0
+   }
+  },
+  {
+   "t": 3,
+   "S": 0.4653125,
+   "C": 2184.66,
+   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 3.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.4775,
+     "arith": 0.515,
+     "plan": 0.425,
+     "format": 0.44375
+    },
+    "n_mechanisms": 2.0
+   }
+  },
+  {
+   "t": 4,
+   "S": 0.4653125,
+   "C": 2184.66,
+   "artifact_id": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 3.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.4775,
+     "arith": 0.515,
+     "plan": 0.425,
+     "format": 0.44375
+    },
+    "n_mechanisms": 2.0
+   }
+  },
+  {
+   "t": 5,
+   "S": 0.49625,
+   "C": 3346.935,
+   "artifact_id": "42ba26e49b9595d97c61f4a3ca0928ed0b725ac762dc6242c27771f4d7289c16",
+   "job": "r4A",
+   "node": "r4A",
+   "variant": "A",
+   "extra": {
+    "steps": 6.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.485,
+     "arith": 0.51625,
+     "plan": 0.48,
+     "format": 0.50375
+    },
+    "n_mechanisms": 5.0
+   }
+  },
+  {
+   "t": 6,
+   "S": 0.49625,
+   "C": 3346.935,
+   "artifact_id": "42ba26e49b9595d97c61f4a3ca0928ed0b725ac762dc6242c27771f4d7289c16",
+   "job": "r4A",
+   "node": "r4A",
+   "variant": "A",
+   "extra": {
+    "steps": 6.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.485,
+     "arith": 0.51625,
+     "plan": 0.48,
+     "format": 0.50375
+    },
+    "n_mechanisms": 5.0
+   }
+  },
+  {
+   "t": 7,
+   "S": 0.5228125,
+   "C": 3462.515,
+   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+   "job": "r6B",
+   "node": "r6B",
+   "variant": "B",
+   "extra": {
+    "steps": 7.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.54375,
+     "arith": 0.5325,
+     "plan": 0.52125,
+     "format": 0.49375
+    },
+    "n_mechanisms": 6.0
+   }
+  },
+  {
+   "t": 8,
+   "S": 0.5228125,
+   "C": 3462.515,
+   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+   "job": "r6B",
+   "node": "r6B",
+   "variant": "B",
+   "extra": {
+    "steps": 7.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.54375,
+     "arith": 0.5325,
+     "plan": 0.52125,
+     "format": 0.49375
+    },
+    "n_mechanisms": 6.0
+   }
+  },
+  {
+   "t": 9,
+   "S": 0.5228125,
+   "C": 3462.515,
+   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+   "job": "r6B",
+   "node": "r6B",
+   "variant": "B",
+   "extra": {
+    "steps": 7.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.54375,
+     "arith": 0.5325,
+     "plan": 0.52125,
+     "format": 0.49375
+    },
+    "n_mechanisms": 6.0
+   }
+  },
+  {
+   "t": 10,
+   "S": 0.5228125,
+   "C": 3462.515,
+   "artifact_id": "0c8d74e628cdfb12afd8d0bdf8d1a203c8beb827133cfc59b78ae0ab7f2d1a04",
+   "job": "r6B",
+   "node": "r6B",
+   "variant": "B",
+   "extra": {
+    "steps": 7.0,
+    "error_rate": 0.0,
+    "families": {
+     "extract": 0.54375,
+     "arith": 0.5325,
+     "plan": 0.52125,
+     "format": 0.49375
+    },
+    "n_mechanisms": 6.0
+   }
+  }
+ ],
+ "config": {
+  "T": 10,
+  "k": 2,
+  "m": 2,
+  "b_min": 1,
+  "b_max": 4,
+  "budget_rounding": "ceil",
+  "w": 3,
+  "m_draft": 1,
+  "delta": null,
+  "delta_z": 2.0,
+  "beta0": 0.1,
+  "beta1": 40.0,
+  "w_s": 100.0,
+  "w_c": 15.0,
+  "w_n": 0.5,
+  "n_prune": 4,
+  "repair_rounds": 5,
+  "invalid_missing_frac": 0.15,
+  "n_fail_traces": 22,
+  "n_success_traces": 6,
+  "eval_parallel": 1,
+  "calibration_repeats": 1,
+  "calibration_reps": 2000,
+  "calibration_seed": 7,
+  "bootstrap_small_k_correction": false,
+  "max_done_bounces": 3,
+  "max_abort_bounces": 3,
+  "history_render_n": 40,
+  "scoreboard_n": 20,
+  "trace_chars": 3000,
+  "max_digests": 8,
+  "analyst": "llm",
+  "workers": 2,
+  "trial_cache": false,
+  "smoke": true,
+  "heldout_monitor": false,
+  "trace": true,
+  "shadow_monitor": true,
+  "shadow_monitor_k": 1,
+  "trace_max_text": 100000,
+  "record_timestamps": true,
+  "editable": null,
+  "seed": 0,
+  "notes": {}
+ },
+ "switches": {
+  "name": "full",
+  "budget_anneal": true,
+  "constant_budget": null,
+  "history_conditioning": "full",
+  "stall_exploration": true,
+  "critic": true,
+  "floor": "S_star",
+  "cost_rule": true,
+  "within_band": "shaped",
+  "prune_directives": true,
+  "domain_guards": true,
+  "selection": "rrsi",
+  "smoke": true
+ }
+}

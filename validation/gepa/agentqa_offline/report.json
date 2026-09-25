@@ -1,0 +1,146 @@
+{
+ "run": "agentqa_offline",
+ "setup": "AgentQA two-module harness (rsi.gepa.two_module_harness: solver prompt -> optional Python tool -> reporter prompt; harness.py frozen, components prompts/solver.md + prompts/reporter.md). Suite seed 0: |D_train| = 10 evolve + |D_pareto| = 8 val (numeric family), sealed holdout 6 (numeric) + ood 4 (dates / numbertheory / strings / lists, 1 each). GEPA defaults (b = 3, Pareto, round-robin, strict acceptance, no merge), seed 0. Task model = SimModel (offline simulated model), reflection LM = AgentQAReflectionLM (offline mock). max_metric_calls = 120, workers 4.",
+ "stop_reason": "max_metric_calls",
+ "iterations": 20,
+ "rollouts": 121,
+ "rollouts_by_phase": {
+  "seed_val": 8,
+  "minibatch_parent": 60,
+  "minibatch_child": 21,
+  "val_reflective": 32,
+  "merge_subsample": 0,
+  "val_merge": 0
+ },
+ "n_candidates": 5,
+ "n_proposals": 7,
+ "n_accepted": 4,
+ "seed_val": 0.375,
+ "best_val": 1.0,
+ "best_idx": 1,
+ "transfer_report": {
+  "evolve": {
+   "seed": {
+    "S": 0.8,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.9,
+    "vs_seed": {
+     "mean_diff": 0.1,
+     "lo": 0.0,
+     "hi": 0.3,
+     "n": 10,
+     "p_better": 0.1
+    }
+   }
+  },
+  "val": {
+   "seed": {
+    "S": 0.375,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 1.0,
+    "vs_seed": {
+     "mean_diff": 0.625,
+     "lo": 0.25,
+     "hi": 0.8781249999999545,
+     "n": 8,
+     "p_better": 0.625
+    }
+   }
+  },
+  "holdout": {
+   "seed": {
+    "S": 0.6666666666666666,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 1.0,
+    "vs_seed": {
+     "mean_diff": 0.3333333333333333,
+     "lo": 0.0,
+     "hi": 0.6666666666666666,
+     "n": 6,
+     "p_better": 0.3333333333333333
+    }
+   }
+  },
+  "ood": {
+   "seed": {
+    "S": 0.5,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 1.0,
+    "vs_seed": {
+     "mean_diff": 0.5,
+     "lo": 0.0,
+     "hi": 1.0,
+     "n": 4,
+     "p_better": 0.5
+    }
+   }
+  }
+ },
+ "spend_usd": {
+  "loop": 0.0,
+  "shadow_monitor": 0.0,
+  "report": 0.0,
+  "total_from_meters": 0.0
+ },
+ "loop_usage": {
+  "reflection": {
+   "calls": 7,
+   "input_tokens": 17776,
+   "output_tokens": 253,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 18029
+  },
+  "task": {
+   "calls": 242,
+   "input_tokens": 13037,
+   "output_tokens": 41102,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 54139
+  },
+  "_total": {
+   "calls": 249,
+   "input_tokens": 30813,
+   "output_tokens": 41355,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 72168
+  }
+ },
+ "shadow_usage": {
+  "shadow:task": {
+   "calls": 40,
+   "input_tokens": 1969,
+   "output_tokens": 22484,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 24453
+  },
+  "_total": {
+   "calls": 40,
+   "input_tokens": 1969,
+   "output_tokens": 22484,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 24453
+  }
+ },
+ "wall_s": {
+  "loop_incl_monitor": 0.917881965637207,
+  "report": 5.1079912185668945
+ },
+ "cache": null,
+ "exec_errors": 0,
+ "reflection_failed": 0,
+ "reflection_unparsed": 0,
+ "infra_errors": 0
+}

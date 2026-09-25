@@ -1,0 +1,32 @@
+--- a/agents/str_04.py
++++ b/agents/str_04.py
+@@ -0,0 +1,5 @@
++# mechanism: str_04
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, plan, format tasks."""
++enable("str_04")
+--- a/control/cos_09.py
++++ b/control/cos_09.py
+@@ -0,0 +1,5 @@
++# mechanism: cos_09
++# component: control_flow
++# title: Retry once on malformed output
++"""Early exit when the answer is certain; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_09")
+--- a/control/gen_13.py
++++ b/control/gen_13.py
+@@ -0,0 +1,5 @@
++# mechanism: gen_13
++# component: control_flow
++# title: Bounded self-verification pass
++"""Bounded self-verification pass; aimed at extract, arith, plan, format tasks."""
++enable("gen_13")
+--- a/memory/har_09.py
++++ b/memory/har_09.py
+@@ -0,0 +1,5 @@
++# mechanism: har_09
++# component: memory
++# title: Semantic memory of general procedures
++"""Semantic memory of general procedures; aimed at extract, arith, plan, format tasks."""
++enable("har_09")

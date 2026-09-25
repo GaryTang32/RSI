@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 import traceback
 from pathlib import Path
 from typing import Callable, Optional, Sequence
@@ -37,11 +38,22 @@ class Killed(BaseException):
 
 def drive(r: RRSIRun, T: Optional[int] = None, start: int = 0, budget: Optional[Budget] = None) -> str:
     """Run rounds until T, a STOP file, the budget, or 3 consecutive infrastructure failures."""
+    t0 = time.time()
+    resumed = r.frontier.exists()
+    r.trace.run_start(r, budget, resumed=resumed)
+    stop = _drive(r, T, start, budget, resumed)
+    r.trace.run_end(r, stop, time.time() - t0)
+    return stop
+
+
+def _drive(r: RRSIRun, T: Optional[int], start: int, budget: Optional[Budget], resumed: bool) -> str:
     T = r.cfg.T if T is None else T
     if not r.frontier.exists():
         r.baseline()
     if r.cfg.delta is None and not (r.out / "calibration.json").exists():
         r.calibrate()
+    elif r.cfg.delta is not None and not resumed:
+        r.trace.noise({}, fixed=float(r.cfg.delta))
     infra = 0
     t = start
     while t < T:
@@ -137,7 +149,11 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     config:
         :class:`~rsi.rrsi.config.Config` (defaults = the paper's; ``Config.preset(...)``).
     out_dir:
-        run directory (resumable: calling ``run`` again on the same ``out_dir`` continues it).
+        run directory (resumable: calling ``run`` again on the same ``out_dir`` continues it). When
+        given, the run also writes a per-iteration ``trace.jsonl`` (``Config.trace``; render it with
+        :func:`rsi.trace.inspect`) and, for domains with sealed holdout / ood splits, a write-only
+        shadow monitor scores every new incumbent there (``Config.shadow_monitor``); see
+        :mod:`rsi.rrsi.tracing`. Without ``out_dir`` a temporary directory is used and tracing is off.
     editor:
         any :class:`rsi.core.Editor` (default :class:`~rsi.rrsi.propose.RRSIRewriteEditor`).
     switches:
@@ -153,6 +169,8 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     settled round, per-role LLM usage, and ``meta`` (delta, calibration, switches, ...).
     """
     cfg = config or Config()
+    if out_dir is None and cfg.trace:
+        cfg = cfg.replace(trace=False)          # the trace is on by default only for a caller-chosen out_dir
     out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="rrsi_"))
     r = RRSIRun(domain, seed_artifact, out_dir=out, llm_task=llm_task, llm_propose=llm_propose, llm_critic=llm_critic,
                 llm_analyst=llm_analyst, editor=editor, config=cfg, switches=switches, guards=guards,
