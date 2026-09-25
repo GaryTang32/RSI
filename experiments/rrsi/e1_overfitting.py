@@ -73,6 +73,13 @@ def main():
         "checks": checks,
         "verdict": ("REPRODUCED" if all(checks.values()) else "PARTIAL: " + ", ".join(k for k, v in checks.items() if not v)
                     + " not met"),
+        # the pre-declared 'near zero' check is two-sided; say which side a miss is on
+        "interpretation": {"unregularized_ood_gain": fmt(u["ood_gain"]) + " pts: " + (
+            "significantly BELOW H_0 (a miss of 'near zero' in the direction of more overfitting)"
+            if u["ood_gain"]["hi"] < 0 else "significantly ABOVE H_0 (some transfer)" if u["ood_gain"]["lo"] > 0
+            else "not distinguishable from H_0"),
+            "agentqa_tokens": {arm: f"{aq[arm]['token_ratio']['mean']:.2f}x [{aq[arm]['token_ratio']['lo']:.2f}, "
+                                    f"{aq[arm]['token_ratio']['hi']:.2f}]" for arm in arms}},
         "rows": strip_curves(rows),
     }
     save("e1_overfitting", out)

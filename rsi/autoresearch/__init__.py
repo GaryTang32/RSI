@@ -31,13 +31,13 @@ from .guard import BudgetEnforcer, CrashPolicy, ScopeGuard, Violation, default_t
 from .keep import (BootstrapRigorKeep, GateKeep, KeepContext, KeepRule, NoiseCalibrator, Samples, SimplicityWeighted,
                    StrictKeep, make_keep_rule)
 from .landscape import LandscapeTask, landscape_edit_pool
-from .loop import AutoresearchLoop, Config, make_agent, run
+from .loop import AutoresearchLoop, Config, agent_llms, make_agent, run
 from .program import ProgramSpec
 from .results import ResultsLog, Row, Workspace
 from .task import DomainResearchTask, ResearchTask, RunBudget, RunOutcome, ScriptResearchTask, parse_summary
 
 __all__ = [
-    "Config", "run", "AutoresearchLoop", "make_agent",
+    "Config", "run", "AutoresearchLoop", "make_agent", "agent_llms",
     "ResearchTask", "ScriptResearchTask", "DomainResearchTask", "RunBudget", "RunOutcome", "parse_summary",
     "ScopeGuard", "Violation", "default_tamper_patterns", "BudgetEnforcer", "CrashPolicy",
     "ResultsLog", "Row", "Workspace",

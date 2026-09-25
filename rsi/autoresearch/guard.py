@@ -61,22 +61,41 @@ class Violation:
 FRAMEWORK_ENV = r"RSI_AR_\w*"
 
 
+#: Library modules the locked evaluators rely on. Rebinding their attributes in-process
+#: (``np.take_along_axis = ...``, ``time.time = ...``) would change what the locked code computes.
+PATCHABLE_LIBS = ("np", "numpy", "math", "time", "os", "sys", "json", "builtins", "sklearn", "scipy", "resource",
+                  "random", "torch", "pd", "pandas")
+_AUG = r"(?:[-+*/%&|^@]|//|\*\*|<<|>>)?=(?!=)"
+_MUTATORS = ("fill", "put", "itemset", "setflags", "resize", "sort", "clear", "update", "pop", "popitem",
+             "setdefault", "append", "extend", "insert", "remove", "__setitem__", "__delitem__")
+
+
 def default_tamper_patterns(locked_paths: Sequence[str]) -> list[str]:
     """Regexes for added lines that reach into the grader.
 
     For every locked Python module ``m`` (``m.py`` in ``locked_paths``, no glob):
-    private names (``m._x``, ``from m import _x``), assignments to its attributes
-    (``m.f = ...``, ``setattr(m, ...)``, ``m.__dict__``, ``sys.modules['m']``);
-    plus the framework's environment variables (:data:`FRAMEWORK_ENV`), which carry
-    the path of the framework-owned result record."""
-    pats = [FRAMEWORK_ENV]
+    private names (``m._x``, ``from m import _x``); rebinding, subscript-assigning or
+    mutating its attributes (``m.f = ...``, ``m.X[:] = ...``, ``m.X.fill(...)``,
+    ``setattr``/``delattr``, ``m.__dict__``, ``vars(m)``, ``sys.modules['m']``);
+    aliasing it (``import m as M``, which would dodge every other pattern).
+    Generic: the framework's environment variables (:data:`FRAMEWORK_ENV`, which carry
+    the path of the framework-owned result record), dynamic imports and frame/gc
+    introspection, and rebinding attributes of the library modules the locked
+    evaluators use (:data:`PATCHABLE_LIBS`). The locked evaluators additionally check
+    their own integrity at scoring time (see ``rsi.domains.tinylm.prepare._tampered``)."""
+    libs = "|".join(PATCHABLE_LIBS)
+    pats = [FRAMEWORK_ENV, r"\b__import__\s*\(", r"\bimportlib\b", r"\bgc\s*\.\s*get_(?:objects|referrers|referents)\b",
+            r"\bsys\s*\.\s*_getframe\b", r"\binspect\s*\.\s*(?:currentframe|stack|getmodule)\b",
+            rf"^\s*(?:{libs})(?:\s*\.\s*\w+)+\s*{_AUG}", rf"\b(?:setattr|delattr)\s*\(\s*(?:{libs})\b"]
     for p in locked_paths:
         if not p.endswith(".py") or any(c in p for c in "*?[") or "/" in p:
             continue
         m = re.escape(p[:-3])
         pats += [rf"\b{m}\s*\.\s*_\w+", rf"\bfrom\s+{m}\s+import\s+.*\b_\w+",
-                 rf"\b{m}\s*\.\s*\w+\s*(?:[-+*/%&|^@]|//|\*\*|<<|>>)?=(?!=)",
-                 rf"\bsetattr\s*\(\s*{m}\b", rf"\b{m}\s*\.\s*__dict__", rf"sys\.modules\s*\[\s*['\"]{m}['\"]"]
+                 rf"\b{m}\s*\.\s*\w+\s*{_AUG}", rf"\b{m}\s*\.\s*\w+\s*\[[^\]\n]*\]\s*{_AUG}",
+                 rf"\b{m}\s*\.\s*\w+\s*\.\s*(?:{'|'.join(_MUTATORS)})\s*\(",
+                 rf"\b(?:setattr|delattr)\s*\(\s*{m}\b", rf"\bdel\s+{m}\s*\.", rf"\b{m}\s*\.\s*__dict__",
+                 rf"\bvars\s*\(\s*{m}\s*\)", rf"\bimport\s+{m}\s+as\b", rf"sys\.modules\s*\[\s*['\"]{m}['\"]"]
     return pats
 
 

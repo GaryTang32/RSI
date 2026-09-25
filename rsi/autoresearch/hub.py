@@ -471,9 +471,17 @@ class CollaborativeLoop(AutoresearchLoop):
             self.hub.publish_result(key, self.agent_id, rep, samples.memory_gb if samples else 0.0, node.status,
                                     node.change, art.files, tier=self.tier, code_hash=art.id)
             self.hub.post_insight(self.agent_id, f"{node.change}: {node.status} ({rep:.4f})", [key])
+            # at-home: publishing an insight AND a hypothesis is "mandatory every time"
             if node.status == "keep":
                 self.hub.publish_hypothesis(self.agent_id, f"push further: {node.change}",
                                             "the last change helped; the same direction may help again", {}, [key])
+            elif node.status == "discard":
+                self.hub.publish_hypothesis(self.agent_id, f"try the opposite of: {node.change}",
+                                            "this direction did not help; the other side of the knob might", {}, [key],
+                                            priority=4)
+            else:
+                self.hub.publish_hypothesis(self.agent_id, f"retry without the bug: {node.change}",
+                                            "the run crashed; the idea itself is untested", {}, [key], priority=5)
             self.hub_stats["published"] += 1
         return node
 

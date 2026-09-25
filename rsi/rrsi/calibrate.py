@@ -88,10 +88,16 @@ def calibrate(evals: list[Measurement], z: float = 2.0, reps: int = 2000, seed: 
     if small_k_correction and pe.k > 1:
         sd_boot *= math.sqrt(pe.k / (pe.k - 1))
     sd_use = sd_null if (len(evals) >= 2 and sd_null > 0) else sd_boot
-    return {"delta": round(z * sd_use, 6), "z": z, "sd_null": round(sd_use, 6),
-            "sd_null_bootstrap": round(sd_boot, 6), "se_bootstrap": round(se, 6), "method": method,
-            "n_evals": len(evals), "k": evals[0].k, "n_tasks": len(pe.per_task), "S_base": round(evals[0].S, 6),
-            "C_base": evals[0].C, "small_k_correction": small_k_correction, **observed}
+    out = {"delta": round(z * sd_use, 6), "z": z, "sd_null": round(sd_use, 6),
+           "sd_null_bootstrap": round(sd_boot, 6), "se_bootstrap": round(se, 6), "method": method,
+           "n_evals": len(evals), "k": evals[0].k, "n_tasks": len(pe.per_task), "S_base": round(evals[0].S, 6),
+           "C_base": evals[0].C, "small_k_correction": small_k_correction, **observed}
+    if out["delta"] == 0.0:
+        # e.g. k = 1 with one base evaluation: the within-task bootstrap has nothing to resample, so the
+        # floor and the band silently degenerate to "any measured gain counts". Say so loudly.
+        out["warning"] = ("delta = 0: the noise band is degenerate (k = 1 with a single base evaluation, or a "
+                          "deterministic grader). Set Config.delta, or use calibration_repeats >= 2 / k >= 2.")
+    return out
 
 
 def write(path: str | Path, cal: dict) -> None:

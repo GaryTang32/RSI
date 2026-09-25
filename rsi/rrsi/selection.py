@@ -27,8 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Sequence
 
-from ..core.gates import (AllOf, CostRule, Gate, GateContext, NoiseFloor, Scored, StrictImprovement, Verdict,
-                          select)
+from ..core.gates import (TIE_EPS, AllOf, CostRule, Gate, GateContext, NoiseFloor, Scored, StrictImprovement,
+                          Verdict, select)
 from .components import Taxonomy
 from .evaluate import Measurement, relative_cost_change
 from .switches import RegularizerSwitches
@@ -73,7 +73,7 @@ class IncumbentFloor(Gate):
 
     def check(self, cand, inc, ctx):
         floor = inc.score - ctx.delta
-        ok = cand.score >= floor
+        ok = cand.score >= floor - TIE_EPS                              # same float-tie tolerance as NoiseFloor
         return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} S_t-delta={floor:.4f}", {"floor": floor})
 
 
@@ -92,7 +92,7 @@ class RRSICostRule(CostRule):
     def check(self, cand, inc, ctx):
         dS = cand.score - inc.score
         dC = relative_cost_change(cand.cost, inc.cost)
-        if dS > ctx.delta:
+        if dS > ctx.delta + TIE_EPS:                                    # the band test of the core CostRule
             if not self.above_band:
                 return Verdict(True, f"gain {dS:+.4f} > delta; cost rule disabled", {"dS": dS, "dC": dC})
             return super().check(cand, inc, ctx)
@@ -100,7 +100,7 @@ class RRSICostRule(CostRule):
             return super().check(cand, inc, ctx)
         if self.in_band == "admit":
             return Verdict(True, f"gain {dS:+.4f} within band; within-band rule disabled", {"dS": dS, "dC": dC})
-        ok = dS > 0                                                     # "strict"
+        ok = dS > TIE_EPS                                               # "strict"
         return Verdict(ok, f"within band: dS={dS:+.4f} {'>' if ok else '<='} 0 (strict rule)", {"dS": dS, "dC": dC})
 
 

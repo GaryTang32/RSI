@@ -23,7 +23,7 @@ BETA1 = (0.0, 5.0, 10.0, 20.0, 40.0, 80.0, 160.0)
 
 
 def main():
-    a = parse_args("E5: cost rule and beta1 sweep", default_seeds=20)
+    a = parse_args("E5: cost rule and beta1 sweep", default_seeds=50)   # 20 seeds: borderline checks flipped between realizations
     T = 8 if a.quick else 20
     arms = {f"beta1={b:g}": ("full", {"beta1": b}) for b in BETA1}
     arms["cost rule off (above band)"] = (RegularizerSwitches.full().but(cost_rule=False, name="no_cost_rule"), {})

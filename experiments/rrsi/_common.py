@@ -211,13 +211,15 @@ def run_hw(job: dict) -> dict:
     out = Path(job.get("out_dir") or tempfile.mkdtemp(prefix=f"rrsi_{seed}_", dir=_scratch()))
     t0 = time.time()
     res = run(dom, dom.seed_artifact(), llm_propose=llm, config=cfg, out_dir=out, switches=switches(arm))
+    _check_complete(res, job, out)
     weak = None
     if job.get("weak"):
         from rsi.domains.harnessworld import WEAK
         weak = dom.with_policy(WEAK)
     m = analyze_hw(dom, out, res, weak)
     m.update({"seed": seed, "arm": arm if isinstance(arm, str) else arm.name, "wall_s": time.time() - t0,
-              "label": job.get("label", arm if isinstance(arm, str) else arm.name)})
+              "label": job.get("label", arm if isinstance(arm, str) else arm.name),
+              "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1})
     if not job.get("keep"):
         shutil.rmtree(out, ignore_errors=True)
     else:
@@ -241,9 +243,11 @@ def run_aq(job: dict) -> dict:
     t0 = time.time()
     res = run(dom, AgentQADomain.seed_artifact(), llm_task=task, llm_propose=llm, config=cfg, out_dir=out,
               switches=switches(arm))
+    _check_complete(res, job, out)
     k = job.get("k_transfer", 4)
-    rep = paired_transfer(dom, SimModel(suite), {"H0": res.baseline, "final": res.best}, k=k, workers=4)
+    rep = paired_transfer(dom, task, {"H0": res.baseline, "final": res.best}, k=k, workers=4)
     m = {"seed": seed, "arm": arm, "label": job.get("label", arm), "wall_s": time.time() - t0,
+         "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1,
          "measured_gain": res.trajectory[-1]["S"] - res.trajectory[0]["S"], "delta": res.meta.get("delta"),
          "files": sorted(res.best.files), "leaky_final": "memory/answers.json" in res.best,
          "usage_calls": {kk: v.get("calls") for kk, v in res.usage.items()}}
@@ -266,6 +270,20 @@ def run_aq(job: dict) -> dict:
     else:
         m["out_dir"] = str(out)
     return m
+
+
+def _check_complete(res, job: dict, out: Path) -> None:
+    """A run that stopped early (3 consecutive round failures = the driver's infrastructure stop) must not
+    be averaged in as if it were a finished search. Offline this is always a bug: fail loudly. Live runs
+    keep the row (``stop_reason`` / ``rounds_settled`` are recorded) so a flaky backend is visible."""
+    if res.stop_reason == "max_rounds":
+        return
+    errs = sorted(Path(out, "logs").glob("*.err")) if Path(out, "logs").exists() else []
+    tail = errs[-1].read_text()[-2000:] if errs else ""
+    msg = f"run {job.get('label', job.get('arm'))} seed {job.get('seed')} stopped early: {res.stop_reason}\n{tail}"
+    if job.get("llm", "sim") == "sim":
+        raise RuntimeError(msg)
+    print("[warn] " + msg, flush=True)
 
 
 def _scratch() -> str:

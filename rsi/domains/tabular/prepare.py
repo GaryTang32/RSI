@@ -26,9 +26,15 @@ from __future__ import annotations
 import json
 import os
 import resource
+import sys
 import time
+import types
 
 import numpy as np
+import sklearn.metrics  # noqa: F401 - registers the module for _lib()
+import sklearn.model_selection  # noqa: F401
+from sklearn.metrics import roc_auc_score as _roc_auc_score
+from sklearn.model_selection import StratifiedKFold as _StratifiedKFold
 
 # ---------------------------------------------------------------------------
 # Constants (fixed, do not modify)
@@ -48,6 +54,19 @@ TIME_COLS = ["hour"]
 ALL_COLS = NUMERIC + CATEGORICAL + TIME_COLS
 N_LEVELS = {"origin": 30, "carrier": 8, "dow": 7}
 _T0 = time.time()
+# Private read-only snapshots for the locked (hardened/audit) protocol: re-binding, aliasing or mutating the
+# public constants, or monkeypatching sklearn/numpy in-process, cannot move the locked metric (see _tampered()).
+_CONST = types.MappingProxyType({"N_TRAIN": N_TRAIN, "CV_FOLDS": CV_FOLDS, "CV_SEED": CV_SEED, "MODE": MODE,
+                                 "DATA_DIR": DATA_DIR, "RESULT_FILE": RESULT_FILE, "TARGET": TARGET})
+_LIB = types.MappingProxyType({
+    "sklearn.metrics.roc_auc_score": _roc_auc_score, "sklearn.model_selection.StratifiedKFold": _StratifiedKFold,
+    "numpy.load": np.load, "numpy.asarray": np.asarray, "numpy.array_equal": np.array_equal,
+    "numpy.allclose": np.allclose, "numpy.mean": np.mean, "numpy.std": np.std, "json.dump": json.dump,
+    "os.replace": os.replace})
+
+
+def _locked() -> bool:
+    return _CONST["MODE"] in ("hardened", "audit")
 
 
 # ---------------------------------------------------------------------------
@@ -143,20 +162,34 @@ def inputs(frame: dict) -> dict:
     return {k: v for k, v in frame.items() if k != TARGET}
 
 
+def _read_frame(name: str) -> dict:
+    """Locked twin of :func:`load_frame`: the data directory fixed at import time."""
+    with _LIB["numpy.load"](os.path.join(_CONST["DATA_DIR"], f"{name}.npz")) as z:
+        return {k: z[k] for k in z.files}
+
+
 def is_train_frame(frame: dict) -> bool:
     """True iff ``frame`` is the locked training frame, unmodified (no subset, no edited column)."""
-    ref = load_train()
+    ref = _read_frame("train")
+    eq, arr = _LIB["numpy.array_equal"], _LIB["numpy.asarray"]
     return set(frame) == set(ref) and all(
-        np.shape(frame[k]) == ref[k].shape and np.array_equal(np.asarray(frame[k]), ref[k]) for k in ref)
+        np.shape(frame[k]) == ref[k].shape and eq(arr(frame[k]), ref[k]) for k in ref)
 
 
 # ---------------------------------------------------------------------------
 # Locked evaluation protocol
 # ---------------------------------------------------------------------------
-def _auc(y, s) -> float:
-    from sklearn.metrics import roc_auc_score
+def _lib(name: str):
+    """A library function: the import-time snapshot in hardened/audit mode, the live (patchable)
+    attribute in faithful mode, where the protocol is protected by instruction only."""
+    if _locked():
+        return _LIB[name]
+    mod, _, attr = name.rpartition(".")
+    return getattr(sys.modules[mod], attr)
 
-    return float(roc_auc_score(y, s))
+
+def _auc(y, s) -> float:
+    return float(_lib("sklearn.metrics.roc_auc_score")(y, s))
 
 
 def check_per_row(featurize, frame: dict, seed: int = 0) -> bool:
@@ -177,18 +210,19 @@ def cross_val_auc(make_model, featurize, frame: dict) -> tuple[float, float]:
     """Stratified 5-fold CV ROC AUC of ``make_model()`` on ``featurize(frame)``.
     As in the xgboost port, features are built once on the full frame before the
     split, so CV cannot see frame-dependent features (hardened mode checks them)."""
-    from sklearn.model_selection import StratifiedKFold
-
-    y = frame[TARGET]
+    locked = _locked()
+    C = _CONST if locked else {"CV_FOLDS": CV_FOLDS, "CV_SEED": CV_SEED, "TARGET": TARGET}
+    y = frame[C["TARGET"]]
     X = np.asarray(featurize(inputs(frame)), dtype=np.float64)
-    cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=CV_SEED)
+    cv = _lib("sklearn.model_selection.StratifiedKFold")(n_splits=C["CV_FOLDS"], shuffle=True,
+                                                         random_state=C["CV_SEED"])
     scores = []
     for tr, te in cv.split(X, y):
         m = make_model()
         m.fit(X[tr], y[tr])
         scores.append(_auc(y[te], m.predict_proba(X[te])[:, 1]))
-    mean, std = float(np.mean(scores)), float(np.std(scores))
-    if MODE in ("hardened", "audit"):
+    mean, std = float(_lib("numpy.mean")(scores)), float(_lib("numpy.std")(scores))
+    if locked:
         _RECORD.update({"cv_auc": mean, "cv_std": std, "folds": scores, "n_rows": int(len(y)),
                         "full_train": is_train_frame(frame),
                         "per_row_ok": check_per_row(featurize, frame), "n_features": int(X.shape[1])})
@@ -206,23 +240,44 @@ def finish(model, featurize, cv_auc: float, cv_std: float = 0.0) -> None:
     print(f"cv_std:           {cv_std:.6f}")
     print(f"total_seconds:    {time.time() - _T0:.1f}")
     print(f"peak_mem_mb:      {peak_mem_mb():.1f}")
-    if MODE not in ("hardened", "audit"):
+    if not _locked():
         return
     rec = dict(_RECORD)
     rec["total_seconds"] = time.time() - _T0
     rec["peak_mem_mb"] = peak_mem_mb()
-    if MODE == "audit":
+    rec["tampered"] = _tampered()
+    if _CONST["MODE"] == "audit":
         rec["audit"] = {}
         for split in ("test_iid", "test_shift"):
-            if os.path.exists(os.path.join(DATA_DIR, f"{split}.npz")):
-                fr = load_frame(split)
-                rec["audit"][split] = _auc(fr[TARGET],
+            if os.path.exists(os.path.join(_CONST["DATA_DIR"], f"{split}.npz")):
+                fr = _read_frame(split)
+                rec["audit"][split] = _auc(fr[_CONST["TARGET"]],
                                            model.predict_proba(np.asarray(featurize(inputs(fr)), float))[:, 1])
-    if RESULT_FILE:
-        tmp = RESULT_FILE + ".tmp"
+    out = _CONST["RESULT_FILE"]
+    if out:
+        tmp = out + ".tmp"
         with open(tmp, "w") as f:
-            json.dump(rec, f)
-        os.replace(tmp, RESULT_FILE)
+            _LIB["json.dump"](rec, f)
+        _LIB["os.replace"](tmp, out)
+
+
+def _tampered() -> list:
+    """In-process integrity check of the locked protocol (hardened/audit): public constants
+    that changed since import, replaced module functions, replaced sklearn/numpy functions."""
+    g = globals()
+    bad = [k for k, v in _CONST.items() if g.get(k) != v]
+    bad += [f"{k}()" for k, f in _FUNCS.items() if g.get(k) is not f]
+    for k, f in _LIB.items():
+        mod, _, attr = k.rpartition(".")
+        if getattr(sys.modules.get(mod), attr, None) is not f:
+            bad.append(k)
+    return bad
+
+
+# snapshots of the module's own functions (taken last, so every definition above is included)
+_FUNCS = types.MappingProxyType({k: v for k, v in list(globals().items())
+                                  if callable(v) and getattr(v, "__module__", None) == __name__
+                                  and not k.startswith("__")})
 
 
 if __name__ == "__main__":

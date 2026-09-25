@@ -39,6 +39,7 @@ import os
 import resource
 import sys
 import time
+import types
 
 import numpy as np
 
@@ -64,6 +65,19 @@ SPLITS = ("train", "val", "test_iid", "test_shift")
 _T_IMPORT = time.time()
 _CLOCK = {"tau": 0.0, "tokens": 0, "steps": 0, "t_first": None, "t_last": None, "exhausted": False}
 _LOCKED_BUDGET = (BUDGET_KIND, TIME_BUDGET)   # private copy: in-process edits of the constants do not move it
+# Private, read-only snapshots for the locked (hardened/audit) evaluator: re-binding, aliasing or mutating the
+# public constants in-process (``prepare.TOKEN_BYTES[:] = 2``) cannot move the locked metric.
+_TOKEN_BYTES = TOKEN_BYTES.copy()
+_TOKEN_BYTES.setflags(write=False)
+_CONST = types.MappingProxyType({"SEQ_LEN": SEQ_LEN, "EVAL_BYTES": EVAL_BYTES, "VOCAB_SIZE": VOCAB_SIZE,
+          "HARDENED_EVAL_ROWS": HARDENED_EVAL_ROWS, "WARMUP_EXCLUDED_STEPS": WARMUP_EXCLUDED_STEPS,
+          "DATA_DIR": DATA_DIR, "VAL_EPOCH": VAL_EPOCH, "MODE": MODE, "RESULT_FILE": RESULT_FILE})
+# the library functions the locked evaluator uses, captured when train.py imports this module
+_LIB = types.MappingProxyType({
+        "np.log": np.log, "np.exp": np.exp, "np.take_along_axis": np.take_along_axis, "np.asarray": np.asarray,
+        "np.isfinite": np.isfinite, "np.all": np.all, "np.allclose": np.allclose, "np.fromfile": np.fromfile,
+        "np.resize": np.resize, "np.arange": np.arange, "math.log": math.log, "time.time": time.time,
+        "json.dump": json.dump, "os.replace": os.replace})
 
 
 class BudgetExhausted(Exception):
@@ -148,6 +162,11 @@ def load_split(name: str) -> np.ndarray:
     return np.fromfile(path, dtype=np.uint8)
 
 
+def _read_split(name: str) -> np.ndarray:
+    """Locked twin of :func:`load_split`: the data directory fixed at import time."""
+    return _LIB["np.fromfile"](os.path.join(_CONST["DATA_DIR"], f"{name}.bin"), dtype=np.uint8)
+
+
 # ---------------------------------------------------------------------------
 # Dataloader (+ locked budget clock in hardened mode)
 # ---------------------------------------------------------------------------
@@ -158,48 +177,55 @@ def make_dataloader(batch_size: int, seq_len: int, split: str = "train"):
     budget clock: after WARMUP_EXCLUDED_STEPS batches it accumulates the time
     between consecutive requests (or the bytes served, for a token budget) and
     stops yielding when the locked budget is spent."""
-    enforce = MODE in ("hardened", "audit")
+    enforce = _CONST["MODE"] in ("hardened", "audit")         # the import-time mode, not the (editable) global
     if enforce and split != "train":
         raise PermissionError(f"hardened mode: only the 'train' split can be loaded for training, not {split!r}")
-    data = load_split(split)
+    data = _read_split(split) if enforce else load_split(split)
     n = len(data) - seq_len - 1
     rng = np.random.default_rng([RUN_SEED, 7919])
     kind, budget = _LOCKED_BUDGET
+    warm = _CONST["WARMUP_EXCLUDED_STEPS"] if enforce else WARMUP_EXCLUDED_STEPS
+    clock = _LIB["time.time"]
     offs = np.arange(seq_len + 1)
     while True:
-        now = time.time()
+        now = clock()
         if enforce:
             # the consumer just finished step (steps - 1); steps 0..10 are not budgeted
-            if _CLOCK["steps"] > WARMUP_EXCLUDED_STEPS and _CLOCK["t_last"] is not None:
+            if _CLOCK["steps"] > warm and _CLOCK["t_last"] is not None:
                 _CLOCK["tau"] += now - _CLOCK["t_last"]
             used = _CLOCK["tau"] if kind == "wallclock" else _CLOCK["tokens"]
-            if _CLOCK["steps"] >= WARMUP_EXCLUDED_STEPS and used >= budget:
+            if _CLOCK["steps"] >= warm and used >= budget:
                 _CLOCK["exhausted"] = True
                 return
         starts = rng.integers(0, n, size=batch_size)
         chunk = data[starts[:, None] + offs[None, :]]
         if enforce:
             _CLOCK["steps"] += 1
-            if _CLOCK["steps"] > WARMUP_EXCLUDED_STEPS:
+            if _CLOCK["steps"] > warm:
                 _CLOCK["tokens"] += batch_size * seq_len
                 if _CLOCK["t_first"] is None:
                     _CLOCK["t_first"] = now
-            _CLOCK["t_last"] = time.time()
+            _CLOCK["t_last"] = clock()
         yield chunk[:, :-1], chunk[:, 1:]
 
 
 # ---------------------------------------------------------------------------
 # Evaluation (the ground-truth metric)
 # ---------------------------------------------------------------------------
-def _eval_rows(split: str = "val") -> tuple[np.ndarray, np.ndarray]:
-    data = load_split(split)
-    n_rows = EVAL_BYTES // SEQ_LEN
-    need = n_rows * SEQ_LEN + 1
+def _eval_rows(split: str = "val", locked: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    """The fixed evaluation rows of ``split``. ``locked``: from the import-time snapshots
+    (hardened/audit); otherwise from the module globals (faithful: editable in-process)."""
+    if locked:
+        data, seq, ev, epoch = _read_split(split), _CONST["SEQ_LEN"], _CONST["EVAL_BYTES"], _CONST["VAL_EPOCH"]
+    else:
+        data, seq, ev, epoch = load_split(split), SEQ_LEN, EVAL_BYTES, VAL_EPOCH
+    n_rows = ev // seq
+    need = n_rows * seq + 1
     if len(data) < need:
-        data = np.resize(data, need)
-    offset = (VAL_EPOCH * EVAL_BYTES) % max(1, len(data) - need + 1) if split == "val" else 0
-    starts = offset + np.arange(n_rows) * SEQ_LEN
-    offs = np.arange(SEQ_LEN + 1)
+        data = _LIB["np.resize"](data, need)
+    offset = (epoch * ev) % max(1, len(data) - need + 1) if split == "val" else 0
+    starts = offset + _LIB["np.arange"](n_rows) * seq
+    offs = _LIB["np.arange"](seq + 1)
     chunk = data[starts[:, None] + offs[None, :]]
     return chunk[:, :-1], chunk[:, 1:]
 
@@ -216,7 +242,7 @@ def evaluate_bpb(model, batch_size: int = 64) -> float:
     Faithful mode (upstream): sums ``model.forward(x, y, reduction='none')`` and
     scores ``EVAL_BYTES // (batch_size * SEQ_LEN)`` batches. Hardened/audit mode:
     see :func:`evaluate_bpb_locked`."""
-    if MODE in ("hardened", "audit"):
+    if _CONST["MODE"] in ("hardened", "audit"):
         return evaluate_bpb_locked(model)
     x_all, y_all = _eval_rows("val")
     steps = EVAL_BYTES // (batch_size * SEQ_LEN)
@@ -233,55 +259,77 @@ def evaluate_bpb(model, batch_size: int = 64) -> float:
 
 
 def _logprobs(model, x: np.ndarray) -> np.ndarray:
-    logits = np.asarray(model.logits(x), dtype=np.float64)
-    if logits.shape != x.shape + (VOCAB_SIZE,):
-        raise ValueError(f"model.logits returned shape {logits.shape}, expected {x.shape + (VOCAB_SIZE,)}")
-    if not np.all(np.isfinite(logits)):
+    L = _LIB
+    logits = L["np.asarray"](model.logits(x), dtype=np.float64)
+    V = _CONST["VOCAB_SIZE"]
+    if logits.shape != x.shape + (V,):
+        raise ValueError(f"model.logits returned shape {logits.shape}, expected {x.shape + (V,)}")
+    if not L["np.all"](L["np.isfinite"](logits)):
         raise ValueError("model.logits returned non-finite values")
     m = logits.max(axis=-1, keepdims=True)
-    return logits - (m + np.log(np.exp(logits - m).sum(axis=-1, keepdims=True)))
+    return logits - (m + L["np.log"](L["np.exp"](logits - m).sum(axis=-1, keepdims=True)))
 
 
 def _bpb_locked(model, split: str) -> float:
-    x_all, y_all = _eval_rows(split)
+    x_all, y_all = _eval_rows(split, locked=True)
+    rows = _CONST["HARDENED_EVAL_ROWS"]
     total_nats, total_bytes = 0.0, 0
-    for s in range(0, len(x_all), HARDENED_EVAL_ROWS):
-        x, y = x_all[s:s + HARDENED_EVAL_ROWS], y_all[s:s + HARDENED_EVAL_ROWS]
+    for s in range(0, len(x_all), rows):
+        x, y = x_all[s:s + rows], y_all[s:s + rows]
         lp = _logprobs(model, x)
-        nats = -np.take_along_axis(lp, y[..., None].astype(np.int64), axis=-1)[..., 0]
-        nbytes = TOKEN_BYTES[y]
+        nats = -_LIB["np.take_along_axis"](lp, y[..., None].astype(np.int64), axis=-1)[..., 0]
+        nbytes = _TOKEN_BYTES[y]
         total_nats += float((nats * (nbytes > 0)).sum())
         total_bytes += int(nbytes.sum())
-    return total_nats / (math.log(2) * max(total_bytes, 1))
+    return total_nats / (_LIB["math.log"](2) * max(total_bytes, 1))
 
 
 def causality_probe(model, n_probes: int = 3, seed: int = 12345) -> bool:
     """True iff the model's predictions at position t use only bytes <= t of the
     same row: scramble everything else in the batch and compare."""
-    x_all, _ = _eval_rows("val")
+    x_all, _ = _eval_rows("val", locked=True)
     rng = np.random.default_rng(seed)
     x = x_all[:8].copy()
     base = _logprobs(model, x)
     for _ in range(n_probes):
         r = int(rng.integers(0, len(x)))
-        t = int(rng.integers(0, SEQ_LEN - 1))
-        x2 = rng.integers(0, VOCAB_SIZE, size=x.shape).astype(x.dtype)
+        t = int(rng.integers(0, _CONST["SEQ_LEN"] - 1))
+        x2 = rng.integers(0, _CONST["VOCAB_SIZE"], size=x.shape).astype(x.dtype)
         x2[r, :t + 1] = x[r, :t + 1]
         lp2 = _logprobs(model, x2)
-        if not np.allclose(lp2[r, :t + 1], base[r, :t + 1], atol=1e-6, rtol=1e-5):
+        if not _LIB["np.allclose"](lp2[r, :t + 1], base[r, :t + 1], atol=1e-6, rtol=1e-5):
             return False
     return True
 
 
+def _tampered() -> list:
+    """In-process integrity check of the locked evaluator (hardened/audit): names of
+    public constants that no longer equal their import-time values, module functions
+    that were replaced, and replaced library functions the evaluator relies on.
+    Non-empty -> the framework rejects the run as a protocol violation."""
+    g = globals()
+    bad = [k for k, v in _CONST.items() if g.get(k) != v]
+    tb = g.get("TOKEN_BYTES")
+    if not isinstance(tb, np.ndarray) or tb.shape != _TOKEN_BYTES.shape or bool((tb != _TOKEN_BYTES).any()):
+        bad.append("TOKEN_BYTES")
+    bad += [f"{k}()" for k, f in _FUNCS.items() if g.get(k) is not f]
+    mods = {"np": np, "math": math, "time": time, "json": json, "os": os}
+    bad += [k for k, f in _LIB.items() if getattr(mods[k.split(".")[0]], k.split(".")[1], None) is not f]
+    return bad
+
+
 def evaluate_bpb_locked(model) -> float:
     """Hardened metric: logits-only (the evaluator applies log-softmax itself),
-    a fixed row set and batch, a causality probe and the locked budget record.
-    Writes the framework-owned result record and returns val_bpb."""
-    t0 = time.time()
+    a fixed row set and batch from import-time snapshots, a causality probe, an
+    in-process integrity check and the locked budget record. Writes the
+    framework-owned result record and returns val_bpb."""
+    clock = _LIB["time.time"]
+    t0 = clock()
     val_bpb = _bpb_locked(model, "val")
     record = {
         "val_bpb": val_bpb,
         "causal": bool(causality_probe(model)),
+        "tampered": _tampered(),
         "budget_kind": _LOCKED_BUDGET[0], "budget": _LOCKED_BUDGET[1],
         "training_seconds": _CLOCK["tau"], "tokens": _CLOCK["tokens"], "num_steps": _CLOCK["steps"],
         "budget_exhausted": _CLOCK["exhausted"],
@@ -294,17 +342,24 @@ def evaluate_bpb_locked(model) -> float:
     else:
         record["training_wall_s"] = 0.0
         record["budget_overrun"] = False
-    if MODE == "audit":
+    if _CONST["MODE"] == "audit":
         record["audit"] = {s: _bpb_locked(model, s) for s in ("test_iid", "test_shift")
-                           if os.path.exists(os.path.join(DATA_DIR, f"{s}.bin"))}
-    record["eval_seconds"] = time.time() - t0
+                           if os.path.exists(os.path.join(_CONST["DATA_DIR"], f"{s}.bin"))}
+    record["eval_seconds"] = clock() - t0
     record["peak_mem_mb"] = peak_mem_mb()
-    if RESULT_FILE:
-        tmp = RESULT_FILE + ".tmp"
+    out = _CONST["RESULT_FILE"]
+    if out:
+        tmp = out + ".tmp"
         with open(tmp, "w") as f:
-            json.dump(record, f)
-        os.replace(tmp, RESULT_FILE)
+            _LIB["json.dump"](record, f)
+        _LIB["os.replace"](tmp, out)
     return val_bpb
+
+
+# snapshots of the module's own functions (taken last, so every definition above is included)
+_FUNCS = types.MappingProxyType({k: v for k, v in list(globals().items())
+                                  if callable(v) and getattr(v, "__module__", None) == __name__
+                                  and not k.startswith("__")})
 
 
 if __name__ == "__main__":

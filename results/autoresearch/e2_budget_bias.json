@@ -1,6 +1,6 @@
 {
  "experiment": "e2_budget_bias",
- "written_at": "2026-09-25 02:57:12",
+ "written_at": "2026-09-25 05:45:38",
  "config": {
   "landscape_seeds": 30,
   "experiments": 100
@@ -84,20 +84,21 @@
      "kind": "wallclock",
      "seed": 0,
      "params_M_base": 0.05,
-     "params_M_final": 0.045,
-     "steps_base": 266.0,
-     "steps_final": 282.0,
+     "params_M_final": 0.025,
+     "steps_base": 242.0,
+     "steps_final": 436.0,
      "kept": [
-      "ACTIVATION 'tanh' -> 'relu'",
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "HIDDEN 128 -> 64",
       "SEED 42 -> 397",
-      "CONTEXT 6 -> 4",
       "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "CONTEXT 6 -> 4",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
       "LR 0.024 -> 0.048"
      ],
-     "recorded_gain": 0.7552578766307865,
+     "recorded_gain": 0.7580936883656562,
      "usage": {
       "calls": 0,
       "input_tokens": 0,
@@ -110,18 +111,19 @@
      "seed": 1,
      "params_M_base": 0.05,
      "params_M_final": 0.05,
-     "steps_base": 260.0,
-     "steps_final": 266.0,
+     "steps_base": 246.0,
+     "steps_final": 267.0,
      "kept": [
       "INIT_SCALE 1.0 -> 1.4",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
       "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
-      "INIT_SCALE 1.4 -> 0.98",
-      "SEED 42 -> 397"
+      "HIDDEN 128 -> 64",
+      "HIDDEN 64 -> 128",
+      "ACTIVATION 'tanh' -> 'relu'"
      ],
-     "recorded_gain": 0.666862586730927,
+     "recorded_gain": 0.7116498193138514,
      "usage": {
       "calls": 0,
       "input_tokens": 0,
@@ -131,8 +133,8 @@
     }
    ],
    "params_ratio_final_over_base": {
-    "mean": 0.95,
-    "lo": 0.8999999999999999,
+    "mean": 0.75,
+    "lo": 0.5,
     "hi": 1.0,
     "n": 2
    }
@@ -198,18 +200,18 @@
    }
   },
   "horizon": {
-   "baseline_bpb_1x": 3.643469479508248,
-   "baseline_bpb_4x": 2.99765268138421,
+   "baseline_bpb_1x": 3.6452458501127634,
+   "baseline_bpb_4x": 2.989352054735261,
    "gain_1x": {
-    "mean": 0.7174370969679571,
-    "lo": 0.6682441496435505,
-    "hi": 0.7666300442923637,
+    "mean": 0.7075701266145678,
+    "lo": 0.6795912807187503,
+    "hi": 0.7355489725103852,
     "n": 2
    },
    "gain_4x": {
-    "mean": 0.25105609955381203,
-    "lo": 0.18045092692916676,
-    "hi": 0.3216612721784573,
+    "mean": 0.24568502265509373,
+    "lo": 0.24354634704028832,
+    "hi": 0.24782369826989914,
     "n": 2
    }
   }
@@ -229,12 +231,12 @@
    0.03829816156466477
   ],
   "tinylm_params_ratio_wallclock_vs_tokens": [
-   0.95,
+   0.75,
    4.5600000000000005
   ],
   "tinylm_gain_1x_vs_4x": [
-   0.7174370969679571,
-   0.25105609955381203
+   0.7075701266145678,
+   0.24568502265509373
   ],
   "claim_reproduced": true
  },

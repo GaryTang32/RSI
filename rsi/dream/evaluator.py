@@ -212,8 +212,10 @@ class ReplayEvaluator:
                 p["V_eq1"] = eq1.score(by_beta[p["beta"]])
         if isinstance(self.objective, ParetoSweepObjective):
             value = sweep_res["reward"] if sweep_res else float("-inf")
-            eq1 = Eq1Objective()
-            per_world = [eq1.score_episode(e) for e in eps]
+            # per-world values in the SAME objective (each world's own beta sweep), so that a selector
+            # working on a subset of worlds (GuardedSelector: dev / held-out) ranks by the Pareto reward
+            per_world = [self.objective.sweep({b: [by_beta[b][i]] for b in by_beta})["reward"]
+                         for i in range(len(eps))]
         else:
             per_world = [self.objective.score_episode(e) for e in eps]
             value = float(np.mean(per_world)) if per_world else float("-inf")

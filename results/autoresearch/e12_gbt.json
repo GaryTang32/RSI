@@ -1,6 +1,6 @@
 {
  "experiment": "e12_gbt",
- "written_at": "2026-09-25 02:46:45",
+ "written_at": "2026-09-25 05:25:41",
  "config": {
   "task": "tabular",
   "n_experiments": 25,

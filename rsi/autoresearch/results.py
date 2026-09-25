@@ -137,8 +137,16 @@ class Workspace:
         return r.stdout.strip()
 
     def _git_write(self, artifact: Artifact) -> None:
+        """Make the working tree exactly ``artifact`` (nested files included), keeping
+        ``.git`` and the untracked ``results.tsv`` / ``run.log``."""
+        import shutil
+
         for p in self.root.iterdir():
-            if p.name not in (".git", "results.tsv", "run.log") and p.is_file():
+            if p.name in (".git", ".gitignore", "results.tsv", "run.log"):
+                continue
+            if p.is_dir() and not p.is_symlink():
+                shutil.rmtree(p)
+            else:
                 p.unlink()
         artifact.to_dir(self.root)
 

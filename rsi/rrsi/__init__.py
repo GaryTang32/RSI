@@ -30,6 +30,7 @@ from .attribution import Scoreboard
 from .calibrate import calibrate
 from .components import K, K_STR, Taxonomy
 from .config import PRESETS, Config
+from .constitution import default_constitution
 from .critic import RRSICritic
 from .driver import Killed, drive, merged_usage, result, run
 from .evaluate import Measurement, Measurer, aggregate
@@ -46,5 +47,5 @@ __all__ = [
     "edit_budget", "budget_table", "K", "K_STR", "Taxonomy", "History", "stall_flag", "exploration",
     "Measurement", "Measurer", "aggregate", "calibrate", "Analyst", "build_traces", "Proposer",
     "RRSIRewriteEditor", "parse_done", "parse_sections", "RRSICritic", "Candidate", "Decision", "build_gates",
-    "cost_rule", "judge", "select_round", "Scoreboard", "paired_transfer", "merged_usage",
+    "cost_rule", "judge", "select_round", "Scoreboard", "paired_transfer", "merged_usage", "default_constitution",
 ]

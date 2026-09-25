@@ -370,9 +370,20 @@ class DreamRSILoop:
         if len(idx) == len(r.per_world):
             return v
         eps = [r.episodes[i] for i in idx if i < len(r.episodes)]
-        sub = PolicyReport(r.policy_id, r.label, r.objective, float(sum(r.per_world[i] for i in idx) / max(1, len(idx))),
-                           [r.per_world[i] for i in idx], eps, r.sweep, [], diagnostics(eps), r.cpu_s, r.wall_s,
-                           len(eps))
+        value = float(sum(r.per_world[i] for i in idx) / max(1, len(idx)))
+        sweep = r.sweep
+        if isinstance(self.replay.objective, ParetoSweepObjective):
+            # the Pareto sweep covered every world: recompute it on the development worlds only, so
+            # neither the value nor beta_sweep.json leaks held-out worlds to the developer
+            keep = {e.world_id for e in eps}
+            by_beta: dict = {}
+            for e in r.sweep_episodes:
+                if e.world_id in keep:
+                    by_beta.setdefault(e.beta, []).append(e)
+            sweep = self.replay.objective.sweep(by_beta) if by_beta else None
+            value = sweep["reward"] if sweep else float("-inf")
+        sub = PolicyReport(r.policy_id, r.label, r.objective, value, [r.per_world[i] for i in idx], eps, sweep, [],
+                           diagnostics(eps), r.cpu_s, r.wall_s, len(eps))
         return VersionRecord(v.index, v.code, sub, v.change, v.parent, v.iteration, v.label)
 
     def _forbidden_terms(self) -> list[str]:

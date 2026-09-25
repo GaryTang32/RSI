@@ -94,23 +94,38 @@ class EpisodeResult:
 
 @dataclass
 class Eq1Objective:
+    """Paper Eq. 1. A disqualified episode (guard violation, illegal batch, policy crash)
+    scores strictly below every honest episode on the same world: the quality floor (0
+    normalized, ``s_r`` raw) minus the cost of revealing the whole world minus
+    ``disqualified_margin``. A fixed constant such as -1 is not enough: on a paper-scale
+    world (32 x 20 = 640 cells, beta1 = 0.01) an honest full-grid policy scores about -5.2,
+    so a crashing or cheating policy would outrank it; with raw negative scores (e.g. a
+    negated loss) the same happens on small worlds."""
+
     beta1: float = 0.01
     beta2: float = 0.005
     normalize: bool = True
     support: str = "clip"               # "clip" | "no_reward"
-    disqualified_value: float = -1.0
+    disqualified_margin: float = 1.0
     name: str = "eq1"
+
+    def floor(self, ep: EpisodeResult) -> float:
+        """Lowest quality term an honest episode can get (the root: nothing revealed)."""
+        return 0.0 if self.normalize else float(ep.root)
 
     def quality(self, ep: EpisodeResult) -> float:
         if self.support == "no_reward" and ep.out_of_support:
-            return 0.0 if self.normalize else ep.root
+            return self.floor(ep)
         if self.normalize:
             return ep.attainment
         return float(ep.best if ep.best is not None else ep.root)
 
+    def disqualified_value(self, ep: EpisodeResult) -> float:
+        return self.floor(ep) - abs(self.beta1) * max(ep.world_size, ep.N) - self.disqualified_margin
+
     def score_episode(self, ep: EpisodeResult) -> float:
         if ep.disqualified:
-            return self.disqualified_value
+            return self.disqualified_value(ep)
         return self.quality(ep) - self.beta1 * ep.N + self.beta2 * ep.N / max(1, ep.k)
 
     def score(self, episodes: Sequence[EpisodeResult]) -> float:

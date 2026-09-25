@@ -138,6 +138,13 @@ class PrefixGuard:
     def handle(self, op: str, **kw) -> dict:
         self.n_requests += 1
         if op == "reset":
+            if self.q.k > 0 or self.q.N > 0:
+                # "replay resets the policy's per-rollout state" at episode START only: a reset after
+                # probing would let a policy explore everything, remember it, reset the counters and
+                # then walk straight to the best recorded cell (peeking through its own memory)
+                self.violations.append("reset() after probing (an episode may only be reset before its "
+                                       "first probe)")
+                return {"reset_denied": True, **self.state()}
             self.q.reset()
             return {"reset": True, **self.state()}
         if op == "probe":

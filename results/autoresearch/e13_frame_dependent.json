@@ -1,6 +1,6 @@
 {
  "experiment": "e13_frame_dependent",
- "written_at": "2026-09-25 02:41:16",
+ "written_at": "2026-09-25 05:18:42",
  "config": {
   "task": "tabular",
   "pairs": [

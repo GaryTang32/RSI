@@ -76,6 +76,9 @@ class RRSIRun:
         self.domain, self.seed_artifact = domain, seed_artifact
         self.cfg = config or Config()
         self.sw = switches or RegularizerSwitches.full()
+        if not 1 <= self.cfg.m <= len(VARIANT_LABELS) or not 0 <= self.cfg.m_draft <= self.cfg.m:
+            raise ValueError(f"need 1 <= m <= {len(VARIANT_LABELS)} and 0 <= m_draft <= m "
+                             f"(got m={self.cfg.m}, m_draft={self.cfg.m_draft})")
         self.out = Path(out_dir)
         self.out.mkdir(parents=True, exist_ok=True)
         self.verbose = verbose
@@ -102,9 +105,10 @@ class RRSIRun:
         self.editor = editor or (RRSIRewriteEditor(llm_propose) if llm_propose is not None else None)
         if constitution is None:
             constitution = domain.rrsi_constitution() if hasattr(domain, "rrsi_constitution") \
-                else default_constitution(self.cfg, self.tax)
+                else default_constitution(self.cfg, self.tax, self.sw)
         self.proposer = Proposer(self.editor, self.tax, self.cfg, domain_brief=domain.describe(),
-                                 constitution=constitution, editable=self.cfg.editable)
+                                 constitution=constitution, editable=self.cfg.editable,
+                                 history_mode=self.sw.history_conditioning)
         dom_guards = getattr(domain, "rrsi_guards", ())
         self.guards = list(guards) + list(dom_guards() if callable(dom_guards) else dom_guards)
         self.gates = build_gates(self.cfg, self.sw, self.guards)
@@ -197,6 +201,9 @@ class RRSIRun:
         cal["jobs"] = jobs
         write_json(self.out / "calibration.json", cal)
         self.log(f"calibrated delta={cal['delta']:.5f} (sd_null {cal['sd_null']:.5f}, {cal['method']})")
+        if cal.get("warning"):
+            import warnings
+            warnings.warn(f"rsi.rrsi calibration: {cal['warning']}", RuntimeWarning, stacklevel=2)
         return cal
 
     # ---------------------------------------------------------------- round --
@@ -342,6 +349,18 @@ class RRSIRun:
         fields["metrics"], fields["meta"] = dict(node.metrics), dict(node.meta)
         self.ledger.update(node.id, **fields)
 
+    def _scoreboard_view(self) -> list[dict]:
+        """The attribution scoreboard shown to the proposer. It is evidence about past edits, so it
+        follows ``history_conditioning``: all rows (full), rows of accepted candidates only
+        (accepted_only: no negative evidence), or nothing (none)."""
+        mode, n = self.sw.history_conditioning, self.cfg.scoreboard_n
+        if mode == "none":
+            return []
+        if mode == "accepted_only":
+            acc = {(r.get("t"), r.get("variant")) for r in self.history.records() if r.get("accepted") and r.get("edit_id")}
+            return [r for r in self.scoreboard.rows() if (r.get("t"), r.get("variant")) in acc][-n:]
+        return self.scoreboard.recent(n)
+
     def _traces_text(self, traces: dict, cap_each: int = 1200, max_n: int = 8) -> str:
         parts = []
         for tid in list(traces)[:max_n]:
@@ -386,7 +405,7 @@ class RRSIRun:
         if self.editor is None:
             raise RuntimeError("RRSI needs a proposer: pass llm_propose or editor")
         common = dict(directives=directives, variant_brief=variant_brief, history_rows=hist_rows,
-                      scoreboard=self.scoreboard.recent(cfg.scoreboard_n), explore=explore, reserved=reserved,
+                      scoreboard=self._scoreboard_view(), explore=explore, reserved=reserved,
                       prune_set=prune, report=report, budget=budget, digests=digests,
                       traces_text=self._traces_text(traces))
         prop = self.proposer.propose(inc_art, seed=_seed(cfg.seed, t, vid, 0), **common)

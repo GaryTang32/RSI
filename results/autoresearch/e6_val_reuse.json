@@ -1,6 +1,6 @@
 {
  "experiment": "e6_val_reuse",
- "written_at": "2026-09-25 02:32:30",
+ "written_at": "2026-09-25 05:29:32",
  "config": {
   "landscape_experiments": 300,
   "landscape_seeds": 40,

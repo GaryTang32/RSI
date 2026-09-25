@@ -289,7 +289,7 @@ class QuestionProxy:
             o = Observation.from_dict(d)
             self._obs[o.cell_id] = o
             out.append(o)
-        self._st.update({k: v for k, v in state.items() if k not in ("revealed", "reset")})
+        self._st.update({k: v for k, v in state.items() if k not in ("revealed", "reset", "reset_denied")})
         return out
 
     def _violation(self, what: str):
@@ -301,7 +301,10 @@ class QuestionProxy:
 
     # -- API
     def reset(self) -> None:
-        self._apply(self._t("reset"))
+        state = self._t("reset")
+        if state.get("reset_denied"):   # already recorded parent-side as a violation
+            raise GuardViolation("reset() after probing: an episode may only be reset before its first probe")
+        self._apply(state)
 
     def observed(self) -> Dict[str, Observation]:
         return dict(self._obs)

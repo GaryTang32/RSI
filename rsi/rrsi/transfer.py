@@ -8,7 +8,8 @@ difference with a bootstrap CI against the reference arm (via
 engineering domain's final evaluation. When the domain exposes an analytic
 ``expected(artifact, split)`` (e.g. HarnessWorld), the noise-free expected score and
 cost are added as ground truth. A non-regression flag answers the paper's "no held-out
-split got worse".
+split got worse" (point estimates), and ``significant_regression`` lists the unseen splits
+whose paired CI lies entirely below the reference.
 """
 from __future__ import annotations
 
@@ -54,4 +55,9 @@ def paired_transfer(domain: Domain, llm_task: Optional[LLM], arms: dict[str, Art
     unseen = [s for s in ("holdout", "ood") if s in rep["splits"]]
     rep["non_regression"] = {name: all(rep["splits"][s][name]["S"] >= rep["splits"][s][reference]["S"] - 1e-12
                                        for s in unseen) for name in arms}
+    # the point estimates above are noisy at small k; a split counts as a REAL regression only when the paired
+    # per-task CI against the reference lies entirely below 0
+    rep["significant_regression"] = {
+        name: [s for s in unseen if (rep["splits"][s][name].get("vs_reference") or {}).get("hi", 0.0) < 0]
+        for name in arms if name != reference}
     return rep

@@ -127,7 +127,10 @@ def test_oracle_policy_is_disqualified_behind_guard(runner):
     ev = ReplayEvaluator(W=2, fallback=(2, 2), runner=runner, root_mode="addressable")
     rep = ev.evaluate(template_code("oracle"), [tree])
     e = rep.episodes[0]
-    assert e.disqualified and e.violations and rep.value == -1.0
+    # disqualified: quality floor (0, normalized) - beta1 * |world| - 1, below every honest episode
+    assert e.disqualified and e.violations and rep.value == pytest.approx(0.0 - 0.01 * 6 - 1.0)
+    honest_worst = ev.evaluate(code_of(parallel_refine()), [tree]).value
+    assert rep.value < honest_worst
 
 
 def test_oracle_inflated_without_guard():

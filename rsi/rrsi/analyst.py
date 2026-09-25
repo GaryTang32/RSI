@@ -270,8 +270,16 @@ class Analyst:
             if not isinstance(rep, dict):
                 raise ValueError("not an object")
             report = {k: rep.get(k) or [] for k in ("failure_modes", "capability_gaps", "success_habits")}
+            if not all(isinstance(report[k], list) for k in ("failure_modes", "capability_gaps", "success_habits")):
+                raise ValueError("report sections are not lists")
             report["failure_modes"] = [m for m in report["failure_modes"] if isinstance(m, dict)]
-            report["failure_modes"].sort(key=lambda m: -(m.get("n_tasks") or 0))
+
+            def _n(m):
+                try:
+                    return -float(m.get("n_tasks") or 0)
+                except (TypeError, ValueError):     # an LLM wrote "n_tasks": "many"
+                    return 0.0
+            report["failure_modes"].sort(key=_n)
             report["n_digests"] = len(digests)
             report["analyst"] = "llm"
             return report, digests

@@ -17,6 +17,15 @@ against the diff text. An optional ``Domain.component_signals`` list of
 ``(component, [regex, ...])`` pairs (the released code's format) is honoured too,
 and the paper's generic structural signals (``Memory(``, ``skills/``,
 ``ToolRegistry``, ``subcall(`` ...) apply last.
+
+A domain that declares NO taxonomy at all (no ``components``, no ``component_signals``;
+e.g. a plain :class:`rsi.core.FunctionDomain`) gets ``trust_code_tags``: with no signal
+for the non-structural components, the released code's rule would re-tag every code edit
+as ``prompt``, so T_t collapses to {prompt} and every reserved exploration slot is
+rejected. In that mode a declared NON-structural tag is kept for a code (non-text-only)
+diff, and an unverifiable code edit defaults to ``control_flow``; structural tags still
+need the generic structural evidence, so novelty and reserved slots on K_str cannot be
+faked. Declare ``Domain.components`` to get the faithful evidence rule.
 """
 from __future__ import annotations
 
@@ -73,11 +82,12 @@ class Taxonomy:
 
     def __init__(self, components: Sequence[str] = tuple(K), structural: Sequence[str] = tuple(K_STR),
                  path_hints: Optional[dict[str, list[str]]] = None,
-                 signals: Optional[list[tuple[str, list[str]]]] = None) -> None:
+                 signals: Optional[list[tuple[str, list[str]]]] = None, *, trust_code_tags: bool = False) -> None:
         self.K = list(components)
         self.K_str = [c for c in structural if c in self.K]
         self.path_hints = {c: list(v) for c, v in (path_hints or {}).items() if c in self.K}
         self.signals = [(c, list(p)) for c, p in (signals or []) if c in self.K]
+        self.trust_code_tags = trust_code_tags
         # evaluation order: explicit domain regexes, then path hints (structural first, prompt last),
         # then the generic structural signals.
         order = self.K_str + [c for c in self.K if c not in self.K_str and c != "prompt"] + \
@@ -88,7 +98,8 @@ class Taxonomy:
     def from_domain(cls, domain) -> "Taxonomy":
         comps = dict(getattr(domain, "components", None) or {})
         if not comps:
-            return cls(K, K_STR, {}, list(getattr(domain, "component_signals", []) or []))
+            sig = list(getattr(domain, "component_signals", []) or [])
+            return cls(K, K_STR, {}, sig, trust_code_tags=not sig)
         structural = list(getattr(domain, "structural_components", ()) or [c for c in K_STR if c in comps])
         paths: dict[str, list[str]] = {}
         regs: list[tuple[str, list[str]]] = list(getattr(domain, "component_signals", []) or [])
@@ -122,13 +133,19 @@ class Taxonomy:
         for comp, pats in self.signals + self._generic():
             if comp == component and any(re.search(p, diff) for p in pats):
                 return True
+        if self.trust_code_tags and component in self.K and component not in self.K_str:
+            # taxonomy-less domain: nothing can refute a non-structural tag; keep it for a code change
+            return component == "prompt" or (bool(changed_lines(diff)) and not text_only(diff))
         return False
 
     def classify(self, diff: str) -> str:
-        """First matching component (domain signals, domain paths, generic); default ``prompt``."""
+        """First matching component (domain signals, domain paths, generic); default ``prompt``
+        (``control_flow`` for a code change on a taxonomy-less domain)."""
         default = "prompt" if "prompt" in self.K else self.K[0]
         if text_only(diff) and "prompt" in self.K:
             return "prompt"
+        if self.trust_code_tags and "control_flow" in self.K and changed_lines(diff):
+            default = "control_flow"
         for comp, pats in self.signals:
             if any(re.search(p, diff) for p in pats):
                 return comp

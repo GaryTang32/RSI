@@ -124,22 +124,41 @@ class DomainTask(DiscoveryTask):
     """Any :class:`rsi.core.Domain` as a discovery task.
 
     The score of a program is the mean task score ``S`` of the domain's ``evolve``
-    split (``k`` trials) with the frozen task LLM - graded only inside
-    ``Domain.grade``. ``fail_class`` is ``"ok"`` when at least one trial ran without
+    split (or ``train`` / ``val`` when it has no ``evolve``; never a sealed split;
+    ``k`` trials) with the frozen task LLM - graded only inside ``Domain.grade``. ``fail_class`` is ``"ok"`` when at least one trial ran without
     an execution error, ``"compile_other"`` when all crashed (repairable), and
     ``"env_error"`` when every trial hit an ``infra:`` backend error.
     """
 
-    def __init__(self, domain: Domain, seed: Artifact, llm_task: Optional[LLM] = None, *, split: str = "evolve",
+    def __init__(self, domain: Domain, seed: Artifact, llm_task: Optional[LLM] = None, *, split: Optional[str] = None,
                  k: int = 1, workers: int = 4, directions: Sequence[str] = (), editable: Optional[list[str]] = None,
                  cache_dir: Optional[str] = None) -> None:
         self.domain = domain
         self._seed = seed
         self.name = getattr(domain, "name", "domain")
-        self.split, self.k = split, k
+        self.split, self.k = self._decision_split(domain, split), k
         self.evaluator = Evaluator(domain, llm_task, workers=workers, cache_dir=cache_dir)
         self._directions = list(directions)
         self._editable = editable
+
+    @staticmethod
+    def _decision_split(domain: Domain, split: Optional[str]) -> str:
+        """The split the discovery score is computed on: ``split`` if given, else the first
+        non-empty decision split (``evolve``, then ``train``, then ``val``). Sealed splits
+        (holdout/ood/test) can never be chosen, and an empty split raises instead of
+        silently scoring every program 0 as a "successful" evaluation."""
+        splits = domain.tasks.splits
+        if split is None:
+            split = next((s for s in ("evolve", "train", "val") if splits.get(s)), None)
+            if split is None:
+                raise ValueError(f"domain {getattr(domain, 'name', '?')!r} has no non-empty decision split "
+                                 f"(evolve/train/val); splits: {sorted(splits)}")
+        if domain.tasks.is_sealed(split):
+            raise ValueError(f"split {split!r} is sealed: discovery decisions may not be made on it")
+        if not splits.get(split):
+            raise ValueError(f"split {split!r} of domain {getattr(domain, 'name', '?')!r} is empty or missing "
+                             f"(splits: {sorted(splits)})")
+        return split
 
     def describe(self) -> str:
         return self.domain.describe()

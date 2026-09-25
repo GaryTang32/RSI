@@ -248,33 +248,69 @@ SEARCH_SHAPES = [(120, 250, 10, 0.3), (200, 120, 15, 0.6)]
 CHECK_SHAPES = [(60, 90, 6, 0.4), (90, 60, 8, 0.7)]
 HOLDOUT_SHAPES = [(300, 400, 20, 0.5), (100, 600, 8, 0.2)]
 
+#: The timing harness runs in the sandbox next to the candidate. Hardening (the candidate must
+#: not be able to influence its own grade): the clock is bound and the result nonce is read from
+#: stdin BEFORE any candidate code runs; every timing repeat loads a fresh copy of the module and
+#: times a freshly perturbed copy of the data (so memoising results across repeats does not pay);
+#: the harness returns the raw coefficient paths of the check instances and the PARENT computes the
+#: objectives for the correctness gate; the process exits with os._exit right after writing the
+#: nonce-tagged result (no atexit hook of the candidate can append a forged one). This is
+#: accident-level isolation (rlimits, scratch dir), not a boundary against a determined adversary.
 _HARNESS = r'''
-import json, sys, time
-import numpy as np
-sys.path.insert(0, ".")
-data = np.load("instances.npz")
-meta = json.loads(open("meta.json").read())
-import candidate
-res = {"times": [], "objs": []}
-for i, m in enumerate(meta["timing"]):
-    X, y = data["tX%d" % i], data["ty%d" % i]
-    best = None
-    for _ in range(meta["repeats"]):
-        t0 = time.process_time()
-        candidate.lasso_path(X, y, m["lambdas"])
-        dt = time.process_time() - t0
-        best = dt if best is None else min(best, dt)
-    res["times"].append(best)
-for i, m in enumerate(meta["check"]):
-    X, y = data["cX%d" % i], data["cy%d" % i]
-    W = candidate.lasso_path(X, y, m["lambdas"])
-    objs = []
-    for w, lam in zip(W, m["lambdas"]):
-        w = np.asarray(w, dtype=float)
-        r = y - X @ w
-        objs.append(float(r @ r / (2 * X.shape[0]) + lam * np.abs(w).sum()))
-    res["objs"].append(objs)
-sys.stdout.write("\n__LASSO__" + json.dumps(res))
+import importlib.util, os, sys
+from json import dumps as _dumps, loads as _loads
+from time import process_time as _clock
+
+
+def _main(clock=_clock, dumps=_dumps, exit_=os._exit, write=os.write):
+    nonce = sys.stdin.readline().strip()            # read before any candidate code runs
+    out_fd = os.dup(1)
+    import numpy as np
+    sys.path.insert(0, ".")
+    data = np.load("instances.npz")
+    with open("meta.json") as f:
+        meta = _loads(f.read())
+
+    def fresh():
+        spec = importlib.util.spec_from_file_location("candidate", "candidate.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["candidate"] = mod
+        spec.loader.exec_module(mod)
+        return mod
+
+    try:
+        res = {"times": [], "paths": []}
+        for i, m in enumerate(meta["timing"]):
+            X0, y0 = np.array(data["tX%d" % i]), np.array(data["ty%d" % i])
+            best = None
+            for rep in range(meta["repeats"]):
+                fn = fresh().lasso_path                  # fresh module: no module-level memo survives
+                c = 1.0 + 1e-9 * (rep + 1)               # new bytes each repeat: a content-keyed cache misses
+                X, y = X0 * c, y0 * c
+                t0 = clock()
+                fn(X, y, list(m["lambdas"]))
+                dt = clock() - t0
+                if best is None or dt < best:
+                    best = dt
+            res["times"].append(best)
+        fn = fresh().lasso_path
+        for i, m in enumerate(meta["check"]):
+            X, y = np.array(data["cX%d" % i]), np.array(data["cy%d" % i])
+            W = fn(X, y, list(m["lambdas"]))
+            res["paths"].append([[float(v) for v in np.asarray(w, dtype=float).ravel()] for w in W])
+        msg = dumps(res)
+    except BaseException:  # noqa: BLE001
+        import traceback
+        sys.stderr.write(traceback.format_exc(limit=6))
+        sys.stderr.flush()
+        exit_(1)
+    buf = ("\n__LASSO_" + nonce + "__" + msg + "\n").encode()
+    while buf:
+        buf = buf[write(out_fd, buf):]
+    exit_(0)                                             # no candidate atexit hook runs after this
+
+
+_main()
 '''
 
 
@@ -336,25 +372,34 @@ class LassoPathDomain(ProgramDomain):
         return self._dirs[which]
 
     def _measure(self, code: str, which: str) -> tuple[Optional[dict], Optional[str], str]:
+        """Run the candidate: ``{"times": [...], "paths": [...]}`` (CPU seconds per timing instance,
+        coefficient paths of the check instances). Objectives are computed by the caller."""
         s = self.sets[which]
         if self.sandboxed:
+            import secrets
             import shutil
 
             src = Path(self._instance_dir(which))
             d = Path(tempfile.mkdtemp(prefix="lasso_run_"))
+            nonce = secrets.token_hex(16)
             try:
                 for f in ("instances.npz", "meta.json", "_lasso_eval.py"):
                     shutil.copy(src / f, d / f)
                 (d / "candidate.py").write_text(code)
                 rr = run_cmd([__import__("sys").executable, "_lasso_eval.py"], cwd=d, timeout_s=self.timeout_s,
-                             mem_mb=2048)
+                             mem_mb=2048, stdin=nonce + "\n")
             finally:
                 shutil.rmtree(d, ignore_errors=True)
             if rr.timed_out:
                 return None, f"timeout after {self.timeout_s}s", "timeout"
-            if "__LASSO__" not in rr.stdout:
-                return None, rr.tail(8)[-600:], "compile_other"
-            return json.loads(rr.stdout.rsplit("__LASSO__", 1)[1]), None, "ok"
+            marker = f"__LASSO_{nonce}__"
+            if rr.returncode != 0 or marker not in rr.stdout:
+                return None, rr.tail(8)[-600:] or "solver produced no result", "compile_other"
+            try:
+                out = json.loads(rr.stdout.split(marker, 1)[1].splitlines()[0])
+            except (json.JSONDecodeError, IndexError) as e:
+                return None, f"unreadable harness output: {e}", "compile_other"
+            return out, None, "ok"
         ns: dict = {"__name__": "candidate"}
         try:
             exec(compile(code, PROGRAM, "exec"), ns)  # noqa: S102 - trusted mock-agent programs
@@ -368,14 +413,24 @@ class LassoPathDomain(ProgramDomain):
                     dt = time.process_time() - t0
                     best = dt if best is None else min(best, dt)
                 times.append(best)
-            objs = []
-            for inst in s["check"]:
-                W = fn(inst["X"], inst["y"], inst["lambdas"])
-                objs.append([objective(inst["X"], inst["y"], np.asarray(w, float), lam)
-                             for w, lam in zip(W, inst["lambdas"])])
+            paths = [fn(inst["X"], inst["y"], inst["lambdas"]) for inst in s["check"]]
         except Exception as e:  # noqa: BLE001
             return None, f"{type(e).__name__}: {e}", "compile_other"
-        return {"times": times, "objs": objs}, None, "ok"
+        return {"times": times, "paths": paths}, None, "ok"
+
+    def _objectives(self, which: str, paths) -> list[list[float]]:
+        """Parent-side objectives F_k(w_k) of the returned paths (the locked correctness gate)."""
+        out = []
+        for inst, W in zip(self.sets[which]["check"], paths):
+            p = inst["X"].shape[1]
+            row = []
+            for w, lam in zip(W, inst["lambdas"]):
+                w = np.asarray(w, dtype=float).ravel()
+                if w.shape != (p,) or not np.all(np.isfinite(w)):
+                    raise ValueError(f"coefficient vector of shape {w.shape} (need ({p},), finite)")
+                row.append(objective(inst["X"], inst["y"], w, lam))
+            out.append(row)
+        return out
 
     def evaluate_split(self, artifact: Artifact, which: str = "search") -> EvalOutcome:
         code = artifact.get(PROGRAM)
@@ -389,9 +444,13 @@ class LassoPathDomain(ProgramDomain):
         refs = self.sets[which]["ref"]
         worst = -math.inf
         try:
-            for objs, ref in zip(res["objs"], refs):
-                if len(objs) != len(ref):
+            paths = res.get("paths") or []
+            if len(paths) != len(refs):
+                return EvalOutcome(0.0, True, False, "correctness", "missing coefficient paths", 0, 1, {}, dt)
+            for W, ref in zip(paths, refs):
+                if len(W) != len(ref):
                     return EvalOutcome(0.0, True, False, "correctness", "wrong number of path points", 0, 1, {}, dt)
+            for objs, ref in zip(self._objectives(which, paths), refs):
                 worst = max(worst, max(o - r for o, r in zip(objs, ref)))
         except (TypeError, ValueError) as e:
             return EvalOutcome(0.0, True, False, "correctness", f"bad output: {e}", 0, 1, {}, dt)

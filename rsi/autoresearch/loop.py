@@ -543,6 +543,19 @@ def make_agent(task: ResearchTask, llm_propose: Optional[LLM], *, editor: str = 
     return LLMResearchAgent(RewriteEditor(llm_propose))
 
 
+def agent_llms(agent: ResearchAgent) -> list[LLM]:
+    """The LLM backends an agent meters its calls on (``RewriteEditor.llm`` or
+    ``AgentEditor.cli``). ``AgentEditor`` meters on the *inner* ClaudeCLI, not on a
+    CachedLLM wrapper around it, so the loop must sum that meter for usage and
+    ``max_usd`` to see agent-editor calls."""
+    ed = getattr(agent, "editor", None)
+    out = [getattr(ed, "llm", None), getattr(ed, "cli", None)] if ed is not None else []
+    for sub in ("proposer", "fixer"):                    # composite agents (e.g. scripted proposals + LLM fixes)
+        if getattr(agent, sub, None) is not None and getattr(agent, sub) is not agent:
+            out += agent_llms(getattr(agent, sub))
+    return [l for l in out if isinstance(l, LLM)]
+
+
 def run(domain_or_task, seed_artifact: Optional[Artifact] = None, *, llm_task: Optional[LLM] = None,
         llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
         agent: Optional[ResearchAgent] = None, keep_rule: Optional[KeepRule] = None,
@@ -575,7 +588,10 @@ def run(domain_or_task, seed_artifact: Optional[Artifact] = None, *, llm_task: O
     else:
         task = domain_or_task
     ag = agent or make_agent(task, llm_propose, editor=editor, seed=cfg.seed, **(mock or {}))
-    llms = [llm_propose, llm_task if isinstance(task, DomainResearchTask) else None]
+    # meter every backend exactly once: the agent's own (the inner CLI for AgentEditor), else llm_propose
+    llms: list[Optional[LLM]] = agent_llms(ag) or [llm_propose]
+    if isinstance(task, DomainResearchTask) and llm_task is not None and all(llm_task is not l for l in llms):
+        llms.append(llm_task)
     if cfg.workers > 1:
         from .parallel import ParallelAutoresearchLoop
 

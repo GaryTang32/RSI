@@ -28,7 +28,7 @@ SHARES = {"generic": 0.20, "structural": 0.12, "narrow": 0.04, "leak": 0.06, "ob
 
 
 def main():
-    a = parse_args("E6: pruning directives", default_seeds=30)
+    a = parse_args("E6: pruning directives", default_seeds=50)   # 30 seeds: borderline checks flipped between realizations
     T = 10 if a.quick else 30
     arms = {"prune directives on": RegularizerSwitches.full(),
             "prune directives off": RegularizerSwitches.full().but(prune_directives=False, name="no_prune")}

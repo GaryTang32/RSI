@@ -108,6 +108,11 @@ object as JSON to `_rrsi_done.json`.)
 HISTORY_HDR = ("EDIT HISTORY L_t (every measured edit: component, hypothesis, Delta S, Delta C, accepted). "
                "A rejected mechanism is negative evidence; do not redraw it unchanged. An accepted one carries "
                "the gain it produced; refine what has known credit, not what merely preceded a rise.")
+HISTORY_HDR_MODE = {
+    "full": HISTORY_HDR,
+    "accepted_only": "EDIT HISTORY (the edits accepted into the harness: component, hypothesis, Delta S, Delta C).",
+    "none": "EDIT HISTORY (not shown in this run).",
+}
 SCOREBOARD_HDR = ("ATTRIBUTION SCOREBOARD (how past edits' predictions fared; unpredicted_regressions are tasks an "
                   "edit likely broke)")
 PRUNE_HDR = ("COMPONENTS TO PRUNE B_t (exercised, no strictly improving edit in the recent window; remove the "
@@ -197,10 +202,12 @@ class Proposer:
     """Draft one candidate from the incumbent under the RRSI directives."""
 
     def __init__(self, editor: Editor, taxonomy: Taxonomy, cfg, *, domain_brief: str = "",
-                 constitution: tuple[str, str] = ("", ""), editable: Optional[Sequence[str]] = None) -> None:
+                 constitution: tuple[str, str] = ("", ""), editable: Optional[Sequence[str]] = None,
+                 history_mode: str = "full") -> None:
         self.editor = editor
         self.tax = taxonomy
         self.cfg = cfg
+        self.history_hdr = HISTORY_HDR_MODE.get(history_mode, HISTORY_HDR)
         self.system = SYSTEM_TMPL.format(domain_brief=domain_brief, components=" | ".join(taxonomy.K))
         skill_md, patterns_md = constitution
         self.stable = "\n\n".join(["=== CONSTITUTION (SKILL.md) ===", skill_md,
@@ -224,7 +231,8 @@ class Proposer:
             "exploration_directives": "EXPLORATION DIRECTIVES E_t\n" + explore_text,
             "components_to_prune": PRUNE_HDR + "\n" + (json.dumps(prune_set, ensure_ascii=False, indent=1)
                                                        if prune_set else "(none)"),
-            "edit_history": HISTORY_HDR + "\n" + json.dumps(history_rows, ensure_ascii=False, indent=1, default=str),
+            "edit_history": self.history_hdr + "\n" + json.dumps(history_rows, ensure_ascii=False, indent=1,
+                                                                  default=str),
             "attribution_scoreboard": SCOREBOARD_HDR + "\n" + json.dumps(scoreboard or [], ensure_ascii=False, indent=1),
             "analysis_report": REPORT_HDR + "\n" + json.dumps(report, ensure_ascii=False, indent=1, default=str),
             "per_task_digests": json.dumps(digests or [], ensure_ascii=False, indent=1, default=str),
