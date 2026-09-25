@@ -51,11 +51,15 @@ def seed_harness() -> Artifact:
 
 def make_suite(scheme: str = "default") -> TaskSuite:
     """``default``: evolve = katas 0-2 of each class, holdout = 3-4.
-    ``hub``: evolve = 0-1, val = 2, test (hub bank) = 3-4."""
+    ``hub``: evolve = 0-1, val = 2, test (hub bank) = 3-4.
+    ``audit``: evolve = 0, val = 1, test (hub bank) = 2-3, holdout = 4 - every split a verified hub run needs
+    (practice, the consumer's quarantine tasks, a hub bank with >= 2 in-scope tasks per class, and a sealed
+    holdout the loop never reads) at the cost of tiny splits (5 katas per class)."""
     tasks, splits = [], {}
     by_cls = {c: [k for k in KATAS if k.cls == c] for c in CLASSES}
     layout = {"default": {"evolve": (0, 3), "holdout": (3, 5)},
-              "hub": {"evolve": (0, 2), "val": (2, 3), "test": (3, 5)}}[scheme]
+              "hub": {"evolve": (0, 2), "val": (2, 3), "test": (3, 5)},
+              "audit": {"evolve": (0, 1), "val": (1, 2), "test": (2, 4), "holdout": (4, 5)}}[scheme]
     for k in KATAS:
         tasks.append(Task(k.id, {"fn": k.fn, "signature": k.signature, "description": k.description,
                                  "public_tests": list(k.public)}, None, k.cls,
