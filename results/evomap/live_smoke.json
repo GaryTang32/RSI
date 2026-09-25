@@ -1,6 +1,6 @@
 {
  "experiment": "live_smoke",
- "generated_at": "2026-09-24 23:41:57",
+ "generated_at": "2026-09-25 00:46:20",
  "config": {
   "llm": "claude:haiku",
   "cycles": 8,
@@ -15,17 +15,17 @@
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
-   "composite": 0.66,
+   "composite": 0.0,
    "validation_ok": false
   },
   {
    "cycle": 2,
    "task_id": "money_total",
    "source": "generated",
-   "gene_id": "gene_decimal_fstring_format",
+   "gene_id": "gene_currency_integer_cents",
    "task_score": 0.0,
    "solidified": false,
-   "composite": 0.71,
+   "composite": 0.84,
    "validation_ok": false
   },
   {
@@ -35,18 +35,18 @@
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
-   "composite": 0.66,
+   "composite": 0.0,
    "validation_ok": false
   },
   {
    "cycle": 4,
    "task_id": "strip_accents",
-   "source": "none",
-   "gene_id": null,
+   "source": "local",
+   "gene_id": "gene_unicode_nfkc_casefold",
    "task_score": 1.0,
-   "solidified": false,
-   "composite": 0.66,
-   "validation_ok": false
+   "solidified": true,
+   "composite": 0.96,
+   "validation_ok": true
   },
   {
    "cycle": 5,
@@ -55,7 +55,7 @@
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
-   "composite": 0.66,
+   "composite": 0.0,
    "validation_ok": false
   },
   {
@@ -65,17 +65,17 @@
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
-   "composite": 0.66,
+   "composite": 0.0,
    "validation_ok": false
   },
   {
    "cycle": 7,
    "task_id": "same_text",
-   "source": "generated",
+   "source": "local",
    "gene_id": "gene_unicode_nfkc_casefold",
    "task_score": 1.0,
    "solidified": true,
-   "composite": 0.96,
+   "composite": 0.95,
    "validation_ok": true
   },
   {
@@ -85,7 +85,7 @@
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
-   "composite": 0.66,
+   "composite": 0.0,
    "validation_ok": false
   }
  ],
@@ -100,7 +100,7 @@
  "audit": {
   "ok": true,
   "problems": [],
-  "n_checked": 34
+  "n_checked": 40
  },
  "stop_reason": "max_rounds",
  "holdout": {
@@ -117,37 +117,37 @@
  "usage": {
   "task:cached": {
    "calls": 26,
-   "input_tokens": 24391,
-   "output_tokens": 41868,
-   "cost_usd": 0.23373100000000002,
-   "latency_s": 409.9202482700348,
-   "total_tokens": 66259
+   "input_tokens": 25073,
+   "output_tokens": 42675,
+   "cost_usd": 0.23844800000000002,
+   "latency_s": 418.4171438217163,
+   "total_tokens": 67748
   },
   "proposer": {
-   "calls": 2,
-   "input_tokens": 3269,
-   "output_tokens": 11457,
-   "cost_usd": 0.060554,
-   "latency_s": 116.68697333335876,
-   "total_tokens": 14726
+   "calls": 1,
+   "input_tokens": 1579,
+   "output_tokens": 4633,
+   "cost_usd": 0.024744,
+   "latency_s": 48.04370856285095,
+   "total_tokens": 6212
   },
   "task": {
-   "calls": 4,
-   "input_tokens": 4937,
-   "output_tokens": 6273,
-   "cost_usd": 0.036302,
-   "latency_s": 66.89154362678528,
-   "total_tokens": 11210
+   "calls": 3,
+   "input_tokens": 3672,
+   "output_tokens": 4999,
+   "cost_usd": 0.028666999999999998,
+   "latency_s": 52.953896284103394,
+   "total_tokens": 8671
   },
   "_total": {
-   "calls": 32,
-   "input_tokens": 32597,
-   "output_tokens": 59598,
-   "cost_usd": 0.330587,
-   "latency_s": 593.4987652301788,
-   "total_tokens": 92195
+   "calls": 30,
+   "input_tokens": 30324,
+   "output_tokens": 52307,
+   "cost_usd": 0.29185900000000004,
+   "latency_s": 519.4147486686707,
+   "total_tokens": 82631
   }
  },
- "wall_s": 171.4,
- "loop_wall_s": 146.7
+ "wall_s": 102.0,
+ "loop_wall_s": 101.8
 }

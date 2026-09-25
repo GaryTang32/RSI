@@ -13,6 +13,7 @@ or replaying a run costs nothing.
 from __future__ import annotations
 
 import json
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -172,8 +173,11 @@ class Evaluator:
                 return self._mem[key]
         p = self._cache_path(aid, tid, seed)
         if p and p.exists():
-            d = json.loads(p.read_text())
-            tr = Trial(**d)
+            try:
+                d = json.loads(p.read_text())
+                tr = Trial(**{k: v for k, v in d.items() if k in Trial.__dataclass_fields__})
+            except (OSError, ValueError, TypeError):
+                return None  # corrupt/foreign cache entry: re-run the trial (the entry is overwritten)
             with self._lock:
                 self._mem[key] = tr
             return tr
@@ -185,7 +189,9 @@ class Evaluator:
         p = self._cache_path(aid, tr.task_id, tr.seed)
         if p:
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(tr.to_json(max_trace=20000)))
+            tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+            tmp.write_text(json.dumps(tr.to_json(max_trace=20000)))
+            tmp.replace(p)  # atomic: a crash never leaves a half-written entry
 
     # ---- evaluation
     def run_one(self, artifact: Artifact, task: Task, seed: int) -> Trial:
@@ -212,13 +218,21 @@ class Evaluator:
         seeds: Optional[Sequence[int]] = None,
         label: Optional[str] = None,
     ) -> EvalResult:
+        """Run each task of ``split`` once per seed and aggregate.
+
+        ``split`` is a split name (sealed splits raise :class:`SealedSplitError`
+        unless ``allow_sealed``) or an explicit task list reported as ``label``.
+        Seeds are ``seeds`` or ``range(k)``; duplicate seeds / task ids are
+        dropped so every (task, seed) slot is filled exactly once.
+        """
         if isinstance(split, str):
             tasks = self.domain.tasks.split(split, allow_sealed=self.allow_sealed)
             split_name = split
         else:
             tasks = list(split)
             split_name = label or "custom"
-        seeds = list(seeds) if seeds is not None else list(range(k))
+        tasks = list({t.id: t for t in tasks}.values())
+        seeds = list(dict.fromkeys(seeds)) if seeds is not None else list(range(k))  # duplicates would leave empty slots
         jobs = [(t, s) for t in tasks for s in seeds]
         results: dict[str, list[Optional[Trial]]] = {t.id: [None] * len(seeds) for t in tasks}
         idx = {s: j for j, s in enumerate(seeds)}

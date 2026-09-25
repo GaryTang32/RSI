@@ -264,7 +264,10 @@ class World:
             eff = self._effects(base, coverage, fams)
             targets = tuple(f for f in fams if abs(eff[f]) >= 0.02)
             title = self._title(comp)
-            desc = kw.pop("desc", None) or (f"{title}; aimed at {', '.join(targets) or 'all'} tasks.")
+            # the text a proposer reads names practice families only: which mechanisms help the sealed OOD
+            # families is ground truth about a split the loop must never see
+            shown = [f for f in targets if f in c.practice_families]
+            desc = kw.pop("desc", None) or (f"{title}; aimed at {', '.join(shown) or 'general'} tasks.")
             m = Mechanism(f"{kind[:3]}_{i:02d}" if kind not in ("obfuscated_leak",) else f"obf_{i:02d}", kind, comp,
                           title, desc, eff, cost=cost, targets=targets, **kw)
             self._add(m)

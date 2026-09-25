@@ -1,10 +1,16 @@
 """E2 (+E2b) - ablation table mirroring the paper's Table 2 (overview "What each group of guards contributes").
 
 Arms on HarnessWorld (same proposer / budget / seeds): H_0, no guards at all (unregularized
-evolution), without proposal guards, without acceptance guards, full RRSI; plus the
-compute-matched E2b arms (budget-only, selector-only) that probe the third-party claim
-that the annealed budget alone explains most of the OOD gain, and a sensitivity variant
-that counts pruning in the proposal group instead of the acceptance group.
+evolution), without proposal guards, without acceptance guards, full RRSI; plus the E2b arms
+(budget-only, selector-only) that probe the third-party claim that the annealed budget alone
+explains most of the OOD gain, and a sensitivity variant that counts pruning in the proposal
+group instead of the acceptance group.
+
+Matching (spec E2b asks for both): every arm above drafts the same T x m candidates and
+spends the same evaluation rollouts (reported under "compute"), i.e. arms are matched on
+candidate count. Arms with a critic spend MORE search-LLM tokens (critic calls + repairs), so a
+second pass re-runs the critic-free arms (no guards, budget-only) with T scaled up until their
+mean search-LLM tokens match full RRSI's ("token-matched").
 
 Paper (workspace): unregularized 92.8 / 88.9 / 40.3 / 3.80M; -proposal 90.7 / 88.8 / 41.9 /
 2.69M; -acceptance 91.5 / 88.7 / 41.0 / 3.59M; full 90.5 / 89.2 / 43.6 / 2.42M
@@ -43,12 +49,29 @@ def main():
     jobs = [{"seed": s, "arm": sw, "label": lab, "cfg": {"T": T}, "llm": a.llm}
             for s in range(a.seeds) for lab, sw in ARMS.items()]
     rows = pmap(run_hw, jobs, a.workers if a.llm == "sim" else 1)
+    # E2b second matching: critic-free arms get more rounds until their search-LLM tokens match full RRSI's
+    tok = {lab: sum(r["search_tokens"] for r in rows if r["label"] == lab) / max(1, sum(r["label"] == lab for r in rows))
+           for lab in ARMS}
+    matched = {}
+    for lab in ("no guards (unregularized)", "E2b budget-only"):
+        ratio = tok["full RRSI"] / max(1.0, tok[lab])
+        T_m = max(T, min(4 * T, int(round(T * ratio))))
+        matched[f"{lab} [token-matched, T={T_m}]"] = (ARMS[lab], T_m, ratio)
+    jobs2 = [{"seed": s, "arm": sw, "label": lab, "cfg": {"T": T_m}, "llm": a.llm}
+             for s in range(a.seeds) for lab, (sw, T_m, _) in matched.items()]
+    rows += pmap(run_hw, jobs2, a.workers if a.llm == "sim" else 1)
     metrics = ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain", "unseen_gain", "token_ratio",
-               "n_accepted", "hitchhiker_rate", "leaks_in_final", "n_mechanisms")
+               "n_accepted", "hitchhiker_rate", "leaks_in_final", "n_mechanisms", "n_rollouts", "search_tokens")
     summ = summarize(rows, metrics=metrics)
     full = "full RRSI"
     vs_full = {lab: {m: paired(rows, full, lab, m) for m in ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain",
-                                                             "token_ratio")} for lab in ARMS if lab != full}
+                                                             "token_ratio")} for lab in list(ARMS) + list(matched)
+               if lab != full}
+    compute = {lab: {"rollouts": summ[lab]["n_rollouts"]["mean"], "search_tokens": summ[lab]["search_tokens"]["mean"],
+                     "proposer_calls": sum((r["usage_calls"].get("proposer") or 0) for r in rows if r["label"] == lab)
+                     / max(1, sum(r["label"] == lab for r in rows)),
+                     "critic_calls": sum((r["usage_calls"].get("critic") or 0) for r in rows if r["label"] == lab)
+                     / max(1, sum(r["label"] == lab for r in rows))} for lab in summ}
     main_arms = ["no guards (unregularized)", "without proposal guards", "without acceptance guards"]
     checks = {}
     for lab in main_arms:
@@ -60,17 +83,31 @@ def main():
     checks["no guards most expensive"] = summ["no guards (unregularized)"]["token_ratio"]["mean"] == max(
         summ[l]["token_ratio"]["mean"] for l in main_arms + [full])
     table = []
-    for lab in ARMS:
+    for lab in list(ARMS) + list(matched):
         s = summ[lab]
         table.append({"variant": lab, "measured_evolve_pts": fmt(s["measured_gain"]), "true_evolve_pts": fmt(s["evolve_gain"]),
                       "true_heldout_pts": fmt(s["holdout_gain"]), "true_ood_pts": fmt(s["ood_gain"]),
                       "tokens_x_H0": f"{s['token_ratio']['mean']:.2f} [{s['token_ratio']['lo']:.2f}, {s['token_ratio']['hi']:.2f}]",
                       "paper (practised, held-out, unseen, tokens M)": PAPER.get(lab)})
     budget_vs_selector = {m: paired(rows, "E2b budget-only", "E2b selector-only", m) for m in ("ood_gain", "unseen_gain")}
+    bo_tm = next(k for k in matched if k.startswith("E2b budget-only"))
+    budget_vs_selector_token_matched = {m: paired(rows, bo_tm, "E2b selector-only", m) for m in ("ood_gain", "unseen_gain")}
+    # E2b is an open question, not a paper claim: reported, not part of the verdict
+    e2b = {"selector-only beats budget-only on OOD (candidate-matched)": budget_vs_selector["ood_gain"]["lo"] > 0,
+           "selector-only beats budget-only on OOD (search-token-matched)":
+               budget_vs_selector_token_matched["ood_gain"]["lo"] > 0,
+           "budget-only ~ full on OOD (the third-party hypothesis)": vs_full["E2b budget-only"]["ood_gain"]["lo"] > -0.02}
     out = {"experiment": "E2 ablations (+E2b)", "config": {"T": T, "seeds": a.seeds, "llm": a.llm,
                                                            "arms": {k: v.to_json() for k, v in ARMS.items()}},
+           "matching": {"candidate_matched": "all arms in 'config.arms': same T x m drafts and evaluation rollouts",
+                        "token_matched": {k: {"T": v[1], "search_token_ratio_full_over_arm_at_T": v[2]}
+                                          for k, v in matched.items()}},
+           "compute": compute,
            "table": table, "summary": summ, "paired_vs_full": vs_full, "E2b_selector_minus_budget": budget_vs_selector,
-           "checks": checks,
+           "E2b_selector_minus_budget_token_matched": budget_vs_selector_token_matched,
+           "note": "'E2b selector-only' uses exactly the switches of 'without proposal guards' (same seeds), so the "
+                   "two rows coincide by construction.",
+           "checks": checks, "E2b_findings": e2b,
            "verdict": ("REPRODUCED" if all(checks.values()) else
                        "PARTIAL - not met: " + "; ".join(k for k, v in checks.items() if not v)),
            "rows": strip_curves(rows)}

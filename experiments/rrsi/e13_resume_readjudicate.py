@@ -3,7 +3,8 @@
 (a) Kill / resume. For each seed an uninterrupted reference run is compared with runs that
     are hard-killed (an exception raised from a hook) at different points - after the
     baseline, after drafting a variant, after evaluating it, between history records, after a
-    round settled - and then resumed by a fresh process (new objects, same directory). The
+    round settled - and then resumed by a FRESH OS PROCESS (a subprocess with a different
+    PYTHONHASHSEED, so set-ordering or other per-process state cannot hide). The
     ledgers must be identical: history.jsonl and attribution.jsonl byte-for-byte (timestamps
     off), frontier.json, every round's decisions.json, and the final state of every node of
     the rsi.core Ledger tree.
@@ -17,7 +18,9 @@ Domains: HarnessWorld (mock proposer) and AgentQA (SimModel + scripted proposer)
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -49,6 +52,16 @@ def make_run(kind: str, seed: int, out: Path, llm_spec: str, T: int, hooks=None)
                    llm_propose=search_llm(llm_spec, agentqa=True), config=cfg, hooks=hooks)
 
 
+def resume_in_subprocess(kind: str, seed: int, out: Path, llm_spec: str, T: int, hash_seed: int) -> str:
+    """Resume the killed run in a new OS process (different PYTHONHASHSEED); returns the stop reason."""
+    env = dict(os.environ, PYTHONHASHSEED=str(hash_seed))
+    p = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--resume-worker", kind, str(seed), str(out),
+                        llm_spec, str(T)], capture_output=True, text=True, env=env, timeout=3600)
+    if p.returncode != 0:
+        raise RuntimeError(f"resume worker failed: {p.stderr[-2000:]}")
+    return p.stdout.strip().splitlines()[-1]
+
+
 def snapshot(d: Path) -> dict:
     led = Ledger(d / "ledger.jsonl")
     nodes = {n.id: {k: v for k, v in n.to_json().items() if k != "t"} for n in led.nodes()}
@@ -78,10 +91,9 @@ def one(job: dict) -> dict:
             drive(rk)
         except Killed:
             killed = True
-        rr = make_run(kind, seed, d, llm, T)          # fresh process
-        stop = drive(rr)
+        stop = resume_in_subprocess(kind, seed, d, llm, T, hash_seed=7919 + 31 * seed + len(kills))
         snap = snapshot(d)
-        kills[f"{ev}@{t}{v or ''}"] = {"killed": killed, "stop": stop,
+        kills[f"{ev}@{t}{v or ''}"] = {"killed": killed, "stop": stop, "resumed_in": "subprocess",
                                        "identical": {k: snap[k] == ref[k] for k in ref}}
     # readjudicate on a copy of the reference run
     re = {}
@@ -125,6 +137,10 @@ def one(job: dict) -> dict:
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--resume-worker":           # child process of resume_in_subprocess
+        kind, seed, out, llm, T = sys.argv[2], int(sys.argv[3]), Path(sys.argv[4]), sys.argv[5], int(sys.argv[6])
+        print(drive(make_run(kind, seed, out, llm, T)))
+        return
     a = parse_args("E13: kill/resume and readjudicate", default_seeds=5)
     T_hw, T_aq = (6, 4) if a.quick else (10, 6)
     jobs = [{"kind": "harnessworld", "seed": s, "T": T_hw, "llm": a.llm} for s in range(a.seeds)]

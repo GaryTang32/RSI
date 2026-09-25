@@ -1,8 +1,8 @@
 {
  "experiment": "E13 kill/resume + readjudicate",
  "config": {
-  "T_harnessworld": 10,
-  "T_agentqa": 6,
+  "T_harnessworld": 6,
+  "T_agentqa": 4,
   "kills": [
    [
     "baseline",
@@ -33,21 +33,22 @@
   "llm": "sim"
  },
  "checks": {
-  "every kill actually interrupted the run": true,
-  "resumed ledgers identical to uninterrupted runs": true,
+  "every kill actually interrupted the run": false,
+  "resumed ledgers identical to uninterrupted runs": false,
   "readjudicate spends no evaluation": true,
   "readjudicate leaves measurements unchanged (only Algorithm 2 outcomes change)": true
  },
- "verdict": "REPRODUCED",
+ "verdict": "NOT MET: every kill actually interrupted the run; resumed ledgers identical to uninterrupted runs",
  "rows": [
   {
    "kind": "harnessworld",
    "seed": 0,
-   "T": 10,
+   "T": 6,
    "kills": {
     "baseline@None": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -59,6 +60,7 @@
     "drafted@3B": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -70,6 +72,7 @@
     "evaluated@2": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -81,6 +84,7 @@
     "recorded@4A": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -92,6 +96,7 @@
     "settled@5": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -103,8 +108,8 @@
    },
    "readjudicate": {
     "delta x0.5": {
-     "delta_old": 0.014289,
-     "delta_new": 0.0071445,
+     "delta_old": 0.01594,
+     "delta_new": 0.00797,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
      "verdicts_changed": 0,
@@ -112,30 +117,30 @@
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.4591 < S*-delta=0.5038 (S* 0.5181 - delta 0.014"
+       "cost rule failed: within band: shaped=-0.820 (<= 0)"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5150 >= S*-delta=0.5038; within band: shaped=+0.225 (> 0)"
+       false,
+       "below noise-adjusted floor: S'=0.4041 < S*-delta=0.4747 (S* 0.4906 - delta 0.015"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.4591 < S*-delta=0.5110 (S* 0.5181 - delta 0.007"
+       "below noise-adjusted floor: S'=0.4788 < S*-delta=0.4827 (S* 0.4906 - delta 0.008"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5150 >= S*-delta=0.5110; within band: shaped=+0.225 (> 0)"
+       false,
+       "below noise-adjusted floor: S'=0.4041 < S*-delta=0.4827 (S* 0.4906 - delta 0.008"
       ]
      ]
     },
     "delta x2.0": {
-     "delta_old": 0.014289,
-     "delta_new": 0.028578,
+     "delta_old": 0.01594,
+     "delta_new": 0.03188,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
      "verdicts_changed": 0,
@@ -143,24 +148,160 @@
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.4591 < S*-delta=0.5038 (S* 0.5181 - delta 0.014"
+       "cost rule failed: within band: shaped=-0.820 (<= 0)"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5150 >= S*-delta=0.5038; within band: shaped=+0.225 (> 0)"
+       false,
+       "below noise-adjusted floor: S'=0.4041 < S*-delta=0.4747 (S* 0.4906 - delta 0.015"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.4591 < S*-delta=0.4895 (S* 0.5181 - delta 0.028"
+       "cost rule failed: within band: shaped=-0.820 (<= 0)"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5150 >= S*-delta=0.4895; within band: shaped=+0.225 (> 0)"
+       false,
+       "below noise-adjusted floor: S'=0.4041 < S*-delta=0.4587 (S* 0.4906 - delta 0.031"
+      ]
+     ]
+    }
+   },
+   "counterfactual_flips": {
+    "delta x0.5": 2,
+    "delta x2.0": 1
+   },
+   "decisions_total": 12
+  },
+  {
+   "kind": "harnessworld",
+   "seed": 1,
+   "T": 6,
+   "kills": {
+    "baseline@None": {
+     "killed": true,
+     "stop": "max_rounds",
+     "resumed_in": "subprocess",
+     "identical": {
+      "history": true,
+      "attribution": true,
+      "frontier": true,
+      "decisions": true,
+      "ledger_nodes": true
+     }
+    },
+    "drafted@3B": {
+     "killed": true,
+     "stop": "max_rounds",
+     "resumed_in": "subprocess",
+     "identical": {
+      "history": true,
+      "attribution": true,
+      "frontier": true,
+      "decisions": true,
+      "ledger_nodes": true
+     }
+    },
+    "evaluated@2": {
+     "killed": true,
+     "stop": "max_rounds",
+     "resumed_in": "subprocess",
+     "identical": {
+      "history": true,
+      "attribution": true,
+      "frontier": true,
+      "decisions": true,
+      "ledger_nodes": true
+     }
+    },
+    "recorded@4A": {
+     "killed": true,
+     "stop": "max_rounds",
+     "resumed_in": "subprocess",
+     "identical": {
+      "history": true,
+      "attribution": true,
+      "frontier": true,
+      "decisions": true,
+      "ledger_nodes": true
+     }
+    },
+    "settled@5": {
+     "killed": true,
+     "stop": "max_rounds",
+     "resumed_in": "subprocess",
+     "identical": {
+      "history": true,
+      "attribution": true,
+      "frontier": true,
+      "decisions": true,
+      "ledger_nodes": true
+     }
+    }
+   },
+   "readjudicate": {
+    "delta x0.5": {
+     "delta_old": 0.017023,
+     "delta_new": 0.0085115,
+     "rollouts_spent": 0,
+     "measurements_unchanged": true,
+     "verdicts_changed": 0,
+     "before": [
+      [
+       "A",
+       false,
+       "cost rule failed: within band: shaped=-7.399 (<= 0)"
+      ],
+      [
+       "B",
+       false,
+       "cost rule failed: within band: shaped=-2.884 (<= 0)"
+      ]
+     ],
+     "after": [
+      [
+       "A",
+       false,
+       "cost rule failed: within band: shaped=-7.399 (<= 0)"
+      ],
+      [
+       "B",
+       false,
+       "cost rule failed: within band: shaped=-2.884 (<= 0)"
+      ]
+     ]
+    },
+    "delta x2.0": {
+     "delta_old": 0.017023,
+     "delta_new": 0.034046,
+     "rollouts_spent": 0,
+     "measurements_unchanged": true,
+     "verdicts_changed": 0,
+     "before": [
+      [
+       "A",
+       false,
+       "cost rule failed: within band: shaped=-7.399 (<= 0)"
+      ],
+      [
+       "B",
+       false,
+       "cost rule failed: within band: shaped=-2.884 (<= 0)"
+      ]
+     ],
+     "after": [
+      [
+       "A",
+       false,
+       "cost rule failed: within band: shaped=-7.399 (<= 0)"
+      ],
+      [
+       "B",
+       false,
+       "cost rule failed: within band: shaped=-2.884 (<= 0)"
       ]
      ]
     }
@@ -169,562 +310,41 @@
     "delta x0.5": 0,
     "delta x2.0": 0
    },
-   "decisions_total": 20
-  },
-  {
-   "kind": "harnessworld",
-   "seed": 1,
-   "T": 10,
-   "kills": {
-    "baseline@None": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "drafted@3B": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "evaluated@2": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "recorded@4A": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "settled@5": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    }
-   },
-   "readjudicate": {
-    "delta x0.5": {
-     "delta_old": 0.015757,
-     "delta_new": 0.0078785,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       true,
-       "admissible: S'=0.5641 >= S*-delta=0.5283; dC=+0.070 <= beta0+beta1*dS=0.900"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.4978 < S*-delta=0.5283 (S* 0.5441 - delta 0.015"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       true,
-       "admissible: S'=0.5641 >= S*-delta=0.5362; dC=+0.070 <= beta0+beta1*dS=0.900"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.4978 < S*-delta=0.5362 (S* 0.5441 - delta 0.007"
-      ]
-     ]
-    },
-    "delta x2.0": {
-     "delta_old": 0.015757,
-     "delta_new": 0.031514,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       true,
-       "admissible: S'=0.5641 >= S*-delta=0.5283; dC=+0.070 <= beta0+beta1*dS=0.900"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.4978 < S*-delta=0.5283 (S* 0.5441 - delta 0.015"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       true,
-       "admissible: S'=0.5641 >= S*-delta=0.5125; within band: shaped=+1.957 (> 0)"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.4978 < S*-delta=0.5125 (S* 0.5441 - delta 0.031"
-      ]
-     ]
-    }
-   },
-   "counterfactual_flips": {
-    "delta x0.5": 0,
-    "delta x2.0": 1
-   },
-   "decisions_total": 20
-  },
-  {
-   "kind": "harnessworld",
-   "seed": 2,
-   "T": 10,
-   "kills": {
-    "baseline@None": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "drafted@3B": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "evaluated@2": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "recorded@4A": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "settled@5": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    }
-   },
-   "readjudicate": {
-    "delta x0.5": {
-     "delta_old": 0.015276,
-     "delta_new": 0.007638,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "cost rule failed: within band: shaped=-15.390 (<= 0)"
-      ],
-      [
-       "B",
-       false,
-       "cost rule failed: within band: shaped=-9.143 (<= 0)"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "cost rule failed: within band: shaped=-15.390 (<= 0)"
-      ],
-      [
-       "B",
-       false,
-       "cost rule failed: dC=+0.710 > beta0+beta1*dS=0.700"
-      ]
-     ]
-    },
-    "delta x2.0": {
-     "delta_old": 0.015276,
-     "delta_new": 0.030552,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "cost rule failed: within band: shaped=-15.390 (<= 0)"
-      ],
-      [
-       "B",
-       false,
-       "cost rule failed: within band: shaped=-9.143 (<= 0)"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "cost rule failed: within band: shaped=-15.390 (<= 0)"
-      ],
-      [
-       "B",
-       false,
-       "cost rule failed: within band: shaped=-9.143 (<= 0)"
-      ]
-     ]
-    }
-   },
-   "counterfactual_flips": {
-    "delta x0.5": 0,
-    "delta x2.0": 2
-   },
-   "decisions_total": 20
-  },
-  {
-   "kind": "harnessworld",
-   "seed": 3,
-   "T": 10,
-   "kills": {
-    "baseline@None": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "drafted@3B": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "evaluated@2": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "recorded@4A": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "settled@5": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    }
-   },
-   "readjudicate": {
-    "delta x0.5": {
-     "delta_old": 0.018016,
-     "delta_new": 0.009008,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5884 < S*-delta=0.6173 (S* 0.6353 - delta 0.018"
-      ],
-      [
-       "B",
-       true,
-       "admissible: S'=0.6791 >= S*-delta=0.6173; dC=+0.142 <= beta0+beta1*dS=1.850"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5884 < S*-delta=0.6263 (S* 0.6353 - delta 0.009"
-      ],
-      [
-       "B",
-       true,
-       "admissible: S'=0.6791 >= S*-delta=0.6263; dC=+0.142 <= beta0+beta1*dS=1.850"
-      ]
-     ]
-    },
-    "delta x2.0": {
-     "delta_old": 0.018016,
-     "delta_new": 0.036032,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5884 < S*-delta=0.6173 (S* 0.6353 - delta 0.018"
-      ],
-      [
-       "B",
-       true,
-       "admissible: S'=0.6791 >= S*-delta=0.6173; dC=+0.142 <= beta0+beta1*dS=1.850"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5884 < S*-delta=0.5993 (S* 0.6353 - delta 0.036"
-      ],
-      [
-       "B",
-       true,
-       "admissible: S'=0.6791 >= S*-delta=0.5993; dC=+0.142 <= beta0+beta1*dS=1.850"
-      ]
-     ]
-    }
-   },
-   "counterfactual_flips": {
-    "delta x0.5": 0,
-    "delta x2.0": 1
-   },
-   "decisions_total": 20
-  },
-  {
-   "kind": "harnessworld",
-   "seed": 4,
-   "T": 10,
-   "kills": {
-    "baseline@None": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "drafted@3B": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "evaluated@2": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "recorded@4A": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    },
-    "settled@5": {
-     "killed": true,
-     "stop": "max_rounds",
-     "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
-     }
-    }
-   },
-   "readjudicate": {
-    "delta x0.5": {
-     "delta_old": 0.016241,
-     "delta_new": 0.0081205,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5716 < S*-delta=0.6025 (S* 0.6188 - delta 0.016"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.5950 < S*-delta=0.6025 (S* 0.6188 - delta 0.016"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5716 < S*-delta=0.6106 (S* 0.6188 - delta 0.008"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.5950 < S*-delta=0.6106 (S* 0.6188 - delta 0.008"
-      ]
-     ]
-    },
-    "delta x2.0": {
-     "delta_old": 0.016241,
-     "delta_new": 0.032482,
-     "rollouts_spent": 0,
-     "measurements_unchanged": true,
-     "verdicts_changed": 0,
-     "before": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5716 < S*-delta=0.6025 (S* 0.6188 - delta 0.016"
-      ],
-      [
-       "B",
-       false,
-       "below noise-adjusted floor: S'=0.5950 < S*-delta=0.6025 (S* 0.6188 - delta 0.016"
-      ]
-     ],
-     "after": [
-      [
-       "A",
-       false,
-       "below noise-adjusted floor: S'=0.5716 < S*-delta=0.5863 (S* 0.6188 - delta 0.032"
-      ],
-      [
-       "B",
-       false,
-       "cost rule failed: within band: shaped=-2.409 (<= 0)"
-      ]
-     ]
-    }
-   },
-   "counterfactual_flips": {
-    "delta x0.5": 0,
-    "delta x2.0": 1
-   },
-   "decisions_total": 20
+   "decisions_total": 12
   },
   {
    "kind": "agentqa",
    "seed": 0,
-   "T": 6,
+   "T": 4,
    "kills": {
     "baseline@None": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
-      "history": true,
-      "attribution": true,
-      "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
+      "history": false,
+      "attribution": false,
+      "frontier": false,
+      "decisions": false,
+      "ledger_nodes": false
      }
     },
     "drafted@3B": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
-      "history": true,
-      "attribution": true,
+      "history": false,
+      "attribution": false,
       "frontier": true,
-      "decisions": true,
-      "ledger_nodes": true
+      "decisions": false,
+      "ledger_nodes": false
      }
     },
     "evaluated@2": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -734,8 +354,9 @@
      }
     },
     "recorded@4A": {
-     "killed": true,
+     "killed": false,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -745,8 +366,9 @@
      }
     },
     "settled@5": {
-     "killed": true,
+     "killed": false,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -821,19 +443,20 @@
     }
    },
    "counterfactual_flips": {
-    "delta x0.5": 0,
+    "delta x0.5": 1,
     "delta x2.0": 0
    },
-   "decisions_total": 12
+   "decisions_total": 8
   },
   {
    "kind": "agentqa",
    "seed": 1,
-   "T": 6,
+   "T": 4,
    "kills": {
     "baseline@None": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -845,6 +468,7 @@
     "drafted@3B": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -856,6 +480,7 @@
     "evaluated@2": {
      "killed": true,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -865,8 +490,9 @@
      }
     },
     "recorded@4A": {
-     "killed": true,
+     "killed": false,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -876,8 +502,9 @@
      }
     },
     "settled@5": {
-     "killed": true,
+     "killed": false,
      "stop": "max_rounds",
+     "resumed_in": "subprocess",
      "identical": {
       "history": true,
       "attribution": true,
@@ -955,7 +582,7 @@
     "delta x0.5": 0,
     "delta x2.0": 0
    },
-   "decisions_total": 12
+   "decisions_total": 8
   }
  ]
 }

@@ -65,7 +65,7 @@ def render_harness(base: str = "direct", lookup: bool = False, checker: bool = F
                   "        r = llm(prompt, system=system)",
                   "        ls = [l for l in r.strip().splitlines() if l.strip()]",
                   "        finals.append(ls[-1] if ls else '')",
-                  "    reply = max(set(finals), key=finals.count)"]
+                  "    reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)"]
     else:
         lines += ["    reply = llm(prompt, system=system)"]
     if checker:
@@ -246,7 +246,7 @@ class AgentQAMockLLM(MockLLM):
         if repair:
             brief = P["task"].split("=== REVIEWER OBJECTIONS ===", 1)[-1]
             declared = re.findall(r"\[(aq:[a-z_]+)\]", brief)
-            flagged = {x for x in declared if self.ideas.get(x) and self.ideas[x].kind == "leak"}
+            flagged = [x for x in dict.fromkeys(declared) if self.ideas.get(x) and self.ideas[x].kind == "leak"]
             files_upd: dict = {}
             for x in flagged:
                 u = self.ideas[x].revert(files) if self.ideas[x].revert else None

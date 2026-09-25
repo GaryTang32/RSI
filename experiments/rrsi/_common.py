@@ -129,6 +129,7 @@ def analyze_hw(dom, out_dir: Path, res=None, weak=None) -> dict:
         if r.get("edit_id"):
             cands.setdefault((r["t"], r["variant"]), []).append(r)
     n_eval = n_leak_eval = n_crit = n_acc = hitch = n_prune_acc = n_null_eval = n_null_gain = 0
+    n_null_eval0 = n_null_gain0 = 0              # round 0 only: the reference H_0 measurement is unselected
     edit_pairs = []           # (recorded dS, true marginal) per measured edit
     by_round_inc = {x["t"]: store.get(x["artifact_id"]) for x in traj}
     for (t, v), rs in sorted(cands.items()):
@@ -169,13 +170,17 @@ def analyze_hw(dom, out_dir: Path, res=None, weak=None) -> dict:
                 n_null_eval += 1
                 d_t = json.loads((out_dir / f"r{t}" / "directives.json").read_text())["delta"]
                 n_null_gain += rs[0]["delta_S"] > d_t
+                if t == 0:
+                    n_null_eval0 += 1
+                    n_null_gain0 += rs[0]["delta_S"] > d_t
             if rs[0]["accepted"]:
                 n_acc += 1
                 hitch += harmful
                 n_prune_acc += sum(1 for e in edits if e.get("prune"))
     m.update({"n_evaluated": n_eval, "n_critic_reject": n_crit, "evals_on_leaky": n_leak_eval, "n_accepted": n_acc,
               "hitchhiker_rate": hitch / n_acc if n_acc else 0.0, "prune_accepted": n_prune_acc,
-              "null_candidates": n_null_eval, "null_false_gain": n_null_gain})
+              "null_candidates": n_null_eval, "null_false_gain": n_null_gain,
+              "null_candidates_r0": n_null_eval0, "null_false_gain_r0": n_null_gain0})
     if len(edit_pairs) >= 3:
         rec, tru = [p[0] for p in edit_pairs], [p[1] for p in edit_pairs]
         m["credit_corr"] = spearman(rec, tru) if np.std(rec) > 0 and np.std(tru) > 0 else float("nan")
@@ -189,6 +194,9 @@ def analyze_hw(dom, out_dir: Path, res=None, weak=None) -> dict:
         else fr["config"].get("delta")
     if res is not None:
         m["usage_calls"] = {k: v.get("calls") for k, v in res.usage.items()}
+        # tokens of the SEARCH roles (proposer, critic, analyst, digesters), i.e. the method's own LLM compute
+        m["search_tokens"] = sum(v.get("total_tokens", 0) for k, v in res.usage.items()
+                                 if k != "_total" and not k.startswith("task"))
         m["n_rollouts"] = res.meta.get("n_rollouts")
     return m
 

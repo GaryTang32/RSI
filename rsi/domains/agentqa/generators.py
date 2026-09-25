@@ -170,7 +170,7 @@ def _units(rng: random.Random):
     if kind == 0:
         ft, inch = rng.randint(3, 40), rng.randint(0, 11)
         q = f"Convert {ft} feet {inch} inches to centimeters (1 inch = 2.54 cm exactly). Round to the nearest integer."
-        ans = round((ft * 12 + inch) * 2.54)
+        ans = ((ft * 12 + inch) * 254 + 50) // 100  # exact, halves round up (float round() gave 190 for 190.5)
     elif kind == 1:
         h, m, s = rng.randint(1, 30), rng.randint(0, 59), rng.randint(0, 59)
         q = f"How many seconds are in {h} hours, {m} minutes and {s} seconds?"
@@ -222,3 +222,41 @@ def make_suite(
             add("ood", fam, rng, i)
     splits["smoke"] = splits["evolve"][:2]
     return TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
+
+
+def decontaminate(suite: TaskSuite) -> TaskSuite:
+    """Copy of ``suite`` without repeated questions.
+
+    Some question kinds have a small space (e.g. factorial digit sums: 46
+    values), so independently drawn splits can share a question - with seed 0
+    one holdout task repeats an evolve task. This drops tasks whose question text
+    already appeared in a decision split (evolve, then train/val) or earlier in
+    the same split; ``smoke`` keeps its surviving evolve tasks and sealed splits
+    stay sealed. Opt-in, so the default :func:`make_suite` output (and every
+    result built on it) is unchanged.
+    """
+    decision = [s for s in ("evolve", "train", "val") if s in suite.splits]
+    order = decision + [s for s in suite.splits if s not in decision and s != "smoke"]
+    seen_decision: set = set()
+    splits: dict[str, list[str]] = {}
+    for name in order:
+        seen_here: set = set()
+        keep = []
+        for tid in suite.splits[name]:
+            q = suite.tasks[tid].input
+            key = q if isinstance(q, str) else repr(q)
+            if key in seen_here or key in seen_decision:
+                continue
+            seen_here.add(key)
+            keep.append(tid)
+        splits[name] = keep
+        if name in decision:
+            seen_decision |= seen_here
+    if "smoke" in suite.splits:
+        kept = set(splits.get("evolve", []))
+        splits["smoke"] = [t for t in suite.splits["smoke"] if t in kept]
+    out = TaskSuite(suite.tasks.values(), {k: splits[k] for k in suite.splits}, name=suite.name)
+    for name in suite.splits:
+        if not suite.is_sealed(name):
+            out.unseal(name)
+    return out

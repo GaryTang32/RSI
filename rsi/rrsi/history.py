@@ -42,23 +42,29 @@ class History:
     def records(self) -> list[dict]:
         if not self.path.exists():
             return []
-        return [json.loads(l) for l in self.path.read_text().splitlines() if l.strip()]
+        return read_jsonl(self.path)
 
     def append(self, rec: dict) -> None:
-        rec = dict(rec)
-        if self.timestamps:
-            rec.setdefault("ts", time.strftime("%Y-%m-%d %H:%M:%S"))
+        self.append_many([rec])
+
+    def append_many(self, recs: list[dict]) -> None:
+        """Append several records with ONE write, so a kill cannot leave half a candidate behind."""
+        lines = []
+        for rec in recs:
+            rec = dict(rec)
+            if self.timestamps:
+                rec.setdefault("ts", time.strftime("%Y-%m-%d %H:%M:%S"))
+            lines.append(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
         with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "a") as f:
-                f.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
+            append_lines(self.path, lines)
 
     def append_candidate(self, t: int, variant: str, edits: list[dict], outcome: str, delta_S: Optional[float],
                          delta_C: Optional[float], accepted: bool, S: Optional[float], C: Optional[float],
                          diff: Optional[str], detail: str = "") -> None:
-        """Write the per-edit records of one candidate harness H'."""
+        """Write the per-edit records of one candidate harness H' (one write)."""
+        recs = []
         for e in edits or [{"id": "C1", "component": None, "hypothesis": None}]:
-            self.append({
+            recs.append({
                 "t": t, "variant": variant, "edit_id": e.get("id"),
                 "component": e.get("component"),
                 "hypothesis": e.get("hypothesis") or e.get("mechanism"),
@@ -74,6 +80,7 @@ class History:
                 "bundle": len(edits or []),
                 "detail": detail[:600] if detail else "",
             })
+        self.append_many(recs)
 
     def replace_round(self, t: int, keep: Callable[[dict], bool] = lambda r: False) -> None:
         """Drop the per-edit records of round t (a re-adjudication rewrites them)."""
@@ -190,3 +197,30 @@ def exploration(t: int, stall: int, tried: set, m_draft: int, K: Sequence[str] =
     else:
         text = "Every component in K has been exercised at least once."
     return {"sigma": stall, "untried": untried, "m_draft": m_draft, "text": text}
+
+
+# ------------------------------------------------------------------ jsonl io --
+def read_jsonl(path: str | Path) -> list[dict]:
+    """Records of a JSONL file; a line torn by a crash mid-write is skipped (append-only logs stay usable)."""
+    out = []
+    for line in Path(path).read_text().splitlines():
+        if line.strip():
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return out
+
+
+def append_lines(path: str | Path, lines: list[str]) -> None:
+    """Append ``lines`` in one write, first terminating a torn last line if a crash left one."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    prefix = ""
+    if p.exists() and p.stat().st_size:
+        with open(p, "rb") as f:
+            f.seek(-1, 2)
+            if f.read(1) != b"\n":
+                prefix = "\n"
+    with open(p, "a") as f:
+        f.write(prefix + "".join(lines))

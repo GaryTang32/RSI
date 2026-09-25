@@ -9,8 +9,8 @@ pool. Each calibration procedure is then applied to fresh subsets:
 * R = 2, 3, 5 repeated base evaluations (sd_null = stdev(S_r) * sqrt(2)).
 
 Clearance = P(S_new >= S_base - delta) for two independent evaluations of the SAME
-harness, measured on pool pairs not used for calibration (and analytically as
-Phi(delta / sd_true)); z in {1, 2, 3}. Domains: HarnessWorld (5 worlds) and AgentQA with
+harness, measured empirically on 4000 random pairs of pool evaluations and analytically as
+Phi(delta / sd_true); z in {1, 2, 3}. Domains: HarnessWorld (5 worlds) and AgentQA with
 SimModel (2 suites).
 
 Confirming outcome (spec E10): about 97.5% clearance at z = 2; bootstrap and repeated

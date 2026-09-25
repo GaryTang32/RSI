@@ -12,8 +12,8 @@ decisions*. A :class:`TaskSuite` therefore carries named splits with fixed roles
 ``test``       sealed; only read by final reports
 =============  ==============================================================
 
-:class:`SplitGuard` enforces the discipline at runtime: a loop that tries to
-evaluate on a sealed split before ``unseal()`` raises.
+:meth:`TaskSuite.split` enforces the discipline at runtime: a loop that tries to
+read a sealed split before ``unseal()`` raises :class:`SealedSplitError`.
 """
 from __future__ import annotations
 
@@ -130,6 +130,8 @@ class TaskSuite:
                 pool = [t for t in pool if t.family not in fams]
         rng.shuffle(pool)
         total = sum(fractions.values())
+        if fractions and total <= 0:
+            raise ValueError(f"fractions must sum to a positive number, got {fractions}")
         start = 0
         items = list(fractions.items())
         for j, (split, frac) in enumerate(items):

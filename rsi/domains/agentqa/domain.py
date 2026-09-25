@@ -63,8 +63,11 @@ _NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
 def extract_answer(output: str) -> str:
+    """The text after the last ``ANSWER:`` (or ``ANSWER =``, any case, markdown
+    bold allowed around the label: ``**ANSWER**: x``, ``**ANSWER:** x``); else the
+    last non-empty line."""
     text = str(output or "").strip()
-    m = re.findall(r"ANSWER\s*[:=]\s*(.+)", text, flags=re.I)
+    m = re.findall(r"ANSWER\s*\**\s*[:=]\s*\**\s*(.+)", text, flags=re.I)
     if m:
         return m[-1].strip()
     lines = [l for l in text.splitlines() if l.strip()]
@@ -72,8 +75,19 @@ def extract_answer(output: str) -> str:
 
 
 def normalize(s: str) -> str:
-    s = str(s).strip().strip("`*\"' ").rstrip(".").strip()
-    s = s.replace("$", "")
+    """Canonical answer text: unwraps ``\\boxed{x}``, markdown bold and inline
+    code, strips surrounding quotes/asterisks/backticks and trailing periods
+    (repeatedly), drops ``$``, maps the unicode minus to ``-``, collapses
+    whitespace and lower-cases."""
+    s = str(s)
+    s = re.sub(r"\\boxed\{([^{}]*)\}", r"\1", s)
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
+    s = re.sub(r"`([^`]*)`", r"\1", s)
+    s = s.replace("\u2212", "-").replace("$", "")
+    prev = None
+    while prev != s:
+        prev = s
+        s = s.strip().strip("`*\"' ").rstrip(".").strip()
     return re.sub(r"\s+", " ", s).lower()
 
 
@@ -145,7 +159,10 @@ class AgentQADomain(Domain):
                 raise HarnessBudgetExceeded("too many LLM calls")
             resp = llm.complete(str(prompt), system=system, seed=seed * 1000 + i, role="task")
             if not resp.ok:
-                raise RuntimeError(f"infra: llm backend error: {resp.error}")
+                msg = f"infra: llm backend error: {resp.error}"
+                with lock:
+                    state.setdefault("infra", msg)   # remembered even if the harness swallows the exception
+                raise RuntimeError(msg)
             with lock:
                 state["tokens"] += resp.usage.total_tokens
                 state["usd"] += resp.usage.cost_usd
@@ -161,10 +178,14 @@ class AgentQADomain(Domain):
             if not callable(solve):
                 return Execution(error="harness.py defines no solve()")
             out = solve(task.input, call_llm, tools, artifact.files)
-        except Exception as e:  # noqa: BLE001
+        except (Exception, SystemExit) as e:  # noqa: BLE001 - a harness calling sys.exit() is a graded failure
             # Backend failures are tagged "infra:" so the evaluator counts them as missing trials.
             err = str(e) if str(e).startswith("infra:") else f"{type(e).__name__}: {e}"
+            err = state.get("infra", err)
             return Execution(error=err, trace="\n".join(trace + tools.log), tokens=state["tokens"],
+                             cost_usd=state["usd"], steps=state["calls"] + tools.calls)
+        if "infra" in state:  # the harness caught a backend failure: still a missing trial, not a wrong answer
+            return Execution(error=state["infra"], trace="\n".join(trace + tools.log), tokens=state["tokens"],
                              cost_usd=state["usd"], steps=state["calls"] + tools.calls)
         return Execution(output=str(out) if out is not None else "", trace="\n".join(trace + tools.log),
                          tokens=state["tokens"], cost_usd=state["usd"], steps=state["calls"] + tools.calls,

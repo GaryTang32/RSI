@@ -1,7 +1,8 @@
 """E7 - The annealed edit budget improves attribution.
 
-HarnessWorld, full RRSI with the budget schedule varied: cosine anneal b_max = 4 -> b_min = 1
-(paper), constant b_max = 4, constant 1. Measures the hitchhiker rate (accepted bundles that
+HarnessWorld, full RRSI with the budget schedule varied: cosine anneal with b_max = 4, b_min = 1
+(paper values; with the released code's ceil and t <= T-1 the budget runs 4 x 8, 3 x 5, 2 x 7 and
+never reaches 1), constant b_max = 4, constant 1. Measures the hitchhiker rate (accepted bundles that
 contain at least one harmful mechanism), the rank correlation between the recorded dS an
 edit carries in the history and the edit's TRUE marginal effect on the incumbent (credit
 quality), early-round progress (true evolve gain after 5 rounds), and final transfer.
@@ -21,7 +22,7 @@ from _common import RESULTS, paired, parse_args, pmap, run_hw, save, strip_curve
 
 from rsi.rrsi import RegularizerSwitches  # noqa: E402
 
-ARMS = {"anneal 4->1 (paper)": RegularizerSwitches.full(),
+ARMS = {"anneal 4->2 (paper code, ceil)": RegularizerSwitches.full(),
         "constant b=4": RegularizerSwitches.full().but(budget_anneal=False, constant_budget=4, name="const4"),
         "constant b=1": RegularizerSwitches.full().but(budget_anneal=False, constant_budget=1, name="const1")}
 

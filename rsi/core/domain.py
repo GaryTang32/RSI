@@ -13,6 +13,7 @@ To apply any method in this package to a new problem, subclass :class:`Domain`
 """
 from __future__ import annotations
 
+import copy
 import time
 import traceback
 from dataclasses import dataclass, field, asdict
@@ -59,16 +60,31 @@ class Trial:
         return self.error is None
 
     def to_json(self, max_trace: int = 4000) -> dict:
-        d = asdict(self)
+        """JSON-safe dict of every field (``Trial(**d)`` round-trips). Values that
+        are not JSON-serializable (in ``output`` or inside ``meta``) become reprs."""
+        d = {f: getattr(self, f) for f in self.__dataclass_fields__}
         if isinstance(d.get("trace"), str) and len(d["trace"]) > max_trace:
             d["trace"] = d["trace"][:max_trace] + "...[truncated]"
-        try:
-            import json
-
-            json.dumps(d["output"])
-        except TypeError:
-            d["output"] = repr(d["output"])
+        d["output"] = _json_safe(d["output"])
+        meta = _json_safe(d["meta"])
+        d["meta"] = meta if isinstance(meta, dict) else {"repr": meta}
         return d
+
+
+def _json_safe(x: Any) -> Any:
+    """A copy of ``x`` if it JSON-serializes, else a JSON-safe copy (dict/list recursed, leaves repr'd)."""
+    import json
+
+    try:
+        json.dumps(x)
+        return copy.deepcopy(x)
+    except (TypeError, ValueError, RecursionError):
+        pass
+    if isinstance(x, dict):
+        return {str(k): _json_safe(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_json_safe(v) for v in x]
+    return repr(x)
 
 
 class Domain:
@@ -100,17 +116,27 @@ class Domain:
 
     # ---- provided
     def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Trial:
+        """Execute and grade one rollout. Never raises for artifact or grader
+        failures (including ``SystemExit`` from artifact code): they become a
+        score-0 trial with ``error``/``feedback`` set. An ``execute`` that returns
+        a bare value instead of an :class:`Execution` is treated as its output."""
         t0 = time.time()
         try:
             ex = self.execute(artifact, task, seed=seed, llm=llm)
-        except Exception as e:  # noqa: BLE001 - an artifact crash is a graded failure, not a loop crash
+            if not isinstance(ex, Execution):
+                ex = Execution(output=ex)
+        except (Exception, SystemExit) as e:  # noqa: BLE001 - an artifact crash is a graded failure, not a loop crash
             ex = Execution(error=f"{type(e).__name__}: {e}", trace=traceback.format_exc(limit=5))
         try:
-            score, feedback = self.grade(task, ex) if ex.error is None else (0.0, f"execution error: {ex.error}")
-        except Exception as e:  # noqa: BLE001
+            if ex.error is None:
+                score, feedback = self.grade(task, ex)
+                score = float(score)
+            else:
+                score, feedback = 0.0, f"execution error: {ex.error}"
+        except (Exception, SystemExit) as e:  # noqa: BLE001
             score, feedback = 0.0, f"grader error: {type(e).__name__}: {e}"
         return Trial(
-            task_id=task.id, seed=seed, score=float(score), feedback=feedback, output=ex.output,
+            task_id=task.id, seed=seed, score=score, feedback=feedback, output=ex.output,
             trace=ex.trace, tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps,
             latency_s=time.time() - t0, error=ex.error, family=task.family, meta=ex.meta,
         )

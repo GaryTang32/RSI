@@ -44,13 +44,20 @@ from .constitution import default_constitution
 from .critic import RRSICritic
 from .evaluate import Measurement, Measurer
 from .frontier import Frontier, read_json, write_json
-from .history import History, exploration, stall_flag
+from .history import History, append_lines, exploration, read_jsonl, stall_flag
 from .propose import Proposer, RRSIRewriteEditor
 from .schedule import edit_budget
 from .selection import Candidate, build_gates, select_round
 from .switches import RegularizerSwitches
 
 VARIANT_LABELS = "ABCDEFGH"
+
+
+def _no_critic(diff: str, *args, **kwargs) -> dict:
+    """Stand-in review when the critic is switched off (ablations): accept every non-empty diff."""
+    if not (diff or "").strip():
+        return {"verdict": "reject", "reasons": ["empty diff"], "risk_notes": [], "stage": "precheck"}
+    return {"verdict": "accept", "reasons": [], "risk_notes": ["critic disabled"], "stage": "none"}
 
 
 def _seed(*parts) -> int:
@@ -210,6 +217,9 @@ class RRSIRun:
 
         # 1) F_t <- Analyze(H_t, D_evolve) on the incumbent's own evaluation
         traces = build_traces(inc_ev, cfg.n_fail_traces, cfg.n_success_traces)
+        if len(traces) < 0.5 * min(len(inc_ev.per_task), cfg.n_fail_traces + cfg.n_success_traces):
+            # the code's precondition: without the incumbent's traces there is no evidence to propose from
+            raise RuntimeError(f"only {len(traces)} traces available from {inc['job']}")
         report_path, digests_path = rdir / "analysis_report.json", rdir / "digests.json"
         if report_path.exists():
             report, digests = read_json(report_path), read_json(digests_path, [])
@@ -385,14 +395,16 @@ class RRSIRun:
             return finish("no_proposal", str(prop.get("reason") or prop["status"]))
         cand, edits, mech = prop["artifact"], prop["edits"], prop.get("mechanism") or ""
 
-        # Critic(H_t, H') with bounded repair
-        if self.critic is not None:
+        # Critic(H_t, H') with bounded repair. The reserved-slot check on the diff-normalized tags belongs to
+        # stall exploration (a proposal-side regularizer), so it still runs when the critic is ablated.
+        if self.critic is not None or (reserved and explore.get("untried")):
+            review = self.critic.review if self.critic is not None else _no_critic
             verdict = None
             for attempt in range(1 + cfg.repair_rounds):
                 diff = inc_art.diff(cand)
                 diff_file.write_text(diff)
-                verdict = self.critic.review(diff, mech, prop.get("targets_mode") or "", edits,
-                                             seed=_seed(cfg.seed, t, vid, "critic", attempt))
+                verdict = review(diff, mech, prop.get("targets_mode") or "", edits,
+                                 seed=_seed(cfg.seed, t, vid, "critic", attempt))
                 if verdict.get("verdict") == "accept":
                     tagged = [self.tax.normalize(e.get("component"), diff) for e in edits]
                     if reserved and explore.get("untried") and not any(c in explore["untried"] for c in tagged):
@@ -459,13 +471,13 @@ class RRSIRun:
         if "holdout" not in self.domain.tasks.splits:
             return
         path = self.out / "heldout_monitor.jsonl"
-        rows = [json.loads(l) for l in path.read_text().splitlines()] if path.exists() else []
-        if any(r["t"] == t for r in rows):
+        rows = read_jsonl(path) if path.exists() else []
+        if any(r.get("t") == t + 1 for r in rows):                   # already logged (resumed round)
             return
         ev = Evaluator(self.domain, self.llm_task, workers=self.cfg.workers, allow_sealed=True)
         m = ev.evaluate(self.store.get(winner.artifact_id), "holdout", self.cfg.k)
-        with open(path, "a") as f:
-            f.write(json.dumps({"t": t + 1, "S_evolve": winner.ev.S, "S_holdout": m.score, "C_holdout": m.cost}) + "\n")
+        append_lines(path, [json.dumps({"t": t + 1, "S_evolve": winner.ev.S, "S_holdout": m.score,
+                                        "C_holdout": m.cost}) + "\n"])
 
     # ------------------------------------------------------------ maintenance --
     def _load_round_candidates(self, t: int) -> list[Candidate]:

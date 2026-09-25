@@ -1,0 +1,39 @@
+{
+ "when": "2026-09-25 01:14:15",
+ "wall_s": 14.2,
+ "total_cost_usd": 0.01686,
+ "tests": {
+  "claude_cli_complete": {
+   "ok": true,
+   "text": "pong",
+   "model": "claude-haiku-4-5-20251001",
+   "calls": 1,
+   "input_tokens": 822,
+   "output_tokens": 49,
+   "cost_usd": 0.001067,
+   "latency_s": 2.9484145641326904,
+   "total_tokens": 871
+  },
+  "cached_claude_cli": {
+   "first": "51",
+   "second_calls": 0,
+   "hits": 2,
+   "misses": 0,
+   "cost_usd": 0.0
+  },
+  "agent_editor": {
+   "ok": true,
+   "error": null,
+   "change": "Updated greeting.txt to contain the single line 'hello world'",
+   "blocked": [],
+   "greeting": "hello world",
+   "diff": "--- a/greeting.txt\n+++ b/greeting.txt\n@@ -1 +1 @@\n-hello\n+hello world\n\\ No newline at end of file\n",
+   "calls": 1,
+   "input_tokens": 18757,
+   "output_tokens": 821,
+   "cost_usd": 0.0157916,
+   "latency_s": 11.252840518951416,
+   "total_tokens": 19578
+  }
+ }
+}

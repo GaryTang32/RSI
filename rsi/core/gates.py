@@ -17,6 +17,11 @@ EvoMap (naive)         self-reported validation - see ``rsi.evomap``
 Gates are composable (:class:`AllOf`) and are pure functions of the scores, so
 they can be re-adjudicated later with different parameters (RRSI's
 ``readjudicate``).
+
+All threshold comparisons treat differences smaller than :data:`TIE_EPS` as
+ties. Scores are float means, and two candidates with the same per-task scores
+can differ in the last bit depending on summation order; without the tolerance a
+mathematically tied candidate would pass a "strictly better" rule at random.
 """
 from __future__ import annotations
 
@@ -25,6 +30,9 @@ from typing import Callable, Optional, Sequence
 
 from .evaluate import EvalResult
 from .stats import prob_better_bootstrap
+
+#: Differences below this are float noise, not gains or losses.
+TIE_EPS = 1e-9
 
 
 @dataclass
@@ -60,6 +68,9 @@ class Verdict:
     accept: bool
     reason: str
     details: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.accept = bool(self.accept)   # numpy scores give numpy.bool_, which __bool__ may not return
 
     def __bool__(self) -> bool:
         return self.accept
@@ -104,7 +115,7 @@ class StrictImprovement(Gate):
 
     def check(self, cand, inc, ctx):
         gain = (inc.score - cand.score) if self.lower else (cand.score - inc.score)
-        ok = gain > self.min_gain
+        ok = gain > self.min_gain + TIE_EPS
         return Verdict(ok, f"gain {gain:+.4f} {'>' if ok else '<='} {self.min_gain}", {"gain": gain})
 
 
@@ -112,7 +123,7 @@ class ImprovementOrEqual(Gate):
     name = "improvement_or_equal"
 
     def check(self, cand, inc, ctx):
-        ok = cand.score >= inc.score
+        ok = cand.score >= inc.score - TIE_EPS
         return Verdict(ok, f"{cand.score:.4f} {'>=' if ok else '<'} {inc.score:.4f}")
 
 
@@ -123,7 +134,7 @@ class MinGain(Gate):
 
     def check(self, cand, inc, ctx):
         gain = cand.score - inc.score
-        ok = gain > ctx.delta
+        ok = gain > ctx.delta + TIE_EPS
         return Verdict(ok, f"gain {gain:+.4f} vs delta {ctx.delta:.4f}", {"gain": gain})
 
 
@@ -136,7 +147,7 @@ class NoiseFloor(Gate):
     def check(self, cand, inc, ctx):
         ref = ctx.best_score if ctx.best_score is not None else inc.score
         floor = ref - ctx.delta
-        ok = cand.score >= floor
+        ok = cand.score >= floor - TIE_EPS
         return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} S*-delta={floor:.4f}", {"floor": floor})
 
 
@@ -162,14 +173,14 @@ class CostRule(Gate):
         dS = cand.score - inc.score
         dC = (cand.cost - inc.cost) / inc.cost if inc.cost > 0 and cand.cost > 0 else 0.0
         d = {"dS": dS, "dC": dC}
-        if dS > ctx.delta:
+        if dS > ctx.delta + TIE_EPS:
             limit = self.beta0 + self.beta1 * dS
-            ok = dC <= limit
+            ok = dC <= limit + TIE_EPS
             return Verdict(ok, f"dC={dC:+.3f} {'<=' if ok else '>'} beta0+beta1*dS={limit:.3f}", d)
         if not self.within_band:
             return Verdict(False, f"dS={dS:+.4f} within noise band", d)
         shaped = self.w_s * dS - self.w_c * dC + self.w_n * cand.novelty
-        ok = shaped > 0
+        ok = shaped > TIE_EPS
         return Verdict(ok, f"within band: shaped={shaped:+.3f} ({'>' if ok else '<='} 0)", {**d, "shaped": shaped})
 
 
@@ -186,7 +197,7 @@ class MetricGuard(Gate):
         if c is None or i is None:
             return Verdict(True, "metric missing; guard skipped")
         change = (c - i) if self.hib else (i - c)
-        ok = change >= -self.tol
+        ok = change >= -self.tol - TIE_EPS
         return Verdict(ok, f"{self.metric} change {change:+.4f} (tol {self.tol})")
 
 
@@ -255,7 +266,7 @@ class DualGate(Gate):
             if c is None or b is None:
                 return Verdict(False, f"capability metric {m} missing")
             det[m] = c - b
-            if c < b - tol:
+            if c < b - tol - TIE_EPS:
                 return Verdict(False, f"capability {m} dropped {c - b:+.4f} beyond tol {tol}", det)
         improved = []
         for m, min_rel in self.efficiency.items():
@@ -264,7 +275,7 @@ class DualGate(Gate):
                 continue
             rel = (b - c) / b
             det[f"{m}_saving"] = rel
-            if rel > min_rel:
+            if rel > min_rel + TIE_EPS:
                 improved.append(m)
         ok = bool(improved)
         return Verdict(ok, f"efficiency improved on {improved}" if ok else "no efficiency metric improved", det)

@@ -64,40 +64,65 @@ class Ledger:
         self._nodes: dict[str, Node] = {}
         self._order: list[str] = []
         self._lock = threading.Lock()
+        self.n_corrupt_lines = 0
+        self._tail_checked = False
         if self.path and self.path.exists():
-            for line in self.path.read_text().splitlines():
+            text = self.path.read_text()
+            for line in text.splitlines():
                 if line.strip():
-                    n = Node.from_json(json.loads(line))
+                    try:
+                        n = Node.from_json(json.loads(line))
+                    except (ValueError, TypeError, KeyError):
+                        # a line torn by a crash mid-write: skip it (the append-only log stays usable)
+                        self.n_corrupt_lines += 1
+                        continue
                     if n.id not in self._nodes:
                         self._order.append(n.id)
                     self._nodes[n.id] = n  # later lines update earlier ones
 
     # ---- writing
     def add(self, node: Node) -> Node:
+        """Append a node. Re-adding an existing id replaces it but keeps its
+        creation order (``seq``)."""
         with self._lock:
             if node.id not in self._nodes:
                 node.seq = len(self._order)
                 self._order.append(node.id)
+            else:
+                node.seq = self._nodes[node.id].seq
             self._nodes[node.id] = node
             self._write(node)
         return node
 
     def update(self, node_id: str, **fields: Any) -> Node:
+        """Change fields of a node and append the new version. ``metrics`` and
+        ``meta`` dicts are merged; keyword names that are not :class:`Node`
+        fields are stored in ``meta`` so they survive a resume."""
         with self._lock:
             n = self._nodes[node_id]
             for k, v in fields.items():
                 if k in ("metrics", "meta") and isinstance(v, dict):
                     getattr(n, k).update(v)
-                else:
+                elif k in Node.__dataclass_fields__:
                     setattr(n, k, v)
+                else:
+                    n.meta[k] = v
             self._write(n)
             return n
 
     def _write(self, node: Node) -> None:
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
+            line = json.dumps(node.to_json(), default=str) + "\n"
+            if not self._tail_checked:
+                self._tail_checked = True
+                if self.path.exists() and self.path.stat().st_size:
+                    with self.path.open("rb") as f:
+                        f.seek(-1, 2)
+                        if f.read(1) != b"\n":  # a torn last line from a crash: start on a fresh line
+                            line = "\n" + line
             with self.path.open("a") as f:
-                f.write(json.dumps(node.to_json(), default=str) + "\n")
+                f.write(line)
 
     # ---- reading
     def __len__(self) -> int:
@@ -118,10 +143,18 @@ class Ledger:
         return [n for n in self.nodes() if n.parent == node_id]
 
     def lineage(self, node_id: str) -> list[Node]:
+        """Root-first chain of ancestors ending at ``node_id``. Stops at a parent
+        id that is not in this ledger (and at cycles)."""
         out = []
+        seen = set()
         cur: Optional[str] = node_id
-        while cur is not None:
-            n = self._nodes[cur]
+        while cur is not None and cur not in seen:
+            n = self._nodes.get(cur)
+            if n is None:
+                if not out:
+                    raise KeyError(cur)
+                break
+            seen.add(cur)
             out.append(n)
             cur = n.parent
         return list(reversed(out))
@@ -153,8 +186,9 @@ class Ledger:
             w.writerow(["commit", "score", "memory_gb", "status", "description"])
             for n in self.nodes():
                 sc = score_fmt.format(n.score) if n.score is not None else score_fmt.format(0.0)
-                mem = n.metrics.get("memory_gb", 0.0)
-                w.writerow([(n.artifact_id or n.id)[:7], sc, f"{mem:.1f}", n.status, n.change.replace("\t", " ")[:200]])
+                mem = n.metrics.get("memory_gb") or 0.0
+                desc = " ".join(str(n.change or "").split())  # one line: no tabs or newlines
+                w.writerow([(n.artifact_id or n.id)[:7], sc, f"{float(mem):.1f}", n.status, desc[:200]])
 
     def to_json(self) -> list[dict]:
         return [n.to_json() for n in self.nodes()]
@@ -173,7 +207,9 @@ class ArtifactStore:
         p = self.root / artifact.id[:2] / f"{artifact.id}.json"
         if not p.exists():
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps(artifact.to_json()))
+            tmp = p.with_name(f"{p.name}.{uuid.uuid4().hex[:8]}.tmp")
+            tmp.write_text(json.dumps(artifact.to_json()))
+            tmp.replace(p)  # atomic: concurrent puts of one id never expose a partial file
         return artifact.id
 
     def get(self, artifact_id: str) -> Artifact:

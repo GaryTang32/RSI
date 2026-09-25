@@ -51,6 +51,7 @@ evaluate_library(domain, model, res, splits=("evolve", "holdout"))   # no genes 
 * `res.ledger` is an `rsi.core.Ledger` tree. Evolution events form the trunk (node id = event id, parent = previous event). Skipped cycles and accepted genes (`kind="gene"`) hang off it. Hubs keep their own ledger: `publish` roots with `verify` / `adopt` / `revoke` children.
 * `res.usage` is metered per role: `task` (the frozen model), `proposer` (gene writer), `distiller` (LLM distillation), plus `*:cached`.
 * `res.meta` holds the resolved config, genes, audit report, proposer calls, quarantine counts and the list of safe-mode fixes applied. `out_dir` receives `summary.json`, `trajectory.json`, `ledger.jsonl`, `library.json`, `store/` and `store.gepx.tgz`.
+* Calling `run(...)` again with the same `out_dir` **continues** the persisted store: library, event chain and memory graph.
 
 `mode="faithful"` reproduces Evolver v1.94.0 for replication arms. `mode="safe"` applies the fixes below. Every row can be overridden individually in `Config`:
 
@@ -151,7 +152,13 @@ All scripts are `experiments/evomap/<name>.py [--llm sim|claude:haiku] [--seeds 
 | X15 | self-assessment contaminates learning | memory graph as the only learning channel, 12 seeds: with an executor that always prints a success EvolutionEvent, the faithful inferrer records 100% successes and the preferred genes' true effect is 0.30 vs 1.24 in safe mode (paired +0.94 [+0.76, +1.16]); last-quarter accuracy 0.25 vs 0.37. With an honest executor, the faithful heuristic is roughly truthful (54.7% successes recorded vs 55.6%) | **reproduced** |
 | X5, X12, X14 | inert domination; evolved vs reference-distilled genes; tokens rise then fall | not implemented (see §6) | – |
 
-**Live smoke** (`experiments/evomap/live_smoke.py`, Claude Haiku 4.5 as both solver and gene writer, katas, safe mode, 8 cycles, cached in `.rsi_cache/evomap`): ran end to end in 171 s for $0.33, plus $0.29 for an earlier attempt, $0.62 in total. Haiku solved 6 of the 8 evolve katas and all 10 holdout katas without any gene (holdout 1.0 → 1.0), so our katas give Haiku **no headroom**. In the first attempt the genes Haiku wrote carried strong inline checks (`python -c "... assert money_total(['0.1','0.2']) == '0.30' ..."`), which the command policy blocks, as Evolver blocks `node -e`. After the gene-writer prompt stated the allowed command format, `gene_unicode_nfkc_casefold` solidified (composite 0.96, validation `python smoke_test.py`, discriminative). The store audit passed. Harder katas are needed before live X1–X3 runs are informative.
+**Live smoke** (`experiments/evomap/live_smoke.py`, Claude Haiku 4.5 as both solver and gene writer, katas, safe mode, 8 cycles, cached in `.rsi_cache/evomap`). Three invocations of the same smoke cost **$0.91 in total** and about 9 minutes:
+
+1. The first invocation revealed a policy issue. Haiku's genes carried strong inline checks (`python -c "... assert money_total(['0.1','0.2']) == '0.30' ..."`), which the command policy blocks, as Evolver blocks `node -e`. So nothing solidified.
+2. After the gene-writer prompt stated the allowed command format, `gene_unicode_nfkc_casefold` solidified (composite 0.96, validation `python smoke_test.py`, discriminative).
+3. The last invocation re-ran on the final code (`results/evomap/live_smoke.json`: 102 s, $0.29). It resumed the persisted store, reused that gene locally on `strip_accents` and `same_text` (both solidified, 0.96 / 0.95), and a new money gene failed its task and was rolled back. The audit was ok.
+
+Haiku solved 6 of the 8 evolve katas and all 10 holdout katas without any gene (holdout 1.0 → 1.0). Our katas give Haiku **no headroom**, so harder katas are needed before live X1–X3 runs are informative.
 
 ## 5. Capability checklist (spec §10)
 

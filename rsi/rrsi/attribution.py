@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from .evaluate import Measurement
+from .history import append_lines, read_jsonl
 
 
 class Scoreboard:
@@ -25,7 +26,7 @@ class Scoreboard:
     def rows(self) -> list[dict]:
         if not self.path.exists():
             return []
-        return [json.loads(l) for l in self.path.read_text().splitlines() if l.strip()]
+        return read_jsonl(self.path)
 
     def recent(self, n: int = 20) -> list[dict]:
         return self.rows()[-n:]
@@ -47,10 +48,7 @@ class Scoreboard:
                          "predicted_hit": hits, "hit_rate": round(len(hits) / len(pred), 2) if pred else None,
                          "unpredicted_regressions": [d for d in drops if d not in pred][:12]})
         with self._lock:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "a") as f:
-                for r in rows:
-                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            append_lines(self.path, [json.dumps(r, ensure_ascii=False) + "\n" for r in rows])
         return rows
 
     def truncate_after(self, t: int) -> None:

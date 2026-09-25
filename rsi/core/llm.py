@@ -236,6 +236,12 @@ class ClaudeCLI(LLM):
                 last_err = (proc.stderr or proc.stdout or "no output")[-500:]
                 time.sleep(2 ** attempt)
                 continue
+            if isinstance(data, list):  # verbose/stream-style output: a list of messages ending in the result
+                data = next((m for m in reversed(data) if isinstance(m, dict) and m.get("type") == "result"), None)
+            if not isinstance(data, dict):
+                last_err = f"unexpected CLI output: {proc.stdout[-300:]}"
+                time.sleep(2 ** attempt)
+                continue
             if data.get("is_error"):
                 last_err = str(data.get("result") or data.get("subtype") or "is_error")[-500:]
                 time.sleep(2 ** attempt)
@@ -315,7 +321,10 @@ class CachedLLM(LLM):
     The key includes ``seed``, so repeated trials of the same prompt (seed=0,1,2..)
     stay distinct while a re-run of a whole experiment replays for free.
     Cached hits are metered with zero calls/cost but their original token counts
-    are kept under ``role + ':cached'`` for honest reporting.
+    are kept under ``role + ':cached'`` for honest reporting, so ``meter.total()``
+    (and anything summing roles) reports real spend only. The original usage of
+    cached hits (including the dollars they saved) is kept in ``saved``;
+    ``hits`` / ``misses`` count lookups.
     """
 
     def __init__(self, inner: LLM, cache_dir: str | Path) -> None:
@@ -324,24 +333,42 @@ class CachedLLM(LLM):
         self.name = f"cached:{inner.name}"
         self.dir = Path(cache_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
+        self.saved = UsageMeter()
+        self.hits = 0
+        self.misses = 0
+        self._count_lock = threading.Lock()
 
     def _key(self, prompt, system, max_tokens, seed) -> Path:
         h = hashlib.sha256(json.dumps([self.inner.name, system, prompt, max_tokens, seed]).encode()).hexdigest()
         return self.dir / h[:2] / f"{h}.json"
 
+    def _read(self, path: Path) -> Optional[dict]:
+        try:
+            d = json.loads(path.read_text())
+            Usage(**d["usage"])  # validate
+            return d if isinstance(d.get("text"), str) else None
+        except (OSError, ValueError, KeyError, TypeError):
+            return None  # missing or corrupt entry -> treat as a miss (it is rewritten below)
+
     def complete(self, prompt, *, system=None, max_tokens=None, seed=None, role="default") -> LLMResponse:
         path = self._key(prompt, system, max_tokens, seed)
-        if path.exists():
-            d = json.loads(path.read_text())
+        d = self._read(path) if path.exists() else None
+        if d is not None:
             u = Usage(**d["usage"])
-            self.meter.add(role + ":cached", u)
+            self.meter.add(role + ":cached", Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0))
+            self.saved.add(role, u)
+            with self._count_lock:
+                self.hits += 1
             return LLMResponse(text=d["text"], usage=Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0),
-                               model=d["model"])
+                               model=d.get("model", self.inner.name))
+        with self._count_lock:
+            self.misses += 1
         resp = self.inner.complete(prompt, system=system, max_tokens=max_tokens, seed=seed, role=role)
         self.meter.add(role, resp.usage)
         if resp.ok:
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".tmp")
+            # unique temp name: concurrent writers of the same key must not race on one temp file
+            tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
             tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model}))
             tmp.replace(path)
         return resp
@@ -388,12 +415,21 @@ def extract_code(text: str, lang: Optional[str] = "python") -> Optional[str]:
 
 
 def extract_json(text: str) -> Any:
-    """Parse the first JSON object/array in ``text`` (fenced or bare). Raises ValueError."""
+    """Parse the first JSON object/array in ``text`` (fenced or bare). Raises ValueError.
+
+    Order: ```json fences, then any fence, then the first balanced ``{...}`` in
+    the text, then the first balanced ``[...]``. A fence holding a bare scalar
+    (e.g. a fenced number) is returned only when no object/array is found."""
+    scalar_found, scalar = False, None
     for block in extract_code_blocks(text, "json") + extract_code_blocks(text):
         try:
-            return json.loads(block)
+            v = json.loads(block)
         except json.JSONDecodeError:
-            pass
+            continue
+        if isinstance(v, (dict, list)):
+            return v
+        if not scalar_found:
+            scalar_found, scalar = True, v
     s = text or ""
     for opener, closer in (("{", "}"), ("[", "]")):
         start = s.find(opener)
@@ -420,6 +456,8 @@ def extract_json(text: str) -> Any:
                         except json.JSONDecodeError:
                             break
             start = s.find(opener, start + 1)
+    if scalar_found:
+        return scalar
     raise ValueError("no JSON found in text")
 
 

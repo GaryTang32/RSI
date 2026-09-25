@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import resource
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -96,18 +97,28 @@ def run_python(
     env: Optional[Mapping[str, str]] = None,
     stdin: Optional[str] = None,
 ) -> RunResult:
-    """Run ``code`` (a string) or ``script`` (a path) with the current interpreter."""
+    """Run ``code`` (a string) or ``script`` (a path) with the current interpreter.
+
+    With no ``cwd`` the code runs in a fresh scratch directory that is deleted
+    afterwards (files it writes there do not survive the call)."""
+    if code is None and script is None:
+        raise ValueError("need code or script")
     tmpdir = None
     if cwd is None:
+        if code is None:
+            script = Path(script).resolve()  # a relative script path means relative to the caller, not the scratch dir
         tmpdir = tempfile.mkdtemp(prefix="rsi_sbx_")
         cwd = tmpdir
-    if code is not None:
-        path = Path(cwd) / "_rsi_main.py"
-        path.write_text(code)
-        script = path
-    assert script is not None, "need code or script"
-    return run_cmd([sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env,
-                   stdin=stdin)
+    try:
+        if code is not None:
+            path = Path(cwd) / "_rsi_main.py"
+            path.write_text(code)
+            script = path
+        return run_cmd([sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env,
+                       stdin=stdin)
+    finally:
+        if tmpdir is not None:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def call_function(
@@ -121,8 +132,18 @@ def call_function(
 ) -> tuple[Optional[object], RunResult]:
     """Import ``module_code`` in a subprocess, call ``func(**payload)`` and return
     its JSON-serializable result. Used to run LLM-written functions (solvers,
-    policies, harness entry points) without importing them into the loop."""
+    policies, harness entry points) without importing them into the loop.
+    ``func`` may be a dotted attribute path (``"Solver.solve"``)."""
+    if not func or not all(part.isidentifier() for part in func.split(".")):
+        raise ValueError(f"func must be a (dotted) Python identifier, got {func!r}")
     d = tempfile.mkdtemp(prefix="rsi_fn_")
+    try:
+        return _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+def _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files):
     Path(d, "candidate.py").write_text(module_code)
     for name, text in (extra_files or {}).items():
         p = Path(d, name)

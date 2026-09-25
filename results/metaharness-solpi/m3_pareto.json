@@ -1,0 +1,702 @@
+{
+ "claim": "Pareto frontier over (accuracy, context); a selected harness beats fewshot_all with less context [MH Table 2/9]",
+ "config": {
+  "llm": "sim",
+  "seeds": 3
+ },
+ "per_seed": [
+  {
+   "arm": "pareto",
+   "seed": 0,
+   "points": [
+    [
+     "no_memory",
+     0.1111111111111111,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.4583333333333333,
+     17723.61805555556
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.5347222222222222,
+     2484.4166666666665
+    ],
+    [
+     "i01_1_label_list",
+     0.3819444444444445,
+     428.3333333333333
+    ],
+    [
+     "i02_0_contrastive",
+     0.5208333333333334,
+     2467.0
+    ],
+    [
+     "i02_1_coverage",
+     0.5069444444444445,
+     3605.9513888888887
+    ],
+    [
+     "i03_0_notes",
+     0.5347222222222222,
+     3548.0833333333335
+    ],
+    [
+     "i03_1_notes",
+     0.5555555555555557,
+     3522.506944444444
+    ],
+    [
+     "i04_0_per_label_cap",
+     0.5416666666666666,
+     3472.2291666666665
+    ],
+    [
+     "i04_1_crossover",
+     0.5694444444444445,
+     1216.6666666666667
+    ]
+   ],
+   "frontier": [
+    [
+     "i04_1_crossover",
+     0.5694444444444445,
+     1216.6666666666667
+    ],
+    [
+     "i01_1_label_list",
+     0.3819444444444445,
+     428.3333333333333
+    ],
+    [
+     "no_memory",
+     0.1111111111111111,
+     191.0
+    ]
+   ],
+   "frontier_size": 3,
+   "hypervolume": 10736.523254243832,
+   "hv_ref_cost": 19495.979861111115,
+   "selected": "i04_1_crossover",
+   "selected_search": 0.5694444444444445,
+   "selected_context": 1216.6666666666667,
+   "selected_test": 0.6296296296296297,
+   "selected_test_context": 1216.6666666666667,
+   "fewshot_all_search": 0.4583333333333333,
+   "fewshot_all_context": 17723.61805555556,
+   "fewshot_all_test": 0.523148148148148,
+   "n_frontier_beats_fewshot_all": 1,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 14.567357305936074
+  },
+  {
+   "arm": "scalar",
+   "seed": 0,
+   "points": [
+    [
+     "no_memory",
+     0.1111111111111111,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.4583333333333333,
+     17723.61805555556
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.5347222222222222,
+     2484.4166666666665
+    ],
+    [
+     "i01_1_label_list",
+     0.3819444444444445,
+     428.3333333333333
+    ],
+    [
+     "i02_0_contrastive",
+     0.5208333333333334,
+     2467.0
+    ],
+    [
+     "i02_1_notes",
+     0.47222222222222215,
+     18751.0
+    ],
+    [
+     "i03_0_notes",
+     0.5347222222222222,
+     3548.0833333333335
+    ],
+    [
+     "i03_1_notes",
+     0.5555555555555557,
+     3522.506944444444
+    ],
+    [
+     "i04_0_per_label_cap",
+     0.5416666666666666,
+     3472.2291666666665
+    ],
+    [
+     "i04_1_per_label_cap",
+     0.4930555555555556,
+     2477.576388888889
+    ]
+   ],
+   "frontier": [
+    [
+     "i03_1_notes",
+     0.5555555555555557,
+     3522.506944444444
+    ],
+    [
+     "i04_0_per_label_cap",
+     0.5416666666666666,
+     3472.2291666666665
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.5347222222222222,
+     2484.4166666666665
+    ],
+    [
+     "i02_0_contrastive",
+     0.5208333333333334,
+     2467.0
+    ],
+    [
+     "i01_1_label_list",
+     0.3819444444444445,
+     428.3333333333333
+    ],
+    [
+     "no_memory",
+     0.1111111111111111,
+     191.0
+    ]
+   ],
+   "frontier_size": 6,
+   "hypervolume": 10243.689670138894,
+   "hv_ref_cost": 19495.979861111115,
+   "selected": "i03_1_notes",
+   "selected_search": 0.5555555555555557,
+   "selected_context": 3522.506944444444,
+   "selected_test": 0.6342592592592592,
+   "selected_test_context": 3518.740740740741,
+   "fewshot_all_search": 0.4583333333333333,
+   "fewshot_all_context": 17723.61805555556,
+   "fewshot_all_test": 0.523148148148148,
+   "n_frontier_beats_fewshot_all": 4,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 5.031535305702813
+  },
+  {
+   "arm": "pareto",
+   "seed": 1,
+   "points": [
+    [
+     "no_memory",
+     0.15972222222222224,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.4930555555555555,
+     17802.68055555556
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.5763888888888888,
+     2479.784722222222
+    ],
+    [
+     "i01_1_label_list",
+     0.40972222222222215,
+     430.3333333333333
+    ],
+    [
+     "i02_0_contrastive",
+     0.5972222222222222,
+     2460.020833333333
+    ],
+    [
+     "i02_1_coverage",
+     0.5902777777777778,
+     3583.1875
+    ],
+    [
+     "i03_0_notes",
+     0.5555555555555557,
+     3527.805555555556
+    ],
+    [
+     "i03_1_contrastive",
+     0.576388888888889,
+     2738.1597222222226
+    ],
+    [
+     "i04_0_per_label_cap",
+     0.5416666666666666,
+     2442.868055555555
+    ],
+    [
+     "i04_1_answer_line",
+     0.15972222222222224,
+     125.0
+    ]
+   ],
+   "frontier": [
+    [
+     "i02_0_contrastive",
+     0.5972222222222222,
+     2460.020833333333
+    ],
+    [
+     "i04_0_per_label_cap",
+     0.5416666666666666,
+     2442.868055555555
+    ],
+    [
+     "i01_1_label_list",
+     0.40972222222222215,
+     430.3333333333333
+    ],
+    [
+     "i04_1_answer_line",
+     0.15972222222222224,
+     125.0
+    ]
+   ],
+   "frontier_size": 4,
+   "hypervolume": 11108.832783564816,
+   "hv_ref_cost": 19582.948611111115,
+   "selected": "i02_0_contrastive",
+   "selected_search": 0.5972222222222222,
+   "selected_context": 2460.020833333333,
+   "selected_test": 0.5277777777777778,
+   "selected_test_context": 2475.7083333333335,
+   "fewshot_all_search": 0.4930555555555555,
+   "fewshot_all_context": 17802.68055555556,
+   "fewshot_all_test": 0.48148148148148157,
+   "n_frontier_beats_fewshot_all": 2,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 7.236800727184449
+  },
+  {
+   "arm": "scalar",
+   "seed": 1,
+   "points": [
+    [
+     "no_memory",
+     0.15972222222222224,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.4930555555555555,
+     17802.68055555556
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.5763888888888888,
+     2479.784722222222
+    ],
+    [
+     "i01_1_label_list",
+     0.40972222222222215,
+     430.3333333333333
+    ],
+    [
+     "i02_0_contrastive",
+     0.5972222222222222,
+     2460.020833333333
+    ],
+    [
+     "i02_1_notes",
+     0.5208333333333333,
+     18881.666666666668
+    ],
+    [
+     "i03_0_notes",
+     0.5555555555555557,
+     3527.805555555556
+    ],
+    [
+     "i03_1_notes",
+     0.5555555555555555,
+     3575.4513888888887
+    ],
+    [
+     "i04_0_label_list",
+     0.576388888888889,
+     2738.1597222222226
+    ],
+    [
+     "i04_1_recent_only",
+     0.3194444444444445,
+     1855.6666666666667
+    ]
+   ],
+   "frontier": [
+    [
+     "i02_0_contrastive",
+     0.5972222222222222,
+     2460.020833333333
+    ],
+    [
+     "i01_1_label_list",
+     0.40972222222222215,
+     430.3333333333333
+    ],
+    [
+     "no_memory",
+     0.15972222222222224,
+     191.0
+    ]
+   ],
+   "frontier_size": 3,
+   "hypervolume": 11096.027903163582,
+   "hv_ref_cost": 19582.948611111115,
+   "selected": "i02_0_contrastive",
+   "selected_search": 0.5972222222222222,
+   "selected_context": 2460.020833333333,
+   "selected_test": 0.5277777777777778,
+   "selected_test_context": 2475.7083333333335,
+   "fewshot_all_search": 0.4930555555555555,
+   "fewshot_all_context": 17802.68055555556,
+   "fewshot_all_test": 0.48148148148148157,
+   "n_frontier_beats_fewshot_all": 1,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 7.236800727184449
+  },
+  {
+   "arm": "pareto",
+   "seed": 2,
+   "points": [
+    [
+     "no_memory",
+     0.08333333333333333,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.40972222222222227,
+     17914.215277777777
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.47222222222222227,
+     2489.0833333333335
+    ],
+    [
+     "i01_1_label_list",
+     0.3263888888888889,
+     431.3333333333333
+    ],
+    [
+     "i02_0_contrastive",
+     0.4513888888888889,
+     2470.597222222222
+    ],
+    [
+     "i02_1_notes",
+     0.45138888888888884,
+     18937.0
+    ],
+    [
+     "i03_0_notes",
+     0.5416666666666666,
+     3564.4166666666665
+    ],
+    [
+     "i03_1_contrastive",
+     0.46527777777777785,
+     2747.222222222222
+    ],
+    [
+     "i04_0_contrastive",
+     0.5416666666666666,
+     3506.9375
+    ],
+    [
+     "i04_1_coverage",
+     0.46527777777777785,
+     3565.9375
+    ]
+   ],
+   "frontier": [
+    [
+     "i04_0_contrastive",
+     0.5416666666666666,
+     3506.9375
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.47222222222222227,
+     2489.0833333333335
+    ],
+    [
+     "i02_0_contrastive",
+     0.4513888888888889,
+     2470.597222222222
+    ],
+    [
+     "i01_1_label_list",
+     0.3263888888888889,
+     431.3333333333333
+    ],
+    [
+     "no_memory",
+     0.08333333333333333,
+     191.0
+    ]
+   ],
+   "frontier_size": 5,
+   "hypervolume": 9948.914091435186,
+   "hv_ref_cost": 19705.636805555558,
+   "selected": "i04_0_contrastive",
+   "selected_search": 0.5416666666666666,
+   "selected_context": 3506.9375,
+   "selected_test": 0.537037037037037,
+   "selected_test_context": 3533.6574074074074,
+   "fewshot_all_search": 0.40972222222222227,
+   "fewshot_all_context": 17914.215277777777,
+   "fewshot_all_test": 0.4583333333333333,
+   "n_frontier_beats_fewshot_all": 3,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 5.108221996479201
+  },
+  {
+   "arm": "scalar",
+   "seed": 2,
+   "points": [
+    [
+     "no_memory",
+     0.08333333333333333,
+     191.0
+    ],
+    [
+     "fewshot_all",
+     0.40972222222222227,
+     17914.215277777777
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.47222222222222227,
+     2489.0833333333335
+    ],
+    [
+     "i01_1_contrastive",
+     0.4513888888888889,
+     2470.597222222222
+    ],
+    [
+     "i02_0_notes",
+     0.5416666666666666,
+     3564.4166666666665
+    ],
+    [
+     "i02_1_label_list",
+     0.4583333333333333,
+     2767.4166666666665
+    ],
+    [
+     "i03_0_contrastive",
+     0.5416666666666666,
+     3506.9375
+    ],
+    [
+     "i03_1_one_per_label",
+     0.4375,
+     2338.8680555555557
+    ],
+    [
+     "i04_0_coverage",
+     0.5347222222222222,
+     4641.270833333333
+    ],
+    [
+     "i04_1_notes_only",
+     0.4305555555555555,
+     1956.1180555555557
+    ]
+   ],
+   "frontier": [
+    [
+     "i03_0_contrastive",
+     0.5416666666666666,
+     3506.9375
+    ],
+    [
+     "i01_0_retrieve_topk",
+     0.47222222222222227,
+     2489.0833333333335
+    ],
+    [
+     "i01_1_contrastive",
+     0.4513888888888889,
+     2470.597222222222
+    ],
+    [
+     "i03_1_one_per_label",
+     0.4375,
+     2338.8680555555557
+    ],
+    [
+     "i04_1_notes_only",
+     0.4305555555555555,
+     1956.1180555555557
+    ],
+    [
+     "no_memory",
+     0.08333333333333333,
+     191.0
+    ]
+   ],
+   "frontier_size": 6,
+   "hypervolume": 9632.81305941358,
+   "hv_ref_cost": 19705.636805555558,
+   "selected": "i03_0_contrastive",
+   "selected_search": 0.5416666666666666,
+   "selected_context": 3506.9375,
+   "selected_test": 0.537037037037037,
+   "selected_test_context": 3533.6574074074074,
+   "fewshot_all_search": 0.40972222222222227,
+   "fewshot_all_context": 17914.215277777777,
+   "fewshot_all_test": 0.4583333333333333,
+   "n_frontier_beats_fewshot_all": 5,
+   "any_beats_fewshot_all_search": true,
+   "any_beats_fewshot_all_test": true,
+   "context_ratio_selected": 5.108221996479201
+  }
+ ],
+ "summary": {
+  "pareto": {
+   "frontier_size": {
+    "mean": 4.0,
+    "lo": 3.0,
+    "hi": 5.0,
+    "n": 3
+   },
+   "hypervolume": {
+    "mean": 10598.090043081278,
+    "lo": 9948.914091435186,
+    "hi": 11108.832783564816,
+    "n": 3
+   },
+   "selected_search": {
+    "mean": 0.5694444444444445,
+    "lo": 0.5416666666666666,
+    "hi": 0.5972222222222222,
+    "n": 3
+   },
+   "selected_test": {
+    "mean": 0.5648148148148148,
+    "lo": 0.5277777777777778,
+    "hi": 0.6296296296296297,
+    "n": 3
+   },
+   "selected_context": {
+    "mean": 2394.5416666666665,
+    "lo": 1216.6666666666667,
+    "hi": 3506.9375,
+    "n": 3
+   },
+   "context_ratio_selected": {
+    "mean": 8.970793343199908,
+    "lo": 5.108221996479201,
+    "hi": 14.567357305936076,
+    "n": 3
+   },
+   "n_frontier_beats_fewshot_all": {
+    "mean": 2.0,
+    "lo": 1.0,
+    "hi": 3.0,
+    "n": 3
+   },
+   "share_any_beats_fewshot_all_search": 1.0,
+   "share_any_beats_fewshot_all_test": 1.0
+  },
+  "scalar": {
+   "frontier_size": {
+    "mean": 5.0,
+    "lo": 3.0,
+    "hi": 6.0,
+    "n": 3
+   },
+   "hypervolume": {
+    "mean": 10324.17687757202,
+    "lo": 9632.81305941358,
+    "hi": 11096.027903163582,
+    "n": 3
+   },
+   "selected_search": {
+    "mean": 0.5648148148148149,
+    "lo": 0.5416666666666666,
+    "hi": 0.5972222222222222,
+    "n": 3
+   },
+   "selected_test": {
+    "mean": 0.566358024691358,
+    "lo": 0.5277777777777778,
+    "hi": 0.6342592592592592,
+    "n": 3
+   },
+   "selected_context": {
+    "mean": 3163.1550925925926,
+    "lo": 2460.020833333333,
+    "hi": 3522.506944444444,
+    "n": 3
+   },
+   "context_ratio_selected": {
+    "mean": 5.792186009788821,
+    "lo": 5.031535305702813,
+    "hi": 7.236800727184449,
+    "n": 3
+   },
+   "n_frontier_beats_fewshot_all": {
+    "mean": 3.3333333333333335,
+    "lo": 1.0,
+    "hi": 5.0,
+    "n": 3
+   },
+   "share_any_beats_fewshot_all_search": 1.0,
+   "share_any_beats_fewshot_all_test": 1.0
+  }
+ },
+ "paired_pareto_minus_scalar": {
+  "frontier_size": {
+   "mean_diff": -1.0,
+   "lo": -3.0,
+   "hi": 1.0,
+   "n": 3,
+   "p_better": 0.3333333333333333
+  },
+  "hypervolume": {
+   "mean_diff": 273.9131655092594,
+   "lo": 12.804880401234186,
+   "hi": 492.8335841049375,
+   "n": 3,
+   "p_better": 1.0
+  },
+  "selected_test": {
+   "mean_diff": -0.0015432098765431797,
+   "lo": -0.004629629629629539,
+   "hi": 0.0,
+   "n": 3,
+   "p_better": 0.0
+  }
+ },
+ "verdict": "REPRODUCED: Pareto frontier has 4.0 non-dominated harnesses on average; in 100% of runs a frontier harness beats fewshot_all on TEST accuracy with less context (selected harness uses 9.0x less context). Pareto vs scalar hypervolume diff = +273.9",
+ "figure": "/home/user/RSI/results/metaharness-solpi/m3_pareto.png",
+ "generated_at": "2026-09-25 01:41:47"
+}

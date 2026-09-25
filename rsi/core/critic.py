@@ -58,8 +58,42 @@ class CriticVerdict:
     hits: list[str] = field(default_factory=list)
 
 
+_HUNK = re.compile(r"^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@")
+
+
 def added_lines(diff: str) -> str:
-    return "\n".join(l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
+    """Text of the lines a unified diff adds (without the leading ``+``).
+
+    Hunk-aware: inside an ``@@`` hunk every ``+`` line is content, even one whose
+    text itself starts with ``++`` (it would look like a ``+++`` file header).
+    Outside hunks, ``+++`` headers are skipped and any other ``+`` line counts as
+    added, so header-less or hand-written diffs are still screened."""
+    out = []
+    old_left = new_left = 0
+    for line in (diff or "").splitlines():
+        if old_left > 0 or new_left > 0:
+            if line.startswith("+"):
+                out.append(line[1:])
+                new_left -= 1
+                continue
+            if line.startswith("-"):
+                old_left -= 1
+                continue
+            if line.startswith(" ") or line == "":
+                old_left -= 1
+                new_left -= 1
+                continue
+            if line.startswith("\\"):   # "\ No newline at end of file"
+                continue
+            old_left = new_left = 0     # malformed counts: leave the hunk
+        m = _HUNK.match(line)
+        if m:
+            old_left = int(m.group(1)) if m.group(1) is not None else 1
+            new_left = int(m.group(2)) if m.group(2) is not None else 1
+            continue
+        if line.startswith("+") and not line.startswith("+++"):
+            out.append(line[1:])
+    return "\n".join(out)
 
 
 class LeakageCritic:
@@ -73,7 +107,7 @@ class LeakageCritic:
         case_sensitive: bool = False,
         parse_attempts: int = 3,
     ) -> None:
-        self.terms = sorted({t for t in terms if len(str(t)) >= min_term_len}, key=len, reverse=True)
+        self.terms = sorted({str(t) for t in terms if len(str(t)) >= min_term_len}, key=lambda t: (-len(t), t))
         self.patterns = [re.compile(p) for p in patterns]
         self.llm = llm
         self.domain_brief = domain_brief
@@ -88,8 +122,9 @@ class LeakageCritic:
         hits = []
         for t in self.terms:
             needle = str(t) if self.case_sensitive else str(t).lower()
-            # whole-token match so a numeric answer "12" does not fire on "120"
-            if re.search(r"(?<![\w.])" + re.escape(needle) + r"(?![\w])", hay):
+            # whole-token match so a numeric answer "12" fires on neither "120" nor "3.12" nor "12.5"
+            # (a sentence-ending "12." still matches)
+            if re.search(r"(?<![\w.])" + re.escape(needle) + r"(?!\w)(?!\.\d)", hay):
                 hits.append(str(t))
         for p in self.patterns:
             if p.search(text):
@@ -111,9 +146,12 @@ class LeakageCritic:
             try:
                 d = extract_json(resp.text)
                 ok = str(d.get("verdict", "")).lower().startswith("acc")
+                objections = d.get("objections") or []
+                if isinstance(objections, str) or not isinstance(objections, (list, tuple)):
+                    objections = [objections]
                 if not ok:
                     self.n_rejected += 1
-                return CriticVerdict(ok, [str(o) for o in d.get("objections", [])], "llm")
+                return CriticVerdict(ok, [str(o) for o in objections], "llm")
             except (ValueError, AttributeError):
                 continue
         # Unparseable reviews fail closed.

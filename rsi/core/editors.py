@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
-from .artifact import Artifact, parse_file_blocks
+from .artifact import Artifact, is_safe_relpath, parse_file_blocks
 from .llm import LLM, ClaudeCLI, Usage, extract_json
 
 EDIT_FORMAT = """\
@@ -62,13 +62,27 @@ def _allowed(name: str, editable: Optional[Sequence[str]]) -> bool:
 
 
 def apply_scope(base: Artifact, updates: Mapping[str, Optional[str]], editable: Optional[Sequence[str]]):
+    """Apply ``updates`` that match ``editable`` (glob patterns; None = all).
+    Returns ``(new_artifact, blocked_names)``. Names that are absolute or escape
+    the artifact root (``..``) are always blocked."""
     allowed, blocked = {}, []
     for name, text in updates.items():
-        if _allowed(name, editable):
+        if is_safe_relpath(name) and _allowed(name, editable):
             allowed[name] = text
         else:
             blocked.append(name)
     return base.with_files(allowed), blocked
+
+
+def _header_fields(header: object) -> tuple[str, str, list[str]]:
+    """(change, hypothesis, components) from a proposal's JSON header."""
+    h = header if isinstance(header, dict) else {}
+    comps = h.get("components") or []
+    if isinstance(comps, str):
+        comps = [comps]
+    elif not isinstance(comps, (list, tuple)):
+        comps = [comps]
+    return str(h.get("change", ""))[:500], str(h.get("hypothesis", ""))[:2000], [str(c) for c in comps]
 
 
 class Editor:
@@ -115,6 +129,12 @@ class RewriteEditor(Editor):
 
 
 def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Optional[Usage] = None) -> Proposal:
+    """Turn a reply in :data:`EDIT_FORMAT` into a :class:`Proposal`: the JSON header
+    before the first ``=== FILE:`` block gives change/hypothesis/components; file
+    blocks replace whole files (``<<DELETE>>`` deletes); edits outside
+    ``editable`` are dropped into ``blocked_files``. ``error`` is set when there
+    are no file blocks or the result equals ``artifact``."""
+    text = text or ""
     header: dict = {}
     try:
         h = extract_json(text.split("=== FILE:")[0]) if "=== FILE:" in text else extract_json(text)
@@ -128,11 +148,9 @@ def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Optional
         return Proposal(None, raw=text, usage=usage or Usage(), error="no file blocks in reply",
                         change=str(header.get("change", "")))
     new, blocked = apply_scope(artifact, updates, editable)
-    comps = header.get("components") or []
-    if isinstance(comps, str):
-        comps = [comps]
-    prop = Proposal(new, change=str(header.get("change", ""))[:500], hypothesis=str(header.get("hypothesis", ""))[:2000],
-                    components=[str(c) for c in comps], raw=text, usage=usage or Usage(), blocked_files=blocked)
+    change, hypothesis, comps = _header_fields(header)
+    prop = Proposal(new, change=change, hypothesis=hypothesis, components=comps, raw=text, usage=usage or Usage(),
+                    blocked_files=blocked)
     if new == artifact:
         prop.error = "no effective change" + (f" (blocked edits to {blocked})" if blocked else "")
     return prop
@@ -168,12 +186,12 @@ class AgentEditor(Editor):
                 f"\nYou may only edit files matching {list(editable)}.\n" if editable is not None else "") + AGENT_SUFFIX
             resp = self.cli.run_agent(prompt, cwd=str(work), system=system, tools=self.tools,
                                       timeout_s=self.timeout_s, role=role)
-            header = {}
+            header: object = {}
             hp = work / "_proposal.json"
             if hp.exists():
                 try:
                     header = json.loads(hp.read_text())
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, UnicodeDecodeError):
                     header = {}
                 hp.unlink()
             if ctx_dir.exists():
@@ -181,10 +199,10 @@ class AgentEditor(Editor):
             after = Artifact.from_dir(work)
             updates = {n: after.get(n) for n in artifact.changed_files(after)}
             new, blocked = apply_scope(artifact, updates, editable)
-            prop = Proposal(new, change=str(header.get("change", ""))[:500],
-                            hypothesis=str(header.get("hypothesis", ""))[:2000],
-                            components=list(header.get("components") or []), raw=resp.text, usage=resp.usage,
-                            blocked_files=blocked, error=None if resp.ok else f"agent error: {resp.error}",
+            change, hypothesis, comps = _header_fields(header)
+            prop = Proposal(new, change=change, hypothesis=hypothesis, components=comps, raw=resp.text,
+                            usage=resp.usage, blocked_files=blocked,
+                            error=None if resp.ok else f"agent error: {resp.error}",
                             meta={"workdir": str(work)} if self.keep_dirs else {})
             if prop.error is None and new == artifact:
                 prop.error = "no effective change"

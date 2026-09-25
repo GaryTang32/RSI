@@ -141,7 +141,8 @@ class HarnessWorldMockLLM(MockLLM):
         for r in history:
             if r.get("outcome") in ("REJECTED", "critic_reject", "smoke_fail"):
                 rejected.update(MID.findall(str(r.get("hypothesis", ""))))
-        avoid = {x for x in rejected if self.pp.respect_history and rng.random() < self.pp.history_compliance}
+        # iterate in sorted order: a set's order depends on PYTHONHASHSEED, and every element consumes a draw
+        avoid = {x for x in sorted(rejected) if self.pp.respect_history and rng.random() < self.pp.history_compliance}
 
         if "REPAIR ROUND" in P["task"]:
             return self._repair(P, rng, budget, reserved, untried, present, avoid, targets_mode, predicted)
@@ -202,6 +203,16 @@ class HarnessWorldMockLLM(MockLLM):
         body = "\n".join(f"=== FILE: {p} ===\n{t}" for p, t in files.items())
         return "```json\n" + json.dumps(header) + "\n```\n" + body
 
+    def _objected(self, m: Optional[Mechanism], e: dict, reasons: str) -> bool:
+        """Did the reviewer's objections name this edit? Only what the critic actually objected to is removed
+        in a repair (a leak the critic MISSED stays in the candidate): the objection must cite the mechanism id,
+        or one of the evolve task ids / answers its leak payload hard-codes."""
+        if m is None or e.get("prune"):
+            return False
+        if m.id in reasons:
+            return True
+        return any(k in reasons or self.world.by_id[k].target in reasons for k in m.leak_keys)
+
     def _repair(self, P, rng, budget, reserved, untried, present, avoid, targets_mode, predicted) -> str:
         brief = P["task"].split("=== REVIEWER OBJECTIONS ===", 1)[-1]
         try:
@@ -214,8 +225,7 @@ class HarnessWorldMockLLM(MockLLM):
         for e in declared:
             mid = e.get("mechanism_id") or (MID.findall(str(e.get("hypothesis", ""))) or [None])[0]
             m = self.world.catalog.get(mid) if mid else None
-            flagged = m is not None and not e.get("prune") and (
-                bool(m.payload) or mid in reasons or any(k in reasons for k in m.leak_keys))
+            flagged = self._objected(m, e, reasons)
             if flagged and rng.random() < self.pp.repair_compliance:
                 files[m.path] = "<<DELETE>>"                             # remove the offending part
                 avoid.add(mid)
@@ -223,7 +233,7 @@ class HarnessWorldMockLLM(MockLLM):
                 keep.append(e)
         chosen: list[tuple[Mechanism, bool]] = []
         if "RESERVED EXPLORATION SLOT" in reasons and untried and len(keep) < budget + 1:
-            m = self._draw(rng, present, [], avoid, [], comps=untried, exclude_kinds=("leak", "obfuscated_leak"))
+            m = self._draw(rng, present, [], avoid, [], comps=untried, exclude_kinds=("leak",))
             if m is not None:
                 chosen.append((m, False))
                 if len(keep) + 1 > budget and keep:
@@ -232,7 +242,7 @@ class HarnessWorldMockLLM(MockLLM):
                     if dm is not None and not dropped.get("prune"):
                         files[dm.path] = "<<DELETE>>"
         if not keep and not chosen:
-            m = self._draw(rng, present, [], avoid, [], exclude_kinds=("leak", "obfuscated_leak"))
+            m = self._draw(rng, present, [], avoid, [], exclude_kinds=("leak",))
             if m is not None:
                 chosen.append((m, False))
         return self._reply(chosen, targets_mode, predicted, keep_edits=keep, extra_files=files)

@@ -1,0 +1,223 @@
+{
+ "claim": "Without a guard, search-set leakage reaches the frontier and widens the practised-vs-unseen gap; a pre-evaluation leakage screen rejects it [doc; MH pilot]",
+ "config": {
+  "llm": "sim",
+  "seeds": 3,
+  "leak_rate": 0.3
+ },
+ "per_seed": [
+  {
+   "arm": "screen_off",
+   "seed": 0,
+   "leaky_proposed": 7,
+   "leaky_evaluated": 7,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i04_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.09375,
+   "gap": 0.90625,
+   "gain_search": 0.515625,
+   "gain_test": -0.42708333333333326,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 0,
+   "leaky_proposed": 1,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 1,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i04_0_contrastive",
+   "selected_search": 0.5625,
+   "selected_test": 0.6319444444444444,
+   "gap": -0.06944444444444442,
+   "gain_search": 0.078125,
+   "gain_test": 0.11111111111111116,
+   "selected_leaky_ds_search": 0.5625,
+   "screen": {
+    "screened": 8,
+    "rejected": 1
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 1,
+   "leaky_proposed": 5,
+   "leaky_evaluated": 5,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i04_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.0798611111111111,
+   "gap": 0.9201388888888888,
+   "gain_search": 0.515625,
+   "gain_test": -0.40972222222222227,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 1,
+   "leaky_proposed": 2,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 2,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i04_0_notes",
+   "selected_search": 0.5572916666666667,
+   "selected_test": 0.5833333333333334,
+   "gap": -0.02604166666666663,
+   "gain_search": 0.0729166666666668,
+   "gain_test": 0.09375,
+   "selected_leaky_ds_search": 0.5625,
+   "screen": {
+    "screened": 8,
+    "rejected": 2
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 2,
+   "leaky_proposed": 7,
+   "leaky_evaluated": 7,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 3,
+   "selected_is_leaky": true,
+   "selected": "i01_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.10069444444444445,
+   "gap": 0.8993055555555556,
+   "gain_search": 0.5677083333333333,
+   "gain_test": -0.40625,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 2,
+   "leaky_proposed": 3,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 3,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i03_1_notes",
+   "selected_search": 0.546875,
+   "selected_test": 0.5625,
+   "gap": -0.015625,
+   "gain_search": 0.11458333333333331,
+   "gain_test": 0.05555555555555558,
+   "selected_leaky_ds_search": 0.5625,
+   "screen": {
+    "screened": 8,
+    "rejected": 3
+   }
+  }
+ ],
+ "summary": {
+  "screen_off": {
+   "leaky_proposed": {
+    "mean": 6.333333333333333,
+    "lo": 5.0,
+    "hi": 7.0,
+    "n": 3
+   },
+   "leaky_evaluated": {
+    "mean": 6.333333333333333,
+    "lo": 5.0,
+    "hi": 7.0,
+    "n": 3
+   },
+   "leaky_rejected": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 3
+   },
+   "leaky_on_frontier": {
+    "mean": 1.6666666666666667,
+    "lo": 1.0,
+    "hi": 3.0,
+    "n": 3
+   },
+   "gap": {
+    "mean": 0.9085648148148149,
+    "lo": 0.8993055555555557,
+    "hi": 0.9201388888888888,
+    "n": 3
+   },
+   "gain_search": {
+    "mean": 0.532986111111111,
+    "lo": 0.515625,
+    "hi": 0.5677083333333333,
+    "n": 3
+   },
+   "gain_test": {
+    "mean": -0.41435185185185186,
+    "lo": -0.42708333333333326,
+    "hi": -0.40625,
+    "n": 3
+   },
+   "share_selected_leaky": 1.0
+  },
+  "screen_on": {
+   "leaky_proposed": {
+    "mean": 2.0,
+    "lo": 1.0,
+    "hi": 3.0,
+    "n": 3
+   },
+   "leaky_evaluated": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 3
+   },
+   "leaky_rejected": {
+    "mean": 2.0,
+    "lo": 1.0,
+    "hi": 3.0,
+    "n": 3
+   },
+   "leaky_on_frontier": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 3
+   },
+   "gap": {
+    "mean": -0.037037037037037014,
+    "lo": -0.06944444444444442,
+    "hi": -0.015625,
+    "n": 3
+   },
+   "gain_search": {
+    "mean": 0.0885416666666667,
+    "lo": 0.0729166666666668,
+    "hi": 0.11458333333333331,
+    "n": 3
+   },
+   "gain_test": {
+    "mean": 0.08680555555555558,
+    "lo": 0.05555555555555558,
+    "hi": 0.11111111111111116,
+    "n": 3
+   },
+   "share_selected_leaky": 0.0
+  }
+ },
+ "gap_off_minus_on": {
+  "mean_diff": 0.9456018518518517,
+  "lo": 0.9149305555555557,
+  "hi": 0.9756944444444443,
+  "n": 3,
+  "p_better": 1.0
+ },
+ "verdict": "REPRODUCED: screen OFF -> 1.7 leaky candidates on the frontier, selected leaky in 100% of runs; screen ON -> 2.0 rejected before evaluation, 0 evaluated. Practised-vs-unseen gap (off - on) = +0.946 [+0.915, +0.976]",
+ "caveat": "The leak rate is injected; the experiment measures what happens once a proposer leaks, not how often a real LLM proposer leaks.",
+ "generated_at": "2026-09-25 01:42:36"
+}

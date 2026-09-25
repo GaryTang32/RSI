@@ -3,7 +3,7 @@
  "rounds": 8,
  "stop_reason": "max_rounds",
  "baseline": "2d1a9dcb5f",
- "best": "26169d0a0e",
+ "best": "ae8b0b2394",
  "first": {
   "cycle": 1,
   "task_id": "chunk",
@@ -13,9 +13,6 @@
    "boundaries",
    "ranges",
    "lists",
-   "consecutive_failure_streak_8",
-   "failure_loop_detected",
-   "ban_gene:gene_decimal_money_rounding",
    "high_failure_ratio",
    "force_innovation_after_repair_loop"
   ],
@@ -25,21 +22,19 @@
   "task_score": 1.0,
   "task_success": true,
   "solidified": false,
-  "composite": 0.66,
+  "composite": 0.0,
   "tokens": 3428,
   "proposer_calls": 0,
   "hub_hit": false,
   "quarantine": null,
   "published": null,
-  "event_id": "evt_agent0_000017",
+  "event_id": "skip_agent0_000001",
   "selection_mode": "none",
-  "banned": [
-   "gene_decimal_money_rounding"
-  ],
+  "banned": [],
   "distilled": null,
   "validation_ok": false,
   "n_validation_run": 0,
-  "n_genes": 0,
+  "n_genes": 1,
   "rolling_solve_rate": 1.0
  },
  "last": {
@@ -50,9 +45,7 @@
    "task:dates",
    "dates",
    "calendar",
-   "leapyear",
-   "high_failure_ratio",
-   "force_innovation_after_repair_loop"
+   "leapyear"
   ],
   "gene_id": null,
   "source": "none",
@@ -60,13 +53,13 @@
   "task_score": 1.0,
   "task_success": true,
   "solidified": false,
-  "composite": 0.66,
+  "composite": 0.0,
   "tokens": 3004,
-  "proposer_calls": 2,
+  "proposer_calls": 1,
   "hub_hit": false,
   "quarantine": null,
   "published": null,
-  "event_id": "evt_agent0_000031",
+  "event_id": "skip_agent0_000008",
   "selection_mode": "none",
   "banned": [],
   "distilled": null,
@@ -77,36 +70,36 @@
  },
  "usage": {
   "task:cached": {
-   "calls": 8,
-   "input_tokens": 7431,
-   "output_tokens": 11753,
-   "cost_usd": 0.066196,
-   "latency_s": 119.03836560249329,
-   "total_tokens": 19184
+   "calls": 6,
+   "input_tokens": 5593,
+   "output_tokens": 9076,
+   "cost_usd": 0.050973000000000004,
+   "latency_s": 90.25178909301758,
+   "total_tokens": 14669
   },
   "proposer": {
-   "calls": 2,
-   "input_tokens": 3269,
-   "output_tokens": 11457,
-   "cost_usd": 0.060554,
-   "latency_s": 116.68697333335876,
-   "total_tokens": 14726
+   "calls": 1,
+   "input_tokens": 1579,
+   "output_tokens": 4633,
+   "cost_usd": 0.024744,
+   "latency_s": 48.04370856285095,
+   "total_tokens": 6212
   },
   "task": {
-   "calls": 2,
-   "input_tokens": 2417,
-   "output_tokens": 2789,
-   "cost_usd": 0.016361999999999998,
-   "latency_s": 29.60807156562805,
-   "total_tokens": 5206
+   "calls": 3,
+   "input_tokens": 3672,
+   "output_tokens": 4999,
+   "cost_usd": 0.028666999999999998,
+   "latency_s": 52.953896284103394,
+   "total_tokens": 8671
   },
   "_total": {
    "calls": 4,
-   "input_tokens": 5686,
-   "output_tokens": 14246,
-   "cost_usd": 0.076916,
-   "latency_s": 146.29504489898682,
-   "total_tokens": 19932
+   "input_tokens": 5251,
+   "output_tokens": 9632,
+   "cost_usd": 0.053411,
+   "latency_s": 100.99760484695435,
+   "total_tokens": 14883
   }
  },
  "meta": {
@@ -139,6 +132,7 @@
    "require_task_success": true,
    "vacuity_check": true,
    "rollback": "stash",
+   "skip_geneless_success": true,
    "env": "sim/py3.11",
    "distill": true,
    "distill_every": 5,
@@ -158,6 +152,7 @@
    "quarantine_delta": null,
    "taskcheck_n": 4,
    "taskcheck_k": 1,
+   "taskcheck_alpha": 0.2,
    "eval_k": 1,
    "workers": 1
   },
@@ -165,14 +160,14 @@
   "genes": [
    "gene_unicode_nfkc_casefold"
   ],
-  "n_events": 16,
+  "n_events": 19,
   "n_capsules": 1,
   "audit": {
    "ok": true,
    "problems": [],
-   "n_checked": 34
+   "n_checked": 40
   },
-  "proposer_calls": 2,
+  "proposer_calls": 1,
   "quarantined": 0,
   "quarantine_rejected": 0,
   "mode": "safe",
