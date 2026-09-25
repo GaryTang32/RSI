@@ -135,8 +135,9 @@ def main():
                 summ[f"{p}:{name}"] = {
                     "acceptance": summarize(acc),
                     "nonverbatim_in_accepted": int(sum(r[name]["nonverbatim"] for r in rs)),
-                    "failure_evidence_rate": sum(r[name]["failure_with_evidence"] for r in rs) /
-                    max(1, sum(r[name]["failure_logs"] for r in rs)),
+                    "failure_evidence_rate": (sum(r[name]["failure_with_evidence"] for r in rs) /
+                                              sum(r[name]["failure_logs"] for r in rs))
+                    if sum(r[name]["failure_logs"] for r in rs) else None,
                     "bytes_saved_per_task": summarize([r[name]["bytes_saved"] / r[name]["n"] for r in rs]),
                     "token_saving": summarize([-rel(r["base"], r[name], "tokens") for r in rs]),
                     "cost_saving": summarize([-rel(r["base"], r[name], "cost") for r in rs]),
