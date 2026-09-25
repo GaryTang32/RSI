@@ -7,7 +7,14 @@ this package enforces them in code:
 
 * :class:`ScopeGuard` - edits outside ``editable_paths`` (or to locked files) are
   rejected before anything runs; locked files are restored from a sealed copy,
-  made read-only and hash-checked before and after every run.
+  made read-only and hash-checked before and after every run. Because the
+  editable code runs in the same process as the locked evaluator, the guard also
+  scans the *added* lines of editable files for references to grader internals
+  (``tamper`` patterns, see :func:`default_tamper_patterns`): writing the
+  framework's result record, monkeypatching or importing private names of a
+  locked module, naming hidden splits. This is a denylist, like the core
+  :class:`~rsi.core.LeakageCritic`'s first stage: it stops the catalogued
+  exploit classes, not a determined adversary (see the impl notes).
 * :class:`BudgetEnforcer` - the fixed budget lives in locked code (the task's
   locked dataloader/clock), the framework passes it in, kills the process at
   ``kill_after`` (the watchdog, via :func:`rsi.core.sandbox.run_cmd`) and treats
@@ -49,23 +56,69 @@ class Violation:
         return f"{self.kind}:{self.path}" + (f" ({self.detail})" if self.detail else "")
 
 
+#: Environment variables through which the framework talks to the locked code
+#: (mode, seed, budget, data dir, result-record path). Editable code never needs them.
+FRAMEWORK_ENV = r"RSI_AR_\w*"
+
+
+def default_tamper_patterns(locked_paths: Sequence[str]) -> list[str]:
+    """Regexes for added lines that reach into the grader.
+
+    For every locked Python module ``m`` (``m.py`` in ``locked_paths``, no glob):
+    private names (``m._x``, ``from m import _x``), assignments to its attributes
+    (``m.f = ...``, ``setattr(m, ...)``, ``m.__dict__``, ``sys.modules['m']``);
+    plus the framework's environment variables (:data:`FRAMEWORK_ENV`), which carry
+    the path of the framework-owned result record."""
+    pats = [FRAMEWORK_ENV]
+    for p in locked_paths:
+        if not p.endswith(".py") or any(c in p for c in "*?[") or "/" in p:
+            continue
+        m = re.escape(p[:-3])
+        pats += [rf"\b{m}\s*\.\s*_\w+", rf"\bfrom\s+{m}\s+import\s+.*\b_\w+",
+                 rf"\b{m}\s*\.\s*\w+\s*(?:[-+*/%&|^@]|//|\*\*|<<|>>)?=(?!=)",
+                 rf"\bsetattr\s*\(\s*{m}\b", rf"\b{m}\s*\.\s*__dict__", rf"sys\.modules\s*\[\s*['\"]{m}['\"]"]
+    return pats
+
+
+def added_lines(before: str, after: str) -> list[str]:
+    """Lines of ``after`` that a unified diff from ``before`` marks as added."""
+    import difflib
+
+    return [l[1:] for l in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0)
+            if l.startswith("+") and not l.startswith("+++")]
+
+
 class ScopeGuard:
     """Hardened replacement for the "What you CANNOT do" list.
 
-    ``check(base, cand)`` lists edits outside the editable paths; a non-empty
-    list means the proposal is rejected without running. ``sealed`` holds the
-    canonical locked files; :meth:`locked_hashes_ok` compares a working
-    directory (or artifact) against them.
+    ``check(base, cand)`` lists edits outside the editable paths and added lines
+    of editable files that match a ``tamper`` pattern; a non-empty list means the
+    proposal is rejected without running. ``sealed`` holds the canonical locked
+    files; :meth:`locked_hashes_ok` compares a working directory (or artifact)
+    against them.
     """
 
     def __init__(self, editable_paths: Sequence[str], locked_paths: Sequence[str] = (),
-                 sealed: Optional[Mapping[str, str]] = None) -> None:
+                 sealed: Optional[Mapping[str, str]] = None, tamper: Sequence[str] = ()) -> None:
         self.editable = tuple(editable_paths)
         self.locked = tuple(locked_paths)
         self.sealed = dict(sealed or {})
         self.hashes = {k: _sha(v) for k, v in self.sealed.items()}
+        self.tamper_patterns = tuple(tamper)
+        self._tamper = [re.compile(p) for p in self.tamper_patterns]
         self.n_checked = 0
         self.n_rejected = 0
+
+    def tamper_hits(self, before: str, after: str) -> list[str]:
+        """Snippets of the added lines that match a tamper pattern."""
+        hits: list[str] = []
+        for line in added_lines(before, after):
+            code = line.split("#", 1)[0]
+            for rx in self._tamper:
+                m = rx.search(code)
+                if m and m.group(0) not in hits:
+                    hits.append(m.group(0))
+        return hits
 
     def check(self, base: Artifact, cand: Artifact) -> list[Violation]:
         self.n_checked += 1
@@ -75,6 +128,11 @@ class ScopeGuard:
                 out.append(Violation(name, "locked_edit", "locked file (the grader/data/budget) was edited"))
             elif not matches(name, self.editable):
                 out.append(Violation(name, "out_of_scope", f"only {list(self.editable)} may be edited"))
+            elif self._tamper and cand.get(name) is not None:
+                hits = self.tamper_hits(base.get(name) or "", cand[name])
+                if hits:
+                    out.append(Violation(name, "tamper", "reaches into the grader or hidden data: "
+                                         + ", ".join(repr(h) for h in hits[:4])))
         if out:
             self.n_rejected += 1
         return out

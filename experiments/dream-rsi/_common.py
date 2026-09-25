@@ -86,13 +86,22 @@ def domain_of(name: str, seed: int = 0, **kw):
 
 def agent_of(domain, spec: str):
     """The frozen discovery agent: the domain's mock agent offline, an LLM editor live
-    (synthetic worlds always use their simulated agent)."""
+    (synthetic worlds always use their simulated agent). A live agent's programs are
+    untrusted, so the domain's evaluator is switched to its subprocess sandbox."""
     from rsi.dream import EditorAgent
 
     llm = llm_of(spec)
     if llm is None or not hasattr(domain, "program_file"):
         return domain.mock_agent()
+    if hasattr(domain, "sandboxed"):
+        domain.sandboxed = True
     return EditorAgent(llm, editable=[domain.program_file])
+
+
+def sandbox_of(spec: str) -> str:
+    """Where policy code runs: in-process for the offline mock developer's template edits,
+    the subprocess PrefixGuard sandbox whenever an LLM writes policies."""
+    return "inprocess" if spec == "sim" else "subprocess"
 
 
 def pmap(fn, jobs, workers: int = 3):

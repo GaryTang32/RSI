@@ -12,7 +12,7 @@ next live search's online value (raw Eq.1 of that round: gain over its root - be
     python experiments/dream-rsi/e4_safe_selection.py [--seeds N] [--quick]
 """
 import numpy as np
-from _common import developer_of, figure, fmt, paired, parse_args, pmap, save, summ
+from _common import developer_of, figure, fmt, paired, parse_args, pmap, sandbox_of, save, summ
 
 from rsi.dream import Config, run
 from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
@@ -21,7 +21,7 @@ from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
 def one(job):
     seed, incl, sigma, rounds, llm = job
     dom = SyntheticDomain(SyntheticConfig(seed=seed))
-    cfg = Config(rounds=rounds, W=4, branch_count=6, refine_count=4, M=4, include_incumbent=incl, sandbox="inprocess",
+    cfg = Config(rounds=rounds, W=4, branch_count=6, refine_count=4, M=4, include_incumbent=incl, sandbox=sandbox_of(llm),
                  seed=seed, agent_workers=1)
     dev = developer_of(llm, sigma=sigma) if llm == "sim" else developer_of(llm)
     res = run(dom, config=cfg, developer=dev)

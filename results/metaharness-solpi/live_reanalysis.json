@@ -1,0 +1,134 @@
+{
+ "metaharness": [
+  {
+   "iteration": "iter001",
+   "name": "correct_first_fewshot",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "fence_wrapped_raw": true,
+   "search": 0.47368421052631576,
+   "test": 0.5595238095238095,
+   "context": 8667.666666666666
+  },
+  {
+   "iteration": "iter001",
+   "name": "similarity_retrieval",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "fence_wrapped_raw": false,
+   "search": 0.47368421052631576,
+   "test": 0.5595238095238095,
+   "context": 8667.666666666666
+  },
+  {
+   "iteration": "iter002",
+   "name": "weighted_recency_correctness",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "fence_wrapped_raw": true,
+   "search": 0.47368421052631576,
+   "test": 0.5595238095238095,
+   "context": 8667.666666666666
+  },
+  {
+   "iteration": "iter002",
+   "name": "label_stratified_diverse",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "fence_wrapped_raw": false,
+   "search": 0.47368421052631576,
+   "test": 0.5595238095238095,
+   "context": 8667.666666666666
+  }
+ ],
+ "lineage": [
+  {
+   "cache_file": "077a24b866c3165a",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "capability below floor",
+   "score": 0.7658730158730158,
+   "tokens": 243224.16666666666,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.2017344833333333,
+   "base_cost": 0.31027191666666665
+  },
+  {
+   "cache_file": "0ab2adbaf3174b44",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "capability below floor",
+   "score": 0.7658730158730158,
+   "tokens": 243224.16666666666,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.2017344833333333,
+   "base_cost": 0.31027191666666665
+  },
+  {
+   "cache_file": "342aea3a9f3a8b5f",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "capability below floor",
+   "score": 0.7658730158730158,
+   "tokens": 243224.16666666666,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.2017344833333333,
+   "base_cost": 0.31027191666666665
+  },
+  {
+   "cache_file": "7920b52bbf57eeb3",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "capability below floor",
+   "score": 0.9047619047619048,
+   "tokens": 216819.33333333334,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.19371348333333335,
+   "base_cost": 0.31027191666666665
+  },
+  {
+   "cache_file": "99f3c08f04c603e8",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "no efficiency gain",
+   "score": 1.0,
+   "tokens": 648567.8333333334,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.31027191666666665,
+   "base_cost": 0.31027191666666665
+  },
+  {
+   "cache_file": "aead227297c81b3e",
+   "name": "output_caching_family_c",
+   "compiles": true,
+   "smoke": "ok",
+   "gate": false,
+   "reason": "no efficiency gain",
+   "score": 1.0,
+   "tokens": 648567.8333333334,
+   "base_tokens": 648567.8333333334,
+   "cost": 0.31027191666666665,
+   "base_cost": 0.31027191666666665
+  }
+ ],
+ "baselines_search": {
+  "no_memory": 0.14035087719298245,
+  "fewshot_all": 0.47368421052631576
+ },
+ "verdict": "with fence cleanup: 4/4 cached haiku Meta-Harness candidates validate (best search 0.474 vs fewshot_all 0.474); 6/6 cached haiku mechanism files compile, 0 pass the dual gate on the training screen",
+ "generated_at": "2026-09-25 02:01:36"
+}

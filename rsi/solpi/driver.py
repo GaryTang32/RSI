@@ -55,6 +55,7 @@ class Config:
     holdout_split: Optional[str] = "holdout"
     firewall: bool = True
     sweep: bool = False              # lineage evaluates every variant and keeps the nondominated passing one
+    validate_composition: bool = False   # [inferred extension] re-gate the composed stack; drop survivors greedily
     compose: bool = True
     rounds: int = 1
     workers: int = 1
@@ -118,6 +119,22 @@ class AutoResearchDriver:
         composed, conflicts = compose(base, [f.artifact for f in kept]) if (self.cfg.compose and kept) else (base, [])
         cm = metrics_from_eval(self.ev.evaluate(composed, self.screen_tasks(), k=self.cfg.k, label="screen")) \
             if kept else bm
+        dropped = []
+        if self.cfg.validate_composition and kept and self.cfg.compose:
+            # small per-mechanism losses can accumulate once mechanisms combine [blog: Capability floors]:
+            # re-gate the composition on the training screen and greedily drop the survivor whose removal
+            # best restores it (leave-one-out), until the composed stack passes
+            while kept and not self.gate.accept(bm, cm).accept:
+                trials = []
+                for f in kept:
+                    rest = [g for g in kept if g is not f]
+                    c2, _ = compose(base, [g.artifact for g in rest]) if rest else (base, [])
+                    m2 = metrics_from_eval(self.ev.evaluate(c2, self.screen_tasks(), k=self.cfg.k, label="screen"))
+                    trials.append((self.gate.accept(bm, m2).accept, m2.agg["score"], -m2.agg["cost"], f, c2, m2))
+                ok, _, _, f, c2, m2 = max(trials, key=lambda x: (x[0], x[1], x[2]))
+                kept.remove(f)
+                dropped.append(f.idea.id)
+                composed, cm = c2, m2
         usage = Usage()
         for r in results:
             usage = usage + r.usage
@@ -134,6 +151,7 @@ class AutoResearchDriver:
             "frozen": [f.name for f in frozen], "frozen_ideas": [f.idea.id for f in frozen],
             "heldout_passed": {k: bool(v) for k, v in passed.items()},
             "survivors": [f.name for f in kept], "survivor_ideas": [f.idea.id for f in kept],
+            "dropped_by_composition_check": dropped,
             "composed_metrics": cm.to_json(), "conflicts": conflicts, "gate_digest": self.gate.digest,
             "heldout": heldout, "composed": composed, "usage": usage.to_dict(), "seconds": time.time() - t0}
 

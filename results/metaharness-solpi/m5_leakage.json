@@ -2,91 +2,91 @@
  "claim": "Without a guard, search-set leakage reaches the frontier and widens the practised-vs-unseen gap; a pre-evaluation leakage screen rejects it [doc; MH pilot]",
  "config": {
   "llm": "sim",
-  "seeds": 3,
+  "seeds": 10,
   "leak_rate": 0.3
  },
  "per_seed": [
   {
    "arm": "screen_off",
    "seed": 0,
-   "leaky_proposed": 7,
-   "leaky_evaluated": 7,
+   "leaky_proposed": 15,
+   "leaky_evaluated": 15,
    "leaky_rejected": 0,
-   "leaky_on_frontier": 1,
+   "leaky_on_frontier": 6,
    "selected_is_leaky": true,
-   "selected": "i04_1_lookup",
+   "selected": "i03_1_lookup",
    "selected_search": 1.0,
-   "selected_test": 0.09375,
-   "gap": 0.90625,
+   "selected_test": 0.3923611111111111,
+   "gap": 0.6076388888888888,
    "gain_search": 0.515625,
-   "gain_test": -0.42708333333333326,
+   "gain_test": -0.12847222222222215,
    "selected_leaky_ds_search": 1.0,
    "screen": null
   },
   {
    "arm": "screen_on",
    "seed": 0,
-   "leaky_proposed": 1,
+   "leaky_proposed": 3,
    "leaky_evaluated": 0,
-   "leaky_rejected": 1,
+   "leaky_rejected": 3,
    "leaky_on_frontier": 0,
    "selected_is_leaky": false,
-   "selected": "i04_0_contrastive",
-   "selected_search": 0.5625,
+   "selected": "i06_1_crossover",
+   "selected_search": 0.578125,
    "selected_test": 0.6319444444444444,
-   "gap": -0.06944444444444442,
-   "gain_search": 0.078125,
+   "gap": -0.05381944444444442,
+   "gain_search": 0.09375,
    "gain_test": 0.11111111111111116,
-   "selected_leaky_ds_search": 0.5625,
+   "selected_leaky_ds_search": 0.5833333333333334,
    "screen": {
-    "screened": 8,
-    "rejected": 1
+    "screened": 16,
+    "rejected": 3
    }
   },
   {
    "arm": "screen_off",
    "seed": 1,
-   "leaky_proposed": 5,
-   "leaky_evaluated": 5,
+   "leaky_proposed": 13,
+   "leaky_evaluated": 13,
    "leaky_rejected": 0,
-   "leaky_on_frontier": 1,
+   "leaky_on_frontier": 2,
    "selected_is_leaky": true,
-   "selected": "i04_1_lookup",
+   "selected": "i07_1_truncate_demos",
    "selected_search": 1.0,
-   "selected_test": 0.0798611111111111,
-   "gap": 0.9201388888888888,
+   "selected_test": 0.48958333333333326,
+   "gap": 0.5104166666666667,
    "gain_search": 0.515625,
-   "gain_test": -0.40972222222222227,
+   "gain_test": -1.1102230246251565e-16,
    "selected_leaky_ds_search": 1.0,
    "screen": null
   },
   {
    "arm": "screen_on",
    "seed": 1,
-   "leaky_proposed": 2,
+   "leaky_proposed": 5,
    "leaky_evaluated": 0,
-   "leaky_rejected": 2,
+   "leaky_rejected": 5,
    "leaky_on_frontier": 0,
    "selected_is_leaky": false,
-   "selected": "i04_0_notes",
-   "selected_search": 0.5572916666666667,
-   "selected_test": 0.5833333333333334,
-   "gap": -0.02604166666666663,
-   "gain_search": 0.0729166666666668,
-   "gain_test": 0.09375,
-   "selected_leaky_ds_search": 0.5625,
+   "selected": "i08_1_param_note_words_3",
+   "selected_search": 0.6197916666666666,
+   "selected_test": 0.5902777777777778,
+   "gap": 0.02951388888888884,
+   "gain_search": 0.13541666666666669,
+   "gain_test": 0.10069444444444442,
+   "selected_leaky_ds_search": 0.5416666666666666,
    "screen": {
-    "screened": 8,
-    "rejected": 2
+    "screened": 16,
+    "rejected": 5
    }
   },
   {
    "arm": "screen_off",
    "seed": 2,
-   "leaky_proposed": 7,
-   "leaky_evaluated": 7,
+   "leaky_proposed": 15,
+   "leaky_evaluated": 15,
    "leaky_rejected": 0,
-   "leaky_on_frontier": 3,
+   "leaky_on_frontier": 10,
    "selected_is_leaky": true,
    "selected": "i01_1_lookup",
    "selected_search": 1.0,
@@ -105,15 +105,274 @@
    "leaky_rejected": 3,
    "leaky_on_frontier": 0,
    "selected_is_leaky": false,
-   "selected": "i03_1_notes",
-   "selected_search": 0.546875,
-   "selected_test": 0.5625,
-   "gap": -0.015625,
-   "gain_search": 0.11458333333333331,
-   "gain_test": 0.05555555555555558,
+   "selected": "i06_1_crossover",
+   "selected_search": 0.5572916666666667,
+   "selected_test": 0.5451388888888888,
+   "gap": 0.012152777777777901,
+   "gain_search": 0.12500000000000006,
+   "gain_test": 0.03819444444444442,
+   "selected_leaky_ds_search": 0.5833333333333334,
+   "screen": {
+    "screened": 16,
+    "rejected": 3
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 3,
+   "leaky_proposed": 11,
+   "leaky_evaluated": 11,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 10,
+   "selected_is_leaky": true,
+   "selected": "i02_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.375,
+   "gap": 0.625,
+   "gain_search": 0.546875,
+   "gain_test": -0.12152777777777779,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 3,
+   "leaky_proposed": 6,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 6,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i07_0_coverage",
+   "selected_search": 0.5885416666666666,
+   "selected_test": 0.5902777777777778,
+   "gap": -0.0017361111111111605,
+   "gain_search": 0.13541666666666663,
+   "gain_test": 0.09375,
+   "selected_leaky_ds_search": 0.5208333333333334,
+   "screen": {
+    "screened": 16,
+    "rejected": 6
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 4,
+   "leaky_proposed": 12,
+   "leaky_evaluated": 12,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i07_0_param_k_6",
+   "selected_search": 1.0,
+   "selected_test": 0.4930555555555555,
+   "gap": 0.5069444444444444,
+   "gain_search": 0.48958333333333326,
+   "gain_test": 0.06944444444444442,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 4,
+   "leaky_proposed": 4,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 4,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i06_0_recent_window",
+   "selected_search": 0.609375,
+   "selected_test": 0.5763888888888888,
+   "gap": 0.03298611111111116,
+   "gain_search": 0.09895833333333326,
+   "gain_test": 0.15277777777777773,
+   "selected_leaky_ds_search": 0.5833333333333334,
+   "screen": {
+    "screened": 16,
+    "rejected": 4
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 5,
+   "leaky_proposed": 11,
+   "leaky_evaluated": 11,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i07_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.1111111111111111,
+   "gap": 0.8888888888888888,
+   "gain_search": 0.5364583333333333,
+   "gain_test": -0.3611111111111111,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 5,
+   "leaky_proposed": 3,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 3,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i06_1_contrastive",
+   "selected_search": 0.59375,
+   "selected_test": 0.5555555555555556,
+   "gap": 0.03819444444444442,
+   "gain_search": 0.13020833333333331,
+   "gain_test": 0.08333333333333337,
+   "selected_leaky_ds_search": 0.5208333333333334,
+   "screen": {
+    "screened": 16,
+    "rejected": 3
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 6,
+   "leaky_proposed": 1,
+   "leaky_evaluated": 1,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i08_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.5833333333333334,
+   "gap": 0.41666666666666663,
+   "gain_search": 0.5208333333333333,
+   "gain_test": 0.125,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 6,
+   "leaky_proposed": 1,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 1,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i08_0_truncate_demos",
+   "selected_search": 0.6302083333333334,
+   "selected_test": 0.6006944444444444,
+   "gap": 0.02951388888888895,
+   "gain_search": 0.15104166666666669,
+   "gain_test": 0.14236111111111105,
+   "selected_leaky_ds_search": 0.5,
+   "screen": {
+    "screened": 16,
+    "rejected": 1
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 7,
+   "leaky_proposed": 4,
+   "leaky_evaluated": 4,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 3,
+   "selected_is_leaky": true,
+   "selected": "i06_0_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.5451388888888888,
+   "gap": 0.45486111111111116,
+   "gain_search": 0.5208333333333334,
+   "gain_test": 0.06944444444444442,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 7,
+   "leaky_proposed": 3,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 3,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i05_1_crossover",
+   "selected_search": 0.6145833333333333,
+   "selected_test": 0.5451388888888888,
+   "gap": 0.06944444444444442,
+   "gain_search": 0.13541666666666663,
+   "gain_test": 0.06944444444444442,
    "selected_leaky_ds_search": 0.5625,
    "screen": {
-    "screened": 8,
+    "screened": 16,
+    "rejected": 3
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 8,
+   "leaky_proposed": 6,
+   "leaky_evaluated": 6,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 1,
+   "selected_is_leaky": true,
+   "selected": "i08_1_notes",
+   "selected_search": 1.0,
+   "selected_test": 0.5381944444444444,
+   "gap": 0.4618055555555556,
+   "gain_search": 0.5416666666666667,
+   "gain_test": 0.09722222222222221,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 8,
+   "leaky_proposed": 3,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 3,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i05_0_notes_only",
+   "selected_search": 0.5625,
+   "selected_test": 0.53125,
+   "gap": 0.03125,
+   "gain_search": 0.10416666666666669,
+   "gain_test": 0.09027777777777779,
+   "selected_leaky_ds_search": 0.5208333333333334,
+   "screen": {
+    "screened": 16,
+    "rejected": 3
+   }
+  },
+  {
+   "arm": "screen_off",
+   "seed": 9,
+   "leaky_proposed": 10,
+   "leaky_evaluated": 10,
+   "leaky_rejected": 0,
+   "leaky_on_frontier": 7,
+   "selected_is_leaky": true,
+   "selected": "i03_1_lookup",
+   "selected_search": 1.0,
+   "selected_test": 0.3402777777777778,
+   "gap": 0.6597222222222222,
+   "gain_search": 0.46354166666666663,
+   "gain_test": -0.1527777777777778,
+   "selected_leaky_ds_search": 1.0,
+   "screen": null
+  },
+  {
+   "arm": "screen_on",
+   "seed": 9,
+   "leaky_proposed": 3,
+   "leaky_evaluated": 0,
+   "leaky_rejected": 3,
+   "leaky_on_frontier": 0,
+   "selected_is_leaky": false,
+   "selected": "i05_0_param_k_10",
+   "selected_search": 0.640625,
+   "selected_test": 0.5833333333333334,
+   "gap": 0.05729166666666663,
+   "gain_search": 0.10416666666666663,
+   "gain_test": 0.09027777777777779,
+   "selected_leaky_ds_search": 0.6041666666666666,
+   "screen": {
+    "screened": 16,
     "rejected": 3
    }
   }
@@ -121,103 +380,103 @@
  "summary": {
   "screen_off": {
    "leaky_proposed": {
-    "mean": 6.333333333333333,
-    "lo": 5.0,
-    "hi": 7.0,
-    "n": 3
+    "mean": 9.8,
+    "lo": 7.0,
+    "hi": 12.4,
+    "n": 10
    },
    "leaky_evaluated": {
-    "mean": 6.333333333333333,
-    "lo": 5.0,
-    "hi": 7.0,
-    "n": 3
+    "mean": 9.8,
+    "lo": 7.0,
+    "hi": 12.4,
+    "n": 10
    },
    "leaky_rejected": {
     "mean": 0.0,
     "lo": 0.0,
     "hi": 0.0,
-    "n": 3
+    "n": 10
    },
    "leaky_on_frontier": {
-    "mean": 1.6666666666666667,
-    "lo": 1.0,
-    "hi": 3.0,
-    "n": 3
+    "mean": 4.2,
+    "lo": 2.1,
+    "hi": 6.4,
+    "n": 10
    },
    "gap": {
-    "mean": 0.9085648148148149,
-    "lo": 0.8993055555555557,
-    "hi": 0.9201388888888888,
-    "n": 3
+    "mean": 0.603125,
+    "lo": 0.5086805555555556,
+    "hi": 0.7100694444444444,
+    "n": 10
    },
    "gain_search": {
-    "mean": 0.532986111111111,
-    "lo": 0.515625,
-    "hi": 0.5677083333333333,
-    "n": 3
+    "mean": 0.521875,
+    "lo": 0.5036458333333333,
+    "hi": 0.5385416666666666,
+    "n": 10
    },
    "gain_test": {
-    "mean": -0.41435185185185186,
-    "lo": -0.42708333333333326,
-    "hi": -0.40625,
-    "n": 3
+    "mean": -0.0809027777777778,
+    "lo": -0.19652777777777777,
+    "hi": 0.024652777777777767,
+    "n": 10
    },
    "share_selected_leaky": 1.0
   },
   "screen_on": {
    "leaky_proposed": {
-    "mean": 2.0,
-    "lo": 1.0,
-    "hi": 3.0,
-    "n": 3
+    "mean": 3.4,
+    "lo": 2.6,
+    "hi": 4.2,
+    "n": 10
    },
    "leaky_evaluated": {
     "mean": 0.0,
     "lo": 0.0,
     "hi": 0.0,
-    "n": 3
+    "n": 10
    },
    "leaky_rejected": {
-    "mean": 2.0,
-    "lo": 1.0,
-    "hi": 3.0,
-    "n": 3
+    "mean": 3.4,
+    "lo": 2.6,
+    "hi": 4.2,
+    "n": 10
    },
    "leaky_on_frontier": {
     "mean": 0.0,
     "lo": 0.0,
     "hi": 0.0,
-    "n": 3
+    "n": 10
    },
    "gap": {
-    "mean": -0.037037037037037014,
-    "lo": -0.06944444444444442,
-    "hi": -0.015625,
-    "n": 3
+    "mean": 0.024479166666666673,
+    "lo": 0.002256944444444475,
+    "hi": 0.042187499999999975,
+    "n": 10
    },
    "gain_search": {
-    "mean": 0.0885416666666667,
-    "lo": 0.0729166666666668,
-    "hi": 0.11458333333333331,
-    "n": 3
+    "mean": 0.12135416666666665,
+    "lo": 0.109375,
+    "hi": 0.13229166666666667,
+    "n": 10
    },
    "gain_test": {
-    "mean": 0.08680555555555558,
-    "lo": 0.05555555555555558,
-    "hi": 0.11111111111111116,
-    "n": 3
+    "mean": 0.09722222222222221,
+    "lo": 0.07812499999999999,
+    "hi": 0.11666666666666665,
+    "n": 10
    },
    "share_selected_leaky": 0.0
   }
  },
  "gap_off_minus_on": {
-  "mean_diff": 0.9456018518518517,
-  "lo": 0.9149305555555557,
-  "hi": 0.9756944444444443,
-  "n": 3,
+  "mean_diff": 0.5786458333333333,
+  "lo": 0.478125,
+  "hi": 0.6888888888888889,
+  "n": 10,
   "p_better": 1.0
  },
- "verdict": "REPRODUCED: screen OFF -> 1.7 leaky candidates on the frontier, selected leaky in 100% of runs; screen ON -> 2.0 rejected before evaluation, 0 evaluated. Practised-vs-unseen gap (off - on) = +0.946 [+0.915, +0.976]",
+ "verdict": "REPRODUCED: screen OFF -> 4.2 leaky candidates on the frontier, selected leaky in 100% of runs; screen ON -> 3.4 rejected before evaluation, 0 evaluated. Practised-vs-unseen gap (off - on) = +0.579 [+0.478, +0.689]",
  "caveat": "The leak rate is injected; the experiment measures what happens once a proposer leaks, not how often a real LLM proposer leaks.",
- "generated_at": "2026-09-25 01:42:36"
+ "generated_at": "2026-09-25 02:01:01"
 }

@@ -128,6 +128,26 @@ class Proposer:
         raise NotImplementedError
 
 
+_FENCE_OPEN = re.compile(r"^\s*```[A-Za-z0-9_+.-]*[^\n]*\n")
+
+
+def clean_code_block(text: str) -> str:
+    """Unwrap a file body that is still inside a Markdown fence (``rsi.core.parse_file_blocks`` only
+    unwraps it when nothing follows the closing fence) and drop prose after the closing fence."""
+    if text is None:
+        return text
+    m = _FENCE_OPEN.match(text)
+    if not m:
+        return text
+    body = text[m.end():]
+    end = body.rfind("\n```")
+    if end >= 0:
+        body = body[:end + 1]
+    elif body.rstrip().endswith("```"):
+        body = body.rstrip()[:-3]
+    return body.rstrip() + "\n"
+
+
 def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, Artifact],
              taken: set[str], iteration: int) -> list[CandidateSpec]:
     """Group ``agents/<name>/<path>`` files into candidates, completing them from their base system."""
@@ -135,7 +155,7 @@ def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, A
     for path, text in files.items():
         m = re.match(r"^agents/([^/]+)/(.+)$", path)
         if m:
-            groups.setdefault(m.group(1), {})[m.group(2)] = text
+            groups.setdefault(m.group(1), {})[m.group(2)] = clean_code_block(text)
     rows = header.get("candidates") if isinstance(header, dict) else None
     rows = rows if isinstance(rows, list) else []
     by_name = {str(r.get("name")): r for r in rows if isinstance(r, dict)}

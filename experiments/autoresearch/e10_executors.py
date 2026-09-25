@@ -14,39 +14,44 @@ A. Script-mode landscape (every experiment is a real `python train.py` subproces
 B. tinylm (CPU-bound numpy training, 1.5 s budget): sequential vs 3 workers on a 4-core
    machine shared with other jobs.
 
-Usage: python experiments/autoresearch/e10_executors.py [--seeds N] [--quick] [--llm ...]
+With --llm claude:haiku (or the offline --llm scripted) part A runs with an LLM research
+agent proposing every experiment (proposals are made while earlier runs are in flight);
+part B is skipped.
+
+Usage: python experiments/autoresearch/e10_executors.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
 from __future__ import annotations
 
-from _common import SCRATCH, ci, parser, plt, write  # noqa: I001
+from _common import suffix, SCRATCH, ci, is_live, parser, plt, research_agent, usage_of, write  # noqa: I001
 
 import json
 import time
 
 import numpy as np
 
-from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask, MockResearchAgent
+from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask
 from rsi.autoresearch.executors import FakeSlurmExecutor, LocalProcessExecutor
 from rsi.autoresearch.parallel import ParallelAutoresearchLoop
 
 SLEEP_SCALE = 0.004          # 300 nominal seconds -> 1.2 s real per run
 
 
-def one(arm: str, seed: int, n: int, task=None, crash_rate: float = 0.1, workers: int = 3) -> dict:
+def one(arm: str, seed: int, n: int, task=None, crash_rate: float = 0.1, workers: int = 3,
+        llm_spec: str = "sim") -> dict:
     task = task or LandscapeTask(inprocess=False, sleep_scale=SLEEP_SCALE)
-    agent = MockResearchAgent(task.mock_edit_pool(), seed=seed, crash_rate=crash_rate)
+    agent, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed, crash_rate=crash_rate)
     cfg = Config(max_experiments=n, hidden_audit=False, plot=False, seed=seed, overwrite=True, tag=f"e10-{arm}-{seed}")
     out_dir = SCRATCH / "e10" / f"{task.name}_{arm}_{seed}"
     t0 = time.time()
     if arm == "sequential":
-        loop = AutoresearchLoop(task, agent, cfg, out_dir=out_dir)
+        loop = AutoresearchLoop(task, agent, cfg, out_dir=out_dir, llms=llms)
         pool = None
     else:
         cfg.workers = workers
         pool = LocalProcessExecutor(workers) if arm.startswith("local") else \
             FakeSlurmExecutor(nodes=workers, spool_dir=out_dir / "slurm", queue_delay_s=0.2,
                               container_image="nvcr.io/nvidia/pytorch:25.01", poll_s=0.05)
-        loop = ParallelAutoresearchLoop(task, agent, cfg, out_dir=out_dir, pool=pool)
+        loop = ParallelAutoresearchLoop(task, agent, cfg, out_dir=out_dir, pool=pool, llms=llms)
     res = loop.run()
     wall = time.time() - t0
     traj = res.trajectory
@@ -69,7 +74,8 @@ def one(arm: str, seed: int, n: int, task=None, crash_rate: float = 0.1, workers
             "best": res.meta["analysis"]["best"], "baseline": res.meta["analysis"]["baseline"],
             "best_over_time": best_t, "stale_fraction": float(np.mean(stale)) if stale else 0.0,
             "crash_states": {k: sorted(v) for k, v in states.items()}, "true_final": truth,
-            "n_keep": res.meta["analysis"]["n_keep"], "n_crash": res.meta["analysis"]["n_crash"]}
+            "n_keep": res.meta["analysis"]["n_keep"], "n_crash": res.meta["analysis"]["n_crash"],
+            "usage": usage_of(llms)}
 
 
 def time_to(best_over_time, target) -> float:
@@ -82,12 +88,13 @@ def time_to(best_over_time, target) -> float:
 def main():
     ap = parser(__doc__.splitlines()[0], seeds=3)
     a = ap.parse_args()
-    n = 12 if a.quick else 36
-    seeds = list(range(1 if a.quick else a.seeds))
+    live = is_live(a.llm)
+    n = (6 if a.quick else 9) if live else (12 if a.quick else 36)
+    seeds = list(range(a.seeds if live else 1 if a.quick else a.seeds))
     arms = ("sequential", "local-3", "slurm-3")
-    runs = [one(arm, s, n) for s in seeds for arm in arms]
+    runs = [one(arm, s, n, llm_spec=a.llm) for s in seeds for arm in arms]
     out = {"config": {"n_experiments": n, "seeds": seeds, "sleep_per_run_s": 300 * SLEEP_SCALE, "workers": 3,
-                      "crash_rate": 0.1}, "landscape": {}}
+                      "crash_rate": 0.1, "llm": a.llm}, "landscape": {}}
     for s in seeds:
         rs = [r for r in runs if r["seed"] == s]
         target = max(r["best"] for r in rs)          # a best that every arm reached
@@ -107,13 +114,14 @@ def main():
     # B: CPU-bound tinylm
     from rsi.domains.tinylm import TinyLMTask
 
-    tl = [one(arm, 0, 6 if a.quick else 12, task=TinyLMTask(budget_s=1.5), crash_rate=0.0)
-          for arm in ("sequential", "local-3")]
+    tl = [] if live else [one(arm, 0, 6 if a.quick else 12, task=TinyLMTask(budget_s=1.5), crash_rate=0.0)
+                          for arm in ("sequential", "local-3")]
     out["tinylm"] = {r["arm"]: {k: r[k] for k in ("experiments_per_hour", "loop_wall_s", "best", "baseline")} for r in tl}
     L = out["landscape"]
     speedup = L["local-3"]["experiments_per_hour"]["mean"] / L["sequential"]["experiments_per_hour"]["mean"]
     speedup_slurm = L["slurm-3"]["experiments_per_hour"]["mean"] / L["sequential"]["experiments_per_hour"]["mean"]
-    tl_speed = out["tinylm"]["local-3"]["experiments_per_hour"] / out["tinylm"]["sequential"]["experiments_per_hour"]
+    tl_speed = (out["tinylm"]["local-3"]["experiments_per_hour"] / out["tinylm"]["sequential"]["experiments_per_hour"]
+                if tl else None)
     verdict = {"throughput_speedup_local3": speedup, "throughput_speedup_slurm3": speedup_slurm,
                "tinylm_speedup_local3_cpu_bound": tl_speed,
                "time_to_common_best_s": {arm: L[arm]["time_to_common_best_s"]["mean"] for arm in arms},
@@ -123,8 +131,10 @@ def main():
     verdict["claim_reproduced"] = bool(speedup > 2.0 and speedup_slurm > 1.8 and
                                        L["local-3"]["time_to_common_best_s"]["mean"] <
                                        L["sequential"]["time_to_common_best_s"]["mean"])
+    if live:
+        verdict["usage"] = [r["usage"] for r in runs]
     out["verdict"] = verdict
-    name = "e10_executors" + ("_quick" if a.quick else "")
+    name = "e10_executors" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, arms, name))
     write(name, out)
     print(json.dumps(verdict, indent=1, default=str))

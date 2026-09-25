@@ -115,7 +115,8 @@ class ReplayEvaluator:
     ----------
     objective: :class:`Eq1Objective` (default) or :class:`ParetoSweepObjective` - the
         selection objective. With Eq. 1, ``sweep_grid`` optionally adds a beta sweep
-        for feedback (``beta_sweep.json``) without changing the selection value.
+        for feedback (``beta_sweep.json``) without changing the selection value; with
+        the Pareto objective every evaluation runs the sweep (it is the value).
     W: workers (max batch size). K2: replay round limit (None = unlimited).
     root_mode / hide_missing: see :class:`ReplayQuestion`.
     runner: ``"subprocess"`` (sandbox, default) / ``"inprocess"`` or a runner object.
@@ -187,7 +188,10 @@ class ReplayEvaluator:
         t_wall = time.time()
         cpu0 = self.cpu_s
         config = dict(config or {})
-        do_sweep = bool(self.sweep_grid) if sweep is None else (sweep and bool(self.sweep_grid))
+        if isinstance(self.objective, ParetoSweepObjective):
+            do_sweep = True            # the sweep IS the selection objective: never skip it
+        else:
+            do_sweep = bool(self.sweep_grid) if sweep is None else (sweep and bool(self.sweep_grid))
         with self.runner.session(code) as sess:
             ctxs = [self.context(w, manifests) for w in worlds]
             eps = [self.run_episode(sess, w, config, c, config.get("beta")) for w, c in zip(worlds, ctxs)]

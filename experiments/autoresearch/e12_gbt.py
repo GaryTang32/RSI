@@ -17,7 +17,7 @@ Usage: python experiments/autoresearch/e12_gbt.py [--seeds N] [--quick] [--llm s
 """
 from __future__ import annotations
 
-from _common import SCRATCH, ci, parser, plt, pool_map, propose_llm, write  # noqa: I001
+from _common import suffix, SCRATCH, ci, parser, plt, pool_map, propose_llm, write  # noqa: I001
 
 import json
 
@@ -39,14 +39,15 @@ def arm_run(args):
     elif arm == "random-hpo":
         agent = RandomSearchAgent(hpo, task.seed_artifact(), seed=seed, max_edits=4)
     else:
-        llm = propose_llm(llm_spec)
+        llm = propose_llm(llm_spec, pool=pool, seed=seed)
         agent, llms = LLMResearchAgent(RewriteEditor(llm)), [llm]
     res = AutoresearchLoop(task, agent, Config(max_experiments=n, seed=seed, overwrite=True, tag=f"e12-{arm}-{seed}"),
                            out_dir=SCRATCH / "e12" / f"{arm.replace('+', '_')}_{seed}", llms=llms).run()
-    aud = res.meta["audit"]
+    aud = [r for r in res.meta["audit"] if "audit_error" not in r]      # crashed audits are reported, not scored
     return {"arm": arm, "seed": seed, "keeps": [{"exp": r["exp"], "description": r["description"], "cv": r["metric"],
                                                   "iid": r["test_iid"], "shift": r["test_shift"]} for r in aud],
             "keep_rate": res.meta["analysis"]["keep_rate"], "n_crash": res.meta["analysis"]["n_crash"],
+            "audit_errors": [r for r in res.meta["audit"] if "audit_error" in r],
             "over_budget": res.meta["budget_events"]["over_budget"],
             "rejected_or_violations": res.meta["crash_kinds"].get("violation", 0),
             "results_tsv": res.meta["results_tsv"], "usage": res.usage.get("_total")}
@@ -91,7 +92,7 @@ def main():
     else:
         verdict = {"llm_gains": {k: out["llm"][k]["mean"] for k in ("cv_gain", "iid_gain", "shift_gain")}}
     out["verdict"] = verdict
-    name = "e12_gbt" + ("_live" if a.llm != "sim" else "") + ("_quick" if a.quick else "")
+    name = "e12_gbt" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, arms, name))
     write(name, out)
     print(json.dumps(verdict, indent=1))

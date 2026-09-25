@@ -8,7 +8,10 @@ Nobody edits this file. It holds
   ``era`` that drifts: train = 20k rows of era 0; hidden test_iid = era 0;
   hidden test_shift = era 1 (a time-shifted holdout, like the 2006 audit set);
 * ``cross_val_auc`` - the locked protocol the loop sees: 5-fold stratified CV
-  (shuffle, random_state=42) ROC AUC on train;
+  (shuffle, random_state=42) ROC AUC on train. ``featurize`` never sees the
+  label column (it is removed before every call, also for the hidden audits),
+  and hardened mode records whether the frame it was given is the untouched
+  training frame;
 * ``check_per_row`` - the mechanical version of the xgboost port's rule that
   ``featurize`` must compute each row's features from that row alone
   (plus lookups fitted on train);
@@ -135,6 +138,18 @@ def subset(frame: dict, idx) -> dict:
     return {k: v[idx] for k, v in frame.items()}
 
 
+def inputs(frame: dict) -> dict:
+    """The frame without the label: what ``featurize`` is allowed to see."""
+    return {k: v for k, v in frame.items() if k != TARGET}
+
+
+def is_train_frame(frame: dict) -> bool:
+    """True iff ``frame`` is the locked training frame, unmodified (no subset, no edited column)."""
+    ref = load_train()
+    return set(frame) == set(ref) and all(
+        np.shape(frame[k]) == ref[k].shape and np.array_equal(np.asarray(frame[k]), ref[k]) for k in ref)
+
+
 # ---------------------------------------------------------------------------
 # Locked evaluation protocol
 # ---------------------------------------------------------------------------
@@ -147,7 +162,8 @@ def _auc(y, s) -> float:
 def check_per_row(featurize, frame: dict, seed: int = 0) -> bool:
     """The xgboost port's quick test, mechanized: featurizing a random half of the
     frame must give the same rows as featurizing the whole frame."""
-    n = len(frame[TARGET])
+    frame = inputs(frame)
+    n = len(next(iter(frame.values())))
     idx = np.sort(np.random.default_rng(seed).choice(n, n // 2, replace=False))
     full = np.asarray(featurize(frame), dtype=np.float64)[idx]
     half = np.asarray(featurize(subset(frame, idx)), dtype=np.float64)
@@ -164,7 +180,7 @@ def cross_val_auc(make_model, featurize, frame: dict) -> tuple[float, float]:
     from sklearn.model_selection import StratifiedKFold
 
     y = frame[TARGET]
-    X = np.asarray(featurize(frame), dtype=np.float64)
+    X = np.asarray(featurize(inputs(frame)), dtype=np.float64)
     cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=CV_SEED)
     scores = []
     for tr, te in cv.split(X, y):
@@ -173,7 +189,8 @@ def cross_val_auc(make_model, featurize, frame: dict) -> tuple[float, float]:
         scores.append(_auc(y[te], m.predict_proba(X[te])[:, 1]))
     mean, std = float(np.mean(scores)), float(np.std(scores))
     if MODE in ("hardened", "audit"):
-        _RECORD.update({"cv_auc": mean, "cv_std": std, "folds": scores,
+        _RECORD.update({"cv_auc": mean, "cv_std": std, "folds": scores, "n_rows": int(len(y)),
+                        "full_train": is_train_frame(frame),
                         "per_row_ok": check_per_row(featurize, frame), "n_features": int(X.shape[1])})
     return mean, std
 
@@ -199,7 +216,8 @@ def finish(model, featurize, cv_auc: float, cv_std: float = 0.0) -> None:
         for split in ("test_iid", "test_shift"):
             if os.path.exists(os.path.join(DATA_DIR, f"{split}.npz")):
                 fr = load_frame(split)
-                rec["audit"][split] = _auc(fr[TARGET], model.predict_proba(np.asarray(featurize(fr), float))[:, 1])
+                rec["audit"][split] = _auc(fr[TARGET],
+                                           model.predict_proba(np.asarray(featurize(inputs(fr)), float))[:, 1])
     if RESULT_FILE:
         tmp = RESULT_FILE + ".tmp"
         with open(tmp, "w") as f:

@@ -24,7 +24,6 @@ from _common import RESULTS, fmt, parse_args, plt, pool_map, save, summarize, ta
 
 import numpy as np  # noqa: E402
 
-from rsi.core import Artifact  # noqa: E402
 from rsi.solpi import DEFAULT_COMPACTION_ECONOMICS, decide_compaction, estimate_remaining_requests  # noqa: E402
 
 BINS = [(4, 8), (8, 12), (12, 16), (16, 20)]
@@ -89,27 +88,34 @@ def main():
     for p in profs:
         for b in bins:
             rs = [r for r in rows if r["backend"] == p and tuple(r["bin"]) == b]
-            summ[f"{p}:{b[0]}-{b[1]}"] = {n: {k: summarize([r[n][k] for r in rs]) for k in
-                                              ("cost", "tokens", "score", "compactions", "overflow_rate")}
+            summ[f"{p}:{b[0]}-{b[1]}"] = {n: {**{k: summarize([r[n][k] for r in rs]) for k in
+                                                 ("cost", "tokens", "score", "compactions", "overflow_rate")},
+                                              "eta": summarize([r[n]["cost"] / max(1e-9, r[n]["score"]) for r in rs])}
                                           for n in names}
     vec = vectors()
     bad = sum(r[n]["compacted_with_nonpositive_saving"] for r in rows for n in ("occ",))
     rank = {}
     for k, v in summ.items():
+        # rank by token efficiency eta = cost / score (SoL-Pi's objective): an arm that overflows and fails
+        # is not "cheap"
+        etas = {n: v[n]["eta"]["mean"] for n in names}
         costs = {n: v[n]["cost"]["mean"] for n in names}
-        best = min(costs.values())
-        rank[k] = {"occ_cost_vs_best": costs["occ"] / best - 1, "cheapest": min(costs, key=costs.get),
-                   "occ_vs_late": costs["occ"] / costs["late_pi"] - 1, "every_vs_late": costs["every_boundary"] /
-                   costs["late_pi"] - 1, "never_overflow": v["never"]["overflow_rate"]["mean"]}
-    near = all(r["occ_cost_vs_best"] <= 0.05 for r in rank.values())
+        best = min(etas.values())
+        rank[k] = {"occ_eta_vs_best": etas["occ"] / best - 1, "best_eta_arm": min(etas, key=etas.get),
+                   "occ_vs_late": costs["occ"] / costs["late_pi"] - 1, "occ_eta_vs_late": etas["occ"] /
+                   etas["late_pi"] - 1, "every_vs_late": costs["every_boundary"] / costs["late_pi"] - 1,
+                   "never_overflow": v["never"]["overflow_rate"]["mean"]}
+    near = all(r["occ_eta_vs_best"] <= 0.05 for r in rank.values())
     verdict = ("REPRODUCED" if near and vec["all_pass"] and bad == 0 else "PARTIAL") + \
         f": economics test vectors {'pass' if vec['all_pass'] else 'FAIL'}; OCC never compacted with S<=0 " \
-        f"({bad} violations); OCC cost within 5% of the cheapest arm in {sum(r['occ_cost_vs_best'] <= 0.05 for r in rank.values())}/" \
+        f"({bad} violations); OCC cost-per-score within 5% of the best arm in {sum(r['occ_eta_vs_best'] <= 0.05 for r in rank.values())}/" \
         f"{len(rank)} (backend, length) cells; every-boundary costs {np.mean([r['every_vs_late'] for r in rank.values()]):+.0%} " \
         f"vs late on average; never-compact overflows up to {max(r['never_overflow'] for r in rank.values()):.0%} of runs"
-    print(table([[k] + [f"{summ[k][n]['cost']['mean']:.3f}" for n in names] +
-                 [f"{rank[k]['occ_vs_late']:+.1%}", f"{summ[k]['never']['overflow_rate']['mean']:.2f}"]
-                 for k in summ], ["backend:subtasks"] + [f"cost {n}" for n in names] + ["occ vs late", "overflow(never)"]))
+    print(table([[k] + [f"{summ[k][n]['eta']['mean']:.3f}" for n in names] +
+                 [f"{rank[k]['occ_vs_late']:+.1%}", f"{rank[k]['best_eta_arm']}",
+                  f"{summ[k]['never']['overflow_rate']['mean']:.2f}"]
+                 for k in summ], ["backend:subtasks"] + [f"eta {n}" for n in names] +
+                ["occ cost vs late", "best eta", "overflow(never)"]))
     print("verdict:", verdict)
     fig = plt()
     f, axes = fig.subplots(1, 2, figsize=(10, 3.8))

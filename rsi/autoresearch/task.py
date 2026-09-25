@@ -159,6 +159,9 @@ class ResearchTask:
     audit_splits: tuple[str, ...] = ()
     run_command: str = ""
     budget: RunBudget = RunBudget()
+    #: hardened mode: regexes that added lines of editable files must not match
+    #: (see :func:`rsi.autoresearch.guard.default_tamper_patterns`)
+    tamper_patterns: tuple[str, ...] = ()
 
     # ---- to implement
     def seed_artifact(self) -> Artifact:
@@ -173,7 +176,8 @@ class ResearchTask:
         """One-time, idempotent data preparation (``uv run prepare.py``)."""
 
     def audit(self, artifact: Artifact, *, seed: int = 0) -> dict[str, float]:
-        """Hidden metrics of ``artifact`` (post hoc, never shown to the agent)."""
+        """Hidden metrics of ``artifact`` (post hoc, never shown to the agent). ``{}`` means
+        no audit is configured; a failed audit returns ``{"audit_error": reason}``."""
         return {}
 
     def sealed_files(self) -> dict[str, str]:
@@ -230,6 +234,12 @@ class ScriptResearchTask(ResearchTask):
     record_checks:
         hardened-mode validation of the locked result record: callables
         ``record -> Optional[str]`` returning a crash reason.
+    tamper_patterns:
+        extra hardened-mode denylist regexes for added lines of editable files
+        (e.g. names of hidden splits or of the validation arrays), on top of
+        :func:`~rsi.autoresearch.guard.default_tamper_patterns` (framework
+        environment variables; private names of, and assignments to, the locked
+        modules) unless ``default_tamper=False``.
     """
 
     def __init__(
@@ -249,7 +259,11 @@ class ScriptResearchTask(ResearchTask):
         description: str = "",
         record_checks: Sequence[Callable[[dict], Optional[str]]] = (),
         keep_workdirs: bool = False,
+        tamper_patterns: Sequence[str] = (),
+        default_tamper: bool = True,
     ) -> None:
+        from .guard import default_tamper_patterns
+
         self.name = name
         self._files = dict(files)
         self.metric = metric
@@ -265,6 +279,8 @@ class ScriptResearchTask(ResearchTask):
         self._description = description
         self.record_checks = list(record_checks)
         self.keep_workdirs = keep_workdirs
+        self.tamper_patterns = tuple((default_tamper_patterns(self.locked_paths) if default_tamper else [])
+                                     + list(tamper_patterns))
 
     def seed_artifact(self) -> Artifact:
         return Artifact(self._files)
@@ -350,11 +366,12 @@ class ScriptResearchTask(ResearchTask):
             if v is None:
                 out.crash_reason = "no locked result record (the locked evaluator did not run)"
                 return
-            for check in self.record_checks:
-                reason = check(out.record)
-                if reason:
-                    out.crash_reason = reason
-                    return
+            flags = [r for r in (check(out.record) for check in self.record_checks) if r]
+            if flags and mode != "audit":
+                out.crash_reason = flags[0]
+                return
+            if flags:                      # audit: score it anyway and report the protocol violations
+                out.meta["audit_flags"] = flags
         if not isinstance(v, (int, float)) or not math.isfinite(float(v)):
             out.crash_reason = out.crash_reason or (
                 "FAIL (fast-fail: loss is NaN or exploded)" if re.search(r"^FAIL\s*$", out.log, re.M)
@@ -367,13 +384,18 @@ class ScriptResearchTask(ResearchTask):
 
     def audit(self, artifact: Artifact, *, seed: int = 0) -> dict[str, float]:
         """Re-run ``artifact`` in audit mode (locked files restored, hidden data
-        visible to the locked evaluator only) and return the hidden metrics."""
+        visible to the locked evaluator only) and return the hidden metrics. A
+        version that fails a ``record_checks`` rule is still scored; the failures
+        come back as ``audit_flags`` (a crashed run gives ``audit_error``)."""
         if "audit" not in self.data_dirs:
             return {}
         out = self.run(artifact, seed=seed, mode="audit")
+        if out.crashed:
+            return {"audit_error": out.crash_reason or "crash"}
         aud = dict(out.record.get("audit") or {})
-        if out.metric is not None:
-            aud["loop_metric_rerun"] = out.metric
+        aud["loop_metric_rerun"] = out.metric
+        if out.meta.get("audit_flags"):
+            aud["audit_flags"] = "; ".join(out.meta["audit_flags"])
         return aud
 
 
@@ -489,9 +511,11 @@ class DomainResearchTask(ResearchTask):
         return out
 
     def audit(self, artifact: Artifact, *, seed: int = 0) -> dict[str, float]:
-        out = {}
+        out: dict = {}
         for split in self.audit_splits:
             res, err = self._evaluate(artifact, split, seed, allow_sealed=True)
             if res is not None:
                 out[split] = float(res.score)
+            else:
+                out["audit_error"] = f"{split}: {(err or 'evaluation failed').splitlines()[0]}"
         return out

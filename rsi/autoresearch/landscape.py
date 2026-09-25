@@ -230,11 +230,13 @@ class LandscapeTask(ResearchTask):
         return out
 
     def audit(self, artifact: Artifact, *, seed: int = 0) -> dict[str, float]:
-        out = {}
+        out: dict = {}
         for split in self.audit_splits:
             o = self._measure(artifact, "hardened", split, seed, 0)
             if o.metric is not None:
                 out[split] = o.metric
+            else:
+                out["audit_error"] = f"{split}: {o.crash_reason}"
         return out
 
     def mock_edit_pool(self) -> list[ScriptedEdit]:

@@ -22,11 +22,16 @@ from rsi.core import Ledger
 from rsi.dream import Config, DiscoveryTree, ReplayEvaluator, run, template_code
 
 
+GRID = (5, 3)
+LIVE_GRID = (3, 1)      # --llm claude:*: 2 policies x 2 rounds x 6 calls = 24 real agent calls
+
+
 def one(job):
     dom_name, seed, policy, llm = job
     dom = domain_of(dom_name, seed)
     code = template_code(policy)
-    cfg = Config(rounds=2, W=4, branch_count=5, refine_count=3, dream=False, sandbox="inprocess", seed=seed,
+    g = GRID if llm == "sim" else LIVE_GRID
+    cfg = Config(rounds=2, W=4, branch_count=g[0], refine_count=g[1], dream=False, sandbox="inprocess", seed=seed,
                  agent_workers=1 if llm == "sim" else 4)
     out_dir = tempfile.mkdtemp(prefix="e1_")
     t0 = time.time()
@@ -35,8 +40,8 @@ def one(job):
     rows = []
     led = Ledger(f"{out_dir}/discovery.jsonl")
     for mode in ("addressable", "earliest"):
-        ev_in = ReplayEvaluator(W=4, fallback=(5, 3), runner="inprocess", root_mode=mode)
-        ev_sb = ReplayEvaluator(W=4, fallback=(5, 3), runner="subprocess", root_mode=mode)
+        ev_in = ReplayEvaluator(W=4, fallback=g, runner="inprocess", root_mode=mode)
+        ev_sb = ReplayEvaluator(W=4, fallback=g, runner="subprocess", root_mode=mode)
         for t, (world, man) in enumerate(zip(res.meta["worlds"], res.meta["manifests"]), 1):
             online = {n.id: n.round for n in world.non_root()}
             back = DiscoveryTree.from_ledger(led, include=lambda n, t=t: n.id.startswith(f"t{t}/"))
@@ -56,7 +61,7 @@ def one(job):
                          "online_agent_calls": man["agent_calls"], "replay_agent_calls": 0})
     # replay never touches the agent: count agent calls around a replay of the whole pool
     before = res.usage["_cost"]["agent_calls"]
-    ReplayEvaluator(W=4, fallback=(5, 3), runner="inprocess").evaluate(code, res.meta["worlds"])
+    ReplayEvaluator(W=4, fallback=g, runner="inprocess").evaluate(code, res.meta["worlds"])
     assert res.usage["_cost"]["agent_calls"] == before
     return rows
 
@@ -68,6 +73,8 @@ def main():
     doms = {"synthetic": a.seeds, "sumdiff": max(1, a.seeds // 2), "circlepack": 1, "lasso": 1}
     if a.quick:
         doms = {"synthetic": 2, "sumdiff": 1, "circlepack": 1}
+    if a.llm != "sim":   # live: one real-task world pair with the LLM agent (synthetic worlds need no LLM)
+        doms = {"sumdiff": 1}
     jobs = [(d, s, p, a.llm) for d, n in doms.items() for s in range(n) for p in ("parallel_refine", "adaptive")]
     rows = [r for rs in pmap(one, jobs, a.workers) for r in rs]
     n = len(rows)
@@ -102,7 +109,8 @@ def main():
                f"~{ms_in['mean']:.1f} ms per episode in-process") if ok_in == n and ok_sb == n and ok_lg == n else \
         f"PARTIAL: {ok_in}/{n} identical in-process, {ok_sb}/{n} sandboxed, {ok_lg}/{n} via ledger"
     save("e1_replay_fidelity", {"config": {"domains": doms, "policies": ["parallel_refine", "adaptive"],
-                                           "grid": "5x3", "W": 4, "rounds": 2, "llm": a.llm},
+                                           "grid": "%dx%d" % (GRID if a.llm == "sim" else LIVE_GRID), "W": 4,
+                                           "rounds": 2, "llm": a.llm},
                                 "rows": rows, "by_domain": by_dom, "replay_ms_in_process": ms_in,
                                 "replay_ms_sandbox": ms_sb, "external_ledger": ext, "verdict": verdict}, a.out)
     print(verdict)

@@ -1,6 +1,6 @@
 {
  "experiment": "e9_overfitting",
- "created": "2026-09-24 23:05:47",
+ "created": "2026-09-25 02:45:23",
  "config": {
   "t": [
    1,
@@ -23,7 +23,7 @@
   ],
   "developer": "ParametricMutator(sigma=0.35, n_random=3)",
   "guard": "GuardedSelector(holdout every 3rd world, delta=max(0.01, 2 SE))",
-  "llm": "not used"
+  "llm": "sim"
  },
  "results": {
   "t1_argmax_M2": {

@@ -388,18 +388,28 @@ class OnlineQuestion(GridQuestion):
         ctx = self.context_fn(parent, parent_ws, b, a) if self.context_fn else self._default_context(parent, parent_ws,
                                                                                                         b, a)
         seed = _seed_of(self.seed, self.round_index, b, a)
+        from .agent import AgentAttempt, EvalOutcome  # local import: avoid a module cycle
+
         t0 = time.time()
-        att = self.agent.attempt(ctx, seed=seed)
+        try:
+            att = self.agent.attempt(ctx, seed=seed)
+        except Exception as e:  # noqa: BLE001 - an agent/backend crash is a failed attempt, not a policy error
+            att = AgentAttempt(None, "", error=f"agent crashed: {type(e).__name__}: {e}")
+            att.meta["crash"] = True
         usage = getattr(att, "usage", None)
         if self.meter is not None:
             self.meter.add_agent(usage)
         program = att.artifact if att.artifact is not None else self.program_filter(parent_ws)
         if att.artifact is None or att.error:
-            from .agent import EvalOutcome  # local import: avoid a module cycle
-            ev = EvalOutcome(None, evaluated=False, valid=False, fail_class="compile_other",
+            ev = EvalOutcome(None, evaluated=False, valid=False,
+                             fail_class="env_error" if att.meta.get("crash") else "compile_other",
                              error=f"agent: {att.error or 'no candidate produced'}")
         else:
-            ev = self.task.evaluate(self.program_filter(program), seed=seed)
+            try:
+                ev = self.task.evaluate(self.program_filter(program), seed=seed)
+            except Exception as e:  # noqa: BLE001 - evaluator infrastructure failure: typed, never a success
+                ev = EvalOutcome(None, evaluated=False, valid=False, fail_class="env_error",
+                                 error=f"evaluator crashed: {type(e).__name__}: {e}")
         dt = time.time() - t0
         if self.meter is not None:
             self.meter.add_eval(ev.seconds)
@@ -428,9 +438,6 @@ class OnlineQuestion(GridQuestion):
                               self.task.editable() if hasattr(self.task, "editable") else None)
 
     def _transition(self, cells: list[str]) -> list[Optional[Observation]]:
-        if self.call_budget is not None:
-            left = max(0, self.call_budget - self.calls)
-            cells = cells[:left]
         t0 = time.time()
         if len(cells) <= 1 or self.workers <= 1:
             nodes = [self._one(c) for c in cells]
@@ -452,9 +459,21 @@ class OnlineQuestion(GridQuestion):
         return self.call_budget is not None and self.calls >= self.call_budget
 
     def probe_batch(self, cells, on_reveal=None):
-        if self.call_budget is not None and self.calls >= self.call_budget:
-            self._done = True
-            return []
+        if self.call_budget is not None:
+            left = self.call_budget - self.calls
+            if left <= 0:
+                self._done = True
+                return []
+            cells = [str(c) for c in cells]
+            if len(cells) > left:
+                # the agent-call budget cuts this batch: only the first `left` requests run, and the
+                # recorded round (batch size, k) reflects what was executed; flagged in the tree meta
+                err = self.validate_batch(cells)
+                if err:
+                    self.batch_errors.append(err)
+                    raise BatchError(err)
+                self.tree.meta["truncated_batch"] = {"round": self.k + 1, "requested": cells, "executed": cells[:left]}
+                cells = cells[:left]
         return super().probe_batch(cells, on_reveal)
 
 

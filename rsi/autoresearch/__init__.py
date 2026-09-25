@@ -16,7 +16,7 @@ Quick start (offline, scripted agent)::
 Any :class:`rsi.core.Domain` works too (``run(domain, seed_artifact, llm_task=..., llm_propose=...)``).
 
 Modules: task (ResearchTask, ScriptResearchTask, DomainResearchTask, RunBudget),
-guard (ScopeGuard, BudgetEnforcer, CrashPolicy), results (ResultsLog, Workspace),
+guard (ScopeGuard with the hardened tamper scan, BudgetEnforcer, CrashPolicy), results (ResultsLog, Workspace),
 keep (StrictKeep, BootstrapRigorKeep, SimplicityWeighted, GateKeep, NoiseCalibrator),
 program (ProgramSpec), agent (LLMResearchAgent, MockResearchAgent), loop
 (AutoresearchLoop, Config, run), analysis (Analyzer, HiddenAudit, Reeval),
@@ -27,7 +27,7 @@ landscape (LandscapeTask, a known-truth synthetic task).
 from .agent import (AgentContext, LLMResearchAgent, MockResearchAgent, RandomSearchAgent, ResearchAgent, ScriptedEdit,
                     knob_edit, scripted_llm, text_edit)
 from .analysis import Analyzer, HiddenAudit, Reeval
-from .guard import BudgetEnforcer, CrashPolicy, ScopeGuard, Violation
+from .guard import BudgetEnforcer, CrashPolicy, ScopeGuard, Violation, default_tamper_patterns
 from .keep import (BootstrapRigorKeep, GateKeep, KeepContext, KeepRule, NoiseCalibrator, Samples, SimplicityWeighted,
                    StrictKeep, make_keep_rule)
 from .landscape import LandscapeTask, landscape_edit_pool
@@ -39,7 +39,7 @@ from .task import DomainResearchTask, ResearchTask, RunBudget, RunOutcome, Scrip
 __all__ = [
     "Config", "run", "AutoresearchLoop", "make_agent",
     "ResearchTask", "ScriptResearchTask", "DomainResearchTask", "RunBudget", "RunOutcome", "parse_summary",
-    "ScopeGuard", "Violation", "BudgetEnforcer", "CrashPolicy",
+    "ScopeGuard", "Violation", "default_tamper_patterns", "BudgetEnforcer", "CrashPolicy",
     "ResultsLog", "Row", "Workspace",
     "KeepRule", "StrictKeep", "BootstrapRigorKeep", "SimplicityWeighted", "GateKeep", "NoiseCalibrator", "Samples",
     "KeepContext", "make_keep_rule",

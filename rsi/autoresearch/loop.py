@@ -71,6 +71,7 @@ class Config:
     audit_discards: bool = False
     reeval_seeds: int = 0                        # post-hoc fresh-seed re-runs of baseline and final best
     reeval_seed_base: int = 10_000
+    reeval_mode: str = "hardened"                # honest re-eval uses the locked grader, whatever ``mode`` the loop ran in
     workers: int = 1                             # >1: parallel "don't wait" variant (see rsi.autoresearch.parallel)
     executor: str = "local"                      # "local" | "slurm" (fake SLURM) for workers > 1
     workspace: str = "memory"                    # "memory" | "git" (a real repository under out_dir/workspace)
@@ -121,7 +122,8 @@ class AutoresearchLoop:
         self.results = ResultsLog(self.out / "results.tsv" if p else None, metric_name=task.metric)
         self.ws = Workspace(self.store, backend=self.cfg.workspace,
                             root=self.out / "workspace" if self.cfg.workspace == "git" else None)
-        self.guard = ScopeGuard(task.editable_paths, task.locked_paths, sealed=task.sealed_files())
+        self.guard = ScopeGuard(task.editable_paths, task.locked_paths, sealed=task.sealed_files(),
+                                tamper=getattr(task, "tamper_patterns", ()))
         self.enforcer = BudgetEnforcer(task.budget)
         self.policy = CrashPolicy(self.cfg.max_fix_attempts)
         self.budget = Budget(max_rounds=self.cfg.max_experiments, max_rollouts=self.cfg.max_runs,
@@ -452,8 +454,8 @@ class AutoresearchLoop:
 
         seeds = [self.cfg.reeval_seed_base + i for i in range(self.cfg.reeval_seeds)]
         base_art = self.ws.artifact(self.ws.log(10_000)[-1].sha)
-        rv = Reeval(self.task, mode=self.cfg.mode)
-        out = {"final": rv.run(self.inc["artifact"], seeds), "baseline": rv.run(base_art, seeds)}
+        rv = Reeval(self.task, mode=self.cfg.reeval_mode or self.cfg.mode)
+        out = {"final": rv.run(self.inc["artifact"], seeds), "baseline": rv.run(base_art, seeds), "mode": rv.mode}
         rec = self.inc["samples"].mean
         honest = out["final"]["mean"]
         if honest == honest:  # not NaN

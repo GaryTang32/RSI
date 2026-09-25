@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from typing import Any, Callable, Optional
 
 from .fusion import ActionFusion
@@ -84,14 +85,22 @@ def load_code_extension(name: str, source: str, config: dict) -> Extension:
                           "__name__": f"solpi_ext_{name}"}
     exec(compile(source, f"extensions/{name}.py", "exec"), ns)  # noqa: S102 - mechanism code is the artifact
     mech = ns.get("MECHANISM")
-    if isinstance(mech, type) and issubclass(mech, Extension):
-        ext = mech(**config) if config else mech()
-    elif isinstance(mech, Extension):
+    if isinstance(mech, type) and callable(getattr(mech, "register", None)):
+        try:
+            ext = mech(**config) if config else mech()
+        except TypeError:
+            ext = mech()
+    elif mech is not None and callable(getattr(mech, "register", None)):
         ext = mech
     elif callable(ns.get("register")):
         ext = FunctionExtension(name, ns["register"], config)
     else:
         raise TypeError(f"extensions/{name}.py defines neither MECHANISM nor register(rt, config)")
+    if not isinstance(getattr(ext, "stats", None), Counter):
+        try:
+            ext.stats = Counter()
+        except AttributeError:
+            pass
     ext.name = getattr(ext, "name", name) or name
     return ext
 

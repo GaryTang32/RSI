@@ -14,7 +14,7 @@ trajectory that produces it.
     python experiments/dream-rsi/e6_pacing.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
 import numpy as np
-from _common import agent_of, developer_of, domain_of, figure, fmt, parse_args, pmap, save, spearman, summ
+from _common import agent_of, developer_of, domain_of, figure, fmt, parse_args, pmap, sandbox_of, save, spearman, summ
 
 from rsi.dream import Config, run
 
@@ -26,7 +26,7 @@ def one(job):
     st = SET[d]
     dom = domain_of(d, seed)
     cfg = Config(rounds=6 if quick else st["rounds"], W=4, branch_count=st["grid"][0], refine_count=st["grid"][1],
-                 M=st["M"], dream=dream, sandbox="inprocess", seed=seed, agent_workers=1 if llm == "sim" else 4)
+                 M=st["M"], dream=dream, sandbox=sandbox_of(llm), seed=seed, agent_workers=1 if llm == "sim" else 4)
     res = run(dom, config=cfg, agent=agent_of(dom, llm), developer=developer_of(llm) if dream else None)
     tr = res.trajectory
     return {"domain": d, "seed": seed, "arm": "dream" if dream else "fixed", "calls": [r["calls"] for r in tr],
@@ -75,6 +75,14 @@ def main():
                 per_seed.append(np.mean(a_) - np.mean(b_))
         d_pl = [p["delta_calls"] for p in ps if p["prev_rel"] < 0.1]
         d_im = [p["delta_calls"] for p in ps if p["prev_rel"] >= 0.1]
+        # seed-clustered version (pairs within one run are correlated, so pooled-pair CIs are too narrow)
+        per_seed_delta = []
+        for r in dr:
+            pp = [p for p in ps if p["seed"] == r["seed"]]
+            a_ = [p["delta_calls"] for p in pp if p["prev_rel"] < 0.1]
+            b_ = [p["delta_calls"] for p in pp if p["prev_rel"] >= 0.1]
+            if a_ and b_:
+                per_seed_delta.append(np.mean(a_) - np.mean(b_))
         rho_delta = spearman([p["prev_improvement"] for p in ps], [p["delta_calls"] for p in ps])
         R = len(dr[0]["calls"])
         effort = [summ([r["calls"][t] for r in dr if len(r["calls"]) > t]) for t in range(R)]
@@ -82,6 +90,7 @@ def main():
                "calls_after_plateau": summ(plateau), "calls_after_improving_round": summ(improving),
                "per_seed_plateau_minus_improving": summ(per_seed), "dream_effort_by_round": effort,
                "delta_calls_after_plateau": summ(d_pl), "delta_calls_after_improving_round": summ(d_im),
+               "per_seed_delta_plateau_minus_improving": summ(per_seed_delta),
                "spearman_prev_improvement_vs_delta_calls": rho_delta,
                "fixed_effort_per_round": fx[0]["calls"][0],
                "dream_total_calls": summ([sum(r["calls"]) for r in dr]),
@@ -94,7 +103,8 @@ def main():
         print(f"   calls after plateau {fmt(res['calls_after_plateau'], 1)} vs after improving round "
               f"{fmt(res['calls_after_improving_round'], 1)}; per-seed diff {fmt(res['per_seed_plateau_minus_improving'], 1)}")
         print(f"   round-controlled: change in calls after plateau {fmt(res['delta_calls_after_plateau'], 2)} vs after "
-              f"improving round {fmt(res['delta_calls_after_improving_round'], 2)} (rho {rho_delta:+.3f})")
+              f"improving round {fmt(res['delta_calls_after_improving_round'], 2)} (rho {rho_delta:+.3f}); "
+              f"seed-clustered difference {fmt(res['per_seed_delta_plateau_minus_improving'], 2)}")
         print("   dream effort by round: " + " ".join(f"{e['mean']:.0f}" for e in effort) +
               f"  (fixed: {fx[0]['calls'][0]} every round)")
         ax = axes[0][i]
@@ -116,12 +126,16 @@ def main():
         dp, di = r["delta_calls_after_plateau"], r["delta_calls_after_improving_round"]
         conserve = r["dream_effort_by_round"][1]["mean"] < r["fixed_effort_per_round"]
         rises = dp["mean"] is not None and di["mean"] is not None and dp["mean"] > di["mean"]
-        if rho < -0.1 and diff["mean"] is not None and diff["lo"] > 0 and rises:
+        cl = r["per_seed_delta_plateau_minus_improving"]
+        clustered = (f"; seed-clustered round-controlled difference {cl['mean']:+.1f} [{cl['lo']:+.1f}, {cl['hi']:+.1f}] "
+                     f"(n={cl['n']} seeds)") if cl["mean"] is not None else "; no seed has both kinds of round"
+        if rho < -0.1 and diff["mean"] is not None and diff["lo"] > 0 and rises and cl["mean"] is not None \
+                and cl["lo"] > 0:
             verdict[d] = (f"REPRODUCED: effort rises after plateaus (rho={rho:+.2f}, +{diff['mean']:.1f} calls; "
-                          f"round-controlled change {dp['mean']:+.1f} vs {di['mean']:+.1f})")
+                          f"round-controlled change {dp['mean']:+.1f} vs {di['mean']:+.1f})") + clustered
         elif rises or rho < 0:
             verdict[d] = (f"WEAK/PARTIAL: rho={rho:+.2f}; change in calls after plateau {dp['mean']:+.1f} vs after "
-                          f"improvement {di['mean']:+.1f}")
+                          f"improvement {di['mean']:+.1f}") + clustered
         else:
             verdict[d] = (f"NOT reproduced: effort does not rise after plateaus (rho={rho:+.2f}; change after plateau "
                           f"{dp['mean']:+.1f} vs {di['mean']:+.1f} after improvement)")

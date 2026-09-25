@@ -120,7 +120,7 @@ class SharedHub:
     def __init__(self, root: str | Path, *, direction: str = "min", metric: str = "val_bpb",
                  claim_ttl: float = CLAIM_TTL, verify_delay: float = VERIFY_DELAY,
                  semantic_threshold: float = SEMANTIC_THRESHOLD, similarity: Optional[Callable] = None,
-                 sanity: Optional[SanityRule] = SanityRule(), verifier: Optional[Callable[[dict], Optional[float]]] = None,
+                 sanity: object = "at-home", verifier: Optional[Callable[[dict], Optional[float]]] = None,
                  verify_tol: float = 0.0, dedup_on_code: bool = False, now: Callable[[], float] = time.time,
                  sleep: Callable[[float], None] = time.sleep) -> None:
         self.root = Path(root)
@@ -130,6 +130,14 @@ class SharedHub:
         self.claim_ttl, self.verify_delay = claim_ttl, verify_delay
         self.threshold = semantic_threshold
         self.sim = similarity or NgramCosine()
+        if isinstance(sanity, str):
+            if sanity != "at-home":
+                raise ValueError("sanity must be 'at-home', a SanityRule or None")
+            # at-home's thresholds (v >= 0.5, jump <= 0.1) are val_bpb-scale; for a higher-is-better metric
+            # only the "v <= 0 is a crash/bug" check carries over - pass your own SanityRule for other scales
+            sanity = SanityRule() if direction == "min" else SanityRule(direction="max", floor=None, max_jump=None)
+        if sanity is not None and sanity.direction != direction:
+            raise ValueError(f"SanityRule direction {sanity.direction!r} != hub direction {direction!r}")
         self.sanity = sanity
         self.verifier = verifier
         self.verify_tol = verify_tol
@@ -387,6 +395,8 @@ class CollaborativeLoop(AutoresearchLoop):
                  sync_every: int = SYNC_EVERY_N, report: Optional[Callable[[float], float]] = None,
                  adopt: bool = True, **kw) -> None:
         super().__init__(*args, **kw)
+        if hub.direction != self.task.direction:
+            raise ValueError(f"hub direction {hub.direction!r} != task direction {self.task.direction!r}")
         self.hub, self.agent_id, self.tier = hub, agent_id, tier
         self.claiming, self.sync_every, self.adopt = claiming, sync_every, adopt
         self.report = report or (lambda v: v)

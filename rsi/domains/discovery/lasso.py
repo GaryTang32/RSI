@@ -160,6 +160,19 @@ def lasso_path(X, y, lambdas):
     return out
 '''
 
+#: reference row of the paper's Lasso table ("sklearn"): scikit-learn's compiled coordinate-descent
+#: ``lasso_path`` at its default tolerance (it passes the 1e-6 objective gate on these instances)
+SKLEARN_SOLVER = '''"""Reference: scikit-learn's coordinate-descent lasso_path (the paper's "sklearn" row)."""
+import numpy as np
+from sklearn.linear_model import lasso_path as _lasso_path
+
+
+def lasso_path(X, y, lambdas):
+    _, coefs, _ = _lasso_path(np.asarray(X, dtype=float), np.asarray(y, dtype=float),
+                              alphas=np.asarray(lambdas, dtype=float))
+    return [coefs[:, k].tolist() for k in range(coefs.shape[1])]
+'''
+
 SEED_KNOBS = {"ALGO": "cd", "WARM": False, "SCREEN": False, "KKT": True, "ACTIVE": False, "GRAM": False,
               "TOL": 1e-7, "MAXIT": 3000}
 
@@ -295,6 +308,11 @@ class LassoPathDomain(ProgramDomain):
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: solver_code(SEED_KNOBS)})
+
+    @staticmethod
+    def reference_artifact() -> Artifact:
+        """scikit-learn's ``lasso_path`` as a program (a baseline row for per-instance tables)."""
+        return Artifact({PROGRAM: SKLEARN_SOLVER})
 
     def directions(self) -> list[str]:
         return list(MECHANISMS)

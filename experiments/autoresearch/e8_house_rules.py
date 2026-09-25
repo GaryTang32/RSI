@@ -15,18 +15,23 @@ B. The same trivial crash when the agent cannot fix it (p_fix = 0) and with a fi
 C. Landscape at scale (30 seeds x 60 experiments, 20% crash edits): crash-kind counts,
    format invariants, HEAD invariant, rewinds.
 
-Usage: python experiments/autoresearch/e8_house_rules.py [--seeds N] [--quick] [--llm ...]
+With --llm claude:haiku (or the offline --llm scripted) part A runs with the same scripted
+crash-inducing proposals, but every trivial crash is sent to the LLM research agent to fix
+(the "fix it and rerun" house rule with a real agent); parts B and C are skipped.
+
+Usage: python experiments/autoresearch/e8_house_rules.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
 from __future__ import annotations
 
-from _common import SCRATCH, parser, pool_map, write  # noqa: I001
+from _common import suffix, SCRATCH, is_live, parser, pool_map, propose_llm, usage_of, write  # noqa: I001
 
 import json
 
 import numpy as np
 
-from rsi.autoresearch import (AutoresearchLoop, Config, LandscapeTask, MockResearchAgent, ResultsLog, ScriptedEdit,
-                              landscape_edit_pool)
+from rsi.autoresearch import (AutoresearchLoop, Config, LandscapeTask, LLMResearchAgent, MockResearchAgent,
+                              ResearchAgent, ResultsLog, ScriptedEdit, landscape_edit_pool)
+from rsi.core import RewriteEditor
 from rsi.domains.tinylm import TinyLMTask
 
 SCHEDULE = ["lr_up", "typo_lr_up", "missing_import_warmup", "hang_prefetch", "oom_width", "nan_sgd", "batch_down",
@@ -52,20 +57,39 @@ def check_run(res, task) -> dict:
     }
 
 
-def part_a(mode: str) -> dict:
+class HybridAgent(ResearchAgent):
+    """Scripted proposals (the crash schedule); crash fixes by an LLM research agent."""
+
+    name = "scripted-proposals+llm-fixes"
+
+    def __init__(self, proposer: ResearchAgent, fixer: ResearchAgent) -> None:
+        self.proposer, self.fixer = proposer, fixer
+
+    def propose(self, ctx):
+        return self.proposer.propose(ctx)
+
+    def fix_crash(self, ctx, candidate, description, log_tail):
+        return self.fixer.fix_crash(ctx, candidate, description, log_tail)
+
+
+def part_a(mode: str, llm_spec: str = "sim") -> dict:
     task = TinyLMTask(budget_s=1.5)
     ag = MockResearchAgent(task.mock_edit_pool(), schedule=SCHEDULE)
+    llms = []
+    if is_live(llm_spec):
+        llm = propose_llm(llm_spec, pool=task.mock_edit_pool())
+        ag, llms = HybridAgent(ag, LLMResearchAgent(RewriteEditor(llm))), [llm]
     res = AutoresearchLoop(task, ag, Config(max_experiments=len(SCHEDULE), mode=mode, hidden_audit=False,
                                             overwrite=True, tag=f"e8-{mode}"),
-                           out_dir=SCRATCH / "e8" / mode).run()
+                           out_dir=SCRATCH / "e8" / f"{mode}_{llm_spec.replace(':', '_')}", llms=llms).run()
     out = check_run(res, task)
-    ex = {e["desc"]: e for e in out["experiments"]}
+    out["usage"] = usage_of(llms)
+    typo = next(e for e in out["experiments"] if "(with a typo)" in e["desc"])
     hang = next(e for e in out["experiments"] if e["crash_kind"] == "timeout")
     nan = next(e for e in out["experiments"] if e["crash_kind"] == "nan")
     out["checks"] = {
-        "typo_fixed_and_rerun": ex["LR 0.006 -> 0.012 (with a typo)"]["fix_attempts"] == 1 and
-        ex["LR 0.006 -> 0.012 (with a typo)"]["status"] != "crash",
-        "missing_import_fixed": any(e["fix_attempts"] == 1 and e["status"] != "crash" and "Fraction" in e["desc"]
+        "typo_fixed_and_rerun": typo["fix_attempts"] >= 1 and typo["status"] != "crash",
+        "missing_import_fixed": any((e["fix_attempts"] or 0) >= 1 and e["status"] != "crash" and "Fraction" in e["desc"]
                                     for e in out["experiments"]),
         "hang_killed_near_kill_after": abs(hang["wall_s"] - out["kill_after_s"]) < 2.0,
         "nan_fast_fail_before_budget": nan["wall_s"] < 1.5,
@@ -106,9 +130,22 @@ def part_c(seed: int) -> dict:
             "n_crash": sum(1 for e in c["experiments"] if e["status"] == "crash")}
 
 
+def main_live(a):
+    out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE, "llm": a.llm, "fixer": "llm"}}
+    out["tinylm"] = {m: part_a(m, a.llm) for m in ("hardened", "faithful")}
+    checks = {f"{m}:{k}": v for m in ("hardened", "faithful") for k, v in out["tinylm"][m]["checks"].items()}
+    checks.update({f"{m}:head_is_last_keep": out["tinylm"][m]["head_is_last_keep"] for m in ("hardened", "faithful")})
+    out["verdict"] = {"checks": checks, "usage": {m: out["tinylm"][m]["usage"] for m in ("hardened", "faithful")},
+                      "claim_reproduced": all(v in (True, "rejected", "ran") for v in checks.values())}
+    write("e8_house_rules" + suffix(a.llm, a.quick), out)
+    print(json.dumps(out["verdict"], indent=1))
+
+
 def main():
     ap = parser(__doc__.splitlines()[0], seeds=30)
     a = ap.parse_args()
+    if is_live(a.llm):
+        return main_live(a)
     out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE}}
     out["tinylm"] = {m: part_a(m) for m in ("hardened", "faithful")}
     out["give_up"] = part_b()

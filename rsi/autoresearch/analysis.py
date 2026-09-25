@@ -8,8 +8,9 @@
 * :class:`HiddenAudit` - xgboost-port ``run_groundtruth_all.sh`` analogue: every
   kept version is re-scored post hoc on splits the agent never saw (iid and
   shifted test), reported separately so overfitting and distribution shift are
-  not conflated. Results go to ``groundtruth_all.tsv`` and the ledger, never into
-  the agent's context.
+  not conflated. A version whose audit run crashes gets a row with ``audit_error``
+  (``CRASH`` in the TSV), as in the port's script, instead of disappearing. Results
+  go to ``groundtruth_all.tsv`` and the ledger, never into the agent's context.
 * :class:`Reeval` - honest re-evaluation with fresh run seeds (the MLX
   maintainers: "the recorded curve is an optimistic running-minimum that
   regresses on honest re-eval").
@@ -197,7 +198,8 @@ class HiddenAudit:
             for r in rows:
                 w.writerow([r["commit"], r["status"], r["description"],
                             f"{r['metric']:.6f}" if r["metric"] is not None else "N/A"]
-                           + [f"{r[k]:.6f}" if isinstance(r.get(k), float) else r.get(k, "N/A") for k in extra])
+                           + [f"{r[k]:.6f}" if isinstance(r.get(k), float) else
+                              r.get(k, "CRASH" if r.get("audit_error") else "N/A") for k in extra])
         return p
 
 

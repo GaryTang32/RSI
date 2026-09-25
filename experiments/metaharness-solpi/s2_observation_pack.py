@@ -57,15 +57,16 @@ def job(spec):
 
 def fidelity(n: int = 300) -> dict:
     rng = random.Random(0)
-    ok = 0
+    ok = eligible = 0
     pages = []
     for i in range(n):
         size = rng.randint(11 * 1024, 120 * 1024)
         alphabet = "abcdefghij \n" + ("éßλ中" if i % 3 == 0 else "")
-        text = "".join(rng.choice(alphabet) for _ in range(size // 2))
+        text = "".join(rng.choice(alphabet) for _ in range(size))
         obs = create_observation(Message("tool", text, tool_call_id=f"c{i}", tool_name="bash"))
         if obs is None:
             continue
+        eligible += 1
         data, off, chunks = text.encode(), 0, []
         while True:
             ch = read_recall_chunk(data, off, 16 * 1024 - 512, 400 - 2)
@@ -75,7 +76,7 @@ def fidelity(n: int = 300) -> dict:
                 break
         pages.append(len(chunks))
         ok += "".join(chunks) == text
-    return {"payloads": n, "exact": ok, "fidelity": ok / n, "mean_pages": float(np.mean(pages))}
+    return {"payloads": eligible, "exact": ok, "fidelity": ok / max(1, eligible), "mean_pages": float(np.mean(pages))}
 
 
 def main():

@@ -126,7 +126,11 @@ class PrefixGuard:
 
     def state(self) -> dict:
         legal = self.q.legal_actions()
-        meta = {c: self.q.meta(c).to_dict() for c in legal}
+        # structural meta (branch, attempt, parent, tags such as the direction label) of every
+        # legal AND every revealed cell - "decisions may use ... structural meta" [App.B.2 L2:53-55];
+        # never the meta of an unrevealed, illegal cell
+        cells = list(legal) + [c for c in self.q.observed() if c not in set(legal)]
+        meta = {c: self.q.meta(c).to_dict() for c in cells}
         return {"legal_actions": legal, "legal_roots": self.q.legal_roots(), "opened": self.q.opened_branches(),
                 "meta": meta, "baseline_score": self.q.baseline_score, "max_parallelism": self.q.max_parallelism,
                 "done": self.q.is_done(), "round": self.q.k}
@@ -411,19 +415,23 @@ class SubprocessSession:
             return SolveOutcome(None, self.load_error)
         guard = PrefixGuard(question, strict=strict)
         t0 = time.time()
+        policy_s = 0.0          # time spent waiting on the POLICY (excludes parent-side work such as the
+        #                         agent calls an online probe triggers - those can take minutes)
         self._send({"cmd": "solve", "config": config, "budget": budget})
         while True:
-            rem = self.timeout_s - (time.time() - t0)
+            rem = self.timeout_s - policy_s
+            w0 = time.time()
             msg = self._recv(max(0.01, rem))
+            policy_s += time.time() - w0
             if msg is None:
                 self._kill()
                 return SolveOutcome(None, f"policy timed out after {self.timeout_s}s or died: {self._stderr_tail(300)}",
-                                    guard.violations, guard.batch_errors, time.time() - t0)
+                                    guard.violations, guard.batch_errors, policy_s)
             if "req" in msg:
                 op = msg.pop("req")
                 self._send({"resp": json.loads(json.dumps(guard.handle(op, **msg), default=float))})
                 continue
-            wall = time.time() - t0
+            wall = policy_s
             if "result" in msg:
                 res = SimResult.from_dict(msg["result"]) if isinstance(msg["result"], dict) else SimResult()
                 return SolveOutcome(res, None, guard.violations, guard.batch_errors, wall)

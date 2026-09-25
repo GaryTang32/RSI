@@ -147,8 +147,12 @@ class ProgramSpec:
             budget += f"; runs longer than {b.hard_timeout():g} s are killed and count as failures"
         editable = ", ".join(f"`{p}`" for p in task.editable_paths)
         locked = ", ".join(f"`{p}`" for p in task.locked_paths) or "the grader (it lives outside the artifact)"
-        contract = task.contract(mode) or ""
-        if contract:
+        contract = (task.contract(mode) or "").strip()
+        if mode != "faithful" and getattr(task, "tamper_patterns", ()):
+            contract += ("\n- Do not reach into the grader: no environment variables starting with `RSI_AR_`, no "
+                         "private names of the locked files, no assignments to their attributes, no hidden data. "
+                         "Edits whose new lines do any of this are rejected without running.")
+        if contract.strip():
             contract = "## Interface contract\n" + contract.strip() + "\n"
         repl = {
             "budget": budget, "run_cmd": getattr(task, "run_command", "") or "the task's run command",

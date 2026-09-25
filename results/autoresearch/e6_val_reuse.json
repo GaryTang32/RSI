@@ -1,11 +1,12 @@
 {
  "experiment": "e6_val_reuse",
- "written_at": "2026-09-24 22:23:48",
+ "written_at": "2026-09-25 02:32:30",
  "config": {
   "landscape_experiments": 300,
   "landscape_seeds": 40,
   "check_every": 25,
-  "tabular_experiments": 30
+  "tabular_experiments": 30,
+  "llm": "sim"
  },
  "landscape": {
   "val_sd=0.0015,resample=False": {
@@ -49,6 +50,39 @@
     "mean": 0.0046812600277191,
     "lo": 0.00383290600105164,
     "hi": 0.0054999389308936,
+    "n": 40
+   },
+   "valspec_mean": [
+    -0.00013877021119612643,
+    0.0006192765623096203,
+    0.0015192894580944999,
+    0.0016168639256607885,
+    0.0018642176638276747,
+    0.0016709795440637693,
+    0.0019842817272498954,
+    0.0020825033298735307,
+    0.0019655481603310957,
+    0.001907445793504639,
+    0.002154377033799765,
+    0.002258097200708506,
+    0.0020304806600520836
+   ],
+   "valspec_final": {
+    "mean": 0.0020304806600520836,
+    "lo": 0.0014756095677778474,
+    "hi": 0.002583616079354578,
+    "n": 40
+   },
+   "valspec_after_first_50": {
+    "mean": 0.0015192894580944999,
+    "lo": 0.0009968418983235712,
+    "hi": 0.002045526550271904,
+    "n": 40
+   },
+   "valspec_growth": {
+    "mean": 0.0005111912019575837,
+    "lo": -0.00015667598134681054,
+    "hi": 0.0011542982152274268,
     "n": 40
    },
    "true_final": {
@@ -107,6 +141,39 @@
     "hi": 0.00444075094658348,
     "n": 40
    },
+   "valspec_mean": [
+    -0.00013877021119612643,
+    0.0006192765623096203,
+    0.0010883750611414861,
+    0.0008556994253974326,
+    0.0012412099134776755,
+    0.001330144760831306,
+    0.0013429429968833367,
+    0.0007777912882469318,
+    0.000918255342566221,
+    0.001314235554309151,
+    0.0009629291082092484,
+    0.0009082956326098262,
+    0.0006206486732152211
+   ],
+   "valspec_final": {
+    "mean": 0.0006206486732152211,
+    "lo": 0.00014691676368716808,
+    "hi": 0.001097769798716615,
+    "n": 40
+   },
+   "valspec_after_first_50": {
+    "mean": 0.0010883750611414861,
+    "lo": 0.0004953714341618532,
+    "hi": 0.0016707701681436206,
+    "n": 40
+   },
+   "valspec_growth": {
+    "mean": -0.00046772638792626496,
+    "lo": -0.0012548467864769682,
+    "hi": 0.0003423480517064089,
+    "n": 40
+   },
    "true_final": {
     "mean": 0.9538438431351295,
     "lo": 0.9532226613540068,
@@ -161,6 +228,39 @@
     "mean": 0.00844336711618438,
     "lo": 0.006417938782876879,
     "hi": 0.0103784265990442,
+    "n": 40
+   },
+   "valspec_mean": [
+    -0.00046256737065375475,
+    0.0054430109837983,
+    0.00637459684928765,
+    0.006942313164767252,
+    0.007442759535228344,
+    0.008647067968562763,
+    0.009510566644572801,
+    0.00922166405948166,
+    0.009243558182465503,
+    0.009263685123646873,
+    0.008849453532337796,
+    0.00926170662576487,
+    0.009245137233036669
+   ],
+   "valspec_final": {
+    "mean": 0.009245137233036669,
+    "lo": 0.0075194070035133195,
+    "hi": 0.010869814398452598,
+    "n": 40
+   },
+   "valspec_after_first_50": {
+    "mean": 0.00637459684928765,
+    "lo": 0.004543130300672986,
+    "hi": 0.008146512935367023,
+    "n": 40
+   },
+   "valspec_growth": {
+    "mean": 0.002870540383749018,
+    "lo": 0.0008172569728124827,
+    "hi": 0.005161317356496397,
     "n": 40
    },
    "true_final": {
@@ -219,6 +319,39 @@
     "hi": 0.009819140759891884,
     "n": 40
    },
+   "valspec_mean": [
+    -0.00046256737065375475,
+    0.0054430109837983,
+    0.0061939222194817125,
+    0.007186949269099988,
+    0.00673148304597303,
+    0.008364233499191093,
+    0.00738577320148281,
+    0.008384547025672689,
+    0.00804143335740283,
+    0.005462113099867721,
+    0.007753515219852775,
+    0.007352375202275821,
+    0.0062236636801626995
+   ],
+   "valspec_final": {
+    "mean": 0.0062236636801626995,
+    "lo": 0.004580931827849135,
+    "hi": 0.008111508109162268,
+    "n": 40
+   },
+   "valspec_after_first_50": {
+    "mean": 0.0061939222194817125,
+    "lo": 0.004369524696019015,
+    "hi": 0.007955923740271964,
+    "n": 40
+   },
+   "valspec_growth": {
+    "mean": 2.97414606809876e-05,
+    "lo": -0.0025080383902775067,
+    "hi": 0.0025805876452761178,
+    "n": 40
+   },
    "true_final": {
     "mean": 0.9580121482862818,
     "lo": 0.9565036241657028,
@@ -239,6 +372,12 @@
     {
      "resample": false,
      "seed": 0,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     },
      "keeps": [
       {
        "exp": 0,
@@ -315,6 +454,12 @@
     {
      "resample": false,
      "seed": 1,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     },
      "keeps": [
       {
        "exp": 0,
@@ -433,6 +578,12 @@
     "hi": 0.028399266709569937,
     "n": 2
    },
+   "cv_minus_iid_growth": {
+    "mean": -0.0013416583680847527,
+    "lo": -0.0014934567492825845,
+    "hi": -0.0011898599868869209,
+    "n": 2
+   },
    "keeps_that_raise_iid_but_lower_shift": [
     "add raw column x7",
     "add raw column x7"
@@ -443,6 +594,12 @@
     {
      "resample": true,
      "seed": 0,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     },
      "keeps": [
       {
        "exp": 0,
@@ -512,6 +669,12 @@
     {
      "resample": true,
      "seed": 1,
+     "usage": {
+      "calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0
+     },
      "keeps": [
       {
        "exp": 0,
@@ -609,6 +772,12 @@
     "hi": 0.028982458046725834,
     "n": 2
    },
+   "cv_minus_iid_growth": {
+    "mean": -0.0008175741956069627,
+    "lo": -0.0016260663832965427,
+    "hi": -9.082007917382562e-06,
+    "n": 2
+   },
    "keeps_that_raise_iid_but_lower_shift": [
     "add raw column x7",
     "add raw column x7"
@@ -616,6 +785,21 @@
   }
  },
  "verdict": {
+  "tabular_cv_minus_iid_fixed": [
+   0.008720710290479494,
+   0.0073790519223947415
+  ],
+  "tabular_gap_growth_fixed": -0.0013416583680847527,
+  "tabular_gap_growth_fixed_ci": {
+   "mean": -0.0013416583680847527,
+   "lo": -0.0014934567492825845,
+   "hi": -0.0011898599868869209,
+   "n": 2
+  },
+  "tabular_shift_trap_keeps": [
+   "add raw column x7",
+   "add raw column x7"
+  ],
   "landscape_gap_grows_fixed_val": true,
   "landscape_gap_final_fixed_vs_resampled": [
    0.012787728079121591,
@@ -623,16 +807,26 @@
   ],
   "landscape_small_valsd_gap_final": 0.006226100590904041,
   "resampling_shrinks_gap": true,
-  "tabular_cv_minus_iid_fixed": [
-   0.008720710290479494,
-   0.0073790519223947415
+  "landscape_valspec_50_vs_300_fixed": [
+   0.00637459684928765,
+   0.009245137233036669
   ],
-  "tabular_gap_growth_fixed": -0.0013416583680847527,
-  "tabular_shift_trap_keeps": [
-   "add raw column x7",
-   "add raw column x7"
+  "landscape_valspec_growth_fixed_ci": {
+   "mean": 0.002870540383749018,
+   "lo": 0.0008172569728124827,
+   "hi": 0.005161317356496397,
+   "n": 40
+  },
+  "landscape_valspec_final_fixed_vs_resampled": [
+   0.009245137233036669,
+   0.0062236636801626995
   ],
-  "claim_reproduced": "landscape: yes (gap grows with decisions under fixed val; resampling shrinks it); tabular at 30 decisions: gap growth -0.0013 AUC (compare with fold noise; a null result here matches the xgboost port's evidence)"
+  "landscape_valspec_final_small_sd_fixed_vs_resampled": [
+   0.0020304806600520836,
+   0.0006206486732152211
+  ],
+  "valspec_grows_with_decisions": true,
+  "claim_reproduced": "landscape (val-specific sd 0.005): the selected val-specific component of the incumbent goes 0.0064 -> 0.0092 from 50 to 300 decisions under a fixed val split (grows, CI excludes 0); 0.0092 fixed vs 0.0062 with val re-sampled every 25. Tabular at 30 decisions: CV-minus-iid gap growth -0.0013 AUC (a null result, as in the xgboost port's evidence)"
  },
  "figure": "/home/user/RSI/results/autoresearch/e6_val_reuse.png"
 }

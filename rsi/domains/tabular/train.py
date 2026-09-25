@@ -41,5 +41,5 @@ def make_model():
 
 
 cv_auc, cv_std = prepare.cross_val_auc(make_model, featurize, train)
-model = make_model().fit(featurize(train), train[prepare.TARGET])
+model = make_model().fit(featurize(prepare.inputs(train)), train[prepare.TARGET])
 prepare.finish(model, featurize, cv_auc, cv_std)

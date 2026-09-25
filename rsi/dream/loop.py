@@ -101,9 +101,13 @@ def live_manifest(t: int, tree: DiscoveryTree, q: OnlineQuestion, plan: GridPlan
     early = max([n.score for n in succ if n.attempt <= 1] + [root]) - root
     fails = [n for n in tree.non_root() if not n.success]
     hard = [n for n in fails if n.fail_class in ("env_error", "dependency", "hard")]
+    # opened width / depth = what the rollout actually used (NOT the support fields, which
+    # include the plan's unopened roots and unexplored depth)
+    opened = len(tree.branches())
+    depth = max((n.attempt for n in tree.non_root()), default=-1)
     return {
         "iteration": t, "planned_grid": requested.to_dict(), "effective_grid": plan.to_dict(),
-        "opened_width": tree.trace_branch_count, "max_depth": tree.trace_refine_count, "probe_work": q.N,
+        "opened_width": opened, "max_depth": depth, "probe_work": q.N,
         "decision_rounds": q.k, "batch_sizes": list(q.batch_sizes), "root_score": root, "round_best": round_best,
         "final_best": final_best, "beta": beta, "gain_early": (early / gain) if gain > 0 else 0.0,
         "gain_late": (1.0 - early / gain) if gain > 0 else 0.0, "fail_frac": len(fails) / max(1, tree.size),
@@ -126,7 +130,9 @@ class DreamRSILoop:
         self.summarizer = summarizer or MockGuidanceSummarizer()
         self.out = Path(out_dir) if out_dir else None
         self.seed_artifact = seed_artifact or task.seed_artifact()
-        self.llms = tuple(l for l in llms if l is not None)
+        # one entry per distinct backend: the same LLM object passed for two roles (e.g. agent and
+        # developer) keeps per-role usage in ONE meter, which must not be summed twice
+        self.llms = tuple({id(l): l for l in llms if l is not None}.values())
         self.method = method or ("dream-rsi" if self.cfg.dream else "fixed") + ("+guidance" if self.cfg.guidance else "")
         c = self.cfg
         self.meter = CostMeter()

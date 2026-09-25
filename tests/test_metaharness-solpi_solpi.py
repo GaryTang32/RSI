@@ -148,3 +148,41 @@ def test_protocol_runs_on_agentqa(tmp_path):
     r = res.meta["rounds"][0]
     assert "R2" not in r["survivor_ideas"]          # dropping reasoning lowers accuracy -> rejected
     assert r["lineages"] and res.best is not None
+
+
+# ------------------------------------------------------------------ environments + LLM-written mechanisms
+def test_every_environment_passes_the_validity_filter():
+    from rsi.domains.agentworld import FAMILIES, validity_filter
+    for fam, cls in FAMILIES.items():
+        for i in range(5):
+            assert validity_filter(cls(f"v-{fam}-{i}", seed=i, n_subtasks=3))
+
+
+CODE_REPLY = '''```json
+{"name": "tail_note", "params": {}, "change": "annotate long outputs"}
+```
+=== FILE: extensions/tail_note.py ===
+```python
+class MECHANISM:
+    name = "tail_note"
+
+    def register(self, rt):
+        rt.on("tool_result", self.on_result)
+
+    def on_result(self, event, rt):
+        return None
+```
+The mechanism fails open because it never changes a result.
+'''
+
+
+def test_llm_mechanism_proposer_parses_fenced_code_and_duck_typed_mechanisms(dom):
+    from rsi.core import MockLLM
+    from rsi.solpi import LLMMechanismProposer, build_extensions
+    from rsi.solpi.research import Idea
+    prop = LLMMechanismProposer(MockLLM(lambda p, s, seed, i: CODE_REPLY)).propose(
+        Idea("X1", "C", "annotate"), dom.seed_artifact(), {"n": 1}, [])
+    assert prop.artifact is not None and "```" not in prop.artifact["extensions/tail_note.py"]
+    exts = build_extensions(prop.artifact.files)
+    assert [e.name for e in exts] == ["tail_note"]
+    assert dom.smoke(prop.artifact, MockAgentLLM("A")) is None

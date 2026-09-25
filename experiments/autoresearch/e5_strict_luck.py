@@ -17,11 +17,15 @@ A. Landscape (exact truth, 50 seeds): false-keep rate (keeps whose TRUE delta <=
    true final quality.
 B. tinylm (real run-to-run noise, 3 seeds): strict vs rigor, optimism gap and honest gain.
 
-Usage: python experiments/autoresearch/e5_strict_luck.py [--seeds N] [--quick] [--llm ...]
+With --llm claude:haiku (or the offline --llm scripted) part A runs strict vs rigor with an
+LLM research agent on the landscape (exact truth, so false keeps are counted exactly), at
+equal total training runs; part B is skipped.
+
+Usage: python experiments/autoresearch/e5_strict_luck.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
 from __future__ import annotations
 
-from _common import SCRATCH, ci, parser, plt, pool_map, write  # noqa: I001
+from _common import suffix, SCRATCH, ci, is_live, parser, plt, pool_map, research_agent, usage_of, write  # noqa: I001
 
 import json
 
@@ -49,12 +53,13 @@ def make_rule(name: str):
 
 
 def landscape_arm(args):
-    rule, seed, max_runs = args
+    rule, seed, max_runs = args[:3]
+    llm_spec = args[3] if len(args) > 3 else "sim"
     task = LandscapeTask(seed=seed)
-    ag = MockResearchAgent(landscape_edit_pool(), seed=seed)
+    ag, llms = research_agent(llm_spec, landscape_edit_pool(), seed=seed)
     cfg = Config(max_experiments=None, max_runs=max_runs, persist=False, plot=False, hidden_audit=False, seed=seed,
                  noise_runs=5 if rule == "noise_band" else 0)
-    loop = AutoresearchLoop(task, ag, cfg, keep_rule=make_rule(rule), out_dir=SCRATCH / "e5" / "ls")
+    loop = AutoresearchLoop(task, ag, cfg, keep_rule=make_rule(rule), out_dir=SCRATCH / "e5" / "ls", llms=llms)
     res = loop.run()
     keeps = [n for n in res.ledger.nodes() if n.status == "keep"]
     true_d = [keeps[i - 1].metrics["truth"] - keeps[i].metrics["truth"] for i in range(1, len(keeps))]
@@ -65,7 +70,8 @@ def landscape_arm(args):
             "n_experiments": loop.n_experiments, "false_keep_rate": float(np.mean([d <= 0 for d in true_d]))
             if true_d else 0.0, "n_false_keeps": int(sum(d <= 0 for d in true_d)), "seed_keeps": seed_keeps,
             "recorded_best": rec, "honest_final": honest["mean"], "optimism_gap": honest["mean"] - rec,
-            "true_final": task.truth(res.best), "true_gain": task.truth(res.baseline) - task.truth(res.best)}
+            "true_final": task.truth(res.best), "true_gain": task.truth(res.baseline) - task.truth(res.best),
+            "kept": [n.change for n in keeps[1:]], "usage": usage_of(llms)}
 
 
 def tinylm_arm(args):
@@ -91,9 +97,29 @@ def agg(rows, keys):
     return {k: ci([r[k] for r in rows]) for k in keys}
 
 
+def main_live(a):
+    rules = ("strict", "rigor")
+    max_runs = 12 if a.quick else 30
+    seeds = list(range(a.seeds))
+    ls = [landscape_arm((r, s, max_runs, a.llm)) for r in rules for s in seeds]
+    keys = ["n_keeps", "false_keep_rate", "n_false_keeps", "seed_keeps", "optimism_gap", "true_final", "true_gain",
+            "n_experiments"]
+    L = {r: {**agg([x for x in ls if x["rule"] == r], keys), "runs": [x for x in ls if x["rule"] == r]}
+         for r in rules}
+    verdict = {f"{r}_{k}": L[r][k]["mean"] for r in rules for k in ("false_keep_rate", "optimism_gap", "true_final",
+                                                                     "n_experiments")}
+    verdict["usage"] = [x["usage"] for x in ls]
+    write("e5_strict_luck" + suffix(a.llm, a.quick),
+          {"config": {"max_runs": max_runs, "seeds": seeds, "rules": rules, "llm": a.llm}, "landscape": L,
+           "verdict": verdict})
+    print(json.dumps(verdict, indent=1))
+
+
 def main():
     ap = parser(__doc__.splitlines()[0], seeds=3)
     a = ap.parse_args()
+    if is_live(a.llm):
+        return main_live(a)
     ls_seeds = list(range(8 if a.quick else 50))
     max_runs = 60 if a.quick else 150
     ls = pool_map(landscape_arm, [(r, s, max_runs) for r in RULES for s in ls_seeds], a.workers)

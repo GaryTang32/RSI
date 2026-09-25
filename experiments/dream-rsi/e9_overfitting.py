@@ -15,7 +15,7 @@ generator (its generalization). Reported: train-minus-fresh gap and fresh value 
     python experiments/dream-rsi/e9_overfitting.py [--seeds N] [--quick]
 """
 import numpy as np
-from _common import figure, parse_args, pmap, save, summ
+from _common import developer_of, figure, parse_args, pmap, sandbox_of, save, summ
 
 from rsi.dream import (Config, DevContext, DreamRSILoop, GuardedSelector, ParametricMutator, ReplayEvaluator, Selector,
                        VersionRecord, code_of, parallel_refine)
@@ -34,30 +34,38 @@ def record(seed):
 
 
 def restrict(rep, idx):
+    if not rep.episodes:  # rejected revision: nothing to restrict
+        return rep
     eps = [rep.episodes[i] for i in idx]
     return PolicyReport(rep.policy_id, rep.label, rep.objective, float(np.mean([rep.per_world[i] for i in idx])),
                         [rep.per_world[i] for i in idx], eps, None, [], diagnostics(eps))
 
 
 def phase(job):
-    rep_i, t, guarded = job
+    rep_i, t, guarded, llm, m_list = job
     H = [record(400 + 37 * rep_i + i) for i in range(t)]
     fresh = [record(90000 + 101 * rep_i + j) for j in range(20)]
-    ev = ReplayEvaluator(W=W, fallback=GRID, runner="inprocess")
+    ev = ReplayEvaluator(W=W, fallback=GRID, runner=sandbox_of(llm))
     sel = GuardedSelector() if guarded else Selector()
     dev_idx = sel.dev_worlds(t)
-    dev = ParametricMutator(sigma=0.35, n_random=3)
+    dev = developer_of(llm, sigma=0.35, n_random=3) if llm == "sim" else developer_of(llm)
     inc = VersionRecord(0, code_of(parallel_refine()))
     inc.report = ev.evaluate(inc.code, H)
     versions, fresh_v = [inc], [ev.evaluate(inc.code, fresh).value]
-    for m in range(1, max(M_LIST)):
+    for m in range(1, max(m_list)):
         fb = [VersionRecord(v.index, v.code, restrict(v.report, dev_idx), v.change) for v in versions]
         rev = dev.revise(DevContext(1, fb, [], [], inc.code, "eq1", W, first_in_phase=(m == 1)), seed=rep_i * 1000 + m)
+        if not rev.ok:  # a rejected LLM revision is a candidate that can never win
+            rec = VersionRecord(m, inc.code, None, f"rejected: {rev.error}")
+            rec.report = PolicyReport("", "rejected", "rejected", float("-inf"), [float("-inf")] * t, [], None, [], {})
+            versions.append(rec)
+            fresh_v.append(float("-inf"))
+            continue
         rec = VersionRecord(m, rev.code, ev.evaluate(rev.code, H), rev.change)
         versions.append(rec)
         fresh_v.append(ev.evaluate(rev.code, fresh).value)
     out = []
-    for M in M_LIST:
+    for M in m_list:
         reps = [v.report for v in versions[:M]]
         s = sel.select(reps)
         v = versions[s.index]
@@ -72,8 +80,11 @@ def phase(job):
 def main():
     a = parse_args("E9 overfitting to past worlds", default_seeds=12)
     ts = [1, 3] if a.quick else [1, 3, 6]
-    rows = [r for rs in pmap(phase, [(i, t, g) for i in range(a.seeds) for t in ts for g in (False, True)], a.workers)
-            for r in rs]
+    global M_LIST
+    if a.llm != "sim":  # live LLM developer: bound the number of developer calls
+        M_LIST = [2, 4]
+    rows = [r for rs in pmap(phase, [(i, t, g, a.llm, M_LIST) for i in range(a.seeds) for t in ts for g in (False, True)],
+                             a.workers) for r in rs]
     res = {}
     for t in ts:
         for selname in ("argmax", "guarded"):
@@ -117,9 +128,9 @@ def main():
                f"value for t in {better_fresh} (it cannot help with a single past world)")
     print(verdict)
     save("e9_overfitting", {"config": {"t": ts, "M": M_LIST, "reps": a.seeds, "fresh_worlds": 20, "W": W, "grid": GRID,
-                                       "developer": "ParametricMutator(sigma=0.35, n_random=3)",
+                                       "developer": "ParametricMutator(sigma=0.35, n_random=3)" if a.llm == "sim" else a.llm,
                                        "guard": "GuardedSelector(holdout every 3rd world, delta=max(0.01, 2 SE))",
-                                       "llm": "not used"},
+                                       "llm": a.llm},
                             "results": res, "rows": rows, "figure": str(png), "verdict": verdict}, a.out)
 
 

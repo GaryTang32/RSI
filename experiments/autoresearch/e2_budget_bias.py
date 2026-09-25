@@ -17,11 +17,14 @@ B. tinylm (real training): nights under a 2 s wall-clock budget vs a fixed token
    (the bytes the baseline sees in 2 s); parameter count of the kept models; the
    wall-clock winners and the baseline re-trained at 4x the budget.
 
-Usage: python experiments/autoresearch/e2_budget_bias.py [--seeds N] [--quick] [--llm ...]
+With --llm claude:haiku (or the offline --llm scripted) only part B runs, with an LLM
+research agent proposing the tinylm edits (part A needs thousands of experiments).
+
+Usage: python experiments/autoresearch/e2_budget_bias.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
 from __future__ import annotations
 
-from _common import SCRATCH, ci, parser, plt, pool_map, write  # noqa: I001
+from _common import suffix, SCRATCH, ci, is_live, parser, plt, pool_map, research_agent, usage_of, write  # noqa: I001
 
 import json
 
@@ -48,20 +51,22 @@ def truth_at(art, compute, kind="wallclock"):
 
 
 def tinylm_night(args):
-    kind, seed, n, amount = args
+    kind, seed, n, amount, llm_spec = args
     from rsi.domains.tinylm import TinyLMTask
 
     task = TinyLMTask(budget_s=amount, budget_kind=kind, kill_after=60.0)
-    res = AutoresearchLoop(task, MockResearchAgent(task.mock_edit_pool(), seed=seed),
+    agent, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed)
+    res = AutoresearchLoop(task, agent,
                            Config(max_experiments=n, hidden_audit=False, seed=seed, overwrite=True, plot=False,
                                   tag=f"e2-{kind}-{seed}"),
-                           out_dir=SCRATCH / "e2" / f"tinylm_{kind}_{seed}").run()
+                           out_dir=SCRATCH / "e2" / f"tinylm_{kind}_{seed}_{llm_spec.replace(':', '_')}",
+                           llms=llms).run()
     kept = [nd for nd in res.ledger.nodes() if nd.status == "keep"]
     return {"kind": kind, "seed": seed, "params_M_base": kept[0].meta["summary"].get("num_params_M"),
             "params_M_final": kept[-1].meta["summary"].get("num_params_M"),
             "steps_base": kept[0].meta["summary"].get("num_steps"), "steps_final": kept[-1].meta["summary"].get("num_steps"),
             "kept": [nd.change for nd in kept[1:]], "final_files": res.best.files, "base_files": res.baseline.files,
-            "recorded_gain": res.meta["analysis"]["improvement"]}
+            "recorded_gain": res.meta["analysis"]["improvement"], "usage": usage_of(llms)}
 
 
 def retrain(args):
@@ -73,9 +78,46 @@ def retrain(args):
     return Reeval(task).run(Artifact(files), seeds)["mean"]
 
 
+def tinylm_part(t_seeds, tn, llm_spec, workers) -> dict:
+    """Part B: nights under a wall-clock vs a token budget; winners re-trained at 4x."""
+    tok_budget = 100_000.0                 # ~ bytes the baseline sees in 2 s on this machine
+    tl = pool_map(tinylm_night, [(k, s, tn, 2.0 if k == "wallclock" else tok_budget, llm_spec)
+                                 for k in ("wallclock", "tokens") for s in t_seeds], workers)
+    out = {k: {"runs": [{x: r[x] for x in r if not x.endswith("files")} for r in tl if r["kind"] == k],
+               "params_ratio_final_over_base": ci([r["params_M_final"] / r["params_M_base"]
+                                                   for r in tl if r["kind"] == k])}
+           for k in ("wallclock", "tokens")}
+    wc_t = [r for r in tl if r["kind"] == "wallclock"]
+    rs_seeds = [20_000, 20_001]
+    jobs = [(r["final_files"], b, rs_seeds) for r in wc_t for b in (2.0, 8.0)] + \
+           [(wc_t[0]["base_files"], b, rs_seeds) for b in (2.0, 8.0)]
+    vals = pool_map(retrain, jobs, workers)
+    base1, base4 = vals[-2], vals[-1]
+    g1 = [base1 - vals[2 * i] for i in range(len(wc_t))]
+    g4 = [base4 - vals[2 * i + 1] for i in range(len(wc_t))]
+    out["horizon"] = {"baseline_bpb_1x": base1, "baseline_bpb_4x": base4, "gain_1x": ci(g1), "gain_4x": ci(g4)}
+    return out
+
+
+def main_live(a):
+    t_seeds = list(range(a.seeds))
+    tn = 4 if a.quick else 8
+    T = tinylm_part(t_seeds, tn, a.llm, 1)
+    verdict = {"tinylm_params_ratio_wallclock_vs_tokens": [T["wallclock"]["params_ratio_final_over_base"]["mean"],
+                                                           T["tokens"]["params_ratio_final_over_base"]["mean"]],
+               "tinylm_gain_1x_vs_4x": [T["horizon"]["gain_1x"]["mean"], T["horizon"]["gain_4x"]["mean"]],
+               "kept": {k: [r["kept"] for r in T[k]["runs"]] for k in ("wallclock", "tokens")},
+               "usage": [r["usage"] for k in ("wallclock", "tokens") for r in T[k]["runs"]]}
+    write("e2_budget_bias" + suffix(a.llm, a.quick),
+          {"config": {"tinylm_experiments": tn, "seeds": t_seeds, "llm": a.llm}, "tinylm": T, "verdict": verdict})
+    print(json.dumps(verdict, indent=1))
+
+
 def main():
     ap = parser(__doc__.splitlines()[0], seeds=2)
     a = ap.parse_args()
+    if is_live(a.llm):
+        return main_live(a)
     seeds = list(range(6 if a.quick else 30))
     n = 40 if a.quick else 100
     nights = pool_map(ls_night, [(k, 1.0, s, n) for k in ("wallclock", "tokens") for s in seeds], a.workers)
@@ -103,23 +145,7 @@ def main():
     # B: tinylm
     t_seeds = list(range(1 if a.quick else a.seeds))
     tn = 8 if a.quick else 20
-    tok_budget = 100_000.0                 # ~ bytes the baseline sees in 2 s on this machine
-    tl = pool_map(tinylm_night, [(k, s, tn, 2.0 if k == "wallclock" else tok_budget)
-                                 for k in ("wallclock", "tokens") for s in t_seeds], a.workers)
-    out["tinylm"] = {k: {"runs": [{x: r[x] for x in r if not x.endswith("files")} for r in tl if r["kind"] == k],
-                         "params_ratio_final_over_base": ci([r["params_M_final"] / r["params_M_base"]
-                                                             for r in tl if r["kind"] == k])}
-                     for k in ("wallclock", "tokens")}
-    wc_t = [r for r in tl if r["kind"] == "wallclock"]
-    rs_seeds = [20_000, 20_001]
-    jobs = [(r["final_files"], b, rs_seeds) for r in wc_t for b in (2.0, 8.0)] + \
-           [(wc_t[0]["base_files"], b, rs_seeds) for b in (2.0, 8.0)]
-    vals = pool_map(retrain, jobs, a.workers)
-    base1, base4 = vals[-2], vals[-1]
-    g1 = [base1 - vals[2 * i] for i in range(len(wc_t))]
-    g4 = [base4 - vals[2 * i + 1] for i in range(len(wc_t))]
-    out["tinylm"]["horizon"] = {"baseline_bpb_1x": base1, "baseline_bpb_4x": base4, "gain_1x": ci(g1),
-                                "gain_4x": ci(g4)}
+    out["tinylm"] = tinylm_part(t_seeds, tn, a.llm, a.workers)
     L = out["landscape"]
     verdict = {
         "landscape_final_size_wallclock": L["wallclock"]["final_rel_size"]["mean"],

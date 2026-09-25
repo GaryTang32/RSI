@@ -16,7 +16,7 @@ and circle packing (real optimisation; directions are mechanism classes).
     python experiments/dream-rsi/e5_replay_vs_advice.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
 import numpy as np
-from _common import agent_of, best_at, developer_of, domain_of, figure, fmt, llm_of, paired, parse_args, pmap, save, summ
+from _common import agent_of, best_at, developer_of, domain_of, figure, fmt, llm_of, paired, parse_args, pmap, sandbox_of, save, summ
 
 from rsi.dream import Config, LLMGuidanceSummarizer, MockGuidanceSummarizer, run
 
@@ -33,7 +33,7 @@ def one(job):
     per_round = st["grid"][0] * (st["grid"][1] + 1)
     dom = domain_of(dom_name, seed)
     cfg = Config(rounds=40 if dream else rounds, W=4, branch_count=st["grid"][0], refine_count=st["grid"][1],
-                 M=st["M"], dream=dream, guidance=guidance, sandbox="inprocess", seed=seed,
+                 M=st["M"], dream=dream, guidance=guidance, sandbox=sandbox_of(llm), seed=seed,
                  max_calls=rounds * per_round, agent_workers=1 if llm == "sim" else 4)
     summ_llm = llm_of(llm)
     summarizer = LLMGuidanceSummarizer(summ_llm) if summ_llm is not None else MockGuidanceSummarizer()

@@ -181,6 +181,8 @@ class LLMMechanismProposer:
         code_path = next((p for p in files if p.startswith("extensions/")), None)
         if not code_path:
             return MechanismProposal(None, error="no extensions/<name>.py in reply", usage=usage, variant=variant)
+        from ..metaharness.proposer import clean_code_block
+        files[code_path] = clean_code_block(files[code_path])
         name = re.sub(r"\W", "_", str(h.get("name") or code_path[11:-3]))
         art = Artifact(with_mechanism(base.files, name, h.get("params") or {}, files[code_path]))
         if code_path != f"extensions/{name}.py":

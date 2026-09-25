@@ -18,7 +18,7 @@ Usage: python experiments/autoresearch/e1_progress.py [--llm sim|claude:haiku] [
 """
 from __future__ import annotations
 
-from _common import SCRATCH, ci, parser, plt, pool_map, propose_llm, running_best, write  # noqa: I001
+from _common import suffix, SCRATCH, ci, parser, plt, pool_map, propose_llm, running_best, write  # noqa: I001
 
 import numpy as np
 
@@ -38,7 +38,7 @@ def tinylm_arm(args):
     elif arm == "random":
         agent = RandomSearchAgent(task.mock_edit_pool(), task.seed_artifact(), seed=seed)
     else:
-        agent = LLMResearchAgent(RewriteEditor(propose_llm(llm_spec)))
+        agent = LLMResearchAgent(RewriteEditor(propose_llm(llm_spec, pool=task.mock_edit_pool(), seed=seed)))
     llms = [agent.editor.llm] if arm == "llm" else []
     loop = AutoresearchLoop(task, agent, Config(max_experiments=n, reeval_seeds=3, hidden_audit=(arm != "random"), overwrite=True,
                                                 seed=seed, tag=f"e1-{arm}-{seed}"),
@@ -85,7 +85,7 @@ def agentqa_arm(seed: int, n: int) -> dict:
               agent=MockResearchAgent(harness_edit_pool(), seed=seed),
               config=Config(max_experiments=n, plot=False, seed=seed, run_seed=seed, overwrite=True),
               out_dir=SCRATCH / "e1" / f"agentqa_{seed}", task_kwargs={"k": 2})
-    aud = res.meta["audit"]
+    aud = [r for r in res.meta["audit"] if "audit_error" not in r]
     return {"seed": seed, "evolve_base": aud[0]["metric"], "evolve_final": aud[-1]["metric"],
             "holdout_base": aud[0]["holdout"], "holdout_final": aud[-1]["holdout"], "ood_base": aud[0]["ood"],
             "ood_final": aud[-1]["ood"], "kept": [r["description"] for r in aud[1:]]}
@@ -95,7 +95,7 @@ def main():
     ap = parser(__doc__.splitlines()[0])
     a = ap.parse_args()
     n = 8 if a.quick else 30
-    live = a.llm != "sim"
+    live = a.llm not in ("sim", "mock", "")
     seeds = list(range(a.seeds))
     band = noise_band(3 if a.quick else 5)
     arms = ["llm"] if live else ["greedy", "random"]
@@ -134,7 +134,7 @@ def main():
         verdict["generic_domain_transfers"] = bool(out["agentqa"]["holdout_gain"]["mean"] > 0)
     verdict["claim_reproduced"] = bool(verdict["beyond_noise_band"] and verdict.get("greedy_ge_random", True))
     out["verdict"] = verdict
-    name = "e1_progress" + ("_live" if live else "") + ("_quick" if a.quick else "")
+    name = "e1_progress" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, arms, band, name))
     write(name, out)
     print(json.dumps(verdict, indent=1))

@@ -9,7 +9,14 @@ cap). Fixed runs its grid every round; Dream-RSI dreams after every live search 
 spend less per round (so it can run more rounds). Reported per domain, over seeds:
 best vs cumulative calls, best at equal budget, calls-to-target (target = Fixed's final
 best), the paper-style equal-rounds view (calls and best after R rounds), and - for
-Lasso - the held-out per-instance runtimes of the final programs.
+Lasso - the held-out per-instance runtimes of the final programs (per-instance table with
+arithmetic and geometric means and win/loss counts against Fixed and against
+scikit-learn's ``lasso_path``, the paper's "read the rows" check).
+
+Control (synthetic worlds, not in the paper): Recursive Fixed Exploration with smaller fixed
+grids at the same call budget, and the best of them chosen in hindsight on the same seeds
+(optimistic for Fixed). It separates "Dream learned to spend fewer calls per round" (which
+a hand-tuned smaller grid also does) from the policy's within-round decisions.
 
     python experiments/dream-rsi/e3_dream_vs_fixed.py [--llm sim|claude:haiku] [--seeds N] [--quick]
         [--domains synthetic,sumdiff,circlepack,lasso]
@@ -19,7 +26,7 @@ import json
 from pathlib import Path
 
 from _common import (RESULTS, agent_of, best_at, calls_to, developer_of, domain_of, figure, fmt, paired, parse_args,
-                     pmap, save, summ)
+                     pmap, sandbox_of, save, summ)
 
 from rsi.core import transfer_report
 from rsi.dream import Config, run
@@ -32,20 +39,28 @@ SETTINGS = {  # grid (branches, refine), W, fixed rounds, M, seeds divisor
 }
 
 
+#: control grids (branches, refinements) for the synthetic hindsight-tuned Fixed arm
+CONTROL_GRIDS = [(6, 2), (6, 1), (4, 4), (4, 2), (3, 3)]
+
+
 def one(job):
-    dom_name, seed, dream, llm, quick = job
+    dom_name, seed, dream, llm, quick = job[:5]
+    grid = job[5] if len(job) > 5 else None      # control arm: Fixed on another fixed grid
     st = dict(SETTINGS[dom_name])
     if quick:
         st["rounds"] = min(st["rounds"], 4)
     dom = domain_of(dom_name, seed)
     per_round = st["grid"][0] * (st["grid"][1] + 1)
     budget = st["rounds"] * per_round
-    cfg = Config(rounds=st["max_rounds"] if dream else st["rounds"], W=st["W"], branch_count=st["grid"][0],
-                 refine_count=st["grid"][1], M=st["M"], dream=dream, sandbox="inprocess", seed=seed,
+    g = grid or st["grid"]
+    rounds = st["max_rounds"] if dream else (-(-budget // (g[0] * (g[1] + 1))) if grid else st["rounds"])
+    cfg = Config(rounds=rounds, W=st["W"], branch_count=g[0],
+                 refine_count=g[1], M=st["M"], dream=dream, sandbox=sandbox_of(llm), seed=seed,
                  max_calls=budget, agent_workers=1 if llm == "sim" else st["W"])
     res = run(dom, config=cfg, agent=agent_of(dom, llm), developer=developer_of(llm) if dream else None)
     curve = [(0, res.meta["seed_score"])] + [(r["cum_calls"], r["best"]) for r in res.trajectory]
-    out = {"domain": dom_name, "seed": seed, "arm": "dream" if dream else "fixed", "budget": budget,
+    arm = "dream" if dream else (f"fixed_{g[0]}x{g[1]}" if grid else "fixed")
+    out = {"domain": dom_name, "seed": seed, "arm": arm, "budget": budget,
            "curve": curve, "calls_per_round": [r["calls"] for r in res.trajectory],
            "round_best": [r["round_best"] for r in res.trajectory], "rounds": len(res.trajectory),
            "final_best": res.meta["best_score"], "seed_score": res.meta["seed_score"],
@@ -57,8 +72,75 @@ def one(job):
         ho = rep["splits"]["holdout"]["final"]
         ev = dom.evaluate_split(res.best, "holdout")
         out["holdout"] = {"score": ho["S"], "runtime_ms": ev.diagnostics.get("runtime_ms"),
-                          "seed_score": rep["splits"]["holdout"]["seed"]["S"]}
+                          "score_same_measurement": ev.score, "seed_score": rep["splits"]["holdout"]["seed"]["S"]}
     return out
+
+
+def gmean(xs):
+    return float(np.exp(np.mean(np.log(np.asarray(xs, dtype=float)))))
+
+
+def lasso_rows(rows, n_meas: int = 3):
+    """Per-instance held-out table ("read the rows, not just the average"): seed program,
+    scikit-learn's lasso_path, and every final program of both arms; arithmetic and geometric
+    means; win/loss counts Dream vs Fixed (paired by seed and instance) and each final program
+    vs sklearn. Seed and sklearn rows are the median of ``n_meas`` measurements."""
+    from rsi.domains.discovery import LassoPathDomain
+
+    dom = domain_of("lasso", 0)
+    ref = {}
+    for name, art in (("seed", dom.seed_artifact()), ("sklearn", LassoPathDomain.reference_artifact())):
+        ms = [dom.evaluate_split(art, "holdout") for _ in range(n_meas)]
+        bad = [m for m in ms if m.fail_class != "ok"]
+        ref[name] = {"runtime_ms": [float(np.median([m.diagnostics["runtime_ms"][i] for m in ms]))
+                                    for i in range(len(ms[0].diagnostics["runtime_ms"]))] if not bad else None,
+                     "gate": "ok" if not bad else bad[0].error}
+    fx = {r["seed"]: r["holdout"]["runtime_ms"] for r in rows if r["arm"] == "fixed"}
+    dr = {r["seed"]: r["holdout"]["runtime_ms"] for r in rows if r["arm"] == "dream"}
+    seeds = sorted(set(fx) & set(dr))
+    n_inst = len(fx[seeds[0]])
+    sk = ref["sklearn"]["runtime_ms"]
+    table = []
+    for i in range(n_inst):
+        f_i, d_i = [fx[s][i] for s in seeds], [dr[s][i] for s in seeds]
+        table.append({"instance": i, "seed_ms": ref["seed"]["runtime_ms"][i] if ref["seed"]["runtime_ms"] else None,
+                      "sklearn_ms": sk[i] if sk else None, "fixed_ms_mean": float(np.mean(f_i)),
+                      "dream_ms_mean": float(np.mean(d_i)),
+                      "dream_faster_than_fixed": int(sum(d < f for d, f in zip(d_i, f_i))),
+                      "fixed_faster_than_sklearn": int(sum(f < sk[i] for f in f_i)) if sk else None,
+                      "dream_faster_than_sklearn": int(sum(d < sk[i] for d in d_i)) if sk else None})
+    means = {}
+    for name, per in (("fixed", [fx[s] for s in seeds]), ("dream", [dr[s] for s in seeds])):
+        means[name] = {"arith_ms": summ([float(np.mean(v)) for v in per]), "geo_ms": summ([gmean(v) for v in per])}
+    for name in ("seed", "sklearn"):
+        v = ref[name]["runtime_ms"]
+        means[name] = {"arith_ms": float(np.mean(v)) if v else None, "geo_ms": gmean(v) if v else None,
+                       "gate": ref[name]["gate"]}
+    wins = sum(t["dream_faster_than_fixed"] for t in table)
+    return {"per_instance": table, "means": means, "n_pairs": len(seeds) * n_inst,
+            "dream_vs_fixed_wins": wins, "dream_vs_fixed_losses": len(seeds) * n_inst - wins,
+            "finals_faster_than_sklearn": {"fixed": sum(t["fixed_faster_than_sklearn"] or 0 for t in table),
+                                           "dream": sum(t["dream_faster_than_sklearn"] or 0 for t in table),
+                                           "of": len(seeds) * n_inst}}
+
+
+def controls(rows):
+    """Dream vs every fixed control grid and vs the best one in hindsight (same seeds)."""
+    dr = {r["seed"]: r["final_best"] for r in rows if r["arm"] == "dream"}
+    arms = sorted({r["arm"] for r in rows if r["arm"].startswith("fixed")})
+    out = {}
+    for arm in arms:
+        v = {r["seed"]: r["final_best"] for r in rows if r["arm"] == arm}
+        seeds = sorted(set(v) & set(dr))
+        out[arm] = {"final_best": summ([v[s] for s in seeds]),
+                    "dream_minus": paired([v[s] for s in seeds], [dr[s] for s in seeds]),
+                    "dream_wins": int(sum(dr[s] > v[s] + 1e-12 for s in seeds)), "n": len(seeds)}
+    best = max(arms, key=lambda a: out[a]["final_best"]["mean"])
+    return {"arms": out, "hindsight_best_fixed_grid": best, "dream_minus_hindsight_best": out[best]["dream_minus"],
+            "dream_wins_vs_hindsight_best": out[best]["dream_wins"],
+            "share_of_gap_closed_by_tuning": (1.0 - out[best]["dream_minus"]["mean_diff"] /
+                                              out["fixed"]["dream_minus"]["mean_diff"])
+            if out["fixed"]["dream_minus"]["mean_diff"] else None}
 
 
 def analyse(rows, dom_name, rounds_eq):
@@ -142,10 +224,19 @@ def main():
     fig, axes = plt.subplots(1, len(doms), figsize=(4.2 * len(doms), 3.5), squeeze=False)
     for i, d in enumerate(doms):
         jobs = [(d, s, dream, a.llm, a.quick) for s in range(n_seeds[d]) for dream in (False, True)]
+        if d == "synthetic" and a.llm == "sim":
+            jobs += [(d, s, False, a.llm, a.quick, g) for s in range(n_seeds[d]) for g in CONTROL_GRIDS]
         rows = pmap(one, jobs, 1 if d == "lasso" else a.workers)
         raw.extend(rows)
         R = min(5, SETTINGS[d]["rounds"]) if not a.quick else 3
-        res = analyse(rows, d, R)
+        res = analyse([r for r in rows if r["arm"] in ("fixed", "dream")], d, R)
+        if any(r["arm"].startswith("fixed_") for r in rows):
+            res["controls"] = controls(rows)
+            c = res["controls"]
+            print(f"   control: hindsight-best fixed grid {c['hindsight_best_fixed_grid']}: dream minus it "
+                  f"{c['dream_minus_hindsight_best']['mean_diff']:+.4f} [{c['dream_minus_hindsight_best']['lo']:+.4f}, "
+                  f"{c['dream_minus_hindsight_best']['hi']:+.4f}], dream wins {c['dream_wins_vs_hindsight_best']}/"
+                  f"{len(res['seeds'])}; tuning closes {100 * (c['share_of_gap_closed_by_tuning'] or 0):.0f}% of the gap")
         if d == "lasso":
             fxh = [r["holdout"] for r in rows if r["arm"] == "fixed"]
             drh = [r["holdout"] for r in rows if r["arm"] == "dream"]
@@ -153,6 +244,11 @@ def main():
                               "seed_score": summ([h["seed_score"] for h in fxh]),
                               "per_instance_ms": {"fixed": [h["runtime_ms"] for h in fxh],
                                                   "dream": [h["runtime_ms"] for h in drh]}}
+            res["holdout"]["rows"] = lasso_rows([r for r in rows if r["arm"] in ("fixed", "dream")])
+            hr = res["holdout"]["rows"]
+            print(f"   held-out rows: dream faster than fixed on {hr['dream_vs_fixed_wins']}/{hr['n_pairs']} "
+                  f"(seed, instance) pairs; finals faster than sklearn: fixed {hr['finals_faster_than_sklearn']['fixed']}"
+                  f"/{hr['n_pairs']}, dream {hr['finals_faster_than_sklearn']['dream']}/{hr['n_pairs']}")
         results[d] = res
         full = res["best_at_budget_fraction"][1.0]
         print(f"[{d}] budget {res['budget']} calls, {len(res['seeds'])} seeds")
@@ -189,15 +285,37 @@ def main():
                        "PARTIAL: comparable at equal budget" if comparable else "NOT reproduced at equal budget") + \
             (f"; fewer calls at equal rounds ({eq['dream_calls']['mean']:.0f} vs {eq['fixed_calls']['mean']:.0f})"
              if fewer else "; not fewer calls at equal rounds")
+        if "controls" in r:
+            c = r["controls"]
+            dm = c["dream_minus_hindsight_best"]
+            rel = ("Dream still beats it" if dm["lo"] > 0 else "it beats Dream" if dm["hi"] < 0 else "they tie")
+            verdicts[d] += (f"; control: against the best fixed grid chosen in hindsight ({c['hindsight_best_fixed_grid']}, "
+                            f"optimistic for Fixed) Dream is {dm['mean_diff']:+.4f} [{dm['lo']:+.4f}, {dm['hi']:+.4f}]: "
+                            f"{rel}. Tuning the fixed grid closes {100 * (c['share_of_gap_closed_by_tuning'] or 0):.0f}% "
+                            "of the gap to the paper's fixed baseline, so the equal-budget gain comes mainly from "
+                            "spending fewer calls per round (which Dream learns without hindsight tuning), not from "
+                            "better within-round decisions")
     if "lasso" in results and "holdout" in results["lasso"]:
         h = results["lasso"]["holdout"]
         fx_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "fixed"]
         dr_h = [r["holdout"]["score"] for r in raw if r["domain"] == "lasso" and r["arm"] == "dream"]
         h["dream_minus_fixed"] = paired(fx_h, dr_h)
+        hd = h["dream_minus_fixed"]
+        if verdicts["lasso"].startswith("REPRODUCED") and not hd["lo"] > 0:
+            # the search score is a max over noisy runtime measurements: without held-out support a CI
+            # above 0 on it is not evidence of a better solver
+            verdicts["lasso"] = "PARTIAL: search score better at equal budget but NOT on the held-out re-measurement" + \
+                verdicts["lasso"][len("REPRODUCED: better at equal budget (CI above 0)"):]
         verdicts["lasso"] += (f"; held-out re-measurement of the final programs (1/s): fixed {fmt(h['fixed_score'], 1)} "
-                              f"vs dream {fmt(h['dream_score'], 1)} (seed program {fmt(h['seed_score'], 1)}); the search "
-                              "score is a max over noisy runtime measurements, so the held-out re-measurement is the "
-                              "fairer quality comparison")
+                              f"vs dream {fmt(h['dream_score'], 1)}, diff {hd['mean_diff']:+.1f} [{hd['lo']:+.1f}, "
+                              f"{hd['hi']:+.1f}] (seed program {fmt(h['seed_score'], 1)})")
+        if "rows" in h:
+            hr = h["rows"]
+            verdicts["lasso"] += (f"; rows: Dream faster than Fixed on {hr['dream_vs_fixed_wins']}/{hr['n_pairs']} "
+                                  f"(seed, instance) pairs; final programs faster than scikit-learn's lasso_path on "
+                                  f"{hr['finals_faster_than_sklearn']['fixed']}/{hr['n_pairs']} (Fixed) and "
+                                  f"{hr['finals_faster_than_sklearn']['dream']}/{hr['n_pairs']} (Dream) - the paper's "
+                                  "'beats sklearn on every dataset' does not reproduce with numpy programs")
     for d, v in verdicts.items():
         print(f"verdict [{d}]: {v}")
     out_path = a.out or str(RESULTS / "e3_dream_vs_fixed.json")
