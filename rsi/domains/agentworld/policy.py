@@ -546,6 +546,8 @@ class LLMAgent:
                 parts.append(f"USER: {m.content}")
         resp = self.llm.complete("\n\n".join(parts), system=msgs[0].content + ACTION_PROTOCOL, role="agent",
                                  seed=rt.turns)
+        if not resp.ok:     # a backend outage must not look like an agent that chose to stop
+            raise RuntimeError(f"infra: agent backend error: {resp.error}")
         try:
             from ...core.llm import extract_json
             d = extract_json(resp.text)

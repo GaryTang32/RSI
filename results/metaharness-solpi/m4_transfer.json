@@ -529,5 +529,5 @@
   }
  },
  "verdict": "REPRODUCED: selected - fewshot_all gain = search 0.143 [0.128, 0.160], unseen datasets (model A) 0.102 [0.083, 0.121], unseen model B test 0.132 [0.107, 0.155], unseen datasets+model 0.158 [0.143, 0.174]",
- "generated_at": "2026-09-25 01:58:38"
+ "generated_at": "2026-09-25 06:54:05"
 }

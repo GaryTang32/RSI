@@ -25,6 +25,7 @@ mathematically tied candidate would pass a "strictly better" rule at random.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Optional, Sequence
 
@@ -266,7 +267,7 @@ class DualGate(Gate):
             if c is None or b is None:
                 return Verdict(False, f"capability metric {m} missing")
             det[m] = c - b
-            if c < b - tol - TIE_EPS:
+            if not c >= b - tol - TIE_EPS:   # written so that a NaN capability fails too
                 return Verdict(False, f"capability {m} dropped {c - b:+.4f} beyond tol {tol}", det)
         improved = []
         for m, min_rel in self.efficiency.items():
@@ -281,6 +282,13 @@ class DualGate(Gate):
         return Verdict(ok, f"efficiency improved on {improved}" if ok else "no efficiency metric improved", det)
 
 
+def _is_nan(x) -> bool:
+    try:
+        return math.isnan(x)
+    except TypeError:          # tuple / non-numeric keys
+        return False
+
+
 def select(
     candidates: Sequence[tuple[object, Scored]],
     incumbent: Scored,
@@ -289,8 +297,16 @@ def select(
     key: Callable[[Scored], float] = lambda s: s.score,
 ) -> tuple[Optional[object], list[tuple[object, Verdict]]]:
     """Return (winner or None, verdicts). Winner = argmax ``key`` over admissible
-    candidates (RRSI: H_{t+1} = argmax S over admissible, else keep H_t)."""
-    verdicts = [(c, gate.check(s, incumbent, ctx)) for c, s in candidates]
+    candidates (RRSI: H_{t+1} = argmax S over admissible, else keep H_t); ties go
+    to the earliest candidate. A candidate whose ``key`` is NaN is never admissible
+    (its verdict is replaced), since ``max`` would otherwise return it whenever it
+    comes first."""
+    verdicts = []
+    for c, s in candidates:
+        v = gate.check(s, incumbent, ctx)
+        if v.accept and _is_nan(key(s)):
+            v = Verdict(False, f"invalid: selection key is NaN ({v.reason})", v.details)
+        verdicts.append((c, v))
     admissible = [(c, s) for (c, s), (_, v) in zip(candidates, verdicts) if v.accept]
     if not admissible:
         return None, verdicts

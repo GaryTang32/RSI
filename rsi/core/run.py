@@ -69,13 +69,28 @@ class ImprovementResult:
         }
 
     def save(self, out_dir: Optional[str | Path] = None) -> Path:
+        """Write ``best_artifact/``, ``trajectory.json`` and ``summary.json`` under
+        ``out_dir``. Values JSON cannot encode become floats when they convert
+        (numpy scalars), lists when they have ``tolist`` (numpy arrays), else text."""
         d = Path(out_dir or self.out_dir or ".")
         d.mkdir(parents=True, exist_ok=True)
         self.best.to_dir(d / "best_artifact", clean=True)
-        (d / "trajectory.json").write_text(json.dumps(self.trajectory, indent=1, default=float))
+        (d / "trajectory.json").write_text(json.dumps(self.trajectory, indent=1, default=_jsonable))
         (d / "summary.json").write_text(json.dumps({**self.summary(), "usage": self.usage, "meta": self.meta},
                                                    indent=1, default=str))
         return d
+
+
+def _jsonable(o: Any) -> Any:
+    try:
+        return float(o)
+    except (TypeError, ValueError):
+        pass
+    if hasattr(o, "tolist"):
+        return o.tolist()
+    if hasattr(o, "to_json"):
+        return o.to_json()
+    return str(o)
 
 
 def usd_of(*llms: Optional[LLM]) -> float:

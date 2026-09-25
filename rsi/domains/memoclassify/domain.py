@@ -148,6 +148,18 @@ class MemoClassifyDomain(Domain):
 
     # ------------------------------------------------------------ execution
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+        state: dict[str, Any] = {}
+        try:
+            ex = self._execute(artifact, task, seed=seed, llm=llm, state=state)
+        except Exception:  # noqa: BLE001
+            if "infra" in state:                   # a backend failure, not the harness's fault
+                return Execution(error=state["infra"], steps=state.get("calls", 0))
+            raise
+        if "infra" in state:     # the candidate swallowed a backend failure: a missing trial, not a wrong answer
+            return Execution(error=state["infra"], trace=ex.trace, tokens=ex.tokens, steps=ex.steps)
+        return ex
+
+    def _execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM], state: dict) -> Execution:
         if llm is None:
             llm = self.make_model("A")
         src = artifact.get("memory.py")
@@ -155,7 +167,7 @@ class MemoClassifyDomain(Domain):
             return Execution(error="memory.py missing")
         ds = self.datasets[task.input["dataset"]]
         part = task.input["part"]
-        state = {"calls": 0, "tokens": 0, "usd": 0.0}
+        state.update({"calls": 0, "tokens": 0, "usd": 0.0})
         lock = threading.Lock()
         t0 = time.time()
 
@@ -171,7 +183,9 @@ class MemoClassifyDomain(Domain):
                 raise HarnessTimeout(f"harness exceeded {self.max_wall_s}s")
             resp = llm.complete(prompt, seed=seed * 100003 + i, role="task")
             if not resp.ok:
-                raise RuntimeError(f"infra: llm backend error: {resp.error}")
+                msg = f"infra: llm backend error: {resp.error}"
+                state.setdefault("infra", msg)     # remembered even if the candidate swallows the exception
+                raise RuntimeError(msg)
             with lock:
                 state["tokens"] += resp.usage.total_tokens
                 state["usd"] += resp.usage.cost_usd

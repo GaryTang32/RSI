@@ -3020,5 +3020,5 @@
  },
  "verdict": "REPRODUCED: Pareto frontier has 6.0 non-dominated harnesses on average; in 100% of runs a frontier harness beats fewshot_all on TEST accuracy with less context (selected harness uses 6.2x less context). Pareto vs scalar hypervolume diff = +289.9",
  "figure": "/home/user/RSI/results/metaharness-solpi/m3_pareto.png",
- "generated_at": "2026-09-25 01:56:19"
+ "generated_at": "2026-09-25 06:59:29"
 }

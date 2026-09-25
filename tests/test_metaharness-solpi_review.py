@@ -145,3 +145,46 @@ def test_occ_write_tokens_use_max_of_reported_and_estimated():
     assert occ.context_tokens(RT()) == 5000
     RT.last_context_tokens = 10
     assert occ.context_tokens(RT()) == est
+
+
+# ------------------------------------------------------------------ backend outages are missing trials, not failures
+class DownLLM:
+    """A backend that is down: every call returns an error response."""
+
+    def __new__(cls):
+        from rsi.core.llm import LLM, LLMResponse, Usage
+
+        class _Down(LLM):
+            name = "down"
+
+            def _complete(self, prompt, *, system, max_tokens, seed):
+                return LLMResponse(text="", usage=Usage(1, 1, 0, 0.0, 0.0), model="down", error="HTTP 529 overloaded")
+        return _Down()
+
+
+def test_backend_outage_is_an_infra_error_even_if_the_harness_swallows_it():
+    dom = mc_domain(seed=0, scale=0.2)
+    swallow = dom.seed_artifact("no_memory")["memory.py"].replace(
+        "response = self.call_llm(PROMPT.format(input=input))",
+        "try:\n            response = self.call_llm(PROMPT.format(input=input))\n"
+        "        except Exception:\n            response = '{\"final_answer\": \"x\"}'")
+    assert "except Exception" in swallow
+    for art in (dom.seed_artifact("no_memory"), Artifact({"memory.py": swallow})):
+        r = Evaluator(dom, DownLLM(), workers=1).evaluate(art, "evolve")
+        assert r.n_missing == len(r.trials)                         # counted missing (and not cached)
+    world = aw_domain(seed=0, n_train=1, n_accept=0, n_final=0, n_test=0)
+    tr = world.run(world.seed_artifact(), world.tasks.split("evolve")[0], llm=DownLLM())
+    assert (tr.error or "").startswith("infra:")
+
+
+def test_finalize_with_missing_test_trials_is_incomplete_and_leaves_evolution_open(tmp_path):
+    from rsi.metaharness import MemoClassifyLibrary, MetaHarnessLoop, MockProposer
+    dom = mc_domain(seed=0, scale=0.2)
+    loop = MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=MockProposer(MemoClassifyLibrary()),
+                           config=Config(iterations=1, k=1, validate_in_subprocess=False), out_dir=tmp_path,
+                           baselines=dom.baselines())
+    loop.run()
+    rep = loop.finalize(llm=DownLLM())
+    assert rep["status"] == "incomplete" and rep["failures"] and not loop.store.is_finalized()
+    loop.iterate(2)                                              # evolution still allowed
+    assert loop.finalize()["status"] == "complete" and loop.store.is_finalized()

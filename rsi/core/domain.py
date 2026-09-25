@@ -14,6 +14,7 @@ To apply any method in this package to a new problem, subclass :class:`Domain`
 from __future__ import annotations
 
 import copy
+import math
 import time
 import traceback
 from dataclasses import dataclass, field, asdict
@@ -115,26 +116,43 @@ class Domain:
         raise NotImplementedError
 
     # ---- provided
+    @property
+    def failure_score(self) -> float:
+        """Score of a failed rollout: the bottom of :attr:`score_range` (0.0 for the
+        default ``(0, 1)``). A domain with negative scores (e.g. ``-loss``) must set
+        ``score_range`` so that a crash never outscores a working artifact."""
+        return float(self.score_range[0])
+
     def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Trial:
         """Execute and grade one rollout. Never raises for artifact or grader
         failures (including ``SystemExit`` from artifact code): they become a
-        score-0 trial with ``error``/``feedback`` set. An ``execute`` that returns
-        a bare value instead of an :class:`Execution` is treated as its output."""
+        trial scored :attr:`failure_score` (0 by default) with ``error``/``feedback``
+        set. A grader score that is not a finite number (``nan``, ``inf``, e.g.
+        from an artifact that printed ``"nan"``) is a grader error too, so it can
+        never poison means or win an argmax. An ``execute`` that returns a bare
+        value instead of an :class:`Execution` is treated as its output."""
         t0 = time.time()
+        fail = self.failure_score
         try:
             ex = self.execute(artifact, task, seed=seed, llm=llm)
             if not isinstance(ex, Execution):
                 ex = Execution(output=ex)
         except (Exception, SystemExit) as e:  # noqa: BLE001 - an artifact crash is a graded failure, not a loop crash
-            ex = Execution(error=f"{type(e).__name__}: {e}", trace=traceback.format_exc(limit=5))
+            msg = str(e)
+            # "infra:" errors (backend outages) keep their prefix so the Evaluator counts them as
+            # missing trials and does not cache them as graded failures.
+            err = msg if msg.startswith("infra:") else f"{type(e).__name__}: {e}"
+            ex = Execution(error=err, trace=traceback.format_exc(limit=5))
         try:
             if ex.error is None:
                 score, feedback = self.grade(task, ex)
                 score = float(score)
+                if not math.isfinite(score):
+                    score, feedback = fail, f"grader error: non-finite score {score!r} (feedback: {feedback})"
             else:
-                score, feedback = 0.0, f"execution error: {ex.error}"
+                score, feedback = fail, f"execution error: {ex.error}"
         except (Exception, SystemExit) as e:  # noqa: BLE001
-            score, feedback = 0.0, f"grader error: {type(e).__name__}: {e}"
+            score, feedback = fail, f"grader error: {type(e).__name__}: {e}"
         return Trial(
             task_id=task.id, seed=seed, score=score, feedback=feedback, output=ex.output,
             trace=ex.trace, tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps,

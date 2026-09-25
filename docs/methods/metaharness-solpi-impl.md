@@ -267,6 +267,9 @@ On unseen datasets the gain is smaller than the search gain, as the claim predic
 - Screen ON: 3.4 rejected before evaluation, 0 evaluated, gap 0.02.
 - Gap difference (off − on): +0.58 [0.48, 0.69].
 - The leak rate is injected. The experiment measures consequences, not how often LLM proposers leak.
+- The script's "leaky" label comes from the same screen, which would be circular. The review therefore audited ground truth: the mock's `lookup` move, plus candidates whose source carries a lookup table.
+  - Screen OFF: 36 injected lookups and 62 descendants that inherited the table were evaluated (9.8 per run).
+  - Screen ON: all 34 injected lookups were rejected, with 0 false positives, and none of the 126 evaluated candidates carries a table.
 
 **Live smoke** (`live_smoke.py`, claude-haiku-4.5, total $0.48; `results/metaharness-solpi/live_smoke.json`).
 - **Meta-Harness:** 2 iterations × k = 2 with a haiku RewriteProposer (about 23k input / 7.7k output tokens per call). Two of the four candidates evaluated at the `fewshot_all` level (0.474); two were invalid because they arrived wrapped in Markdown fences with trailing prose, which `rsi.core.parse_file_blocks` does not unwrap. `clean_code_block` now handles this. `live_reanalysis.py` re-parsed the cached replies at no cost: 4/4 validate, but none beats the baseline in 2 iterations.
@@ -384,14 +387,18 @@ Each cell is the token change / cost change vs the base harness; bold marks the 
 5. *AgentProposer.* It uses `rsi.core.AgentEditor` (Read/Edit/Write/Glob/Grep). There is no Bash, no subagents and no `stream-json` transcript, so its `files_read` is the whole view, not the files actually opened.
 6. Defaults: k = 2 (paper §4.1; the skill says 3). Experiments use N = 8 (M1, M3–M5) or a budget of 20 evaluations (M2) instead of N = 20.
 7. The `evolution_summary` row logs both `delta` (post-iteration best, the release quirk) and `delta_pre`.
-8. The history "CLI" is a set of functions. There is no `DomainOnboarding`. The pilot's in-agent `evaluate_harness` tool (spec A3.4) is not implemented; `eval_budget` covers the equal-budget use.
+8. The history "CLI" is a set of functions. There is no `DomainOnboarding`. The pilot's in-agent `evaluate_harness` tool (spec A3.4) is not implemented; `eval_budget` covers the equal-budget use. `eval_budget` counts only *evaluated* candidates. In the pilot, a candidate rejected by the leakage or interface check also consumes budget.
+9. *Leakage screen.* It matches whole tokens (via `rsi.core.LeakageCritic`, min term length 4) over added lines, plus a string-table shape check. The pilot uses case-insensitive substrings over the whole source.
+10. *Context cost.* A system's context cost is the mean of its *non-zero* per-unit context chars, as `print_frontier` computes it. In MemoClassify the last prompt is recorded by the domain's model wrapper, not by the candidate's `call_llm` bookkeeping (§8). The release measures inside the candidate, where a candidate could bypass or override the measurement.
 
 **SoL-Pi**
 1. *Runtime and agent.* A Python re-implementation of the subset of Pi's extension API that the four mechanisms use. The agent is a deterministic context-reading policy with two habit profiles, not GPT-5.6 Sol / Opus 5. `LLMAgent` exists but was not run live because of cost.
 2. *Tokens and prices.* The token estimate is chars/4. The prefix cache works at message granularity. Prices are invented but keep ρ = 12.5.
-3. *OCC.* Abort → settle → compact → hidden reminder happens synchronously inside the loop. The native summariser is deterministic and keeps the task and the agent's NOTE/PLAN/DONE lines. Session-tree events are not modelled. `input` / correction handling is implemented but never triggered by the mock agents.
-4. *EPR.* An archive I/O error falls back with reason `model-call-exception` (the release would throw). There is no reasoning-effort setting. `LLMReducer` strips a stray Markdown fence before byte-exact validation.
+3. *OCC.* Abort → settle → compact → hidden reminder happens synchronously inside the loop. The native summariser is deterministic and keeps the task and the agent's NOTE/PLAN/DONE lines. Session-tree events are not modelled. `input` / correction handling is implemented but never triggered by the mock agents. `W = max(provider-reported, estimated)`; the size of the runtime's last provider request (tool schemas included) stands in for Pi's `getContextUsage().tokens`.
+4. *EPR.* An archive I/O error falls back with reason `model-call-exception` (the release would throw). There is no reasoning-effort setting. `LLMReducer` strips a stray Markdown fence before byte-exact validation. Truncated bash results are reduced from the exact full log: `details.fullOutputPath`, or the inline `Full output: <path>` note. Only a `pi-bash-*.log` directly in `/tmp` is trusted, and the runtime store stands in for the file system. The offline `DeterministicReducer` is our own stand-in; it quotes the first failure-looking lines verbatim.
 5. *Research protocol.* The prompts were not released, so ours are our own. Other details:
+   - an efficiency metric "improves" only by more than `GateSpec.min_gain` = 2% relative, and capability tolerances are relative (2%). The sources give no numeric thresholds; the ObservationPack sweep used a −2% quality gate and a 10% bill-saving gate;
+   - `SmokeReviewer`'s denylist is generic split words plus the task families that occur only in the domain's sealed splits, derived from the domain;
    - the oracle statistics come from trajectories;
    - the offline implementer maps ideas to registry mechanisms with variant grids, and its Ralph-loop exit check is `domain.smoke`;
    - the reviewer is `SmokeReviewer` (smoke + held-out-reference denylist) or `LLMReviewer`;
@@ -417,4 +424,55 @@ Each cell is the token change / cost change vs the base harness; bold marks the 
 
 ## 7. Files
 
-`rsi/metaharness/*`, `rsi/solpi/*`, `rsi/domains/memoclassify/*`, `rsi/domains/agentworld/*`; tests `tests/test_metaharness-solpi_{metaharness,mechanisms,solpi}.py` (39 tests, about 16 s); experiments `experiments/metaharness-solpi/{m1..m5,s1..s7}_*.py`, `live_smoke.py`, `live_reanalysis.py`, `example_new_problem.py`; results `results/metaharness-solpi/*.json|png`.
+`rsi/metaharness/*`, `rsi/solpi/*`, `rsi/domains/memoclassify/*`, `rsi/domains/agentworld/*`; tests `tests/test_metaharness-solpi_{metaharness,mechanisms,solpi,genericity,review}.py` (53 tests, about 20 s); experiments `experiments/metaharness-solpi/{m1..m5,s1..s7}_*.py`, `live_smoke.py`, `live_reanalysis.py`, `example_new_problem.py`; results `results/metaharness-solpi/*.json|png`.
+
+---
+
+## 8. Adversarial review log (2026-09-25)
+
+A second engineer reviewed the code against the spec line by line. They added tests on new domains, re-ran every experiment whose code or library code changed, and corrected claims.
+
+**Bugs and fidelity gaps fixed**
+
+| # | problem | fix | effect on results |
+|---|---|---|---|
+| 1 | *Best-of-N was not "independent samples from the seed".* The `seed_only` view showed every baseline, and the mock proposer took `pool[0]` by dict order, so 77% of M2's Best-of-N samples mutated the zero-shot harness. | The loop takes `seed_names`, and `run()` passes the run's seed. The view shows that harness only. | M2 re-run: Best-of-N 0.568 → 0.558; Meta-Harness lead +0.051 → +0.062 |
+| 2 | *EPR reduced the truncated preview.* Pi's bash tool keeps the last 50 KB of a large output. `candidate.ts:exactBodyFromInline` reduces the untruncated `/tmp/pi-bash-*.log`; the port reduced the preview. | `exact_body()`: uses `details.fullOutputPath` or the inline `Full output:` note, with the same path-safety rule. | S3 and S7 re-run: EPR A-default −47.8%/−32.4% → −45.0%/−30.4% tokens/cost; see the S7 caveat on long logs. |
+| 3 | *OCC's write tokens ignored the provider-reported context.* `extension.ts:contextTokens` is `max(reported, estimated)`. | Implemented (runtime request size = reported). | S4 re-run: shifts of 0.4 points or less |
+| 4 | *AgentProposer evaluated candidates from a failed or timed-out agent.* The release skips the iteration when `claude_wrapper` returns ok=False (for example exit 124), even if `pending_eval.json` was written. | The iteration is skipped on `agent error`. | none offline |
+| 5 | *Graders the artifact could influence.*<br>• MemoClassify measured context cost through the candidate's own `call_llm` bookkeeping; a candidate calling `self._llm` directly reported 0 context.<br>• AgentWorld code mechanisms run in-process next to the token meter that grades efficiency. | • MemoClassify records the last prompt in the domain's model wrapper.<br>• AgentWorld runs an integrity check after each run (meter identity, no instance-patched methods, every provider request billed); a violation fails the trial. | none for library candidates (M3–M5 re-run: identical) |
+| 6 | *Genericity.* `make_proposer` sent any plain `MockLLM` to the offline `MockProposer`, which raises for domains without a program library. A scripted LLM on a new domain therefore crashed. | A plain `MockLLM` goes to `RewriteProposer` when the domain has no library. | none |
+| 7 | `SmokeReviewer` hard-coded AgentWorld's held-out family name (`datalookup`) in generic code. | The denylist is derived from the domain: families that occur only in sealed splits. | none (built-in diffs never mention family names) |
+| 8 | Live mode (`--llm claude:haiku`) crashed in S1, S2 and S7 before any LLM call: `randint(3, 2)` for buildfix in the 2-subtask live domain. S7 also divided by a zero base score. Live figures would have overwritten the offline PNGs. | Guarded both. Figures go to `<name>_live.png` or next to `--out`. | offline results unchanged. Every script's live path was exercised end to end with a free stand-in LLM (`scratchpad/mhsp_review/fake_live.py`); no real LLM was called. |
+| 9 | Context cost was a plain mean over units. The release averages only non-zero per-unit context. | `store.context_mean` | none (no zero units in MemoClassify) |
+| 10 | *LLM backend outages were graded as harness failures.*<br>• In MemoClassify, the `infra:` error surfaced as `RuntimeError: infra: …` (so it was cached), or disappeared if the candidate caught it.<br>• In AgentWorld, `LLMAgent` treated a failed call as "agent stops", and the partial state was graded. | Both domains now report `Execution(error="infra: …")`, even when the harness swallows the exception, as AgentQA does. `rsi.core.Evaluator` then counts the trial as missing and does not cache it. | none offline (live only) |
+| 11 | *Finalisation marked a run "complete" even when test trials were missing.* | Missing trials make finalisation `incomplete`, which leaves evolution open, as in the release. The report carries `status` and `failures`. | none offline |
+
+**Claims corrected**
+
+- M1: REPRODUCED → PARTIAL. The spec's confirming outcome includes "summaries no better than scores-only", and that part fails.
+- M2: stays PARTIAL. The 10× claim is now checked explicitly and reported with the seeds where Meta-Harness never matches the other arm.
+- S5: REPRODUCED → PARTIAL. Against the single-environment *dual* gate, the extra training environments give no significant held-out gain.
+- S7: numbers updated.
+
+**Genericity tests** (`tests/test_metaharness-solpi_genericity.py`):
+
+- *Meta-Harness on a keyword-sentiment problem.* It is a new `FunctionDomain`, driven once by a scripted LLM through `RewriteProposer` and once by a user `Proposer`. The tests check:
+  - the sealed test split is executed only by `finalize()`, once per system;
+  - no proposer prompt contains a test input;
+  - the full view (and only it) lets the proposer fix the per-task failures.
+- *SoL-Pi's research protocol on a "verbosity" problem.* The idea pool holds a general saving, a do-less shortcut and a trick that breaks only on the held-out family. The tests check:
+  - the dual gate rejects the shortcut;
+  - the firewall rejects the trick;
+  - the general idea survives;
+  - the held-out split is run only on the base and the frozen candidates, and the final split is never touched.
+- *The same SoL-Pi protocol with a scripted LLM implementer.* It edits a generic artifact through `RewriteEditor`.
+
+Neither method needed changes for either new domain beyond fix 6.
+
+**Remaining limitations noted by the review (not fixed)**
+
+- The offline `DeterministicReducer` takes the first N failure lines; see the S7 caveat.
+- `AgentProposer.files_read` is the whole view, not the files the agent opened.
+- The history view hides earlier proposer transcripts; only `meta.json` is shown.
+- Code mechanisms run in-process. The meter check catches tampering with the efficiency grader, but it is not a sandbox.

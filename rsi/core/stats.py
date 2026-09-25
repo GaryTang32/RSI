@@ -36,10 +36,17 @@ def noise_from_repeats(scores: Sequence[float], z: float = 2.0) -> NoiseEstimate
     return NoiseEstimate(z * sd, sd, z, "repeat", len(s))
 
 
-def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed: int = 0) -> NoiseEstimate:
+def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed: int = 0,
+                      small_k_correction: bool = False) -> NoiseEstimate:
     """delta from ONE evaluation with k >= 2 trials per task: bootstrap the
     aggregate score by resampling trials within each task (RRSI's within-task
-    bootstrap), then sd(null dS) = sqrt(2) * bootstrap_se."""
+    bootstrap), then sd(null dS) = sqrt(2) * bootstrap_se.
+
+    The plug-in bootstrap underestimates the variance by a factor (k-1)/k, so with
+    few trials (k = 2 or 3) the band is too narrow: measured clearance of the
+    unchanged artifact is ~92.6% at k=2 instead of the nominal 97.5%
+    (``results/core-qa/core_calibration.json``). ``small_k_correction=True`` scales
+    delta by sqrt(k/(k-1)). The default (False) matches the released RRSI code."""
     m = np.asarray(matrix, float)
     if m.ndim != 2 or m.shape[1] < 2:
         raise ValueError("need a tasks x k matrix with k >= 2")
@@ -49,7 +56,9 @@ def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed
     boot = np.take_along_axis(np.broadcast_to(m, (reps, n_tasks, k)), idx, axis=2).mean(axis=(1, 2))
     se = float(np.std(boot, ddof=1))
     sd = math.sqrt(2) * se
-    return NoiseEstimate(z * sd, sd, z, "bootstrap", n_tasks * k)
+    if small_k_correction:
+        sd *= math.sqrt(k / (k - 1))
+    return NoiseEstimate(z * sd, sd, z, "bootstrap" + ("+small_k" if small_k_correction else ""), n_tasks * k)
 
 
 def fixed_noise(delta: float) -> NoiseEstimate:
@@ -64,7 +73,11 @@ def bootstrap_ci(x: Sequence[float], stat=np.mean, alpha: float = 0.05, reps: in
     if len(a) == 1:
         return (float(stat(a)),) * 3
     rng = np.random.default_rng(seed)
-    bs = np.array([stat(a[rng.integers(0, len(a), len(a))]) for _ in range(reps)])
+    idx = rng.integers(0, len(a), (reps, len(a)))
+    if stat is np.mean:  # vectorized fast path (same resamples as the loop below)
+        bs = a[idx].mean(axis=1)
+    else:
+        bs = np.array([stat(a[row]) for row in idx])
     return float(stat(a)), float(np.quantile(bs, alpha / 2)), float(np.quantile(bs, 1 - alpha / 2))
 
 

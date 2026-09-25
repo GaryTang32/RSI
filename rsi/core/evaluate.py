@@ -12,6 +12,7 @@ or replaying a run costs nothing.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import threading
@@ -122,6 +123,17 @@ class EvalResult:
         }
 
 
+def _stable_repr(o) -> str:
+    """JSON fallback for task fingerprints: the same across processes (no memory addresses)."""
+    if hasattr(o, "to_json"):
+        try:
+            return json.dumps(o.to_json(), sort_keys=True, default=_stable_repr)
+        except Exception:  # noqa: BLE001
+            pass
+    r = repr(o)
+    return type(o).__qualname__ if " at 0x" in r else r
+
+
 class Evaluator:
     """Runs a :class:`Domain` over tasks in a thread pool with caching.
 
@@ -132,7 +144,12 @@ class Evaluator:
     workers:
         parallel rollouts (LLM subprocess calls are I/O bound, so threads suffice).
     cache_dir:
-        optional persistent trial cache (JSON per trial).
+        optional persistent trial cache (JSON per trial). Each entry records
+        which task model (``llm.name``, ignoring ``cached:`` wrappers), domain
+        (``domain.name``) and task content produced it, and an entry written
+        for a different one is treated as a miss and re-run, so a shared
+        ``cache_dir`` never serves one model's (or one suite's) trials to
+        another. Entries without that record (older caches) are still read.
     allow_sealed:
         when False (default) evaluating a sealed split raises - use a
         :class:`TransferEvaluator`-style report step to unseal.
@@ -166,7 +183,16 @@ class Evaluator:
         safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in tid)
         return self.cache_dir / aid[:12] / f"{safe}__{seed}.json"
 
-    def _get_cached(self, aid, tid, seed) -> Optional[Trial]:
+    def cache_identity(self, task: Task) -> dict:
+        """What besides (artifact, task id, seed) a disk-cache entry depends on."""
+        name = getattr(self.llm, "name", None) if self.llm is not None else None
+        while isinstance(name, str) and name.startswith("cached:"):
+            name = name[len("cached:"):]   # a CachedLLM replays the same model: its trials are interchangeable
+        blob = json.dumps([task.input, task.target, task.family], sort_keys=True, default=_stable_repr)
+        return {"llm": name, "domain": getattr(self.domain, "name", None),
+                "task": hashlib.sha256(blob.encode()).hexdigest()[:16]}
+
+    def _get_cached(self, aid, tid, seed, ident: Optional[dict] = None) -> Optional[Trial]:
         key = (aid, tid, seed)
         with self._lock:
             if key in self._mem:
@@ -175,28 +201,34 @@ class Evaluator:
         if p and p.exists():
             try:
                 d = json.loads(p.read_text())
+                if ident is not None and d.get("_cache_identity", ident) != ident:
+                    return None  # written for another task model / domain / suite: re-run (and overwrite)
                 tr = Trial(**{k: v for k, v in d.items() if k in Trial.__dataclass_fields__})
-            except (OSError, ValueError, TypeError):
+            except (OSError, ValueError, TypeError, AttributeError):
                 return None  # corrupt/foreign cache entry: re-run the trial (the entry is overwritten)
             with self._lock:
                 self._mem[key] = tr
             return tr
         return None
 
-    def _put(self, aid, tr: Trial) -> None:
+    def _put(self, aid, tr: Trial, ident: Optional[dict] = None) -> None:
         with self._lock:
             self._mem[(aid, tr.task_id, tr.seed)] = tr
         p = self._cache_path(aid, tr.task_id, tr.seed)
         if p:
             p.parent.mkdir(parents=True, exist_ok=True)
             tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-            tmp.write_text(json.dumps(tr.to_json(max_trace=20000)))
+            d = tr.to_json(max_trace=20000)
+            if ident is not None:
+                d["_cache_identity"] = ident
+            tmp.write_text(json.dumps(d))
             tmp.replace(p)  # atomic: a crash never leaves a half-written entry
 
     # ---- evaluation
     def run_one(self, artifact: Artifact, task: Task, seed: int) -> Trial:
         s = seed + self.seed_offset
-        cached = self._get_cached(artifact.id, task.id, s)
+        ident = self.cache_identity(task) if self.cache_dir else None
+        cached = self._get_cached(artifact.id, task.id, s, ident)
         if cached is not None:
             return cached
         tr = self.domain.run(artifact, task, seed=s, llm=self.llm)
@@ -204,7 +236,7 @@ class Evaluator:
             self.n_rollouts += 1
         # Infrastructure failures (e.g. LLM backend down) are not cached so they can be retried.
         if not (tr.error and tr.error.startswith("infra:")):
-            self._put(artifact.id, tr)
+            self._put(artifact.id, tr, ident)
         for cb in self.on_trial:
             cb(artifact, tr)
         return tr
@@ -249,8 +281,9 @@ class Evaluator:
         n_missing = 0
         for tid, s, tr in outs:
             if tr.error and tr.error.startswith("infra:"):
-                n_missing += 1
-                tr = Trial(task_id=tid, seed=s, score=0.0, error=tr.error, family=tr.family)
+                n_missing += 1   # a missing trial scores the domain's failure score (0) over the full denominator
+                tr = Trial(task_id=tid, seed=s, score=float(getattr(self.domain, "failure_score", 0.0)),
+                           error=tr.error, family=tr.family)
             results[tid][idx[s]] = tr
         trials = {tid: [t for t in trs if t is not None] for tid, trs in results.items()}
         return EvalResult(artifact.id, split_name, trials, k=len(seeds), n_missing=n_missing)

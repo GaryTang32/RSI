@@ -130,5 +130,5 @@
   "fewshot_all": 0.47368421052631576
  },
  "verdict": "with fence cleanup: 4/4 cached haiku Meta-Harness candidates validate (best search 0.474 vs fewshot_all 0.474); 6/6 cached haiku mechanism files compile, 0 pass the dual gate on the training screen",
- "generated_at": "2026-09-25 02:01:36"
+ "generated_at": "2026-09-25 06:54:38"
 }

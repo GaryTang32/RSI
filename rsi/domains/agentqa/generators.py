@@ -257,6 +257,8 @@ def decontaminate(suite: TaskSuite) -> TaskSuite:
         splits["smoke"] = [t for t in suite.splits["smoke"] if t in kept]
     out = TaskSuite(suite.tasks.values(), {k: splits[k] for k in suite.splits}, name=suite.name)
     for name in suite.splits:
-        if not suite.is_sealed(name):
+        if suite.is_sealed(name):
+            out.seal(name)          # includes custom splits sealed with suite.seal(...)
+        else:
             out.unseal(name)
     return out

@@ -164,7 +164,11 @@ Read-only context (history, traces, scores) is in the `_context/` directory; do 
 
 
 class AgentEditor(Editor):
-    """Headless coding agent in a scratch directory."""
+    """Headless coding agent in a scratch directory.
+
+    ``context`` files go under ``_context/`` (removed before the result is read
+    back); a context name that is absolute or escapes that directory is skipped
+    and listed in ``Proposal.meta["skipped_context"]``."""
 
     def __init__(self, cli: ClaudeCLI, tools: Sequence[str] = ("Read", "Edit", "Write", "Glob", "Grep"),
                  timeout_s: float = 900.0, keep_dirs: bool = False) -> None:
@@ -175,10 +179,14 @@ class AgentEditor(Editor):
 
     def edit(self, artifact, instructions, *, context=None, editable=None, system=None, seed=None, role="proposer"):
         work = Path(tempfile.mkdtemp(prefix="rsi_agent_"))
+        skipped_context = []
         try:
             artifact.to_dir(work)
             ctx_dir = work / "_context"
             for name, text in (context or {}).items():
+                if not is_safe_relpath(str(name)):   # "../harness.py" would overwrite the artifact itself
+                    skipped_context.append(str(name))
+                    continue
                 p = ctx_dir / name
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(text)
@@ -204,6 +212,8 @@ class AgentEditor(Editor):
                             usage=resp.usage, blocked_files=blocked,
                             error=None if resp.ok else f"agent error: {resp.error}",
                             meta={"workdir": str(work)} if self.keep_dirs else {})
+            if skipped_context:
+                prop.meta["skipped_context"] = skipped_context
             if prop.error is None and new == artifact:
                 prop.error = "no effective change"
             return prop

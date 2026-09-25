@@ -265,7 +265,7 @@ class MetaHarnessLoop:
         systems = list(dict.fromkeys(list(self.baselines) + [p["system"] for p in fr.get("_pareto", [])] +
                                      [v["best_system"] for u, v in fr.items() if not u.startswith("_")]))
         if self.store.is_finalized():
-            return self._final_report(splits, systems)
+            return {**self._final_report(splits, systems), "status": "complete"}
         self.store.write_finalized("in_progress", systems)
         ev = Evaluator(self.domain, llm or self.llm_task, workers=self.cfg.workers, allow_sealed=True)
         failures = []
@@ -276,12 +276,15 @@ class MetaHarnessLoop:
                 try:
                     r = ev.evaluate(self.store.artifact(s), split, k=self.cfg.trials)
                     self.store.write_test_result(split, s, r, self._cost(r))
+                    if r.n_missing:     # release: complete only if every (system, unit) has a test result
+                        failures.append(f"{s}/{split}: {r.n_missing} missing trials (infrastructure errors)")
                 except Exception as e:  # noqa: BLE001
                     failures.append(f"{s}/{split}: {e}")
         rep = self._final_report(splits, systems)
         (self.store.root / "frontier.json").write_text(__import__("json").dumps(rep, indent=1, default=float))
-        self.store.write_finalized("complete" if not failures else "incomplete", systems, failures=failures)
-        return rep
+        status = "complete" if not failures else "incomplete"     # incomplete leaves evolution allowed
+        self.store.write_finalized(status, systems, failures=failures)
+        return {**rep, "status": status, "failures": failures}
 
     def _final_report(self, splits, systems) -> dict:
         out = {"systems": systems, "splits": {}}

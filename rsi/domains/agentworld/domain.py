@@ -128,6 +128,10 @@ class AgentWorldDomain(Domain):
         for ext in build_extensions(artifact.files, {"reducer_llm": self.reducer_llm, "seed": seed}):
             rt.add_extension(ext)
         res = rt.run(env.statement())
+        if res.status == "error" and "infra:" in (res.error or ""):
+            # backend outage: a missing trial (not cached, retried), never a graded failure of the harness
+            return Execution(error="infra:" + res.error.split("infra:", 1)[1], steps=rt.provider_requests,
+                             tokens=meter.total().total_tokens, cost_usd=meter.total().cost)
         tamper = meter_tampering(rt, meter)
         if tamper:
             # the efficiency metrics are graded by this meter: a harness that swaps or patches it is a failed run

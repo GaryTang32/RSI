@@ -478,5 +478,5 @@
  },
  "verdict": "REPRODUCED: screen OFF -> 4.2 leaky candidates on the frontier, selected leaky in 100% of runs; screen ON -> 3.4 rejected before evaluation, 0 evaluated. Practised-vs-unseen gap (off - on) = +0.579 [+0.478, +0.689]",
  "caveat": "The leak rate is injected; the experiment measures what happens once a proposer leaks, not how often a real LLM proposer leaks.",
- "generated_at": "2026-09-25 02:01:01"
+ "generated_at": "2026-09-25 06:50:09"
 }

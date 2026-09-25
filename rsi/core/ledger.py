@@ -125,6 +125,10 @@ class Ledger:
                 f.write(line)
 
     # ---- reading
+    def __bool__(self) -> bool:
+        # A ledger is an object, not a container test: `ledger or Ledger()` must keep an empty one.
+        return True
+
     def __len__(self) -> int:
         return len(self._order)
 

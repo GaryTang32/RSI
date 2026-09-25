@@ -26,6 +26,12 @@ through ``rsi.core.Evaluator``. Each (domain, k, seed) builds a fresh suite,
 evaluates the artifact R times with disjoint trial seeds, and forms R/2
 independent pairs.
 
+Verdicts test two hypotheses against the pooled 95% bootstrap CI of each cell
+(and of both domains pooled per k): the claim (clearance 0.975, delta ratio 1)
+and the small-k prediction (Phi(z*sqrt((k-1)/k)), ratio sqrt((k-1)/k)). A claim
+is "reproduced" only when the CI contains the claim and excludes the
+prediction; "inconclusive" when it contains both.
+
     python experiments/core-qa/core_calibration.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
 from __future__ import annotations
@@ -110,6 +116,7 @@ def run_job(job: dict) -> dict:
             "strict": bool(StrictImprovement().check(cand, inc, ctx)),
             "strict_prefix": bool(S[b] - S[a] > 0),               # the rule before the TIE_EPS fix
             "min_gain": bool(MinGain().check(cand, inc, ctx)),
+            "min_gain_corrected": bool(MinGain().check(cand, inc, ctx_c)),
             "tie": bool(tie), "float_tie": bool(tie and S[a] != S[b]),
         })
     sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
@@ -121,7 +128,8 @@ def run_job(job: dict) -> dict:
         "clearance": mean("floor_clear"), "clearance_corrected": mean("floor_clear_corrected"),
         "clearance_analytic": float(_phi(deltas.mean() / sd_true)) if sd_true else 1.0,
         "strict_accept": mean("strict"), "strict_prefix_accept": mean("strict_prefix"),
-        "min_gain_accept": mean("min_gain"), "ties": int(sum(r["tie"] for r in rows)),
+        "min_gain_accept": mean("min_gain"), "min_gain_corrected_accept": mean("min_gain_corrected"),
+        "ties": int(sum(r["tie"] for r in rows)),
         "float_ties": int(sum(r["float_tie"] for r in rows)),
         "float_ties_accepted_prefix": int(sum(r["float_tie"] and r["strict_prefix"] for r in rows)),
         "float_ties_accepted_fixed": int(sum(r["float_tie"] and r["strict"] for r in rows)),
@@ -132,12 +140,13 @@ def run_job(job: dict) -> dict:
 # ------------------------------------------------------------------- report
 def summarize(rs: list[dict]) -> dict:
     keys = ("clearance", "clearance_corrected", "clearance_analytic", "delta_ratio", "strict_accept",
-            "strict_prefix_accept", "min_gain_accept", "S_mean", "delta_boot_mean", "delta_repeat")
+            "strict_prefix_accept", "min_gain_accept", "min_gain_corrected_accept", "S_mean", "delta_boot_mean",
+            "delta_repeat")
     out = {k: summarize_runs([r[k] for r in rs]) for k in keys}
     for key in ("ties", "float_ties", "float_ties_accepted_prefix", "float_ties_accepted_fixed"):
         out[key] = sum(r[key] for r in rs)
     out["n_pairs"] = sum(len(r["pairs"]) for r in rs)
-    for key in ("floor_clear", "floor_clear_corrected"):
+    for key in ("floor_clear", "floor_clear_corrected", "strict", "min_gain", "min_gain_corrected"):
         pooled = [p[key] for r in rs for p in r["pairs"]]
         out[f"{key}_pooled"] = dict(zip(("mean", "lo", "hi"), bootstrap_ci(pooled)))
     k = rs[0]["k"]
@@ -147,39 +156,56 @@ def summarize(rs: list[dict]) -> dict:
     return out
 
 
-def verdicts(summ: dict) -> dict:
-    """reproduced / NOT reproduced / inconclusive (too few pairs for a tight CI)."""
+def _two_way(ci: dict, claim: float, pred: float, *, enough: bool) -> str:
+    """Which of claim / small-k prediction the 95% CI is compatible with."""
+    if not enough:
+        return "inconclusive (too few pairs)"
+    has_claim, has_pred = ci["lo"] <= claim <= ci["hi"], ci["lo"] <= pred <= ci["hi"]
+    if has_claim and not has_pred:
+        return "reproduced"
+    if has_pred and not has_claim:
+        return "NOT reproduced (matches the small-k bias prediction instead)"
+    if has_claim and has_pred:
+        return "inconclusive (the CI contains both the claim and the small-k prediction)"
+    return "NOT reproduced (matches neither the claim nor the small-k prediction)"
+
+
+def verdicts(summ: dict, per_job: list[dict]) -> dict:
+    """Per cell and pooled over both domains per k (see the module docstring)."""
     v = {}
     for key, s in summ.items():
         enough = s["n_pairs"] >= 100
         c, cc = s["floor_clear_pooled"], s["floor_clear_corrected_pooled"]
-        if not enough:
-            tag = "inconclusive (too few pairs)"
-        elif c["lo"] <= CLAIMED <= c["hi"]:
-            tag = "reproduced"
-        else:
-            tag = "NOT reproduced (below the claim; explained by the small-k bias)" \
-                if abs(c["mean"] - s["predicted_clearance"]) < 0.03 else "NOT reproduced"
-        v[f"C1[{key}]"] = (f"{tag}: clearance {c['mean']:.3f} [{c['lo']:.3f}, {c['hi']:.3f}] vs {CLAIMED} claimed; "
-                           f"small-k prediction Phi(z*sqrt((k-1)/k)) = {s['predicted_clearance']:.3f}; "
-                           f"with sqrt(k/(k-1)) correction {cc['mean']:.3f} [{cc['lo']:.3f}, {cc['hi']:.3f}] "
+        tag = _two_way(c, CLAIMED, s["predicted_clearance"], enough=enough)
+        v[f"C1[{key}]"] = (f"{tag}: clearance {c['mean']:.3f} [{c['lo']:.3f}, {c['hi']:.3f}] vs {CLAIMED} claimed "
+                           f"and {s['predicted_clearance']:.3f} predicted by the small-k bias; with the "
+                           f"sqrt(k/(k-1)) correction {cc['mean']:.3f} [{cc['lo']:.3f}, {cc['hi']:.3f}] "
                            f"({s['n_pairs']} pairs)")
         r = s["delta_ratio"]
-        if not enough:
-            tag = "inconclusive (too few pairs)"
-        elif 0.9 <= r["mean"] <= 1.1:
-            tag = "reproduced"
-        else:
-            tag = "partly: biased low by sqrt((k-1)/k)" if abs(r["mean"] - s["predicted_ratio"]) < 0.06 \
-                else "NOT reproduced"
+        tag = _two_way(r, 1.0, s["predicted_ratio"], enough=enough)
         v[f"C2[{key}]"] = (f"{tag}: delta_boot / delta_repeat = {r['mean']:.3f} [{r['lo']:.3f}, {r['hi']:.3f}] "
-                           f"(sqrt((k-1)/k) = {s['predicted_ratio']:.3f})")
-        st, mg = s["strict_accept"]["mean"], s["min_gain_accept"]["mean"]
+                           f"(claim 1.0, sqrt((k-1)/k) = {s['predicted_ratio']:.3f}; per-seed ratios)")
+        st, mg, mgc = s["strict_pooled"], s["min_gain_pooled"], s["min_gain_corrected_pooled"]
         tag = "inconclusive (too few pairs)" if not enough else \
-            ("reproduced" if st >= 0.3 and mg <= 0.08 else "NOT reproduced")
-        v[f"C3[{key}]"] = f"{tag}: strict keeps {st:.1%} of null re-evaluations, MinGain(delta) keeps {mg:.1%}"
+            ("reproduced" if st["lo"] >= 0.3 and mg["hi"] <= 0.08 else
+             "partly: strict chases noise, but MinGain(delta) keeps more than a few % (delta biased low)"
+             if st["lo"] >= 0.3 and mgc["hi"] <= 0.08 else "NOT reproduced")
+        v[f"C3[{key}]"] = (f"{tag}: strict keeps {st['mean']:.1%} [{st['lo']:.1%}, {st['hi']:.1%}] of null "
+                           f"re-evaluations, MinGain(delta) {mg['mean']:.1%} [{mg['lo']:.1%}, {mg['hi']:.1%}], "
+                           f"MinGain(corrected delta) {mgc['mean']:.1%} (one-sided z=2 target: 2.3%)")
         v[f"C4[{key}]"] = (f"{s['float_ties']} of {s['ties']} exact ties differed in float; the pre-fix strict rule "
                            f"accepted {s['float_ties_accepted_prefix']}, the fixed rule {s['float_ties_accepted_fixed']}")
+    for k in sorted({r["k"] for r in per_job}):
+        pairs = [p for r in per_job if r["k"] == k for p in r["pairs"]]
+        for key, claim_name in (("floor_clear", "C1"), ("floor_clear_corrected", "C1-corrected")):
+            ci = dict(zip(("mean", "lo", "hi"), bootstrap_ci([p[key] for p in pairs])))
+            tag = _two_way(ci, CLAIMED, predicted_clearance(k), enough=len(pairs) >= 200) \
+                if key == "floor_clear" else \
+                ("inconclusive (too few pairs)" if len(pairs) < 200 else
+                 "consistent with the claim" if ci["lo"] <= CLAIMED <= ci["hi"] else "differs from the claim")
+            v[f"{claim_name}[pooled/k{k}]"] = (f"{tag}: {ci['mean']:.3f} [{ci['lo']:.3f}, {ci['hi']:.3f}] "
+                                               f"over {len(pairs)} pairs of both domains (claim {CLAIMED}, "
+                                               f"small-k prediction {predicted_clearance(k):.3f})")
     return v
 
 
@@ -212,7 +238,8 @@ def figure(per_job: list[dict], summ: dict, ks: list[int], path: Path) -> None:
     ax = axes[2]
     xs = np.array(ks)
     ax.plot(xs, [CLAIMED] * len(xs), color=muted, linestyle=":", linewidth=1.5)
-    ax.text(xs[-1], CLAIMED + 0.004, "claimed 97.5%", ha="right", va="bottom", fontsize=8, color=muted)
+    ax.text(xs[-2] + 0.5 * (xs[-1] - xs[-2]) if len(xs) > 1 else xs[0], CLAIMED - 0.002, "claimed 97.5%",
+            ha="center", va="top", fontsize=8, color=muted)
     ax.plot(xs, [predicted_clearance(k) for k in ks], color=grid, linewidth=6, solid_capstyle="round",
             label="predicted Φ(z·√((k-1)/k))")
     for kind in kinds:
@@ -226,7 +253,8 @@ def figure(per_job: list[dict], summ: dict, ks: list[int], path: Path) -> None:
     ax.set_title("floor clearance of an unchanged artifact vs trials per task", fontsize=9, color=ink)
     ax.legend(frameon=False, fontsize=7, loc="lower right")
     ax = axes[3]
-    rules = [("strict_prefix_accept", "strict (pre-fix)"), ("strict_accept", "strict"), ("min_gain_accept", "MinGain δ")]
+    rules = [("strict_prefix_accept", "strict (pre-fix)"), ("strict_accept", "strict"), ("min_gain_accept", "MinGain δ"),
+             ("min_gain_corrected_accept", "MinGain δ·√(k/(k-1))")]
     x = np.arange(len(rules))
     w = 0.38
     for j, kind in enumerate(kinds):
@@ -257,12 +285,19 @@ def main() -> None:
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--replicates", type=int, default=None, help="evaluations per (domain, k, seed); even")
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--replot", default=None, help="redraw the figure from an existing results JSON and exit")
     args = ap.parse_args()
+    if args.replot:
+        res = json.loads(Path(args.replot).read_text())
+        per_job = [{**r, "pairs": res["pairs"][f"{r['kind']}-k{r['k']}-{r['seed']}"]} for r in res["per_seed"]]
+        figure(per_job, res["summary"], res["config"]["ks"], Path(args.replot).with_suffix(".png"))
+        print(f"redrew {Path(args.replot).with_suffix('.png')}")
+        return
     live = args.llm != "sim"
     if args.quick or live:
         seeds, R, ks, n_tasks = args.seeds or 2, args.replicates or 4, [2], 6
     else:
-        seeds, R, ks, n_tasks = args.seeds or 10, args.replicates or 40, [2, 3, 5], 20
+        seeds, R, ks, n_tasks = args.seeds or 30, args.replicates or 80, [2, 3, 5], 20
     kinds = ("agentqa", "bernoulli")
     jobs = [{"kind": kind, "seed": s, "R": R, "k": k, "n_tasks": n_tasks if kind == "agentqa" else 3 * n_tasks,
              "llm": args.llm, "workers": 4 if live else 1}
@@ -275,7 +310,7 @@ def main() -> None:
             per_job = list(ex.map(run_job, jobs))
     summ = {f"{kind}/k{k}": summarize([r for r in per_job if r["kind"] == kind and r["k"] == k])
             for kind in kinds for k in ks}
-    v = verdicts(summ)
+    v = verdicts(summ, per_job)
     OUT.mkdir(parents=True, exist_ok=True)
     name = "core_calibration" + ("_quick" if args.quick else "") + ("_" + args.llm.replace(":", "-") if live else "")
     figure(per_job, summ, ks, OUT / f"{name}.png")

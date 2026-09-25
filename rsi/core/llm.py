@@ -324,12 +324,18 @@ class CachedLLM(LLM):
     are kept under ``role + ':cached'`` for honest reporting, so ``meter.total()``
     (and anything summing roles) reports real spend only. The original usage of
     cached hits (including the dollars they saved) is kept in ``saved``;
-    ``hits`` / ``misses`` count lookups.
+    ``hits`` / ``misses`` count lookups. A hit's response carries
+    ``raw = {"cached": True, "usage": <original usage dict>}``, so a domain that
+    records the *artifact's* inference cost (not the spend) can report the same
+    dollars on a replay as on the original run (see :func:`artifact_usage`).
     """
 
-    def __init__(self, inner: LLM, cache_dir: str | Path) -> None:
+    def __init__(self, inner: LLM, cache_dir: str | Path, *, offline: bool = False) -> None:
         super().__init__()
         self.inner = inner
+        #: offline=True replays recorded runs for $0: a cache miss returns an error response
+        #: instead of calling the backend.
+        self.offline = offline
         self.name = f"cached:{inner.name}"
         self.dir = Path(cache_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -360,9 +366,12 @@ class CachedLLM(LLM):
             with self._count_lock:
                 self.hits += 1
             return LLMResponse(text=d["text"], usage=Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0),
-                               model=d.get("model", self.inner.name))
+                               model=d.get("model", self.inner.name), raw={"cached": True, "usage": asdict(u)})
         with self._count_lock:
             self.misses += 1
+        if self.offline:
+            return LLMResponse(text="", usage=Usage(), model=self.inner.name,
+                               error="infra: cache miss in offline replay mode")
         resp = self.inner.complete(prompt, system=system, max_tokens=max_tokens, seed=seed, role=role)
         self.meter.add(role, resp.usage)
         if resp.ok:
@@ -372,6 +381,20 @@ class CachedLLM(LLM):
             tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model}))
             tmp.replace(path)
         return resp
+
+
+def artifact_usage(resp: LLMResponse) -> Usage:
+    """The usage a response *represents* - for :class:`CachedLLM` hits the original
+    call's tokens and dollars, otherwise ``resp.usage``. Use it for an artifact's
+    inference-cost metrics (so replays match fresh runs); use ``resp.usage`` /
+    meters for money actually spent."""
+    raw = resp.raw if isinstance(resp.raw, dict) else {}
+    if raw.get("cached") and isinstance(raw.get("usage"), dict):
+        try:
+            return Usage(**raw["usage"])
+        except TypeError:
+            pass
+    return resp.usage
 
 
 def get_llm(spec: str = "mock", *, cache_dir: Optional[str] = None, **kw: Any) -> LLM:
