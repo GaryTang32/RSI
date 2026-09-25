@@ -1,0 +1,65 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,9 +1,37 @@
+-"""Seed harness: one direct model call, return the last line of the reply."""
++"""Seed harness: extract answer robustly from LLM reply using multiple strategies."""
++
++import re
++
++
++def extract_answer_from_reply(reply):
++    """Extract numeric answer from LLM reply using multiple strategies."""
++    lines = [line for line in reply.strip().splitlines() if line.strip()]
++    
++    if not lines:
++        return ""
++    
++    # Strategy 1: Look for "ANSWER: " marker (highest priority)
++    for line in lines:
++        if 'ANSWER' in line.upper():
++            match = re.search(r'ANSWER\s*:\s*([\d,]+(?:\.\d+)?)', line, re.IGNORECASE)
++            if match:
++                # Remove commas for standard numeric format
++                return match.group(1).replace(',', '')
++    
++    # Strategy 2: Extract pure number from bold format in last line
++    # Matches **570,186** or **112** or **3.14**
++    last_line = lines[-1]
++    match = re.search(r'\*\*([\d,]+(?:\.\d+)?)\*\*', last_line)
++    if match:
++        return match.group(1).replace(',', '')
++    
++    # Fallback: Return the last line as-is (preserves original behavior)
++    return last_line
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    lines = [line for line in reply.strip().splitlines() if line.strip()]
+-    return lines[-1] if lines else ""
++    
++    return extract_answer_from_reply(reply)
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,7 @@
+ You are a helpful assistant.
++
++When solving numeric problems:
++1. Work through the problem step-by-step, showing intermediate calculations
++2. Verify your result or perform a sanity check before finalizing your answer
++3. End your complete response with a dedicated line: ANSWER: <numeric_value>
++4. Keep the final answer line minimal and clear—do not embed it in equations or long explanatory text
+--- a/prompts/task.md
++++ b/prompts/task.md
+@@ -1 +1,9 @@
+ {question}
++
++Solve this step-by-step:
++- Show your work clearly with numbered steps if multiple operations are involved
++- Verify that your result makes sense (check magnitude, units, or order of magnitude)
++- Provide your final numeric answer on its own line in the format: ANSWER: <value>
++
++Example format:
++ANSWER: 1234

@@ -3,3 +3,11 @@
 [gepa] it=   1 rejected           rollouts=    20 cands=  1 best=0.3750
 [gepa] it=   2 skip_perfect       rollouts=    23 cands=  1 best=0.3750
 [gepa] it=   3 accepted           rollouts=    37 cands=  2 best=0.3750
+[gepa] it=   4 rejected           rollouts=    43 cands=  2 best=0.3750
+[gepa] it=   5 accepted           rollouts=    57 cands=  3 best=0.3750
+[gepa] it=   6 no_proposal        rollouts=    60 cands=  3 best=0.3750
+[gepa] it=   7 skip_infra_error   rollouts=    63 cands=  3 best=0.3750
+[gepa] it=   8 skip_infra_error   rollouts=    66 cands=  3 best=0.3750
+[gepa] it=   9 skip_infra_error   rollouts=    69 cands=  3 best=0.3750
+[gepa] it=  10 skip_infra_error   rollouts=    72 cands=  3 best=0.3750
+[gepa] it=  11 skip_infra_error   rollouts=    75 cands=  3 best=0.3750
