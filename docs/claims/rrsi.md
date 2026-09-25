@@ -32,10 +32,10 @@ This page checks our implementation (`rsi/rrsi/`, `rsi/domains/harnessworld/`) a
 
 | verdict | mechanism | quantitative | qualitative | caveat | **total** |
 |---|---|---|---|---|---|
-| REPRODUCED | 25 | 0 | 14 | 11 | **50** |
-| PARTIAL | 11 | 0 | 11 | 1 | **23** |
-| NOT REPRODUCED | 1 | 0 | 3 | 0 | **4** |
-| NOT TESTABLE HERE | 1 | 27 | 3 | 7 | **38** |
+| REPRODUCED | 28 | 0 | 17 | 12 | **57** |
+| PARTIAL | 8 | 0 | 9 | 1 | **18** |
+| NOT REPRODUCED | 1 | 0 | 2 | 0 | **3** |
+| NOT TESTABLE HERE | 1 | 27 | 3 | 6 | **37** |
 | CONTRADICTED | 0 | 0 | 0 | 1 | **1** |
 | **total** | 38 | 27 | 31 | 20 | **116** |
 
@@ -48,12 +48,16 @@ The mismatches it did find are all small, and all are listed in §3:
 - `render` omits the BASELINE row.
 - A declared `tool` tag is aliased to `client_tool`.
 
-The PARTIAL mechanisms are plumbing substitutions that are documented, plus a few newly found gaps (§3):
-- a single-shot proposer instead of the 40-turn JSON agent;
-- single-shot digesters, and a heuristic analyst in every E-experiment;
-- an artifact store instead of git;
-- a generic smoke check;
-- a leakage precheck that holds the evolve answers.
+The 8 PARTIAL mechanisms are either documented plumbing substitutions or newly found gaps (§3):
+- a single-shot proposer instead of the 40-turn JSON agent, which is also shown numeric δ and S* (M28);
+- single-shot digesters, and a heuristic analyst in every E-experiment (M4);
+- the eval_invalid retry measures the whole job again (M7);
+- a b_t that ends at 2, following the code rather than the paper's "ends at one" (M9);
+- a leakage precheck that holds the evolve answers (M26);
+- a generic smoke check (M30);
+- the ablation groups and the unregularized baseline are inferred, not taken from the paper (M34, M35).
+
+Replacing git with the artifact store (M3) changes no decision, so M3 counts as REPRODUCED.
 
 **Quantitative.** Every table number in the paper (Terminal-Bench 2.1, SWE-bench Verified, Harvey LAB, JobBench, GDPval, APEX-Agents, EngDesign, Frontier-Eng, the Gemini rows, 2.42M tokens and 26.3 steps) is **NOT TESTABLE HERE**. Each one needs frontier LLM policies (Claude Opus 4.8, Gemini 3.5 Flash and 3.1 Flash Lite), the real benchmarks with their graders, and many thousands of agent trials. Our CPU runs test only **directional analogues**, and those are scored under the qualitative claims. We make no claim about the absolute numbers.
 
@@ -63,11 +67,12 @@ The PARTIAL mechanisms are plumbing substitutions that are documented, plus a fe
 - no seed of full RRSI regressed on any unseen split (0/50);
 - the harness transfers to weaker policies never used in the search, including the new policy-swap check.
 
-Four qualitative claims are NOT REPRODUCED:
-- "removing the proposal guards raises the practised score" (measured evolve −0.9 [−2.9, +1.2] in E2);
-- "rejected ideas stay rejected", which needs a real LLM (E8 was not run);
-- "a weaker search policy gains more on the evolve set", an implication of Table 3/4 (policy swap: −1.7 [−3.9, +0.6]);
-- "δ at z = 2 clears an unchanged harness ~97.5% of the time" with the code's estimator at k = 2 (91.6%).
+Three claims are NOT REPRODUCED:
+- "removing the proposal guards raises the practised score" (L4; measured evolve −0.9 [−2.9, +1.2] in E2);
+- "a weaker search policy gains more on the evolve set", an implication of Table 3/4 (L12; policy swap: −1.7 [−3.9, +0.6]);
+- "δ at z = 2 clears an unchanged harness ~97.5% of the time" with the code's estimator at k = 2 (M37; 91.6%).
+
+"Rejected ideas stay rejected" (L19, E8) was never run: it needs a live LLM proposer over many rounds, so it is NOT TESTABLE HERE.
 
 Magnitudes are not calibrated: unregularized tokens are 93× H_0 here against 2.4× in the paper.
 
@@ -79,7 +84,9 @@ Magnitudes are not calibrated: unregularized tokens are 93× H_0 here against 2.
 - the budget never reaches b_min;
 - B_t lists components with no machinery to prune.
 
-One caveat is CONTRADICTED at our scale: "every evolved harness costs more than H_0". The offline AgentQA run's final harness is lighter than H_0 (626 vs 736 tokens per trial).
+One caveat-row is CONTRADICTED: C7, the third-party hypothesis that the annealed budget alone explains most of the OOD gain. It is not a paper claim. In E2b, budget-only gives OOD +2.7 while selector-only gives +16.2.
+
+"Every evolved harness costs more than H_0" (C20) holds on HarnessWorld. It has one counter-example at our scale: the final harness of the offline AgentQA run is lighter than H_0 (626 vs 736 tokens per trial). It stays NOT TESTABLE HERE for the paper's domains.
 
 ## 2. Claim table
 
@@ -101,7 +108,7 @@ Sources: `[spec §x]` is `docs/methods/rrsi.md`; `[doc]` is the user's overview;
 | M10 | Edit history L_t: one record per EDIT; a bundle shares one measurement; a candidate dropped before measurement is recorded with ΔS = None and does not enter T_t or g_t. | spec §4.2 (Eq. history) | mechanism | matches: `history.py:61-83,104-109`. Candidates are appended atomically (extension, `history.py:50-59`) | `diff_test.py`: tried 0/300 mismatches; stepcheck: every history record's S, dS and outcome matches | REPRODUCED |
 | M11 | T_t (measured components), g_t(l) = max ΔS in the window n_prune, U_t = K∖T_t, B_t = {l ∈ T_t : g_t(l) ≤ 0}. | spec §4.2 (Eq. yield/prune) | mechanism | matches: `history.py:107-151`. Differential test: 0/300 mismatches on yield_g, prune_set and accepted counts | stepcheck: every T_t, U_t, B_t and g_t matches | REPRODUCED |
 | M12 | Stall flag σ_t = 1[S_t − S_{t−w} ≤ δ] (0 while t < w), with w = 3. | spec §4.2 (Eq. explore); doc | mechanism | matches: `history.py:179-183`. 0/3,000 mismatches | stepcheck; σ = 1 fired in AQ r5–r7 and HW r3–r4 | REPRODUCED |
-| M13 | When stalled and U_t ≠ ∅, the last m_draft variants hold a reserved slot and must ship ≥ 1 edit on an untried component, checked on the declared tags in done() **and** on the diff-normalized tags after the critic. | spec §4.2; doc | mechanism | matches: `loop.py:283`, `propose.py:260-264`, `loop.py:137-145`. Extension: the diff check also runs when the critic is ablated (impl §5.12) | HW r4B reserved `client_tool` admitted; test `test_reserved_slot_checked_on_the_diff_even_without_critic` | REPRODUCED |
+| M13 | When stalled and U_t ≠ ∅, the last m_draft variants hold a reserved slot and must ship ≥ 1 edit on an untried component, checked on the declared tags in done() **and** on the diff-normalized tags after the critic. | spec §4.2; doc | mechanism | matches: `loop.py:283`, `propose.py:260-264`, `loop.py:466-474`. Extension: the diff check also runs when the critic is ablated (impl §5.12) | HW r4B reserved `client_tool` admitted; test `test_reserved_slot_checked_on_the_diff_even_without_critic` | REPRODUCED |
 | M14 | Pruning is a directive: B_t and the accepted machinery are handed to the proposer; a prune edit passes the same critic and Algorithm 2. | spec §4.2, §8.3; doc ("flagged for deletion") | mechanism | matches: `loop.py:249`, `propose.py:118-119,232-233`; `history.py:142-151` (includes empty-machinery components, as the ref does) | E6: prune edits accepted +3.7/run; AQ r6A persona prune kept | REPRODUCED |
 | M15 | The proposer sees the evidence-aware history: last 40 records, at most 4 unmeasured, with the "rejected mechanism is negative evidence" header. | spec §4.2, §6.1 | mechanism | matches, except that `render` drops the BASELINE row (`history.py:163`; the ref keeps it). 23/300 random ledgers differ, **only** in that row (§3 N5) | `diff_test.py` render_excluding_baseline: 0 mismatches | REPRODUCED |
 | M16 | Component tags are validated against the WHOLE candidate diff (`normalize`, `has_evidence`, `classify_diff` with domain signals first, then generic structural regexes, default prompt; text-only diffs are prompt edits). | spec §4.2 | mechanism | matches for regex signals (`components.py:128-173`): 0/3,000 `classify` mismatches. Deviations: domains may use path globs (impl §5.5); the `tool` alias gives 20/3,000 `normalize` mismatches, all from a declared "tool" (§3 N6); `trust_code_tags` for taxonomy-less domains (impl §5.15) | live r1B tagged `control_flow` although it added tool use, which is faithful to the code (RUNS §3) | REPRODUCED |
@@ -110,17 +117,17 @@ Sources: `[spec §x]` is `docs/methods/rrsi.md`; `[doc]` is the user's overview;
 | M19 | Cost rule for a gain above noise: ΔC ≤ β0 + β1·ΔS ("β0 = 0.10 is 10% more tokens for free; β1 = 40: each +1 pp buys +40%"; "a gain that also saves tokens always passes"). | spec §4.3; doc | mechanism | matches: `core/gates.py:177-180` | spot checks: dS = 0.06 > δ, dC = 2.50 passes, 2.51 fails; stepcheck on AQ r0B/r1A and HW r4A/r4B/r6B | REPRODUCED |
 | M20 | Within-band shaped rule w_s·ΔS − w_c·ΔC + w_n·ν > 0. It also admits a **negative** ΔS above the floor if the candidate is cheaper or novel. | spec §4.3 | mechanism | matches: `core/gates.py:181-185` | AQ r6A kept at dS = −0.10 (shaped +0.92), which was right at k = 10 (RUNS §1); live r0B rejected at shaped −4.97 | REPRODUCED |
 | M21 | Per-instance worked implications: coding (w_s = 0) admits in band iff ΔC < ν/30; eng: one extra pass offsets ΔC = 0.5; workspace: 10 criteria offset 6.7%. | spec §4.3 [inferred] | mechanism | matches (presets `config.py:37-48`) | new spot check: coding ν = 0 needs dC < 0 (−0.001 passes, 0 fails); ν = 1, dC 0.033 passes, 0.034 fails; eng dC 0.49 passes, 0.51 fails; workspace 6.6% passes, 6.8% fails | REPRODUCED |
-| M22 | S* is the running max of incumbent scores; the floor uses S*, while ΔS uses the current S_t. | spec §4.3 | mechanism | matches: `loop.py:311`; readjudicate recomputes S* = max(traj[:t+1]) (`loop.py:264`) | AQ r7: floor from S* = 0.75 while S_t = 0.65 | REPRODUCED |
+| M22 | S* is the running max of incumbent scores; the floor uses S*, while ΔS uses the current S_t. | spec §4.3 | mechanism | matches: `loop.py:311`; readjudicate recomputes S* = max(traj[:t+1]) (`loop.py:593`) | AQ r7: floor from S* = 0.75 while S_t = 0.65 | REPRODUCED |
 | M23 | Domain guards are non-compensatory (eng: valid-rate drop ≤ 0.03, no-payload rise ≤ 0.02), per step and relative to the incumbent. | spec §4.3 | mechanism | matches: `MetricGuard` (`core/gates.py:188-201`), user-supplied via `run(..., guards=...)` (`loop.py:113-115`) | E11 (below) | REPRODUCED |
 | M24 | δ = z·sd(null ΔS), z = 2. With R ≥ 2 evaluations, sd = stdev·√2; with R = 1, a within-task bootstrap (2,000 resamples, seed 7) gives sd = √2·se·√(k_pooled/k_single). | spec §4.4 | mechanism | matches: `calibrate.py:69-100` (numpy RNG, not Python `random`). Repeated-evaluation δ has 0 mismatches; bootstrap δ matches within MC error (mean 2.8% at 2,000 resamples, ≤ 0.6% at 20,000). Extension: a warning for degenerate δ = 0 | `diff_test.py`, `boot_conv.py`; stepcheck "δ within 2% of closed form" | REPRODUCED |
 | M25 | The paper runs used fixed δ per instance (coding 0.017 "3 passes of 178", workspace 0.004, eng 0.020) and the per-instance hyperparameters of Table 5 / rrsi.json. | spec §4.4–4.5; [sec:inkeast] | mechanism | matches: `Config.preset` (`config.py:34-51`) equals the three rrsi.json files field by field; `RRSIConfig` defaults equal `Config` (`config.py:59-86`) | arithmetic: 3/178 = 0.0169, 5/244 = 0.0205, β1 = 0.25·178 = 44.5, 0.1·244 = 24.4 | REPRODUCED |
 | M26 | Leakage critic before any evaluation: a regex/denylist precheck, then an LLM review against six REJECT rules (leakage, degenerate, grader gaming, undeclared bundling, runtime memory/skill leakage, unbounded work), 3 parse attempts failing closed, and a bounded repair loop (repair_rounds = 5). | spec §6.2; doc | mechanism | deviates: the prompt is the code's verbatim (`critic.py:40-88`). But the precheck scans **added lines only** and parses verdicts strictly (impl §5.4); terms under 4 characters are skipped; and **the denylist holds the evolve answers** (`core/domain.py:166-175`), an oracle the paper's critic lacks (§3 N3) | no critic-rejected candidate was ever evaluated (stepcheck); E3 | PARTIAL |
-| M27 | The critic's STATE FILES section is never filled, so runtime-memory leakage can be judged only from code. | spec §6.2, §8.8 | mechanism | matches: `_draft` never passes `state_files` (`loop.py:133-134`) | – | REPRODUCED |
+| M27 | The critic's STATE FILES section is never filled, so runtime-memory leakage can be judged only from code. | spec §6.2, §8.8 | mechanism | matches: `_draft` never passes `state_files` (`loop.py:462-463`) | – | REPRODUCED |
 | M28 | Proposer: the code's SYSTEM_TMPL and context sections; the done() contract (≤ b_t edits; required fields id, component, hypothesis, targets_mode, predicted_affected, retroactive_check; component ∈ K; reserved slot); "there is no abort action" (3 bounces); a zero-change done() is bounced; repair mode keeps the edits. | spec §3 PROPOSE, §6.1 | mechanism | deviates: the contract is enforced exactly (`propose.py:244-265,338-366`), but it is **single-shot rewrite** (or `AgentEditor`) instead of the 40-turn JSON agent with read_trace; 8 traces × 1,200 characters are inlined; "zero changes" is measured against the incumbent, not per call (impl §5.2). **New:** the proposer is also shown δ, S*, S_incumbent and the numeric β/w values (§3 N2) | live: every Haiku done() valid first try (impl §3.1); HW r3B bounced 4× | PARTIAL |
 | M29 | Attribution scoreboard: per edit, predicted hits and unpredicted regressions (threshold 1/k; workspace 0.05); the last 20 rows are shown to the proposer. | spec §3 ATTRIBUTE | mechanism | matches: `attribution.py:37-52`, `loop.py:349-350`; HW threshold 0.25 (`domain.py:94`) | scoreboard rows in validation runs | REPRODUCED |
-| M30 | Liveness smoke (not a selection rule): coding 2 named tasks; workspace 2 ids; eng 4 tasks with no-payload = 0 and mean combined_score > 0. | spec §4.5 | mechanism | deviates: generic `Domain.smoke` runs 1 evolve task at seed 0 and fails only on an execution error (`core/domain.py:177-184`; `loop.py:173-183`; §3 N9) | smoke rows in traces; no smoke_fail observed | PARTIAL |
+| M30 | Liveness smoke (not a selection rule): coding 2 named tasks; workspace 2 ids; eng 4 tasks with no-payload = 0 and mean combined_score > 0. | spec §4.5 | mechanism | deviates: generic `Domain.smoke` runs 1 evolve task at seed 0 and fails only on an execution error (`core/domain.py:177-184`; `loop.py:503-512`; §3 N9) | smoke rows in traces; no smoke_fail observed | PARTIAL |
 | M31 | Driver: resume by settled rounds, a STOP file, stop after 3 consecutive infrastructure failures. | spec §3 DRIVE | mechanism | matches in effect: `driver.py:32,39-80`. It retries the same round instead of relaunching (impl §5.6) | E13: kills at 5 points, resumed in a fresh process → byte-identical ledgers | REPRODUCED |
-| M32 | `readjudicate` re-runs Algorithm 2 on stored measurements (no new evaluation); `reevaluate` re-measures, then readjudicates; `heldout` evaluates any ref. | spec §3 maintenance | mechanism | matches: `loop.py:254-316` (plus `truncate`); held-out evaluation via `paired_transfer` (`transfer.py:26-60`) | E13: readjudicate with δ×0.5/×2 spends 0 rollouts and flips only decisions | REPRODUCED |
+| M32 | `readjudicate` re-runs Algorithm 2 on stored measurements (no new evaluation); `reevaluate` re-measures, then readjudicates; `heldout` evaluates any ref. | spec §3 maintenance | mechanism | matches: `loop.py:562-645` (plus `truncate`); held-out evaluation via `paired_transfer` (`transfer.py:26-60`) | E13: readjudicate with δ×0.5/×2 spends 0 rollouts and flips only decisions | REPRODUCED |
 | M33 | β0/β1 are "set once and then frozen for all transfer tests"; hyperparameters are chosen on the evolve set and frozen. | doc; spec §4.5 [sec:shibing] | mechanism | matches: config frozen into `frontier.json` (`loop.py:181`); `paired_transfer` never touches it | – | REPRODUCED |
 | M34 | Proposal-side group = {annealed budget, evidence-aware history, structured exploration}; selection-side group = {leakage critic, noise floor, complexity-aware acceptance, pruning}. Pruning belongs to the selection side in the figure, abstract and README, although the code delivers it through the proposer. | spec §4.6, §7.4 | mechanism | our choice, documented: `switches.py:45-67` puts pruning in the acceptance arm, with a sensitivity arm. The paper's exact Table 2 membership is unknown | E2 reports both groupings | PARTIAL (membership inferred) |
 | M35 | Unregularized ("standard") loop: run H_t, summarize traces, unconstrained proposer, score on the same set, promote the best. | spec §4.1; doc | mechanism | ours is the spec's explicit proposal (`switches.py:62-67`: constant b_max, accepted-only history, no exploration, no critic, keep argmax iff S' > S_t). The paper's definition is not accessible | E1/E2 arm | PARTIAL (definition inferred) |
@@ -184,7 +191,7 @@ None of these can be reproduced on CPU. They need the named frontier policies (C
 | L16 | Cost must be earned: an expensive harness is kept only if the gain pays; the result is a lighter harness with ≥ OOD | doc; spec E5 | qualitative | M19–M21 | E5 (50 seeds): complexity term on vs off, tokens −5.7× [−9.0, −3.2]; OOD +1.9 [−1.2, +5.0], which **misses the 1-pt non-inferiority margin** (passed in 1 of 3 realizations); tokens vs β1 non-monotone | PARTIAL |
 | L17 | Pruning deletes parts that stopped helping (L1-like) | doc; spec E6 | qualitative | M14 | E6 (50 seeds): dead mechanisms −0.8 [−1.4, −0.2], prune edits accepted +3.7, mechanisms −4.5, tokens −4.4× [−6.5, −2.1]; costs true evolve −1.3 [−2.5, −0.1] | REPRODUCED |
 | L18 | Shrinking edit budget: early bundles, later single changes, "so every gain can be traced to a single change" | doc; spec E7 | qualitative | M8 | E7 (50 seeds): hitchhiker rate 0.16 vs 0.24 for const-4 (−8.5 pts [−13.8, −3.0]); early progress vs const-1 +4.7 [+2.8, +6.6]; credit Spearman 0.55 vs 0.51 (const-1 0.86); budget ends at 2, not 1 | REPRODUCED |
-| L19 | Memory of what failed: rejected ideas stay rejected instead of being retried | doc; spec E8 | qualitative | M10, M15 | E8 **not run** (needs a real LLM at scale). The mocks skip rejected ideas by construction; live r1 did not redraw r0B (one anecdote). AQ r2 shows a failure mode: bundle credit marked the best mechanism (Python tool) "rejected", and it was never retried alone | NOT REPRODUCED (untested) |
+| L19 | Memory of what failed: rejected ideas stay rejected instead of being retried | doc; spec E8 | qualitative | M10, M15 | E8 **not run** (needs a real LLM at scale). The mocks skip rejected ideas by construction; live r1 did not redraw r0B (one anecdote). AQ r2 shows a failure mode: bundle credit marked the best mechanism (Python tool) "rejected", and it was never retried alone | NOT TESTABLE HERE (needs a live LLM proposer over many rounds; the mocks avoid rejected ideas by construction) |
 | L20 | Forced variety when stuck: a stall inside the band sends budget to untouched components | doc; spec E9 | qualitative | M12, M13 | E9 (30 seeds): strict prompt collapse gives coverage 1.00 vs 0.60, structural accepted +0.9, OOD +2.5 [+1.6, +3.5]; mild collapse gives coverage +0.13 only, with the other effects n.s. | PARTIAL |
 | L21 | Domain guards stop a candidate lifting the average by pushing designs into invalid territory | spec §4.3; eng SKILL.md | qualitative | M23 | E11 (30 seeds): 0 accepted guard violators on vs 1.3/run off; holdout valid rate +6.9 [+4.8, +9.1]; hardened split +3.1 [+0.2, +6.0]; the true valid rate still drifts −3.6 through sub-tolerance steps | REPRODUCED |
 | L22 | Regularization narrows but does not close the evolve-to-OOD gap | spec §8 [sec:awesome] | qualitative | – | E1 full: true evolve +28.2, holdout +26.7, OOD +19.2 (gap 9 pts vs 49 unregularized) | REPRODUCED |
@@ -223,7 +230,7 @@ None of these can be reproduced on CPU. They need the named frontier policies (C
 | C19 | The bootstrap δ assumes exchangeable trials; the 2-sample stdev is noisy | spec §8.10 | caveat | M24 | E10: bootstrap sd ×0.69–0.70 at k = 2; R = 2 repeats clear 84% | PARTIAL (the under-coverage comes from the plug-in (k−1)/k bias rather than exchangeability) |
 | C20 | "Every evolved harness costs more than H_0" | spec §7.6 [sec:harry] | caveat | – | HW: every arm > H_0. **AQ offline validation: the RRSI final is lighter than H_0** (626 vs 736 tokens/trial, k = 10) | NOT TESTABLE HERE for the paper's domains; one counter-example at our scale (see §1) |
 
-Verdict counts in §1 come from these four tables. C20 counts as NOT TESTABLE HERE, and C7 as CONTRADICTED.
+The counts in §1 are taken from these four tables. A qualified verdict is counted by its leading word; for example, "REPRODUCED (HW); AQ …" counts as REPRODUCED.
 
 ## 3. Mismatches the earlier reviews missed
 
@@ -238,7 +245,7 @@ The impl notes (§5), two adversarial reviews (impl §6.1–6.2) and the stage-B
 - **N2: the proposer sees numeric thresholds the reference proposer never sees.**
   - `round_directives` (`loop.py:420-424`) carries δ, S*, S_incumbent, T and the trace ids.
   - `default_constitution` fills in β0, β1, w_s, w_c and w_n (`constitution.py:172`).
-  - The ref's SKILL.md states the rules symbolically ("beta0 + beta1 x (gain)"), and its context has no δ or S* (ref `propose.py:246-283`).
+  - The ref's SKILL.md states the rules symbolically ("beta0 + beta1 x (gain)"), and its context has no δ or S* (ref `rrsi/propose.py:257-302`).
   - The mocks ignore the text, so the offline results are unaffected. With a live LLM this could let the proposer aim for gains just above δ, the "adaptive poisoning" concern (C9).
 - **N3: the leakage precheck is an oracle.**
   - `Domain.leakage_terms` returns every evolve task id **and every target answer of 3 or more characters** (`core/domain.py:166-175`), and `RRSICritic` puts them in its denylist (`critic.py:112-117`).
