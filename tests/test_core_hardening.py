@@ -50,3 +50,18 @@ def test_empty_ledger_is_truthy():
     led = Ledger()
     assert len(led) == 0 and bool(led) is True
     assert (led or None) is led
+
+
+def test_cached_llm_keeps_stop_reason(tmp_path):
+    from rsi.core import CachedLLM, LLMResponse, MockLLM, Usage
+
+    class Truncating(MockLLM):
+        def _complete(self, prompt, *, system, max_tokens, seed):
+            return LLMResponse(text="partial", usage=Usage(1, 1, 1, 0.0, 0.0), model="m",
+                               raw={"stop_reason": "max_tokens"})
+
+    c = CachedLLM(Truncating(), tmp_path)
+    first = c.complete("p")
+    again = c.complete("p")
+    assert first.raw["stop_reason"] == "max_tokens"
+    assert again.raw["cached"] is True and again.raw["stop_reason"] == "max_tokens"
