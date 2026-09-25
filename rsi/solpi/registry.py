@@ -46,11 +46,16 @@ def _reducer(cfg: dict, ctx: dict):
     return DeterministicReducer()
 
 
+def _obspack(c: dict) -> ObservationPack:
+    op = ObservationPack(full_sends=int(c.get("full_sends", 2)), excerpt_bytes=int(c.get("excerpt_bytes", 1024)),
+                         head_frac=float(c.get("head_frac", 0.5)))
+    op.fail_store = bool(c.get("fail_store", False))       # fault injection (experiments/tests)
+    return op
+
+
 MECHANISMS: dict[str, Callable[[dict, dict], Extension]] = {
     "action_fusion": lambda c, x: ActionFusion(),
-    "observation_pack": lambda c, x: ObservationPack(full_sends=int(c.get("full_sends", 2)),
-                                                      excerpt_bytes=int(c.get("excerpt_bytes", 1024)),
-                                                      head_frac=float(c.get("head_frac", 0.5))),
+    "observation_pack": lambda c, x: _obspack(c),
     "evidence_preserving_reducer": lambda c, x: EvidencePreservingReducer(_reducer(c, x)),
     "online_context_compact": lambda c, x: OnlineContextCompact(
         cache_write_read_ratio=c.get("cache_write_read_ratio", 12.5), policy=c.get("policy", "economic")),
