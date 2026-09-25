@@ -34,6 +34,11 @@ class Budget:
     stop_dir: Optional[str] = None
     _t0: float = field(default_factory=time.time, repr=False)
 
+    def credit(self, seconds: float) -> None:
+        """Give back wall-clock time spent on work that must not count against the
+        budget (e.g. a write-only shadow monitor auditing sealed splits)."""
+        self._t0 += max(0.0, float(seconds))
+
     def exhausted(self, *, rounds: int = 0, rollouts: int = 0, usd: float = 0.0) -> Optional[str]:
         if self.max_rounds is not None and rounds >= self.max_rounds:
             return "max_rounds"

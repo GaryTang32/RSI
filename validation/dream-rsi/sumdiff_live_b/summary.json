@@ -1,0 +1,281 @@
+{
+ "method": "dream-rsi",
+ "rounds": 2,
+ "stop_reason": "rounds",
+ "baseline": "ed8962e6b1",
+ "best": "a783ba068d",
+ "first": {
+  "iteration": 1,
+  "calls": 9,
+  "cum_calls": 9,
+  "round_best": 1.0183243143690768,
+  "best": 1.0183243143690768,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.925,
+    0.933333,
+    0.925,
+    0.92125
+   ],
+   "selected": 1,
+   "selected_label": "t1m1",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.008333333333333304,
+   "details": {
+    "best": 0.9333333333333333
+   },
+   "changes": [
+    "Replace fixed parallel refine with adaptive trajectory-based exploration: rank branches by successful anchors and improvement trends, prioritize roots and first",
+    "Relax Priority 3 batching to include all non-hard-failed branches, not just promising ones, ensuring full parallelism utilization and thorough exploration while",
+    "Add parallelism-aware inclusion of weak-but-underexplored branches in Priority 3 (deeper refinements) when sufficient capacity remains (>= 2 slots), improving b"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 9.0,
+    "k": 3.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.3333333333333333,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 810.331
+ },
+ "last": {
+  "iteration": 2,
+  "calls": 8,
+  "cum_calls": 17,
+  "round_best": 1.0361377782299992,
+  "best": 1.0361377782299992,
+  "root": 1.0183243143690768,
+  "plan": {
+   "branch_count": 4,
+   "refine_count": 1,
+   "reason": "early gains strong, late plateau -> widen and reduce depth"
+  },
+  "N": 8,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   2
+  ],
+  "policy": "e8ed3dc237",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 1172.997
+ },
+ "usage": {
+  "agent": {
+   "calls": 17,
+   "input_tokens": 71644,
+   "output_tokens": 164458,
+   "cost_usd": 0.938645,
+   "latency_s": 1634.8185663223267,
+   "total_tokens": 236102
+  },
+  "developer": {
+   "calls": 3,
+   "input_tokens": 40878,
+   "output_tokens": 51573,
+   "cost_usd": 0.339594,
+   "latency_s": 517.8706023693085,
+   "total_tokens": 92451
+  },
+  "_cost": {
+   "agent_calls": 17,
+   "agent_tokens": 236102,
+   "agent_usd": 0.938645,
+   "eval_s": 2.49702525138855,
+   "online_rounds": 6,
+   "online_wall_s": 654.5993764400482,
+   "replay_episodes": 10,
+   "replay_cpu_s": 0.02836614283532729,
+   "replay_wall_s": 0.3024735450744629,
+   "developer_calls": 3,
+   "developer_tokens": 92451,
+   "developer_usd": 0.339594,
+   "replay_ms_per_episode": 2.8366142835327293
+  },
+  "_total": {
+   "agent_calls": 17,
+   "developer_calls": 3,
+   "usd": 1.278239
+  }
+ },
+ "meta": {
+  "policy": "\"\"\"Adaptive exploration policy with trajectory-based branch ranking.\n\nPrefix signals: reconstruct branch trajectories, compute successful anchors, detect\nimprovement trends vs parent and baseline, classify reperability and hard failures,\nrank by trajectory quality and remaining depth.\n\nBatch rule: deterministic priority queue\n  1. All unopened roots (exploration, no pruning here)\n  2. First refinement (attempt 1) for each opened branch  \n  3. Deeper refinements (attempt 2+) for promising branches only (exploitation)\n  4. At most one repairable recovery per batch\nNever sample randomly; always attempt full parallelism (W=3); minimize decision rounds \n(k) through batching of independent cells.\n\nBeta schedule: interpolates patience_window (how many consecutive failures before \nhard-close). Default beta=0.6 balances conservative (patient, recover readily) vs \naggressive (narrow window, prune early).\n\nGrid planning: analyzes historical gain distribution (early vs late), hard-failure \nrates from prior cycles. Widens when roots succeed early but refinements plateau. \nDeepens when late gains persist. Shrinks on excessive hard failures. Conservative \nbootstrap with fallback.\n\nSafeguards: hard-fail detection uses windowed pattern (not single failure) to avoid \nfalse positives on transient failures. Reperability prevents permanent closure. \nRecovery reopens branches. Batch-based parallelism avoids serial probes. Deterministic \nthresholds prevent over-pruning of underexplored branches.\n\"\"\"\nfrom policy_api import (\n    GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,\n    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard, is_repairable,\n    lerp, clamp\n)\nfrom typing import Dict, List, Optional\nfrom dataclasses import dataclass\n\nNAME = \"OptimalPolicy\"\n\n@dataclass\nclass BranchStatus:\n    \"\"\"Memoized classification of an opened branch based on its trajectory.\"\"\"\n    branch_id: int\n    n_attempts: int\n    anchor: Optional[float]\n    is_promising: bool\n    is_hard_failed: bool\n    has_repairable: bool\n\nclass OptimalPolicy(LLMDesignedMethod):\n    def __init__(self, config=None):\n        super().__init__(config)\n        self.beta = float(self.config.get(\"beta\", 0.6))\n    \n    def _schedule(self, beta):\n        \"\"\"Interpolate behavioral thresholds via beta in [0, 1].\n        High beta: patient, explore deeply, recover readily.\n        Low beta: impatient, prune early, close branches quickly.\n        \"\"\"\n        return {\n            'patience_window': int(clamp(lerp(1, 4, beta), 1, 4)),\n        }\n    \n    def plan_grid(self, context):\n        \"\"\"Adapt branch count and refinement depth from history of earlier cycles.\"\"\"\n        if not context.history:\n            return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),\n                          \"bootstrap: use fallback grid\")\n        \n        # Analyze recent performance (last 5 cycles or all available)\n        recent = context.history[-5:] if len(context.history) >= 5 else context.history\n        gain_early = sum(m.get('gain_early', 0) for m in recent) / len(recent) if recent else 0\n        gain_late = sum(m.get('gain_late', 0) for m in recent) / len(recent) if recent else 0\n        fail_frac = sum(m.get('fail_frac', 0) for m in recent) / len(recent) if recent else 0\n        \n        bc = int(context.fallback_branch_count)\n        rc = int(context.fallback_refine_count)\n        reason = \"\"\n        \n        # Decision rules based on gain distribution and failure rates\n        if gain_early > 0.6 and gain_late < 0.3:\n            # Strong root performance but refinements plateau: widen, reduce depth\n            bc = min(int(context.hard_max_branch_count), bc + 1)\n            rc = max(1, rc - 1)\n            reason = \"early gains strong, late plateau -> widen and reduce depth\"\n        elif gain_late > 0.4:\n            # Persistent late gains: deepen to find deeper improvements\n            rc = min(int(context.hard_max_refine_count), rc + 1)\n            reason = \"persistent late gains -> deepen\"\n        elif fail_frac > 0.5:\n            # High hard-failure rate: shrink conservatively\n            bc = max(1, bc - 1)\n            rc = max(1, rc - 1)\n            reason = \"high hard-failure rate -> shrink conservatively\"\n        else:\n            # Stable: maintain\n            reason = \"stable performance -> maintain fallback\"\n        \n        return GridPlan(bc, rc, reason)\n    \n    def solve(self, question, budget=None):\n        \"\"\"Explore via adaptive trajectory-based selective batching.\"\"\"\n        question.reset()\n        res = SimResult()\n        sched = self._schedule(self.beta)\n        \n        while not _budget_done(question, budget):\n            prefix = question.observed()\n            legal = question.legal_actions()\n            \n            if not legal:\n                break\n            \n            # Reconstruct trajectories for each opened branch\n            trajectories = branch_trajectories(prefix)\n            opened = set(question.opened_branches())\n            baseline = question.baseline_score\n            \n            # Classify each opened branch based on trajectory\n            branch_status = {}\n            for b in opened:\n                traj = trajectories.get(b, [])\n                anchor = successful_anchor(traj)\n                is_prom = branch_promising(traj, baseline)\n                is_hard = branch_failed_hard(traj, window=sched['patience_window'])\n                has_rep = any(is_repairable(o) for o in traj if not o.success)\n                branch_status[b] = BranchStatus(b, len(traj), anchor, is_prom, is_hard, has_rep)\n            \n            # Select diverse batch: roots + first refinement + promising deep + recovery\n            batch = self._select_batch(question, legal, opened, branch_status)\n            if not batch:\n                break\n            \n            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))\n        \n        return finalize_result(question, res)\n    \n    def _select_batch(self, question, legal: List[str], opened, branch_status: Dict):\n        \"\"\"Build deterministic batch following priority queue: \n        roots -> attempt-1 -> promising deeper -> repairable recovery.\n        \"\"\"\n        batch = []\n        used_branches = set()\n        \n        # Priority 1: All unopened roots (exploration, no pruning)\n        for c in sorted(legal, key=lambda x: question.meta(x).branch):\n            m = question.meta(c)\n            if m.branch not in opened and len(batch) < question.max_parallelism:\n                batch.append(c)\n                used_branches.add(m.branch)\n        \n        if len(batch) >= question.max_parallelism:\n            return batch\n        \n        # Priority 2: Attempt 1 for each opened branch (systematic first refinement)\n        for c in sorted(legal, key=lambda x: question.meta(x).branch):\n            m = question.meta(c)\n            if (m.branch in opened and m.attempt == 1 and \n                m.branch not in used_branches and len(batch) < question.max_parallelism):\n                batch.append(c)\n                used_branches.add(m.branch)\n        \n        if len(batch) >= question.max_parallelism:\n            return batch\n        \n        # Priority 3: Deeper refinements for promising branches (exploitation)\n        for c in sorted(legal, key=lambda x: (question.meta(x).attempt, question.meta(x).branch)):\n            m = question.meta(c)\n            if (m.branch in opened and m.attempt > 1 and m.branch not in used_branches and\n                len(batch) < question.max_parallelism):\n                s = branch_status.get(m.branch)\n                if s and s.is_promising and not s.is_hard_failed:\n                    batch.append(c)\n                    used_branches.add(m.branch)\n        \n        if len(batch) >= question.max_parallelism:\n            return batch\n        \n        # Priority 4: Repairable recovery (at most one per batch)\n        for c in sorted(legal, key=lambda x: question.meta(x).branch):\n            m = question.meta(c)\n            if m.branch in opened and m.branch not in used_branches:\n                s = branch_status.get(m.branch)\n                if s and s.has_repairable and not s.is_hard_failed:\n                    if len(batch) < question.max_parallelism:\n                        batch.append(c)\n                    break\n        \n        return batch\n",
+  "policy_id": "e8ed3dc2373675cebaaa4fdaefcee75c3a2d959a82cecdf22a7f553d8cd3426e",
+  "policy_ledger": "<rsi.core.ledger.Ledger object at 0x7f818f0f7510>",
+  "worlds": [
+   "<rsi.dream.tree.DiscoveryTree object at 0x7f8181f37d90>",
+   "<rsi.dream.tree.DiscoveryTree object at 0x7f8181f3e9d0>"
+  ],
+  "manifests": [
+   {
+    "iteration": 1,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 2,
+    "probe_work": 9,
+    "decision_rounds": 3,
+    "batch_sizes": [
+     3,
+     3,
+     3
+    ],
+    "root_score": 0.9104910395109694,
+    "round_best": 1.0183243143690768,
+    "final_best": 1.0183243143690768,
+    "beta": 0.6,
+    "gain_early": 1.0,
+    "gain_late": 0.0,
+    "fail_frac": 0.0,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 9,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null
+   },
+   {
+    "iteration": 2,
+    "planned_grid": {
+     "branch_count": 4,
+     "refine_count": 1,
+     "reason": "early gains strong, late plateau -> widen and reduce depth"
+    },
+    "effective_grid": {
+     "branch_count": 4,
+     "refine_count": 1,
+     "reason": "early gains strong, late plateau -> widen and reduce depth"
+    },
+    "opened_width": 4,
+    "max_depth": 1,
+    "probe_work": 8,
+    "decision_rounds": 3,
+    "batch_sizes": [
+     3,
+     3,
+     2
+    ],
+    "root_score": 1.0183243143690768,
+    "round_best": 1.0361377782299992,
+    "final_best": 1.0361377782299992,
+    "beta": 0.6,
+    "gain_early": 1.0,
+    "gain_late": 0.0,
+    "fail_frac": 0.0,
+    "hard_fail_frac": 0.0,
+    "policy": "e8ed3dc23736",
+    "agent_calls": 8,
+    "plan_reason": "early gains strong, late plateau -> widen and reduce depth",
+    "plan_error": null
+   }
+  ],
+  "best_score": 1.0361377782299992,
+  "seed_score": 0.9104910395109694,
+  "cost": {
+   "agent_calls": 17,
+   "agent_tokens": 236102,
+   "agent_usd": 0.938645,
+   "eval_s": 2.49702525138855,
+   "online_rounds": 6,
+   "online_wall_s": 654.5993764400482,
+   "replay_episodes": 10,
+   "replay_cpu_s": 0.02836614283532729,
+   "replay_wall_s": 0.3024735450744629,
+   "developer_calls": 3,
+   "developer_tokens": 92451,
+   "developer_usd": 0.339594,
+   "replay_ms_per_episode": 2.8366142835327293
+  },
+  "config": {
+   "rounds": 2,
+   "W": 3,
+   "branch_count": 3,
+   "refine_count": 2,
+   "hard_max_branch": 4,
+   "hard_max_refine": 3,
+   "K1": null,
+   "K2": null,
+   "M": 3,
+   "m_semantics": "revisions",
+   "objective": "eq1",
+   "beta1": 0.01,
+   "beta2": 0.005,
+   "normalize": true,
+   "support": "clip",
+   "lam": 0.1,
+   "beta_grid": [
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+   ],
+   "sweep": true,
+   "root_mode": "earliest",
+   "hide_missing": false,
+   "selector": "argmax",
+   "include_incumbent": true,
+   "holdout_frac": 0.34,
+   "noise_z": 2.0,
+   "margin_floor": 0.01,
+   "sandbox": "subprocess",
+   "policy_timeout_s": 60.0,
+   "root": "best",
+   "dream": true,
+   "dream_last": false,
+   "guidance": false,
+   "guidance_strength": 0.8,
+   "max_calls": 18,
+   "agent_workers": null,
+   "leakage_check": true,
+   "seed": 0,
+   "trace": true,
+   "shadow_monitor": true,
+   "shadow_k": 1,
+   "shadow_workers": 2
+  }
+ }
+}

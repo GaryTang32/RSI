@@ -1,7 +1,7 @@
 # solpi_agentworld_offline (solpi)
 
 ## Setup and summary
-**Run start.** seed `eb0223ae5a`; config: `{"gate": {"capability": [["score", 0.02]], "efficiency": ["tokens", "cost"], "min_gain": 0.02, "mode": "aggregate", "tolerance_kind": "relative", "min_improved_frac": 0.0, "family_regression_tol": 0.05, "families": null}, "n_lineages": 10, "max_iters": 4, "ralph_max": 3, "screen_split": "evolve", "rollout_tasks_per_family": 2, "k": 1, "holdout_split": "holdout", "firewall": true, "sweep": false, "validate_composition": false, "compose": true, "rounds": 1, "workers": 2, "seed": 0, "trace": true, "shadow_monitor": true, "shadow_splits": null, "shadow_k": 1, "shadow_workers": 2, "gate_digest": "a2247cac594b7481"}`
+**Run start.** seed `eb0223ae5a`; config: `{"gate": {"capability": [["score", 0.02]], "efficiency": ["tokens", "cost"], "min_gain": 0.02, "mode": "aggregate", "tolerance_kind": "relative", "min_improved_frac": 0.0, "family_regression_tol": 0.05, "families": null}, "n_lineages": 10, "max_iters": 4, "ralph_max": 3, "review_max": 2, "screen_split": "evolve", "rollout_tasks_per_family": 2, "k": 1, "holdout_split": "holdout", "firewall": true, "sweep": false, "validate_composition": false, "compose": true, "rounds": 1, "workers": 2, "seed": 0, "trace": true, "shadow_monitor": true, "shadow_splits": null, "shadow_k": 1, "shadow_workers": 2, "gate_digest": "a2247cac594b7481"}`
 
 **Noise band.** delta=None (none, z=None); SoL-Pi has no noise band: the dual gate compares the candidate's mean screen metrics with the base's against predeclared tolerances (capability) and a min relative gain (efficiency); k=1 trial(s) per screen task
 
@@ -31,7 +31,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **Shadow monitor (never shown to the loop)** `base_r1` (decision score 1.0000): holdout: S=1.0000; ood: S=1.0000
 
 ## Round 2
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "D1", "family": "D", "title": "Delegate oversized result compression with deterministic fallback", "mechanism": "evidence_preserving_reducer", "grid": [{"reducer": "deterministic"}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "D1", "family": "D", "title": "Delegate oversized result compression with deterministic fallback", "mechanism": "evidence_preserving_reducer", "grid": [{"reducer": "deterministic"}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -55,7 +55,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** evidence_preserving_reducer{"reducer": "deterministic"}
 - **hypothesis:** Delegate oversized result compression with deterministic fallback
 - **components:** evidence_preserving_reducer
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -87,7 +87,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "D1", "lineage_iteration": 0, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 3
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T11", "family": "T", "title": "Run the test runner in quiet mode by default", "mechanism": "pytest_quiet", "grid": [{}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T11", "family": "T", "title": "Run the test runner in quiet mode by default", "mechanism": "pytest_quiet", "grid": [{}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -111,7 +111,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** pytest_quiet{}
 - **hypothesis:** Run the test runner in quiet mode by default
 - **components:** pytest_quiet
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -141,7 +141,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T11", "lineage_iteration": 0, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 4
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -165,7 +165,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** tail_trim{"lines": 20}
 - **hypothesis:** Keep only the last lines of long command outputs
 - **components:** tail_trim
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -197,7 +197,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T3", "lineage_iteration": 0, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 5
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(f1c47c0844)`** on rollouts: S=0.8750, C=147427.5000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=0.2500
@@ -221,7 +221,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** tail_trim{"lines": 40}
 - **hypothesis:** Keep only the last lines of long command outputs
 - **components:** tail_trim
-- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -253,7 +253,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T3", "lineage_iteration": 1, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 6
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "tail_trim{\"lines\": 40}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "tail_trim{\"lines\": 40}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(b650b77f2c)`** on rollouts: S=0.8750, C=168316.7000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=0.2500
@@ -277,7 +277,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** tail_trim{"lines": 120}
 - **hypothesis:** Keep only the last lines of long command outputs
 - **components:** tail_trim
-- **details:** `{"variant": 2, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 2, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -309,7 +309,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T3", "lineage_iteration": 2, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 7
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 3, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "tail_trim{\"lines\": 40}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 2, "change": "tail_trim{\"lines\": 120}", "variant": 2, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T3", "family": "T", "title": "Keep only the last lines of long command outputs", "mechanism": "tail_trim", "grid": [{"lines": 20}, {"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 3, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "tail_trim{\"lines\": 20}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "tail_trim{\"lines\": 40}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 2, "change": "tail_trim{\"lines\": 120}", "variant": 2, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(1fcf918273)`** on rollouts: S=1.0000, C=241499.8000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -330,18 +330,18 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 
 
 ### Proposal `T3.3` (parent `base(eb0223ae5a)`)
-- **error:** cannot repair: cannot repair: cannot repair: variant grid exhausted
+- **error:** variant grid exhausted
 - **claimed change:** -
 - **hypothesis:** Keep only the last lines of long command outputs
 - **components:** tail_trim
-- **details:** `{"variant": 3, "ralph_errors": ["variant grid exhausted", "cannot repair: variant grid exhausted", "cannot repair: cannot repair: variant grid exhausted"], "ralph_repairs": 3, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true}`
+- **details:** `{"variant": 3, "ralph_errors": ["variant grid exhausted"], "ralph_repairs": 1, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true, "stage": "03/04 proposal", "review_repair": 0}`
 
-**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)
+**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)
 
 **State after round:** `{"idea": "T3", "lineage_iteration": 3, "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
 
 ## Round 8
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -365,7 +365,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** head_trim{"lines": 40}
 - **hypothesis:** Keep only the first lines of long command outputs
 - **components:** head_trim
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -397,7 +397,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T7", "lineage_iteration": 0, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 9
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "head_trim{\"lines\": 40}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "head_trim{\"lines\": 40}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(e53596973a)`** on rollouts: S=0.8750, C=165868.7000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=0.2500
@@ -421,7 +421,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** head_trim{"lines": 120}
 - **hypothesis:** Keep only the first lines of long command outputs
 - **components:** head_trim
-- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -453,7 +453,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "T7", "lineage_iteration": 1, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 10
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "head_trim{\"lines\": 40}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "head_trim{\"lines\": 120}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "T7", "family": "T", "title": "Keep only the first lines of long command outputs", "mechanism": "head_trim", "grid": [{"lines": 40}, {"lines": 120}]}, "idea_kind_ground_truth": "trick", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "head_trim{\"lines\": 40}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "head_trim{\"lines\": 120}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(05a59cdf2b)`** on rollouts: S=0.8750, C=249172.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=0.2500
@@ -474,18 +474,18 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 
 
 ### Proposal `T7.2` (parent `base(eb0223ae5a)`)
-- **error:** cannot repair: cannot repair: cannot repair: variant grid exhausted
+- **error:** variant grid exhausted
 - **claimed change:** -
 - **hypothesis:** Keep only the first lines of long command outputs
 - **components:** head_trim
-- **details:** `{"variant": 2, "ralph_errors": ["variant grid exhausted", "cannot repair: variant grid exhausted", "cannot repair: cannot repair: variant grid exhausted"], "ralph_repairs": 3, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true}`
+- **details:** `{"variant": 2, "ralph_errors": ["variant grid exhausted"], "ralph_repairs": 1, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true, "stage": "03/04 proposal", "review_repair": 0}`
 
-**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)
+**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)
 
 **State after round:** `{"idea": "T7", "lineage_iteration": 2, "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
 
 ## Round 11
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "C6", "family": "C", "title": "Use layered context epochs and event-driven compaction", "mechanism": "online_context_compact", "grid": [{"cache_write_read_ratio": 12.5}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "C6", "family": "C", "title": "Use layered context epochs and event-driven compaction", "mechanism": "online_context_compact", "grid": [{"cache_write_read_ratio": 12.5}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -509,7 +509,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** online_context_compact{"cache_write_read_ratio": 12.5}
 - **hypothesis:** Use layered context epochs and event-driven compaction
 - **components:** online_context_compact
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -541,7 +541,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "C6", "lineage_iteration": 0, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 12
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P14", "family": "P", "title": "Skip redundant re-verification after edits", "mechanism": "no_verify", "grid": [{}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P14", "family": "P", "title": "Skip redundant re-verification after edits", "mechanism": "no_verify", "grid": [{}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -565,7 +565,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** no_verify{}
 - **hypothesis:** Skip redundant re-verification after edits
 - **components:** no_verify
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -595,7 +595,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "P14", "lineage_iteration": 0, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 13
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P14", "family": "P", "title": "Skip redundant re-verification after edits", "mechanism": "no_verify", "grid": [{}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "no_verify{}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P14", "family": "P", "title": "Skip redundant re-verification after edits", "mechanism": "no_verify", "grid": [{}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "no_verify{}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(b416de0381)`** on rollouts: S=0.7718, C=356216.3000, errors=0.0, missing=0
   per-task: evolve-repofix-00=0.7143, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=0.6667, evolve-logtriage-01=0.2500
@@ -616,18 +616,18 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 
 
 ### Proposal `P14.1` (parent `base(eb0223ae5a)`)
-- **error:** cannot repair: cannot repair: cannot repair: variant grid exhausted
+- **error:** variant grid exhausted
 - **claimed change:** -
 - **hypothesis:** Skip redundant re-verification after edits
 - **components:** no_verify
-- **details:** `{"variant": 1, "ralph_errors": ["variant grid exhausted", "cannot repair: variant grid exhausted", "cannot repair: cannot repair: variant grid exhausted"], "ralph_repairs": 3, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true}`
+- **details:** `{"variant": 1, "ralph_errors": ["variant grid exhausted"], "ralph_repairs": 1, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true, "stage": "03/04 proposal", "review_repair": 0}`
 
-**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)
+**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)
 
 **State after round:** `{"idea": "P14", "lineage_iteration": 1, "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
 
 ## Round 14
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P8", "family": "P", "title": "Couple successful mutations to their verifier", "mechanism": "action_fusion", "grid": [{}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P8", "family": "P", "title": "Couple successful mutations to their verifier", "mechanism": "action_fusion", "grid": [{}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -651,7 +651,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** action_fusion{}
 - **hypothesis:** Couple successful mutations to their verifier
 - **components:** action_fusion
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -681,7 +681,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "P8", "lineage_iteration": 0, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 15
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "C23", "family": "C", "title": "Build observation packs before paying for full bodies", "mechanism": "observation_pack", "grid": [{"full_sends": 1, "excerpt_bytes": 0}, {"full_sends": 1, "excerpt_bytes": 1024}, {"full_sends": 2, "excerpt_bytes": 1024}, {"full_sends": 2, "excerpt_bytes": 2048}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "C23", "family": "C", "title": "Build observation packs before paying for full bodies", "mechanism": "observation_pack", "grid": [{"full_sends": 1, "excerpt_bytes": 0}, {"full_sends": 1, "excerpt_bytes": 1024}, {"full_sends": 2, "excerpt_bytes": 1024}, {"full_sends": 2, "excerpt_bytes": 2048}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -705,7 +705,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** observation_pack{"excerpt_bytes": 0, "full_sends": 1}
 - **hypothesis:** Build observation packs before paying for full bodies
 - **components:** observation_pack
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -738,7 +738,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "C23", "lineage_iteration": 0, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 16
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -762,7 +762,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** turn_cap{"max_turns": 10}
 - **hypothesis:** Cap the turn budget
 - **components:** turn_cap
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -794,7 +794,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "P20", "lineage_iteration": 0, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 17
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "turn_cap{\"max_turns\": 10}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "turn_cap{\"max_turns\": 10}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(643de7933b)`** on rollouts: S=0.7619, C=139795.5000, errors=0.0, missing=0
   per-task: evolve-repofix-00=0.2857, evolve-repofix-01=0.2857, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -818,7 +818,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** turn_cap{"max_turns": 16}
 - **hypothesis:** Cap the turn budget
 - **components:** turn_cap
-- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 1, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -850,7 +850,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "P20", "lineage_iteration": 1, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 18
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "turn_cap{\"max_turns\": 10}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "turn_cap{\"max_turns\": 16}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "P20", "family": "P", "title": "Cap the turn budget", "mechanism": "turn_cap", "grid": [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}]}, "idea_kind_ground_truth": "do_less", "lineage_iteration": 2, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "turn_cap{\"max_turns\": 10}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}, {"iteration": 1, "change": "turn_cap{\"max_turns\": 16}", "variant": 1, "stage": "validation", "outcome": "gate_failed", "gate_reason": "capability below floor"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(2ac546f42c)`** on rollouts: S=0.8810, C=265276.5000, errors=0.0, missing=0
   per-task: evolve-repofix-00=0.5714, evolve-repofix-01=0.7143, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -874,7 +874,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** turn_cap{"max_turns": 24}
 - **hypothesis:** Cap the turn budget
 - **components:** turn_cap
-- **details:** `{"variant": 2, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 2, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -906,7 +906,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "P20", "lineage_iteration": 2, "outcome": "frozen", "next": "freeze; lineage ends"}`
 
 ## Round 19
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "R5", "family": "R", "title": "Slim the system prompt", "mechanism": "prompt_slim", "grid": [{}]}, "idea_kind_ground_truth": "dud", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "R5", "family": "R", "title": "Slim the system prompt", "mechanism": "prompt_slim", "grid": [{}]}, "idea_kind_ground_truth": "dud", "lineage_iteration": 0, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(eb0223ae5a)`** on rollouts: S=1.0000, C=589094.0000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -930,7 +930,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 - **claimed change:** prompt_slim{}
 - **hypothesis:** Slim the system prompt
 - **components:** prompt_slim
-- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false}`
+- **details:** `{"variant": 0, "ralph_errors": [], "ralph_repairs": 0, "files_changed": ["harness.json"], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": false, "stage": "03/04 proposal", "review_repair": 0}`
 **Actual diff:**
 ```diff
 --- a/harness.json
@@ -960,7 +960,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 **State after round:** `{"idea": "R5", "lineage_iteration": 0, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 
 ## Round 20
-**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "R5", "family": "R", "title": "Slim the system prompt", "mechanism": "prompt_slim", "grid": [{}]}, "idea_kind_ground_truth": "dud", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "prompt_slim{}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "no efficiency gain"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
+**State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "R5", "family": "R", "title": "Slim the system prompt", "mechanism": "prompt_slim", "grid": [{}]}, "idea_kind_ground_truth": "dud", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": false, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "prompt_slim{}", "variant": 0, "stage": "validation", "outcome": "gate_failed", "gate_reason": "no efficiency gain"}], "base_metrics": {"score": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
 **Eval `rollouts(fc04865f46)`** on rollouts: S=1.0000, C=588738.3000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
@@ -981,13 +981,13 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 
 
 ### Proposal `R5.1` (parent `base(eb0223ae5a)`)
-- **error:** cannot repair: cannot repair: cannot repair: variant grid exhausted
+- **error:** variant grid exhausted
 - **claimed change:** -
 - **hypothesis:** Slim the system prompt
 - **components:** prompt_slim
-- **details:** `{"variant": -1, "ralph_errors": ["variant grid exhausted", "cannot repair: variant grid exhausted", "cannot repair: cannot repair: variant grid exhausted"], "ralph_repairs": 3, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true}`
+- **details:** `{"variant": -1, "ralph_errors": ["variant grid exhausted"], "ralph_repairs": 1, "files_changed": [], "proposer_usage": {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}, "exhausted": true, "stage": "03/04 proposal", "review_repair": 0}`
 
-**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)
+**Decision:** kept `None`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)
 
 **State after round:** `{"idea": "R5", "lineage_iteration": 1, "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
 

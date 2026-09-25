@@ -189,3 +189,120 @@ def test_llm_reviewer_sees_the_runtime_api_for_solpi_harnesses():
     cand = Artifact({"harness.json": '{"extensions": {"x": {}}}', "extensions/x.py": "class MECHANISM(Extension): pass\n"})
     ok, _ = LLMReviewer(spy).review(Idea("L1", "C", "t"), base, cand)
     assert ok and RUNTIME_API_DOC in spy.prompts[0]
+
+
+# ------------------------------------------------------------------ stage-B audit fixes (16, 17)
+def _verbosity():
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location(
+        "_mhsp_gen", pathlib.Path(__file__).with_name("test_metaharness-solpi_genericity.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class _RepairingProposer:
+    """First implementation violates the contract; ``fix`` repairs it when told why."""
+
+    def __init__(self):
+        self.fix_errors = []
+
+    def propose(self, idea, base, evidence, history):
+        from rsi.solpi.research import MechanismProposal
+        if history:
+            return MechanismProposal(None, error="single variant", meta={"exhausted": True})
+        cfg = json.loads(base["config.json"])
+        cfg.update(verbosity=cfg["verbosity"] - 1, note="holdout")      # contract breach the reviewer catches
+        return MechanismProposal(base.with_files({"config.json": json.dumps(cfg, sort_keys=True)}),
+                                 change="trim1 (with a held-out reference)")
+
+    def fix(self, idea, prop, error):
+        from rsi.solpi.research import MechanismProposal
+        self.fix_errors.append(error)
+        if "reviewer" not in error:
+            return MechanismProposal(None, error=error, meta={"exhausted": True})
+        cfg = json.loads(prop.artifact["config.json"])
+        cfg.pop("note")
+        return MechanismProposal(prop.artifact.with_files({"config.json": json.dumps(cfg, sort_keys=True)}),
+                                 change="trim1")
+
+
+def test_review_rejection_routes_back_to_implementation(tmp_path):
+    """Spec B3.1 / blog figure: Reviewer -> Implementation. Live r1-r3 lost whole lineage iterations because a
+    rejection restarted at 01 with a fresh proposal; now the objection goes to the implementer first."""
+    g = _verbosity()
+    dom = g.verbosity_domain()
+    prop = _RepairingProposer()
+    res = sp_run(dom, g.SP_SEED, ideas=g.IDEAS[:1], proposer=prop,
+                 config=SPConfig(n_lineages=1, max_iters=1, review_max=2), out_dir=tmp_path)
+    r = res.meta["rounds"][0]
+    assert r["survivor_ideas"] == ["G1"] and json.loads(res.best["config.json"]) == {"verbosity": 3}
+    assert len(prop.fix_errors) == 1 and "holdout" in prop.fix_errors[0]
+    it = r["lineages"][0]["iterations"]
+    assert len(it) == 1 and it[0]["outcome"] == "frozen" and len(it[0]["review_repairs"]) == 1
+    ev = load_trace(tmp_path)
+    crit = [e["data"] for e in ev if e["kind"] == "critic"]
+    assert [c["accept"] for c in crit] == [False, True] and crit[1]["candidate"] == "G1.0r1"
+    # review_max=0 keeps the old behaviour (a rejection ends the iteration)
+    prop0 = _RepairingProposer()
+    res0 = sp_run(dom, g.SP_SEED, ideas=g.IDEAS[:1], proposer=prop0,
+                  config=SPConfig(n_lineages=1, max_iters=1, review_max=0), out_dir=tmp_path / "r0")
+    assert res0.meta["rounds"][0]["survivor_ideas"] == [] and prop0.fix_errors == []
+
+
+def test_ralph_loop_sums_repair_usage_and_stops_when_exhausted():
+    from rsi.core import Artifact
+    from rsi.core.llm import Usage
+    from rsi.solpi.research import Idea, MechanismProposal, implement
+
+    class P:
+        n = 0
+
+        def fix(self, idea, prop, error):
+            P.n += 1
+            if P.n == 1:
+                return MechanismProposal(Artifact({"a": "2"}), usage=Usage(1, 10, 10, 0.5))
+            return MechanismProposal(Artifact({"a": "ok"}), usage=Usage(1, 10, 10, 0.25))
+
+    first = MechanismProposal(Artifact({"a": "1"}), usage=Usage(1, 10, 10, 1.0))
+    out, errs = implement(P(), Idea("X", "C", "t"), first, lambda a: None if a["a"] == "ok" else "bad", 3)
+    assert out.artifact["a"] == "ok" and len(errs) == 2 and abs(out.usage.cost_usd - 1.75) < 1e-12
+    assert out.usage.calls == 3
+
+    class Q:
+        calls = 0
+
+        def fix(self, idea, prop, error):
+            Q.calls += 1
+            return MechanismProposal(None, error="x", meta={"exhausted": True})
+
+    out, errs = implement(Q(), Idea("X", "C", "t"),
+                          MechanismProposal(None, error="variant grid exhausted", meta={"exhausted": True}),
+                          lambda a: None, 3)
+    assert Q.calls == 0 and out.error == "variant grid exhausted"
+
+
+def test_forked_smoke_usage_reaches_the_parent_meter():
+    """Live: the interface validator's smoke ran in a forked child and its model calls ($0.02-0.03 per run)
+    never reached the loop's meters; the child now ships its usage delta back."""
+    from rsi.core import Artifact
+    from rsi.core.llm import LLM, LLMResponse, Usage
+    from rsi.metaharness.validate import InterfaceValidator
+
+    class Paid(LLM):
+        def complete(self, prompt, **kw):
+            u = Usage(1, 100, 20, 0.01)
+            self.meter.add(kw.get("role", "default"), u)
+            return LLMResponse(text="ok", usage=u, model="paid")
+
+    class Dom:
+        def smoke(self, artifact, llm):
+            llm.complete("hi", role="task")
+            return None
+
+    llm = Paid()
+    ok, msg = InterfaceValidator(timeout_s=30, isolate=True).validate(Dom(), Artifact({"h.py": "x = 1\n"}), llm)
+    assert ok, msg
+    t = llm.meter.total()
+    assert t.calls == 1 and abs(t.cost_usd - 0.01) < 1e-12 and llm.meter.by_role["task"].input_tokens == 100

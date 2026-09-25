@@ -268,3 +268,37 @@ The root cause sits in `rsi.core` and is listed as a core change request.
 - whether an LLM developer eventually produces a non-degenerate policy with more worlds and a larger grid;
 - the exact objective the paper's experiments used: Eq. 1 or the Pareto sweep (spec §8.15).
 
+
+## Stage B: independent step audit and post-fix live re-run
+
+The full stage-B audit is in `AUDIT.md`. It has per-step verdicts from `experiments/dream-rsi/validate_stepaudit.py`, which writes `<run>/stepaudit.json`: 335 steps, 315 correct, 4 questionable, 15 wrong (all caused by the reply-parser harness bug) and 1 unverifiable. The audit also covers paper alignment and an inconsistency register.
+
+**Corrections to the stage-A text above.**
+- The `sumdiff_offline` t=1 ground truth was re-estimated on 40 fresh searches: stage A's 8 seeds plus 32 new ones. r0001 never beats π₁ and loses gain on 18/40 searches. The mean gain difference is −0.0028, 95% CI [−0.0046, −0.0012], at 8.2 vs 15 calls. The direction stands, but the 8-seed figure of −0.0060 overstated the size.
+- The `audit: 3 FAIL` line in `sumdiff_live.log` is stale. It comes from the first audit pass, which did not handle the trace's 6000-character text clipping.
+
+**Stage-B fixes.**
+- `strip_reply_terminators` now also drops a leading ```` ```python ```` fence. Without that, the stage-A fix left such files broken.
+- `static_check` quotes the offending source line.
+- The regression tests are in `tests/test_dream-rsi_validation_stepaudit.py`.
+
+### Run 4: `sumdiff_live_b` (stage B, after the fixes)
+
+Command: `python experiments/dream-rsi/validate_dream.py sumdiff_live_b`.
+
+**Setup.**
+- From scratch: untouched seed, fresh run directory, fresh `.cache_sumdiff_live_b` (20 misses, 0 hits).
+- claude haiku as both the `EditorAgent` and the `LLMPolicyDeveloper`.
+- π₁ = parallel refine on a 3 × 3 grid, W = 3, T = 2, 3 revisions in the single dreaming phase, max_calls = 18.
+
+**Results.**
+- **Attempts.** 17/17 attempts compiled and scored. The stage-A run lost 12/36 to parser leftovers.
+- **Developer.** 3/3 developer revisions passed the static check and the leakage screen without a repair round.
+- **Γ.** 0.9105 → 1.0183 (cycle 1) → **1.0361** (cycle 2, `t2/b1.a1`). That is higher than stage A's 1.0304, which took 36 calls; this run used 17.
+- **Dreaming.** The replay values were V = [0.925, 0.9333, 0.925, 0.92125], so haiku's r0001 was deployed. r0001 closes a branch after two flat results; the unrevealed cell of that branch was not the ceiling. In cycle 2 its `plan_grid` widened the grid to 4 branches of depth 2 ("early gains strong, late plateau"), for 8 calls in batches [3, 3, 2].
+- **Online value of that switch.** Unverifiable: it was not measured.
+- **Spend.** $1.278 in total: agent $0.939 for 17 calls, developer $0.340 for 3 calls. The cache files sum to the same figure. Wall time 19.5 min.
+- **Audit.**
+  - Stage-A audit: 0 FAIL.
+  - Stage-B step audit: 45 correct, 1 unverifiable.
+  - Every one of the 17 agent prompts and 3 developer prompts was rebuilt from disk, and each rebuilt prompt hashes to its entry in the fresh cache.

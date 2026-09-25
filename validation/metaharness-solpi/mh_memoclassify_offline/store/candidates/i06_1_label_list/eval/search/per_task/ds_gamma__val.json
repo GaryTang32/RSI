@@ -57,7 +57,7 @@
   "tokens": 199808,
   "cost_usd": 0.0,
   "steps": 228,
-  "latency_s": 0.2505197525024414,
+  "latency_s": 0.3893930912017822,
   "error": null,
   "family": "ds_gamma",
   "meta": {

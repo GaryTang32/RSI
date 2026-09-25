@@ -2,10 +2,10 @@
  "run": "solpi_agentworld_live_r3",
  "method": "solpi",
  "counts": {
-  "correct": 17,
-  "questionable": 0,
-  "wrong": 0,
-  "unverifiable": 4
+  "correct": 18,
+  "questionable": 1,
+  "wrong": 3,
+  "unverifiable": 0
  },
  "steps": [
   {
@@ -22,21 +22,21 @@
   },
   {
    "round": 2,
-   "step": "L2.0 01 rollouts",
+   "step": "L2.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 2,
-   "step": "L2.0 03/04 proposal",
+   "step": "L2.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'Extract failure-bearing lines from long bash outputs, store full logs in rt.stor', variant 0; actual diff touches ['extensions/condense_failing_logs.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 2,
-   "step": "L2.0 05 review",
-   "verdict": "unverifiable",
-   "evidence": "REJECT: Requirement 3 violation \u2014 Recall mechanism not demonstrated: The implementation stores full logs in `rt.store[log_path]` (in-memory Python storage) but instructs the agent to retrieve them via `cat /.solpi/full_log_N.txt` (bash filesystem command). These access two separate systems. No evidence in t"
+   "step": "L2.0 05 review (REJECT)",
+   "verdict": "wrong",
+   "evidence": "FALSE REJECTION: key '/.solpi/full_log_<n>.txt' is exactly what `cat` reads (agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/') | reviewer: Requirement 3 violation \u2014 Recall mechanism not demonstrated: The implementation stores full logs in `rt.store[log_path]` (in-memory Python storage) but instructs the agent to retrieve them via `cat /.solpi/full_log_N.txt"
   },
   {
    "round": 2,
@@ -46,21 +46,21 @@
   },
   {
    "round": 3,
-   "step": "L2.1 01 rollouts",
+   "step": "L2.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 3,
-   "step": "L2.1 03/04 proposal",
+   "step": "L2.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'Intercept bash failures; extract failure-bearing lines and store full log in rt.', variant 1; actual diff touches ['extensions/condense_error_logs.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 3,
-   "step": "L2.1 05 review",
-   "verdict": "unverifiable",
-   "evidence": "REJECT: Missing exception handling: The condensation logic (lines 35-68) has no try-except wrapper. If rt.store assignment or ToolResult creation fails, an exception will propagate instead of preserving original behavior. Violates requirement 2 (fails open).; Unverified recall mechanism: The code assumes rt"
+   "step": "L2.1 05 review (REJECT)",
+   "verdict": "questionable",
+   "evidence": "the handler has no try/except, but the runtime keeps the original result when a tool_result handler raises (runtime.py, 'result handlers fail open'), so behaviour IS fail-open; the reviewer could not know this (not in RUNTIME_API_DOC) and the contract text asks the mechanism itself to fail open | reviewer: Missing exception handling: The condensation logic (lines 35-68) has no try-except wrapper. If rt.store assignment or ToolResult creation fails, an exception will propagate instead of preserving original behavior. Violat"
   },
   {
    "round": 3,
@@ -70,21 +70,21 @@
   },
   {
    "round": 4,
-   "step": "L1.0 01 rollouts",
+   "step": "L1.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 4,
-   "step": "L1.0 03/04 proposal",
+   "step": "L1.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'Cache large successful tool outputs and replace with references in context to re', variant 0; actual diff touches ['extensions/large_observation_caching.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 4,
-   "step": "L1.0 05 review",
-   "verdict": "unverifiable",
-   "evidence": "REJECT: The `on_context` hook's fail-open mechanism (returning `None` on exception) depends on an unverified assumption about harness behavior. The contract requires that 'on any error the original behaviour is kept'\u2014this should be guaranteed, not assumed. If the harness interprets `return None` differently"
+   "step": "L1.0 05 review (REJECT)",
+   "verdict": "wrong",
+   "evidence": "FALSE REJECTION for the stated reason: RUNTIME_API_DOC documents `context -> new list | None`; (an unmentioned real flaw: it replaces the newest large output before the agent saw it once) | reviewer: The `on_context` hook's fail-open mechanism (returning `None` on exception) depends on an unverified assumption about harness behavior. The contract requires that 'on any error the original behaviour is kept'\u2014this should"
   },
   {
    "round": 4,
@@ -94,21 +94,21 @@
   },
   {
    "round": 5,
-   "step": "L1.1 01 rollouts",
+   "step": "L1.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 5,
-   "step": "L1.1 03/04 proposal",
+   "step": "L1.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'Replace large tool outputs (>5KB) with cached references; agent can retrieve ful', variant 1; actual diff touches ['extensions/cache_large_tool_outputs.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 5,
-   "step": "L1.1 05 review",
-   "verdict": "unverifiable",
-   "evidence": "REJECT: Contract point 3 violated: Content is stored in rt.store[cache_path] but the recall mechanism references it as a filesystem path ('cat /.solpi/tool_cache_*.txt'). If rt.store is in-memory or database-backed (typical for agent harnesses), this command will fail and the agent cannot retrieve the cache"
+   "step": "L1.1 05 review (REJECT)",
+   "verdict": "wrong",
+   "evidence": "FALSE REJECTION: key '/.solpi/tool_cache_<id>.txt' is readable (agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/') | reviewer: Contract point 3 violated: Content is stored in rt.store[cache_path] but the recall mechanism references it as a filesystem path ('cat /.solpi/tool_cache_*.txt'). If rt.store is in-memory or database-backed (typical for "
   },
   {
    "round": 5,
@@ -121,6 +121,12 @@
    "step": "composition",
    "verdict": "correct",
    "evidence": "no survivor: incumbent stays the base"
+  },
+  {
+   "round": null,
+   "step": "shadow monitor (base + composed only, sealed splits, trace only)",
+   "verdict": "correct",
+   "evidence": "base_r1: holdout S=1.000, ood S=1.000"
   },
   {
    "round": null,

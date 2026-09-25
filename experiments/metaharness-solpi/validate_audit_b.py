@@ -95,6 +95,16 @@ def _memo_tasks():
     return d, {sp: d.tasks.split(sp, allow_sealed=True) for sp in d.tasks.splits}
 
 
+# ---- Meta-Harness proposals checked by hand (template-level overfitting the token scan cannot see)
+MH_NOTE = {
+    ("mh_agentqa_live_r2", "explore-direct-pattern-computation"): (
+        "questionable", "hard-codes regex solvers for the practice generator's four numeric question TEMPLATES "
+        "(remainder of a^b, digit sum of a^b, 1-bits of a^b, the ledger wording) - 0 model calls on evolve, cost 0, "
+        "joins the Pareto front as its cheapest point; exactly the 'dataset-specific' code the skill forbids and the "
+        "paper's loop has no guard against (spec A2, A8.2)"),
+}
+
+
 def audit_mh(run: str) -> dict:
     rd = OUT / run
     ev = load(rd / "trace.jsonl")
@@ -181,15 +191,18 @@ def audit_mh(run: str) -> dict:
         note = ""
         if leaked or bad_paths:
             verdict = "wrong"
+        elif n_tr < v_tr and ev[0]["data"].get("proposer") == "MockProposer":
+            note = (f" (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read "
+                    f"lists only the parents it diagnosed)")
         elif n_tr < v_tr:
             verdict = "questionable"
             note = (f" the renderer's budget dropped {v_tr - n_tr} of {v_tr} raw-trace files (the paper's proposer "
                     f"decides itself what to read; here a priority renderer does)")
         st.add(t, "proposer input (history read, no sealed data)", verdict,
                f"read {an.get('files_read')} of {rs['view']['n_files']} files (traces {n_tr}/{v_tr}); prompt "
-               f"{len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" if not leaked else
-               f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + note + (f"; forbidden paths read {bad_paths}" if bad_paths
-                                                                 else ""))
+               f"{len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" + note if not leaked else
+               f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + (f"; forbidden paths read {bad_paths}" if bad_paths
+                                                          else ""))
         # (3) per proposal: claimed base visible, actual diff, harness file really changed, leakage scan
         props = [e["data"] for e in rev if e["kind"] == "proposal" and e["data"]["candidate"] != "(none)"]
         for p in props:
@@ -214,12 +227,24 @@ def audit_mh(run: str) -> dict:
                     if tk.id in add:
                         leaks.append(f"{sp}:{tk.id}: task id")
             claimed = p.get("change") or p.get("hypothesis") or ""
+            if (run, n) in MH_NOTE:
+                v, ev_ = MH_NOTE[(run, n)]
+                st.add(t, f"proposal {n}: claim vs actual diff", v, ev_ + f" | claim: {claimed[:140]}")
+                continue
             if not ok_base or not changed:
                 v, ev_ = "wrong", f"base {base!r} visible={ok_base}; changed files {changed}"
             elif not real:
                 v, ev_ = "wrong", f"only NEW files {changed}: the harness that runs is the base unchanged (dead code)"
             elif leaks:
                 v, ev_ = "questionable", f"task-specific content in added lines: {leaks[:6]}"
+            elif rec.get(n) and rec.get(base) and abs(rec[n]["score"] - rec[base]["score"]) < EPS and \
+                    abs(rec[n]["cost"] - rec[base]["cost"]) < EPS and \
+                    all(abs(rec[n]["per"][u] - rec[base]["per"].get(u, -1)) < EPS for u in rec[n]["per"]):
+                v, ev_ = "questionable", (f"BEHAVIOURAL NO-OP: per-unit scores and cost identical to its base {base} "
+                                          f"(diff {real}); one evaluation wasted")
+            elif any(str(c).startswith("param_") for c in (p.get("components") or [])):
+                v, ev_ = "questionable", (f"a parameter variant ({p.get('components')[0]}), which the skill says to "
+                                          f"rewrite ('identical to the base except for numbers'); diff {real}")
             else:
                 v, ev_ = "correct", (f"base {base} (visible); actual diff touches {real} "
                                      f"(+{add.count(chr(10)) + 1 if add else 0} lines); no task ids / question text / "
@@ -237,8 +262,10 @@ def audit_mh(run: str) -> dict:
             r = rec[n]
             tr_score = mean(mean(v) for v in d["trials"].values())
             lg = led.get(n, {})
-            ok = (abs(tr_score - r["score"]) < 1e-9 and abs((lg.get("score") or -1) - r["score"]) < 1e-9 and
-                  abs((lg.get("cost") or -1) - r["cost"]) < 1e-6 and set(r["per"]) <= evolve_ids and
+            lsc = lg.get("score") if lg.get("score") is not None else -1
+            lco = lg.get("cost") if lg.get("cost") is not None else -1
+            ok = (abs(tr_score - r["score"]) < 1e-9 and abs(lsc - r["score"]) < 1e-9 and
+                  abs(lco - r["cost"]) < 1e-6 and set(r["per"]) <= evolve_ids and
                   d["summary"]["split"] == cfg["search_split"])
             st.add(t, f"eval {n}", "correct" if ok else "wrong",
                    f"S={r['score']:.4f} (raw trials; ledger {lg.get('score')}), cost {r['cost']:.1f} "
@@ -356,6 +383,66 @@ def _apply_harness_diff(base_files: dict, diff: str) -> dict:
         return None
 
 
+# ---- LLM-reviewer verdicts checked by hand against the runtime (rsi/domains/agentworld/base.py:_read_any serves
+# exactly the rt.store keys that start with "/.solpi/" or "/tmp/"; rsi/solpi/runtime.py keeps the original tool
+# result when a tool_result handler raises and ignores a context handler that raises or returns None)
+READ_ANY = "agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/'"
+REVIEW_CHECK = {
+    ("solpi_agentworld_live", "L2.1"): ("correct", "right: the log is stored under rt.store['bash_log_<id>'] (no "
+                                        "/.solpi/ prefix) and the agent is given no path - unrecallable (" + READ_ANY + ")"),
+    ("solpi_agentworld_live", "L1.0"): ("questionable", "passed a SILENT NO-OP: the hook reads event.call_id "
+                                        "(AttributeError, swallowed by the runtime's fail-open), which the review "
+                                        "missed; the gate then measured a saving of exactly 0"),
+    ("solpi_agentworld_live", "L1.1"): ("correct", "right: rt.store['output_<id>'] is not readable by the agent ("
+                                        + READ_ANY + ")"),
+    ("solpi_agentworld_live_r2", "L2.0"): ("correct", "right: stored at rt.store['/bash_log_<id>.txt'] but the agent "
+                                           "is told `/.solpi/bash_log_<id>.txt` -> ENOENT (" + READ_ANY + ")"),
+    ("solpi_agentworld_live_r2", "L2.1"): ("wrong", "FALSE REJECTION: stored at rt.store['/.solpi/full_log_<n>.txt'] "
+                                           "and the hint is `cat /.solpi/full_log_<n>.txt` - recall works ("
+                                           + READ_ANY + "). Stage A's RUNS.md called this rejection right"),
+    ("solpi_agentworld_live_r2", "L1.0"): ("questionable", "passed a mechanism that forces is_error=False on every "
+                                           "large result (a failing command's output is reported as success) and "
+                                           "hides each large output before the agent has seen it once; the review "
+                                           "missed both"),
+    ("solpi_agentworld_live_r2", "L1.1"): ("correct", "right: `self.seen` persists across projections, so from the "
+                                           "next request on even the FIRST appearance is replaced by 'already shown "
+                                           "above' - the content is gone with no recall"),
+    ("solpi_agentworld_live_r3", "L2.0"): ("wrong", "FALSE REJECTION: key '/.solpi/full_log_<n>.txt' is exactly what "
+                                           "`cat` reads (" + READ_ANY + ")"),
+    ("solpi_agentworld_live_r3", "L2.1"): ("questionable", "the handler has no try/except, but the runtime keeps the "
+                                           "original result when a tool_result handler raises (runtime.py, 'result "
+                                           "handlers fail open'), so behaviour IS fail-open; the reviewer could not "
+                                           "know this (not in RUNTIME_API_DOC) and the contract text asks the "
+                                           "mechanism itself to fail open"),
+    ("solpi_agentworld_live_r3", "L1.0"): ("wrong", "FALSE REJECTION for the stated reason: RUNTIME_API_DOC documents "
+                                           "`context -> new list | None`; (an unmentioned real flaw: it replaces the "
+                                           "newest large output before the agent saw it once)"),
+    ("solpi_agentworld_live_r3", "L1.1"): ("wrong", "FALSE REJECTION: key '/.solpi/tool_cache_<id>.txt' is readable "
+                                           "(" + READ_ANY + ")"),
+    ("solpi_agentworld_live_r4", "L2.0"): ("correct", "right to pass: condenses only failing bash outputs >= 2000 "
+                                           "chars, stores the full log under '/.solpi/bash_log_<call id>.txt' and "
+                                           "points the agent at that path (readable), try/except fail-open; minor: "
+                                           "drops the result's `details`"),
+    ("solpi_agentworld_live_r4", "L1.0"): ("questionable", "rejected on a theoretical MD5-collision objection (not a "
+                                           "real contract risk); fix 16 routed it back and the repair (SHA-256 + "
+                                           "content check) passed - the loop recovered, the verdict itself was a "
+                                           "nitpick"),
+    ("solpi_agentworld_live_r4", "L1.0r1"): ("correct", "pass: stores at '/.solpi/obs_<n>.txt' (readable), fail-open "
+                                             "handlers; the gate then rejected it on the numbers"),
+    ("solpi_agentworld_live_r4", "L1.1"): ("questionable", "no try/except in the context handler, but "
+                                           "AgentRuntime.project() already ignores a raising context handler, so "
+                                           "behaviour is fail-open; recall path '/.solpi/obs_<n>.txt' is readable. "
+                                           "Fix 16 routed it back; haiku's repair reply had no file block, so the "
+                                           "iteration was (correctly) abandoned"),
+}
+GATE_NOTE = {
+    ("solpi_agentworld_live_r2", "L1.0"): ("unverifiable", "arithmetic right, but the capability loss is an artifact "
+                                           "of the offline MockAgent, which never calls a free-form recall tool "
+                                           "(policy.py:_fallback only knows obs_recall placeholders and EPR "
+                                           "receipts) - a real agent was not run"),
+}
+
+
 def audit_sp(run: str) -> dict:
     rd = OUT / run
     ev = load(rd / "trace.jsonl")
@@ -398,30 +485,40 @@ def audit_sp(run: str) -> dict:
         want = last_gate_fail_art.get(idea, base_short)
         got = ro["candidate"][len("rollouts("):-1] if ro else None
         ok = got == want and set(ro["per_task"]) <= evolve_ids
-        st.add(r, f"{idea}.{it} 01 rollouts", "correct" if ok else "wrong",
+        st.add(r, f"{idea}.{it} 01 rollouts + 02 map-reduce", "correct" if ok else "wrong",
                f"rollouts of {got} (expected {want}: base, or the last gate-failed candidate after a route-back); "
                f"{len(ro['per_task'])} tasks, all evolve")
-        pr = next(e["data"] for e in rev if e["kind"] == "proposal")
-        # 03/04 proposal: diff real, parent base
-        if pr.get("error"):
-            exhausted = pr.get("exhausted")
-            st.add(r, f"{idea}.{it} 03/04 proposal", "correct" if not pr["files_changed"] else "wrong",
-                   f"no candidate: {pr['error'][:160]} (Ralph errors {len(pr.get('ralph_errors', []))}); "
-                   f"{'grid exhausted -> lineage ends' if exhausted else 'iteration abandoned'}")
-        else:
-            add = _added(pr["diff"])
-            forbidden = [w for w in ("holdout", "heldout", "configfix", "datalookup", "ood/") if w in add.lower()]
-            ids = [t for t in evolve_ids if t in add]
-            v = "correct" if pr["files_changed"] and not forbidden and not ids else "wrong" if not pr["files_changed"] \
-                else "questionable"
-            st.add(r, f"{idea}.{it} 03/04 proposal", v,
-                   f"change {pr['change'][:80]!r}, variant {pr.get('variant')}; actual diff touches "
-                   f"{pr['files_changed']}; Ralph repairs {pr.get('ralph_repairs')}; held-out references "
-                   f"{forbidden}, task ids {ids[:3]}")
-        cr = next((e["data"] for e in rev if e["kind"] == "critic"), None)
-        if cr is not None:
-            st.add(r, f"{idea}.{it} 05 review", "correct" if cr["accept"] else "unverifiable",
-                   ("pass: " if cr["accept"] else "REJECT: ") + str(cr.get("note"))[:300])
+        props = [e["data"] for e in rev if e["kind"] == "proposal"]
+        crits = [e["data"] for e in rev if e["kind"] == "critic"]
+        for pr in props:
+            tag = f"{pr['candidate']} " + ("04 re-implementation after review" if pr.get("review_repair") else
+                                           "03/04 proposal + Ralph loop")
+            if pr.get("error"):
+                exhausted = pr.get("exhausted")
+                st.add(r, tag, "correct",
+                       f"no admissible candidate: {pr['error'][:160]} (Ralph repairs {len(pr.get('ralph_errors', []))}); "
+                       + ("grid exhausted -> lineage ends" if exhausted else
+                          "the loop correctly refused to review/evaluate it (the defect is in the proposer's output)"))
+            else:
+                add = _added(pr["diff"])
+                forbidden = [w for w in ("holdout", "heldout", "configfix", "datalookup", "ood/") if w in add.lower()]
+                ids = [t for t in evolve_ids if t in add]
+                v = "correct" if pr["files_changed"] and not forbidden and not ids else "wrong" if not \
+                    pr["files_changed"] else "questionable"
+                st.add(r, tag, v,
+                       f"change {pr['change'][:80]!r}, variant {pr.get('variant')}; actual diff touches "
+                       f"{pr['files_changed']}; Ralph repairs {pr.get('ralph_repairs')}; held-out references "
+                       f"{forbidden}, task ids {ids[:3]}")
+        for cr in crits:
+            key = (run, cr["candidate"])
+            if key in REVIEW_CHECK:
+                v, why = REVIEW_CHECK[key]
+            elif cr["accept"]:
+                v, why = "correct", "pass"
+            else:
+                v, why = "unverifiable", "rejection not independently checked"
+            st.add(r, f"{cr['candidate']} 05 review ({'pass' if cr['accept'] else 'REJECT'})", v,
+                   f"{why} | reviewer: {str(cr.get('note'))[:220]}")
         g = next((e["data"] for e in rev if e["kind"] == "gate"), None)
         sv = next((e["data"] for e in rev if e["kind"] == "eval" and not e["data"]["candidate"].startswith("rollouts(")),
                   None)
@@ -440,18 +537,23 @@ def audit_sp(run: str) -> dict:
             if ok and acc and any(s < 0 for s in eff.values()):
                 v = "questionable"
                 txt += "; PASSES while another efficiency metric gets WORSE (the exists-rule of the gate)"
-            st.add(r, f"{idea}.{it} 06 screen + dual gate", v, txt)
+            if (run, g["candidate"]) in GATE_NOTE:
+                v, extra = GATE_NOTE[(run, g["candidate"])]
+                txt += "; " + extra
+            st.add(r, f"{g['candidate']} 06 screen + dual gate", v, txt)
             gates[f"{idea}.{it}"] = (acc, m)
             if not acc:
                 last_gate_fail_art[idea] = sv["summary"]["artifact"]
         dec = next(e["data"] for e in rev if e["kind"] == "decision")
+        final_prop = props[-1] if props else {}
         exp = ("frozen" if g is not None and g["accept"] else "gate_failed" if g is not None else
-               "rejected" if cr is not None and not cr["accept"] else "abandoned")
+               "rejected" if crits and not crits[-1]["accept"] else "abandoned")
         ok = dec["outcome"] == exp
         st.add(r, f"{idea}.{it} decision", "correct" if ok else "wrong",
                f"{dec['outcome']} (expected {exp}); {dec['why'][:160]}")
         if dec["outcome"] == "frozen":
-            frozen_names[idea] = pr
+            frozen_names[idea] = final_prop
+
     # firewall + composition
     fw_round = max(e["round"] for e in ev if e["kind"] == "round_start")
     fev = [e for e in ev if e["round"] == fw_round]
@@ -509,6 +611,13 @@ def audit_sp(run: str) -> dict:
     else:
         st.add(fw_round, "composition", "correct" if dec["kept"] is None else "wrong",
                "no survivor: incumbent stays the base")
+    mons = [e for e in ev if e["kind"] == "monitor"]
+    want = ["base_r1"] + (["composed_r1"] if kept_ideas else [])
+    ok = [m["data"]["version"] for m in mons] == want and all(set(m["data"]["sealed"]) <= {"holdout", "ood"}
+                                                               for m in mons)
+    st.add(None, "shadow monitor (base + composed only, sealed splits, trace only)", "correct" if ok else "wrong",
+           "; ".join(f"{m['data']['version']}: " + ", ".join(f"{s} S={v['S']:.3f}" for s, v in m["data"]["sealed"].items())
+                     for m in mons))
     # sealed isolation: no lineage eval touched a non-evolve task
     lin_tasks = {t for e in ev if e["kind"] == "eval" and e["round"] in rounds for t in e["data"]["per_task"]}
     st.add(None, "no sealed evaluation inside lineages", "correct" if lin_tasks <= evolve_ids else "wrong",

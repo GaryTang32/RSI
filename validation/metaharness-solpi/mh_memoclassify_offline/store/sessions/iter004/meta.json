@@ -42,10 +42,10 @@
   "other": 0
  },
  "view_files": 77,
- "view_chars": 2305391,
- "read_chars": 620122,
+ "view_chars": 2305378,
+ "read_chars": 620121,
  "error": null,
- "seconds": 0.015,
+ "seconds": 0.016,
  "candidates": [
   {
    "name": "i04_0_coverage",

@@ -131,8 +131,8 @@
    "iteration": 3,
    "change": "",
    "variant": 3,
-   "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted",
-   "ralph_repairs": 3,
+   "error": "variant grid exhausted",
+   "ralph_repairs": 1,
    "files_changed": [],
    "outcome": "abandoned",
    "next": "lineage ends (proposer exhausted)"
@@ -188,8 +188,8 @@
    "iteration": 2,
    "change": "",
    "variant": 2,
-   "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted",
-   "ralph_repairs": 3,
+   "error": "variant grid exhausted",
+   "ralph_repairs": 1,
    "files_changed": [],
    "outcome": "abandoned",
    "next": "lineage ends (proposer exhausted)"
@@ -245,8 +245,8 @@
    "iteration": 1,
    "change": "",
    "variant": 1,
-   "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted",
-   "ralph_repairs": 3,
+   "error": "variant grid exhausted",
+   "ralph_repairs": 1,
    "files_changed": [],
    "outcome": "abandoned",
    "next": "lineage ends (proposer exhausted)"
@@ -390,8 +390,8 @@
    "iteration": 1,
    "change": "",
    "variant": -1,
-   "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted",
-   "ralph_repairs": 3,
+   "error": "variant grid exhausted",
+   "ralph_repairs": 1,
    "files_changed": [],
    "outcome": "abandoned",
    "next": "lineage ends (proposer exhausted)"

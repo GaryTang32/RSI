@@ -3,8 +3,8 @@
  "method": "metaharness",
  "counts": {
   "correct": 27,
-  "questionable": 4,
-  "wrong": 1,
+  "questionable": 5,
+  "wrong": 0,
   "unverifiable": 0
  },
  "steps": [
@@ -84,7 +84,7 @@
    "round": 2,
    "step": "proposer input (history read, no sealed data)",
    "verdict": "questionable",
-   "evidence": "read 67 of 78 files (traces 20/30); prompt 61722 chars contains 0 of 10 sealed task inputs"
+   "evidence": "read 67 of 78 files (traces 20/30); prompt 61722 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 10 of 30 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
   },
   {
    "round": 2,
@@ -144,7 +144,7 @@
    "round": 3,
    "step": "proposer input (history read, no sealed data)",
    "verdict": "questionable",
-   "evidence": "read 59 of 130 files (traces 10/50); prompt 61841 chars contains 0 of 10 sealed task inputs"
+   "evidence": "read 59 of 130 files (traces 10/50); prompt 61841 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 40 of 50 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
   },
   {
    "round": 3,
@@ -155,8 +155,8 @@
   {
    "round": 3,
    "step": "proposal explore-direct-pattern-computation: claim vs actual diff",
-   "verdict": "correct",
-   "evidence": "base seed (visible); actual diff touches ['harness.py'] (+215 lines); no task ids / question text / literal answers in added lines | claim: LLM-guided algorithm extraction (explore-tool-driven-computation) fails on complex multi-step problems. Directly parsing question text for c"
+   "verdict": "questionable",
+   "evidence": "hard-codes regex solvers for the practice generator's four numeric question TEMPLATES (remainder of a^b, digit sum of a^b, 1-bits of a^b, the ledger wording) - 0 model calls on evolve, cost 0, joins the Pareto front as its cheapest point; exactly the 'dataset-specific' code the skill forbids and the paper's loop has no guard against (spec A2, A8.2) | claim: LLM-guided algorithm extraction (explore-tool-driven-computation) fails on complex multi-step problems. Directly parsing question text for c"
   },
   {
    "round": 3,
@@ -179,7 +179,7 @@
   {
    "round": 3,
    "step": "eval explore-direct-pattern-computation",
-   "verdict": "wrong",
+   "verdict": "correct",
    "evidence": "S=0.7000 (raw trials; ledger 0.7), cost 0.0 (ledger 0.0); split evolve, 10 units all in evolve"
   },
   {

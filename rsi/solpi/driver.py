@@ -7,7 +7,9 @@
     oracle analysis on base trajectories -> rank the idea pool; select n_lineages (breadth)
     for each idea: Lineage(...).run()  -> frozen candidate or nothing   (depth, training split only)
     for each frozen candidate: HoldoutFirewall.evaluate_frozen()       (one-way; failures reject silently)
-    keep nondominated survivors; compose them into one harness (opt-in mechanisms)
+    compose ALL firewall survivors into one harness (independent opt-in mechanisms; "nondominated" retention
+    applies among a lineage's own variants, sweep=True - not across lineages; the composed stack is re-gated
+    only with validate_composition=True)
     optional rounds > 1: the composed harness becomes the next base  ("preliminary" in the sources)
 """
 from __future__ import annotations
@@ -36,7 +38,8 @@ class Config:
 
     The gate (``gate``) is predeclared and frozen. ``n_lineages`` ideas are run
     (breadth), each for at most ``max_iters`` propose/implement/review/validate
-    cycles (depth) with a Ralph loop of ``ralph_max`` repairs. Validation uses the
+    cycles (depth) with a Ralph loop of ``ralph_max`` repairs; a review rejection goes back to implementation
+    (the proposer's ``fix`` with the reviewer's objections) up to ``review_max`` times. Validation uses the
     training ``screen_split`` (restricted to ``gate.families`` for single-environment
     protocols) with ``k`` trials per task; ``holdout_split`` is used only by the
     firewall. ``sweep=True`` makes each lineage evaluate its whole variant grid and
@@ -49,6 +52,7 @@ class Config:
     n_lineages: int = 10
     max_iters: int = 4
     ralph_max: int = 3
+    review_max: int = 2              # review rejection -> re-implementation rounds per iteration (spec B3.1)
     screen_split: str = "evolve"
     rollout_tasks_per_family: int = 2
     k: int = 1
@@ -119,6 +123,7 @@ class AutoResearchDriver:
                           base=base, base_metrics=bm, screen_split=self.cfg.screen_split,
                           rollout_tasks_per_family=self.cfg.rollout_tasks_per_family, k=self.cfg.k,
                           max_iters=self.cfg.max_iters, ralph_max=self.cfg.ralph_max, ledger=self.ledger,
+                          review_max=self.cfg.review_max,
                           sweep=self.cfg.sweep, tracer=self.tr if self.tr.enabled else None)
             results.append(lin.run())
         frozen = [r.frozen for r in results if r.frozen is not None]

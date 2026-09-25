@@ -57,7 +57,7 @@
   "tokens": 115043,
   "cost_usd": 0.0,
   "steps": 132,
-  "latency_s": 0.12473893165588379,
+  "latency_s": 0.14149999618530273,
   "error": null,
   "family": "ds_alpha",
   "meta": {

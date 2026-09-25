@@ -280,7 +280,11 @@ class IndepReplay:
 
 def load_policy(code: str):
     sys.modules.setdefault("policy_api", policy_api)
-    mod = type(sys)("indep_policy")
+    import hashlib
+
+    name = "indep_policy_" + hashlib.sha1(code.encode()).hexdigest()[:12]
+    mod = type(sys)(name)
+    sys.modules[name] = mod            # dataclasses in LLM-written policies look their module up
     exec(compile(code, "method.py", "exec"), mod.__dict__)  # noqa: S102 - archived run artifacts
     return mod.__dict__[mod.__dict__.get("NAME", "OptimalPolicy")]
 
@@ -785,6 +789,101 @@ class Audit:
                     out += [f"{b['score']:.4f}"]
         return sorted(set(out))
 
+    # ---- what the live agent saw: rebuild every Listing-1 prompt from disk, match the cache key
+    def audit_agent_prompts(self):
+        cache = OUT / f".cache_{self.run}"
+        if not cache.exists():
+            return
+        import hashlib
+
+        from rsi.core.artifact import Artifact
+        from rsi.core.llm import ClaudeCLI
+        from rsi.domains.discovery import SumDiffDomain
+        from rsi.dream.agent import AttemptContext, EditorAgent, history_records, record_of
+        from rsi.dream.question import _seed_of
+        from rsi.dream.tree import DiscoveryTree
+
+        dom = SumDiffDomain()
+        agent = EditorAgent(ClaudeCLI("haiku"), editable=["construct.py"])
+        name = ClaudeCLI("haiku").name
+        seed_score = self.trees[1]["root"]["score"]
+        worlds = {t: DiscoveryTree.from_json(self.trees[t]) for t in self.trees}
+        ok = bad = 0
+        misses = []
+        from rsi.dream import agent as agent_mod
+
+        legacy = self.run == "sumdiff_live"      # recorded BEFORE the tail-of-error fix: head-only errors
+
+        def old_render(r, max_chars: int = 600) -> str:
+            head = f"[round {r.round} {r.cell}{' dir=' + r.direction if r.direction else ''}] "
+            res = f"score={r.score:.6g}" if r.score is not None and r.fail_class == "ok" else \
+                f"FAILED ({r.fail_class}): {str(r.error)[:200]}"
+            prop = (r.proposal or "").strip().replace("\n", " ")[:max_chars]
+            return f"{head}{res}\n  proposal: {prop}"
+
+        cur_render = agent_mod.AttemptRecord.render
+        if legacy:
+            agent_mod.AttemptRecord.render = old_render
+        for t in sorted(self.trees):
+            tr = worlds[t]
+            hist = history_records([worlds[i] for i in sorted(worlds) if i < t][-8:])
+            for n in tr.non_root():
+                parent = tr.node(n.parent_id)
+                d = json.loads((self.d / "snapshots" / parent.artifact_id[:2] / f"{parent.artifact_id}.json").read_text())
+                ws = Artifact({k: v for k, v in d["files"].items() if v is not None})
+                lineage = [record_of(m) for m in tr.nodes() if m.branch == n.branch and m.attempt < n.attempt]
+                sibs = [record_of(m) for m in tr.non_root() if m.branch != n.branch and m.round < n.round]
+                dirn = dict(tr.branch_tags.get(n.branch, {}))
+                ctx = AttemptContext(dom.describe(), parent.id, ws, parent.score, n.branch, n.attempt, t, lineage, sibs,
+                                     hist, seed_score, dirn,
+                                     f"Direction assigned to this branch: {dirn['direction']}." if dirn.get("direction")
+                                     else "", ["construct.py"])
+                prompt = agent.editor.build_prompt(ws, agent.build_instructions(ctx), None, ["construct.py"])
+                seed = _seed_of(self.cfg["seed"], t, n.branch, n.attempt)
+                h = hashlib.sha256(json.dumps([name, agent.system, prompt, None, seed]).encode()).hexdigest()
+                if (cache / h[:2] / f"{h}.json").exists():
+                    ok += 1
+                else:
+                    bad += 1
+                    misses.append(f"t{t}/{n.id}")
+        agent_mod.AttemptRecord.render = cur_render
+        self.step(None, "prompts", "every Listing-1 agent prompt rebuilt from disk state",
+                  "correct" if not bad else "wrong",
+                  f"{ok}/{ok + bad} prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, "
+                  f"siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM "
+                  f"cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
+                  + (" [rebuilt with the pre-fix head-only error rendering the run used]" if legacy else "")
+                  + (f"; not reproduced: {misses[:6]}" if misses else ""))
+
+    def audit_developer_prompts(self):
+        cache = OUT / f".cache_{self.run}"
+        dp = self.d / "dream_prompts"
+        if not cache.exists() or not dp.exists():
+            return
+        import hashlib
+
+        from rsi.core.llm import ClaudeCLI
+        from rsi.dream.developer import DEVELOPER_SYSTEM
+
+        name = ClaudeCLI("haiku").name
+        ok, bad, leak = 0, [], []
+        for f in sorted(dp.glob("*_prompt.txt")):
+            m = re.match(r"r(\d{4})_t(\d+)m(\d+)_a(\d+)_prompt", f.name)
+            t, mm, att = int(m.group(2)), int(m.group(3)) - 1, int(m.group(4))
+            seed = (self.cfg["seed"] * 100003 + t * 101 + mm) * 10 + att
+            prompt = f.read_text()
+            h = hashlib.sha256(json.dumps([name, DEVELOPER_SYSTEM, prompt, None, seed]).encode()).hexdigest()
+            (ok := ok + 1) if (cache / h[:2] / f"{h}.json").exists() else bad.append(f.name)
+            # the developer may see trace data (between-round feedback) but never data of a LATER world
+            later = [f"iter{i:02d}" for i in self.trees if i > t]
+            if any(f"trace_pool/{w}" in prompt for w in later):
+                leak.append(f.name)
+        self.step(None, "prompts", "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
+                  "correct" if not bad and not leak else "wrong",
+                  f"{ok}/{ok + len(bad)} saved developer prompts hash to an entry of the fresh LLM cache"
+                  + (f"; unmatched {bad}" if bad else "") + (f"; later-world data in {leak}" if leak else
+                                                             "; no manifest of a later live cycle in any prompt"))
+
     # ---- accounting / monitor ---------------------------------------------------------------
     def audit_costs(self):
         end = next(e["data"] for e in self.ev if e["kind"] == "run_end")
@@ -822,6 +921,8 @@ class Audit:
         self.audit_baseline()
         for t in sorted(self.trees):
             self.audit_cycle(t)
+        self.audit_agent_prompts()
+        self.audit_developer_prompts()
         self.audit_costs()
         # auditor's judgement (read from the traces by hand; see AUDIT.md): steps that pass every
         # mechanical check but do not make sense / were misled. Only ever downgrades a verdict.
@@ -846,9 +947,14 @@ _REPAIR = ("developer first attempt rejected on a reply-parser leftover (trailin
            "'invalid syntax, line N'; the repair round invented a cause (")
 JUDGEMENT = {
     ("sumdiff_offline", "selection", "cycle 1 policy selection"): (
-        "questionable", "rule-correct argmax, but a replay artefact: on 8 fresh online searches r0001 found less gain "
-        "(-0.0060, 95% CI [-0.0115, -0.0006]) at 7.1 vs 15 calls; Spearman(replay, online) = -1 (single world; the "
-        "ceiling value 1.0 also sat in a second branch) - spec §8.2/§8.4"),
+        "questionable", "rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh "
+        "one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 "
+        "never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) "
+        "at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Frugality bias of the replay ceiling - spec §8.2/§8.4"),
+    ("sumdiff_live_b", "selection", "cycle 1 policy selection"): (
+        "unverifiable", "rule-correct and prefix-justified (r0001 closes branch b2 after two flat results "
+        "1.0, 1.0; the unrevealed b2.a2 = 1.016 was not the ceiling), V 0.9333 vs 0.925 on ONE world; whether "
+        "r0001 is better ONLINE is not measured (a live ground truth would cost as much as the run)"),
     ("sumdiff_offline", "plan", "cycle 2 plan_grid (r0001)"): ("questionable", _ONE_MANIFEST),
     ("agentqa_offline", "plan", "cycle 2 plan_grid (r0003)"): ("questionable", _ONE_MANIFEST),
     ("sumdiff_live", "attempt", "t1/b0.a2"): ("wrong", _MISLED + "'avoids the fringe-related compilation issue'"),

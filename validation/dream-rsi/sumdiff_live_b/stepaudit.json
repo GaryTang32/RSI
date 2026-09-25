@@ -1,0 +1,331 @@
+{
+ "run": "sumdiff_live_b",
+ "counts": {
+  "correct": 45,
+  "unverifiable": 1
+ },
+ "steps": [
+  {
+   "round": 0,
+   "kind": "baseline",
+   "step": "seed evaluation",
+   "verdict": "correct",
+   "evidence": "trace S=0.910491, own re-grade=0.910491 (ok), mean of raw trials=0.9104910395109694, seed program == untouched domain seed: True"
+  },
+  {
+   "round": 1,
+   "kind": "plan",
+   "step": "cycle 1 plan_grid (r0000)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 1: (3, 2) ('parallel refine: fixed fallback grid (width x depth never adapts)'); trace requested (3, 2), used (3, 2)"
+  },
+  {
+   "round": 1,
+   "kind": "root",
+   "step": "cycle 1 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 0.910491 vs best so far 0.910491"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 3 batch ['b0.a2', 'b1.a2', 'b2.a2']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "9 probed cells vs 9 tree nodes"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.008158 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['hill', 'fringe', 'anneal']; claim names ['hill', 'anneal', 'fringe']; also edits 3 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (5 +/- lines); own re-grade 0.981502 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['anneal', 'window']; claim names ['anneal', 'window']; also edits 2 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); STAGES [] -> ['hill', 'anneal', 'hill']; claim names ['hill', 'anneal']; also edits 3 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (58 +/- lines); own re-grade 1.018324 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (6 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); STAGES ['anneal', 'window'] -> ['hill', 'fringe', 'window', 'anneal']; claim names ['hill', 'anneal', 'window', 'fringe']; also edits 6 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (4 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); STAGES ['hill', 'anneal', 'hill'] -> ['hill', 'fringe', 'anneal']; claim names ['hill', 'anneal', 'fringe']; also edits 4 code lines outside INIT/STAGES"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (39 +/- lines); own re-grade 1.018324 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (60 +/- lines); own re-grade 1.000000 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (53 +/- lines); own re-grade 1.016073 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1))"
+  },
+  {
+   "round": 1,
+   "kind": "gate",
+   "step": "cycle 1 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.018324 at b0.a1 vs best before 0.910491 -> accept=True; trace accept=True, best_after=1.018324, kept=t1/b0.a1"
+  },
+  {
+   "round": 1,
+   "kind": "manifest",
+   "step": "cycle 1 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 9, 'decision_rounds': 3, 'round_best': 1.0183243143690768, 'gain_early': 1.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 3, 'max_depth': 2, 'final_best': 1.0183243143690768, 'agent_calls': 9}"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0000_initial",
+   "verdict": "correct",
+   "evidence": "V = 0.925000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.925]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "V = 0.933333 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9333]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0002_t1m2",
+   "verdict": "correct",
+   "evidence": "V = 0.925000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.925]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "V = 0.921250 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9213]"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0000 -> history/r0001 (183 lines); base r0000 = strongest so far (value, recency); LLM claim: Replace fixed parallel refine with adaptive trajectory-based exploration: rank branches by successful anchors and improvement trends, prioritize roots and first refinements, selectively probe deeper a"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0002_t1m2",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0001 -> history/r0002 (41 lines); base r0001 = strongest so far (value, recency); LLM claim: Relax Priority 3 batching to include all non-hard-failed branches, not just promising ones, ensuring full parallelism utilization and thorough exploration while prioritizing promising directions"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0001 -> history/r0003 (82 lines); base r0001 = strongest so far (value, recency); LLM claim: Add parallelism-aware inclusion of weak-but-underexplored branches in Priority 3 (deeper refinements) when sufficient capacity remains (>= 2 slots), improving batch fill without over-probing"
+  },
+  {
+   "round": 1,
+   "kind": "selection",
+   "step": "cycle 1 policy selection",
+   "verdict": "unverifiable",
+   "evidence": "JUDGEMENT: rule-correct and prefix-justified (r0001 closes branch b2 after two flat results 1.0, 1.0; the unrevealed b2.a2 = 1.016 was not the ceiling), V 0.9333 vs 0.925 on ONE world; whether r0001 is better ONLINE is not measured (a live ground truth would cost as much as the run) || mechanical: own V [0.925, 0.933333, 0.925, 0.92125] -> argmax (incumbent kept on ties) r0001_t1m1; trace r0001_t1m1; next cycle deploys r0001; V(m*) - V(0) = +0.008333 >= 0"
+  },
+  {
+   "round": 1,
+   "kind": "beta_sweep",
+   "step": "cycle 1 beta sweep of r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "own AUC 0.1111 / penalty 0.3750 / degenerate True vs trace 0.111111 / 0.375 / True (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 2,
+   "kind": "plan",
+   "step": "cycle 2 plan_grid (r0001)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 2: (4, 1) ('early gains strong, late plateau -> widen and reduce depth'); trace requested (4, 1), used (4, 1)"
+  },
+  {
+   "round": 2,
+   "kind": "root",
+   "step": "cycle 2 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.018324 vs best so far 1.018324"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (4 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 2 batch ['b3.a0', 'b0.a1', 'b1.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (4 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 3 batch ['b2.a1', 'b3.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (2 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "8 probed cells vs 8 tree nodes"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (59 +/- lines); own re-grade 1.025081 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (68 +/- lines); own re-grade 1.019044 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (49 +/- lines); own re-grade 1.034904 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b3.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (67 +/- lines); own re-grade 1.022845 = recorded; context lineage=0, siblings=3, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (55 +/- lines); own re-grade 1.020539 = recorded; context lineage=1, siblings=2, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (77 +/- lines); own re-grade 1.036138 = recorded; context lineage=1, siblings=2, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (70 +/- lines); own re-grade 1.026264 = recorded; context lineage=1, siblings=5, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b3.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (78 +/- lines); own re-grade 1.035707 = recorded; context lineage=1, siblings=5, history=9 (H_(t-1))"
+  },
+  {
+   "round": 2,
+   "kind": "gate",
+   "step": "cycle 2 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.036138 at b1.a1 vs best before 1.018324 -> accept=True; trace accept=True, best_after=1.036138, kept=t2/b1.a1"
+  },
+  {
+   "round": 2,
+   "kind": "manifest",
+   "step": "cycle 2 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 8, 'decision_rounds': 3, 'round_best': 1.0361377782299992, 'gain_early': 1.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 4, 'max_depth': 1, 'final_best': 1.0361377782299992, 'agent_calls': 8}"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-1 agent prompt rebuilt from disk state",
+   "verdict": "correct",
+   "evidence": "17/17 prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
+   "verdict": "correct",
+   "evidence": "3/3 saved developer prompts hash to an entry of the fresh LLM cache; no manifest of a later live cycle in any prompt"
+  },
+  {
+   "round": null,
+   "kind": "cost",
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "calls per cycle own [9, 8] vs trace [9, 8]; meter 17; sum of per-attempt usd 0.9386 vs meter 0.9386; developer usd 0.3396 (3 calls); fresh cache: 20 entries, $1.2782 (= loop $1.2782)"
+  }
+ ]
+}

@@ -281,7 +281,7 @@ def run_sp(name: str) -> dict:
                  "score within 2% (relative) AND tokens or cost saving > 2%; firewall on holdout; compose survivors. "
                  "n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.")
     elif name in ("solpi_agentworld_live", "solpi_agentworld_live_r2",
-                  "solpi_agentworld_live_r3"):
+                  "solpi_agentworld_live_r3", "solpi_agentworld_live_r4"):
         from rsi.solpi import LLMReviewer
         dom = make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0)
         llm, cache = fresh_llm(name)
@@ -463,7 +463,8 @@ def reaudit(name: str) -> dict:
 
 RUNS = {"mh_memoclassify_offline": run_mh, "mh_agentqa_live": run_mh, "mh_agentqa_live_r2": run_mh, "solpi_agentworld_offline": run_sp,
         "solpi_agentworld_live": run_sp, "solpi_agentworld_live_r2": run_sp,
-        "solpi_agentworld_live_r3": run_sp}
+        "solpi_agentworld_live_r3": run_sp,
+        "solpi_agentworld_live_r4": run_sp}   # stage B: after fix 15 (reviewer sees the API) + fix 16 (review -> 04)
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["reaudit"]:

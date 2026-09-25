@@ -433,13 +433,11 @@
       "change": "",
       "variant": 3,
       "ralph_errors": [
-       "variant grid exhausted",
-       "cannot repair: variant grid exhausted",
-       "cannot repair: cannot repair: variant grid exhausted"
+       "variant grid exhausted"
       ],
       "stage": "implementation",
       "outcome": "abandoned",
-      "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      "error": "variant grid exhausted"
      }
     ],
     "n_iterations": 4
@@ -593,13 +591,11 @@
       "change": "",
       "variant": 2,
       "ralph_errors": [
-       "variant grid exhausted",
-       "cannot repair: variant grid exhausted",
-       "cannot repair: cannot repair: variant grid exhausted"
+       "variant grid exhausted"
       ],
       "stage": "implementation",
       "outcome": "abandoned",
-      "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      "error": "variant grid exhausted"
      }
     ],
     "n_iterations": 3
@@ -762,13 +758,11 @@
       "change": "",
       "variant": 1,
       "ralph_errors": [
-       "variant grid exhausted",
-       "cannot repair: variant grid exhausted",
-       "cannot repair: cannot repair: variant grid exhausted"
+       "variant grid exhausted"
       ],
       "stage": "implementation",
       "outcome": "abandoned",
-      "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      "error": "variant grid exhausted"
      }
     ],
     "n_iterations": 2
@@ -1225,13 +1219,11 @@
       "change": "",
       "variant": -1,
       "ralph_errors": [
-       "variant grid exhausted",
-       "cannot repair: variant grid exhausted",
-       "cannot repair: cannot repair: variant grid exhausted"
+       "variant grid exhausted"
       ],
       "stage": "implementation",
       "outcome": "abandoned",
-      "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+      "error": "variant grid exhausted"
      }
     ],
     "n_iterations": 2
@@ -1665,6 +1657,6 @@
    "latency_s": 0.0,
    "total_tokens": 0
   },
-  "seconds": 6.867488861083984
+  "seconds": 7.089632749557495
  }
 ]

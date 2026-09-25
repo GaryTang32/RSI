@@ -97,7 +97,9 @@ class UsageMeter:
     def total(self) -> Usage:
         with self._lock:
             out = Usage()
-            for u in self.by_role.values():
+            for role, u in self.by_role.items():
+                if role.endswith(":cached"):   # replayed cache hits: shown per role, not billed
+                    continue
                 out = out + u
             return out
 
@@ -179,6 +181,16 @@ _PRICES_PER_MTOK = {  # (input, output) USD per million tokens; only used when a
 }
 
 
+_ATTRIBUTION = re.compile(r"^[ \t#/*-]*(Co-Authored-By: Claude[^\n]*|Claude-Session: https://claude\.ai/\S*)[ \t]*\n?",
+                          re.M | re.I)
+
+
+def strip_attribution(text: str) -> str:
+    """Remove commit-attribution lines a headless ``claude -p`` child can inherit from
+    the host session and append to replies (they break generated code)."""
+    return _ATTRIBUTION.sub("", text)
+
+
 class ClaudeCLI(LLM):
     """Headless ``claude -p`` backend.
 
@@ -252,7 +264,8 @@ class ClaudeCLI(LLM):
             out_tok = int(u.get("output_tokens", 0))
             cost = float(data.get("total_cost_usd") or 0.0)
             usage = Usage(1, in_tok, out_tok, cost, dt)
-            return LLMResponse(text=data.get("result") or "", usage=usage, model=self.model, raw=data)
+            return LLMResponse(text=strip_attribution(data.get("result") or ""), usage=usage, model=self.model,
+                               raw=data)
         return LLMResponse(text="", usage=Usage(1, estimate_tokens(prompt), 0, 0.0, 0.0), model=self.model,
                            error=last_err)
 

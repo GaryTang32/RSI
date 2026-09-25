@@ -202,7 +202,9 @@ class LLMMechanismProposer:
     def fix(self, idea, prop, error):
         if prop.artifact is None or "code" not in prop.meta:
             return MechanismProposal(None, error=error, meta={"exhausted": True})
-        prompt = (f"This mechanism failed its exit check with:\n{error[:2000]}\n\nCode:\n```python\n{prop.meta['code']}"
+        prompt = (f"This mechanism failed a check (the implementation exit check, or the independent reviewer's "
+                  f"behavioural-contract review):\n{error[:2000]}\n\nFix the problem if it is real; keep the "
+                  f"mechanism.\n\nCode:\n```python\n{prop.meta['code']}"
                   f"\n```\n{RUNTIME_API_DOC}\nReturn the same JSON header and the corrected complete file in the same "
                   f"format (=== FILE: extensions/<name>.py ===).")
         resp = self.llm.complete(prompt, role="implementer", seed=prop.variant)

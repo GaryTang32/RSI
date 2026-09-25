@@ -1,5 +1,7 @@
 # Meta-Harness and SoL-Pi: from-scratch validation runs
 
+> Stage B (independent audit) is in [`AUDIT.md`](AUDIT.md). It corrected two statements in this file (the oracle numbers of run 2 and the r2 L2.1 review verdict), added fixes 16-17 and one more live run (`solpi_agentworld_live_r4`).
+
 Every run starts from its domain's **untouched seed artifact**, in a fresh directory `validation/metaharness-solpi/<run>/` that is deleted first. Live runs also get a fresh LLM cache, `validation/metaharness-solpi/.cache_<run>/`, also deleted first. Nothing comes from `.rsi_cache` or earlier results; no earlier attempt of this stage existed.
 
 Every run was produced by `python experiments/metaharness-solpi/validate_metaharness_solpi.py <run>`. Each run directory holds:
@@ -35,6 +37,7 @@ Every run was produced by `python experiments/metaharness-solpi/validate_metahar
 | `solpi_agentworld_live` | SoL-Pi, 2 free-form ideas, **haiku** implementer + LLM reviewer, mock agent backend | no survivor | (base only) | passes; LLM-facing doc bug found (fix 13) | $0.28, 8.9 min |
 | `solpi_agentworld_live_r2` | same, after fix 13 | no survivor | (base only) | passes; second doc gap found (fix 14) | $0.20, 6.3 min |
 | `solpi_agentworld_live_r3` | same, after fix 14 | no survivor (all 4 rejected by the reviewer; 3 of them wrongly) | (base only) | passes; reviewer gap found (fix 15, not re-run) | $0.24, 7.8 min |
+| `solpi_agentworld_live_r4` (stage B) | same, after fixes 15 + 16 (review -> implementation) | **L2 survives**: screen S 1.0, tokens -66%, cost -46% | holdout S 1.0, tokens -38%; ood S 1.0, tokens -45% | stage-B audit 22 correct / 2 questionable | $0.28, 8.8 min |
 
 **Live spend for this stage, from the fresh caches' entries (ground truth).**
 - Connectivity check: $0.001.
@@ -90,7 +93,7 @@ Every run was produced by `python experiments/metaharness-solpi/validate_metahar
 - n_lineages 10, max_iters 4.
 
 **Narrative (one line per lineage).**
-- Oracle ranking: D1 0.72, T11 0.72, T3 0.67, T7 0.67, C6 0.53, P14 0.28, P8 0.28, C23 0.11, P20 0.002, R5 0.002.
+- Oracle ranking (from the trace, seq 4; corrected in stage B - an earlier draft listed other numbers): D1 0.662, T11 0.662, T3 0.599, T7 0.599, C6 0.476, P14 0.283, P8 0.283, C23 0.154, P20 0.002, R5 0.002.
 - **D1 (EPR).** Frozen at iteration 0: tokens −48.6%, cost −33.5%. Firewall **pass** (held-out tokens −31%, cost −24%).
 - **T11 pytest_quiet (trick).** Frozen at iteration 0 on training (cost −39%). Firewall **reject**: no efficiency gain on the held-out families, which do not run pytest.
 - **T3 tail_trim (trick).** Variants 20 → 40 → 120 lines fail the capability floor (0.83, 0.83, 0.92). The grid is exhausted and the lineage is abandoned.
@@ -176,7 +179,7 @@ The setup is identical. Because the cache is fresh, the seed replies differ: evo
 - The API doc never said the names are pre-imported, nor how to get the call id: this is **fix 13**.
 
 **`solpi_agentworld_live_r2`** (after fix 13). No import or attribute errors.
-- **L2 it0 and it1.** Rejected by the reviewer: the logs were stored under `rt.store["/<id>.txt"]`, but the agent was told to `cat /.solpi/...`. I checked `agentworld/base.py:_read_any`: store keys must *be* the `/.solpi/` paths, so the reviewer was **right** and the recall would have returned ENOENT.
+- **L2 it0 and it1.** Rejected by the reviewer. *Stage-B correction:* only it0 was rightly rejected (logs stored under `rt.store["/<id>.txt"]` while the agent was told to `cat /.solpi/...`; `agentworld/base.py:_read_any` would return ENOENT). it1 stored under `/.solpi/full_log_<n>.txt` and pointed the agent at the same path, so that rejection was **false** (see `AUDIT.md`).
 - **L1 it0.** A new `recall` tool, reviewed as pass. The gate result: tokens −65%, cost −36%, but score 0.892 < 0.98 floor → "capability below floor". The lineage routed back to 01.
 - **L1 it1.** Rejected (no recall mechanism).
 - The doc gap about store keys is **fix 14**.
@@ -225,3 +228,8 @@ The setup is identical. Because the cache is fresh, the seed replies differ: evo
 5. **The capability floor did not stop do-less shortcuts.** P20 at 24 turns passed training, and the firewall caught it only for lack of efficiency. The composed stack cost more than EPR alone, and composition is not re-gated. The blog itself warns that losses "can accumulate once mechanisms combine". Both are consistent with the impl doc's S6 / S7 findings.
 6. **Oracle analysis** only orders the lineages when n_lineages equals the pool size (as here). The oracle ranks tricks near the top, as expected: it estimates opportunity, not validity.
 7. **Scale.** 10 ideas and 3 families against 152 ideas and 535 environments. The rates (for example "1 in 40 survive") are **unverifiable** at this scale.
+
+
+## Stage B addendum: `solpi_agentworld_live_r4`
+
+Same setup as r3, fresh cache, after fix 15 (the reviewer sees `RUNTIME_API_DOC`) and fix 16 (a review rejection goes back to implementation). L2's haiku-written `condense_bash_failures` passed review, the training gate and the held-out firewall. This is the first live survivor. L1's first mechanism was rejected on an MD5-collision nitpick, repaired in the same iteration and then failed the gate (it added traffic). Details and the per-step audit are in `AUDIT.md` §2.6.

@@ -240,7 +240,7 @@ All scripts accept `--llm sim|claude:haiku --seeds N --quick --workers W --out P
 
 ## 7. Tests
 
-`python -m pytest tests/test_dream-rsi_core.py tests/test_dream-rsi_loop.py tests/test_dream-rsi_domains.py tests/test_dream-rsi_review.py tests/test_dream-rsi_review2.py tests/test_dream-rsi_validation.py` runs 64 tests offline and deterministically in ≈25 s (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all four discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
+`python -m pytest tests/test_dream-rsi_core.py tests/test_dream-rsi_loop.py tests/test_dream-rsi_domains.py tests/test_dream-rsi_review.py tests/test_dream-rsi_review2.py tests/test_dream-rsi_validation.py tests/test_dream-rsi_validation_stepaudit.py` runs 70 tests offline and deterministically in ≈25 s (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all four discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
 
 ## 8. Adversarial review (2026-09-25)
 
@@ -308,6 +308,26 @@ When the task's domain has sealed holdout/ood splits, `rsi.trace.ShadowMonitor` 
 4. **Claims of repaired revisions.** A repaired developer revision keeps its first attempt's claim, as `<claim> [repaired: <fix>]`. Before, only the fix was reported as the change.
 
 Decisions of offline runs are unchanged by all four.
+
+**Stage-B independent audit** (`validation/dream-rsi/AUDIT.md`, `experiments/dream-rsi/validate_stepaudit.py`).
+
+What the audit re-derived:
+- It re-derived all 335 steps of the four validation runs from disk with independent code.
+- A second replay implementation, written from the paper's §3 semantics, reproduces all 36 replay evaluations (64 world episodes).
+- All 53 agent prompts and 12 developer prompts of the live runs were rebuilt from disk, and each one hashes to its fresh-cache entry. So the proposers saw exactly the recorded prefix and history.
+
+Verdicts: 315 correct, 4 questionable, 15 wrong and 1 unverifiable. All 15 wrong steps come from the reply-parser bug.
+
+Further fixes:
+5. **Leading fence.** `strip_reply_terminators` also drops a leading ```` ```python ```` fence. `parse_file_blocks` leaves it whenever the closing fence is not the last line of the file block.
+6. **Offending line in the static check.** `static_check` quotes the offending source line of a syntax error. "invalid syntax (line 188)" alone led the live developer to invent causes in its repair round.
+7. **Proposal clipping (documentation).** In the agent's history, each earlier `proposal.md` is clipped to 600 characters (`AttemptRecord.render(max_chars=600)`), in addition to deviation 16.
+
+Post-fix live re-run (`sumdiff_live_b`, haiku, T = 2, 3 × 3 grid, $1.28):
+- 17/17 attempts compiled.
+- No developer revision needed a repair round.
+- Γ went 0.9105 → 1.0361.
+- A haiku-written policy was deployed by replay: V 0.933 vs 0.925.
 
 **What the validation says about the method.** The offline ground truth confirms spec §8.2 and §8.4 on a concrete step:
 - At t = 1 (one world), replay preferred a frugal adaptive policy (V 0.910 vs 0.865), only because the recorded tree held the ceiling value in a second branch.

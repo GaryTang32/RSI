@@ -2,8 +2,8 @@
  "run": "mh_memoclassify_offline",
  "method": "metaharness",
  "counts": {
-  "correct": 58,
-  "questionable": 5,
+  "correct": 61,
+  "questionable": 2,
   "wrong": 0,
   "unverifiable": 0
  },
@@ -24,7 +24,7 @@
    "round": 1,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 2 prior systems = ['fewshot_all', 'no_memory']; view exposes 20 files / 579542 chars of 2 systems (by kind {'code': 2, 'traces': 6, 'per_task': 6, 'scores': 2, 'summaries': 0, 'run_files': 2, 'other': 2})"
+   "evidence": "frontier recomputed from 2 prior systems = ['fewshot_all', 'no_memory']; view exposes 20 files / 579540 chars of 2 systems (by kind {'code': 2, 'traces': 6, 'per_task': 6, 'scores': 2, 'summaries': 0, 'run_files': 2, 'other': 2})"
   },
   {
    "round": 1,
@@ -84,13 +84,13 @@
    "round": 2,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 4 prior systems = ['i01_0_retrieve_topk', 'i01_1_label_list', 'no_memory']; view exposes 39 files / 1065073 chars of 4 systems (by kind {'code': 4, 'traces': 12, 'per_task': 12, 'scores': 4, 'summaries': 0, 'run_files': 3, 'other': 4})"
+   "evidence": "frontier recomputed from 4 prior systems = ['i01_0_retrieve_topk', 'i01_1_label_list', 'no_memory']; view exposes 39 files / 1065064 chars of 4 systems (by kind {'code': 4, 'traces': 12, 'per_task': 12, 'scores': 4, 'summaries': 0, 'run_files': 3, 'other': 4})"
   },
   {
    "round": 2,
    "step": "proposer input (history read, no sealed data)",
-   "verdict": "questionable",
-   "evidence": "read 15 of 39 files (traces 6/12); prompt 0 chars contains 0 of 7 sealed task inputs"
+   "verdict": "correct",
+   "evidence": "read 15 of 39 files (traces 6/12); prompt 0 chars contains 0 of 7 sealed task inputs (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read lists only the parents it diagnosed)"
   },
   {
    "round": 2,
@@ -138,13 +138,13 @@
    "round": 3,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 6 prior systems = ['i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 58 files / 1665901 chars of 6 systems (by kind {'code': 6, 'traces': 18, 'per_task': 18, 'scores': 6, 'summaries': 0, 'run_files': 4, 'other': 6})"
+   "evidence": "frontier recomputed from 6 prior systems = ['i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 58 files / 1665890 chars of 6 systems (by kind {'code': 6, 'traces': 18, 'per_task': 18, 'scores': 6, 'summaries': 0, 'run_files': 4, 'other': 6})"
   },
   {
    "round": 3,
    "step": "proposer input (history read, no sealed data)",
-   "verdict": "questionable",
-   "evidence": "read 19 of 58 files (traces 6/18); prompt 0 chars contains 0 of 7 sealed task inputs"
+   "verdict": "correct",
+   "evidence": "read 19 of 58 files (traces 6/18); prompt 0 chars contains 0 of 7 sealed task inputs (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read lists only the parents it diagnosed)"
   },
   {
    "round": 3,
@@ -198,13 +198,13 @@
    "round": 4,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 8 prior systems = ['i03_1_notes', 'i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 77 files / 2305391 chars of 8 systems (by kind {'code': 8, 'traces': 24, 'per_task': 24, 'scores': 8, 'summaries': 0, 'run_files': 5, 'other': 8})"
+   "evidence": "frontier recomputed from 8 prior systems = ['i03_1_notes', 'i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 77 files / 2305378 chars of 8 systems (by kind {'code': 8, 'traces': 24, 'per_task': 24, 'scores': 8, 'summaries': 0, 'run_files': 5, 'other': 8})"
   },
   {
    "round": 4,
    "step": "proposer input (history read, no sealed data)",
-   "verdict": "questionable",
-   "evidence": "read 23 of 77 files (traces 6/24); prompt 0 chars contains 0 of 7 sealed task inputs"
+   "verdict": "correct",
+   "evidence": "read 23 of 77 files (traces 6/24); prompt 0 chars contains 0 of 7 sealed task inputs (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read lists only the parents it diagnosed)"
   },
   {
    "round": 4,
@@ -215,8 +215,8 @@
   {
    "round": 4,
    "step": "proposal i04_1_param_char_budget_14000: claim vs actual diff",
-   "verdict": "correct",
-   "evidence": "base i01_0_retrieve_topk (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Tuning char_budget to 14000 should balance recall and prompt length."
+   "verdict": "questionable",
+   "evidence": "BEHAVIOURAL NO-OP: per-unit scores and cost identical to its base i01_0_retrieve_topk (diff ['memory.py']); one evaluation wasted | claim: Tuning char_budget to 14000 should balance recall and prompt length."
   },
   {
    "round": 4,
@@ -258,13 +258,13 @@
    "round": 5,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 10 prior systems = ['i04_0_coverage', 'i03_1_notes', 'i01_0_retrieve_topk', 'i04_1_param_char_budget_14000', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 96 files / 2941022 chars of 10 systems (by kind {'code': 10, 'traces': 30, 'per_task': 30, 'scores': 10, 'summaries': 0, 'run_files': 6, 'other': 10})"
+   "evidence": "frontier recomputed from 10 prior systems = ['i04_0_coverage', 'i03_1_notes', 'i01_0_retrieve_topk', 'i04_1_param_char_budget_14000', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 96 files / 2941009 chars of 10 systems (by kind {'code': 10, 'traces': 30, 'per_task': 30, 'scores': 10, 'summaries': 0, 'run_files': 6, 'other': 10})"
   },
   {
    "round": 5,
    "step": "proposer input (history read, no sealed data)",
-   "verdict": "questionable",
-   "evidence": "read 27 of 96 files (traces 6/30); prompt 0 chars contains 0 of 7 sealed task inputs"
+   "verdict": "correct",
+   "evidence": "read 27 of 96 files (traces 6/30); prompt 0 chars contains 0 of 7 sealed task inputs (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read lists only the parents it diagnosed)"
   },
   {
    "round": 5,
@@ -318,19 +318,19 @@
    "round": 6,
    "step": "round_start state (frontier, visible systems, budget)",
    "verdict": "correct",
-   "evidence": "frontier recomputed from 12 prior systems = ['i05_1_crossover', 'i01_1_label_list', 'no_memory']; view exposes 115 files / 3436442 chars of 12 systems (by kind {'code': 12, 'traces': 36, 'per_task': 36, 'scores': 12, 'summaries': 0, 'run_files': 7, 'other': 12})"
+   "evidence": "frontier recomputed from 12 prior systems = ['i05_1_crossover', 'i01_1_label_list', 'no_memory']; view exposes 115 files / 3436430 chars of 12 systems (by kind {'code': 12, 'traces': 36, 'per_task': 36, 'scores': 12, 'summaries': 0, 'run_files': 7, 'other': 12})"
   },
   {
    "round": 6,
    "step": "proposer input (history read, no sealed data)",
-   "verdict": "questionable",
-   "evidence": "read 31 of 115 files (traces 6/36); prompt 0 chars contains 0 of 7 sealed task inputs"
+   "verdict": "correct",
+   "evidence": "read 31 of 115 files (traces 6/36); prompt 0 chars contains 0 of 7 sealed task inputs (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read lists only the parents it diagnosed)"
   },
   {
    "round": 6,
    "step": "proposal i06_0_param_char_budget_4500: claim vs actual diff",
-   "verdict": "correct",
-   "evidence": "base i05_1_crossover (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Tuning char_budget to 4500 should balance recall and prompt length."
+   "verdict": "questionable",
+   "evidence": "a parameter variant (param_char_budget_4500), which the skill says to rewrite ('identical to the base except for numbers'); diff ['memory.py'] | claim: Tuning char_budget to 4500 should balance recall and prompt length."
   },
   {
    "round": 6,

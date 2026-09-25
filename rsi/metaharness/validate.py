@@ -16,7 +16,7 @@ from __future__ import annotations
 import ast
 import os
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Iterable, Optional
 
 from ..core.artifact import Artifact
@@ -54,6 +54,7 @@ class InterfaceValidator:
         import select
         import signal
         r, w = os.pipe()
+        before = _meter_states(llm)
         pid = os.fork()
         if pid == 0:                                     # child
             os.close(r)
@@ -62,7 +63,9 @@ class InterfaceValidator:
                     err = domain.smoke(artifact, llm)
                 except Exception as e:  # noqa: BLE001
                     err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
-                data = pickle.dumps(err)
+                # the child's model calls are real spend that the parent's meters would never see (live:
+                # $0.02-0.03 per run missing from the loop meter) -> ship the usage delta back with the verdict
+                data = pickle.dumps((err, _usage_delta(before, _meter_states(llm))))
                 os.write(w, len(data).to_bytes(8, "big") + data)
             finally:
                 os._exit(0)
@@ -79,7 +82,8 @@ class InterfaceValidator:
                     buf += chunk
                 if len(buf) >= 8:
                     n = int.from_bytes(buf[:8], "big")
-                    err = pickle.loads(buf[8:8 + n])
+                    err, delta = pickle.loads(buf[8:8 + n])
+                    _apply_usage(llm, delta)
                 else:
                     err = "smoke process died"
         finally:
@@ -90,6 +94,43 @@ class InterfaceValidator:
                 pass
             os.waitpid(pid, 0)
         return (err is None), (err or "OK")
+
+
+def _meters(llm) -> list:
+    """The usage meters along a wrapper chain (e.g. CachedLLM -> ClaudeCLI)."""
+    out, seen = [], set()
+    while llm is not None and id(llm) not in seen:
+        seen.add(id(llm))
+        m = getattr(llm, "meter", None)
+        if m is not None and hasattr(m, "by_role"):
+            out.append(m)
+        llm = getattr(llm, "__dict__", {}).get("inner")
+    return out
+
+
+def _meter_states(llm) -> list[dict]:
+    return [{r: asdict(u) for r, u in dict(m.by_role).items()} for m in _meters(llm)]
+
+
+def _usage_delta(before: list[dict], after: list[dict]) -> list[dict]:
+    out = []
+    for b, a in zip(before, after):
+        d = {}
+        for role, u in a.items():
+            p = b.get(role, {})
+            diff = {k: u[k] - p.get(k, 0) for k in u}
+            if any(diff.values()):
+                d[role] = diff
+        out.append(d)
+    return out
+
+
+def _apply_usage(llm, delta: list[dict]) -> None:
+    """Add the forked smoke's usage to the parent's meters (same roles as the child metered them)."""
+    from ..core.llm import Usage
+    for m, d in zip(_meters(llm), delta or []):
+        for role, u in d.items():
+            m.add(role, Usage(**u))
 
 
 @dataclass

@@ -228,4 +228,4 @@
 {"type": "eval_step", "step": 45, "input_preview": "ziru: tiha pedorse fletrunu tigubra pivu vufi fleka.", "pred": "vufi", "tgt": "zerim-seya", "ok": false, "prompt_len": 243, "context_chars": 191, "prompt_hash": "8b2f4764"}
 {"type": "eval_step", "step": 46, "input_preview": "klizi: tador trumimar kami samodo jiten jifleta zilo torsane xokel zeru hako kapaspe.", "pred": "zeru", "tgt": "koka-taka", "ok": false, "prompt_len": 276, "context_chars": 191, "prompt_hash": "6a4ae755"}
 {"type": "eval_step", "step": 47, "input_preview": "kelya: stosolya kotor lolobra pemi hadoya pijise tador kapaspe.", "pred": "pemi", "tgt": "pasgu-kelpi", "ok": false, "prompt_len": 254, "context_chars": 191, "prompt_hash": "15bdec09"}
-{"type": "done", "train_acc": 0.0, "eval_acc": 0.0, "memory_context_chars": 191.0, "llm_calls": 228, "runtime_seconds": 0.021}
+{"type": "done", "train_acc": 0.0, "eval_acc": 0.0, "memory_context_chars": 191.0, "llm_calls": 228, "runtime_seconds": 0.019}

@@ -84,7 +84,7 @@
    "round": 2,
    "step": "proposer input (history read, no sealed data)",
    "verdict": "questionable",
-   "evidence": "read 76 of 78 files (traces 28/30); prompt 61425 chars contains 0 of 10 sealed task inputs"
+   "evidence": "read 76 of 78 files (traces 28/30); prompt 61425 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 2 of 30 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
   },
   {
    "round": 2,
@@ -144,7 +144,7 @@
    "round": 3,
    "step": "proposer input (history read, no sealed data)",
    "verdict": "questionable",
-   "evidence": "read 77 of 135 files (traces 20/50); prompt 61767 chars contains 0 of 10 sealed task inputs"
+   "evidence": "read 77 of 135 files (traces 20/50); prompt 61767 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 30 of 50 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
   },
   {
    "round": 3,

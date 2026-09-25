@@ -241,7 +241,7 @@
    "kind": "selection",
    "step": "cycle 1 policy selection",
    "verdict": "questionable",
-   "evidence": "JUDGEMENT: rule-correct argmax, but a replay artefact: on 8 fresh online searches r0001 found less gain (-0.0060, 95% CI [-0.0115, -0.0006]) at 7.1 vs 15 calls; Spearman(replay, online) = -1 (single world; the ceiling value 1.0 also sat in a second branch) - spec \u00a78.2/\u00a78.4 || mechanical: own V [0.865, 0.91, 0.91, 0.91] -> argmax (incumbent kept on ties) r0001_t1m1; trace r0001_t1m1; next cycle deploys r0001; V(m*) - V(0) = +0.045000 >= 0"
+   "evidence": "JUDGEMENT: rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Frugality bias of the replay ceiling - spec \u00a78.2/\u00a78.4 || mechanical: own V [0.865, 0.91, 0.91, 0.91] -> argmax (incumbent kept on ties) r0001_t1m1; trace r0001_t1m1; next cycle deploys r0001; V(m*) - V(0) = +0.045000 >= 0"
   },
   {
    "round": 1,

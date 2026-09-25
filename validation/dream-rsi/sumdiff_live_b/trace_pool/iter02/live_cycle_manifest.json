@@ -1,0 +1,34 @@
+{
+ "iteration": 2,
+ "planned_grid": {
+  "branch_count": 4,
+  "refine_count": 1,
+  "reason": "early gains strong, late plateau -> widen and reduce depth"
+ },
+ "effective_grid": {
+  "branch_count": 4,
+  "refine_count": 1,
+  "reason": "early gains strong, late plateau -> widen and reduce depth"
+ },
+ "opened_width": 4,
+ "max_depth": 1,
+ "probe_work": 8,
+ "decision_rounds": 3,
+ "batch_sizes": [
+  3,
+  3,
+  2
+ ],
+ "root_score": 1.0183243143690768,
+ "round_best": 1.0361377782299992,
+ "final_best": 1.0361377782299992,
+ "beta": 0.6,
+ "gain_early": 1.0,
+ "gain_late": 0.0,
+ "fail_frac": 0.0,
+ "hard_fail_frac": 0.0,
+ "policy": "e8ed3dc23736",
+ "agent_calls": 8,
+ "plan_reason": "early gains strong, late plateau -> widen and reduce depth",
+ "plan_error": null
+}

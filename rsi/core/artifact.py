@@ -199,5 +199,21 @@ def parse_file_blocks(text: str) -> dict[str, str]:
         m = re.match(r"^```[^\n]*\n(.*)\n```\s*$", body, re.S)
         if m:
             body = m.group(1)
+        else:
+            # Models often fence only one end of a block, or close it with a bare "===" /
+            # "=== END ... ===" line; none of that belongs to the file.
+            lines = body.split("\n")
+            if lines and re.fullmatch(r"\s*```[\w+.\-]*\s*", lines[0]):
+                close = next((j for j in range(1, len(lines)) if lines[j].strip() == "```"), None)
+                # fenced code followed by prose: keep only the fenced part
+                lines = lines[1:close] if close is not None else lines[1:]
+            def _fences() -> int:
+                return sum(1 for l in lines if l.strip().startswith("```"))
+            # a trailing bare fence is debris only when it is unmatched (balanced fences are content,
+            # e.g. a code sample inside markdown)
+            while lines and (re.fullmatch(r"\s*===+(\s*END\b.*?===+)?\s*", lines[-1] or " ")
+                             or (lines[-1].strip() == "```" and _fences() % 2 == 1)):
+                lines.pop()
+            body = "\n".join(lines)
         out[name] = body.rstrip() + "\n"
     return out

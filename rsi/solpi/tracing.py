@@ -97,7 +97,7 @@ class SolpiTracer:
                       idea={"id": idea.id, "family": idea.family, "title": idea.title, "mechanism": idea.mechanism,
                             "grid": idea.grid},
                       idea_kind_ground_truth=idea.kind, lineage_iteration=it, max_iters=lin.max_iters,
-                      ralph_max=lin.ralph_max, sweep=lin.sweep, screen_tasks=len(lin.screen),
+                      ralph_max=lin.ralph_max, review_max=lin.review_max, sweep=lin.sweep, screen_tasks=len(lin.screen),
                       rollout_tasks=len(lin._rollout_tasks()),
                       history=[{k: h.get(k) for k in ("iteration", "change", "variant", "stage", "outcome")} |
                                {"gate_reason": (h.get("gate") or {}).get("reason")} for h in history],
@@ -111,8 +111,9 @@ class SolpiTracer:
                       "\n".join(f"- {k}: {v}" for k, v in evidence.items() if k != "worst"),
                       evidence=evidence)
 
-    def proposal(self, lin, it: int, prop, ralph_errors: list[str], base) -> str:
-        name = f"{lin.idea.id}.{it}"
+    def proposal(self, lin, it: int, prop, ralph_errors: list[str], base, repair: int = 0) -> str:
+        """``repair`` > 0: the n-th re-implementation after a review rejection (05 -> 04) in the same iteration."""
+        name = f"{lin.idea.id}.{it}" + (f"r{repair}" if repair else "")
         if not self.enabled:
             return name
         reply = prop.meta.get("reply") or prop.meta.get("code") or ""
@@ -123,7 +124,9 @@ class SolpiTracer:
                          error=prop.error, variant=prop.variant, ralph_errors=ralph_errors,
                          ralph_repairs=len(ralph_errors),
                          files_changed=sorted(base.changed_files(prop.artifact)) if prop.artifact else [],
-                         proposer_usage=prop.usage.to_dict(), exhausted=bool(prop.meta.get("exhausted")))
+                         proposer_usage=prop.usage.to_dict(), exhausted=bool(prop.meta.get("exhausted")),
+                         stage="04 re-implementation after review rejection" if repair else "03/04 proposal",
+                         review_repair=repair)
         return name
 
     def review(self, name: str, ok: bool, why: str, reviewer) -> None:

@@ -122,8 +122,9 @@ def test_units_rounding_is_half_up():
 
 
 def test_make_suite_default_structure():
-    s = make_suite()
+    s = make_suite(dedupe=False)
     assert {k: len(v) for k, v in s.splits.items()} == {"evolve": 20, "holdout": 20, "ood": 24, "smoke": 2}
+    assert len(make_suite().splits["holdout"]) == 19          # default drops the duplicated holdout question
     assert s.families("evolve") == ["numeric"] and s.families("holdout") == ["numeric"]
     assert s.families("ood") == ["dates", "lists", "numbertheory", "strings"]
     assert s.splits["smoke"] == s.splits["evolve"][:2]
@@ -171,17 +172,18 @@ def test_splits_use_independent_rng_streams():
 
 def test_default_suite_overlap_and_decontaminate():
     """Finding: factorial digit sums have only 46 questions, so seed 0 repeats one evolve
-    question in holdout (and seed 1 repeats one inside evolve). make_suite is left
-    unchanged for reproducibility; decontaminate() is the opt-in fix."""
+    question in holdout (and seed 1 repeats one inside evolve). make_suite now applies
+    decontaminate() by default; dedupe=False reproduces the raw suites."""
     def overlap(s):
         ev = [s.tasks[t].input for t in s.splits["evolve"]]
         ho = {s.tasks[t].input for t in s.splits["holdout"]}
         return len(set(ev) & ho), len(ev) - len(set(ev))
 
-    assert overlap(make_suite(seed=0)) == (1, 0)
-    assert overlap(make_suite(seed=1)) == (0, 1)
+    assert overlap(make_suite(seed=0, dedupe=False)) == (1, 0)
+    assert overlap(make_suite(seed=1, dedupe=False)) == (0, 1)
+    assert overlap(make_suite(seed=0)) == (0, 0) and overlap(make_suite(seed=1)) == (0, 0)
     for seed in (0, 1):
-        raw = make_suite(seed=seed)
+        raw = make_suite(seed=seed, dedupe=False)
         clean = decontaminate(raw)
         assert overlap(clean) == (0, 0)
         assert len(clean.splits["evolve"]) + len(clean.splits["holdout"]) == 39

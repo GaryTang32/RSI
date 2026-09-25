@@ -34,10 +34,10 @@
   "other": 0
  },
  "view_files": 39,
- "view_chars": 1065073,
+ "view_chars": 1065064,
  "read_chars": 457977,
  "error": null,
- "seconds": 0.009,
+ "seconds": 0.012,
  "candidates": [
   {
    "name": "i02_0_contrastive",

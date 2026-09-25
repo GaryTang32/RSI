@@ -132,4 +132,4 @@
 {"type": "eval_step", "step": 45, "input_preview": "yata: neguvo lunvin rimlun zinekel kodrivin hastoji zepi xoserim brapasnu neze pemo kazeji.", "pred": "dovu-zegu", "tgt": "nuko-mivu", "ok": false, "prompt_len": 7345, "context_chars": 7254, "prompt_hash": "c4c1eb37"}
 {"type": "eval_step", "step": 46, "input_preview": "yata: kazeji tidorpra vintorya vorati driko kelta.", "pred": "lunko-tenzi", "tgt": "lunko-tenzi", "ok": true, "prompt_len": 7304, "context_chars": 7254, "prompt_hash": "72abd013"}
 {"type": "eval_step", "step": 47, "input_preview": "prarim: kelmo seji zipe vumiwe kaxopra rusto hastoji solhaze.", "pred": "flerim-driru", "tgt": "vogro-serim", "ok": false, "prompt_len": 7315, "context_chars": 7254, "prompt_hash": "8f1eb5ab"}
-{"type": "done", "train_acc": 0.27380952380952384, "eval_acc": 0.4166666666666667, "memory_context_chars": 7254.0, "llm_calls": 132, "runtime_seconds": 0.102}
+{"type": "done", "train_acc": 0.27380952380952384, "eval_acc": 0.4166666666666667, "memory_context_chars": 7254.0, "llm_calls": 132, "runtime_seconds": 0.094}

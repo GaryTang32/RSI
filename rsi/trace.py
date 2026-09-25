@@ -39,24 +39,30 @@ from .core.evaluate import Evaluator
 from .core.llm import LLM
 
 MAX_TEXT = 6000
+#: fields an auditor needs verbatim (the exact prompt a proposer saw, its reply, the diff)
+LONG_FIELDS = ("prompt", "reply", "diff", "code", "text")
+MAX_LONG_TEXT = 60000
 
 
-def _clip(x: Any, n: int = MAX_TEXT) -> Any:
-    if isinstance(x, str) and len(x) > n:
-        return x[:n] + f"\n...[truncated {len(x) - n} chars]"
+def _clip(x: Any, n: int = MAX_TEXT, long_n: int = MAX_LONG_TEXT, key: str = "") -> Any:
+    if isinstance(x, str):
+        lim = long_n if key in LONG_FIELDS else n
+        return x if len(x) <= lim else x[:lim] + f"\n...[truncated {len(x) - lim} chars]"
     if isinstance(x, dict):
-        return {k: _clip(v, n) for k, v in x.items()}
+        return {k: _clip(v, n, long_n, str(k)) for k, v in x.items()}
     if isinstance(x, (list, tuple)):
-        return [_clip(v, n) for v in x]
+        return [_clip(v, n, long_n, key) for v in x]
     return x
 
 
 class RunTracer:
     """Append-only iteration trace. Cheap no-op when ``out_dir`` is None."""
 
-    def __init__(self, out_dir: Optional[str | Path], method: str, *, max_text: int = MAX_TEXT) -> None:
+    def __init__(self, out_dir: Optional[str | Path], method: str, *, max_text: int = MAX_TEXT,
+                 max_long_text: int = MAX_LONG_TEXT) -> None:
         self.method = method
         self.max_text = max_text
+        self.max_long_text = max_long_text
         self.path = Path(out_dir) / "trace.jsonl" if out_dir else None
         self._seq = 0
         self._lock = threading.Lock()
@@ -75,7 +81,7 @@ class RunTracer:
             return
         with self._lock:
             rec = {"seq": self._seq, "t": time.time(), "method": self.method, "round": round, "kind": kind,
-                   "data": _clip(data, self.max_text)}
+                   "data": _clip(data, self.max_text, self.max_long_text)}
             self._seq += 1
             with self.path.open("a") as f:
                 f.write(json.dumps(rec, default=str) + "\n")
@@ -128,18 +134,27 @@ class ShadowMonitor:
         self.k = k
         self.ev = Evaluator(domain, llm, workers=workers, allow_sealed=True)
         self.seen: set[str] = set()
+        #: wall-clock seconds spent monitoring; loops with wall-clock budgets should
+        #: ``budget.credit(...)`` this so auditing never shortens the run
+        self.elapsed_s = 0.0
+        self.last_elapsed_s = 0.0
 
     def observe(self, tracer: RunTracer, round: int, name: str, artifact: Artifact,
                 decision_score: Optional[float] = None) -> None:
         if artifact.id in self.seen:
+            self.last_elapsed_s = 0.0
             return
         self.seen.add(artifact.id)
+        t0 = time.time()
         scores = {}
         for s in self.splits:
             r = self.ev.evaluate(artifact, s, self.k)
             scores[s] = {"S": r.score, "C": r.cost, "families": r.family_scores()}
+        self.last_elapsed_s = time.time() - t0
+        self.elapsed_s += self.last_elapsed_s
         tracer.event("monitor", round, version=name, artifact=artifact.short_id, decision_score=decision_score,
-                     sealed=scores, note="shadow evaluation - never shown to the loop")
+                     sealed=scores, elapsed_s=float(f"{self.last_elapsed_s:.3f}"),
+                     note="shadow evaluation - never shown to the loop")
 
 
 # ---------------------------------------------------------------------------- reading
@@ -168,14 +183,24 @@ def render_markdown(events: Iterable[dict], *, title: Optional[str] = None, show
     events = list(events)
     method = events[0]["method"] if events else "?"
     out = [f"# {title or 'Run trace'} ({method})", ""]
+    starts = [e["seq"] for e in events if e["kind"] == "run_start"]
+    if len(starts) > 1:
+        out.append(f"> This trace has {len(starts)} segments (the run was resumed). Events are grouped by round; "
+                   "a round that appears twice was interrupted and re-run - the later events are the settled ones.\n")
     by_round: dict[Any, list[dict]] = {}
+    tail: list[dict] = []
     for e in events:
-        by_round.setdefault(e.get("round"), []).append(e)
-    for r in [None] + sorted(k for k in by_round if k is not None):
-        evs = by_round.get(r, [])
+        if e["kind"] == "run_end":
+            tail.append(e)          # rendered last, after every round
+        else:
+            by_round.setdefault(e.get("round"), []).append(e)
+    groups = [("## Setup", by_round.get(None, []))] + [(f"## Round {r}", by_round[r])
+                                                       for r in sorted(k for k in by_round if k is not None)]
+    groups.append(("## Summary", tail))
+    for heading, evs in groups:
         if not evs:
             continue
-        out.append("## Setup and summary" if r is None else f"## Round {r}")
+        out.append(heading)
         for e in evs:
             k, d = e["kind"], e["data"]
             if k == "run_start":
@@ -184,6 +209,9 @@ def render_markdown(events: Iterable[dict], *, title: Optional[str] = None, show
                 s = d.get("summary", d)
                 out.append(f"**Baseline evaluation** `{d.get('candidate', 'H0')}`: S={_fmt(s.get('S'))}, "
                            f"C={_fmt(s.get('C'))} tokens/trial, n_tasks={s.get('n_tasks')}, k={s.get('k')}")
+                pt = d.get("per_task") or {}
+                if pt and len(pt) <= 40:
+                    out.append("  per-task: " + ", ".join(f"{t}={_fmt(v)}" for t, v in pt.items()))
             elif k == "noise":
                 out.append(f"**Noise band.** delta={_fmt(d.get('delta'))} ({d.get('mode')}, z={d.get('z')}); "
                            f"{d.get('detail', '')}")
@@ -219,6 +247,9 @@ def render_markdown(events: Iterable[dict], *, title: Optional[str] = None, show
                 verdict = "ACCEPT" if d.get("accept") else "REJECT"
                 out.append(f"**Critic on `{d.get('candidate')}`: {verdict}** ({d.get('stage', '')}) "
                            f"{'; '.join(map(str, d.get('objections', [])))[:600]}")
+            elif k == "eval" and not d.get("summary"):
+                rest = {kk: vv for kk, vv in d.items() if kk != "candidate"}
+                out.append(f"**Eval `{d.get('candidate')}`:** `{json.dumps(rest, default=str)[:900]}`")
             elif k == "eval":
                 s = d.get("summary") or {}
                 out.append(f"**Eval `{d.get('candidate')}`** on {s.get('split', '?')}: S={_fmt(s.get('S'))}, "
@@ -243,6 +274,9 @@ def render_markdown(events: Iterable[dict], *, title: Optional[str] = None, show
                 out.append(f"**State after round:** `{json.dumps(d, default=str)[:1500]}`")
             elif k == "run_end":
                 out.append(f"**Run end:** `{json.dumps(d, default=str)[:2000]}`")
+            elif k == "note" and isinstance(d.get("what"), str):
+                rest = {kk: vv for kk, vv in d.items() if kk != "what"}
+                out.append(f"- *{d['what']}*: `{json.dumps(rest, default=str)[:700]}`")
             else:
                 out.append(f"**{k}:** `{json.dumps(d, default=str)[:1500]}`")
             out.append("")

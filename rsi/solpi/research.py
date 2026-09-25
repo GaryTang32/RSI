@@ -157,18 +157,28 @@ class SmokeReviewer:
 
 def implement(proposer: MechanismProposer, idea: Idea, prop: MechanismProposal, exit_check: Callable[[Artifact],
               Optional[str]], max_iters: int = 3) -> tuple[MechanismProposal, list[str]]:
-    """Ralph loop: keep implementing until the explicit exit check passes (or give up)."""
+    """Ralph loop: keep implementing until the explicit exit check passes (or give up).
+
+    The returned proposal's ``usage`` is the TOTAL of the initial proposal and every repair call (each
+    ``fix`` returns only its own usage). A proposer that reports ``meta["exhausted"]`` (no artifact and
+    nothing left to try) ends the loop at once instead of being asked to repair nothing."""
     errors = []
+    total = prop.usage
     for _ in range(max_iters):
         if prop.artifact is None:
             errors.append(prop.error or "no artifact")
+            if prop.meta.get("exhausted"):
+                break
         else:
             err = exit_check(prop.artifact)
             if err is None:
+                prop.usage = total
                 return prop, errors
             errors.append(err)
         prop = proposer.fix(idea, prop, errors[-1])
+        total = total + prop.usage
     prop.error = prop.error or f"exit check failed: {errors[-1] if errors else '?'}"
+    prop.usage = total
     return prop, errors
 
 
@@ -199,10 +209,13 @@ class Lineage:
                  reviewer: Reviewer, base: Artifact, base_metrics: Metrics, screen_split: str = "evolve",
                  rollout_tasks_per_family: int = 2, k: int = 1, max_iters: int = 4, ralph_max: int = 3,
                  workdir: Optional[Path] = None, ledger: Optional[Ledger] = None, sweep: bool = False,
-                 tracer=None) -> None:
+                 tracer=None, review_max: int = 2) -> None:
         self.idea, self.ev, self.gate, self.proposer, self.reviewer = idea, evaluator, gate, proposer, reviewer
         self.base, self.base_metrics = base, base_metrics
         self.split, self.k, self.max_iters, self.ralph_max = screen_split, k, max_iters, ralph_max
+        #: review -> implementation repairs per iteration (spec B3.1 ``repeat: implement; review until rv.pass``;
+        #: blog figure "Reviewer -> Implementation"); 0 = a rejection ends the iteration at once
+        self.review_max = review_max
         self.rollout_n = rollout_tasks_per_family
         self.workdir = workdir
         self.ledger = ledger
@@ -243,10 +256,10 @@ class Lineage:
             if tr is not None:
                 tr.rollouts(current, ro, evidence)
             # 03 proposal (one mechanism) + 04 implementation (Ralph loop)
+            exit_check = lambda a: self.ev.domain.smoke(a, self.ev.llm)  # noqa: E731
             prop = self.proposer.propose(idea, self.base, evidence, history)
+            prop, ralph_errors = implement(self.proposer, idea, prop, exit_check, self.ralph_max)
             usage = usage + prop.usage
-            prop, ralph_errors = implement(self.proposer, idea, prop, lambda a: self.ev.domain.smoke(a, self.ev.llm),
-                                           self.ralph_max)
             name = tr.proposal(self, it, prop, ralph_errors, self.base) if tr is not None else ""
             row: dict[str, Any] = {"iteration": it, "change": prop.change, "variant": prop.variant,
                                    "ralph_errors": ralph_errors}
@@ -262,10 +275,31 @@ class Lineage:
                 if stop:
                     break
                 continue
-            # 05 independent review
+            # 05 independent review; a rejection routes back to 04 implementation with the reviewer's objections
+            # (spec B3.1: ``repeat: impl = implement(p) until exit; rv = reviewer(impl) until rv.pass``), at most
+            # review_max times; only then does the rejection end this lineage iteration
             ok, why = self.reviewer.review(idea, self.base, prop.artifact)
             if tr is not None:
                 tr.review(name, ok, why, self.reviewer)
+            n_rev = 0
+            while not ok and n_rev < self.review_max:
+                n_rev += 1
+                fixed = self.proposer.fix(idea, prop, f"The independent reviewer rejected this implementation: {why}")
+                fixed, errs = implement(self.proposer, idea, fixed, exit_check, self.ralph_max)
+                usage = usage + fixed.usage
+                row.setdefault("review_repairs", []).append({"objection": why[:500], "ralph_errors": errs,
+                                                             "error": fixed.error})
+                if fixed.artifact is None or fixed.error:
+                    if tr is not None:
+                        tr.proposal(self, it, fixed, errs, self.base, repair=n_rev)
+                    break
+                prop = fixed
+                row.update(change=prop.change, variant=prop.variant)
+                if tr is not None:
+                    name = tr.proposal(self, it, prop, errs, self.base, repair=n_rev)
+                ok, why = self.reviewer.review(idea, self.base, prop.artifact)
+                if tr is not None:
+                    tr.review(name, ok, why, self.reviewer)
             if not ok:
                 row.update(stage="review", outcome="rejected", error=why)
                 history.append(row)

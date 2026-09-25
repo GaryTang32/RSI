@@ -50,10 +50,10 @@
   "other": 0
  },
  "view_files": 115,
- "view_chars": 3436442,
- "read_chars": 636777,
+ "view_chars": 3436430,
+ "read_chars": 636776,
  "error": null,
- "seconds": 0.019,
+ "seconds": 0.022,
  "candidates": [
   {
    "name": "i06_0_param_char_budget_4500",

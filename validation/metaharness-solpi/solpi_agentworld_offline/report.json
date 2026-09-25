@@ -1,7 +1,7 @@
 {
  "run": "solpi_agentworld_offline",
  "setup": "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed holdout = 6 x 2 held-out families (configfix, datalookup) used only by the firewall; sealed ood = 8 x 2 held-out families (final, never touched by the protocol). Base = untouched Pi-like harness (no extensions). Agent backend = MockAgentLLM('A') (offline). Idea pool = all 10 AGENTWORLD_IDEAS (families C, P, D, T, R: 4 released mechanisms, 3 tricks, 2 do-less shortcuts, 1 dud). Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: score within 2% (relative) AND tokens or cost saving > 2%; firewall on holdout; compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.",
- "wall_s": 6.9,
+ "wall_s": 7.1,
  "transfer": {
   "splits": {
    "evolve": {
@@ -532,13 +532,11 @@
        "change": "",
        "variant": 3,
        "ralph_errors": [
-        "variant grid exhausted",
-        "cannot repair: variant grid exhausted",
-        "cannot repair: cannot repair: variant grid exhausted"
+        "variant grid exhausted"
        ],
        "stage": "implementation",
        "outcome": "abandoned",
-       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+       "error": "variant grid exhausted"
       }
      ],
      "n_iterations": 4
@@ -692,13 +690,11 @@
        "change": "",
        "variant": 2,
        "ralph_errors": [
-        "variant grid exhausted",
-        "cannot repair: variant grid exhausted",
-        "cannot repair: cannot repair: variant grid exhausted"
+        "variant grid exhausted"
        ],
        "stage": "implementation",
        "outcome": "abandoned",
-       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+       "error": "variant grid exhausted"
       }
      ],
      "n_iterations": 3
@@ -861,13 +857,11 @@
        "change": "",
        "variant": 1,
        "ralph_errors": [
-        "variant grid exhausted",
-        "cannot repair: variant grid exhausted",
-        "cannot repair: cannot repair: variant grid exhausted"
+        "variant grid exhausted"
        ],
        "stage": "implementation",
        "outcome": "abandoned",
-       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+       "error": "variant grid exhausted"
       }
      ],
      "n_iterations": 2
@@ -1324,13 +1318,11 @@
        "change": "",
        "variant": -1,
        "ralph_errors": [
-        "variant grid exhausted",
-        "cannot repair: variant grid exhausted",
-        "cannot repair: cannot repair: variant grid exhausted"
+        "variant grid exhausted"
        ],
        "stage": "implementation",
        "outcome": "abandoned",
-       "error": "cannot repair: cannot repair: cannot repair: variant grid exhausted"
+       "error": "variant grid exhausted"
       }
      ],
      "n_iterations": 2
@@ -1414,7 +1406,7 @@
     "latency_s": 0.0,
     "total_tokens": 0
    },
-   "seconds": 6.867488861083984
+   "seconds": 7.089632749557495
   }
  ],
  "usage": {

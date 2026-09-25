@@ -2,7 +2,7 @@
  "run": "solpi_agentworld_offline",
  "method": "solpi",
  "counts": {
-  "correct": 96,
+  "correct": 97,
   "questionable": 2,
   "wrong": 0,
   "unverifiable": 0
@@ -22,21 +22,21 @@
   },
   {
    "round": 2,
-   "step": "D1.0 01 rollouts",
+   "step": "D1.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 2,
-   "step": "D1.0 03/04 proposal",
+   "step": "D1.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'evidence_preserving_reducer{\"reducer\": \"deterministic\"}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 2,
-   "step": "D1.0 05 review",
+   "step": "D1.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 2,
@@ -52,21 +52,21 @@
   },
   {
    "round": 3,
-   "step": "T11.0 01 rollouts",
+   "step": "T11.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 3,
-   "step": "T11.0 03/04 proposal",
+   "step": "T11.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'pytest_quiet{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 3,
-   "step": "T11.0 05 review",
+   "step": "T11.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 3,
@@ -82,21 +82,21 @@
   },
   {
    "round": 4,
-   "step": "T3.0 01 rollouts",
+   "step": "T3.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 4,
-   "step": "T3.0 03/04 proposal",
+   "step": "T3.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'tail_trim{\"lines\": 20}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 4,
-   "step": "T3.0 05 review",
+   "step": "T3.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 4,
@@ -112,21 +112,21 @@
   },
   {
    "round": 5,
-   "step": "T3.1 01 rollouts",
+   "step": "T3.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of f1c47c0844 (expected f1c47c0844: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 5,
-   "step": "T3.1 03/04 proposal",
+   "step": "T3.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'tail_trim{\"lines\": 40}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 5,
-   "step": "T3.1 05 review",
+   "step": "T3.1 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 5,
@@ -142,21 +142,21 @@
   },
   {
    "round": 6,
-   "step": "T3.2 01 rollouts",
+   "step": "T3.2 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of b650b77f2c (expected b650b77f2c: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 6,
-   "step": "T3.2 03/04 proposal",
+   "step": "T3.2 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'tail_trim{\"lines\": 120}', variant 2; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 6,
-   "step": "T3.2 05 review",
+   "step": "T3.2 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 6,
@@ -172,39 +172,39 @@
   },
   {
    "round": 7,
-   "step": "T3.3 01 rollouts",
+   "step": "T3.3 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of 1fcf918273 (expected 1fcf918273: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 7,
-   "step": "T3.3 03/04 proposal",
+   "step": "T3.3 03/04 proposal + Ralph loop",
    "verdict": "correct",
-   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+   "evidence": "no admissible candidate: variant grid exhausted (Ralph repairs 1); grid exhausted -> lineage ends"
   },
   {
    "round": 7,
    "step": "T3.3 decision",
    "verdict": "correct",
-   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)"
   },
   {
    "round": 8,
-   "step": "T7.0 01 rollouts",
+   "step": "T7.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 8,
-   "step": "T7.0 03/04 proposal",
+   "step": "T7.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'head_trim{\"lines\": 40}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 8,
-   "step": "T7.0 05 review",
+   "step": "T7.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 8,
@@ -220,21 +220,21 @@
   },
   {
    "round": 9,
-   "step": "T7.1 01 rollouts",
+   "step": "T7.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of e53596973a (expected e53596973a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 9,
-   "step": "T7.1 03/04 proposal",
+   "step": "T7.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'head_trim{\"lines\": 120}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 9,
-   "step": "T7.1 05 review",
+   "step": "T7.1 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 9,
@@ -250,39 +250,39 @@
   },
   {
    "round": 10,
-   "step": "T7.2 01 rollouts",
+   "step": "T7.2 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of 05a59cdf2b (expected 05a59cdf2b: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 10,
-   "step": "T7.2 03/04 proposal",
+   "step": "T7.2 03/04 proposal + Ralph loop",
    "verdict": "correct",
-   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+   "evidence": "no admissible candidate: variant grid exhausted (Ralph repairs 1); grid exhausted -> lineage ends"
   },
   {
    "round": 10,
    "step": "T7.2 decision",
    "verdict": "correct",
-   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)"
   },
   {
    "round": 11,
-   "step": "C6.0 01 rollouts",
+   "step": "C6.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 11,
-   "step": "C6.0 03/04 proposal",
+   "step": "C6.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'online_context_compact{\"cache_write_read_ratio\": 12.5}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 11,
-   "step": "C6.0 05 review",
+   "step": "C6.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 11,
@@ -298,21 +298,21 @@
   },
   {
    "round": 12,
-   "step": "P14.0 01 rollouts",
+   "step": "P14.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 12,
-   "step": "P14.0 03/04 proposal",
+   "step": "P14.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'no_verify{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 12,
-   "step": "P14.0 05 review",
+   "step": "P14.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 12,
@@ -328,39 +328,39 @@
   },
   {
    "round": 13,
-   "step": "P14.1 01 rollouts",
+   "step": "P14.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of b416de0381 (expected b416de0381: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 13,
-   "step": "P14.1 03/04 proposal",
+   "step": "P14.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
-   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+   "evidence": "no admissible candidate: variant grid exhausted (Ralph repairs 1); grid exhausted -> lineage ends"
   },
   {
    "round": 13,
    "step": "P14.1 decision",
    "verdict": "correct",
-   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)"
   },
   {
    "round": 14,
-   "step": "P8.0 01 rollouts",
+   "step": "P8.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 14,
-   "step": "P8.0 03/04 proposal",
+   "step": "P8.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'action_fusion{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 14,
-   "step": "P8.0 05 review",
+   "step": "P8.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 14,
@@ -376,21 +376,21 @@
   },
   {
    "round": 15,
-   "step": "C23.0 01 rollouts",
+   "step": "C23.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 15,
-   "step": "C23.0 03/04 proposal",
+   "step": "C23.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 15,
-   "step": "C23.0 05 review",
+   "step": "C23.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 15,
@@ -406,21 +406,21 @@
   },
   {
    "round": 16,
-   "step": "P20.0 01 rollouts",
+   "step": "P20.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 16,
-   "step": "P20.0 03/04 proposal",
+   "step": "P20.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'turn_cap{\"max_turns\": 10}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 16,
-   "step": "P20.0 05 review",
+   "step": "P20.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 16,
@@ -436,21 +436,21 @@
   },
   {
    "round": 17,
-   "step": "P20.1 01 rollouts",
+   "step": "P20.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of 643de7933b (expected 643de7933b: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 17,
-   "step": "P20.1 03/04 proposal",
+   "step": "P20.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'turn_cap{\"max_turns\": 16}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 17,
-   "step": "P20.1 05 review",
+   "step": "P20.1 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 17,
@@ -466,21 +466,21 @@
   },
   {
    "round": 18,
-   "step": "P20.2 01 rollouts",
+   "step": "P20.2 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of 2ac546f42c (expected 2ac546f42c: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 18,
-   "step": "P20.2 03/04 proposal",
+   "step": "P20.2 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'turn_cap{\"max_turns\": 24}', variant 2; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 18,
-   "step": "P20.2 05 review",
+   "step": "P20.2 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 18,
@@ -496,21 +496,21 @@
   },
   {
    "round": 19,
-   "step": "R5.0 01 rollouts",
+   "step": "R5.0 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 19,
-   "step": "R5.0 03/04 proposal",
+   "step": "R5.0 03/04 proposal + Ralph loop",
    "verdict": "correct",
    "evidence": "change 'prompt_slim{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
   },
   {
    "round": 19,
-   "step": "R5.0 05 review",
+   "step": "R5.0 05 review (pass)",
    "verdict": "correct",
-   "evidence": "pass: ok"
+   "evidence": "pass | reviewer: ok"
   },
   {
    "round": 19,
@@ -526,21 +526,21 @@
   },
   {
    "round": 20,
-   "step": "R5.1 01 rollouts",
+   "step": "R5.1 01 rollouts + 02 map-reduce",
    "verdict": "correct",
    "evidence": "rollouts of fc04865f46 (expected fc04865f46: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
   },
   {
    "round": 20,
-   "step": "R5.1 03/04 proposal",
+   "step": "R5.1 03/04 proposal + Ralph loop",
    "verdict": "correct",
-   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+   "evidence": "no admissible candidate: variant grid exhausted (Ralph repairs 1); grid exhausted -> lineage ends"
   },
   {
    "round": 20,
    "step": "R5.1 decision",
    "verdict": "correct",
-   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (variant grid exhausted); next: lineage ends (proposer exhausted)"
   },
   {
    "round": 21,
@@ -583,6 +583,12 @@
    "step": "composition",
    "verdict": "questionable",
    "evidence": "composed = union of ['D1', 'P8', 'C23'] (verified); screen S 1.000, tokens +49.0%, cost +8.9% saving; the composed stack costs MORE than survivor D1 alone (cost 0.1602 vs 0.2193) and is not re-gated"
+  },
+  {
+   "round": null,
+   "step": "shadow monitor (base + composed only, sealed splits, trace only)",
+   "verdict": "correct",
+   "evidence": "base_r1: holdout S=1.000, ood S=1.000; composed_r1: holdout S=0.988, ood S=1.000"
   },
   {
    "round": null,

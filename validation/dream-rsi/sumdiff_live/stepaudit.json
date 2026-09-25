@@ -1,7 +1,7 @@
 {
  "run": "sumdiff_live",
  "counts": {
-  "correct": 67,
+  "correct": 69,
   "wrong": 15,
   "questionable": 1
  },
@@ -579,6 +579,20 @@
    "step": "cycle 3 live_cycle_manifest",
    "verdict": "correct",
    "evidence": "all fields re-derived from tree.json: {'probe_work': 12, 'decision_rounds': 4, 'round_best': 1.0304168748055738, 'gain_early': 0.0, 'fail_frac': 0.08333333333333333, 'beta': 0.6, 'opened_width': 3, 'max_depth': 3, 'final_best': 1.030417, 'agent_calls': 12}"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-1 agent prompt rebuilt from disk state",
+   "verdict": "correct",
+   "evidence": "36/36 prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM cache: the agent saw exactly that and nothing else (no sealed data exists for this domain) [rebuilt with the pre-fix head-only error rendering the run used]"
+  },
+  {
+   "round": null,
+   "kind": "prompts",
+   "step": "every Listing-2 developer prompt (dream_prompts/) is the prompt the model got",
+   "verdict": "correct",
+   "evidence": "9/9 saved developer prompts hash to an entry of the fresh LLM cache; no manifest of a later live cycle in any prompt"
   },
   {
    "round": null,

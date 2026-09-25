@@ -196,9 +196,15 @@ def make_suite(
     ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"),
     n_val: int = 0,
     seed: int = 0,
+    dedupe: bool = True,
 ) -> TaskSuite:
     """Build the standard suite: evolve/holdout drawn from the practice families,
-    ood from the never-seen families. Each split uses an independent RNG stream."""
+    ood from the never-seen families. Each split uses an independent RNG stream.
+
+    ``dedupe`` (default True) drops sealed tasks whose question also appears in a
+    decision split (see :func:`decontaminate`); with seed 0 one holdout question
+    repeated an evolve question. ``dedupe=False`` reproduces suites used by results
+    recorded before this change."""
     tasks: list[Task] = []
     splits: dict[str, list[str]] = {"evolve": [], "holdout": [], "ood": []}
     if n_val:
@@ -221,7 +227,8 @@ def make_suite(
         for i in range(n_ood_per_family):
             add("ood", fam, rng, i)
     splits["smoke"] = splits["evolve"][:2]
-    return TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
+    suite = TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
+    return decontaminate(suite) if dedupe else suite
 
 
 def decontaminate(suite: TaskSuite) -> TaskSuite:

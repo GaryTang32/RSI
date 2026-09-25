@@ -1,7 +1,7 @@
 {
  "run": "mh_memoclassify_offline",
  "setup": "MemoClassify seed 0 (scale 1.0): 3 search datasets (evolve = their val parts), sealed test = their test parts, sealed ood = 4 unseen datasets. Frozen model MemoLM-A (deterministic). H0 = the two untouched release baselines no_memory + fewshot_all (seed = fewshot_all). Proposer = MockProposer (offline, reads only what the view exposes). Config: N = 6 iterations, k = 2, history_mode = full, objectives (score, context_cost), validate on, no leakage screen (faithful), test evaluated once by finalize(). Shadow monitor on the sealed ood split.",
- "wall_s": 13.5,
+ "wall_s": 14.9,
  "best_system": "i06_0_param_char_budget_4500",
  "frontier": [
   {
@@ -382,13 +382,21 @@
     "latency_s": 0.0,
     "total_tokens": 5530221
    },
-   "_total": {
-    "calls": 16080,
-    "input_tokens": 15998518,
-    "output_tokens": 368271,
+   "validate": {
+    "calls": 48,
+    "input_tokens": 3543,
+    "output_tokens": 1008,
     "cost_usd": 0.0,
     "latency_s": 0.0,
-    "total_tokens": 16366789
+    "total_tokens": 4551
+   },
+   "_total": {
+    "calls": 16128,
+    "input_tokens": 16002061,
+    "output_tokens": 369279,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 16371340
    }
   },
   "_total": {
