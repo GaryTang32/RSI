@@ -155,6 +155,8 @@ class AutoresearchLoop:
         self.tracer = RunTracer(self.out if (out_dir is not None and self.cfg.trace) else None, self.method,
                                 max_text=self.cfg.trace_max_text)
         self.monitor = None
+        self._monitor_wall = 0.0                      # time / $ spent by the write-only shadow monitor
+        self._monitor_usd = 0.0
         if self.tracer.enabled and self.cfg.shadow_monitor:
             self.monitor = make_monitor(task, seed=self.cfg.run_seed)
             self.tracer.monitor = self.monitor
@@ -177,6 +179,28 @@ class AutoresearchLoop:
 
     def usd(self) -> float:
         return float(sum(l.meter.total().cost_usd for l in self.llms))
+
+    def budget_usd(self) -> float:
+        """Spend that counts against ``max_usd``: everything except the write-only
+        shadow monitor's own calls (reported in usage, never allowed to change
+        when the loop stops)."""
+        return self.usd() - self._monitor_usd
+
+    def _kept(self, round: int, name: str, art: Artifact, score: Optional[float]) -> None:
+        """``tracer.kept`` (shadow audit of a new incumbent) without letting the audit
+        consume the loop's own budgets: its wall time is added back to the wall-clock
+        budget and its LLM spend is excluded from ``max_usd``. Otherwise a run with
+        ``max_wall_s`` / ``max_usd`` and the monitor on would stop earlier than the
+        same run with it off, i.e. the sealed-split audit would change the ledger."""
+        if self.monitor is None:
+            self.tracer.kept(round, name, art, score)
+            return
+        t, u = time.time(), self.usd()
+        self.tracer.kept(round, name, art, score)
+        dt = time.time() - t
+        self._monitor_wall += dt
+        self._monitor_usd += self.usd() - u
+        self.budget._t0 += dt                    # the wall-clock budget does not pay for the audit
 
     def _editable_loc(self, art: Artifact) -> int:
         from .guard import matches
@@ -231,7 +255,8 @@ class AutoresearchLoop:
                 "branch_len": len(self.ws.log(10_000)), "resets": self.ws.n_resets,
                 "budget": {"max_experiments": self.cfg.max_experiments, "max_runs": self.cfg.max_runs,
                            "max_wall_s": self.cfg.max_wall_s, "max_usd": self.cfg.max_usd,
-                           "wall_s": round(time.time() - self.t0, 2), "usd": round(self.usd(), 6)}}
+                           "wall_s": round(time.time() - self.t0, 2), "usd": round(self.usd(), 6),
+                           "monitor_wall_s": round(self._monitor_wall, 2), "monitor_usd": round(self._monitor_usd, 6)}}
 
     def _trace_proposal(self, cand_name: str, parent: Artifact, prop: Proposal, attempt: int, stage: str) -> None:
         if not self.tracer.enabled:
@@ -247,6 +272,7 @@ class AutoresearchLoop:
                              change=prop.change, hypothesis=prop.hypothesis, components=prop.components, diff=diff,
                              error=prop.error, attempt=attempt, stage=stage, edit=meta.get("edit"),
                              edit_kind=meta.get("kind"), blocked_files=list(prop.blocked_files or []),
+                             sanitized=meta.get("sanitized"),
                              artifact=prop.artifact.short_id if prop.artifact is not None else None,
                              identical_to_parent=(prop.artifact == parent) if prop.artifact is not None else None,
                              usage=prop.usage.to_dict() if hasattr(prop.usage, "to_dict") else str(prop.usage))
@@ -359,7 +385,7 @@ class AutoresearchLoop:
                                        "k": len(vals), "metric": self.task.metric},
                               trials={"runs": vals}, per_task=(outs[-1].meta or {}).get("per_task") or {},
                               results_tsv_row=self.results.text(last=1).strip().splitlines()[-1])
-            self.tracer.kept(0, "baseline", art, samples.mean)
+            self._kept(0, "baseline", art, samples.mean)
         if self.cfg.noise_runs:
             extra = [self._run(art, self.cfg.run_seed + 100 + i, f"noise_{i}").metric for i in range(self.cfg.noise_runs)]
             extra = [v for v in extra if v is not None] + vals[:1]
@@ -581,7 +607,7 @@ class AutoresearchLoop:
             self.keeps.append((node.id, samples))
             self._trace_decision(node, before, f"kept: {verdict.reason if verdict is not None else ''}; branch advances to "
                                                f"{sha[:7]}")
-            self.tracer.kept(self.n_rounds, name, cand, samples.mean)
+            self._kept(self.n_rounds, name, cand, samples.mean)
         else:
             if committed:
                 self.ws.reset_to(self.inc["sha"])
@@ -628,7 +654,7 @@ class AutoresearchLoop:
         self.setup()
         self.baseline()
         while True:
-            why = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.usd())
+            why = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
             if why:
                 self.stop_reason = why
                 break

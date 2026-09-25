@@ -143,3 +143,15 @@ The agent reproduced the budget-bias pattern the spec reports for upstream (sect
   above predates this fix. Test: `test_llm_agent_strips_reply_debris_seen_live`.
 * The live trace was recorded with the old 6,000-character clip, so proposer prompts and replies in
   `tinylm_live/trace.jsonl` are truncated; the full replies are in `.cache_tinylm_live/`. Later runs use 40,000.
+
+## Stage-B corrections (independent audit, see AUDIT.md)
+
+* **Round 6 of tinylm_offline.** The file is not byte-identical to the baseline: artifact `103c47a5d1` against
+  `c3640d1810`, differing only in `"tanh"` versus `'tanh'`. It is functionally the same configuration.
+* **tinylm_live round 1.** Fix 1 *introduced* the lone closing fence, because its reply's file block ended with
+  ```` ``` ````. It did not "leave" one.
+* **Single keeps "worse on hidden test".** Offline r9 and live r7/r10 differ by less than the audit's own
+  re-training noise (same-seed re-run sd ≈ 0.006, so the difference of two audits has sd ≈ 0.009). These claims are
+  unverifiable, not demonstrated.
+* **Sanitizer removals and the trace.** They were **not** visible in the trace; fixed in Stage B (`sanitized` field).
+* **New run `tinylm_live_b`.** A Stage-B from-scratch re-run with the current code, $0.634.

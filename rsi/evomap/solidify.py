@@ -182,8 +182,15 @@ HARD_RX = re.compile(r"HARD CAP BREACH|CRITICAL_FILE_|critical_path_modified|for
 
 
 def classify_failure_mode(violations: Sequence[str], protocol: Sequence[str], validation_ok: bool,
-                          canary_failed: bool = False) -> tuple[str, str, bool]:
-    """(mode, reason_class, retryable) - hard: constraint/protocol/canary; soft: validation."""
+                          canary_failed: bool = False, extra: Sequence[str] = ()) -> tuple[str, str, bool]:
+    """(mode, reason_class, retryable) - hard: constraint/protocol/canary; soft: validation.
+
+    ``extra`` = the safe-mode keep-rule failures (``vacuous_validation:*``, ``task_check_failed``). They are
+    not constraint violations (spec §4.12 lists only blast/path/ethics/destructive checks there): a vacuous
+    validation is a validation failure and a missed own task is a (re-sampled, stochastic) outcome check, so
+    both are soft and retryable. (Validation audit: they used to fall into the generic ``hard/constraint``
+    branch, so one unlucky retry of a working gene cost -0.22 history and a -0.4 hard anti-pattern and made
+    the next cycle "cautious".)"""
     if any(HARD_RX.search(v) for v in violations):
         return "hard", "constraint_destructive", False
     if protocol:
@@ -192,8 +199,10 @@ def classify_failure_mode(violations: Sequence[str], protocol: Sequence[str], va
         return "hard", "canary", False
     if violations:
         return "hard", "constraint", False
-    if not validation_ok:
+    if not validation_ok or any(str(x).startswith("vacuous_validation") for x in extra):
         return "soft", "validation", True
+    if any(str(x) == "task_check_failed" for x in extra):
+        return "soft", "task_check", True
     return "soft", "unknown", True
 
 
@@ -309,7 +318,7 @@ class Solidifier:
         score = composite_score(n_signals=len(rs.signals), gene=gene, mutation=mut, blast=blast,
                                 max_files=gene.max_files if gene else 12, estimate=rs.estimate,
                                 n_violations=len(cc.violations), validation=val, n_protocol=len(pv), hollow=hollow)
-        fm = None if success else classify_failure_mode(cc.violations + extra_fail, pv, val.ok)
+        fm = None if success else classify_failure_mode(cc.violations, pv, val.ok, extra=extra_fail)
         st = self.store
         vr = val.report
         if vac is not None:

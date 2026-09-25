@@ -1,0 +1,218 @@
+```json
+{
+  "change": "Add parallelism-aware inclusion of weak-but-underexplored branches in Priority 3 (deeper refinements) when sufficient capacity remains (>= 2 slots), improving batch fill without over-probing",
+  "hypothesis": "The current policy skips weak branches entirely, sometimes leaving parallelism slots unused (1 slot). By including weak branches only when we have room for multiple, we fill underutilized capacity on traces where it helps, while maintaining selectiveness on traces where probes matter (like the example trace where adding b2.a2 hurts). This leverages the observation that remaining_capacity=1 is always sub-optimal (serial probes cost 0.005*N/k penalty), so we should only deepen weak branches when it doesn't force serial decisions.",
+  "components": ["batch_rule", "parallelism_fill"]
+}
+```
+
+=== FILE: method.py ===
+"""Adaptive exploration policy with trajectory-based branch ranking and parallelism-aware batching.
+
+Prefix signals: reconstruct branch trajectories, compute successful anchors, detect improvement trends vs parent and baseline, classify reperability and hard failures, rank by trajectory quality and remaining depth.
+
+Batch rule: deterministic priority queue
+  1. All unopened roots (exploration, no pruning here)
+  2. First refinement (attempt 1) for each opened branch  
+  3. Deeper refinements (attempt 2+):
+     - Promising branches first (exploitation)
+     - Weak-but-not-hard-failed branches if remaining capacity >= 2 (avoid wasting parallelism slots)
+  4. At most one repairable recovery per batch
+
+Never sample randomly; always attempt full parallelism (W=max_parallelism); minimize decision rounds (k) through batching of independent cells.
+
+Beta schedule: interpolates patience_window (how many consecutive failures before hard-close). Default beta=0.6 balances conservative (patient, recover readily) vs aggressive (narrow window, prune early).
+
+Grid planning: analyzes historical gain distribution (early vs late), hard-failure rates from prior cycles. Widens when roots succeed early but refinements plateau. Deepens when late gains persist. Shrinks on excessive hard failures. Conservative bootstrap with fallback.
+
+Safeguards:
+- hard-fail detection uses windowed pattern (not single failure) to avoid false positives on transient failures
+- Reperability prevents permanent closure; recovery reopens branches
+- Batch-based parallelism avoids serial probes; weak-branch fallback only when parallelism capacity allows
+- Deterministic thresholds prevent over-pruning of underexplored branches
+- Promising branches always explored deeper before weak ones, ensuring focus on high-confidence directions
+"""
+from policy_api import (
+    GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard, is_repairable,
+    lerp, clamp
+)
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+
+NAME = "OptimalPolicy"
+
+@dataclass
+class BranchStatus:
+    """Memoized classification of an opened branch based on its trajectory."""
+    branch_id: int
+    n_attempts: int
+    anchor: Optional[float]
+    is_promising: bool
+    is_hard_failed: bool
+    has_repairable: bool
+
+class OptimalPolicy(LLMDesignedMethod):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta):
+        """Interpolate behavioral thresholds via beta in [0, 1].
+        High beta: patient, explore deeply, recover readily.
+        Low beta: impatient, prune early, close branches quickly.
+        """
+        return {
+            'patience_window': int(clamp(lerp(1, 4, beta), 1, 4)),
+        }
+    
+    def plan_grid(self, context):
+        """Adapt branch count and refinement depth from history of earlier cycles."""
+        if not context.history:
+            return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),
+                          "bootstrap: use fallback grid")
+        
+        # Analyze recent performance (last 5 cycles or all available)
+        recent = context.history[-5:] if len(context.history) >= 5 else context.history
+        gain_early = sum(m.get('gain_early', 0) for m in recent) / len(recent) if recent else 0
+        gain_late = sum(m.get('gain_late', 0) for m in recent) / len(recent) if recent else 0
+        fail_frac = sum(m.get('fail_frac', 0) for m in recent) / len(recent) if recent else 0
+        
+        bc = int(context.fallback_branch_count)
+        rc = int(context.fallback_refine_count)
+        reason = ""
+        
+        # Decision rules based on gain distribution and failure rates
+        if gain_early > 0.6 and gain_late < 0.3:
+            # Strong root performance but refinements plateau: widen, reduce depth
+            bc = min(int(context.hard_max_branch_count), bc + 1)
+            rc = max(1, rc - 1)
+            reason = "early gains strong, late plateau -> widen and reduce depth"
+        elif gain_late > 0.4:
+            # Persistent late gains: deepen to find deeper improvements
+            rc = min(int(context.hard_max_refine_count), rc + 1)
+            reason = "persistent late gains -> deepen"
+        elif fail_frac > 0.5:
+            # High hard-failure rate: shrink conservatively
+            bc = max(1, bc - 1)
+            rc = max(1, rc - 1)
+            reason = "high hard-failure rate -> shrink conservatively"
+        else:
+            # Stable: maintain
+            reason = "stable performance -> maintain fallback"
+        
+        return GridPlan(bc, rc, reason)
+    
+    def solve(self, question, budget=None):
+        """Explore via adaptive trajectory-based selective batching."""
+        question.reset()
+        res = SimResult()
+        sched = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            legal = question.legal_actions()
+            
+            if not legal:
+                break
+            
+            # Reconstruct trajectories for each opened branch
+            trajectories = branch_trajectories(prefix)
+            opened = set(question.opened_branches())
+            baseline = question.baseline_score
+            
+            # Classify each opened branch based on trajectory
+            branch_status = {}
+            for b in opened:
+                traj = trajectories.get(b, [])
+                anchor = successful_anchor(traj)
+                is_prom = branch_promising(traj, baseline)
+                is_hard = branch_failed_hard(traj, window=sched['patience_window'])
+                has_rep = any(is_repairable(o) for o in traj if not o.success)
+                branch_status[b] = BranchStatus(b, len(traj), anchor, is_prom, is_hard, has_rep)
+            
+            # Select diverse batch: roots + first refinement + deeper (prefer promising) + recovery
+            batch = self._select_batch(question, legal, opened, branch_status)
+            if not batch:
+                break
+            
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _select_batch(self, question, legal: List[str], opened, branch_status: Dict):
+        """Build deterministic batch following priority queue: 
+        roots -> attempt-1 -> deeper (prefer promising, include weak if capacity) -> repairable recovery.
+        """
+        batch = []
+        used_branches = set()
+        
+        # Priority 1: All unopened roots (exploration, no pruning)
+        for c in sorted(legal, key=lambda x: question.meta(x).branch):
+            m = question.meta(c)
+            if m.branch not in opened and len(batch) < question.max_parallelism:
+                batch.append(c)
+                used_branches.add(m.branch)
+        
+        if len(batch) >= question.max_parallelism:
+            return batch
+        
+        # Priority 2: Attempt 1 for each opened branch (systematic first refinement)
+        for c in sorted(legal, key=lambda x: question.meta(x).branch):
+            m = question.meta(c)
+            if (m.branch in opened and m.attempt == 1 and 
+                m.branch not in used_branches and len(batch) < question.max_parallelism):
+                batch.append(c)
+                used_branches.add(m.branch)
+        
+        if len(batch) >= question.max_parallelism:
+            return batch
+        
+        # Priority 3: Deeper refinements (prefer promising, include weak if sufficient parallelism remains)
+        deeper_promising = []
+        deeper_weak = []
+        
+        for c in legal:
+            m = question.meta(c)
+            if m.branch in opened and m.attempt > 1 and m.branch not in used_branches:
+                s = branch_status.get(m.branch)
+                if s and not s.is_hard_failed:
+                    if s.is_promising:
+                        deeper_promising.append((m.attempt, m.branch, c))
+                    else:
+                        deeper_weak.append((m.attempt, m.branch, c))
+        
+        # Sort by (attempt, branch) for determinism; lower attempt first (shallower first)
+        deeper_promising.sort()
+        deeper_weak.sort()
+        
+        # Add promising branches first
+        for attempt, branch, c in deeper_promising:
+            if len(batch) < question.max_parallelism:
+                batch.append(c)
+                used_branches.add(branch)
+        
+        # Add weak branches only if we have sufficient remaining parallelism (>=2 slots)
+        # This avoids wasting parallelism on weak branches while ensuring we don't single-thread
+        remaining_capacity = question.max_parallelism - len(batch)
+        if remaining_capacity >= 2:
+            for attempt, branch, c in deeper_weak:
+                if len(batch) < question.max_parallelism:
+                    batch.append(c)
+                    used_branches.add(branch)
+        
+        if len(batch) >= question.max_parallelism:
+            return batch
+        
+        # Priority 4: Repairable recovery (at most one per batch)
+        for c in sorted(legal, key=lambda x: question.meta(x).branch):
+            m = question.meta(c)
+            if m.branch in opened and m.branch not in used_branches:
+                s = branch_status.get(m.branch)
+                if s and s.has_repairable and not s.is_hard_failed:
+                    if len(batch) < question.max_parallelism:
+                        batch.append(c)
+                    break
+        
+        return batch
+```

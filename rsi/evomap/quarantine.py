@@ -87,8 +87,10 @@ class QuarantineGate:
             noise = fixed_noise(0.05)
         inc_s, cand_s = Scored.from_eval(base), Scored.from_eval(cand)
         dS = cand.score - base.score
+        # S_base / S_gene let the hub tell an uninformative report (no headroom: baseline already at ceiling)
+        # from a real "no gain" claim before its spot-check can slash the reporter
         proof = {"tasks_hash": sha256_text("|".join(sorted(t.id for t in scope)))[:16], "dS": dS,
-                 "delta": noise.delta, "n": len(scope), "k": self.k}
+                 "delta": noise.delta, "n": len(scope), "k": self.k, "S_base": base.score, "S_gene": cand.score}
         res = QuarantineResult(False, "", dS, noise.delta, len(scope), base.score, cand.score, proof)
         if self.gate == "lcb":
             ids = sorted(base.task_scores())

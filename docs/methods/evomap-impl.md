@@ -340,6 +340,29 @@ Runs, numbers and the step-by-step audit: `validation/evomap/RUNS.md`; script: `
 **Fixes from the traced runs** (details in `validation/evomap/RUNS.md`): the katas `smoke_test.py` is now
 pytest-collectable (the writer prompt offers `pytest -q`, which exited 5 and rejected a correct live gene);
 `UpliftLCB` also requires U_LCB > 0 (a bank at ceiling calibrated delta = 0 and verified a zero-uplift gene); a
-cycle's `tokens` no longer double-count solves when one LLM is both solver and gene writer. Open design questions:
-the SafeHub spot-check slashes honest no-gain (outcome 0) reports; an adopted hub gene is later re-published under
-the adopter's name (only the hub's dedup merge catches it).
+cycle's `tokens` no longer double-count solves when one LLM is both solver and gene writer.
+
+**Stage-B audit fixes** (independent step audit, `validation/evomap/AUDIT.md`; regressions in
+`tests/test_evomap_validation_audit.py`):
+
+* **B1 SafeHub spot-check.** An outcome-0 adoption report whose own A/B had no headroom (the consumer's baseline
+  solved every trial; the quarantine proof now carries `S_base` / `S_gene`) is recorded as *uninformative*: not
+  counted, not spot-checked, not slashed. Before, an honest ceiling report was slashed because the hub measured
+  U_LCB >= delta on its own tasks. Reports with headroom are still spot-checked and slashed on disagreement.
+* **B2 failure mode.** The safe-mode keep-rule failures (`task_check_failed`, `vacuous_validation:*`) are soft
+  (`task_check` / `validation`, retryable), not the generic hard `constraint` class of §4.12. Before, one unlucky
+  re-sampled retry of a working gene cost it -0.22 history and a -0.4 hard anti-pattern and made the next cycle
+  "cautious" (max_files 6).
+* **B3 writer history (§6.1).** The gene-writer prompt now carries Evolver's "Recent Evolution History ... DO NOT
+  repeat" block, restricted to earlier genes whose scope matches the signals, with their measured outcome. With no
+  such gene the prompt is byte-identical to before. (A live writer had re-proposed the approach that had just failed.)
+* **B4 no re-publish of adopted genes (safe mode).** A gene promoted from the hub (provenance `external`) is never
+  published again by the adopter; Evolver only skips it in the adoption cycle (`source_type="reused"`).
+* Trace: the writer's system prompt, a note that selector `scores` are before the x1.5 memory-preference factor,
+  and a note when the distiller runs but declines.
+
+Effect on the documented population experiments (re-run on the fixed code into a scratch directory, not into
+`results/`): X11 and X6 verdicts unchanged; X10 verdicts unchanged except `rank_validity_positive`, whose 95% CI lower
+bound moved from +0.018 to -0.005 (mean 0.120 -> 0.104, safe arm): that claim was marginal before and is not robust.
+`poisoned_in_stores` counts harmful cards an honest agent's own writer kept, not only hub poison; its changes
+(0.80 -> 1.15 safe) come from different mock draws after the prompt change.

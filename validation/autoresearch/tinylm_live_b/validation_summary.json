@@ -1,0 +1,162 @@
+{
+ "run": "tinylm_live_b",
+ "out_dir": "validation/autoresearch/tinylm_live_b",
+ "trace_md": "validation/autoresearch/tinylm_live_b/TRACE.md",
+ "stop_reason": "max_rounds",
+ "wall_s": 1116.4,
+ "baseline_val_bpb": 2.8288339009396535,
+ "final_val_bpb": [
+  2.622188131367283
+ ],
+ "analysis": {
+  "n_rows": 11,
+  "n_experiments": 10,
+  "n_keep": 7,
+  "n_discard": 4,
+  "n_crash": 0,
+  "keep_rate": 0.6363636363636364,
+  "baseline": 2.8288339009396535,
+  "best": 2.622188131367283,
+  "improvement": 0.20664576957237069,
+  "total_keep_delta": 0.20664576957237069,
+  "top_hits": [
+   {
+    "exp": 3,
+    "commit": "a285d1a",
+    "description": "Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget",
+    "delta": 0.08886354111043815,
+    "metric": 2.7399703598292153
+   },
+   {
+    "exp": 4,
+    "commit": "533edda",
+    "description": "Increase learning rate from 0.004 to 0.005 to further accelerate convergence",
+    "delta": 0.04265792834301907,
+    "metric": 2.6973124314861963
+   },
+   {
+    "exp": 6,
+    "commit": "83d320f",
+    "description": "Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget",
+    "delta": 0.03106575346235818,
+    "metric": 2.666246678023838
+   },
+   {
+    "exp": 9,
+    "commit": "020a551",
+    "description": "Increase learning rate from 0.005 to 0.006 to further accelerate convergence",
+    "delta": 0.02531425200267101,
+    "metric": 2.6308254050878395
+   },
+   {
+    "exp": 7,
+    "commit": "197ab6b",
+    "description": "Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget",
+    "delta": 0.010107020933327604,
+    "metric": 2.6561396570905105
+   },
+   {
+    "exp": 10,
+    "commit": "363363c",
+    "description": "Increase learning rate from 0.006 to 0.007 to further accelerate convergence",
+    "delta": 0.00863727372055667,
+    "metric": 2.622188131367283
+   }
+  ],
+  "improvement_pct": 7.304980667254064,
+  "experiments_per_hour": 33.8214196470666
+ },
+ "counters": {
+  "rejected": 0,
+  "duplicate": 0,
+  "invalid": 0,
+  "fix_attempts": 0,
+  "fixed": 0
+ },
+ "crash_kinds": {},
+ "noise": {
+  "delta": 0.025729782075366497,
+  "sd_null": 0.012864891037683249,
+  "z": 2.0,
+  "mode": "repeat",
+  "n": 4
+ },
+ "reeval": {
+  "final": {
+   "mean": 2.6266040052247916,
+   "lo": 2.612693585584045,
+   "hi": 2.6428578366182847,
+   "n": 3,
+   "values": [
+    2.6242605934720444,
+    2.6428578366182847,
+    2.612693585584045
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "baseline": {
+   "mean": 2.8051229697050997,
+   "lo": 2.7900873078600363,
+   "hi": 2.821746172489824,
+   "n": 3,
+   "values": [
+    2.8035354287654393,
+    2.821746172489824,
+    2.7900873078600363
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "mode": "hardened",
+  "recorded_best": 2.622188131367283,
+  "optimism_gap": 0.004415873857508856
+ },
+ "n_kept_after_baseline": 6,
+ "shadow_baseline": {
+  "test_iid": {
+   "S": 2.879619476269963
+  },
+  "test_shift": {
+   "S": 2.9514861549111173
+  }
+ },
+ "shadow_final": {
+  "test_iid": {
+   "S": 2.689511852574486
+  },
+  "test_shift": {
+   "S": 2.7864708230022615
+  }
+ },
+ "usage_total": {
+  "calls": 10,
+  "input_tokens": 110734,
+  "output_tokens": 82520,
+  "cost_usd": 0.633978
+ },
+ "n_trace_events": 93,
+ "consistency": {
+  "ok": true,
+  "problems": [],
+  "checked": {
+   "rounds": 10,
+   "decisions": 10,
+   "gates": 10,
+   "monitors": 6,
+   "tsv_rows": 11
+  }
+ },
+ "agent": "LLMResearchAgent(RewriteEditor(claude-cli haiku)) with reply sanitizer",
+ "cache_dir": "validation/autoresearch/.cache_tinylm_live_b",
+ "cache_hits": 0,
+ "cache_misses": 10
+}

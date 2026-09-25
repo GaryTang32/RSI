@@ -157,6 +157,7 @@ class AgentNode:
         self._published: set = set()
         self._reviewed: set = set()        # naive consumers review each hub asset once (hub_review_history)
         self._rejected: set = set()        # safe consumers never re-test an asset their quarantine rejected
+        self._gene_history: list[dict] = []   # genes tried + measured outcome (gene-writer history block, §6.1)
         self.last_gene: Optional[Gene] = None   # the gene actually used in the last cycle (stored or not)
         self._rollouts = 0
         self.proposer_calls = 0
@@ -334,7 +335,13 @@ class AgentNode:
             pub = str(hook(task, Execution(output=trial.output, trace=trial.trace, meta=trial.meta or {})))
         trace = (trial.trace or "")[-1500:] + ("\nPublic checks:\n" + pub if pub else "") + \
             f"\nResult: {'solved' if trial.score >= self.cfg.success_threshold else 'NOT solved'}"
-        prompt = gene_writer_prompt(signals, task_text(self.domain, task), trace, validation_hint=self.cfg.validation_hint)
+        # §6.1 "Recent Evolution History ... DO NOT repeat": earlier genes whose scope matches these signals, with
+        # their measured outcome (validation audit: without it a live writer re-proposed the failed approach)
+        from .signals import pattern_hits
+        hist = [h for h in self._gene_history if pattern_hits(h["signals_match"], signals) > 0
+                or set(h["task_signals"]) & {s for s in signals if s.startswith("task:")}]
+        prompt = gene_writer_prompt(signals, task_text(self.domain, task), trace,
+                                    validation_hint=self.cfg.validation_hint, history=hist)
         self.proposer_calls += 1
         resp = self.llm_propose.complete(prompt, system=GENE_WRITER_SYSTEM, seed=self.seed_base + self.t,
                                          role="proposer")
@@ -460,7 +467,10 @@ class AgentNode:
                              "scores": advice.scores},
                      selector={"mode": dec.mode, "gene": dec.gene.id if dec.gene else None,
                                "capsule": dec.capsule.id if dec.capsule else None, "alternatives": dec.alternatives,
-                               "reasons": dec.reasons, "scores": dec.scores, "banned": sorted(dec.banned),
+                               "reasons": dec.reasons, "scores": dec.scores,
+                               "scores_note": "base + adjustment per gene, BEFORE the x1.5 memory-preference factor "
+                                              "(applied to the preferred gene when ranking; see reasons)",
+                               "banned": sorted(dec.banned),
                                "drift_intensity": dec.drift_intensity, "memory_used": dec.memory_used})
         if self.hub is not None and (cfg.hub_when == "always" or gene is None):
             hg, aid, qd, hub_hit = self._consult_hub(signals, task)
@@ -525,7 +535,7 @@ class AgentNode:
                     lp = self._last_proposal
                     art = self.injector.inject(self.harness, [g_new]) if g_new is not None else self.harness
                     tr.proposal(self.t, g_new.id if g_new else "unparsed", parent=st.gene_library_version(),
-                                prompt=lp.get("prompt", ""), reply=lp.get("reply", ""),
+                                prompt=lp.get("prompt", ""), reply=lp.get("reply", ""), system=lp.get("system", ""),
                                 change=f"gene writer wrote new gene {g_new.id}" if g_new else "",
                                 hypothesis=g_new.summary if g_new else "",
                                 components=[f"gene:{g_new.id}"] if g_new else [],
@@ -568,6 +578,18 @@ class AgentNode:
                       task_success=solved, hidden_score=trial.score, env=cfg.env,
                       validation_context={"gene": gene, "task": task})
         res = self.solidifier.solidify(rs)
+        if gene is not None:
+            plain = {"task_check_failed": "the agent's own task was still NOT solved with this gene",
+                     "validation_failed": "its validation commands failed"}
+            why = "" if res.success else ", ".join(plain.get(x, x) for x in (res.constraints.violations
+                                                                              + res.protocol_violations
+                                                    + list((res.event.meta or {}).get("extra_failures") or [])
+                                                    + ([] if res.validation.ok else ["validation_failed"]))[:3])
+            self._gene_history = (self._gene_history + [{
+                "id": gene.id, "signals_match": list(gene.signals_match), "summary": gene.summary,
+                "strategy": list(gene.strategy), "avoid": list(gene.avoid), "why": why,
+                "task_signals": [s for s in signals if s.startswith("task:")],
+                "outcome": "KEPT (own task solved)" if res.success else "FAILED"}])[-20:]
         if tr.enabled:
             self._trace_solidify(rs, res, gene, solved, trial)
         if res.success and is_new:
@@ -594,7 +616,7 @@ class AgentNode:
             self._reviewed.add(reused)
             self.hub.report_outcome(reused, self.name, int(res.success),
                                     {"score": res.score, "violations": res.constraints.violations})
-        distilled = None
+        distilled, dr = None, None
         if res.success and cfg.distill:
             dr = self.distiller.maybe_distill(st, llm=self.llm_propose if cfg.llm_distill else None,
                                               failures=bool(cfg.failure_distill))
@@ -605,9 +627,17 @@ class AgentNode:
                 distilled = f"{distilled},{fr.gene.id}" if distilled else fr.gene.id
         if tr.enabled and distilled:
             tr.event("note", self.t, what="distiller produced gene(s)", genes=distilled)
+        elif tr.enabled and res.success and cfg.distill and dr is not None:
+            tr.event("note", self.t, what="distiller triggered but produced no gene", ok=dr.ok,
+                     reason=getattr(dr, "reason", ""), solidify_count=getattr(st, "solidify_count", None))
         published = None
+        # safe mode: a gene adopted from the hub (provenance "external") is never re-published by the adopter -
+        # Evolver only skips it in the adoption cycle (source_type "reused"); later local reuses would publish
+        # another agent's gene under this agent's name (validation audit, offline agent1 cycle 7)
+        adopted = cfg.mode == "safe" and gene is not None and (gene.provenance or {}).get("kind") == "external"
         if self.hub is not None and cfg.publish and self.behavior.publishes and res.success and gene is not None \
-                and rs.source_type != "reused" and (res.publishable or not cfg.publish_requires_eligibility):
+                and rs.source_type != "reused" and not adopted \
+                and (res.publishable or not cfg.publish_requires_eligibility):
             published = self.publish(gene, res.capsule, res.event, res.validation.report.to_dict(), before, after)
         rid = res.event.id
         self.ledger.add(Node(id=rid, parent=res.event.parent, round=self.t, kind="cycle",

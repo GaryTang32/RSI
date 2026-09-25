@@ -330,23 +330,38 @@ class EditorAgent(DiscoveryAgent):
 
 
 _TERMINATOR = re.compile(r"^\s*(```[\w+-]*|={3,}(\s*(END|EOF)[^=]*={0,})?)\s*$", re.I)
+_OPEN_FENCE = re.compile(r"^\s*```[\w+-]*\s*$")
 
 
 def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Artifact, list[str]]:
-    """Drop trailing reply-format lines (a closing fence or a bare ``===`` / ``=== END ===``
-    terminator) that ``parse_file_blocks`` leaves at the end of a file block when the model
-    fences only the end of a file. Such a line is never valid code, and keeping it turned a
+    """Drop reply-format lines that ``parse_file_blocks`` leaves in a file block: trailing ones (a
+    closing fence or a bare ``===`` / ``=== END ===`` terminator, when the model fences only the end
+    of a file) and a leading opening fence (```` ```python ````, when the closing fence is not the
+    block's last line or is missing). Such a line is never valid code, and keeping it turned a
     sound candidate into a SyntaxError (the live validation run of 2026-09-25: 6 of 12
-    round-1 attempts). Only trailing lines of the editable ``.py`` files are touched."""
+    round-1 attempts). Only such boundary lines of the editable ``.py`` files are touched."""
     fixed: dict[str, str] = {}
     for name in art:
         if not name.endswith(".py") or not any(fnmatch.fnmatch(name, pat) for pat in editable):
             continue
-        lines = art[name].rstrip("\n").split("\n")
+        orig = art[name].rstrip("\n").split("\n")
+        lines = list(orig)
         n0 = len(lines)
         while lines and (not lines[-1].strip() or _TERMINATOR.match(lines[-1])):
             lines.pop()
-        if len(lines) < n0 and any(_TERMINATOR.match(l) for l in art[name].rstrip("\n").split("\n")[len(lines):]):
+        changed = len(lines) < n0 and any(_TERMINATOR.match(l) for l in orig[len(lines):])
+        if not changed:
+            lines = list(orig)
+        # a LEADING opening fence (```python) is left in place by parse_file_blocks whenever the
+        # block's closing fence is not the very last line (e.g. "```\n===" or no closing fence at
+        # all); it is never valid Python either (stage-B audit, 2026-09-25)
+        head = 0
+        while head < len(lines) and not lines[head].strip():
+            head += 1
+        if head < len(lines) and _OPEN_FENCE.match(lines[head]):
+            lines = lines[head + 1:]
+            changed = True
+        if changed:
             fixed[name] = "\n".join(lines) + "\n"
     return (art.with_files(fixed) if fixed else art), sorted(fixed)
 

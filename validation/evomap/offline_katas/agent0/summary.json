@@ -3,7 +3,7 @@
  "rounds": 12,
  "stop_reason": "max_rounds",
  "baseline": "2d1a9dcb5f",
- "best": "dd3b9726e3",
+ "best": "f1506812a8",
  "first": {
   "cycle": 1,
   "task_id": "days_between",

@@ -269,6 +269,14 @@ Bugs found and fixed in review, each with a regression test or a re-run:
 5. **E4 classified noise as holes.** Under machine load, a pure no-op edit (`scaled_loss` changes `forward`, which hardened training and grading never call) showed a 0.07-0.09 bpb "hardened gain" against an unpaired baseline, and the faithful no-op `forge_record` showed a 0.13 "bogus win". E4 now pairs every run with a baseline run and judges on deterministic equal-compute runs (both no-ops give exactly 0.0).
 6. **Stale documentation.** This file quoted numbers from before the previous review round (for example E10 "parallel ends worse", E5 tinylm "rigor halves the optimism gap") that the JSONs no longer supported, and listed E13 as not run. All numbers above were re-taken from JSONs re-run after the fixes.
 7. **New experiments:** E3 (bpb vs vocabulary, which moves checklist item 16 to done) and the E7 harness with its program-blind control.
+8. **Stage-B validation audit: the shadow monitor was not write-only under a wall-clock or dollar budget.** Its
+   hidden-split audits ran inside the loop's clock and its LLM calls (Domain tasks) were metered on the loop's
+   `max_usd`, so a run with the monitor on stopped earlier than the same run with it off (landscape, 1 s wall budget,
+   0.6 s audits: 1 experiment with the monitor vs 18 without). `AutoresearchLoop._kept` now adds the audit time back
+   to the wall-clock budget and `budget_usd()` excludes monitor spend from `max_usd` (still reported in usage and in
+   the `state` event as `monitor_wall_s` / `monitor_usd`). Tests: `tests/test_autoresearch_validation_audit.py`.
+   Open: with `workers > 1` and a wall-clock budget the monitor's audit training still competes for CPU with the
+   workers' runs. See `validation/autoresearch/AUDIT.md`.
 
 ## Core change requests (not applied; `rsi/core` untouched)
 
@@ -287,3 +295,6 @@ Bugs found and fixed in review, each with a regression test or a re-run:
    fence as code. `LLMResearchAgent` works around both 9 and 10 (`sanitize_reply_files`).
 11. `RunTracer`: the default 6,000-character clip truncates whole-file prompts and replies; autoresearch passes
    `max_text=40000`. A per-field limit (small for state, large for prompt/reply/diff) would suit every method.
+12. `ClaudeCLI` / `LLM`: a shadow monitor's calls share the task LLM's meter, so budgets cannot tell them apart;
+   a per-role or per-caller meter tag would let every method exclude write-only audit spend (autoresearch snapshots
+   the meter around each audit instead).

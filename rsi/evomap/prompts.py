@@ -165,10 +165,28 @@ DISTILL_VALIDATION_SAFE = ("Validation MUST be DISCRIMINATIVE: commands that FAI
                            "scripts or empty lists.")
 
 
+HISTORY_BLOCK_HEAD = ("\nRecent evolution history for these signals (earlier genes in this run and their MEASURED "
+                      "outcome; do NOT repeat a card that failed - change what it got wrong):\n")
+
+
+def history_block(entries: Sequence[dict], max_entries: int = 3) -> str:
+    """Evolver's "Recent Evolution History (last 8 cycles -- DO NOT repeat the same intent+signal+gene)" block
+    (§6.1), restricted to earlier genes whose scope matches the current signals. Empty -> "" (the prompt is then
+    byte-identical to a run without history)."""
+    rows = []
+    for e in list(entries)[-max_entries:]:
+        steps = "; ".join(str(x).rstrip(". ") for x in (e.get("strategy") or [])[:4])
+        avoid = "; ".join(str(x).rstrip(". ") for x in (e.get("avoid") or [])[:3])
+        rows.append(f"- {e.get('id')}: {e.get('outcome')}" + (f" ({e['why']})" if e.get("why") else "")
+                    + f". Summary: {e.get('summary', '')}" + (f" Strategy: {steps}." if steps else "")
+                    + (f" AVOID: {avoid}." if avoid else ""))
+    return (HISTORY_BLOCK_HEAD + "\n".join(rows) + "\n") if rows else ""
+
+
 def gene_writer_prompt(signals: Sequence[str], task_text: str, trace: str, *, hub_block: str = "",
-                       validation_hint: str = "") -> str:
+                       validation_hint: str = "", history: Sequence[dict] = ()) -> str:
     return GENE_WRITER_PROMPT.format(signals=", ".join(signals), task=task_text[:3000], trace=trace[-2500:],
-                                     hub_block=hub_block, validation_hint=validation_hint)
+                                     hub_block=hub_block + history_block(history), validation_hint=validation_hint)
 
 
 def _slug(s: str) -> str:

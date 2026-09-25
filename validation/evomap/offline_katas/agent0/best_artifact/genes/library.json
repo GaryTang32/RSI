@@ -84,11 +84,11 @@
       "text-equality",
       "comparison"
      ],
-     "mode": "hard",
-     "reason_class": "constraint"
+     "mode": "soft",
+     "reason_class": "task_check"
     }
    ],
-   "asset_id": "sha256:bfb732f0d6bc62edfd0ed599b057d6688ee23bc2454ea9991149e93d18522099",
+   "asset_id": "sha256:66b7f22449769ba6fb6a837cfbbbab97cf0a08d1f2e48d9356554f21fde49824",
    "avoid": [
     "encode('ascii', 'ignore'): it deletes letters, not just accents.",
     "Comparing raw strings: an accented letter can be one or two code points."
@@ -133,10 +133,10 @@
       "text-equality",
       "comparison"
      ],
-     "mode": "hard",
+     "mode": "soft",
      "outcome": "failed",
-     "reason_class": "constraint",
-     "retryable": false
+     "reason_class": "task_check",
+     "retryable": true
     },
     {
      "at": "2026-05-29T07:26:40Z",

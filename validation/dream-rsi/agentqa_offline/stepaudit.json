@@ -1,0 +1,674 @@
+{
+ "run": "agentqa_offline",
+ "counts": {
+  "correct": 94,
+  "questionable": 1
+ },
+ "steps": [
+  {
+   "round": 0,
+   "kind": "baseline",
+   "step": "seed evaluation",
+   "verdict": "correct",
+   "evidence": "trace S=0.250000, own re-grade=0.250000 (ok), mean of raw trials=0.25, seed program == untouched domain seed: True"
+  },
+  {
+   "round": 1,
+   "kind": "plan",
+   "step": "cycle 1 plan_grid (r0000)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 1: (3, 2) ('parallel refine: fixed fallback grid (width x depth never adapts)'); trace requested (3, 2), used (3, 2)"
+  },
+  {
+   "round": 1,
+   "kind": "root",
+   "step": "cycle 1 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 0.250000 vs best so far 0.25"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online round 3 batch ['b0.a2', 'b1.a2', 'b2.a2']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 1,
+   "kind": "online_round",
+   "step": "cycle 1 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "9 probed cells vs 9 tree nodes"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (34 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); claim 'tool': knobs {} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (35 +/- lines); own re-grade 0.625000 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); claim 'verify': knobs {} -> {'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (35 +/- lines); own re-grade 0.500000 = recorded; context lineage=0, siblings=0, history=0 (H_(t-1)); claim 'format': knobs {} -> {'format': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); claim 'tool': knobs {'tool': True} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.625000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); claim 'verify': knobs {'verify': True} -> {'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.500000 = recorded; context lineage=1, siblings=2, history=0 (H_(t-1)); claim 'format': knobs {'format': True} -> {'format': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b0.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1)); claim 'tool': knobs {'tool': True} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b1.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.625000 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1)); claim 'verify': knobs {'verify': True} -> {'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "attempt",
+   "step": "t1/b2.a2",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.250000 = recorded; context lineage=2, siblings=4, history=0 (H_(t-1)); claim 'simplify': knobs {'format': True} -> {'format': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 1,
+   "kind": "gate",
+   "step": "cycle 1 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.0 at b0.a0 vs best before 0.25 -> accept=True; trace accept=True, best_after=1.0, kept=t1/b0.a0"
+  },
+  {
+   "round": 1,
+   "kind": "manifest",
+   "step": "cycle 1 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 9, 'decision_rounds': 3, 'round_best': 1.0, 'gain_early': 1.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 3, 'max_depth': 2, 'final_best': 1.0, 'agent_calls': 9}"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0000_initial",
+   "verdict": "correct",
+   "evidence": "V = 0.925000 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.925]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "V = 0.933333 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9333]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0002_t1m2",
+   "verdict": "correct",
+   "evidence": "V = 0.933333 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9333]"
+  },
+  {
+   "round": 1,
+   "kind": "replay_eval",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "V = 0.941667 over 1 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417]"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0001_t1m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0000 -> history/r0001 (246 lines); base r0000 = strongest so far (value, recency); mutator moves ['rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule', 'wasted probes after the final best: stop stagnating branches earlier', 'perturb w_anchor -> 0.48', 'perturb plan_depth_step: unchanged at 1 (clamp/round)'] (1 declared no-op)"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0002_t1m2",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0001 -> history/r0002 (14 lines); base r0001 = strongest so far (value, recency); mutator moves ['wasted probes after the final best: stop stagnating branches earlier', 'perturb w_trend -> 0.8054', 'perturb plan_depth_step -> 2']"
+  },
+  {
+   "round": 1,
+   "kind": "revision",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0002 -> history/r0003 (12 lines); base r0002 = strongest so far (value, recency); mutator moves ['wasted probes after the final best: stop stagnating branches earlier', 'perturb max_width_lo -> 0.8235', 'perturb explore_on_stall -> 0.8285']"
+  },
+  {
+   "round": 1,
+   "kind": "selection",
+   "step": "cycle 1 policy selection",
+   "verdict": "correct",
+   "evidence": "own V [0.925, 0.933333, 0.933333, 0.941667] -> argmax (incumbent kept on ties) r0003_t1m3; trace r0003_t1m3; next cycle deploys r0003; V(m*) - V(0) = +0.016667 >= 0"
+  },
+  {
+   "round": 1,
+   "kind": "beta_sweep",
+   "step": "cycle 1 beta sweep of r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "own AUC 0.3333 / penalty 0.4655 / degenerate False vs trace 0.333333 / 0.465476 / False (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 2,
+   "kind": "plan",
+   "step": "cycle 2 plan_grid (r0003)",
+   "verdict": "questionable",
+   "evidence": "JUDGEMENT: the adaptive template calls a single live manifest 'live best still improving' (improving = len(history) < 2 or ...); spec \u00a74.5 treats insufficient history as a conservative bootstrap. Outcome identical here (hold = the fallback grid); the reason text is wrong || mechanical: own plan_grid on manifests of cycles < 2: (3, 2) ('live best still improving with balanced gains: hold the grid'); trace requested (3, 2), used (3, 2)"
+  },
+  {
+   "round": 2,
+   "kind": "root",
+   "step": "cycle 2 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.000000 vs best so far 1.0"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online round 2 batch ['b0.a1', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (3 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 2,
+   "kind": "online_round",
+   "step": "cycle 2 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "6 probed cells vs 6 tree nodes"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1)); claim 'reason': knobs {'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1)); claim 'verify': knobs {'tool': True} -> {'tool': True, 'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 0.250000 = recorded; context lineage=0, siblings=0, history=9 (H_(t-1)); claim 'simplify': knobs {'tool': True} -> {'tool': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=2, history=9 (H_(t-1)); claim 'reason': knobs {'reason': True, 'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=2, history=9 (H_(t-1)); claim 'verify': knobs {'tool': True, 'verify': True} -> {'tool': True, 'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "attempt",
+   "step": "t2/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.250000 = recorded; context lineage=1, siblings=2, history=9 (H_(t-1)); claim 'simplify': knobs {'tool': False} -> {'tool': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 2,
+   "kind": "gate",
+   "step": "cycle 2 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 0.875 at b0.a0 vs best before 1.0 -> accept=False; trace accept=False, best_after=1.0, kept=None"
+  },
+  {
+   "round": 2,
+   "kind": "manifest",
+   "step": "cycle 2 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 6, 'decision_rounds': 2, 'round_best': 1.0, 'gain_early': 0.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 3, 'max_depth': 1, 'final_best': 1.0, 'agent_calls': 6}"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0003_t1m3",
+   "verdict": "correct",
+   "evidence": "V = 0.448333 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417, -0.045]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0004_t2m1",
+   "verdict": "correct",
+   "evidence": "V = 0.448333 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417, -0.045]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "V = 0.455000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.955, -0.045]"
+  },
+  {
+   "round": 2,
+   "kind": "replay_eval",
+   "step": "r0006_t2m3",
+   "verdict": "correct",
+   "evidence": "V = 0.455000 over 2 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.955, -0.045]"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0004_t2m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0003 -> history/r0004 (8 lines); base r0003 = strongest so far (value, recency); mutator moves ['wasted probes after the final best: stop stagnating branches earlier', 'perturb repairs_hi -> 2.3691', 'perturb prune_hi -> 0.2704']"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0004 -> history/r0005 (8 lines); base r0004 = strongest so far (value, recency); mutator moves ['wasted probes after the final best: stop stagnating branches earlier', 'perturb evidence_lo: unchanged at 1.0 (clamp/round)', 'perturb repairs_hi -> 2.0427'] (1 declared no-op)"
+  },
+  {
+   "round": 2,
+   "kind": "revision",
+   "step": "r0006_t2m3",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0005 -> history/r0006 (10 lines); base r0005 = strongest so far (value, recency); mutator moves ['wasted probes after the final best: stop stagnating branches earlier', 'perturb explore_on_stall -> 0.8804', 'perturb w_depth -> 0.1098']"
+  },
+  {
+   "round": 2,
+   "kind": "selection",
+   "step": "cycle 2 policy selection",
+   "verdict": "correct",
+   "evidence": "own V [0.448333, 0.448333, 0.455, 0.455] -> argmax (incumbent kept on ties) r0005_t2m2; trace r0005_t2m2; next cycle deploys r0005; V(m*) - V(0) = +0.006667 >= 0"
+  },
+  {
+   "round": 2,
+   "kind": "beta_sweep",
+   "step": "cycle 2 beta sweep of r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "own AUC 0.0833 / penalty 0.4024 / degenerate False vs trace 0.083333 / 0.402381 / False (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 3,
+   "kind": "plan",
+   "step": "cycle 3 plan_grid (r0005)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 3: (4, 2) ('live best plateaued: widen to cover new directions'); trace requested (4, 2), used (4, 2)"
+  },
+  {
+   "round": 3,
+   "kind": "root",
+   "step": "cycle 3 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.000000 vs best so far 1.0"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (4 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 2 batch ['b3.a0', 'b1.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (4 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online round 3 batch ['b3.a1', 'b0.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (4 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 3,
+   "kind": "online_round",
+   "step": "cycle 3 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "8 probed cells vs 8 tree nodes"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 0.250000 = recorded; context lineage=0, siblings=0, history=15 (H_(t-1)); claim 'simplify': knobs {'tool': True} -> {'tool': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=15 (H_(t-1)); claim 'format': knobs {'tool': True} -> {'format': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=15 (H_(t-1)); claim 'tool': knobs {'tool': True} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b3.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=0, siblings=3, history=15 (H_(t-1)); claim 'reason': knobs {'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=2, history=15 (H_(t-1)); claim 'verify': knobs {'format': True, 'tool': True} -> {'format': True, 'tool': True, 'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=2, history=15 (H_(t-1)); claim 'reason': knobs {'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b3.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=5, history=15 (H_(t-1)); claim 'reason': knobs {'reason': True, 'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "attempt",
+   "step": "t3/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.250000 = recorded; context lineage=1, siblings=5, history=15 (H_(t-1)); claim 'simplify': knobs {'tool': False} -> {'tool': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 3,
+   "kind": "gate",
+   "step": "cycle 3 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.0 at b1.a0 vs best before 1.0 -> accept=False; trace accept=False, best_after=1.0, kept=None"
+  },
+  {
+   "round": 3,
+   "kind": "manifest",
+   "step": "cycle 3 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 8, 'decision_rounds': 3, 'round_best': 1.0, 'gain_early': 0.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 4, 'max_depth': 1, 'final_best': 1.0, 'agent_calls': 8}"
+  },
+  {
+   "round": 3,
+   "kind": "replay_eval",
+   "step": "r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "V = 0.281111 over 3 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.955, -0.045, -0.0667]"
+  },
+  {
+   "round": 3,
+   "kind": "replay_eval",
+   "step": "r0007_t3m1",
+   "verdict": "correct",
+   "evidence": "V = 0.276667 over 3 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417, -0.045, -0.0667]"
+  },
+  {
+   "round": 3,
+   "kind": "replay_eval",
+   "step": "r0008_t3m2",
+   "verdict": "correct",
+   "evidence": "V = 0.276667 over 3 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417, -0.045, -0.0667]"
+  },
+  {
+   "round": 3,
+   "kind": "replay_eval",
+   "step": "r0009_t3m3",
+   "verdict": "correct",
+   "evidence": "V = 0.276667 over 3 world(s) re-derived (own Eq.1 on tree.json scores) and re-replayed by an independent replay implementation: per world [0.9417, -0.045, -0.0667]"
+  },
+  {
+   "round": 3,
+   "kind": "revision",
+   "step": "r0007_t3m1",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0005 -> history/r0007 (10 lines); base r0005 = strongest so far (value, recency); mutator moves ['premature stops (ceiling missed): more patience, weaker pruning, wider', 'perturb open_hi: unchanged at 1.0 (clamp/round)', 'perturb max_width_lo -> 1.0'] (1 declared no-op)"
+  },
+  {
+   "round": 3,
+   "kind": "revision",
+   "step": "r0008_t3m2",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0005 -> history/r0008 (10 lines); base r0005 = strongest so far (value, recency); mutator moves ['premature stops (ceiling missed): more patience, weaker pruning, wider', 'perturb max_width_lo -> 0.5173', 'perturb prune_hi -> 0.2555']"
+  },
+  {
+   "round": 3,
+   "kind": "revision",
+   "step": "r0009_t3m3",
+   "verdict": "correct",
+   "evidence": "diff = own diff of history/r0005 -> history/r0009 (14 lines); base r0005 = strongest so far (value, recency); mutator moves ['premature stops (ceiling missed): more patience, weaker pruning, wider', 'perturb w_depth -> 0.0', 'perturb w_trend -> 1.1794']"
+  },
+  {
+   "round": 3,
+   "kind": "selection",
+   "step": "cycle 3 policy selection",
+   "verdict": "correct",
+   "evidence": "own V [0.281111, 0.276667, 0.276667, 0.276667] -> argmax (incumbent kept on ties) r0005_t2m2; trace r0005_t2m2; next cycle deploys r0005; V(m*) - V(0) = +0.000000 >= 0"
+  },
+  {
+   "round": 3,
+   "kind": "beta_sweep",
+   "step": "cycle 3 beta sweep of r0005_t2m2",
+   "verdict": "correct",
+   "evidence": "own AUC 0.0370 / penalty 0.3933 / degenerate False vs trace 0.037037 / 0.393254 / False (feedback only; not a selection input under Eq.1)"
+  },
+  {
+   "round": 4,
+   "kind": "plan",
+   "step": "cycle 4 plan_grid (r0005)",
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 4: (5, 2) ('live best plateaued: widen to cover new directions'); trace requested (5, 2), used (5, 2)"
+  },
+  {
+   "round": 4,
+   "kind": "root",
+   "step": "cycle 4 live root",
+   "verdict": "correct",
+   "evidence": "tree root score 1.000000 vs best so far 1.0"
+  },
+  {
+   "round": 4,
+   "kind": "online_round",
+   "step": "cycle 4 online round 1 batch ['b0.a0', 'b1.a0', 'b2.a0']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (5 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 4,
+   "kind": "online_round",
+   "step": "cycle 4 online round 2 batch ['b3.a0', 'b1.a1', 'b0.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (5 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 4,
+   "kind": "online_round",
+   "step": "cycle 4 online round 3 batch ['b4.a0', 'b3.a1', 'b2.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (5 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 4,
+   "kind": "online_round",
+   "step": "cycle 4 online round 4 batch ['b4.a1']",
+   "verdict": "correct",
+   "evidence": "<= W=3, one cell per branch, legal before the call (5 legal), prefix_seen = own reconstruction, reveals = tree.json"
+  },
+  {
+   "round": 4,
+   "kind": "online_round",
+   "step": "cycle 4 online batches cover the recorded tree",
+   "verdict": "correct",
+   "evidence": "10 probed cells vs 10 tree nodes"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b0.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=0, siblings=0, history=23 (H_(t-1)); claim 'reason': knobs {'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b1.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=0, history=23 (H_(t-1)); claim 'tool': knobs {'tool': True} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b2.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 0.250000 = recorded; context lineage=0, siblings=0, history=23 (H_(t-1)); claim 'simplify': knobs {'tool': True} -> {'tool': False} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b3.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 1.000000 = recorded; context lineage=0, siblings=3, history=23 (H_(t-1)); claim 'format': knobs {'tool': True} -> {'format': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b1.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=2, history=23 (H_(t-1)); claim 'tool': knobs {'tool': True} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b0.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 0.875000 = recorded; context lineage=1, siblings=2, history=23 (H_(t-1)); claim 'reason': knobs {'reason': True, 'tool': True} -> {'reason': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b4.a0",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (3 +/- lines); own re-grade 0.875000 = recorded; context lineage=0, siblings=6, history=23 (H_(t-1)); claim 'verify': knobs {'tool': True} -> {'tool': True, 'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b3.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (0 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=5, history=23 (H_(t-1)); claim 'format': knobs {'format': True, 'tool': True} -> {'format': True, 'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b2.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 1.000000 = recorded; context lineage=1, siblings=5, history=23 (H_(t-1)); claim 'tool': knobs {'tool': False} -> {'tool': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "attempt",
+   "step": "t4/b4.a1",
+   "verdict": "correct",
+   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 0.625000 = recorded; context lineage=1, siblings=8, history=23 (H_(t-1)); claim 'simplify': knobs {'tool': True, 'verify': True} -> {'tool': False, 'verify': True} (consistent); no task id / question / target string of any split in the program"
+  },
+  {
+   "round": 4,
+   "kind": "gate",
+   "step": "cycle 4 best-program gate",
+   "verdict": "correct",
+   "evidence": "own: round best 1.0 at b1.a0 vs best before 1.0 -> accept=False; trace accept=False, best_after=1.0, kept=None"
+  },
+  {
+   "round": 4,
+   "kind": "manifest",
+   "step": "cycle 4 live_cycle_manifest",
+   "verdict": "correct",
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 10, 'decision_rounds': 4, 'round_best': 1.0, 'gain_early': 0.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 5, 'max_depth': 1, 'final_best': 1.0, 'agent_calls': 10}"
+  },
+  {
+   "round": null,
+   "kind": "cost",
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "calls per cycle own [9, 6, 8, 10] vs trace [9, 6, 8, 10]; meter 33; sum of per-attempt usd 0.0000 vs meter 0.0000; developer usd 0.0000 (0 calls)"
+  },
+  {
+   "round": null,
+   "kind": "monitor",
+   "step": "shadow monitor events",
+   "verdict": "correct",
+   "evidence": "monitored ['seed', 't1/b0.a0'] = seed + every new best ['t1/b0.a0']; sealed numbers never read by the loop (static check in AUDIT.md); shadow usage {'task': {'calls': 48, 'input_tokens': 2071, 'output_tokens': 19787, 'cost_usd': 0.0, 'latency_s': 0.0, 'total_tokens': 21858}, '_total': {'calls': 48, 'input_tokens': 2071, 'output_tokens': 19787, 'cost_usd': 0.0, 'latency_s': 0.0, 'total_tokens': 21858}}"
+  }
+ ]
+}

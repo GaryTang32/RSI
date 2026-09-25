@@ -1,0 +1,83 @@
+{
+ "genes": [
+  {
+   "asset_id": "sha256:0b41401d4c89b0ad6d97e6d0e18c8d46944c0224bc7b7d959ea6ac68936bc4bb",
+   "avoid": [
+    "Using .lower() instead of .casefold() for Unicode strings; casefold handles locale-dependent case rules and character expansion (\u00df\u2192ss).",
+    "Inconsistent or mixed normalization forms between inputs; always apply identical NFC to both.",
+    "Assuming ASCII case rules apply universally; validate against multi-script and combining-character inputs."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.15,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T22:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780007200.0
+    }
+   ],
+   "id": "gene_unicode_text_comparison",
+   "learning_history": [
+    {
+     "at": "2026-05-28T22:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T04:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 2,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "unicode",
+    "text-equality",
+    "comparison",
+    "case"
+   ],
+   "strategy": [
+    "Import unicodedata module.",
+    "Apply NFC Unicode normalization to both input strings using unicodedata.normalize('NFC', ...).",
+    "Use .casefold() (not .lower()) for proper Unicode case handling across scripts and edge cases (Turkish i, German \u00df, Greek sigma).",
+    "Compare normalized, case-folded strings with ==.",
+    "Test with combining characters (\u00e9 vs e+accent) and non-ASCII case-folding edge cases."
+   ],
+   "summary": "Use proper Unicode normalization (NFC) and casefold() for text equality that ignores both representation and case differences.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py",
+    "pytest -q smoke_test.py"
+   ]
+  }
+ ]
+}

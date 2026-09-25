@@ -81,12 +81,12 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         stop = None
         while True:
             if stop is None:
-                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.usd())
+                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
                 if stop is None and self.n_invalid_streak >= self.cfg.max_consecutive_invalid:
                     stop = "agent_failed"
             while stop is None and len(self.inflight) < max(1, self.cfg.workers):
                 self._submit_one()
-                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.usd())
+                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
                 if stop is None and self.n_invalid_streak >= self.cfg.max_consecutive_invalid:
                     stop = "agent_failed"
             if not self.inflight and stop is not None:

@@ -181,3 +181,16 @@ Verified against the trace numbers (by reading `trace.jsonl` and recomputing whe
   event (status "failed"), which is faithful but makes the event score meaningless as a quality signal.
 * **Not reproducible here.** The paper's headline numbers (4,590 trials, CritPt) and the Behind-EvoMap network
   statistics need other benchmarks/data; this stage validates mechanics only.
+
+## Stage B (independent audit)
+
+See `AUDIT.md`. Four more defects were fixed:
+
+- B1: the spot-check slashed an honest ceiling report;
+- B2: keep-rule failures were classified hard;
+- B3: the writer prompt had no §6.1 history;
+- B4: adopted genes were re-published.
+
+`offline_katas/` was re-run from scratch after the fixes. The stage-A copy is in `_superseded_stageA/offline_katas`.
+`live_katas_r3` is a fresh live run after all fixes: $0.333, 7.5 min. In it the hub now rejects the zero-uplift
+gene at the ceiling.

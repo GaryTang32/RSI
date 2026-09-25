@@ -166,4 +166,26 @@ def test_rewrite_proposer_maps_src_layout_to_harness_root():
 def test_runtime_api_doc_states_preimports_and_call_id():
     """Live haiku imported Extension/ToolResult from an SDK and used event.call_id (both failed)."""
     from rsi.solpi import RUNTIME_API_DOC
+    assert '"/.solpi/' in RUNTIME_API_DOC and "KEYS ARE" in RUNTIME_API_DOC
     assert "PRE-IMPORTED" in RUNTIME_API_DOC and "event.call" in RUNTIME_API_DOC and ".id" in RUNTIME_API_DOC
+
+
+def test_llm_reviewer_sees_the_runtime_api_for_solpi_harnesses():
+    from rsi.core import Artifact
+    from rsi.core.llm import LLM, LLMResponse, Usage
+    from rsi.solpi import Idea, LLMReviewer, RUNTIME_API_DOC
+
+    class Spy(LLM):
+        def __init__(self):
+            super().__init__()
+            self.prompts = []
+
+        def complete(self, prompt, **kw):
+            self.prompts.append(prompt)
+            return LLMResponse(text='{"verdict": "pass", "reasons": []}', usage=Usage(), model="spy")
+
+    spy = Spy()
+    base = Artifact({"harness.json": '{"extensions": {}}'})
+    cand = Artifact({"harness.json": '{"extensions": {"x": {}}}', "extensions/x.py": "class MECHANISM(Extension): pass\n"})
+    ok, _ = LLMReviewer(spy).review(Idea("L1", "C", "t"), base, cand)
+    assert ok and RUNTIME_API_DOC in spy.prompts[0]

@@ -389,6 +389,12 @@ class SafeHub(_HubBase):
             row["reason"] = "report cap per (consumer, asset, epoch)"
         elif not proof or "tasks_hash" not in proof:
             row["reason"] = "no verifiable proof"
+        elif int(outcome) == 0 and float(proof.get("S_base", 0.0)) >= 1.0 - 1e-9:
+            # the consumer's own A/B had no headroom (baseline already solved every trial): "no gain" is
+            # uninformative about the asset, so it is neither counted as a failure nor spot-checked / slashed.
+            # (Validation audit: an honest ceiling report was slashed because the hub measured U_LCB >= delta
+            # on ITS tasks - disagreement with the hub's uplift is not evidence of a false report.)
+            row["reason"] = "uninformative: no headroom on the consumer's tasks (baseline at ceiling)"
         else:
             self._reports_epoch[(consumer, asset_id, self.epoch)] = 1
             row["counted"] = True

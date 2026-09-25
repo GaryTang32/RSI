@@ -72,7 +72,10 @@ def static_check(code: str) -> CheckResult:
     try:
         tree = ast.parse(code)
     except SyntaxError as e:
-        return CheckResult(False, [f"syntax error: {e}"])
+        # quote the offending line: "invalid syntax (line 188)" alone made the live-run developer
+        # invent a cause in its repair round (the line was a stray ``` left by the reply parser)
+        bad = (e.text or "").strip()
+        return CheckResult(False, [f"syntax error: {e}" + (f" - offending line: {bad[:120]!r}" if bad else "")])
     name = None
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "NAME" for t in node.targets):

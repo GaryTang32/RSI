@@ -1,0 +1,254 @@
+{
+ "method": "autoresearch",
+ "rounds": 11,
+ "stop_reason": "max_rounds",
+ "baseline": "c3640d1810",
+ "best": "1fff31e822",
+ "first": {
+  "exp": 0,
+  "status": "keep",
+  "metric": 2.8288339009396535,
+  "best": 2.8288339009396535,
+  "description": "baseline",
+  "commit": "906744c",
+  "wall_s": 8.589,
+  "t": 8.594,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.8288339009396535
+  ]
+ },
+ "last": {
+  "exp": 10,
+  "status": "keep",
+  "metric": 2.622188131367283,
+  "best": 2.6308254050878395,
+  "description": "Increase learning rate from 0.006 to 0.007 to further accelerate convergence",
+  "commit": "363363c",
+  "wall_s": 8.653,
+  "t": 1055.54,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.622188131367283
+  ]
+ },
+ "usage": {
+  "calls": 10,
+  "input_tokens": 110734,
+  "output_tokens": 82520,
+  "cost_usd": 0.633978
+ },
+ "meta": {
+  "results_tsv": "/home/user/RSI/validation/autoresearch/tinylm_live_b/results.tsv",
+  "counters": {
+   "rejected": 0,
+   "duplicate": 0,
+   "invalid": 0,
+   "fix_attempts": 0,
+   "fixed": 0
+  },
+  "crash_kinds": {},
+  "scope": {
+   "checked": 10,
+   "rejected": 0
+  },
+  "budget_events": {
+   "killed": 0,
+   "over_budget": 0
+  },
+  "programs": {
+   "67a030e": "upstream"
+  },
+  "n_experiments": 10,
+  "n_runs": 14,
+  "wall_s": 1064.4142196178436,
+  "noise": {
+   "delta": 0.025729782075366497,
+   "sd_null": 0.012864891037683249,
+   "z": 2.0,
+   "mode": "repeat",
+   "n": 4
+  },
+  "workspace": {
+   "branch": "autoresearch/validate-live-b",
+   "head": "363363c",
+   "resets": 4,
+   "rewinds": 0
+  },
+  "final_samples": [
+   2.622188131367283
+  ],
+  "val_epochs": 0,
+  "analysis": {
+   "n_rows": 11,
+   "n_experiments": 10,
+   "n_keep": 7,
+   "n_discard": 4,
+   "n_crash": 0,
+   "keep_rate": 0.6363636363636364,
+   "baseline": 2.8288339009396535,
+   "best": 2.622188131367283,
+   "improvement": 0.20664576957237069,
+   "total_keep_delta": 0.20664576957237069,
+   "top_hits": [
+    {
+     "exp": 3,
+     "commit": "a285d1a",
+     "description": "Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget",
+     "delta": 0.08886354111043815,
+     "metric": 2.7399703598292153
+    },
+    {
+     "exp": 4,
+     "commit": "533edda",
+     "description": "Increase learning rate from 0.004 to 0.005 to further accelerate convergence",
+     "delta": 0.04265792834301907,
+     "metric": 2.6973124314861963
+    },
+    {
+     "exp": 6,
+     "commit": "83d320f",
+     "description": "Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget",
+     "delta": 0.03106575346235818,
+     "metric": 2.666246678023838
+    },
+    {
+     "exp": 9,
+     "commit": "020a551",
+     "description": "Increase learning rate from 0.005 to 0.006 to further accelerate convergence",
+     "delta": 0.02531425200267101,
+     "metric": 2.6308254050878395
+    },
+    {
+     "exp": 7,
+     "commit": "197ab6b",
+     "description": "Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget",
+     "delta": 0.010107020933327604,
+     "metric": 2.6561396570905105
+    },
+    {
+     "exp": 10,
+     "commit": "363363c",
+     "description": "Increase learning rate from 0.006 to 0.007 to further accelerate convergence",
+     "delta": 0.00863727372055667,
+     "metric": 2.622188131367283
+    }
+   ],
+   "improvement_pct": 7.304980667254064,
+   "experiments_per_hour": 33.8214196470666
+  },
+  "audit": [
+   {
+    "exp": 0,
+    "commit": "906744c",
+    "status": "keep",
+    "description": "baseline",
+    "metric": 2.8288339009396535,
+    "test_iid": 2.879619476269963,
+    "test_shift": 2.9514861549111173,
+    "loop_metric_rerun": 2.820127363034176
+   },
+   {
+    "exp": 3,
+    "commit": "a285d1a",
+    "status": "keep",
+    "description": "Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget",
+    "metric": 2.7399703598292153,
+    "test_iid": 2.8125654710869408,
+    "test_shift": 2.8757209619703863,
+    "loop_metric_rerun": 2.753486039488761
+   },
+   {
+    "exp": 4,
+    "commit": "533edda",
+    "status": "keep",
+    "description": "Increase learning rate from 0.004 to 0.005 to further accelerate convergence",
+    "metric": 2.6973124314861963,
+    "test_iid": 2.7554745538620558,
+    "test_shift": 2.815005873859263,
+    "loop_metric_rerun": 2.6946792608095196
+   },
+   {
+    "exp": 6,
+    "commit": "83d320f",
+    "status": "keep",
+    "description": "Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget",
+    "metric": 2.666246678023838,
+    "test_iid": 2.723226297149213,
+    "test_shift": 2.778373564904901,
+    "loop_metric_rerun": 2.662539453234716
+   },
+   {
+    "exp": 7,
+    "commit": "197ab6b",
+    "status": "keep",
+    "description": "Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget",
+    "metric": 2.6561396570905105,
+    "test_iid": 2.7193235906110775,
+    "test_shift": 2.7901903389793743,
+    "loop_metric_rerun": 2.6535389872134734
+   },
+   {
+    "exp": 9,
+    "commit": "020a551",
+    "status": "keep",
+    "description": "Increase learning rate from 0.005 to 0.006 to further accelerate convergence",
+    "metric": 2.6308254050878395,
+    "test_iid": 2.7130467432067693,
+    "test_shift": 2.7738509142833383,
+    "loop_metric_rerun": 2.638214862057464
+   },
+   {
+    "exp": 10,
+    "commit": "363363c",
+    "status": "keep",
+    "description": "Increase learning rate from 0.006 to 0.007 to further accelerate convergence",
+    "metric": 2.622188131367283,
+    "test_iid": 2.689511852574486,
+    "test_shift": 2.7864708230022615,
+    "loop_metric_rerun": 2.6245784176820237
+   }
+  ],
+  "reeval": {
+   "final": {
+    "mean": 2.6266040052247916,
+    "lo": 2.612693585584045,
+    "hi": 2.6428578366182847,
+    "n": 3,
+    "values": [
+     2.6242605934720444,
+     2.6428578366182847,
+     2.612693585584045
+    ],
+    "n_crash": 0,
+    "seeds": [
+     10000,
+     10001,
+     10002
+    ]
+   },
+   "baseline": {
+    "mean": 2.8051229697050997,
+    "lo": 2.7900873078600363,
+    "hi": 2.821746172489824,
+    "n": 3,
+    "values": [
+     2.8035354287654393,
+     2.821746172489824,
+     2.7900873078600363
+    ],
+    "n_crash": 0,
+    "seeds": [
+     10000,
+     10001,
+     10002
+    ]
+   },
+   "mode": "hardened",
+   "recorded_best": 2.622188131367283,
+   "optimism_gap": 0.004415873857508856
+  }
+ }
+}

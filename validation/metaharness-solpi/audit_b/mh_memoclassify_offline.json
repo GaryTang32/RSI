@@ -1,0 +1,432 @@
+{
+ "run": "mh_memoclassify_offline",
+ "method": "metaharness",
+ "counts": {
+  "correct": 58,
+  "questionable": 5,
+  "wrong": 0,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 0,
+   "step": "baseline eval no_memory",
+   "verdict": "correct",
+   "evidence": "S=0.1111 from 3 raw per-task records (trace trials mean 0.1111); context cost 191.0 (mean of non-zero per-unit context_chars); units all in evolve"
+  },
+  {
+   "round": 0,
+   "step": "baseline eval fewshot_all",
+   "verdict": "correct",
+   "evidence": "S=0.4583 from 3 raw per-task records (trace trials mean 0.4583); context cost 17723.6 (mean of non-zero per-unit context_chars); units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 2 prior systems = ['fewshot_all', 'no_memory']; view exposes 20 files / 579542 chars of 2 systems (by kind {'code': 2, 'traces': 6, 'per_task': 6, 'scores': 2, 'summaries': 0, 'run_files': 2, 'other': 2})"
+  },
+  {
+   "round": 1,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "correct",
+   "evidence": "read 11 of 20 files (traces 6/6); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 1,
+   "step": "proposal i01_0_retrieve_topk: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base fewshot_all (visible); actual diff touches ['memory.py'] (+145 lines); no task ids / question text / literal answers in added lines | claim: Showing only the demonstrations most similar to the query keeps the prompt inside the model's effective context and removes distracting exam"
+  },
+  {
+   "round": 1,
+   "step": "proposal i01_1_label_list: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base no_memory (visible); actual diff touches ['memory.py'] (+148 lines); no task ids / question text / literal answers in added lines | claim: Listing every label seen so far lets the model name labels without a retrieved example."
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) i01_0_retrieve_topk",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) i01_1_label_list",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "eval i01_0_retrieve_topk",
+   "verdict": "correct",
+   "evidence": "S=0.5347 (raw trials; ledger 0.5347222222222222), cost 2484.4 (ledger 2484.4166666666665); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "eval i01_1_label_list",
+   "verdict": "correct",
+   "evidence": "S=0.3819 (raw trials; ledger 0.3819444444444445), cost 428.3 (ledger 428.3333333333333); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 1: ['i01_0_retrieve_topk', 'i01_1_label_list', 'no_memory']; incumbent fewshot_all -> i01_0_retrieve_topk (recomputed i01_0_retrieve_topk, S 0.4583 -> 0.5347)"
+  },
+  {
+   "round": 1,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "i01_0_retrieve_topk: ood 0.604"
+  },
+  {
+   "round": 2,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 4 prior systems = ['i01_0_retrieve_topk', 'i01_1_label_list', 'no_memory']; view exposes 39 files / 1065073 chars of 4 systems (by kind {'code': 4, 'traces': 12, 'per_task': 12, 'scores': 4, 'summaries': 0, 'run_files': 3, 'other': 4})"
+  },
+  {
+   "round": 2,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 15 of 39 files (traces 6/12); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 2,
+   "step": "proposal i02_0_contrastive: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i01_0_retrieve_topk (visible); actual diff touches ['memory.py'] (+5 lines); no task ids / question text / literal answers in added lines | claim: Adding demonstrations of the labels most often confused with the top retrieved labels (learned from online errors) helps the model separate "
+  },
+  {
+   "round": 2,
+   "step": "proposal i02_1_coverage: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base no_memory (visible); actual diff touches ['memory.py'] (+148 lines); no task ids / question text / literal answers in added lines | claim: Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed."
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) i02_0_contrastive",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) i02_1_coverage",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "eval i02_0_contrastive",
+   "verdict": "correct",
+   "evidence": "S=0.5208 (raw trials; ledger 0.5208333333333334), cost 2467.0 (ledger 2467.0); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "eval i02_1_coverage",
+   "verdict": "correct",
+   "evidence": "S=0.5069 (raw trials; ledger 0.5069444444444445), cost 3606.0 (ledger 3605.9513888888887); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 2: ['i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; incumbent i01_0_retrieve_topk -> i01_0_retrieve_topk (recomputed i01_0_retrieve_topk, S 0.5347 -> 0.5347)"
+  },
+  {
+   "round": 3,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 6 prior systems = ['i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 58 files / 1665901 chars of 6 systems (by kind {'code': 6, 'traces': 18, 'per_task': 18, 'scores': 6, 'summaries': 0, 'run_files': 4, 'other': 6})"
+  },
+  {
+   "round": 3,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 19 of 58 files (traces 6/18); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 3,
+   "step": "proposal i03_0_notes: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i01_0_retrieve_topk (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost."
+  },
+  {
+   "round": 3,
+   "step": "proposal i03_1_notes: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i02_0_contrastive (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Distilling each label into its most distinctive words gives the model a compact description of every label at small context cost."
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) i03_0_notes",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) i03_1_notes",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "eval i03_0_notes",
+   "verdict": "correct",
+   "evidence": "S=0.5347 (raw trials; ledger 0.5347222222222222), cost 3548.1 (ledger 3548.0833333333335); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "eval i03_1_notes",
+   "verdict": "correct",
+   "evidence": "S=0.5556 (raw trials; ledger 0.5555555555555557), cost 3522.5 (ledger 3522.506944444444); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 3: ['i03_1_notes', 'i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; incumbent i01_0_retrieve_topk -> i03_1_notes (recomputed i03_1_notes, S 0.5347 -> 0.5556)"
+  },
+  {
+   "round": 3,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "i03_1_notes: ood 0.650"
+  },
+  {
+   "round": 4,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 8 prior systems = ['i03_1_notes', 'i01_0_retrieve_topk', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 77 files / 2305391 chars of 8 systems (by kind {'code': 8, 'traces': 24, 'per_task': 24, 'scores': 8, 'summaries': 0, 'run_files': 5, 'other': 8})"
+  },
+  {
+   "round": 4,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 23 of 77 files (traces 6/24); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 4,
+   "step": "proposal i04_0_coverage: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i03_1_notes (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed."
+  },
+  {
+   "round": 4,
+   "step": "proposal i04_1_param_char_budget_14000: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i01_0_retrieve_topk (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Tuning char_budget to 14000 should balance recall and prompt length."
+  },
+  {
+   "round": 4,
+   "step": "gate (admissibility) i04_0_coverage",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 4,
+   "step": "gate (admissibility) i04_1_param_char_budget_14000",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 4,
+   "step": "eval i04_0_coverage",
+   "verdict": "correct",
+   "evidence": "S=0.5625 (raw trials; ledger 0.5625), cost 4669.6 (ledger 4669.618055555556); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 4,
+   "step": "eval i04_1_param_char_budget_14000",
+   "verdict": "correct",
+   "evidence": "S=0.5347 (raw trials; ledger 0.5347222222222222), cost 2484.4 (ledger 2484.4166666666665); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 4,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 4: ['i04_0_coverage', 'i03_1_notes', 'i01_0_retrieve_topk', 'i04_1_param_char_budget_14000', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; incumbent i03_1_notes -> i04_0_coverage (recomputed i04_0_coverage, S 0.5556 -> 0.5625)"
+  },
+  {
+   "round": 4,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "i04_0_coverage: ood 0.654"
+  },
+  {
+   "round": 5,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 10 prior systems = ['i04_0_coverage', 'i03_1_notes', 'i01_0_retrieve_topk', 'i04_1_param_char_budget_14000', 'i02_0_contrastive', 'i01_1_label_list', 'no_memory']; view exposes 96 files / 2941022 chars of 10 systems (by kind {'code': 10, 'traces': 30, 'per_task': 30, 'scores': 10, 'summaries': 0, 'run_files': 6, 'other': 10})"
+  },
+  {
+   "round": 5,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 27 of 96 files (traces 6/30); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 5,
+   "step": "proposal i05_0_notes_only: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i04_0_coverage (visible); actual diff touches ['memory.py'] (+6 lines); no task ids / question text / literal answers in added lines | claim: Keyword notes for every label plus a handful of nearest demonstrations should match the full demonstration set at a fraction of the context."
+  },
+  {
+   "round": 5,
+   "step": "proposal i05_1_crossover: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base no_memory (visible); actual diff touches ['memory.py'] (+148 lines); no task ids / question text / literal answers in added lines | claim: combine no_memory + i04_0_coverage"
+  },
+  {
+   "round": 5,
+   "step": "gate (admissibility) i05_0_notes_only",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 5,
+   "step": "gate (admissibility) i05_1_crossover",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 5,
+   "step": "eval i05_0_notes_only",
+   "verdict": "correct",
+   "evidence": "S=0.5486 (raw trials; ledger 0.5486111111111112), cost 1949.0 (ledger 1948.9791666666667); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 5,
+   "step": "eval i05_1_crossover",
+   "verdict": "correct",
+   "evidence": "S=0.5694 (raw trials; ledger 0.5694444444444445), cost 1216.7 (ledger 1216.6666666666667); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 5,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 5: ['i05_1_crossover', 'i01_1_label_list', 'no_memory']; incumbent i04_0_coverage -> i05_1_crossover (recomputed i05_1_crossover, S 0.5625 -> 0.5694)"
+  },
+  {
+   "round": 5,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "i05_1_crossover: ood 0.625"
+  },
+  {
+   "round": 6,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 12 prior systems = ['i05_1_crossover', 'i01_1_label_list', 'no_memory']; view exposes 115 files / 3436442 chars of 12 systems (by kind {'code': 12, 'traces': 36, 'per_task': 36, 'scores': 12, 'summaries': 0, 'run_files': 7, 'other': 12})"
+  },
+  {
+   "round": 6,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 31 of 115 files (traces 6/36); prompt 0 chars contains 0 of 7 sealed task inputs"
+  },
+  {
+   "round": 6,
+   "step": "proposal i06_0_param_char_budget_4500: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i05_1_crossover (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Tuning char_budget to 4500 should balance recall and prompt length."
+  },
+  {
+   "round": 6,
+   "step": "proposal i06_1_label_list: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base i04_0_coverage (visible); actual diff touches ['memory.py'] (+3 lines); no task ids / question text / literal answers in added lines | claim: Listing every label seen so far lets the model name labels without a retrieved example."
+  },
+  {
+   "round": 6,
+   "step": "gate (admissibility) i06_0_param_char_budget_4500",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 6,
+   "step": "gate (admissibility) i06_1_label_list",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 6,
+   "step": "eval i06_0_param_char_budget_4500",
+   "verdict": "correct",
+   "evidence": "S=0.5903 (raw trials; ledger 0.5902777777777777), cost 5658.0 (ledger 5658.0); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 6,
+   "step": "eval i06_1_label_list",
+   "verdict": "correct",
+   "evidence": "S=0.5625 (raw trials; ledger 0.5625), cost 4945.0 (ledger 4944.951388888889); split evolve, 3 units all in evolve"
+  },
+  {
+   "round": 6,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 6: ['i06_0_param_char_budget_4500', 'i05_1_crossover', 'i01_1_label_list', 'no_memory']; incumbent i05_1_crossover -> i06_0_param_char_budget_4500 (recomputed i06_0_param_char_budget_4500, S 0.5694 -> 0.5903)"
+  },
+  {
+   "round": 6,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "i06_0_param_char_budget_4500: ood 0.558"
+  },
+  {
+   "round": null,
+   "step": "finalize (test once, on baselines + Pareto + per-unit best)",
+   "verdict": "correct",
+   "evidence": "systems ['fewshot_all', 'i01_1_label_list', 'i03_1_notes', 'i05_1_crossover', 'i06_0_param_char_budget_4500', 'no_memory'] (recomputed ['fewshot_all', 'i01_1_label_list', 'i03_1_notes', 'i05_1_crossover', 'i06_0_param_char_budget_4500', 'no_memory']); results/ holds exactly these; one finalize event after the last iteration; status complete"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "offline: $0 (deterministic MemoLM, MockProposer)"
+  }
+ ],
+ "incumbents": {
+  "1": {
+   "incumbent": "i01_0_retrieve_topk",
+   "search": 0.5347222222222222,
+   "sealed": {
+    "ood": 0.6041666666666666
+   }
+  },
+  "2": {
+   "incumbent": "i01_0_retrieve_topk",
+   "search": 0.5347222222222222,
+   "sealed": null
+  },
+  "3": {
+   "incumbent": "i03_1_notes",
+   "search": 0.5555555555555557,
+   "sealed": {
+    "ood": 0.65
+   }
+  },
+  "4": {
+   "incumbent": "i04_0_coverage",
+   "search": 0.5625,
+   "sealed": {
+    "ood": 0.6541666666666667
+   }
+  },
+  "5": {
+   "incumbent": "i05_1_crossover",
+   "search": 0.5694444444444445,
+   "sealed": {
+    "ood": 0.625
+   }
+  },
+  "6": {
+   "incumbent": "i06_0_param_char_budget_4500",
+   "search": 0.5902777777777777,
+   "sealed": {
+    "ood": 0.5583333333333333
+   }
+  }
+ }
+}

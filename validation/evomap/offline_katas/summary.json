@@ -1,6 +1,6 @@
 {
  "run": "offline_katas",
- "wall_s": 1.8,
+ "wall_s": 1.9,
  "hub": [
   {
    "asset_id": "sha256:219875064e8b2a7ee",
@@ -23,9 +23,7 @@
    "gene": "gene_datetime_not_manual_math",
    "author": "agent0",
    "status": "verified",
-   "reasons": [
-    "merged near-duplicate from agent1"
-   ],
+   "reasons": [],
    "U": 0.5,
    "U_LCB": 0.5,
    "delta": 0.45795931955708097,
@@ -85,12 +83,7 @@
      "epoch": 0,
      "counted": false,
      "uplift": 0.0,
-     "reason": "spot-check disagreement: reporter slashed",
-     "spot_check": {
-      "U": 0.5,
-      "U_LCB": 0.5,
-      "agree": false
-     }
+     "reason": "uninformative: no headroom on the consumer's tasks (baseline at ceiling)"
     }
    ]
   }
@@ -808,7 +801,7 @@
     "proposer_calls": 0,
     "hub_hit": false,
     "quarantine": null,
-    "published": "merged",
+    "published": null,
     "event_id": "evt_agent1_000007",
     "selection_mode": "selection",
     "banned": [],

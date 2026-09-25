@@ -111,6 +111,24 @@ def setup(name: str, reuse_cache: bool = False) -> dict:
                           "T = 3 live cycles, M = 3 dreaming revisions per phase (m_semantics='revisions': incumbent + "
                           "3 LLM revisions), Eq. 1 defaults, argmax, max_calls = 40 agent calls, candidate programs "
                           "and policies in subprocess sandboxes.")
+    if name == "sumdiff_live_b":
+        # stage-B re-run after the reply-parsing fixes (strip_reply_terminators, tail-of-error rendering,
+        # repaired-claim text): same agent/developer/model, smaller grid to stay inside the stage budget
+        from rsi.domains.discovery import SumDiffDomain
+        dom = SumDiffDomain(sandboxed=True)
+        cache = OUT / f".cache_{name}"
+        if cache.exists() and not reuse_cache:
+            shutil.rmtree(cache)          # from scratch: a fresh LLM cache
+        llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache)
+        cfg = Config(rounds=2, W=3, branch_count=3, refine_count=2, hard_max_branch=4, hard_max_refine=3, M=3,
+                     m_semantics="revisions", seed=0, sandbox="subprocess", policy_timeout_s=60.0, max_calls=18)
+        return dict(domain=dom, task=dom, seed=dom.seed_artifact(), llm=llm, llm_task=None,
+                    agent=EditorAgent(llm, editable=[dom.program_file]), developer=LLMPolicyDeveloper(llm),
+                    config=cfg, cache=cache, kind="sumdiff", ground_truth=False,
+                    setup="Stage-B re-run of sumdiff_live AFTER the reply-parsing fixes, from scratch (untouched "
+                          "seed, fresh run dir, fresh CachedLLM). claude haiku as EditorAgent (Listing 1) and "
+                          "LLMPolicyDeveloper (Listing 2); pi_1 = parallel refine 3 x 3 (refine_count 2), W = 3, "
+                          "T = 2 live cycles, 3 LLM revisions in the one dreaming phase, max_calls = 18.")
     raise SystemExit(f"unknown run {name!r}")
 
 

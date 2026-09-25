@@ -1,0 +1,600 @@
+{
+ "run": "solpi_agentworld_offline",
+ "method": "solpi",
+ "counts": {
+  "correct": 96,
+  "questionable": 2,
+  "wrong": 0,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 1,
+   "step": "baseline on the training screen",
+   "verdict": "correct",
+   "evidence": "S=1.0000 from 24 raw trials, tokens 449605, cost 0.2407; tasks = the whole evolve split (24)"
+  },
+  {
+   "round": 1,
+   "step": "oracle ranking + selection",
+   "verdict": "correct",
+   "evidence": "top-10 by (-estimate, id) = ['D1:0.662', 'T11:0.662', 'T3:0.599', 'T7:0.599', 'C6:0.476', 'P14:0.283', 'P8:0.283', 'C23:0.153', 'P20:0.002', 'R5:0.002']"
+  },
+  {
+   "round": 2,
+   "step": "D1.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 2,
+   "step": "D1.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'evidence_preserving_reducer{\"reducer\": \"deterministic\"}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 2,
+   "step": "D1.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 2,
+   "step": "D1.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +48.6%, cost +33.5% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 2,
+   "step": "D1.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 3,
+   "step": "T11.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 3,
+   "step": "T11.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'pytest_quiet{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 3,
+   "step": "T11.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 3,
+   "step": "T11.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +58.7%, cost +38.6% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 3,
+   "step": "T11.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 4,
+   "step": "T3.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 4,
+   "step": "T3.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'tail_trim{\"lines\": 20}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 4,
+   "step": "T3.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 4,
+   "step": "T3.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.8285 (raw trials 0.8285, floor 0.9800); savings tokens +57.4%, cost +39.6% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 4,
+   "step": "T3.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 5,
+   "step": "T3.1 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of f1c47c0844 (expected f1c47c0844: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 5,
+   "step": "T3.1 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'tail_trim{\"lines\": 40}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 5,
+   "step": "T3.1 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 5,
+   "step": "T3.1 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.8285 (raw trials 0.8285, floor 0.9800); savings tokens +54.3%, cost +37.3% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 5,
+   "step": "T3.1 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 6,
+   "step": "T3.2 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of b650b77f2c (expected b650b77f2c: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 6,
+   "step": "T3.2 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'tail_trim{\"lines\": 120}', variant 2; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 6,
+   "step": "T3.2 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 6,
+   "step": "T3.2 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.9167 (raw trials 0.9167, floor 0.9800); savings tokens +46.3%, cost +31.9% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 6,
+   "step": "T3.2 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 7,
+   "step": "T3.3 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of 1fcf918273 (expected 1fcf918273: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 7,
+   "step": "T3.3 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+  },
+  {
+   "round": 7,
+   "step": "T3.3 decision",
+   "verdict": "correct",
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+  },
+  {
+   "round": 8,
+   "step": "T7.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 8,
+   "step": "T7.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'head_trim{\"lines\": 40}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 8,
+   "step": "T7.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 8,
+   "step": "T7.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.8285 (raw trials 0.8285, floor 0.9800); savings tokens +52.2%, cost +36.0% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 8,
+   "step": "T7.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 9,
+   "step": "T7.1 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of e53596973a (expected e53596973a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 9,
+   "step": "T7.1 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'head_trim{\"lines\": 120}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 9,
+   "step": "T7.1 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 9,
+   "step": "T7.1 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.8285 (raw trials 0.8285, floor 0.9800); savings tokens +42.0%, cost +27.5% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 9,
+   "step": "T7.1 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 10,
+   "step": "T7.2 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of 05a59cdf2b (expected 05a59cdf2b: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 10,
+   "step": "T7.2 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+  },
+  {
+   "round": 10,
+   "step": "T7.2 decision",
+   "verdict": "correct",
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+  },
+  {
+   "round": 11,
+   "step": "C6.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 11,
+   "step": "C6.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'online_context_compact{\"cache_write_read_ratio\": 12.5}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 11,
+   "step": "C6.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 11,
+   "step": "C6.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +17.9%, cost +4.4% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 11,
+   "step": "C6.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 12,
+   "step": "P14.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 12,
+   "step": "P14.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'no_verify{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 12,
+   "step": "P14.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 12,
+   "step": "P14.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.9020 (raw trials 0.9020, floor 0.9800); savings tokens +34.4%, cost +24.4% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 12,
+   "step": "P14.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 13,
+   "step": "P14.1 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of b416de0381 (expected b416de0381: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 13,
+   "step": "P14.1 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+  },
+  {
+   "round": 13,
+   "step": "P14.1 decision",
+   "verdict": "correct",
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+  },
+  {
+   "round": 14,
+   "step": "P8.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 14,
+   "step": "P8.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'action_fusion{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 14,
+   "step": "P8.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 14,
+   "step": "P8.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +29.8%, cost +17.8% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 14,
+   "step": "P8.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 15,
+   "step": "C23.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 15,
+   "step": "C23.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 15,
+   "step": "C23.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 15,
+   "step": "C23.0 06 screen + dual gate",
+   "verdict": "questionable",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +8.3%, cost -5.4% (need > 2%) -> accepted (loop: accepted); PASSES while another efficiency metric gets WORSE (the exists-rule of the gate)"
+  },
+  {
+   "round": 15,
+   "step": "C23.0 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 16,
+   "step": "P20.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 16,
+   "step": "P20.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'turn_cap{\"max_turns\": 10}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 16,
+   "step": "P20.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 16,
+   "step": "P20.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.7547 (raw trials 0.7547, floor 0.9800); savings tokens +67.8%, cost +48.5% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 16,
+   "step": "P20.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 17,
+   "step": "P20.1 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of 643de7933b (expected 643de7933b: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 17,
+   "step": "P20.1 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'turn_cap{\"max_turns\": 16}', variant 1; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 17,
+   "step": "P20.1 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 17,
+   "step": "P20.1 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.9140 (raw trials 0.9140, floor 0.9800); savings tokens +38.5%, cost +23.4% (need > 2%) -> capability below floor (loop: capability below floor)"
+  },
+  {
+   "round": 17,
+   "step": "P20.1 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 18,
+   "step": "P20.2 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of 2ac546f42c (expected 2ac546f42c: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 18,
+   "step": "P20.2 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'turn_cap{\"max_turns\": 24}', variant 2; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 18,
+   "step": "P20.2 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 18,
+   "step": "P20.2 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 0.9836 (raw trials 0.9836, floor 0.9800); savings tokens +12.4%, cost +6.4% (need > 2%) -> accepted (loop: accepted)"
+  },
+  {
+   "round": 18,
+   "step": "P20.2 decision",
+   "verdict": "correct",
+   "evidence": "frozen (expected frozen); validation: frozen; next: freeze; lineage ends"
+  },
+  {
+   "round": 19,
+   "step": "R5.0 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 19,
+   "step": "R5.0 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "change 'prompt_slim{}', variant 0; actual diff touches ['harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 19,
+   "step": "R5.0 05 review",
+   "verdict": "correct",
+   "evidence": "pass: ok"
+  },
+  {
+   "round": 19,
+   "step": "R5.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +0.1%, cost +0.0% (need > 2%) -> no efficiency gain (loop: no efficiency gain)"
+  },
+  {
+   "round": 19,
+   "step": "R5.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 20,
+   "step": "R5.1 01 rollouts",
+   "verdict": "correct",
+   "evidence": "rollouts of fc04865f46 (expected fc04865f46: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 20,
+   "step": "R5.1 03/04 proposal",
+   "verdict": "correct",
+   "evidence": "no candidate: cannot repair: cannot repair: cannot repair: variant grid exhausted (Ralph errors 3); grid exhausted -> lineage ends"
+  },
+  {
+   "round": 20,
+   "step": "R5.1 decision",
+   "verdict": "correct",
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (cannot repair: cannot repair: cannot repair: variant grid exhausted); next: lineage ends (proposer exhausted)"
+  },
+  {
+   "round": 21,
+   "step": "firewall D1:evidence_preserving_reducer{\"reducer\"",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +30.8%, cost +23.7% saving -> accepted; sink agrees; kind=general; independently re-evaluated on holdout: tokens 150417 (sink 150417)"
+  },
+  {
+   "round": 21,
+   "step": "firewall T11:pytest_quiet{}",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +1.4%, cost +1.3% saving -> no efficiency gain; sink agrees; kind=trick; independently re-evaluated on holdout: tokens 214342 (sink 214342)"
+  },
+  {
+   "round": 21,
+   "step": "firewall C6:online_context_compact{\"cache_write_r",
+   "verdict": "correct",
+   "evidence": "held-out S 0.9861 vs base 1.0000; tokens -7.6%, cost -12.7% saving -> no efficiency gain; sink agrees; kind=general; independently re-evaluated on holdout: tokens 233903 (sink 233903)"
+  },
+  {
+   "round": 21,
+   "step": "firewall P8:action_fusion{}",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +29.1%, cost +16.2% saving -> accepted; sink agrees; kind=general; independently re-evaluated on holdout: tokens 154039 (sink 154039)"
+  },
+  {
+   "round": 21,
+   "step": "firewall C23:observation_pack{\"excerpt_bytes\": 0,",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +31.8%, cost +8.2% saving -> accepted; sink agrees; kind=general; independently re-evaluated on holdout: tokens 148096 (sink 148096)"
+  },
+  {
+   "round": 21,
+   "step": "firewall P20:turn_cap{\"max_turns\": 24}",
+   "verdict": "correct",
+   "evidence": "held-out S 1.0000 vs base 1.0000; tokens +0.0%, cost +0.0% saving -> no efficiency gain; sink agrees; kind=do_less; independently re-evaluated on holdout: tokens 217299 (sink 217299)"
+  },
+  {
+   "round": 21,
+   "step": "composition",
+   "verdict": "questionable",
+   "evidence": "composed = union of ['D1', 'P8', 'C23'] (verified); screen S 1.000, tokens +49.0%, cost +8.9% saving; the composed stack costs MORE than survivor D1 alone (cost 0.1602 vs 0.2193) and is not re-gated"
+  },
+  {
+   "round": null,
+   "step": "no sealed evaluation inside lineages",
+   "verdict": "correct",
+   "evidence": "24 distinct tasks evaluated by lineages, all in evolve"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "offline: $0 (MockAgentLLM, LibraryProposer)"
+  }
+ ]
+}

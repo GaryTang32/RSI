@@ -121,7 +121,9 @@ Runtime hook API (Python). An extension is a class `MECHANISM(Extension)` with `
   (event.call.name, event.call.args, event.result.content, event.result.is_error)
 - rt.on("turn_end", fn(reply, results, rt)); rt.on("agent_settled", fn(rt)); rt.on("session_compact", fn(ev, rt))
 - rt.compact(instructions) -> summary | None; rt.abort(); rt.send_hidden(text, trigger_turn=True)
-- rt.store: dict[path, text] private object store (bash can read paths under /.solpi/); rt.meter: TokenMeter
+- rt.store: dict[path, text] private object store whose KEYS ARE the absolute paths the agent reads back:
+  rt.store["/.solpi/obs_1.txt"] = text makes `cat /.solpi/obs_1.txt` (bash/read) return text; a key without the
+  "/.solpi/" prefix is NOT readable by the agent. rt.meter: TokenMeter
 - Message(role, content, tool_calls, tool_call_id, tool_name, is_error); m.with_content(text) copies a message.
 - ToolResult(content, is_error=False, details={}); raise ToolError(msg) for tool errors.
 Extension, ToolSpec, ToolResult, ToolError, Message and AgentRuntime are PRE-IMPORTED in the extension's namespace:
@@ -235,8 +237,12 @@ class LLMReviewer:
             err = self.domain.smoke(cand, self.task_llm)
             if err:
                 return False, f"smoke failed: {err}"
-        resp = self.llm.complete(REVIEW_PROMPT.format(title=idea.title, diff=base.diff(cand)[:20000]),
-                                 role="reviewer", seed=0)
+        prompt = REVIEW_PROMPT.format(title=idea.title, diff=base.diff(cand)[:20000])
+        if "harness.json" in cand:
+            # the reviewer must judge against the same runtime contract the implementer was given (live r3:
+            # without it, haiku rejected correct /.solpi/ recall paths and the documented `context -> None`)
+            prompt += "\n\nThe runtime API the mechanism was written against (authoritative):\n" + RUNTIME_API_DOC
+        resp = self.llm.complete(prompt, role="reviewer", seed=0)
         try:
             d = extract_json(resp.text)
             ok = str(d.get("verdict", "")).lower().startswith("pass")

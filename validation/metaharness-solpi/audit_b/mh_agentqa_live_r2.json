@@ -1,0 +1,227 @@
+{
+ "run": "mh_agentqa_live_r2",
+ "method": "metaharness",
+ "counts": {
+  "correct": 27,
+  "questionable": 4,
+  "wrong": 1,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 0,
+   "step": "baseline eval seed",
+   "verdict": "correct",
+   "evidence": "S=0.5000 from 10 raw per-task records (trace trials mean 0.5000); context cost 2228.8 (mean of non-zero per-unit tokens); units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 1 prior systems = ['seed']; view exposes 27 files / 18559 chars of 1 systems (by kind {'code': 3, 'traces': 10, 'per_task': 10, 'scores': 1, 'summaries': 0, 'run_files': 2, 'other': 1})"
+  },
+  {
+   "round": 1,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "correct",
+   "evidence": "read 27 of 27 files (traces 10/10); prompt 22624 chars contains 0 of 10 sealed task inputs"
+  },
+  {
+   "round": 1,
+   "step": "proposal exploit-robust-extraction: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py'] (+45 lines); no task ids / question text / literal answers in added lines | claim: Failures on tasks 007 and 009 are extraction errors\u2014the LLM computed correctly but embedded answers in text. Robust extraction using regex, "
+  },
+  {
+   "round": 1,
+   "step": "proposal explore-structured-format: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py', 'prompts/system.md', 'prompts/task.md'] (+49 lines); no task ids / question text / literal answers in added lines | claim: Constraining output format with an explicit 'ANSWER: <value>' requirement will reduce extraction ambiguity, encourage cleaner thinking, and "
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) exploit-robust-extraction",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) explore-structured-format",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "eval exploit-robust-extraction",
+   "verdict": "correct",
+   "evidence": "S=0.7000 (raw trials; ledger 0.7), cost 2228.8 (ledger 2228.8); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "eval explore-structured-format",
+   "verdict": "correct",
+   "evidence": "S=0.6000 (raw trials; ledger 0.6), cost 4019.2 (ledger 4019.2); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 1: ['exploit-robust-extraction']; incumbent seed -> exploit-robust-extraction (recomputed exploit-robust-extraction, S 0.5000 -> 0.7000)"
+  },
+  {
+   "round": 1,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "exploit-robust-extraction: holdout 0.500, ood 0.250"
+  },
+  {
+   "round": 2,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 3 prior systems = ['exploit-robust-extraction']; view exposes 78 files / 65230 chars of 3 systems (by kind {'code': 9, 'traces': 30, 'per_task': 30, 'scores': 3, 'summaries': 0, 'run_files': 3, 'other': 3})"
+  },
+  {
+   "round": 2,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 67 of 78 files (traces 20/30); prompt 61722 chars contains 0 of 10 sealed task inputs"
+  },
+  {
+   "round": 2,
+   "step": "proposal exploit-expression-evaluation: claim vs actual diff",
+   "verdict": "questionable",
+   "evidence": "task-specific content in added lines: [\"evolve:evolve-numeric-007: literal answer '435'\"] | claim: LLM working often includes arithmetic expressions (e.g., '54 \u00d7 35540 = 1,919,160'). By extracting these expressions and re-evaluating them w"
+  },
+  {
+   "round": 2,
+   "step": "proposal explore-tool-driven-computation: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py', 'prompts/system.md'] (+154 lines); no task ids / question text / literal answers in added lines | claim: Separating reasoning from computation: LLM describes the algorithm needed to solve the problem, then the harness executes it via tools.pytho"
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) exploit-expression-evaluation",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) explore-tool-driven-computation",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "eval exploit-expression-evaluation",
+   "verdict": "correct",
+   "evidence": "S=0.9000 (raw trials; ledger 0.9), cost 2228.8 (ledger 2228.8); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "eval explore-tool-driven-computation",
+   "verdict": "correct",
+   "evidence": "S=0.8000 (raw trials; ledger 0.8), cost 1516.3 (ledger 1516.3); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 2: ['exploit-expression-evaluation', 'explore-tool-driven-computation']; incumbent exploit-robust-extraction -> exploit-expression-evaluation (recomputed exploit-expression-evaluation, S 0.7000 -> 0.9000)"
+  },
+  {
+   "round": 2,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "exploit-expression-evaluation: holdout 0.667, ood 0.250"
+  },
+  {
+   "round": 3,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 5 prior systems = ['exploit-expression-evaluation', 'explore-tool-driven-computation']; view exposes 130 files / 123333 chars of 5 systems (by kind {'code': 16, 'traces': 50, 'per_task': 50, 'scores': 5, 'summaries': 0, 'run_files': 4, 'other': 5})"
+  },
+  {
+   "round": 3,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 59 of 130 files (traces 10/50); prompt 61841 chars contains 0 of 10 sealed task inputs"
+  },
+  {
+   "round": 3,
+   "step": "proposal exploit-enhanced-computation-verification: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base exploit-expression-evaluation (visible); actual diff touches ['harness.py'] (+209 lines); no task ids / question text / literal answers in added lines | claim: The expression verification is limited to basic arithmetic patterns. Extending pattern detection to cover bit operations, digit sums, modula"
+  },
+  {
+   "round": 3,
+   "step": "proposal explore-direct-pattern-computation: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py'] (+215 lines); no task ids / question text / literal answers in added lines | claim: LLM-guided algorithm extraction (explore-tool-driven-computation) fails on complex multi-step problems. Directly parsing question text for c"
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) exploit-enhanced-computation-verification",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) explore-direct-pattern-computation",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "eval exploit-enhanced-computation-verification",
+   "verdict": "correct",
+   "evidence": "S=0.7000 (raw trials; ledger 0.7), cost 2228.8 (ledger 2228.8); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "eval explore-direct-pattern-computation",
+   "verdict": "wrong",
+   "evidence": "S=0.7000 (raw trials; ledger 0.7), cost 0.0 (ledger 0.0); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 3: ['exploit-expression-evaluation', 'explore-tool-driven-computation', 'explore-direct-pattern-computation']; incumbent exploit-expression-evaluation -> exploit-expression-evaluation (recomputed exploit-expression-evaluation, S 0.9000 -> 0.9000)"
+  },
+  {
+   "round": null,
+   "step": "finalize (test once, on baselines + Pareto + per-unit best)",
+   "verdict": "correct",
+   "evidence": "systems ['exploit-expression-evaluation', 'explore-direct-pattern-computation', 'explore-tool-driven-computation', 'seed'] (recomputed ['exploit-expression-evaluation', 'explore-direct-pattern-computation', 'explore-tool-driven-computation', 'seed']); results/ holds exactly these; one finalize event after the last iteration; status complete"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "questionable",
+   "evidence": "proposer $0.2833 + evals $0.5084 (trace) vs loop meter $0.5629; monitor $0.0619; cache ground truth $0.6538; unmetered gap $0.0290 (forked smokes)"
+  }
+ ],
+ "incumbents": {
+  "1": {
+   "incumbent": "exploit-robust-extraction",
+   "search": 0.7,
+   "sealed": {
+    "holdout": 0.5,
+    "ood": 0.25
+   }
+  },
+  "2": {
+   "incumbent": "exploit-expression-evaluation",
+   "search": 0.9,
+   "sealed": {
+    "holdout": 0.6666666666666666,
+    "ood": 0.25
+   }
+  },
+  "3": {
+   "incumbent": "exploit-expression-evaluation",
+   "search": 0.9,
+   "sealed": null
+  }
+ }
+}
