@@ -130,6 +130,7 @@ class GEPATracer:
         if eng.merge is not None:
             m = eng.merge
             snap["merge"] = {"merges_due": m.merges_due, "total_merges_tested": m.total_merges_tested,
+                             "n_invocations": m.n_invocations,
                              "last_iter_found_new_program": m.last_iter_found_new_program,
                              "cap": m.max_merge_invocations, "cap_mode": m.cap_mode}
         # pool last: long, and the rendered TRACE.md clips this event
@@ -233,6 +234,7 @@ class GEPATracer:
                          hypothesis=_clip(" | ".join(x for x in comm if x), 1500), components=comps, diff=diff,
                          error=err, proposal_kind="reflective", reflection_calls=res.calls,
                          parsed={c: c in res.new_texts for c in comps}, files_actually_changed=changed,
+                         finish_reasons={c: getattr(res, "finish", {}).get(c) for c in comps if c in res.raw},
                          unchanged_rewrite=(child is not None and not changed), size=size,
                          parent_artifact=parent.id, child_artifact=child.id if child is not None else None)
 
@@ -304,6 +306,9 @@ class GEPATracer:
         b = st.best_idx()
         if best_before is None or b != best_before:
             self.tr.kept(i, f"c{b}", st.candidates[b], decision_score=st.agg_scores()[b])
+            mon = self.tr.monitor
+            if mon is not None:           # the audit's wall time must not count against Timeout / max_wall_s
+                self.eng.credit_wall_time(getattr(mon, "last_elapsed_s", 0.0))
 
     def run_end(self, stop_reason: str) -> None:
         eng, st = self.eng, self.eng.state
@@ -319,7 +324,8 @@ class GEPATracer:
                       events=kinds, n_accepted_reflective=acc, best=f"c{b}", best_val=agg[b], seed_val=agg[0],
                       best_artifact=st.candidates[b].id, n_proposals=st.n_proposals,
                       n_reflection_calls=st.n_reflection_calls, loop_usage=eng.usage_snapshot(),
-                      shadow_usage=eng.shadow_usage_snapshot())
+                      shadow_usage=eng.shadow_usage_snapshot(),
+                      monitor_wall_s_credited=round(getattr(eng, "monitor_wall_s", 0.0), 3))
 
 
 def make_tracer(engine, out_dir, *, enabled: bool, max_text: int, monitor, domain, llm_task,

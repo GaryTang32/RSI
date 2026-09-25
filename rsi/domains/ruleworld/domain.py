@@ -147,6 +147,32 @@ class RuleWorldDomain(Domain):
         return {"Inputs": inputs, "Generated Outputs": gen,
                 "Feedback": (f"Score: {m_score:.3g}. " + fb).strip()}
 
+    def system_reflective_record(self, task: Task, trial, component: str) -> dict:
+        """System-level record for spec E9: the same format as :meth:`reflective_record`, but every
+        module sees the whole system's outputs, decisions and feedback (``component`` is ignored),
+        so the reflection LM must itself work out which failures the rewritten module owns."""
+        out = trial.output if isinstance(trial.output, dict) else {}
+        if trial.error:
+            return {"Inputs": task.input, "Generated Outputs": str(trial.error),
+                    "Feedback": f"Score: {trial.score:.3g}. {trial.feedback}".strip()}
+        gen = "; ".join(f"{a}: {out.get(a, STANDARD)}" for a in task.meta["aspects"]) or "(no properties)"
+        dec = [l.split("decisions: ", 1)[-1] for l in (trial.trace or "").splitlines() if "] decisions: " in l]
+        if dec:
+            gen += "\nTrace: " + "; ".join(dec)
+        return {"Inputs": task.input, "Generated Outputs": gen,
+                "Feedback": (f"Score: {trial.score:.3g}. " + self.feedback_text(task, out)).strip()}
+
+    def misplaced_rule_lines(self, artifact) -> int:
+        """Rule lines in a module prompt that only name properties another module handles
+        (a credit-assignment error: the owning module never reads them)."""
+        n = 0
+        for m in self.world.cfg.modules:
+            for line in (artifact.get(self.world.module_path(m), "") or "").splitlines():
+                asp = list(self.world.parse_module(line).rules)
+                if asp and all(self.world.aspects[a].module != m for a in asp):
+                    n += 1
+        return n
+
     def rl_vocabulary(self, component: str) -> list[str]:
         """Action space of the scalar-reward RL baseline for one component."""
         m = self.module_of(component)

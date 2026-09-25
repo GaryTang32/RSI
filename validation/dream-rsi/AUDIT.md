@@ -49,7 +49,20 @@ Scope: every run under `validation/dream-rsi/`. That is the three stage-A runs (
 | `agentqa_offline` (AgentQA via DomainTask, sealed splits, T=4) | 95 | 94 | 1 | 0 | 0 |
 | `sumdiff_live` (haiku agent + developer, T=3; stage A) | 85 | 69 | 1 | **15** | 0 |
 | `sumdiff_live_b` (haiku, T=2; stage-B re-run after the fixes) | 46 | 45 | 0 | 0 | 1 |
-| **total** | **335** | **315** | **4** | **15** | **1** |
+| **total (this audit)** | **335** | **315** | **4** | **15** | **1** |
+
+**After the claims-audit fixes (§8)** the two offline runs were re-recorded from scratch, a new live run was added, and the step audit was re-run on every run. It gains a per-cycle budget check, and the older live runs are rebuilt with their pre-fix prompt text; their verdicts are unchanged:
+
+| run | steps | correct | questionable | wrong | unverifiable |
+|---|---|---|---|---|---|
+| `sumdiff_offline` (re-recorded) | 113 | 112 | 1 | 0 | 0 |
+| `agentqa_offline` (re-recorded) | 97 | 97 | 0 | 0 | 0 |
+| `sumdiff_live` (stage A, unchanged) | 85 | 69 | 1 | 15 | 0 |
+| `sumdiff_live_b` (stage B, unchanged) | 46 | 45 | 0 | 0 | 1 |
+| `sumdiff_live_c` (new: haiku, restored prompts) | 49 | 49 | 0 | 0 | 0 |
+| **total** | **390** | **372** | **2** | **15** | **1** |
+
+The two label steps ("one manifest = still improving") are correct now. The remaining questionable offline step is the paper-level frugality selection.
 
 Per kind (all runs):
 - **All correct.** baseline 4/4, plan 11/13 (2 questionable), live root 13/13, online rounds 60/60, best-program gates 13/13, manifests 13/13, replay evaluations 36/36 (every one reproduced by the independent replay), selections 7/9 (1 questionable, 1 unverifiable), beta sweeps 9/9, prompt reconstructions 4/4 (36/36 + 9/9 + 17/17 + 3/3 prompts), cost 4/4, monitor 1/1.
@@ -243,14 +256,45 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 | Dream's per-round budget above Fixed's (claims audit N3) | inconsistent-fixed | §8: `Config.round_budget="fallback"` (default) = Fixed's per-round calls; checked per cycle by the step audit |
 | W below the fixed grid's width in E3/E6 (claims audit N4) | inconsistent-fixed | E3/E5/E6 now run W = grid width (every workspace in parallel) |
 | Policy developer's cost outside the cost story (claims audit N7) | inconsistent-fixed | `CostMeter.developer_revisions`, `llm_calls_total`, `developer_usd_share`; E3 reports LLM calls incl. developer requests |
+| Sandbox string-hash seed random per process (found by the `sumdiff_live_c` fix run) | inconsistent-fixed | §8: a set-iterating LLM policy chose a hash-order batch; the sandbox now fixes `PYTHONHASHSEED=0` |
 | Replay independence of sibling context (§8.3) | unverifiable | sibling copying observed; counterfactuals not generated |
 | Online value of the live dreaming decision (`sumdiff_live_b` r0001) | unverifiable | no live ground truth within the budget |
 | Paper headline results (8 tasks, Gemini, 110/640 calls per round, 5–10 rounds) | unverifiable | scale; official code unreleased |
 
 ## 7. Remaining open issues
 
-1. **Core change request.** `rsi.core.parse_file_blocks` should drop trailing `===` / `=== END … ===` / closing-fence lines and an unmatched leading fence inside a `=== FILE:` block. Every method that uses `RewriteEditor` is exposed to the stage-A failure mode. `rsi/dream` works around it locally.
-2. **Core change request (audit convenience).** `rsi.trace` clips text at 6000 chars, so agent prompts and replies in `trace.jsonl` are truncated. The Dream developer saves full prompts in `dream_prompts/`, but agent prompts had to be rebuilt from disk and matched to the cache (they were, 53/53).
-3. **One-manifest label.** The adaptive template's "still improving" label with a single manifest is left as is. Fixing it changes every adaptive-policy artefact id and needs a re-run of both offline runs, for a label-only effect.
-4. **Replay vs online.** Replay can prefer frugal policies that lose online gain (§8.2). With `selector="argmax"` (the paper's rule), nothing guards against it. `selector="guarded"` exists but is not the paper's rule.
-5. **Scale.** No run approaches paper scale, so the paper's quality claims are unverifiable here.
+1. ~~**Core change request.** `rsi.core.parse_file_blocks` should drop trailing `===` / `=== END … ===` / closing-fence lines and an unmatched leading fence.~~ Done in `rsi.core` after this audit (checked, §8). `rsi/dream` keeps its local workaround as a second line of defence.
+2. ~~**Core change request (audit convenience).** `rsi.trace` clips text at 6000 chars.~~ Raised to 60k chars in `rsi.core` after this audit. The agent prompts of `sumdiff_live_c` (up to 23k chars) are in the trace in full, and they were also rebuilt from disk.
+3. ~~**One-manifest label.**~~ Fixed after the claims audit. Both offline runs were re-recorded (§8).
+4. **Replay vs online (paper-level, documented).** Replay can prefer frugal policies that lose online gain (§8.2). Re-measured with the fixed code on the re-recorded run: −0.0037 [−0.0058, −0.0018] over 40 searches. With `selector="argmax"` (the paper's rule), nothing guards against it. `selector="guarded"` exists but is not the paper's rule. The restored Listing-2 prompt now carries the paper's own warning against picking "the smallest beta that reaches a frozen trace's known ceiling".
+5. **Scale.** No run approaches paper scale, so the paper's quality claims are unverifiable here. In both post-fix live runs the haiku policies tied π₁ or lost on replay (one recorded world, whose ceiling sits in the last round), and the incumbent was kept.
+
+## 8. Claims-audit fixes and re-runs (after this audit)
+
+The claim-by-claim audit (`docs/claims/dream-rsi.md`) found new mismatches N1–N7. All were fixed or classified; its §5 "Fix log" has every finding with its fix, code location, regression test and evidence. What changed for the validation runs:
+
+- **Fixes that touch these runs.**
+  - Every replay episode runs in a fresh policy namespace (N1).
+  - The Listing-1 and Listing-2 prompts are verbatim, and the agent sees the full history (N2, N5).
+  - A live round never spends more than Fixed's per-round calls (N3).
+  - Out-of-support plans get no replay reward by default.
+  - The adaptive template's one-manifest label is fixed.
+  - The policy sandbox runs with a fixed string-hash seed.
+- **`sumdiff_offline` and `agentqa_offline`, re-recorded from scratch** (`python experiments/dream-rsi/validate_dream.py <run>`; both audits 0 FAIL).
+  - Every decision is the same as before, and the cycle-2 plans now read "one live manifest: evidence insufficient … conservative bootstrap from the fallback grid".
+  - Per-round budget: `agentqa_offline` cycle 4 planned 5 × 3 cells and now spends 9 calls, Fixed's budget (10 before). Calls per cycle are 9, 6, 8, 9, and the final S is still 1.0.
+  - `sumdiff_offline` spends 15, 12, 7, 9 calls, reaching Γ 1.0190, as before.
+- **The frugality ground truth, re-measured on the re-recorded `sumdiff_offline`** (`scratchpad/claims/gt40.py`, 40 fresh one-cycle searches, seeds 10097–10136). r0001 never found more than π₁ and found less on 19/40: −0.0037 [−0.0058, −0.0018] at 8.0 vs 15 calls. The stage-A/B finding holds, and it is the paper's rule, not a code defect.
+- **`sumdiff_live_c`** (new; same setup as `sumdiff_live_b`, restored prompts, fresh cache `.cache_sumdiff_live_c`; 20.6 min).
+  - 18/18 attempts evaluated ok; Γ 0.9105 → 1.0281 → **1.0468** (live_b: 1.0361).
+  - 3/3 developer revisions passed the static check on the first attempt. r0001 and r0002 tied π₁ (V 0.925). r0003 stopped early and missed world 1's last-round ceiling (V 0.716). The incumbent was kept, so cycle 2 ran π₁.
+  - Spend **$1.457**: agent $1.154 for 18 calls, developer $0.304 for 3 calls, i.e. 21%. It matches the fresh cache's 21 entries exactly.
+  - Step audit 49/49 correct:
+    - 18/18 Listing-1 prompts rebuilt from disk (full history, `baseline/`, pkill line) and hash-matched to the cache;
+    - 3/3 developer prompts (40k, 66k, 79k characters, none truncated);
+    - per-round budget 9/9 in both cycles;
+    - every replay value reproduced by the independent replay.
+- **One finding of the fix run.** r0002 iterates a Python `set` of cell ids, so its first batch was ordered by the process's random string-hash seed. The cells, and so V, were the same, but the order could change the reveal mapping on other worlds. The policy sandbox now fixes `PYTHONHASHSEED=0` (`test_sandbox_fixes_the_string_hash_seed`). The step audit compares batches as sets per round and notes order-only differences.
+- **Live smoke, re-run with a fresh cache** (`results/dream-rsi/live_smoke.json`): 12/12 attempts ok, Γ 0.9105 → 1.0194. The haiku revision tied (0.955 vs 0.955) and the incumbent was kept. $0.721, of which the developer is 14%.
+- **Stage-A/B live runs, re-audited** with the new step audit, which rebuilds their prompts with the pre-fix Listing-1 text they used (`LEGACY_PROMPT_RUNS`). The counts are identical: 36/36 and 17/17 prompts still hash-match.
+

@@ -10,12 +10,12 @@ Each test fails on the code before the fix:
 * N3 - a Dream round never spends more agent calls than Fixed's per-round budget;
 * N4 - E3 / E6 run every workspace of the fixed grid in parallel (W >= grid width);
 * N7 - the cost meter counts the policy developer;
+* the policy sandbox fixes the string-hash seed (a set-iterating policy is reproducible);
 * the adaptive template does not call a single live manifest "still improving";
 * the autocorrelation task (App. A Problem 4) exists and is exact.
 """
 from __future__ import annotations
 
-import random
 import sys
 from pathlib import Path
 
@@ -30,8 +30,7 @@ from rsi.dream import (Config, EditorAgent, ParetoSweepObjective, ReplayEvaluato
 from rsi.dream.agent import AttemptContext, AttemptRecord, history_records
 from rsi.dream.cost import CostMeter
 from rsi.dream.developer import developer_prompt
-from rsi.dream.guard import InProcessSession, SubprocessSession
-from rsi.dream.policy import code_of, make_policy
+from rsi.dream.guard import SubprocessSession
 from rsi.dream.policy_api import GridPlanningContext
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -182,7 +181,7 @@ def test_static_check_rejects_state_that_outlives_an_episode():
 
 
 def test_recorded_llm_policies_still_pass_the_static_check():
-    """No false positive on the 39 recorded validation policies (LLM-written and mutator versions)."""
+    """No false positive on the recorded validation policies (LLM-written and mutator versions)."""
     paths = sorted(ROOT.glob("validation/dream-rsi/*/history/*/method.py"))
     assert paths
     bad = [str(p) for p in paths if not static_check(p.read_text()).ok]
@@ -407,7 +406,6 @@ def test_cost_meter_counts_the_policy_developer():
 
 # ------------------------------------------------------------------------------- template label
 def test_adaptive_plan_grid_does_not_call_one_manifest_improving():
-    ns = {}
     from rsi.dream.guard import _load_class
 
     cls = _load_class(template_code("adaptive"))
@@ -422,7 +420,6 @@ def test_adaptive_plan_grid_does_not_call_one_manifest_improving():
                               fallback_refine_count=4, hard_max_branch_count=12, hard_max_refine_count=12,
                               worker_cap=3)
     assert "still improving" in cls({}).plan_grid(two).reason
-    del ns
 
 
 # ------------------------------------------------------------------------------- autocorrelation
@@ -469,7 +466,6 @@ def test_autocorrelation_domain_checks_scores_and_improves():
                                 trace=False, agent_workers=1, seed=1))
     assert res.meta["best_score"] > res.meta["seed_score"] + 0.2        # Phi3 from 2.0 to below 1.8
     assert -res.meta["best_score"] > 1.4557 - 1e-9                       # never below the best known bound
-    random.seed(0)
 
 
 # ------------------------------------------------------------------- sandbox determinism

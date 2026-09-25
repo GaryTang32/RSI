@@ -56,8 +56,10 @@ Files in each run directory:
 | run | setup | calls per cycle | seed → final (evolve) | sealed (holdout / ood) | audit | spend |
 |---|---|---|---|---|---|---|
 | `sumdiff_offline` | sum-difference, mock agent + ParametricMutator, 3 × 5 grid, W = 3, T = 4, M = 4 | 15, 12, 7, 9 (43 in total; fixed π₁ would use 60) | Γ 0.9105 → **1.0190** | none (single-instance problem) | 55 checks, 0 FAIL | $0 |
-| `agentqa_offline` (extra, exercises the monitor) | AgentQA harness via DomainTask, SimModel, agentqa mock agent + ParametricMutator, 3 × 3 grid, W = 3, T = 4, M = 4 | 9, 6, 8, 10 | S 0.250 → **1.000** (saturated at the first attempt) | holdout 0.375 → 0.750; ood 0.500 → 0.875 | 51 checks, 0 FAIL | $0 |
+| `agentqa_offline` (extra, exercises the monitor) | AgentQA harness via DomainTask, SimModel, agentqa mock agent + ParametricMutator, 3 × 3 grid, W = 3, T = 4, M = 4 | 9, 6, 8, 10 (re-recorded after the claims-audit fixes: 9, 6, 8, **9**, because cycle 4 is now capped at Fixed's per-round budget) | S 0.250 → **1.000** (saturated at the first attempt) | holdout 0.375 → 0.750; ood 0.500 → 0.875 | 51 checks, 0 FAIL | $0 |
 | `sumdiff_live` | sum-difference, **claude haiku as discovery agent and policy developer**, 3 × 4 grid, W = 3, T = 3, 3 revisions per phase | 12, 12, 12 (36 in total) | Γ 0.9105 → **1.0304** | none | 3 FAIL: 12 of 36 attempts lost to a reply-parsing artifact (fixed after the run); every other check passes | **$2.906** (agent $2.030, 36 calls; developer $0.876, 9 calls); 39.2 min |
+| `sumdiff_live_b` (stage B) | as `sumdiff_live`, 3 × 3 grid, T = 2 | 9, 8 | Γ 0.9105 → **1.0361** | none | 0 FAIL | $1.278 |
+| `sumdiff_live_c` (claims-audit fixes) | as `sumdiff_live_b`, verbatim Listing-1/2 prompts, full history, per-round budget 9 | 9, 9 | Γ 0.9105 → **1.0468** | none | 0 FAIL; step audit 49/49 | **$1.457** (agent $1.154, 18 calls; developer $0.304, 3 calls) |
 
 
 ## Run 1: `sumdiff_offline`
@@ -302,3 +304,31 @@ Command: `python experiments/dream-rsi/validate_dream.py sumdiff_live_b`.
   - Stage-A audit: 0 FAIL.
   - Stage-B step audit: 45 correct, 1 unverifiable.
   - Every one of the 17 agent prompts and 3 developer prompts was rebuilt from disk, and each rebuilt prompt hashes to its entry in the fresh cache.
+
+## Claims-audit fixes: re-recorded offline runs and `sumdiff_live_c`
+
+The claim-by-claim audit (`docs/claims/dream-rsi.md`, §5 Fix log) led to these changes:
+- a fresh policy namespace per replay episode;
+- the verbatim Listing-1 and Listing-2 prompts, with the full history;
+- Fixed's per-round budget for Dream;
+- `support="no_reward"` by default;
+- the one-manifest label of the adaptive template;
+- a fixed string-hash seed in the policy sandbox.
+
+The two offline runs were re-recorded from scratch (`validate_dream.py sumdiff_offline` / `agentqa_offline`; both audits 0 FAIL), and one new live run was made.
+
+- **`sumdiff_offline`.** The decisions are identical to Run 1: 15, 12, 7, 9 calls; Γ 1.0190; r0001 is selected at t = 1 and kept afterwards.
+  - The cycle-2 plan now reads "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid". The grid is (3, 4), as before.
+  - The ground truth of the t = 1 selection, re-measured on 40 fresh searches: r0001 finds less on 19/40 and never more, −0.0037 [−0.0058, −0.0018] at 8.0 vs 15 calls. This is the frugality bias of the paper's rule.
+- **`agentqa_offline`.** Identical except cycle 4. Its plan (5 × 3 cells) is now held to Fixed's 9 calls, where it spent 10 before. The final S is 1.0, and holdout/ood are unchanged.
+- **`sumdiff_live_c`** (`validate_dream.py sumdiff_live_c`; fresh `.cache_sumdiff_live_c`: 21 misses, 0 hits; 20.6 min):
+  - **Setup.** As `sumdiff_live_b`, with the restored prompts. Every agent prompt carries Listing 1 verbatim, including the pkill line. It shows every earlier live search with full `proposal.md`, `eval/score.json` and `error.txt`, plus `baseline/proposal.md` (the seed has none). The prompts are up to 23k characters.
+  - **Cycle 1.** 9/9 attempts evaluated ok; Γ 0.9105 → 1.0281 (b2.a2, found in the last decision round).
+  - **Dreaming.** 3 haiku revisions under the verbatim Listing-2 prompt (40k, 66k and 79k characters), none needing a repair round. Their replay values on the one world were r0001 0.925 and r0002 0.925, tying π₁, and r0003 0.716: it closes branches early and misses the last-round ceiling. The incumbent π₁ was kept.
+  - **Cycle 2.** π₁ again: 9 calls; Γ → **1.0468** (b0.a1). The per-round budget of 9 was respected in both cycles.
+  - **Spend.** $1.457 = agent $1.154 + developer $0.304 (21%), equal to the sum of the cache files.
+  - **Step audit.** 49/49 correct: 18/18 agent prompts and 3/3 developer prompts rebuilt and hash-matched, and every replay value reproduced by the independent replay.
+  - **A finding.** r0002 iterates a `set` of cell ids, so the order within its first batch depended on the process's string-hash seed. The cells, and so V, were the same here. The sandbox now fixes the seed.
+- **Live smoke** (`experiments/dream-rsi/live_smoke.py --llm claude:haiku --cache .rsi_cache/dream-rsi-live-smoke-fix`): 12/12 attempts ok; Γ 0.9105 → 1.0194. The haiku revision tied π₁ (0.955), so the incumbent was kept. $0.721, of which the developer is 14%.
+
+Total live spend for the fixes: $2.18.

@@ -311,7 +311,7 @@
    "kind": "prompts",
    "step": "every Listing-1 agent prompt rebuilt from disk state",
    "verdict": "correct",
-   "evidence": "17/17 prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
+   "evidence": "17/17 prompts rebuilt from tree.json + snapshots (problem, parent workspace, lineage, siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM cache: the agent saw exactly that and nothing else (no sealed data exists for this domain) [pre-fix condensed Listing-1 prompt]"
   },
   {
    "round": null,

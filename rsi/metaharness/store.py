@@ -184,6 +184,21 @@ class ExperienceStore:
     def reports_dir(self) -> Path:
         return self.root / "reports"
 
+    def write_reports(self, reports: dict[str, str]) -> list[str]:
+        """Store proposer-written post-eval reports (``{"reports/<file>": text}``, release Step 0). A report
+        that already exists is kept (Step 0 writes only missing reports). Returns the paths written."""
+        written = []
+        for rel, text in (reports or {}).items():
+            name = safe_name(str(rel).split("/", 1)[-1].replace("/", "_"))
+            if not name.endswith((".md", ".txt")):
+                name += ".md"
+            p = self.reports_dir() / name
+            if p.exists() or not str(text or "").strip():
+                continue
+            p.write_text(str(text))
+            written.append(f"reports/{name}")
+        return written
+
     def sessions_dir(self) -> Path:
         return self.root / "sessions"
 

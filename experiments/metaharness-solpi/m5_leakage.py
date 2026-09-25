@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from mh_common import drop_traces  # noqa: E402
 from _common import fmt, fresh_dir, live_llm, paired, parse_args, pool_map, save, summarize, table  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -52,6 +53,7 @@ def job(spec):
     sel_test = test.get(best, {}).get("score")
     fa_s, fa_t = st.scores("fewshot_all")["score"], test["fewshot_all"]["score"]
     leaky_ds = [u for u in st.scores(best)["per_unit"] if u.startswith("ds_leaky")]
+    drop_traces(st.root)
     return {"arm": arm, "seed": seed, "leaky_proposed": len(leaky),
             "leaky_evaluated": sum(1 for nm in leaky if metas[nm].get("status") == "evaluated"),
             "leaky_rejected": sum(1 for nm in leaky if metas[nm].get("status") == "rejected_leakage"),

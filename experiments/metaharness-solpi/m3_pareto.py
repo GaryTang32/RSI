@@ -9,6 +9,13 @@ file the proposer reads differs. Metrics per run: frontier size and hypervolume 
 (common reference = 1.1 x fewshot_all context), the selected harness' accuracy and context vs fewshot_all on
 search and test, and whether some frontier point beats fewshot_all in accuracy at lower context.
 
+Comparators (audit N9): ``fewshot_all`` overflows MemoLM-A's context budget on two of the three search datasets,
+so "less context than fewshot_all" flatters any retrieval harness (in the paper's Table 2 few-shot(all) and
+Meta-Harness use about the same context). Each seed therefore also evaluates, AFTER the search and outside the
+initial population, the release's few-shot-N baseline for N in {4, 8, 16, 32, 64} on search and test, and
+reports the selected harness against the best few-shot variant and against the best few-shot variant that
+uses no more context than the selected harness.
+
     python experiments/metaharness-solpi/m3_pareto.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
 from __future__ import annotations
@@ -20,11 +27,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import RESULTS, figure_path, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
     table  # noqa: E402
+from mh_common import drop_traces  # noqa: E402
 
 import numpy as np  # noqa: E402
 
+from rsi.core import Evaluator  # noqa: E402
 from rsi.domains.memoclassify import make_domain  # noqa: E402
 from rsi.metaharness import Config, hypervolume, pareto_frontier, run  # noqa: E402
+from rsi.metaharness.store import context_mean  # noqa: E402
 
 ARMS = {"pareto": ("score", "context_cost"), "scalar": ("score",)}
 ARGS = None
@@ -49,7 +59,30 @@ def job(spec):
     fa_t = final["fewshot_all"]
     front_test = [(s, r["score"], r["context_cost"]) for s, r in final.items()]
     beats_test = [p for p in pareto_frontier(front_test) if p[1] > fa_t["score"] and p[2] < fa_t["context_cost"]]
+    # few-shot-N comparators, evaluated after the search (never seen by the loop)
+    ev_s = Evaluator(dom, dom.make_model("A"), workers=1)
+    ev_t = Evaluator(dom, dom.make_model("A"), workers=1, allow_sealed=True)
+    fs = {"fewshot_all": {"search": fa["score"], "search_context": fa["context_cost"], "test": fa_t["score"],
+                          "test_context": fa_t["context_cost"]}}
+    for nm, art in dom.comparators().items():
+        rs, rt = ev_s.evaluate(art, "evolve"), ev_t.evaluate(art, "test")
+        fs[nm] = {"search": rs.score, "search_context": context_mean(res.loop._cost(rs)), "test": rt.score,
+                  "test_context": context_mean(res.loop._cost(rt))}
+    best_fs = max(fs, key=lambda n: (fs[n]["search"], -fs[n]["search_context"]))      # chosen on search
+    cheaper = [n for n in fs if fs[n]["search_context"] <= best[2]]
+    best_cheaper = max(cheaper, key=lambda n: (fs[n]["search"], -fs[n]["search_context"])) if cheaper else None
+    sel_t = final.get(best[0], {}).get("score")
+    beats_best_fs_test = [p for p in pareto_frontier(front_test)
+                          if p[1] > fs[best_fs]["test"] and p[2] < fs[best_fs]["test_context"]]
+    drop_traces(st.root)
     return {"arm": arm, "seed": seed, "points": pts, "frontier": front, "frontier_size": len(front),
+            "fewshot_variants": fs, "best_fewshot": best_fs,
+            "selected_minus_best_fewshot_test": (sel_t - fs[best_fs]["test"]) if sel_t is not None else None,
+            "context_ratio_vs_best_fewshot": fs[best_fs]["search_context"] / max(1.0, best[2]),
+            "best_cheaper_fewshot": best_cheaper,
+            "selected_minus_best_cheaper_fewshot_test": (sel_t - fs[best_cheaper]["test"])
+            if (sel_t is not None and best_cheaper) else None,
+            "any_beats_best_fewshot_test": bool(beats_best_fs_test),
             "hypervolume": hypervolume(pts, ref_cost=ref), "hv_ref_cost": ref,
             "selected": best[0], "selected_search": best[1], "selected_context": best[2],
             "selected_test": final.get(best[0], {}).get("score"),
@@ -66,11 +99,15 @@ def main():
     rows = pool_map(job, [(a, s) for s in range(ARGS.seeds) for a in ARMS], ARGS.workers)
     by = {a: sorted([r for r in rows if r["arm"] == a], key=lambda r: r["seed"]) for a in ARMS}
     keys = ("frontier_size", "hypervolume", "selected_search", "selected_test", "selected_context",
-            "context_ratio_selected", "n_frontier_beats_fewshot_all")
+            "context_ratio_selected", "n_frontier_beats_fewshot_all", "selected_minus_best_fewshot_test",
+            "context_ratio_vs_best_fewshot", "selected_minus_best_cheaper_fewshot_test")
     summ = {a: {k: summarize([r[k] for r in by[a]]) for k in keys} for a in ARMS}
     for a in ARMS:
         summ[a]["share_any_beats_fewshot_all_search"] = float(np.mean([r["any_beats_fewshot_all_search"] for r in by[a]]))
         summ[a]["share_any_beats_fewshot_all_test"] = float(np.mean([r["any_beats_fewshot_all_test"] for r in by[a]]))
+        summ[a]["share_any_beats_best_fewshot_test"] = float(np.mean([r["any_beats_best_fewshot_test"] for r in by[a]]))
+        summ[a]["best_fewshot_counts"] = {n: sum(r["best_fewshot"] == n for r in by[a])
+                                          for n in sorted({r["best_fewshot"] for r in by[a]})}
     cmp = {k: paired([r[k] for r in by["scalar"]], [r[k] for r in by["pareto"]]) for k in
            ("frontier_size", "hypervolume", "selected_test")}
     several = summ["pareto"]["frontier_size"]["mean"] >= 2
@@ -80,7 +117,13 @@ def main():
         f"in {100 * summ['pareto']['share_any_beats_fewshot_all_test']:.0f}% of runs a frontier harness beats " \
         f"fewshot_all on TEST accuracy with less context (selected harness uses " \
         f"{summ['pareto']['context_ratio_selected']['mean']:.1f}x less context). Pareto vs scalar hypervolume " \
-        f"diff = {cmp['hypervolume'].get('mean_diff', float('nan')):+.1f}"
+        f"diff = {cmp['hypervolume'].get('mean_diff', float('nan')):+.1f}. Against the best few-shot-N variant " \
+        f"(chosen on search; fewshot_all overflows the model's budget): selected - best few-shot on test = " \
+        f"{fmt(summ['pareto']['selected_minus_best_fewshot_test'])}, context ratio " \
+        f"{summ['pareto']['context_ratio_vs_best_fewshot']['mean']:.1f}x; vs the best few-shot variant with no more " \
+        f"context than the selected harness: {fmt(summ['pareto']['selected_minus_best_cheaper_fewshot_test'])}; a " \
+        f"frontier harness beats the best few-shot variant on test with less context in " \
+        f"{100 * summ['pareto']['share_any_beats_best_fewshot_test']:.0f}% of runs"
     print(table([[a] + [fmt(summ[a][k], 2) for k in ("frontier_size", "hypervolume", "selected_test",
                                                      "context_ratio_selected")] for a in ARMS],
                 ["arm", "frontier size", "hypervolume", "selected test acc", "context reduction x"]))

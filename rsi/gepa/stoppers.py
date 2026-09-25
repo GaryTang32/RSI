@@ -3,7 +3,10 @@ iteration (so the last iteration can overshoot a metric-call budget by up to
 2b + |D_pareto|, as in ``gepa.optimize``; use ``Config.budget_mode="hard"`` for the
 ``optimize_anything`` eval-server behaviour that stops mid-iteration).
 
-A stopper is ``__call__(engine) -> Optional[str]`` returning a reason or None.
+A stopper is ``__call__(engine) -> Optional[str]`` returning a reason or None. A
+wall-clock stopper may also define ``credit(seconds)``: the engine calls it with the
+write-only shadow monitor's wall time (``ShadowMonitor.last_elapsed_s``), so auditing
+sealed splits never shortens a run (``Timeout``, ``BudgetStopper`` -> ``Budget.credit``).
 """
 from __future__ import annotations
 
@@ -32,6 +35,10 @@ class Timeout:
     def __init__(self, seconds: float) -> None:
         self.seconds = seconds
         self.t0 = time.time()
+
+    def credit(self, seconds: float) -> None:
+        """Give back wall time spent outside the loop's own work (the shadow monitor)."""
+        self.t0 += max(0.0, float(seconds))
 
     def __call__(self, eng) -> Optional[str]:
         return "timeout" if time.time() - self.t0 >= self.seconds else None
@@ -95,6 +102,10 @@ class BudgetStopper:
     def __init__(self, budget) -> None:
         self.budget = budget
 
+    def credit(self, seconds: float) -> None:
+        if hasattr(self.budget, "credit"):
+            self.budget.credit(seconds)
+
     def __call__(self, eng) -> Optional[str]:
         st = eng.state
         return self.budget.exhausted(rounds=st.i + 1, rollouts=st.counter.total, usd=eng.usd())
@@ -127,6 +138,13 @@ class ConsecutiveInfraFailures:
 class Composite:
     def __init__(self, stoppers: Sequence[Callable], mode: str = "any") -> None:
         self.stoppers, self.mode = list(stoppers), mode
+
+    def credit(self, seconds: float) -> None:
+        """Forward a wall-time credit to every member that keeps a wall clock."""
+        for s in self.stoppers:
+            fn = getattr(s, "credit", None)
+            if callable(fn):
+                fn(seconds)
 
     def __call__(self, eng) -> Optional[str]:
         reasons = [s(eng) for s in self.stoppers]

@@ -1,0 +1,77 @@
+{
+ "iteration": 2,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 23840,
+  "output_tokens": 7352,
+  "cost_usd": 0.084431,
+  "latency_s": 72.2463698387146,
+  "total_tokens": 31192
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "sessions/iter001/meta.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/similarity_retrieval/src/memory.py",
+  "candidates/similarity_retrieval/src/src/memory.py",
+  "candidates/no_memory/src/memory.py",
+  "candidates/correct_first_fewshot/src/memory.py",
+  "candidates/correct_first_fewshot/src/src/memory.py",
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/meta.json",
+  "candidates/similarity_retrieval/eval/search/scores.json",
+  "candidates/similarity_retrieval/meta.json",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/meta.json",
+  "candidates/correct_first_fewshot/meta.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_alpha__val.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_beta__val.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_gamma__val.json",
+  "candidates/fewshot_all/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/fewshot_all/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/similarity_retrieval/eval/search/per_task/ds_alpha__val.json",
+  "candidates/similarity_retrieval/eval/search/per_task/ds_beta__val.json",
+  "candidates/similarity_retrieval/eval/search/per_task/ds_gamma__val.json",
+  "candidates/no_memory/eval/search/per_task/ds_alpha__val.json",
+  "candidates/no_memory/eval/search/per_task/ds_beta__val.json",
+  "candidates/no_memory/eval/search/per_task/ds_gamma__val.json"
+ ],
+ "n_files_read": 27,
+ "files_read_by_kind": {
+  "code": 6,
+  "traces": 11,
+  "scores": 5,
+  "other": 5
+ },
+ "view_files": 34,
+ "view_chars": 554334,
+ "read_chars": 172595,
+ "error": null,
+ "seconds": 72.248,
+ "candidates": [
+  {
+   "name": "weighted_recency_correctness",
+   "base_system": "fewshot_all",
+   "hypothesis": "Recent examples provide fresh training context, and examples the model correctly predicted during training are stronger learning signals. A smooth exponential decay on recency combined with a correctness multiplier will weight high-signal examples higher, improving accuracy without exceeding context budget.",
+   "axis": "exploitation",
+   "components": [
+    "recency-decay",
+    "correctness-weighting",
+    "smooth-scoring"
+   ]
+  },
+  {
+   "name": "label_stratified_diverse",
+   "base_system": "fewshot_all",
+   "hypothesis": "Ensuring diverse output labels in few-shot examples improves generalization. By stratifying retrieval to show one correct example per unique output label seen during training, the model learns varied output patterns rather than being biased by frequency, reducing overfitting to common labels.",
+   "axis": "exploration",
+   "components": [
+    "output-label-clustering",
+    "stratified-sampling",
+    "label-diversity"
+   ]
+  }
+ ]
+}

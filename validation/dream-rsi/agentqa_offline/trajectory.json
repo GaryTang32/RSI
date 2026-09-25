@@ -65,7 +65,7 @@
     "batch_errors": []
    }
   },
-  "wall_s": 1.1
+  "wall_s": 0.921
  },
  {
   "iteration": 2,
@@ -133,7 +133,7 @@
     "batch_errors": []
    }
   },
-  "wall_s": 2.138
+  "wall_s": 1.729
  },
  {
   "iteration": 3,
@@ -203,7 +203,7 @@
     "batch_errors": []
    }
   },
-  "wall_s": 3.177
+  "wall_s": 2.727
  },
  {
   "iteration": 4,
@@ -229,6 +229,6 @@
   "beta": 0.6,
   "online_error": null,
   "violations": [],
-  "wall_s": 3.32
+  "wall_s": 2.872
  }
 ]

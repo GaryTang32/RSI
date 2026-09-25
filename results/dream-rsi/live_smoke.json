@@ -1,6 +1,6 @@
 {
  "experiment": "live_smoke",
- "created": "2026-09-24 23:22:42",
+ "created": "2026-09-25 17:15:06",
  "config": {
   "rounds": 2,
   "grid": [
@@ -9,21 +9,23 @@
   ],
   "W": 3,
   "M": 2,
-  "cache": "/home/user/RSI/.rsi_cache/dream-rsi"
+  "cache": "/home/user/RSI/.rsi_cache/dream-rsi-live-smoke-fix",
+  "prompts": "verbatim Listing 1 / Listing 2 (claims-audit fix)",
+  "round_budget": "fallback (6)"
  },
  "summary": {
   "domain": "sumdiff",
   "llm": "claude:haiku",
-  "wall_s": 621.4,
-  "out_dir": "/tmp/dream_live_nmjf84ta",
+  "wall_s": 598.3,
+  "out_dir": "/tmp/dream_live_hlu7s4ui",
   "seed_score": 0.9104910395109694,
-  "best_score": 1.0319952987060697,
+  "best_score": 1.0194335183553158,
   "per_round": [
    {
     "iteration": 1,
     "calls": 6,
-    "round_best": 1.0311260337493098,
-    "best": 1.0311260337493098,
+    "round_best": 1.0194335183553158,
+    "best": 1.0194335183553158,
     "N": 6,
     "k": 2,
     "plan": {
@@ -35,8 +37,8 @@
    {
     "iteration": 2,
     "calls": 6,
-    "round_best": 1.0319952987060697,
-    "best": 1.0319952987060697,
+    "round_best": 1.0194335183553158,
+    "best": 1.0194335183553158,
     "N": 6,
     "k": 2,
     "plan": {
@@ -47,8 +49,7 @@
    }
   ],
   "attempt_outcomes": {
-   "ok": 9,
-   "compile_other": 3
+   "ok": 12
   },
   "dream_values": [
    0.955,
@@ -56,52 +57,57 @@
   ],
   "dream_selected": 0,
   "developer_change": [
-   "Implement adaptive exploration with trajectory-aware branch pruning, priority-ranked batch selection, beta-dependent thresholds, and history-responsive grid pla"
+   "Implement adaptive trajectory-aware policy: rank branches by successful anchor and trend; build portfolio batches (exploit promising, explore new roots, recover"
   ],
   "final_policy_passes_static_check": true,
   "deployed_policy_changed": false,
   "usage_by_role": {
    "agent": {
     "calls": 12,
-    "input_tokens": 45235,
-    "output_tokens": 111936,
-    "cost_usd": 0.619108,
-    "latency_s": 1124.368444442749,
-    "total_tokens": 157171
+    "input_tokens": 52030,
+    "output_tokens": 108024,
+    "cost_usd": 0.6219779999999999,
+    "latency_s": 1128.7320835590363,
+    "total_tokens": 160054
    },
    "developer": {
     "calls": 1,
-    "input_tokens": 9491,
-    "output_tokens": 14889,
-    "cost_usd": 0.093418,
-    "latency_s": 152.64857172966003,
-    "total_tokens": 24380
+    "input_tokens": 11975,
+    "output_tokens": 14942,
+    "cost_usd": 0.09865099999999999,
+    "latency_s": 154.8535430431366,
+    "total_tokens": 26917
    },
    "_total": {
     "calls": 13,
-    "input_tokens": 54726,
-    "output_tokens": 126825,
-    "cost_usd": 0.712526,
-    "latency_s": 1277.017016172409,
-    "total_tokens": 181551
+    "input_tokens": 64005,
+    "output_tokens": 122966,
+    "cost_usd": 0.720629,
+    "latency_s": 1283.5856266021729,
+    "total_tokens": 186971
    }
   },
   "cost": {
    "agent_calls": 12,
-   "agent_tokens": 157171,
-   "agent_usd": 0.619108,
-   "eval_s": 0.8859357833862305,
+   "agent_tokens": 160054,
+   "agent_usd": 0.6219779999999999,
+   "eval_s": 1.207435131072998,
    "online_rounds": 4,
-   "online_wall_s": 468.3007080554962,
+   "online_wall_s": 442.8919577598572,
    "replay_episodes": 8,
-   "replay_cpu_s": 0.018826957434326164,
-   "replay_wall_s": 0.1932673454284668,
+   "replay_cpu_s": 0.01854369188281252,
+   "replay_wall_s": 0.29474401473999023,
    "developer_calls": 1,
-   "developer_tokens": 24380,
-   "developer_usd": 0.093418,
-   "replay_ms_per_episode": 2.3533696792907706
+   "developer_tokens": 26917,
+   "developer_usd": 0.09865099999999999,
+   "developer_revisions": 1,
+   "replay_ms_per_episode": 2.3179614853515647,
+   "llm_calls_total": 13,
+   "usd_total": 0.720629,
+   "developer_usd_share": 0.13689568418700884
   },
-  "usd": 0.712526
+  "usd": 0.720629,
+  "developer_usd_share": 0.13689568418700884
  },
- "verdict": "live run completed: best 1.0320 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.713, 621s"
+ "verdict": "live run completed: best 1.0194 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.721 (policy developer 14% of it), 598s"
 }

@@ -289,7 +289,7 @@ MERGE(state):
 - **Module selection** [code:gepa/src/gepa/strategies/component_selector.py]:
   - Round-robin per candidate. The paper says "based on a policy (round-robin)" [paper:§3,p.5].
   - Or `"all"`, which updates every module in one reflection; the FAQ says this gives "a large boost in rollout efficiency" [docs:guides/faq.md].
-- **Merge schedule:** see §3. The paper says merge "is invoked a maximum of 5 times" [paper:App.G.4]. The code default is `max_merge_invocations = 5` [code:gepa/src/gepa/api.py:optimize], but it is a **soft** cap on scheduling, not on accepted merges [run:merge-cap-probe]. A faithful "at most 5" needs an extra guard: `total_merges_tested < max_merge_invocations` checked at attempt time [inferred].
+- **Merge schedule:** see §3. The paper says merge "is invoked a maximum of 5 times" [paper:App.G.4]. The code default is `max_merge_invocations = 5` [code:gepa/src/gepa/api.py:optimize], but it is a **soft** cap on scheduling, not on accepted merges [run:merge-cap-probe]. A faithful "invoked a maximum of 5 times" needs an attempt-time guard on the number of merges **invoked**, i.e. built and scored on their subsample, accepted or rejected (`len(merges_performed[0]) < max_merge_invocations`) [inferred]. *(Claim-audit correction: an earlier version of this recipe proposed `total_merges_tested < max_merge_invocations`; that counter increments only on acceptance [code:core/engine.py:1038-1039], so the guard caps accepted merges and leaves rejected ones (5 rollouts each) unlimited.)* The paper's "GEPA routinely checks if the pool has 2 such candidates, invoking merge when identified" [paper:App.D.1] separates a *check* (no valid triplet: no rollout, fall through to reflection) from an *invocation* (triplet found, child built and scored).
 
 ### 4.5 Budget accounting (per run, no caching) [code:core/engine.py, proposer/reflective_mutation/reflective_mutation.py, proposer/merge.py][run:toy-e2e]
 
@@ -395,7 +395,7 @@ evals_total = |D_pareto|                                   # seed
 | **Seed generator** (seedless mode) | the reflection LM | objective, background and up to 3 dataset examples | [code:gepa_launcher.py:_build_seed_generation_prompt] |
 | **Refiner LM** (optional, `RefinerConfig`) | defaults to the reflection LM | candidate plus evaluation feedback, after each evaluation; the better of original and refined is kept; `refiner_prompt` is itself a co-evolved component | [code:gepa_launcher.py:RefinerConfig, DEFAULT_REFINER_PROMPT] |
 
-**6.1 The default reflection meta-prompt.** It is verbatim in both [paper:App.C,p.17] and [code:gepa/src/gepa/strategies/instruction_proposal.py:InstructionProposalSignature.default_prompt_template]. The two are word-for-word identical. Only whitespace differs: the LaTeX listing has an extra blank line after "…to perform a task for me:" [paper-src:App.C listing]. The paper shows the placeholders as `<current instruction>` and `<Inputs, Outputs and Feedback for minibatch of examples>`:
+**6.1 The default reflection meta-prompt.** It is verbatim in both [paper:App.C,p.17] and [code:gepa/src/gepa/strategies/instruction_proposal.py:InstructionProposalSignature.default_prompt_template]. The two are word-for-word identical. Only whitespace differs: the LaTeX listing has **two** extra blank lines, one after "…to perform a task for me:" and one after "…how the assistant's response could be better:", each between the sentence and its opening ``` fence [paper-src:App.C listing]. *(Claim-audit correction: an earlier version of this note named only the first.)* The code template, which is what runs, has neither blank line; `rsi/gepa/reflection.py` is byte-identical to the code. The paper shows the placeholders as `<current instruction>` and `<Inputs, Outputs and Feedback for minibatch of examples>`:
 
 ````text
 I provided an assistant with the following instructions to perform a task for me:
@@ -728,8 +728,10 @@ class AcceptanceCriterion(Protocol): def accept(self, proposal, state) -> bool
 class EvaluationPolicy(Protocol):                              # FullEval (default); extension: subset/dynamic valset
     def val_ids(self, loader, state) -> list; def best(self, state) -> int
 class MergeProposer:                                           # §3 MERGE, Alg. 3–4; max_invocations=5, overlap_floor=5, subsample=5
-    cap_mode: Literal["reference_soft", "hard"] = "reference_soft"   # soft = gepa code (cap gates scheduling only);
-                                                               # hard = paper wording "invoked a maximum of 5 times"
+    cap_mode: Literal["reference_soft", "hard", "accepted"] = "reference_soft"   # soft = gepa code (cap gates
+                                                               # scheduling only); hard = paper wording "invoked a
+                                                               # maximum of 5 times" (built+scored merges <= cap);
+                                                               # accepted = caps accepted merges only (not the paper)
     def propose(self, state) -> Proposal | None
 class ReflectionStrategy(Protocol):                            # == ReflectionLM; Stateless (default) | ComBEE(map/reduce, k=⌊√n⌋)
     def reflect(self, cand, refl_ds, comps) -> tuple[ReflectionProposal, "ReflectionStrategy"]

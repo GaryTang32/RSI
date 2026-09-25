@@ -25,6 +25,6 @@
   "batch_errors": []
  },
  "cpu_s": 0.007,
- "wall_s": 0.09,
+ "wall_s": 0.0791,
  "n_episodes": 1
 }

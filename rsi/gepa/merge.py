@@ -14,10 +14,32 @@ The child is scored on a 5-id validation subsample (up to ceil(5/3) ids each fro
 >= the better parent's. Scheduling follows the reference engine: one merge becomes
 *due* after each accepted reflective child while ``total_merges_tested <
 max_merge_invocations``; a merge is attempted only in the iteration right after an
-accepted reflective child. ``cap_mode="reference_soft"`` reproduces the reference
-(the cap gates scheduling only, so accepted merges can exceed it);
-``cap_mode="hard"`` also checks the cap at attempt time (the paper's "invoked a
-maximum of 5 times").
+accepted reflective child.
+
+Terms. A merge *check* is one call of :meth:`MergeProposer.propose` (the reference sets
+``invoked_merge`` in the run log even when no valid triplet exists; such a check costs
+no rollout and the iteration falls through to reflection). A merge *invocation* is a
+check that found a valid (i, j, a) triplet, built the merged child and scored it on its
+subsample - the paper's "invoking merge when identified" [App. D.1]; it is counted by
+:attr:`MergeProposer.n_invocations` (= ``len(merges_performed[0])``), accepted or not.
+
+Cap modes (``cap_mode``):
+
+* ``"reference_soft"`` (default) - ``gepa-ai/gepa@d771eb21`` exactly: the reference's
+  ``total_merges_tested`` counts *accepted* merges only (``core/engine.py:1038-1039``)
+  and ``max_merge_invocations`` is checked only when ``merges_due`` is incremented
+  (``core/engine.py:702``). Due merges accumulate while no triplet exists, so accepted
+  merges can exceed the cap, and rejected merges consume neither counter, so the number
+  of invocations is unbounded;
+* ``"hard"`` - the paper's "merge is invoked a maximum of 5 times" [App. G.4] and the
+  reference's own parameter doc ("The maximum number of merge invocations to
+  perform", ``api.py``): no check is made once ``n_invocations >=
+  max_merge_invocations``, so at most that many merged children are ever built and
+  scored (accepted + rejected <= cap);
+* ``"accepted"`` - caps *accepted* merges at attempt time (``total_merges_tested <
+  max_merge_invocations``). This was this repo's ``"hard"`` mode before the claim audit;
+  it is neither the paper's nor the reference's semantics (rejected merges are
+  unlimited) and is kept only to reproduce earlier E4 numbers.
 
 Deviations: ancestors, modules and pair candidates are visited in sorted order
 (reproducible across Python builds); when every eligible ancestor has aggregate 0 the
@@ -33,6 +55,8 @@ from typing import Callable, Optional, Sequence
 
 from ..core.artifact import Artifact
 from .frontier import find_dominator_programs
+
+CAP_MODES = ("reference_soft", "hard", "accepted")
 
 
 def get_ancestors(parents: Sequence[Sequence[Optional[int]]], node: int) -> set[int]:
@@ -193,8 +217,15 @@ class MergeProposer:
     def __post_init__(self) -> None:
         if self.val_overlap_floor <= 0:
             raise ValueError("val_overlap_floor should be a positive integer")
-        if self.cap_mode not in ("reference_soft", "hard"):
-            raise ValueError("cap_mode must be 'reference_soft' or 'hard'")
+        if self.cap_mode not in CAP_MODES:
+            raise ValueError(f"cap_mode must be one of {CAP_MODES}")
+
+    @property
+    def n_invocations(self) -> int:
+        """Merges actually performed (triplet found, child built and scored on its subsample),
+        accepted or rejected. Derived from the persisted ``merges_performed`` log, so it
+        survives resume."""
+        return len(self.merges_performed[0])
 
     # scheduling (engine calls these at the reference's points)
     def schedule_if_needed(self) -> None:
@@ -203,8 +234,10 @@ class MergeProposer:
             self.merges_due += 1
 
     def should_attempt(self) -> bool:
-        if self.cap_mode == "hard" and self.total_merges_tested >= self.max_merge_invocations:
-            return False
+        if self.cap_mode == "hard" and self.n_invocations >= self.max_merge_invocations:
+            return False            # paper: "invoked a maximum of N times" (accepted + rejected)
+        if self.cap_mode == "accepted" and self.total_merges_tested >= self.max_merge_invocations:
+            return False            # pre-audit "hard" semantics: caps accepted merges only
         return self.merges_due > 0 and self.last_iter_found_new_program
 
     def on_accepted(self) -> None:
@@ -235,6 +268,7 @@ class MergeProposer:
 
     def get_state(self) -> dict:
         return {"merges_due": self.merges_due, "total_merges_tested": self.total_merges_tested,
+                "n_invocations": self.n_invocations, "cap_mode": self.cap_mode,
                 "last_iter_found_new_program": self.last_iter_found_new_program,
                 "merges_performed": [[list(x) for x in self.merges_performed[0]],
                                      [[i, j, list(d)] for i, j, d in self.merges_performed[1]]],

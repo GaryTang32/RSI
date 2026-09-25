@@ -349,7 +349,10 @@ def main():
     if a.llm != "sim":
         n_seeds = {d: 1 for d in doms}
     results, raw = {}, []
+    # a run saved elsewhere (--out, e.g. the --objective pareto variant) gets its own figure next to its JSON
     plt, png = figure("e3_dream_vs_fixed")
+    if a.out:
+        png = Path(a.out).with_suffix(".png")
     fig, axes = plt.subplots(1, len(doms), figsize=(4.2 * len(doms), 3.5), squeeze=False)
     for i, d in enumerate(doms):
         jobs = [(d, s, dream, a.llm, a.quick, None, a.objective) for s in range(n_seeds[d]) for dream in (False, True)]

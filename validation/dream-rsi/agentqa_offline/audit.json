@@ -887,7 +887,7 @@
      }
     }
    },
-   "elapsed_s": 0.02,
+   "elapsed_s": 0.015,
    "note": "shadow evaluation - never shown to the loop"
   },
   {
@@ -914,7 +914,7 @@
      }
     }
    },
-   "elapsed_s": 0.196,
+   "elapsed_s": 0.152,
    "note": "shadow evaluation - never shown to the loop"
   }
  ],
@@ -1064,5 +1064,5 @@
    "selected_minus_incumbent_gain": null
   }
  ],
- "audit_wall_s": 14.9
+ "audit_wall_s": 13.1
 }

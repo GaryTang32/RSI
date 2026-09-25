@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from mh_common import drop_traces  # noqa: E402
 from _common import fmt, fresh_dir, live_llm, parse_args, pool_map, save, summarize, table  # noqa: E402
 
 from rsi.core import transfer_report  # noqa: E402
@@ -47,6 +48,7 @@ def job(seed):
                 out[f"{model}_ood_families_gain"] = {f: row["selected"]["families"][f] - row["fewshot_all"]["families"][f]
                                                      for f in row["selected"]["families"]}
     out["search_gain"] = out["A_evolve_gain"]
+    drop_traces(res.loop.store.root)
     return out
 
 

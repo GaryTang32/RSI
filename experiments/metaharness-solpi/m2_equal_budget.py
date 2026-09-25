@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import RESULTS, figure_path, fmt, fresh_dir, live_llm, paired, parse_args, plt, pool_map, save, summarize, \
     table  # noqa: E402
+from mh_common import drop_traces  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -42,6 +43,7 @@ def job(spec):
     curve += [curve[-1]] * (budget + 1 - len(curve))
     best = res.meta["best_system"]
     test = res.meta["final"]["splits"]["test"]["results"]
+    drop_traces(res.loop.store.root)
     return {"arm": arm, "seed": seed, "curve": curve, "final_best": curve[-1], "selected": best,
             "selected_test": test.get(best, {}).get("score"), "fewshot_all_test": test["fewshot_all"]["score"],
             "n_evaluated": res.meta["n_evaluated"]}
@@ -52,6 +54,21 @@ def evals_to_reach(curve, target):
         if v >= target - 1e-12:
             return i
     return None
+
+
+def reach_stats(reach: dict, budget: int) -> dict:
+    """Two medians of "evaluations Meta-Harness needs to match an arm's final best" (audit N11: the verdict
+    and the summary used to quote different ones without saying so):
+    ``median_when_reached`` over the seeds where Meta-Harness matches within the budget, and
+    ``median_never_as_budget_plus_1`` over all seeds, counting a never-matched seed as budget + 1."""
+    out = {}
+    for a, v in reach.items():
+        hit = [x for x in v if x is not None]
+        out[a] = {"median_when_reached": float(np.median(hit)) if hit else None,
+                  "median_never_as_budget_plus_1": float(np.median([x if x is not None else budget + 1 for x in v]))
+                  if v else None,
+                  "n_seeds_never_reached": sum(x is None for x in v), "n_seeds": len(v)}
+    return out
 
 
 def main():
@@ -75,22 +92,23 @@ def main():
     verdict = ("REPRODUCED" if wins and sig else "PARTIAL" if wins else "NOT REPRODUCED") + \
         f": Meta-Harness final best vs others (paired diffs) = " + \
         ", ".join(f"{a}: {cmp[a]['final_best'].get('mean_diff', float('nan')):+.3f}" for a in cmp)
-    reach_summary = {a: {"median_when_reached": float(np.median([x for x in v if x is not None]))
-                         if any(x is not None for x in v) else None,
-                         "n_seeds_never_reached": sum(x is None for x in v), "n_seeds": len(v)}
-                     for a, v in reach.items()}
+    reach_summary = reach_stats(reach, budget)
     # the paper's "matches the others with ~10x fewer evaluations" = MH reaches their FINAL value within
     # budget/10 evaluations (in the median seed; a seed where MH never matches counts as budget + 1)
-    tenx = {a: float(np.median([x if x is not None else budget + 1 for x in v])) <= budget / 10
-            for a, v in reach.items()}
+    tenx = {a: reach_summary[a]["median_never_as_budget_plus_1"] <= budget / 10 for a in reach}
     verdict += "; 10x-fewer-evaluations claim " + ("reproduced" if all(tenx.values()) else "NOT reproduced") + \
-        " (median evaluations MH needs to match each arm's final best: " + \
-        ", ".join(f"{a}: {float(np.median([x if x is not None else budget + 1 for x in v])):.1f}"
-                  for a, v in reach.items()) + f" of {budget}; never matched in " + \
-        ", ".join(f"{a}: {reach_summary[a]['n_seeds_never_reached']}/{len(v)}" for a, v in reach.items()) + " seeds)"
+        " (evaluations MH needs to match each arm's final best, of " + f"{budget}" + \
+        ": median over all seeds with never-matched seeds counted as " + f"{budget + 1}" + " / median over the " \
+        "seeds where MH matches: " + \
+        ", ".join(f"{a}: {reach_summary[a]['median_never_as_budget_plus_1']:.1f} / "
+                  f"{reach_summary[a]['median_when_reached']}" for a in reach) + "; never matched in " + \
+        ", ".join(f"{a}: {reach_summary[a]['n_seeds_never_reached']}/{reach_summary[a]['n_seeds']}" for a in reach) + \
+        " seeds)"
     print(table([[a, fmt(summ[a]["final_best"]), fmt(summ[a]["selected_test"]),
-                  f"{reach_summary[a]['median_when_reached']}" if a in reach_summary else "-"]
-                 for a in ARMS], ["arm", "final best (search)", "selected (test)", "MH evals to match (median)"]))
+                  (f"{reach_summary[a]['median_never_as_budget_plus_1']} / {reach_summary[a]['median_when_reached']}"
+                   if a in reach_summary else "-")]
+                 for a in ARMS], ["arm", "final best (search)", "selected (test)",
+                                  "MH evals to match (median all seeds / reached seeds)"]))
     print("verdict:", verdict)
     fig = plt()
     f, ax = fig.subplots(figsize=(6.5, 4))

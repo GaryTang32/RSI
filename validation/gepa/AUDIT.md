@@ -259,7 +259,7 @@ Each item cites the spec section and the trace evidence. "Replay" means the inde
 | M13 | §4.4 merge cap "maximum of 5" (paper) vs a soft cap (code) | the merge run accepted **7** merges with cap 5 (`total_merges_tested` reaches 7; `merges_due` accumulated to 14) | documented deviation: the paper says 5; the reference code's soft cap reproduces 7. `merge_cap_mode="hard"` is available |
 | M14 | §4.5 budget identity; overshoot ≤ 2b + \|V\| because the stop check sits at the top of an iteration | identity holds in all 6 runs (318, 1534, 121, 51, 121, 75); overshoot 18/300, 34/1500, 1/120 | faithful |
 | M15 | §3 return argmax mean D_pareto (ties → coverage → lowest index) | `returned_argmax` true in all runs | faithful |
-| M16 | §2 / §4 split discipline: the reflection sees only D_train minibatch records; D_pareto gives scores only; test sealed | no D_pareto or sealed input in any of the 76 prompts; offline prompts are *exactly* the minibatch records (byte-exact rebuild); the monitor is write-only (code: `observe` returns None; `ShadowLLM` spend is filed under `shadow:*` and excluded from `usage_snapshot`; the `test_gepa_validation.py` on/off identity tests) | faithful. Open (low): monitor **wall time** counts toward `Budget.max_wall_s` / `Timeout` (see §5) |
+| M16 | §2 / §4 split discipline: the reflection sees only D_train minibatch records; D_pareto gives scores only; test sealed | no D_pareto or sealed input in any of the 76 prompts; offline prompts are *exactly* the minibatch records (byte-exact rebuild); the monitor is write-only (code: `observe` returns None; `ShadowLLM` spend is filed under `shadow:*` and excluded from `usage_snapshot`; the `test_gepa_validation.py` on/off identity tests) | faithful. The monitor's **wall time** used to count toward `Budget.max_wall_s` / `Timeout`; fixed after the claim audit (§4 register, §5) |
 | M17 | §8 weakness 8: N = 1 per evaluation, no noise band | `noise` event: mode none; `val_seed` fixed at 0 for every D_pareto evaluation (salted per artifact in RuleWorld) | faithful (documented deviation 6: the seeds are explicit) |
 | M18 | §2 only the prompts change | `other_files_unchanged` 76/76 (harness.py frozen); merge children take non-component files from the ancestor | faithful |
 | M19 | reflection LM = task LM (paper, inferred) | live: haiku in both roles | consistent with the paper's likely setup |
@@ -310,18 +310,18 @@ Where the dynamics do not match the paper, or cannot be compared:
 | Skip-perfect rule | faithful | M4 |
 | Round-robin inheritance | faithful | M5 |
 | Merge rules and schedule | faithful to the code | M11, M12 |
-| Merge cap: paper "max 5", code soft cap (7 accepted) | documented-deviation (impl §5.4, spec §3) | M13 |
+| Merge cap: paper "max 5", code soft cap (7 accepted) | documented-deviation (impl §5.4, spec §3) | M13. The default stays the reference soft cap (this run: 11 invocations, 7 accepted, cap 5). After the claim audit, `merge_cap_mode="hard"` caps **invocations** (accepted + rejected ≤ 5), as the paper's "invoked a maximum of 5 times"; before, it capped accepted merges only (now `"accepted"`). Not used by these runs |
 | Merge zero-weight ancestor fallback | documented-deviation (impl §5.3) | not triggered in these runs |
 | Budget identity and overshoot | faithful | M14 |
 | Argmax return | faithful | M15 |
 | Split discipline and write-only monitor (numbers) | faithful | M16 |
-| Monitor wall time counts toward the wall-clock stoppers | inconsistent-open (low) | the monitor runs inside the loop's wall clock. `agentqa_live` stopped on USD at 990 s < 1800 s, so there was no effect here. Needs a core `Budget` change (see core_change_requests) |
+| Monitor wall time counts toward the wall-clock stoppers | **inconsistent-fixed** (claim-audit fix round) | the monitor ran inside the loop's wall clock (`agentqa_live` stopped on USD at 990 s < 1800 s, so there was no effect here). Fix: after each observation the engine credits `ShadowMonitor.last_elapsed_s` to every wall-clock stopper (`rsi/gepa/engine.py:200` `credit_wall_time`, called from `rsi/gepa/tracing.py:311`; `Timeout.credit`, `BudgetStopper.credit` → the core's new `Budget.credit`). Regression test `tests/test_gepa_claims_fixes.py::test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers`; impl §5.17 |
 | Seeded rollouts, N = 1, fixed `val_seed` | documented-deviation (impl §5.6) | M17 |
 | Live cache sharing of identical upstream calls across candidates | documented-deviation (impl §5.6) | §3b |
 | AgentQA seed = `two_module_harness`, not `AgentQADomain.seed_artifact()` | documented-deviation | GEPA needs named prompt modules; its solver text is "You are a helpful assistant. Solve the question." |
 | Sustained outage burns b rollouts per iteration and never stops | **inconsistent-fixed** | `agentqa_live_interrupted` it 7–11. Fixed with `ConsecutiveInfraFailures` (§5) |
 | RUNS.md placed `ruleworld_offline`'s false accept at it 6 | **inconsistent-fixed** (report) | per-step truth: it 5 = 0.000, it 6 = +0.046. Erratum added to RUNS.md |
-| E1 table in gepa-impl.md still carries the pre-fix AgentQA-mock numbers | inconsistent-open (doc, flagged by stage A) | impl §4 E1 note. Not re-run here: an experiment table, not a validation run |
+| E1 table in gepa-impl.md still carries the pre-fix AgentQA-mock numbers | **inconsistent-fixed** (claim-audit fix round) | E1 re-run at full settings with the fixed mock (`results/gepa/e1_sample_efficiency.json`); impl §4 E1 table replaced. Text feedback still gives no edge on AgentQA (OOD: GEPA − ScoreOnly −0.040 [−0.070, −0.010], 5 seeds) |
 | Paper's gain magnitude | unverifiable | CPU mock and a 51-rollout live run |
 | Interrupted run's spend ($0.926) | unverifiable | its cache was deleted by the from-scratch rerun; the trace shows loop $0.791 at it 12 |
 | Live step outcomes (4 gated steps) | unverifiable | no ground truth; D_pareto (8 tasks, one draw) is against both accepted children (0.25 vs 0.50) |
@@ -354,11 +354,13 @@ Where the dynamics do not match the paper, or cannot be compared:
 | this audit | $0 |
 | **total** | **about $2.31** |
 
+**Claim-audit fix round** (`docs/claims/gepa.md`, "Fix log"). The two open register items above were fixed, and the merge cap, the reflection stop reason and the monitor credit changed in `rsi/gepa/`. None of these changes touches a run without a wall-clock stopper, a `"hard"` merge cap or a truncated reflection reply, so the stored run directories were **not** replaced. To check, the three offline runs (`ruleworld_offline`, `ruleworld_merge_offline`, `agentqa_offline`) were re-run from scratch with the current code into a scratch directory and stage B was re-run on them ($0): `trajectory.json`, `run_log.jsonl` and `audit.md` are byte-identical to the stored ones, `ledger.jsonl` differs only in timestamps, and every stage-B check and verdict count is identical (7 + 1, 45 + 14, 17 + 3 correct + questionable). The live runs were not repeated: every recorded live reflection reply with text has a complete fence pair (4 in `agentqa_live`, 5 in `agentqa_live_interrupted`, whose sixth call was a backend error with no text), so the truncation check, which runs only without a fence pair, cannot change them.
+
 ## 6. Remaining open issues
 
-1. The monitor's wall time counts toward wall-clock stoppers (`Budget.max_wall_s`, `Timeout`). This is low severity and core-owned.
+1. ~~The monitor's wall time counts toward wall-clock stoppers (`Budget.max_wall_s`, `Timeout`).~~ Fixed in the claim-audit fix round (§4 register).
 2. The 3-example, one-draw strict gate is an in-sample test. It admits ticket facts and task drift, which account for most false accepts. This is faithful to GEPA; `acceptance="noise_margin"` and the `critic=` leakage screen exist but are off by default.
 3. Winner's curse of the one-draw D_pareto argmax (merge run: the 7th-best candidate was returned). This is faithful to GEPA.
 4. The reflection gets no memory of rejected rewrites, so rejected ideas return and can pass on noise (merge run: it 43 → 47; AgentQA offline: it 0 → 6). This is faithful to GEPA.
 5. The live evidence is thin: 51 rollouts, and every step is unverifiable.
-6. The E1 table in the implementation doc predates the AgentQA mock fix.
+6. ~~The E1 table in the implementation doc predates the AgentQA mock fix.~~ Fixed: E1 re-run (§4 register).

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import ast
 import os
+import threading
+import time
 import traceback
 from dataclasses import asdict, dataclass, field
 from typing import Iterable, Optional
@@ -49,43 +51,60 @@ class InterfaceValidator:
 
     def _forked(self, domain, artifact: Artifact, llm) -> tuple[bool, str]:
         """Run the smoke in a raw forked child (works inside daemonic pool workers too);
-        kill it on timeout."""
+        kill it on timeout.
+
+        The child's model calls are real spend that the parent's meters would never see (live: $0.02-0.03 per
+        run missing from the loop meter, fix 17). Every usage the child meters is streamed back through the pipe
+        *as it happens*, so a child killed on timeout still reports the calls it completed (register #24). A
+        call still in flight when the child is killed has no usage yet; it is counted in the returned message."""
         import pickle
         import select
         import signal
         r, w = os.pipe()
-        before = _meter_states(llm)
         pid = os.fork()
         if pid == 0:                                     # child
             os.close(r)
             try:
+                lock = threading.Lock()
+
+                def send(msg) -> None:
+                    data = pickle.dumps(msg)
+                    with lock:
+                        os.write(w, len(data).to_bytes(8, "big") + data)
+
+                _stream_usage(llm, send)
                 try:
                     err = domain.smoke(artifact, llm)
                 except Exception as e:  # noqa: BLE001
                     err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
-                # the child's model calls are real spend that the parent's meters would never see (live:
-                # $0.02-0.03 per run missing from the loop meter) -> ship the usage delta back with the verdict
-                data = pickle.dumps((err, _usage_delta(before, _meter_states(llm))))
-                os.write(w, len(data).to_bytes(8, "big") + data)
+                send(("done", err))
             finally:
                 os._exit(0)
         os.close(w)
-        err: Optional[str] = f"smoke timed out after {self.timeout_s}s"
+        deadline = time.monotonic() + self.timeout_s
+        done, err, buf = False, None, b""
+        inflight: dict[int, int] = {}
         try:
-            ready, _, _ = select.select([r], [], [], self.timeout_s)
-            if ready:
-                buf = b""
-                while True:
-                    chunk = os.read(r, 1 << 16)
-                    if not chunk:
-                        break
-                    buf += chunk
-                if len(buf) >= 8:
+            while not done:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    break
+                ready, _, _ = select.select([r], [], [], left)
+                if not ready:
+                    break
+                chunk = os.read(r, 1 << 16)
+                if not chunk:                             # child exited (or died) without "done"
+                    break
+                buf += chunk
+                while len(buf) >= 8 and len(buf) >= 8 + int.from_bytes(buf[:8], "big"):
                     n = int.from_bytes(buf[:8], "big")
-                    err, delta = pickle.loads(buf[8:8 + n])
-                    _apply_usage(llm, delta)
-                else:
-                    err = "smoke process died"
+                    msg, buf = pickle.loads(buf[8:8 + n]), buf[8 + n:]
+                    if msg[0] == "usage":                 # ("usage", meter index, role, usage dict)
+                        _apply_one(llm, msg[1], msg[2], msg[3])
+                    elif msg[0] == "call":                # ("call", +1 started | -1 finished)
+                        inflight[0] = inflight.get(0, 0) + msg[1]
+                    elif msg[0] == "done":
+                        done, err = True, msg[1]
         finally:
             os.close(r)
             try:
@@ -93,6 +112,13 @@ class InterfaceValidator:
             except ProcessLookupError:
                 pass
             os.waitpid(pid, 0)
+        if not done:
+            if time.monotonic() >= deadline:
+                err = f"smoke timed out after {self.timeout_s}s"
+                if inflight.get(0, 0) > 0:
+                    err += f" ({inflight[0]} model call(s) in flight at the kill: their usage is unknown)"
+            else:
+                err = "smoke process died"
         return (err is None), (err or "OK")
 
 
@@ -108,29 +134,43 @@ def _meters(llm) -> list:
     return out
 
 
-def _meter_states(llm) -> list[dict]:
-    return [{r: asdict(u) for r, u in dict(m.by_role).items()} for m in _meters(llm)]
+def _stream_usage(llm, send) -> None:
+    """In the forked child: make every meter along the wrapper chain forward each ``add`` to the parent
+    (``send(("usage", meter index, role, usage dict))``), and bracket every model call with
+    ``("call", +1)`` / ``("call", -1)`` so the parent knows how many calls were in flight at a kill."""
+    for i, m in enumerate(_meters(llm)):
+        orig = m.add
+
+        def add(role, usage, _orig=orig, _i=i):
+            _orig(role, usage)
+            send(("usage", _i, role, asdict(usage)))
+
+        try:
+            m.add = add                               # the child's copy only (fork), never the parent's
+        except AttributeError:                        # a meter that forbids instance attributes: no streaming
+            pass
+    if llm is not None and hasattr(llm, "complete"):
+        orig_complete = llm.complete
+
+        def complete(*a, **kw):
+            send(("call", 1))
+            try:
+                return orig_complete(*a, **kw)
+            finally:
+                send(("call", -1))
+
+        try:
+            llm.complete = complete
+        except AttributeError:
+            pass
 
 
-def _usage_delta(before: list[dict], after: list[dict]) -> list[dict]:
-    out = []
-    for b, a in zip(before, after):
-        d = {}
-        for role, u in a.items():
-            p = b.get(role, {})
-            diff = {k: u[k] - p.get(k, 0) for k in u}
-            if any(diff.values()):
-                d[role] = diff
-        out.append(d)
-    return out
-
-
-def _apply_usage(llm, delta: list[dict]) -> None:
-    """Add the forked smoke's usage to the parent's meters (same roles as the child metered them)."""
+def _apply_one(llm, idx: int, role: str, u: dict) -> None:
+    """Add one usage record streamed by the forked smoke to the parent's matching meter."""
     from ..core.llm import Usage
-    for m, d in zip(_meters(llm), delta or []):
-        for role, u in d.items():
-            m.add(role, Usage(**u))
+    ms = _meters(llm)
+    if 0 <= idx < len(ms):
+        ms[idx].add(role, Usage(**u))
 
 
 @dataclass

@@ -1,6 +1,6 @@
 {
  "experiment": "demo_replay",
- "created": "2026-09-25 17:08:45",
+ "created": "2026-09-25 17:33:44",
  "config": {
   "W": 3,
   "beta1": 0.01,

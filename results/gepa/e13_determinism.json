@@ -261,5 +261,5 @@
  "all_resumes_identical": true,
  "reference_style_resumes_diverged": "7/7",
  "verdict": "7 runs (RuleWorld GEPA+Merge and AgentQA two-module): reruns byte-identical: True; 19 kill/resume cycles give the identical final state.json, run_log and candidate sequence: True. Resuming without the persisted RNG/sampler state (the reference's behaviour) diverged from the uninterrupted run in 7/7 cases. Claim (design goal): REPRODUCED.",
- "generated_at": "2026-09-25 06:25:02"
+ "generated_at": "2026-09-25 17:54:18"
 }
