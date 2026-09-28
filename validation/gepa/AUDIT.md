@@ -315,7 +315,7 @@ Where the dynamics do not match the paper, or cannot be compared:
 | Budget identity and overshoot | faithful | M14 |
 | Argmax return | faithful | M15 |
 | Split discipline and write-only monitor (numbers) | faithful | M16 |
-| Monitor wall time counts toward the wall-clock stoppers | **inconsistent-fixed** (claim-audit fix round) | the monitor ran inside the loop's wall clock (`agentqa_live` stopped on USD at 990 s < 1800 s, so there was no effect here). Fix: after each observation the engine credits `ShadowMonitor.last_elapsed_s` to every wall-clock stopper (`rsi/gepa/engine.py:200` `credit_wall_time`, called from `rsi/gepa/tracing.py:311`; `Timeout.credit`, `BudgetStopper.credit` → the core's new `Budget.credit`). Regression test `tests/test_gepa_claims_fixes.py::test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers`; impl §5.17 |
+| Monitor wall time counts toward the wall-clock stoppers | **inconsistent-fixed** (claim-audit fix round) | the monitor ran inside the loop's wall clock (`agentqa_live` stopped on USD at 990 s < 1800 s, so there was no effect here). Fix: after each observation the engine credits `ShadowMonitor.last_elapsed_s` to every wall-clock stopper (`rsi/gepa/engine.py:200` `credit_wall_time`, called from `rsi/gepa/tracing.py:311`; `Timeout.credit`, `BudgetStopper.credit` → the core's new `Budget.credit`). Regression test `tests/gepa/test_gepa_claims_fixes.py::test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers`; impl §5.17 |
 | Seeded rollouts, N = 1, fixed `val_seed` | documented-deviation (impl §5.6) | M17 |
 | Live cache sharing of identical upstream calls across candidates | documented-deviation (impl §5.6) | §3b |
 | AgentQA seed = `two_module_harness`, not `AgentQADomain.seed_artifact()` | documented-deviation | GEPA needs named prompt modules; its solver text is "You are a helpful assistant. Solve the question." |
@@ -331,12 +331,12 @@ Where the dynamics do not match the paper, or cannot be compared:
 **Fix: outage stopper.** Files: `rsi/gepa/stoppers.py:ConsecutiveInfraFailures`, `rsi/gepa/config.py:max_consecutive_infra_failures = 3`, `rsi/gepa/engine.py`, exported from `rsi.gepa`.
 - The run now stops with `stop_reason="infra_outage"` after 3 consecutive iterations lost to the backend: `skip_infra_error`, or `no_proposal` where every reflection call failed with an LLM error.
 - It is appended after the "no stop condition" check, so it is a safety net only.
-- Regression tests, in `tests/test_gepa_validation_stageb.py` (4 tests, all pass; all 67 GEPA tests pass):
+- Regression tests, in `tests/gepa/test_gepa_validation_stageb.py` (4 tests, all pass; all 67 GEPA tests pass):
   - an outage after 60 task calls now stops with `infra_outage`, well under B; with `None`, the old behaviour charges more than 10 dead iterations up to B;
   - identical trajectories on healthy runs;
   - the reflection-LLM-error case;
   - the stage-B replay reproduces a fresh RuleWorld+merge run.
-- Documented in `docs/methods/gepa-impl.md` §5.15.
+- Documented in `docs/methods/gepa/implementation.md` §5.15.
 
 **Re-runs from scratch** (fresh run directories; $0).
 - `ruleworld_offline`, `agentqa_offline` and `ruleworld_merge_offline` were re-run with the fix.
@@ -354,7 +354,7 @@ Where the dynamics do not match the paper, or cannot be compared:
 | this audit | $0 |
 | **total** | **about $2.31** |
 
-**Claim-audit fix round** (`docs/claims/gepa.md`, "Fix log"). The two open register items above were fixed, and the merge cap, the reflection stop reason and the monitor credit changed in `rsi/gepa/`. None of these changes touches a run without a wall-clock stopper, a `"hard"` merge cap or a truncated reflection reply, so the stored run directories were **not** replaced. To check, the three offline runs (`ruleworld_offline`, `ruleworld_merge_offline`, `agentqa_offline`) were re-run from scratch with the current code into a scratch directory and stage B was re-run on them ($0): `trajectory.json`, `run_log.jsonl` and `audit.md` are byte-identical to the stored ones, `ledger.jsonl` differs only in timestamps, and every stage-B check and verdict count is identical (7 + 1, 45 + 14, 17 + 3 correct + questionable). The live runs were not repeated: every recorded live reflection reply with text has a complete fence pair (4 in `agentqa_live`, 5 in `agentqa_live_interrupted`, whose sixth call was a backend error with no text), so the truncation check, which runs only without a fence pair, cannot change them.
+**Claim-audit fix round** (`docs/methods/gepa/claims-audit.md`, "Fix log"). The two open register items above were fixed, and the merge cap, the reflection stop reason and the monitor credit changed in `rsi/gepa/`. None of these changes touches a run without a wall-clock stopper, a `"hard"` merge cap or a truncated reflection reply, so the stored run directories were **not** replaced. To check, the three offline runs (`ruleworld_offline`, `ruleworld_merge_offline`, `agentqa_offline`) were re-run from scratch with the current code into a scratch directory and stage B was re-run on them ($0): `trajectory.json`, `run_log.jsonl` and `audit.md` are byte-identical to the stored ones, `ledger.jsonl` differs only in timestamps, and every stage-B check and verdict count is identical (7 + 1, 45 + 14, 17 + 3 correct + questionable). The live runs were not repeated: every recorded live reflection reply with text has a complete fence pair (4 in `agentqa_live`, 5 in `agentqa_live_interrupted`, whose sixth call was a backend error with no text), so the truncation check, which runs only without a fence pair, cannot change them.
 
 ## 6. Remaining open issues
 

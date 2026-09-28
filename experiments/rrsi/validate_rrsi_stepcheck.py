@@ -9,7 +9,7 @@ only the domain constructors to learn the sealed ids / questions / answers.
     python experiments/rrsi/validate_rrsi_stepcheck.py [run ...]   # -> <run>/stepcheck.json
 
 Each check is one row {step, check, status (correct|questionable|wrong|unverifiable), evidence}.
-The formulas (docs/methods/rrsi.md section 4):
+The formulas (docs/methods/rrsi/paper-spec.md section 4):
 
     b_t   = ceil(b_min + (b_max-b_min)/2 (1+cos(pi t/T)))
     S_hat = mean of all k|D| trial rewards (missing -> 0);  C_hat = mean of positive token counts

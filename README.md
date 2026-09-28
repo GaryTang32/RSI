@@ -14,7 +14,7 @@ tested core, so they can be applied to new problems:
 | **SoL-Pi** (NVIDIA) | token-saving harness mechanisms | dual gate across environment families | `rsi.solpi` |
 
 All of them run the same loop: propose a change, run it, score it with a grader the loop
-cannot touch, then keep or discard. New to the topic? Start with **[docs/RSI-101.md](docs/RSI-101.md)**.
+cannot touch, then keep or discard. New to the topic? Start with **[docs/guide/RSI-101.md](docs/guide/RSI-101.md)**.
 
 ## Install
 
@@ -61,33 +61,49 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 The Claude Code skill in `.claude/skills/rsi-improve/SKILL.md` walks through these steps. Each
 method also ships `experiments/<method>/example_new_problem.py` as a template.
 
+## Repository map
+
+Every method uses one slug everywhere: `autoresearch`, `rrsi`, `dream-rsi`, `evomap`, `gepa`, `metaharness-solpi`.
+Its docs hub is `docs/methods/<slug>/README.md`.
+
+| Method | Docs hub | Code | Tests | Experiments | Results | Validation |
+|---|---|---|---|---|---|---|
+| Autoresearch | [docs](docs/methods/autoresearch/README.md) | [`rsi/autoresearch`](rsi/autoresearch) | [tests](tests/autoresearch) | [scripts](experiments/autoresearch) | [results](results/autoresearch) | [runs](validation/autoresearch) |
+| RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [results](results/rrsi) | [runs](validation/rrsi) |
+| Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [results](results/dream-rsi) | [runs](validation/dream-rsi) |
+| EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [results](results/evomap) | [runs](validation/evomap) |
+| GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [results](results/gepa) | [runs](validation/gepa) |
+| Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [results](results/metaharness-solpi) | [runs](validation/metaharness-solpi) |
+
+```
+rsi/            the Python package
+  core/         shared machinery: LLM backends, Artifact, TaskSuite (sealed splits), Domain, Evaluator,
+                stats (noise band, CIs), gates (keep rules), Ledger, editors, leakage critic, sandbox
+  <method>/     one package per technique
+  domains/      agentqa (shared harness domain) + method-specific domains with ground truth
+  api.py        rsi.improve(), rsi.recommend()        cli.py   command line
+  trace.py      per-iteration trace, shadow held-out monitor, run inspector
+docs/           README index; guide/ (RSI-101, architecture); methods/<slug>/ (hub, paper spec,
+                implementation, claims audit); core/; reports/ (claims summary, HTML report)
+tests/          core/ and one folder per method; offline and deterministic (pytest -m live for live checks)
+experiments/    reproduction scripts per method; they write results/<slug>/*.json and figures
+validation/     fresh traced runs from the seed per method, with AUDIT.md and RUNS.md
+```
+
 ## What is verified
 
-- `docs/methods/<method>.md`: specs built from the papers and the authors' released code.
-  Every detail is tagged with its source; each spec was fact-checked by a second pass.
-- `docs/methods/<method>-impl.md`: the module map, the API, and every claim from the
-  overview mapped to code, an experiment, and the result. Claims that did **not** reproduce
-  are stated as such.
-- `experiments/<method>/*.py` produce `results/<method>/*.json` and figures. They use
-  multiple seeds and report means with 95% bootstrap CIs.
-- `tests/`: offline and deterministic (`pytest`). Live smoke tests run with `pytest -m live`.
-
-## Step-by-step validation
-
-Each method was run from its untouched seed (offline and with live Claude Haiku, $10.55 total). Every iteration was traced (`rsi.trace`), and an independent auditor re-derived each step from the raw trial scores and checked the behaviour against the paper. Of 2,370 steps, 2,195 were verified correct and no gate decision was miscomputed. See [validation/README.md](validation/README.md), plus `validation/<method>/AUDIT.md` and the rendered `TRACE.md` files.
-
-## Layout
-
-```
-rsi/core/       shared machinery: LLM backends, Artifact, TaskSuite (sealed splits), Domain, Evaluator,
-                stats (noise band, CIs), gates (keep rules), Ledger, editors, leakage critic, sandbox
-rsi/<method>/   one package per technique
-rsi/domains/    agentqa (shared harness domain) + method-specific domains with ground truth
-rsi/api.py      rsi.improve(), rsi.recommend()      rsi/cli.py   command line
-rsi/trace.py    per-iteration trace, shadow held-out monitor, run inspector
-docs/           RSI-101, ARCHITECTURE, method specs and implementation notes
-experiments/    reproduction scripts          results/   their outputs          tests/   pytest
-```
+- **Paper specs** (`docs/methods/<slug>/paper-spec.md`): built from the papers and the authors' released code.
+  Every detail is tagged with its source.
+- **Implementation notes** (`implementation.md`): module map, API, and each claim mapped to code, experiment and result.
+- **Claims audits** (`claims-audit*.md`, summary in [docs/reports/claims-summary.md](docs/reports/claims-summary.md)):
+  475 paper claims, each checked against our code and evidence. After the fix round, 246 reproduce, 89 partially,
+  13 do not, 119 need frontier models, GPUs or the original benchmarks, and 8 are contradicted.
+- **Step-by-step validation** ([validation/README.md](validation/README.md)): each method was run from its untouched
+  seed, offline and with live Claude Haiku, with every iteration traced. Independent auditors re-derived each step
+  from the raw trial scores and checked it against the paper: 2,195 of 2,370 steps verified correct, and no gate
+  decision was miscomputed.
+- **Experiments** use multiple seeds and report means with 95% bootstrap CIs; claims that did not reproduce are
+  stated as such.
 
 ## Limits
 

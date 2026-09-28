@@ -150,7 +150,7 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 - **Sealed splits never flow back.**
   - I grepped `rsi/dream/*.py` for `holdout|ood|allow_sealed|unseal|.monitor|trace.jsonl|load_trace`. The only hits are `DomainTask._decision_split` (which refuses sealed splits), the `GuardedSelector`'s *replay-world* holdout (unrelated), and the monitor's construction.
   - `RunTracer.kept` → `ShadowMonitor.observe` returns `None` and writes only to the trace. The monitor has its own `Evaluator(allow_sealed=True)`. Its LLM goes through `ShadowLLM` (roles `shadow:*`, which are excluded from the loop usage).
-  - `tests/test_dream-rsi_validation.py` shows identical ledgers, trajectories, best program and final policy with and without the monitor and the trace (7/7 pass).
+  - `tests/dream-rsi/test_dream-rsi_validation.py` shows identical ledgers, trajectories, best program and final policy with and without the monitor and the trace (7/7 pass).
 - **No peeking in replay.**
   - The policy only ever holds `QuestionProxy`.
   - In `earliest` mode, root tags are hidden until revealed.
@@ -216,14 +216,14 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 | F3 | A repaired revision's claim held only the fix (stage A) | `<claim> [repaired: <fix>]` (stage A) | **new**: `test_repaired_revision_keeps_its_first_claim` | (no repair happened in the re-run) |
 | F4 | **Residual of F1, found by stage B.** A *leading* ```` ```python ```` fence stays when the closing fence is followed by `===` or is missing. It compiled nowhere, and F1 did not handle it. | `strip_reply_terminators` also drops a leading opening fence (`rsi/dream/agent.py`) | **new**: `test_every_observed_reply_shape…`, `test_leading_fence_is_dropped_only_at_the_file_start` | the fix landed while `sumdiff_live_b` was running (the process had already imported the old module); none of its 20 replies had that shape |
 | F5 | **Stage B.** The developer repair prompt said only "invalid syntax (line 188)", which led the model to invent causes | `static_check` quotes the offending line (`rsi/dream/guard.py`) | **new**: `test_static_check_quotes_the_offending_line` | same caveat as F4 (not in the re-run process) |
-| F6 | **Stage B, docs.** The 600-char clip of proposals shown to the agent was undocumented | `docs/methods/dream-rsi-impl.md` §9 | – | – |
+| F6 | **Stage B, docs.** The 600-char clip of proposals shown to the agent was undocumented | `docs/methods/dream-rsi/implementation.md` §9 | – | – |
 
 - **Re-run `sumdiff_live_b`.** It started from scratch: an untouched seed, a fresh run dir, and a fresh `.cache_sumdiff_live_b` with 20 misses and 0 hits.
   - **Setup.** haiku as agent and developer; 3×3 grid, W=3, T=2, 3 revisions.
   - **Result.** 17/17 attempts ran without errors (the stage-A run had 12/36 parser failures). 3/3 developer revisions passed without a repair round (vs 3/3 repaired). Γ went 0.9105 → 1.0183 → **1.0361**, which is higher than stage A's 1.0304 with 36 calls, on 17 calls.
   - **Dreaming.** It deployed a haiku-written policy (V 0.9333 vs 0.925). The next cycle's `plan_grid` widened the grid to 4 branches of depth 2 (8 calls).
   - **Audit.** Stage-A audit: 0 FAIL. My step audit: 45 correct, 1 unverifiable.
-- **The offline runs were not re-run.** F1–F5 touch only the LLM paths, and the mock decisions are unchanged: `tests/test_dream-rsi_*.py`, 70 tests, all pass.
+- **The offline runs were not re-run.** F1–F5 touch only the LLM paths, and the mock decisions are unchanged: `tests/dream-rsi/`, 70 tests, all pass.
 - **The 3-FAIL line in `sumdiff_live.log` was stale.** It listed diff-check FAILs from the first stage-A audit pass. Those came from the trace clipping text at 6000 chars; stage A's `same_text` handles clipping. My own diff check passes on all 129 attempts and 27 revisions.
 
 ## 6. Inconsistency register
@@ -271,7 +271,7 @@ Setup: untouched `AgentQADomain.seed_artifact()` (byte-identical), with evolve S
 
 ## 8. Claims-audit fixes and re-runs (after this audit)
 
-The claim-by-claim audit (`docs/claims/dream-rsi.md`) found new mismatches N1–N7. All were fixed or classified; its §5 "Fix log" has every finding with its fix, code location, regression test and evidence. What changed for the validation runs:
+The claim-by-claim audit (`docs/methods/dream-rsi/claims-audit.md`) found new mismatches N1–N7. All were fixed or classified; its §5 "Fix log" has every finding with its fix, code location, regression test and evidence. What changed for the validation runs:
 
 - **Fixes that touch these runs.**
   - Every replay episode runs in a fresh policy namespace (N1).

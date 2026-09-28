@@ -3,7 +3,7 @@
 Date: 25 Sep 2026. Auditor did not write the loop or the Stage-A runs. Scope: every run under
 `validation/autoresearch/` (Stage A: `tinylm_offline`, `tinylm_offline_crashfix`, `tinylm_live`; Stage B re-run:
 `tinylm_live_b`), the code paths they exercised (`rsi/autoresearch/`, `rsi/domains/tinylm/`), and the spec
-`docs/methods/autoresearch.md`.
+`docs/methods/autoresearch/paper-spec.md`.
 
 **Tools written for this audit** (re-runnable, offline, $0):
 
@@ -223,7 +223,7 @@ Notes:
   monitor against 18 without**. The Stage-A write-only tests ran without these budgets. None of the four runs set
   `max_wall_s`, and tinylm audits spend no LLM money, so **no recorded run was affected** (live's `max_usd=2.5` was
   never approached). Fixed in `rsi/autoresearch/loop.py` (`_kept`, `budget_usd`); regression tests are in
-  `tests/test_autoresearch_validation_audit.py`, which fails on the old code.
+  `tests/autoresearch/test_autoresearch_validation_audit.py`, which fails on the old code.
 * **Fixed 28 Sep 2026 (was open).** With `workers > 1` and a wall-clock budget, the monitor's audit training ran
   concurrently with worker runs and took CPU from them. `ParallelAutoresearchLoop` now postpones each shadow audit
   while any run is in flight under a `wallclock`/`ceiling` budget and runs it once nothing is training (section 9).
@@ -374,16 +374,16 @@ Notes:
 
 ## 9. Claim-audit fixes (28 Sep 2026)
 
-The claim-by-claim audit (`docs/claims/autoresearch.md`, section 3, N1-N11) found mismatches with upstream's
+The claim-by-claim audit (`docs/methods/autoresearch/claims-audit.md`, section 3, N1-N11) found mismatches with upstream's
 `program.md` that this validation had not listed. They were fixed together with register #23; the full fix log,
-with file:line references and evidence, is in `docs/claims/autoresearch.md` ("Fix log"). The ones that touch this
+with file:line references and evidence, is in `docs/methods/autoresearch/claims-audit.md` ("Fix log"). The ones that touch this
 register:
 
 * **#23 (monitor vs parallel workers).** Reproduced with a toy wall-clock task (3 workers, a monitor that records how
   many runs are training when it audits): on the old code audits ran while 1-2 runs were in flight. Fix:
   `rsi/autoresearch/parallel.py` (`_audit_competes`, `_kept`, `_flush_audits`) postpones every shadow audit until
   nothing is in flight; `res.meta["parallel"]["deferred_audits"]` counts them. Test:
-  `tests/test_autoresearch_fixes.py::test_parallel_monitor_audits_never_compete_with_inflight_runs` (fails on the old
+  `tests/autoresearch/test_autoresearch_fixes.py::test_parallel_monitor_audits_never_compete_with_inflight_runs` (fails on the old
   code). E10 was re-run.
 * **#10 (simplicity criterion inert).** The default keep rule is now `UpstreamKeep` (`rsi/autoresearch/keep.py`).
 * **#9 / claims N7.** Rejected-edit rows now name a real commit that is reset away at once.

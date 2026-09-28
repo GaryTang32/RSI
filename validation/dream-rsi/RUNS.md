@@ -22,7 +22,7 @@ Every run was produced by `python experiments/dream-rsi/validate_dream.py <run>`
 | `monitor` | `rsi.trace.ShadowMonitor` scores of the seed and of every new best program on the sealed splits (AgentQA only; sum-difference has no sealed split) |
 | `state`, `run_end` | the trajectory row and meters after each cycle; totals and spend |
 
-The trace and the monitor are write-only. `tests/test_dream-rsi_validation.py` proves that runs with the monitor, without it, without a trace and without a run directory make identical decisions: the same discovery ledger (statuses, scores), policy ledger (statuses, replay values), trajectory, best program and final policy. It also checks that the monitor's model spend never enters the loop's usage.
+The trace and the monitor are write-only. `tests/dream-rsi/test_dream-rsi_validation.py` proves that runs with the monitor, without it, without a trace and without a run directory make identical decisions: the same discovery ledger (statuses, scores), policy ledger (statuses, replay values), trajectory, best program and final policy. It also checks that the monitor's model spend never enters the loop's usage.
 
 Files in each run directory:
 
@@ -219,14 +219,14 @@ Files in each run directory:
 - **Could the parse artifact have changed that?** I re-replayed the three first-attempt developer policies with the fence stripped ($0). They also score 0.895 on their phase's worlds, so no selection would have differed.
 - **Unverifiable:** whether any LLM policy would have done better *online*. That would need online re-runs, which the budget does not allow.
 
-**Fixes made after the run** (all in `rsi/dream/`; regression tests in `tests/test_dream-rsi_validation.py`; the offline runs' decisions are unchanged):
+**Fixes made after the run** (all in `rsi/dream/`; regression tests in `tests/dream-rsi/test_dream-rsi_validation.py`; the offline runs' decisions are unchanged):
 1. `strip_reply_terminators` drops a trailing fence / bare `===` / `=== END ===` line from the editable `.py` files. It is applied in `EditorAgent` and in `LLMPolicyDeveloper`.
 2. `AttemptRecord.render` shows the *end* of an error, where a traceback states its cause.
 3. A repaired developer revision keeps its first attempt's claim: `<claim> [repaired: <fix>]`.
 
 The root cause sits in `rsi.core` and is listed as a core change request.
 
-## Audit against the paper (spec `docs/methods/dream-rsi.md`)
+## Audit against the paper (spec `docs/methods/dream-rsi/paper-spec.md`)
 
 **Aligned, and verified step by step in these traces:**
 - **Outer loop, §3.2.** Each cycle runs `plan_grid` → online rollout with the deployed policy → append the world and its manifest → dreaming (π_t^0 plus revisions, each replayed on *all* worlds) → argmax with the incumbent included → deploy. Every selection was re-derived, and every next cycle deploys the selected version.
@@ -282,7 +282,7 @@ The full stage-B audit is in `AUDIT.md`. It has per-step verdicts from `experime
 **Stage-B fixes.**
 - `strip_reply_terminators` now also drops a leading ```` ```python ```` fence. Without that, the stage-A fix left such files broken.
 - `static_check` quotes the offending source line.
-- The regression tests are in `tests/test_dream-rsi_validation_stepaudit.py`.
+- The regression tests are in `tests/dream-rsi/test_dream-rsi_validation_stepaudit.py`.
 
 ### Run 4: `sumdiff_live_b` (stage B, after the fixes)
 
@@ -307,7 +307,7 @@ Command: `python experiments/dream-rsi/validate_dream.py sumdiff_live_b`.
 
 ## Claims-audit fixes: re-recorded offline runs and `sumdiff_live_c`
 
-The claim-by-claim audit (`docs/claims/dream-rsi.md`, §5 Fix log) led to these changes:
+The claim-by-claim audit (`docs/methods/dream-rsi/claims-audit.md`, §5 Fix log) led to these changes:
 - a fresh policy namespace per replay episode;
 - the verbatim Listing-1 and Listing-2 prompts, with the full history;
 - Fixed's per-round budget for Dream;

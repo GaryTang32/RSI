@@ -24,7 +24,7 @@ Every run was produced by `python experiments/metaharness-solpi/validate_metahar
   - `monitor`, `state`, then the `finalize` note and `run_end`.
 - *SoL-Pi* (`rsi/solpi/tracing.py`), one round per lineage iteration: 01 rollouts (eval) → 02 map-reduce evidence (analysis) → 03/04 mechanism + Ralph repairs + actual diff (proposal) → 05 review (critic) → 06 screen eval → dual gate with every number → decision (frozen / route back / abandoned). One more round per driver round covers the firewall verdicts (audit copy of the write-only sink) and the composition.
 - *Shadow monitor*: scores each new incumbent (Meta-Harness: every new frontier `_best`; SoL-Pi: the base and each composed harness) on the sealed holdout/ood splits. It writes only to the trace, and its model calls are metered as `shadow:*`. Meta-Harness leaves its `test` split to `finalize()`, which evaluates it once.
-- `tests/test_metaharness-solpi_validation.py` proves the monitor and the trace are write-only for both methods: runs with the monitor on, with it off, and with the trace off give identical ledgers (status, score, cost, artifact), the same best and the same final results. All 60 tests of this method pass (`pytest tests/test_metaharness-solpi_*.py`).
+- `tests/metaharness-solpi/test_metaharness-solpi_validation.py` proves the monitor and the trace are write-only for both methods: runs with the monitor on, with it off, and with the trace off give identical ledgers (status, score, cost, artifact), the same best and the same final results. All 60 tests of this method pass (`pytest tests/metaharness-solpi/`).
 
 ## Summary
 
@@ -195,7 +195,7 @@ The setup is identical. Because the cache is fresh, the seed replies differ: evo
 
 ---
 
-## Paper alignment audit (spec `docs/methods/meta-harness-and-sol-pi.md`)
+## Paper alignment audit (spec `docs/methods/metaharness-solpi/paper-spec.md`)
 
 ### Meta-Harness: aligned
 - No parent-selection rule, no mutation operators, no keep gate. Every valid candidate is evaluated once on the search split and kept (A3.1). The audit confirms that `evaluated ⇔ admissible` and that only the search split is evaluated during evolution.
@@ -237,4 +237,4 @@ Same setup as r3, fresh cache, after fix 15 (the reviewer sees `RUNTIME_API_DOC`
 
 ## Stage C addendum (SoL-Pi claim-audit fixes)
 
-The SoL-Pi claims audit (`docs/claims/solpi.md`) led to fixes in the mechanisms (13 fidelity items vs the release) and in the protocol defaults: a two-metric capability floor, a nondominated best-η sweep, and a 12-idea pool over all six families. `solpi_agentworld_offline` was re-run from scratch and `solpi_agentworld_live_r5` repeats r4 under the new defaults, both via `experiments/metaharness-solpi/sp_validate.py`. Details and the per-iteration verdicts are in AUDIT.md §6c. The run sections above describe the stage-A/B runs as they were recorded.
+The SoL-Pi claims audit (`docs/methods/metaharness-solpi/claims-audit-solpi.md`) led to fixes in the mechanisms (13 fidelity items vs the release) and in the protocol defaults: a two-metric capability floor, a nondominated best-η sweep, and a 12-idea pool over all six families. `solpi_agentworld_offline` was re-run from scratch and `solpi_agentworld_live_r5` repeats r4 under the new defaults, both via `experiments/metaharness-solpi/sp_validate.py`. Details and the per-iteration verdicts are in AUDIT.md §6c. The run sections above describe the stage-A/B runs as they were recorded.

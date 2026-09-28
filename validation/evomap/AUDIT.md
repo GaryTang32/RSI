@@ -5,7 +5,7 @@ trial scores in `trace.jsonl`**, not read off the gate. The recompute script re-
 hub gate. For every quarantine gate it re-derives delta, dS, dC and the cost rule. For every solidify gate it
 re-derives the composite score (§4.10), the keep rule and publish eligibility. It also checks the event parent chain
 and every asset_id. The same checks are frozen as the regression test
-`tests/test_evomap_validation_audit.py::test_every_gate_recomputes_from_the_traced_trials`.
+`tests/evomap/test_evomap_validation_audit.py::test_every_gate_recomputes_from_the_traced_trials`.
 
 Runs audited:
 
@@ -248,12 +248,12 @@ Second solver, no writer, same hub.
 | B3 | writer prompt lacked the §6.1 evolution-history block; a live writer re-proposed the failed approach | inconsistent-fixed (this stage) | live_katas c8 prompt; test B3 |
 | B4 | adopted hub gene re-published under the adopter's name | inconsistent-fixed (this stage, safe mode) | stage-A agent1 seq 75; stage B has no agent1 publish |
 | T1 | trace omitted the writer system prompt; selector scores shown before ×1.5 without a label; distiller declines untraced | inconsistent-fixed (trace only) | agent.py |
-| A1 | a new gene is kept on ONE fresh-seed retry of the task it was written from | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: safe mode now judges a new gene on a paired sample (`Config.new_gene_check="paired"`, `new_gene_retries=3`: 3 fresh seeds with the gene and the same seeds without it; kept iff > half solve AND the gene solves more than the bare harness), `rsi/evomap/agent.py` (propose/retry block); faithful keeps one retry (Evolver has no such check) | `tests/test_evomap_fixes.py::test_a_useless_new_gene_is_not_kept_on_a_lucky_retry` (the old rule keeps a no-effect card, the new one never does), `::test_a_real_new_gene_is_still_kept`; trace `gate.math.new_gene_sample`, recomputed in `test_every_gate_recomputes_from_the_traced_trials` |
+| A1 | a new gene is kept on ONE fresh-seed retry of the task it was written from | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: safe mode now judges a new gene on a paired sample (`Config.new_gene_check="paired"`, `new_gene_retries=3`: 3 fresh seeds with the gene and the same seeds without it; kept iff > half solve AND the gene solves more than the bare harness), `rsi/evomap/agent.py` (propose/retry block); faithful keeps one retry (Evolver has no such check) | `tests/evomap/test_evomap_fixes.py::test_a_useless_new_gene_is_not_kept_on_a_lucky_retry` (the old rule keeps a no-effect card, the new one never does), `::test_a_real_new_gene_is_still_kept`; trace `gate.math.new_gene_sample`, recomputed in `test_every_gate_recomputes_from_the_traced_trials` |
 | A2 | hub bank of 2 in-scope tasks × k; quarantine of 1 task × 2 trials (delta 0.98): verdicts are statistically weak | documented-deviation (katas size) | hub gates, agent1 c1 / c3 |
 | A4 | capsule streak is not broken by a failed cycle that used the same gene | faithful (Evolver) | agent0 c11 |
 | A5 | composite score does not see the task outcome (a rejected cycle still records 0.95) | faithful (Evolver §4.10); documented | agent0 c5 / c8 |
-| A7 | `hub.metrics()["n_promoted"]` counts verified assets (strict = 0) | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `n_promoted` now counts status `promoted` only; the admitted tier (naive: promoted; SafeHub: verified or promoted) is `n_admitted`, with `admitted_states`; `rsi/evomap/metrics.py` `ReuseMetrics.compute` | `tests/test_evomap_fixes.py::test_n_promoted_counts_promoted_status_only` |
-| X10 | `poisoned_in_stores` conflates harmful cards an honest agent wrote itself with hub poison; X10's `rank_validity_positive` in the committed JSON predates the stage-B fixes and was not robust | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `PopulationSimulator.poisoned_in_stores_split()` reports `poisoned_in_stores_hub` (promoted from quarantine, stored with a hub asset as parent, or authored by another agent) and `poisoned_in_stores_self`; X10 / X11 report both; X10 was re-run on the current code and its verdict now also records the rank-validity CI and whether it beats GDI | `tests/test_evomap_fixes.py::test_poisoned_in_stores_is_split_by_origin`; `results/evomap/x10_safehub.json` |
+| A7 | `hub.metrics()["n_promoted"]` counts verified assets (strict = 0) | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `n_promoted` now counts status `promoted` only; the admitted tier (naive: promoted; SafeHub: verified or promoted) is `n_admitted`, with `admitted_states`; `rsi/evomap/metrics.py` `ReuseMetrics.compute` | `tests/evomap/test_evomap_fixes.py::test_n_promoted_counts_promoted_status_only` |
+| X10 | `poisoned_in_stores` conflates harmful cards an honest agent wrote itself with hub poison; X10's `rank_validity_positive` in the committed JSON predates the stage-B fixes and was not robust | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `PopulationSimulator.poisoned_in_stores_split()` reports `poisoned_in_stores_hub` (promoted from quarantine, stored with a hub asset as parent, or authored by another agent) and `poisoned_in_stores_self`; X10 / X11 report both; X10 was re-run on the current code and its verdict now also records the rank-validity CI and whether it beats GDI | `tests/evomap/test_evomap_fixes.py::test_poisoned_in_stores_is_split_by_origin`; `results/evomap/x10_safehub.json` |
 | D1 | distillation, plateau, drift, bans and dedup never triggered in ≤ 12 cycles | unverifiable here | traces |
 | D2 | transfer of live genes to unseen tasks | unverifiable (Haiku holdout = 1.0) | monitor rows |
 | D3 | GDI weights and Behind-EvoMap numbers | unverifiable (source blocked, `[snip:BE]`) | spec §0 |
@@ -266,7 +266,7 @@ Second solver, no writer, same hub.
   - `rsi/evomap/quarantine.py` (the proof carries S_base / S_gene);
   - `rsi/evomap/solidify.py` (B2);
   - `rsi/evomap/prompts.py` and `rsi/evomap/agent.py` (B3, B4, T1).
-- **Tests.** `tests/test_evomap_validation_audit.py` has 7 tests. The whole evomap suite passes: 51 tests.
+- **Tests.** `tests/evomap/test_evomap_validation_audit.py` has 7 tests. The whole evomap suite passes: 51 tests.
 - **Re-runs from scratch.**
   - `offline_katas`: $0. The stage-A copy is kept in `_superseded_stageA/`.
   - `live_katas_r3`: fresh cache, **$0.333**, 7.5 min.
@@ -278,7 +278,7 @@ Second solver, no writer, same hub.
 
 ## Remaining open issues
 
-Fixed on 2026-09-28 by the claim-audit fix pass (details and evidence in `docs/claims/evomap.md`, "Fix log"):
+Fixed on 2026-09-28 by the claim-audit fix pass (details and evidence in `docs/methods/evomap/claims-audit.md`, "Fix log"):
 
 1. ~~**A1:** single-sample keep evidence.~~ Fixed: safe mode judges a new gene on a paired sample of 3 fresh seeds
    with and without it (`Config.new_gene_check="paired"`). Cost: about 5 extra rollouts per written gene.

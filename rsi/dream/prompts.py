@@ -9,7 +9,7 @@
 * :func:`developer_prompt` - the rendered instructions the developer receives.
 
 Claims audit N2: the first version was a condensed paraphrase that dropped about 20 of Listing 2's
-rules; ``tests/test_dream-rsi_fixes.py`` checks that every one of them is present.
+rules; ``tests/dream-rsi/test_dream-rsi_fixes.py`` checks that every one of them is present.
 """
 from __future__ import annotations
 

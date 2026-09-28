@@ -91,5 +91,5 @@ decision, state, and shadow held-out scores (never shown to the loop). Check tha
 Give baseline vs final on evolve, holdout and ood with the paired CI from `transfer_report`, tokens per task,
 dollars, and what the kept edits actually were. Say so when a gain is within the noise band.
 
-References: `docs/RSI-101.md` (concepts), `docs/methods/<method>.md` (paper specs),
-`docs/methods/<method>-impl.md` (APIs + reproduced claims), `experiments/<method>/example_new_problem.py`.
+References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
+implementation notes, claims audit), `experiments/<method>/example_new_problem.py`.

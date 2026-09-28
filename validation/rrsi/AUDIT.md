@@ -4,7 +4,7 @@
 
 **Method.** Every step was re-derived from raw data by a new checker, `experiments/rrsi/validate_rrsi_stepcheck.py`:
 - **Inputs:** the per-trial rewards and tokens in `trace.jsonl`, `evals/*.json` and the per-edit `history.jsonl`.
-- **Formulas:** the spec formulas (`docs/methods/rrsi.md` §4), written out from scratch.
+- **Formulas:** the spec formulas (`docs/methods/rrsi/paper-spec.md` §4), written out from scratch.
 - **Isolation:** it imports nothing from `rsi.rrsi`, so a bug shared by the loop and its own `audit.py` cannot hide.
 - **Output:** one row per check, written to `<run>/stepcheck.json`.
 
@@ -18,7 +18,7 @@ Manual review added:
 
 **Live spend of this stage: $0.** No new paid call was made. The live replay used the run's own cache in offline mode, 107/107 hits. The stage-A live run had already spent $2.80 of the ~$3 cap.
 
-**Claims-audit fix stage (2026-09-25, after stage B).** The claim-by-claim paper audit (`docs/claims/rrsi.md`) found nine mismatches with the released code (N1–N9) plus this register's open items. They were fixed (see the claims audit's "Fix log" and §5.2 below), and the two offline runs were **regenerated from scratch** on the fixed code, because the fixes change the proposer's prompt: no δ, S*, S_t or T in the directives, symbolic β/w in SKILL.md, and the BASELINE row in L_t. The mocks seed their RNG on the prompt, so this is a new realization, not a corrected copy. The stage-B offline runs are in git history (commit `02b830e`). `live_agentqa` was **not** re-run (a faithful rerun would cost about $2.8, near the whole $3 cap). It stays as the record of the *pre-fix* code, and its step check now flags the pre-fix prompt content as questionable. Live evidence on the fixed code:
+**Claims-audit fix stage (2026-09-25, after stage B).** The claim-by-claim paper audit (`docs/methods/rrsi/claims-audit.md`) found nine mismatches with the released code (N1–N9) plus this register's open items. They were fixed (see the claims audit's "Fix log" and §5.2 below), and the two offline runs were **regenerated from scratch** on the fixed code, because the fixes change the proposer's prompt: no δ, S*, S_t or T in the directives, symbolic β/w in SKILL.md, and the BASELINE row in L_t. The mocks seed their RNG on the prompt, so this is a new realization, not a corrected copy. The stage-B offline runs are in git history (commit `02b830e`). `live_agentqa` was **not** re-run (a faithful rerun would cost about $2.8, near the whole $3 cap). It stays as the record of the *pre-fix* code, and its step check now flags the pre-fix prompt content as questionable. Live evidence on the fixed code:
 - `results/rrsi/live_smoke.json`, a new Haiku run with a fresh cache;
 - a Haiku critic check of the recorded leak (§2.3), $0.025.
 
@@ -114,7 +114,7 @@ This run was recorded before the claims-audit fixes. Its proposer prompts show �
 **Monitor never feeds back (code and tests).**
 - `RRSITrace.attach_monitor` evaluates through `sealed_view(domain)` with `isolated_llm`.
 - The loop's `Measurer` has `allow_sealed=False`, and nothing in `rsi/rrsi` except `audit.py` and `tracing.py` reads `trace.jsonl`, monitor rows or `audit_truth`.
-- `tests/test_rrsi_validation.py` shows identical ledger, history, decisions and usage with the monitor on, off, or with a tracer that raises.
+- `tests/rrsi/test_rrsi_validation.py` shows identical ledger, history, decisions and usage with the monitor on, off, or with a tracer that raises.
 - Verdict: correct.
 
 ## 3. Paper alignment
@@ -149,7 +149,7 @@ This run was recorded before the claims-audit fixes. Its proposer prompts show �
 | critic before evaluation, bounded repair | Leaks blocked: 5 literal drafts by the id precheck and 2 obfuscated drafts by the LLM review (HarnessWorld); 11 leaky AgentQA drafts, all by the LLM review, since the faithful precheck has no answer key; 1 real Haiku leak (live, pre-fix: precheck plus repair). None was evaluated. | matches. On the fixed code, the recorded Haiku leak is caught by the Haiku review alone (§2.3). |
 | floor on S*, not S_t | the floor binds on S* in every rejection above (AgentQA r1B: 0.625 < 0.803 = S* − δ) | matches |
 | cost rule above the band, shaped rule inside it; harness stays lighter | AgentQA final ×1.76 H_0 tokens (costly persona hitchhiked on the tool in r0 and was never pruned in this realization; B_t never listed `prompt` before r7). HarnessWorld E[C] ×4.21 over 7 keeps (paper: RRSI ×1.55 vs H_0). Live (pre-fix) ×3.6 (k = 1 noise, 2 rounds). | cost rule and shaped rule fire as specified. Unlike the stage-B realization, no within-band prune happened, so the harness is not lighter than H_0. |
-| lower practice gain, better transfer than unregularized | **unverifiable here**: the validation runs have no unregularized arm (see E1 in `docs/methods/rrsi-impl.md`). Transfer gaps observed: HarnessWorld truth +0.174 evolve / +0.163 holdout / +0.100 OOD (the residual evolve-only share comes from `nar_04` and r9B's `har_05`); AgentQA (k = 10) +0.61 evolve / +0.54 holdout / +0.50 OOD. | CPU scale, one realization |
+| lower practice gain, better transfer than unregularized | **unverifiable here**: the validation runs have no unregularized arm (see E1 in `docs/methods/rrsi/implementation.md`). Transfer gaps observed: HarnessWorld truth +0.174 evolve / +0.163 holdout / +0.100 OOD (the residual evolve-only share comes from `nar_04` and r9B's `har_05`); AgentQA (k = 10) +0.61 evolve / +0.54 holdout / +0.50 OOD. | CPU scale, one realization |
 | winner's curse / ratcheting S* (spec §8.1) | AgentQA r2A measured 0.975 vs true 0.955 (k = 10); HarnessWorld r3A measured dS +0.041 vs true +0.030; live 0.667 vs transfer 0.75 | faithful to code; a real weakness |
 
 ## 4. Inconsistency register
@@ -194,7 +194,7 @@ Stage-B re-runs: `offline_agentqa` from scratch (the stage-A run moved to `offli
 
 ### 5.2 Claims-audit fix stage
 
-The claim-by-claim audit (`docs/claims/rrsi.md` §3, "Fix log" §5) compared the code with `google-research/rrsi@be50316` and found mismatches that neither review nor stage B had flagged. What changed, in brief:
+The claim-by-claim audit (`docs/methods/rrsi/claims-audit.md` §3, "Fix log" §5) compared the code with `google-research/rrsi@be50316` and found mismatches that neither review nor stage B had flagged. What changed, in brief:
 - Algorithm 2 compares raw floats (N1).
 - The proposer never sees δ, S*, S_t or T, and the rules are stated symbolically (N2).
 - The precheck holds task ids and patterns, not answers (N3).
@@ -204,7 +204,7 @@ The claim-by-claim audit (`docs/claims/rrsi.md` §3, "Fix log" §5) compared the
 - The smoke runs 2 (eng: 4) tasks (N9).
 - A resumed run's USD budget counts the killed process's spend (this register).
 
-Every old behaviour that is a deliberate extension stays reachable behind an explicit `Config` option: `tie_eps`, `proposer_numbers`, `precheck_answers`, `precheck_scope`, `component_aliases`. `tests/test_rrsi_fidelity.py` holds one regression test per fix; each fails on the pre-fix code, except N7's, which pins behaviour that was already correct.
+Every old behaviour that is a deliberate extension stays reachable behind an explicit `Config` option: `tie_eps`, `proposer_numbers`, `precheck_answers`, `precheck_scope`, `component_aliases`. `tests/rrsi/test_rrsi_fidelity.py` holds one regression test per fix; each fails on the pre-fix code, except N7's, which pins behaviour that was already correct.
 
 **Re-runs on the fixed code:**
 - `offline_agentqa` and `offline_harnessworld` were regenerated from scratch into fresh directories (§2.1–2.2). The stage-B versions are in git history at `02b830e`.

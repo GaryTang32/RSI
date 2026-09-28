@@ -12,7 +12,7 @@ Every run was produced by `python experiments/gepa/validate_gepa.py <run>`. The 
 - the decision;
 - the loop state before and after.
 
-The shadow monitor (`rsi.trace.ShadowMonitor`) scores every new incumbent on the sealed splits. The loop never sees those numbers, and the test `tests/test_gepa_validation.py` proves the monitor is write-only.
+The shadow monitor (`rsi.trace.ShadowMonitor`) scores every new incumbent on the sealed splits. The loop never sees those numbers, and the test `tests/gepa/test_gepa_validation.py` proves the monitor is write-only.
 
 Files in each run directory:
 
@@ -150,7 +150,7 @@ The three offline runs were re-run in this session with the current code. `rulew
 **Mock bug found by the earlier from-scratch attempt** (kept in `agentqa_offline_mockbug/`).
 - `AgentQAReflectionLM` split the reflection prompt on every triple backtick. Once the solver wrote Python, the ```` ```python ```` block in the trace truncated `<side_info>`.
 - The mock then fell back to its score-only branch and proposed irrelevant edits ("Use British spelling", "Keep the reply under 200 words"). The minibatch gate *accepted* two of these on noise.
-- The fix is in `rsi/gepa/mocks.py:_split`. The E1 table in `docs/methods/gepa-impl.md` still carries the pre-fix numbers and is flagged there.
+- The fix is in `rsi/gepa/mocks.py:_split`. The E1 table in `docs/methods/gepa/implementation.md` still carries the pre-fix numbers and is flagged there.
 
 **Verdict.**
 - All checks pass: gate 7/7, weights 20/20.

@@ -1,4 +1,4 @@
-"""SoL-Pi from-scratch validation runs after the claims-audit fixes (docs/claims/solpi.md "Fix log").
+"""SoL-Pi from-scratch validation runs after the claims-audit fixes (docs/methods/metaharness-solpi/claims-audit-solpi.md "Fix log").
 
 Same runs, same helpers and the same stage-A audit as ``validate_metaharness_solpi.py`` (shared with
 Meta-Harness), with the protocol defaults of the fixed code:

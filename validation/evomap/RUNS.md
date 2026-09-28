@@ -20,7 +20,7 @@ change of the solver's input), `eval` (every graded rollout incl. quarantine and
 (consumer quarantine), `gate` (solidify with all inputs of the keep rule; hub publish verification; quarantine
 arithmetic), `decision` (library version before/after, why), `state`, `monitor` (holdout score of every new library
 version, never shown to the loop). Trace-only rollouts are excluded from the budget check;
-`tests/test_evomap_validation.py` proves trace + monitor leave every decision unchanged.
+`tests/evomap/test_evomap_validation.py` proves trace + monitor leave every decision unchanged.
 
 ## Summary
 

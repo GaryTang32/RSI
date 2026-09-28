@@ -255,7 +255,7 @@ All gate arithmetic, rollout targets, decisions, firewall and no-sealed-eval che
 | 7 | RUNS.md oracle numbers and the r2 L2.1 verdict | inconsistent-fixed (doc corrected) | trace seq 4; §2.5 |
 | 8 | driver docstring said "keep nondominated survivors", but the code composes all survivors | inconsistent-fixed (docstring) | `driver.py` |
 | 9 | impl-doc fix table broken by a paragraph | inconsistent-fixed | `metaharness-solpi-impl.md` §9 |
-| 10 | Pareto / `_best` exact-tie order by name (the release's order is filesystem `rglob` order); `per_unit_best` ties go the other way | **inconsistent-fixed (stage C, claim-audit fixes)**: exact ties keep registration order in both (`frontier.py`: stable sort / first-wins `max`, as the release's `sorted` and `max` keep list order), so an exact copy never displaces the incumbent | `mh_agentqa_live` it 2 incumbent changed on an exact tie; `test_exact_ties_keep_registration_order_on_the_frontier_and_per_unit`, `test_an_exact_copy_never_displaces_the_incumbent` (`tests/test_metaharness_fixes.py`) |
+| 10 | Pareto / `_best` exact-tie order by name (the release's order is filesystem `rglob` order); `per_unit_best` ties go the other way | **inconsistent-fixed (stage C, claim-audit fixes)**: exact ties keep registration order in both (`frontier.py`: stable sort / first-wins `max`, as the release's `sorted` and `max` keep list order), so an exact copy never displaces the incumbent | `mh_agentqa_live` it 2 incumbent changed on an exact tie; `test_exact_ties_keep_registration_order_on_the_frontier_and_per_unit`, `test_an_exact_copy_never_displaces_the_incumbent` (`tests/metaharness-solpi/test_metaharness_fixes.py`) |
 | 11 | RewriteProposer renders the history under a budget instead of letting the proposer choose; `AgentProposer` never run live | documented-deviation; stage C: the renderer now splits its budget by file kind (the paper's 41/40/6/13 reading mix) so raw traces are always rendered (MemoClassify: 0/42 -> 4-6 trace files), and `AgentProposer` ran live once with haiku (`results/metaharness-solpi/live_smoke_agent.json`) | traces 10/50 rendered in r2 it 3; `test_rendered_full_history_includes_trace_excerpts` |
 | 12 | Interface smoke calls the model (release: import check) | documented-deviation | gate events |
 | 13 | no leakage / overfitting guard in the MH loop | faithful (paper) | r2 it 2 docstring, it 3 template regex |
@@ -271,7 +271,7 @@ All gate arithmetic, rollout targets, decisions, firewall and no-sealed-eval che
 | 23 | trace per-eval `usd` counts cached trials at their original cost | documented (reporting nuance, not spend) | §2.2 |
 | 24 | a forked smoke killed on timeout still loses its usage | **inconsistent-fixed (stage C)**: the child streams every metered usage to the parent as it happens, so completed calls survive the kill; a call still in flight is named in the timeout message (its usage is unknowable) | `validate.py`; `test_forked_smoke_killed_on_timeout_still_reports_completed_calls` |
 | 25 | SoL-Pi capability floor admitted a do-less shortcut: P20 at 24 turns (screen score 0.984 inside the 2% floor, but 22/24 tasks finished; §2.4 graded it "correct per rule") | **inconsistent-fixed (stage C, SoL-Pi claims audit F20)**: the predeclared floor has two capability metrics, the mean score AND the fully-solved rate (2% each); the score-only floor stays available as an explicit option. Recorded runs re-gated at $0 from their raw trial scores: only the offline P20.2 decision changes (accept → reject); live r1–r4 are unchanged. The offline re-run rejects P20 at every length | §6c; `test_default_gate_rejects_the_lenient_turn_cap`, `test_turn_cap_lineage_is_abandoned_under_the_default_floor` |
-| 26 | SoL-Pi runtime-mechanism fidelity vs the release (claims audit §3 items 1–11: plan snapshot / advice / parsing, EPR `source_lines` and UTF-16 lengths, excerpt splitter, `obs_recall` offsets, OCC `W` vs Pi `getContextUsage`, Action Fusion text / paths / yield, double projection, auto-compaction threshold) and the EPR archive-error path | **inconsistent-fixed (stage C, F1–F12, F16–F19)** | `docs/claims/solpi.md` §6; `tests/test_solpi_fixes.py` |
+| 26 | SoL-Pi runtime-mechanism fidelity vs the release (claims audit §3 items 1–11: plan snapshot / advice / parsing, EPR `source_lines` and UTF-16 lengths, excerpt splitter, `obs_recall` offsets, OCC `W` vs Pi `getContextUsage`, Action Fusion text / paths / yield, double projection, auto-compaction threshold) and the EPR archive-error path | **inconsistent-fixed (stage C, F1–F12, F16–F19)** | `docs/methods/metaharness-solpi/claims-audit-solpi.md` §6; `tests/metaharness-solpi/test_solpi_fixes.py` |
 | 27 | SoL-Pi idea pool lacked family M and the oracle never filtered (pool = `n_lineages`); P20's oracle statistic was the system-prompt share | **inconsistent-fixed (stage C, F14)** | offline re-run trace seq 4: R5 and M5 get no rollouts |
 
 ## 5. Fixes and re-runs (stage B)
@@ -285,7 +285,7 @@ All gate arithmetic, rollout targets, decisions, firewall and no-sealed-eval che
 
 **Fix 17** (`rsi/metaharness/validate.py`). The forked smoke ships its per-role usage delta back, and the parent adds it to every meter along the LLM wrapper chain.
 
-**Regression tests** (in `tests/test_metaharness-solpi_validation.py`). All 63 tests of this method pass (`pytest tests/test_metaharness-solpi_*.py`).
+**Regression tests** (in `tests/metaharness-solpi/test_metaharness-solpi_validation.py`). All 63 tests of this method pass (`pytest tests/metaharness-solpi/`).
 
 - `test_review_rejection_routes_back_to_implementation`
 - `test_ralph_loop_sums_repair_usage_and_stops_when_exhausted`
@@ -312,7 +312,7 @@ I did not re-run the live Meta-Harness runs. Fix 17 changes only metering, and t
 
 ## 6b. Stage C: claim-audit fixes (2026-09-25)
 
-The claim-by-claim paper audit (`docs/claims/metaharness.md`) found eleven further Meta-Harness mismatches (N1-N11). All
+The claim-by-claim paper audit (`docs/methods/metaharness-solpi/claims-audit-metaharness.md`) found eleven further Meta-Harness mismatches (N1-N11). All
 are resolved there (see its "Fix log"); the register items above that they touch are #10, #11 and #24. In short:
 - context cost sums every model call of a query (N2); full traces with every prompt, raw reply and state checkpoint (N7);
 - the RewriteProposer renderer always includes raw traces (N3); the mock's read accounting separates what a proposal was
@@ -324,14 +324,14 @@ are resolved there (see its "Fix log"); the register items above that they touch
 - fewer-shot comparators for context claims and an explicit, documented budget prior in the mock (N9); M2 reports both
   "evaluations to match" medians (N11); the stale live-smoke numbers were regenerated (N1: $0 cache replay + a fresh live
   run).
-Regression tests: `tests/test_metaharness_fixes.py` (19 cases; every one fails on the pre-fix code). M1-M6 re-run at full
+Regression tests: `tests/metaharness-solpi/test_metaharness_fixes.py` (19 cases; every one fails on the pre-fix code). M1-M6 re-run at full
 settings. The offline and live validation runs above were not re-run: they document the pre-fix code. A re-run would
 not reproduce them step for step, because the mock now diagnoses full traces and the live proposer sees a different
 rendered history; the audit's recomputations of those runs stay valid for the code that produced them.
 
 ## 6c. Stage C: SoL-Pi claim-audit fixes (2026-09-25)
 
-The claim-by-claim SoL-Pi audit (`docs/claims/solpi.md`) found 13 fidelity mismatches against the NVlabs/SoL-Pi release and Pi 0.85.1, plus protocol gaps behind several PARTIAL / NOT REPRODUCED rows. All are resolved there (§6 "Fix log", one row per finding); the register rows they touch are #16, #17, #22 and the new #25–#27. The SoL-Pi validation runs were then redone with `experiments/metaharness-solpi/sp_validate.py`, which reuses this directory's helpers and the stage-A audit (`audit_sp`). Its only change to the audit is a sweep-aware `variant_walk_rule`, because lineages now keep walking their grid after a pass.
+The claim-by-claim SoL-Pi audit (`docs/methods/metaharness-solpi/claims-audit-solpi.md`) found 13 fidelity mismatches against the NVlabs/SoL-Pi release and Pi 0.85.1, plus protocol gaps behind several PARTIAL / NOT REPRODUCED rows. All are resolved there (§6 "Fix log", one row per finding); the register rows they touch are #16, #17, #22 and the new #25–#27. The SoL-Pi validation runs were then redone with `experiments/metaharness-solpi/sp_validate.py`, which reuses this directory's helpers and the stage-A audit (`audit_sp`). Its only change to the audit is a sweep-aware `variant_walk_rule`, because lineages now keep walking their grid after a pass.
 
 **`solpi_agentworld_offline`, re-run from scratch (stage C code, $0, 15 s).** Same domain and configuration as §2.4.
 - Audit: 10/10 check types pass (18/18 gates recomputed, 5/5 firewall verdicts, oracle selection, sweep-aware variant walk 18/18, composition = union).
@@ -368,6 +368,6 @@ The outcome matches r4: a haiku-written EPR-like condenser survives end to end w
 | stage C (SoL-Pi claim-audit fixes): `solpi_agentworld_live_r5` (loop meter = cache ground truth) | **0.367** |
 | stage C offline re-runs, re-gating, EPR cache re-parse | 0 |
 | total for this method's validation, stages A–B | **2.44** (cap ~$3) |
-| SoL-Pi stage C increment (the Meta-Harness stage-C spend is reported in §6b / `docs/claims/metaharness.md`) | **0.367** |
+| SoL-Pi stage C increment (the Meta-Harness stage-C spend is reported in §6b / `docs/methods/metaharness-solpi/claims-audit-metaharness.md`) | **0.367** |
 
 Stage-B wall time: the live run took 8.8 min. The offline re-runs and the audit took about 2 min.

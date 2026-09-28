@@ -1,4 +1,4 @@
-"""Live check for the claim-audit truncation finding (docs/claims/gepa.md, section 3 item 3).
+"""Live check for the claim-audit truncation finding (docs/methods/gepa/claims-audit.md, section 3 item 3).
 
 One GEPA reflection call through ``CachedLLM(ClaudeCLI("haiku"))``, made twice with the same
 seed: the first is a cache miss, the second a cache hit. It records the provider stop reason

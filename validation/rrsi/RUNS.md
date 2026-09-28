@@ -30,7 +30,7 @@ How to read the tables:
 
 ## 1. `offline_agentqa`: AgentQA, SimModel task model, scripted proposer and critic
 
-> **Regenerated after the claims-audit fixes** (`docs/claims/rrsi.md`, "Fix log"). The fixes change the proposer's prompt: no δ, S*, S_t or T in the directives, symbolic β/w in SKILL.md, and the BASELINE row in L_t. They also change the precheck, which now holds task ids and patterns only, not the practice answers. The mock seeds its RNG on the prompt, so this is a new realization. The stage-B run described in earlier versions of this file is in git history at `02b830e`; the stage-A run is kept as `offline_agentqa_superseded/`.
+> **Regenerated after the claims-audit fixes** (`docs/methods/rrsi/claims-audit.md`, "Fix log"). The fixes change the proposer's prompt: no δ, S*, S_t or T in the directives, symbolic β/w in SKILL.md, and the BASELINE row in L_t. They also change the precheck, which now holds task ids and patterns only, not the practice answers. The mock seeds its RNG on the prompt, so this is a new realization. The stage-B run described in earlier versions of this file is in git history at `02b830e`; the stage-A run is kept as `offline_agentqa_superseded/`.
 
 **Setup.**
 - **Domain.** `make_suite(seed=0)`: 20 evolve and 19 holdout questions from the practice family `numeric`, plus 24 OOD questions (6 each from the never-seen families `dates`, `numbertheory`, `strings`, `lists`). The suite is de-duplicated across splits; the stage-B overlap `evolve-numeric-017` = `holdout-numeric-012` is gone.
