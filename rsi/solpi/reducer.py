@@ -11,13 +11,18 @@ A ``tool_result`` handler, before the result enters history:
   ``source-over-max-chars``; :data:`LIKELY_SECRET` -> ``likely-secret``;
 * the exact body is archived content-addressed (``objects/<sha[:2]>/<sha>.txt``);
 * a cheap reducer model gets :func:`reducer_instructions` (verbatim) and
-  :func:`reducer_input`; errors -> ``model-call-timeout`` /
+  :func:`reducer_input` (``provider.ts``: 90 s timeout, ``maxTokens = min(2048,
+  model.maxTokens)``, ``cacheRetention: "none"``); errors -> ``model-call-timeout`` /
   ``reducer-model-unavailable`` / ``model-call-exception``; a stop reason other
   than stop/length -> ``model-response-error``;
 * :func:`validate_receipt` accepts only a JSON receipt with the right schema,
   source hash and status, <= 12 evidence items of allowed kinds, each quote
   1..600 chars and an exact substring of the body (duplicates dropped); a failing
   log with a failure signal must carry fatal/failure evidence;
+* "chars" are JavaScript string lengths (UTF-16 code units: :func:`utf16_len`) for the
+  600-char quote limit, ``maxChars`` and ``ArchiveObject.chars``; ``source_lines`` is
+  ``body.split("\n").length`` (``archive.ts``), so a log ending in ``\n`` counts the empty
+  last line;
 * the receipt text (:func:`receipt_text`) must be smaller than the source,
   else ``receipt-not-smaller``; then the raw output is replaced by the receipt.
 
@@ -66,6 +71,16 @@ THEN_RUN_FAILED = "[then_run:failed]"
 
 def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def utf16_len(text: str) -> int:
+    """JavaScript ``String.length``: UTF-16 code units (an astral character such as an emoji counts 2)."""
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def source_lines(body: str) -> int:
+    """``archive.ts``: ``body.length === 0 ? 0 : body.split("\n").length``."""
+    return 0 if not body else len(body.split("\n"))
 
 
 def reducer_instructions() -> str:
@@ -124,8 +139,8 @@ def validate_receipt(raw: str, archive: ArchiveObject, body: str, is_error: bool
     for item in ev:
         kind = item.get("kind") if isinstance(item, dict) else None
         quote = item.get("quote") if isinstance(item, dict) else None
-        if (not isinstance(kind, str) or kind not in EVIDENCE_KINDS or not isinstance(quote, str) or len(quote) < 1
-                or len(quote) > MAX_QUOTE_CHARS or quote not in body):
+        if (not isinstance(kind, str) or kind not in EVIDENCE_KINDS or not isinstance(quote, str)
+                or utf16_len(quote) < 1 or utf16_len(quote) > MAX_QUOTE_CHARS or quote not in body):
             return False, "unverifiable-quote"
         key = (kind, quote)
         if key in seen:
@@ -184,7 +199,7 @@ class DeterministicReducer:
         lines = body.splitlines()
         for ln in lines:
             s = ln.strip()
-            if not s or s in seen or len(s) > MAX_QUOTE_CHARS:
+            if not s or s in seen or utf16_len(s) > MAX_QUOTE_CHARS:
                 continue
             if FAILURE_SIGNAL.search(s) and not re.search(r"\bwarning\b|DeprecationWarning", s, re.I):
                 kind = "fatal" if re.search(r"fatal|panic|\*\*\*", s, re.I) else "failure"
@@ -193,7 +208,7 @@ class DeterministicReducer:
             if len(items) >= self.max_items - 1:
                 break
         tail = next((l.strip() for l in reversed(lines) if l.strip()), "")
-        if tail and tail not in seen and len(items) < self.max_items and len(tail) <= MAX_QUOTE_CHARS:
+        if tail and tail not in seen and len(items) < self.max_items and utf16_len(tail) <= MAX_QUOTE_CHARS:
             items.append({"kind": "summary", "quote": tail})
         return items
 
@@ -246,25 +261,62 @@ class MockReducer(DeterministicReducer):
         return ReducerResponse(text, "stop", estimate_tokens(system + user), estimate_tokens(text))
 
 
+#: provider stop reasons -> Pi's ``AssistantMessage.stopReason`` (pi-ai's Anthropic ``mapStopReason``; only "stop"
+#: and "length" are ok in provider.ts). A backend that reports none (None) is treated as a normal stop.
+_STOP_REASONS = {None: "stop", "": "stop", "end_turn": "stop", "stop_sequence": "stop", "pause_turn": "stop",
+                 "stop": "stop", "max_tokens": "length", "length": "length", "model_context_window_exceeded": "length",
+                 "tool_use": "toolUse", "toolUse": "toolUse", "refusal": "error", "sensitive": "error",
+                 "error": "error", "aborted": "aborted"}
+
+
 class LLMReducer:
-    """Any :class:`rsi.core.LLM` as the reducer (e.g. ``ClaudeCLI("haiku")``)."""
+    """Any :class:`rsi.core.LLM` as the reducer (e.g. ``ClaudeCLI("haiku")``), called like ``provider.ts``:
+
+    * the call runs under a ``timeout_s`` (90 s) deadline; a late reply is a ``model-call-timeout`` fallback;
+    * ``max_tokens = min(requested, llm.max_tokens)`` when the backend declares a limit;
+    * the backend's stop reason (``resp.raw["stop_reason"]``, kept on cache hits) is mapped to Pi's
+      ``stopReason``, so e.g. a refusal becomes ``model-response-error`` instead of a silent "stop".
+    Backends expose no cache-retention knob; the reducer never shares a session prefix (one call per log)."""
 
     provider = "llm"
 
-    def __init__(self, llm) -> None:
+    def __init__(self, llm, timeout_s: float = TIMEOUT_MS / 1000) -> None:
         self.llm = llm
         self.model = getattr(llm, "name", "llm")
+        self.timeout_s = timeout_s
+
+    def max_tokens_for(self, requested: int) -> int:
+        lim = getattr(self.llm, "max_tokens", None)
+        inner = getattr(self.llm, "inner", None)          # CachedLLM(inner)
+        if lim is None and inner is not None:
+            lim = getattr(inner, "max_tokens", None)
+        return min(requested, int(lim)) if isinstance(lim, (int, float)) and lim > 0 else requested
+
+    def _call(self, system, user, max_tokens):
+        import concurrent.futures as cf
+        ex = cf.ThreadPoolExecutor(max_workers=1)
+        fut = ex.submit(self.llm.complete, user, system=system, max_tokens=max_tokens, role="reducer")
+        try:
+            return fut.result(timeout=self.timeout_s)
+        finally:
+            ex.shutdown(wait=False)
 
     def reduce(self, system, user, max_tokens, *, body, archive, is_error):
-        resp = self.llm.complete(user, system=system, max_tokens=max_tokens, role="reducer")
+        import concurrent.futures as cf
+        try:
+            resp = self._call(system, user, self.max_tokens_for(max_tokens))
+        except cf.TimeoutError:
+            return ReducerResponse("", "aborted", 0, 0, "timeout")
         if not resp.ok:
             err = "timeout" if "timeout" in str(resp.error) else "exception"
             return ReducerResponse("", "error", resp.usage.input_tokens, 0, err)
+        raw = resp.raw if isinstance(resp.raw, dict) else {}
+        stop = _STOP_REASONS.get(raw.get("stop_reason"), "error")
         text = resp.text.strip()
         m = re.search(r"\{.*\}", text, re.S)       # tolerate a stray fence; validation stays byte-exact
         if text.startswith("```") and m:
             text = m.group(0)
-        return ReducerResponse(text, "stop", resp.usage.input_tokens, resp.usage.output_tokens)
+        return ReducerResponse(text, stop, resp.usage.input_tokens, resp.usage.output_tokens)
 
 
 # ------------------------------------------------------------------ the extension
@@ -355,10 +407,9 @@ class EvidencePreservingReducer(Extension):
         path = f"{STORE_PREFIX}{h[:2]}/{h}.txt"
         old = rt.store.get(path)
         if old is not None and (old != body or sha256(old) != h):
-            raise OSError("archive integrity check failed")
+            raise OSError(f"Reducer archive integrity failure: {path}")
         rt.store[path] = body
-        return ArchiveObject(h, len(body.encode("utf-8")), len(body), body.count("\n") + (0 if body.endswith("\n")
-                                                                                           else 1), path)
+        return ArchiveObject(h, len(body.encode("utf-8")), utf16_len(body), source_lines(body), path)
 
     def _on_result(self, ev: ToolResultEvent, rt: AgentRuntime) -> Optional[ToolResult]:
         r = reducible_tool_result(ev, rt.store)
@@ -369,17 +420,17 @@ class EvidencePreservingReducer(Extension):
         if nbytes < self.min_bytes:
             return None
         self.stats["eligible"] += 1
-        if len(body) > self.max_chars:
-            self._fallback(rt, "source-over-max-chars", sourceBytes=nbytes)
+        if utf16_len(body) > self.max_chars:
+            self._fallback(rt, "source-over-max-chars", sourceChars=utf16_len(body), maxChars=self.max_chars,
+                           sourceBytes=nbytes)
             return None
         if LIKELY_SECRET.search(body):
             self._fallback(rt, "likely-secret", sourceBytes=nbytes)
             return None
-        try:
-            archive = self._archive(rt, body)
-        except OSError as e:
-            self._fallback(rt, "model-call-exception", error=str(e))
-            return None
+        # archive.ts throws on an integrity failure; Pi's extension runner catches a throwing tool_result handler,
+        # keeps the original result and reports an extension error - our runtime does the same
+        # (``tool_result_handler_error`` entry). No journal "fallback" is written for it (the release writes none).
+        archive = self._archive(rt, body)
         is_error = ev.result.is_error
         self._log(rt, "candidate", toolCallId=ev.call.id, commandSha256=sha256(r.command), sourceSha256=archive.hash,
                   sourceBytes=archive.bytes)

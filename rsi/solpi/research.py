@@ -76,7 +76,7 @@ def oracle_estimate(idea: Idea, trials: Sequence[Trial]) -> float:
         tr = sum(r.get("transitions", 0) for r in rows) or 1
         return sum(r.get("adjacent_edit_command", 0) for r in rows) / tr
     if idea.oracle in ("replayed_large_outputs", "diagnostic_log_tokens", "archivable_context", "tail_of_outputs",
-                       "prompt_tokens", "verification_tokens"):
+                       "prompt_tokens", "verification_tokens", "late_turn_tokens"):
         return sum(r.get(idea.oracle, 0) for r in rows) / tot
     return 0.05
 
@@ -208,7 +208,7 @@ class Lineage:
     def __init__(self, idea: Idea, *, evaluator: Evaluator, gate: DualGate, proposer: MechanismProposer,
                  reviewer: Reviewer, base: Artifact, base_metrics: Metrics, screen_split: str = "evolve",
                  rollout_tasks_per_family: int = 2, k: int = 1, max_iters: int = 4, ralph_max: int = 3,
-                 workdir: Optional[Path] = None, ledger: Optional[Ledger] = None, sweep: bool = False,
+                 workdir: Optional[Path] = None, ledger: Optional[Ledger] = None, sweep: bool = True,
                  tracer=None, review_max: int = 2) -> None:
         self.idea, self.ev, self.gate, self.proposer, self.reviewer = idea, evaluator, gate, proposer, reviewer
         self.base, self.base_metrics = base, base_metrics
@@ -332,10 +332,13 @@ class Lineage:
                             if it + 1 < self.max_iters else "lineage ends (max_iters)")
             current = prop.artifact
         if passing:
-            # "among candidates that pass the capability floor, the loop retains nondominated results"
+            # "among candidates that pass the capability floor, the loop retains nondominated results"; the lineage
+            # freezes the nondominated variant with the best token efficiency eta = API cost / task score (the
+            # study's objective, "API cost per unit of task score, subject to a capability floor" [ye-blog])
             from .gate import nondominated
             nd = nondominated([(f, f.metrics) for f in passing], self.gate.spec.efficiency)
-            best = min(nd, key=lambda f: (f.metrics.agg[self.gate.spec.efficiency[0]], -f.metrics.agg["score"]))
+            best = min(nd, key=lambda f: (f.metrics.agg.get("eta", float("inf")),
+                                          f.metrics.agg[self.gate.spec.efficiency[0]], -f.metrics.agg["score"]))
             return LineageResult(idea, best, history, usage)
         return LineageResult(idea, None, history, usage)
 

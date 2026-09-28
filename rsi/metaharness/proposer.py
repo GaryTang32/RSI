@@ -308,24 +308,30 @@ class AgentProposer(Proposer):
     ``prototype=True`` (default, the release's behaviour): the agent also gets Bash, restricted by
     ``--allowedTools`` to ``python3``/``python`` and read-only inspection commands, so it can run the skill's
     mandatory prototype step (scripts under ``scratch/`` are discarded with everything else outside the
-    editable paths). SAFETY: this executes model-written Python on the host with your permissions, as the
-    release does (it even runs Claude Code with ``--dangerously-skip-permissions``). Use ``prototype=False``
-    (no Bash at all, the earlier behaviour) or run inside a container when that is not acceptable.
+    editable paths). SAFETY: the allow-list filters *shell commands* only (checked live: Claude Code also
+    auto-allows read-only commands and edits inside the workspace, and denies under ``-p`` what needs approval,
+    e.g. network access or writes outside the workspace), but ``python3`` itself is unrestricted code
+    execution with your permissions, as in the release (which even runs Claude Code with
+    ``--dangerously-skip-permissions``). Use ``prototype=False`` (no Bash at all, the earlier behaviour) or run
+    inside a container when that is not acceptable.
 
-    ``files_read`` is taken from the agent's ``--verbose`` transcript (files it opened with Read or with
-    cat/head/tail/grep/sed in Bash), not the whole view; ``meta`` carries the tool calls, files searched with
-    Grep/Glob and the prototype scripts it wrote."""
+    ``files_read`` is taken from the agent's ``--verbose`` transcript (files it opened with Read, or named in
+    a Bash command - cat/head/tail/grep or a Python script that opens them), not the whole view; ``meta``
+    carries the tool calls, files searched with Grep/Glob/ls, and the prototype activity (Python runs and the
+    scripts it wrote, wherever it put them). ``max_budget_usd`` caps one proposer session
+    (``claude -p --max-budget-usd``)."""
 
     def __init__(self, cli: ClaudeCLI, *, timeout_s: float = 2400.0, skill: str = SKILL_TEXT,
                  tools: Optional[tuple[str, ...]] = None, prototype: bool = True,
-                 allowed_commands: Sequence[str] = PROTOTYPE_COMMANDS + INSPECT_COMMANDS) -> None:
+                 allowed_commands: Sequence[str] = PROTOTYPE_COMMANDS + INSPECT_COMMANDS,
+                 max_budget_usd: Optional[float] = None) -> None:
         self.cli = cli
         self.skill = skill
         self.prototype = prototype
         if tools is None:
             tools = ("Read", "Edit", "Write", "Glob", "Grep") + (("Bash",) if prototype else ())
         allowed = [f"Bash({c} *)" for c in allowed_commands] if prototype and "Bash" in tools else []
-        self.agent_cli = TranscriptCLI(cli, allowed_tools=allowed)
+        self.agent_cli = TranscriptCLI(cli, allowed_tools=allowed, max_budget_usd=max_budget_usd)
         self.editor = AgentEditor(self.agent_cli, tools=tools, timeout_s=timeout_s)
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
@@ -350,6 +356,7 @@ class AgentProposer(Proposer):
                                     "tool_summary": _tool_summary(calls),
                                     "tool_calls": [{"name": c["name"], "input": _short(c["input"])} for c in calls][:300],
                                     "prototype_files": sorted(b for b in blocked if b.startswith("scratch/")),
+                                    "prototype": prototype_activity(calls),
                                     "transcript_available": bool(agent_cli is not None and agent_cli.last_messages)})
         if prop.artifact is None:
             batch.error = prop.error or "agent produced no files"
@@ -385,9 +392,11 @@ class TranscriptCLI:
 
     Usage is metered on the wrapped CLI's meter, as ``ClaudeCLI.run_agent`` does."""
 
-    def __init__(self, cli: ClaudeCLI, *, allowed_tools: Sequence[str] = ()) -> None:
+    def __init__(self, cli: ClaudeCLI, *, allowed_tools: Sequence[str] = (),
+                 max_budget_usd: Optional[float] = None) -> None:
         self.cli = cli
         self.allowed_tools = list(allowed_tools)
+        self.max_budget_usd = max_budget_usd          # claude -p --max-budget-usd (per proposer session)
         self.last_messages: list = []
 
     @property
@@ -406,6 +415,8 @@ class TranscriptCLI:
                   timeout_s: Optional[float] = None, role: str = "agent") -> LLMResponse:
         cmd = self.cli.base_cmd(system) + ["--verbose", "--tools", ",".join(tools), "--permission-mode", "acceptEdits",
                                            "--add-dir", cwd]
+        if self.max_budget_usd:
+            cmd += ["--max-budget-usd", f"{self.max_budget_usd:g}"]
         if self.allowed_tools:
             cmd += ["--allowedTools", *self.allowed_tools]          # variadic: keep it last
         resp, messages = run_transcript(self.cli, cmd, prompt, cwd=cwd, timeout=timeout_s)
@@ -482,11 +493,14 @@ def tool_calls(messages: list) -> list[dict]:
 
 
 _READ_CMDS = ("cat", "head", "tail", "grep", "sed", "awk", "less", "more", "wc", "jq", "diff")
+_CTX_PATH = re.compile(r"_context/[^\s'\"`|;&<>()]*")
+_RUNS_CODE = re.compile(r"(^|[\s;&|(])(python3?|pytest)(\s|$)")
 
 
 def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], list[str]]:
-    """(files read, files/dirs searched) as history-view paths. Read = ``Read`` targets and files named in
-    cat/head/tail/grep/sed/... commands; searched = ``Grep``/``Glob`` paths (directories included)."""
+    """(files read, files/dirs searched) as history-view paths. Read = ``Read`` targets and every history file
+    named in a Bash command (cat/head/tail/grep, or a python script / heredoc that opens it); searched =
+    ``Grep``/``Glob`` paths and directories listed or searched in Bash."""
     def rel(p: str) -> Optional[str]:
         p = str(p or "").strip().strip("'\"")
         i = p.find("_context/")
@@ -502,21 +516,35 @@ def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], l
             r = rel(inp.get("file_path", ""))
             if r is not None and r in view:
                 read.append(r)
+            elif r is not None:
+                searched.append(r)
         elif name in ("Grep", "Glob"):
             r = rel(inp.get("path", "")) or rel(inp.get("pattern", ""))
             if r is not None:
                 searched.append(r)
         elif name == "Bash":
-            try:
-                toks = shlex.split(str(inp.get("command", "")))
-            except ValueError:
-                toks = str(inp.get("command", "")).split()
-            if toks and os.path.basename(toks[0]) in _READ_CMDS:
-                for t in toks[1:]:
-                    r = rel(t)
-                    if r is not None:
-                        (read if r in view else searched).append(r)
+            for m in _CTX_PATH.finditer(str(inp.get("command", ""))):
+                r = rel(m.group(0))
+                if r is None or r == "":
+                    continue
+                (read if r in view else searched).append(r)
     return sorted(set(read)), sorted(set(searched))
+
+
+def prototype_activity(calls: list[dict], editable_prefixes: Sequence[str] = ("agents/", "reports/")) -> dict:
+    """The release's Step 2, seen in a transcript: Bash calls that run Python, and files written outside the
+    candidate / report / handoff paths (test scripts, wherever the agent put them)."""
+    runs = [str((c.get("input") or {}).get("command", ""))[:300] for c in calls
+            if c.get("name") == "Bash" and _RUNS_CODE.search(str((c.get("input") or {}).get("command", "")))]
+    written = []
+    for c in calls:
+        if c.get("name") in ("Write", "Edit"):
+            fp = str((c.get("input") or {}).get("file_path", ""))
+            tail = fp.split("/rsi_agent_", 1)[-1].split("/", 1)[-1] if "/rsi_agent_" in fp else fp
+            if not (any(tail.startswith(e) for e in editable_prefixes) or
+                    tail in ("pending_eval.json", "_proposal.json")):
+                written.append(fp)
+    return {"python_runs": len(runs), "python_commands": runs[:20], "scripts_written": sorted(set(written))}
 
 
 def _tool_summary(calls: list[dict]) -> dict[str, int]:
@@ -526,7 +554,7 @@ def _tool_summary(calls: list[dict]) -> dict[str, int]:
     return out
 
 
-def _short(inp: dict, n: int = 300) -> dict:
+def _short(inp: dict, n: int = 2000) -> dict:
     return {k: (v[:n] + "...") if isinstance(v, str) and len(v) > n else v for k, v in (inp or {}).items()
             if k not in ("content", "new_string", "old_string")}
 

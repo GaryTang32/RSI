@@ -31,13 +31,14 @@ Every run was produced by `python experiments/metaharness-solpi/validate_metahar
 | run | setup | seed → final (decision split) | seed → final (sealed, transfer_report) | audit | spend / wall |
 |---|---|---|---|---|---|
 | `mh_memoclassify_offline` | Meta-Harness, MemoClassify, MockProposer, N = 6, k = 2, history full | search 0.458 → **0.590** (6 frontier changes) | test 0.523 → 0.634; ood 0.504 → 0.558 (best-by-ood incumbent was 0.654, see below) | 12 checks, all pass | $0, 14 s |
-| `solpi_agentworld_offline` | SoL-Pi protocol, AgentWorld, all 10 ideas (C/P/D/T/R), aggregate dual gate, holdout firewall | screen score 1.0 → 1.0; tokens −49%, cost −8.9% | holdout 1.000 → **0.988**, tokens −69%; ood 1.0 → 1.0, tokens −66% | 10 checks, all pass | $0, 7 s |
+| `solpi_agentworld_offline` (re-run in stage C, `sp_validate.py`) | SoL-Pi protocol, AgentWorld, 12 ideas (C/P/T/D/R/M; oracle top 10), aggregate dual gate (score AND solved rate within 2%), nondominated sweep, holdout firewall | screen score 1.0 → 1.0; tokens −49%, cost −8.9% (P20 now rejected by the floor; same survivors D1, P8, C23) | holdout 1.000 → **0.988**, tokens −69%; ood 1.0 → 1.0, tokens −66% | 10 checks, all pass | $0, 15 s |
 | `mh_agentqa_live` | Meta-Harness, AgentQA, **haiku** as task model and RewriteProposer, N = 3, k = 2 | evolve 0.5 → **1.0** | holdout 0.5 → 1.0; ood 0.25 → 1.0 | **fails 1 check (2/6)**: bug found, fixed, re-run | $0.78, 10.7 min |
 | `mh_agentqa_live_r2` | same, after fix 12 | evolve 0.5 → 0.9 | holdout 0.5 → 0.667; ood 0.25 → 0.25 | 12 checks, all pass | $0.65, 9.7 min |
 | `solpi_agentworld_live` | SoL-Pi, 2 free-form ideas, **haiku** implementer + LLM reviewer, mock agent backend | no survivor | (base only) | passes; LLM-facing doc bug found (fix 13) | $0.28, 8.9 min |
 | `solpi_agentworld_live_r2` | same, after fix 13 | no survivor | (base only) | passes; second doc gap found (fix 14) | $0.20, 6.3 min |
 | `solpi_agentworld_live_r3` | same, after fix 14 | no survivor (all 4 rejected by the reviewer; 3 of them wrongly) | (base only) | passes; reviewer gap found (fix 15, not re-run) | $0.24, 7.8 min |
 | `solpi_agentworld_live_r4` (stage B) | same, after fixes 15 + 16 (review -> implementation) | **L2 survives**: screen S 1.0, tokens -66%, cost -46% | holdout S 1.0, tokens -38%; ood S 1.0, tokens -45% | stage-B audit 22 correct / 2 questionable | $0.28, 8.8 min |
+| `solpi_agentworld_live_r5` (stage C, `sp_validate.py`) | r4's configuration under the stage-C defaults (two-metric floor, sweep) | **L2 survives** (review → repair → pass; the sweep's second variant is dominated): screen S 1.0, tokens −67%, cost −46% | holdout S 1.0, tokens −38%; ood S 1.0, tokens −45% | stage-A audit checks all pass (AUDIT §6c) | $0.37, 11.7 min |
 
 **Live spend for this stage, from the fresh caches' entries (ground truth).**
 - Connectivity check: $0.001.
@@ -233,3 +234,7 @@ The setup is identical. Because the cache is fresh, the seed replies differ: evo
 ## Stage B addendum: `solpi_agentworld_live_r4`
 
 Same setup as r3, fresh cache, after fix 15 (the reviewer sees `RUNTIME_API_DOC`) and fix 16 (a review rejection goes back to implementation). L2's haiku-written `condense_bash_failures` passed review, the training gate and the held-out firewall. This is the first live survivor. L1's first mechanism was rejected on an MD5-collision nitpick, repaired in the same iteration and then failed the gate (it added traffic). Details and the per-step audit are in `AUDIT.md` §2.6.
+
+## Stage C addendum (SoL-Pi claim-audit fixes)
+
+The SoL-Pi claims audit (`docs/claims/solpi.md`) led to fixes in the mechanisms (13 fidelity items vs the release) and in the protocol defaults: a two-metric capability floor, a nondominated best-η sweep, and a 12-idea pool over all six families. `solpi_agentworld_offline` was re-run from scratch and `solpi_agentworld_live_r5` repeats r4 under the new defaults, both via `experiments/metaharness-solpi/sp_validate.py`. Details and the per-iteration verdicts are in AUDIT.md §6c. The run sections above describe the stage-A/B runs as they were recorded.

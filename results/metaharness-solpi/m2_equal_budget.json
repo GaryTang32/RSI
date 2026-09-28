@@ -1438,22 +1438,25 @@
  "evals_to_match_summary": {
   "best_of_n": {
    "median_when_reached": 4.0,
+   "median_never_as_budget_plus_1": 4.0,
    "n_seeds_never_reached": 1,
    "n_seeds": 10
   },
   "opro_window": {
    "median_when_reached": 7.5,
+   "median_never_as_budget_plus_1": 10.0,
    "n_seeds_never_reached": 2,
    "n_seeds": 10
   },
   "gepa_reflect": {
    "median_when_reached": 10.0,
+   "median_never_as_budget_plus_1": 10.0,
    "n_seeds_never_reached": 1,
    "n_seeds": 10
   }
  },
- "verdict": "PARTIAL: Meta-Harness final best vs others (paired diffs) = best_of_n: +0.062, opro_window: +0.026, gepa_reflect: +0.017; 10x-fewer-evaluations claim NOT reproduced (median evaluations MH needs to match each arm's final best: best_of_n: 4.0, opro_window: 10.0, gepa_reflect: 10.0 of 20; never matched in best_of_n: 1/10, opro_window: 2/10, gepa_reflect: 1/10 seeds)",
+ "verdict": "PARTIAL: Meta-Harness final best vs others (paired diffs) = best_of_n: +0.062, opro_window: +0.026, gepa_reflect: +0.017; 10x-fewer-evaluations claim NOT reproduced (evaluations MH needs to match each arm's final best, of 20: median over all seeds with never-matched seeds counted as 21 / median over the seeds where MH matches: best_of_n: 4.0 / 4.0, opro_window: 10.0 / 7.5, gepa_reflect: 10.0 / 10.0; never matched in best_of_n: 1/10, opro_window: 2/10, gepa_reflect: 1/10 seeds)",
  "figure": "/home/user/RSI/results/metaharness-solpi/m2_equal_budget.png",
  "caveat": "Offline arms share one deterministic MockProposer; differences come only from the history view. Best-of-N samples independently from the run's seed harness (fewshot_all) only.",
- "generated_at": "2026-09-25 06:44:44"
+ "generated_at": "2026-09-25 18:28:39"
 }

@@ -2,16 +2,20 @@
 
 Offline (deterministic):
 
-* :data:`AGENTWORLD_IDEAS` - a small idea pool over the six proposal families: the
-  four released mechanisms under their blog idea ids (C23 ObservationPack, P8 Action
-  Fusion, D1 EPR, C6 OCC - the last three mappings are the spec's guess), plus
-  environment-specific tricks, do-less shortcuts and a dud, so the protocol has
-  something to reject;
+* :data:`AGENTWORLD_IDEAS` - a small idea pool over all six proposal families (C, P, T,
+  D, R and M = "Improvement & evaluation", the paper's largest family): the four
+  released mechanisms under their blog idea ids (C23 ObservationPack, P8 Action Fusion,
+  D1 EPR, C6 OCC - the last three mappings are the spec's guess), plus
+  environment-specific tricks, do-less shortcuts, a dud and two evaluation-family ideas
+  (M5, M12), so the protocol has something to reject. Twelve ideas against the default
+  ``Config.n_lineages = 10``: the Oracle Analysis ranks them and the two with the least
+  estimated opportunity get no rollout budget;
 * :class:`LibraryProposer` - implements an idea as a registry mechanism and walks
   its parameter grid from aggressive to conservative using only in-lineage gate
   feedback (capability failure -> more conservative; no efficiency gain -> more
-  aggressive; revisiting a variant -> the lineage is exhausted), like the
-  ObservationPack V0..V7 sweep;
+  aggressive; revisiting a variant -> the lineage is exhausted); once a variant has
+  passed (sweep mode) it evaluates the remaining variants in grid order, like the
+  ObservationPack V0..V7 sweep, and the lineage keeps the nondominated best-eta one;
 * :data:`AGENTQA_IDEAS` + :class:`AgentQAEditProposer` - the same protocol on
   AgentQA harness code (second domain).
 
@@ -51,8 +55,11 @@ AGENTWORLD_IDEAS = [
     Idea("P14", "P", "Skip redundant re-verification after edits", "no_verify", [{}], "adjacent_edit_command",
          kind="do_less"),
     Idea("P20", "P", "Cap the turn budget", "turn_cap", [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}],
-         "prompt_tokens", kind="do_less"),
+         "late_turn_tokens", kind="do_less"),
     Idea("R5", "R", "Slim the system prompt", "prompt_slim", [{}], "prompt_tokens", kind="dud"),
+    Idea("M5", "M", "Attribute cost to actions, phases, and providers", "cost_attribution", [{}], "none", kind="dud"),
+    Idea("M12", "M", "Judge patches with fail-before/pass-after tests", "fail_before_pass_after", [{}], "none",
+         kind="dud"),
 ]
 
 
@@ -70,8 +77,9 @@ class LibraryProposer:
             cap_failed = any(not c.get("pass", True) for c in (g.get("capability") or {}).values()) or \
                 any(not pf.get("cap_ok", True) for pf in (g.get("per_family") or {}).values())
             v = last.get("variant", 0) + (1 if cap_failed or last.get("outcome") != "gate_failed" else -1)
-            if last.get("outcome") == "frozen":          # sweep mode: continue through the grid
-                v = max(visited) + 1
+            if any(h.get("outcome") == "frozen" for h in history):   # sweep mode: evaluate the rest of the grid
+                rest = [i for i in range(len(grid)) if i not in visited]
+                v = rest[0] if rest else len(grid)
             if v < 0 or v >= len(grid) or v in visited:
                 return MechanismProposal(None, error="variant grid exhausted", variant=v, meta={"exhausted": True})
         params = grid[v]

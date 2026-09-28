@@ -22,40 +22,40 @@
      "context": 8667.666666666666
     },
     {
-     "name": "correct_first_fewshot",
+     "name": "selective_relevance",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.42105263157894735,
+     "context": 950.6315789473683
+    },
+    {
+     "name": "category_aware_selection",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.2631578947368421,
+     "context": 963.6315789473683
+    },
+    {
+     "name": "recency_weighted_relevance",
      "status": "invalid",
-     "reason": "syntax error in src/memory.py: invalid syntax (memory.py, line 1)",
-     "base_system": "fewshot_all",
-     "hypothesis": "Examples correctly predicted during training provide clearer learning signals; prioritizing them (ordered by recency) improves in-context learning accuracy while maintaining context budget.",
+     "reason": "syntax error in memory.py: invalid syntax (memory.py, line 107)",
+     "base_system": "no_memory",
+     "hypothesis": "",
      "search": null,
      "context": null
     },
     {
-     "name": "similarity_retrieval",
+     "name": "stratified_relevance_selection",
      "status": "evaluated",
      "reason": "",
-     "base_system": "fewshot_all",
-     "hypothesis": "Selecting only the K most similar training examples (via token overlap) to each input removes irrelevant noise, reduces prompt bloat, and improves signal-to-noise ratio without sacrificing accuracy.",
-     "search": 0.47368421052631576,
-     "context": 8667.666666666666
-    },
-    {
-     "name": "weighted_recency_correctness",
-     "status": "invalid",
-     "reason": "syntax error in src/memory.py: invalid syntax (memory.py, line 1)",
-     "base_system": "fewshot_all",
-     "hypothesis": "Recent examples provide fresh training context, and examples the model correctly predicted during training are stronger learning signals. A smooth exponential decay on recency combined with a correctness multiplier will weight high-signal examples higher, improving accuracy without exceeding context budget.",
-     "search": null,
-     "context": null
-    },
-    {
-     "name": "label_stratified_diverse",
-     "status": "evaluated",
-     "reason": "",
-     "base_system": "fewshot_all",
-     "hypothesis": "Ensuring diverse output labels in few-shot examples improves generalization. By stratifying retrieval to show one correct example per unique output label seen during training, the model learns varied output patterns rather than being biased by frequency, reducing overfitting to common labels.",
-     "search": 0.47368421052631576,
-     "context": 8667.666666666666
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.2982456140350877,
+     "context": 2018.0
     }
    ],
    "best": "fewshot_all",
@@ -67,16 +67,10 @@
      "context_cost": 8667.666666666666
     },
     {
-     "system": "label_stratified_diverse",
-     "score": 0.47368421052631576,
-     "val_accuracy": 47.4,
-     "context_cost": 8667.666666666666
-    },
-    {
-     "system": "similarity_retrieval",
-     "score": 0.47368421052631576,
-     "val_accuracy": 47.4,
-     "context_cost": 8667.666666666666
+     "system": "selective_relevance",
+     "score": 0.42105263157894735,
+     "val_accuracy": 42.1,
+     "context_cost": 950.6315789473683
     },
     {
      "system": "no_memory",
@@ -88,25 +82,24 @@
    "test": {
     "no_memory": 0.14285714285714285,
     "fewshot_all": 0.5595238095238095,
-    "label_stratified_diverse": 0.5595238095238095,
-    "similarity_retrieval": 0.5595238095238095
+    "selective_relevance": 0.4761904761904762
    },
    "proposer_usage": {
     "proposer": {
      "calls": 2,
-     "input_tokens": 46035,
-     "output_tokens": 15384,
-     "cost_usd": 0.168972,
-     "latency_s": 156.46587014198303,
-     "total_tokens": 61419
+     "input_tokens": 52328,
+     "output_tokens": 21865,
+     "cost_usd": 0.21396300000000001,
+     "latency_s": 233.02010583877563,
+     "total_tokens": 74193
     },
     "_total": {
      "calls": 2,
-     "input_tokens": 46035,
-     "output_tokens": 15384,
-     "cost_usd": 0.168972,
-     "latency_s": 156.46587014198303,
-     "total_tokens": 61419
+     "input_tokens": 52328,
+     "output_tokens": 21865,
+     "cost_usd": 0.21396300000000001,
+     "latency_s": 233.02010583877563,
+     "total_tokens": 74193
     }
    },
    "iterations": [
@@ -114,15 +107,18 @@
      "iteration": 1,
      "best_score": 0.47368421052631576,
      "n_candidates": 2,
-     "n_valid": 1,
-     "n_evaluated": 1,
+     "n_valid": 2,
+     "n_evaluated": 2,
      "frontier_size": 3,
-     "hypervolume": 1600.7549707602343,
-     "files_read": 17,
-     "view_chars": 311476,
-     "read_chars": 235411,
-     "proposer_tokens": 30227,
-     "proposer_usd": 0.084541,
+     "hypervolume": 3766.94025854109,
+     "files_read": 20,
+     "files_scanned": 0,
+     "reports_written": 1,
+     "n_reevaluations": 0,
+     "view_chars": 1703283,
+     "read_chars": 1703283,
+     "proposer_tokens": 37160,
+     "proposer_usd": 0.10654000000000001,
      "error": null
     },
     {
@@ -130,17 +126,77 @@
      "best_score": 0.47368421052631576,
      "n_candidates": 2,
      "n_valid": 1,
-     "n_evaluated": 2,
-     "frontier_size": 4,
-     "hypervolume": 1600.7549707602343,
-     "files_read": 27,
-     "view_chars": 554334,
-     "read_chars": 172595,
-     "proposer_tokens": 31192,
-     "proposer_usd": 0.084431,
+     "n_evaluated": 3,
+     "frontier_size": 3,
+     "hypervolume": 3766.94025854109,
+     "files_read": 35,
+     "files_scanned": 0,
+     "reports_written": 1,
+     "n_reevaluations": 0,
+     "view_chars": 2554524,
+     "read_chars": 2140874,
+     "proposer_tokens": 37033,
+     "proposer_usd": 0.107423,
      "error": null
     }
-   ]
+   ],
+   "sessions": [
+    {
+     "iteration": 1,
+     "files_read_by_kind": {
+      "code": 2,
+      "traces": 12,
+      "scores": 4,
+      "other": 2
+     },
+     "view_files": 20,
+     "view_chars": 1703283,
+     "read_chars": 1703283,
+     "trace_files_rendered": 6,
+     "reports_written": [
+      "reports/iter0.md"
+     ],
+     "usage": {
+      "calls": 1,
+      "input_tokens": 26417,
+      "output_tokens": 10743,
+      "cost_usd": 0.10654000000000001,
+      "latency_s": 109.51742839813232,
+      "total_tokens": 37160
+     },
+     "error": null
+    },
+    {
+     "iteration": 2,
+     "files_read_by_kind": {
+      "code": 4,
+      "traces": 19,
+      "scores": 6,
+      "other": 6
+     },
+     "view_files": 40,
+     "view_chars": 2554524,
+     "read_chars": 2140874,
+     "trace_files_rendered": 8,
+     "reports_written": [
+      "reports/iter1.md"
+     ],
+     "usage": {
+      "calls": 1,
+      "input_tokens": 25911,
+      "output_tokens": 11122,
+      "cost_usd": 0.107423,
+      "latency_s": 123.50267744064331,
+      "total_tokens": 37033
+     },
+     "error": null
+    }
+   ],
+   "reports": [
+    "iter0.md",
+    "iter1.md"
+   ],
+   "generated_with": "post-audit code (renderer with traces, full traces, all-calls context, skill Step 0/2, objective statement), fresh cache"
   },
   "epr": {
    "n_logs": 4,
@@ -229,8 +285,15 @@
    }
   }
  },
- "total_usd": 0.48177000000000003,
- "seconds": 587.9564688205719,
- "verdict": "live end-to-end OK: Meta-Harness evaluated 2 haiku-written candidates (best fewshot_all); EPR accepted 4/4 haiku receipts with 0 non-verbatim quotes; LLM lineage did not pass the gate; cost $0.482",
- "generated_at": "2026-09-25 02:00:20"
+ "spend_this_run_usd": {
+  "metaharness": 0.21396300000000001
+ },
+ "parts_regenerated": [
+  "metaharness"
+ ],
+ "parts_kept_from": "2026-09-25 02:00:20",
+ "total_usd": 0.526761,
+ "seconds": 234.71072554588318,
+ "verdict": "live end-to-end OK: Meta-Harness evaluated 3 haiku-written candidates (best fewshot_all; best candidate search 0.421 vs fewshot_all 0.474; trace files rendered per iteration [6, 8]; reports ['iter0.md', 'iter1.md']); EPR accepted 4/4 haiku receipts with 0 non-verbatim quotes; LLM lineage did not pass the gate; cost of all parts $0.527 (this run $0.214)",
+ "generated_at": "2026-09-25 18:18:09"
 }

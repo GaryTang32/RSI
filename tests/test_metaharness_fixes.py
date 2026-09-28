@@ -66,6 +66,21 @@ def test_context_cost_counts_every_model_call_not_only_the_last(dom):
     assert ev_steps and all(r["context_chars"] > r["context_chars_last_call"] for r in ev_steps)
 
 
+def test_a_query_answered_without_a_model_call_costs_no_context():
+    """Found while fixing N2: the per-query prompt was the domain's last recorded prompt, never reset, so a
+    harness that answers from a lookup table (no model call) was charged the PREVIOUS query's prompt (a stale
+    train-phase prompt: 1.5-4.5k chars per unit). Now each query counts only its own calls."""
+    d = make_domain(seed=0, scale=0.3, leaky=True)
+    ev = Evaluator(d, d.make_model("A"), workers=1)
+    g0 = programs.apply_move(programs.DEFAULT_GENOME, "retrieve_topk")
+    base = ev.evaluate(Artifact({"memory.py": programs.render(g0)}), "evolve")
+    g = programs.leaky_genome(g0, {t: trs[0].trace for t, trs in base.trials.items()})
+    r = ev.evaluate(Artifact({"memory.py": programs.render(g)}), "evolve")
+    assert r.score == 1.0                                          # every search query answered from the table
+    assert all(trs[0].meta["context_chars"] == 0 for trs in r.trials.values())
+    assert all(trs[0].meta["context_chars_last_call"] == 0 for trs in r.trials.values())
+
+
 def test_loop_can_select_the_release_last_call_metric(dom, tmp_path):
     lp = MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=MockProposer(MemoClassifyLibrary()),
                          config=Config(iterations=0, cost_metric="context_chars_last_call",
@@ -209,9 +224,25 @@ def test_agent_proposer_prototypes_writes_reports_and_logs_the_files_it_opened(t
     pm = meta["proposer_meta"]
     assert pm["tool_summary"] == {"Read": 1, "Bash": 2, "Grep": 1}
     assert pm["prototype_files"] == ["scratch/proto.py"] and "candidates" in pm["files_searched"]
+    assert pm["prototype"]["python_runs"] == 1
     assert (lp.store.reports_dir() / "iter000.md").exists()
     assert lp.store.scores("cand_a") is not None                             # the candidate was evaluated
     assert cli.meter.total().cost_usd == pytest.approx(0.0123)
+
+
+def test_transcript_accounting_sees_reads_inside_scripts_and_prototypes_anywhere():
+    from rsi.metaharness.proposer import files_touched, prototype_activity
+    view = {"candidates/a/eval/search/traces/u.jsonl": "x", "evolution_summary.jsonl": "y"}
+    calls = [{"name": "Bash", "input": {"command": "python3 << 'EOF'\nf = '/w/_context/candidates/a/eval/search/"
+                                                  "traces/u.jsonl'\nEOF"}},
+             {"name": "Bash", "input": {"command": "ls -la /w/_context/candidates/"}},
+             {"name": "Write", "input": {"file_path": "/tmp/elsewhere/test_retrieval.py"}},
+             {"name": "Write", "input": {"file_path": "/tmp/rsi_agent_x/agents/c/memory.py"}},
+             {"name": "Bash", "input": {"command": "cd /tmp/elsewhere && python3 test_retrieval.py"}}]
+    read, searched = files_touched(calls, view)
+    assert read == ["candidates/a/eval/search/traces/u.jsonl"] and "candidates" in searched
+    act = prototype_activity(calls)
+    assert act["python_runs"] == 2 and act["scripts_written"] == ["/tmp/elsewhere/test_retrieval.py"]
 
 
 def test_agent_proposer_without_prototype_has_no_bash(tmp_path):

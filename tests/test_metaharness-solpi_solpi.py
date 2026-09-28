@@ -15,8 +15,11 @@ def dom():
     return make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=1)
 
 
-def M(score, tokens, cost, fam=None):
-    agg = {"score": score, "tokens": tokens, "cost": cost, "steps": 1.0, "eta": cost / score}
+def M(score, tokens, cost, fam=None, solved=None):
+    # "solved" (share of fully solved tasks) is a predeclared capability metric of the default gate; these
+    # synthetic metrics use the binary-task convention solved = score unless given
+    agg = {"score": score, "solved": score if solved is None else solved, "tokens": tokens, "cost": cost,
+           "steps": 1.0, "eta": cost / score}
     return Metrics(agg, fam or {"f": dict(agg)}, 1)
 
 
@@ -29,8 +32,10 @@ def test_dual_gate_modes():
     assert not g.accept(base, M(1.0, 99, 0.99)).accept                  # gain below min_gain
     naive = DualGate(GateSpec(mode="efficiency_only"))
     assert naive.accept(base, M(0.5, 50, 0.5)).accept
-    fam_b = {"a": {"score": 1.0, "tokens": 100, "cost": 1.0}, "b": {"score": 1.0, "tokens": 100, "cost": 1.0}}
-    fam_c = {"a": {"score": 1.0, "tokens": 50, "cost": 0.5}, "b": {"score": 0.9, "tokens": 100, "cost": 1.0}}
+    fam_b = {"a": {"score": 1.0, "solved": 1.0, "tokens": 100, "cost": 1.0},
+             "b": {"score": 1.0, "solved": 1.0, "tokens": 100, "cost": 1.0}}
+    fam_c = {"a": {"score": 1.0, "solved": 1.0, "tokens": 50, "cost": 0.5},
+             "b": {"score": 0.9, "solved": 0.9, "tokens": 100, "cost": 1.0}}
     b2, c2 = M(1.0, 100, 1.0, fam_b), M(0.95 + 0.04, 75, 0.75, fam_c)
     assert DualGate(GateSpec(mode="aggregate", capability=(("score", 0.02),))).accept(b2, c2).accept
     pf = DualGate(GateSpec(mode="per_family")).accept(b2, c2)

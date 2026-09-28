@@ -9,6 +9,7 @@
    "arm": "efficiency_only",
    "seed": 0,
    "survivors": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -16,8 +17,7 @@
     "C6",
     "P14",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
    "do_less_admitted": 2,
@@ -25,13 +25,13 @@
    "evolve_success_base": 1.0,
    "evolve_success": 0.5673611111111111,
    "evolve_success_change": -0.4326388888888889,
-   "evolve_token_saving": 0.9185717325417255,
-   "evolve_cost_saving": 0.7070786241379486,
+   "evolve_token_saving": 0.9187016613088813,
+   "evolve_cost_saving": 0.7072708675731434,
    "ood_success_base": 1.0,
    "ood_success": 0.5084821428571429,
    "ood_success_change": -0.4915178571428571,
-   "ood_token_saving": 0.815327950374271,
-   "ood_cost_saving": 0.5533437990734613
+   "ood_token_saving": 0.8156763921942687,
+   "ood_cost_saving": 0.5537420376766644
   },
   {
    "arm": "dual_gate",
@@ -41,22 +41,21 @@
     "T11",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
    "evolve_success": 1.0,
    "evolve_success_change": 0.0,
-   "evolve_token_saving": 0.8149537260827273,
-   "evolve_cost_saving": 0.5186608713818377,
+   "evolve_token_saving": 0.8152686318964188,
+   "evolve_cost_saving": 0.5189926717467143,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.6461917001052728,
-   "ood_cost_saving": 0.322766002365547
+   "ood_token_saving": 0.6469935392858899,
+   "ood_cost_saving": 0.3234892814255126
   },
   {
    "arm": "dual_gate+composition_check",
@@ -66,27 +65,27 @@
     "T11",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
    "evolve_success": 1.0,
    "evolve_success_change": 0.0,
-   "evolve_token_saving": 0.8149537260827273,
-   "evolve_cost_saving": 0.5186608713818377,
+   "evolve_token_saving": 0.8152686318964188,
+   "evolve_cost_saving": 0.5189926717467143,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.6461917001052728,
-   "ood_cost_saving": 0.322766002365547
+   "ood_token_saving": 0.6469935392858899,
+   "ood_cost_saving": 0.3234892814255126
   },
   {
    "arm": "efficiency_only",
    "seed": 1,
    "survivors": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -94,8 +93,7 @@
     "C6",
     "P14",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
    "do_less_admitted": 2,
@@ -103,13 +101,13 @@
    "evolve_success_base": 1.0,
    "evolve_success": 0.45634920634920634,
    "evolve_success_change": -0.5436507936507937,
-   "evolve_token_saving": 0.9327678621732904,
-   "evolve_cost_saving": 0.7428775468123022,
+   "evolve_token_saving": 0.9329090465909317,
+   "evolve_cost_saving": 0.7430885812569668,
    "ood_success_base": 1.0,
    "ood_success": 0.55625,
    "ood_success_change": -0.44375,
-   "ood_token_saving": 0.7978225262549379,
-   "ood_cost_saving": 0.5252940733726068
+   "ood_token_saving": 0.7981743438820228,
+   "ood_cost_saving": 0.5256983257454565
   },
   {
    "arm": "dual_gate",
@@ -119,22 +117,21 @@
     "T11",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.9618055555555557,
-   "evolve_success_change": -0.03819444444444431,
-   "evolve_token_saving": 0.7985638768295916,
-   "evolve_cost_saving": 0.48077840260534777,
+   "evolve_success": 0.9930555555555557,
+   "evolve_success_change": -0.006944444444444309,
+   "evolve_token_saving": 0.7131656167798566,
+   "evolve_cost_saving": 0.3025634605175572,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.6429757639989839,
-   "ood_cost_saving": 0.31684002745807727
+   "ood_token_saving": 0.6437048001938647,
+   "ood_cost_saving": 0.3175108572725951
   },
   {
    "arm": "dual_gate+composition_check",
@@ -143,29 +140,29 @@
     "D1",
     "T11",
     "C6",
-    "P8",
-    "P20"
-   ],
-   "dropped_by_composition_check": [
     "C23"
    ],
-   "do_less_admitted": 1,
+   "dropped_by_composition_check": [
+    "P8"
+   ],
+   "do_less_admitted": 0,
    "general_admitted": 3,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.9930555555555557,
-   "evolve_success_change": -0.006944444444444309,
-   "evolve_token_saving": 0.7280895924414943,
-   "evolve_cost_saving": 0.5157405349698024,
+   "evolve_success": 1.0,
+   "evolve_success_change": 0.0,
+   "evolve_token_saving": 0.7961223168038034,
+   "evolve_cost_saving": 0.493119442788593,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.4695101122020864,
-   "ood_cost_saving": 0.2827154311246206
+   "ood_token_saving": 0.5861658301874122,
+   "ood_cost_saving": 0.23430604924901066
   },
   {
    "arm": "efficiency_only",
    "seed": 2,
    "survivors": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -173,8 +170,7 @@
     "C6",
     "P14",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
    "do_less_admitted": 2,
@@ -182,13 +178,13 @@
    "evolve_success_base": 1.0,
    "evolve_success": 0.509375,
    "evolve_success_change": -0.490625,
-   "evolve_token_saving": 0.9245074282405283,
-   "evolve_cost_saving": 0.728057507375425,
+   "evolve_token_saving": 0.9246493353679527,
+   "evolve_cost_saving": 0.7282583290881361,
    "ood_success_base": 1.0,
    "ood_success": 0.4568452380952381,
    "ood_success_change": -0.5431547619047619,
-   "ood_token_saving": 0.8275443229730663,
-   "ood_cost_saving": 0.5798431883727327
+   "ood_token_saving": 0.827907921111444,
+   "ood_cost_saving": 0.5802605808235579
   },
   {
    "arm": "dual_gate",
@@ -199,22 +195,21 @@
     "T3",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.8718750000000001,
-   "evolve_success_change": -0.12812499999999993,
-   "evolve_token_saving": 0.7961031932470388,
-   "evolve_cost_saving": 0.4809496705005226,
+   "evolve_success": 0.9166666666666666,
+   "evolve_success_change": -0.08333333333333337,
+   "evolve_token_saving": 0.6868287292073654,
+   "evolve_cost_saving": 0.2749356867224809,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.5927676850294527,
-   "ood_cost_saving": 0.2854689570387803
+   "ood_token_saving": 0.5938647194126366,
+   "ood_cost_saving": 0.28639529313719037
   },
   {
    "arm": "dual_gate+composition_check",
@@ -227,26 +222,26 @@
     "C23"
    ],
    "dropped_by_composition_check": [
-    "T3",
-    "P20"
+    "T3"
    ],
    "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
    "evolve_success": 1.0,
    "evolve_success_change": 0.0,
-   "evolve_token_saving": 0.6617638567764861,
-   "evolve_cost_saving": 0.3326686165048307,
+   "evolve_token_saving": 0.6960809729139189,
+   "evolve_cost_saving": 0.2892094952295281,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.6135582985815113,
-   "ood_cost_saving": 0.3150763591799959
+   "ood_token_saving": 0.61457469337757,
+   "ood_cost_saving": 0.31593024343505116
   },
   {
    "arm": "efficiency_only",
    "seed": 3,
    "survivors": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -254,8 +249,7 @@
     "C6",
     "P14",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
    "do_less_admitted": 2,
@@ -263,13 +257,13 @@
    "evolve_success_base": 1.0,
    "evolve_success": 0.4537202380952381,
    "evolve_success_change": -0.5462797619047619,
-   "evolve_token_saving": 0.9268872720504858,
-   "evolve_cost_saving": 0.7322179634511345,
+   "evolve_token_saving": 0.9270355579167502,
+   "evolve_cost_saving": 0.7324287476242427,
    "ood_success_base": 1.0,
    "ood_success": 0.5836309523809524,
    "ood_success_change": -0.4163690476190476,
-   "ood_token_saving": 0.7914791636236312,
-   "ood_cost_saving": 0.5121137072782455
+   "ood_token_saving": 0.7918403118130859,
+   "ood_cost_saving": 0.5125199848795627
   },
   {
    "arm": "dual_gate",
@@ -278,25 +272,23 @@
     "D1",
     "T11",
     "T3",
-    "T7",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.8770833333333333,
-   "evolve_success_change": -0.12291666666666667,
-   "evolve_token_saving": 0.7757953809321937,
-   "evolve_cost_saving": 0.45176443274290357,
+   "evolve_success": 0.9523809523809524,
+   "evolve_success_change": -0.04761904761904756,
+   "evolve_token_saving": 0.6702613064485395,
+   "evolve_cost_saving": 0.24589547656628297,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.5907355077389536,
-   "ood_cost_saving": 0.2750595272928882
+   "ood_token_saving": 0.6032334959888455,
+   "ood_cost_saving": 0.2761099564494581
   },
   {
    "arm": "dual_gate+composition_check",
@@ -305,31 +297,30 @@
     "D1",
     "T11",
     "T3",
-    "T7",
     "P8",
-    "P20"
-   ],
-   "dropped_by_composition_check": [
-    "C6",
     "C23"
    ],
-   "do_less_admitted": 1,
-   "general_admitted": 2,
+   "dropped_by_composition_check": [
+    "C6"
+   ],
+   "do_less_admitted": 0,
+   "general_admitted": 3,
    "evolve_success_base": 1.0,
    "evolve_success": 1.0,
    "evolve_success_change": 0.0,
-   "evolve_token_saving": 0.7073733115967753,
-   "evolve_cost_saving": 0.5320239524372752,
+   "evolve_token_saving": 0.7531429300138307,
+   "evolve_cost_saving": 0.4597334969562692,
    "ood_success_base": 1.0,
-   "ood_success": 0.9642857142857143,
-   "ood_success_change": -0.0357142857142857,
-   "ood_token_saving": 0.47851004655360807,
-   "ood_cost_saving": 0.35902988468213004
+   "ood_success": 0.9375,
+   "ood_success_change": -0.0625,
+   "ood_token_saving": 0.6207244918267167,
+   "ood_cost_saving": 0.34511412657392526
   },
   {
    "arm": "efficiency_only",
    "seed": 4,
    "survivors": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -337,8 +328,7 @@
     "C6",
     "P14",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
    "do_less_admitted": 2,
@@ -346,13 +336,13 @@
    "evolve_success_base": 1.0,
    "evolve_success": 0.4658730158730158,
    "evolve_success_change": -0.5341269841269842,
-   "evolve_token_saving": 0.929300845137199,
-   "evolve_cost_saving": 0.7363147196415063,
+   "evolve_token_saving": 0.9294551570570109,
+   "evolve_cost_saving": 0.736537465886469,
    "ood_success_base": 1.0,
    "ood_success": 0.5879464285714286,
    "ood_success_change": -0.41205357142857135,
-   "ood_token_saving": 0.7933455696110487,
-   "ood_cost_saving": 0.5147748316710421
+   "ood_token_saving": 0.7937500454467231,
+   "ood_cost_saving": 0.5152272489074095
   },
   {
    "arm": "dual_gate",
@@ -363,22 +353,21 @@
     "T3",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 4,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.9249999999999999,
-   "evolve_success_change": -0.07500000000000007,
-   "evolve_token_saving": 0.8073566267228037,
-   "evolve_cost_saving": 0.5053648496966945,
+   "evolve_success": 0.9500000000000001,
+   "evolve_success_change": -0.04999999999999993,
+   "evolve_token_saving": 0.7182051660805323,
+   "evolve_cost_saving": 0.3231291106000038,
    "ood_success_base": 1.0,
    "ood_success": 0.9921875,
    "ood_success_change": -0.0078125,
-   "ood_token_saving": 0.5783986271453883,
-   "ood_cost_saving": 0.23388596496187897
+   "ood_token_saving": 0.5794881365873995,
+   "ood_cost_saving": 0.2348195620591319
   },
   {
    "arm": "dual_gate+composition_check",
@@ -387,25 +376,24 @@
     "D1",
     "T11",
     "C6",
-    "P8",
-    "P20"
+    "C23"
    ],
    "dropped_by_composition_check": [
     "T3",
-    "C23"
+    "P8"
    ],
-   "do_less_admitted": 1,
+   "do_less_admitted": 0,
    "general_admitted": 3,
    "evolve_success_base": 1.0,
-   "evolve_success": 0.9947916666666666,
-   "evolve_success_change": -0.00520833333333337,
-   "evolve_token_saving": 0.712961510431152,
-   "evolve_cost_saving": 0.5025152245035955,
+   "evolve_success": 1.0,
+   "evolve_success_change": 0.0,
+   "evolve_token_saving": 0.7723728415057459,
+   "evolve_cost_saving": 0.45483287652460036,
    "ood_success_base": 1.0,
    "ood_success": 1.0,
    "ood_success_change": 0.0,
-   "ood_token_saving": 0.3990903989858715,
-   "ood_cost_saving": 0.22623971623499373
+   "ood_token_saving": 0.5463911060156919,
+   "ood_cost_saving": 0.1845100852332442
   }
  ],
  "summary": {
@@ -429,15 +417,15 @@
     "n": 5
    },
    "evolve_token_saving": {
-    "mean": 0.9264070280286459,
-    "lo": 0.9219046942005807,
-    "hi": 0.9304156261241685,
+    "mean": 0.9265501516483052,
+    "lo": 0.9220418952703214,
+    "hi": 0.930559651121259,
     "n": 5
    },
    "evolve_cost_saving": {
-    "mean": 0.7293092722836633,
-    "lo": 0.717134359863223,
-    "hi": 0.7386009734907676,
+    "mean": 0.7295167982857915,
+    "lo": 0.7173340195935831,
+    "hi": 0.738812307749101,
     "n": 5
    },
    "ood_success_change": {
@@ -447,23 +435,23 @@
     "n": 5
    },
    "ood_token_saving": {
-    "mean": 0.8051039065673911,
-    "lo": 0.7934943985448596,
-    "hi": 0.8182612977809038,
+    "mean": 0.8054698028895089,
+    "lo": 0.7938710116803283,
+    "hi": 0.8186300401950646,
     "n": 5
    },
    "ood_cost_saving": {
-    "mean": 0.5370739199536176,
-    "lo": 0.5158142302542364,
-    "hi": 0.5615296391725403,
+    "mean": 0.5374896356065302,
+    "lo": 0.5162385586638802,
+    "hi": 0.5619502058109495,
     "n": 5
    }
   },
   "dual_gate": {
    "do_less_admitted": {
-    "mean": 1.0,
-    "lo": 1.0,
-    "hi": 1.0,
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
     "n": 5
    },
    "general_admitted": {
@@ -473,21 +461,21 @@
     "n": 5
    },
    "evolve_success_change": {
-    "mean": -0.0728472222222222,
-    "lo": -0.11541666666666665,
-    "hi": -0.030000000000000027,
+    "mean": -0.03757936507936503,
+    "lo": -0.06285714285714283,
+    "hi": -0.012278769841270108,
     "n": 5
    },
    "evolve_token_saving": {
-    "mean": 0.7985545607628711,
-    "lo": 0.7866613292697953,
-    "hi": 0.8096641996436048,
+    "mean": 0.7207458900825425,
+    "lo": 0.6835152446556002,
+    "hi": 0.7701679581954308,
     "n": 5
    },
    "evolve_cost_saving": {
-    "mean": 0.4875036453854612,
-    "lo": 0.4683215636851855,
-    "hi": 0.508425173289511,
+    "mean": 0.33310328123060784,
+    "lo": 0.268845157419017,
+    "hi": 0.43100856251252545,
     "n": 5
    },
    "ood_success_change": {
@@ -497,74 +485,74 @@
     "n": 5
    },
    "ood_token_saving": {
-    "mean": 0.6102138568036102,
-    "lo": 0.5862071909596273,
-    "hi": 0.6342264414416721,
+    "mean": 0.6134569382937272,
+    "lo": 0.5899878415977835,
+    "hi": 0.6369260349896708,
     "n": 5
    },
    "ood_cost_saving": {
-    "mean": 0.28680409582343436,
-    "lo": 0.25871148992732046,
-    "hi": 0.31293620333720573,
+    "mean": 0.28766499006877766,
+    "lo": 0.25961589997988976,
+    "hi": 0.31367911410668115,
     "n": 5
    }
   },
   "dual_gate+composition_check": {
    "do_less_admitted": {
-    "mean": 0.8,
-    "lo": 0.4,
-    "hi": 1.0,
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
     "n": 5
    },
    "general_admitted": {
-    "mean": 3.2,
-    "lo": 2.6,
+    "mean": 3.4,
+    "lo": 3.0,
     "hi": 3.8,
     "n": 5
    },
    "evolve_success_change": {
-    "mean": -0.0024305555555555356,
-    "lo": -0.005208333333333259,
+    "mean": 0.0,
+    "lo": 0.0,
     "hi": 0.0,
     "n": 5
    },
    "evolve_token_saving": {
-    "mean": 0.7250283994657271,
-    "lo": 0.6841508948735455,
-    "hi": 0.7741568398220972,
+    "mean": 0.7665975386267435,
+    "lo": 0.7275016331118782,
+    "hi": 0.7990309477812381,
     "n": 5
    },
    "evolve_cost_saving": {
-    "mean": 0.48032183995946837,
-    "lo": 0.40648145117322637,
-    "hi": 0.5234220365216057,
+    "mean": 0.44317759664914097,
+    "lo": 0.36311616100035554,
+    "hi": 0.4968291087897472,
     "n": 5
    },
    "ood_success_change": {
-    "mean": -0.00714285714285714,
-    "lo": -0.02142857142857142,
+    "mean": -0.0125,
+    "lo": -0.0375,
     "hi": 0.0,
     "n": 5
    },
    "ood_token_saving": {
-    "mean": 0.5213721112856701,
-    "lo": 0.4431422137859048,
-    "hi": 0.5997201761212947,
+    "mean": 0.6029699321386561,
+    "lo": 0.5736645409604432,
+    "hi": 0.6300021511205567,
     "n": 5
    },
    "ood_cost_saving": {
-    "mean": 0.30116547871745747,
-    "lo": 0.25684011643902976,
-    "hi": 0.33573362665507,
+    "mean": 0.28066995718334875,
+    "lo": 0.22226511727485115,
+    "hi": 0.33062741188678535,
     "n": 5
    }
   }
  },
  "paired": {
   "evolve_success_change": {
-   "mean_diff": -0.43661706349206353,
-   "lo": -0.4763293650793652,
-   "hi": -0.39399801587301597,
+   "mean_diff": -0.47188492063492066,
+   "lo": -0.5109722222222224,
+   "hi": -0.4306349206349206,
    "n": 5,
    "p_better": 0.0
   },
@@ -576,6 +564,6 @@
    "p_better": 0.0
   }
  },
- "verdict": "NOT REPRODUCED: efficiency-only admits 2.0 do-less shortcuts (success change -0.509 [-0.543, -0.467] train, -0.461 [-0.507, -0.420] held-out); the dual gate admits 1.0 (success change -0.073 [-0.115, -0.030] train, -0.002 [-0.005, 0.000] held-out) while keeping 4.0 general mechanisms. With the (inferred) composition re-check: 0.8 do-less kept, success change -0.002 [-0.005, 0.000] train / -0.007 [-0.021, 0.000] held-out, tokens -73% (floor holds for the stack)",
- "generated_at": "2026-09-25 06:42:14"
+ "verdict": "NOT REPRODUCED: efficiency-only admits 2.0 do-less shortcuts (success change -0.509 [-0.543, -0.467] train, -0.461 [-0.507, -0.420] held-out); the dual gate admits 0.0 (success change -0.038 [-0.063, -0.012] train, -0.002 [-0.005, 0.000] held-out) while keeping 4.0 general mechanisms. With the (inferred) composition re-check: 0.0 do-less kept, success change 0.000 [0.000, 0.000] train / -0.013 [-0.037, 0.000] held-out, tokens -77% (floor holds for the stack)",
+ "generated_at": "2026-09-25 18:41:14"
 }

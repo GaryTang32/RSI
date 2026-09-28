@@ -16,7 +16,18 @@ hosted generically:
   session log), ``store`` (the session's private object store, readable by the
   bash tool under ``/.solpi/``);
 * ``meter`` - a :class:`~rsi.solpi.meter.TokenMeter` billing every provider request
-  with a simulated prefix cache.
+  with a simulated prefix cache;
+* ``context_usage()`` - Pi's ``getContextUsage().tokens``: the provider-reported size of the
+  last reply produced since the latest compaction (its request's prompt tokens + its output
+  tokens, recorded as ``details["usage_tokens"]``) plus the estimated tokens of every message
+  after it (the reply's tool results, hidden messages); ``None`` when no reply exists since
+  the latest compaction.
+
+Each provider request projects the context exactly once (``context`` handlers have
+side effects, e.g. ObservationPack counts sends). Pi-style auto-compaction runs *before*
+that projection when ``context_usage()`` (or, if unknown, the estimate of the unprojected
+messages) exceeds ``context_window - auto_compact_reserve`` - strictly, like Pi's
+``shouldCompact`` (``contextTokens > contextWindow - reserveTokens``).
 
 The agent itself is a *backend* with ``act(messages, tools, runtime) -> Message``
 (an assistant message with text and tool calls): the deterministic
@@ -215,6 +226,11 @@ class AgentRuntime:
     def abort(self) -> None:
         self._abort = True
 
+    @property
+    def aborted(self) -> bool:
+        """``context.signal.aborted``: an abort was requested during the current turn."""
+        return self._abort
+
     def send_hidden(self, text: str, trigger_turn: bool = True) -> None:
         self._pending.append(Message("user", text, hidden=True, details={"hidden": True, "trigger": trigger_turn}))
 
@@ -250,6 +266,22 @@ class AgentRuntime:
         msgs = self.last_context if msgs is None else msgs
         return int(sum(m.tokens() for m in msgs))
 
+    def context_usage(self) -> Optional[int]:
+        """Pi 0.85 ``AgentSession.getContextUsage().tokens`` (``estimateContextTokens``): the last valid
+        reply's usage (prompt + output tokens of its request) + the estimated tokens of the messages after
+        it. Replies from before the latest compaction are stale and ignored; with none left it is ``None``
+        (Pi: "unknown until the next LLM response")."""
+        for i in range(len(self.history) - 1, -1, -1):
+            m = self.history[i]
+            if m.role != "assistant":
+                continue
+            u = m.details.get("usage_tokens")
+            if (not isinstance(u, int) or u <= 0 or m.details.get("usage_compactions") != self.compactions
+                    or m.details.get("stop_reason") in ("aborted", "error")):
+                continue
+            return int(u + sum(x.tokens() for x in self.history[i + 1:]))
+        return None
+
     def emit(self, event: str, *args: Any) -> list[Any]:
         outs = []
         for h in list(self.handlers[event]):
@@ -257,6 +289,17 @@ class AgentRuntime:
         return outs
 
     # ------------------------------------------------------------ compaction
+    def should_auto_compact(self) -> bool:
+        """Pi ``shouldCompact(estimateContextTokens(messages).tokens, window, settings)`` before the next
+        response, on the stored (unprojected) messages: ``context_usage()`` (or, when unknown, the estimate of
+        every message) strictly greater than ``context_window - auto_compact_reserve``."""
+        if not self.auto_compact:
+            return False
+        est = self.context_usage()
+        if est is None:
+            est = self.context_tokens([self.system_message()] + list(self.history))
+        return est > self.context_window - self.auto_compact_reserve and self.compactable()
+
     def cut_index(self) -> int:
         """Index of the first kept history message (Pi ``findCutPoint``): keep at least
         ``keep_recent_tokens`` of recent history, cut at an assistant-message boundary."""
@@ -295,13 +338,11 @@ class AgentRuntime:
         self.history.append(Message("user", task))
         status, final, error = "max_turns", "", None
         while self.turns < self.max_turns:
-            msgs = self.project()
-            ctx = self.context_tokens(msgs)
-            if self.auto_compact and ctx >= self.context_window - self.auto_compact_reserve and self.compactable():
+            if self.should_auto_compact():
                 self.compact("")
                 self.auto_compactions += 1
-                msgs = self.project()
-                ctx = self.context_tokens(msgs)
+            msgs = self.project()               # exactly one projection per provider request
+            ctx = self.context_tokens(msgs)
             if ctx > self.context_window:
                 return RunResult("context_overflow", self.turns, compactions=self.compactions, overflow=True)
             self.last_context, self.last_context_tokens = msgs, ctx
@@ -313,6 +354,9 @@ class AgentRuntime:
             except Exception as e:  # noqa: BLE001
                 return RunResult("error", self.turns, compactions=self.compactions, error=f"{type(e).__name__}: {e}")
             self.meter.add_output(reply.tokens(), role="main")
+            # provider-reported usage of this reply (prompt + output), as Pi stores it on the assistant message
+            reply.details = {**reply.details, "usage_tokens": int(ctx + reply.tokens()),
+                             "usage_compactions": self.compactions}
             self.history.append(reply)
             self.turns += 1
             if not reply.tool_calls:

@@ -187,8 +187,8 @@ All gate arithmetic, rollout targets, decisions, firewall and no-sealed-eval che
 | A4 k = 2 per iteration (paper §4.1; skill says 3) | round_start `k = 2` | faithful (documented choice) |
 | A3.2 interface validation before evaluation | gate events; AgentQA smoke *runs one model call* (release: import prints OK within 30 s), timeout raised to 240 s live | documented deviation |
 | A3.2 evaluate on the search split only | every eval event: split `evolve`, units ⊂ evolve | faithful |
-| A4 Pareto (score up, context down), strict dominance, exact ties kept; `_best` = highest-score Pareto point | recomputed every iteration (seq 14, 25, 35, 46, 57, 68) | faithful formula; **tie order differs**: name vs the release's `rglob` order. Seen live: `mh_agentqa_live` it 2, where an exact copy became `_best` |
-| A4 context cost = mean of non-zero per-unit context | recomputed from per-task records | faithful except the release's `int()` truncation (cosmetic) |
+| A4 Pareto (score up, context down), strict dominance, exact ties kept; `_best` = highest-score Pareto point | recomputed every iteration (seq 14, 25, 35, 46, 57, 68) | faithful formula; tie order was by name (seen live: `mh_agentqa_live` it 2, where an exact copy became `_best`); **fixed in stage C**: registration order, like the release's list order (register #10) |
+| A4 context cost = mean of non-zero per-unit context | recomputed from per-task records | faithful except the release's `int()` truncation (cosmetic). Stage C: per query the context now sums ALL model calls (the release counts only the last call, which a tiny final call can game: claim audit N2); the release value is kept as `context_chars_last_call` (documented deviation) |
 | A4 log both deltas (release post-iteration quirk + pre-iteration) | decision `delta_logged_release`, `delta_vs_pre_best_pts`, recomputed | faithful |
 | A3.2 finalize once on baselines ∪ Pareto ∪ per-unit best; `results/` never visible | seq 71; no `results/` path in any view | faithful |
 | A1 / A5 proposer reads code, scores and raw traces itself (grep/cat) | Mock: whole view. Live: `RewriteProposer`, a renderer with a 60k-char budget; traces rendered 28/30 and 20/50 (r1), 20/30 and **10/50** (r2) | **documented deviation**; `AgentProposer` (the paper's coding agent) never run live, so **unverifiable** |
@@ -255,21 +255,24 @@ All gate arithmetic, rollout targets, decisions, firewall and no-sealed-eval che
 | 7 | RUNS.md oracle numbers and the r2 L2.1 verdict | inconsistent-fixed (doc corrected) | trace seq 4; §2.5 |
 | 8 | driver docstring said "keep nondominated survivors", but the code composes all survivors | inconsistent-fixed (docstring) | `driver.py` |
 | 9 | impl-doc fix table broken by a paragraph | inconsistent-fixed | `metaharness-solpi-impl.md` §9 |
-| 10 | Pareto / `_best` exact-tie order by name (the release's order is filesystem `rglob` order); `per_unit_best` ties go the other way | inconsistent-open (minor) | `mh_agentqa_live` it 2 incumbent changed on an exact tie |
-| 11 | RewriteProposer renders the history under a budget instead of letting the proposer choose; `AgentProposer` never run live | documented-deviation / unverifiable | traces 10/50 rendered in r2 it 3 |
+| 10 | Pareto / `_best` exact-tie order by name (the release's order is filesystem `rglob` order); `per_unit_best` ties go the other way | **inconsistent-fixed (stage C, claim-audit fixes)**: exact ties keep registration order in both (`frontier.py`: stable sort / first-wins `max`, as the release's `sorted` and `max` keep list order), so an exact copy never displaces the incumbent | `mh_agentqa_live` it 2 incumbent changed on an exact tie; `test_exact_ties_keep_registration_order_on_the_frontier_and_per_unit`, `test_an_exact_copy_never_displaces_the_incumbent` (`tests/test_metaharness_fixes.py`) |
+| 11 | RewriteProposer renders the history under a budget instead of letting the proposer choose; `AgentProposer` never run live | documented-deviation; stage C: the renderer now splits its budget by file kind (the paper's 41/40/6/13 reading mix) so raw traces are always rendered (MemoClassify: 0/42 -> 4-6 trace files), and `AgentProposer` ran live once with haiku (`results/metaharness-solpi/live_smoke_agent.json`) | traces 10/50 rendered in r2 it 3; `test_rendered_full_history_includes_trace_excerpts` |
 | 12 | Interface smoke calls the model (release: import check) | documented-deviation | gate events |
 | 13 | no leakage / overfitting guard in the MH loop | faithful (paper) | r2 it 2 docstring, it 3 template regex |
 | 14 | MemoClassify online inner loop (paper) vs offline (release) | documented-deviation | impl doc §5 |
 | 15 | SoL-Pi gate failure always routes to 01 (never 04 fix) | documented-deviation | route-back rule, 19/19 |
-| 16 | "Nondominated" retention only within a lineage and only with `sweep = True`; first passing variant frozen otherwise | documented-deviation (questionable consequence: C23 aggressive variant) | seq 120 |
-| 17 | ∃-efficiency rule admits a cost increase (C23 +5.4% cost) | faithful to the stated gate; at odds with the "cost per unit score" objective | seq 120 |
+| 16 | "Nondominated" retention only within a lineage and only with `sweep = True`; first passing variant frozen otherwise | **inconsistent-fixed (stage C, SoL-Pi claims audit F21)**: `Config.sweep=True` is the default; a lineage evaluates its variants after a pass and freezes the nondominated one with the best η. Across lineages survivors are composed (documented reading). In the offline re-run C23 evaluated all 4 variants and froze the same `e0_s1` (the best η: every variant raises cost, see #17) | seq 120; §6c; `test_lineage_sweeps_and_freezes_the_nondominated_best_eta_variant` |
+| 17 | ∃-efficiency rule admits a cost increase (C23 +5.4% cost) | faithful to the stated gate; at odds with the "cost per unit score" objective. Stage C: all four ObservationPack variants cut tokens > 2% and raise cost 5.4–9.5%, so the sweep can only pick the least-bad one; the cause is the simulated cache economics (claims audit Q13: replayed outputs ≤ 5.9% of the bill, each swap re-writes the prefix at 12.5×) | seq 120; `s2_observation_pack.json` `bill_decomposition` |
 | 18 | composed stack not re-gated; costs more than EPR alone | faithful (blog warns); `validate_composition` inferred option off | subset table |
 | 19 | tolerances 2% / 2% and held-out pass criterion | unverifiable (sources publish none) | spec B4.1 |
 | 20 | EPR × OP recall cascade under MockAgent | unverifiable for real agents (simulation behaviour; port faithful to `observation.ts`) | 35 -> 74 steps example |
 | 21 | Live capability verdicts on free-form recall mechanisms | unverifiable (MockAgent never uses such tools) | r2 L1.0 |
-| 22 | survival rate, breadth-vs-depth, scale (10 ideas / 5 families vs 152 / 535) | unverifiable | spec B8.7 |
+| 22 | survival rate, breadth-vs-depth, scale (10 ideas / 5 families vs 152 / 535) | unverifiable. Stage C: the pool has 12 ideas over all six proposal families (family M added) and the oracle filters (top 10 of 12); scale still toy | spec B8.7 |
 | 23 | trace per-eval `usd` counts cached trials at their original cost | documented (reporting nuance, not spend) | §2.2 |
-| 24 | a forked smoke killed on timeout still loses its usage | inconsistent-open (minor) | `validate.py` |
+| 24 | a forked smoke killed on timeout still loses its usage | **inconsistent-fixed (stage C)**: the child streams every metered usage to the parent as it happens, so completed calls survive the kill; a call still in flight is named in the timeout message (its usage is unknowable) | `validate.py`; `test_forked_smoke_killed_on_timeout_still_reports_completed_calls` |
+| 25 | SoL-Pi capability floor admitted a do-less shortcut: P20 at 24 turns (screen score 0.984 inside the 2% floor, but 22/24 tasks finished; §2.4 graded it "correct per rule") | **inconsistent-fixed (stage C, SoL-Pi claims audit F20)**: the predeclared floor has two capability metrics, the mean score AND the fully-solved rate (2% each); the score-only floor stays available as an explicit option. Recorded runs re-gated at $0 from their raw trial scores: only the offline P20.2 decision changes (accept → reject); live r1–r4 are unchanged. The offline re-run rejects P20 at every length | §6c; `test_default_gate_rejects_the_lenient_turn_cap`, `test_turn_cap_lineage_is_abandoned_under_the_default_floor` |
+| 26 | SoL-Pi runtime-mechanism fidelity vs the release (claims audit §3 items 1–11: plan snapshot / advice / parsing, EPR `source_lines` and UTF-16 lengths, excerpt splitter, `obs_recall` offsets, OCC `W` vs Pi `getContextUsage`, Action Fusion text / paths / yield, double projection, auto-compaction threshold) and the EPR archive-error path | **inconsistent-fixed (stage C, F1–F12, F16–F19)** | `docs/claims/solpi.md` §6; `tests/test_solpi_fixes.py` |
+| 27 | SoL-Pi idea pool lacked family M and the oracle never filtered (pool = `n_lineages`); P20's oracle statistic was the system-prompt share | **inconsistent-fixed (stage C, F14)** | offline re-run trace seq 4: R5 and M5 get no rollouts |
 
 ## 5. Fixes and re-runs (stage B)
 
@@ -300,12 +303,60 @@ I did not re-run the live Meta-Harness runs. Fix 17 changes only metering, and t
 
 ## 6. Remaining open issues
 
-1. **Exact-tie tie-break (register #10).** Recommend preferring the earlier-registered system (store `order`) so that an exact copy never displaces the incumbent. Not changed, because it would alter M1–M5 frontier orderings.
-2. **Rendered history.** The MH live evidence uses the renderer (budget-limited, 10/50 traces at iteration 3). The paper's claim that the proposer "chooses what to read" needs an `AgentProposer` live run, which is more expensive.
+1. **Exact-tie tie-break (register #10).** Fixed in stage C (claim-audit fixes): exact ties keep registration order on the frontier and per unit. M1–M6 were re-run with it.
+2. **Rendered history.** The MH live evidence uses the renderer (budget-limited, 10/50 traces at iteration 3). Stage C: the renderer now reserves a trace share (it had shown 0 of 42 MemoClassify traces), and one small live `AgentProposer` run (haiku, 2 iterations) records the files the agent opened itself; an Opus-scale run is still needed for the paper's claim.
 3. **No overfitting guard in the paper loop.** Live r2 shows template-level and comment-level leakage reaching the frontier. A validation config could enable `leakage_screen` plus a regex audit of added lines, as the pilot does.
-4. **SoL-Pi composition.** The shipped composition is worse than a subset. Recommend `sweep = True` for grid ideas (keep the nondominated variant) and `validate_composition = True`, or at least report the subset table.
+4. **SoL-Pi composition.** The shipped composition is worse than a subset. Stage C made `sweep = True` the default (keep the nondominated best-η variant); the composition is unchanged because every ObservationPack variant raises cost (#17). `validate_composition = True` remains an inferred option; the subset table stands.
 5. **Mock backend limits.** SoL-Pi live lineages cannot validate recall-based free-form mechanisms with the MockAgent. An `LLMAgent` backend run is needed.
-6. **Forked smoke on timeout** still loses its spend (register #24).
+6. **Forked smoke on timeout**: fixed in stage C (register #24); completed calls are streamed to the parent's meters before the kill.
+
+## 6b. Stage C: claim-audit fixes (2026-09-25)
+
+The claim-by-claim paper audit (`docs/claims/metaharness.md`) found eleven further Meta-Harness mismatches (N1-N11). All
+are resolved there (see its "Fix log"); the register items above that they touch are #10, #11 and #24. In short:
+- context cost sums every model call of a query (N2); full traces with every prompt, raw reply and state checkpoint (N7);
+- the RewriteProposer renderer always includes raw traces (N3); the mock's read accounting separates what a proposal was
+  based on from what it only parsed (N4);
+- skill Step 0 post-eval reports (proposers can write `reports/`), Step 2 prototyping (AgentProposer: Bash restricted to
+  python3 + read-only commands, transcript-based `files_read`) and axis rotation (N8); the objective / trade-off is stated
+  to the proposer (Q14);
+- optional `Config.reeval_incumbent` noise band, off by default (N5); unknown base systems recorded, not silent (N10);
+- fewer-shot comparators for context claims and an explicit, documented budget prior in the mock (N9); M2 reports both
+  "evaluations to match" medians (N11); the stale live-smoke numbers were regenerated (N1: $0 cache replay + a fresh live
+  run).
+Regression tests: `tests/test_metaharness_fixes.py` (19 cases; every one fails on the pre-fix code). M1-M6 re-run at full
+settings. The offline and live validation runs above were not re-run: they document the pre-fix code. A re-run would
+not reproduce them step for step, because the mock now diagnoses full traces and the live proposer sees a different
+rendered history; the audit's recomputations of those runs stay valid for the code that produced them.
+
+## 6c. Stage C: SoL-Pi claim-audit fixes (2026-09-25)
+
+The claim-by-claim SoL-Pi audit (`docs/claims/solpi.md`) found 13 fidelity mismatches against the NVlabs/SoL-Pi release and Pi 0.85.1, plus protocol gaps behind several PARTIAL / NOT REPRODUCED rows. All are resolved there (§6 "Fix log", one row per finding); the register rows they touch are #16, #17, #22 and the new #25–#27. The SoL-Pi validation runs were then redone with `experiments/metaharness-solpi/sp_validate.py`, which reuses this directory's helpers and the stage-A audit (`audit_sp`). Its only change to the audit is a sweep-aware `variant_walk_rule`, because lineages now keep walking their grid after a pass.
+
+**`solpi_agentworld_offline`, re-run from scratch (stage C code, $0, 15 s).** Same domain and configuration as §2.4.
+- Audit: 10/10 check types pass (18/18 gates recomputed, 5/5 firewall verdicts, oracle selection, sweep-aware variant walk 18/18, composition = union).
+- Oracle: 12 ideas over C, P, T, D, R, M; the top 10 get rollouts. R5 (0.002) and M5 (0.05) get none. P20's oracle is now `late_turn_tokens` (0.680, ranked first) instead of the system-prompt share (0.002).
+- Gate: P20 is rejected at 10, 16 and 24 turns (24 turns: score 0.984, solved 0.917, below the solved-rate floor). T3 and T7 are rejected at every variant. M12 is rejected for "no efficiency gain" (cost −0.1%). C23 evaluates all four variants: all pass on tokens and all raise cost 5.4–9.5%, so the sweep freezes the best-η one (`e0_s1`, as before).
+- Frozen: D1, T11, C6, P8, C23 (P20 no longer). The firewall passes D1, P8 and C23 and rejects T11 and C6, as before.
+- Composition = {AF, EPR, OP e0_s1}, the same as stage B. Screen tokens −49.0%, cost −8.9%, S 1.0, solved 1.0. `transfer_report`: holdout S 0.988 (tokens 217,299 → 66,598), ood S 1.0.
+- §2.4 above documents the stage-B run of the same configuration; the stage-C run replaced its files.
+
+**$0 re-gating of the recorded runs.** Every screen gate of the stage-A/B runs was recomputed under the two-metric floor from the raw per-trial scores in the traces (`scratchpad/claims_solpi/regate_runs.json`). Only the stage-B offline P20.2 changes (accept → reject); live r1–r4 have no changed decision.
+
+**`solpi_agentworld_live_r5` (haiku, FRESH cache `.cache_solpi_agentworld_live_r5`; r4's configuration under the stage-C defaults; 11.7 min; $0.367 = loop meter = cache ground truth, 12 calls).** Audit: every check passes (gates 4/4, firewall 1/1, no sealed evaluation in lineages 8/8).
+
+| lineage | iteration | what happened | verdict |
+|---|---|---|---|
+| L2 | 0 | haiku wrote `condense_failing_logs`. The reviewer rejected it on recallability; the objection went back to implementation (fix 16); the repair passed review. Screen S 1.0 / solved 1.0; tokens −66.7%, cost −45.8% → passes | correct |
+| L2 | 1 (sweep, new in stage C) | a second haiku variant also passes (tokens −66.6%, cost −45.7%); the first dominates it, so the lineage freezes iteration 0 | correct (nondominated retention live) |
+| L1 | 0 | review → repair → pass; the mechanism *adds* traffic (tokens +67%) → no efficiency gain | correct |
+| L1 | 1 | a silent no-op (saving exactly 0) → no efficiency gain; max_iters | correct |
+| firewall | L2 | held-out S 1.0 vs 1.0; tokens −38.5%, cost −24.5% → pass | correct |
+| monitor | composed | holdout S 1.0 (tokens 200,660 → 123,500); ood S 1.0 (197,133 → 108,296) | trace only |
+
+The outcome matches r4: a haiku-written EPR-like condenser survives end to end with the MockAgent backend (still unverifiable for real agents). The sweep added one live iteration per passing lineage.
+
+**The live EPR smoke** (`results/metaharness-solpi/live_smoke.json` `parts.epr`) was re-parsed at $0 with the fixed `LLMReducer`: 4/4 cache hits, 0 misses, and an identical outcome (4/4 receipts accepted, 0 non-verbatim quotes, 91,825 → 6,028 B). Its prompts are unchanged because the bench builds `source_lines` as `count("\n") + 1`.
 
 ## 7. Spend
 
@@ -314,6 +365,9 @@ I did not re-run the live Meta-Harness runs. Fix 17 changes only metering, and t
 | stage A live runs (from their fresh caches' entries) | 2.163 |
 | stage B: `solpi_agentworld_live_r4` (loop meter = cache ground truth) | **0.276** |
 | stage B offline re-runs, subset measurements, holdout re-evaluation, audit | 0 |
-| total for this method's validation | **2.44** (cap ~$3) |
+| stage C (SoL-Pi claim-audit fixes): `solpi_agentworld_live_r5` (loop meter = cache ground truth) | **0.367** |
+| stage C offline re-runs, re-gating, EPR cache re-parse | 0 |
+| total for this method's validation, stages A–B | **2.44** (cap ~$3) |
+| SoL-Pi stage C increment (the Meta-Harness stage-C spend is reported in §6b / `docs/claims/metaharness.md`) | **0.367** |
 
 Stage-B wall time: the live run took 8.8 min. The offline re-runs and the audit took about 2 min.

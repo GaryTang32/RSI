@@ -137,13 +137,20 @@ def test_occ_write_tokens_use_max_of_reported_and_estimated():
     occ = OnlineContextCompact()
 
     class RT:
+        # "reported" is Pi's getContextUsage().tokens (AgentRuntime.context_usage: last reply's usage + the
+        # estimates of the messages after it) - not the size of the last request (claims audit §3 item 8)
         system_prompt = "x" * 400
-        last_context_tokens = 5000
+        reported = 5000
+
+        def context_usage(self):
+            return self.reported
 
     occ.observed = [Message("system", "s" * 4000), Message("user", "u" * 400)]
     est = 100 + Message("user", "u" * 400).tokens()
     assert occ.context_tokens(RT()) == 5000
-    RT.last_context_tokens = 10
+    RT.reported = 10
+    assert occ.context_tokens(RT()) == est
+    RT.reported = None                  # unknown usage (e.g. right after a compaction): the estimate alone
     assert occ.context_tokens(RT()) == est
 
 

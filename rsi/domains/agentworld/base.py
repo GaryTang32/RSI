@@ -26,6 +26,12 @@ class Subtask:
 class Env:
     family = "env"
     style = "per_subtask"            # per_subtask | batch
+    #: the virtual workspace is the repository at ``cwd``; its files are keyed by cwd-relative paths. Like Pi's
+    #: built-in tools (``resolveToCwd``: unicode spaces, ``@``, ``file://``, ``~`` -> ``home``), the file tools
+    #: resolve the agent's path first, so Action Fusion's queue / hash guard and the mutation address one file.
+    cwd = "/repo"
+    home = "/home/agent"
+    resolves_tool_paths = True
 
     def __init__(self, task_id: str, seed: int, n_subtasks: int) -> None:
         self.task_id = task_id
@@ -36,13 +42,28 @@ class Env:
         self.log: list[str] = []
 
     # ---- workspace
+    def resolve_path(self, path: str) -> str:
+        """Workspace key of a tool path: resolved like Pi's ``resolveToCwd``; inside ``cwd`` the key is the
+        cwd-relative path (``src/a.py``, ``./src/a.py`` and ``/repo/src/a.py`` are one file), outside it the
+        absolute path (``~/x`` -> ``/home/agent/x``)."""
+        from ...solpi.fusion import resolve_tool_path
+        absolute = resolve_tool_path(path, self.cwd, self.home)
+        root = self.cwd.rstrip("/") + "/"
+        return absolute[len(root):] if absolute.startswith(root) else absolute
+
+    @staticmethod
+    def realpath(path: str) -> str:
+        """The virtual workspace has no symlinks: a resolved path is already canonical."""
+        import posixpath
+        return posixpath.normpath(path)
+
     def read_file(self, path: str) -> Optional[str]:
-        return self.files.get(path.lstrip("./") if not path.startswith("/") else path)
+        return self.files.get(self.resolve_path(path))
 
     def _read_any(self, path: str, rt=None) -> Optional[str]:
         if path.startswith(("/.solpi/", "/tmp/")):
             return (rt.store.get(path) if rt is not None else None)
-        return self.files.get(path[2:] if path.startswith("./") else path)
+        return self.files.get(self.resolve_path(path))
 
     def tool_read(self, path: str, rt=None) -> ToolResult:
         text = self._read_any(path, rt)
@@ -51,12 +72,14 @@ class Env:
         return ToolResult(text)
 
     def tool_write(self, path: str, content: str, rt=None) -> ToolResult:
-        self.files[path] = content
-        self.log.append(f"write {path}")
+        key = self.resolve_path(path)
+        self.files[key] = content
+        self.log.append(f"write {key}")
         return ToolResult(f"Successfully wrote {len(content.encode())} bytes to {path}")
 
     def tool_edit(self, path: str, old: str, new: str, rt=None) -> ToolResult:
-        text = self.files.get(path)
+        key = self.resolve_path(path)
+        text = self.files.get(key)
         if text is None:
             return ToolResult(f"ENOENT: no such file: {path}", is_error=True)
         n = text.count(old) if old else 0
@@ -66,8 +89,8 @@ class Env:
         if n > 1:
             return ToolResult(f"Found {n} occurrences of the text in {path}. The text must be unique.",
                               is_error=True)
-        self.files[path] = text.replace(old, new, 1)
-        self.log.append(f"edit {path}")
+        self.files[key] = text.replace(old, new, 1)
+        self.log.append(f"edit {key}")
         return ToolResult(f"Successfully replaced text in {path}.")
 
     def tool_bash(self, command: str, rt=None) -> ToolResult:

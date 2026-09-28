@@ -18,11 +18,24 @@ If it compacts, the run is aborted, native compaction runs with
 :data:`BOUNDARY_COMPACTION_INSTRUCTIONS` at ``agent_settled``, and the hidden
 :data:`POST_COMPACTION_PLAN_REMINDER` restarts the agent. The debt
 ``D = W * rho'`` is repaid ``A - m`` tokens per later request.
+
+``W`` (``extension.ts:contextTokens``) is ``max(getContextUsage().tokens, estimate)``,
+where the runtime's :meth:`~rsi.solpi.runtime.AgentRuntime.context_usage` follows Pi
+0.85: the last reply's reported usage (prompt + output) plus the estimated tokens of
+the messages after it - at ``turn_end`` that includes the boundary reply and its tool
+results. ``update_plan`` arguments are validated against the release's TypeBox schema
+(``tools.ts``: 1..128 steps of exactly ``{id, goal, status}`` with non-empty strings,
+optional ``progress`` of exactly ``files_changed`` (<= 128), ``verification`` and
+``decisions`` (<= 64 each) with items of <= 1,000 characters, no extra keys); the tool
+result is ``<sol-pi-plan task_status="active">{"steps":[...]}</sol-pi-plan>`` plus the
+release's three advice lines (changed goal, more than one ``in_progress``, nothing
+``in_progress`` while steps are pending).
 """
 from __future__ import annotations
 
 import json
 import math
+import unicodedata
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Optional
 
@@ -189,45 +202,146 @@ def record_correction(s: OnlineState) -> OnlineState:
 
 
 # ------------------------------------------------------------------ plan (plan.ts / tools.ts)
+PLAN_STATUSES = ("pending", "in_progress", "completed")
+PLAN_STEP_KEYS = frozenset(("id", "goal", "status"))
+PROGRESS_LIMITS = (("files_changed", 128), ("verification", 64), ("decisions", 64))
+PROGRESS_ITEM_MAX_LENGTH = 1000
+
+
+def _is_bounded_string(v: Any) -> bool:
+    """``plan.ts:isBoundedString``: a non-empty string of at most 16,384 UTF-8 bytes."""
+    return isinstance(v, str) and len(v) > 0 and len(v.encode("utf-8", "surrogatepass")) <= MAX_STRING_BYTES
+
+
 def parse_plan_steps(value: Any) -> Optional[tuple]:
+    """``plan.ts:parsePlanSteps``: every item a record with exactly the three keys ``id``, ``goal``, ``status``,
+    non-empty bounded strings, a known status, unique ids; otherwise ``None``."""
     if not isinstance(value, list) or len(value) > MAX_PLAN_STEPS:
         return None
-    out, ids = [], set()
+    out = []
     for s in value:
-        if not isinstance(s, dict):
+        if (not isinstance(s, dict) or len(s) != 3 or not _is_bounded_string(s.get("id"))
+                or not _is_bounded_string(s.get("goal")) or s.get("status") not in PLAN_STATUSES):
             return None
-        sid, goal, status = s.get("id"), s.get("goal"), s.get("status")
-        if not isinstance(sid, str) or not isinstance(goal, str) or status not in ("pending", "in_progress",
-                                                                                      "completed"):
-            return None
-        if len(sid.encode()) > MAX_STRING_BYTES or len(goal.encode()) > MAX_STRING_BYTES or sid in ids:
-            return None
-        ids.add(sid)
-        out.append({"id": sid, "goal": goal, "status": status})
+        out.append({"id": s["id"], "goal": s["goal"], "status": s["status"]})
+    if len({st["id"] for st in out}) != len(out):
+        return None
     return tuple(out)
 
 
+def js_grapheme_length(text: str) -> int:
+    """Approximate grapheme-cluster count (TypeBox 1.x checks ``minLength``/``maxLength`` in graphemes):
+    combining marks, ZWJ sequences, variation selectors, emoji modifiers, tags and regional-indicator pairs
+    extend the previous cluster; CR LF is one cluster."""
+    n, prev, joiner, ri_open = 0, "", False, False
+    for ch in text:
+        cp = ord(ch)
+        extend = (unicodedata.combining(ch) != 0 or unicodedata.category(ch) in ("Mn", "Me", "Mc")
+                  or 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF or 0x1F3FB <= cp <= 0x1F3FF
+                  or 0xE0020 <= cp <= 0xE007F or cp == 0x200D or joiner or (prev == "\r" and ch == "\n"))
+        is_ri = 0x1F1E6 <= cp <= 0x1F1FF
+        if is_ri and ri_open:
+            extend, ri_open = True, False
+        elif is_ri:
+            ri_open = True
+        else:
+            ri_open = False
+        joiner = cp == 0x200D
+        if not extend:
+            n += 1
+        prev = ch
+    return n
+
+
+def validate_update_plan_args(args: Any) -> list[str]:
+    """The ``update_plan`` parameter schema (``tools.ts``) that Pi checks before ``execute``; returns the errors."""
+    errs: list[str] = []
+    if not isinstance(args, dict):
+        return ["  - (root): must be object"]
+    extra = sorted(set(args) - {"steps", "progress"})
+    if extra:
+        errs.append(f"  - (root): must NOT have additional properties {extra}")
+    steps = args.get("steps")
+    if not isinstance(steps, list):
+        errs.append("  - steps: must be array")
+    else:
+        if not 1 <= len(steps) <= MAX_PLAN_STEPS:
+            errs.append(f"  - steps: must have between 1 and {MAX_PLAN_STEPS} items")
+        for k, st in enumerate(steps):
+            if not isinstance(st, dict):
+                errs.append(f"  - steps/{k}: must be object")
+                continue
+            if set(st) - PLAN_STEP_KEYS:
+                errs.append(f"  - steps/{k}: must NOT have additional properties")
+            for key in ("id", "goal"):
+                v = st.get(key)
+                if not isinstance(v, str):
+                    errs.append(f"  - steps/{k}/{key}: must be string")
+                elif not 1 <= js_grapheme_length(v) <= MAX_STRING_BYTES:
+                    errs.append(f"  - steps/{k}/{key}: must have between 1 and {MAX_STRING_BYTES} characters")
+            if st.get("status") not in PLAN_STATUSES:
+                errs.append(f"  - steps/{k}/status: must be one of {list(PLAN_STATUSES)}")
+    if "progress" in args and args["progress"] is not None:
+        p = args["progress"]
+        if not isinstance(p, dict):
+            errs.append("  - progress: must be object")
+        else:
+            if set(p) - {k for k, _ in PROGRESS_LIMITS}:
+                errs.append("  - progress: must NOT have additional properties")
+            for key, lim in PROGRESS_LIMITS:
+                v = p.get(key)
+                if not isinstance(v, list):
+                    errs.append(f"  - progress/{key}: must be array")
+                    continue
+                if len(v) > lim:
+                    errs.append(f"  - progress/{key}: must NOT have more than {lim} items")
+                for j, item in enumerate(v):
+                    if not isinstance(item, str):
+                        errs.append(f"  - progress/{key}/{j}: must be string")
+                    elif js_grapheme_length(item) > PROGRESS_ITEM_MAX_LENGTH:
+                        errs.append(f"  - progress/{key}/{j}: must NOT have more than {PROGRESS_ITEM_MAX_LENGTH} "
+                                    f"characters")
+    return errs
+
+
+def _js_string(value: str) -> str:
+    """``JSON.stringify`` of a string (no ASCII escaping of non-ASCII characters)."""
+    return json.dumps(value, ensure_ascii=False)
+
+
 def analyze_plan_transition(prev, steps) -> tuple[list[dict], list[str]]:
-    before = {s["id"]: s["status"] for s in prev}
-    completed = [s for s in steps if s["status"] == "completed" and before.get(s["id"]) != "completed"]
-    advice = []
-    if sum(s["status"] == "in_progress" for s in steps) > 1:
-        advice.append("Keep at most one step in_progress.")
+    """``plan.ts:analyzePlanTransition``: newly completed steps plus the release's advice lines."""
+    before = {s["id"]: s for s in prev}
+    completed, advice = [], []
+    for st in steps:
+        prior = before.get(st["id"])
+        if (prior is None or prior["status"] != "completed") and st["status"] == "completed":
+            completed.append(st)
+        if prior is not None and prior["goal"] != st["goal"]:
+            advice.append(f"Plan step {_js_string(st['id'])} changed goal; reuse an id only for the same goal.")
+    in_progress = sum(st["status"] == "in_progress" for st in steps)
+    if in_progress > 1:
+        advice.append("Keep at most one plan step in_progress.")
+    if in_progress == 0 and any(st["status"] == "pending" for st in steps):
+        advice.append("Mark one pending plan step in_progress before starting it.")
     return completed, advice
 
 
 def format_plan_snapshot(steps) -> str:
-    return f'<sol-pi-plan task_status="active">{json.dumps(list(steps))}</sol-pi-plan>'
+    """``plan.ts:formatPlanSnapshot``: ``JSON.stringify({steps})`` (compact separators, key order kept)."""
+    body = json.dumps({"steps": [dict(st) for st in steps]}, separators=(",", ":"), ensure_ascii=False)
+    return f'<sol-pi-plan task_status="active">{body}</sol-pi-plan>'
 
 
 def _progress(args: dict, step_id: str) -> Optional[dict]:
+    """``extension.ts:progressSummary`` (the arguments were validated against the schema first)."""
     p = args.get("progress")
     step = next((s for s in args.get("steps", []) if isinstance(s, dict) and s.get("id") == step_id), None)
     if not isinstance(p, dict) or step is None:
         return None
-    return {"stepId": step_id, "goal": step.get("goal", ""), "filesChanged": list(p.get("files_changed", []))[:128],
-            "verification": list(p.get("verification", []))[:64], "decisions": list(p.get("decisions", []))[:64],
-            "nextWork": [s.get("goal", "") for s in args.get("steps", []) if s.get("status") != "completed"]}
+    return {"stepId": step["id"], "goal": step["goal"], "filesChanged": list(p["files_changed"]),
+            "verification": list(p["verification"]), "decisions": list(p["decisions"]),
+            "nextWork": [s["goal"] for s in args.get("steps", []) if s.get("status") != "completed"]}
 
 
 class OnlineContextCompact(Extension):
@@ -285,14 +399,16 @@ class OnlineContextCompact(Extension):
         return None
 
     def context_tokens(self, rt: AgentRuntime) -> int:
-        """``extension.ts:contextTokens``: ``max(provider-reported context tokens, sum of visible-message
-        estimates + ceil(bytes(system prompt) / 4))``. The runtime's size of the last provider request
-        (system message with tool schemas included) stands in for ``getContextUsage().tokens``."""
+        """``extension.ts:contextTokens``: ``max(getContextUsage().tokens, sum of the last projected (visible)
+        messages' estimates + ceil(bytes(system prompt) / 4))``; ``getContextUsage()`` is the runtime's
+        :meth:`~rsi.solpi.runtime.AgentRuntime.context_usage` (last reply's usage + estimates of the messages
+        after it, Pi 0.85 semantics); a missing or non-positive value is ignored (``validPositiveInteger``)."""
         sys_tokens = math.ceil(len(rt.system_prompt.encode()) / 4)
         visible = sum(m.tokens() for m in self.observed if m.role != "system")
         estimated = int(visible + sys_tokens)
-        reported = int(getattr(rt, "last_context_tokens", 0) or 0)
-        return max(reported, estimated) if reported > 0 else estimated
+        usage = getattr(rt, "context_usage", None)
+        reported = usage() if callable(usage) else None
+        return max(int(reported), estimated) if isinstance(reported, int) and reported > 0 else estimated
 
     def _before_request(self, msgs: list[Message], rt: AgentRuntime) -> None:
         self.state = record_provider_request(self.state, self.context_tokens(rt))
@@ -307,6 +423,11 @@ class OnlineContextCompact(Extension):
         return {"action": "continue"}
 
     def _update_plan(self, args: dict, rt: AgentRuntime, cid: str) -> ToolResult:
+        errs = validate_update_plan_args(args)
+        if errs:
+            self.stats["plan_validation_error"] += 1
+            raise ToolError('Validation failed for tool "update_plan":\n' + "\n".join(errs) +
+                            "\n\nReceived arguments:\n" + json.dumps(args, indent=2, default=str))
         steps = parse_plan_steps(args.get("steps"))
         if not steps:
             raise ToolError("Plan must contain at least one valid step")
@@ -321,14 +442,17 @@ class OnlineContextCompact(Extension):
             self.state = replace(self.state, plan=steps)
         self._save(rt)
         return ToolResult("\n".join([format_plan_snapshot(steps)] + advice),
-                          details={"boundary": bool(ids), "completed_step_ids": ids, "task_status": "active"})
+                          details={"boundary": bool(ids), "completed_step_ids": ids,
+                                   "progress_recorded": bool(ids) and args.get("progress") is not None,
+                                   "task_status": "active", "plan": [dict(st) for st in steps]})
 
     def _turn_end(self, reply: Message, results: list[Message], rt: AgentRuntime) -> None:
         boundary, self.pending_boundary = self.pending_boundary, None
         if boundary is None or self.selected is not None:
             return
         tr = next((m for m in results if m.tool_call_id == boundary), None)
-        if reply.role != "assistant" or tr is None or tr.is_error:
+        if (reply.role != "assistant" or reply.details.get("stop_reason") in ("error", "aborted")
+                or getattr(rt, "aborted", False) or tr is None or tr.is_error):
             return
         W = self.context_tokens(rt)
         F = math.ceil(len(rt.system_prompt.encode()) / 4)

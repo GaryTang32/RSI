@@ -1,0 +1,530 @@
+[
+ {
+  "round": 1,
+  "base_metrics": {
+   "agg": {
+    "score": 1.0,
+    "solved": 1.0,
+    "tokens": 545286.0,
+    "cost": 0.2721553555555556,
+    "steps": 16.11111111111111,
+    "eta": 0.2721553555555556
+   },
+   "fam": {
+    "repofix": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 1293556.0,
+     "cost": 0.5551099333333332,
+     "steps": 25.666666666666668,
+     "eta": 0.5551099333333332
+    },
+    "buildfix": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 279068.0,
+     "cost": 0.19059363333333335,
+     "steps": 15.666666666666666,
+     "eta": 0.19059363333333335
+    },
+    "logtriage": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 63234.0,
+     "cost": 0.0707625,
+     "steps": 7.0,
+     "eta": 0.0707625
+    }
+   },
+   "n": 9
+  },
+  "oracle": {
+   "L1": 0.10623988750069387,
+   "L2": 0.7195625849347146
+  },
+  "chosen": [
+   "L2",
+   "L1"
+  ],
+  "lineages": [
+   {
+    "idea": "L2",
+    "kind": "general",
+    "title": "Condense long failing command logs to the lines that carry the failure, keeping the full log recallable",
+    "frozen": true,
+    "iterations": [
+     {
+      "iteration": 0,
+      "change": "condense_failing_logs",
+      "variant": 0,
+      "ralph_errors": [],
+      "review_repairs": [
+       {
+        "objection": "Critical violation of requirement 3 (information recallability): When `event.call.id` is falsy, the code defaults to `call_id = event.call.id or \"unknown\"`. If multiple bash errors occur without IDs (or with falsy IDs), their full logs collide and overwrite each other at `/.solpi/bash_logs/unknown.txt`. The agent cannot distinguish or recall the logs of earlier calls with the same fallback ID, causing permanent information loss.; The `or \"unknown\"` pattern is defensive programming that violates ",
+        "ralph_errors": [],
+        "error": null
+       }
+      ],
+      "stage": "validation",
+      "outcome": "frozen",
+      "gate": {
+       "accept": true,
+       "reason": "accepted",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        },
+        "solved": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 181835.88888888888,
+         "saving": 0.66653116183271,
+         "improved": true
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.14752290000000007,
+         "saving": 0.4579459966942082,
+         "improved": true
+        }
+       },
+       "per_family": {},
+       "spec_digest": "50987e8499eb3b89"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "solved": 1.0,
+        "tokens": 181835.88888888888,
+        "cost": 0.14752290000000007,
+        "steps": 16.11111111111111,
+        "eta": 0.14752290000000007
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 286640.0,
+         "cost": 0.22129043333333343,
+         "steps": 25.666666666666668,
+         "eta": 0.22129043333333343
+        },
+        "buildfix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 199028.33333333334,
+         "cost": 0.15314663333333337,
+         "steps": 15.666666666666666,
+         "eta": 0.15314663333333337
+        },
+        "logtriage": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 59839.333333333336,
+         "cost": 0.06813163333333334,
+         "steps": 7.0,
+         "eta": 0.06813163333333334
+        }
+       },
+       "n": 9
+      }
+     },
+     {
+      "iteration": 1,
+      "change": "Intercept bash tool errors; condense large outputs to failure-carrying lines while storing full logs in /.solpi/ for recall",
+      "variant": 1,
+      "ralph_errors": [],
+      "stage": "validation",
+      "outcome": "frozen",
+      "gate": {
+       "accept": true,
+       "reason": "accepted",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        },
+        "solved": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 182347.44444444444,
+         "saving": 0.6655930200950613,
+         "improved": true
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.14772590000000002,
+         "saving": 0.4572000991917117,
+         "improved": true
+        }
+       },
+       "per_family": {},
+       "spec_digest": "50987e8499eb3b89"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "solved": 1.0,
+        "tokens": 182347.44444444444,
+        "cost": 0.14772590000000002,
+        "steps": 16.11111111111111,
+        "eta": 0.14772590000000002
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 288262.6666666667,
+         "cost": 0.22194080000000005,
+         "steps": 25.666666666666668,
+         "eta": 0.22194080000000005
+        },
+        "buildfix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 198949.66666666666,
+         "cost": 0.1531125,
+         "steps": 15.666666666666666,
+         "eta": 0.1531125
+        },
+        "logtriage": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 59830.0,
+         "cost": 0.06812440000000002,
+         "steps": 7.0,
+         "eta": 0.06812440000000002
+        }
+       },
+       "n": 9
+      }
+     }
+    ],
+    "n_iterations": 2
+   },
+   {
+    "idea": "L1",
+    "kind": "general",
+    "title": "Stop replaying large successful tool outputs in every later request; keep them recallable",
+    "frozen": false,
+    "iterations": [
+     {
+      "iteration": 0,
+      "change": "recallable_large_outputs",
+      "variant": 0,
+      "ralph_errors": [],
+      "review_repairs": [
+       {
+        "objection": "**Fails open contract violation**: The `on_tool_result` method lacks exception handling. If any error occurs\u2014when accessing `event.result.is_error`, `event.result.content`, storing to `rt.store`, or constructing the `ToolResult`\u2014the exception will propagate instead of gracefully returning `None`. The specification requires 'Mechanisms must fail open (on any exception keep the original behaviour)'. The entire method body must be wrapped in try/except to ensure it always returns `None` on any erro",
+        "ralph_errors": [],
+        "error": null
+       }
+      ],
+      "stage": "validation",
+      "outcome": "gate_failed",
+      "gate": {
+       "accept": false,
+       "reason": "no efficiency gain",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        },
+        "solved": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 910388.8888888889,
+         "saving": -0.6695621910133194,
+         "improved": false
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.38015081111111104,
+         "saving": -0.39681547083687696,
+         "improved": false
+        }
+       },
+       "per_family": {},
+       "spec_digest": "50987e8499eb3b89"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "solved": 1.0,
+        "tokens": 910388.8888888889,
+        "cost": 0.38015081111111104,
+        "steps": 28.22222222222222,
+        "eta": 0.38015081111111104
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 2408852.6666666665,
+         "cost": 0.8712843999999998,
+         "steps": 50.333333333333336,
+         "eta": 0.8712843999999998
+        },
+        "buildfix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 298937.6666666667,
+         "cost": 0.20934180000000002,
+         "steps": 23.666666666666668,
+         "eta": 0.20934180000000002
+        },
+        "logtriage": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 23376.333333333332,
+         "cost": 0.05982623333333333,
+         "steps": 10.666666666666666,
+         "eta": 0.05982623333333333
+        }
+       },
+       "n": 9
+      }
+     },
+     {
+      "iteration": 1,
+      "change": "Cache large tool outputs and deduplicate them in context to reduce repeated large outputs and context growth.",
+      "variant": 1,
+      "ralph_errors": [],
+      "stage": "validation",
+      "outcome": "gate_failed",
+      "gate": {
+       "accept": false,
+       "reason": "no efficiency gain",
+       "capability": {
+        "score": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        },
+        "solved": {
+         "base": 1.0,
+         "cand": 1.0,
+         "tol": 0.02,
+         "pass": true
+        }
+       },
+       "efficiency": {
+        "tokens": {
+         "base": 545286.0,
+         "cand": 545286.0,
+         "saving": 0.0,
+         "improved": false
+        },
+        "cost": {
+         "base": 0.2721553555555556,
+         "cand": 0.2721553555555556,
+         "saving": 0.0,
+         "improved": false
+        }
+       },
+       "per_family": {},
+       "spec_digest": "50987e8499eb3b89"
+      },
+      "metrics": {
+       "agg": {
+        "score": 1.0,
+        "solved": 1.0,
+        "tokens": 545286.0,
+        "cost": 0.2721553555555556,
+        "steps": 16.11111111111111,
+        "eta": 0.2721553555555556
+       },
+       "fam": {
+        "repofix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 1293556.0,
+         "cost": 0.5551099333333332,
+         "steps": 25.666666666666668,
+         "eta": 0.5551099333333332
+        },
+        "buildfix": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 279068.0,
+         "cost": 0.19059363333333335,
+         "steps": 15.666666666666666,
+         "eta": 0.19059363333333335
+        },
+        "logtriage": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 63234.0,
+         "cost": 0.0707625,
+         "steps": 7.0,
+         "eta": 0.0707625
+        }
+       },
+       "n": 9
+      }
+     }
+    ],
+    "n_iterations": 2
+   }
+  ],
+  "frozen": [
+   "L2:condense_failing_logs"
+  ],
+  "frozen_ideas": [
+   "L2"
+  ],
+  "heldout_passed": {
+   "L2:condense_failing_logs": true
+  },
+  "survivors": [
+   "L2:condense_failing_logs"
+  ],
+  "survivor_ideas": [
+   "L2"
+  ],
+  "dropped_by_composition_check": [],
+  "composed_metrics": {
+   "agg": {
+    "score": 1.0,
+    "solved": 1.0,
+    "tokens": 181835.88888888888,
+    "cost": 0.14752290000000007,
+    "steps": 16.11111111111111,
+    "eta": 0.14752290000000007
+   },
+   "fam": {
+    "repofix": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 286640.0,
+     "cost": 0.22129043333333343,
+     "steps": 25.666666666666668,
+     "eta": 0.22129043333333343
+    },
+    "buildfix": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 199028.33333333334,
+     "cost": 0.15314663333333337,
+     "steps": 15.666666666666666,
+     "eta": 0.15314663333333337
+    },
+    "logtriage": {
+     "score": 1.0,
+     "solved": 1.0,
+     "tokens": 59839.333333333336,
+     "cost": 0.06813163333333334,
+     "steps": 7.0,
+     "eta": 0.06813163333333334
+    }
+   },
+   "n": 9
+  },
+  "conflicts": [],
+  "gate_digest": "50987e8499eb3b89",
+  "heldout": [
+   {
+    "candidate": "L2:condense_failing_logs",
+    "artifact_id": "6b492ecae00cc9b1e4357657a0e81109aebae5c024bd64491efd2e9008b9c622",
+    "passed": true,
+    "reason": "accepted",
+    "metrics": {
+     "agg": {
+      "score": 1.0,
+      "solved": 1.0,
+      "tokens": 123500.5,
+      "cost": 0.11095463333333332,
+      "steps": 9.5,
+      "eta": 0.11095463333333332
+     },
+     "fam": {
+      "configfix": {
+       "score": 1.0,
+       "solved": 1.0,
+       "tokens": 197416.66666666666,
+       "cost": 0.15704176666666667,
+       "steps": 15.0,
+       "eta": 0.15704176666666667
+      },
+      "datalookup": {
+       "score": 1.0,
+       "solved": 1.0,
+       "tokens": 49584.333333333336,
+       "cost": 0.06486750000000001,
+       "steps": 4.0,
+       "eta": 0.06486750000000001
+      }
+     },
+     "n": 6
+    },
+    "base_metrics": {
+     "agg": {
+      "score": 1.0,
+      "solved": 1.0,
+      "tokens": 200660.16666666666,
+      "cost": 0.14698076666666668,
+      "steps": 9.5,
+      "eta": 0.14698076666666668
+     },
+     "fam": {
+      "configfix": {
+       "score": 1.0,
+       "solved": 1.0,
+       "tokens": 351736.0,
+       "cost": 0.22909403333333336,
+       "steps": 15.0,
+       "eta": 0.22909403333333336
+      },
+      "datalookup": {
+       "score": 1.0,
+       "solved": 1.0,
+       "tokens": 49584.333333333336,
+       "cost": 0.06486750000000001,
+       "steps": 4.0,
+       "eta": 0.06486750000000001
+      }
+     },
+     "n": 6
+    }
+   }
+  ],
+  "usage": {
+   "calls": 6,
+   "input_tokens": 11353,
+   "output_tokens": 32083,
+   "cost_usd": 0.171768,
+   "latency_s": 297.3950493335724,
+   "total_tokens": 43436
+  },
+  "seconds": 700.8008043766022
+ }
+]

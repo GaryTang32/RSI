@@ -129,8 +129,10 @@ def test_solpi_trace_gate_arithmetic_and_firewall(sp_runs):
         d = e["data"]
         if e["kind"] == "gate" and "capability" in d["math"]:
             n_gate += 1
-            cap = d["math"]["capability"]["score"]
-            ok_cap = cap["cand"] >= cap["base"] * (1 - spec.capability[0][1]) - 1e-12
+            # every predeclared capability metric (default: mean score AND solved rate) within its tolerance
+            caps = d["math"]["capability"]
+            assert set(caps) == {m for m, _ in spec.capability}
+            ok_cap = all(caps[m]["cand"] >= caps[m]["base"] * (1 - tol) - 1e-12 for m, tol in spec.capability)
             eff = d["math"]["efficiency"]
             ok_eff = any((v["base"] - v["cand"]) / v["base"] > spec.min_gain for v in eff.values() if v["base"] > 0)
             assert d["accept"] == (ok_cap and ok_eff)

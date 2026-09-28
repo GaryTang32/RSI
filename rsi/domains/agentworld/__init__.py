@@ -1,7 +1,7 @@
 """AgentWorld: multi-step agent environments with large tool outputs (SoL-Pi's MiniAgentWorld).
 
-Families ``repofix`` / ``buildfix`` / ``logtriage`` (training) and ``datalookup``
-(held-out), a deterministic context-reading agent policy (:class:`MockAgent`,
+Families ``repofix`` / ``buildfix`` / ``logtriage`` (training) and ``configfix`` /
+``datalookup`` (held-out), a deterministic context-reading agent policy (:class:`MockAgent`,
 profiles ``A`` and ``B`` = two backends) and an adapter for real LLM agents.
 
     from rsi.domains.agentworld import make_domain, MockAgentLLM

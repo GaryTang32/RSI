@@ -54,8 +54,11 @@ def job(spec):
     # the training-admitted set composed WITHOUT the firewall (ablation)
     lin = {l["idea"]: l for l in r["lineages"]}
     no_fw_arts = []
+    frozen_change = {n.split(":", 1)[0]: n.split(":", 1)[1] for n in r["frozen"]}
     for iid in frozen_ids:
-        it = [x for x in lin[iid]["iterations"] if x.get("outcome") == "frozen"][-1]
+        # the variant the lineage froze (with the default nondominated sweep: the best-eta passing one)
+        it = [x for x in lin[iid]["iterations"] if x.get("outcome") == "frozen"
+              and x.get("change") == frozen_change.get(iid)][-1]
         idea = next(i for i in AGENTWORLD_IDEAS if i.id == iid)
         params = idea.grid[it["variant"]] if idea.grid else {}
         no_fw_arts.append(dom.harness(idea.mechanism, **{idea.mechanism: params}))
