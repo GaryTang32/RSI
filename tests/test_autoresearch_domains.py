@@ -12,7 +12,7 @@ def tinylm(tmp_path_factory):
     from rsi.domains.tinylm import TinyLMTask
 
     root = tmp_path_factory.mktemp("tinylm_data")
-    task = TinyLMTask(budget_s=0.6, kill_after=4.0, data_root=root)
+    task = TinyLMTask(budget_s=0.6, kill_after=8.0, data_root=root)   # 0.6 s budget; eval alone took up to ~3.8 s under shared load (28 Sep)
     task.prepare()
     return task
 

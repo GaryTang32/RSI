@@ -396,3 +396,9 @@ register:
 `train.py` summary block. They remain correct records of that code and were not re-run; the step verdicts above
 describe them. New runs use the fixed defaults.
 
+**Memory column of the recorded runs.** While fixing claims N1/N8 we found that the locked evaluators' `peak_mem_mb`
+read `ru_maxrss`, which Linux carries over from the process image that exec'd the run, so every recorded
+`memory_gb` (0.1 GB in all four runs) partly measured the launching Python process. The evaluators now read the run's
+own `VmHWM` (`test_run_memory_is_not_the_launchers_peak`). No recorded decision used memory (strict rule), so the
+step verdicts are unaffected.
+
