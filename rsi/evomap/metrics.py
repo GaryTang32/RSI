@@ -14,8 +14,20 @@ ground-truth function):
   vacuous: nothing demonstrates that their validation discriminates; strategy
   genes validated only by ``rsi-taskcheck`` count as non-vacuous iff a hub-run
   uplift test established them);
+* ``trivial_command_share_promoted`` (N9) - the Behind-EvoMap study's notion: the
+  share of promoted assets whose validation is *trivial as written* (an empty list,
+  or every command is info-only, a shell no-op such as ``echo``, an inline
+  ``-c``/``-e`` snippet, a missing script, or a script that only prints /
+  asserts constants - the ``console.log`` class). A static lint, no execution. It is
+  narrower than ``vacuous_share_promoted``, which also counts real-but-weak checks
+  that do not *discriminate* the change;
 * ``rank_validity`` - Spearman(rank score, ground-truth effect) over ranked assets
   (else vs later adoption success); ``duplicate_rate``.
+
+Counts (A7): ``n_promoted`` is the number of assets whose status is literally
+``promoted``; ``n_admitted`` is the hub's admitted tier that the ``*_promoted``
+rates are computed over (naive hub: ``promoted``; SafeHub: ``verified`` or
+``promoted``).
 """
 from __future__ import annotations
 
@@ -49,6 +61,18 @@ class ReuseMetrics:
             return True
         return self.vacuity.verdict(specs, b.pre_state, b.post_state, mutants=False).vacuous
 
+    def is_trivial_command(self, rec) -> bool:
+        """Study-style vacuity (N9): every validation command is trivial as written (static lint only)."""
+        b = rec.bundle
+        specs = list(b.gene.get("validation", []))
+        from .safehub import is_strategy_gene
+        if is_strategy_gene(Gene.from_dict(b.gene)):
+            return False            # an agent-internal task-level A/B (rsi-taskcheck), not a trivial command
+        if not specs:
+            return True
+        lint = self.vacuity.lint(specs, b.post_state or {})
+        return all(bool(f) for f in lint.values())
+
     def compute(self, hub) -> dict:
         recs = hub.published()
         promoted_states = ("promoted",) if hub.name == "naive" else ("promoted", "verified")
@@ -70,8 +94,8 @@ class ReuseMetrics:
         adopts = [a for r in recs for a in r.adoptions if a["consumer"] != r.author and
                   (a.get("counted") or not counted_only)]
         out = {
-            "hub": hub.name, "epoch": hub.epoch, "n_published": len(recs), "n_promoted": len(promoted),
-            "n_promoted_strict": len(strictly_promoted),
+            "hub": hub.name, "epoch": hub.epoch, "n_published": len(recs),
+            "n_promoted": len(strictly_promoted), "n_admitted": len(promoted), "admitted_states": list(promoted_states),
             "promotion_rate": len(promoted) / len(recs) if recs else float("nan"),
             "reuse_rate_published": rate(recs), "reuse_rate_promoted": rate(promoted),
             "never_reused_published": 1 - rate(recs) if recs else float("nan"),
@@ -84,8 +108,10 @@ class ReuseMetrics:
         }
         if promoted:
             out["vacuous_share_promoted"] = float(np.mean([self.is_vacuous(r) for r in promoted]))
+            out["trivial_command_share_promoted"] = float(np.mean([self.is_trivial_command(r) for r in promoted]))
         else:
             out["vacuous_share_promoted"] = float("nan")
+            out["trivial_command_share_promoted"] = float("nan")
         keys = [r.gene.content_key() for r in recs]
         out["duplicate_rate"] = 1 - len(set(keys)) / len(keys) if keys else float("nan")
         ranked = hub.rank()

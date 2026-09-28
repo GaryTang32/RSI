@@ -38,7 +38,7 @@ from ..core.ledger import ArtifactStore, Ledger, Node, new_id
 from ..core.llm import LLM, ClaudeCLI
 from ..core.run import Budget, ImprovementResult
 from .agent import AgentContext, LLMResearchAgent, MockResearchAgent, ResearchAgent
-from .guard import BudgetEnforcer, CrashPolicy, ScopeGuard
+from .guard import AGENT_FIX_KINDS, BudgetEnforcer, CrashPolicy, ScopeGuard
 from .keep import KeepContext, KeepRule, NoiseCalibrator, Samples, make_keep_rule
 from .program import ProgramSpec
 from .results import ResultsLog, Workspace
@@ -58,15 +58,22 @@ class Config:
     max_usd: Optional[float] = None
     stop_dir: Optional[str] = None               # a file named STOP here halts the loop (default: out_dir)
     mode: str = "hardened"                       # "faithful" | "hardened"
-    keep_rule: Any = "strict"                    # "strict" | "rigor" | "simplicity" | "rrsi" | KeepRule | Gate
+    keep_rule: Any = "upstream"                  # "upstream" (strict + simplicity + VRAM) | "strict" | "rigor" |
+    #                                              "simplicity" | "rrsi" | KeepRule | Gate
     keep_kwargs: dict = field(default_factory=dict)
     program: str = "upstream"                    # preset name or path to program.md (re-read every experiment)
     tag: str = "run"
     run_seed: int = 0                            # pinned framework seed for every run (upstream pins seed 42)
     max_fix_attempts: int = 3                    # "more than a few attempts" -> give up
+    crash_fix: str = "agent"                     # "agent": every crash but a timeout/violation goes to the agent,
+    #                                              which fixes or GIVE_UPs (upstream "use your judgment");
+    #                                              "trivial": only typo/import-class crashes (mechanical, old default)
     max_propose_attempts: int = 3
-    max_consecutive_invalid: int = 5
-    history_rows: int = 40                       # results.tsv rows shown to the agent
+    max_consecutive_invalid: Optional[int] = None  # None: NEVER STOP (only Budget/STOP ends the night); an int
+    #                                              restores the old "agent_failed" guard after N empty turns
+    history_rows: Optional[int] = None           # results.tsv rows shown to the agent: None = the whole file;
+    #                                              N = baseline + a summary of the elided rows + the last N
+    confirm: Optional[Any] = None                # optional "Confirm and go" hook: callable(setup_summary) -> bool
     noise_runs: int = 0                          # NoiseCalibrator re-runs of the baseline (5 suggested)
     val_resample_every: Optional[int] = None     # ablation: new validation epoch every M experiments
     hidden_audit: bool = True                    # post-hoc audit of every keep (never shown to the agent)
@@ -125,13 +132,17 @@ class AutoresearchLoop:
             shutil.rmtree(self.out / "workspace", ignore_errors=True)
         self.ledger = Ledger(self.out / "ledger.jsonl" if p else None)
         self.store = ArtifactStore(self.out / "artifacts")
-        self.results = ResultsLog(self.out / "results.tsv" if p else None, metric_name=task.metric)
+        self.results = ResultsLog(self.out / "results.tsv" if p else None, metric_name=task.metric,
+                                  memory_decimals=getattr(task, "memory_decimals", 1))
         self.ws = Workspace(self.store, backend=self.cfg.workspace,
                             root=self.out / "workspace" if self.cfg.workspace == "git" else None)
         self.guard = ScopeGuard(task.editable_paths, task.locked_paths, sealed=task.sealed_files(),
                                 tamper=getattr(task, "tamper_patterns", ()))
         self.enforcer = BudgetEnforcer(task.budget)
-        self.policy = CrashPolicy(self.cfg.max_fix_attempts)
+        if self.cfg.crash_fix not in ("agent", "trivial"):
+            raise ValueError("crash_fix must be 'agent' or 'trivial'")
+        self.policy = CrashPolicy(self.cfg.max_fix_attempts,
+                                  fix_kinds=AGENT_FIX_KINDS if self.cfg.crash_fix == "agent" else ("trivial",))
         self.budget = Budget(max_rounds=self.cfg.max_experiments, max_rollouts=self.cfg.max_runs,
                              max_wall_s=self.cfg.max_wall_s, max_usd=self.cfg.max_usd,
                              stop_dir=self.cfg.stop_dir or str(self.out))
@@ -150,7 +161,7 @@ class AutoresearchLoop:
         self.noise = None
         self.stop_reason = ""
         self.t0 = time.time()
-        self.counters = {"rejected": 0, "duplicate": 0, "invalid": 0, "fix_attempts": 0, "fixed": 0}
+        self.counters = {"rejected": 0, "duplicate": 0, "invalid": 0, "fix_attempts": 0, "fixed": 0, "rewinds": 0}
         # tracing (write-only): trace.jsonl only when the caller gave an out_dir
         self.tracer = RunTracer(self.out if (out_dir is not None and self.cfg.trace) else None, self.method,
                                 max_text=self.cfg.trace_max_text)
@@ -208,12 +219,18 @@ class AutoresearchLoop:
         return sum(len(v.splitlines()) for k, v in art.files.items() if matches(k, self.task.editable_paths))
 
     def _diff_counts(self, a: Artifact, b: Artifact) -> tuple[int, int]:
+        """Code lines added / removed in the editable files (the simplicity criterion's
+        measure): blank and comment-only lines do not count as complexity."""
+        from .guard import added_lines, matches
+
         add = rem = 0
-        for line in a.diff(b, context=0).splitlines():
-            if line.startswith("+") and not line.startswith("+++"):
-                add += 1
-            elif line.startswith("-") and not line.startswith("---"):
-                rem += 1
+        code = lambda l: bool(l.strip()) and not l.strip().startswith("#")  # noqa: E731
+        for name in sorted(set(a.files) | set(b.files)):
+            if not matches(name, self.task.editable_paths) or a.get(name) == b.get(name):
+                continue
+            before, after = a.get(name) or "", b.get(name) or ""
+            add += sum(code(l) for l in added_lines(before, after))
+            rem += sum(code(l) for l in added_lines(after, before))
         return add, rem
 
     def best_value(self) -> Optional[float]:
@@ -232,12 +249,18 @@ class AutoresearchLoop:
 
     def context(self) -> AgentContext:
         self._maybe_reload_program()
+        notes = ""
+        if self.n_invalid_streak:
+            notes = (f"Your last {self.n_invalid_streak} turn(s) produced no runnable experiment (no change, an "
+                     "invalid reply or an exact repeat). NEVER STOP: think harder - read papers referenced in the "
+                     "code, re-read the in-scope files for new angles, try combining previous near-misses, try more "
+                     "radical architectural changes.")
         return AgentContext(
             program=self.program.render(self.task, self.cfg.mode), artifact=self.inc["artifact"],
             editable=self.task.editable_paths, locked=self.task.locked_paths,
-            results_tsv=self.results.text(last=self.cfg.history_rows), git_log=self.ws.log_text(20),
+            results_tsv=self.results.text(last=self.cfg.history_rows), git_log=self.ws.log_text(10_000),
             task_brief=self.task.describe(), metric=self.task.metric, direction=self.task.direction,
-            best=self.best_value(), experiment=self.n_rounds, seed=self.cfg.seed)
+            best=self.best_value(), experiment=self.n_rounds, seed=self.cfg.seed, notes=notes)
 
     # ------------------------------------------------------------------ tracing (write-only)
     def _state(self) -> dict:
@@ -361,8 +384,38 @@ class AutoresearchLoop:
                                       "monitor": type(self.monitor).__name__ if self.monitor else None},
                               program_md=self.program.render(self.task, self.cfg.mode))
 
+    def _fix_baseline(self, art: Artifact, o: RunOutcome, seed: int, name: str) -> tuple[Artifact, RunOutcome]:
+        """A crashing baseline goes to the same fix path as any crash (upstream step 6:
+        read ``tail -n 50 run.log``, attempt a fix, give up after a few attempts). The
+        fixed files replace the baseline commit."""
+        attempts = 0
+        while o.crashed and self.policy.should_fix(self.policy.kind(o), attempts):
+            attempts += 1
+            self.counters["fix_attempts"] += 1
+            if hasattr(self.agent, "last_fix"):
+                self.agent.last_fix = None
+            ctx = self.context()
+            fixed = self.agent.fix_crash(ctx, art, "baseline", o.tail(50))
+            shown = fixed if fixed is not None else getattr(self.agent, "last_fix", None)
+            if self.tracer.enabled and shown is not None:
+                self._trace_proposal(f"{name}_fix{attempts}", art, shown, attempts,
+                                     f"fix ({self.policy.kind(o)} crash of the baseline)")
+            if fixed is None or not fixed.ok:
+                break
+            if self.cfg.mode == "hardened" and self.guard.check(art, fixed.artifact):
+                break
+            art = fixed.artifact
+            self.inc["sha"] = self.ws.amend(art, "baseline")
+            self.inc["artifact"] = art
+            o = self._run(art, seed, f"{name}_fix{attempts}")
+            self._trace_eval(f"{name}_fix{attempts}", o, "baseline fix re-run")
+            if not o.crashed:
+                self.counters["fixed"] += 1
+        return art, o
+
     def baseline(self) -> Node:
-        """"The first run": run the files as they are -> status keep."""
+        """"The first run": run the files as they are -> status keep. A crash goes to the
+        agent's fix path first; only a baseline that stays broken stops the night."""
         art = self.inc["artifact"]
         vals, outs = [], []
         for i, s in enumerate(self._seeds(self.keep.repeats)):
@@ -370,7 +423,10 @@ class AutoresearchLoop:
             outs.append(o)
             self._trace_eval(f"baseline_{i}", o, "baseline")
             if o.crashed:
-                raise RuntimeError(f"baseline run crashed: {o.crash_reason}\n{o.tail(30)}")
+                art, o = self._fix_baseline(art, o, s, f"baseline_{i}")
+                outs.append(o)
+            if o.crashed:
+                raise RuntimeError(f"baseline run crashed (after fix attempts): {o.crash_reason}\n{o.tail(30)}")
             vals.append(o.metric)
         samples = Samples(vals, memory_gb=outs[-1].memory_gb, loc=self._editable_loc(art), artifact_id=art.id)
         node = self._record(art=art, desc="baseline", status="keep", samples=samples, outcome=outs[-1],
@@ -418,7 +474,7 @@ class AutoresearchLoop:
             ctx.seed = self.cfg.seed + 7 * a
             prop = self.agent.propose(ctx)
             self._trace_proposal(f"exp{self.n_rounds:04d}", ctx.artifact, prop, a, "propose")
-            if prop.ok and prop.artifact != ctx.artifact:
+            if (prop.ok and prop.artifact != ctx.artifact) or (prop.meta or {}).get("rewind"):
                 return prop
         return prop
 
@@ -452,6 +508,21 @@ class AutoresearchLoop:
                                     f"{ctx.results_tsv}\n--- git log (kept chain) ---\n{ctx.git_log}"))
         prop = self._propose(ctx)
         inc_art: Artifact = self.inc["artifact"]
+        target = (prop.meta or {}).get("rewind")
+        if target:
+            # the agent asked to rewind ("allowed, but very very sparingly"): no run, a turn is used
+            try:
+                self.rewind(str(target))
+            except KeyError:
+                prop = Proposal(None, change=prop.change, raw=prop.raw, error=f"rewind to unknown commit {target!r}")
+            else:
+                self.n_invalid_streak = 0
+                self.counters["rewinds"] += 1
+                node = Node(id=new_id("exp"), parent=before.get("node"), round=self.n_rounds, kind="candidate",
+                            status="rewind", change=f"REWIND {target}", meta={"rewound_to": self.inc["node"]})
+                self.ledger.add(node)
+                self._trace_decision(node, before, f"agent rewound the branch to {str(self.inc['sha'])[:7]}")
+                return None
         if not prop.ok or prop.artifact == inc_art:
             self.counters["invalid"] += 1
             self.n_invalid_streak += 1
@@ -473,9 +544,14 @@ class AutoresearchLoop:
             if viol:
                 self.counters["rejected"] += 1
                 self.n_experiments += 1
-                node = self._record(art=cand, desc=f"REJECTED ({', '.join(map(str, viol))}) | {desc}",
-                                    status="discard", samples=None, outcome=None, commit=cand.id[:7],
-                                    ledger_status="rejected", meta={**emeta, "violations": [str(v) for v in viol]})
+                rdesc = f"REJECTED ({', '.join(map(str, viol))}) | {desc}"
+                # a real commit, reset away at once like any discard, so the row's commit id resolves
+                # (``git cat-file -e`` / Workspace.commits) - never run
+                rsha = self.ws.commit(cand, rdesc)
+                self.ws.reset_to(self.inc["sha"])
+                node = self._record(art=cand, desc=rdesc, status="discard", samples=None, outcome=None,
+                                    commit=rsha[:7], ledger_status="rejected",
+                                    meta={**emeta, "violations": [str(v) for v in viol]})
                 self._trace_decision(node, before, "scope guard rejected the edit before running; logged as discard")
                 return None
         if self.keep.never_repeat and cand.id in self.seen:
@@ -650,15 +726,38 @@ class AutoresearchLoop:
             out["optimism_gap"] = (honest - rec) if self.task.direction == "min" else (rec - honest)
         return out
 
+    def _agent_failed(self) -> bool:
+        """Only with an explicit ``max_consecutive_invalid``: upstream's agent NEVER STOPs
+        (it is told to think harder instead; see :meth:`context`)."""
+        n = self.cfg.max_consecutive_invalid
+        return n is not None and self.n_invalid_streak >= n
+
+    def confirm_setup(self) -> bool:
+        """Upstream setup step 6 ("Confirm and go"), opt-in: ``Config(confirm=fn)`` is
+        called once with the setup summary, after the baseline and before the loop; a
+        falsy answer ends the run with ``stop_reason="not_confirmed"``. By default the
+        framework runs unattended (no human confirmation)."""
+        if self.cfg.confirm is None:
+            return True
+        base = self.inc.get("samples")
+        summary = {"branch": self.ws.branch, "task": self.task.name, "metric": self.task.metric,
+                   "baseline": base.mean if base is not None else None, "budget": self.task.budget.to_json(),
+                   "mode": self.cfg.mode, "keep_rule": self.keep.name, "program_version": self.program.version,
+                   "results_tsv": self.results.text()}
+        return bool(self.cfg.confirm(summary))
+
     def run(self) -> ImprovementResult:
         self.setup()
         self.baseline()
+        if not self.confirm_setup():
+            self.stop_reason = "not_confirmed"
+            return self.finish()
         while True:
             why = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
             if why:
                 self.stop_reason = why
                 break
-            if self.n_invalid_streak >= self.cfg.max_consecutive_invalid:
+            if self._agent_failed():
                 self.stop_reason = "agent_failed"
                 break
             self.step()

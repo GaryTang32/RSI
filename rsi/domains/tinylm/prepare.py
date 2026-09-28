@@ -175,8 +175,10 @@ def make_dataloader(batch_size: int, seq_len: int, split: str = "train"):
     of ``split`` with ``y`` the next byte of ``x``. The window order depends only
     on the framework's RUN_SEED. In hardened/audit mode the loader is also the
     budget clock: after WARMUP_EXCLUDED_STEPS batches it accumulates the time
-    between consecutive requests (or the bytes served, for a token budget) and
-    stops yielding when the locked budget is spent."""
+    between the starts of consecutive requests - the consumer's step *and* the
+    fetch of its next batch, as upstream's timed step includes ``next(train_loader)``
+    - (or the bytes served, for a token budget) and stops yielding when the locked
+    budget is spent."""
     enforce = _CONST["MODE"] in ("hardened", "audit")         # the import-time mode, not the (editable) global
     if enforce and split != "train":
         raise PermissionError(f"hardened mode: only the 'train' split can be loaded for training, not {split!r}")
@@ -205,7 +207,8 @@ def make_dataloader(batch_size: int, seq_len: int, split: str = "train"):
                 _CLOCK["tokens"] += batch_size * seq_len
                 if _CLOCK["t_first"] is None:
                     _CLOCK["t_first"] = now
-            _CLOCK["t_last"] = clock()
+            _CLOCK["t_last"] = now          # from this request on: the batch fetch is budgeted too (upstream
+            #                                 times next(train_loader) inside the step)
         yield chunk[:, :-1], chunk[:, 1:]
 
 
@@ -347,6 +350,7 @@ def evaluate_bpb_locked(model) -> float:
                            if os.path.exists(os.path.join(_CONST["DATA_DIR"], f"{s}.bin"))}
     record["eval_seconds"] = clock() - t0
     record["peak_mem_mb"] = peak_mem_mb()
+    record["peak_vram_mb"] = record["peak_mem_mb"]      # upstream's key name (peak RSS is the VRAM analogue here)
     out = _CONST["RESULT_FILE"]
     if out:
         tmp = out + ".tmp"

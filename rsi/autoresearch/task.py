@@ -156,6 +156,8 @@ class ResearchTask:
     editable_paths: tuple[str, ...] = ("**",)
     locked_paths: tuple[str, ...] = ()
     memory_key: str = "peak_mem_mb"
+    #: decimals of the results.tsv memory_gb column (upstream: 1); see ResultsLog
+    memory_decimals: int = 1
     audit_splits: tuple[str, ...] = ()
     run_command: str = ""
     budget: RunBudget = RunBudget()
@@ -213,7 +215,7 @@ class ResearchTask:
         if mb is None and summary:
             mb = summary.get(self.memory_key)
         try:
-            return round(float(mb) / 1024.0, 1) if mb is not None else 0.0
+            return round(float(mb) / 1024.0, int(getattr(self, "memory_decimals", 1))) if mb is not None else 0.0
         except (TypeError, ValueError):
             return 0.0
 
@@ -234,6 +236,13 @@ class ScriptResearchTask(ResearchTask):
     record_checks:
         hardened-mode validation of the locked result record: callables
         ``record -> Optional[str]`` returning a crash reason.
+    memory_decimals:
+        decimals of the results.tsv ``memory_gb`` column (upstream 1; more for tasks
+        whose peak memory is far below 0.1 GB, where 1 decimal hides every change).
+    files:
+        may include a ``README.md`` (upstream's first in-scope file, "repository
+        context"): it is part of the artifact, so the agent reads it with the code,
+        and it is neither editable nor run (hardened mode rejects edits to it).
     tamper_patterns:
         extra hardened-mode denylist regexes for added lines of editable files
         (e.g. names of hidden splits or of the validation arrays), on top of
@@ -261,6 +270,7 @@ class ScriptResearchTask(ResearchTask):
         keep_workdirs: bool = False,
         tamper_patterns: Sequence[str] = (),
         default_tamper: bool = True,
+        memory_decimals: int = 1,
     ) -> None:
         from .guard import default_tamper_patterns
 
@@ -274,6 +284,7 @@ class ScriptResearchTask(ResearchTask):
         self.run_command = " ".join(self.run_cmd)
         self.budget = budget or RunBudget()
         self.memory_key = memory_key
+        self.memory_decimals = int(memory_decimals)
         self.data_dirs = dict(data_dirs or {})
         self.env = dict(env or {})
         self._description = description

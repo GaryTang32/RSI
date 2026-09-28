@@ -8,8 +8,13 @@
       good capsules (score >= 0.7) by gene, pick argmax(2*count + avg score),
       build ``gene_distilled_<src>`` from the top trigger tokens and the source
       gene's first 4 steps; validation = the source gene's (<= 4) else the
-      faithful fallback ``["python --version"]`` (Evolver: ``node --version``) or,
-      in safe mode, the source's discriminative checks only;
+      fallback ``["python --test"]``, the port of Evolver's ``autoDistill``
+      fallback ``["node --test"]`` (deob ``skillDistiller.js:673``). The command
+      allowlist rejects it (no script argument), so, exactly as in Evolver, the
+      gene ships with an EMPTY validation list (component 0.5 under the faithful
+      runner). ``node --version`` is only the *LLM* distiller prompt's advice
+      (§6.4, :data:`~rsi.evomap.prompts.DISTILL_VALIDATION_FAITHFUL`). Safe mode
+      never adds an info-only fallback;
     * :meth:`llm_distill` - the §6.4 prompt fallback;
     * :meth:`distill_from_failures` - a defensive "repair gene" from >= 5 failed
       capsules with a recurring pattern (run after a successful solidify when
@@ -56,7 +61,7 @@ class DistillResult:
 class Distiller:
     def __init__(self, *, mode: str = "faithful", every: int = 5, min_capsules: int = 10, min_score: float = 0.7,
                  interval_h: float = 24.0, failure_min: int = 5, failure_interval_h: float = 12.0,
-                 fallback_validation: Sequence[str] = ("python --version",), command_policy=None) -> None:
+                 fallback_validation: Sequence[str] = ("python --test",), command_policy=None) -> None:
         self.mode = mode
         self.every = every
         self.min_capsules = min_capsules
@@ -65,6 +70,10 @@ class Distiller:
         self.failure_min = failure_min
         self.failure_interval_h = failure_interval_h
         self.fallback_validation = list(fallback_validation)
+        if command_policy is None:
+            # validate_synth always filters through the allowlist (Evolver's isValidationCommandAllowed)
+            from .validation import CommandPolicy
+            command_policy = CommandPolicy.faithful() if mode == "faithful" else CommandPolicy.safe()
         self.policy = command_policy
         self.last_at: Optional[float] = None
         self.last_hash: Optional[str] = None

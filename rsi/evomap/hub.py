@@ -310,13 +310,36 @@ class NaiveEvoMapHub(_HubBase):
     ``promote_rule``: ``"self_report"`` (default: the bundle's own
     ValidationReport says ``overall_ok`` and claimed ``outcome.score >= 0.7``) or
     ``"validator"`` (the empty-directory validator run must pass - where only
-    info-only commands like ``python --version`` can succeed)."""
+    info-only commands like ``python --version`` can succeed).
+
+    ``search_mode`` (N10) mirrors Evolver's ``hubSearch``:
+
+    * ``"signal+semantic"`` (default; ``HUBSEARCH_SEMANTIC`` is on by default):
+      the signal search (promoted assets with >= 1 pattern hit, GDI-ranked, top
+      ``k``) merged with a semantic search - the query is the signals with
+      ``errsig:*`` dropped and ``prefix:`` stripped, first 12, space-joined
+      (deob ``hubSearch.js``), matched against what the gene says it does
+      (``signals_match`` + summary + id), top ``semantic_limit`` by similarity.
+      As in Evolver, only a semantic result carries a ``similarity`` (a signal
+      result gets it when the semantic search also returned it), which then adds
+      ``0.3 * similarity`` to the client reuse score (§4.16);
+    * ``"signal"``: signal search only (``HUBSEARCH_SEMANTIC=false``), similarity 0;
+    * ``"legacy"``: our earlier approximation - pattern-hit assets only, each with
+      a similarity (kept to reproduce old results).
+
+    The hub's embedding model is not public; the semantic score here is the token
+    cosine of :func:`similarity`, so its magnitudes are a stand-in."""
 
     name = "naive"
 
     def __init__(self, *, promote_rule: str = "self_report", ranker: Optional[GDIRanker] = None,
-                 validator_executor=None, ledger: Optional[Ledger] = None) -> None:
+                 validator_executor=None, ledger: Optional[Ledger] = None, search_mode: str = "signal+semantic",
+                 semantic_limit: int = 10) -> None:
         super().__init__(ledger=ledger)
+        if search_mode not in ("signal+semantic", "signal", "legacy"):
+            raise ValueError(f"unknown search_mode {search_mode!r}")
+        self.search_mode = search_mode
+        self.semantic_limit = semantic_limit
         self.promote_rule = promote_rule
         self.ranker = ranker or GDIRanker()
         self.validator = ValidationRunner(CommandPolicy.faithful(), validator_executor or InProcessExecutor(),
@@ -371,10 +394,55 @@ class NaiveEvoMapHub(_HubBase):
 
     def search(self, signals: Sequence[str], k: int = 5, consumer: Optional[str] = None) -> list[AssetView]:
         cands = self._matching(signals, ("promoted",))
+        if self.search_mode != "legacy":
+            cands = [(r, 0.0) for r, _ in cands]
         scored = sorted(((self.ranker.score(r, self.epoch), r, sim) for r, sim in cands),
                         key=lambda x: (-x[0], x[1].asset_id))[:k]
+        if self.search_mode == "signal+semantic":
+            sem = self.semantic_search(signals)
+            by_id = {r.asset_id: i for i, (_, r, _) in enumerate(scored)}
+            for r, sim in sem:
+                if r.asset_id in by_id:                   # merge: the signal result takes the semantic similarity
+                    i = by_id[r.asset_id]
+                    scored[i] = (scored[i][0], r, sim)
+                else:
+                    by_id[r.asset_id] = len(scored)
+                    scored.append((self.ranker.score(r, self.epoch), r, sim))
         return [AssetView(r.asset_id, copy.deepcopy(r.bundle.gene), copy.deepcopy(r.bundle.capsule), sc, r.status,
                           r.author, sim) for sc, r, sim in scored]
+
+    @staticmethod
+    def semantic_query(signals: Sequence[str]) -> str:
+        """Evolver's semantic-search query: drop ``errsig:`` / ``errsig_norm:``, strip a ``prefix:`` shorter than
+        30 chars, keep the first 12, space-joined."""
+        out = []
+        for s in signals:
+            s = str(s)
+            if s.startswith(("errsig:", "errsig_norm:")):
+                continue
+            i = s.find(":")
+            s = s[i + 1:].strip() if 0 < i < 30 else s
+            if s:
+                out.append(s)
+        return " ".join(out[:12])
+
+    def semantic_search(self, signals: Sequence[str]) -> list[tuple[AssetRecord, float]]:
+        """``/a2a/assets/semantic-search?q=...&type=Gene&limit=10``: promoted assets by similarity of what the gene
+        says it does to the query (no pattern hit required)."""
+        q = self.semantic_query(signals)
+        if len(q) < 3:
+            return []
+        qs = q.split()
+        out = []
+        for aid in self.order:
+            rec = self.records[aid]
+            if rec.status != "promoted":
+                continue
+            sim = similarity(rec.bundle.gene, qs)
+            if sim > 0:
+                out.append((rec, sim))
+        out.sort(key=lambda x: (-x[1], x[0].asset_id))
+        return out[:self.semantic_limit]
 
     def report_outcome(self, asset_id: str, consumer: str, outcome: int, proof: Optional[dict] = None) -> dict:
         rec = self.records.get(asset_id)

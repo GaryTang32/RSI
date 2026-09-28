@@ -151,13 +151,15 @@ class PopulationSimulator:
                     task = self._task(sp, arng)
                     cr = ag.cycle(task)
                     row = {"epoch": ep, "agent": sp.name, "kind": sp.kind, "ability": sp.ability, **cr.to_json()}
-                    # the gene actually injected into this cycle's solve - also when solidify rejected it
-                    # (a direct-apply consumer runs a poisoned hub gene even if it never enters the store)
+                    # the genes actually injected into this cycle's solve - also when solidify rejected them
+                    # (a direct-apply consumer runs a poisoned hub gene even if it never enters the store; a
+                    # reference-mode consumer runs it NEXT TO its local gene and never stores it)
                     used = ag.last_gene
                     if self.truth is not None and used is not None:
                         row["gene_true_uplift"] = self.truth(used)
-                    if self.forge is not None and used is not None:
-                        row["gene_poisoned"] = self.forge.is_poisoned(used)
+                    injected = list(getattr(ag, "last_genes", []) or ([used] if used is not None else []))
+                    if self.forge is not None and injected:
+                        row["gene_poisoned"] = any(self.forge.is_poisoned(g) for g in injected)
                     self.cycles.append(row)
             if self.hub is not None:
                 self.hub.advance_epoch()
@@ -197,6 +199,25 @@ class PopulationSimulator:
             return 0
         return sum(1 for ag in self.agents.values() for g in ag.store.genes.values() if self.forge.is_poisoned(g))
 
+    def _from_hub(self, g: Gene) -> bool:
+        """A stored gene that came from the hub: promoted out of quarantine (provenance ``external``) or adopted
+        by a direct / replace consumer (its ``parent`` is a hub asset id)."""
+        if (g.provenance or {}).get("kind") == "external":
+            return True
+        return self.hub is not None and bool(g.parent) and g.parent in getattr(self.hub, "records", {})
+
+    def poisoned_in_stores_split(self) -> dict:
+        """X10 audit item: harmful cards an honest agent WROTE ITSELF (its gene writer can produce a harmful
+        strategy key) vs harmful cards it took FROM THE HUB (poison). ``poisoned_in_stores`` is their sum."""
+        out = {"hub": 0, "self": 0}
+        if self.forge is None:
+            return out
+        for ag in self.agents.values():
+            for g in ag.store.genes.values():
+                if self.forge.is_poisoned(g):
+                    out["hub" if self._from_hub(g) else "self"] += 1
+        return out
+
     def summary(self) -> dict:
         rows = [r for r in self.cycles if "task_success" in r]
         kinds = Counter(sp.kind for sp in self.specs)
@@ -209,6 +230,8 @@ class PopulationSimulator:
                "hub_gene_cycles": int(sum(1 for r in rows if r["source"] == "hub")),
                "poisoned_cycles": int(sum(1 for r in rows if r.get("gene_poisoned"))),
                "poisoned_in_stores": self.poisoned_in_stores(),
+               "poisoned_in_stores_hub": self.poisoned_in_stores_split()["hub"],
+               "poisoned_in_stores_self": self.poisoned_in_stores_split()["self"],
                "quarantined": int(sum(ag.n_quarantined for ag in self.agents.values())),
                "quarantine_rejected": int(sum(ag.n_quarantine_rejected for ag in self.agents.values())),
                "epochs": self.epochs}

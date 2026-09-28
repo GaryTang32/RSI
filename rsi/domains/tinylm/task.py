@@ -5,7 +5,7 @@ Python standard library's docstrings (train / val / hidden test_iid) and its
 language-reference help topics (hidden test_shift), serves training windows,
 owns the budget clock and computes ``val_bpb``. ``train.py`` (editable) is a
 numpy byte-level MLP LM trained for a fixed wall-clock budget (default 25 s;
-the first 11 steps are not counted) that prints ``val_bpb:`` and ``peak_mem_mb:``.
+the first 11 steps are not counted) that prints upstream's summary block (``val_bpb:`` ... ``peak_vram_mb:`` ... ``depth:``).
 
 :func:`tinylm_edit_pool` is the scripted research agent's repertoire: knob
 moves on the constants block (helpful or harmful depending on the incumbent),
@@ -86,6 +86,20 @@ FAITHFUL_CONTRACT = """\
 """
 
 
+SUMMARY_EXAMPLE = """\
+---
+val_bpb:          2.838000
+training_seconds: 8.0
+total_seconds:    9.6
+peak_vram_mb:     101.4
+mfu_percent:      1.52
+total_tokens_M:   0.590
+num_steps:        1152
+num_params_M:     0.050
+depth:            1
+"""
+
+
 class TinyLMTask(ScriptResearchTask):
     """Byte-level LM trained for a fixed budget; metric ``val_bpb`` (lower is better).
 
@@ -104,17 +118,21 @@ class TinyLMTask(ScriptResearchTask):
                  keep_workdirs: bool = False) -> None:
         root = Path(data_root or default_data_root())
         files = files or {"prepare.py": (DOMAIN_DIR / "prepare.py").read_text(),
-                          "train.py": (DOMAIN_DIR / "train.py").read_text()}
+                          "train.py": (DOMAIN_DIR / "train.py").read_text(),
+                          "README.md": (DOMAIN_DIR / "README.md").read_text()}     # in-scope context (upstream)
         budget = RunBudget(kind=budget_kind, amount=budget_s, kill_after=kill_after, mem_mb=mem_mb)
         super().__init__(
             "tinylm", files, metric="val_bpb", direction="min", editable_paths=("train.py",),
-            locked_paths=("prepare.py",), run_cmd=("python", "train.py"), budget=budget, memory_key="peak_mem_mb",
+            locked_paths=("prepare.py",), run_cmd=("python", "train.py"), budget=budget, memory_key="peak_vram_mb",
             data_dirs={"faithful": str(root / "all"), "hardened": str(root / "visible"), "audit": str(root / "all")},
             description=("Byte-level language modelling on English technical text (Python standard-library "
                          "docstrings). train.py trains a small numpy model for a fixed budget; the metric is "
                          "validation bits per byte (val_bpb, lower is better)."),
-            record_checks=(_untampered, _causal, _overrun), keep_workdirs=keep_workdirs, tamper_patterns=TAMPER)
+            record_checks=(_untampered, _causal, _overrun), keep_workdirs=keep_workdirs, tamper_patterns=TAMPER,
+            memory_decimals=3)       # peak RSS is ~0.1 GB: 1 decimal would print 0.1 for every run (audit N8)
         self.root = root
+        self.hardware = "a single CPU machine (numpy, no GPU)"
+        self.summary_example = SUMMARY_EXAMPLE
         self.audit_splits = ("test_iid", "test_shift")
 
     def prepare(self) -> None:

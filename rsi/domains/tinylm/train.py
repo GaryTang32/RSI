@@ -129,18 +129,25 @@ def lr_multiplier(progress):
 # ---------------------------------------------------------------------------
 # Training loop (fixed budget)
 # ---------------------------------------------------------------------------
+CPU_PEAK_FLOPS = 1e11         # nominal float64 peak of a small multi-core CPU (upstream: H100_BF16_PEAK_FLOPS)
+
 rng = np.random.default_rng([SEED, prepare.RUN_SEED])
 model = MLPLM(rng)
 num_params = sum(v.size for v in model.p.values())
+num_flops_per_token = 6 * (num_params - model.p["wte"].size)   # fwd + bwd matmuls (embedding lookups are free)
 m_state = {k: np.zeros_like(v) for k, v in model.p.items()}
 v_state = {k: np.zeros_like(v) for k, v in model.p.items()}
 train_loader = prepare.make_dataloader(BATCH_SIZE, TRAIN_SEQ_LEN, "train")
 
 total_training_time = 0.0     # seconds (wallclock budget) or bytes (tokens budget)
+timed_seconds = 0.0           # seconds of the budgeted steps (steps 0..10 are not counted)
 step = 0
 smooth_loss = 0.0
+batches = iter(train_loader)
+batch = next(batches, None)   # the first batch is fetched before the loop, as upstream
 t_train_start = time.time()
-for x, y in train_loader:
+while batch is not None:
+    x, y = batch
     t0 = time.time()
     progress = min(total_training_time / prepare.TIME_BUDGET, 1.0)
     lr = LR * lr_multiplier(progress)
@@ -162,21 +169,30 @@ for x, y in train_loader:
             m_state[k] = 0.9 * m_state[k] + g
             model.p[k] -= lr * m_state[k]
     smooth_loss = 0.9 * smooth_loss + 0.1 * loss
+    batch = next(batches, None)   # the next batch is fetched inside the timed step, as upstream
     dt = time.time() - t0
     if step > 10:
         total_training_time += dt if prepare.BUDGET_KIND == "wallclock" else x.size
+        timed_seconds += dt
     step += 1
     if step > 10 and total_training_time >= prepare.TIME_BUDGET:
         break
 
-training_seconds = time.time() - t_train_start
+total_tokens = step * BATCH_SIZE * TRAIN_SEQ_LEN
 val_bpb = prepare.evaluate_bpb(model, EVAL_BATCH_SIZE)
+
+# upstream prints the budgeted training time (warm-up steps excluded), not the wall time of the loop
+training_seconds = total_training_time if prepare.BUDGET_KIND == "wallclock" else timed_seconds
+steady_state_mfu = (100 * num_flops_per_token * BATCH_SIZE * TRAIN_SEQ_LEN * (step - 10) / timed_seconds
+                    / CPU_PEAK_FLOPS if timed_seconds > 0 else 0.0)
 
 print("---")
 print(f"val_bpb:          {val_bpb:.6f}")
 print(f"training_seconds: {training_seconds:.1f}")
 print(f"total_seconds:    {time.time() - t_start:.1f}")
-print(f"peak_mem_mb:      {prepare.peak_mem_mb():.1f}")
+print(f"peak_vram_mb:     {prepare.peak_mem_mb():.1f}")
+print(f"mfu_percent:      {steady_state_mfu:.2f}")
+print(f"total_tokens_M:   {total_tokens / 1e6:.3f}")
 print(f"num_steps:        {step}")
 print(f"num_params_M:     {num_params / 1e6:.3f}")
 print(f"depth:            {DEPTH}")

@@ -27,7 +27,15 @@ def _js_number(x: float) -> str:
     if isinstance(x, bool):  # pragma: no cover - handled by caller
         return "true" if x else "false"
     if isinstance(x, int):
-        return str(x)
+        # A JavaScript number is an IEEE double: integers print exactly only below
+        # 1e21 and are rounded to the nearest double above 2**53 (N5b). Convert the
+        # way JSON.parse would, so the id matches @evomap/gep-sdk.
+        if abs(x) < 2 ** 53:
+            return str(x)
+        try:
+            x = float(x)
+        except OverflowError:       # beyond Number.MAX_VALUE: Infinity -> "null"
+            return "null"
     if not math.isfinite(x):
         return "null"
     if x == 0:
@@ -51,6 +59,14 @@ def _js_number(x: float) -> str:
     return sign + digits[0] + "." + digits[1:] + "e" + es
 
 
+def _utf16_key(s: str) -> bytes:
+    """Sort key giving JavaScript's default string order (UTF-16 code units).
+
+    Big-endian UTF-16 bytes compare exactly like the code-unit sequence.
+    ``surrogatepass`` keeps lone surrogates sortable."""
+    return s.encode("utf-16-be", "surrogatepass")
+
+
 def canonicalize(obj: Any) -> str:
     """Deterministic JSON text: sorted keys, no whitespace, JS number/string rules."""
     if obj is None:
@@ -64,7 +80,9 @@ def canonicalize(obj: Any) -> str:
     if isinstance(obj, (list, tuple)):
         return "[" + ",".join(canonicalize(v) for v in obj) + "]"
     if isinstance(obj, dict):
-        keys = sorted(str(k) for k in obj)
+        # Array.prototype.sort() compares UTF-16 code units, not code points (N5a):
+        # an astral character (surrogate pair D800-DFFF) sorts before U+E000-U+FFFF.
+        keys = sorted((str(k) for k in obj), key=_utf16_key)
         lookup = {str(k): v for k, v in obj.items()}
         return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + canonicalize(lookup[k]) for k in keys) + "}"
     if hasattr(obj, "to_dict"):

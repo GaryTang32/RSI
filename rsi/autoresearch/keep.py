@@ -1,8 +1,12 @@
 """Keep rules: the main plug-in point of the autoresearch loop.
 
 ======================  ============================================================
-:class:`StrictKeep`     upstream (faithful default): keep iff the single run is
-                        strictly better than the branch tip; equal or worse resets.
+:class:`UpstreamKeep`   upstream (faithful default, ``"upstream"``): keep iff the
+                        single run is strictly better than the branch tip, with the
+                        simplicity criterion (net code lines) and the VRAM soft
+                        constraint (memory ratio) of ``program.md`` made measurable.
+:class:`StrictKeep`     the bare mechanical rule (``"strict"``): keep iff strictly
+                        better; equal or worse resets. Ignores code size and memory.
 :class:`BootstrapRigorKeep`
                         autoresearch-mlx ``rigor.py``: ``repeats`` runs (default 3),
                         keep iff P_boot(mean(cand) beats mean(best)) >= 0.95 with
@@ -93,7 +97,8 @@ def _scored(s: Samples, direction: str, cost: float = 0.0) -> Scored:
 
 
 class StrictKeep(KeepRule):
-    """Upstream rule: keep iff strictly better than the incumbent (one run each)."""
+    """Bare strict rule: keep iff strictly better than the incumbent (one run each).
+    Upstream's loop steps 8-9 without the simplicity / VRAM judgment (see :class:`UpstreamKeep`)."""
 
     name = "strict"
 
@@ -175,6 +180,90 @@ class SimplicityWeighted(KeepRule):
         return {**super().to_json(), "eps": self.eps, "lines_per_eps": self.lines_per_eps}
 
 
+class UpstreamKeep(KeepRule):
+    """The faithful default: upstream ``program.md``'s keep decision made measurable.
+
+    Upstream advances the branch iff val_bpb improved (lower) and resets on equal or
+    worse (``program.md:103-104``), and asks the agent to weigh two soft criteria that
+    it leaves to judgment (``program.md:35,37``). Because the framework (not the agent)
+    decides here, both are given a documented, mechanical form:
+
+    * **Simplicity criterion** (``:37``), measured by the net change in *code* lines of
+      the editable files (blank and comment-only lines are not counted):
+
+      - net lines removed: keep iff ``gain >= -eps`` - "removing something and getting
+        equal or better results ... simplification win", "an improvement of ~0 but much
+        simpler code? Keep" (equal or slightly worse, by at most ``eps``, is kept);
+      - net lines added: keep iff ``gain > eps * added / lines_per_eps`` - "a 0.001
+        val_bpb improvement that adds 20 lines of hacky code? Probably not worth it"
+        (defaults ``eps=0.001``, ``lines_per_eps=20``: a gain must pay 0.001 per 20 lines);
+      - no net change (e.g. a one-line knob edit): strict improvement (``gain > 0``).
+
+    * **VRAM soft constraint** (``:35``, peak memory is the ``memory_gb`` column): with
+      ``ratio = memory(candidate) / memory(incumbent)``
+
+      - ``ratio > mem_blowup`` (default 2.0): discard - "it should not blow up
+        dramatically";
+      - ``1 + mem_tol < ratio <= mem_blowup`` (default tolerance 10%): the gain must also
+        be "meaningful", i.e. at least ``eps`` more than the threshold above - "some
+        increase is acceptable for meaningful val_bpb gains";
+      - otherwise memory is ignored. Memory is ignored when either value is 0 (unknown).
+
+    ``eps`` is in metric units (upstream's own example unit, 0.001 val_bpb). With no
+    line change and no memory change the rule is exactly :class:`StrictKeep`.
+    """
+
+    name = "upstream"
+
+    def __init__(self, eps: float = 0.001, lines_per_eps: float = 20.0, mem_tol: float = 0.10,
+                 mem_blowup: float = 2.0, simplicity: bool = True, memory: bool = True) -> None:
+        self.eps = eps
+        self.lines_per_eps = lines_per_eps
+        self.mem_tol = mem_tol
+        self.mem_blowup = mem_blowup
+        self.simplicity = simplicity
+        self.memory = memory
+
+    def decide(self, cand, inc, ctx):
+        gain = (inc.mean - cand.mean) if ctx.direction == "min" else (cand.mean - inc.mean)
+        net = ctx.lines_added - ctx.lines_removed
+        details = {"gain": gain, "net_lines": net, "eps": self.eps}
+        parts = []
+        # 1) simplicity criterion
+        if self.simplicity and net > 0:
+            thr, inclusive = self.eps * net / self.lines_per_eps, False
+            parts.append(f"+{net} code lines cost {thr:.6f}")
+        elif self.simplicity and net < 0:
+            thr, inclusive = -self.eps, True
+            parts.append(f"simplification ({net} code lines): equal or slightly worse (>= -{self.eps:g}) is kept")
+        else:
+            thr, inclusive = 0.0, False
+        # 2) VRAM soft constraint
+        ratio = None
+        if self.memory and cand.memory_gb > 0 and inc.memory_gb > 0:
+            ratio = cand.memory_gb / inc.memory_gb
+            details["memory_ratio"] = ratio
+            if ratio > self.mem_blowup:
+                why = (f"memory blew up {inc.memory_gb:g} -> {cand.memory_gb:g} GB (x{ratio:.2f} > "
+                       f"x{self.mem_blowup:g}); gain {gain:+.6f}")
+                return Verdict(False, why, {**details, "threshold": None, "memory_blowup": True})
+            if ratio > 1.0 + self.mem_tol:
+                thr = max(thr, 0.0) + self.eps
+                inclusive = True
+                parts.append(f"memory x{ratio:.2f} needs a meaningful gain (+{self.eps:g})")
+        tol = 1e-9 * max(1.0, abs(thr))
+        ok = gain >= thr - tol if inclusive else gain > thr + tol
+        details["threshold"] = thr
+        why = f"gain {gain:+.6f} {'>=' if inclusive else '>'} {thr:+.6f}: {'keep' if ok else 'discard'}"
+        if parts:
+            why += " (" + "; ".join(parts) + ")"
+        return Verdict(ok, why, details)
+
+    def to_json(self):
+        return {**super().to_json(), "eps": self.eps, "lines_per_eps": self.lines_per_eps, "mem_tol": self.mem_tol,
+                "mem_blowup": self.mem_blowup, "simplicity": self.simplicity, "memory": self.memory}
+
+
 class GateKeep(KeepRule):
     """Adapter for any :class:`rsi.core.gates.Gate` (higher-is-better internally;
     min-direction metrics are negated). ``cost`` defaults to peak memory (GB), the
@@ -198,11 +287,13 @@ class GateKeep(KeepRule):
 
 
 def make_keep_rule(spec, **kw) -> KeepRule:
-    """``"strict" | "rigor" | "simplicity" | "rrsi"`` or a :class:`KeepRule` / core :class:`Gate`."""
+    """``"upstream" | "strict" | "rigor" | "simplicity" | "rrsi"`` or a :class:`KeepRule` / core :class:`Gate`."""
     if isinstance(spec, KeepRule):
         return spec
     if isinstance(spec, Gate):
         return GateKeep(spec, **kw)
+    if spec == "upstream":
+        return UpstreamKeep(**kw)
     if spec == "strict":
         return StrictKeep(**kw)
     if spec == "rigor":
