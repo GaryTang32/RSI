@@ -281,7 +281,7 @@ def validate_update_plan_args(args: Any) -> list[str]:
                     errs.append(f"  - steps/{k}/{key}: must have between 1 and {MAX_STRING_BYTES} characters")
             if st.get("status") not in PLAN_STATUSES:
                 errs.append(f"  - steps/{k}/status: must be one of {list(PLAN_STATUSES)}")
-    if "progress" in args and args["progress"] is not None:
+    if "progress" in args:                     # Type.Optional(object): absent is fine, null is not
         p = args["progress"]
         if not isinstance(p, dict):
             errs.append("  - progress: must be object")

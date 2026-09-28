@@ -180,6 +180,42 @@ def test_static_check_rejects_state_that_outlives_an_episode():
         assert static_check(template_code(name)).ok, name
 
 
+def _memo_on_policy_api(attr: str) -> str:
+    """The memo cheater with its memo parked on an attribute of the imported ``policy_api`` module and
+    reached through ``self`` (so no function ever names a module-level object: the per-function lint
+    rules alone do not see it). Found by the adversarial verification of the N1 fix."""
+    return template_code("memo_module").replace(
+        "_MEMO = {}", f"import policy_api\nif not hasattr(policy_api, {attr!r}):\n    policy_api.{attr} = {{}}\n"
+                     f"_MEMO = policy_api.{attr}").replace(
+        '        self.beta = float(self.config.get("beta", 0.6))',
+        '        self.beta = float(self.config.get("beta", 0.6))\n        self.memo = _MEMO').replace(
+        "target = _MEMO.get(key)", "target = self.memo.get(key)").replace(
+        "_MEMO[key] = (best[1], best[2])", "self.memo[key] = (best[1], best[2])")
+
+
+def test_memo_on_an_imported_module_is_rejected_and_gains_nothing_in_the_sandbox():
+    """A store into an imported module at module level outlives the policy module: the static check
+    rejects it (it did not before), and the sandbox - the runner every developed policy uses - forks
+    a fresh process per episode, so the memo is always empty there. In-process (trusted templates only)
+    the policy_api module is shared, so this route is closed only by the static check."""
+    code = _memo_on_policy_api("_vfy_memo_sandbox")
+    assert not static_check(code).ok
+    worlds = _worlds()
+    ev = ReplayEvaluator(ParetoSweepObjective(), W=4, runner="subprocess", fallback=(4, 3))
+    r_memo, r_pr = ev.evaluate(code, worlds), ev.evaluate(template_code("parallel_refine"), worlds)
+    assert r_memo.disqualified == 0
+    assert r_memo.value == pytest.approx(r_pr.value)
+    # module-level mutation of an imported object is rejected too; local imports / reads stay fine
+    base = template_code("parallel_refine")
+    assert not static_check(base.replace('NAME = "OptimalPolicy"',
+                                         'NAME = "OptimalPolicy"\nimport math\nmath.memo = {}')).ok
+    assert not static_check(base.replace('NAME = "OptimalPolicy"',
+                                         'NAME = "OptimalPolicy"\nimport policy_api\n'
+                                         'policy_api.__all__.append("x")')).ok
+    assert static_check(base.replace('NAME = "OptimalPolicy"',
+                                     'NAME = "OptimalPolicy"\nimport math\nTAU = math.pi * 2\nD = {}\nD["a"] = 1')).ok
+
+
 def test_recorded_llm_policies_still_pass_the_static_check():
     """No false positive on the recorded validation policies (LLM-written and mutator versions)."""
     paths = sorted(ROOT.glob("validation/dream-rsi/*/history/*/method.py"))

@@ -49,7 +49,7 @@ The live run's 9 questionable rows are its δ from R = 3 evaluations at k = 1, p
 - Every critic-rejected candidate was never evaluated, and every evaluated candidate had a final critic accept.
 - No holdout or OOD task id or question reached a proposer, analyst or critic input.
 - No evolve answer or task id is in any evaluated diff.
-- Each proposer saw the b_t, U_t, reserved flag and B_t of its round and the full evidence-aware L_t, BASELINE row included. In the regenerated runs, no proposer prompt contained δ, S*, S_t or T, as in the code.
+- Each proposer saw the b_t, U_t, reserved flag and B_t of its round and the full evidence-aware L_t, BASELINE row included. In the regenerated runs, no proposer prompt had a δ, S*, S_t or T directive, as in the code; from round 1 on, as in the code, the L_t `detail` column quotes earlier decision reasons, which print S* and δ.
 
 **The recurring questionable rows** are faithful to the reference code but questionable as science:
 - The within-task bootstrap δ under-covers at k = 2 (spec §4.4; E10). An unbiased estimate would give 0.212 instead of 0.147 for AgentQA and 0.022 instead of 0.016 for HarnessWorld.
@@ -61,7 +61,7 @@ The live run's 9 questionable rows are its δ from R = 3 evaluations at k = 1, p
 
 ### 2.1 `offline_agentqa` (regenerated on the fixed code)
 
-δ = 0.147 (seq 3, bootstrap, k = 2). b_t = 4, 4, 4, 4, 3, 2, 2, 2. No proposer prompt holds δ, S*, S_t or T. The precheck holds evolve task ids only (no answer key), so every leaky draft reached the scripted LLM critic, which rejected it (catch rate 1.0; 11 LLM rejections, 0 precheck rejections).
+δ = 0.147 (seq 3, bootstrap, k = 2). b_t = 4, 4, 4, 4, 3, 2, 2, 2. No proposer prompt holds a δ, S*, S_t or T directive (L_t decision reasons quote S* and δ from round 1, as in the code). The precheck holds evolve task ids only (no answer key), so every leaky draft reached the scripted LLM critic, which rejected it (catch rate 1.0; 11 LLM rejections, 0 precheck rejections).
 
 | round | what happened | verdict |
 |---|---|---|
@@ -162,7 +162,7 @@ This run was recorded before the claims-audit fixes. Its proposer prompts show �
 | ν counts accepted edits in rounds < t | documented-deviation (impl §5.11) | recomputed |
 | Precheck on added lines; strict verdict parse | documented-deviation (impl §5.4: the code's whole-diff grep also rejects removals of flagged content; `precheck_scope="diff"` reproduces it) | 0 disagreements between the two scopes on the 53 diffs of the three runs |
 | Single-shot proposer and digesters | documented-deviation (impl §5.2–3) | – |
-| Proposer shown δ, S*, S_t, T and numeric β/w (the code shows none) | **inconsistent-fixed** (claims N2; `Config.proposer_numbers` keeps the old view as an opt-in) | regenerated runs: stepcheck "proposer was NOT shown delta, S*, S_t or T" correct for every proposal; live (pre-fix) flagged questionable |
+| Proposer shown δ, S*, S_t, T and numeric β/w as directives/rule parameters (the code shows none; both codes quote S* and δ inside L_t decision reasons from round 1) | **inconsistent-fixed** (claims N2; `Config.proposer_numbers` keeps the old view as an opt-in) | regenerated runs: stepcheck "proposer was NOT shown delta, S*, S_t or T" correct for every proposal; live (pre-fix) flagged questionable |
 | L_t render drops the BASELINE row | **inconsistent-fixed** (claims N5) | stepcheck history rows include BASELINE |
 | Precheck denylist holds the evolve answers (an oracle the code lacks) | **inconsistent-fixed** (claims N3; `Config.precheck_answers` opt-in) | AgentQA: all 11 leak drafts now stopped by the LLM review; HarnessWorld: unchanged (literal leaks carry task ids) |
 | Smoke = 1 task, errors only (code: 2–4 tasks) | **inconsistent-fixed** (claims N9) | `smoke.json` lists 2 ids per candidate |

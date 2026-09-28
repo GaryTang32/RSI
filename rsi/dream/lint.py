@@ -72,6 +72,20 @@ class _EpisodeStateLint(ast.NodeVisitor):
     def __init__(self) -> None:
         self.scopes: list[set] = []
         self.errors: list[str] = []
+        #: names bound by a module-level import: those objects outlive the policy module (in-process they
+        #: are shared by every episode), so a store into one is rejected at ANY scope, module level included
+        self.imported: set = set()
+
+    def visit_Import(self, node) -> None:
+        if not self.scopes:
+            self.imported |= {(a.asname or a.name).split(".")[0] for a in node.names}
+
+    def visit_ImportFrom(self, node) -> None:
+        if not self.scopes:
+            self.imported |= {a.asname or a.name for a in node.names if a.name != "*"}
+
+    def _into_import(self, r) -> bool:
+        return not self.scopes and isinstance(r, ast.Name) and r.id in self.imported
 
     def _err(self, node, what: str) -> None:
         self.errors.append(f"cross-episode state (line {getattr(node, 'lineno', '?')}): {what}; replay resets the "
@@ -112,9 +126,15 @@ class _EpisodeStateLint(ast.NodeVisitor):
         if isinstance(t, ast.Starred):
             self._target(t.value)
             return
-        if not self.scopes or not isinstance(t, (ast.Attribute, ast.Subscript)):
+        if not isinstance(t, (ast.Attribute, ast.Subscript)):
             return
         r = _root(t)
+        if self._into_import(r):
+            self._err(t, f"assignment into the imported object {r.id!r} at module level (it outlives the "
+                         "policy module, e.g. policy_api.memo = {})")
+            return
+        if not self.scopes:
+            return
         if isinstance(r, ast.Name):
             if self._shared(r.id):
                 self._err(t, f"assignment into the non-local object {r.id!r}")
@@ -151,10 +171,12 @@ class _EpisodeStateLint(ast.NodeVisitor):
 
     def visit_Call(self, node) -> None:
         f = node.func
-        if self.scopes and isinstance(f, ast.Attribute) and f.attr in MUTATING_METHODS:
+        if isinstance(f, ast.Attribute) and f.attr in MUTATING_METHODS:
             r = _root(f.value)
-            if isinstance(r, ast.Name) and self._shared(r.id):
+            if self.scopes and isinstance(r, ast.Name) and self._shared(r.id):
                 self._err(node, f"in-place mutation {r.id}...{f.attr}() of a non-local object")
+            elif self._into_import(r):
+                self._err(node, f"in-place mutation {r.id}...{f.attr}() of an imported object at module level")
         if isinstance(f, ast.Attribute) and f.attr in RANDOM_STATE_CALLS and isinstance(f.value, ast.Name) \
                 and f.value.id == "random":
             # the module-level generator is process state: seeding / saving / restoring it can carry a

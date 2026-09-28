@@ -125,6 +125,7 @@ def test_plan_parsing_is_strict_like_plan_ts_and_the_tool_schema():
         {"steps": OPEN, "progress": {"files_changed": [], "verification": []}},                 # missing key
         {"steps": OPEN, "progress": {"files_changed": [], "verification": [], "decisions": [], "x": []}},
         {"steps": [{"id": "a", "goal": "g", "status": "pending", "extra": True}]},
+        {"steps": OPEN, "progress": None},             # Type.Optional(object): absent is fine, null is not
     ]
     for b in bad:
         assert validate_update_plan_args(b), b
