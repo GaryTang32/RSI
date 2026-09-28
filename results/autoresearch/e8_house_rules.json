@@ -1,6 +1,6 @@
 {
  "experiment": "e8_house_rules",
- "written_at": "2026-09-28 09:49:11",
+ "written_at": "2026-09-28 11:03:50",
  "config": {
   "tinylm_budget_s": 1.5,
   "schedule": [
@@ -18,63 +18,63 @@
   "hardened": {
    "tsv": [
     [
-     "b519e78",
-     "3.766680",
-     "0.08",
+     "fa8b780",
+     "3.852680",
+     "0.079",
      "keep",
      "baseline"
     ],
     [
-     "5d0e319",
-     "3.432256",
+     "e8bd4e1",
+     "3.566562",
      "0.079",
      "keep",
      "LR 0.003 -> 0.006"
     ],
     [
-     "2b9a7eb",
-     "3.197495",
-     "0.079",
+     "d763803",
+     "3.340369",
+     "0.08",
      "keep",
      "LR 0.006 -> 0.012 (with a typo)"
     ],
     [
-     "140fea5",
-     "3.261040",
-     "0.078",
+     "f45ed48",
+     "3.407948",
+     "0.077",
      "discard",
      "add 5% warmup via Fraction (missing import)"
     ],
     [
-     "31e24b2",
+     "ea948a5",
      "0.000000",
      "0",
      "crash",
      "add a data-prefetch warm-up loop"
     ],
     [
-     "4facc8c",
+     "4897380",
      "0.000000",
      "0",
      "crash",
      "HIDDEN 128 -> 4194304"
     ],
     [
-     "cb3307f",
+     "ececcec",
      "0.000000",
      "0",
      "crash",
      "switch to SGD with LR 1e5 (diverges)"
     ],
     [
-     "6b6656d",
-     "3.195232",
+     "4d1671b",
+     "3.262047",
      "0.076",
      "keep",
      "BATCH_SIZE 32 -> 16"
     ],
     [
-     "6225209",
+     "0a6255a",
      "0.000000",
      "0",
      "discard",
@@ -91,7 +91,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.207
+     "wall_s": 2.216
     },
     {
      "desc": "LR 0.006 -> 0.012 (with a typo)",
@@ -99,7 +99,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 2.081
+     "wall_s": 2.396
     },
     {
      "desc": "add 5% warmup via Fraction (missing import)",
@@ -107,7 +107,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 2.102
+     "wall_s": 2.869
     },
     {
      "desc": "add a data-prefetch warm-up loop",
@@ -115,7 +115,7 @@
      "crash_kind": "timeout",
      "crash_reason": "killed: exceeded kill_after=8s",
      "fix_attempts": 0,
-     "wall_s": 8.015
+     "wall_s": 8.016
     },
     {
      "desc": "HIDDEN 128 -> 4194304",
@@ -123,7 +123,7 @@
      "crash_kind": "oom",
      "crash_reason": "numpy._core._exceptions._ArrayMemoryError: Unable to allocate 3.00 GiB for an array with shape (96, 4194304) and data type float64",
      "fix_attempts": 1,
-     "wall_s": 0.151
+     "wall_s": 0.179
     },
     {
      "desc": "switch to SGD with LR 1e5 (diverges)",
@@ -131,7 +131,7 @@
      "crash_kind": "nan",
      "crash_reason": "FAIL (fast-fail: loss is NaN or exploded)",
      "fix_attempts": 1,
-     "wall_s": 0.23
+     "wall_s": 0.193
     },
     {
      "desc": "BATCH_SIZE 32 -> 16",
@@ -139,7 +139,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.043
+     "wall_s": 2.152
     },
     {
      "desc": "REJECTED (locked_edit:prepare.py (locked file (the grader/data/budget) was edited)) | tune the evaluation constants in prepare.py",
@@ -181,64 +181,64 @@
   "faithful": {
    "tsv": [
     [
-     "b519e78",
-     "3.885257",
-     "0.103",
+     "fa8b780",
+     "3.875499",
+     "0.097",
      "keep",
      "baseline"
     ],
     [
-     "5d0e319",
-     "3.427381",
-     "0.1",
+     "e8bd4e1",
+     "3.590444",
+     "0.097",
      "keep",
      "LR 0.003 -> 0.006"
     ],
     [
-     "2b9a7eb",
-     "3.186950",
-     "0.1",
+     "d763803",
+     "3.289507",
+     "0.097",
      "keep",
      "LR 0.006 -> 0.012 (with a typo)"
     ],
     [
-     "140fea5",
-     "3.321786",
-     "0.101",
-     "discard",
+     "f45ed48",
+     "3.278722",
+     "0.102",
+     "keep",
      "add 5% warmup via Fraction (missing import)"
     ],
     [
-     "31e24b2",
+     "e4204e4",
      "0.000000",
      "0",
      "crash",
      "add a data-prefetch warm-up loop"
     ],
     [
-     "4facc8c",
+     "fdeb40c",
      "0.000000",
      "0",
      "crash",
      "HIDDEN 128 -> 4194304"
     ],
     [
-     "cb3307f",
+     "2afa69f",
      "0.000000",
      "0",
      "crash",
      "switch to SGD with LR 1e5 (diverges)"
     ],
     [
-     "6b6656d",
-     "3.133666",
+     "87cbe34",
+     "3.205719",
      "0.099",
      "keep",
      "BATCH_SIZE 32 -> 16"
     ],
     [
-     "42c4380",
-     "2.866209",
+     "39bd317",
+     "2.877871",
      "0.099",
      "keep",
      "tune the evaluation constants in prepare.py"
@@ -254,7 +254,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.222
+     "wall_s": 4.721
     },
     {
      "desc": "LR 0.006 -> 0.012 (with a typo)",
@@ -262,15 +262,15 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 1.974
+     "wall_s": 2.254
     },
     {
      "desc": "add 5% warmup via Fraction (missing import)",
-     "status": "discard",
+     "status": "keep",
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 2.021
+     "wall_s": 2.007
     },
     {
      "desc": "add a data-prefetch warm-up loop",
@@ -278,7 +278,7 @@
      "crash_kind": "timeout",
      "crash_reason": "killed: exceeded kill_after=8s",
      "fix_attempts": 0,
-     "wall_s": 8.013
+     "wall_s": 8.012
     },
     {
      "desc": "HIDDEN 128 -> 4194304",
@@ -286,7 +286,7 @@
      "crash_kind": "oom",
      "crash_reason": "numpy._core._exceptions._ArrayMemoryError: Unable to allocate 3.00 GiB for an array with shape (96, 4194304) and data type float64",
      "fix_attempts": 1,
-     "wall_s": 0.152
+     "wall_s": 0.164
     },
     {
      "desc": "switch to SGD with LR 1e5 (diverges)",
@@ -294,7 +294,7 @@
      "crash_kind": "nan",
      "crash_reason": "FAIL (fast-fail: loss is NaN or exploded)",
      "fix_attempts": 1,
-     "wall_s": 0.331
+     "wall_s": 0.291
     },
     {
      "desc": "BATCH_SIZE 32 -> 16",
@@ -302,7 +302,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.361
+     "wall_s": 2.261
     },
     {
      "desc": "tune the evaluation constants in prepare.py",
@@ -310,12 +310,12 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.235
+     "wall_s": 2.209
     }
    ],
    "kill_after_s": 8.0,
    "rewinds": 0,
-   "resets": 4,
+   "resets": 3,
    "counters": {
     "rejected": 0,
     "duplicate": 0,
@@ -362,8 +362,8 @@
   "baseline_fix": {
    "fix_calls": 1,
    "baseline_row": [
-    "ae8e87a",
-    "3.720054",
+    "8aa2407",
+    "3.815908",
     "0.08",
     "keep",
     "baseline"

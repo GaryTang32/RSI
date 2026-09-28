@@ -414,6 +414,6 @@ of them fail on the pre-fix tree.
 * **Documented, not changed.**
   * N1: our reconstructed GDI does not collapse onto the intrinsic part.
   * The overview's "look locally, then hub" order is not Evolver's (M8a).
-  * The spec's §4.10 text still describes the estimate-drift penalty as active. `docs/methods/evomap.md` is outside
-    this fix's ownership.
+  * The spec's §4.10 now says the estimate-drift penalty is dead in Evolver, and its §10 row 6 gives the true
+    hub-first order (updated in the verification pass).
   * The `validation/evomap` traced runs predate the fixes (AUDIT "Remaining open issues").

@@ -1,6 +1,6 @@
 {
  "experiment": "x17_failure_distiller",
- "generated_at": "2026-09-28 10:35:23",
+ "generated_at": "2026-09-28 11:15:31",
  "config": {
   "llm": "sim",
   "seeds": 10,

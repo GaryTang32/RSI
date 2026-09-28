@@ -1,6 +1,6 @@
 {
  "experiment": "e2_budget_bias",
- "written_at": "2026-09-28 10:22:52",
+ "written_at": "2026-09-28 11:40:53",
  "config": {
   "landscape_seeds": 30,
   "experiments": 100
@@ -84,19 +84,20 @@
      "kind": "wallclock",
      "seed": 0,
      "params_M_base": 0.05,
-     "params_M_final": 0.045,
-     "steps_base": 248.0,
-     "steps_final": 287.0,
+     "params_M_final": 0.027,
+     "steps_base": 237.0,
+     "steps_final": 318.0,
      "kept": [
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "HIDDEN 128 -> 64",
       "ACTIVATION 'tanh' -> 'relu'",
       "SEED 42 -> 397",
-      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
-      "CONTEXT 6 -> 4",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
-      "LR 0.012 -> 0.024"
+      "LR 0.012 -> 0.024",
+      "LR 0.024 -> 0.048"
      ],
-     "recorded_gain": 0.8025472926923944,
+     "recorded_gain": 0.7339122437600891,
      "usage": {
       "calls": 0,
       "input_tokens": 0,
@@ -108,17 +109,19 @@
      "kind": "wallclock",
      "seed": 1,
      "params_M_base": 0.05,
-     "params_M_final": 0.045,
-     "steps_base": 245.0,
-     "steps_final": 507.0,
+     "params_M_final": 0.05,
+     "steps_base": 243.0,
+     "steps_final": 257.0,
      "kept": [
+      "INIT_SCALE 1.0 -> 1.4",
       "WEIGHT_DECAY 0.0 -> 0.0001",
       "LR 0.003 -> 0.006",
-      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "LR 0.006 -> 0.012",
       "TRAIN_SEQ_LEN 16 -> 8",
-      "CONTEXT 6 -> 4"
+      "LR 0.012 -> 0.024",
+      "TRAIN_SEQ_LEN 8 -> 16"
      ],
-     "recorded_gain": 0.5357798554016493,
+     "recorded_gain": 0.6458698151481808,
      "usage": {
       "calls": 0,
       "input_tokens": 0,
@@ -128,9 +131,9 @@
     }
    ],
    "params_ratio_final_over_base": {
-    "mean": 0.8999999999999999,
-    "lo": 0.8999999999999999,
-    "hi": 0.8999999999999999,
+    "mean": 0.77,
+    "lo": 0.5399999999999999,
+    "hi": 1.0,
     "n": 2
    }
   },
@@ -195,18 +198,18 @@
    }
   },
   "horizon": {
-   "baseline_bpb_1x": 3.51336622534651,
-   "baseline_bpb_4x": 2.9176950271054927,
+   "baseline_bpb_1x": 3.6916125369784956,
+   "baseline_bpb_4x": 2.9958813139050475,
    "gain_1x": {
-    "mean": 0.5019819050478729,
-    "lo": 0.34874714385416006,
-    "hi": 0.6552166662415857,
+    "mean": 0.6454457321970799,
+    "lo": 0.590384486766542,
+    "hi": 0.7005069776276178,
     "n": 2
    },
    "gain_4x": {
-    "mean": 0.20999553777905766,
-    "lo": 0.14814332324862445,
-    "hi": 0.2718477523094909,
+    "mean": 0.26958667515548873,
+    "lo": 0.22353948256897205,
+    "hi": 0.3156338677420054,
     "n": 2
    }
   }
@@ -226,12 +229,12 @@
    0.038261659272485114
   ],
   "tinylm_params_ratio_wallclock_vs_tokens": [
-   0.8999999999999999,
+   0.77,
    4.5600000000000005
   ],
   "tinylm_gain_1x_vs_4x": [
-   0.5019819050478729,
-   0.20999553777905766
+   0.6454457321970799,
+   0.26958667515548873
   ],
   "claim_reproduced": true
  },

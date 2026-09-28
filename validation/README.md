@@ -43,9 +43,9 @@ Items the auditors left open, and what happened to them after the audit:
 - **Dream-RSI** - Adaptive template labels one manifest 'live best still improving': open - see AUDIT.md.
 - **Dream-RSI** - Root cause in rsi.core.parse_file_blocks: fixed in core after the audit (lone/trailing fences and `===` terminators are stripped).
 - **Dream-RSI** - Replay ranking vs online value (frugality bias, single world at t=1; spec §8.2/§8.4): open - see AUDIT.md.
-- **EvoMap** - A1 new gene kept on a single retry sample: open - see AUDIT.md.
-- **EvoMap** - A7 hub.metrics n_promoted counts verified assets (n_promoted_strict = 0): open - see AUDIT.md.
-- **EvoMap** - X10 rank_validity_positive robustness: open - see AUDIT.md.
+- **EvoMap** - A1 new gene kept on a single retry sample: fixed: safe mode keeps a new gene only on a paired sample (3 fresh seeds with the gene vs the same seeds without it; `Config.new_gene_check="paired"`); faithful keeps Evolver's single retry - see AUDIT.md and docs/claims/evomap.md "Fix log".
+- **EvoMap** - A7 hub.metrics n_promoted counts verified assets (n_promoted_strict = 0): fixed: `n_promoted` counts status `promoted` only; the admitted tier is `n_admitted` (+ `admitted_states`).
+- **EvoMap** - X10 rank_validity_positive robustness: fixed: `poisoned_in_stores` is split into hub vs self-written (`poisoned_in_stores_hub` / `_self`), and X10 was re-run on the fixed code; its rank-validity CI is not positive (0.089 [-0.022, +0.204]), so the verdict is now `rank_validity_positive: false` (SafeHub E3: NOT REPRODUCED).
 - **Meta-Harness + SoL-Pi** - Exact-tie order of Pareto/_best by name (release: rglob file order); per_unit_best breaks ties the opposite way: open - see AUDIT.md.
 - **Meta-Harness + SoL-Pi** - Forked smoke killed on timeout still loses its usage: open - see AUDIT.md.
 

@@ -161,6 +161,31 @@ def test_faithful_mode_searches_the_hub_before_local_selection():
     assert "hub_search_miss_with_problem" in cr.signals and cr.gene_id == "gene_local_units"
 
 
+
+def test_legacy_replace_mode_is_the_old_naive_reference_path_not_quarantine():
+    # verifier finding: reuse_mode="replace" fell through to the quarantine branch of _consult_hub, so the
+    # documented "old behaviour" option ran a local A/B instead of the pre-fix naive replace
+    hub = _hub_with_kilo_gene()
+    hub.search_mode = "legacy"
+    st = LocalStore(node_id="bob")
+    st.upsert_gene(Gene(id="gene_local_units", signals_match=["task:length"], summary="Be careful with units.",
+                        strategy=["Read the task.", "Answer with a number.", "Double-check."]))
+    ag = AgentNode("bob", _units(), Artifact({"agent.md": "Convert.\n"}), llm_task=_model(), store=st, hub=hub,
+                   config=Config(mode="faithful", reuse_mode="replace", hub_when="always", trace=False))
+    cr = ag.cycle(ag.decision_tasks[0])
+    # pre-fix faithful "reference" (git 79e464d) on the same setup: gene_kilo replaces the local gene, is stored,
+    # the event says "reference", and no quarantine ran
+    assert cr.gene_id == "gene_kilo" and cr.source == "hub" and cr.quarantine is None and ag.n_quarantined == 0
+    assert "gene_kilo" in ag.store.genes and ag.store.events[-1].source_type == "reference"
+
+
+def test_config_estimate_drift_penalty_reaches_the_solidifier():
+    # verifier finding: Config.estimate_drift_penalty was never passed to the Solidifier (the opt-in was dead)
+    mk = lambda **kw: AgentNode("a", _units(), Artifact({"agent.md": "x"}), llm_task=_model(),  # noqa: E731
+                                config=Config(mode="faithful", trace=False, **kw))
+    assert mk().solidifier.estimate_drift_penalty is False
+    assert mk(estimate_drift_penalty=True).solidifier.estimate_drift_penalty is True
+
 # ----------------------------------------------------------------------------- N10
 def test_naive_hub_surfaces_assets_by_semantic_similarity():
     hub = _hub_with_kilo_gene()

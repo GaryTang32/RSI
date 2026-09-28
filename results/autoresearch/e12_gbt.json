@@ -1,6 +1,6 @@
 {
  "experiment": "e12_gbt",
- "written_at": "2026-09-28 10:49:41",
+ "written_at": "2026-09-28 11:59:46",
  "config": {
   "task": "tabular",
   "n_experiments": 25,
@@ -126,7 +126,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/fe_hpo_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -235,7 +235,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/fe_hpo_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -316,7 +316,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/fe_hpo_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -444,7 +444,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/hpo-only_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -504,7 +504,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/hpo-only_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -571,7 +571,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/hpo-only_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -657,7 +657,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/random-hpo_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -710,7 +710,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/random-hpo_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -763,7 +763,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e12/random-hpo_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,

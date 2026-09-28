@@ -1,6 +1,6 @@
 {
  "experiment": "e1_progress",
- "written_at": "2026-09-28 09:56:19",
+ "written_at": "2026-09-28 11:10:48",
  "config": {
   "task": "tinylm",
   "budget_s": 2.0,
@@ -16,63 +16,63 @@
  },
  "noise_band": {
   "values": [
-   3.599322815495243,
-   3.6516891311172346,
-   3.5907933659900158,
-   3.6150846001798445,
-   3.6526395475160083
+   3.711032022983293,
+   3.680107258294553,
+   3.573785850679306,
+   3.6695622953293365,
+   3.5452280045979507
   ],
-  "mean": 3.6219058920596696,
-  "sd": 0.02896598675571239,
-  "delta": 0.08192818263489583
+  "mean": 3.635943086376888,
+  "sd": 0.07213151479098123,
+  "delta": 0.20401873298384235
  },
  "tinylm": {
   "greedy": {
    "improvement": {
-    "mean": 0.7877691270538372,
-    "lo": 0.7655729234560433,
-    "hi": 0.8208080951233052,
+    "mean": 0.7293320697840712,
+    "lo": 0.6220000535170138,
+    "hi": 0.7910482815851281,
     "n": 3
    },
    "honest_improvement": {
-    "mean": 0.6675267328479896,
-    "lo": 0.48627063317987496,
-    "hi": 0.8121460657273936,
+    "mean": 0.7748022068242154,
+    "lo": 0.725768361563301,
+    "hi": 0.8190915404959882,
     "n": 3
    },
    "keep_rate": {
-    "mean": 0.38422939068100354,
-    "lo": 0.36666666666666664,
-    "hi": 0.41935483870967744,
+    "mean": 0.27491039426523295,
+    "lo": 0.25806451612903225,
+    "hi": 0.3,
     "n": 3
    },
    "experiments_per_hour": {
-    "mean": 961.8629056366732,
-    "lo": 926.6338983083923,
-    "hi": 994.1093275400113,
+    "mean": 945.9373105963244,
+    "lo": 901.0885394687808,
+    "hi": 996.4484573923543,
     "n": 3
    },
    "runs": [
     {
      "arm": "greedy",
      "seed": 0,
-     "baseline": 3.6356348024432776,
-     "best": 2.8148267073199724,
-     "improvement": 0.8208080951233052,
-     "keep_rate": 0.36666666666666664,
-     "n_keep": 11,
+     "baseline": 3.615055074950468,
+     "best": 2.82400679336534,
+     "improvement": 0.7910482815851281,
+     "keep_rate": 0.3,
+     "n_keep": 9,
      "n_crash": 1,
-     "experiments_per_hour": 994.1093275400115,
+     "experiments_per_hour": 940.2749349278378,
      "reeval": {
       "final": {
-       "mean": 2.8392394583707703,
-       "lo": 2.8070335439902494,
-       "hi": 2.875858270506775,
+       "mean": 2.856804407802759,
+       "lo": 2.852061092430129,
+       "hi": 2.8628570401080924,
        "n": 3,
        "values": [
-        2.834826560615287,
-        2.80703354399025,
-        2.875858270506775
+        2.8628570401080924,
+        2.852061092430129,
+        2.8554950908700563
        ],
        "n_crash": 0,
        "seeds": [
@@ -82,14 +82,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.651385524098164,
-       "lo": 3.617937221744087,
-       "hi": 3.700234079761776,
+       "mean": 3.675895948298747,
+       "lo": 3.641271593794104,
+       "hi": 3.7024556007955383,
        "n": 3,
        "values": [
-        3.700234079761776,
-        3.6359852707886295,
-        3.617937221744087
+        3.6412715937941043,
+        3.6839606503065996,
+        3.7024556007955383
        ],
        "n_crash": 0,
        "seeds": [
@@ -99,8 +99,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 2.8148267073199724,
-      "optimism_gap": 0.024412751050797876
+      "recorded_best": 2.82400679336534,
+      "optimism_gap": 0.03279761443741913
      },
      "crash_kinds": {
       "oom": 1
@@ -115,160 +115,160 @@
      },
      "top_hits": [
       {
-       "exp": 18,
-       "commit": "8f3abb2",
-       "description": "LR 0.006 -> 0.012",
-       "delta": 0.2050986684646805,
-       "metric": 2.9678146009002355
-      },
-      {
        "exp": 17,
-       "commit": "bd1a2b4",
+       "commit": "b58f590",
        "description": "LR 0.003 -> 0.006",
-       "delta": 0.15902624588781533,
-       "metric": 3.172913269364916
+       "delta": 0.20736456117612168,
+       "metric": 3.2222636608604445
       },
       {
-       "exp": 15,
-       "commit": "62f6916",
-       "description": "CONTEXT 6 -> 4",
-       "delta": 0.11071316059950931,
-       "metric": 3.3319395152527314
+       "exp": 18,
+       "commit": "2e652f3",
+       "description": "LR 0.006 -> 0.012",
+       "delta": 0.17558807463636183,
+       "metric": 3.0466755862240826
       },
       {
        "exp": 19,
-       "commit": "5c0ad10",
+       "commit": "0e005b1",
        "description": "LR 0.012 -> 0.024",
-       "delta": 0.1093218455514613,
-       "metric": 2.8584927553487742
+       "delta": 0.17146238719068263,
+       "metric": 2.8752131990334
+      },
+      {
+       "exp": 12,
+       "commit": "032b7ea",
+       "description": "CONTEXT 6 -> 4",
+       "delta": 0.08521551289352525,
+       "metric": 3.429628222036566
       },
       {
        "exp": 5,
-       "commit": "4e2c770",
+       "commit": "d8ba8c7",
        "description": "ACTIVATION 'tanh' -> 'relu'",
-       "delta": 0.08884860846718778,
-       "metric": 3.54678619397609
+       "delta": 0.0675246126515976,
+       "metric": 3.5475304622988704
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.6356348024432776,
+       "metric": 3.615055074950468,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "discard",
-       "metric": 3.6800701012557226,
+       "metric": 3.7460596892757345,
        "description": "WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 2,
        "status": "discard",
-       "metric": 4.003142166079254,
+       "metric": 3.957736770953997,
        "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 3,
        "status": "discard",
-       "metric": 3.8605615609132635,
+       "metric": 3.9750542008895198,
        "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 4,
        "status": "discard",
-       "metric": 3.8217326073605395,
+       "metric": 3.8173512985923557,
        "description": "HIDDEN 128 -> 256"
       },
       {
        "exp": 5,
        "status": "keep",
-       "metric": 3.54678619397609,
+       "metric": 3.5475304622988704,
        "description": "ACTIVATION 'tanh' -> 'relu'"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 3.608905826977579,
+       "metric": 3.7710670763693726,
        "description": "ACTIVATION 'relu' -> 'tanh'"
       },
       {
        "exp": 7,
        "status": "discard",
-       "metric": 3.556088854023603,
+       "metric": 3.575029169886229,
        "description": "WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 8,
        "status": "discard",
-       "metric": 3.7912173859564384,
+       "metric": 3.857909997396927,
        "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 9,
        "status": "keep",
-       "metric": 3.463541550512099,
+       "metric": 3.5148437349300914,
        "description": "SEED 42 -> 397"
       },
       {
        "exp": 10,
        "status": "discard",
-       "metric": 3.582903691742581,
+       "metric": 3.5878423067511696,
        "description": "HIDDEN 128 -> 256"
       },
       {
        "exp": 11,
-       "status": "keep",
-       "metric": 3.446559750341369,
+       "status": "discard",
+       "metric": 3.516172366689653,
        "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 12,
        "status": "keep",
-       "metric": 3.4426526758522407,
-       "description": "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
+       "metric": 3.429628222036566,
+       "description": "CONTEXT 6 -> 4"
       },
       {
        "exp": 13,
        "status": "discard",
-       "metric": 3.4581046897880325,
-       "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+       "metric": 3.4872147928581128,
+       "description": "CONTEXT 4 -> 2"
       },
       {
        "exp": 14,
        "status": "discard",
-       "metric": 4.9249598841302715,
-       "description": "OPTIMIZER 'adam' -> 'sgd'"
+       "metric": 3.4625235586108403,
+       "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 15,
-       "status": "keep",
-       "metric": 3.3319395152527314,
-       "description": "CONTEXT 6 -> 4"
+       "status": "discard",
+       "metric": 3.455517621042972,
+       "description": "CONTEXT 4 -> 6"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 3.4676022276354055,
-       "description": "CONTEXT 4 -> 2"
+       "metric": 3.634077418555216,
+       "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 17,
        "status": "keep",
-       "metric": 3.172913269364916,
+       "metric": 3.2222636608604445,
        "description": "LR 0.003 -> 0.006"
       },
       {
        "exp": 18,
        "status": "keep",
-       "metric": 2.9678146009002355,
+       "metric": 3.0466755862240826,
        "description": "LR 0.006 -> 0.012"
       },
       {
        "exp": 19,
        "status": "keep",
-       "metric": 2.8584927553487742,
+       "metric": 2.8752131990334,
        "description": "LR 0.012 -> 0.024"
       },
       {
@@ -280,73 +280,73 @@
       {
        "exp": 21,
        "status": "discard",
-       "metric": 2.959407545097587,
+       "metric": 2.979154325032063,
        "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 22,
        "status": "discard",
-       "metric": 2.869571651485867,
+       "metric": 2.8875130039535972,
        "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 23,
        "status": "discard",
-       "metric": 2.9354074865568296,
+       "metric": 3.007020884857699,
        "description": "HIDDEN 128 -> 64"
       },
       {
        "exp": 24,
        "status": "discard",
-       "metric": 2.890184071381445,
+       "metric": 2.8915758215187575,
        "description": "WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 25,
        "status": "discard",
-       "metric": 2.964614222627946,
+       "metric": 2.9813115890594895,
        "description": "LR 0.024 -> 0.012"
       },
       {
        "exp": 26,
        "status": "discard",
-       "metric": 2.9758924249706538,
+       "metric": 3.036350244573655,
        "description": "DEPTH 1 -> 2"
       },
       {
        "exp": 27,
        "status": "keep",
-       "metric": 2.834362446145808,
+       "metric": 2.8702396045650644,
        "description": "BATCH_SIZE 32 -> 16"
       },
       {
        "exp": 28,
        "status": "keep",
-       "metric": 2.8148267073199724,
+       "metric": 2.82400679336534,
        "description": "INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 29,
        "status": "discard",
-       "metric": 2.920538681963701,
+       "metric": 2.9475541707157547,
        "description": "ACTIVATION 'relu' -> 'tanh'"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 2.8996532296909243,
+       "metric": 2.9062973249186363,
        "description": "CONTEXT 4 -> 6"
       }
      ],
      "audit_final": {
       "exp": 28,
-      "commit": "14d21d1",
+      "commit": "2e5ea45",
       "status": "keep",
       "description": "INIT_SCALE 1.0 -> 0.7",
-      "metric": 2.8148267073199724,
-      "test_iid": 2.88455446334689,
-      "test_shift": 2.9483310827501747,
-      "loop_metric_rerun": 2.813843092891704
+      "metric": 2.82400679336534,
+      "test_iid": 2.929811577886518,
+      "test_shift": 3.007330447305168,
+      "loop_metric_rerun": 2.843898683284207
      },
      "usage": {
       "calls": 0,
@@ -354,28 +354,28 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_greedy_0/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_greedy_0/results.tsv"
     },
     {
      "arm": "greedy",
      "seed": 1,
-     "baseline": 3.6424238983333943,
-     "best": 2.876850974877351,
-     "improvement": 0.7655729234560433,
-     "keep_rate": 0.36666666666666664,
-     "n_keep": 11,
+     "baseline": 3.596861005338976,
+     "best": 2.974860951821962,
+     "improvement": 0.6220000535170138,
+     "keep_rate": 0.26666666666666666,
+     "n_keep": 8,
      "n_crash": 1,
-     "experiments_per_hour": 964.8454910616159,
+     "experiments_per_hour": 901.0885394687808,
      "reeval": {
       "final": {
-       "mean": 2.9342729091638113,
-       "lo": 2.905991464303663,
-       "hi": 2.955714377095449,
+       "mean": 2.941698357417795,
+       "lo": 2.918618694101886,
+       "hi": 2.954133806843497,
        "n": 3,
        "values": [
-        2.905991464303663,
-        2.955714377095449,
-        2.941112886092322
+        2.9186186941018866,
+        2.954133806843497,
+        2.952342571308001
        ],
        "n_crash": 0,
        "seeds": [
@@ -385,14 +385,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.6384364088005117,
-       "lo": 3.5794175315485792,
-       "hi": 3.7044546822086972,
+       "mean": 3.667466718981096,
+       "lo": 3.6272205145370093,
+       "hi": 3.701290596664368,
        "n": 3,
        "values": [
-        3.7044546822086972,
-        3.6314370126442577,
-        3.5794175315485792
+        3.701290596664368,
+        3.6738890457419124,
+        3.627220514537009
        ],
        "n_crash": 0,
        "seeds": [
@@ -402,8 +402,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 2.876850974877351,
-      "optimism_gap": 0.05742193428646036
+      "recorded_best": 2.974860951821962,
+      "optimism_gap": -0.033162594404167134
      },
      "crash_kinds": {
       "nan": 1
@@ -418,142 +418,142 @@
      },
      "top_hits": [
       {
-       "exp": 5,
-       "commit": "290f186",
-       "description": "LR 0.003 -> 0.006",
-       "delta": 0.2751345897322177,
-       "metric": 3.3435105304624586
+       "exp": 6,
+       "commit": "8951418",
+       "description": "LR 0.006 -> 0.012",
+       "delta": 0.2549067888689516,
+       "metric": 3.1860613222744902
       },
       {
-       "exp": 6,
-       "commit": "d842bce",
-       "description": "LR 0.006 -> 0.012",
-       "delta": 0.1364235726291363,
-       "metric": 3.2070869578333223
+       "exp": 5,
+       "commit": "94afaa8",
+       "description": "LR 0.003 -> 0.006",
+       "delta": 0.1558928941955342,
+       "metric": 3.440968111143442
       },
       {
        "exp": 7,
-       "commit": "0092e5f",
+       "commit": "d3beb22",
        "description": "LR 0.012 -> 0.024",
-       "delta": 0.10994176631056618,
-       "metric": 3.097145191522756
+       "delta": 0.09224271297918696,
+       "metric": 3.0938186092953033
+      },
+      {
+       "exp": 9,
+       "commit": "2a7af32",
+       "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+       "delta": 0.07803849116394224,
+       "metric": 3.015780118131361
       },
       {
        "exp": 25,
-       "commit": "dc242ae",
+       "commit": "d20c8b1",
        "description": "CONTEXT 6 -> 4",
-       "delta": 0.08606183525599542,
-       "metric": 2.9302129126134173
-      },
-      {
-       "exp": 19,
-       "commit": "4a6ede3",
-       "description": "SEED 42 -> 397",
-       "delta": 0.048465570276635894,
-       "metric": 3.031666222936799
+       "delta": 0.03793966690587025,
+       "metric": 2.9768330854951177
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.6424238983333943,
+       "metric": 3.596861005338976,
        "description": "baseline"
       },
       {
        "exp": 1,
-       "status": "keep",
-       "metric": 3.6186451201946763,
+       "status": "discard",
+       "metric": 3.707468282116972,
        "description": "INIT_SCALE 1.0 -> 1.4"
       },
       {
        "exp": 2,
        "status": "discard",
-       "metric": 3.7753118292982384,
-       "description": "INIT_SCALE 1.4 -> 1.96"
+       "metric": 4.040941066290165,
+       "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 3,
        "status": "discard",
-       "metric": 3.7887097762418893,
+       "metric": 3.811733291219512,
        "description": "CONTEXT 6 -> 8"
       },
       {
        "exp": 4,
        "status": "discard",
-       "metric": 3.6956019907613724,
+       "metric": 3.7359081912491314,
        "description": "WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 5,
        "status": "keep",
-       "metric": 3.3435105304624586,
+       "metric": 3.440968111143442,
        "description": "LR 0.003 -> 0.006"
       },
       {
        "exp": 6,
        "status": "keep",
-       "metric": 3.2070869578333223,
+       "metric": 3.1860613222744902,
        "description": "LR 0.006 -> 0.012"
       },
       {
        "exp": 7,
        "status": "keep",
-       "metric": 3.097145191522756,
+       "metric": 3.0938186092953033,
        "description": "LR 0.012 -> 0.024"
       },
       {
        "exp": 8,
        "status": "discard",
-       "metric": 3.2150131441861176,
+       "metric": 3.2122884465192594,
        "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 9,
        "status": "keep",
-       "metric": 3.080131793213435,
+       "metric": 3.015780118131361,
        "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 10,
        "status": "discard",
-       "metric": 3.1407899917161015,
+       "metric": 3.1146054806491192,
        "description": "LR 0.024 -> 0.048 (with a typo)"
       },
       {
        "exp": 11,
        "status": "discard",
-       "metric": 3.1703407503825756,
+       "metric": 3.21545217817041,
        "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 12,
        "status": "discard",
-       "metric": 3.2099790676123927,
+       "metric": 3.188466702831666,
        "description": "CONTEXT 6 -> 8"
       },
       {
        "exp": 13,
        "status": "discard",
-       "metric": 3.145969680872831,
+       "metric": 3.0368642942027386,
        "description": "add 5% warmup via Fraction (missing import)"
       },
       {
        "exp": 14,
        "status": "discard",
-       "metric": 3.1602632207032877,
+       "metric": 3.1490930928128313,
        "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 15,
        "status": "discard",
-       "metric": 3.1811879498919313,
+       "metric": 3.1098842431492066,
        "description": "TRAIN_SEQ_LEN 16 -> 8"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 3.2109811694975354,
+       "metric": 3.2403675302928057,
        "description": "HIDDEN 128 -> 256"
       },
       {
@@ -564,92 +564,92 @@
       },
       {
        "exp": 18,
-       "status": "discard",
-       "metric": 3.0957693828783848,
+       "status": "keep",
+       "metric": 3.014772752400988,
        "description": "WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 19,
-       "status": "keep",
-       "metric": 3.031666222936799,
-       "description": "SEED 42 -> 397"
+       "status": "discard",
+       "metric": 3.1302219126517365,
+       "description": "INIT_SCALE 1.0 -> 1.4"
       },
       {
        "exp": 20,
-       "status": "keep",
-       "metric": 3.0162747478694127,
-       "description": "SEED 397 -> 402"
+       "status": "discard",
+       "metric": 3.192193590444636,
+       "description": "HIDDEN 128 -> 256"
       },
       {
        "exp": 21,
        "status": "discard",
-       "metric": 3.110997486714045,
-       "description": "WARMUP_RATIO 0.0 -> 0.05"
+       "metric": 3.055634809149755,
+       "description": "WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 22,
        "status": "discard",
-       "metric": 3.1778696133253743,
+       "metric": 3.276819116512249,
        "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 23,
        "status": "discard",
-       "metric": 3.041242797105104,
+       "metric": 3.027417130775535,
        "description": "WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 24,
        "status": "discard",
-       "metric": 3.1242097634558923,
+       "metric": 3.1168918432589794,
        "description": "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
       },
       {
        "exp": 25,
        "status": "keep",
-       "metric": 2.9302129126134173,
+       "metric": 2.9768330854951177,
        "description": "CONTEXT 6 -> 4"
       },
       {
        "exp": 26,
        "status": "discard",
-       "metric": 3.1657910899580184,
+       "metric": 3.1937329068538145,
        "description": "CONTEXT 4 -> 2"
       },
       {
        "exp": 27,
-       "status": "keep",
-       "metric": 2.923399128565495,
-       "description": "INIT_SCALE 1.4 -> 0.98"
+       "status": "discard",
+       "metric": 2.9854812712263716,
+       "description": "INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 28,
-       "status": "keep",
-       "metric": 2.876850974877351,
-       "description": "INIT_SCALE 0.98 -> 0.686"
+       "status": "discard",
+       "metric": 3.1013183204756887,
+       "description": "BATCH_SIZE 32 -> 64"
       },
       {
        "exp": 29,
-       "status": "discard",
-       "metric": 2.917293270210216,
+       "status": "keep",
+       "metric": 2.974860951821962,
        "description": "WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 2.966220158257888,
-       "description": "CONTEXT 4 -> 6"
+       "metric": 2.9952005665031467,
+       "description": "WARMDOWN_RATIO 0.3 -> 0.1"
       }
      ],
      "audit_final": {
-      "exp": 28,
-      "commit": "f99f429",
+      "exp": 29,
+      "commit": "430520a",
       "status": "keep",
-      "description": "INIT_SCALE 0.98 -> 0.686",
-      "metric": 2.876850974877351,
-      "test_iid": 2.9662780297668863,
-      "test_shift": 2.9879880657066926,
-      "loop_metric_rerun": 2.9027282674081776
+      "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+      "metric": 2.974860951821962,
+      "test_iid": 3.035260426883221,
+      "test_shift": 3.1323715744297105,
+      "loop_metric_rerun": 2.989691819306636
      },
      "usage": {
       "calls": 0,
@@ -657,28 +657,28 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_greedy_1/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_greedy_1/results.tsv"
     },
     {
      "arm": "greedy",
      "seed": 2,
-     "baseline": 3.7801954597104035,
-     "best": 3.0032690971282405,
-     "improvement": 0.776926362582163,
-     "keep_rate": 0.41935483870967744,
-     "n_keep": 13,
+     "baseline": 3.664576638895068,
+     "best": 2.8896287646449963,
+     "improvement": 0.7749478742500715,
+     "keep_rate": 0.25806451612903225,
+     "n_keep": 8,
      "n_crash": 0,
-     "experiments_per_hour": 926.6338983083923,
+     "experiments_per_hour": 996.4484573923544,
      "reeval": {
       "final": {
-       "mean": 3.0743742999833468,
-       "lo": 3.044365873610646,
-       "hi": 3.098946247577489,
+       "mean": 2.8918920701813406,
+       "lo": 2.851321553915921,
+       "hi": 2.944928384162162,
        "n": 3,
        "values": [
-        3.098946247577489,
-        3.044365873610646,
-        3.079810778761905
+        2.8513215539159207,
+        2.879426272465941,
+        2.9449283841621616
        ],
        "n_crash": 0,
        "seeds": [
@@ -688,14 +688,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.5606449331632217,
-       "lo": 3.536432480847017,
-       "hi": 3.57444527256016,
+       "mean": 3.6714387885946977,
+       "lo": 3.609587836825652,
+       "hi": 3.73636411569805,
        "n": 3,
        "values": [
-        3.536432480847017,
-        3.57444527256016,
-        3.571057046082489
+        3.73636411569805,
+        3.6683644132603916,
+        3.6095878368256527
        ],
        "n_crash": 0,
        "seeds": [
@@ -705,8 +705,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 3.0032690971282405,
-      "optimism_gap": 0.07110520285510624
+      "recorded_best": 2.8896287646449963,
+      "optimism_gap": 0.002263305536344351
      },
      "crash_kinds": {},
      "counters": {
@@ -719,238 +719,238 @@
      },
      "top_hits": [
       {
+       "exp": 14,
+       "commit": "f4fbaa3",
+       "description": "LR 0.006 -> 0.012",
+       "delta": 0.27523025252427225,
+       "metric": 3.0627461099030935
+      },
+      {
        "exp": 11,
-       "commit": "20b8aa5",
+       "commit": "8e65272",
        "description": "LR 0.003 -> 0.006 (with a typo)",
-       "delta": 0.2491252237872068,
-       "metric": 3.3487668934289587
+       "delta": 0.18108754204506994,
+       "metric": 3.3379763624273657
+      },
+      {
+       "exp": 5,
+       "commit": "d8ba8c7",
+       "description": "ACTIVATION 'tanh' -> 'relu'",
+       "delta": 0.14551273442263213,
+       "metric": 3.5190639044724357
+      },
+      {
+       "exp": 15,
+       "commit": "1ae7d53",
+       "description": "LR 0.012 -> 0.024",
+       "delta": 0.08224859793587935,
+       "metric": 2.980497511967214
       },
       {
        "exp": 24,
-       "commit": "fcd875b",
-       "description": "DEPTH 1 -> 2",
-       "delta": 0.11481107476641572,
-       "metric": 3.058786386954196
-      },
-      {
-       "exp": 17,
-       "commit": "ab31869",
-       "description": "TRAIN_SEQ_LEN 16 -> 8",
-       "delta": 0.10645059029250303,
-       "metric": 3.204406053088745
-      },
-      {
-       "exp": 3,
-       "commit": "788e12a",
-       "description": "WARMUP_RATIO 0.0 -> 0.05",
-       "delta": 0.06405831481454216,
-       "metric": 3.7161371448958613
-      },
-      {
-       "exp": 8,
-       "commit": "be60da7",
-       "description": "SEED 42 -> 397",
-       "delta": 0.05420284664009323,
-       "metric": 3.642062625727491
+       "commit": "d6779a8",
+       "description": "CONTEXT 6 -> 4",
+       "delta": 0.03742941605008987,
+       "metric": 2.8896287646449963
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.7801954597104035,
+       "metric": 3.664576638895068,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "discard",
-       "metric": 5.981521952571428,
+       "metric": 6.047380240531567,
        "description": "OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 2,
        "status": "discard",
-       "metric": 4.04442497267747,
+       "metric": 4.0290332400218976,
        "description": "LR 0.003 -> 0.0015"
       },
       {
        "exp": 3,
-       "status": "keep",
-       "metric": 3.7161371448958613,
+       "status": "discard",
+       "metric": 3.7063356921826967,
        "description": "WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 4,
-       "status": "keep",
-       "metric": 3.696265472367584,
-       "description": "WARMUP_RATIO 0.05 -> 0.1"
+       "status": "discard",
+       "metric": 3.7477998074845313,
+       "description": "HIDDEN 128 -> 256"
       },
       {
        "exp": 5,
-       "status": "discard",
-       "metric": 3.7538294729834383,
-       "description": "WARMUP_RATIO 0.1 -> 0.15"
+       "status": "keep",
+       "metric": 3.5190639044724357,
+       "description": "ACTIVATION 'tanh' -> 'relu'"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 4.017314361082471,
-       "description": "BATCH_SIZE 32 -> 64"
+       "metric": 3.7079073445927135,
+       "description": "ACTIVATION 'relu' -> 'tanh'"
       },
       {
        "exp": 7,
        "status": "discard",
-       "metric": 3.933086554481482,
+       "metric": 3.720674319260546,
        "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 8,
-       "status": "keep",
-       "metric": 3.642062625727491,
+       "status": "discard",
+       "metric": 3.5263502253110803,
        "description": "SEED 42 -> 397"
       },
       {
        "exp": 9,
        "status": "discard",
-       "metric": 3.699380348985207,
-       "description": "SEED 397 -> 402"
+       "metric": 3.5596123747638173,
+       "description": "DEPTH 1 -> 2"
       },
       {
        "exp": 10,
-       "status": "keep",
-       "metric": 3.5978921172161655,
-       "description": "HIDDEN 128 -> 64"
+       "status": "discard",
+       "metric": 3.778269057299295,
+       "description": "TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 11,
        "status": "keep",
-       "metric": 3.3487668934289587,
+       "metric": 3.3379763624273657,
        "description": "LR 0.003 -> 0.006 (with a typo)"
       },
       {
        "exp": 12,
        "status": "discard",
-       "metric": 3.657319362903928,
+       "metric": 3.4403642294862427,
        "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 13,
-       "status": "keep",
-       "metric": 3.310856643381248,
-       "description": "ACTIVATION 'tanh' -> 'relu'"
-      },
-      {
-       "exp": 14,
        "status": "discard",
-       "metric": 3.362190568951811,
+       "metric": 3.383573721402729,
        "description": "ACTIVATION 'relu' -> 'tanh'"
       },
       {
+       "exp": 14,
+       "status": "keep",
+       "metric": 3.0627461099030935,
+       "description": "LR 0.006 -> 0.012"
+      },
+      {
        "exp": 15,
-       "status": "discard",
-       "metric": 3.5519530768512086,
-       "description": "BATCH_SIZE 32 -> 64"
+       "status": "keep",
+       "metric": 2.980497511967214,
+       "description": "LR 0.012 -> 0.024"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 3.3445747911363815,
-       "description": "SEED 397 -> 402"
+       "metric": 2.9852611560250213,
+       "description": "WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 17,
        "status": "keep",
-       "metric": 3.204406053088745,
-       "description": "TRAIN_SEQ_LEN 16 -> 8"
+       "metric": 2.954092925059777,
+       "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 18,
        "status": "keep",
-       "metric": 3.1976498967378713,
-       "description": "WARMUP_RATIO 0.1 -> 0.15"
+       "metric": 2.927058180695086,
+       "description": "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
       },
       {
        "exp": 19,
        "status": "discard",
-       "metric": 3.2120752425951777,
-       "description": "WEIGHT_DECAY 0.0 -> 0.0001"
+       "metric": 2.9708103999075828,
+       "description": "HIDDEN 128 -> 256"
       },
       {
        "exp": 20,
        "status": "discard",
-       "metric": 3.260768253200583,
-       "description": "SEED 397 -> 402"
+       "metric": 2.948193956314279,
+       "description": "SEED 42 -> 397"
       },
       {
        "exp": 21,
        "status": "discard",
-       "metric": 3.378796421074561,
-       "description": "BATCH_SIZE 32 -> 64"
+       "metric": 2.9898360921821445,
+       "description": "WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 22,
        "status": "discard",
-       "metric": 3.208558446607747,
-       "description": "WARMDOWN_RATIO 0.5 -> 0.3"
+       "metric": 3.062218690556367,
+       "description": "EMBED_DIM 16 -> 8"
       },
       {
        "exp": 23,
-       "status": "keep",
-       "metric": 3.1735974617206115,
-       "description": "CONTEXT 6 -> 4"
+       "status": "discard",
+       "metric": 3.070196430297107,
+       "description": "CONTEXT 6 -> 8"
       },
       {
        "exp": 24,
        "status": "keep",
-       "metric": 3.058786386954196,
-       "description": "DEPTH 1 -> 2"
+       "metric": 2.8896287646449963,
+       "description": "CONTEXT 6 -> 4"
       },
       {
        "exp": 25,
        "status": "discard",
-       "metric": 3.111042382768461,
-       "description": "DEPTH 2 -> 3"
+       "metric": 3.1607389409852704,
+       "description": "CONTEXT 4 -> 2"
       },
       {
        "exp": 26,
-       "status": "keep",
-       "metric": 3.024712973230377,
+       "status": "discard",
+       "metric": 2.9025079219723353,
        "description": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 27,
        "status": "discard",
-       "metric": 3.050606164960594,
-       "description": "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
+       "metric": 3.900891482611363,
+       "description": "OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 28,
-       "status": "keep",
-       "metric": 3.0032690971282405,
-       "description": "WARMDOWN_RATIO 0.5 -> 0.3"
+       "status": "discard",
+       "metric": 2.9436157125045264,
+       "description": "CONTEXT 4 -> 6"
       },
       {
        "exp": 29,
        "status": "discard",
-       "metric": 3.0531080926836953,
-       "description": "WARMDOWN_RATIO 0.3 -> 0.1"
+       "metric": 2.993140860215909,
+       "description": "HIDDEN 128 -> 64"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 3.0592871841078675,
-       "description": "WARMUP_RATIO 0.15 -> 0.2"
+       "metric": 2.921663030266167,
+       "description": "BATCH_SIZE 32 -> 64"
       }
      ],
      "audit_final": {
-      "exp": 28,
-      "commit": "72468ef",
+      "exp": 24,
+      "commit": "d6779a8",
       "status": "keep",
-      "description": "WARMDOWN_RATIO 0.5 -> 0.3",
-      "metric": 3.0032690971282405,
-      "test_iid": 3.1218680763149877,
-      "test_shift": 3.17089199521815,
-      "loop_metric_rerun": 3.0281557791934643
+      "description": "CONTEXT 6 -> 4",
+      "metric": 2.8896287646449963,
+      "test_iid": 2.9869237726745173,
+      "test_shift": 3.0059890801090368,
+      "loop_metric_rerun": 2.9114882566790627
      },
      "usage": {
       "calls": 0,
@@ -958,56 +958,56 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_greedy_2/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_greedy_2/results.tsv"
     }
    ]
   },
   "random": {
    "improvement": {
-    "mean": 0.27422007936084497,
-    "lo": 0.1456141244472957,
-    "hi": 0.4942644502950264,
+    "mean": 0.3201807368455733,
+    "lo": 0.1885609118339726,
+    "hi": 0.4931854907285933,
     "n": 3
    },
    "honest_improvement": {
-    "mean": 0.18846373513225764,
-    "lo": 0.03613266807400706,
-    "hi": 0.46401744631323183,
+    "mean": 0.2984616450943693,
+    "lo": 0.12989080994827873,
+    "hi": 0.5761166997276277,
     "n": 3
    },
    "keep_rate": {
-    "mean": 0.12903225806451613,
-    "lo": 0.09677419354838708,
-    "hi": 0.19354838709677416,
+    "mean": 0.09677419354838708,
+    "lo": 0.06451612903225806,
+    "hi": 0.16129032258064516,
     "n": 3
    },
    "experiments_per_hour": {
-    "mean": 1161.6512624930685,
-    "lo": 1102.0027407750197,
-    "hi": 1215.9564109321361,
+    "mean": 1121.396017447261,
+    "lo": 1032.247759187958,
+    "hi": 1182.3886537338703,
     "n": 3
    },
    "runs": [
     {
      "arm": "random",
      "seed": 0,
-     "baseline": 3.6608474006364866,
-     "best": 3.4780657372962738,
-     "improvement": 0.18278166334021284,
-     "keep_rate": 0.0967741935483871,
-     "n_keep": 3,
+     "baseline": 3.7117921540206615,
+     "best": 3.4329963460465076,
+     "improvement": 0.27879580797415393,
+     "keep_rate": 0.06451612903225806,
+     "n_keep": 2,
      "n_crash": 0,
-     "experiments_per_hour": 1166.9946357720503,
+     "experiments_per_hour": 1182.3886537338703,
      "reeval": {
       "final": {
-       "mean": 3.5108590839839664,
-       "lo": 3.4734253794716765,
-       "hi": 3.5663746042946562,
+       "mean": 3.4727850254166257,
+       "lo": 3.42662701875212,
+       "hi": 3.520620698056222,
        "n": 3,
        "values": [
-        3.566374604294656,
-        3.492777268185566,
-        3.473425379471677
+        3.520620698056222,
+        3.471107359441534,
+        3.4266270187521206
        ],
        "n_crash": 0,
        "seeds": [
@@ -1017,14 +1017,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.5761001749935004,
-       "lo": 3.5468499655280694,
-       "hi": 3.616705727155329,
+       "mean": 3.662162451023827,
+       "lo": 3.632076639374604,
+       "hi": 3.679214450209851,
        "n": 3,
        "values": [
-        3.6167057271553285,
-        3.564744832297102,
-        3.546849965528069
+        3.6320766393746036,
+        3.679214450209851,
+        3.6751962634870265
        ],
        "n_crash": 0,
        "seeds": [
@@ -1034,8 +1034,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 3.4780657372962738,
-      "optimism_gap": 0.032793346687692626
+      "recorded_best": 3.4329963460465076,
+      "optimism_gap": 0.039788679370118096
      },
      "crash_kinds": {},
      "counters": {
@@ -1049,204 +1049,197 @@
      "top_hits": [
       {
        "exp": 1,
-       "commit": "dbffacb",
+       "commit": "0522b64",
        "description": "random: ACTIVATION 'tanh' -> 'relu'; WARMDOWN_RATIO 0.5 -> 0.3",
-       "delta": 0.11954364349548419,
-       "metric": 3.5413037571410024
-      },
-      {
-       "exp": 24,
-       "commit": "dac14e7",
-       "description": "random: ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); ACTIVATION 'tanh' -> 'relu'; ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)",
-       "delta": 0.06323801984472865,
-       "metric": 3.4780657372962738
+       "delta": 0.27879580797415393,
+       "metric": 3.4329963460465076
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.6608474006364866,
+       "metric": 3.7117921540206615,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "keep",
-       "metric": 3.5413037571410024,
+       "metric": 3.4329963460465076,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 2,
        "status": "discard",
-       "metric": 3.7843544419969772,
+       "metric": 3.8091886417025194,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32; EMBED_DIM 16 -> 32; HIDDEN 128 -> 256"
       },
       {
        "exp": 3,
        "status": "discard",
-       "metric": 4.569130346943037,
+       "metric": 4.572813533398486,
        "description": "random: TRAIN_SEQ_LEN 16 -> 8; TRAIN_SEQ_LEN 8 -> 4"
       },
       {
        "exp": 4,
        "status": "discard",
-       "metric": 3.923706896879832,
+       "metric": 3.927209309813454,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; ACTIVATION 'relu' -> 'tanh'; EMBED_DIM 16 -> 8"
       },
       {
        "exp": 5,
        "status": "discard",
-       "metric": 3.8930607544922964,
+       "metric": 3.9739544323151765,
        "description": "random: LR 0.003 -> 0.0015; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 7.268516642087876,
+       "metric": 7.309778621944125,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32; HIDDEN 128 -> 256; OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 7,
        "status": "discard",
-       "metric": 3.697202260263757,
+       "metric": 3.724661924221158,
        "description": "random: INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 8,
        "status": "discard",
-       "metric": 3.851796905775207,
+       "metric": 3.8146843261499224,
        "description": "random: LR 0.003 -> 0.0015; TRAIN_SEQ_LEN 16 -> 8; WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 9,
        "status": "discard",
-       "metric": 4.004470768577256,
+       "metric": 4.115744505953533,
        "description": "random: LR 0.003 -> 0.0015"
       },
       {
        "exp": 10,
        "status": "discard",
-       "metric": 3.672265547171749,
+       "metric": 3.861792671932992,
        "description": "random: SEED 42 -> 397; DEPTH 1 -> 2"
       },
       {
        "exp": 11,
        "status": "discard",
-       "metric": 3.547502785040419,
+       "metric": 3.589924438821288,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 12,
        "status": "discard",
-       "metric": 3.859397948316533,
+       "metric": 3.85583312590662,
        "description": "random: CONTEXT 6 -> 4; TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 13,
        "status": "discard",
-       "metric": 6.152170109951352,
+       "metric": 6.139320180193689,
        "description": "random: OPTIMIZER 'adam' -> 'sgd'; INIT_SCALE 1.0 -> 1.4"
       },
       {
        "exp": 14,
        "status": "discard",
-       "metric": 3.5971414652005893,
+       "metric": 3.7973755744972375,
        "description": "random: WARMUP_RATIO 0.0 -> 0.05; EMBED_DIM 16 -> 32"
       },
       {
        "exp": 15,
        "status": "discard",
-       "metric": 3.6588603544019063,
+       "metric": 3.6192017536691874,
        "description": "random: ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); INIT_SCALE 1.0 -> 0.7; CONTEXT 6 -> 4"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 4.12555721927972,
+       "metric": 3.8756846138997094,
        "description": "random: CONTEXT 6 -> 8; WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 17,
        "status": "discard",
-       "metric": 3.936889678379589,
+       "metric": 3.974182621894631,
        "description": "random: LR 0.003 -> 0.0015"
       },
       {
        "exp": 18,
        "status": "discard",
-       "metric": 3.8311755489985613,
+       "metric": 3.9130235457444082,
        "description": "random: BATCH_SIZE 32 -> 64; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 19,
        "status": "discard",
-       "metric": 3.8891561040506675,
+       "metric": 3.9534522770506935,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 20,
        "status": "discard",
-       "metric": 3.7222078730812065,
+       "metric": 3.7064788884246695,
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 21,
        "status": "discard",
-       "metric": 3.5702648270868296,
+       "metric": 3.561736331232954,
        "description": "random: ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 22,
        "status": "discard",
-       "metric": 3.804935812816259,
+       "metric": 3.727121171815256,
        "description": "random: WEIGHT_DECAY 0.0 -> 0.0001; INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 23,
        "status": "discard",
-       "metric": 3.6452950120177277,
+       "metric": 3.7365294745382696,
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 24,
-       "status": "keep",
-       "metric": 3.4780657372962738,
+       "status": "discard",
+       "metric": 3.5324633323117465,
        "description": "random: ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); ACTIVATION 'tanh' -> 'relu'; ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
       },
       {
        "exp": 25,
        "status": "discard",
-       "metric": 3.8062550365171486,
+       "metric": 3.7497996376623464,
        "description": "random: WARMUP_RATIO 0.0 -> 0.05; EMBED_DIM 16 -> 32; EMBED_DIM 32 -> 64"
       },
       {
        "exp": 26,
        "status": "discard",
-       "metric": 3.7681487264672024,
+       "metric": 3.780386626755443,
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 27,
        "status": "discard",
-       "metric": 3.7096610218086172,
+       "metric": 3.660757508958391,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; WARMUP_RATIO 0.0 -> 0.05; INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 28,
        "status": "discard",
-       "metric": 6.7194891095782365,
+       "metric": 6.353482748860912,
        "description": "random: HIDDEN 128 -> 256; OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 29,
        "status": "discard",
-       "metric": 3.9264382189446017,
+       "metric": 3.970502338661522,
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; EMBED_DIM 16 -> 8; HIDDEN 128 -> 64"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 6.719831822925276,
+       "metric": 7.2895734423763185,
        "description": "random: INIT_SCALE 1.0 -> 0.7; OPTIMIZER 'adam' -> 'sgd'; DEPTH 1 -> 2"
       }
      ],
@@ -1257,28 +1250,28 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_random_0/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_random_0/results.tsv"
     },
     {
      "arm": "random",
      "seed": 1,
-     "baseline": 3.5672521411433,
-     "best": 3.4216380166960043,
-     "improvement": 0.1456141244472957,
-     "keep_rate": 0.0967741935483871,
-     "n_keep": 3,
+     "baseline": 3.724296376316787,
+     "best": 3.5357354644828143,
+     "improvement": 0.1885609118339726,
+     "keep_rate": 0.06451612903225806,
+     "n_keep": 2,
      "n_crash": 0,
-     "experiments_per_hour": 1215.9564109321361,
+     "experiments_per_hour": 1149.551639419955,
      "reeval": {
       "final": {
-       "mean": 3.558196262108352,
-       "lo": 3.434500264785085,
-       "hi": 3.7130565754588147,
+       "mean": 3.540876456592102,
+       "lo": 3.5059333125124597,
+       "hi": 3.577466602381993,
        "n": 3,
        "values": [
-        3.7130565754588147,
-        3.527031946081158,
-        3.4345002647850853
+        3.5392294548818533,
+        3.577466602381993,
+        3.5059333125124597
        ],
        "n_crash": 0,
        "seeds": [
@@ -1288,14 +1281,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.594328930182359,
-       "lo": 3.5467225628852277,
-       "hi": 3.631929597342737,
+       "mean": 3.6707672665403805,
+       "lo": 3.5893102793656246,
+       "hi": 3.733107265619155,
        "n": 3,
        "values": [
-        3.5467225628852277,
-        3.631929597342737,
-        3.604334630319113
+        3.733107265619155,
+        3.6898842546363615,
+        3.5893102793656246
        ],
        "n_crash": 0,
        "seeds": [
@@ -1305,8 +1298,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 3.4216380166960043,
-      "optimism_gap": 0.13655824541234773
+      "recorded_best": 3.5357354644828143,
+      "optimism_gap": 0.005140992109287534
      },
      "crash_kinds": {},
      "counters": {
@@ -1320,204 +1313,197 @@
      "top_hits": [
       {
        "exp": 2,
-       "commit": "6ec2499",
+       "commit": "449aeac",
        "description": "random: TRAIN_SEQ_LEN 16 -> 8",
-       "delta": 0.089365237078463,
-       "metric": 3.477886904064837
-      },
-      {
-       "exp": 22,
-       "commit": "e768b3b",
-       "description": "random: EMBED_DIM 16 -> 32; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); WARMDOWN_RATIO 0.5 -> 0.3",
-       "delta": 0.05624888736883271,
-       "metric": 3.4216380166960043
+       "delta": 0.1885609118339726,
+       "metric": 3.5357354644828143
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.5672521411433,
+       "metric": 3.724296376316787,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "discard",
-       "metric": 3.765222299536749,
+       "metric": 3.7988928034727483,
        "description": "random: CONTEXT 6 -> 8"
       },
       {
        "exp": 2,
        "status": "keep",
-       "metric": 3.477886904064837,
+       "metric": 3.5357354644828143,
        "description": "random: TRAIN_SEQ_LEN 16 -> 8"
       },
       {
        "exp": 3,
        "status": "discard",
-       "metric": 3.498790240810069,
+       "metric": 3.603920418820456,
        "description": "random: SEED 42 -> 397"
       },
       {
        "exp": 4,
        "status": "discard",
-       "metric": 3.9966893406474546,
+       "metric": 4.058158058354817,
        "description": "random: LR 0.003 -> 0.0015; INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 5,
        "status": "discard",
-       "metric": 3.829854997806309,
+       "metric": 3.9903854200517404,
        "description": "random: DEPTH 1 -> 2; EMBED_DIM 16 -> 8"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 3.6576649398783587,
+       "metric": 3.8360670715898757,
        "description": "random: WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 7,
        "status": "discard",
-       "metric": 3.8628960374257937,
+       "metric": 3.883007157332889,
        "description": "random: EMBED_DIM 16 -> 8"
       },
       {
        "exp": 8,
        "status": "discard",
-       "metric": 3.8947055624803837,
+       "metric": 3.970187973768279,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 9,
        "status": "discard",
-       "metric": 3.9293813888178724,
+       "metric": 3.952651394412003,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 10,
        "status": "discard",
-       "metric": 4.186503019285995,
+       "metric": 4.199046124491686,
        "description": "random: EMBED_DIM 16 -> 8; EMBED_DIM 8 -> 4"
       },
       {
        "exp": 11,
        "status": "discard",
-       "metric": 3.5440590209612437,
+       "metric": 3.558089066240828,
        "description": "random: CONTEXT 6 -> 4"
       },
       {
        "exp": 12,
        "status": "discard",
-       "metric": 5.703830454755608,
+       "metric": 5.949161558156105,
        "description": "random: OPTIMIZER 'adam' -> 'sgd'; WARMUP_RATIO 0.0 -> 0.05; EMBED_DIM 16 -> 8"
       },
       {
        "exp": 13,
        "status": "discard",
-       "metric": 3.633604833522415,
+       "metric": 3.706374629943182,
        "description": "random: BATCH_SIZE 32 -> 16; BATCH_SIZE 16 -> 32"
       },
       {
        "exp": 14,
        "status": "discard",
-       "metric": 4.275622716482807,
+       "metric": 4.297872793559185,
        "description": "random: TRAIN_SEQ_LEN 16 -> 32; LR 0.003 -> 0.0015; WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 15,
        "status": "discard",
-       "metric": 4.051705893083728,
+       "metric": 4.118342792976981,
        "description": "random: EMBED_DIM 16 -> 8; CONTEXT 6 -> 4; EMBED_DIM 8 -> 4"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 3.563354595425208,
+       "metric": 3.6543807759778355,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; DEPTH 1 -> 2; DEPTH 2 -> 3"
       },
       {
        "exp": 17,
        "status": "discard",
-       "metric": 3.5471648349393035,
+       "metric": 3.654739469196566,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 18,
        "status": "discard",
-       "metric": 3.5954266644595916,
+       "metric": 3.6613348094644427,
        "description": "random: ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 19,
        "status": "discard",
-       "metric": 6.065422197652597,
+       "metric": 6.1268226591234285,
        "description": "random: OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 20,
        "status": "discard",
-       "metric": 5.961437824598615,
+       "metric": 6.133704828961726,
        "description": "random: OPTIMIZER 'adam' -> 'sgd'"
       },
       {
        "exp": 21,
        "status": "discard",
-       "metric": 3.857725893094832,
+       "metric": 3.932156417341969,
        "description": "random: EMBED_DIM 16 -> 8"
       },
       {
        "exp": 22,
-       "status": "keep",
-       "metric": 3.4216380166960043,
+       "status": "discard",
+       "metric": 3.5649719806119395,
        "description": "random: EMBED_DIM 16 -> 32; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 23,
        "status": "discard",
-       "metric": 3.649245628341392,
+       "metric": 3.8580974200946976,
        "description": "random: HIDDEN 128 -> 256; WARMDOWN_RATIO 0.5 -> 0.3"
       },
       {
        "exp": 24,
        "status": "discard",
-       "metric": 3.9431890631331767,
+       "metric": 4.043090096678522,
        "description": "random: EMBED_DIM 16 -> 8; CONTEXT 6 -> 8; CONTEXT 8 -> 10"
       },
       {
        "exp": 25,
        "status": "discard",
-       "metric": 3.880605101510998,
+       "metric": 3.9937327795428508,
        "description": "random: LR 0.003 -> 0.0015"
       },
       {
        "exp": 26,
        "status": "discard",
-       "metric": 4.151677829511965,
+       "metric": 4.305155816998027,
        "description": "random: DEPTH 1 -> 2; EMBED_DIM 16 -> 32; LR 0.003 -> 0.0015"
       },
       {
        "exp": 27,
        "status": "discard",
-       "metric": 7.120449901275094,
+       "metric": 7.248421954082109,
        "description": "random: OPTIMIZER 'adam' -> 'sgd'; WARMUP_RATIO 0.0 -> 0.05; LR 0.003 -> 0.0015"
       },
       {
        "exp": 28,
        "status": "discard",
-       "metric": 3.5968693898747053,
+       "metric": 3.7116103657982324,
        "description": "random: WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 29,
        "status": "discard",
-       "metric": 3.6410715383772163,
+       "metric": 3.7940012360829827,
        "description": "random: DEPTH 1 -> 2; SEED 42 -> 397"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 3.6735308587576863,
+       "metric": 3.7870824148142415,
        "description": "random: INIT_SCALE 1.0 -> 0.7"
       }
      ],
@@ -1528,28 +1514,28 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_random_1/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_random_1/results.tsv"
     },
     {
      "arm": "random",
      "seed": 2,
-     "baseline": 3.568477259701638,
-     "best": 3.0742128094066117,
-     "improvement": 0.4942644502950264,
-     "keep_rate": 0.1935483870967742,
-     "n_keep": 6,
+     "baseline": 3.661812045512112,
+     "best": 3.168626554783519,
+     "improvement": 0.4931854907285933,
+     "keep_rate": 0.16129032258064516,
+     "n_keep": 5,
      "n_crash": 0,
-     "experiments_per_hour": 1102.0027407750197,
+     "experiments_per_hour": 1032.247759187958,
      "reeval": {
       "final": {
-       "mean": 3.0943759208681656,
-       "lo": 3.082244694491544,
-       "hi": 3.1076070472154362,
+       "mean": 3.15458748429336,
+       "lo": 3.0936079860893333,
+       "hi": 3.195497904887563,
        "n": 3,
        "values": [
-        3.0932760208975174,
-        3.1076070472154362,
-        3.0822446944915436
+        3.0936079860893333,
+        3.195497904887563,
+        3.174656561903182
        ],
        "n_crash": 0,
        "seeds": [
@@ -1559,14 +1545,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.5583933671813974,
-       "lo": 3.5376035964293653,
-       "hi": 3.5778957724803298,
+       "mean": 3.7307041840209876,
+       "lo": 3.7093621295658052,
+       "hi": 3.7712381797317476,
        "n": 3,
        "values": [
-        3.5778957724803293,
-        3.5376035964293653,
-        3.5596807326344977
+        3.7115122427654113,
+        3.709362129565805,
+        3.771238179731747
        ],
        "n_crash": 0,
        "seeds": [
@@ -1576,8 +1562,8 @@
        ]
       },
       "mode": "hardened",
-      "recorded_best": 3.0742128094066117,
-      "optimism_gap": 0.020163111461553918
+      "recorded_best": 3.168626554783519,
+      "optimism_gap": -0.014039070490158956
      },
      "crash_kinds": {},
      "counters": {
@@ -1590,227 +1576,220 @@
      },
      "top_hits": [
       {
-       "exp": 14,
-       "commit": "9327f7a",
+       "exp": 15,
+       "commit": "11fc5ba",
        "description": "random: LR 0.003 -> 0.006; LR 0.006 -> 0.012",
-       "delta": 0.2826032201569837,
-       "metric": 3.0742128094066117
+       "delta": 0.307490604974173,
+       "metric": 3.168626554783519
       },
       {
-       "exp": 4,
-       "commit": "493f268",
-       "description": "random: ACTIVATION 'tanh' -> 'relu'",
-       "delta": 0.0891708232302113,
-       "metric": 3.4789380959505545
+       "exp": 2,
+       "commit": "d0e1cfc",
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; BATCH_SIZE 32 -> 16",
+       "delta": 0.13006228315320856,
+       "metric": 3.5317497623589036
       },
       {
-       "exp": 13,
-       "commit": "75382af",
+       "exp": 14,
+       "commit": "7361f4d",
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.3; WARMDOWN_RATIO 0.3 -> 0.1; TRAIN_SEQ_LEN 16 -> 8",
-       "delta": 0.08797142764686772,
-       "metric": 3.3568160295635954
+       "delta": 0.029655004117782546,
+       "metric": 3.476117159757692
       },
       {
-       "exp": 8,
-       "commit": "89dea3d",
+       "exp": 9,
+       "commit": "f10c33a",
        "description": "random: BATCH_SIZE 32 -> 16",
-       "delta": 0.03415063874009139,
-       "metric": 3.444787457210463
-      },
-      {
-       "exp": 3,
-       "commit": "923eed3",
-       "description": "random: ACTIVATION 'tanh' -> 'relu'; INIT_SCALE 1.0 -> 0.7",
-       "delta": 0.0003683405208723123,
-       "metric": 3.568108919180766
+       "delta": 0.025977598483429176,
+       "metric": 3.5057721638754744
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.568477259701638,
+       "metric": 3.661812045512112,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "discard",
-       "metric": 3.8967167486452965,
+       "metric": 4.03023861454831,
        "description": "random: BATCH_SIZE 32 -> 64"
       },
       {
        "exp": 2,
-       "status": "discard",
-       "metric": 3.5710822941119256,
+       "status": "keep",
+       "metric": 3.5317497623589036,
        "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; BATCH_SIZE 32 -> 16"
       },
       {
        "exp": 3,
-       "status": "keep",
-       "metric": 3.568108919180766,
+       "status": "discard",
+       "metric": 3.5570726746168506,
        "description": "random: ACTIVATION 'tanh' -> 'relu'; INIT_SCALE 1.0 -> 0.7"
       },
       {
        "exp": 4,
-       "status": "keep",
-       "metric": 3.4789380959505545,
+       "status": "discard",
+       "metric": 3.5532868964807793,
        "description": "random: ACTIVATION 'tanh' -> 'relu'"
       },
       {
        "exp": 5,
        "status": "discard",
-       "metric": 3.6356095797495662,
+       "metric": 3.798408080128167,
        "description": "random: WEIGHT_DECAY 0.0 -> 0.0001"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 3.5181193425624873,
+       "metric": 3.6282107395244516,
        "description": "random: SEED 42 -> 397"
       },
       {
        "exp": 7,
        "status": "discard",
-       "metric": 3.9119553138804797,
+       "metric": 3.9804405500011457,
        "description": "random: BATCH_SIZE 32 -> 64"
       },
       {
        "exp": 8,
-       "status": "keep",
-       "metric": 3.444787457210463,
+       "status": "discard",
+       "metric": 3.537778576657107,
        "description": "random: BATCH_SIZE 32 -> 16"
       },
       {
        "exp": 9,
-       "status": "discard",
-       "metric": 6.181299102402397,
-       "description": "random: OPTIMIZER 'adam' -> 'sgd'; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); CONTEXT 6 -> 8"
+       "status": "keep",
+       "metric": 3.5057721638754744,
+       "description": "random: BATCH_SIZE 32 -> 16"
       },
       {
        "exp": 10,
        "status": "discard",
-       "metric": 3.9044719499733267,
-       "description": "random: TRAIN_SEQ_LEN 16 -> 32"
+       "metric": 6.049910985628252,
+       "description": "random: OPTIMIZER 'adam' -> 'sgd'; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); CONTEXT 6 -> 8"
       },
       {
        "exp": 11,
        "status": "discard",
-       "metric": 3.6300586807158126,
-       "description": "random: SEED 42 -> 397; SEED 397 -> 402"
+       "metric": 3.923938453578205,
+       "description": "random: TRAIN_SEQ_LEN 16 -> 32"
       },
       {
        "exp": 12,
        "status": "discard",
-       "metric": 3.584425549724622,
-       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+       "metric": 3.7373538087375757,
+       "description": "random: SEED 42 -> 397; SEED 397 -> 402"
       },
       {
        "exp": 13,
-       "status": "keep",
-       "metric": 3.3568160295635954,
-       "description": "random: WARMDOWN_RATIO 0.5 -> 0.3; WARMDOWN_RATIO 0.3 -> 0.1; TRAIN_SEQ_LEN 16 -> 8"
+       "status": "discard",
+       "metric": 3.75041065450929,
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 14,
        "status": "keep",
-       "metric": 3.0742128094066117,
-       "description": "random: LR 0.003 -> 0.006; LR 0.006 -> 0.012"
+       "metric": 3.476117159757692,
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.3; WARMDOWN_RATIO 0.3 -> 0.1; TRAIN_SEQ_LEN 16 -> 8"
       },
       {
        "exp": 15,
-       "status": "discard",
-       "metric": 3.7201611681050597,
-       "description": "random: HIDDEN 128 -> 256"
+       "status": "keep",
+       "metric": 3.168626554783519,
+       "description": "random: LR 0.003 -> 0.006; LR 0.006 -> 0.012"
       },
       {
        "exp": 16,
        "status": "discard",
-       "metric": 3.984223040482174,
-       "description": "random: HIDDEN 128 -> 256; LR 0.003 -> 0.0015"
+       "metric": 3.7997172422799257,
+       "description": "random: HIDDEN 128 -> 256"
       },
       {
        "exp": 17,
        "status": "discard",
-       "metric": 3.8893916375552204,
-       "description": "random: BATCH_SIZE 32 -> 64; TRAIN_SEQ_LEN 16 -> 8; EMBED_DIM 16 -> 8"
+       "metric": 4.089995190982193,
+       "description": "random: HIDDEN 128 -> 256; LR 0.003 -> 0.0015"
       },
       {
        "exp": 18,
        "status": "discard",
-       "metric": 3.5974806558349446,
-       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7"
+       "metric": 3.9722248996153944,
+       "description": "random: BATCH_SIZE 32 -> 64; TRAIN_SEQ_LEN 16 -> 8; EMBED_DIM 16 -> 8"
       },
       {
        "exp": 19,
        "status": "discard",
-       "metric": 3.590145799230594,
-       "description": "random: SEED 42 -> 397; WARMUP_RATIO 0.0 -> 0.05"
+       "metric": 3.800478270708678,
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7"
       },
       {
        "exp": 20,
        "status": "discard",
-       "metric": 3.7622919838934137,
-       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; SEED 42 -> 397; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+       "metric": 3.6351772560264455,
+       "description": "random: SEED 42 -> 397; WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 21,
        "status": "discard",
-       "metric": 3.787744758995152,
-       "description": "random: CONTEXT 6 -> 8; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+       "metric": 3.654673280865851,
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.7; SEED 42 -> 397; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 22,
        "status": "discard",
-       "metric": 4.020195988658109,
-       "description": "random: BATCH_SIZE 32 -> 64; WARMUP_RATIO 0.0 -> 0.05"
+       "metric": 3.815238035029193,
+       "description": "random: CONTEXT 6 -> 8; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
       },
       {
        "exp": 23,
        "status": "discard",
-       "metric": 3.833655044355424,
-       "description": "random: BATCH_SIZE 32 -> 64"
+       "metric": 4.067993991226702,
+       "description": "random: BATCH_SIZE 32 -> 64; WARMUP_RATIO 0.0 -> 0.05"
       },
       {
        "exp": 24,
        "status": "discard",
-       "metric": 3.5463881549030027,
-       "description": "random: SEED 42 -> 397; SEED 397 -> 402"
+       "metric": 3.99054433433449,
+       "description": "random: BATCH_SIZE 32 -> 64"
       },
       {
        "exp": 25,
        "status": "discard",
-       "metric": 3.6472316655141332,
-       "description": "random: WEIGHT_DECAY 0.0 -> 0.0001; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); WEIGHT_DECAY 0.0001 -> 0.001"
+       "metric": 3.6213429081000097,
+       "description": "random: SEED 42 -> 397; SEED 397 -> 402"
       },
       {
        "exp": 26,
        "status": "discard",
-       "metric": 3.089341231739444,
-       "description": "random: BATCH_SIZE 32 -> 16; LR 0.003 -> 0.006; EMBED_DIM 16 -> 32"
+       "metric": 3.742548205829742,
+       "description": "random: WEIGHT_DECAY 0.0 -> 0.0001; ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95); WEIGHT_DECAY 0.0001 -> 0.001"
       },
       {
        "exp": 27,
        "status": "discard",
-       "metric": 3.570450961112818,
-       "description": "random: EMBED_DIM 16 -> 32; HIDDEN 128 -> 256"
+       "metric": 3.2557938055961566,
+       "description": "random: BATCH_SIZE 32 -> 16; LR 0.003 -> 0.006; EMBED_DIM 16 -> 32"
       },
       {
        "exp": 28,
        "status": "discard",
-       "metric": 3.8210737108589536,
-       "description": "random: EMBED_DIM 16 -> 8"
+       "metric": 3.5564922671485544,
+       "description": "random: EMBED_DIM 16 -> 32; HIDDEN 128 -> 256"
       },
       {
        "exp": 29,
        "status": "discard",
-       "metric": 3.525392888626705,
-       "description": "random: WARMDOWN_RATIO 0.5 -> 0.3"
+       "metric": 3.9162445620592523,
+       "description": "random: EMBED_DIM 16 -> 8"
       },
       {
        "exp": 30,
        "status": "discard",
-       "metric": 3.428430953780565,
-       "description": "random: CONTEXT 6 -> 4; WARMDOWN_RATIO 0.5 -> 0.3"
+       "metric": 3.6481979748130953,
+       "description": "random: WARMDOWN_RATIO 0.5 -> 0.3"
       }
      ],
      "audit_final": {},
@@ -1820,7 +1799,7 @@
       "output_tokens": 0,
       "cost_usd": 0.0
      },
-     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_random_2/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e1/tinylm_random_2/results.tsv"
     }
    ]
   }
@@ -2123,7 +2102,7 @@
  "verdict": {
   "beyond_noise_band": true,
   "greedy_ge_random": true,
-  "greedy_minus_random_honest": 0.4790629977157319,
+  "greedy_minus_random_honest": 0.4763405617298461,
   "landscape_greedy_ge_random": true,
   "generic_domain_transfers": true,
   "claim_reproduced": true

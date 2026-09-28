@@ -668,22 +668,27 @@ signal_quality     = 0.5 if no signals else min(1, 0.4 + 0.1·|signals|)
 gene_selection     = 0.3 (no gene) | 0.7 (gene) | 0.9 (gene whose id does not start "gene_auto_")
 mutation_quality   = 0.3 (none) | 0.5 | 0.8 (has rationale and category) → 0.9 if risk low, 0.6 if risk high
 blast_control      = 0.5 (unknown) | 0 (hollow commit) | 0.4 (0 files) | 1.0 (≤ 0.5·max_files)
-                     | 0.7 (≤ max_files) | 0.2 (over);  ×0.5 if actual/estimate > 3, ×0.7 if > 2
+                     | 0.7 (≤ max_files) | 0.2 (over);  ×0.5 if actual/estimate > 3, ×0.7 if > 2 — DEAD in
+                     Evolver: the multiplier reads blastRadiusEstimate.files_changed, which dispatch never
+                     writes (it writes {files, lines}), so it never applies (see the note below)
                      (max_files here defaults to 12 if the gene has none; checkConstraints' default is 20)
 constraint         = max(0, 1 − 0.25·#violations)
 validation         = passed/total of results run;  0.5 if none were run;  0 if failed with no results
 protocol           = max(0, 1 − 0.3·#protocol_violations)
 canary             = 0 if failed (not skipped) else 1
-score = clamp01( .05·signal + .10·selection + .05·mutation + .15·blast + .25·constraint
-                 + .25·validation + .10·protocol + .05·canary )
+score = Math.round( ( signal·.05 + selection·.10 + mutation·.05 + blast·.15 + constraint·.25
+                      + validation·.25 + protocol·.10 + canary·.05 ) · 100 ) / 100
+        (JavaScript Math.round: halves round up, so a raw 0.955 gives 0.96, not Python's 0.95)
 status = "success" ⇔ constraints ok ∧ validation ok ∧ no protocol violations
 ```
+
+**The estimate-drift penalty is dead code in Evolver** [deob:evolver/src/gep/solidify.js:540][deob:evolver/src/evolve/pipeline/dispatch.js:119-121]. The composite reads `blastRadiusEstimate.files_changed || 0`, but dispatch stores the estimate as `{files, lines}`. The ratio test therefore never runs and `blast_control` is never multiplied by 0.5 or 0.7. Our faithful port reads the same dead key; `Config.estimate_drift_penalty=True` turns the penalty on as written above (docs/claims/evomap.md N3).
 
 The spec states only that the score is "0.0–1.0 based on validation results, blast radius, and constraint compliance" [spec:§3.6]. Three features of the formula matter here [inferred]:
 
 - An empty (or fully skipped) validation list scores 0.5 and still counts as "ok".
 - `node --version` scores 1.0.
-- The **floor** for a clean success is high. With 0 constraint and protocol violations, validation passed, and canary ok or skipped, the 0.25 + 0.25 + 0.10 + 0.05 = 0.65 of weight contributes its maximum, whatever the diff does to the task. Take a typical cycle: 1 signal, a named (non-`gene_auto_`) gene, and ≤ 50% of max_files changed. Its mutation is the one the engine built, which has no `rationale` (`buildMutation` sets none), so mutation_quality is 0.5. The score is 0.05·0.5 + 0.10·0.9 + 0.05·0.5 + 0.15·1.0 + 0.65 = 0.94, above both the 0.78 publish bar and the 0.85 self-PR bar. The same cycle with an empty or fully skipped validation list scores 0.815 [arithmetic from the §4.10 weights and deob:mutation.js].
+- The **floor** for a clean success is high. With 0 constraint and protocol violations, validation passed, and canary ok or skipped, the 0.25 + 0.25 + 0.10 + 0.05 = 0.65 of weight contributes its maximum, whatever the diff does to the task. Take a typical cycle: 1 signal, a named (non-`gene_auto_`) gene, and ≤ 50% of max_files changed. Its mutation is the one the engine built, which has no `rationale` (`buildMutation` sets none), so mutation_quality is 0.5. The score is 0.05·0.5 + 0.10·0.9 + 0.05·0.5 + 0.15·1.0 + 0.65 = 0.94, above both the 0.78 publish bar and the 0.85 self-PR bar. The same cycle with an empty or fully skipped validation list scores 0.815 before rounding, 0.82 after `Math.round` [arithmetic from the §4.10 weights and deob:mutation.js].
 
 ### 4.11 Outcome inference when no direct observation exists [spec:App.B]
 
@@ -1146,7 +1151,7 @@ class Solidifier:        def solidify(run_state) -> SolidifyResult(event, capsul
 class Distiller:         def should_distill(capsules) -> bool; def distill(capsules, genes, llm) -> Gene
                          def validate_synth(g, genes) -> Gene; def provenance(execution) -> "evolved"|"distilled"|"manual"
 class LeakageAuditor:    def private_vocab(public_text, hidden_text); def redact(asset) -> (asset, report)
-class AgentNode:         def cycle(task) -> CycleResult      # §3.1 end to end: look locally → hub → solve → solidify → publish
+class AgentNode:         def cycle(task) -> CycleResult      # §3.1 end to end: hub search first → select locally → solve (hub hit as reference) → solidify → publish
 
 # ---------- hubs (two interchangeable implementations behind one interface) ----------
 class Hub(Protocol):
@@ -1314,7 +1319,7 @@ exploration: for each signal class, reserve an ε share of search results for ve
 | 3 | 1.5M assets, but 98% never reused | `ReuseMetrics.never_reused` / `reuse_rate`; replication X7 |
 | 4 | GEP whitepaper and "compact strategy genes beat long skill documents" | GEP-compatible `Gene/Capsule/EvolutionEvent` + `JsonSchemaValidator`; X1 (Gene vs Skill) |
 | 5 | What improves is a shared library of know-how; each agent keeps a local store and can publish to a hub where agents on different models reuse it | `LocalStore` + `Hub`; heterogeneous `a_m` / real models in X6 |
-| 6 | Look before solving: search the local store, then the hub (matching by what the asset does); only then work out a new approach | `AgentNode.cycle` order: `GeneSelector` over `LocalStore` → `Hub.search` (signal and semantic match, `PatternMatcher` + scorer) → `Executor` from scratch; `PromptBuilder.reuse_prompt` |
+| 6 | Look before solving: search the local store, then the hub (matching by what the asset does); only then work out a new approach | **Evolver's real order is hub first** (§3.1; `enrich.js` "SearchFirst", the executor prompt's "EVOMAP-FIRST"): signals → `Hub.search` (signal and semantic match) on every non-idle cycle → `GeneSelector` over `LocalStore` → `Executor` with the local gene and, on a hub hit, the hub asset as a "STRONG REFERENCE" next to it → gene writer only if nothing fits. Faithful mode follows this (`hub_when="first"`, `reuse_mode="reference"`); safe mode keeps the overview's local-then-hub order (`hub_when="no_local"`). The overview's order is contradicted by the source (docs/claims/evomap.md M8a) |
 | 7 | Solve and distil: Evolver distils what worked into reusable assets | `Solidifier` (Capsule) + `Distiller` (heuristic synthesizer by default, LLM distill-request fallback, and failure distillation; triggers in §4.14) + `LeakageAuditor` |
 | 8 | Validate and record: a validation command tests the asset; the outcome is recorded as an event (audit trail) | `ValidationRunner` + `CommandPolicy` + `CountedFilePolicy`/`ConstraintChecker` + `VacuityDetector` (safe mode) + `EvolutionEvent` appended to `events.jsonl` with `parent` chain; the memory-graph outcome via `OutcomeInferrer` (X15) |
 | 9 | Publish and rank: a ranking score decides which rise; a credit economy rewards contributors | `Hub.rank` (GDI in the naive hub, adoption-based in `SafeHub`) + `CreditLedger` |

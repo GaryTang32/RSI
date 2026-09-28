@@ -134,7 +134,7 @@ class AgentNode:
         self.counted = counted or getattr(domain, "counted_policy", None) or CountedFilePolicy()
         self.solidifier = Solidifier(self.store, self.runner, mode=cfg.mode, constraints=ConstraintChecker(),
                                      counted=self.counted, vacuity=vac, require_task_success=cfg.require_task_success,
-                                     rollback=cfg.rollback)
+                                     rollback=cfg.rollback, estimate_drift_penalty=cfg.estimate_drift_penalty)
         self.selector = GeneSelector(GeneScorer(cfg.selector_mode, require_match=cfg.require_match),
                                      use_memory=cfg.use_memory)
         self.deduper = SignalDeduper()
@@ -276,7 +276,7 @@ class AgentNode:
                             for v in views])
         if not views:
             return None, None, None, False
-        if cfg.reuse_mode in ("reference", "direct"):
+        if cfg.reuse_mode in ("reference", "direct", "replace"):     # naive consumers: no quarantine
             thr = reuse_threshold(signals, cfg.reuse_threshold, cfg.reuse_threshold_problem)
             best = max(views, key=lambda v: (client_reuse_score(v), v.score))
             if client_reuse_score(best) < thr:

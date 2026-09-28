@@ -1,6 +1,6 @@
 {
  "experiment": "x8_metadata_inflation",
- "generated_at": "2026-09-28 10:30:16",
+ "generated_at": "2026-09-28 11:18:45",
  "config": {
   "llm": "sim",
   "seeds": 10,

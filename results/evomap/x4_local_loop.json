@@ -1,6 +1,6 @@
 {
  "experiment": "x4_local_loop",
- "generated_at": "2026-09-28 10:28:59",
+ "generated_at": "2026-09-28 11:33:38",
  "config": {
   "llm": "sim",
   "seeds": 12
