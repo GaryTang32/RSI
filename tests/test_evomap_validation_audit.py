@@ -22,7 +22,7 @@ from rsi.domains.geneworld.forge import GeneWorldForge
 from rsi.domains.katas import KataMockProposer, KatasDomain, KataSimSolver, seed_harness
 from rsi.evomap import AgentNode, Config, Gene, SafeHub, TaskBank, run
 from rsi.evomap.prompts import gene_writer_prompt
-from rsi.evomap.solidify import classify_failure_mode
+from rsi.evomap.solidify import classify_failure_mode, js_round2
 from rsi.trace import load_trace
 
 HINT = " (it MUST fail before the fix and pass after it, e.g. the public check script)"
@@ -200,16 +200,25 @@ def test_every_gate_recomputes_from_the_traced_trials(population):
             elif d.get("stage") == "solidify":
                 cons, val = m["constraints"], m["validation"]
                 vac = (m.get("vacuity") or {}).get("vacuous", False)
-                ok = cons["ok"] and val["ok"] and not m["protocol_violations"] and not vac and \
-                    m["task_score"] >= m["success_threshold"]
+                thr = m["success_threshold"]
+                smp = m.get("new_gene_sample")
+                if smp:                        # A1: a new gene is judged on its retry sample, not on one trial
+                    w = sum(x >= thr for x in smp["with"])
+                    solved = w > len(smp["with"]) / 2 and (smp["check"] != "paired" or
+                                                          w > sum(x >= thr for x in smp["without"]))
+                    assert solved == m["task_solved"]
+                else:
+                    solved = m["task_score"] >= thr
+                ok = cons["ok"] and val["ok"] and not m["protocol_violations"] and not vac and solved
                 assert ok == d["accept"]
                 n_sig = len(sig[e["round"]])
                 sel = 0.3 if c == "no_gene" else 0.9
                 files = cons["blast"]["files"]
                 bc = 0.4 if files == 0 else (1.0 if files <= 6 else 0.7)
                 v = (val["n_passed"] / val["n_run"]) if val["n_run"] else (0.5 if val["ok"] else 0.0)
-                comp = round(.05 * min(1, .4 + .1 * n_sig) + .1 * sel + .05 * .5 + .15 * bc
-                             + .25 * max(0, 1 - .25 * len(cons["violations"])) + .25 * v + .1 + .05, 2)
+                # Evolver rounds with JavaScript Math.round(x * 100) / 100 (N4: 0.955 -> 0.96, not Python's 0.95)
+                comp = js_round2(.05 * min(1, .4 + .1 * n_sig) + .1 * sel + .05 * .5 + .15 * bc
+                                 + .25 * max(0, 1 - .25 * len(cons["violations"])) + .25 * v + .1 + .05)
                 assert comp == m["composite_score"]
                 n_checked += 1
     assert n_checked >= 10

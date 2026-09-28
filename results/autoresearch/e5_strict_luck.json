@@ -1,11 +1,12 @@
 {
  "experiment": "e5_strict_luck",
- "written_at": "2026-09-25 05:40:53",
+ "written_at": "2026-09-28 10:15:18",
  "config": {
   "landscape_seeds": 50,
   "max_runs": 150,
   "rules": [
    "strict",
+   "upstream",
    "rigor",
    "rigor_pinned",
    "noise_band",
@@ -59,6 +60,56 @@
     "mean": 0.06989266127173922,
     "lo": 0.06867539043472691,
     "hi": 0.07102845493791841,
+    "n": 50
+   },
+   "n_experiments": {
+    "mean": 149.0,
+    "lo": 149.0,
+    "hi": 149.0,
+    "n": 50
+   }
+  },
+  "upstream": {
+   "n_keeps": {
+    "mean": 14.4,
+    "lo": 13.34,
+    "hi": 15.48,
+    "n": 50
+   },
+   "false_keep_rate": {
+    "mean": 0.19113602934732962,
+    "lo": 0.16469635797853677,
+    "hi": 0.21726875600749437,
+    "n": 50
+   },
+   "n_false_keeps": {
+    "mean": 2.96,
+    "lo": 2.44,
+    "hi": 3.52,
+    "n": 50
+   },
+   "seed_keeps": {
+    "mean": 1.14,
+    "lo": 0.8,
+    "hi": 1.52,
+    "n": 50
+   },
+   "optimism_gap": {
+    "mean": 0.0041416896507718804,
+    "lo": 0.0035902466791612716,
+    "hi": 0.00470007866194638,
+    "n": 50
+   },
+   "true_final": {
+    "mean": 0.956108129843829,
+    "lo": 0.9550117912627967,
+    "hi": 0.9573046351487714,
+    "n": 50
+   },
+   "true_gain": {
+    "mean": 0.0701284389593084,
+    "lo": 0.06893193365436613,
+    "hi": 0.07122477754034075,
     "n": 50
    },
    "n_experiments": {
@@ -272,27 +323,27 @@
  "tinylm": {
   "strict": {
    "n_keeps": {
-    "mean": 8.666666666666666,
-    "lo": 6.0,
-    "hi": 12.0,
+    "mean": 6.666666666666667,
+    "lo": 4.0,
+    "hi": 11.0,
     "n": 3
    },
    "seed_keeps": {
-    "mean": 1.3333333333333333,
-    "lo": 1.0,
-    "hi": 2.0,
+    "mean": 0.6666666666666666,
+    "lo": 0.0,
+    "hi": 1.0,
     "n": 3
    },
    "optimism_gap": {
-    "mean": 0.006560625823018047,
-    "lo": -0.00756186001118575,
-    "hi": 0.0190660214691194,
+    "mean": 0.05392803762090385,
+    "lo": 0.046911390132966524,
+    "hi": 0.06667169305334841,
     "n": 3
    },
    "honest_gain": {
-    "mean": 0.5784167066293241,
-    "lo": 0.428872683129804,
-    "hi": 0.8032692264834314,
+    "mean": 0.7304288103320274,
+    "lo": 0.671707919374533,
+    "hi": 0.8222532690921884,
     "n": 3
    },
    "n_experiments": {
@@ -305,23 +356,22 @@
     {
      "rule": "strict",
      "seed": 0,
-     "n_keeps": 12,
+     "n_keeps": 11,
      "n_runs": 27,
      "n_experiments": 26,
      "seed_keeps": 1,
-     "recorded_best": 2.8478806077700916,
-     "honest_final": 2.856058323781212,
-     "honest_baseline": 3.6593275502646434,
-     "optimism_gap": 0.008177716011120495,
-     "honest_gain": 0.8032692264834314,
+     "recorded_best": 2.790276058007924,
+     "honest_final": 2.838477087684321,
+     "honest_baseline": 3.6607303567765093,
+     "optimism_gap": 0.04820102967639661,
+     "honest_gain": 0.8222532690921884,
      "kept": [
-      "WEIGHT_DECAY 0.0 -> 0.0001",
-      "HIDDEN 128 -> 64",
-      "SEED 42 -> 397",
-      "HIDDEN 64 -> 128",
-      "WARMDOWN_RATIO 0.5 -> 0.3",
       "ACTIVATION 'tanh' -> 'relu'",
+      "WEIGHT_DECAY 0.0 -> 0.0001",
+      "SEED 42 -> 397",
       "CONTEXT 6 -> 4",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
@@ -332,15 +382,109 @@
     {
      "rule": "strict",
      "seed": 1,
-     "n_keeps": 8,
+     "n_keeps": 4,
      "n_runs": 27,
      "n_experiments": 26,
-     "seed_keeps": 2,
-     "recorded_best": 3.135720152151091,
-     "honest_final": 3.1547861736202103,
-     "honest_baseline": 3.657894383894947,
-     "optimism_gap": 0.0190660214691194,
-     "honest_gain": 0.5031082102747368,
+     "seed_keeps": 0,
+     "recorded_best": 2.9468951109665777,
+     "honest_final": 2.9938065010995443,
+     "honest_baseline": 3.6655144204740773,
+     "optimism_gap": 0.046911390132966524,
+     "honest_gain": 0.671707919374533,
+     "kept": [
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "LR 0.012 -> 0.024",
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+     ]
+    },
+    {
+     "rule": "strict",
+     "seed": 2,
+     "n_keeps": 5,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 1,
+     "recorded_best": 2.8773513157236543,
+     "honest_final": 2.9440230087770027,
+     "honest_baseline": 3.6413482513063635,
+     "optimism_gap": 0.06667169305334841,
+     "honest_gain": 0.6973252425293608,
+     "kept": [
+      "ACTIVATION 'tanh' -> 'relu'",
+      "SEED 42 -> 397",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
+      "DEPTH 1 -> 2"
+     ]
+    }
+   ]
+  },
+  "upstream": {
+   "n_keeps": {
+    "mean": 6.666666666666667,
+    "lo": 6.0,
+    "hi": 7.0,
+    "n": 3
+   },
+   "seed_keeps": {
+    "mean": 0.6666666666666666,
+    "lo": 0.0,
+    "hi": 1.0,
+    "n": 3
+   },
+   "optimism_gap": {
+    "mean": 0.050189143925220524,
+    "lo": 0.03216960735900942,
+    "hi": 0.07430157890019728,
+    "n": 3
+   },
+   "honest_gain": {
+    "mean": 0.4904061803686761,
+    "lo": 0.3809988746802553,
+    "hi": 0.6509791996677401,
+    "n": 3
+   },
+   "n_experiments": {
+    "mean": 26.0,
+    "lo": 26.0,
+    "hi": 26.0,
+    "n": 3
+   },
+   "runs": [
+    {
+     "rule": "upstream",
+     "seed": 0,
+     "n_keeps": 6,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 0,
+     "recorded_best": 3.2310209527757965,
+     "honest_final": 3.2751171982922513,
+     "honest_baseline": 3.6561160729725066,
+     "optimism_gap": 0.04409624551645486,
+     "honest_gain": 0.3809988746802553,
+     "kept": [
+      "ACTIVATION 'tanh' -> 'relu'",
+      "INIT_SCALE 1.0 -> 1.4",
+      "INIT_SCALE 1.4 -> 1.96",
+      "WARMDOWN_RATIO 0.5 -> 0.3",
+      "CONTEXT 6 -> 4",
+      "DEPTH 1 -> 2"
+     ]
+    },
+    {
+     "rule": "upstream",
+     "seed": 1,
+     "n_keeps": 7,
+     "n_runs": 27,
+     "n_experiments": 26,
+     "seed_keeps": 1,
+     "recorded_best": 3.1173293181758672,
+     "honest_final": 3.1916308970760645,
+     "honest_baseline": 3.6308713638340975,
+     "optimism_gap": 0.07430157890019728,
+     "honest_gain": 0.43924046675803297,
      "kept": [
       "INIT_SCALE 1.0 -> 1.4",
       "WEIGHT_DECAY 0.0 -> 0.0001",
@@ -348,38 +492,38 @@
       "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
       "TRAIN_SEQ_LEN 16 -> 8",
       "CONTEXT 6 -> 4",
-      "SEED 42 -> 397",
-      "SEED 397 -> 402"
+      "SEED 42 -> 397"
      ]
     },
     {
-     "rule": "strict",
+     "rule": "upstream",
      "seed": 2,
-     "n_keeps": 6,
+     "n_keeps": 7,
      "n_runs": 27,
      "n_experiments": 26,
      "seed_keeps": 1,
-     "recorded_best": 3.251532457373562,
-     "honest_final": 3.243970597362376,
-     "honest_baseline": 3.67284328049218,
-     "optimism_gap": -0.00756186001118575,
-     "honest_gain": 0.428872683129804,
+     "recorded_best": 2.8937814081526954,
+     "honest_final": 2.925951015511705,
+     "honest_baseline": 3.576930215179445,
+     "optimism_gap": 0.03216960735900942,
+     "honest_gain": 0.6509791996677401,
      "kept": [
       "ACTIVATION 'tanh' -> 'relu'",
       "SEED 42 -> 397",
-      "HIDDEN 128 -> 64",
-      "TRAIN_SEQ_LEN 16 -> 8",
+      "LR 0.003 -> 0.006",
+      "LR 0.006 -> 0.012",
       "DEPTH 1 -> 2",
-      "EMBED_DIM 16 -> 32"
+      "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+      "CONTEXT 6 -> 4"
      ]
     }
    ]
   },
   "rigor": {
    "n_keeps": {
-    "mean": 3.3333333333333335,
-    "lo": 2.0,
-    "hi": 5.0,
+    "mean": 2.6666666666666665,
+    "lo": 1.0,
+    "hi": 4.0,
     "n": 3
    },
    "seed_keeps": {
@@ -389,55 +533,53 @@
     "n": 3
    },
    "optimism_gap": {
-    "mean": 0.013198708066626116,
-    "lo": 0.00798794493367394,
-    "hi": 0.018316907325027998,
+    "mean": 0.04085660759616724,
+    "lo": -0.0024605941053534863,
+    "hi": 0.09440109403908092,
     "n": 3
    },
    "honest_gain": {
-    "mean": 0.5024100156073965,
-    "lo": 0.24332898396849956,
-    "hi": 0.6547091821938715,
+    "mean": 0.42648339612212977,
+    "lo": 0.07490349557252918,
+    "hi": 0.6867612588289287,
     "n": 3
    },
    "n_experiments": {
-    "mean": 13.333333333333334,
+    "mean": 14.0,
     "lo": 12.0,
-    "hi": 14.0,
+    "hi": 16.0,
     "n": 3
    },
    "runs": [
     {
      "rule": "rigor",
      "seed": 0,
-     "n_keeps": 2,
+     "n_keeps": 1,
      "n_runs": 27,
-     "n_experiments": 14,
+     "n_experiments": 16,
      "seed_keeps": 0,
-     "recorded_best": 3.408373474996378,
-     "honest_final": 3.426690382321406,
-     "honest_baseline": 3.6700193662899054,
-     "optimism_gap": 0.018316907325027998,
-     "honest_gain": 0.24332898396849956,
+     "recorded_best": 3.4397076727531286,
+     "honest_final": 3.5341087667922095,
+     "honest_baseline": 3.6090122623647387,
+     "optimism_gap": 0.09440109403908092,
+     "honest_gain": 0.07490349557252918,
      "kept": [
-      "ACTIVATION 'tanh' -> 'relu'",
-      "EMBED_DIM 16 -> 32"
+      "BATCH_SIZE 32 -> 16"
      ]
     },
     {
      "rule": "rigor",
      "seed": 1,
-     "n_keeps": 5,
+     "n_keeps": 4,
      "n_runs": 27,
-     "n_experiments": 12,
+     "n_experiments": 14,
      "seed_keeps": 0,
-     "recorded_best": 3.0629749853676613,
-     "honest_final": 3.0709629303013353,
-     "honest_baseline": 3.6801548109611537,
-     "optimism_gap": 0.00798794493367394,
-     "honest_gain": 0.6091918806598184,
+     "recorded_best": 2.9671586745401277,
+     "honest_final": 2.997787997394902,
+     "honest_baseline": 3.6845492562238307,
+     "optimism_gap": 0.030629322854774266,
+     "honest_gain": 0.6867612588289287,
      "kept": [
-      "INIT_SCALE 1.0 -> 1.4",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012",
       "LR 0.012 -> 0.024",
@@ -449,15 +591,15 @@
      "seed": 2,
      "n_keeps": 3,
      "n_runs": 27,
-     "n_experiments": 14,
+     "n_experiments": 12,
      "seed_keeps": 0,
-     "recorded_best": 3.0202971317103255,
-     "honest_final": 3.033588403651502,
-     "honest_baseline": 3.6882975858453735,
-     "optimism_gap": 0.013291271941176408,
-     "honest_gain": 0.6547091821938715,
+     "recorded_best": 3.0829183564633045,
+     "honest_final": 3.080457762357951,
+     "honest_baseline": 3.5982431963228825,
+     "optimism_gap": -0.0024605941053534863,
+     "honest_gain": 0.5177854339649315,
      "kept": [
-      "ACTIVATION 'tanh' -> 'relu'",
+      "TRAIN_SEQ_LEN 16 -> 8",
       "LR 0.003 -> 0.006",
       "LR 0.006 -> 0.012"
      ]
@@ -475,8 +617,12 @@
   "strict_optimism_gap_ci_lo": 0.003523041776757811,
   "true_final_strict": 0.9563439075313983,
   "true_final_rigor": 0.9579232481557689,
-  "tinylm_strict_optimism_gap": 0.006560625823018047,
-  "tinylm_rigor_optimism_gap": 0.013198708066626116,
+  "tinylm_strict_optimism_gap": 0.05392803762090385,
+  "tinylm_rigor_optimism_gap": 0.04085660759616724,
+  "upstream_false_keep_rate": 0.19113602934732962,
+  "upstream_optimism_gap": 0.0041416896507718804,
+  "true_final_upstream": 0.956108129843829,
+  "tinylm_upstream_optimism_gap": 0.050189143925220524,
   "strict_locks_in_luck": true,
   "rigor_smaller_gap": true,
   "honest_final_quality_tradeoff": "strict better at equal compute (rigor spends up to 3 runs per candidate: 112 vs 149 ideas tried)",

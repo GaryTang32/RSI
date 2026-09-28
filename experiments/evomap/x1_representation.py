@@ -106,8 +106,15 @@ def main():
         "X3_single_ge_complementary": m["gene"] >= m["two_complementary"],
         "X3_single_ge_conflicting": m["gene"] >= m["two_conflicting"],
         "X3_complementary_worse_than_conflicting (paper)": m["two_complementary"] < m["two_conflicting"],
-        "note": ("offline: the solver's response to guidance is a set of knobs, so these directions restate the knobs;"
-                 " run with --llm claude:haiku for evidence") if not live(args) else "live model",
+        # N11: the paper's central sign is Skill BELOW no guidance (49.9 < 51.0) and Gene above both (54.0)
+        "paper_skill_below_none (49.9 < 51.0)": m["skill"] < m["none"],
+        "paper_gene_above_none_and_skill (54.0)": m["gene"] > m["none"] and m["gene"] > m["skill"],
+        "direction_matches_paper": m["skill"] < m["none"] < m["gene"],
+        "note": ("offline: the solver's response to guidance is a set of knobs, so these directions restate the knobs."
+                 " Only Gene > Skill matches the paper; the knobs give Skill >> none, the OPPOSITE sign to the"
+                 " paper's Skill (49.9) < none (51.0), so the paper's central claim that documentation-style guidance"
+                 " does not help is contradicted by the simulator, not supported. Run with --llm claude:haiku on a"
+                 " task set with headroom for evidence") if not live(args) else "live model",
     }
     save("x1_representation" + ("" if not live(args) else "_live"), out, args.out)
     for a in arms:

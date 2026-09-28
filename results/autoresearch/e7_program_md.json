@@ -1,6 +1,6 @@
 {
  "experiment": "e7_program_md",
- "written_at": "2026-09-25 05:10:08",
+ "written_at": "2026-09-28 10:34:06",
  "config": {
   "task": "landscape",
   "presets": [
@@ -15,22 +15,22 @@
   ],
   "llm": "sim",
   "program_versions": {
-   "upstream": "67a030e",
-   "xgboost": "906f5bc",
-   "simplify": "d0d3848"
+   "upstream": "67fe238",
+   "xgboost": "b903cf5",
+   "simplify": "39c62e6"
   }
  },
  "presets": {
   "upstream": {
    "improvement": {
-    "mean": 0.05385833284356151,
+    "mean": 0.05265837409069607,
     "lo": 0.04531609654428004,
-    "hi": 0.062400569142842977,
+    "hi": 0.0600006516371121,
     "n": 2
    },
    "true_best": {
-    "mean": 0.9757707059761146,
-    "lo": 0.9653826303637034,
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
     "hi": 0.9861587815885258,
     "n": 2
    },
@@ -47,21 +47,21 @@
     "n": 2
    },
    "keep_rate": {
-    "mean": 0.24166666666666664,
+    "mean": 0.21785714285714286,
     "lo": 0.15,
-    "hi": 0.3333333333333333,
+    "hi": 0.2857142857142857,
     "n": 2
    },
    "runs": [
     {
      "preset": "upstream",
      "seed": 0,
-     "best": 0.9645116929354699,
+     "best": 0.9669116104412008,
      "baseline": 1.0269122620783129,
-     "improvement": 0.062400569142842977,
-     "keep_rate": 0.3333333333333333,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
      "n_crash": 0,
-     "true_best": 0.9653826303637034,
+     "true_best": 0.9658782862305668,
      "knobs_touched": [
       "BATCH",
       "DEPTH",
@@ -75,7 +75,7 @@
      "n_knobs_touched": 8,
      "removal_share": 0.0,
      "program_versions": [
-      "67a030e"
+      "67fe238"
      ],
      "descriptions": [
       "WEIGHT_DECAY 0.2 -> 0.25",
@@ -97,11 +97,11 @@
       "BATCH 128 -> 256",
       "WIDTH 256 -> 320",
       "BATCH 128 -> 64",
-      "WIDTH 320 -> 160"
+      "WIDTH 256 -> 128"
      ],
      "usage": {
       "calls": 20,
-      "input_tokens": 60889,
+      "input_tokens": 68857,
       "output_tokens": 3572,
       "cost_usd": 0.0
      }
@@ -127,7 +127,7 @@
      "n_knobs_touched": 7,
      "removal_share": 0.0,
      "program_versions": [
-      "67a030e"
+      "67fe238"
      ],
      "descriptions": [
       "WIDTH 512 -> 576",
@@ -152,9 +152,9 @@
       "WARMDOWN 0.5 -> 0.6"
      ],
      "usage": {
-      "calls": 20,
-      "input_tokens": 60788,
-      "output_tokens": 3588,
+      "calls": 21,
+      "input_tokens": 72011,
+      "output_tokens": 3590,
       "cost_usd": 0.0
      }
     }
@@ -162,14 +162,14 @@
   },
   "xgboost": {
    "improvement": {
-    "mean": 0.05385833284356151,
+    "mean": 0.05265837409069607,
     "lo": 0.04531609654428004,
-    "hi": 0.062400569142842977,
+    "hi": 0.0600006516371121,
     "n": 2
    },
    "true_best": {
-    "mean": 0.9757707059761146,
-    "lo": 0.9653826303637034,
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
     "hi": 0.9861587815885258,
     "n": 2
    },
@@ -186,21 +186,21 @@
     "n": 2
    },
    "keep_rate": {
-    "mean": 0.24166666666666664,
+    "mean": 0.21785714285714286,
     "lo": 0.15,
-    "hi": 0.3333333333333333,
+    "hi": 0.2857142857142857,
     "n": 2
    },
    "runs": [
     {
      "preset": "xgboost",
      "seed": 0,
-     "best": 0.9645116929354699,
+     "best": 0.9669116104412008,
      "baseline": 1.0269122620783129,
-     "improvement": 0.062400569142842977,
-     "keep_rate": 0.3333333333333333,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
      "n_crash": 0,
-     "true_best": 0.9653826303637034,
+     "true_best": 0.9658782862305668,
      "knobs_touched": [
       "BATCH",
       "DEPTH",
@@ -214,7 +214,7 @@
      "n_knobs_touched": 8,
      "removal_share": 0.0,
      "program_versions": [
-      "906f5bc"
+      "b903cf5"
      ],
      "descriptions": [
       "WEIGHT_DECAY 0.2 -> 0.25",
@@ -236,11 +236,11 @@
       "BATCH 128 -> 256",
       "WIDTH 256 -> 320",
       "BATCH 128 -> 64",
-      "WIDTH 320 -> 160"
+      "WIDTH 256 -> 128"
      ],
      "usage": {
       "calls": 20,
-      "input_tokens": 63878,
+      "input_tokens": 71848,
       "output_tokens": 3572,
       "cost_usd": 0.0
      }
@@ -266,7 +266,7 @@
      "n_knobs_touched": 7,
      "removal_share": 0.0,
      "program_versions": [
-      "906f5bc"
+      "b903cf5"
      ],
      "descriptions": [
       "WIDTH 512 -> 576",
@@ -291,9 +291,9 @@
       "WARMDOWN 0.5 -> 0.6"
      ],
      "usage": {
-      "calls": 20,
-      "input_tokens": 63782,
-      "output_tokens": 3588,
+      "calls": 21,
+      "input_tokens": 75155,
+      "output_tokens": 3590,
       "cost_usd": 0.0
      }
     }
@@ -301,14 +301,14 @@
   },
   "simplify": {
    "improvement": {
-    "mean": 0.05385833284356151,
+    "mean": 0.05265837409069607,
     "lo": 0.04531609654428004,
-    "hi": 0.062400569142842977,
+    "hi": 0.0600006516371121,
     "n": 2
    },
    "true_best": {
-    "mean": 0.9757707059761146,
-    "lo": 0.9653826303637034,
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
     "hi": 0.9861587815885258,
     "n": 2
    },
@@ -325,21 +325,21 @@
     "n": 2
    },
    "keep_rate": {
-    "mean": 0.24166666666666664,
+    "mean": 0.21785714285714286,
     "lo": 0.15,
-    "hi": 0.3333333333333333,
+    "hi": 0.2857142857142857,
     "n": 2
    },
    "runs": [
     {
      "preset": "simplify",
      "seed": 0,
-     "best": 0.9645116929354699,
+     "best": 0.9669116104412008,
      "baseline": 1.0269122620783129,
-     "improvement": 0.062400569142842977,
-     "keep_rate": 0.3333333333333333,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
      "n_crash": 0,
-     "true_best": 0.9653826303637034,
+     "true_best": 0.9658782862305668,
      "knobs_touched": [
       "BATCH",
       "DEPTH",
@@ -353,7 +353,7 @@
      "n_knobs_touched": 8,
      "removal_share": 0.0,
      "program_versions": [
-      "d0d3848"
+      "39c62e6"
      ],
      "descriptions": [
       "WEIGHT_DECAY 0.2 -> 0.25",
@@ -375,11 +375,11 @@
       "BATCH 128 -> 256",
       "WIDTH 256 -> 320",
       "BATCH 128 -> 64",
-      "WIDTH 320 -> 160"
+      "WIDTH 256 -> 128"
      ],
      "usage": {
       "calls": 20,
-      "input_tokens": 61432,
+      "input_tokens": 69401,
       "output_tokens": 3572,
       "cost_usd": 0.0
      }
@@ -405,7 +405,7 @@
      "n_knobs_touched": 7,
      "removal_share": 0.0,
      "program_versions": [
-      "d0d3848"
+      "39c62e6"
      ],
      "descriptions": [
       "WIDTH 512 -> 576",
@@ -430,9 +430,9 @@
       "WARMDOWN 0.5 -> 0.6"
      ],
      "usage": {
-      "calls": 20,
-      "input_tokens": 61333,
-      "output_tokens": 3588,
+      "calls": 21,
+      "input_tokens": 72584,
+      "output_tokens": 3590,
       "cost_usd": 0.0
      }
     }
@@ -441,9 +441,9 @@
  },
  "verdict": {
   "improvement": {
-   "upstream": 0.05385833284356151,
-   "xgboost": 0.05385833284356151,
-   "simplify": 0.05385833284356151
+   "upstream": 0.05265837409069607,
+   "xgboost": 0.05265837409069607,
+   "simplify": 0.05265837409069607
   },
   "n_knobs_touched": {
    "upstream": 7.5,

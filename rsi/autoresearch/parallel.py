@@ -36,6 +36,27 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         self.pool = pool
         self.inflight: dict[str, tuple] = {}
         self.completion_order: list[int] = []
+        self._deferred: list[tuple] = []           # shadow audits postponed while runs were in flight
+        self.n_deferred_audits = 0
+
+    def _audit_competes(self) -> bool:
+        """A shadow audit of a script task re-trains the incumbent. Under a wall-clock
+        (or ceiling) budget that training would share the CPU with the in-flight runs and
+        shorten their effective budget (validation AUDIT #23), so it waits."""
+        return (self.monitor is not None and bool(self.inflight)
+                and getattr(self.task.budget, "kind", "") in ("wallclock", "ceiling"))
+
+    def _kept(self, round: int, name: str, art, score) -> None:
+        if self._audit_competes():
+            self._deferred.append((round, name, art, score))
+            self.n_deferred_audits += 1
+            return
+        super()._kept(round, name, art, score)
+
+    def _flush_audits(self) -> None:
+        """Run the postponed audits (only called when nothing is in flight)."""
+        while self._deferred and not self.inflight:
+            super()._kept(*self._deferred.pop(0))
 
     def _submit_one(self) -> bool:
         nxt = self._next_candidate()
@@ -71,7 +92,7 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         ctx = super().context()
         if getattr(self, "inflight", None):
             running = "; ".join(v[2] for v in self.inflight.values())
-            ctx.notes = f"Currently running (do not duplicate): {running}"
+            ctx.notes = (ctx.notes + "\n" if ctx.notes else "") + f"Currently running (do not duplicate): {running}"
             ctx.results_tsv += f"# in flight: {running}\n"
         return ctx
 
@@ -82,22 +103,26 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         while True:
             if stop is None:
                 stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
-                if stop is None and self.n_invalid_streak >= self.cfg.max_consecutive_invalid:
+                if stop is None and self._agent_failed():
                     stop = "agent_failed"
             while stop is None and len(self.inflight) < max(1, self.cfg.workers):
                 self._submit_one()
                 stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
-                if stop is None and self.n_invalid_streak >= self.cfg.max_consecutive_invalid:
+                if stop is None and self._agent_failed():
                     stop = "agent_failed"
             if not self.inflight and stop is not None:
                 break
             if self._collect() == 0:
                 time.sleep(0.01)
+            if not self.inflight:
+                self._flush_audits()
+        self._flush_audits()
         self.stop_reason = stop
         self.pool.shutdown()
         res = self.finish()
         res.meta["parallel"] = {"workers": self.cfg.workers, "executor": type(self.pool).__name__,
-                                "completion_order": self.completion_order}
+                                "completion_order": self.completion_order,
+                                "deferred_audits": self.n_deferred_audits}
         if isinstance(self.pool, FakeSlurmExecutor):
             res.meta["parallel"]["slurm_states"] = sorted({j.state for j in self.pool.jobs.values()})
             res.meta["parallel"]["slurm_warnings"] = list(self.pool.warnings)

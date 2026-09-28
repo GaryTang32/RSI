@@ -17,7 +17,7 @@ import numpy as np  # noqa: E402
 from rsi.core import CachedLLM, ClaudeCLI, summarize_runs  # noqa: E402
 
 RESULTS = Path(os.environ.get("RSI_AR_RESULTS", ROOT / "results" / "autoresearch"))
-CACHE = ROOT / ".rsi_cache" / "autoresearch"
+CACHE = Path(os.environ.get("RSI_AR_CACHE", ROOT / ".rsi_cache" / "autoresearch"))    # a fresh dir per live re-run
 SCRATCH = Path(os.environ.get("RSI_AR_SCRATCH", "/tmp/rsi_autoresearch_runs"))
 
 

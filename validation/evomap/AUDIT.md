@@ -37,8 +37,14 @@ A "step" is one of the following:
 | live_katas_r3 (stage B re-run) | 41 | 39 | 1 (A1) | 0 | 1 (transfer) |
 | **total** | **330** | **293** | **25** | **9** | **3** |
 
-- **Gate arithmetic.** All 60 gate recomputations match the loop, in every run, old and new. The composite 0.95
-  equals the float result of Evolver's `round2(0.955)`.
+- **Gate arithmetic.** All 60 gate recomputations match the loop, in every run, old and new. *Correction
+  (claim-audit fix N4, 2026-09-28):* this page used to say that the composite 0.95 "equals the float result of
+  Evolver's `round2(0.955)`". It does not: JavaScript `Math.round(0.955 * 100) / 100` is **0.96** (95.5 rounds up),
+  while the loop used Python's `round(s, 2)` = 0.95. The recomputation matched the loop because it used the same
+  Python rounding. The loop now rounds like Evolver (`rsi.evomap.solidify.js_round2`) and the frozen recompute test
+  uses the same rule; the traced runs in this directory predate that fix, so their composites of 0.95 would be 0.96
+  today. No keep decision depends on it (the composite is not part of the keep rule, and no 0.95/0.96 value crosses
+  the 0.78 publish bar).
 - **What the wrong steps were.** None of them was an arithmetic error. They were rule or design defects: stage A fixed
   W1 to W3, and this stage fixed B1 to B4.
 - **Questionable steps.** These are correct under the rule, but the evidence behind the decision is too thin to
@@ -242,11 +248,12 @@ Second solver, no writer, same hub.
 | B3 | writer prompt lacked the §6.1 evolution-history block; a live writer re-proposed the failed approach | inconsistent-fixed (this stage) | live_katas c8 prompt; test B3 |
 | B4 | adopted hub gene re-published under the adopter's name | inconsistent-fixed (this stage, safe mode) | stage-A agent1 seq 75; stage B has no agent1 publish |
 | T1 | trace omitted the writer system prompt; selector scores shown before ×1.5 without a label; distiller declines untraced | inconsistent-fixed (trace only) | agent.py |
-| A1 | a new gene is kept on ONE fresh-seed retry of the task it was written from | inconsistent-open (design; spec's keep rule is per-cycle) | 4 offline keeps plus the live keeps; the X10 honest-agent harmful cards (`poisoned_in_stores`) come from this |
+| A1 | a new gene is kept on ONE fresh-seed retry of the task it was written from | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: safe mode now judges a new gene on a paired sample (`Config.new_gene_check="paired"`, `new_gene_retries=3`: 3 fresh seeds with the gene and the same seeds without it; kept iff > half solve AND the gene solves more than the bare harness), `rsi/evomap/agent.py` (propose/retry block); faithful keeps one retry (Evolver has no such check) | `tests/test_evomap_fixes.py::test_a_useless_new_gene_is_not_kept_on_a_lucky_retry` (the old rule keeps a no-effect card, the new one never does), `::test_a_real_new_gene_is_still_kept`; trace `gate.math.new_gene_sample`, recomputed in `test_every_gate_recomputes_from_the_traced_trials` |
 | A2 | hub bank of 2 in-scope tasks × k; quarantine of 1 task × 2 trials (delta 0.98): verdicts are statistically weak | documented-deviation (katas size) | hub gates, agent1 c1 / c3 |
 | A4 | capsule streak is not broken by a failed cycle that used the same gene | faithful (Evolver) | agent0 c11 |
 | A5 | composite score does not see the task outcome (a rejected cycle still records 0.95) | faithful (Evolver §4.10); documented | agent0 c5 / c8 |
-| A7 | `hub.metrics()["n_promoted"]` counts verified assets (strict = 0) | inconsistent-open (naming, minor) | summary.json hub_metrics |
+| A7 | `hub.metrics()["n_promoted"]` counts verified assets (strict = 0) | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `n_promoted` now counts status `promoted` only; the admitted tier (naive: promoted; SafeHub: verified or promoted) is `n_admitted`, with `admitted_states`; `rsi/evomap/metrics.py` `ReuseMetrics.compute` | `tests/test_evomap_fixes.py::test_n_promoted_counts_promoted_status_only` |
+| X10 | `poisoned_in_stores` conflates harmful cards an honest agent wrote itself with hub poison; X10's `rank_validity_positive` in the committed JSON predates the stage-B fixes and was not robust | **inconsistent-fixed (claim-audit fix, 2026-09-28)**: `PopulationSimulator.poisoned_in_stores_split()` reports `poisoned_in_stores_hub` (promoted from quarantine, or stored with a hub asset as parent) and `poisoned_in_stores_self`; X10 / X11 report both; X10 was re-run on the current code and its verdict now also records the rank-validity CI and whether it beats GDI | `tests/test_evomap_fixes.py::test_poisoned_in_stores_is_split_by_origin`; `results/evomap/x10_safehub.json` |
 | D1 | distillation, plateau, drift, bans and dedup never triggered in ≤ 12 cycles | unverifiable here | traces |
 | D2 | transfer of live genes to unseen tasks | unverifiable (Haiku holdout = 1.0) | monitor rows |
 | D3 | GDI weights and Behind-EvoMap numbers | unverifiable (source blocked, `[snip:BE]`) | spec §0 |
@@ -271,10 +278,20 @@ Second solver, no writer, same hub.
 
 ## Remaining open issues
 
-1. **A1:** single-sample keep evidence. Recommended fix: require `rsi-taskcheck` (a paired A/B) or ≥ 2 retries
-   before a newly written gene is stored.
-2. **A2:** katas are too small for statistically meaningful hub or quarantine verdicts.
-3. **A7:** naming of `n_promoted`.
-4. **X10:** `poisoned_in_stores` conflates harmful cards an honest agent wrote itself with hub poison
-   (experiment-script metric, not owned here).
-5. **D2:** a harder live domain is needed to test transfer.
+Fixed on 2026-09-28 by the claim-audit fix pass (details and evidence in `docs/claims/evomap.md`, "Fix log"):
+
+1. ~~**A1:** single-sample keep evidence.~~ Fixed: safe mode judges a new gene on a paired sample of 3 fresh seeds
+   with and without it (`Config.new_gene_check="paired"`). Cost: about 5 extra rollouts per written gene.
+2. ~~**A7:** naming of `n_promoted`.~~ Fixed: `n_promoted` (status promoted) and `n_admitted` (the admitted tier).
+3. ~~**X10:** `poisoned_in_stores` conflation; rank-validity robustness.~~ Fixed: `poisoned_in_stores_hub` /
+   `poisoned_in_stores_self`; X10 re-run on the fixed code; `rank_validity_positive` is now `false` (0.089
+   [−0.022, +0.204]), which this audit had already flagged as not robust.
+
+Still open:
+
+4. **A2:** katas are too small for statistically meaningful hub or quarantine verdicts (documented deviation).
+5. **D2:** a harder live domain is needed to test transfer (the 2026-09-28 live smoke is still at ceiling: holdout
+   1.0 → 1.0).
+6. The traced runs in this directory (`offline_katas`, `live_katas*`) predate the fix pass. They were not re-run:
+   their step audit (330 steps) stays as the record of the code it audited. With the current code the composites
+   would read 0.96 instead of 0.95 (N4), and new genes would be judged on a paired retry sample (A1).

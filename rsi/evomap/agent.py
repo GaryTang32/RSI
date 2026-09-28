@@ -6,7 +6,7 @@
    history); in faithful timing the *previous* cycle's outcome is written to the
    memory graph here (§4.11);
 2. **look locally** - :class:`GeneSelector` over the LocalStore with memory
-   advice, bans and drift;
+   advice, bans and drift (in faithful mode AFTER the hub search of step 3);
 3. **ask the hub** (optional). Faithful mode (``hub_when="first"``) follows
    Evolver's stage order ``signals -> enrich (hub search) -> select``: the hub is
    searched on every cycle BEFORE local selection, and a miss with problem signals
@@ -66,7 +66,8 @@ class CycleResult:
     gene_id: Optional[str]
     source: str                      # local | hub | generated | none
     reused_asset_id: Optional[str]
-    task_score: float                # graded on the agent's own task (hidden grader of the domain)
+    task_score: float                # graded on the agent's own task (hidden grader of the domain); with a new gene,
+    #                                  the first retry (the keep rule's full sample is in new_gene_retries)
     task_success: bool
     solidified: bool
     composite: float
@@ -74,7 +75,6 @@ class CycleResult:
     proposer_calls: int
     hub_hit: bool = False
     quarantine: Optional[dict] = None
-    hub_gene_id: Optional[str] = None  # reference mode: the hub gene injected next to gene_id (never stored)
     published: Optional[str] = None
     event_id: str = ""
     selection_mode: str = ""
@@ -82,7 +82,8 @@ class CycleResult:
     distilled: Optional[str] = None
     validation_ok: bool = False
     n_validation_run: int = 0
-    new_gene_retries: Optional[list] = None   # per-retry task scores of a newly written gene (A1)
+    new_gene_retries: Optional[dict] = None   # A1: a new gene's retry sample {"with": [...], "without": [...]}
+    hub_gene_id: Optional[str] = None  # reference mode: the hub gene injected next to gene_id (never stored)
 
     def to_json(self) -> dict:
         return dict(self.__dict__)
@@ -265,8 +266,10 @@ class AgentNode:
         views = [v for v in views if v.author != self.name]
         tr = self.tracer
         if tr.enabled:
-            tr.event("note", self.t, what="hub search (nothing local fits)" if cfg.hub_when != "always" else
-                     "hub search", signals=list(signals),
+            what = {"first": "hub search first (Evolver enrich stage, before local selection)",
+                    "always": "hub search"}.get(cfg.hub_when, "hub search (nothing local fits)")
+            tr.event("note", self.t, what=what,
+                     signals=list(signals),
                      views=[{"asset_id": v.asset_id[:24], "gene": (v.gene or {}).get("id"), "author": v.author,
                              "status": v.status, "rank_score": v.score, "similarity": v.similarity,
                              "exploration": v.exploration, "already_rejected": v.asset_id in self._rejected}
@@ -536,8 +539,12 @@ class AgentNode:
                "policy": {"preset": pol.preset, "max_files": pol.max_files, "force_innovate": pol.force_innovate,
                           "cautious": pol.cautious, "directives": pol.directives}}
         retry_scores: Optional[list] = None
+        outcome_score: Optional[float] = None    # the cycle's realized task outcome when a retry sample was drawn
+        used: list = []
+        retry_info: Optional[dict] = None
         solved_override: Optional[bool] = None
         injected = ([gene] if gene is not None else []) + ([hub_ref] if hub_ref is not None else [])
+        used = list(injected)
         if injected:
             lead = injected[0]
             if tr.enabled:
@@ -569,47 +576,69 @@ class AgentNode:
             if tr.enabled:
                 tr.event("eval", self.t, **trial_eval("solve:no_gene", cfg.split, task, trial, seed=seed,
                                                       attempt="scratch"))
-            if cfg.propose and trial.score < cfg.success_threshold:
-                self._last_proposal = {}
-                g_new = self._propose(task, signals, trial)
-                if tr.enabled and self.llm_propose is not None:
-                    lp = self._last_proposal
-                    art = self.injector.inject(self.harness, [g_new]) if g_new is not None else self.harness
-                    tr.proposal(self.t, g_new.id if g_new else "unparsed", parent=st.gene_library_version(),
-                                prompt=lp.get("prompt", ""), reply=lp.get("reply", ""), system=lp.get("system", ""),
-                                change=f"gene writer wrote new gene {g_new.id}" if g_new else "",
-                                hypothesis=g_new.summary if g_new else "",
-                                components=[f"gene:{g_new.id}"] if g_new else [],
-                                diff=injected_diff(self.harness, art),
-                                error=None if g_new else "gene writer reply did not parse into a gene",
-                                source="generated", gene=gene_brief(g_new),
-                                leakage_audit=lp.get("leakage_audit"))
-                if g_new is not None:
-                    gene, source = g_new, "generated"
-                    if cfg.retry_after_propose:
-                        tokens += trial.tokens
-                        # A1: a new gene is judged on >= new_gene_retries fresh-seed retries of its own task, not on
-                        # one sample; the task counts as solved iff MORE than half of the retries solve it
-                        n_ret = max(1, int(cfg.new_gene_retries or 1))
-                        trials = []
-                        for i in range(n_ret):
-                            sd = seed + 7919 * (i + 1)
-                            trials.append(self._run(task, [gene], sd))
+        # the gene writer runs when no LOCAL gene fits and the attempt failed - also when a hub reference was in
+        # the prompt (the reference did not solve it; Evolver keeps the reference in this cycle's prompt, so the
+        # retries keep it next to the new gene)
+        if gene is None and cfg.propose and trial.score < cfg.success_threshold:
+            self._last_proposal = {}
+            ref = [hub_ref] if hub_ref is not None else []
+            g_new = self._propose(task, signals, trial)
+            if tr.enabled and self.llm_propose is not None:
+                lp = self._last_proposal
+                art = self.injector.inject(self.harness, [g_new] + ref) if g_new is not None else self.harness
+                tr.proposal(self.t, g_new.id if g_new else "unparsed", parent=st.gene_library_version(),
+                            prompt=lp.get("prompt", ""), reply=lp.get("reply", ""), system=lp.get("system", ""),
+                            change=f"gene writer wrote new gene {g_new.id}" if g_new else "",
+                            hypothesis=g_new.summary if g_new else "",
+                            components=[f"gene:{g_new.id}"] if g_new else [],
+                            diff=injected_diff(self.harness, art),
+                            error=None if g_new else "gene writer reply did not parse into a gene",
+                            source="generated", gene=gene_brief(g_new),
+                            leakage_audit=lp.get("leakage_audit"))
+            if g_new is not None:
+                gene, source = g_new, "generated"
+                used = [gene] + ref
+                if cfg.retry_after_propose:
+                    tokens += trial.tokens
+                    # A1: a new gene is judged on a proper sample of its own task, not on one retry. "single"
+                    # (faithful default): one fresh-seed retry, as before. "paired" (safe default):
+                    # new_gene_retries fresh seeds WITH the gene and the SAME seeds WITHOUT it; solved iff more
+                    # than half of the gene runs solve AND the gene solves more of them than the bare harness
+                    n_ret = max(1, int(cfg.new_gene_retries or 1))
+                    paired = cfg.new_gene_check == "paired"
+                    trials, bare = [], []
+                    for i in range(n_ret):
+                        sd = seed + 7919 * (i + 1)
+                        trials.append(self._run(task, [gene] + ref, sd))
+                        if tr.enabled:
+                            tr.event("eval", self.t, **trial_eval(f"solve:{gene.id}", cfg.split, task, trials[-1],
+                                                                  seed=sd, attempt=f"retry {i + 1}/{n_ret} with "
+                                                                                   "the new gene"))
+                        if paired:
+                            bare.append(self._run(task, list(ref), sd))
                             if tr.enabled:
-                                tr.event("eval", self.t, **trial_eval(f"solve:{gene.id}", cfg.split, task, trials[-1],
-                                                                      seed=sd, attempt=f"retry {i + 1}/{n_ret} with "
-                                                                                       "the new gene"))
-                        wins = [t.score >= cfg.success_threshold for t in trials]
-                        solved_override = sum(wins) > len(wins) / 2
-                        retry_scores = [t.score for t in trials]
-                        # the workspace solidify sees comes from a retry that agrees with the verdict
-                        trial = next((t for t, w in zip(trials, wins) if w == solved_override), trials[0])
-                        tokens += sum(t.tokens for t in trials) - trial.tokens
+                                tr.event("eval", self.t, **trial_eval("solve:no_gene", cfg.split, task, bare[-1],
+                                                                      seed=sd, attempt=f"paired retry {i + 1}/"
+                                                                                       f"{n_ret} without a gene"))
+                    wins = [t.score >= cfg.success_threshold for t in trials]
+                    solved_override = sum(wins) > len(wins) / 2
+                    if paired:
+                        solved_override = solved_override and sum(wins) > sum(
+                            t.score >= cfg.success_threshold for t in bare)
+                    retry_scores = [t.score for t in trials]
+                    retry_info = {"with": retry_scores, "without": [t.score for t in bare], "check":
+                                  cfg.new_gene_check, "solved": solved_override}
+                    # the workspace solidify sees comes from a retry that agrees with the verdict
+                    # the cycle's realized outcome is the first retry (the same seed the old single retry used); the
+                    # other runs are the keep rule's validation sample, not extra attempts at the task
+                    outcome_score = trials[0].score
+                    trial = next((t for t, w in zip(trials, wins) if w == solved_override), trials[0])
+                    tokens += sum(t.tokens for t in trials) - trial.tokens + sum(t.tokens for t in bare)
         tokens += trial.tokens
         if self.llm_propose is not None:
             tokens += self._proposer_tokens() - ptok0
         solved = trial.score >= cfg.success_threshold if solved_override is None else solved_override
-        self.last_genes = list(injected) if injected else ([gene] if gene is not None else [])
+        self.last_genes = list(used)
         self.last_gene = hub_ref if hub_ref is not None else gene
         if gene is None and solved and cfg.skip_geneless_success:
             if tr.enabled:
@@ -626,8 +655,9 @@ class AgentNode:
         is_new = gene is not None and gene.id not in st.genes
         rs = RunState(run_id=f"run_{self.name}_{self.t}", signals=signals, gene=gene, mutation=mut, personality=pers,
                       before=before, after=after, capsule=dec.capsule, estimate=pol.blast_estimate,
-                      source_type={"hub": "reference" if cfg.reuse_mode in ("reference", "replace") else "reused"}.get(
-                          source, "generated"),
+                      source_type=("reference" if hub_ref is not None else
+                                   {"hub": "reference" if cfg.reuse_mode == "replace" else "reused"}.get(source,
+                                                                                                          "generated")),
                       reused_asset_id=reused, personality_known=self.personality.known, task_id=task.id,
                       task_success=solved,
                       hidden_score=trial.score if retry_scores is None else sum(retry_scores) / len(retry_scores),
@@ -647,7 +677,7 @@ class AgentNode:
                 "task_signals": [s for s in signals if s.startswith("task:")],
                 "outcome": "KEPT (own task solved)" if res.success else "FAILED"}])[-20:]
         if tr.enabled:
-            self._trace_solidify(rs, res, gene, solved, trial)
+            self._trace_solidify(rs, res, gene, solved, trial, retry_info)
         if res.success and is_new:
             if source == "hub" and reused:
                 gene.parent = reused
@@ -704,15 +734,17 @@ class AgentNode:
                              meta={"signals": signals[:12], "selection": dec.mode, "reused": reused,
                                    "quarantine": qd, "published": published, "distilled": distilled,
                                    "violations": res.constraints.violations}))
+        o_score = trial.score if outcome_score is None else outcome_score
         cr = CycleResult(self.t, task.id, task.family, signals, gene.id if gene else None, source, reused,
-                         trial.score, solved, res.success, res.score, int(tokens), self.proposer_calls, hub_hit, qd,
+                         o_score, o_score >= cfg.success_threshold if outcome_score is not None else solved,
+                         res.success, res.score, int(tokens), self.proposer_calls, hub_hit, qd,
                          published, rid, dec.mode, sorted(dec.banned), distilled, res.validation.ok,
-                         res.validation.n_run, retry_scores)
+                         res.validation.n_run, retry_info)
         cr.hub_gene_id = hub_ref.id if hub_ref is not None else None
         self.results.append(cr)
         return cr
 
-    def _trace_solidify(self, rs, res, gene, solved: bool, trial) -> None:
+    def _trace_solidify(self, rs, res, gene, solved: bool, trial, retry_info: Optional[dict] = None) -> None:
         from .solidify import A2A_MAX_FILES, A2A_MAX_LINES, BROADCAST_SCORE, BROADCAST_STREAK, MIN_PUBLISH_SCORE
         cfg = self.cfg
         meta = res.event.meta or {}
@@ -733,6 +765,7 @@ class AgentNode:
                                "commands": validation_rows(val.report)},
                 "vacuity": res.vacuity.to_dict() if res.vacuity is not None else None,
                 "task_score": trial.score, "success_threshold": cfg.success_threshold, "task_solved": solved,
+                "new_gene_sample": retry_info,
                 "extra_failures": meta.get("extra_failures"), "composite_score": res.score,
                 "failure_mode": list(res.failure_mode) if res.failure_mode else None,
                 "rolled_back": res.rolled_back,

@@ -224,8 +224,9 @@ Notes:
   `max_wall_s`, and tinylm audits spend no LLM money, so **no recorded run was affected** (live's `max_usd=2.5` was
   never approached). Fixed in `rsi/autoresearch/loop.py` (`_kept`, `budget_usd`); regression tests are in
   `tests/test_autoresearch_validation_audit.py`, which fails on the old code.
-* **Still open.** With `workers > 1` and a wall-clock budget, the monitor's audit training runs concurrently with
-  worker runs and takes CPU from them. Not exercised here.
+* **Fixed 28 Sep 2026 (was open).** With `workers > 1` and a wall-clock budget, the monitor's audit training ran
+  concurrently with worker runs and took CPU from them. `ParallelAutoresearchLoop` now postpones each shadow audit
+  while any run is in flight under a `wallclock`/`ceiling` budget and runs it once nothing is training (section 9).
 
 ## 4. Paper alignment
 
@@ -321,9 +322,9 @@ Notes:
 | 6 | Strict keep, equal-or-worse resets | faithful | 44/44 gates recomputed |
 | 7 | Mechanical crash triviality, ≤ 3 fixes | documented-deviation | impl doc #7 |
 | 8 | Timeout logged as `crash` | documented-deviation | impl doc #7 |
-| 9 | Rejected edits logged `discard 0.000000` | documented-deviation | impl doc #8. Side effect: upstream `analysis.ipynb` would plot this row at 0.0, because it filters only CRASH rows, and the agent sees a `0.000000 discard` |
-| 10 | Framework (not agent) decides keep; simplicity criterion inert under strict | documented-deviation | impl doc #1/#11 |
-| 11 | program.md step 1 "Look at results.tsv"; one-shot agent without session memory | documented-deviation | spec §9.2 |
+| 9 | Rejected edits logged `discard 0.000000` | documented-deviation | impl doc #8. Side effect: upstream `analysis.ipynb` would plot this row at 0.0, because it filters only CRASH rows, and the agent sees a `0.000000 discard`. Since 28 Sep the row's commit is a real (reset-away) commit, not an artifact hash (claims N7, section 9) |
+| 10 | Framework (not agent) decides keep; simplicity criterion inert under strict | inconsistent-fixed | section 9: the default keep rule is now `UpstreamKeep` (strict + simplicity criterion + VRAM soft constraint, claims N1/N2); the bare `strict` rule is opt-in. The recorded Stage-A/B runs used `keep_rule="strict"` explicitly and stay valid as strict-rule runs |
+| 11 | program.md step 1 "Look at results.tsv"; one-shot agent without session memory | documented-deviation | spec §9.2. Since 28 Sep the agent sees the whole results.tsv and the whole kept-commit log every turn (claims N3), which stands in for session memory |
 | 12 | Noise runs 3 (spec suggests 5), re-eval seeds 3 (E5 says 5) | documented-deviation | cost; stated in RUNS.md |
 | 13 | results.tsv 5 columns, 6 dp, crash 0.000000 / 0.0 | faithful | all rows |
 | 14 | Hardened grader isolation (fake report, train-on-val, test-shard read) | faithful | spec §9.1 |
@@ -335,7 +336,7 @@ Notes:
 | 20 | Stage-A write-up errors (r6 file identity, fix-1 fence, hidden-regression claims) | inconsistent-fixed | correction note appended to RUNS.md |
 | 21 | Validation-reuse effect (§8.2) | unverifiable | gap growth coincides with capacity increases; too few decisions |
 | 22 | Hidden-audit numbers for single keeps | unverifiable | re-training noise ≈ 0.006 per audit |
-| 23 | Monitor CPU contention with `workers > 1` under wall-clock budgets | inconsistent-open | not exercised; would bias parallel runs |
+| 23 | Monitor CPU contention with `workers > 1` under wall-clock budgets | inconsistent-fixed | section 9: audits are postponed while runs are in flight; `test_parallel_monitor_audits_never_compete_with_inflight_runs` |
 | 24 | `AgentEditor` (`editor="agent"`) could read `out_dir/trace.jsonl` with its Read tool (`--add-dir` is only the scratch dir, but Read of other absolute paths is not proven blocked) | unverifiable | not exercised; RewriteEditor, which was used, has no file access |
 | 25 | Output tokens 1.6-4.4× visible reply (hidden CLI reasoning) | unverifiable | billed and counted consistently |
 | 26 | Paper sources: upstream has no paper; the "Rehearse" critique (2607.27687) and at-home blog were not accessible | unverifiable (source blocked) | spec §0 |
@@ -362,11 +363,36 @@ Notes:
 
 ## 8. Remaining open issues
 
-1. Monitor audits and parallel workers compete for CPU under wall-clock budgets (register #23). Suggested fix: run
-   audits after the loop or pause dispatch while auditing.
+1. ~~Monitor audits and parallel workers compete for CPU under wall-clock budgets (register #23).~~ Fixed 28 Sep
+   2026 (section 9).
 2. Single-run keeps inside the noise band stay unverifiable by construction. To test them, use `keep_rule="rigor"`
    or re-evaluate each keep.
 3. Hidden audits of script tasks re-train under a wall-clock budget. Per-keep hidden deltas need several audit seeds,
    or a token budget, to be interpretable.
 4. Core requests: `ClaudeCLI` host-attribution leakage, the `parse_file_blocks` lone fence, and a per-caller meter
    tag so write-only monitors can be separated from loop spend (impl doc, core requests 9, 10, 12).
+
+## 9. Claim-audit fixes (28 Sep 2026)
+
+The claim-by-claim audit (`docs/claims/autoresearch.md`, section 3, N1-N11) found mismatches with upstream's
+`program.md` that this validation had not listed. They were fixed together with register #23; the full fix log,
+with file:line references and evidence, is in `docs/claims/autoresearch.md` ("Fix log"). The ones that touch this
+register:
+
+* **#23 (monitor vs parallel workers).** Reproduced with a toy wall-clock task (3 workers, a monitor that records how
+  many runs are training when it audits): on the old code audits ran while 1-2 runs were in flight. Fix:
+  `rsi/autoresearch/parallel.py` (`_audit_competes`, `_kept`, `_flush_audits`) postpones every shadow audit until
+  nothing is in flight; `res.meta["parallel"]["deferred_audits"]` counts them. Test:
+  `tests/test_autoresearch_fixes.py::test_parallel_monitor_audits_never_compete_with_inflight_runs` (fails on the old
+  code). E10 was re-run.
+* **#10 (simplicity criterion inert).** The default keep rule is now `UpstreamKeep` (`rsi/autoresearch/keep.py`).
+* **#9 / claims N7.** Rejected-edit rows now name a real commit that is reset away at once.
+* **#11 / claims N3.** The agent sees the whole results.tsv (or, with `history_rows=N`, the baseline, a summary of
+  the elided rows and the last N rows).
+
+**Effect on the recorded validation runs.** The four run directories (`tinylm_offline`, `tinylm_offline_crashfix`,
+`tinylm_live`, `tinylm_live_b`) were made by the pre-fix code with `keep_rule="strict"` passed explicitly, a
+40-row history window (never binding: the longest night had 26 rows), the old program.md preset and the old tinylm
+`train.py` summary block. They remain correct records of that code and were not re-run; the step verdicts above
+describe them. New runs use the fixed defaults.
+

@@ -1,11 +1,11 @@
 {
  "experiment": "live_smoke",
- "generated_at": "2026-09-25 00:46:20",
+ "generated_at": "2026-09-28 11:00:34",
  "config": {
   "llm": "claude:haiku",
   "cycles": 8,
   "mode": "safe",
-  "max_usd": 1.0
+  "max_usd": 1.5
  },
  "trajectory": [
   {
@@ -22,41 +22,41 @@
    "cycle": 2,
    "task_id": "money_total",
    "source": "generated",
-   "gene_id": "gene_currency_integer_cents",
-   "task_score": 0.0,
-   "solidified": false,
-   "composite": 0.84,
-   "validation_ok": false
-  },
-  {
-   "cycle": 3,
-   "task_id": "round_half_up",
-   "source": "none",
-   "gene_id": null,
-   "task_score": 1.0,
-   "solidified": false,
-   "composite": 0.0,
-   "validation_ok": false
-  },
-  {
-   "cycle": 4,
-   "task_id": "strip_accents",
-   "source": "local",
-   "gene_id": "gene_unicode_nfkc_casefold",
+   "gene_id": "gene_decimal_monetary_precision",
    "task_score": 1.0,
    "solidified": true,
    "composite": 0.96,
    "validation_ok": true
   },
   {
-   "cycle": 5,
-   "task_id": "percent",
+   "cycle": 3,
+   "task_id": "round_half_up",
+   "source": "local",
+   "gene_id": "gene_decimal_monetary_precision",
+   "task_score": 1.0,
+   "solidified": true,
+   "composite": 0.96,
+   "validation_ok": true
+  },
+  {
+   "cycle": 4,
+   "task_id": "strip_accents",
    "source": "none",
    "gene_id": null,
    "task_score": 1.0,
    "solidified": false,
    "composite": 0.0,
    "validation_ok": false
+  },
+  {
+   "cycle": 5,
+   "task_id": "percent",
+   "source": "local",
+   "gene_id": "gene_decimal_monetary_precision",
+   "task_score": 1.0,
+   "solidified": true,
+   "composite": 0.96,
+   "validation_ok": true
   },
   {
    "cycle": 6,
@@ -71,11 +71,11 @@
   {
    "cycle": 7,
    "task_id": "same_text",
-   "source": "local",
-   "gene_id": "gene_unicode_nfkc_casefold",
+   "source": "generated",
+   "gene_id": "gene_unicode_casefold_normalize",
    "task_score": 1.0,
    "solidified": true,
-   "composite": 0.95,
+   "composite": 0.96,
    "validation_ok": true
   },
   {
@@ -90,17 +90,23 @@
   }
  ],
  "genes": [
-  "## Strategy gene gene_unicode_nfkc_casefold\nDomain keywords: unicode, text-equality, nfc-lower-fails\nSummary: After NFC+lower and NFD+casefold both fail independently, upgrade to NFKC (compatibility) normalization with casefold() for complete Unicode equivalence.\nStrategy:\n1. Replace 'NFC' with 'NFKC' in normalize() call\u2014NFKC handles compatibility decompositions (ligatures, variant forms, precomposed characters)\n2. Replace .lower() with .casefold()\u2014proper Unicode case-folding for edge cases (\u00df\u2192ss, \u0131\u2192i, etc.)\n3. Apply as: normalize('NFKC', text).casefold()\n4. Test with ligatures (\ufb01), combining marks, diacritics (\u00e9), and special case pairs\n5. If NFKC+casefold fails, try reverse order: text.casefold() then normalize('NFKC', ...)\nAVOID:\n- Staying with NFC when compatibility equivalences matter (ligatures, vertical forms, character variants)\n- Using .lower() alone without .casefold() for Unicode text\u2014casefold handles edge cases .lower() misses\n- Switching normalization forms without reconsidering case-folding strategy; both must evolve together\n"
+  "## Strategy gene gene_decimal_monetary_precision\nDomain keywords: rounding, money, currency, decimal\nSummary: Monetary calculations fail on precision without explicit rounding mode. Use Decimal with ROUND_HALF_UP to handle edge-case summations that rely on banker's rounding sensitivity.\nStrategy:\n1. Import Decimal and ROUND_HALF_UP from decimal module\n2. Convert all price strings to Decimal objects before summing\n3. Quantize final result with Decimal('0.01') and explicit ROUND_HALF_UP rounding mode\n4. Return as string to preserve two-decimal format\n5. Test boundary cases: sums ending in .005, .015 (rounding-sensitive values)\nAVOID:\n- Using default ROUND_HALF_EVEN mode; monetary standards require ROUND_HALF_UP\n- Omitting explicit rounding parameter in quantize() call\n- Float arithmetic or f-string formatting that loses decimal precision\n",
+  "## Strategy gene gene_unicode_casefold_normalize\nDomain keywords: unicode, case-insensitive, normalization, text-equality\nSummary: For Unicode text equality ignoring case: normalize to canonical form, then use .casefold() (not .lower()) for robust cross-encoding comparison.\nStrategy:\n1. Normalize both strings with unicodedata.normalize('NFC', string) to canonical form\n2. Apply .casefold() instead of .lower() (casefold handles \u00df\u2192ss and complex Unicode case mappings)\n3. Compare normalized, casefolded results with ==\n4. If tests fail, retry with 'NFKC' form (handles compatibility decomposition) or 'NFD' (decomposed)\n5. Validate with both precomposed and decomposed Unicode sequences in test cases\nAVOID:\n- .lower() on Unicode strings\u2014it misses many case mappings; .casefold() is required\n- Assuming NFC normalization is sufficient for all Unicode equivalence classes\n- Reversing normalize/casefold order without verifying all test cases pass\n"
  ],
  "gene_validations": {
-  "gene_unicode_nfkc_casefold": [
-   "python smoke_test.py"
+  "gene_decimal_monetary_precision": [
+   "python smoke_test.py",
+   "pytest -q smoke_test.py"
+  ],
+  "gene_unicode_casefold_normalize": [
+   "python smoke_test.py",
+   "pytest -q smoke_test.py"
   ]
  },
  "audit": {
   "ok": true,
   "problems": [],
-  "n_checked": 40
+  "n_checked": 12
  },
  "stop_reason": "max_rounds",
  "holdout": {
@@ -116,38 +122,30 @@
  },
  "usage": {
   "task:cached": {
-   "calls": 26,
-   "input_tokens": 25073,
-   "output_tokens": 42675,
-   "cost_usd": 0.23844800000000002,
-   "latency_s": 418.4171438217163,
-   "total_tokens": 67748
+   "calls": 0,
+   "input_tokens": 99378,
+   "output_tokens": 92339,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 191717
   },
-  "proposer": {
-   "calls": 1,
-   "input_tokens": 1579,
-   "output_tokens": 4633,
-   "cost_usd": 0.024744,
-   "latency_s": 48.04370856285095,
-   "total_tokens": 6212
-  },
-  "task": {
-   "calls": 3,
-   "input_tokens": 3672,
-   "output_tokens": 4999,
-   "cost_usd": 0.028666999999999998,
-   "latency_s": 52.953896284103394,
-   "total_tokens": 8671
+  "proposer:cached": {
+   "calls": 0,
+   "input_tokens": 3017,
+   "output_tokens": 4923,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 7940
   },
   "_total": {
-   "calls": 30,
-   "input_tokens": 30324,
-   "output_tokens": 52307,
-   "cost_usd": 0.29185900000000004,
-   "latency_s": 519.4147486686707,
-   "total_tokens": 82631
+   "calls": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 0
   }
  },
- "wall_s": 102.0,
- "loop_wall_s": 101.8
+ "wall_s": 4.9,
+ "loop_wall_s": 4.8
 }

@@ -14,6 +14,10 @@ B. The same trivial crash when the agent cannot fix it (p_fix = 0) and with a fi
    keeps failing (max_fix_attempts = 3 -> give up, log crash).
 C. Landscape at scale (30 seeds x 60 experiments, 20% crash edits): crash-kind counts,
    format invariants, HEAD invariant, rewinds.
+D. (claim-audit fixes, 28 Sep 2026) NEVER STOP: an agent that proposes nothing for a
+   100-experiment night runs until the budget ends (old: ``agent_failed`` after 5 empty
+   turns); a crashing baseline goes to the fix path (old: RuntimeError); every non-timeout
+   crash is shown to the agent, which fixes it or gives up (old: only typo/import classes).
 
 With --llm claude:haiku (or the offline --llm scripted) part A runs with the same scripted
 crash-inducing proposals, but every trivial crash is sent to the LLM research agent to fix
@@ -44,7 +48,7 @@ def check_run(res, task) -> dict:
     kept = [n for n in res.ledger.nodes() if n.status == "keep"]
     crash_rows = [r for r in rows if r.status == "crash"]
     return {
-        "tsv": [(r.commit, f"{r.metric:.6f}", f"{r.memory_gb:.1f}", r.status, r.description) for r in rows],
+        "tsv": [(r.commit, f"{r.metric:.6f}", f"{r.memory_gb:g}", r.status, r.description) for r in rows],
         "crash_rows_format_ok": all(r.metric == 0.0 and r.memory_gb == 0.0 for r in crash_rows),
         "statuses_valid": all(r.status in ("keep", "discard", "crash") for r in rows),
         "head_is_last_keep": res.best.id == kept[-1].artifact_id and
@@ -94,6 +98,12 @@ def part_a(mode: str, llm_spec: str = "sim") -> dict:
         "hang_killed_near_kill_after": abs(hang["wall_s"] - out["kill_after_s"]) < 2.0,
         "nan_fast_fail_before_budget": nan["wall_s"] < 1.5,
         "oom_logged_as_crash": any(e["crash_kind"] == "oom" and e["status"] == "crash" for e in out["experiments"]),
+        # upstream: "If a run crashes (OOM, or a bug, or etc.), use your judgment" - the agent sees every crash
+        # but a timeout; the scripted agent has no fix for OOM/NaN and gives up after one look
+        "oom_and_nan_shown_to_agent": all((e["fix_attempts"] or 0) == 1 for e in out["experiments"]
+                                          if e["crash_kind"] in ("oom", "nan")),
+        "timeout_not_shown_to_agent": all((e["fix_attempts"] or 0) == 0 for e in out["experiments"]
+                                          if e["crash_kind"] == "timeout"),
         "grader_edit": ("rejected" if mode == "hardened" else "ran") if any(
             e["desc"].startswith(("REJECTED", "tune the evaluation")) for e in out["experiments"]) else "missing",
     }
@@ -117,6 +127,57 @@ def part_b() -> dict:
     return {"p_fix_0": {"status": n1.status, "fix_attempts": n1.meta["fix_attempts"]},
             "fix_keeps_failing": {"status": n2.status, "fix_attempts": n2.meta["fix_attempts"],
                                   "crash_kind": n2.meta["crash_kind"]}}
+
+
+class _NoOp(ResearchAgent):
+    name = "no-op"
+
+    def propose(self, ctx):
+        from rsi.core.editors import Proposal
+
+        return Proposal(ctx.artifact, change="no-op")
+
+
+class _BaselineFixer(ResearchAgent):
+    """Proposes one honest edit; fixes the broken baseline it is shown."""
+
+    name = "baseline-fixer"
+
+    def __init__(self, pool):
+        self.inner = MockResearchAgent(pool, schedule=["lr_up"])
+        self.fix_calls = 0
+
+    def propose(self, ctx):
+        return self.inner.propose(ctx)
+
+    def fix_crash(self, ctx, candidate, description, log_tail):
+        from rsi.core.editors import Proposal
+
+        self.fix_calls += 1
+        t = candidate["train.py"]
+        if "    loss = loss +\n" not in t:
+            return None
+        return Proposal(candidate.with_files({"train.py": t.replace("    loss = loss +\n", "", 1)}),
+                        change="fix typo in the baseline")
+
+
+def part_d() -> dict:
+    ls = LandscapeTask(seed=0)
+    r = AutoresearchLoop(ls, _NoOp(), Config(max_experiments=100, hidden_audit=False, plot=False, overwrite=True),
+                         out_dir=SCRATCH / "e8" / "never_stop").run()
+    task = TinyLMTask(budget_s=1.5)
+    seed = task.seed_artifact()
+    loop_line = "    loss, grads = model.loss_and_grads(x, y)\n"
+    broken = seed.with_files({"train.py": seed["train.py"].replace(loop_line, loop_line + "    loss = loss +\n", 1)})
+    ag = _BaselineFixer(task.mock_edit_pool())
+    loop = AutoresearchLoop(task, ag, Config(max_experiments=1, hidden_audit=False, plot=False, overwrite=True),
+                            out_dir=SCRATCH / "e8" / "baseline_fix", seed_artifact=broken)
+    rb = loop.run()
+    rows = ResultsLog.read(rb.meta["results_tsv"]).rows()
+    return {"never_stop": {"stop_reason": r.stop_reason, "rounds": r.meta["counters"]["invalid"],
+                           "n_experiments": r.meta["n_experiments"]},
+            "baseline_fix": {"fix_calls": ag.fix_calls, "baseline_row": list(map(str, rows[0].__dict__.values())),
+                             "stop_reason": rb.stop_reason, "fixed": rb.meta["counters"]["fixed"]}}
 
 
 def part_c(seed: int) -> dict:
@@ -149,6 +210,7 @@ def main():
     out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE}}
     out["tinylm"] = {m: part_a(m) for m in ("hardened", "faithful")}
     out["give_up"] = part_b()
+    out["never_stop_and_baseline_fix"] = part_d()
     cs = pool_map(part_c, list(range(5 if a.quick else a.seeds)), a.workers)
     kinds = {}
     for c in cs:
@@ -165,6 +227,10 @@ def main():
     checks["give_up_after_max_attempts"] = out["give_up"]["fix_keeps_failing"]["status"] == "crash" and \
         out["give_up"]["fix_keeps_failing"]["fix_attempts"] == 3
     checks["landscape_invariants"] = out["landscape"]["all_format_ok"] and out["landscape"]["all_head_ok"]
+    d = out["never_stop_and_baseline_fix"]
+    checks["never_stop_runs_until_budget"] = d["never_stop"]["stop_reason"] == "max_rounds" and \
+        d["never_stop"]["rounds"] == 100
+    checks["crashing_baseline_fixed"] = d["baseline_fix"]["fixed"] == 1 and d["baseline_fix"]["baseline_row"][3] == "keep"
     out["verdict"] = {"checks": checks, "claim_reproduced": all(v in (True, "rejected", "ran") for v in checks.values())}
     write("e8_house_rules" + ("_quick" if a.quick else ""), out)
     print(json.dumps(out["verdict"], indent=1))

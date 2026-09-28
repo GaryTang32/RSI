@@ -230,6 +230,15 @@ def cross_val_auc(make_model, featurize, frame: dict) -> tuple[float, float]:
 
 
 def peak_mem_mb() -> float:
+    """Peak RSS of this process in MB: Linux ``VmHWM`` when available (``ru_maxrss`` also
+    carries the peak of the parent image that exec'd this process)."""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmHWM:"):
+                    return float(line.split()[1]) / 1024.0
+    except (OSError, ValueError, IndexError):
+        pass
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 
 

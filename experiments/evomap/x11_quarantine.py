@@ -43,14 +43,16 @@ def one(job):
     return {"seed": seed, "arm": arm, "consumer_solve_rate": float(np.mean([r["task_success"] for r in rows])),
             "poisoned_cycles": int(sum(1 for r in rows if r.get("gene_poisoned"))),
             "poisoned_cycle_share": float(np.mean([bool(r.get("gene_poisoned")) for r in rows])),
-            "poisoned_in_stores": s["poisoned_in_stores"], "hub_gene_cycles": len(hub_rows),
+            "poisoned_in_stores": s["poisoned_in_stores"], "poisoned_in_stores_hub": s["poisoned_in_stores_hub"],
+            "poisoned_in_stores_self": s["poisoned_in_stores_self"], "hub_gene_cycles": len(hub_rows),
             "hub_gene_true_uplift": s["hub_gene_true_uplift"], "quarantined": s["quarantined"],
             "quarantine_rejected": s["quarantine_rejected"],
             "poisoners_promoted": int(sum(1 for r in (hub.published() if hub else []) if r.author.endswith("poisoner")
                                           and r.status in ("promoted", "verified")))}
 
 
-METRICS = ["consumer_solve_rate", "poisoned_cycles", "poisoned_cycle_share", "poisoned_in_stores", "hub_gene_cycles",
+METRICS = ["consumer_solve_rate", "poisoned_cycles", "poisoned_cycle_share", "poisoned_in_stores", "poisoned_in_stores_hub",
+           "poisoned_in_stores_self", "hub_gene_cycles",
            "hub_gene_true_uplift", "quarantined", "quarantine_rejected", "poisoners_promoted"]
 
 

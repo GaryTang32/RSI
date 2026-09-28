@@ -88,16 +88,16 @@ FAITHFUL_CONTRACT = """\
 
 SUMMARY_EXAMPLE = """\
 ---
-val_bpb:          2.838000
-training_seconds: 8.0
-total_seconds:    9.6
-peak_vram_mb:     101.4
-mfu_percent:      1.52
-total_tokens_M:   0.590
-num_steps:        1152
+val_bpb:          3.648039
+training_seconds: 2.0
+total_seconds:    3.0
+peak_vram_mb:     104.2
+mfu_percent:      17.16
+total_tokens_M:   0.131
+num_steps:        256
 num_params_M:     0.050
 depth:            1
-"""
+"""   # a real faithful-mode run of the seed train.py at a 2 s budget (28 Sep 2026)
 
 
 class TinyLMTask(ScriptResearchTask):

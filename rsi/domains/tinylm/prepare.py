@@ -234,7 +234,19 @@ def _eval_rows(split: str = "val", locked: bool = False) -> tuple[np.ndarray, np
 
 
 def peak_mem_mb() -> float:
-    """Peak resident memory of this process in MB (the peak_vram_mb analogue)."""
+    """Peak resident memory of this process in MB (the peak_vram_mb analogue).
+
+    Linux ``VmHWM`` (the high-water mark of this process's own address space) when
+    available: ``ru_maxrss`` also carries the peak of the process image that exec'd
+    this one, so a run launched from a large parent (a test suite, a long loop)
+    would report the parent's memory as its own."""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmHWM:"):
+                    return float(line.split()[1]) / 1024.0
+    except (OSError, ValueError, IndexError):
+        pass
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 
 

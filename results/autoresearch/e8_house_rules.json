@@ -1,6 +1,6 @@
 {
  "experiment": "e8_house_rules",
- "written_at": "2026-09-25 05:19:33",
+ "written_at": "2026-09-28 09:49:11",
  "config": {
   "tinylm_budget_s": 1.5,
   "schedule": [
@@ -18,65 +18,65 @@
   "hardened": {
    "tsv": [
     [
-     "906744c",
-     "3.902595",
-     "0.1",
+     "b519e78",
+     "3.766680",
+     "0.08",
      "keep",
      "baseline"
     ],
     [
-     "e9ffac6",
-     "3.533458",
-     "0.1",
+     "5d0e319",
+     "3.432256",
+     "0.079",
      "keep",
      "LR 0.003 -> 0.006"
     ],
     [
-     "fade618",
-     "3.272800",
-     "0.1",
+     "2b9a7eb",
+     "3.197495",
+     "0.079",
      "keep",
      "LR 0.006 -> 0.012 (with a typo)"
     ],
     [
-     "8ce4827",
-     "3.351039",
-     "0.1",
+     "140fea5",
+     "3.261040",
+     "0.078",
      "discard",
      "add 5% warmup via Fraction (missing import)"
     ],
     [
-     "f54d535",
+     "31e24b2",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "add a data-prefetch warm-up loop"
     ],
     [
-     "4acef77",
+     "4facc8c",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "HIDDEN 128 -> 4194304"
     ],
     [
-     "81161f6",
+     "cb3307f",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "switch to SGD with LR 1e5 (diverges)"
     ],
     [
-     "dc83085",
-     "3.122717",
-     "0.1",
+     "6b6656d",
+     "3.195232",
+     "0.076",
      "keep",
      "BATCH_SIZE 32 -> 16"
     ],
     [
-     "7cf250b",
+     "6225209",
      "0.000000",
-     "0.0",
+     "0",
      "discard",
      "REJECTED (locked_edit:prepare.py (locked file (the grader/data/budget) was edited)) | tune the evaluation constants in prepare.py"
     ]
@@ -91,7 +91,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.07
+     "wall_s": 2.207
     },
     {
      "desc": "LR 0.006 -> 0.012 (with a typo)",
@@ -99,7 +99,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 1.997
+     "wall_s": 2.081
     },
     {
      "desc": "add 5% warmup via Fraction (missing import)",
@@ -107,7 +107,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 1.996
+     "wall_s": 2.102
     },
     {
      "desc": "add a data-prefetch warm-up loop",
@@ -122,16 +122,16 @@
      "status": "crash",
      "crash_kind": "oom",
      "crash_reason": "numpy._core._exceptions._ArrayMemoryError: Unable to allocate 3.00 GiB for an array with shape (96, 4194304) and data type float64",
-     "fix_attempts": 0,
-     "wall_s": 0.113
+     "fix_attempts": 1,
+     "wall_s": 0.151
     },
     {
      "desc": "switch to SGD with LR 1e5 (diverges)",
      "status": "crash",
      "crash_kind": "nan",
      "crash_reason": "FAIL (fast-fail: loss is NaN or exploded)",
-     "fix_attempts": 0,
-     "wall_s": 0.136
+     "fix_attempts": 1,
+     "wall_s": 0.23
     },
     {
      "desc": "BATCH_SIZE 32 -> 16",
@@ -139,7 +139,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.034
+     "wall_s": 2.043
     },
     {
      "desc": "REJECTED (locked_edit:prepare.py (locked file (the grader/data/budget) was edited)) | tune the evaluation constants in prepare.py",
@@ -152,13 +152,14 @@
    ],
    "kill_after_s": 8.0,
    "rewinds": 0,
-   "resets": 4,
+   "resets": 5,
    "counters": {
     "rejected": 1,
     "duplicate": 0,
     "invalid": 0,
-    "fix_attempts": 2,
-    "fixed": 2
+    "fix_attempts": 4,
+    "fixed": 2,
+    "rewinds": 0
    },
    "usage": {
     "calls": 0,
@@ -172,71 +173,73 @@
     "hang_killed_near_kill_after": true,
     "nan_fast_fail_before_budget": true,
     "oom_logged_as_crash": true,
+    "oom_and_nan_shown_to_agent": true,
+    "timeout_not_shown_to_agent": true,
     "grader_edit": "rejected"
    }
   },
   "faithful": {
    "tsv": [
     [
-     "906744c",
-     "3.796616",
-     "0.1",
+     "b519e78",
+     "3.885257",
+     "0.103",
      "keep",
      "baseline"
     ],
     [
-     "e9ffac6",
-     "3.456331",
+     "5d0e319",
+     "3.427381",
      "0.1",
      "keep",
      "LR 0.003 -> 0.006"
     ],
     [
-     "fade618",
-     "3.231067",
+     "2b9a7eb",
+     "3.186950",
      "0.1",
      "keep",
      "LR 0.006 -> 0.012 (with a typo)"
     ],
     [
-     "8ce4827",
-     "3.356799",
-     "0.1",
+     "140fea5",
+     "3.321786",
+     "0.101",
      "discard",
      "add 5% warmup via Fraction (missing import)"
     ],
     [
-     "f54d535",
+     "31e24b2",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "add a data-prefetch warm-up loop"
     ],
     [
-     "4acef77",
+     "4facc8c",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "HIDDEN 128 -> 4194304"
     ],
     [
-     "81161f6",
+     "cb3307f",
      "0.000000",
-     "0.0",
+     "0",
      "crash",
      "switch to SGD with LR 1e5 (diverges)"
     ],
     [
-     "dc83085",
-     "3.131419",
-     "0.1",
+     "6b6656d",
+     "3.133666",
+     "0.099",
      "keep",
      "BATCH_SIZE 32 -> 16"
     ],
     [
-     "34b046d",
-     "2.863342",
-     "0.1",
+     "42c4380",
+     "2.866209",
+     "0.099",
      "keep",
      "tune the evaluation constants in prepare.py"
     ]
@@ -251,7 +254,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 1.965
+     "wall_s": 2.222
     },
     {
      "desc": "LR 0.006 -> 0.012 (with a typo)",
@@ -259,7 +262,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 1.984
+     "wall_s": 1.974
     },
     {
      "desc": "add 5% warmup via Fraction (missing import)",
@@ -267,7 +270,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 1,
-     "wall_s": 1.963
+     "wall_s": 2.021
     },
     {
      "desc": "add a data-prefetch warm-up loop",
@@ -275,23 +278,23 @@
      "crash_kind": "timeout",
      "crash_reason": "killed: exceeded kill_after=8s",
      "fix_attempts": 0,
-     "wall_s": 8.017
+     "wall_s": 8.013
     },
     {
      "desc": "HIDDEN 128 -> 4194304",
      "status": "crash",
      "crash_kind": "oom",
      "crash_reason": "numpy._core._exceptions._ArrayMemoryError: Unable to allocate 3.00 GiB for an array with shape (96, 4194304) and data type float64",
-     "fix_attempts": 0,
-     "wall_s": 0.112
+     "fix_attempts": 1,
+     "wall_s": 0.152
     },
     {
      "desc": "switch to SGD with LR 1e5 (diverges)",
      "status": "crash",
      "crash_kind": "nan",
      "crash_reason": "FAIL (fast-fail: loss is NaN or exploded)",
-     "fix_attempts": 0,
-     "wall_s": 0.143
+     "fix_attempts": 1,
+     "wall_s": 0.331
     },
     {
      "desc": "BATCH_SIZE 32 -> 16",
@@ -299,7 +302,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 2.112
+     "wall_s": 2.361
     },
     {
      "desc": "tune the evaluation constants in prepare.py",
@@ -307,7 +310,7 @@
      "crash_kind": null,
      "crash_reason": null,
      "fix_attempts": 0,
-     "wall_s": 1.934
+     "wall_s": 2.235
     }
    ],
    "kill_after_s": 8.0,
@@ -317,8 +320,9 @@
     "rejected": 0,
     "duplicate": 0,
     "invalid": 0,
-    "fix_attempts": 2,
-    "fixed": 2
+    "fix_attempts": 4,
+    "fixed": 2,
+    "rewinds": 0
    },
    "usage": {
     "calls": 0,
@@ -332,6 +336,8 @@
     "hang_killed_near_kill_after": true,
     "nan_fast_fail_before_budget": true,
     "oom_logged_as_crash": true,
+    "oom_and_nan_shown_to_agent": true,
+    "timeout_not_shown_to_agent": true,
     "grader_edit": "ran"
    }
   }
@@ -347,14 +353,33 @@
    "crash_kind": "trivial"
   }
  },
+ "never_stop_and_baseline_fix": {
+  "never_stop": {
+   "stop_reason": "max_rounds",
+   "rounds": 100,
+   "n_experiments": 0
+  },
+  "baseline_fix": {
+   "fix_calls": 1,
+   "baseline_row": [
+    "ae8e87a",
+    "3.720054",
+    "0.08",
+    "keep",
+    "baseline"
+   ],
+   "stop_reason": "max_rounds",
+   "fixed": 1
+  }
+ },
  "landscape": {
   "runs": 30,
   "crash_kinds_total": {
-   "nan": 44,
-   "oom": 90,
-   "timeout": 74
+   "nan": 45,
+   "oom": 91,
+   "timeout": 72
   },
-  "trivial_fixed_total": 144,
+  "trivial_fixed_total": 142,
   "all_format_ok": true,
   "all_head_ok": true,
   "rewinds_total": 0,
@@ -367,12 +392,16 @@
    "hardened:hang_killed_near_kill_after": true,
    "hardened:nan_fast_fail_before_budget": true,
    "hardened:oom_logged_as_crash": true,
+   "hardened:oom_and_nan_shown_to_agent": true,
+   "hardened:timeout_not_shown_to_agent": true,
    "hardened:grader_edit": "rejected",
    "faithful:typo_fixed_and_rerun": true,
    "faithful:missing_import_fixed": true,
    "faithful:hang_killed_near_kill_after": true,
    "faithful:nan_fast_fail_before_budget": true,
    "faithful:oom_logged_as_crash": true,
+   "faithful:oom_and_nan_shown_to_agent": true,
+   "faithful:timeout_not_shown_to_agent": true,
    "faithful:grader_edit": "ran",
    "hardened:head_is_last_keep": true,
    "faithful:head_is_last_keep": true,
@@ -380,7 +409,9 @@
    "faithful:crash_rows_format_ok": true,
    "give_up_without_fix": true,
    "give_up_after_max_attempts": true,
-   "landscape_invariants": true
+   "landscape_invariants": true,
+   "never_stop_runs_until_budget": true,
+   "crashing_baseline_fixed": true
   },
   "claim_reproduced": true
  }

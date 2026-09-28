@@ -1,6 +1,6 @@
 {
  "experiment": "e1_progress_live_quick",
- "written_at": "2026-09-24 21:31:57",
+ "written_at": "2026-09-28 10:44:18",
  "config": {
   "task": "tinylm",
   "budget_s": 2.0,
@@ -10,65 +10,65 @@
    0
   ],
   "llm": "claude:haiku",
-  "keep_rule": "strict"
+  "keep_rule": "upstream"
  },
  "noise_band": {
   "values": [
-   3.8042826130670635,
-   3.805460696238284,
-   3.8043383592177875
+   3.6220182885802883,
+   3.5574204051829605,
+   3.5516948501760295
   ],
-  "mean": 3.804693889507712,
-  "sd": 0.000664658807109624,
-  "delta": 0.0018799389987303064
+  "mean": 3.5770445146464263,
+  "sd": 0.039053498581112484,
+  "delta": 0.11045997470305541
  },
  "tinylm": {
   "llm": {
    "improvement": {
-    "mean": 0.6335283008664856,
-    "lo": 0.6335283008664856,
-    "hi": 0.6335283008664856,
+    "mean": 0.13516557599013268,
+    "lo": 0.13516557599013268,
+    "hi": 0.13516557599013268,
     "n": 1
    },
    "honest_improvement": {
-    "mean": 0.5148544769643482,
-    "lo": 0.5148544769643482,
-    "hi": 0.5148544769643482,
+    "mean": 0.11552734940132092,
+    "lo": 0.11552734940132092,
+    "hi": 0.11552734940132092,
     "n": 1
    },
    "keep_rate": {
-    "mean": 0.4444444444444444,
-    "lo": 0.4444444444444444,
-    "hi": 0.4444444444444444,
+    "mean": 0.3333333333333333,
+    "lo": 0.3333333333333333,
+    "hi": 0.3333333333333333,
     "n": 1
    },
    "experiments_per_hour": {
-    "mean": 40.91909540399064,
-    "lo": 40.91909540399064,
-    "hi": 40.91909540399064,
+    "mean": 36.87592650605096,
+    "lo": 36.87592650605096,
+    "hi": 36.87592650605096,
     "n": 1
    },
    "runs": [
     {
      "arm": "llm",
      "seed": 0,
-     "baseline": 3.8404781858228128,
-     "best": 3.206949884956327,
-     "improvement": 0.6335283008664856,
-     "keep_rate": 0.4444444444444444,
-     "n_keep": 4,
+     "baseline": 3.5656004066800824,
+     "best": 3.4304348306899497,
+     "improvement": 0.13516557599013268,
+     "keep_rate": 0.3333333333333333,
+     "n_keep": 3,
      "n_crash": 0,
-     "experiments_per_hour": 40.91909540399064,
+     "experiments_per_hour": 36.87592650605096,
      "reeval": {
       "final": {
-       "mean": 3.318341005230016,
-       "lo": 3.2983280299942126,
-       "hi": 3.330496046554355,
+       "mean": 3.5223251897748997,
+       "lo": 3.4914573052230136,
+       "hi": 3.5815530338417045,
        "n": 3,
        "values": [
-        3.2983280299942126,
-        3.330496046554355,
-        3.326198939141481
+        3.5815530338417045,
+        3.4939652302599806,
+        3.4914573052230136
        ],
        "n_crash": 0,
        "seeds": [
@@ -78,14 +78,14 @@
        ]
       },
       "baseline": {
-       "mean": 3.8331954821943643,
-       "lo": 3.803430545156264,
-       "hi": 3.851042426286991,
+       "mean": 3.6378525391762206,
+       "lo": 3.5898307730372907,
+       "hi": 3.7147032286032857,
        "n": 3,
        "values": [
-        3.8451134751398386,
-        3.851042426286991,
-        3.803430545156264
+        3.5898307730372907,
+        3.7147032286032857,
+        3.609023615888086
        ],
        "n_crash": 0,
        "seeds": [
@@ -94,8 +94,9 @@
         10002
        ]
       },
-      "recorded_best": 3.206949884956327,
-      "optimism_gap": 0.11139112027368903
+      "mode": "hardened",
+      "recorded_best": 3.4304348306899497,
+      "optimism_gap": 0.09189035908495002
      },
      "crash_kinds": {},
      "counters": {
@@ -103,104 +104,98 @@
       "duplicate": 0,
       "invalid": 0,
       "fix_attempts": 0,
-      "fixed": 0
+      "fixed": 0,
+      "rewinds": 0
      },
      "top_hits": [
       {
-       "exp": 2,
-       "commit": "ca3f20e",
-       "description": "Increase learning rate from 0.003 to 0.008 for faster convergence in short budget",
-       "delta": 0.43672889344733035,
-       "metric": 3.4037492923754824
+       "exp": 5,
+       "commit": "3adac53",
+       "description": "Reduce WARMDOWN_RATIO from 0.2 to 0.1 to keep 90% of training at peak learning rate",
+       "delta": 0.0688871957892192,
+       "metric": 3.4304348306899497
       },
       {
        "exp": 4,
-       "commit": "7767fcf",
-       "description": "LR 0.008 -> 0.01 for further convergence speedup",
-       "delta": 0.18522704699215442,
-       "metric": 3.218522245383328
-      },
-      {
-       "exp": 7,
-       "commit": "05ebf0f",
-       "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%",
-       "delta": 0.011572360427000827,
-       "metric": 3.206949884956327
+       "commit": "30e1f4e",
+       "description": "Reduce WARMDOWN_RATIO from 0.5 to 0.2 for more training at peak learning rate",
+       "delta": 0.06627838020091348,
+       "metric": 3.499322026479169
       }
      ],
      "trajectory": [
       {
        "exp": 0,
        "status": "keep",
-       "metric": 3.8404781858228128,
+       "metric": 3.5656004066800824,
        "description": "baseline"
       },
       {
        "exp": 1,
        "status": "discard",
-       "metric": 4.003009783011831,
-       "description": "increase DEPTH from 1 to 2 for deeper MLP"
+       "metric": 3.6866442953308582,
+       "description": "Increase model capacity: CONTEXT 6\u21928, EMBED_DIM 16\u219224, HIDDEN 128\u2192192"
       },
       {
        "exp": 2,
-       "status": "keep",
-       "metric": 3.4037492923754824,
-       "description": "Increase learning rate from 0.003 to 0.008 for faster convergence in short budget"
+       "status": "discard",
+       "metric": 3.78239906713779,
+       "description": "Add depth for better feature hierarchies: DEPTH 1\u21922, HIDDEN 128\u219296 (reduces params 21% while adding non-linearity)"
       },
       {
        "exp": 3,
        "status": "discard",
-       "metric": 3.581542418362048,
-       "description": "Increase CONTEXT from 6 to 8 bytes for improved byte sequence context"
+       "metric": 3.8055643539708424,
+       "description": "Reduce learning rate from 0.003 to 0.002 for more stable convergence"
       },
       {
        "exp": 4,
        "status": "keep",
-       "metric": 3.218522245383328,
-       "description": "LR 0.008 -> 0.01 for further convergence speedup"
+       "metric": 3.499322026479169,
+       "description": "Reduce WARMDOWN_RATIO from 0.5 to 0.2 for more training at peak learning rate"
       },
       {
        "exp": 5,
-       "status": "discard",
-       "metric": 3.2998145593135773,
-       "description": "LR 0.01 -> 0.012 for further convergence speedup"
+       "status": "keep",
+       "metric": 3.4304348306899497,
+       "description": "Reduce WARMDOWN_RATIO from 0.2 to 0.1 to keep 90% of training at peak learning rate"
       },
       {
        "exp": 6,
        "status": "discard",
-       "metric": 3.571069987890368,
-       "description": "BATCH_SIZE 32 -> 64 for lower-variance gradients in short budget"
+       "metric": 3.4605270473134753,
+       "description": "Reduce WARMDOWN_RATIO from 0.1 to 0.05 to spend 95% of training at peak learning rate"
       },
       {
        "exp": 7,
-       "status": "keep",
-       "metric": 3.206949884956327,
-       "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%"
+       "status": "discard",
+       "metric": 3.483211495439248,
+       "description": "Set FINAL_LR_FRAC from 0.0 to 0.1 to maintain learning rate during warmdown instead of decaying to 0"
       },
       {
        "exp": 8,
        "status": "discard",
-       "metric": 3.4183135466217167,
-       "description": "Increase EMBED_DIM from 16 to 32 for richer byte embeddings"
+       "metric": 3.481561417181063,
+       "description": "Add learning rate warmup: WARMUP_RATIO 0.0 \u2192 0.01 (1% of training at ramping LR)"
       }
      ],
      "audit_final": {
-      "exp": 7,
-      "commit": "05ebf0f",
+      "exp": 5,
+      "commit": "3adac53",
       "status": "keep",
-      "description": "WARMDOWN_RATIO 0.5 -> 0.1 to keep full LR for 90% of training instead of 50%",
-      "metric": 3.206949884956327,
-      "test_iid": 3.3913829437142318,
-      "test_shift": 3.4577592335466005,
-      "loop_metric_rerun": 3.3189142046557496
+      "description": "Reduce WARMDOWN_RATIO from 0.2 to 0.1 to keep 90% of training at peak learning rate",
+      "metric": 3.4304348306899497,
+      "test_iid": 3.5517529713763034,
+      "test_shift": 3.5789616570106118,
+      "loop_metric_rerun": 3.4775932087210144
      },
      "usage": {
       "calls": 8,
-      "input_tokens": 77860,
-      "output_tokens": 63359,
-      "cost_usd": 0.47244300000000006
+      "input_tokens": 99954,
+      "output_tokens": 70356,
+      "cost_usd": 0.551616
      },
-     "results_tsv": "/tmp/rsi_autoresearch_runs/e1/tinylm_llm_0/results.tsv"
+     "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs/e1/tinylm_llm_0/results.tsv"
     }
    ]
   }

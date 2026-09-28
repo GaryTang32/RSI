@@ -199,10 +199,14 @@ class PopulationSimulator:
             return 0
         return sum(1 for ag in self.agents.values() for g in ag.store.genes.values() if self.forge.is_poisoned(g))
 
-    def _from_hub(self, g: Gene) -> bool:
-        """A stored gene that came from the hub: promoted out of quarantine (provenance ``external``) or adopted
-        by a direct / replace consumer (its ``parent`` is a hub asset id)."""
-        if (g.provenance or {}).get("kind") == "external":
+    def _from_hub(self, g: Gene, owner: Optional[str] = None) -> bool:
+        """A stored gene that came from the hub: promoted out of quarantine (provenance ``external``), adopted by a
+        direct / replace consumer (its ``parent`` is a hub asset id), or authored by another agent (a re-fetched hub
+        gene replaces the stored copy without the parent link)."""
+        prov = g.provenance or {}
+        if prov.get("kind") == "external":
+            return True
+        if owner is not None and prov.get("author") not in (None, owner):
             return True
         return self.hub is not None and bool(g.parent) and g.parent in getattr(self.hub, "records", {})
 
@@ -215,7 +219,7 @@ class PopulationSimulator:
         for ag in self.agents.values():
             for g in ag.store.genes.values():
                 if self.forge.is_poisoned(g):
-                    out["hub" if self._from_hub(g) else "self"] += 1
+                    out["hub" if self._from_hub(g, ag.name) else "self"] += 1
         return out
 
     def summary(self) -> dict:

@@ -30,11 +30,13 @@ from typing import Optional
 
 MODE_DEFAULTS = {
     "faithful": {"outcome_source": "faithful", "outcome_timing": "next_cycle", "reuse_mode": "reference",
-                 "hub_when": "first", "new_gene_retries": 1, "require_task_success": False, "vacuity_check": False,
+                 "hub_when": "first", "new_gene_retries": 1, "new_gene_check": "single",
+                 "require_task_success": False, "vacuity_check": False,
                  "failed_capsule_rule": "absolute", "carry_log_signals": True, "skip_geneless_success": False,
                  "failure_distill": True, "reject_memory": False},
     "safe": {"outcome_source": "safe", "outcome_timing": "immediate", "reuse_mode": "quarantine",
-             "hub_when": "no_local", "new_gene_retries": 3, "require_task_success": True, "vacuity_check": True,
+             "hub_when": "no_local", "new_gene_retries": 3, "new_gene_check": "paired",
+             "require_task_success": True, "vacuity_check": True,
              "failed_capsule_rule": "relative", "carry_log_signals": False, "skip_geneless_success": True,
              "failure_distill": False, "reject_memory": True},
 }
@@ -69,16 +71,18 @@ class Config:
     # solve
     propose: bool = True                     # write a new gene when nothing fits and the scratch attempt fails
     retry_after_propose: bool = True
-    new_gene_retries: Optional[int] = None   # fresh-seed retries of a NEW gene on its own task; solved iff > half of
-    #                                          them solve (A1). faithful: 1 (Evolver has no such check); safe: 3
+    new_gene_retries: Optional[int] = None   # A1: fresh-seed retries of a NEW gene on its own task (faithful 1, safe 3)
+    new_gene_check: Optional[str] = None     # A1: single (faithful: solved iff > half of the retries solve) |
+    #                                          paired (safe: the same seeds also run WITHOUT the gene; solved iff
+    #                                          > half solve AND the gene solves more of them than the bare harness)
     validation_hint: str = ""                # appended to the gene-writer prompt (e.g. " (e.g. python smoke_test.py)")
     default_validation: list = field(default_factory=list)
     # solidify
     require_task_success: Optional[bool] = None
     vacuity_check: Optional[bool] = None
     rollback: str = "stash"
-    estimate_drift_penalty: bool = False     # N3: Evolver's composite reads a key dispatch never writes, so its x0.5/x0.7
-    #                                          estimate-drift penalty never fires; True applies it (spec §4.10 text)
+    estimate_drift_penalty: bool = False     # N3: Evolver's composite reads a key dispatch never writes, so its
+    #                                          x0.5/x0.7 estimate-drift penalty never fires; True applies it (§4.10)
     skip_geneless_success: Optional[bool] = None   # safe: a task solved with no gene has nothing to solidify
     env: str = "sim/py3.11"
     # distill

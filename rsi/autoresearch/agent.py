@@ -41,7 +41,7 @@ class AgentContext:
     artifact: Artifact                  # the current branch tip (all in-scope files)
     editable: tuple[str, ...]
     locked: tuple[str, ...]
-    results_tsv: str                    # recent rows of results.tsv
+    results_tsv: str                    # results.tsv (whole file by default; see Config.history_rows)
     git_log: str                        # kept-commit chain (newest first)
     task_brief: str = ""
     metric: str = "score"
@@ -49,7 +49,7 @@ class AgentContext:
     best: Optional[float] = None
     experiment: int = 0
     seed: int = 0
-    notes: str = ""
+    notes: str = ""                     # framework notes (e.g. the NEVER STOP nudge after empty turns)
 
     def files(self) -> dict[str, str]:
         """Context files beside the artifact (program.md itself goes into the instructions)."""
@@ -98,6 +98,7 @@ single word GIVE_UP and no file blocks.
 """
 
 
+_REWIND = re.compile(r"^\s*REWIND\s+([0-9a-f]{7,40})\s*$", re.M)
 _TRAILER = re.compile(r"^(```[a-zA-Z]*|Co-Authored-By:.*|Claude-Session:.*|Signed-off-by:.*)\s*$")
 _COMMIT_TRAILER = re.compile(r"^(Co-Authored-By:.*|Claude-Session:.*|Signed-off-by:.*)\s*$")
 
@@ -153,6 +154,12 @@ class LLMResearchAgent(ResearchAgent):
         prop = self.editor.edit(ctx.artifact, instr, context=ctx.files(), editable=None, system=self.system,
                                 seed=ctx.seed * 100003 + ctx.experiment, role="researcher")
         prop.meta.setdefault("prompt", self._prompt_text(ctx.artifact, instr, ctx.files()))
+        if not prop.ok:
+            m = _REWIND.search(prop.raw or "")
+            if m:                                   # program.md: "you can rewind ... very very sparingly"
+                prop.meta["rewind"] = m.group(1)
+                prop.change = prop.change or f"REWIND {m.group(1)}"
+            return prop
         return sanitize_reply_files(prop, ctx.artifact) if self.sanitize else prop
 
     def _prompt_text(self, artifact, instr, context) -> str:

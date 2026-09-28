@@ -207,6 +207,19 @@ class Workspace:
     def amend(self, artifact: Artifact, message: str) -> str:
         """Replace HEAD (used by fix-and-rerun of a trivially crashed experiment)."""
         parent = self.commits[self._head].parent
+        if parent is None:                       # the root commit (a baseline fixed after a crash)
+            self.store.put(artifact)
+            self._artifacts[artifact.id] = artifact
+            if self.backend == "git":
+                self._git_write(artifact)
+                self._git("add", "-A")
+                self._git("commit", "-q", "--amend", "--allow-empty", "-m", message or "experiment")
+                sha = self._git("rev-parse", "HEAD")
+            else:
+                sha = hashlib.sha1(f"None|{artifact.id}|{message}|{len(self.commits)}".encode()).hexdigest()
+            self.commits[sha] = Commit(sha, None, artifact.id, message, time.time())
+            self._head = sha
+            return sha
         self.reset_to(parent, count=False)
         return self.commit(artifact, message)
 

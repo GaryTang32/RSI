@@ -1,6 +1,6 @@
 {
  "experiment": "e3_bpb_vocab",
- "written_at": "2026-09-25 05:08:53",
+ "written_at": "2026-09-28 10:28:27",
  "config": {
   "vocabs": [
    256,
@@ -23,7 +23,7 @@
    4
   ],
   "llm": "sim",
-  "keep_rule": "strict"
+  "keep_rule": "upstream"
  },
  "battery": {
   "alpha": 0.1,

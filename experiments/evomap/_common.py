@@ -33,7 +33,8 @@ from rsi.evomap import (AgentSpec, Config, Gene, NaiveEvoMapHub, SafeHub, TaskBa
 from rsi.evomap.signals import pattern_hits  # noqa: E402
 
 RESULTS = ROOT / "results" / "evomap"
-CACHE = ROOT / ".rsi_cache" / "evomap"
+# EVOMAP_CACHE_DIR points live runs at a fresh cache (re-runs after a behaviour change must not replay old replies)
+CACHE = Path(os.environ["EVOMAP_CACHE_DIR"]) if os.environ.get("EVOMAP_CACHE_DIR") else ROOT / ".rsi_cache" / "evomap"
 FAITHFUL_HINT = ' (keep it LIGHT: prefer "python --version" as the distiller prompt advises)'
 SAFE_HINT = " (it MUST fail before the fix and pass after it, e.g. the public check script)"
 
