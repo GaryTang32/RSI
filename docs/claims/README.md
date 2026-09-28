@@ -6,14 +6,16 @@ Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here**
 
 | Method | Claims | Reproduced | Partial | Not reproduced | Not testable here | Contradicted |
 |---|---:|---:|---:|---:|---:|---:|
-| [RRSI](rrsi.md) | 116 | 57 | 18 | 3 | 37 | 1 |
-| [Dream-RSI](dream-rsi.md) | 83 | 29 | 25 | 2 | 24 | 3 |
-| [Autoresearch](autoresearch.md) | 65 | 44 | 18 | 0 | 2 | 1 |
-| [SoL-Pi](solpi.md) | 61 | 27 | 15 | 3 | 16 | 0 |
-| [GEPA](gepa.md) | 58 | 27 | 13 | 0 | 17 | 1 |
-| [EvoMap](evomap.md) | 54 | 24 | 12 | 5 | 12 | 1 |
-| [Meta-Harness](metaharness.md) | 38 | 10 | 15 | 2 | 10 | 1 |
-| **Total** | **475** | **218** | **116** | **15** | **118** | **8** |
+| [RRSI](rrsi.md) | 116 | 60 (57) | 15 (18) | 3 | 37 | 1 |
+| [Dream-RSI](dream-rsi.md) | 83 | 37 (29) | 17 (25) | 1 (2) | 25 (24) | 3 |
+| [Autoresearch](autoresearch.md) | 65 | 52 (44) | 10 (18) | 0 | 2 | 1 |
+| [SoL-Pi](solpi.md) | 61 | 31 (27) | 12 (15) | 2 (3) | 16 | 0 |
+| [GEPA](gepa.md) | 58 | 29 (27) | 11 (13) | 0 | 17 | 1 |
+| [EvoMap](evomap.md) | 54 | 25 (24) | 11 (12) | 5 | 12 | 1 |
+| [Meta-Harness](metaharness.md) | 38 | 12 (10) | 13 (15) | 2 | 10 | 1 |
+| **Total** | **475** | **246** (218) | **89** (116) | **13** (15) | **119** (118) | **8** |
+
+Numbers in parentheses are the counts at audit time, before the fix round (28 Sep 2026). Every mismatch the audit found was then fixed, documented, or classified as not testable here. Each method's file has a "Fix log" listing the finding, the fix, the code location, the regression test and the re-run evidence, and each fix was checked by an independent verifier.
 
 ## Short answer
 
@@ -39,7 +41,7 @@ Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here**
 - **Autoresearch:** the overview says the agent "can't change how it is graded". Upstream's lock is only an instruction, and our faithful mode shows 9 of 11 grader exploits posting fake gains. Hardened mode fixes this.
 - **RRSI:** a third-party hypothesis (not a paper claim) that the edit budget explains the gain. Budget-only gives +2.7 on unseen tasks, against +16.2 for selection-only.
 
-## Not reproduced
+## Not reproduced (after the fix round)
 
 - **RRSI:**
   - Removing the proposal guards does not raise the practised score.
@@ -47,10 +49,9 @@ Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here**
   - The z=2 noise band clears the unchanged harness 91.6% of the time, not about 97.5%, at k=2.
 - **Dream-RSI:**
   - Discovered solvers do not beat scikit-learn.
-  - Autocorrelation was not implemented.
 - **SoL-Pi:**
   - The ObservationPack sweep never reaches the 10% bill-saving gate.
-  - The capability floor admits a lenient turn cap.
+  - The composed stack still loses capability overall (the floor now rejects the lenient turn cap; see the SoL-Pi Fix log).
   - One quality claim did not reproduce.
 - **EvoMap:**
   - "GDI collapses onto the intrinsic part" (it is 2-6% of the variance between assets here).
@@ -61,30 +62,22 @@ Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here**
   - "Matches the next-best method after 4 of 60 evaluations".
   - "Summaries don't help", which holds only by construction of our summarizer.
 
-## New mismatches found by this audit (open)
+## Mismatches found by this audit: all resolved
 
-Each method file lists its own under "Newly found mismatches". The most important:
+The audit found about 90 new mismatches across the seven methods. All were fixed (with a regression test that fails on the pre-fix code) or dispositioned, and the affected experiments were re-run. Highlights:
 
-1. **Dream-RSI, real bug:** a policy can keep module-level state across replay episodes (one session is reused per sweep). This defeats no-peeking for the Pareto objective and the beta sweep. Eq.1 selection is unaffected.
-2. **Dream-RSI:** the Listing-2 developer prompt is a condensed paraphrase that drops about 20 of the paper's rules. The Listing-1 prompt drops a safety line.
-3. **GEPA:** the hard merge cap limits accepted merges, not invocations. Neither mode matches "invoked a maximum of 5 times".
-4. **RRSI:**
-   - The leakage denylist includes the practice set's literal answers. That is an oracle the reference lacks, and it flatters the critic.
-   - The proposer is shown the noise band and cost weights, which the reference never shows.
-   - Keep decisions tie-break differently at exact float ties.
-5. **Meta-Harness:**
-   - The context-cost objective can be gamed (only the last call is counted).
-   - The live RewriteProposer sees none of the trace files on MemoClassify.
-   - The stored live-smoke JSONs predate a later fix.
-6. **SoL-Pi:** about 13 small port differences. Examples: the plan-snapshot shape, an off-by-one in `source_lines`, UTF-16 vs code-point limits, and the auto-compaction threshold `>=` vs `>`.
-7. **EvoMap:**
-   - The 98% / 84% / top-10% figures depend on one knob (the farmer publish rate).
-   - "Vacuous" is measured differently from the study.
-   - Some committed result JSONs predate later fixes.
-8. **Autoresearch:**
-   - The simplicity criterion and the soft VRAM constraint are not applied by the strict keep rule.
-   - The agent sees only the last 40 `results.tsv` rows.
-   - The preset `program.md` drops several upstream lines.
+1. **Dream-RSI:** policies now get a fresh namespace for every replay episode, and a static check rejects state that could outlive an episode, so the memo cheater gains nothing. The Listing 1 and 2 prompts are now verbatim. Per-round budgets are capped at Fixed's. The developer's cost is counted. Autocorrelation is implemented.
+2. **RRSI:**
+   - The precheck denylist matches the reference (task ids and patterns; the answer list is opt-in).
+   - The proposer no longer sees the noise band or cost weights.
+   - Ties are compared exactly as in the reference, missing trials use the task's weight, the smoke check covers 2-4 tasks, and a resumed run's budget counts spend from before the interruption.
+3. **GEPA:** the hard merge cap now limits invocations; the truncation check works on cached replies; the monitor's wall time no longer counts toward the time budget; E9 was added.
+4. **Meta-Harness:** context cost counts every call; the rewrite proposer now sees traces; the read accounting is honest; the stale live JSONs were regenerated; a coding-agent proposer ran live.
+5. **SoL-Pi:** 21 port differences against the NVlabs TypeScript are fixed, and the capability floor rejects the lenient turn cap.
+6. **EvoMap:** faithful mode now asks the hub first and injects the hub gene alongside the local one. Hashing matches the GEP SDK and rounding matches JavaScript. Safe mode keeps a new gene only after a 3-seed A/B test. All results were regenerated. The farm-rate sensitivity of the Behind-EvoMap numbers is now reported.
+7. **Autoresearch:** the default keep rule applies upstream's simplicity criterion and the soft VRAM constraint. The agent sees the full results.tsv. NEVER STOP no longer exits early, and a crashing baseline goes to the fix path. The summary block matches upstream. Run memory is the run's own peak.
+
+What remains is scale (frontier models, GPUs, original benchmarks) and a few results that did not reproduce at our scale, all listed per method.
 
 ## What would close the gaps
 
