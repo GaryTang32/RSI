@@ -1,0 +1,96 @@
+[
+ {
+  "iteration": 1,
+  "calls": 9,
+  "cum_calls": 9,
+  "round_best": 1.0280613744592875,
+  "best": 1.0280613744592875,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "round_budget": 9,
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.925,
+    0.925,
+    0.925,
+    0.716323
+   ],
+   "selected": 0,
+   "selected_label": "initial",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.925
+   },
+   "changes": [
+    "Implement adaptive prefix-only policy: trajectory-based ranking with beta-scheduled thresholds, portfolio batch selection (exploit/explore/recover), adaptive gr",
+    "Implement recovery tier for repairable failures and restructure batch selection with adaptive tier-based portfolio building instead of fixed quotas",
+    "Improve portfolio balance, recovery scoring, early stopping, and grid planning: prioritize all three tiers (exploit, recovery, explore) in batches; refine recov"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 9.0,
+    "k": 3.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.0,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 830.648
+ },
+ {
+  "iteration": 2,
+  "calls": 9,
+  "cum_calls": 18,
+  "round_best": 1.0467524040140475,
+  "best": 1.0467524040140475,
+  "root": 1.0280613744592875,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "round_budget": 9,
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 1233.135
+ }
+]

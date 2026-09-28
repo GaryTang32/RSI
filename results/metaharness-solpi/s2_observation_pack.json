@@ -146,6 +146,20 @@
     "removed_tokens": 56289.575,
     "recalls": 0.0
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 313026.0,
+    "cost": 0.20860289999999998,
+    "requests": 13.4,
+    "cache_read": 271608.25,
+    "cache_write": 37358.8,
+    "output": 4058.95,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 53735.0,
+    "recalls": 0.0
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 361501.625,
@@ -158,6 +172,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 8.75
+   },
+   "replay_read_ceiling": 0.05877252719362129,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 360997.175,
+    "cost": 0.131719855,
+    "requests": 13.275,
+    "cache_read": 323428.0,
+    "cache_write": 33547.525,
+    "output": 4021.65,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 308781.35,
+    "cost": 0.12182873000000001,
+    "requests": 13.4,
+    "cache_read": 267983.4,
+    "cache_write": 36739.0,
+    "output": 4058.95,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -287,6 +326,20 @@
     "removed_tokens": 33525.275,
     "recalls": 0.025
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 282987.625,
+    "cost": 0.38677960625,
+    "requests": 13.325,
+    "cache_read": 248830.15,
+    "cache_write": 31550.525,
+    "output": 2606.95,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 31953.775,
+    "recalls": 0.025
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 308920.0,
@@ -299,6 +352,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 5.025
+   },
+   "replay_read_ceiling": 0.04819832070212867,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 308422.2,
+    "cost": 0.216959275,
+    "requests": 13.1,
+    "cache_read": 276946.975,
+    "cache_write": 28914.075,
+    "output": 2561.15,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 280393.55,
+    "cost": 0.20406705,
+    "requests": 13.325,
+    "cache_read": 246708.75,
+    "cache_write": 31077.85,
+    "output": 2606.95,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -428,6 +506,20 @@
     "removed_tokens": 70123.3,
     "recalls": 0.25
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 383985.325,
+    "cost": 0.2380450975,
+    "requests": 14.65,
+    "cache_read": 337862.675,
+    "cache_write": 41709.375,
+    "output": 4413.275,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 66364.975,
+    "recalls": 0.25
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 426288.725,
@@ -440,6 +532,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 9.1
+   },
+   "replay_read_ceiling": 0.058610543193823104,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 425748.175,
+    "cost": 0.148585025,
+    "requests": 14.225,
+    "cache_read": 384732.0,
+    "cache_write": 36730.0,
+    "output": 4286.175,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 377723.475,
+    "cost": 0.140861165,
+    "requests": 14.65,
+    "cache_read": 332317.7,
+    "cache_write": 40992.5,
+    "output": 4413.275,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -569,6 +686,20 @@
     "removed_tokens": 38030.725,
     "recalls": 0.025
    },
+   "v2": {
+    "score": 0.9958333333333333,
+    "tokens": 331174.475,
+    "cost": 0.4295753749999999,
+    "requests": 14.325,
+    "cache_read": 294325.125,
+    "cache_write": 34070.45,
+    "output": 2778.9,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 36260.175,
+    "recalls": 0.025
+   },
    "fail_open": {
     "score": 0.9958333333333333,
     "tokens": 360835.95,
@@ -581,6 +712,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 5.65
+   },
+   "replay_read_ceiling": 0.048162963878327456,
+   "rho1_base": {
+    "score": 0.9958333333333333,
+    "tokens": 360300.15,
+    "cost": 0.24719432500000002,
+    "requests": 14.1,
+    "cache_read": 326399.975,
+    "cache_write": 31163.675,
+    "output": 2736.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 0.9958333333333333,
+    "tokens": 328208.425,
+    "cost": 0.23218726249999996,
+    "requests": 14.325,
+    "cache_read": 291847.275,
+    "cache_write": 33582.25,
+    "output": 2778.9,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -710,6 +866,20 @@
     "removed_tokens": 57436.15,
     "recalls": 0.0
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 341369.45,
+    "cost": 0.22248666749999998,
+    "requests": 14.025,
+    "cache_read": 297465.525,
+    "cache_write": 39645.225,
+    "output": 4258.7,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 54874.475,
+    "recalls": 0.0
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 389807.625,
@@ -722,6 +892,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 8.825
+   },
+   "replay_read_ceiling": 0.05932101927278999,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 389280.375,
+    "cost": 0.140020885,
+    "requests": 13.875,
+    "cache_read": 349423.375,
+    "cache_write": 35656.675,
+    "output": 4200.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 337092.575,
+    "cost": 0.130447275,
+    "requests": 14.025,
+    "cache_read": 293823.65,
+    "cache_write": 39010.225,
+    "output": 4258.7,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -851,6 +1046,20 @@
     "removed_tokens": 34701.425,
     "recalls": 0.025
    },
+   "v2": {
+    "score": 0.9964285714285716,
+    "tokens": 300524.925,
+    "cost": 0.40701824374999995,
+    "requests": 13.8,
+    "cache_read": 264608.675,
+    "cache_write": 33236.925,
+    "output": 2679.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 33051.525,
+    "recalls": 0.025
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 327692.9,
@@ -863,6 +1072,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 5.375
+   },
+   "replay_read_ceiling": 0.046914490226230086,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 327175.15,
+    "cost": 0.228448875,
+    "requests": 13.625,
+    "cache_read": 294366.075,
+    "cache_write": 30161.675,
+    "output": 2647.4,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 0.9964285714285716,
+    "tokens": 297786.275,
+    "cost": 0.21453660000000002,
+    "requests": 13.8,
+    "cache_read": 262374.125,
+    "cache_write": 32732.825,
+    "output": 2679.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -992,6 +1226,20 @@
     "removed_tokens": 57853.875,
     "recalls": 0.075
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 330287.175,
+    "cost": 0.216746955,
+    "requests": 13.7,
+    "cache_read": 287520.4,
+    "cache_write": 38580.7,
+    "output": 4186.075,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 55142.4,
+    "recalls": 0.075
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 375618.8,
@@ -1004,6 +1252,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 8.5
+   },
+   "replay_read_ceiling": 0.05956931327326962,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 375106.75,
+    "cost": 0.13568544,
+    "requests": 13.475,
+    "cache_read": 336994.25,
+    "cache_write": 34013.575,
+    "output": 4098.925,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 325755.275,
+    "cost": 0.12710496500000001,
+    "requests": 13.7,
+    "cache_read": 283673.65,
+    "cache_write": 37895.55,
+    "output": 4186.075,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -1133,6 +1406,20 @@
     "removed_tokens": 30718.75,
     "recalls": 0.0
    },
+   "v2": {
+    "score": 0.9949999999999999,
+    "tokens": 300249.5,
+    "cost": 0.39921658125000004,
+    "requests": 13.35,
+    "cache_read": 265370.35,
+    "cache_write": 32290.525,
+    "output": 2588.625,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 29329.675,
+    "recalls": 0.0
+   },
    "fail_open": {
     "score": 0.9949999999999999,
     "tokens": 325944.95,
@@ -1145,6 +1432,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 5.075
+   },
+   "replay_read_ceiling": 0.04835690070419389,
+   "rho1_base": {
+    "score": 0.9949999999999999,
+    "tokens": 325441.45,
+    "cost": 0.22573472500000005,
+    "requests": 13.25,
+    "cache_read": 293582.4,
+    "cache_write": 29287.05,
+    "output": 2572.0,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 0.9949999999999999,
+    "tokens": 297927.8,
+    "cost": 0.2123852125,
+    "requests": 13.35,
+    "cache_read": 263555.0,
+    "cache_write": 31784.175,
+    "output": 2588.625,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -1274,6 +1586,20 @@
     "removed_tokens": 85211.45,
     "recalls": 0.725
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 386180.025,
+    "cost": 0.24731293000000001,
+    "requests": 15.15,
+    "cache_read": 337236.525,
+    "cache_write": 44342.95,
+    "output": 4600.55,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 80054.0,
+    "recalls": 0.725
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 417646.05,
@@ -1286,6 +1612,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 8.975
+   },
+   "replay_read_ceiling": 0.059669584378361076,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 417096.95,
+    "cost": 0.1482482,
+    "requests": 14.45,
+    "cache_read": 375847.425,
+    "cache_write": 36869.2,
+    "output": 4380.325,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 377554.725,
+    "cost": 0.14359908500000002,
+    "requests": 15.15,
+    "cache_read": 329535.625,
+    "cache_write": 43418.55,
+    "output": 4600.55,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   },
   {
@@ -1415,6 +1766,20 @@
     "removed_tokens": 35599.225,
     "recalls": 0.0
    },
+   "v2": {
+    "score": 1.0,
+    "tokens": 339351.95,
+    "cost": 0.4351857,
+    "requests": 14.4,
+    "cache_read": 302310.775,
+    "cache_write": 34239.95,
+    "output": 2801.225,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40,
+    "removed_tokens": 34003.475,
+    "recalls": 0.0
+   },
    "fail_open": {
     "score": 1.0,
     "tokens": 370727.875,
@@ -1427,6 +1792,31 @@
     "overflow_rate": 0.0,
     "n": 40,
     "fail_open_events": 5.65
+   },
+   "replay_read_ceiling": 0.04712812599053118,
+   "rho1_base": {
+    "score": 1.0,
+    "tokens": 370184.475,
+    "cost": 0.25325675,
+    "requests": 14.3,
+    "cache_read": 335772.75,
+    "cache_write": 31629.5,
+    "output": 2782.225,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
+   },
+   "rho1_default": {
+    "score": 1.0,
+    "tokens": 336695.825,
+    "cost": 0.236977925,
+    "requests": 14.4,
+    "cache_read": 300129.25,
+    "cache_write": 33765.35,
+    "output": 2801.225,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 40
    }
   }
  ],
@@ -1654,6 +2044,66 @@
    },
    "in_quality_gate": true,
    "in_saving_gate": false
+  },
+  "A:v2_h2048_t1536_s2": {
+   "quality_change": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 5
+   },
+   "bill_saving": {
+    "mean": -0.019308944440082004,
+    "lo": -0.040737813207230536,
+    "hi": -0.0029376048808732614,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.10953251549527743,
+    "lo": 0.09067004948653756,
+    "hi": 0.12628129266258745,
+    "n": 5
+   },
+   "removed_tokens": {
+    "mean": 62034.17,
+    "lo": 54472.27,
+    "hi": 72052.39499999999,
+    "n": 5
+   },
+   "in_quality_gate": true,
+   "in_saving_gate": false
+  },
+  "A:bill_decomposition": {
+   "cache_read_change": {
+    "mean": -0.14964521547335913,
+    "lo": -0.16386339610381112,
+    "hi": -0.13542703484290708,
+    "n": 5
+   },
+   "cache_write_change": {
+    "mean": 0.11940024260202772,
+    "lo": 0.09849965875003007,
+    "hi": 0.14881895911672935,
+    "n": 5
+   },
+   "replay_read_ceiling": {
+    "mean": 0.05918859746237302,
+    "lo": 0.05881743200953575,
+    "hi": 0.05955976291521028,
+    "n": 5
+   },
+   "rho1_bill_saving": {
+    "mean": 0.05800919312159177,
+    "lo": 0.044111405704065645,
+    "hi": 0.07003354386387226,
+    "n": 5
+   },
+   "recalls_per_task": {
+    "mean": 0.21000000000000002,
+    "lo": 0.015,
+    "hi": 0.485,
+    "n": 5
+   }
   },
   "A:fail_open": {
    "quality_change": {
@@ -1893,6 +2343,66 @@
    "in_quality_gate": true,
    "in_saving_gate": false
   },
+  "B:v2_h2048_t1536_s2": {
+   "quality_change": {
+    "mean": -0.0007142857142856896,
+    "lo": -0.002142857142857069,
+    "hi": 0.0,
+    "n": 5
+   },
+   "bill_saving": {
+    "mean": -0.008520109524378273,
+    "lo": -0.012132901798711224,
+    "hi": -0.0041359207776401055,
+    "n": 5
+   },
+   "token_saving": {
+    "mean": 0.08109153978510805,
+    "lo": 0.07927050395625886,
+    "hi": 0.08263457320669351,
+    "n": 5
+   },
+   "removed_tokens": {
+    "mean": 32919.725,
+    "lo": 30904.135,
+    "hi": 34760.087749999955,
+    "n": 5
+   },
+   "in_quality_gate": true,
+   "in_saving_gate": false
+  },
+  "B:bill_decomposition": {
+   "cache_read_change": {
+    "mean": -0.10643158578864605,
+    "lo": -0.10841866631042936,
+    "hi": -0.10433446982951151,
+    "n": 5
+   },
+   "cache_write_change": {
+    "mean": 0.07809599782148215,
+    "lo": 0.07191165669912868,
+    "hi": 0.08372551383625101,
+    "n": 5
+   },
+   "replay_read_ceiling": {
+    "mean": 0.04775216030028225,
+    "lo": 0.04721398347427003,
+    "hi": 0.04824760997343428,
+    "n": 5
+   },
+   "rho1_bill_saving": {
+    "mean": 0.060889352713092634,
+    "lo": 0.0595660677522883,
+    "hi": 0.0625931511627055,
+    "n": 5
+   },
+   "recalls_per_task": {
+    "mean": 0.015000000000000003,
+    "lo": 0.005,
+    "hi": 0.025,
+    "n": 5
+   }
+  },
   "B:fail_open": {
    "quality_change": {
     "mean": 0.0,
@@ -1914,6 +2424,6 @@
   "fidelity": 1.0,
   "mean_pages": 13.683333333333334
  },
- "verdict": "PARTIAL: recall fidelity 100% over 300 payloads; fail-open ok; 8/8 configurations inside the -2% quality gate (e0_s1, e0_s2, e512_s1, e512_s2, e1024_s1, e1024_s2, e2048_s1, e2048_s2), 0 also inside the 10% bill-saving gate - the quality gate does not discriminate between configurations here",
- "generated_at": "2026-09-25 06:46:06"
+ "verdict": "PARTIAL: recall fidelity 100% over 300 payloads; fail-open ok; 9/9 configurations inside the -2% quality gate (e0_s1, e0_s2, e512_s1, e512_s2, e1024_s1, e1024_s2, e2048_s1, e2048_s2, v2_h2048_t1536_s2), 0 also inside the 10% bill-saving gate - the quality gate does not discriminate between configurations here. Bill gate out of reach by construction (domain, not parameters): replayed large outputs are only 5.9% of the base bill as cache reads; packing cuts cache reads -15% but re-writes the prefix after each swap (cache writes +12%, priced 12.5x); without that premium (rho = 1) the same packing saves 5.8% of the bill",
+ "generated_at": "2026-09-25 18:36:46"
 }

@@ -1,52 +1,88 @@
 {
  "status": "done",
- "summary": "[har_12] Procedure card: estimation: Procedure card: estimat; [nar_03] Collapse repeated log lines: Collapse repeated log ",
+ "summary": "[str_10] Structured search tool: Structured search tool; aim; [cos_06] Short worked example of the procedure: Role and sco; [nar_04] Summarize old turns: Summarize old turns; aimed at ; [lea_07] Practice answer cache: Return remembered answers fo",
  "edits": [
   {
    "id": "C1",
-   "component": "skill",
-   "hypothesis": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "client_tool",
+   "hypothesis": "[str_10] Structured search tool: Structured search tool; aimed at arith, plan tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-008",
-    "hw-e-036"
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_12",
+   "mechanism_id": "str_10",
    "prune": false,
-   "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimation; aimed at extract, format tasks."
+   "mechanism": "[str_10] Structured search tool: Structured search tool; aimed at arith, plan tasks."
   },
   {
    "id": "C2",
-   "component": "output_plumbing",
-   "hypothesis": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "prompt",
+   "hypothesis": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-022",
-    "hw-e-008"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "nar_03",
+   "mechanism_id": "cos_06",
    "prune": false,
-   "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks."
+   "mechanism": "[cos_06] Short worked example of the procedure: Role and scope statement; runs extra model passes (self-consistency / long reasoning)."
+  },
+  {
+   "id": "C3",
+   "component": "context_mgmt",
+   "hypothesis": "[nar_04] Summarize old turns: Summarize old turns; aimed at arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nar_04",
+   "prune": false,
+   "mechanism": "[nar_04] Summarize old turns: Summarize old turns; aimed at arith, plan, format tasks."
+  },
+  {
+   "id": "C4",
+   "component": "memory",
+   "hypothesis": "[lea_07] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "lea_07",
+   "prune": false,
+   "mechanism": "[lea_07] Practice answer cache: Return remembered answers for tasks seen during practice."
   }
  ],
- "mechanism": "[har_12] Procedure card: estimation: Procedure card: estimat; [nar_03] Collapse repeated log lines: Collapse repeated log ",
- "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
- "n_changes": 2,
+ "mechanism": "[str_10] Structured search tool: Structured search tool; aim; [cos_06] Short worked example of the procedure: Role and sco; [nar_04] Summarize old turns: Summarize old turns; aimed at ; [lea_07] Practice answer cache: Return remembered answers fo",
+ "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family",
+ "n_changes": 4,
  "log": [
   {
    "turn": 0,
    "action": "done",
-   "n_changes": 2,
+   "n_changes": 4,
    "blocked": [],
    "error": null
   }

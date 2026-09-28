@@ -157,6 +157,7 @@ class GEPAEngine:
         if cfg.max_consecutive_infra_failures is not None:      # a safety net, not a stop condition of its own
             st.append(ConsecutiveInfraFailures(cfg.max_consecutive_infra_failures))
         self.stopper = Composite(st)
+        self.monitor_wall_s = 0.0          # shadow-monitor wall time credited back to the wall-clock stoppers
         self.state = SearchState(self.components, cfg.frontier_type)
         self.stop_reason = ""
         self.resumed_at: Optional[int] = None
@@ -195,6 +196,15 @@ class GEPAEngine:
     def _emit(self, event: str, **payload) -> None:
         for cb in self.callbacks:
             cb(event, payload)
+
+    def credit_wall_time(self, seconds: float) -> None:
+        """Give wall time spent by the write-only shadow monitor back to every wall-clock
+        stopper (``Timeout``, ``rsi.core.Budget.max_wall_s`` via ``Budget.credit``), so the
+        audit never shortens a run. Kept off ``state.json`` (it is not deterministic)."""
+        s = max(0.0, float(seconds or 0.0))
+        if s:
+            self.monitor_wall_s += s
+            self.stopper.credit(s)
 
     # ------------------------------------------------------------ evaluation --
     def _mb_seed(self, i: int, role: str, j: int) -> int:

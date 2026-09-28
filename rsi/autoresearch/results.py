@@ -2,7 +2,7 @@
 
 :class:`ResultsLog` writes upstream's table exactly: tab-separated, header
 ``commit <metric> memory_gb status description``, the metric with 6 decimals
-(``0.000000`` for crashes), memory in GB with 1 decimal (``0.0`` for crashes),
+(``0.000000`` for crashes), memory in GB with 1 decimal (``0.0`` for crashes; a task may ask for more decimals),
 status ``keep | discard | crash`` and a one-line description. Like upstream it
 is never committed: discards live only as rows.
 
@@ -41,9 +41,12 @@ class Row:
 class ResultsLog:
     """The 5-column ``results.tsv``."""
 
-    def __init__(self, path: Optional[str | Path], metric_name: str = "val_bpb") -> None:
+    def __init__(self, path: Optional[str | Path], metric_name: str = "val_bpb", memory_decimals: int = 1) -> None:
         self.path = Path(path) if path else None
         self.metric_name = metric_name
+        #: upstream rounds memory_gb to .1f; a task whose runs use far less than 0.1 GB (tinylm: ~0.1 GB of
+        #: interpreter + numpy) can ask for more decimals so the column carries information (audit N8)
+        self.memory_decimals = int(memory_decimals)
         self._rows: list[Row] = []
 
     @property
@@ -67,13 +70,13 @@ class ResultsLog:
             raise ValueError(f"status must be one of {STATUSES}, got {status!r}")
         if status == "crash":
             metric, memory_gb = 0.0, 0.0
-        row = Row(str(commit)[:7], float(metric or 0.0), round(float(memory_gb or 0.0), 1), status,
+        row = Row(str(commit)[:7], float(metric or 0.0), round(float(memory_gb or 0.0), self.memory_decimals), status,
                   self._clean(description))
         self._rows.append(row)
         if self.path:
             with self.path.open("a", newline="") as f:
                 csv.writer(f, delimiter="\t", lineterminator="\n").writerow(
-                    [row.commit, f"{row.metric:.6f}", f"{row.memory_gb:.1f}", row.status, row.description])
+                    [row.commit, f"{row.metric:.6f}", self._mem(row.memory_gb), row.status, row.description])
         return row
 
     def rows(self) -> list[Row]:
@@ -90,10 +93,33 @@ class ResultsLog:
         log.path = p
         return log
 
+    def _mem(self, v: float) -> str:
+        return f"{v:.{self.memory_decimals}f}"
+
+    def _line(self, r: Row) -> str:
+        return f"{r.commit}\t{r.metric:.6f}\t{self._mem(r.memory_gb)}\t{r.status}\t{r.description}"
+
     def text(self, last: Optional[int] = None) -> str:
-        rows = self._rows[-last:] if last else self._rows
+        """The table as the agent reads it (``cat results.tsv``). ``last=None`` (default)
+        gives the whole file, as upstream's agent can read it. With ``last=N`` and more
+        rows than that, the baseline (first) row is always kept, the elided middle is
+        replaced by one ``#`` summary line per status with every elided description
+        (so falsified ideas stay visible), and the last ``N`` rows follow."""
+        rows = self._rows
         lines = ["\t".join(self.header)]
-        lines += [f"{r.commit}\t{r.metric:.6f}\t{r.memory_gb:.1f}\t{r.status}\t{r.description}" for r in rows]
+        if not last or len(rows) <= last + 1:
+            lines += [self._line(r) for r in rows]
+            return "\n".join(lines) + "\n"
+        head, mid, tail = rows[:1], rows[1:len(rows) - last], rows[len(rows) - last:]
+        lines += [self._line(r) for r in head]
+        lines.append(f"# ... {len(mid)} earlier rows summarised (full file has {len(rows)} rows):")
+        for st in STATUSES:
+            sel = [r for r in mid if r.status == st]
+            if sel:
+                vals = [r.metric for r in sel if st != "crash"]
+                rng = f"; {self.metric_name} {min(vals):.6f}..{max(vals):.6f}" if vals else ""
+                lines.append(f"# {st} x{len(sel)}{rng}: " + " | ".join(r.description for r in sel))
+        lines += [self._line(r) for r in tail]
         return "\n".join(lines) + "\n"
 
 
@@ -181,6 +207,19 @@ class Workspace:
     def amend(self, artifact: Artifact, message: str) -> str:
         """Replace HEAD (used by fix-and-rerun of a trivially crashed experiment)."""
         parent = self.commits[self._head].parent
+        if parent is None:                       # the root commit (a baseline fixed after a crash)
+            self.store.put(artifact)
+            self._artifacts[artifact.id] = artifact
+            if self.backend == "git":
+                self._git_write(artifact)
+                self._git("add", "-A")
+                self._git("commit", "-q", "--amend", "--allow-empty", "-m", message or "experiment")
+                sha = self._git("rev-parse", "HEAD")
+            else:
+                sha = hashlib.sha1(f"None|{artifact.id}|{message}|{len(self.commits)}".encode()).hexdigest()
+            self.commits[sha] = Commit(sha, None, artifact.id, message, time.time())
+            self._head = sha
+            return sha
         self.reset_to(parent, count=False)
         return self.commit(artifact, message)
 

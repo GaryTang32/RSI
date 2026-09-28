@@ -12,13 +12,12 @@
  },
  "opened_width": 5,
  "max_depth": 1,
- "probe_work": 10,
- "decision_rounds": 4,
+ "probe_work": 9,
+ "decision_rounds": 3,
  "batch_sizes": [
   3,
   3,
-  3,
-  1
+  3
  ],
  "root_score": 1.0,
  "round_best": 1.0,
@@ -28,8 +27,9 @@
  "gain_late": 0.0,
  "fail_frac": 0.0,
  "hard_fail_frac": 0.0,
- "policy": "86e922d1a333",
- "agent_calls": 10,
+ "policy": "e226619df852",
+ "agent_calls": 9,
  "plan_reason": "live best plateaued: widen to cover new directions",
- "plan_error": null
+ "plan_error": null,
+ "round_budget": 9
 }

@@ -1,0 +1,72 @@
+{
+ "status": "done",
+ "summary": "[har_09] Semantic memory of general procedures: Semantic mem; [nul_10] Drop stale observations: Drop stale observations (r; [gen_04] Bounded self-verification pass: Bounded self-verifi",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "memory",
+   "hypothesis": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_09",
+   "prune": false,
+   "mechanism": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks."
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_10",
+   "prune": false,
+   "mechanism": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance)."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_04",
+   "prune": false,
+   "mechanism": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks."
+  }
+ ],
+ "mechanism": "[har_09] Semantic memory of general procedures: Semantic mem; [nul_10] Drop stale observations: Drop stale observations (r; [gen_04] Bounded self-verification pass: Bounded self-verifi",
+ "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

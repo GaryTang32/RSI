@@ -1,7 +1,7 @@
 {
  "run": "solpi_agentworld_offline",
- "setup": "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed holdout = 6 x 2 held-out families (configfix, datalookup) used only by the firewall; sealed ood = 8 x 2 held-out families (final, never touched by the protocol). Base = untouched Pi-like harness (no extensions). Agent backend = MockAgentLLM('A') (offline). Idea pool = all 10 AGENTWORLD_IDEAS (families C, P, D, T, R: 4 released mechanisms, 3 tricks, 2 do-less shortcuts, 1 dud). Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: score within 2% (relative) AND tokens or cost saving > 2%; firewall on holdout; compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.",
- "wall_s": 7.1,
+ "setup": "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed holdout = 6 x 2 held-out families (configfix, datalookup) used only by the firewall; sealed ood = 8 x 2 held-out families (final, never touched by the protocol). Base = untouched Pi-like harness (no extensions). Agent backend = MockAgentLLM('A') (offline). Idea pool = all 12 AGENTWORLD_IDEAS over the six families C, P, T, D, R, M (4 released mechanisms, 3 tricks, 2 do-less shortcuts, 1 dud, 2 evaluation-family ideas); the Oracle Analysis ranks them and the top n_lineages = 10 get rollouts. Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: score AND solved rate within 2% (relative) AND tokens or cost saving > 2%; lineages sweep their variants and freeze the nondominated best-eta one; firewall on holdout; compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.",
+ "wall_s": 11.9,
  "transfer": {
   "splits": {
    "evolve": {
@@ -18,7 +18,7 @@
     },
     "composed": {
      "S": 1.0,
-     "C": 229380.08333333334,
+     "C": 229398.125,
      "steps": 18.041666666666668,
      "families": {
       "repofix": 1.0,
@@ -47,7 +47,7 @@
     },
     "composed": {
      "S": 0.9880952380952381,
-     "C": 66590.33333333333,
+     "C": 66598.0,
      "steps": 7.666666666666667,
      "families": {
       "configfix": 1.0,
@@ -75,7 +75,7 @@
     },
     "composed": {
      "S": 1.0,
-     "C": 79824.0,
+     "C": 79832.8125,
      "steps": 8.8125,
      "families": {
       "configfix": 1.0,
@@ -103,6 +103,7 @@
    "base_metrics": {
     "agg": {
      "score": 1.0,
+     "solved": 1.0,
      "tokens": 449605.3333333333,
      "cost": 0.24073210416666666,
      "steps": 14.416666666666666,
@@ -111,6 +112,7 @@
     "fam": {
      "repofix": {
       "score": 1.0,
+      "solved": 1.0,
       "tokens": 994041.25,
       "cost": 0.448002775,
       "steps": 21.75,
@@ -118,6 +120,7 @@
      },
      "buildfix": {
       "score": 1.0,
+      "solved": 1.0,
       "tokens": 298897.25,
       "cost": 0.20595993750000002,
       "steps": 16.0,
@@ -125,6 +128,7 @@
      },
      "logtriage": {
       "score": 1.0,
+      "solved": 1.0,
       "tokens": 55877.5,
       "cost": 0.0682336,
       "steps": 5.5,
@@ -142,10 +146,13 @@
     "T7": 0.5992843253341963,
     "T11": 0.6615649408129116,
     "P14": 0.2826086956521739,
-    "P20": 0.002298925655125029,
-    "R5": 0.002298925655125029
+    "P20": 0.6804384784716926,
+    "R5": 0.002298925655125029,
+    "M5": 0.05,
+    "M12": 0.05
    },
    "chosen": [
+    "P20",
     "D1",
     "T11",
     "T3",
@@ -154,10 +161,266 @@
     "P14",
     "P8",
     "C23",
-    "P20",
-    "R5"
+    "M12"
    ],
    "lineages": [
+    {
+     "idea": "P20",
+     "kind": "do_less",
+     "title": "Cap the turn budget",
+     "frozen": false,
+     "iterations": [
+      {
+       "iteration": 0,
+       "change": "turn_cap{\"max_turns\": 10}",
+       "variant": 0,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.7547123015873015,
+          "tol": 0.02,
+          "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.5,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 144840.66666666666,
+          "saving": 0.6778493137685199,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.12386149166666667,
+          "saving": 0.4854799608243638,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "50987e8499eb3b89"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.7547123015873015,
+         "solved": 0.5,
+         "tokens": 144840.66666666666,
+         "cost": 0.12386149166666667,
+         "steps": 8.5,
+         "eta": 0.16411749405192247
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.5370535714285715,
+          "solved": 0.125,
+          "tokens": 245360.5,
+          "cost": 0.184653275,
+          "steps": 10.0,
+          "eta": 0.3438265469659185
+         },
+         "buildfix": {
+          "score": 0.7270833333333333,
+          "solved": 0.375,
+          "tokens": 133284.0,
+          "cost": 0.1186976,
+          "steps": 10.0,
+          "eta": 0.16325171346704873
+         },
+         "logtriage": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 1,
+       "change": "turn_cap{\"max_turns\": 16}",
+       "variant": 1,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.9139880952380953,
+          "tol": 0.02,
+          "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.7083333333333334,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 276600.0,
+          "saving": 0.3847937746883192,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.18429168750000002,
+          "saving": 0.23445321870152847,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "50987e8499eb3b89"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.9139880952380953,
+         "solved": 0.7083333333333334,
+         "tokens": 276600.0,
+         "cost": 0.18429168750000002,
+         "steps": 11.916666666666666,
+         "eta": 0.20163466948876588
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.7982142857142858,
+          "solved": 0.375,
+          "tokens": 518261.625,
+          "cost": 0.300657525,
+          "steps": 15.5,
+          "eta": 0.37666267114093954
+         },
+         "buildfix": {
+          "score": 0.94375,
+          "solved": 0.75,
+          "tokens": 255660.875,
+          "cost": 0.1839839375,
+          "steps": 14.75,
+          "eta": 0.19494986754966886
+         },
+         "logtriage": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 2,
+       "change": "turn_cap{\"max_turns\": 24}",
+       "variant": 2,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "gate_failed",
+       "gate": {
+        "accept": false,
+        "reason": "capability below floor",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 0.9836309523809524,
+          "tol": 0.02,
+          "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.9166666666666666,
+          "tol": 0.02,
+          "pass": false
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 394073.625,
+          "saving": 0.12351212100093709,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.22531332083333333,
+          "saving": 0.06404955162381831,
+          "improved": true
+         }
+        },
+        "per_family": {},
+        "spec_digest": "50987e8499eb3b89"
+       },
+       "metrics": {
+        "agg": {
+         "score": 0.9836309523809524,
+         "solved": 0.9166666666666666,
+         "tokens": 394073.625,
+         "cost": 0.22531332083333333,
+         "steps": 13.791666666666666,
+         "eta": 0.2290628617246596
+        },
+        "fam": {
+         "repofix": {
+          "score": 0.9508928571428572,
+          "solved": 0.75,
+          "tokens": 827446.125,
+          "cost": 0.40174642499999996,
+          "steps": 19.875,
+          "eta": 0.4224938929577464
+         },
+         "buildfix": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 298897.25,
+          "cost": 0.20595993750000002,
+          "steps": 16.0,
+          "eta": 0.20595993750000002
+         },
+         "logtriage": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 55877.5,
+          "cost": 0.0682336,
+          "steps": 5.5,
+          "eta": 0.0682336
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 3,
+       "change": "",
+       "variant": 3,
+       "ralph_errors": [
+        "variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "variant grid exhausted"
+      }
+     ],
+     "n_iterations": 4
+    },
     {
      "idea": "D1",
      "kind": "general",
@@ -180,6 +443,12 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
@@ -197,11 +466,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
+         "solved": 1.0,
          "tokens": 231095.75,
          "cost": 0.16016330625,
          "steps": 15.75,
@@ -210,6 +480,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 395249.75,
           "cost": 0.24507833124999998,
           "steps": 25.0,
@@ -217,6 +488,7 @@
          },
          "buildfix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 242207.25,
           "cost": 0.16752621250000002,
           "steps": 16.75,
@@ -224,6 +496,7 @@
          },
          "logtriage": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 55830.25,
           "cost": 0.067885375,
           "steps": 5.5,
@@ -232,9 +505,20 @@
         },
         "n": 24
        }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": 1,
+       "ralph_errors": [
+        "variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "variant grid exhausted"
       }
      ],
-     "n_iterations": 1
+     "n_iterations": 2
     },
     {
      "idea": "T11",
@@ -258,6 +542,12 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
@@ -275,11 +565,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
+         "solved": 1.0,
          "tokens": 185892.79166666666,
          "cost": 0.14775023333333334,
          "steps": 14.416666666666666,
@@ -288,6 +579,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 202903.625,
           "cost": 0.16905716250000002,
           "steps": 21.75,
@@ -295,6 +587,7 @@
          },
          "buildfix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 298897.25,
           "cost": 0.20595993750000002,
           "steps": 16.0,
@@ -302,6 +595,7 @@
          },
          "logtriage": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 55877.5,
           "cost": 0.0682336,
           "steps": 5.5,
@@ -310,9 +604,20 @@
         },
         "n": 24
        }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": 1,
+       "ralph_errors": [
+        "variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "variant grid exhausted"
       }
      ],
-     "n_iterations": 1
+     "n_iterations": 2
     },
     {
      "idea": "T3",
@@ -336,6 +641,12 @@
           "cand": 0.8284722222222222,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.7083333333333334,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -353,11 +664,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.8284722222222222,
+         "solved": 0.7083333333333334,
          "tokens": 191602.25,
          "cost": 0.14534771666666668,
          "steps": 15.833333333333334,
@@ -366,6 +678,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 272260.25,
           "cost": 0.19885483750000002,
           "steps": 21.75,
@@ -373,6 +686,7 @@
          },
          "buildfix": {
           "score": 0.8291666666666666,
+          "solved": 0.5,
           "tokens": 259032.375,
           "cost": 0.17479911250000002,
           "steps": 18.125,
@@ -380,6 +694,7 @@
          },
          "logtriage": {
           "score": 0.65625,
+          "solved": 0.625,
           "tokens": 43514.125,
           "cost": 0.0623892,
           "steps": 7.625,
@@ -405,6 +720,12 @@
           "cand": 0.8284722222222222,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.7083333333333334,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -422,11 +743,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.8284722222222222,
+         "solved": 0.7083333333333334,
          "tokens": 205269.66666666666,
          "cost": 0.15101897083333335,
          "steps": 15.833333333333334,
@@ -435,6 +757,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 301037.0,
           "cost": 0.2093257625,
           "steps": 21.75,
@@ -442,6 +765,7 @@
          },
          "buildfix": {
           "score": 0.8291666666666666,
+          "solved": 0.5,
           "tokens": 268697.5,
           "cost": 0.1799412125,
           "steps": 18.125,
@@ -449,6 +773,7 @@
          },
          "logtriage": {
           "score": 0.65625,
+          "solved": 0.625,
           "tokens": 46074.5,
           "cost": 0.0637899375,
           "steps": 7.625,
@@ -474,6 +799,12 @@
           "cand": 0.9166666666666666,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.9166666666666666,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -491,11 +822,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.9166666666666666,
+         "solved": 0.9166666666666666,
          "tokens": 241341.79166666666,
          "cost": 0.16396606666666666,
          "steps": 15.0,
@@ -504,6 +836,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 427783.5,
           "cost": 0.25551622500000004,
           "steps": 21.75,
@@ -511,6 +844,7 @@
          },
          "buildfix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 242098.0,
           "cost": 0.16894905000000002,
           "steps": 16.0,
@@ -518,6 +852,7 @@
          },
          "logtriage": {
           "score": 0.75,
+          "solved": 0.75,
           "tokens": 54143.875,
           "cost": 0.06743292499999999,
           "steps": 7.25,
@@ -563,6 +898,12 @@
           "cand": 0.8284722222222222,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.7083333333333334,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -580,11 +921,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.8284722222222222,
+         "solved": 0.7083333333333334,
          "tokens": 214778.875,
          "cost": 0.15417240416666667,
          "steps": 16.291666666666668,
@@ -593,6 +935,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 333710.75,
           "cost": 0.221388525,
           "steps": 23.25,
@@ -600,6 +943,7 @@
          },
          "buildfix": {
           "score": 0.8291666666666666,
+          "solved": 0.5,
           "tokens": 264951.25,
           "cost": 0.17807761249999998,
           "steps": 18.125,
@@ -607,6 +951,7 @@
          },
          "logtriage": {
           "score": 0.65625,
+          "solved": 0.625,
           "tokens": 45674.625,
           "cost": 0.063051075,
           "steps": 7.5,
@@ -632,6 +977,12 @@
           "cand": 0.8284722222222222,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.7083333333333334,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -649,11 +1000,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.8284722222222222,
+         "solved": 0.7083333333333334,
          "tokens": 260673.125,
          "cost": 0.17445499583333332,
          "steps": 16.041666666666668,
@@ -662,6 +1014,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 432156.75,
           "cost": 0.2608924375,
           "steps": 22.5,
@@ -669,6 +1022,7 @@
          },
          "buildfix": {
           "score": 0.8291666666666666,
+          "solved": 0.5,
           "tokens": 294157.5,
           "cost": 0.19389885,
           "steps": 18.125,
@@ -676,6 +1030,7 @@
          },
          "logtriage": {
           "score": 0.65625,
+          "solved": 0.625,
           "tokens": 55705.125,
           "cost": 0.0685737,
           "steps": 7.5,
@@ -721,61 +1076,82 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 368963.2083333333,
-          "saving": 0.17936202936501347,
+          "cand": 366202.625,
+          "saving": 0.18550204401489895,
           "improved": true
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.23010708333333332,
-          "saving": 0.0441362853123125,
+          "cand": 0.23130069583333338,
+          "saving": 0.03917802474240664,
           "improved": true
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
-         "tokens": 368963.2083333333,
-         "cost": 0.23010708333333332,
+         "solved": 1.0,
+         "tokens": 366202.625,
+         "cost": 0.23130069583333338,
          "steps": 13.625,
-         "eta": 0.23010708333333332
+         "eta": 0.23130069583333338
         },
         "fam": {
          "repofix": {
           "score": 1.0,
-          "tokens": 811381.875,
-          "cost": 0.43134585000000003,
+          "solved": 1.0,
+          "tokens": 803273.625,
+          "cost": 0.43503355,
           "steps": 21.5,
-          "eta": 0.43134585000000003
+          "eta": 0.43503355
          },
          "buildfix": {
           "score": 1.0,
-          "tokens": 242289.125,
-          "cost": 0.18646557500000002,
+          "solved": 1.0,
+          "tokens": 242156.0,
+          "cost": 0.1864001375,
           "steps": 15.0,
-          "eta": 0.18646557500000002
+          "eta": 0.1864001375
          },
          "logtriage": {
           "score": 1.0,
-          "tokens": 53218.625,
-          "cost": 0.072509825,
+          "solved": 1.0,
+          "tokens": 53178.25,
+          "cost": 0.07246839999999999,
           "steps": 4.375,
-          "eta": 0.072509825
+          "eta": 0.07246839999999999
          }
         },
         "n": 24
        }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": 1,
+       "ralph_errors": [
+        "variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "variant grid exhausted"
       }
      ],
-     "n_iterations": 1
+     "n_iterations": 2
     },
     {
      "idea": "P14",
@@ -799,6 +1175,12 @@
           "cand": 0.901984126984127,
           "tol": 0.02,
           "pass": false
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 0.6666666666666666,
+          "tol": 0.02,
+          "pass": false
          }
         },
         "efficiency": {
@@ -816,11 +1198,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 0.901984126984127,
+         "solved": 0.6666666666666666,
          "tokens": 294958.2916666667,
          "cost": 0.18190136666666668,
          "steps": 10.041666666666666,
@@ -829,6 +1212,7 @@
         "fam": {
          "repofix": {
           "score": 0.9236607142857143,
+          "solved": 0.625,
           "tokens": 676551.375,
           "cost": 0.3528791875,
           "steps": 16.0,
@@ -836,6 +1220,7 @@
          },
          "buildfix": {
           "score": 0.9583333333333333,
+          "solved": 0.875,
           "tokens": 182673.0,
           "cost": 0.1458653375,
           "steps": 11.125,
@@ -843,6 +1228,7 @@
          },
          "logtriage": {
           "score": 0.8239583333333333,
+          "solved": 0.5,
           "tokens": 25650.5,
           "cost": 0.046959575,
           "steps": 3.0,
@@ -888,61 +1274,82 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 315845.125,
-          "saving": 0.2975058310399639,
+          "cand": 315856.0,
+          "saving": 0.2974816431596303,
           "improved": true
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.19786742499999999,
-          "saving": 0.17805967058298988,
+          "cand": 0.1978719,
+          "saving": 0.17804108145456643,
           "improved": true
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
-         "tokens": 315845.125,
-         "cost": 0.19786742499999999,
+         "solved": 1.0,
+         "tokens": 315856.0,
+         "cost": 0.1978719,
          "steps": 10.875,
-         "eta": 0.19786742499999999
+         "eta": 0.1978719
         },
         "fam": {
          "repofix": {
           "score": 1.0,
-          "tokens": 675443.125,
-          "cost": 0.35495152500000005,
+          "solved": 1.0,
+          "tokens": 675459.125,
+          "cost": 0.35495702500000004,
           "steps": 16.0,
-          "eta": 0.35495152500000005
+          "eta": 0.35495702500000004
          },
          "buildfix": {
           "score": 1.0,
-          "tokens": 234426.125,
-          "cost": 0.18048322500000002,
+          "solved": 1.0,
+          "tokens": 234438.75,
+          "cost": 0.18048805,
           "steps": 12.625,
-          "eta": 0.18048322500000002
+          "eta": 0.18048805
          },
          "logtriage": {
           "score": 1.0,
-          "tokens": 37666.125,
-          "cost": 0.058167525,
+          "solved": 1.0,
+          "tokens": 37670.125,
+          "cost": 0.058170625000000004,
           "steps": 4.0,
-          "eta": 0.058167525
+          "eta": 0.058170625000000004
          }
         },
         "n": 24
        }
+      },
+      {
+       "iteration": 1,
+       "change": "",
+       "variant": 1,
+       "ralph_errors": [
+        "variant grid exhausted"
+       ],
+       "stage": "implementation",
+       "outcome": "abandoned",
+       "error": "variant grid exhausted"
       }
      ],
-     "n_iterations": 1
+     "n_iterations": 2
     },
     {
      "idea": "C23",
@@ -966,6 +1373,12 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
@@ -983,11 +1396,12 @@
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
+         "solved": 1.0,
          "tokens": 412078.75,
          "cost": 0.2537827125,
          "steps": 15.916666666666666,
@@ -996,6 +1410,7 @@
         "fam": {
          "repofix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 902437.625,
           "cost": 0.43011243749999994,
           "steps": 21.75,
@@ -1003,6 +1418,7 @@
          },
          "buildfix": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 311408.375,
           "cost": 0.26927059999999997,
           "steps": 20.5,
@@ -1010,6 +1426,7 @@
          },
          "logtriage": {
           "score": 1.0,
+          "solved": 1.0,
           "tokens": 22390.25,
           "cost": 0.061965099999999995,
           "steps": 5.5,
@@ -1018,149 +1435,81 @@
         },
         "n": 24
        }
-      }
-     ],
-     "n_iterations": 1
-    },
-    {
-     "idea": "P20",
-     "kind": "do_less",
-     "title": "Cap the turn budget",
-     "frozen": true,
-     "iterations": [
-      {
-       "iteration": 0,
-       "change": "turn_cap{\"max_turns\": 10}",
-       "variant": 0,
-       "ralph_errors": [],
-       "stage": "validation",
-       "outcome": "gate_failed",
-       "gate": {
-        "accept": false,
-        "reason": "capability below floor",
-        "capability": {
-         "score": {
-          "base": 1.0,
-          "cand": 0.7547123015873015,
-          "tol": 0.02,
-          "pass": false
-         }
-        },
-        "efficiency": {
-         "tokens": {
-          "base": 449605.3333333333,
-          "cand": 144840.66666666666,
-          "saving": 0.6778493137685199,
-          "improved": true
-         },
-         "cost": {
-          "base": 0.24073210416666666,
-          "cand": 0.12386149166666667,
-          "saving": 0.4854799608243638,
-          "improved": true
-         }
-        },
-        "per_family": {},
-        "spec_digest": "a2247cac594b7481"
-       },
-       "metrics": {
-        "agg": {
-         "score": 0.7547123015873015,
-         "tokens": 144840.66666666666,
-         "cost": 0.12386149166666667,
-         "steps": 8.5,
-         "eta": 0.16411749405192247
-        },
-        "fam": {
-         "repofix": {
-          "score": 0.5370535714285715,
-          "tokens": 245360.5,
-          "cost": 0.184653275,
-          "steps": 10.0,
-          "eta": 0.3438265469659185
-         },
-         "buildfix": {
-          "score": 0.7270833333333333,
-          "tokens": 133284.0,
-          "cost": 0.1186976,
-          "steps": 10.0,
-          "eta": 0.16325171346704873
-         },
-         "logtriage": {
-          "score": 1.0,
-          "tokens": 55877.5,
-          "cost": 0.0682336,
-          "steps": 5.5,
-          "eta": 0.0682336
-         }
-        },
-        "n": 24
-       }
       },
       {
        "iteration": 1,
-       "change": "turn_cap{\"max_turns\": 16}",
+       "change": "observation_pack{\"excerpt_bytes\": 1024, \"full_sends\": 1}",
        "variant": 1,
        "ralph_errors": [],
        "stage": "validation",
-       "outcome": "gate_failed",
+       "outcome": "frozen",
        "gate": {
-        "accept": false,
-        "reason": "capability below floor",
+        "accept": true,
+        "reason": "accepted",
         "capability": {
          "score": {
           "base": 1.0,
-          "cand": 0.9139880952380953,
+          "cand": 1.0,
           "tol": 0.02,
-          "pass": false
+          "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 276600.0,
-          "saving": 0.3847937746883192,
+          "cand": 417883.4166666667,
+          "saving": 0.07055502752043265,
           "improved": true
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.18429168750000002,
-          "saving": 0.23445321870152847,
-          "improved": true
+          "cand": 0.25595947916666667,
+          "saving": -0.06325444233004174,
+          "improved": false
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
-         "score": 0.9139880952380953,
-         "tokens": 276600.0,
-         "cost": 0.18429168750000002,
-         "steps": 11.916666666666666,
-         "eta": 0.20163466948876588
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 417883.4166666667,
+         "cost": 0.25595947916666667,
+         "steps": 15.916666666666666,
+         "eta": 0.25595947916666667
         },
         "fam": {
          "repofix": {
-          "score": 0.7982142857142858,
-          "tokens": 518261.625,
-          "cost": 0.300657525,
-          "steps": 15.5,
-          "eta": 0.37666267114093954
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 904301.125,
+          "cost": 0.43070565,
+          "steps": 21.75,
+          "eta": 0.43070565
          },
          "buildfix": {
-          "score": 0.94375,
-          "tokens": 255660.875,
-          "cost": 0.1839839375,
-          "steps": 14.75,
-          "eta": 0.19494986754966886
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 326001.75,
+          "cost": 0.27431533750000003,
+          "steps": 20.5,
+          "eta": 0.27431533750000003
          },
          "logtriage": {
           "score": 1.0,
-          "tokens": 55877.5,
-          "cost": 0.0682336,
+          "solved": 1.0,
+          "tokens": 23347.375,
+          "cost": 0.06285745000000001,
           "steps": 5.5,
-          "eta": 0.0682336
+          "eta": 0.06285745000000001
          }
         },
         "n": 24
@@ -1168,7 +1517,7 @@
       },
       {
        "iteration": 2,
-       "change": "turn_cap{\"max_turns\": 24}",
+       "change": "observation_pack{\"excerpt_bytes\": 1024, \"full_sends\": 2}",
        "variant": 2,
        "ralph_errors": [],
        "stage": "validation",
@@ -1179,7 +1528,13 @@
         "capability": {
          "score": {
           "base": 1.0,
-          "cand": 0.9836309523809524,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
           "tol": 0.02,
           "pass": true
          }
@@ -1187,66 +1542,149 @@
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 394073.625,
-          "saving": 0.12351212100093709,
+          "cand": 419270.5833333333,
+          "saving": 0.06746972900677335,
           "improved": true
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.22531332083333333,
-          "saving": 0.06404955162381831,
-          "improved": true
+          "cand": 0.2618123625,
+          "saving": -0.08756729147658181,
+          "improved": false
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
-         "score": 0.9836309523809524,
-         "tokens": 394073.625,
-         "cost": 0.22531332083333333,
-         "steps": 13.791666666666666,
-         "eta": 0.2290628617246596
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 419270.5833333333,
+         "cost": 0.2618123625,
+         "steps": 15.666666666666666,
+         "eta": 0.2618123625
         },
         "fam": {
          "repofix": {
-          "score": 0.9508928571428572,
-          "tokens": 827446.125,
-          "cost": 0.40174642499999996,
-          "steps": 19.875,
-          "eta": 0.4224938929577464
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 908852.5,
+          "cost": 0.44673871249999997,
+          "steps": 21.75,
+          "eta": 0.44673871249999997
          },
          "buildfix": {
           "score": 1.0,
-          "tokens": 298897.25,
-          "cost": 0.20595993750000002,
-          "steps": 16.0,
-          "eta": 0.20595993750000002
+          "solved": 1.0,
+          "tokens": 314709.25,
+          "cost": 0.27282406249999996,
+          "steps": 19.75,
+          "eta": 0.27282406249999996
          },
          "logtriage": {
           "score": 1.0,
-          "tokens": 55877.5,
-          "cost": 0.0682336,
+          "solved": 1.0,
+          "tokens": 34250.0,
+          "cost": 0.0658743125,
           "steps": 5.5,
-          "eta": 0.0682336
+          "eta": 0.0658743125
+         }
+        },
+        "n": 24
+       }
+      },
+      {
+       "iteration": 3,
+       "change": "observation_pack{\"excerpt_bytes\": 2048, \"full_sends\": 2}",
+       "variant": 3,
+       "ralph_errors": [],
+       "stage": "validation",
+       "outcome": "frozen",
+       "gate": {
+        "accept": true,
+        "reason": "accepted",
+        "capability": {
+         "score": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
+         }
+        },
+        "efficiency": {
+         "tokens": {
+          "base": 449605.3333333333,
+          "cand": 423887.0833333333,
+          "saving": 0.0572018347943678,
+          "improved": true
+         },
+         "cost": {
+          "base": 0.24073210416666666,
+          "cand": 0.2636989791666667,
+          "saving": -0.09540428801344798,
+          "improved": false
+         }
+        },
+        "per_family": {},
+        "spec_digest": "50987e8499eb3b89"
+       },
+       "metrics": {
+        "agg": {
+         "score": 1.0,
+         "solved": 1.0,
+         "tokens": 423887.0833333333,
+         "cost": 0.2636989791666667,
+         "steps": 15.666666666666666,
+         "eta": 0.2636989791666667
+        },
+        "fam": {
+         "repofix": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 911275.0,
+          "cost": 0.4475199125,
+          "steps": 21.75,
+          "eta": 0.4475199125
+         },
+         "buildfix": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 325368.125,
+          "cost": 0.27670872500000004,
+          "steps": 19.75,
+          "eta": 0.27670872500000004
+         },
+         "logtriage": {
+          "score": 1.0,
+          "solved": 1.0,
+          "tokens": 35018.125,
+          "cost": 0.06686829999999999,
+          "steps": 5.5,
+          "eta": 0.06686829999999999
          }
         },
         "n": 24
        }
       }
      ],
-     "n_iterations": 3
+     "n_iterations": 4
     },
     {
-     "idea": "R5",
+     "idea": "M12",
      "kind": "dud",
-     "title": "Slim the system prompt",
+     "title": "Judge patches with fail-before/pass-after tests",
      "frozen": false,
      "iterations": [
       {
        "iteration": 0,
-       "change": "prompt_slim{}",
+       "change": "fail_before_pass_after{}",
        "variant": 0,
        "ralph_errors": [],
        "stage": "validation",
@@ -1260,54 +1698,64 @@
           "cand": 1.0,
           "tol": 0.02,
           "pass": true
+         },
+         "solved": {
+          "base": 1.0,
+          "cand": 1.0,
+          "tol": 0.02,
+          "pass": true
          }
         },
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 449288.1666666667,
-          "saving": 0.0007054335061267686,
+          "cand": 450081.0833333333,
+          "saving": -0.0010581502591902824,
           "improved": false
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.24061807083333334,
-          "saving": 0.0004736939168461295,
+          "cand": 0.24090315416666666,
+          "saving": -0.0007105408752693096,
           "improved": false
          }
         },
         "per_family": {},
-        "spec_digest": "a2247cac594b7481"
+        "spec_digest": "50987e8499eb3b89"
        },
        "metrics": {
         "agg": {
          "score": 1.0,
-         "tokens": 449288.1666666667,
-         "cost": 0.24061807083333334,
+         "solved": 1.0,
+         "tokens": 450081.0833333333,
+         "cost": 0.24090315416666666,
          "steps": 14.416666666666666,
-         "eta": 0.24061807083333334
+         "eta": 0.24090315416666666
         },
         "fam": {
          "repofix": {
           "score": 1.0,
-          "tokens": 993562.75,
-          "cost": 0.447856475,
+          "solved": 1.0,
+          "tokens": 994759.0,
+          "cost": 0.448222225,
           "steps": 21.75,
-          "eta": 0.447856475
+          "eta": 0.448222225
          },
          "buildfix": {
           "score": 1.0,
-          "tokens": 298545.25,
-          "cost": 0.20583893749999999,
+          "solved": 1.0,
+          "tokens": 299425.25,
+          "cost": 0.2061414375,
           "steps": 16.0,
-          "eta": 0.20583893749999999
+          "eta": 0.2061414375
          },
          "logtriage": {
           "score": 1.0,
-          "tokens": 55756.5,
-          "cost": 0.06815879999999999,
+          "solved": 1.0,
+          "tokens": 56059.0,
+          "cost": 0.0683458,
           "steps": 5.5,
-          "eta": 0.06815879999999999
+          "eta": 0.0683458
          }
         },
         "n": 24
@@ -1333,24 +1781,21 @@
     "T11:pytest_quiet{}",
     "C6:online_context_compact{\"cache_write_read_ratio\": 12.5}",
     "P8:action_fusion{}",
-    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}",
-    "P20:turn_cap{\"max_turns\": 24}"
+    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}"
    ],
    "frozen_ideas": [
     "D1",
     "T11",
     "C6",
     "P8",
-    "C23",
-    "P20"
+    "C23"
    ],
    "heldout_passed": {
     "D1:evidence_preserving_reducer{\"reducer\": \"deterministic\"}": true,
     "T11:pytest_quiet{}": false,
     "C6:online_context_compact{\"cache_write_read_ratio\": 12.5}": false,
     "P8:action_fusion{}": true,
-    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}": true,
-    "P20:turn_cap{\"max_turns\": 24}": false
+    "C23:observation_pack{\"excerpt_bytes\": 0, \"full_sends\": 1}": true
    },
    "survivors": [
     "D1:evidence_preserving_reducer{\"reducer\": \"deterministic\"}",
@@ -1366,38 +1811,42 @@
    "composed_metrics": {
     "agg": {
      "score": 1.0,
-     "tokens": 229380.08333333334,
-     "cost": 0.21932219583333334,
+     "solved": 1.0,
+     "tokens": 229398.125,
+     "cost": 0.2193281041666667,
      "steps": 18.041666666666668,
-     "eta": 0.21932219583333334
+     "eta": 0.2193281041666667
     },
     "fam": {
      "repofix": {
       "score": 1.0,
-      "tokens": 471033.875,
-      "cost": 0.37791635625,
+      "solved": 1.0,
+      "tokens": 471065.125,
+      "cost": 0.3779249062500001,
       "steps": 31.25,
-      "eta": 0.37791635625
+      "eta": 0.3779249062500001
      },
      "buildfix": {
       "score": 1.0,
-      "tokens": 192900.75,
-      "cost": 0.21447493750000002,
+      "solved": 1.0,
+      "tokens": 192919.125,
+      "cost": 0.21448091250000004,
       "steps": 18.375,
-      "eta": 0.21447493750000002
+      "eta": 0.21448091250000004
      },
      "logtriage": {
       "score": 1.0,
-      "tokens": 24205.625,
-      "cost": 0.06557529375,
+      "solved": 1.0,
+      "tokens": 24210.125,
+      "cost": 0.06557849375000001,
       "steps": 4.5,
-      "eta": 0.06557529375
+      "eta": 0.06557849375000001
      }
     },
     "n": 24
    },
    "conflicts": [],
-   "gate_digest": "a2247cac594b7481",
+   "gate_digest": "50987e8499eb3b89",
    "usage": {
     "calls": 0,
     "input_tokens": 0,
@@ -1406,7 +1855,7 @@
     "latency_s": 0.0,
     "total_tokens": 0
    },
-   "seconds": 7.089632749557495
+   "seconds": 11.826488494873047
   }
  ],
  "usage": {
@@ -1446,5 +1895,6 @@
     "total_tokens": 0
    }
   }
- }
+ },
+ "generated_by": "experiments/metaharness-solpi/sp_validate.py (post claims-audit fixes)"
 }

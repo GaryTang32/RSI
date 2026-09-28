@@ -31,14 +31,15 @@ the Listing-1 prompt, ParametricAgent, DirectionProvider), ``baselines`` (fixed
 exploration, guidance summarizers), ``cost`` (CostMeter), ``loop`` (Config,
 DreamRSILoop, run), ``demo`` (the overview's interactive replay demo).
 """
-from .agent import (AgentAttempt, AttemptContext, AttemptRecord, DirectionProvider, DiscoveryAgent, DiscoveryTask,
-                    DomainTask, EditorAgent, EvalOutcome, ParametricAgent)
+from .agent import (EXPLORATION_PROMPT, AgentAttempt, AttemptContext, AttemptRecord, DirectionProvider, DiscoveryAgent,
+                    DiscoveryTask, DomainTask, EditorAgent, EvalOutcome, ParametricAgent)
 from .baselines import (Guidance, GuidanceSummarizer, LLMGuidanceSummarizer, MockGuidanceSummarizer, direction_gains,
                         fixed_config)
 from .cost import CostMeter
 from .demo import DEMO_EXPECTED, demo_policies, demo_tree, render_demo, run_demo
-from .developer import (DEVELOPER_PROMPT, DevContext, LLMPolicyDeveloper, ParametricMutator, PolicyDeveloper,
-                        Revision, VersionRecord, choose_default_beta, mock_developer_llm)
+from .developer import (DEVELOPER_PROMPT, FRAMEWORK_NOTES, DevContext, LLMPolicyDeveloper, ParametricMutator,
+                        PolicyDeveloper, Revision, VersionRecord, choose_default_beta, developer_prompt,
+                        mock_developer_llm)
 from .evaluator import PolicyReport, ReplayEvaluator, diagnostics
 from .guard import (CheckResult, InProcessRunner, PrefixGuard, SolveOutcome, SubprocessRunner, get_runner,
                     static_check)
@@ -63,7 +64,8 @@ __all__ = [
     "parallel_refine", "adaptive", "rules",
     "EpisodeResult", "Eq1Objective", "ParetoSweepObjective", "ReplayEvaluator", "PolicyReport", "diagnostics",
     "PolicyDeveloper", "LLMPolicyDeveloper", "ParametricMutator", "DevContext", "VersionRecord", "Revision",
-    "choose_default_beta", "mock_developer_llm", "DEVELOPER_PROMPT",
+    "choose_default_beta", "mock_developer_llm", "DEVELOPER_PROMPT", "FRAMEWORK_NOTES", "developer_prompt",
+    "EXPLORATION_PROMPT",
     "Selector", "GuardedSelector", "SelectionResult",
     "EvalOutcome", "DiscoveryTask", "DomainTask", "DiscoveryAgent", "EditorAgent", "ParametricAgent",
     "AttemptContext", "AttemptRecord", "AgentAttempt", "DirectionProvider",

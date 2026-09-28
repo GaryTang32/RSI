@@ -1,6 +1,6 @@
 {
  "experiment": "live_smoke_dryrun",
- "created": "2026-09-24 23:12:04",
+ "created": "2026-09-25 17:04:15",
  "config": {
   "rounds": 2,
   "grid": [
@@ -9,13 +9,15 @@
   ],
   "W": 3,
   "M": 2,
-  "cache": "/home/user/RSI/.rsi_cache/dream-rsi"
+  "cache": "/home/user/RSI/.rsi_cache/dream-rsi",
+  "prompts": "verbatim Listing 1 / Listing 2 (claims-audit fix)",
+  "round_budget": "fallback (6)"
  },
  "summary": {
   "domain": "sumdiff",
   "llm": "sim",
-  "wall_s": 0.6,
-  "out_dir": "/tmp/dream_live_rd_tpa1e",
+  "wall_s": 0.8,
+  "out_dir": "/tmp/dream_live_fdh6su_z",
   "seed_score": 0.9104910395109694,
   "best_score": 1.0,
   "per_round": [
@@ -64,18 +66,23 @@
    "agent_calls": 12,
    "agent_tokens": 0,
    "agent_usd": 0.0,
-   "eval_s": 0.6371443271636963,
+   "eval_s": 0.5098874568939209,
    "online_rounds": 4,
-   "online_wall_s": 0.2723817825317383,
+   "online_wall_s": 0.21243643760681152,
    "replay_episodes": 8,
-   "replay_cpu_s": 0.015096278134277274,
-   "replay_wall_s": 0.16317081451416016,
+   "replay_cpu_s": 0.02648293275683572,
+   "replay_wall_s": 0.282454252243042,
    "developer_calls": 0,
    "developer_tokens": 0,
    "developer_usd": 0.0,
-   "replay_ms_per_episode": 1.8870347667846592
+   "developer_revisions": 1,
+   "replay_ms_per_episode": 3.310366594604465,
+   "llm_calls_total": 13,
+   "usd_total": 0.0,
+   "developer_usd_share": null
   },
-  "usd": 0
+  "usd": 0,
+  "developer_usd_share": null
  },
- "verdict": "live run completed: best 1.0000 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.000, 1s"
+ "verdict": "live run completed: best 1.0000 from seed 0.9105 in 12 agent calls; developer revision not selected (incumbent kept); $0.000 (policy developer 0% of it), 1s"
 }

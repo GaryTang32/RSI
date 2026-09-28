@@ -1,51 +1,34 @@
 {
  "status": "done",
- "summary": "[lea_01] Practice answer cache: Return remembered answers fo; [nul_04] Longer tool timeout: Longer tool timeout (rewording",
+ "summary": "prune: [str_10] Structured search tool stopped earning its p",
  "edits": [
   {
    "id": "C1",
-   "component": "prompt",
-   "hypothesis": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "component": "client_tool",
+   "hypothesis": "prune: [str_10] Structured search tool stopped earning its place",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
     "hw-e-022",
-    "hw-e-008",
-    "hw-e-051"
+    "hw-e-046",
+    "hw-e-078"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_01",
-   "prune": false,
-   "mechanism": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice."
-  },
-  {
-   "id": "C2",
-   "component": "config",
-   "hypothesis": "[nul_04] Longer tool timeout: Longer tool timeout (rewording of existing guidance).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
-   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
-   "trigger_condition": "tasks of the targeted families",
-   "predicted_affected": [
-    "hw-e-051",
-    "hw-e-019"
-   ],
-   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
-   "regression_risk": "extra tokens",
-   "mechanism_id": "nul_04",
-   "prune": false,
-   "mechanism": "[nul_04] Longer tool timeout: Longer tool timeout (rewording of existing guidance)."
+   "mechanism_id": "str_10",
+   "prune": true,
+   "mechanism": "prune: [str_10] Structured search tool stopped earning its place"
   }
  ],
- "mechanism": "[lea_01] Practice answer cache: Return remembered answers fo; [nul_04] Longer tool timeout: Longer tool timeout (rewording",
- "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
- "n_changes": 2,
+ "mechanism": "prune: [str_10] Structured search tool stopped earning its p",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 1,
  "log": [
   {
    "turn": 0,
    "action": "done",
-   "n_changes": 2,
+   "n_changes": 1,
    "blocked": [],
    "error": null
   }

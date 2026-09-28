@@ -6,11 +6,11 @@
 +# title: Planner sub-call
 +"""Planner sub-call; aimed at extract, arith, plan, format tasks."""
 +enable("har_17")
---- a/context/cos_02.py
-+++ b/context/cos_02.py
+--- a/prompts/har_03.md
++++ b/prompts/har_03.md
 @@ -0,0 +1,5 @@
-+# mechanism: cos_02
-+# component: context_mgmt
-+# title: Pin the task statement
-+"""Drop stale observations; runs extra model passes (self-consistency / long reasoning)."""
-+enable("cos_02")
++# mechanism: har_03
++# component: prompt
++# title: Short worked example of the procedure
++"""Short worked example of the procedure; aimed at extract, arith tasks."""
++enable("har_03")

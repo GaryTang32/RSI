@@ -1,16 +1,8 @@
---- a/context/gen_14.py
-+++ b/context/gen_14.py
+--- a/skills/str_08/SKILL.md
++++ b/skills/str_08/SKILL.md
 @@ -0,0 +1,5 @@
-+# mechanism: gen_14
-+# component: context_mgmt
-+# title: Pin the task statement
-+"""Pin the task statement; aimed at extract, format tasks."""
-+enable("gen_14")
---- a/control/har_02.py
-+++ b/control/har_02.py
-@@ -0,0 +1,5 @@
-+# mechanism: har_02
-+# component: control_flow
-+# title: Two-phase draft and finalize
-+"""Two-phase draft and finalize; aimed at arith, format tasks."""
-+enable("har_02")
++# mechanism: str_08
++# component: skill
++# title: Procedure card: verification
++"""Procedure card: verification; aimed at arith, plan, format tasks."""
++enable("str_08")

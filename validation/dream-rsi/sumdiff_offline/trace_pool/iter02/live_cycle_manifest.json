@@ -3,12 +3,12 @@
  "planned_grid": {
   "branch_count": 3,
   "refine_count": 4,
-  "reason": "live best still improving with balanced gains: hold the grid"
+  "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"
  },
  "effective_grid": {
   "branch_count": 3,
   "refine_count": 4,
-  "reason": "live best still improving with balanced gains: hold the grid"
+  "reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid"
  },
  "opened_width": 3,
  "max_depth": 4,
@@ -29,8 +29,9 @@
  "gain_late": 0.05858236628758795,
  "fail_frac": 0.0,
  "hard_fail_frac": 0.0,
- "policy": "b4361e9cf50d",
+ "policy": "bfcd4ca1f0bb",
  "agent_calls": 12,
- "plan_reason": "live best still improving with balanced gains: hold the grid",
- "plan_error": null
+ "plan_reason": "one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid",
+ "plan_error": null,
+ "round_budget": 15
 }

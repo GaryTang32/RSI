@@ -1,45 +1,43 @@
 {
  "status": "done",
- "summary": "[str_05] Structured search tool: Structured search tool; aim; [lea_10] Practice answer cache: Return remembered answers fo",
+ "summary": "[nul_09] Concise reasoning directive: Concise reasoning dire; [cos_03] Plan-then-act split: Stop-condition guard; runs ext",
  "edits": [
   {
    "id": "C1",
-   "component": "client_tool",
-   "hypothesis": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks.",
+   "component": "prompt",
+   "hypothesis": "[nul_09] Concise reasoning directive: Concise reasoning directive (rewording of existing guidance).",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
+    "hw-e-011",
     "hw-e-019",
-    "hw-e-008",
-    "hw-e-036"
+    "hw-e-073"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "str_05",
+   "mechanism_id": "nul_09",
    "prune": false,
-   "mechanism": "[str_05] Structured search tool: Structured search tool; aimed at extract, arith, format tasks."
+   "mechanism": "[nul_09] Concise reasoning directive: Concise reasoning directive (rewording of existing guidance)."
   },
   {
    "id": "C2",
    "component": "control_flow",
-   "hypothesis": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "hypothesis": "[cos_03] Plan-then-act split: Stop-condition guard; runs extra model passes (self-consistency / long reasoning).",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_10",
+   "mechanism_id": "cos_03",
    "prune": false,
-   "mechanism": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice."
+   "mechanism": "[cos_03] Plan-then-act split: Stop-condition guard; runs extra model passes (self-consistency / long reasoning)."
   }
  ],
- "mechanism": "[str_05] Structured search tool: Structured search tool; aim; [lea_10] Practice answer cache: Return remembered answers fo",
+ "mechanism": "[nul_09] Concise reasoning directive: Concise reasoning dire; [cos_03] Plan-then-act split: Stop-condition guard; runs ext",
  "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
  "n_changes": 2,
  "log": [

@@ -1,24 +1,24 @@
 [
  {
   "variant": "A",
-  "admissible": true,
-  "reason": "admissible: S'=0.4963 >= S*-delta=0.4494; dC=+0.532 <= beta0+beta1*dS=1.338",
-  "S": 0.49625,
-  "C": 3346.935,
-  "delta_S": 0.030937500000000007,
-  "delta_C": 0.5320164236082503,
-  "novelty": 0,
+  "admissible": false,
+  "reason": "below noise-adjusted floor: S'=0.5012 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+  "S": 0.50125,
+  "C": 4006.35,
+  "delta_S": -0.018125000000000058,
+  "delta_C": 0.14863257003437572,
+  "novelty": 1,
   "guards": []
  },
  {
   "variant": "B",
-  "admissible": true,
-  "reason": "admissible: S'=0.4947 >= S*-delta=0.4494; dC=+0.025 <= beta0+beta1*dS=1.275",
-  "S": 0.4946875,
-  "C": 2239.275,
-  "delta_S": 0.029374999999999984,
-  "delta_C": 0.02499931339430403,
-  "novelty": 1,
+  "admissible": false,
+  "reason": "below noise-adjusted floor: S'=0.5003 < S*-delta=0.5034 (S* 0.5194 - delta 0.0159)",
+  "S": 0.5003125,
+  "C": 5250.91,
+  "delta_S": -0.019062499999999982,
+  "delta_C": 0.5054516575734032,
+  "novelty": 0,
   "guards": []
  }
 ]

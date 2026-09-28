@@ -17,14 +17,24 @@ constraints [paper:App.B.2 L2:131-143]. Three layers:
    cannot open any file, e.g. a trace pool). The hidden world never enters that
    process: the parent answers JSON requests over pipes. Per-episode timeout.
    :class:`InProcessRunner` is the fast path for trusted built-in templates.
-3. :func:`static_check` - AST lint before a policy is ever run: ``NAME`` + class
+3. :func:`static_check` (:mod:`rsi.dream.lint`) - AST lint before a policy is ever run: ``NAME`` + class
    present, ``solve`` and ``plan_grid`` overridden, ``plan_grid`` never returns
    None, allow-listed imports only, no forbidden names (``best_so_far``,
-   ``budget_spent``, ``open``, ``exec``, introspection hooks ...).
+   ``budget_spent``, ``open``, ``exec``, introspection hooks ...), and no state that
+   could outlive an episode (``global``/``nonlocal``, module-level or class objects
+   mutated from inside a function, ``lru_cache``/``cache``).
+
+"Replay resets the policy's per-rollout state" [paper:§3 p.5]: every episode (one
+frozen world at one beta, or one live search) starts from a FRESH policy namespace.
+In-process the module is re-executed per episode; in the subprocess sandbox every
+episode runs in a fresh ``fork()`` of a process that has only imported the module,
+so nothing a policy writes during one episode - instance, class or module state,
+caches, the ``random`` state - can reach the next one (claims audit N1: a policy
+that memoised the recorded best per world in a module-level dict walked straight to
+it on its next visit and won the beta sweep).
 """
 from __future__ import annotations
 
-import ast
 import json
 import os
 import resource
@@ -41,79 +51,11 @@ from typing import Optional
 
 from ..core.sandbox import SAFE_ENV_KEYS
 from . import policy_api
+from .lint import (ALLOWED_IMPORTS, CACHE_DECORATORS, FORBIDDEN_ATTRS, FORBIDDEN_NAMES,  # noqa: F401 (re-exported)
+                   MUTATING_METHODS, RANDOM_STATE_CALLS, CheckResult, static_check)
 from .policy_api import BatchError, GridPlan, GridPlanningContext, GuardViolation, QuestionProxy, SimResult
 
 API_PATH = Path(policy_api.__file__)
-
-ALLOWED_IMPORTS = {"policy_api", "math", "statistics", "collections", "itertools", "functools", "heapq",
-                   "bisect", "dataclasses", "typing", "__future__", "random", "operator", "enum", "numbers"}
-FORBIDDEN_NAMES = {"best_so_far", "budget_spent", "open", "exec", "eval", "compile", "__import__", "globals",
-                   "locals", "vars", "breakpoint", "input", "getattr", "setattr", "delattr", "__self__",
-                   "__globals__", "__closure__", "__code__", "__builtins__", "__subclasses__", "__mro__",
-                   "f_back", "f_locals", "f_globals", "gi_frame"}
-#: attribute names a policy may never touch (bare local variables with these names are fine)
-FORBIDDEN_ATTRS = {"_t", "_st", "_obs", "tree", "_tree", "hidden", "trace_pool"}
-
-
-# =========================================================================== static check
-@dataclass
-class CheckResult:
-    ok: bool
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-
-    def __bool__(self) -> bool:
-        return self.ok
-
-
-def static_check(code: str) -> CheckResult:
-    """Lint a policy module before it is run (PolicyStaticCheck of the spec)."""
-    errors, warnings = [], []
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as e:
-        # quote the offending line: "invalid syntax (line 188)" alone made the live-run developer
-        # invent a cause in its repair round (the line was a stray ``` left by the reply parser)
-        bad = (e.text or "").strip()
-        return CheckResult(False, [f"syntax error: {e}" + (f" - offending line: {bad[:120]!r}" if bad else "")])
-    name = None
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "NAME" for t in node.targets):
-            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                name = node.value.value
-    if name is None:
-        errors.append('missing NAME = "OptimalPolicy"')
-    classes = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
-    cls = classes.get(name or "OptimalPolicy")
-    if cls is None:
-        errors.append(f"class {name or 'OptimalPolicy'} not defined at module level")
-    else:
-        methods = {n.name: n for n in cls.body if isinstance(n, ast.FunctionDef)}
-        for m in ("solve", "plan_grid"):
-            if m not in methods:
-                errors.append(f"{cls.name}.{m} is not overridden")
-        pg = methods.get("plan_grid")
-        if pg is not None:
-            for r in ast.walk(pg):
-                if isinstance(r, ast.Return) and (r.value is None or (isinstance(r.value, ast.Constant)
-                                                                      and r.value.value is None)):
-                    errors.append("plan_grid returns None on some path")
-                    break
-            if pg.body and not isinstance(pg.body[-1], (ast.Return, ast.Raise, ast.If)):
-                warnings.append("plan_grid may fall off the end (implicit None)")
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for a in node.names:
-                if a.name.split(".")[0] not in ALLOWED_IMPORTS:
-                    errors.append(f"import of {a.name!r} is not allowed")
-        elif isinstance(node, ast.ImportFrom):
-            if (node.module or "").split(".")[0] not in ALLOWED_IMPORTS:
-                errors.append(f"import from {node.module!r} is not allowed")
-        elif isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
-            errors.append(f"forbidden name {node.id!r}")
-        elif isinstance(node, ast.Attribute) and node.attr in (FORBIDDEN_NAMES | FORBIDDEN_ATTRS):
-            errors.append(f"forbidden attribute .{node.attr}")
-    return CheckResult(not errors, sorted(set(errors)), warnings)
 
 
 # ============================================================================ endpoint
@@ -183,11 +125,23 @@ class SolveOutcome:
         return bool(self.violations or self.batch_errors or self.error)
 
 
+_COMPILED: dict[str, types.CodeType] = {}
+
+
 def _load_class(code: str):
+    """Execute the policy module in a NEW namespace and return its class. Code objects are
+    immutable, so the compiled module is cached; every call still gets fresh module globals,
+    fresh class objects and fresh module-level containers."""
     sys.modules.setdefault("policy_api", policy_api)
+    compiled = _COMPILED.get(code)
+    if compiled is None:
+        compiled = compile(code, "method.py", "exec")
+        if len(_COMPILED) > 256:
+            _COMPILED.clear()
+        _COMPILED[code] = compiled
     mod = types.ModuleType("dream_policy_method")
     mod.__dict__["__file__"] = "method.py"
-    exec(compile(code, "method.py", "exec"), mod.__dict__)  # noqa: S102 - trusted template path
+    exec(compiled, mod.__dict__)  # noqa: S102 - trusted template path
     name = mod.__dict__.get("NAME", "OptimalPolicy")
     cls = mod.__dict__.get(name)
     if cls is None:
@@ -196,20 +150,41 @@ def _load_class(code: str):
 
 
 class InProcessSession:
-    """Runs a trusted policy in this process (still only through the PrefixGuard proxy)."""
+    """Runs a trusted policy in this process (still only through the PrefixGuard proxy).
+
+    :meth:`begin_episode` re-executes the module, so an episode never sees module-level,
+    class-level or instance state left by an earlier episode ("replay resets the policy's
+    per-rollout state"). In-process this cannot isolate state kept in *other* modules
+    (``policy_api``, the standard library); :func:`static_check` rejects the obvious routes and the
+    subprocess runner forks a fresh process per episode."""
 
     def __init__(self, code: str) -> None:
         self.code = code
         self._cls = None
         self.load_error: Optional[str] = None
+        self._used = False
+        self.episodes = 0
+        self._load()
+
+    def _load(self) -> None:
         try:
-            self._cls = _load_class(code)
+            self._cls = _load_class(self.code)
+            self.load_error = None
         except Exception as e:  # noqa: BLE001
-            self.load_error = f"{type(e).__name__}: {e}"
+            self._cls, self.load_error = None, f"{type(e).__name__}: {e}"
+        self._used = False
+
+    def begin_episode(self) -> Optional[str]:
+        """Start a new episode in a fresh module namespace (reloaded only if the current one was used)."""
+        if self._used:
+            self._load()
+        self.episodes += 1
+        return self.load_error
 
     def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
         if self._cls is None:
             return None, self.load_error
+        self._used = True
         try:
             plan = self._cls(dict(config)).plan_grid(GridPlanningContext.from_dict(context.to_dict()))
         except Exception as e:  # noqa: BLE001
@@ -225,6 +200,7 @@ class InProcessSession:
               unguarded: bool = False) -> SolveOutcome:
         if self._cls is None:
             return SolveOutcome(None, self.load_error)
+        self._used = True
         guard = PrefixGuard(question, strict=strict)
         proxy = question if unguarded else QuestionProxy(guard.transport)
         t0 = time.process_time()
@@ -292,24 +268,47 @@ def transport(op, **kw):
     send({"req": op, **kw})
     m = recv()
     return m.get("resp", {})
+def episode():
+    # one EPISODE runs in a fork() of this process: the policy module exactly as it was right after
+    # import, so nothing written during an earlier episode (module / class / instance state, caches,
+    # the random state) exists here - "replay resets the policy's per-rollout state"
+    send({"episode": os.getpid()})
+    while True:
+        cmd = recv(); c = cmd.get("cmd")
+        if c in ("end", "exit"):
+            os._exit(0)
+        try:
+            pol = cls(cmd.get("config") or {})
+            if c == "plan_grid":
+                plan = pol.plan_grid(policy_api.GridPlanningContext.from_dict(cmd["context"]))
+                send({"result": plan.to_dict() if plan is not None else None})
+            elif c == "solve":
+                res = pol.solve(policy_api.QuestionProxy(transport), cmd.get("budget"))
+                send({"result": res.to_dict() if hasattr(res, "to_dict") else None})
+            else:
+                send({"exception": "unknown command %r" % (c,)})
+        except policy_api.GuardViolation as e:
+            send({"violation": str(e)})
+        except policy_api.BatchError as e:
+            send({"batch_error": str(e)})
+        except BaseException:
+            send({"exception": traceback.format_exc(limit=6)})
 while True:
     cmd = recv(); c = cmd.get("cmd")
     if c == "exit":
         break
-    try:
-        pol = cls(cmd.get("config") or {})
-        if c == "plan_grid":
-            plan = pol.plan_grid(policy_api.GridPlanningContext.from_dict(cmd["context"]))
-            send({"result": plan.to_dict() if plan is not None else None})
-        elif c == "solve":
-            res = pol.solve(policy_api.QuestionProxy(transport), cmd.get("budget"))
-            send({"result": res.to_dict() if hasattr(res, "to_dict") else None})
-    except policy_api.GuardViolation as e:
-        send({"violation": str(e)})
-    except policy_api.BatchError as e:
-        send({"batch_error": str(e)})
-    except BaseException:
-        send({"exception": traceback.format_exc(limit=6)})
+    if c != "begin":
+        send({"exception": "command %r outside an episode" % (c,)})
+        continue
+    sys.stderr.flush()
+    pid = os.fork()
+    if pid == 0:
+        try:
+            episode()
+        finally:
+            os._exit(0)
+    _, status = os.waitpid(pid, 0)
+    send({"closed": True, "status": status})
 '''
 
 
@@ -323,7 +322,8 @@ def _preexec(cpu_s: int, mem_mb: int):
 
 
 class SubprocessSession:
-    """One sandboxed child process per policy version, reused across episodes."""
+    """One sandboxed child process per policy version; every episode runs in a fresh ``fork()``
+    of it (:meth:`begin_episode`), so no state survives from one episode to the next."""
 
     def __init__(self, code: str, *, timeout_s: float = 30.0, cpu_s: int = 900, mem_mb: int = 1024) -> None:
         self.code = code
@@ -336,17 +336,25 @@ class SubprocessSession:
         self.proc: Optional[subprocess.Popen] = None
         self.load_error: Optional[str] = None
         self._buf = b""
+        self._episode = False
+        self.episodes = 0
         self._start()
 
     # ---- process management
     def _start(self) -> None:
-        env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ and k != "PYTHONPATH"}
-        env.update({"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "PYTHONDONTWRITEBYTECODE": "1"})
+        # a scrubbed environment (no inherited PYTHON* variable) with a FIXED string-hash seed: an LLM-written
+        # policy that iterates a set of cell ids must choose the same batch in every process, or its replay
+        # value changes between evaluations (seen in the live validation run sumdiff_live_c). "-s -P" = the
+        # isolation of "-I" without "-E", which would also ignore PYTHONHASHSEED.
+        env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ and not k.startswith("PYTHON")}
+        env.update({"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "PYTHONDONTWRITEBYTECODE": "1",
+                    "PYTHONHASHSEED": "0", "PYTHONNOUSERSITE": "1"})
         self._err = open(self.dir / "stderr.txt", "wb")
-        self.proc = subprocess.Popen([sys.executable, "-I", "_child.py"], cwd=self.dir, env=env,
+        self.proc = subprocess.Popen([sys.executable, "-s", "-P", "_child.py"], cwd=self.dir, env=env,
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, bufsize=0,
                                      preexec_fn=_preexec(self.cpu_s, self.mem_mb))
         self._buf = b""
+        self._episode = False
         msg = self._recv(self.timeout_s)
         if msg is None or "ready" not in msg:
             self.load_error = (msg or {}).get("fatal") or self._stderr_tail() or "policy process failed to start"
@@ -369,6 +377,7 @@ class SubprocessSession:
             except subprocess.TimeoutExpired:
                 pass
             self.proc = None
+        self._episode = False
 
     def _send(self, obj: dict) -> None:
         assert self.proc is not None and self.proc.stdin is not None
@@ -401,15 +410,59 @@ class SubprocessSession:
             self._start()
         return self.proc is not None
 
+    def _end_episode(self) -> None:
+        if not self._episode or self.proc is None:
+            self._episode = False
+            return
+        self._episode = False
+        try:
+            self._send({"cmd": "end"})
+            msg = self._recv(self.timeout_s)
+        except OSError:
+            msg = None
+        if msg is None or "closed" not in msg:
+            self._kill()
+
+    def begin_episode(self) -> Optional[str]:
+        """End the current episode (its forked process exits) and fork a fresh one."""
+        if not self._ensure():
+            return self.load_error
+        self._end_episode()
+        if not self._ensure():
+            return self.load_error
+        try:
+            self._send({"cmd": "begin"})
+            msg = self._recv(self.timeout_s)
+        except OSError:
+            msg = None
+        if msg is None or "episode" not in msg:
+            self._kill()
+            return "could not start a policy episode: " + str((msg or {}).get("exception") or self._stderr_tail(300))
+        self._episode = True
+        self.episodes += 1
+        return None
+
+    def _ready(self) -> Optional[str]:
+        """An open episode to talk to (one is started if none is open)."""
+        if not self._ensure():
+            return self.load_error or "policy process failed to start"
+        if not self._episode:
+            return self.begin_episode()
+        return None
+
     # ---- API (same as InProcessSession)
     def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
-        if not self._ensure():
-            return None, self.load_error
+        err = self._ready()
+        if err:
+            return None, err
         self._send({"cmd": "plan_grid", "config": config, "context": context.to_dict()})
         msg = self._recv(self.timeout_s)
         if msg is None:
             self._kill()
             return None, "plan_grid timed out"
+        if "closed" in msg:
+            self._episode = False
+            return None, f"policy episode process died (status {msg.get('status')}): {self._stderr_tail(300)}"
         if msg.get("result") is None:
             return None, msg.get("exception") or msg.get("violation") or "plan_grid returned None"
         try:
@@ -421,8 +474,9 @@ class SubprocessSession:
               unguarded: bool = False) -> SolveOutcome:
         if unguarded:
             raise ValueError("the subprocess sandbox cannot run a policy unguarded")
-        if not self._ensure():
-            return SolveOutcome(None, self.load_error)
+        err = self._ready()
+        if err:
+            return SolveOutcome(None, err)
         guard = PrefixGuard(question, strict=strict)
         t0 = time.time()
         policy_s = 0.0          # time spent waiting on the POLICY (excludes parent-side work such as the
@@ -442,6 +496,10 @@ class SubprocessSession:
                 self._send({"resp": json.loads(json.dumps(guard.handle(op, **msg), default=float))})
                 continue
             wall = policy_s
+            if "closed" in msg:      # the episode's process died (e.g. its CPU limit): a policy crash
+                self._episode = False
+                return SolveOutcome(None, f"policy episode process died (status {msg.get('status')}): "
+                                          f"{self._stderr_tail(300)}", guard.violations, guard.batch_errors, wall)
             if "result" in msg:
                 res = SimResult.from_dict(msg["result"]) if isinstance(msg["result"], dict) else SimResult()
                 return SolveOutcome(res, None, guard.violations, guard.batch_errors, wall)
@@ -454,6 +512,11 @@ class SubprocessSession:
                                 guard.violations, guard.batch_errors, wall)
 
     def close(self) -> None:
+        if self.proc is not None:
+            try:
+                self._end_episode()
+            except Exception:  # noqa: BLE001
+                pass
         if self.proc is not None:
             try:
                 self._send({"cmd": "exit"})

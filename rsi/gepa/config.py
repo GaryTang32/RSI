@@ -11,9 +11,11 @@ class Config:
 
     Defaults follow ``gepa.optimize`` / the paper: minibatch b = 3, Pareto candidate
     selection over per-instance frontier keys, round-robin module selection, strict
-    minibatch improvement, merge off (``use_merge=True`` = "GEPA+Merge", at most 5
-    merges, 5-id subsample, overlap floor 5), perfect-score skip on (perfect = the
-    domain's maximum score, i.e. 1.0 for [0, 1] metrics), seed 0.
+    minibatch improvement, merge off (``use_merge=True`` = "GEPA+Merge" with
+    ``max_merge_invocations=5`` as the reference's soft cap; ``merge_cap_mode="hard"`` gives
+    the paper's "invoked a maximum of 5 times"; 5-id subsample, overlap floor 5),
+    perfect-score skip on (perfect = the domain's maximum score, i.e. 1.0 for [0, 1]
+    metrics), seed 0.
     """
 
     # budget / splits
@@ -43,7 +45,10 @@ class Config:
     max_merge_invocations: int = 5
     merge_val_overlap_floor: int = 5
     merge_subsample_size: int = 5
-    merge_cap_mode: str = "reference_soft"       # reference_soft | hard
+    merge_cap_mode: str = "reference_soft"       # reference_soft (gepa code: the cap gates scheduling only; accepted
+    #                                              and rejected merges can exceed it) | hard (paper App. G.4: at most
+    #                                              max_merge_invocations merges built and scored, accepted or not) |
+    #                                              accepted (pre-audit "hard": caps accepted merges only)
     merge_zero_weight: str = "uniform"           # uniform (fix) | raise (reference crash)
 
     # reflection
@@ -97,7 +102,7 @@ class Config:
             raise ValueError("budget_mode must be 'reference_soft' or 'hard'")
         if self.module_selector not in ("round_robin", "all"):
             raise ValueError("module_selector must be 'round_robin' or 'all'")
-        if self.merge_cap_mode not in ("reference_soft", "hard"):
-            raise ValueError("merge_cap_mode must be 'reference_soft' or 'hard'")
+        if self.merge_cap_mode not in ("reference_soft", "hard", "accepted"):
+            raise ValueError("merge_cap_mode must be 'reference_soft', 'hard' or 'accepted'")
         if self.feedback not in ("full", "score_only", "none"):
             raise ValueError("feedback must be 'full', 'score_only' or 'none'")

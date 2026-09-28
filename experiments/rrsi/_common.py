@@ -55,8 +55,9 @@ def parse_args(desc: str, default_seeds: int = 50, extra: Optional[Callable] = N
 
 
 def search_llm(spec: str, world=None, proposer: Optional[dict] = None, critic: Optional[dict] = None,
-               agentqa: bool = False):
-    """Proposer + critic backend. ``sim`` -> domain mock; ``claude:<model>`` -> cached headless CLI."""
+               agentqa: bool = False, cache_dir: Optional[Path] = None):
+    """Proposer + critic backend. ``sim`` -> domain mock; ``claude:<model>`` -> cached headless CLI
+    (cache ``cache_dir``, default ``.rsi_cache/rrsi``)."""
     if spec == "sim":
         if agentqa:
             from rsi.rrsi.mocks import AgentQAMockLLM, AgentQAMockProfile
@@ -65,8 +66,9 @@ def search_llm(spec: str, world=None, proposer: Optional[dict] = None, critic: O
     kind, _, model = spec.partition(":")
     if kind != "claude":
         raise SystemExit(f"unsupported --llm {spec!r}")
-    CACHE.mkdir(parents=True, exist_ok=True)
-    return CachedLLM(ClaudeCLI(model or "haiku", timeout_s=240), CACHE)
+    cache = Path(cache_dir) if cache_dir else CACHE
+    cache.mkdir(parents=True, exist_ok=True)
+    return CachedLLM(ClaudeCLI(model or "haiku", timeout_s=240), cache)
 
 
 def switches(arm) -> RegularizerSwitches:
@@ -219,7 +221,10 @@ def run_hw(job: dict) -> dict:
     m = analyze_hw(dom, out, res, weak)
     m.update({"seed": seed, "arm": arm if isinstance(arm, str) else arm.name, "wall_s": time.time() - t0,
               "label": job.get("label", arm if isinstance(arm, str) else arm.name),
-              "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1})
+              "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1,
+              # F_t source: "heuristic" (deterministic clusterer, the offline default without an analyst LLM)
+              # or "llm" (the three-lens digesters + aggregator; offline served by the HarnessWorld mock)
+              "analyst_mode": res.meta.get("analyst_mode")})
     if not job.get("keep"):
         shutil.rmtree(out, ignore_errors=True)
     else:
@@ -248,6 +253,7 @@ def run_aq(job: dict) -> dict:
     rep = paired_transfer(dom, task, {"H0": res.baseline, "final": res.best}, k=k, workers=4)
     m = {"seed": seed, "arm": arm, "label": job.get("label", arm), "wall_s": time.time() - t0,
          "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1,
+         "analyst_mode": res.meta.get("analyst_mode"),
          "measured_gain": res.trajectory[-1]["S"] - res.trajectory[0]["S"], "delta": res.meta.get("delta"),
          "files": sorted(res.best.files), "leaky_final": "memory/answers.json" in res.best,
          "usage_calls": {kk: v.get("calls") for kk, v in res.usage.items()}}

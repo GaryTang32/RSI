@@ -49,8 +49,10 @@ def zoo():
 def online_value(job):
     name, code, seed, coupling = job
     dom = SyntheticDomain(SyntheticConfig(seed=seed, context_coupling=coupling))
+    # the TRUE online value of the policy's OWN plan (a replay-validity study, not an arm comparison): no
+    # per-round call cap, so plans beyond the recording grid really spend their extra probes online
     cfg = Config(rounds=1, W=W, branch_count=GRID[0], refine_count=GRID[1], dream=False, sandbox=runner_for(name),
-                 seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1)
+                 seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1, round_budget=None)
     loop = DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, initial_policy=code)
     res = loop.run()
     r = res.trajectory[0]
@@ -65,7 +67,8 @@ def record(seed, coupling):
 
 
 def evaluators(runner):
-    ev = ReplayEvaluator(Eq1Objective(normalize=False, **OBJ), W=W, fallback=GRID, runner=runner, hard_max=(12, 12))
+    ev = ReplayEvaluator(Eq1Objective(normalize=False, support="clip", **OBJ), W=W, fallback=GRID, runner=runner,
+                         hard_max=(12, 12))
     ev_nr = ReplayEvaluator(Eq1Objective(normalize=False, support="no_reward", **OBJ), W=W, fallback=GRID,
                             runner=runner, hard_max=(12, 12))
     return ev, ev_nr

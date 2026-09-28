@@ -8,8 +8,13 @@ the gain to vanish or turn negative when merges fire early or lineages overlap, 
 accepted merges to exceed the cap under reference_soft.
 
 RuleWorld default world (2 modules whose lessons are independent), arms: GEPA,
-+Merge (reference soft cap 5), +Merge hard cap 5, +Merge soft cap 1, +Merge soft cap 20,
-at B in {1500, 4000}. For every accepted merge: true test of the child vs both parents,
++Merge (reference soft cap 5), +Merge hard cap 5 (the paper's "invoked a maximum of 5
+times": at most 5 merged children built and scored, accepted or rejected), +Merge
+accepted-cap 5 (this repo's pre-audit "hard" mode: caps accepted merges only), +Merge soft
+cap 1, +Merge soft cap 20, at B in {1500, 4000}. Per run: merge *checks* (iterations where
+a merge was due and the proposer looked for a triplet, ``invoked_merge`` in the run log),
+merge *invocations* (triplet found, child built and scored = accepted + rejected) and
+accepted merges. For every accepted merge: true test of the child vs both parents,
 whether the two parents contributed different modules (complementary) or the same one
 (overlapping), and when it fired (rollouts).
 
@@ -31,6 +36,7 @@ from rsi.gepa import Config, run  # noqa: E402
 
 ARMS = {"gepa": {}, "merge_soft5": {"use_merge": True},
         "merge_hard5": {"use_merge": True, "merge_cap_mode": "hard"},
+        "merge_accepted5": {"use_merge": True, "merge_cap_mode": "accepted"},
         "merge_soft1": {"use_merge": True, "max_merge_invocations": 1},
         "merge_soft20": {"use_merge": True, "max_merge_invocations": 20}}
 ARGS = None
@@ -64,12 +70,21 @@ def job(spec):
                        "beats_both": truth(k) > max(truth(i), truth(j)), "complementary": complementary,
                        "rollouts": st.discovery_evals[k], "frac_budget": st.discovery_evals[k] / B})
     ev = [e for e in st.trace if e.get("invoked_merge")]
+    n_rej = sum(1 for e in ev if e.get("event") == "merge_rejected")
+    assert res.meta["n_merge_invocations"] == len(merges) + n_rej      # every invocation is accepted or rejected
     return {"arm": arm, "seed": seed, "B": B, "final_test": d.expected(res.best, "test"),
-            "n_merges": len(merges), "n_merge_attempts": len(ev),
-            "n_merge_rejected": sum(1 for e in ev if e.get("event") == "merge_rejected"),
+            "n_merges": len(merges), "n_merge_checks": len(ev), "n_merge_invocations": len(merges) + n_rej,
+            "n_merge_rejected": n_rej,
             "merge_rollouts": st.counter.by_phase["merge_subsample"] + st.counter.by_phase["val_merge"],
             "best_is_merge": st.kinds[st.best_idx()] == "merge", "merges": merges,
             "cap": cfg.max_merge_invocations if cfg.use_merge else 0}
+
+
+def _pd(arm_summary: dict) -> str:
+    v = arm_summary.get("vs_gepa") or {}
+    if not v:
+        return "paired vs GEPA: -"
+    return f"paired vs GEPA {v['mean_diff']:+.3f} [{v['lo']:+.3f}, {v['hi']:+.3f}]"
 
 
 def main():
@@ -97,7 +112,12 @@ def main():
                 if arm != "gepa" else None,
                 "merges_accepted": summarize([r["n_merges"] for r in rs]),
                 "runs_exceeding_cap": float(np.mean([r["n_merges"] > r["cap"] for r in rs])) if arm != "gepa" else 0,
-                "merge_attempts": summarize([r["n_merge_attempts"] for r in rs]),
+                "runs_invocations_exceeding_cap": float(np.mean([r["n_merge_invocations"] > r["cap"] for r in rs]))
+                if arm != "gepa" else 0,
+                "max_invocations_per_run": max(r["n_merge_invocations"] for r in rs),
+                "merge_checks": summarize([r["n_merge_checks"] for r in rs]),
+                "merge_invocations": summarize([r["n_merge_invocations"] for r in rs]),
+                "merges_rejected": summarize([r["n_merge_rejected"] for r in rs]),
                 "merge_rollout_share": summarize([r["merge_rollouts"] / B for r in rs]),
                 "best_is_merge": float(np.mean([r["best_is_merge"] for r in rs])),
                 "n_merges_total": len(ms),
@@ -113,19 +133,33 @@ def main():
         out["summary"][f"B={B}"] = summ
         if "merge_soft5" in summ:
             s5 = summ["merge_soft5"]
-            verdicts.append(
-                f"[B={B}] GEPA {fmt(summ['gepa']['final_test'])} vs GEPA+Merge(soft 5) {fmt(s5['final_test'])} "
-                f"(paired {s5['vs_gepa']['mean_diff']:+.3f} [{s5['vs_gepa']['lo']:+.3f}, {s5['vs_gepa']['hi']:+.3f}]); "
-                f"hard cap {fmt(summ['merge_hard5']['final_test']) if 'merge_hard5' in summ else '-'}. "
-                f"Accepted merges {s5['merges_accepted']['mean']:.1f}/run with cap 5 "
-                f"({s5['runs_exceeding_cap']:.0%} of runs exceed the cap)"
-                + (f"; cap 1 -> {summ['merge_soft1']['merges_accepted']['mean']:.1f}/run, "
-                   f"{summ['merge_soft1']['runs_exceeding_cap']:.0%} exceed" if "merge_soft1" in summ else "")
-                + f". Complementary merges beat both parents {s5['complementary']['frac_beats_both'] or 0:.0%} "
-                f"(mean gain {s5['complementary']['gain']['mean']:+.3f}, n={s5['complementary']['n']}) vs overlapping "
-                f"{s5['overlapping']['frac_beats_both'] or 0:.0%} (gain {s5['overlapping']['gain']['mean']:+.3f}, "
-                f"n={s5['overlapping']['n']}); early merges gain {s5['early_merges(<33% budget)']['mean']:+.3f} vs late "
-                f"{s5['late_merges']['mean']:+.3f}.")
+            parts = [f"[B={B}] GEPA {fmt(summ['gepa']['final_test'])} vs GEPA+Merge(soft 5, reference) "
+                     f"{fmt(s5['final_test'])} ({_pd(s5)})"]
+            if "merge_hard5" in summ:
+                h = summ["merge_hard5"]
+                parts.append(f"hard invocation cap 5 (paper) {fmt(h['final_test'])} ({_pd(h)}; "
+                             f"{h['merge_invocations']['mean']:.1f} invocations/run, max {h['max_invocations_per_run']}, "
+                             f"{h['merges_accepted']['mean']:.1f} accepted, {h['merge_rollout_share']['mean']:.0%} of "
+                             f"rollouts on merge)")
+            if "merge_accepted5" in summ:
+                h = summ["merge_accepted5"]
+                parts.append(f"accepted-cap 5 (pre-audit 'hard') {fmt(h['final_test'])} ({_pd(h)}; "
+                             f"{h['merge_invocations']['mean']:.1f} invocations/run, max {h['max_invocations_per_run']}, "
+                             f"{h['merge_rollout_share']['mean']:.0%} of rollouts on merge)")
+            txt = "; ".join(parts) + (
+                f". Soft cap 5: accepted merges {s5['merges_accepted']['mean']:.1f}/run "
+                f"({s5['runs_exceeding_cap']:.0%} of runs exceed the cap), invocations "
+                f"{s5['merge_invocations']['mean']:.1f}/run ({s5['runs_invocations_exceeding_cap']:.0%} of runs exceed 5), "
+                f"{s5['merge_rollout_share']['mean']:.0%} of rollouts on merge")
+            if "merge_soft1" in summ:
+                txt += (f"; soft cap 1 -> {summ['merge_soft1']['merges_accepted']['mean']:.1f} accepted/run, "
+                        f"{summ['merge_soft1']['runs_exceeding_cap']:.0%} exceed")
+            txt += (f". Complementary merges (soft 5) beat both parents {s5['complementary']['frac_beats_both'] or 0:.0%} "
+                    f"(mean gain {s5['complementary']['gain']['mean']:+.3f}, n={s5['complementary']['n']}) vs overlapping "
+                    f"{s5['overlapping']['frac_beats_both'] or 0:.0%} (gain {s5['overlapping']['gain']['mean']:+.3f}, "
+                    f"n={s5['overlapping']['n']}); early merges gain {s5['early_merges(<33% budget)']['mean']:+.3f} vs "
+                    f"late {s5['late_merges']['mean']:+.3f}.")
+            verdicts.append(txt)
     out["verdict"] = " ".join(verdicts)
     save("e4_merge", out, a.out)
     B = budgets[-1]

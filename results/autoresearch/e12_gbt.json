@@ -1,6 +1,6 @@
 {
  "experiment": "e12_gbt",
- "written_at": "2026-09-25 05:25:41",
+ "written_at": "2026-09-28 11:59:46",
  "config": {
   "task": "tabular",
   "n_experiments": 25,
@@ -14,49 +14,48 @@
  },
  "fe+hpo": {
   "cv_gain": {
-   "mean": 0.026251957684150302,
-   "lo": 0.023740543085808863,
-   "hi": 0.028215569400768303,
+   "mean": 0.02027662739276696,
+   "lo": 0.01028957852661827,
+   "hi": 0.026799760565873743,
    "n": 3
   },
   "iid_gain": {
-   "mean": 0.02765282794010863,
-   "lo": 0.024288789740801953,
-   "hi": 0.030522616451203022,
+   "mean": 0.02104852526868828,
+   "lo": 0.010709708436941967,
+   "hi": 0.028147077628320916,
    "n": 3
   },
   "shift_gain": {
-   "mean": -0.04280914985673745,
+   "mean": -0.02537581393802113,
    "lo": -0.044909221397264165,
-   "hi": -0.04155845212618536,
+   "hi": 0.010340231709386138,
    "n": 3
   },
   "final_iid": {
-   "mean": 0.753539091902342,
-   "lo": 0.7501750537030354,
-   "hi": 0.7564088804134365,
+   "mean": 0.7469347892309216,
+   "lo": 0.7365959723991754,
+   "hi": 0.7540333415905544,
    "n": 3
   },
   "final_shift": {
-   "mean": 0.6177152402563113,
+   "mean": 0.6351485761750276,
    "lo": 0.6156151687157846,
-   "hi": 0.6189659379868634,
+   "hi": 0.6708646218224349,
    "n": 3
   },
   "keep_rate": {
-   "mean": 0.43609810479375694,
+   "mean": 0.4104570791527313,
    "lo": 0.32,
    "hi": 0.5652173913043478,
    "n": 3
   },
   "cv_iid_step_agreement": {
-   "mean": 0.707936507936508,
-   "lo": 0.6,
+   "mean": 0.7579365079365079,
+   "lo": 0.6666666666666666,
    "hi": 0.8571428571428571,
    "n": 3
   },
   "keeps_up_cv_iid_down_shift": [
-   "add raw column x7",
    "add raw column x7",
    "add raw column x7"
   ],
@@ -127,7 +126,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/fe_hpo_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -236,7 +235,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/fe_hpo_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -270,68 +269,54 @@
       "shift": 0.6679114690371675
      },
      {
-      "exp": 7,
-      "description": "add sin/cos hour-of-day features",
-      "cv": 0.739618073217257,
-      "iid": 0.7304229219564395,
-      "shift": 0.6692227501579022
-     },
-     {
       "exp": 8,
-      "description": "MAX_BINS 63 -> 255",
-      "cv": 0.7400481366260834,
-      "iid": 0.7303804207637581,
-      "shift": 0.6698287717886021
+      "description": "L2_REGULARIZATION 0.0 -> 0.5",
+      "cv": 0.7402069787491284,
+      "iid": 0.7306914662419668,
+      "shift": 0.6665451766222343
      },
      {
-      "exp": 10,
+      "exp": 9,
+      "description": "L2_REGULARIZATION 0.5 -> 1.5",
+      "cv": 0.7402325208872552,
+      "iid": 0.7304295845368695,
+      "shift": 0.666974805510826
+     },
+     {
+      "exp": 14,
       "description": "MAX_ITER 30 -> 60",
-      "cv": 0.7411060745012336,
-      "iid": 0.7339444853178909,
-      "shift": 0.6672154941288839
+      "cv": 0.7428622057853256,
+      "iid": 0.7349455014554489,
+      "shift": 0.6664343416645033
      },
      {
-      "exp": 15,
+      "exp": 17,
       "description": "MAX_LEAF_NODES 31 -> 16",
-      "cv": 0.7430804380632814,
-      "iid": 0.7362805830578484,
-      "shift": 0.6706060332985122
+      "cv": 0.7439389724004395,
+      "iid": 0.7362653929715627,
+      "shift": 0.6678762728200629
      },
      {
       "exp": 18,
-      "description": "add raw column x7",
-      "cv": 0.7619477722603012,
-      "iid": 0.756035537071524,
-      "shift": 0.6187540956357649
+      "description": "add sin/cos hour-of-day features",
+      "cv": 0.7448363195465115,
+      "iid": 0.7365400266267166,
+      "shift": 0.6705430692031709
      },
      {
-      "exp": 19,
-      "description": "add load x heavy-rain interaction",
-      "cv": 0.7620367013671289,
-      "iid": 0.7558526241109911,
-      "shift": 0.6177611454374616
-     },
-     {
-      "exp": 22,
-      "description": "L2_REGULARIZATION 0.0 -> 0.5",
-      "cv": 0.7621443967637049,
-      "iid": 0.7565248939013175,
-      "shift": 0.6186621918299449
-     },
-     {
-      "exp": 23,
-      "description": "MAX_BINS 255 -> 63",
-      "cv": 0.7628225436534812,
-      "iid": 0.7564088804134365,
-      "shift": 0.6185646140662859
+      "exp": 25,
+      "description": "MAX_DEPTH 6 -> 8",
+      "cv": 0.7448965527793312,
+      "iid": 0.7365959723991754,
+      "shift": 0.6708646218224349
      }
     ],
-    "keep_rate": 0.4230769230769231,
+    "keep_rate": 0.34615384615384615,
     "n_crash": 0,
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/fe_hpo_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/fe_hpo_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -459,7 +444,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/hpo-only_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -519,7 +504,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/hpo-only_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -586,7 +571,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/hpo-only_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/hpo-only_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -672,7 +657,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/random-hpo_0/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_0/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -725,7 +710,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/random-hpo_1/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_1/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -778,7 +763,7 @@
     "audit_errors": [],
     "over_budget": 0,
     "rejected_or_violations": 0,
-    "results_tsv": "/tmp/rsi_autoresearch_runs/e12/random-hpo_2/results.tsv",
+    "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/fix_ar/runs2/e12/random-hpo_2/results.tsv",
     "usage": {
      "calls": 0,
      "input_tokens": 0,
@@ -791,13 +776,13 @@
  "verdict": {
   "cv_and_iid_improve_together": true,
   "shift_improves_less": true,
-  "fe_beyond_hpo_iid": 0.024158261546956588,
+  "fe_beyond_hpo_iid": 0.017553958875536235,
   "agent_hpo_vs_random_hpo_iid": 8.78843619015468e-05,
   "gains": {
    "fe+hpo": {
-    "cv_gain": 0.026251957684150302,
-    "iid_gain": 0.02765282794010863,
-    "shift_gain": -0.04280914985673745
+    "cv_gain": 0.02027662739276696,
+    "iid_gain": 0.02104852526868828,
+    "shift_gain": -0.02537581393802113
    },
    "hpo-only": {
     "cv_gain": 0.005151060305779165,
@@ -811,7 +796,6 @@
    }
   },
   "shift_trap_keeps": [
-   "add raw column x7",
    "add raw column x7",
    "add raw column x7"
   ],

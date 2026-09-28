@@ -325,7 +325,7 @@ def main():
     n = (4 if a.quick else 10) if live else (12 if a.quick else 30)
     seeds = list(range(min(a.seeds, 1) if (live and a.quick) else 2 if a.quick else a.seeds))
     out = {"config": {"vocabs": VOCABS, "orders": ORDERS, "bpe_sample_bytes": BPE_SAMPLE_BYTES,
-                      "loop_experiments": n, "seeds": seeds, "llm": a.llm, "keep_rule": "strict"}}
+                      "loop_experiments": n, "seeds": seeds, "llm": a.llm, "keep_rule": Config().keep_rule}}
     if not live:
         out["battery"] = battery()
     out["loop"] = loop_part(seeds, n, a.llm, a.workers)

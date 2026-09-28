@@ -1,26 +1,58 @@
 {
  "status": "done",
- "summary": "[aq:answer_format] State the final-answer format",
+ "summary": "[aq:step_by_step] Ask for step-by-step reasoning; [aq:null_reword] Reword the system prompt; [aq:verify] Ask to double-check before answering",
  "edits": [
   {
    "id": "C1",
    "component": "prompt",
-   "hypothesis": "[aq:answer_format] State the final-answer format",
+   "hypothesis": "[aq:step_by_step] Ask for step-by-step reasoning",
    "targets_mode": "wrong final answers",
    "why_not_lower_lever": "n/a",
    "trigger_condition": "every question",
    "predicted_affected": [
     "evolve-numeric-005",
-    "evolve-numeric-012",
-    "evolve-numeric-017"
+    "evolve-numeric-016",
+    "evolve-numeric-000"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
-   "mechanism": "[aq:answer_format] State the final-answer format"
+   "mechanism": "[aq:step_by_step] Ask for step-by-step reasoning"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:null_reword] Reword the system prompt",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:null_reword] Reword the system prompt"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering"
   }
  ],
- "mechanism": "[aq:answer_format] State the final-answer format",
- "targets_mode": "wrong final answers",
+ "mechanism": "[aq:step_by_step] Ask for step-by-step reasoning; [aq:null_reword] Reword the system prompt; [aq:verify] Ask to double-check before answering",
+ "targets_mode": "wrong final answers, wrong final answers, wrong final answers",
  "n_changes": 1,
  "log": [
   {

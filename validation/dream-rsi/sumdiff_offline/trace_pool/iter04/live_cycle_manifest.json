@@ -28,8 +28,9 @@
  "gain_late": 0.4403237407919409,
  "fail_frac": 0.0,
  "hard_fail_frac": 0.0,
- "policy": "b4361e9cf50d",
+ "policy": "bfcd4ca1f0bb",
  "agent_calls": 9,
  "plan_reason": "roots improved early while depth stalled: widen, trim depth",
- "plan_error": null
+ "plan_error": null,
+ "round_budget": 15
 }

@@ -1,6 +1,6 @@
 {
  "experiment": "e6_pacing",
- "created": "2026-09-25 06:02:41",
+ "created": "2026-09-25 16:54:41",
  "config": {
   "settings": {
    "synthetic": {
@@ -8,6 +8,7 @@
      6,
      4
     ],
+    "W": 6,
     "rounds": 12,
     "M": 6
    },
@@ -16,6 +17,7 @@
      5,
      3
     ],
+    "W": 5,
     "rounds": 10,
     "M": 4
    }
@@ -29,24 +31,24 @@
  },
  "results": {
   "synthetic": {
-   "spearman_prev_improvement_vs_calls": 0.07942944643201408,
+   "spearman_prev_improvement_vs_calls": 0.09233208236088428,
    "n_pairs": 200,
    "calls_after_plateau": {
-    "mean": 10.142857142857142,
-    "lo": 7.571428571428571,
-    "hi": 13.146428571428519,
+    "mean": 10.428571428571429,
+    "lo": 8.0,
+    "hi": 13.142857142857142,
     "n": 7
    },
    "calls_after_improving_round": {
-    "mean": 13.974093264248705,
-    "lo": 13.176165803108809,
-    "hi": 14.83419689119171,
+    "mean": 14.082901554404145,
+    "lo": 13.207253886010363,
+    "hi": 15.02603626943005,
     "n": 193
    },
    "per_seed_plateau_minus_improving": {
-    "mean": -0.6226851851851848,
-    "lo": -1.2453703703703702,
-    "hi": 0.055555555555556246,
+    "mean": -0.011574074074074403,
+    "lo": -1.245370370370371,
+    "hi": 1.7986111111111107,
     "n": 6
    },
    "dream_effort_by_round": [
@@ -57,96 +59,96 @@
      "n": 20
     },
     {
-     "mean": 17.1,
-     "lo": 15.0,
-     "hi": 19.35,
+     "mean": 16.65,
+     "lo": 14.75,
+     "hi": 18.85,
      "n": 20
     },
     {
-     "mean": 14.6,
-     "lo": 12.7,
-     "hi": 16.5,
+     "mean": 14.9,
+     "lo": 12.65,
+     "hi": 17.3,
      "n": 20
     },
     {
-     "mean": 14.05,
-     "lo": 11.7,
-     "hi": 16.55,
-     "n": 20
-    },
-    {
-     "mean": 13.85,
-     "lo": 11.95,
-     "hi": 15.9,
-     "n": 20
-    },
-    {
-     "mean": 13.85,
-     "lo": 12.1,
-     "hi": 15.9,
-     "n": 20
-    },
-    {
-     "mean": 13.55,
-     "lo": 11.05,
-     "hi": 16.5,
-     "n": 20
-    },
-    {
-     "mean": 13.55,
-     "lo": 11.15,
-     "hi": 16.4,
+     "mean": 14.1,
+     "lo": 11.55,
+     "hi": 16.9,
      "n": 20
     },
     {
      "mean": 13.9,
-     "lo": 11.35,
-     "hi": 16.75,
+     "lo": 11.8,
+     "hi": 16.35,
      "n": 20
     },
     {
-     "mean": 13.75,
-     "lo": 11.25,
+     "mean": 14.35,
+     "lo": 12.1,
+     "hi": 16.9,
+     "n": 20
+    },
+    {
+     "mean": 13.65,
+     "lo": 10.75,
+     "hi": 16.85,
+     "n": 20
+    },
+    {
+     "mean": 14.2,
+     "lo": 11.3,
+     "hi": 17.45,
+     "n": 20
+    },
+    {
+     "mean": 13.9,
+     "lo": 11.1,
+     "hi": 17.051249999999982,
+     "n": 20
+    },
+    {
+     "mean": 13.55,
+     "lo": 10.798750000000002,
+     "hi": 16.7,
+     "n": 20
+    },
+    {
+     "mean": 13.35,
+     "lo": 10.8,
      "hi": 16.45,
      "n": 20
     },
     {
      "mean": 13.65,
-     "lo": 10.85,
-     "hi": 17.35,
-     "n": 20
-    },
-    {
-     "mean": 13.65,
      "lo": 10.9,
-     "hi": 16.8,
+     "hi": 16.75124999999998,
      "n": 20
     }
    ],
    "delta_calls_after_plateau": {
-    "mean": 1.0,
+    "mean": 1.4285714285714286,
     "lo": -0.2857142857142857,
-    "hi": 2.142857142857143,
+    "hi": 3.142857142857143,
     "n": 7
    },
    "delta_calls_after_improving_round": {
-    "mean": -0.39378238341968913,
-    "lo": -0.8756476683937824,
-    "hi": 0.08821243523315873,
+    "mean": -0.3626943005181347,
+    "lo": -0.7772020725388601,
+    "hi": 0.06748704663212247,
     "n": 193
    },
    "per_seed_delta_plateau_minus_improving": {
-    "mean": 1.2800925925925926,
-    "lo": -0.21996527777777786,
-    "hi": 2.673611111111111,
+    "mean": 1.8541666666666667,
+    "lo": -0.3148148148148148,
+    "hi": 4.041666666666667,
     "n": 6
    },
-   "spearman_prev_improvement_vs_delta_calls": -0.19693073633580366,
+   "spearman_prev_improvement_vs_delta_calls": -0.16251844304868837,
    "fixed_effort_per_round": 30,
    "dream_total_calls": {
-    "mean": 185.5,
-    "lo": 162.44875,
-    "hi": 211.45,
+    "mean": 186.2,
+    "lo": 160.44875,
+    "hi": 215.15249999999997,
     "n": 20
    },
    "fixed_total_calls": {
@@ -156,9 +158,9 @@
     "n": 20
    },
    "dream_final_best": {
-    "mean": 0.8784551373830768,
-    "lo": 0.8544804789468966,
-    "hi": 0.901107547977141,
+    "mean": 0.8775030108695457,
+    "lo": 0.8538067843050494,
+    "hi": 0.900278857899651,
     "n": 20
    },
    "fixed_final_best": {
@@ -175,12 +177,12 @@
      26,
      19,
      24,
-     34,
-     33,
-     31,
-     29,
-     39,
-     32
+     30,
+     30,
+     30,
+     30,
+     30,
+     30
     ],
     "best": [
      0.45676744269931413,
@@ -189,12 +191,12 @@
      0.7034895902588966,
      0.740857810839187,
      0.76540112849189,
-     0.8048699268654381,
-     0.83312287536049,
-     0.8542406132751811,
-     0.870585632297706,
-     0.8858534815715516,
-     0.8935825810237894
+     0.7956777012251741,
+     0.8209723803781788,
+     0.8419489906277366,
+     0.8596723552272052,
+     0.8742411942700038,
+     0.8825318865166991
     ],
     "plans": [
      [
@@ -226,24 +228,24 @@
       5
      ],
      [
-      10,
-      5
-     ],
-     [
-      10,
-      5
-     ],
-     [
-      10,
-      5
-     ],
-     [
       12,
       4
      ],
      [
       12,
-      4
+      3
+     ],
+     [
+      12,
+      3
+     ],
+     [
+      12,
+      3
+     ],
+     [
+      12,
+      3
      ]
     ],
     "betas": [
@@ -263,24 +265,24 @@
    }
   },
   "sumdiff": {
-   "spearman_prev_improvement_vs_calls": -0.12505401668232338,
+   "spearman_prev_improvement_vs_calls": -0.10778944989697038,
    "n_pairs": 80,
    "calls_after_plateau": {
-    "mean": 12.807692307692308,
-    "lo": 11.711538461538462,
-    "hi": 13.961538461538462,
+    "mean": 12.76923076923077,
+    "lo": 11.73076923076923,
+    "hi": 13.826923076923077,
     "n": 52
    },
    "calls_after_improving_round": {
-    "mean": 11.75,
+    "mean": 11.678571428571429,
     "lo": 10.357142857142858,
-    "hi": 13.28660714285713,
+    "hi": 13.214285714285714,
     "n": 28
    },
    "per_seed_plateau_minus_improving": {
-    "mean": 1.1690476190476191,
-    "lo": 0.06190476190476194,
-    "hi": 2.376190476190476,
+    "mean": 1.311904761904762,
+    "lo": 0.19047619047619083,
+    "hi": 2.6,
     "n": 7
    },
    "dream_effort_by_round": [
@@ -291,21 +293,21 @@
      "n": 10
     },
     {
-     "mean": 12.3,
-     "lo": 10.4,
-     "hi": 14.6,
+     "mean": 12.7,
+     "lo": 10.5,
+     "hi": 15.4,
      "n": 10
     },
     {
-     "mean": 11.2,
-     "lo": 9.297500000000001,
-     "hi": 13.6,
+     "mean": 11.4,
+     "lo": 9.4,
+     "hi": 13.8,
      "n": 10
     },
     {
-     "mean": 10.8,
-     "lo": 8.9,
-     "hi": 13.3,
+     "mean": 10.9,
+     "lo": 9.0,
+     "hi": 13.4,
      "n": 10
     },
     {
@@ -315,60 +317,60 @@
      "n": 10
     },
     {
-     "mean": 12.0,
-     "lo": 9.7,
-     "hi": 14.6,
+     "mean": 11.7,
+     "lo": 9.3975,
+     "hi": 14.4,
      "n": 10
     },
     {
-     "mean": 12.3,
-     "lo": 10.0,
-     "hi": 14.9,
+     "mean": 11.9,
+     "lo": 9.8,
+     "hi": 14.4,
      "n": 10
     },
     {
      "mean": 13.3,
-     "lo": 11.1,
-     "hi": 15.8,
+     "lo": 11.3,
+     "hi": 15.7,
      "n": 10
     },
     {
-     "mean": 13.6,
-     "lo": 11.0,
-     "hi": 16.5,
+     "mean": 13.7,
+     "lo": 11.3,
+     "hi": 16.3,
      "n": 10
     },
     {
-     "mean": 14.9,
-     "lo": 12.5,
-     "hi": 17.5,
+     "mean": 14.8,
+     "lo": 12.8,
+     "hi": 17.0,
      "n": 10
     }
    ],
    "delta_calls_after_plateau": {
-    "mean": 0.75,
-    "lo": 0.25,
-    "hi": 1.1923076923076923,
+    "mean": 0.7884615384615384,
+    "lo": 0.2692307692307692,
+    "hi": 1.2692307692307692,
     "n": 52
    },
    "delta_calls_after_improving_round": {
-    "mean": -0.4642857142857143,
-    "lo": -1.2142857142857142,
-    "hi": 0.32142857142857145,
+    "mean": -0.7142857142857143,
+    "lo": -1.5714285714285714,
+    "hi": 0.10714285714285714,
     "n": 28
    },
    "per_seed_delta_plateau_minus_improving": {
-    "mean": 1.4452380952380952,
-    "lo": 0.5142857142857143,
-    "hi": 2.4357142857142855,
+    "mean": 1.8380952380952382,
+    "lo": 0.6380952380952382,
+    "hi": 2.9691071428571423,
     "n": 7
    },
-   "spearman_prev_improvement_vs_delta_calls": -0.5257385959547993,
+   "spearman_prev_improvement_vs_delta_calls": -0.5263862538120807,
    "fixed_effort_per_round": 20,
    "dream_total_calls": {
     "mean": 131.8,
-    "lo": 115.4,
-    "hi": 151.8,
+    "lo": 116.4,
+    "hi": 151.4,
     "n": 10
    },
    "fixed_total_calls": {
@@ -473,7 +475,7 @@
  },
  "figure": "/home/user/RSI/results/dream-rsi/e6_pacing.png",
  "verdict": {
-  "synthetic": "WEAK/PARTIAL: rho=+0.08; change in calls after plateau +1.0 vs after improvement -0.4; seed-clustered round-controlled difference +1.3 [-0.2, +2.7] (n=6 seeds); conserves compute after round 1 (17 vs 30 calls)",
-  "sumdiff": "REPRODUCED: effort rises after plateaus (rho=-0.13, +1.2 calls; round-controlled change +0.8 vs -0.5); seed-clustered round-controlled difference +1.4 [+0.5, +2.4] (n=7 seeds); conserves compute after round 1 (12 vs 20 calls)"
+  "synthetic": "WEAK/PARTIAL: rho=+0.09; change in calls after plateau +1.4 vs after improvement -0.4; seed-clustered round-controlled difference +1.9 [-0.3, +4.0] (n=6 seeds); conserves compute after round 1 (17 vs 30 calls)",
+  "sumdiff": "REPRODUCED: effort rises after plateaus (rho=-0.11, +1.3 calls; round-controlled change +0.8 vs -0.7); seed-clustered round-controlled difference +1.8 [+0.6, +3.0] (n=7 seeds); conserves compute after round 1 (13 vs 20 calls)"
  }
 }

@@ -1,0 +1,295 @@
+{
+ "method": "dream-rsi",
+ "rounds": 2,
+ "stop_reason": "rounds",
+ "baseline": "ed8962e6b1",
+ "best": "4128f3cfa3",
+ "first": {
+  "iteration": 1,
+  "calls": 9,
+  "cum_calls": 9,
+  "round_best": 1.0280613744592875,
+  "best": 1.0280613744592875,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "round_budget": 9,
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.925,
+    0.925,
+    0.925,
+    0.716323
+   ],
+   "selected": 0,
+   "selected_label": "initial",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.925
+   },
+   "changes": [
+    "Implement adaptive prefix-only policy: trajectory-based ranking with beta-scheduled thresholds, portfolio batch selection (exploit/explore/recover), adaptive gr",
+    "Implement recovery tier for repairable failures and restructure batch selection with adaptive tier-based portfolio building instead of fixed quotas",
+    "Improve portfolio balance, recovery scoring, early stopping, and grid planning: prioritize all three tiers (exploit, recovery, explore) in batches; refine recov"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 9.0,
+    "k": 3.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.0,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 830.648
+ },
+ "last": {
+  "iteration": 2,
+  "calls": 9,
+  "cum_calls": 18,
+  "round_best": 1.0467524040140475,
+  "best": 1.0467524040140475,
+  "root": 1.0280613744592875,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "round_budget": 9,
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 1233.135
+ },
+ "usage": {
+  "agent": {
+   "calls": 18,
+   "input_tokens": 95114,
+   "output_tokens": 196325,
+   "cost_usd": 1.153541,
+   "latency_s": 2030.2742404937744,
+   "total_tokens": 291439
+  },
+  "developer": {
+   "calls": 3,
+   "input_tokens": 54433,
+   "output_tokens": 38983,
+   "cost_usd": 0.30375399999999997,
+   "latency_s": 413.2433536052704,
+   "total_tokens": 93416
+  },
+  "_cost": {
+   "agent_calls": 18,
+   "agent_tokens": 291439,
+   "agent_usd": 1.153541,
+   "eval_s": 2.7948074340820312,
+   "online_rounds": 6,
+   "online_wall_s": 818.82665848732,
+   "replay_episodes": 10,
+   "replay_cpu_s": 0.03389223497827143,
+   "replay_wall_s": 0.504453182220459,
+   "developer_calls": 3,
+   "developer_tokens": 93416,
+   "developer_usd": 0.30375399999999997,
+   "developer_revisions": 3,
+   "replay_ms_per_episode": 3.3892234978271434,
+   "llm_calls_total": 21,
+   "usd_total": 1.4572949999999998,
+   "developer_usd_share": 0.20843686419016055
+  },
+  "_total": {
+   "agent_calls": 18,
+   "developer_calls": 3,
+   "usd": 1.4572949999999998
+  }
+ },
+ "meta": {
+  "policy": "\"\"\"Parallel refine (pi_1, the paper's initial policy and the Recursive Fixed Exploration baseline).\n\n\"launches multiple independent exploration workspaces in parallel, with each workspace\nmaintaining its own local discovery trajectory and repeatedly refining its current\ncandidate\" [paper:\u00a74 p.7].\n\nPrefix signals: none (a fixed wave schedule). Batch rule: every legal cell ordered by\n(attempt, branch) - all roots first, then deepen every open branch - up to\nmax_parallelism. Beta: read but unused (the fixed baseline has no dial). Grid planning:\nalways the context's fallback grid. Stops when no legal cell remains.\n\"\"\"\nfrom policy_api import GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result\n\nNAME = \"OptimalPolicy\"\n\n\nclass OptimalPolicy(LLMDesignedMethod):\n    def __init__(self, config=None):\n        super().__init__(config)\n        self.beta = float(self.config.get(\"beta\", 0.6))\n\n    def plan_grid(self, context):\n        return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),\n                        \"parallel refine: fixed fallback grid (width x depth never adapts)\")\n\n    def solve(self, question, budget=None):\n        question.reset()\n        res = SimResult()\n        while not _budget_done(question, budget):\n            legal = question.legal_actions()\n            if not legal:\n                break\n            order = sorted(legal, key=lambda c: (question.meta(c).attempt, question.meta(c).branch))\n            batch = order[: question.max_parallelism]\n            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))\n        res.stopped = \"no legal cell left\"\n        return finalize_result(question, res)\n",
+  "policy_id": "2f081731b8159ae62b90840cfa1a902b6ae867c22f34101935d878c63175ad3f",
+  "policy_ledger": "<rsi.core.ledger.Ledger object at 0x7f903eae0810>",
+  "worlds": [
+   "<rsi.dream.tree.DiscoveryTree object at 0x7f903e9411d0>",
+   "<rsi.dream.tree.DiscoveryTree object at 0x7f903e80f890>"
+  ],
+  "manifests": [
+   {
+    "iteration": 1,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 2,
+    "probe_work": 9,
+    "decision_rounds": 3,
+    "batch_sizes": [
+     3,
+     3,
+     3
+    ],
+    "root_score": 0.9104910395109694,
+    "round_best": 1.0280613744592875,
+    "final_best": 1.0280613744592875,
+    "beta": 0.6,
+    "gain_early": 0.7613226629691684,
+    "gain_late": 0.2386773370308316,
+    "fail_frac": 0.0,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 9,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null,
+    "round_budget": 9
+   },
+   {
+    "iteration": 2,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 2,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 2,
+    "probe_work": 9,
+    "decision_rounds": 3,
+    "batch_sizes": [
+     3,
+     3,
+     3
+    ],
+    "root_score": 1.0280613744592875,
+    "round_best": 1.0467524040140475,
+    "final_best": 1.0467524040140475,
+    "beta": 0.6,
+    "gain_early": 1.0,
+    "gain_late": 0.0,
+    "fail_frac": 0.0,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 9,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null,
+    "round_budget": 9
+   }
+  ],
+  "best_score": 1.0467524040140475,
+  "seed_score": 0.9104910395109694,
+  "cost": {
+   "agent_calls": 18,
+   "agent_tokens": 291439,
+   "agent_usd": 1.153541,
+   "eval_s": 2.7948074340820312,
+   "online_rounds": 6,
+   "online_wall_s": 818.82665848732,
+   "replay_episodes": 10,
+   "replay_cpu_s": 0.03389223497827143,
+   "replay_wall_s": 0.504453182220459,
+   "developer_calls": 3,
+   "developer_tokens": 93416,
+   "developer_usd": 0.30375399999999997,
+   "developer_revisions": 3,
+   "replay_ms_per_episode": 3.3892234978271434,
+   "llm_calls_total": 21,
+   "usd_total": 1.4572949999999998,
+   "developer_usd_share": 0.20843686419016055
+  },
+  "config": {
+   "rounds": 2,
+   "W": 3,
+   "branch_count": 3,
+   "refine_count": 2,
+   "hard_max_branch": 4,
+   "hard_max_refine": 3,
+   "K1": null,
+   "K2": null,
+   "M": 3,
+   "m_semantics": "revisions",
+   "objective": "eq1",
+   "beta1": 0.01,
+   "beta2": 0.005,
+   "normalize": true,
+   "support": "no_reward",
+   "lam": 0.1,
+   "beta_grid": [
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+   ],
+   "sweep": true,
+   "root_mode": "earliest",
+   "hide_missing": false,
+   "selector": "argmax",
+   "include_incumbent": true,
+   "holdout_frac": 0.34,
+   "noise_z": 2.0,
+   "margin_floor": 0.01,
+   "sandbox": "subprocess",
+   "policy_timeout_s": 60.0,
+   "root": "best",
+   "dream": true,
+   "dream_last": false,
+   "guidance": false,
+   "guidance_strength": 0.8,
+   "max_calls": 18,
+   "round_budget": "fallback",
+   "agent_history_cycles": null,
+   "agent_workers": null,
+   "leakage_check": true,
+   "seed": 0,
+   "trace": true,
+   "shadow_monitor": true,
+   "shadow_k": 1,
+   "shadow_workers": 2
+  }
+ }
+}

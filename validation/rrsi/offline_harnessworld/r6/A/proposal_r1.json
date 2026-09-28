@@ -1,45 +1,43 @@
 {
  "status": "done",
- "summary": "[har_01] Planner sub-call: Planner sub-call; aimed at extrac; [har_09] Semantic memory of general procedures: Semantic mem",
+ "summary": "[str_06] Planner sub-call: Planner sub-call; aimed at extrac; [nul_14] Tighter step limit: Tighter step limit (rewording o",
  "edits": [
   {
    "id": "C1",
    "component": "subagent",
-   "hypothesis": "[har_01] Planner sub-call: Planner sub-call; aimed at extract, plan, format tasks.",
+   "hypothesis": "[str_06] Planner sub-call: Planner sub-call; aimed at extract, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
     "hw-e-022",
-    "hw-e-036",
-    "hw-e-044"
+    "hw-e-078",
+    "hw-e-056"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_01",
+   "mechanism_id": "str_06",
    "prune": false,
-   "mechanism": "[har_01] Planner sub-call: Planner sub-call; aimed at extract, plan, format tasks."
+   "mechanism": "[str_06] Planner sub-call: Planner sub-call; aimed at extract, plan, format tasks."
   },
   {
    "id": "C2",
-   "component": "memory",
-   "hypothesis": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks.",
+   "component": "config",
+   "hypothesis": "[nul_14] Tighter step limit: Tighter step limit (rewording of existing guidance).",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-022",
-    "hw-e-036",
-    "hw-e-044"
+    "hw-e-083"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_09",
+   "mechanism_id": "nul_14",
    "prune": false,
-   "mechanism": "[har_09] Semantic memory of general procedures: Semantic memory of general procedures; aimed at extract, arith, plan, format tasks."
+   "mechanism": "[nul_14] Tighter step limit: Tighter step limit (rewording of existing guidance)."
   }
  ],
- "mechanism": "[har_01] Planner sub-call: Planner sub-call; aimed at extrac; [har_09] Semantic memory of general procedures: Semantic mem",
+ "mechanism": "[str_06] Planner sub-call: Planner sub-call; aimed at extrac; [nul_14] Tighter step limit: Tighter step limit (rewording o",
  "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
  "n_changes": 2,
  "log": [

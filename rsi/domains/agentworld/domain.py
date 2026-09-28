@@ -15,9 +15,10 @@ verifier. It reports:
   each mechanism's trigger counters (activation rates, S7).
 
 Splits: ``evolve`` = training environments (families ``repofix``, ``buildfix``,
-``logtriage``); ``holdout`` = acceptance tasks of the held-out family
-(``datalookup``; used only by the HoldoutFirewall); ``ood`` = final-evaluation
-tasks of the held-out family; ``test`` = fresh tasks of the training families.
+``logtriage``); ``holdout`` = acceptance tasks of the held-out families
+(``configfix`` and ``datalookup``, :data:`HELDOUT_FAMILIES`; used only by the
+HoldoutFirewall); ``ood`` = final-evaluation tasks of the same held-out families
+(never touched by the protocol); ``test`` = fresh tasks of the training families.
 Backends: ``MockAgentLLM("A")`` (search backend) and ``MockAgentLLM("B")``
 (second backend, other habits); any :class:`rsi.core.LLM` via :class:`LLMAgent`.
 """
@@ -198,6 +199,9 @@ def mechanism_audit(rt: AgentRuntime) -> dict:
     return out
 
 
+LATE_TURN_ORACLE = 10
+
+
 def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000) -> dict:
     """Opportunity statistics of one trajectory (SoL-Pi "Oracle Analysis"): how much
     work each kind of mechanism could avoid, measured on this (usually base) run."""
@@ -239,6 +243,8 @@ def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000)
     return {"transitions": max(0, len(acts) - 1), "adjacent_edit_command": adj, "replayed_large_outputs": replay,
             "diagnostic_log_tokens": diag, "tail_of_outputs": tail, "archivable_context": archivable,
             "prompt_tokens": sys_tok * len(main), "input_tokens": sum(u.input for u in main),
+            # what a turn cap could avoid: input tokens of main requests after the 10th (the most aggressive cap)
+            "late_turn_tokens": sum(u.input for u in main[LATE_TURN_ORACLE:]),
             "repeated_commands": sum(v - 1 for v in cmds.values() if v > 1), "n_large_outputs": n_large,
             "n_diag_outputs": n_diag}
 

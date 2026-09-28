@@ -1,11 +1,3 @@
---- a/context/dec_00.py
-+++ b/context/dec_00.py
-@@ -0,0 +1,5 @@
-+# mechanism: dec_00
-+# component: context_mgmt
-+# title: Keep the last N tool results verbatim
-+"""Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)"""
-+enable("dec_00")
 --- a/context/gen_02.py
 +++ b/context/gen_02.py
 @@ -0,0 +1,5 @@
@@ -14,11 +6,19 @@
 +# title: Drop stale observations
 +"""Drop stale observations; aimed at plan, format tasks."""
 +enable("gen_02")
---- a/prompts/cos_06.md
-+++ b/prompts/cos_06.md
+--- a/output/nar_03.py
++++ b/output/nar_03.py
 @@ -0,0 +1,5 @@
-+# mechanism: cos_06
-+# component: prompt
-+# title: Short worked example of the procedure
-+"""Role and scope statement; runs extra model passes (self-consistency / long reasoning)."""
-+enable("cos_06")
++# mechanism: nar_03
++# component: output_plumbing
++# title: Collapse repeated log lines
++"""Collapse repeated log lines; aimed at extract, arith, plan, format tasks."""
++enable("nar_03")
+--- a/skills/har_18/SKILL.md
++++ b/skills/har_18/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: har_18
++# component: skill
++# title: Procedure card: parsing
++"""Procedure card: parsing; aimed at extract, plan, format tasks."""
++enable("har_18")

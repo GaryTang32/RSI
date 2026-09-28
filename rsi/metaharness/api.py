@@ -110,6 +110,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         stop_reason="eval_budget" if loop.budget_left() == 0 else "iterations", out_dir=str(out),
         meta={"frontier": fr, "best_system": best_name, "curve": loop.curve, "final": final,
               "n_evaluated": loop.n_evaluated, "n_proposed": loop.n_proposed, "config": cfg.to_json(),
+              "n_reevaluations": loop.n_reevaluations,
               "store": str(loop.store.root), "screen": ({"screened": loop.screen.n_screened,
                                                          "rejected": loop.screen.n_rejected} if loop.screen else None)})
     loop.tr.run_end({"best_system": best_name, "stop_reason": res.stop_reason, "usage": usage,

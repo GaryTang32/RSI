@@ -14,7 +14,10 @@ Built-in templates (``rsi/dream/policy_templates/``):
 * ``rules`` - hand-written strategies (overview demo, E2 zoo);
 * ``oracle`` - a deliberately cheating policy for the no-peeking experiment (reads the hidden tree);
 * ``peek_reset`` - a cheater that uses only the public API (explore, remember, ``reset()``, walk
-  to the remembered best); the guard forbids a reset after the first probe.
+  to the remembered best); the guard forbids a reset after the first probe;
+* ``memo_module`` - a cheater that remembers each world's best cell in module-level state ACROSS
+  episodes (claims audit N1); every episode now starts from a fresh policy namespace, and the static
+  check rejects the module-level mutation.
 """
 from __future__ import annotations
 

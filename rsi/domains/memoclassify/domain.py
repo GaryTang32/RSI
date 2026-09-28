@@ -11,17 +11,32 @@ A candidate artifact is one file, ``memory.py``, defining ``class Memory(MemoryS
 online mode (default, the paper's setting) streams the train split through
 ``predict -> score -> learn_from_batch``; offline mode (the release default)
 calls ``learn_from_batch`` with ``prediction = ground_truth``. The memory then
-predicts every example of the evaluated part. Unlike the released val-only
-offline path, a per-example record is always written (spec A8 item 12):
-``{type, step, input_preview, pred, tgt, ok, prompt_len, context_chars, prompt_hash}``
-plus the full prompt of wrong predictions - the raw traces Meta-Harness's
-proposer reads.
+predicts every example of the evaluated part.
 
-Context cost follows ``inner_loop.py:evaluate_memory``: per evaluated example,
-``context_len = max(0, prompt_len - len(input))`` of the last ``call_llm``
-prompt; ``Execution.meta["context_chars"]`` is its mean (``memory_context_chars``). The last prompt is
-recorded by the domain's model wrapper (not by the candidate's ``call_llm`` bookkeeping, which a
-candidate could bypass or override).
+**Traces** (``trace_detail="full"``, the default) hold what the paper says a harness
+directory holds: "prompts, tool calls, model outputs, and state updates" [paper:MH §3].
+Every model call made during a step is recorded with its full prompt and the raw model
+reply (train and eval phases, and calls made inside ``learn_from_batch``); every learning
+step records the memory-state size; and the full memory state is checkpointed at the
+release's default checkpoint steps (step 0 and the last training step). Per-example rows
+keep the release's fields ``{step, input_preview, pred, tgt, ok, prompt_len, prompt_hash}``.
+``trace_detail="compact"`` is the earlier, thinner format (full prompts only for up to 12
+wrong eval predictions per unit, cut to 6,000 chars; no raw replies; no train prompts;
+one checkpoint cut to 3,000 chars) for very large runs.
+
+**Context cost.** The release (``inner_loop.py:evaluate_memory``) measures only the LAST
+model call per prediction: ``context_len = max(0, prompt_len - len(input))``. A harness that
+makes its big call first and a tiny confirm call last then reports almost no context
+(audit N2: 17,724 -> 46.5 chars while real tokens rose 2%). ``Execution.meta["context_chars"]``
+is therefore the mean over evaluated examples of the injected context summed over ALL
+model calls made for the prediction, ``sum_calls max(0, len(prompt_i) - len(input))``. It
+equals the release's value for single-call harnesses, and it matches the paper's own
+accounting of its two-call Draft-Verification harness ("both calls use short retrieved
+contexts, so the overall context cost stays near the low end", App. B.1). The release's
+last-call value is kept as ``meta["context_chars_last_call"]`` (select it with
+``rsi.metaharness.Config(cost_metric="context_chars_last_call")``). Prompts are recorded by
+the domain's model wrapper, not by the candidate's ``call_llm`` bookkeeping, which a
+candidate could bypass or override.
 The grader (accuracy against labels) lives here, outside the artifact.
 """
 from __future__ import annotations
@@ -38,7 +53,7 @@ from ...core.domain import Domain, Execution
 from ...core.llm import LLM
 from ...core.tasks import Task, TaskSuite
 from .data import LEAKY_SPEC, SEARCH_SPECS, ClassDataset, make_datasets
-from .memory import SEED_PROGRAMS, MemorySystem, extract_json_field
+from .memory import COMPARATOR_PROGRAMS, SEED_PROGRAMS, MemorySystem, extract_json_field
 from .model import MemoLM
 
 DEFAULT_MAX_WALL_S = 120.0
@@ -67,6 +82,10 @@ class HarnessTimeout(RuntimeError):
     pass
 
 
+def _md5(text: str) -> str:
+    return hashlib.md5(text.encode()).hexdigest()[:8]
+
+
 class MemoClassifyDomain(Domain):
     name = "memoclassify"
     components = {"memory": ["memory.py"], "prompt": ["memory.py"], "retrieval": ["memory.py"]}
@@ -74,7 +93,10 @@ class MemoClassifyDomain(Domain):
 
     def __init__(self, search: Optional[list[ClassDataset]] = None, ood: Optional[list[ClassDataset]] = None, *,
                  seed: int = 0, scale: float = 1.0, leaky: bool = False, mode: str = "online", batch_size: int = 1,
-                 trace_prompts: str = "errors", max_wall_s: float = DEFAULT_MAX_WALL_S) -> None:
+                 trace_prompts: str = "errors", trace_detail: str = "full",
+                 max_wall_s: float = DEFAULT_MAX_WALL_S) -> None:
+        if trace_detail not in ("full", "compact"):
+            raise ValueError("trace_detail must be 'full' or 'compact'")
         if search is None or ood is None:
             specs = SEARCH_SPECS + ((LEAKY_SPEC,) if leaky else ())
             s, o = make_datasets(seed, search=specs, scale=scale)
@@ -85,7 +107,8 @@ class MemoClassifyDomain(Domain):
         self.datasets = {d.name: d for d in self.search + self.ood}
         self.mode = mode
         self.batch_size = batch_size
-        self.trace_prompts = trace_prompts
+        self.trace_prompts = trace_prompts          # compact traces only: "errors" | "all" | "none"
+        self.trace_detail = trace_detail
         self.max_wall_s = max_wall_s
         tasks, splits = [], {"evolve": [], "test": [], "ood": []}
         for d in self.search:
@@ -109,6 +132,12 @@ class MemoClassifyDomain(Domain):
     @classmethod
     def baselines(cls) -> dict[str, Artifact]:
         return {n: cls.seed_artifact(n) for n in SEED_PROGRAMS}
+
+    @staticmethod
+    def comparators() -> dict[str, Artifact]:
+        """Few-shot-N comparators (``fewshot_4`` ... ``fewshot_64``; release ``fewshot_memory.py``). Not part of
+        the initial population; used to check context claims against more than the overflowing ``fewshot_all``."""
+        return {n: Artifact({"memory.py": src}, meta={"name": n}) for n, src in COMPARATOR_PROGRAMS.items()}
 
     def make_model(self, variant: str = "A") -> MemoLM:
         """The frozen base model (``A`` = selection model, ``B`` = unseen model)."""
@@ -167,18 +196,22 @@ class MemoClassifyDomain(Domain):
             return Execution(error="memory.py missing")
         ds = self.datasets[task.input["dataset"]]
         part = task.input["part"]
-        state.update({"calls": 0, "tokens": 0, "usd": 0.0})
+        full = self.trace_detail == "full"
+        state.update({"calls": 0, "tokens": 0, "usd": 0.0, "cur": []})
         lock = threading.Lock()
         t0 = time.time()
 
         def call(prompt: str) -> str:
             prompt = str(prompt)
+            rec = {"prompt": prompt, "response": None}
             with lock:
                 state["calls"] += 1
                 i = state["calls"]
                 # context cost is measured HERE, on the domain side of the model boundary, so a candidate
-                # cannot hide injected context by bypassing MemorySystem.call_llm's bookkeeping
+                # cannot hide injected context by bypassing MemorySystem.call_llm's bookkeeping; every call
+                # of the current step is kept (the context metric sums them, the full trace logs them)
                 state["last_prompt"] = prompt
+                state["cur"].append(rec)
             if time.time() - t0 > self.max_wall_s:
                 raise HarnessTimeout(f"harness exceeded {self.max_wall_s}s")
             resp = llm.complete(prompt, seed=seed * 100003 + i, role="task")
@@ -187,73 +220,121 @@ class MemoClassifyDomain(Domain):
                 state.setdefault("infra", msg)     # remembered even if the candidate swallows the exception
                 raise RuntimeError(msg)
             with lock:
+                rec["response"] = resp.text
                 state["tokens"] += resp.usage.total_tokens
                 state["usd"] += resp.usage.cost_usd
             return resp.text
 
-        def prompt_info() -> dict:
-            p = state.get("last_prompt")
+        def begin_step() -> None:
+            with lock:
+                state["cur"] = []
+
+        def step_calls() -> list[dict]:
+            with lock:
+                return list(state["cur"])
+
+        def call_records(calls: list[dict]) -> list[dict]:
+            return [{"prompt": c["prompt"], "response": c["response"], "prompt_len": len(c["prompt"]),
+                     "prompt_hash": _md5(c["prompt"])} for c in calls]
+
+        def last_info(calls: list[dict]) -> dict:
+            p = calls[-1]["prompt"] if calls else None
             if p is None:
                 return {"prompt_len": None, "prompt_hash": None, "prompt_text": None}
-            return {"prompt_len": len(p), "prompt_hash": hashlib.md5(p.encode()).hexdigest()[:8], "prompt_text": p}
+            return {"prompt_len": len(p), "prompt_hash": _md5(p), "prompt_text": p}
+
+        def get_state_safe(m) -> str:
+            try:
+                st = m.get_state()
+                return st if isinstance(st, str) else str(st)
+            except Exception as e:  # noqa: BLE001
+                return f"<get_state failed: {e}>"
 
         cls = load_memory_class(src)
         mem = cls(call)
         records: list[dict] = [{"type": "meta", "dataset": ds.name, "part": part, "mode": self.mode,
-                                "n_train": len(ds.train), "n_eval": len(ds.part(part))}]
+                                "n_train": len(ds.train), "n_eval": len(ds.part(part)),
+                                "trace_detail": self.trace_detail}]
+        n_train = len(ds.train)
+        # release default checkpoint steps (eval_interval 0): step 0 and the last training index
+        ckpt_steps = {0, n_train - 1} if n_train else set()
         train_ok = 0
-        for b in range(0, len(ds.train), self.batch_size):
+        for b in range(0, n_train, self.batch_size):
             batch = ds.train[b:b + self.batch_size]
             results = []
             for j, ex in enumerate(batch):
                 if self.mode == "online":
+                    begin_step()
                     pred, meta = mem.predict(ex.text)
+                    calls = step_calls()
                     ok = normalize_label(pred) == ex.label
                     train_ok += ok
-                    info = prompt_info()
-                    records.append({"type": "step", "phase": "train", "step": b + j, "input_preview": ex.text[:200],
-                                    "pred": str(pred)[:120], "tgt": ex.label, "ok": bool(ok),
-                                    "prompt_len": info["prompt_len"], "prompt_hash": info["prompt_hash"]})
+                    info = last_info(calls)
+                    rec = {"type": "step", "phase": "train", "step": b + j, "input_preview": ex.text[:200],
+                           "pred": str(pred)[:120], "tgt": ex.label, "ok": bool(ok),
+                           "prompt_len": info["prompt_len"], "prompt_hash": info["prompt_hash"]}
+                    if full:
+                        rec.update(n_calls=len(calls), calls=call_records(calls))
+                    records.append(rec)
                 else:
                     pred, meta, ok = ex.label, {}, True
                 results.append({"input": ex.text, "prediction": pred, "ground_truth": ex.label, "was_correct": ok,
                                 "metadata": meta if isinstance(meta, dict) else {}})
+            begin_step()
             mem.learn_from_batch(results)
-        try:
-            mem_state = mem.get_state()
-        except Exception as e:  # noqa: BLE001
-            mem_state = f"<get_state failed: {e}>"
-        records.append({"type": "checkpoint", "memory_state": mem_state[:3000],
-                        "memory_state_chars": len(mem_state)})
-        preds, ctx = [], []
+            if full:
+                calls = step_calls()
+                last = b + len(batch) - 1
+                st = get_state_safe(mem)
+                lrec = {"type": "learn", "step": last, "batch_size": len(batch), "memory_state_chars": len(st),
+                        "n_calls": len(calls)}
+                if calls:                              # model calls made while learning (e.g. LLM-written notes)
+                    lrec["calls"] = call_records(calls)
+                records.append(lrec)
+                for s_ in sorted(ckpt_steps):
+                    if b <= s_ <= last:
+                        records.append({"type": "checkpoint", "step": s_, "memory_state": st,
+                                        "memory_state_chars": len(st)})
+        mem_state = get_state_safe(mem)
+        if not full:
+            records.append({"type": "checkpoint", "memory_state": mem_state[:3000],
+                            "memory_state_chars": len(mem_state)})
+        preds, ctx, ctx_last = [], [], []
         n_err_prompts = 0
         for i, ex in enumerate(ds.part(part)):
+            begin_step()
             pred, meta = mem.predict(ex.text)
-            info = prompt_info()
+            calls = step_calls()
+            info = last_info(calls)
             plen = info["prompt_len"] or 0
-            c = max(0, plen - len(ex.text))
+            c_last = max(0, plen - len(ex.text))
+            c = sum(max(0, len(cl["prompt"]) - len(ex.text)) for cl in calls)   # all model calls of this query
             ctx.append(c)
+            ctx_last.append(c_last)
             ok = normalize_label(pred) == ex.label
             preds.append(str(pred))
             rec = {"type": "eval_step", "step": i, "input_preview": ex.text[:200], "pred": str(pred)[:120],
                    "tgt": ex.label, "ok": bool(ok), "prompt_len": plen, "context_chars": c,
-                   "prompt_hash": info["prompt_hash"]}
-            want = self.trace_prompts == "all" or (self.trace_prompts == "errors" and not ok and n_err_prompts < 12)
-            if want and info.get("prompt_text"):
-                rec["prompt"] = info["prompt_text"][:6000]
-                n_err_prompts += 1
+                   "context_chars_last_call": c_last, "n_calls": len(calls), "prompt_hash": info["prompt_hash"]}
+            if full:
+                rec["calls"] = call_records(calls)
+            else:
+                want = self.trace_prompts == "all" or (self.trace_prompts == "errors" and not ok and n_err_prompts < 12)
+                if want and info.get("prompt_text"):
+                    rec["prompt"] = info["prompt_text"][:6000]
+                    n_err_prompts += 1
             records.append(rec)
         n_eval = max(1, len(preds))
-        done = {"type": "done", "train_acc": train_ok / max(1, len(ds.train)) if self.mode == "online" else None,
+        done = {"type": "done", "train_acc": train_ok / max(1, n_train) if self.mode == "online" else None,
                 "eval_acc": sum(r["ok"] for r in records if r["type"] == "eval_step") / n_eval,
-                "memory_context_chars": sum(ctx) / n_eval, "llm_calls": state["calls"],
-                "runtime_seconds": round(time.time() - t0, 3)}
+                "memory_context_chars": sum(ctx) / n_eval, "memory_context_chars_last_call": sum(ctx_last) / n_eval,
+                "llm_calls": state["calls"], "runtime_seconds": round(time.time() - t0, 3)}
         records.append(done)
         return Execution(output=preds, trace="\n".join(json.dumps(r) for r in records), tokens=state["tokens"],
                          cost_usd=state["usd"], steps=state["calls"],
-                         meta={"context_chars": sum(ctx) / n_eval, "llm_calls": state["calls"],
-                               "train_acc": done["train_acc"], "memory_state_chars": len(mem_state),
-                               "dataset": ds.name, "part": part})
+                         meta={"context_chars": sum(ctx) / n_eval, "context_chars_last_call": sum(ctx_last) / n_eval,
+                               "llm_calls": state["calls"], "train_acc": done["train_acc"],
+                               "memory_state_chars": len(mem_state), "dataset": ds.name, "part": part})
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         ds = self.datasets[task.input["dataset"]]

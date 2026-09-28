@@ -54,17 +54,23 @@ def one(job):
             "credit_gini": h["credit_gini"], "credit_top10_share": h["credit_top10_share"],
             "consumer_uplift_true": h.get("consumer_uplift_true", float("nan")),
             "hub_gene_true_uplift": s["hub_gene_true_uplift"], "solve_rate": s["solve_rate"],
-            "n_published": h["n_published"], "n_promoted": h["n_promoted"],
+            "n_published": h["n_published"], "n_promoted": h["n_promoted"], "n_admitted": h["n_admitted"],
+            "trivial_command_share_promoted": h["trivial_command_share_promoted"],
             "verified_ever_adopted": float(np.mean(adopted)) if adopted else float("nan"),
             "time_to_first_reuse": float(np.median(firsts)) if firsts else float("nan"),
-            "poisoned_in_stores": s["poisoned_in_stores"], "per_epoch_solve": per_epoch}
+            "poisoned_in_stores": s["poisoned_in_stores"],
+            # X10 audit item: harmful cards taken from the hub vs harmful cards an honest agent's own writer produced
+            "poisoned_in_stores_hub": s["poisoned_in_stores_hub"],
+            "poisoned_in_stores_self": s["poisoned_in_stores_self"],
+            "per_epoch_solve": per_epoch}
 
 
 METRICS = ["reuse_rate_published", "reuse_rate_promoted", "never_reused_published", "vacuous_share_promoted",
            "rank_validity", "surfacing_validity", "served_true_effect", "farmer_credit_share", "honest_credit_share",
            "credit_gini", "credit_top10_share",
-           "consumer_uplift_true", "hub_gene_true_uplift", "solve_rate", "n_published", "n_promoted",
-           "verified_ever_adopted", "time_to_first_reuse", "poisoned_in_stores"]
+           "consumer_uplift_true", "hub_gene_true_uplift", "solve_rate", "n_published", "n_promoted", "n_admitted",
+           "trivial_command_share_promoted", "verified_ever_adopted", "time_to_first_reuse", "poisoned_in_stores",
+           "poisoned_in_stores_hub", "poisoned_in_stores_self"]
 
 
 def main():
@@ -87,6 +93,9 @@ def main():
         "reuse_up_promoted": pd["reuse_rate_promoted"]["lo"] > 0,
         "vacuous_near_zero": (s["vacuous_share_promoted"]["mean"] or 0) < 0.05,
         "rank_validity_positive": s["rank_validity"]["lo"] > 0 if s["rank_validity"]["n"] else None,
+        "rank_validity_ci": [s["rank_validity"]["lo"], s["rank_validity"]["hi"]],
+        "rank_validity_better_than_naive": pd["rank_validity"]["lo"] > 0 if pd["rank_validity"]["n"] else None,
+        "no_hub_poison_in_safe_stores": s["poisoned_in_stores_hub"]["mean"] == 0,
         "surfacing_validity_up": pd["surfacing_validity"]["lo"] > 0 if pd["surfacing_validity"]["n"] else None,
         "farmers_earn_near_zero": s["farmer_credit_share"]["mean"] < 0.01,
         "consumer_uplift_up": pd["consumer_uplift_true"]["lo"] > 0 if pd["consumer_uplift_true"]["n"] else None,

@@ -63,7 +63,7 @@ class Config:
     beta1: float = 0.01
     beta2: float = 0.005
     normalize: bool = True                 # per-world score normalization before Eq.1
-    support: str = "clip"                  # out-of-support plans: "clip" | "no_reward"
+    support: str = "no_reward"             # out-of-support plans "cannot earn replay reward" (L2) | "clip"
     lam: float = 0.1
     beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
     sweep: bool = True                     # beta sweep of the deployed version (feedback + default-beta rule)
@@ -82,6 +82,15 @@ class Config:
     guidance: bool = False                 # E5: history summarised into written advice
     guidance_strength: float = 0.8
     max_calls: Optional[int] = None        # total discovery-agent call budget across rounds
+    # per-round discovery-agent call budget. "fallback" (default) = the fallback grid's cells, i.e. exactly
+    # Recursive Fixed Exploration's per-round budget: "Dream-RSI maintains identical per-round budgets"
+    # [paper:§4 p.7]. plan_grid may still reshape width x depth within the hard caps, but a round never
+    # spends more calls than Fixed's (the policy's solve() gets it as `budget`, the question enforces it).
+    # An int sets another cap; None = no per-round cap (pre-fix behaviour: only hard caps and max_calls).
+    round_budget: Optional[int | str] = "fallback"
+    # H_(t-1) shown to the discovery agent: None = every earlier live search (Listing 1: "read every
+    # historical proposal ... not just recent cycles"); an int keeps only the last N searches (pre-fix: 8)
+    agent_history_cycles: Optional[int] = None
     agent_workers: Optional[int] = None    # threads for concurrent agent calls (default W)
     leakage_check: bool = True
     seed: int = 0
@@ -93,6 +102,15 @@ class Config:
     @property
     def n_revisions(self) -> int:
         return self.M if self.m_semantics == "revisions" else max(0, self.M - 1)
+
+    @property
+    def round_cap(self) -> Optional[int]:
+        """Agent calls one live round may spend (None = no per-round cap)."""
+        if self.round_budget is None:
+            return None
+        if self.round_budget == "fallback":
+            return int(self.branch_count) * (int(self.refine_count) + 1)
+        return int(self.round_budget)
 
 
 def live_manifest(t: int, tree: DiscoveryTree, q: OnlineQuestion, plan: GridPlan, requested: GridPlan,
@@ -146,7 +164,7 @@ class DreamRSILoop:
         self.runner = get_runner(c.sandbox, timeout_s=c.policy_timeout_s) if c.sandbox == "subprocess" \
             else get_runner("inprocess")
         if c.objective == "pareto":
-            objective = ParetoSweepObjective(beta_grid=tuple(c.beta_grid), lam=c.lam)
+            objective = ParetoSweepObjective(beta_grid=tuple(c.beta_grid), lam=c.lam, support=c.support)
         else:
             objective = Eq1Objective(c.beta1, c.beta2, c.normalize, c.support)
         self.replay = ReplayEvaluator(objective, W=c.W, K2=c.K2, root_mode=c.root_mode, hide_missing=c.hide_missing,
@@ -215,8 +233,15 @@ class DreamRSILoop:
 
     def _context_fn(self, q: OnlineQuestion, t: int):
         prob = self.task.describe()
-        hist = history_records(self.worlds[-8:])
+        n_hist = self.cfg.agent_history_cycles
+        shown = self.worlds if n_hist is None else self.worlds[-n_hist:] if n_hist > 0 else []
+        hist = history_records(shown)
+        note = "" if len(shown) == len(self.worlds) else \
+            (f"NOTE: `history/` shows only the last {len(shown)} of the {len(self.worlds)} earlier live searches "
+             "(the calling system's history cap).")
         base_score = self.seed_eval.score
+        seed_prop = (self.seed_artifact.get("proposal.md") or "").strip() or None
+        base_fc, base_err = self.seed_eval.fail_class, self.seed_eval.error
 
         def fn(parent, parent_ws, b, a) -> AttemptContext:
             lineage = [record_of(n) for n in q.tree.nodes() if n.branch == b and n.attempt < a]
@@ -228,13 +253,19 @@ class DreamRSILoop:
             if direction.get("direction"):
                 dtext.append(f"Direction assigned to this branch: {direction['direction']}.")
             return AttemptContext(prob, parent.id, parent_ws, parent.score, b, a, t, lineage, siblings, hist,
-                                  base_score, direction, "\n".join(dtext), self.task.editable())
+                                  base_score, direction, "\n".join(dtext), self.task.editable(), seed_prop, base_fc,
+                                  base_err, note)
         return fn
 
     def _calls_left(self) -> Optional[int]:
         if self.cfg.max_calls is None:
             return None
         return max(0, self.cfg.max_calls - self.meter.agent_calls)
+
+    def _round_call_budget(self, left: Optional[int]) -> Optional[int]:
+        """Calls this round may spend: the per-round budget, further cut by the remaining total."""
+        caps = [c for c in (self.cfg.round_cap, left) if c is not None]
+        return min(caps) if caps else None
 
     # ---------------------------------------------------------------------- run
     def run(self) -> ImprovementResult:
@@ -278,13 +309,15 @@ class DreamRSILoop:
                 if tr.enabled:
                     tr.round_start(t, policy, req, plan, perr, pnote, directions, root_art, root_eval.score,
                                    best_score, left)
+                round_budget = self._round_call_budget(left)
                 q = OnlineQuestion(task=self.task, agent=self.agent, root_artifact=root_art, root_eval=root_eval,
                                    W=c.W, plan=plan, K=c.K1, workers=c.agent_workers or c.W, store=self.store,
                                    meter=self.meter, directions=directions, seed=c.seed, round_index=t,
-                                   world_id=f"iter{t:02d}", call_budget=left, record_attempts=tr.enabled)
+                                   world_id=f"iter{t:02d}", call_budget=round_budget, record_attempts=tr.enabled)
                 q.context_fn = self._context_fn(q, t)
                 t0 = time.time()
-                out = sess.solve({}, q)
+                # live: solve(question, budget) gets the round's call budget (replay calls with budget=None)
+                out = sess.solve({}, q, budget=c.round_cap)
                 self.meter.online_rounds += q.k
                 self.meter.online_wall_s += time.time() - t0
             tree = q.tree
@@ -306,6 +339,7 @@ class DreamRSILoop:
             beta_live = default_beta_of(policy.code)
             man = live_manifest(t, tree, q, plan, req or plan, best_score, beta_live, tree.meta["policy"], q.calls)
             man["plan_error"] = perr or pnote
+            man["round_budget"] = c.round_cap
             self.manifests.append(man)
             if tr.enabled:
                 tr.manifest(t, man)
@@ -315,7 +349,8 @@ class DreamRSILoop:
             tree.to_ledger(self.discovery_ledger, prefix=f"t{t}/")
             row = {"iteration": t, "calls": q.calls, "cum_calls": self.meter.agent_calls, "round_best": man["round_best"],
                    "best": best_score, "root": tree.root_score, "plan": plan.to_dict(), "N": q.N, "k": q.k,
-                   "batch_sizes": list(q.batch_sizes), "policy": tree.meta["policy"][:10], "beta": beta_live,
+                   "batch_sizes": list(q.batch_sizes), "round_budget": c.round_cap,
+                   "policy": tree.meta["policy"][:10], "beta": beta_live,
                    "online_error": out.error, "violations": out.violations}
             # ---- stage 3: dreaming (cheap, offline)
             if c.dream and (t < c.rounds or c.dream_last) and (self._calls_left() is None or self._calls_left() > 0):
@@ -365,7 +400,7 @@ class DreamRSILoop:
             tr.analysis(t, self._restricted(inc, dev_idx), dev_idx, forbidden)
         for m in range(c.n_revisions):
             fb_versions = [self._restricted(v, dev_idx) for v in versions]
-            dctx = DevContext(t, fb_versions, [self._restricted(h, dev_idx) for h in self.history[-12:]],
+            dctx = DevContext(t, fb_versions, [self._restricted(h, dev_idx) for h in self.history],
                               [m_ for m_ in self.manifests], self.baseline_code, c.objective, c.W, forbidden,
                               first_in_phase=(m == 0))
             rev = self.developer.revise(dctx, seed=c.seed * 100003 + t * 101 + m)

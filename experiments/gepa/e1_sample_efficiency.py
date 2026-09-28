@@ -8,6 +8,9 @@ Tier 1 (RuleWorld, rich feedback, analytic test score): GEPA (B = 6000) and
 ScoreOnlyReflection (B = 6000) vs ScalarRLBaseline (GRPO-style Bernoulli prompt policy,
 group 12, 4 instances/step, B = 24000, lr in {0.5, 2, 8}; the reported RL arm uses the lr
 with the best mean *validation* score). Target = 80% / 90% of the oracle test score.
+Also reported (``matched_budget_ratio``): the paper's own comparison, GEPA at its budget
+against RL at a 4x larger one (paired final test, seeds where RL / GEPA reach the oracle,
+and the rollouts GEPA needs to reach RL's final score).
 
 Tier 2 analogue (AgentQA two-module harness, SimModel): GEPA vs ScoreOnly vs ScalarRL
 (brainstormed vocabulary) at equal budget, measured holdout / OOD accuracy.
@@ -122,12 +125,37 @@ def main():
     dominate = {str(b): summary["gepa"]["at_budget"][str(b)]["mean"] >= summary[best_rl]["at_budget"][str(b)]["mean"]
                 for b in GRID if b <= B_g}
     gepa_vs_so = paired([r["final_test"] for r in by["score_only"]], [r["final_test"] for r in by["gepa"]])
+    # ---- the paper's own comparison: GEPA at its budget vs RL at a 4x larger one (claim audit, finding 5)
+    g_by = {r["seed"]: r for r in by["gepa"]}
+    rl_by = {r["seed"]: r for r in by[best_rl]}
+    both = [s for s in seeds if s in g_by and s in rl_by]
+    matched_ratio = {
+        "budgets": {"gepa": B_g, "rl": B_rl, "ratio_rl_over_gepa": B_rl / B_g},
+        "gepa_minus_rl_final": paired([rl_by[s]["final_test"] for s in both], [g_by[s]["final_test"] for s in both]),
+        "gepa_wins_seeds": sum(g_by[s]["final_test"] > rl_by[s]["final_test"] + 1e-12 for s in both),
+        "rl_wins_seeds": sum(rl_by[s]["final_test"] > g_by[s]["final_test"] + 1e-12 for s in both),
+        "rl_reached_oracle_seeds": sum(rl_by[s]["final_test"] >= rl_by[s]["oracle"] - 1e-9 for s in both),
+        "gepa_reached_oracle_seeds": sum(g_by[s]["final_test"] >= g_by[s]["oracle"] - 1e-9 for s in both),
+        "paired_gepa_minus_rl_at_equal_budget": {
+            str(b): paired([rl_by[s]["at"][j] for s in both], [g_by[s]["at"][j] for s in both])
+            for j, b in enumerate(GRID) if b <= B_g},
+    }
+    # rollouts GEPA needs to reach RL's *final* (B_rl) test score, per seed (censored when it never does)
+    x = {s: rollouts_to_target(g_by[s]["curve"], rl_by[s]["final_test"]) for s in both}
+    got = [s for s in both if x[s]]
+    matched_ratio["gepa_rollouts_to_rl_final"] = {
+        "n_matched": len(got), "n": len(both), "rollouts": summarize([x[s] for s in got]),
+        "ratio_rl_budget_over_gepa_rollouts": {
+            "median": float(np.median([B_rl / x[s] for s in got])) if got else None,
+            "min": float(min(B_rl / x[s] for s in got)) if got else None,
+            "max": float(max(B_rl / x[s] for s in got)) if got else None}}
     out = {"experiment": "E1 sample efficiency vs scalar-reward RL", "llm": a.llm, "seeds": seeds,
            "config": {"budget_gepa": B_g, "budget_rl": B_rl, "rl_lrs": LRS, "rl_group": 12, "rl_instances": 4,
                       "world": "RuleWorld default (2 modules, 16 aspects, 2 conflicts, partial scoring, rich mu_f)",
                       "oracle_test": oracle, "grid": GRID},
            "selected_rl_arm": best_rl, "summary": summary, "rollout_ratio": ratios,
            "gepa_dominates_rl_at_budgets": dominate, "gepa_minus_score_only_final": gepa_vs_so,
+           "matched_budget_ratio": matched_ratio,
            "raw": [{k: v for k, v in r.items() if k != "curve"} for r in rows]}
     r90 = ratios["to90"]["median_ratio_rl_over_gepa"]
     r80 = ratios["to80"]["median_ratio_rl_over_gepa"]
@@ -144,6 +172,22 @@ def main():
         f"{'REPRODUCED' if (r90 or 0) >= 10 else 'NOT reproduced at 10x'} at the 90% target. GEPA curve >= RL curve at "
         f"{sum(dominate.values())}/{len(dominate)} budgets <= {B_g}. Final test at equal-or-larger RL budget: GEPA "
         f"{fmt(summary['gepa']['final_test'])} (B={B_g}) vs RL {fmt(summary[best_rl]['final_test'])} (B={B_rl}).")
+    mm = matched_ratio["gepa_minus_rl_final"]
+    sig = mm and (mm["lo"] > 0 or mm["hi"] < 0)
+    gm = matched_ratio["gepa_rollouts_to_rl_final"]
+    out["verdict_matched_ratio"] = (
+        f"At the paper's 1:{B_rl / B_g:g} budget ratio (GEPA B={B_g} vs RL B={B_rl}, paired over {len(both)} seeds): "
+        f"GEPA - RL final test = {mm['mean_diff']:+.3f} [{mm['lo']:+.3f}, {mm['hi']:+.3f}] "
+        f"({'significant' if sig else 'NOT significant'}); GEPA higher in {matched_ratio['gepa_wins_seeds']}, "
+        f"RL higher in {matched_ratio['rl_wins_seeds']} seeds; RL reaches the oracle test score in "
+        f"{matched_ratio['rl_reached_oracle_seeds']}/{len(both)} seeds, GEPA in "
+        f"{matched_ratio['gepa_reached_oracle_seeds']}/{len(both)}. GEPA reaches RL's final score in "
+        f"{gm['n_matched']}/{gm['n']} seeds"
+        + (f" ({gm['ratio_rl_budget_over_gepa_rollouts']['min']:.1f}-"
+           f"{gm['ratio_rl_budget_over_gepa_rollouts']['max']:.1f}x fewer rollouts, median "
+           f"{gm['ratio_rl_budget_over_gepa_rollouts']['median']:.1f}x)" if gm["n_matched"] else "")
+        + f". So 'outperforms RL' is judged at matched budgets by the curves above; at the 1:{B_rl / B_g:g} ratio it is "
+        + ("a win" if sig and mm["mean_diff"] > 0 else ("a loss" if sig else "a tie")) + " here.")
     # ---- AgentQA Tier-2 analogue
     n_aq = a.agentqa_seeds if a.agentqa_seeds is not None else (1 if a.live else (2 if a.quick else 5))
     if n_aq > 0:
@@ -171,6 +215,7 @@ def main():
     plot_curves(RESULTS / "e1_sample_efficiency.png", GRID, curves,
                 "E1: RuleWorld true test score of returned prompt vs rollouts", hline=0.9 * oracle)
     print(out["verdict"])
+    print(out["verdict_matched_ratio"])
     if "verdict_agentqa" in out:
         print(out["verdict_agentqa"])
 

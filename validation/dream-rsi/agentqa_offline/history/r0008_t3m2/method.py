@@ -24,7 +24,8 @@ developer from live manifests + beta sweeps (0.6 when evidence is insufficient).
 
 Grid planning: plan_grid reads only earlier live manifests: widen when the live best
 plateaued or roots improved early while depth stalled; deepen when gains came late;
-shrink on repeated hard failures; conservative bootstrap without history.
+shrink on repeated hard failures; conservative bootstrap (the fallback grid) without history, and
+with a single manifest when its gains are balanced (one manifest shows no live-best trend).
 
 Safeguards: a repairable failure never closes a branch by itself and a later success
 reopens it (closure is recomputed from the full trajectory each round); no closure
@@ -94,17 +95,22 @@ class OptimalPolicy(LLMDesignedMethod):
         w = int(last["planned_grid"]["branch_count"])
         r = int(last["planned_grid"]["refine_count"])
         sw, sr = int(PARAMS["plan_width_step"]), int(PARAMS["plan_depth_step"])
-        improving = len(hist) < 2 or last.get("final_best", 0) > hist[-2].get("final_best", 0)
+        # the live-best trend needs two manifests; with one there is no cross-cycle evidence (only the
+        # within-cycle width/depth signals of that manifest)
+        trend = None if len(hist) < 2 else last.get("final_best", 0) > hist[-2].get("final_best", 0)
         early, late = float(last.get("gain_early", 0.0)), float(last.get("gain_late", 0.0))
         used_depth = int(last.get("max_depth", r))
         if float(last.get("hard_fail_frac", 0.0)) > 0.5:
             w, r, why = w - sw, r - sr, "repeated hard failures: reduce width and depth"
-        elif not improving:
+        elif trend is False:
             w, why = w + sw, "live best plateaued: widen to cover new directions"
         elif late > early and used_depth >= r:
             r, why = r + sr, "gains arrived late on few directions: deepen"
         elif early > late and used_depth < r:
             w, r, why = w + sw, max(used_depth, r - sr), "roots improved early while depth stalled: widen, trim depth"
+        elif trend is None:
+            w, r, why = fb_w, fb_r, ("one live manifest: evidence insufficient for a live-best trend and gains "
+                                     "balanced: conservative bootstrap from the fallback grid")
         else:
             why = "live best still improving with balanced gains: hold the grid"
         w = int(clamp(w, 1, hw))

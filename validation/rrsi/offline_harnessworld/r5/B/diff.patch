@@ -1,16 +1,24 @@
---- a/agents/har_08.py
-+++ b/agents/har_08.py
+--- a/config/gen_00.py
++++ b/config/gen_00.py
 @@ -0,0 +1,5 @@
-+# mechanism: har_08
-+# component: subagent
-+# title: Planner sub-call
-+"""Planner sub-call; aimed at extract, arith, plan, format tasks."""
-+enable("har_08")
---- a/prompts/gen_15.md
-+++ b/prompts/gen_15.md
++# mechanism: gen_00
++# component: config
++# title: Raise the per-step output cap
++"""Raise the per-step output cap; aimed at extract, arith tasks."""
++enable("gen_00")
+--- a/control/nul_02.py
++++ b/control/nul_02.py
 @@ -0,0 +1,5 @@
-+# mechanism: gen_15
-+# component: prompt
-+# title: Short worked example of the procedure
-+"""Short worked example of the procedure; aimed at extract, arith, format tasks."""
-+enable("gen_15")
++# mechanism: nul_02
++# component: control_flow
++# title: Retry once on malformed output
++"""Retry once on malformed output (rewording of existing guidance)."""
++enable("nul_02")
+--- a/skills/str_01/SKILL.md
++++ b/skills/str_01/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: str_01
++# component: skill
++# title: Procedure card: decomposition
++"""Procedure card: decomposition; aimed at arith, plan, format tasks."""
++enable("str_01")

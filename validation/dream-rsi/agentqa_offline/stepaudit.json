@@ -1,8 +1,7 @@
 {
  "run": "agentqa_offline",
  "counts": {
-  "correct": 94,
-  "questionable": 1
+  "correct": 97
  },
  "steps": [
   {
@@ -126,6 +125,13 @@
   },
   {
    "round": 1,
+   "kind": "budget",
+   "step": "cycle 1 per-round call budget",
+   "verdict": "correct",
+   "evidence": "9 agent calls <= Fixed's per-round budget 9 (plan used 3 x 3 cells)"
+  },
+  {
+   "round": 1,
    "kind": "manifest",
    "step": "cycle 1 live_cycle_manifest",
    "verdict": "correct",
@@ -164,7 +170,7 @@
    "kind": "revision",
    "step": "r0001_t1m1",
    "verdict": "correct",
-   "evidence": "diff = own diff of history/r0000 -> history/r0001 (246 lines); base r0000 = strongest so far (value, recency); mutator moves ['rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule', 'wasted probes after the final best: stop stagnating branches earlier', 'perturb w_anchor -> 0.48', 'perturb plan_depth_step: unchanged at 1 (clamp/round)'] (1 declared no-op)"
+   "evidence": "diff = own diff of history/r0000 -> history/r0001 (252 lines); base r0000 = strongest so far (value, recency); mutator moves ['rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, plan_grid) replaces the fixed widen/deepen schedule', 'wasted probes after the final best: stop stagnating branches earlier', 'perturb w_anchor -> 0.48', 'perturb plan_depth_step: unchanged at 1 (clamp/round)'] (1 declared no-op)"
   },
   {
    "round": 1,
@@ -198,8 +204,8 @@
    "round": 2,
    "kind": "plan",
    "step": "cycle 2 plan_grid (r0003)",
-   "verdict": "questionable",
-   "evidence": "JUDGEMENT: the adaptive template calls a single live manifest 'live best still improving' (improving = len(history) < 2 or ...); spec \u00a74.5 treats insufficient history as a conservative bootstrap. Outcome identical here (hold = the fallback grid); the reason text is wrong || mechanical: own plan_grid on manifests of cycles < 2: (3, 2) ('live best still improving with balanced gains: hold the grid'); trace requested (3, 2), used (3, 2)"
+   "verdict": "correct",
+   "evidence": "own plan_grid on manifests of cycles < 2: (3, 2) ('one live manifest: evidence insufficient for a live-best trend and gains balanced: conservative bootstrap from the fallback grid'); trace requested (3, 2), used (3, 2)"
   },
   {
    "round": 2,
@@ -277,6 +283,13 @@
    "step": "cycle 2 best-program gate",
    "verdict": "correct",
    "evidence": "own: round best 0.875 at b0.a0 vs best before 1.0 -> accept=False; trace accept=False, best_after=1.0, kept=None"
+  },
+  {
+   "round": 2,
+   "kind": "budget",
+   "step": "cycle 2 per-round call budget",
+   "verdict": "correct",
+   "evidence": "6 agent calls <= Fixed's per-round budget 9 (plan used 3 x 3 cells)"
   },
   {
    "round": 2,
@@ -455,6 +468,13 @@
   },
   {
    "round": 3,
+   "kind": "budget",
+   "step": "cycle 3 per-round call budget",
+   "verdict": "correct",
+   "evidence": "8 agent calls <= Fixed's per-round budget 9 (plan used 4 x 3 cells)"
+  },
+  {
+   "round": 3,
    "kind": "manifest",
    "step": "cycle 3 live_cycle_manifest",
    "verdict": "correct",
@@ -561,16 +581,9 @@
   {
    "round": 4,
    "kind": "online_round",
-   "step": "cycle 4 online round 4 batch ['b4.a1']",
-   "verdict": "correct",
-   "evidence": "<= W=3, one cell per branch, legal before the call (5 legal), prefix_seen = own reconstruction, reveals = tree.json"
-  },
-  {
-   "round": 4,
-   "kind": "online_round",
    "step": "cycle 4 online batches cover the recorded tree",
    "verdict": "correct",
-   "evidence": "10 probed cells vs 10 tree nodes"
+   "evidence": "9 probed cells vs 9 tree nodes"
   },
   {
    "round": 4,
@@ -637,13 +650,6 @@
   },
   {
    "round": 4,
-   "kind": "attempt",
-   "step": "t4/b4.a1",
-   "verdict": "correct",
-   "evidence": "diff = own snapshot diff (2 +/- lines); own re-grade 0.625000 = recorded; context lineage=1, siblings=8, history=23 (H_(t-1)); claim 'simplify': knobs {'tool': True, 'verify': True} -> {'tool': False, 'verify': True} (consistent); no task id / question / target string of any split in the program"
-  },
-  {
-   "round": 4,
    "kind": "gate",
    "step": "cycle 4 best-program gate",
    "verdict": "correct",
@@ -651,17 +657,24 @@
   },
   {
    "round": 4,
+   "kind": "budget",
+   "step": "cycle 4 per-round call budget",
+   "verdict": "correct",
+   "evidence": "9 agent calls <= Fixed's per-round budget 9 (plan used 5 x 3 cells)"
+  },
+  {
+   "round": 4,
    "kind": "manifest",
    "step": "cycle 4 live_cycle_manifest",
    "verdict": "correct",
-   "evidence": "all fields re-derived from tree.json: {'probe_work': 10, 'decision_rounds': 4, 'round_best': 1.0, 'gain_early': 0.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 5, 'max_depth': 1, 'final_best': 1.0, 'agent_calls': 10}"
+   "evidence": "all fields re-derived from tree.json: {'probe_work': 9, 'decision_rounds': 3, 'round_best': 1.0, 'gain_early': 0.0, 'fail_frac': 0.0, 'beta': 0.6, 'opened_width': 5, 'max_depth': 1, 'final_best': 1.0, 'agent_calls': 9}"
   },
   {
    "round": null,
    "kind": "cost",
    "step": "cost accounting",
    "verdict": "correct",
-   "evidence": "calls per cycle own [9, 6, 8, 10] vs trace [9, 6, 8, 10]; meter 33; sum of per-attempt usd 0.0000 vs meter 0.0000; developer usd 0.0000 (0 calls)"
+   "evidence": "calls per cycle own [9, 6, 8, 9] vs trace [9, 6, 8, 9]; meter 32; sum of per-attempt usd 0.0000 vs meter 0.0000; developer usd 0.0000 (0 calls)"
   },
   {
    "round": null,

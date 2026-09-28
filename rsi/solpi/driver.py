@@ -5,11 +5,13 @@
     CAP/EFF predeclared (GateSpec, digest recorded)          # outside the optimiser's control
     base metrics on the training screen (all families)
     oracle analysis on base trajectories -> rank the idea pool; select n_lineages (breadth)
+    select: the n_lineages ideas with the largest oracle estimates (breadth budget; the rest get no rollouts)
     for each idea: Lineage(...).run()  -> frozen candidate or nothing   (depth, training split only)
     for each frozen candidate: HoldoutFirewall.evaluate_frozen()       (one-way; failures reject silently)
     compose ALL firewall survivors into one harness (independent opt-in mechanisms; "nondominated" retention
-    applies among a lineage's own variants, sweep=True - not across lineages; the composed stack is re-gated
-    only with validate_composition=True)
+    applies among a lineage's own gate-passing variants (sweep=True, the default: the lineage walks its variants
+    and freezes the nondominated one with the best eta = cost / score) - not across lineages, whose survivors
+    are different mechanisms; the composed stack is re-gated only with validate_composition=True)
     optional rounds > 1: the composed harness becomes the next base  ("preliminary" in the sources)
 """
 from __future__ import annotations
@@ -42,10 +44,16 @@ class Config:
     (the proposer's ``fix`` with the reviewer's objections) up to ``review_max`` times. Validation uses the
     training ``screen_split`` (restricted to ``gate.families`` for single-environment
     protocols) with ``k`` trials per task; ``holdout_split`` is used only by the
-    firewall. ``sweep=True`` makes each lineage evaluate its whole variant grid and
-    keep a nondominated passing variant (the ObservationPack sweep); otherwise a
-    lineage freezes its first gate-passing candidate. All firewall survivors of
-    different lineages are composed (they are independent opt-in mechanisms).
+    firewall. ``sweep=True`` (default) makes each lineage keep iterating after a pass
+    (its variant grid, or new proposals, up to ``max_iters``) and freeze the
+    nondominated passing variant with the best eta = cost / score - "among candidates
+    that pass the capability floor, the loop retains nondominated results", as in the
+    ObservationPack V0-V7 sweep; ``sweep=False`` freezes the first gate-passing
+    candidate (the spec pseudocode's ``while frozen is None``). All firewall survivors
+    of different lineages are composed (they are independent opt-in mechanisms).
+    ``n_lineages`` is the breadth budget: the Oracle Analysis ranks the pool and only
+    the top ``n_lineages`` ideas get rollouts (the default pools hold more ideas than
+    that, so the oracle filters).
     """
 
     gate: GateSpec = field(default_factory=GateSpec)
@@ -58,7 +66,7 @@ class Config:
     k: int = 1
     holdout_split: Optional[str] = "holdout"
     firewall: bool = True
-    sweep: bool = False              # lineage evaluates every variant and keeps the nondominated passing one
+    sweep: bool = True               # lineage keeps iterating after a pass; freezes the nondominated best-eta variant
     validate_composition: bool = False   # [inferred extension] re-gate the composed stack; drop survivors greedily
     compose: bool = True
     rounds: int = 1

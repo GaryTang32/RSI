@@ -1,81 +1,82 @@
 {
  "status": "done",
- "summary": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [har_19] Answer-line extractor: Answer-line extractor; aimed; [gen_12] Role and scope statement: Role and scope statement;; [lea_08] Practice answer cache: Return remembered answers fo",
+ "summary": "[gen_04] Bounded self-verification pass: Bounded self-verifi; [cos_02] Pin the task statement: Drop stale observations; ru; [lea_06] Practice answer cache: Return remembered answers fo; [nul_10] Drop stale observations: Drop stale observations (r",
  "edits": [
   {
    "id": "C1",
-   "component": "subagent",
-   "hypothesis": "[cos_07] Bounded checker sub-call: Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "control_flow",
+   "hypothesis": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-039"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "cos_07",
+   "mechanism_id": "gen_04",
    "prune": false,
-   "mechanism": "[cos_07] Bounded checker sub-call: Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning)."
+   "mechanism": "[gen_04] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, plan tasks."
   },
   {
    "id": "C2",
-   "component": "output_plumbing",
-   "hypothesis": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "context_mgmt",
+   "hypothesis": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_19",
+   "mechanism_id": "cos_02",
    "prune": false,
-   "mechanism": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks."
+   "mechanism": "[cos_02] Pin the task statement: Drop stale observations; runs extra model passes (self-consistency / long reasoning)."
   },
   {
    "id": "C3",
    "component": "prompt",
-   "hypothesis": "[gen_12] Role and scope statement: Role and scope statement; aimed at arith, plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "hypothesis": "[lea_06] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-042"
+    "hw-e-078",
+    "hw-e-008",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "gen_12",
+   "mechanism_id": "lea_06",
    "prune": false,
-   "mechanism": "[gen_12] Role and scope statement: Role and scope statement; aimed at arith, plan, format tasks."
+   "mechanism": "[lea_06] Practice answer cache: Return remembered answers for tasks seen during practice."
   },
   {
    "id": "C4",
-   "component": "control_flow",
-   "hypothesis": "[lea_08] Practice answer cache: Return remembered answers for tasks seen during practice.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "context_mgmt",
+   "hypothesis": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-022",
-    "hw-e-008"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_08",
+   "mechanism_id": "nul_10",
    "prune": false,
-   "mechanism": "[lea_08] Practice answer cache: Return remembered answers for tasks seen during practice."
+   "mechanism": "[nul_10] Drop stale observations: Drop stale observations (rewording of existing guidance)."
   }
  ],
- "mechanism": "[cos_07] Bounded checker sub-call: Critic sub-call on final ; [har_19] Answer-line extractor: Answer-line extractor; aimed; [gen_12] Role and scope statement: Role and scope statement;; [lea_08] Practice answer cache: Return remembered answers fo",
- "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_",
+ "mechanism": "[gen_04] Bounded self-verification pass: Bounded self-verifi; [cos_02] Pin the task statement: Drop stale observations; ru; [lea_06] Practice answer cache: Return remembered answers fo; [nul_10] Drop stale observations: Drop stale observations (r",
+ "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family",
  "n_changes": 4,
  "log": [
   {

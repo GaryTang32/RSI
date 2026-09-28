@@ -1,16 +1,16 @@
---- a/config/nul_06.py
-+++ b/config/nul_06.py
+--- a/memory/har_05.py
++++ b/memory/har_05.py
 @@ -0,0 +1,5 @@
-+# mechanism: nul_06
-+# component: config
-+# title: Raise the per-step output cap
-+"""Raise the per-step output cap (rewording of existing guidance)."""
-+enable("nul_06")
---- a/memory/har_16.py
-+++ b/memory/har_16.py
-@@ -0,0 +1,5 @@
-+# mechanism: har_16
++# mechanism: har_05
 +# component: memory
-+# title: Scratchpad for intermediate results
-+"""Scratchpad for intermediate results; aimed at format tasks."""
-+enable("har_16")
++# title: Semantic memory of general procedures
++"""Semantic memory of general procedures; aimed at plan, format tasks."""
++enable("har_05")
+--- a/tools/str_11.py
++++ b/tools/str_11.py
+@@ -0,0 +1,5 @@
++# mechanism: str_11
++# component: client_tool
++# title: Code runner tool
++"""Code runner tool; aimed at extract, arith, format tasks."""
++enable("str_11")

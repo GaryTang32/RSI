@@ -1,27 +1,27 @@
 {
  "status": "done",
- "summary": "[lea_01] Practice answer cache: Return remembered answers fo",
+ "summary": "[gen_14] Pin the task statement: Pin the task statement; aim",
  "edits": [
   {
    "id": "C1",
-   "component": "prompt",
-   "hypothesis": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
     "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-008",
+    "hw-e-036"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_01",
+   "mechanism_id": "gen_14",
    "prune": false,
-   "mechanism": "[lea_01] Practice answer cache: Return remembered answers for tasks seen during practice."
+   "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks."
   }
  ],
- "mechanism": "[lea_01] Practice answer cache: Return remembered answers fo",
+ "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aim",
  "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
  "n_changes": 1,
  "log": [

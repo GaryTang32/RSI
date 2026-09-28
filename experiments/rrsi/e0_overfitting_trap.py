@@ -1,7 +1,7 @@
 """E0 - the overview's "See the overfitting trap" toy, reproduced exactly.
 
 Runs the page's own simulator (ported bit-for-bit from its JavaScript; verified against
-Node in tests/test_rrsi_toy.py) at the page defaults: 60 rounds x 200 runs, 35% tricks,
+Node in tests/rrsi/test_rrsi_toy.py) at the page defaults: 60 rounds x 200 runs, 35% tricks,
 noise 2.0 pts, critic catches 80%. Reports the four curves (plain/guarded x practice/
 unseen), per-run final values with 95% bootstrap CIs, the guard ablations (critic only,
 noise margin only), RRSI's z = 2 band instead of the demo's half-sd band, and one-factor
@@ -61,7 +61,7 @@ def main():
         "sensitivity": rows,
         "verdict": {"claim": "plain loop: practice up, unseen ~flat; guarded loop: practice lower, unseen higher",
                     "reproduced": bool(reproduced),
-                    "exact_match_to_page_js": "yes (see tests/test_rrsi_toy.py: max |diff| ~1e-15, identical accept counts)",
+                    "exact_match_to_page_js": "yes (see tests/rrsi/test_rrsi_toy.py: max |diff| ~1e-15, identical accept counts)",
                     "note": "the toy is the overview author's, not RRSI's method or data; with RRSI's z=2 band the "
                             "guarded loop keeps fewer changes (see arms.rrsi_band_z2)"},
     }

@@ -5,6 +5,12 @@ A point is ``(name, score, cost)``; it is on the frontier iff no other point has
 frontier is sorted by ``(-score, cost)``, so ``frontier[0]`` is the loop's "best"
 (the highest-accuracy Pareto point, ``frontier._pareto[0].val_accuracy``).
 Per unit (dataset / task), ``best = argmax (score, -cost)``.
+
+Exact ties (same score AND cost) keep the order of the input list, as the release's
+stable ``sorted`` and first-wins ``max`` do. The loop passes points in registration
+order (``store.names()``), so an exact copy proposed later never displaces an
+earlier system, on the frontier or per unit (validation register #10: before, ties
+were broken by name, alphabetically smallest on the frontier and largest per unit).
 """
 from __future__ import annotations
 
@@ -15,17 +21,18 @@ def pareto_frontier(points: Iterable[tuple[str, float, float]]) -> list[tuple[st
     pts = list(points)
     front = [p for p in pts
              if not any(o[1] >= p[1] and o[2] <= p[2] and (o[1] > p[1] or o[2] < p[2]) for o in pts)]
-    return sorted(front, key=lambda x: (-x[1], x[2], x[0]))
+    return sorted(front, key=lambda x: (-x[1], x[2]))          # stable: exact ties keep input order
 
 
 def per_unit_best(per_unit: dict[str, dict[str, tuple[float, float]]]) -> dict[str, dict]:
-    """``per_unit[system][unit] = (score, cost)`` -> ``{unit: {best_system, score, cost}}``."""
+    """``per_unit[system][unit] = (score, cost)`` -> ``{unit: {best_system, score, cost}}``.
+    Exact ties go to the system that comes first in ``per_unit`` (registration order in the loop)."""
     units = sorted({u for d in per_unit.values() for u in d})
     out = {}
     for u in units:
         cands = [(s, d[u][0], d[u][1]) for s, d in per_unit.items() if u in d]
         if cands:
-            s, sc, c = max(cands, key=lambda x: (x[1], -x[2], x[0]))
+            s, sc, c = max(cands, key=lambda x: (x[1], -x[2]))  # max() keeps the first of exact ties
             out[u] = {"best_system": s, "score": sc, "cost": c}
     return out
 

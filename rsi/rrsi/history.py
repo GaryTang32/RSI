@@ -154,13 +154,14 @@ class History:
     def render(self, n: int = 40, mode: str = "full") -> list[dict]:
         """Compact view of the most recent records for the proposer's context.
 
-        ``mode="full"`` is the paper's evidence-aware history (measured outcomes
-        dominate; at most the 4 most recent unmeasured records are kept, "because a
-        wall of aborts is a feedback loop, not evidence"). ``"accepted_only"`` shows
-        only accepted edits (ablation: no negative evidence); ``"none"`` shows nothing."""
+        ``mode="full"`` is the paper's evidence-aware history, exactly as the code renders it:
+        every record including the ``BASELINE`` row (which, having no measurement delta, counts
+        toward the at most 4 most recent unmeasured records kept, "because a wall of aborts is a
+        feedback loop, not evidence"). ``"accepted_only"`` shows only accepted records, the
+        baseline included (ablation: no negative evidence); ``"none"`` shows nothing."""
         if mode == "none":
             return []
-        recs = [r for r in self.records() if r.get("edit_id")]
+        recs = self.records()
         if mode == "accepted_only":
             recs = [r for r in recs if r.get("accepted")]
         kept, unmeasured = [], 0

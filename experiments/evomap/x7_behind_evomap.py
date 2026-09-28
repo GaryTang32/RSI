@@ -9,6 +9,11 @@ Setup: a GeneWorld population (40 agents: 60% honest faithful-Evolver agents, 15
 Arms: ``base``; ``no_farmers`` (farmers replaced by honest agents: which findings need farmers?);
 ``real_validation`` (honest gene writers always attach the real check instead of following the distiller's
 "prefer --version" advice: which findings need that advice?).
+``farm_rate_2`` / ``farm_rate_1`` (N2: farmers publish 2 or 1 assets per epoch instead of 8 - the headline
+percentages are a function of this knob). Every arm also records the GDI decomposition over promoted assets (N1:
+each component's share of the mean GDI level and of its variance across assets), the zero-review share (B8), and
+both vacuity notions (N9): ``vacuous_share_promoted`` (ours: the validation does not discriminate the change) and
+``trivial_command_share_promoted`` (the study's: the test command is trivial as written, the console.log class).
 X16 from the same cycles: Spearman(composite process score, graded task outcome) and the share of
 vacuous/skipped-validation cycles that still reach the 0.78 publish bar.
 
@@ -27,7 +32,26 @@ from rsi.core.stats import spearman
 from rsi.evomap import PopulationSimulator
 
 ARMS = {"base": {}, "no_farmers": {"mix": {**DEFAULT_MIX, "farmer": 0.0, "honest": 0.75}},
-        "real_validation": {"p_real": 1.0}}
+        "real_validation": {"p_real": 1.0}, "farm_rate_2": {"farm_rate": 2}, "farm_rate_1": {"farm_rate": 1}}
+FARM_RATE = 8
+
+
+def gdi_decomposition(hub) -> dict:
+    """N1: per GDI component (I intrinsic, U usage, S social, F freshness), its share of the mean GDI level and of
+    the GDI variance across the promoted (served) assets, plus its correlation with the total."""
+    served = [r for r in hub.published() if r.status == "promoted"]
+    out = {"zero_review_share_promoted": float(np.mean([len(r.reviews) == 0 for r in served])) if served
+           else float("nan")}
+    if len(served) < 3:
+        return out
+    comp = [hub.ranker.components(r, hub.epoch) for r in served]
+    gdi = np.array([hub.ranker.score(r, hub.epoch) / 100 for r in served])
+    for k, w in zip("IUSF", hub.ranker.w):
+        v = np.array([w * c[k] for c in comp])
+        out[f"gdi_level_share_{k}"] = float(np.mean(v / gdi))
+        out[f"gdi_var_share_{k}"] = float(np.var(v) / np.var(gdi)) if np.var(gdi) > 0 else float("nan")
+        out[f"gdi_corr_{k}"] = float(np.corrcoef(v, gdi)[0, 1]) if np.std(v) > 0 and np.std(gdi) > 0 else float("nan")
+    return out
 
 
 def one(job):
@@ -35,7 +59,8 @@ def one(job):
     spec = ARMS[arm]
     world = make_world(args, seed, p_real_validation=spec.get("p_real", 0.3))
     n, epochs = (6, 3) if live(args) else ((24, 10) if args.quick else (40, 30))
-    specs = population_specs(n, spec.get("mix", DEFAULT_MIX), seed, classes=world.domain.tasks.families("evolve"))
+    specs = population_specs(n, spec.get("mix", DEFAULT_MIX), seed, classes=world.domain.tasks.families("evolve"),
+                             farm_rate=spec.get("farm_rate", FARM_RATE))
     hub = make_hub("naive", world)
     sim = PopulationSimulator(world.domain, world.harness, hub, specs, config=agent_config("naive", seed),
                               model_factory=world.model_factory, proposer_factory=world.proposer_factory,
@@ -66,7 +91,10 @@ def one(job):
             "n_published": h["n_published"], "credit_top10_share": h["credit_top10_share"],
             "credit_gini": h["credit_gini"], "farmer_credit_share": s["credit_share_by_kind"].get("farmer", 0.0),
             "top10_are_farmers": float(np.mean([a.endswith("farmer") for a in top])),
-            "vacuous_share_promoted": h["vacuous_share_promoted"], "rank_validity": h["rank_validity"], "surfacing_validity": h["surfacing_validity"],
+            "vacuous_share_promoted": h["vacuous_share_promoted"],
+            "trivial_command_share_promoted": h["trivial_command_share_promoted"],
+            "n_promoted": h["n_promoted"], **gdi_decomposition(hub),
+            "rank_validity": h["rank_validity"], "surfacing_validity": h["surfacing_validity"],
             "served_true_effect": h["served_true_effect"],
             "consumer_uplift_true": h.get("consumer_uplift_true", float("nan")),
             "credits_from_promotion": h["credits_by_reason"].get("promotion", 0.0) /
@@ -82,7 +110,9 @@ def one(job):
 
 METRICS = ["never_reused_published", "never_reused_promoted", "promotion_rate", "n_published", "credit_top10_share",
            "credit_gini", "farmer_credit_share", "top10_are_farmers", "credits_from_promotion",
-           "vacuous_share_promoted", "rank_validity", "surfacing_validity", "served_true_effect", "consumer_uplift_true", "solve_rate",
+           "vacuous_share_promoted", "trivial_command_share_promoted", "n_promoted", "zero_review_share_promoted",
+           *[f"gdi_{a}_share_{k}" for a in ("level", "var") for k in "IUSF"],
+           "rank_validity", "surfacing_validity", "served_true_effect", "consumer_uplift_true", "solve_rate",
            "x16_spearman_composite_task", "x16_spearman_vacuous_cycles", "x16_spearman_real_cycles",
            "x16_vacuous_cycles_publishable", "x16_vacuous_failed_task_publishable", "x16_n_vacuous_cycles",
            "x16_n_real_cycles"]
@@ -105,11 +135,22 @@ def main():
         "credits_concentrated_top10_gt_0.5": b["credit_top10_share"]["mean"] > 0.5,
         "credits_mostly_from_publishing": b["credits_from_promotion"]["mean"] > 0.5,
         "vacuous_share_promoted_gt_0.5": b["vacuous_share_promoted"]["mean"] > 0.5,
+        "trivial_command_share_promoted_gt_0.84 (study notion)": b["trivial_command_share_promoted"]["mean"] > 0.84,
+        "zero_reviews_ge_0.9": b["zero_review_share_promoted"]["mean"] >= 0.9,
+        "gdi_intrinsic_dominates_variance (B9)": b["gdi_var_share_I"]["mean"] > 0.5,
+        "gdi_largest_variance_component": max("IUSF", key=lambda k: b[f"gdi_var_share_{k}"]["mean"] or 0),
         "rank_weakly_related_abs_lt_0.3": abs(b["rank_validity"]["mean"]) < 0.3 if b["rank_validity"]["n"] else None,
         "x16_composite_not_task_gain_abs_rho_lt_0.3": abs(b["x16_spearman_composite_task"]["mean"]) < 0.3,
         "x16_vacuous_rho": b["x16_spearman_vacuous_cycles"]["mean"], "x16_real_rho": b["x16_spearman_real_cycles"]["mean"],
         "x16_failed_tasks_still_publishable_share": b["x16_vacuous_failed_task_publishable"]["mean"],
     }
+    fr = {a: out["summary"][a] for a in ("base", "farm_rate_2", "farm_rate_1") if a in out["summary"]}
+    if len(fr) > 1:            # N2: the headline percentages as a function of the farm rate
+        v["farm_rate_sensitivity"] = {
+            {"base": FARM_RATE, "farm_rate_2": 2, "farm_rate_1": 1}[a]: {
+                m: x[m]["mean"] for m in ("never_reused_published", "vacuous_share_promoted",
+                                          "trivial_command_share_promoted", "credit_top10_share",
+                                          "zero_review_share_promoted", "gdi_var_share_I")} for a, x in fr.items()}
     if "no_farmers" in out["summary"]:
         nf = out["summary"]["no_farmers"]
         v["never_reused_without_farmers"] = nf["never_reused_published"]["mean"]

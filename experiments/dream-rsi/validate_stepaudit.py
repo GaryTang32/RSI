@@ -38,6 +38,76 @@ from rsi.dream import policy_api  # noqa: E402  (the policy-side API data types 
 
 OUT = ROOT / "validation" / "dream-rsi"
 META_FILES = ("proposal.md", "eval/score.json", "error.txt")
+#: runs recorded BEFORE the claims-audit prompt restoration (N5): their agent prompts were built from the
+#: condensed Listing-1 text below (history capped at the last 8 searches / 30 records per section,
+#: proposals clipped to 600 chars, baseline shown as a score). Kept verbatim so those runs stay auditable.
+LEGACY_PROMPT_RUNS = ("sumdiff_live", "sumdiff_live_b")
+#: the pre-fix rsi.dream.agent.EXPLORATION_PROMPT (git history), used only to re-audit LEGACY_PROMPT_RUNS
+LEGACY_EXPLORATION_PROMPT = """\
+You must read every historical proposal before proposing or implementing a new solution.
+
+{direction_guidance}
+
+## Problem
+{problem}
+
+## 1. Read the complete history first
+Below are every sibling attempt of the current search, the completed history of earlier
+rounds, and the baseline - in full, not a sample. Trust the measured result over what a
+proposal claims about itself.
+
+### This branch (the workspace you resume; oldest first)
+{lineage}
+
+### Sibling attempts in this search
+{siblings}
+
+### History of earlier rounds
+{history}
+
+### Baseline
+score = {baseline}
+
+## 2. Learn from both successes and failures
+For every past attempt, note the mechanism and how it did. For failures, figure out *why*:
+a flawed core idea, or a good idea let down by a bug, bad parameters, or an implementation
+slip? Don't repeat the former. The latter is worth retrying - but only once you've actually
+located the bug in the code, and only with a specific fix in hand.
+
+## 3. Don't converge into a local optimum
+If most attempts cluster around small variations of one mechanism with flattening returns,
+that's a local optimum - resist proposing another small tweak there. Deliberately favor a
+structurally different mechanism or an untried combination over a safer marginal refinement.
+Exploration diversity matters as much as the next incremental gain.
+
+## 4. Propose and implement
+The new idea must be a genuinely new mechanism, a new combination of previously-successful
+pieces, or a targeted fix to a specific bug found in step 2 - never a repeat or rename of
+something already tried. Implement it in the program files of the current workspace (shown
+below; the parent's evaluation is in eval/score.json). Don't claim it compiles, is correct, or
+beats SOTA until it's actually evaluated.
+
+## Files
+In the JSON header, "change" is a one-line mechanism summary and "hypothesis" is the proposal
+(mechanism, evidence from history, why it's not a repeat, expected benefit/risk). Only the
+program files are yours to write; proposal.md, eval/ and error.txt are written by the system.
+"""
+
+
+def legacy_instructions(ctx) -> str:
+    """The pre-fix EditorAgent.build_instructions (30 records per section, compact records)."""
+    def recs(rs, empty="(none)"):
+        if not rs:
+            return empty
+        rs = list(rs)
+        omitted = max(0, len(rs) - 30)
+        body = "\n".join(r.render() for r in rs[-30:])
+        return (f"({omitted} older attempts omitted)\n" if omitted else "") + body
+    return LEGACY_EXPLORATION_PROMPT.format(
+        direction_guidance=ctx.direction_guidance or "", problem=ctx.problem,
+        lineage=recs(ctx.lineage, "(this branch starts from the initial workspace)"), siblings=recs(ctx.siblings),
+        history=recs(ctx.history), baseline=f"{ctx.baseline_score:.6g}" if ctx.baseline_score is not None else "n/a")
+
 MECHS = ("hill", "anneal", "window", "fringe", "grow")
 TOL = 1e-6
 
@@ -296,8 +366,11 @@ def ceiling_of(tree: dict) -> float:
     return max(vals)
 
 
-def eq1(best, root, ceil, N, k, b1=0.01, b2=0.005, normalize=True):
-    if normalize:
+def eq1(best, root, ceil, N, k, b1=0.01, b2=0.005, normalize=True, no_reward=False):
+    """Eq. 1; ``no_reward``: the plan was out of the trace's support (Listing 2: no replay reward)."""
+    if no_reward:
+        q = 0.0 if normalize else root
+    elif normalize:
         q = 0.0 if ceil - root <= 0 else min(1.0, max(0.0, (best - root) / (ceil - root)))
     else:
         q = best
@@ -332,7 +405,8 @@ def indep_replay(code: str, tree: dict, W: int, manifests: list, cfg: dict, beta
     except Exception as e:  # noqa: BLE001
         err = f"{type(e).__name__}: {e}"
     st = q.stats()
-    st.update(plan=(pb, pr), error=err, ceiling=ceiling_of(tree), root=tree["root"]["score"], size=len(tree["nodes"]))
+    st.update(plan=(pb, pr), error=err, ceiling=ceiling_of(tree), root=tree["root"]["score"], size=len(tree["nodes"]),
+              out_of_support=pb > trb or pr > trr)
     return st
 
 
@@ -473,7 +547,12 @@ class Audit:
         P = {e["data"]["candidate"]: e["data"] for e in evs if e["kind"] == "proposal" and e["data"]["candidate"].startswith("t")}
         E = {e["data"]["candidate"]: e["data"] for e in evs if e["kind"] == "eval" and e["data"]["candidate"].startswith("t")}
         prev_worlds = [self.trees[i] for i in range(1, t)]
-        hist_n = min(200, sum(len(w["nodes"]) for w in prev_worlds[-8:]))
+        if self.run in LEGACY_PROMPT_RUNS or "agent_history_cycles" not in self.cfg:
+            hist_n = min(200, sum(len(w["nodes"]) for w in prev_worlds[-8:]))       # pre-fix: last 8 searches
+        else:
+            k = self.cfg.get("agent_history_cycles")
+            shown = prev_worlds if k is None else (prev_worlds[-k:] if k > 0 else [])
+            hist_n = sum(len(w["nodes"]) for w in shown)                             # every earlier search
         seen_recipes = {}
         for i in range(1, t):
             for n in self.trees[i]["nodes"]:
@@ -609,6 +688,14 @@ class Audit:
                   f"{None if top is None else top['id']} vs best before {best_before} -> accept={acc}; "
                   f"trace accept={gate['accept']}, best_after={dec['best_after']}, kept={dec['kept']}")
         # next root equals this best (checked at t+1 via root step); the kept program is that node's program
+        # --- per-round budget ("identical per-round budgets", claims audit N3): runs recorded after the fix
+        rb = self.cfg.get("round_budget", None if "round_budget" not in self.cfg else "fallback")
+        if "round_budget" in self.cfg and rb is not None:
+            cap = self.cfg["branch_count"] * (self.cfg["refine_count"] + 1) if rb == "fallback" else int(rb)
+            self.step(t, "budget", f"cycle {t} per-round call budget",
+                      "correct" if len(tr["nodes"]) <= cap else "wrong",
+                      f"{len(tr['nodes'])} agent calls <= Fixed's per-round budget {cap} (plan used "
+                      f"{plan['branch_count']} x {plan['refine_count'] + 1} cells)")
         # --- manifest
         man = next(e["data"]["manifest"] for e in evs if e["kind"] == "note" and e["data"].get("what") == "live_cycle_manifest")
         root_s = tr["root"]["score"]
@@ -663,7 +750,10 @@ class Audit:
                 best = max(succ + [tw["root"]["score"]])
                 ceil = ceiling_of(tw)
                 N, k = len(cells), len(w["reveal_batches"])
-                v = eq1(best, tw["root"]["score"], ceil, N, k, b1, b2, norm)
+                # (2, first) own independent replay of the archived code: also decides the support rule
+                ir = indep_replay(code, tw, self.cfg["W"], self.mans, self.cfg)
+                nr = self.cfg.get("support", "clip") == "no_reward" and ir["out_of_support"]
+                v = eq1(best, tw["root"]["score"], ceil, N, k, b1, b2, norm, nr)
                 if w.get("disqualified"):
                     notes.append(f"{w['world']} disqualified")
                     v = w["V_i"]
@@ -671,11 +761,16 @@ class Audit:
                     verdict = "wrong"
                     notes.append(f"{w['world']}: own Eq.1 {v:.6f} (N={N},k={k}) != trace {w['V_i']}")
                 # (2) own independent replay of the archived code
-                ir = indep_replay(code, tw, self.cfg["W"], self.mans, self.cfg)
-                iv = eq1(ir["best"], ir["root"], ir["ceiling"], ir["N"], ir["k"], b1, b2, norm)
-                same = [r["batch"] for r in ir["batches"]] == [b["batch"] for b in w["reveal_batches"]] and \
-                    [sorted(r["revealed"]) for r in ir["batches"]] == \
+                iv = eq1(ir["best"], ir["root"], ir["ceiling"], ir["N"], ir["k"], b1, b2, norm, nr)
+                # batches compared as SETS per round: the order inside a batch can depend on the process's
+                # string-hash seed when a policy iterates a set of cell ids (random per process before the
+                # sandbox fixed PYTHONHASHSEED; this audit's process has its own seed)
+                same = [sorted(r["batch"]) for r in ir["batches"]] == [sorted(b["batch"]) for b in w["reveal_batches"]] \
+                    and [sorted(r["revealed"]) for r in ir["batches"]] == \
                     [sorted(x.split("=")[0].split(":")[0] for x in b["revealed"]) for b in w["reveal_batches"]]
+                if same and [r["batch"] for r in ir["batches"]] != [b["batch"] for b in w["reveal_batches"]]:
+                    notes.append(f"{w['world']}: same cells per round, different order inside a batch (the policy "
+                                 "iterates a set: hash-seed dependent order)")
                 if ir["error"] or not same or abs(iv - w["V_i"]) > 1e-5:
                     verdict = "wrong"
                     notes.append(f"{w['world']}: OWN replay differs (err={ir['error']}, V={iv:.6f}, batches "
@@ -813,6 +908,8 @@ class Audit:
         from rsi.dream import agent as agent_mod
 
         legacy = self.run == "sumdiff_live"      # recorded BEFORE the tail-of-error fix: head-only errors
+        legacy_prompt = self.run in LEGACY_PROMPT_RUNS
+        n_hist = self.cfg.get("agent_history_cycles")          # None (default since the fix) = every search
 
         def old_render(r, max_chars: int = 600) -> str:
             head = f"[round {r.round} {r.cell}{' dir=' + r.direction if r.direction else ''}] "
@@ -826,7 +923,15 @@ class Audit:
             agent_mod.AttemptRecord.render = old_render
         for t in sorted(self.trees):
             tr = worlds[t]
-            hist = history_records([worlds[i] for i in sorted(worlds) if i < t][-8:])
+            earlier = [worlds[i] for i in sorted(worlds) if i < t]
+            if legacy_prompt:
+                shown = earlier[-8:]
+            else:
+                shown = earlier if n_hist is None else (earlier[-n_hist:] if n_hist > 0 else [])
+            hist = history_records(shown)
+            note = "" if legacy_prompt or len(shown) == len(earlier) else \
+                (f"NOTE: `history/` shows only the last {len(shown)} of the {len(earlier)} earlier live searches "
+                 "(the calling system's history cap).")
             for n in tr.non_root():
                 parent = tr.node(n.parent_id)
                 d = json.loads((self.d / "snapshots" / parent.artifact_id[:2] / f"{parent.artifact_id}.json").read_text())
@@ -837,8 +942,9 @@ class Audit:
                 ctx = AttemptContext(dom.describe(), parent.id, ws, parent.score, n.branch, n.attempt, t, lineage, sibs,
                                      hist, seed_score, dirn,
                                      f"Direction assigned to this branch: {dirn['direction']}." if dirn.get("direction")
-                                     else "", ["construct.py"])
-                prompt = agent.editor.build_prompt(ws, agent.build_instructions(ctx), None, ["construct.py"])
+                                     else "", ["construct.py"], None, "ok", None, note)
+                instr = legacy_instructions(ctx) if legacy_prompt else agent.build_instructions(ctx)
+                prompt = agent.editor.build_prompt(ws, instr, None, ["construct.py"])
                 seed = _seed_of(self.cfg["seed"], t, n.branch, n.attempt)
                 h = hashlib.sha256(json.dumps([name, agent.system, prompt, None, seed]).encode()).hexdigest()
                 if (cache / h[:2] / f"{h}.json").exists():
@@ -853,6 +959,8 @@ class Audit:
                   f"siblings of earlier rounds, H_(t-1), seed baseline, direction) hash to an entry of the fresh LLM "
                   f"cache: the agent saw exactly that and nothing else (no sealed data exists for this domain)"
                   + (" [rebuilt with the pre-fix head-only error rendering the run used]" if legacy else "")
+                  + (" [pre-fix condensed Listing-1 prompt]" if legacy_prompt else
+                     " [verbatim Listing-1 prompt: every earlier search, full proposal.md, baseline/, pkill line]")
                   + (f"; not reproduced: {misses[:6]}" if misses else ""))
 
     def audit_developer_prompts(self):
@@ -950,13 +1058,16 @@ JUDGEMENT = {
         "questionable", "rule-correct argmax (V 0.910 vs 0.865 on ONE world), but a replay artefact: on 40 fresh "
         "one-cycle online searches from the cycle-2 root (stage-A's 8 seeds + 32 new ones, re-run by stage B) r0001 "
         "never found more than pi_1 and found less on 18/40: mean gain -0.0028 (95% bootstrap CI [-0.0046, -0.0012]) "
-        "at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Frugality bias of the replay ceiling - spec §8.2/§8.4"),
+        "at 8.2 vs 15 calls (stage A's 8 seeds alone: -0.0060). Re-measured on the run re-recorded after the claims-"
+        "audit fixes (same decision, V 0.910 vs 0.865): 40 fresh searches (seeds 10097-10136), never more, less on "
+        "19/40, -0.0037 [-0.0058, -0.0018] at 8.0 vs 15 calls. Frugality bias of the replay ceiling - spec "
+        "§8.2/§8.4 (paper-level: the argmax rule is the paper's)"),
     ("sumdiff_live_b", "selection", "cycle 1 policy selection"): (
         "unverifiable", "rule-correct and prefix-justified (r0001 closes branch b2 after two flat results "
         "1.0, 1.0; the unrevealed b2.a2 = 1.016 was not the ceiling), V 0.9333 vs 0.925 on ONE world; whether "
         "r0001 is better ONLINE is not measured (a live ground truth would cost as much as the run)"),
-    ("sumdiff_offline", "plan", "cycle 2 plan_grid (r0001)"): ("questionable", _ONE_MANIFEST),
-    ("agentqa_offline", "plan", "cycle 2 plan_grid (r0003)"): ("questionable", _ONE_MANIFEST),
+    # (the two _ONE_MANIFEST label judgements applied to the offline runs recorded before the adaptive
+    # template's fix; both runs were re-recorded after it, and the label is now "evidence insufficient")
     ("sumdiff_live", "attempt", "t1/b0.a2"): ("wrong", _MISLED + "'avoids the fringe-related compilation issue'"),
     ("sumdiff_live", "attempt", "t1/b0.a3"): ("questionable", _MISLED + "'reversed ... order, causing compilation failure'"),
     ("sumdiff_live", "attempt", "t1/b2.a3"): ("questionable", _MISLED + "'the reversed grow->anneal order is suboptimal'"),

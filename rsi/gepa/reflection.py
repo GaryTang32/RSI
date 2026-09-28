@@ -121,6 +121,25 @@ def is_known_truncated(out: str, finish_reason: Optional[str] = None, tags: Sequ
     return any(stripped.startswith(f"<{t}>") and out.count(f"<{t}>") > out.count(f"</{t}>") for t in tags)
 
 
+def response_finish_reason(resp) -> Optional[str]:
+    """The provider's termination reason of an :class:`rsi.core.LLMResponse`, or None.
+
+    Reads ``resp.raw["stop_reason"]`` (the ``claude -p`` JSON, Anthropic naming; kept by
+    :class:`rsi.core.CachedLLM` on cache hits since the core fix) or ``resp.raw["finish_reason"]``
+    (OpenAI / LiteLLM style), then a ``finish_reason`` attribute on the response itself (the
+    reference's ``LMOutput.finish_reason``). Like the reference ``ProposalAdapter._finish_reason``,
+    only a string counts. Cache entries written before the core fix carry no reason, so on
+    them only the ``<think>`` heuristic can detect truncation."""
+    raw = getattr(resp, "raw", None)
+    if isinstance(raw, dict):
+        for key in ("stop_reason", "finish_reason"):
+            v = raw.get(key)
+            if isinstance(v, str):
+                return v
+    v = getattr(resp, "finish_reason", None)
+    return v if isinstance(v, str) else None
+
+
 def parse_fenced(out: str, finish_reason: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
     """``(text, error)``: the reference ``ProposalAdapter.parse`` semantics."""
     out = (out or "").strip()
@@ -157,6 +176,7 @@ class ReflectionResult:
     prompts: dict[str, str] = field(default_factory=dict)
     raw: dict[str, str] = field(default_factory=dict)
     rejected: dict[str, str] = field(default_factory=dict)      # component -> reason
+    finish: dict[str, Optional[str]] = field(default_factory=dict)   # component -> provider stop/finish reason
     calls: int = 0
 
 
@@ -208,7 +228,8 @@ class ReflectionProposer:
             if not resp.ok:
                 res.rejected[comp] = f"llm error: {resp.error}"
                 continue
-            finish = (resp.raw or {}).get("stop_reason") if isinstance(resp.raw, dict) else None
+            finish = response_finish_reason(resp)
+            res.finish[comp] = finish
             text, err = parse_fenced(resp.text, finish)
             if text is None:
                 res.rejected[comp] = err or "unparseable"

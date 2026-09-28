@@ -1,81 +1,43 @@
 {
- "gate_failure": "critic_reject",
- "detail": "[\"precheck: hard-coded evaluation data 'ans-00d02a'\", \"precheck: hard-coded evaluation data 'ans-04a37f'\", \"precheck: hard-coded evaluation data 'ans-0a4d6d'\", \"precheck: hard-coded evaluation data 'ans-0e2032'\", \"precheck: hard-coded evaluation data 'ans-104326'\", \"precheck: hard-coded evaluation data 'ans-2239e9'\", \"precheck: hard-coded evaluation data 'ans-28989c'\", \"precheck: hard-coded evaluation data 'ans-305faf'\", \"precheck: hard-coded evaluation data 'ans-3bb9c1'\", \"precheck: hard-coded evaluation data 'ans-5ac513'\"]",
+ "artifact_id": "1a81ce67d3e45166a87326d71b02e82beb0f4a9b64784c3e433d9aa3ff01a78d",
  "edits": [
   {
    "id": "C1",
-   "component": "skill",
-   "hypothesis": "[lea_03] Practice answer cache: Return remembered answers for tasks seen during practice.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "config",
+   "hypothesis": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
+    "hw-e-019"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "lea_03",
+   "mechanism_id": "nul_08",
    "prune": false,
-   "mechanism": "[lea_03] Practice answer cache: Return remembered answers for tasks seen during practice."
+   "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
+   "declared_component": "config"
   },
   {
    "id": "C2",
-   "component": "subagent",
-   "hypothesis": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning).",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "component": "client_tool",
+   "hypothesis": "[str_02] Code runner tool: Code runner tool; aimed at arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-019",
+    "hw-e-078",
     "hw-e-022",
-    "hw-e-008"
+    "hw-e-046"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "cos_08",
+   "mechanism_id": "str_02",
    "prune": false,
-   "mechanism": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning)."
-  },
-  {
-   "id": "C3",
-   "component": "prompt",
-   "hypothesis": "[gen_07] Checklist of constraints: Checklist of constraints; aimed at extract, arith, plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
-   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
-   "trigger_condition": "tasks of the targeted families",
-   "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-008"
-   ],
-   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
-   "regression_risk": "extra tokens",
-   "mechanism_id": "gen_07",
-   "prune": false,
-   "mechanism": "[gen_07] Checklist of constraints: Checklist of constraints; aimed at extract, arith, plan, format tasks."
-  },
-  {
-   "id": "C4",
-   "component": "context_mgmt",
-   "hypothesis": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks.",
-   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
-   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
-   "trigger_condition": "tasks of the targeted families",
-   "predicted_affected": [
-    "hw-e-019",
-    "hw-e-022",
-    "hw-e-042"
-   ],
-   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
-   "regression_risk": "extra tokens",
-   "mechanism_id": "gen_03",
-   "prune": false,
-   "mechanism": "[gen_03] Summarize old turns: Summarize old turns; aimed at plan, format tasks."
+   "mechanism": "[str_02] Code runner tool: Code runner tool; aimed at arith, plan, format tasks.",
+   "declared_component": "client_tool"
   }
  ],
  "diff_path": "r3/B/diff.patch",
- "artifact_id": null,
- "mechanism": "[lea_03] Practice answer cache: Return remembered answers fo; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex; [gen_07] Checklist of constraints: Checklist of constraints;; [gen_03] Summarize old turns: Summarize old turns; aimed at "
+ "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower; [str_02] Code runner tool: Code runner tool; aimed at arith,"
 }

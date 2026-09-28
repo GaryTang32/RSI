@@ -51,6 +51,8 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
         "candidates": st.candidates_table(), "frontier": st.frontier.to_json(),
         "best_history": st.best_history, "resumed_at": eng.resumed_at,
         "merge": eng.merge.get_state() if eng.merge else None,
+        # merges built and scored on their subsample (accepted + rejected): what merge_cap_mode="hard" caps
+        "n_merge_invocations": eng.merge.n_invocations if eng.merge else 0,
         "perfect_score": eng.perfect_score, "n_infra_errors": int(st.extra.get("n_infra", 0)),
         "n_infra_retries": getattr(eng.adapter, "n_infra_retries", 0),
         "selector": getattr(eng.selector, "name", type(eng.selector).__name__),

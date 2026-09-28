@@ -22,7 +22,8 @@ from rsi.dream import Config, LLMGuidanceSummarizer, MockGuidanceSummarizer, run
 
 ARMS = {"fixed": (False, False), "fixed+guidance": (False, True), "dream": (True, False),
         "dream+guidance": (True, True)}
-SET = {"synthetic": dict(grid=(6, 4), rounds=8, M=6), "circlepack": dict(grid=(5, 3), rounds=5, M=4)}
+#: W = the grid's width, as in E3/E6: every workspace of pi_1 runs in parallel (claims audit N4; W was 4)
+SET = {"synthetic": dict(grid=(6, 4), W=6, rounds=8, M=6), "circlepack": dict(grid=(5, 3), W=5, rounds=5, M=4)}
 
 
 def one(job):
@@ -32,9 +33,9 @@ def one(job):
     rounds = min(st["rounds"], 4) if quick else st["rounds"]
     per_round = st["grid"][0] * (st["grid"][1] + 1)
     dom = domain_of(dom_name, seed)
-    cfg = Config(rounds=40 if dream else rounds, W=4, branch_count=st["grid"][0], refine_count=st["grid"][1],
+    cfg = Config(rounds=40 if dream else rounds, W=st["W"], branch_count=st["grid"][0], refine_count=st["grid"][1],
                  M=st["M"], dream=dream, guidance=guidance, sandbox=sandbox_of(llm), seed=seed,
-                 max_calls=rounds * per_round, agent_workers=1 if llm == "sim" else 4)
+                 max_calls=rounds * per_round, agent_workers=1 if llm == "sim" else st["W"])
     summ_llm = llm_of(llm)
     summarizer = LLMGuidanceSummarizer(summ_llm) if summ_llm is not None else MockGuidanceSummarizer()
     res = run(dom, config=cfg, agent=agent_of(dom, llm), developer=developer_of(llm) if dream else None,

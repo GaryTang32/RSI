@@ -1,24 +1,24 @@
---- a/agents/cos_07.py
-+++ b/agents/cos_07.py
+--- a/context/cos_02.py
++++ b/context/cos_02.py
 @@ -0,0 +1,5 @@
-+# mechanism: cos_07
-+# component: subagent
-+# title: Bounded checker sub-call
-+"""Critic sub-call on final answer; runs extra model passes (self-consistency / long reasoning)."""
-+enable("cos_07")
---- a/output/har_19.py
-+++ b/output/har_19.py
++# mechanism: cos_02
++# component: context_mgmt
++# title: Pin the task statement
++"""Drop stale observations; runs extra model passes (self-consistency / long reasoning)."""
++enable("cos_02")
+--- a/context/nul_10.py
++++ b/context/nul_10.py
 @@ -0,0 +1,5 @@
-+# mechanism: har_19
-+# component: output_plumbing
-+# title: Answer-line extractor
-+"""Answer-line extractor; aimed at extract, arith, plan, format tasks."""
-+enable("har_19")
---- a/prompts/gen_12.md
-+++ b/prompts/gen_12.md
++# mechanism: nul_10
++# component: context_mgmt
++# title: Drop stale observations
++"""Drop stale observations (rewording of existing guidance)."""
++enable("nul_10")
+--- a/control/gen_04.py
++++ b/control/gen_04.py
 @@ -0,0 +1,5 @@
-+# mechanism: gen_12
-+# component: prompt
-+# title: Role and scope statement
-+"""Role and scope statement; aimed at arith, plan, format tasks."""
-+enable("gen_12")
++# mechanism: gen_04
++# component: control_flow
++# title: Bounded self-verification pass
++"""Bounded self-verification pass; aimed at extract, plan tasks."""
++enable("gen_04")

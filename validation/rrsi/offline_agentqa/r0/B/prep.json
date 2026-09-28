@@ -1,25 +1,8 @@
 {
- "artifact_id": "00918a49aecb9fb13509c414f0c5957216e3af57d38f4d01a3fe8363dadf38b2",
+ "artifact_id": "4e2235b403b717ef0d57cca52e7274ccacef85c571699812081dadd16a4c4598",
  "edits": [
   {
    "id": "C1",
-   "component": "prompt",
-   "hypothesis": "[aq:null_reword] Reword the system prompt",
-   "targets_mode": "wrong final answers",
-   "why_not_lower_lever": "n/a",
-   "trigger_condition": "every question",
-   "predicted_affected": [
-    "evolve-numeric-000",
-    "evolve-numeric-004",
-    "evolve-numeric-009"
-   ],
-   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
-   "regression_risk": "tokens",
-   "mechanism": "[aq:null_reword] Reword the system prompt",
-   "declared_component": "prompt"
-  },
-  {
-   "id": "C2",
    "component": "prompt",
    "hypothesis": "[aq:persona] Detailed analyst persona",
    "targets_mode": "wrong final answers",
@@ -34,42 +17,8 @@
    "regression_risk": "tokens",
    "mechanism": "[aq:persona] Detailed analyst persona",
    "declared_component": "prompt"
-  },
-  {
-   "id": "C3",
-   "component": "control_flow",
-   "hypothesis": "[aq:self_consistency] Three samples with a majority vote",
-   "targets_mode": "wrong final answers",
-   "why_not_lower_lever": "n/a",
-   "trigger_condition": "every question",
-   "predicted_affected": [
-    "evolve-numeric-000",
-    "evolve-numeric-004",
-    "evolve-numeric-009"
-   ],
-   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
-   "regression_risk": "tokens",
-   "mechanism": "[aq:self_consistency] Three samples with a majority vote",
-   "declared_component": "control_flow"
-  },
-  {
-   "id": "C4",
-   "component": "prompt",
-   "hypothesis": "[aq:step_by_step] Ask for step-by-step reasoning",
-   "targets_mode": "wrong final answers",
-   "why_not_lower_lever": "n/a",
-   "trigger_condition": "every question",
-   "predicted_affected": [
-    "evolve-numeric-000",
-    "evolve-numeric-004",
-    "evolve-numeric-009"
-   ],
-   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
-   "regression_risk": "tokens",
-   "mechanism": "[aq:step_by_step] Ask for step-by-step reasoning",
-   "declared_component": "prompt"
   }
  ],
  "diff_path": "r0/B/diff.patch",
- "mechanism": "[aq:null_reword] Reword the system prompt; [aq:persona] Detailed analyst persona; [aq:self_consistency] Three samples with a majority vote; [aq:step_by_step] Ask for step-by-step reasoning"
+ "mechanism": "[aq:persona] Detailed analyst persona"
 }

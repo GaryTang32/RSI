@@ -18,7 +18,11 @@ Quick start (any :class:`rsi.core.Domain` + seed :class:`rsi.core.Artifact`)::
     res.meta["final"]                 # one-time test evaluation of frontier + baselines
 
 Offline: ``llm_propose=None`` uses :class:`MockProposer` (program libraries exist
-for ``memoclassify`` and ``agentqa``). History-access ablations: ``Config(history_mode=
+for ``memoclassify`` and ``agentqa``). ``AgentProposer(cli, prototype=True)`` (default) lets the
+coding agent run ``python3`` to prototype, as the release does; ``prototype=False`` removes Bash.
+Optional, off by default: ``Config(reeval_incumbent=4)`` re-scores every new frontier best on
+more seeds (noise band; not in the paper). ``Config(tradeoff="...")`` states the desired
+accuracy-context trade-off to the proposer. History-access ablations: ``Config(history_mode=
 "scores_only" | "scores_summary" | "full")``; equal-budget baseline arms: ``"seed_only"``
 (Best-of-N), ``"window"`` (OPRO-style), ``"last_only"`` (GEPA/TextGrad-style reflection).
 
@@ -34,13 +38,13 @@ from .config import HISTORY_MODES, Config
 from .frontier import dominates, hypervolume, pareto_frontier, per_unit_best
 from .loop import MetaHarnessLoop
 from .mock import AgentQALibrary, MemoClassifyLibrary, MockProposer, library_for
-from .proposer import (AgentProposer, CandidateSpec, LLMSummarizer, ProposalBatch, Proposer, RewriteProposer,
-                       SKILL_TEXT, TASK_PROMPT, render_view)
+from .proposer import (READ_MIX, AgentProposer, CandidateSpec, LLMSummarizer, ProposalBatch, Proposer,
+                       RewriteProposer, SKILL_TEXT, TASK_PROMPT, TranscriptCLI, render_view)
 from .store import ExperienceStore, FinalizedError, cli_diff, cli_frontier, cli_show, cli_top, safe_name
 from .validate import InterfaceValidator, LeakageScreen
 
 __all__ = ["Config", "run", "make_proposer", "HISTORY_MODES", "MetaHarnessLoop", "ExperienceStore",
            "FinalizedError", "pareto_frontier", "per_unit_best", "hypervolume", "dominates", "Proposer",
            "ProposalBatch", "CandidateSpec", "AgentProposer", "RewriteProposer", "LLMSummarizer", "SKILL_TEXT",
-           "TASK_PROMPT", "render_view", "MockProposer", "MemoClassifyLibrary", "AgentQALibrary", "library_for",
+           "TASK_PROMPT", "render_view", "READ_MIX", "TranscriptCLI", "MockProposer", "MemoClassifyLibrary", "AgentQALibrary", "library_for",
            "InterfaceValidator", "LeakageScreen", "cli_frontier", "cli_top", "cli_diff", "cli_show", "safe_name"]

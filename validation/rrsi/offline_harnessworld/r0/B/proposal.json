@@ -1,34 +1,88 @@
 {
  "status": "done",
- "summary": "[har_04] Critic sub-call on final answer: Critic sub-call on",
+ "summary": "[har_15] Early exit when the answer is certain: Early exit w; [obf_05] Shortcut table: Reuse precomputed shortcuts for rec; [lea_10] Practice answer cache: Return remembered answers fo; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex",
  "edits": [
   {
    "id": "C1",
-   "component": "subagent",
-   "hypothesis": "[har_04] Critic sub-call on final answer: Critic sub-call on final answer; aimed at extract, arith tasks.",
+   "component": "control_flow",
+   "hypothesis": "[har_15] Early exit when the answer is certain: Early exit when the answer is certain; aimed at extract, arith, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-008",
-    "hw-e-036",
-    "hw-e-040"
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_04",
+   "mechanism_id": "har_15",
    "prune": false,
-   "mechanism": "[har_04] Critic sub-call on final answer: Critic sub-call on final answer; aimed at extract, arith tasks."
+   "mechanism": "[har_15] Early exit when the answer is certain: Early exit when the answer is certain; aimed at extract, arith, plan, format tasks."
+  },
+  {
+   "id": "C2",
+   "component": "skill",
+   "hypothesis": "[obf_05] Shortcut table: Reuse precomputed shortcuts for recurring problem shapes.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "obf_05",
+   "prune": false,
+   "mechanism": "[obf_05] Shortcut table: Reuse precomputed shortcuts for recurring problem shapes."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "lea_10",
+   "prune": false,
+   "mechanism": "[lea_10] Practice answer cache: Return remembered answers for tasks seen during practice."
+  },
+  {
+   "id": "C4",
+   "component": "subagent",
+   "hypothesis": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning).",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-008"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "cos_08",
+   "prune": false,
+   "mechanism": "[cos_08] Bounded checker sub-call: Planner sub-call; runs extra model passes (self-consistency / long reasoning)."
   }
  ],
- "mechanism": "[har_04] Critic sub-call on final answer: Critic sub-call on",
- "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
- "n_changes": 1,
+ "mechanism": "[har_15] Early exit when the answer is certain: Early exit w; [obf_05] Shortcut table: Reuse precomputed shortcuts for rec; [lea_10] Practice answer cache: Return remembered answers fo; [cos_08] Bounded checker sub-call: Planner sub-call; runs ex",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_",
+ "n_changes": 4,
  "log": [
   {
    "turn": 0,
    "action": "done",
-   "n_changes": 1,
+   "n_changes": 4,
    "blocked": [],
    "error": null
   }

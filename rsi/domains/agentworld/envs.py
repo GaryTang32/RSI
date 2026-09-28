@@ -1,6 +1,6 @@
 """AgentWorld environment families: small multi-step agent tasks with large tool outputs.
 
-Four families, all CPU-only and deterministic, each with a verifier returning a
+Five families, all CPU-only and deterministic, each with a verifier returning a
 score in [0, 1] (fraction of subtasks correctly completed). They mirror the
 blueprint's MiniAgentWorld (spec B9.2) and differ where it matters for
 harness-efficiency research - *where the decisive evidence sits in long outputs*:
@@ -16,7 +16,13 @@ family         task                                                       decisi
                validated by ``make check`` (verifier-first style)         lists failed items
 ``datalookup`` answer questions about JSONL records, checked by a         "line N is wrong" at the TOP of a
                pytest checker (held-out family: other formats)            long captured-output dump
+``configfix``  fix invalid settings in ``config/services.yaml``, checked  the resolved-configuration dump
+               by ``make validate`` (held-out family: other format,       (evidence at the head); validation
+               other command)                                             stops at the first error
 =============  =========================================================  =================================
+
+``repofix`` / ``buildfix`` / ``logtriage`` are the training families (``evolve``); ``configfix`` and
+``datalookup`` are held out (``holdout`` acceptance tasks for the firewall, ``ood`` final tasks).
 
 The workspace is virtual (``files``). ``tool_bash`` understands ``cat``, ``ls``,
 ``grep [-c] [-n] [-m N]``, ``head/tail -n N``, ``sed -n 'a,bp'``, ``wc -l``,

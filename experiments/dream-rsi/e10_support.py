@@ -38,8 +38,9 @@ def policies():
 
 def run1(code, seed, grid, runner="inprocess"):
     dom = SyntheticDomain(SyntheticConfig(seed=seed))
+    # recordings and true online values of each policy's OWN plan: no per-round call cap (support study)
     cfg = Config(rounds=1, W=W, branch_count=grid[0], refine_count=grid[1], dream=False, sandbox=runner,
-                 seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1)
+                 seed=seed, hard_max_branch=12, hard_max_refine=12, agent_workers=1, round_budget=None)
     return DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, initial_policy=code).run()
 
 

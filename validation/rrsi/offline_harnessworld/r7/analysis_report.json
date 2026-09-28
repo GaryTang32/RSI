@@ -2,12 +2,13 @@
  "failure_modes": [
   {
    "mode": "extract__missed_rubric_criteria_family_extract_surface_te",
-   "n_tasks": 2,
+   "n_tasks": 3,
    "affected_tasks": [
     "hw-e-008",
+    "hw-e-056",
     "hw-e-036"
    ],
-   "loss": 2.0,
+   "loss": 3.0,
    "description": "tasks of kind 'extract' end with: Missed #/# rubric criteria (family=extract, surface=text).",
    "needed_instead": "a general mechanism that fixes this outcome",
    "representative_evidence": [
@@ -17,6 +18,11 @@
      "quote": "Missed 15/16 rubric criteria (family=extract, surface=text)."
     },
     {
+     "task_id": "hw-e-056",
+     "where": "grader",
+     "quote": "Missed 14/16 rubric criteria (family=extract, surface=text)."
+    },
+    {
      "task_id": "hw-e-036",
      "where": "grader",
      "quote": "Missed 13/16 rubric criteria (family=extract, surface=text)."
@@ -24,59 +30,31 @@
    ]
   },
   {
-   "mode": "format__missed_rubric_criteria_family_format_surface_tex",
-   "n_tasks": 2,
-   "affected_tasks": [
-    "hw-e-051",
-    "hw-e-019"
-   ],
-   "loss": 2.0,
-   "description": "tasks of kind 'format' end with: Missed #/# rubric criteria (family=format, surface=text).",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "hw-e-051",
-     "where": "grader",
-     "quote": "Missed 14/16 rubric criteria (family=format, surface=text)."
-    },
-    {
-     "task_id": "hw-e-019",
-     "where": "grader",
-     "quote": "Missed 14/16 rubric criteria (family=format, surface=text)."
-    }
-   ]
-  },
-  {
-   "mode": "arith__missed_rubric_criteria_family_arith_surface_text",
-   "n_tasks": 1,
-   "affected_tasks": [
-    "hw-e-033"
-   ],
-   "loss": 1.0,
-   "description": "tasks of kind 'arith' end with: Missed #/# rubric criteria (family=arith, surface=text).",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "hw-e-033",
-     "where": "grader",
-     "quote": "Missed 13/16 rubric criteria (family=arith, surface=text)."
-    }
-   ]
-  },
-  {
    "mode": "plan__missed_rubric_criteria_family_plan_surface_text",
-   "n_tasks": 1,
+   "n_tasks": 3,
    "affected_tasks": [
-    "hw-e-022"
+    "hw-e-022",
+    "hw-e-078",
+    "hw-e-042"
    ],
-   "loss": 1.0,
+   "loss": 3.0,
    "description": "tasks of kind 'plan' end with: Missed #/# rubric criteria (family=plan, surface=text).",
    "needed_instead": "a general mechanism that fixes this outcome",
    "representative_evidence": [
     {
      "task_id": "hw-e-022",
      "where": "grader",
-     "quote": "Missed 16/16 rubric criteria (family=plan, surface=text)."
+     "quote": "Missed 14/16 rubric criteria (family=plan, surface=text)."
+    },
+    {
+     "task_id": "hw-e-078",
+     "where": "grader",
+     "quote": "Missed 15/16 rubric criteria (family=plan, surface=text)."
+    },
+    {
+     "task_id": "hw-e-042",
+     "where": "grader",
+     "quote": "Missed 13/16 rubric criteria (family=plan, surface=text)."
     }
    ]
   }
@@ -84,15 +62,15 @@
  "capability_gaps": [],
  "success_habits": [
   {
-   "habit": "clean_extract",
+   "habit": "clean_arith",
    "n_tasks": 1,
-   "description": "passing tasks of kind 'extract' finish cleanly",
+   "description": "passing tasks of kind 'arith' finish cleanly",
    "risk_if_broken": "regressions on currently solved tasks"
   },
   {
-   "habit": "clean_plan",
+   "habit": "clean_extract",
    "n_tasks": 1,
-   "description": "passing tasks of kind 'plan' finish cleanly",
+   "description": "passing tasks of kind 'extract' finish cleanly",
    "risk_if_broken": "regressions on currently solved tasks"
   }
  ],

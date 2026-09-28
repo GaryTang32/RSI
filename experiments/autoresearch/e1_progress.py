@@ -101,7 +101,7 @@ def main():
     arms = ["llm"] if live else ["greedy", "random"]
     runs = pool_map(tinylm_arm, [(arm, s, n, a.llm) for arm in arms for s in seeds], 1 if live else a.workers)
     out = {"config": {"task": "tinylm", "budget_s": BUDGET_S, "mode": "hardened", "n_experiments": n,
-                      "seeds": seeds, "llm": a.llm, "keep_rule": "strict"}, "noise_band": band, "tinylm": {}}
+                      "seeds": seeds, "llm": a.llm, "keep_rule": Config().keep_rule}, "noise_band": band, "tinylm": {}}
     for arm in arms:
         rs = [r for r in runs if r["arm"] == arm]
         out["tinylm"][arm] = {

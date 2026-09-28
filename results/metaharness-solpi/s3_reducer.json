@@ -2004,5 +2004,5 @@
   }
  ],
  "verdict": "REPRODUCED: 0 non-verbatim quotes in accepted receipts (yes); failure logs always carry failure evidence (yes); bench acceptance falls with h: h=0.0:1.00, h=0.1:0.90, h=0.3:0.67, h=0.6:0.31, h=1.0:0.00; bytes 267059 -> 29026",
- "generated_at": "2026-09-25 06:42:48"
+ "generated_at": "2026-09-25 18:37:22"
 }

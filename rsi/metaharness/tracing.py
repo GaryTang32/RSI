@@ -136,10 +136,16 @@ class MHTracer:
                       search_units=list(ts.splits.get(lp.cfg.search_split, [])),
                       shadow_splits=(self.monitor.splits if self.monitor else []),
                       resumed_from_iteration=lp.store.last_iteration(), **(extra or {}))
-        self.tr.event("noise", None, mode="none", delta=None, z=None,
-                      detail="Meta-Harness has no noise band and no keep gate: every valid candidate is evaluated "
-                             f"once on the search split with trials={lp.cfg.trials} and kept in the population; "
-                             "the output is the Pareto frontier (score up, context cost down)")
+        if lp.cfg.reeval_incumbent > 0:
+            self.tr.event("noise", None, mode="reeval_incumbent", delta=None, z=None,
+                          detail=f"optional (not in the paper): every new frontier _best is re-evaluated on "
+                                 f"{lp.cfg.trials + lp.cfg.reeval_incumbent} seeds and the pooled score replaces its "
+                                 f"single-seed score before the frontier is recomputed; no keep gate otherwise")
+        else:
+            self.tr.event("noise", None, mode="none", delta=None, z=None,
+                          detail="Meta-Harness has no noise band and no keep gate: every valid candidate is evaluated "
+                                 f"once on the search split with trials={lp.cfg.trials} and kept in the population; "
+                                 "the output is the Pareto frontier (score up, context cost down)")
 
     def baseline(self, name: str, ev, scores: dict) -> None:
         if not self.enabled:
@@ -179,8 +185,10 @@ class MHTracer:
         else:
             text = reply_commentary(batch.transcript)
         self.tr.event("analysis", t, text=text or "(no commentary)", files_read=len(batch.files_read),
-                      files_read_by_kind=_kinds(batch.files_read), proposer_usage=batch.usage.to_dict(),
-                      error=batch.error)
+                      files_read_by_kind=_kinds(batch.files_read),
+                      files_scanned=len(getattr(batch, "files_scanned", []) or []),
+                      reports=sorted((getattr(batch, "reports", {}) or {}).keys()),
+                      proposer_usage=batch.usage.to_dict(), error=batch.error)
         if not batch.candidates:
             self.tr.proposal(t, "(none)", parent=None, prompt=batch.prompt, reply=batch.transcript,
                              error=batch.error or "no candidates")
@@ -253,6 +261,18 @@ class MHTracer:
     def state(self, t: int, row: dict) -> None:
         if self.enabled:
             self.tr.event("state", t, iteration_row=row, frontier=self.frontier_state())
+
+    def reevaluation(self, t: int, name: str, ev, scores: dict, before: dict) -> None:
+        """``Config.reeval_incumbent``: a new ``_best`` re-scored on more seeds (pooled scores replace the
+        single-seed ones before the frontier is recomputed)."""
+        if self.enabled:
+            self.tr.evaluation(t, name, ev, context_cost=scores["context_cost"], per_unit_cost=scores["per_unit_cost"],
+                               phase="incumbent re-evaluation (Config.reeval_incumbent)", n_seeds=ev.k,
+                               score_before=before.get("score"), k_before=before.get("k"), score_after=scores["score"])
+
+    def note(self, t: Optional[int], what: str, **data) -> None:
+        if self.enabled:
+            self.tr.event("note", t, what=what, **data)
 
     def skipped(self, t: int, why: str) -> None:
         if self.enabled:

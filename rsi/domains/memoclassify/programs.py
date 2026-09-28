@@ -345,7 +345,26 @@ def _records(trace_text: str) -> list[dict]:
     return out
 
 
-def diagnose(traces: dict[str, str], budget_hint: int = 11000) -> list[tuple[str, float, str]]:
+#: The prompt length the trace diagnosis treats as "too long". NOTE (audit N9): 11,000 chars is TUNED to
+#: MemoLM-A's hidden 12,000-char effective context (``model.VARIANTS``). It stands for the prior knowledge an
+#: experienced engineer (or a frontier coding agent) has about a model's usable context; an LLM proposer
+#: would have to infer it. The per-harness accuracy-vs-length signal in the traces is too noisy at this scale
+#: to estimate it reliably (tested: the weighted gap flags ``fewshot_all`` in only about half the seeds),
+#: so the mock keeps the prior, and M1 reports the sensitivity to un-tuned values
+#: (``m1_history_ablation.py --budget-hint 6000|20000``).
+DEFAULT_BUDGET_HINT = 11000
+
+
+def _step_prompt(r: dict) -> str:
+    """The prompt text(s) of one step record: every model call's prompt in full traces (``calls``), else the
+    compact format's ``prompt`` (only some wrong eval steps carry one)."""
+    calls = r.get("calls")
+    if calls:
+        return "\n".join(str(c.get("prompt") or "") for c in calls)
+    return r.get("prompt") or ""
+
+
+def diagnose(traces: dict[str, str], budget_hint: int = DEFAULT_BUDGET_HINT) -> list[tuple[str, float, str]]:
     """Read raw per-example traces (``{unit: jsonl}``) and return ranked
     ``(move, weight, evidence)`` suggestions, as a proposer reading log.jsonl would."""
     evals = [r for t in traces.values() for r in _records(t) if r.get("type") == "eval_step"]
@@ -362,8 +381,8 @@ def diagnose(traces: dict[str, str], budget_hint: int = 11000) -> list[tuple[str
         w = len(long) / n * (1.0 + max(0.0, acc_short - acc_long))
         out.append(("retrieve_topk", 1.5 * w, f"{len(long)}/{n} prompts longer than {budget_hint} chars "
                                                f"(acc {acc_long:.2f} vs {acc_short:.2f} on short prompts)"))
-    with_prompt = [r for r in errs if r.get("prompt")]
-    missing = [r for r in with_prompt if r["tgt"] not in r["prompt"]]
+    with_prompt = [r for r in errs if _step_prompt(r)]
+    missing = [r for r in with_prompt if r["tgt"] not in _step_prompt(r)]
     if with_prompt:
         frac = len(missing) / len(with_prompt)
         if frac > 0.15:
@@ -409,11 +428,11 @@ def summarize(traces: dict[str, str]) -> str:
     return " ".join(lines)
 
 
-def diagnose_summary(summary: str) -> list[tuple[str, float, str]]:
-    """What a proposer can infer from a summary alone."""
+def diagnose_summary(summary: str, budget_hint: int = DEFAULT_BUDGET_HINT) -> list[tuple[str, float, str]]:
+    """What a proposer can infer from a summary alone (same length prior as :func:`diagnose`)."""
     out = []
     m = re.search(r"about (\d+)k characters", summary or "")
-    if m and int(m.group(1)) >= 11:
+    if m and int(m.group(1)) * 1000 >= budget_hint:
         out.append(("retrieve_topk", 0.8, f"summary: prompts ~{m.group(1)}k chars"))
     if "confusion" in (summary or ""):
         out.append(("contrastive", 0.3, "summary mentions label confusions"))

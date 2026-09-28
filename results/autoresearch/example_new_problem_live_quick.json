@@ -1,48 +1,69 @@
 {
  "experiment": "example_new_problem_live_quick",
- "written_at": "2026-09-25 05:20:55",
+ "written_at": "2026-09-28 10:51:04",
  "analysis": {
   "n_rows": 7,
   "n_experiments": 6,
-  "n_keep": 4,
-  "n_discard": 3,
+  "n_keep": 7,
+  "n_discard": 0,
   "n_crash": 0,
-  "keep_rate": 0.5714285714285714,
+  "keep_rate": 1.0,
   "baseline": 0.274007767461117,
-  "best": 0.8777850011112384,
-  "improvement": 0.6037772336501214,
-  "total_keep_delta": 0.6037772336501214,
-  "improvement_pct": 220.35040803571388,
-  "experiments_per_hour": 54.51842549915173
+  "best": 0.8791002469016561,
+  "improvement": 0.6050924794405391,
+  "total_keep_delta": 0.6050924794405391,
+  "improvement_pct": 220.83041114022603,
+  "experiments_per_hour": 53.250175607591075
  },
  "top_hits": [
   {
    "exp": 1,
-   "commit": "b6977dc",
-   "description": "Increase polynomial degree from 1 to 5",
-   "delta": 0.6027564553225613,
-   "metric": 0.8767642227836783
+   "commit": "b78f655",
+   "description": "Increase DEGREE 1\u21929, decrease RIDGE 1.0\u21920.1",
+   "delta": 0.6029834299258046,
+   "metric": 0.8769911973869216
+  },
+  {
+   "exp": 2,
+   "commit": "a102e56",
+   "description": "Add sin/cos features targeting 1.5*x periodic component, reduce DEGREE 9\u21926",
+   "delta": 0.0018312839871034159,
+   "metric": 0.878822481374025
+  },
+  {
+   "exp": 3,
+   "commit": "45758b3",
+   "description": "Reduce polynomial degree 6\u21923 to reduce overfitting",
+   "delta": 0.0002002869491742887,
+   "metric": 0.8790227683231993
+  },
+  {
+   "exp": 4,
+   "commit": "5d1be09",
+   "description": "Reduce regularization: RIDGE 0.1 \u2192 0.05",
+   "delta": 4.082838650099063e-05,
+   "metric": 0.8790635967097002
   },
   {
    "exp": 5,
-   "commit": "0c69542",
-   "description": "Reduce ridge regularization from 1.0 to 0.5",
-   "delta": 0.0007342553506529681,
-   "metric": 0.8774984781343312
+   "commit": "610e81f",
+   "description": "Reduce regularization: RIDGE 0.05 \u2192 0.01",
+   "delta": 3.258269758810162e-05,
+   "metric": 0.8790961794072883
   },
   {
    "exp": 6,
-   "commit": "9ee8745",
-   "description": "Reduce ridge regularization from 0.5 to 0.2",
-   "delta": 0.00028652297690712203,
-   "metric": 0.8777850011112384
+   "commit": "aeb73cc",
+   "description": "Reduce regularization: RIDGE 0.01 \u2192 0.005",
+   "delta": 4.067494367765434e-06,
+   "metric": 0.8791002469016561
   }
  ],
- "best_train_py": "import numpy as np\nfrom evaluate import X_TRAIN, Y_TRAIN\n\nDEGREE = 5\nRIDGE = 0.2\nSCALE = 1.0\n\n\ndef features(x):\n    z = np.asarray(x, float) / SCALE\n    return np.vstack([z ** d for d in range(DEGREE + 1)]).T\n\n\nF = features(X_TRAIN)\nw = np.linalg.solve(F.T @ F + RIDGE * np.eye(F.shape[1]), F.T @ Y_TRAIN)\n\n\ndef predict(x):\n    return features(x) @ w\n",
+ "best_train_py": "import numpy as np\nfrom evaluate import X_TRAIN, Y_TRAIN\n\nDEGREE = 3\nRIDGE = 0.005\nSCALE = 1.0\n\n\ndef features(x):\n    z = np.asarray(x, float) / SCALE\n    # Polynomial features for the trend component\n    poly_features = np.vstack([z ** d for d in range(DEGREE + 1)]).T\n    # Trigonometric features to directly capture the periodic sine(1.5*x) component\n    sin_features = np.sin(1.5 * z).reshape(-1, 1)\n    cos_features = np.cos(1.5 * z).reshape(-1, 1)\n    # Combine all feature types\n    return np.hstack([poly_features, sin_features, cos_features])\n\n\nF = features(X_TRAIN)\nw = np.linalg.solve(F.T @ F + RIDGE * np.eye(F.shape[1]), F.T @ Y_TRAIN)\n\n\ndef predict(x):\n    return features(x) @ w\n",
  "usage": {
-  "calls": 7,
-  "input_tokens": 18790,
-  "output_tokens": 36963,
-  "cost_usd": 0.20360499999999998
+  "calls": 6,
+  "input_tokens": 19426,
+  "output_tokens": 38285,
+  "cost_usd": 0.21085099999999996
  }
 }

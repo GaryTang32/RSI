@@ -2,7 +2,11 @@
 
 HarnessWorld, full RRSI with the critic on or off, sweeping the share of leaky proposals
 (literal leaks that hard-code evolve task ids/answers, and obfuscated hash-keyed leaks,
-2:1) and the LLM critic's catch rate for obfuscated leaks (0 = regex/denylist only).
+2:1) and the LLM critic's catch rate for obfuscated leaks (0 = deterministic precheck only).
+The precheck is the code's: evolve task ids + the domain's id pattern (``hw-e-\d{3}``), no
+answer key. A literal HarnessWorld leak is keyed by evolve task ids, so the precheck stops
+all of them (600/600 catalog leaks over 50 worlds, with or without the answer terms);
+obfuscated leaks pass it (0/300) and are left to the LLM review.
 Measures leaky mechanisms left in the final harness, evaluations spent on candidates that
 add a leak, and true evolve / OOD gains.
 
@@ -62,9 +66,10 @@ def main():
         checks[f"leak={ls}: ~0 leaks retained (catch 1.0)"] = summ[f"leak={ls}|critic on, catch=1.0"]["leaks_in_final"]["mean"] < 0.1
     out = {"experiment": "E3 leakage critic", "config": {"T": T, "seeds": a.seeds, "leak_shares": LEAK_SHARES,
                                                          "catch_rates": CATCH, "llm": a.llm,
-                                                         "note": "literal leaks are always stopped by the regex/"
-                                                                 "denylist precheck; catch_rate applies to the LLM "
-                                                                 "review of obfuscated leaks"},
+                                                         "note": "literal leaks (keyed by evolve task ids) are "
+                                                                 "always stopped by the code's task-id / id-pattern "
+                                                                 "precheck (no answer denylist); catch_rate applies "
+                                                                 "to the LLM review of obfuscated leaks"},
            "summary": summ, "paired_on_minus_off_catch0.8": pd, "checks": checks,
            "verdict": "REPRODUCED" if all(checks.values()) else
            "PARTIAL - not met: " + "; ".join(k for k, v in checks.items() if not v),

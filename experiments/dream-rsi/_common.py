@@ -3,7 +3,7 @@
 * ``parse_args``: ``--llm sim|claude:<model>``, ``--seeds N``, ``--quick``, ``--workers``, ``--out``;
 * ``llm_of`` / ``developer_of`` / ``agent_of``: offline mocks, or a cached headless ``claude -p``
   backend (cache: ``.rsi_cache/dream-rsi``) as discovery agent and/or policy developer;
-* ``domain_of``: synthetic / sumdiff / circlepack / lasso / agentqa;
+* ``domain_of``: synthetic / sumdiff / circlepack / lasso / autocorr;
 * ``pmap``: a small process pool over seeds; ``summ``/``paired``: mean + 95% bootstrap CI;
 * ``save``: ``results/dream-rsi/<name>.json`` (+ optional figure).
 """
@@ -44,11 +44,16 @@ def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = N
     ap.add_argument("--quick", action="store_true", help="few seeds / small budgets for a fast check")
     ap.add_argument("--workers", type=int, default=3, help="parallel processes (runs)")
     ap.add_argument("--out", default=None, help="output JSON path")
+    ap.add_argument("--cache", default=None, help="LLM cache directory for --llm claude:* (default "
+                                                   ".rsi_cache/dream-rsi; pass a fresh directory for a from-scratch run)")
     if extra:
         extra(ap)
     a = ap.parse_args()
     if a.seeds is None:
         a.seeds = 3 if a.quick else default_seeds
+    if a.cache:
+        global CACHE
+        CACHE = Path(a.cache).resolve()
     if a.llm != "sim":
         global RUN_TAG
         RUN_TAG = a.llm.replace(":", "-")
@@ -126,6 +131,9 @@ def domain_of(name: str, seed: int = 0, **kw):
         return CirclePackingDomain(sandboxed=kw.pop("sandboxed", False), **kw)
     if name == "lasso":
         return LassoPathDomain(sandboxed=kw.pop("sandboxed", False), **kw)
+    if name == "autocorr":
+        from rsi.domains.discovery import AutocorrelationDomain
+        return AutocorrelationDomain(kw.pop("variant", "phi3"), sandboxed=kw.pop("sandboxed", False), **kw)
     raise KeyError(name)
 
 

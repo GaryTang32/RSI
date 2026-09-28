@@ -1,23 +1,38 @@
 {
- "out": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/live_replay2",
+ "out": "(scratch directory, not kept)",
  "settled_rounds": 2,
  "identical": {
-  "history": true,
-  "trajectory": true,
-  "final_incumbent": true,
-  "decisions": true,
+  "history": false,
+  "trajectory": false,
+  "final_incumbent": false,
+  "decisions": false,
   "calibration_delta": true
  },
  "cache": {
   "search_hits_misses": [
-   19,
-   0
+   5,
+   9
   ],
   "task_hits_misses": [
-   88,
+   36,
    0
   ]
  },
  "metered_usd": 0.0,
- "stop_reason": "stop_file"
+ "stop_reason": "stop_file",
+ "note": "Replay after the claims-audit fixes (docs/claims/rrsi.md, Fix log). The proposer prompt changed by design (N2: no delta / S* / S_t / T in the round directives and symbolic beta/w in SKILL.md; N5: the history keeps the BASELINE row), so every proposer call is a cache miss (9 misses, refused at $0) and the run diverges from round 0 on. Baseline, calibration (36 task calls) and the round-0 analysis (4 digests + 1 aggregation) replay identically. The stage-B replay on the pre-fix code was identical in every field (history, decisions, trajectory, delta, final incumbent; 107/107 hits); see git 02b830e. Live evidence on the fixed code: results/rrsi/live_smoke.json.",
+ "previous_replay_stage_b": {
+  "identical": {
+   "history": true,
+   "trajectory": true,
+   "final_incumbent": true,
+   "decisions": true,
+   "calibration_delta": true
+  },
+  "cache": {
+   "hits": 107,
+   "misses": 0
+  },
+  "metered_usd": 0.0
+ }
 }

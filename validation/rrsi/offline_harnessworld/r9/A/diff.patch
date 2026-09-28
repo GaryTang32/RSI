@@ -1,8 +1,16 @@
---- a/context/dec_00.py
-+++ b/context/dec_00.py
-@@ -1,5 +0,0 @@
--# mechanism: dec_00
--# component: context_mgmt
--# title: Keep the last N tool results verbatim
--"""Keep the last N tool results verbatim; aimed at extract, arith, plan, format tasks. (a stop-gap until a dedicated mechanism exists)"""
--enable("dec_00")
+--- a/control/gen_13.py
++++ b/control/gen_13.py
+@@ -0,0 +1,5 @@
++# mechanism: gen_13
++# component: control_flow
++# title: Bounded self-verification pass
++"""Bounded self-verification pass; aimed at extract, arith, plan, format tasks."""
++enable("gen_13")
+--- a/output/har_19.py
++++ b/output/har_19.py
+@@ -0,0 +1,5 @@
++# mechanism: har_19
++# component: output_plumbing
++# title: Answer-line extractor
++"""Answer-line extractor; aimed at extract, arith, plan, format tasks."""
++enable("har_19")

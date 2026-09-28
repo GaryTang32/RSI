@@ -510,6 +510,90 @@
   "n": 20,
   "p_better": 1.0
  },
+ "matched_budget_ratio": {
+  "budgets": {
+   "gepa": 6000,
+   "rl": 24000,
+   "ratio_rl_over_gepa": 4.0
+  },
+  "gepa_minus_rl_final": {
+   "mean_diff": 0.01498536698555658,
+   "lo": -0.004376822335275529,
+   "hi": 0.03519471771388956,
+   "n": 20,
+   "p_better": 0.55
+  },
+  "gepa_wins_seeds": 11,
+  "rl_wins_seeds": 9,
+  "rl_reached_oracle_seeds": 7,
+  "gepa_reached_oracle_seeds": 0,
+  "paired_gepa_minus_rl_at_equal_budget": {
+   "100": {
+    "mean_diff": 0.0716194444444445,
+    "lo": 0.055461329861111144,
+    "hi": 0.08692519791666674,
+    "n": 20,
+    "p_better": 0.95
+   },
+   "200": {
+    "mean_diff": 0.27177124999999985,
+    "lo": 0.24551582291666663,
+    "hi": 0.29753590972222194,
+    "n": 20,
+    "p_better": 1.0
+   },
+   "400": {
+    "mean_diff": 0.5170942361111103,
+    "lo": 0.4829216475694437,
+    "hi": 0.5500066562499991,
+    "n": 20,
+    "p_better": 1.0
+   },
+   "800": {
+    "mean_diff": 0.7446284722222203,
+    "lo": 0.7118955624999982,
+    "hi": 0.7760249496527755,
+    "n": 20,
+    "p_better": 1.0
+   },
+   "1600": {
+    "mean_diff": 0.7906255764444412,
+    "lo": 0.7575095516722193,
+    "hi": 0.8216736191555523,
+    "n": 20,
+    "p_better": 1.0
+   },
+   "3200": {
+    "mean_diff": 0.3222740437777755,
+    "lo": 0.28222225166944254,
+    "hi": 0.3623184318499968,
+    "n": 20,
+    "p_better": 1.0
+   },
+   "6000": {
+    "mean_diff": 0.09264258920777763,
+    "lo": 0.06081600049111181,
+    "hi": 0.12561177269058257,
+    "n": 20,
+    "p_better": 0.95
+   }
+  },
+  "gepa_rollouts_to_rl_final": {
+   "n_matched": 11,
+   "n": 20,
+   "rollouts": {
+    "mean": 2142.818181818182,
+    "lo": 1535.6727272727273,
+    "hi": 2849.761363636363,
+    "n": 11
+   },
+   "ratio_rl_budget_over_gepa_rollouts": {
+    "median": 11.477761836441895,
+    "min": 4.9504950495049505,
+    "max": 35.55555555555556
+   }
+  }
+ },
  "raw": [
   {
    "arm": "gepa",
@@ -2713,33 +2797,34 @@
   }
  ],
  "verdict": "GEPA reaches 80%/90% of the oracle test score after mean 851/1685 rollouts (mean; reached in 100%/100% of seeds) vs scalar RL (rl_lr=2.0) 5326/8824 (mean over seeds that reached it; reached 100%/85%); median per-seed ratio RL/GEPA = 5.7x (80%) and 6.1x (90%). Claim '>=10x fewer rollouts': NOT reproduced at 10x at the 80% target, NOT reproduced at 10x at the 90% target. GEPA curve >= RL curve at 7/7 budgets <= 6000. Final test at equal-or-larger RL budget: GEPA 0.917 [0.910, 0.923] (B=6000) vs RL 0.902 [0.881, 0.922] (B=24000).",
+ "verdict_matched_ratio": "At the paper's 1:4 budget ratio (GEPA B=6000 vs RL B=24000, paired over 20 seeds): GEPA - RL final test = +0.015 [-0.004, +0.035] (NOT significant); GEPA higher in 11, RL higher in 9 seeds; RL reaches the oracle test score in 7/20 seeds, GEPA in 0/20. GEPA reaches RL's final score in 11/20 seeds (5.0-35.6x fewer rollouts, median 11.5x). So 'outperforms RL' is judged at matched budgets by the curves above; at the 1:4 ratio it is a tie here.",
  "agentqa": {
   "budget": 300,
   "harness": "two-module (solver -> python tool -> reporter), SimModel",
   "summary": {
    "gepa": {
     "val": {
-     "mean": 0.96,
-     "lo": 0.9333333333333333,
-     "hi": 0.9866666666666667,
+     "mean": 0.9712820512820514,
+     "lo": 0.9405128205128206,
+     "hi": 1.0,
      "n": 5
     },
     "holdout": {
-     "mean": 0.9,
-     "lo": 0.86,
-     "hi": 0.95,
+     "mean": 0.9278947368421052,
+     "lo": 0.8768421052631579,
+     "hi": 0.97,
      "n": 5
     },
     "ood": {
-     "mean": 0.9,
-     "lo": 0.8400000000000001,
-     "hi": 0.95,
+     "mean": 0.9199999999999999,
+     "lo": 0.85,
+     "hi": 0.99,
      "n": 5
     },
     "holdout_seed": {
-     "mean": 0.45999999999999996,
-     "lo": 0.38,
-     "hi": 0.5200000000000001,
+     "mean": 0.4445029239766082,
+     "lo": 0.3608771929824562,
+     "hi": 0.5194736842105263,
      "n": 5
     },
     "ood_seed": {
@@ -2757,21 +2842,21 @@
      "n": 5
     },
     "holdout": {
-     "mean": 0.95,
-     "lo": 0.95,
-     "hi": 0.95,
+     "mean": 0.9478362573099416,
+     "lo": 0.9461403508771931,
+     "hi": 0.9494736842105264,
      "n": 5
     },
     "ood": {
-     "mean": 0.99,
-     "lo": 0.97,
+     "mean": 0.96,
+     "lo": 0.9,
      "hi": 1.0,
      "n": 5
     },
     "holdout_seed": {
-     "mean": 0.45999999999999996,
-     "lo": 0.38,
-     "hi": 0.5200000000000001,
+     "mean": 0.4445029239766082,
+     "lo": 0.3608771929824562,
+     "hi": 0.5194736842105263,
      "n": 5
     },
     "ood_seed": {
@@ -2783,15 +2868,15 @@
    },
    "scalar_rl": {
     "val": {
-     "mean": 0.9199999999999999,
-     "lo": 0.8533333333333333,
-     "hi": 0.9866666666666667,
+     "mean": 0.9447619047619048,
+     "lo": 0.8876190476190476,
+     "hi": 1.0,
      "n": 5
     },
     "holdout": {
-     "mean": 0.9,
-     "lo": 0.8699999999999999,
-     "hi": 0.9299999999999999,
+     "mean": 0.905672514619883,
+     "lo": 0.8723976608187133,
+     "hi": 0.9384342105263157,
      "n": 5
     },
     "ood": {
@@ -2801,9 +2886,9 @@
      "n": 5
     },
     "holdout_seed": {
-     "mean": 0.45999999999999996,
-     "lo": 0.38,
-     "hi": 0.5200000000000001,
+     "mean": 0.4445029239766082,
+     "lo": 0.3608771929824562,
+     "hi": 0.5194736842105263,
      "n": 5
     },
     "ood_seed": {
@@ -2857,10 +2942,10 @@
    {
     "arm": "gepa",
     "seed": 1,
-    "val": 0.9333333333333333,
-    "holdout": 0.85,
+    "val": 0.9230769230769231,
+    "holdout": 0.8421052631578947,
     "ood": 0.8,
-    "holdout_seed": 0.45,
+    "holdout_seed": 0.42105263157894735,
     "ood_seed": 0.35,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\n",
@@ -2871,22 +2956,22 @@
     "arm": "score_only",
     "seed": 1,
     "val": 1.0,
-    "holdout": 0.95,
-    "ood": 1.0,
-    "holdout_seed": 0.45,
+    "holdout": 0.9473684210526315,
+    "ood": 0.85,
+    "holdout_seed": 0.42105263157894735,
     "ood_seed": 0.35,
     "best_files": {
-     "prompts/reporter.md": "Give the final answer to the question.\nThink step by step before answering.\n",
-     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nVerify (double-check) your result before giving the final answer.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nBe polite and friendly.\n"
+     "prompts/reporter.md": "Give the final answer to the question.\nKeep the reply under 200 words.\nUse bullet points where helpful.\n",
+     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nVerify (double-check) your result before giving the final answer.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nThink step by step before answering.\n"
     }
    },
    {
     "arm": "scalar_rl",
     "seed": 1,
-    "val": 0.9333333333333333,
-    "holdout": 0.85,
+    "val": 1.0,
+    "holdout": 0.8421052631578947,
     "ood": 0.85,
-    "holdout_seed": 0.45,
+    "holdout_seed": 0.42105263157894735,
     "ood_seed": 0.35,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\n",
@@ -2896,23 +2981,23 @@
    {
     "arm": "gepa",
     "seed": 2,
-    "val": 0.9333333333333333,
-    "holdout": 0.85,
-    "ood": 0.95,
-    "holdout_seed": 0.5,
+    "val": 1.0,
+    "holdout": 0.9473684210526315,
+    "ood": 1.0,
+    "holdout_seed": 0.47368421052631576,
     "ood_seed": 0.3,
     "best_files": {
-     "prompts/reporter.md": "Give the final answer to the question.\nEnd your reply with a final line of the form 'ANSWER: <value>'.\nThink step by step before answering.\nVerify (double-check) your result before giving the final answer.\n",
-     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nVerify (double-check) your result before giving the final answer.\n"
+     "prompts/reporter.md": "Give the final answer to the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\n",
+     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nThink step by step before answering.\n"
     }
    },
    {
     "arm": "score_only",
     "seed": 2,
     "val": 1.0,
-    "holdout": 0.95,
+    "holdout": 0.9473684210526315,
     "ood": 1.0,
-    "holdout_seed": 0.5,
+    "holdout_seed": 0.47368421052631576,
     "ood_seed": 0.3,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\n",
@@ -2922,10 +3007,10 @@
    {
     "arm": "scalar_rl",
     "seed": 2,
-    "val": 0.8,
-    "holdout": 0.9,
+    "val": 0.8571428571428571,
+    "holdout": 0.9473684210526315,
     "ood": 0.85,
-    "holdout_seed": 0.5,
+    "holdout_seed": 0.47368421052631576,
     "ood_seed": 0.3,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\n",
@@ -2935,23 +3020,23 @@
    {
     "arm": "gepa",
     "seed": 3,
-    "val": 1.0,
-    "holdout": 0.9,
+    "val": 0.9333333333333333,
+    "holdout": 1.0,
     "ood": 0.95,
-    "holdout_seed": 0.3,
+    "holdout_seed": 0.2777777777777778,
     "ood_seed": 0.4,
     "best_files": {
-     "prompts/reporter.md": "Give the final answer to the question.\nThink step by step before answering.\n",
-     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nThink step by step before answering.\nVerify (double-check) your result before giving the final answer.\n"
+     "prompts/reporter.md": "Give the final answer to the question.\n",
+     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nThink step by step before answering.\n"
     }
    },
    {
     "arm": "score_only",
     "seed": 3,
     "val": 1.0,
-    "holdout": 0.95,
+    "holdout": 0.9444444444444444,
     "ood": 1.0,
-    "holdout_seed": 0.3,
+    "holdout_seed": 0.2777777777777778,
     "ood_seed": 0.4,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\nVerify (double-check) your result before giving the final answer.\n",
@@ -2962,9 +3047,9 @@
     "arm": "scalar_rl",
     "seed": 3,
     "val": 0.8666666666666667,
-    "holdout": 0.9,
+    "holdout": 0.8888888888888888,
     "ood": 0.9,
-    "holdout_seed": 0.3,
+    "holdout_seed": 0.2777777777777778,
     "ood_seed": 0.4,
     "best_files": {
      "prompts/reporter.md": "Give the final answer to the question.\n",
@@ -2974,14 +3059,14 @@
    {
     "arm": "gepa",
     "seed": 4,
-    "val": 0.9333333333333333,
-    "holdout": 1.0,
-    "ood": 0.95,
+    "val": 1.0,
+    "holdout": 0.95,
+    "ood": 1.0,
     "holdout_seed": 0.5,
     "ood_seed": 0.3,
     "best_files": {
-     "prompts/reporter.md": "Give the final answer to the question.\n",
-     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nEnd your reply with a final line of the form 'ANSWER: <value>'.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\n"
+     "prompts/reporter.md": "Give the final answer to the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\n",
+     "prompts/solver.md": "You are a helpful assistant. Solve the question.\nEnd your reply with a final line of the form 'ANSWER: <value>'.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\nThink step by step before answering.\n"
     }
    },
    {
@@ -3012,6 +3097,6 @@
    }
   ]
  },
- "verdict_agentqa": "AgentQA (B=300, 5 seeds): holdout/OOD accuracy GEPA 0.900 [0.860, 0.950] / 0.900 [0.840, 0.950], ScoreOnly 0.950 [0.950, 0.950] / 0.990 [0.970, 1.000], ScalarRL 0.900 [0.870, 0.930] / 0.890 [0.850, 0.950] (seed harness 0.460 [0.380, 0.520] / 0.390 [0.310, 0.500]).",
- "generated_at": "2026-09-25 00:28:55"
+ "verdict_agentqa": "AgentQA (B=300, 5 seeds): holdout/OOD accuracy GEPA 0.928 [0.877, 0.970] / 0.920 [0.850, 0.990], ScoreOnly 0.948 [0.946, 0.949] / 0.960 [0.900, 1.000], ScalarRL 0.906 [0.872, 0.938] / 0.890 [0.850, 0.950] (seed harness 0.445 [0.361, 0.519] / 0.390 [0.310, 0.500]).",
+ "generated_at": "2026-09-25 17:55:30"
 }

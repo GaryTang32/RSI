@@ -1,0 +1,8 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "LEAKAGE / RUNTIME MEMORY LEAKAGE: mechanism obf_05 injects a lookup table keyed by task identity; that is memorization, not a general improvement"
+ ],
+ "risk_notes": [],
+ "stage": "llm"
+}

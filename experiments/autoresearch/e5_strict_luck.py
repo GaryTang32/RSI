@@ -32,15 +32,18 @@ import json
 import numpy as np
 
 from rsi.autoresearch import (AutoresearchLoop, BootstrapRigorKeep, Config, GateKeep, LandscapeTask, MockResearchAgent,
-                              Reeval, SimplicityWeighted, StrictKeep, landscape_edit_pool)
+                              Reeval, SimplicityWeighted, StrictKeep, UpstreamKeep, landscape_edit_pool)
 from rsi.core import MinGain
 
-RULES = ("strict", "rigor", "rigor_pinned", "noise_band", "simplicity")
+RULES = ("strict", "upstream", "rigor", "rigor_pinned", "noise_band", "simplicity")
+TINYLM_RULES = ("strict", "upstream", "rigor")
 
 
 def make_rule(name: str):
     if name == "strict":
         return StrictKeep()
+    if name == "upstream":                   # the faithful default (strict + simplicity + VRAM soft constraint)
+        return UpstreamKeep()
     if name == "rigor":
         return BootstrapRigorKeep()
     if name == "rigor_pinned":
@@ -130,10 +133,10 @@ def main():
     out["landscape"] = {r: agg([x for x in ls if x["rule"] == r], keys) for r in RULES}
     t_seeds = list(range(1 if a.quick else a.seeds))
     t_runs = 10 if a.quick else 27
-    tl = pool_map(tinylm_arm, [(r, s, t_runs) for r in ("strict", "rigor") for s in t_seeds], a.workers)
+    tl = pool_map(tinylm_arm, [(r, s, t_runs) for r in TINYLM_RULES for s in t_seeds], a.workers)
     out["tinylm"] = {r: {**agg([x for x in tl if x["rule"] == r], ["n_keeps", "seed_keeps", "optimism_gap",
                                                                     "honest_gain", "n_experiments"]),
-                         "runs": [x for x in tl if x["rule"] == r]} for r in ("strict", "rigor")}
+                         "runs": [x for x in tl if x["rule"] == r]} for r in TINYLM_RULES}
     L = out["landscape"]
     verdict = {
         "strict_false_keep_rate": L["strict"]["false_keep_rate"]["mean"],
@@ -146,6 +149,10 @@ def main():
         "true_final_strict": L["strict"]["true_final"]["mean"], "true_final_rigor": L["rigor"]["true_final"]["mean"],
         "tinylm_strict_optimism_gap": out["tinylm"]["strict"]["optimism_gap"]["mean"],
         "tinylm_rigor_optimism_gap": out["tinylm"]["rigor"]["optimism_gap"]["mean"],
+        "upstream_false_keep_rate": L["upstream"]["false_keep_rate"]["mean"],
+        "upstream_optimism_gap": L["upstream"]["optimism_gap"]["mean"],
+        "true_final_upstream": L["upstream"]["true_final"]["mean"],
+        "tinylm_upstream_optimism_gap": out["tinylm"]["upstream"]["optimism_gap"]["mean"],
     }
     verdict["strict_locks_in_luck"] = bool(L["strict"]["optimism_gap"]["lo"] > 0 and
                                            L["strict"]["false_keep_rate"]["mean"] > L["rigor"]["false_keep_rate"]["mean"])

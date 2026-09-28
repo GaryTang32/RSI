@@ -11,6 +11,11 @@ gets only the paragraphs of its active mechanisms, e.g. the unregularized baseli
 told "keep if measured higher", not about a floor, a cost rule or exploration it will
 never meet (otherwise a live proposer in a baseline arm would be steered by
 regularizers that are switched off).
+
+As in the released SKILL.md files, the rules are stated SYMBOLICALLY ("beta0 + beta1 x
+(gain)", "w_s x (gain) - w_c x ... + w_n x (novelty)"); only m and k are numbers. The
+proposer is never told the numeric weights, the noise band or the scores it must beat.
+``Config.proposer_numbers=True`` (an extension) fills in the numeric beta/w values instead.
 """
 from __future__ import annotations
 
@@ -166,11 +171,15 @@ def _is_full_proposal(sw) -> bool:
 
 def default_constitution(cfg, taxonomy, switches=None) -> tuple[str, str]:
     """``(SKILL.md, PATTERNS.md)`` describing the rules in force under ``switches``
-    (default: full RRSI, the released constitution's reward section)."""
+    (default: full RRSI, the released constitution's reward section). The acceptance
+    weights appear as symbols, as in the released SKILL.md, unless ``cfg.proposer_numbers``."""
     from .switches import RegularizerSwitches
     sw = switches or RegularizerSwitches.full()
-    fmt = dict(m=cfg.m, k=cfg.k, beta0=cfg.beta0, beta1=cfg.beta1, w_s=cfg.w_s, w_c=cfg.w_c, w_n=cfg.w_n,
-               structural=" / ".join(taxonomy.K_str) or "none")
+    if getattr(cfg, "proposer_numbers", False):
+        weights = dict(beta0=cfg.beta0, beta1=cfg.beta1, w_s=cfg.w_s, w_c=cfg.w_c, w_n=cfg.w_n)
+    else:
+        weights = dict(beta0="beta0", beta1="beta1", w_s="w_s", w_c="w_c", w_n="w_n")
+    fmt = dict(m=cfg.m, k=cfg.k, structural=" / ".join(taxonomy.K_str) or "none", **weights)
     parts = [HEADER, ROUND_TMPL.format(screen=SCREEN_CRITIC if sw.critic else SCREEN_NONE, **fmt)]
     if sw.selection == "greedy":
         parts.append(GREEDY)

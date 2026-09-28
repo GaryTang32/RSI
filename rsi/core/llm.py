@@ -378,8 +378,11 @@ class CachedLLM(LLM):
             self.saved.add(role, u)
             with self._count_lock:
                 self.hits += 1
+            raw = {"cached": True, "usage": asdict(u)}
+            if d.get("stop_reason") is not None:     # e.g. "max_tokens": lets callers detect truncated replies
+                raw["stop_reason"] = d["stop_reason"]
             return LLMResponse(text=d["text"], usage=Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0),
-                               model=d.get("model", self.inner.name), raw={"cached": True, "usage": asdict(u)})
+                               model=d.get("model", self.inner.name), raw=raw)
         with self._count_lock:
             self.misses += 1
         if self.offline:
@@ -391,7 +394,9 @@ class CachedLLM(LLM):
             path.parent.mkdir(parents=True, exist_ok=True)
             # unique temp name: concurrent writers of the same key must not race on one temp file
             tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-            tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model}))
+            stop = resp.raw.get("stop_reason") if isinstance(resp.raw, dict) else None
+            tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model,
+                                       "stop_reason": stop}))
             tmp.replace(path)
         return resp
 

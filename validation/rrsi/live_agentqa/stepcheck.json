@@ -1,8 +1,8 @@
 {
  "run": "live_agentqa",
  "summary": {
-  "correct": 63,
-  "questionable": 1,
+  "correct": 59,
+  "questionable": 9,
   "wrong": 0,
   "unverifiable": 0
  },
@@ -99,15 +99,21 @@
   },
   {
    "step": "r0/r0A",
-   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t of this round",
    "status": "correct",
    "evidence": "prompt directives b_t=4 reserved=False prune=[]"
   },
   {
    "step": "r0/r0A",
-   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
-   "status": "correct",
-   "evidence": "shown 0 rows, expected 0"
+   "check": "proposer was NOT shown delta, S*, S_t or T (code: symbolic rules only)",
+   "status": "questionable",
+   "evidence": "numeric thresholds in the prompt: {'delta': 0.272166, 'S_star': 0.5, 'S_incumbent': 0.5, 'T': 4} (pre-fix code: claims audit N2, fixed)"
+  },
+  {
+   "step": "r0/r0A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t, BASELINE row included as in the code)",
+   "status": "questionable",
+   "evidence": "shown 0 rows, expected 1"
   },
   {
    "step": "r0/r0A",
@@ -153,15 +159,21 @@
   },
   {
    "step": "r0/r0B",
-   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t of this round",
    "status": "correct",
    "evidence": "prompt directives b_t=4 reserved=False prune=[]"
   },
   {
    "step": "r0/r0B",
-   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
-   "status": "correct",
-   "evidence": "shown 0 rows, expected 0"
+   "check": "proposer was NOT shown delta, S*, S_t or T (code: symbolic rules only)",
+   "status": "questionable",
+   "evidence": "numeric thresholds in the prompt: {'delta': 0.272166, 'S_star': 0.5, 'S_incumbent': 0.5, 'T': 4} (pre-fix code: claims audit N2, fixed)"
+  },
+  {
+   "step": "r0/r0B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t, BASELINE row included as in the code)",
+   "status": "questionable",
+   "evidence": "shown 0 rows, expected 1"
   },
   {
    "step": "r0/r0B",
@@ -273,15 +285,21 @@
   },
   {
    "step": "r1/r1A",
-   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t of this round",
    "status": "correct",
    "evidence": "prompt directives b_t=4 reserved=False prune=[]"
   },
   {
    "step": "r1/r1A",
-   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
-   "status": "correct",
-   "evidence": "shown 6 rows, expected 6"
+   "check": "proposer was NOT shown delta, S*, S_t or T (code: symbolic rules only)",
+   "status": "questionable",
+   "evidence": "numeric thresholds in the prompt: {'delta': 0.272166, 'S_star': 0.666667, 'S_incumbent': 0.666667, 'T': 4} (pre-fix code: claims audit N2, fixed)"
+  },
+  {
+   "step": "r1/r1A",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t, BASELINE row included as in the code)",
+   "status": "questionable",
+   "evidence": "shown 6 rows, expected 7"
   },
   {
    "step": "r1/r1A",
@@ -327,15 +345,21 @@
   },
   {
    "step": "r1/r1B",
-   "check": "proposer saw b_t, U_t, reserved flag, B_t, S*, delta of this round",
+   "check": "proposer saw b_t, U_t, reserved flag, B_t of this round",
    "status": "correct",
    "evidence": "prompt directives b_t=4 reserved=False prune=[]"
   },
   {
    "step": "r1/r1B",
-   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t)",
-   "status": "correct",
-   "evidence": "shown 6 rows, expected 6"
+   "check": "proposer was NOT shown delta, S*, S_t or T (code: symbolic rules only)",
+   "status": "questionable",
+   "evidence": "numeric thresholds in the prompt: {'delta': 0.272166, 'S_star': 0.666667, 'S_incumbent': 0.666667, 'T': 4} (pre-fix code: claims audit N2, fixed)"
+  },
+  {
+   "step": "r1/r1B",
+   "check": "proposer saw the evidence-aware history L_t (all measured edits of rounds < t, BASELINE row included as in the code)",
+   "status": "questionable",
+   "evidence": "shown 6 rows, expected 7"
   },
   {
    "step": "r1/r1B",

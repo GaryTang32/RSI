@@ -7,8 +7,11 @@ porting notes):
     faithful validation runner (missing scripts skipped, empty list ok, 2
     retries), process-score keep rule, memory-graph outcome recorded one cycle
     late and read from the executor's transcript first, hub hits used in
-    ``reference`` mode (injected directly), distiller fallback validation
-    ``python --version``, failure-distilled repair genes (empty validation).
+    ``reference`` mode (the hub hit is injected NEXT TO the locally selected
+    gene, Evolver's "STRONG REFERENCE" block; the hub is searched BEFORE local
+    selection, ``hub_when="first"``), heuristic-distiller fallback validation
+    ``python --test`` (port of ``node --test``; the allowlist drops it, leaving
+    an empty list), failure-distilled repair genes (empty validation).
 
 ``safe`` (our fixes, each logged in the ImprovementResult meta)
     safe runner (no silent skips, empty list FAILS), vacuity detector (lint +
@@ -27,11 +30,13 @@ from typing import Optional
 
 MODE_DEFAULTS = {
     "faithful": {"outcome_source": "faithful", "outcome_timing": "next_cycle", "reuse_mode": "reference",
-                 "hub_when": "always", "require_task_success": False, "vacuity_check": False,
+                 "hub_when": "first", "new_gene_retries": 1, "new_gene_check": "single",
+                 "require_task_success": False, "vacuity_check": False,
                  "failed_capsule_rule": "absolute", "carry_log_signals": True, "skip_geneless_success": False,
                  "failure_distill": True, "reject_memory": False},
     "safe": {"outcome_source": "safe", "outcome_timing": "immediate", "reuse_mode": "quarantine",
-             "hub_when": "no_local", "require_task_success": True, "vacuity_check": True,
+             "hub_when": "no_local", "new_gene_retries": 3, "new_gene_check": "paired",
+             "require_task_success": True, "vacuity_check": True,
              "failed_capsule_rule": "relative", "carry_log_signals": False, "skip_geneless_success": True,
              "failure_distill": False, "reject_memory": True},
 }
@@ -66,12 +71,18 @@ class Config:
     # solve
     propose: bool = True                     # write a new gene when nothing fits and the scratch attempt fails
     retry_after_propose: bool = True
+    new_gene_retries: Optional[int] = None   # A1: fresh-seed retries of a NEW gene on its own task (faithful 1, safe 3)
+    new_gene_check: Optional[str] = None     # A1: single (faithful: solved iff > half of the retries solve) |
+    #                                          paired (safe: the same seeds also run WITHOUT the gene; solved iff
+    #                                          > half solve AND the gene solves more of them than the bare harness)
     validation_hint: str = ""                # appended to the gene-writer prompt (e.g. " (e.g. python smoke_test.py)")
     default_validation: list = field(default_factory=list)
     # solidify
     require_task_success: Optional[bool] = None
     vacuity_check: Optional[bool] = None
     rollback: str = "stash"
+    estimate_drift_penalty: bool = False     # N3: Evolver's composite reads a key dispatch never writes, so its
+    #                                          x0.5/x0.7 estimate-drift penalty never fires; True applies it (§4.10)
     skip_geneless_success: Optional[bool] = None   # safe: a task solved with no gene has nothing to solidify
     env: str = "sim/py3.11"
     # distill
@@ -83,8 +94,14 @@ class Config:
     #                                          safe: off (such genes can never pass a discriminative keep rule)
     # hub
     publish: bool = True
-    hub_when: Optional[str] = None           # always | no_local
-    reuse_mode: Optional[str] = None         # reference | direct | quarantine
+    hub_when: Optional[str] = None           # first (Evolver: hub search BEFORE local selection, every cycle) |
+    #                                          always (legacy: local selection, then the hub, every cycle) |
+    #                                          no_local (safe: the hub only when nothing local fits)
+    reuse_mode: Optional[str] = None         # reference (Evolver default: hub gene injected NEXT TO the local gene;
+    #                                          solidify scores the local gene; the hub gene is not stored) |
+    #                                          direct (Evolver REUSE MODE: the hub gene alone; stored on success) |
+    #                                          replace (legacy, non-default: the hub gene replaces the local gene
+    #                                          and is stored on success) | quarantine (safe)
     hub_k: int = 5
     reuse_threshold: float = 0.72
     reuse_threshold_problem: float = 0.55

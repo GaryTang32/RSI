@@ -3,48 +3,45 @@
  "b_t": 4,
  "sigma_t": 1,
  "delta": 0.01594,
- "S_star": 0.4653125,
- "S": 0.4653125,
- "C": 2184.66,
- "incumbent": "104d988dde804f40e6cc6850dd4db229ac4f84b1764e53fb0c966b6904d00943",
- "winner": null,
+ "S_star": 0.519375,
+ "S": 0.519375,
+ "C": 3487.93,
+ "incumbent": "941441722b4c58400b69dbd59b0c81dd96b2fe1b77ffbc9cd0cc0b110a5b2f9b",
+ "winner": "A",
  "n_candidates": 2,
- "n_screened": 1,
+ "n_screened": 2,
  "n_untried": 2,
  "prune_set": [
-  "config",
-  "context_mgmt",
   "control_flow",
   "memory",
   "output_plumbing",
   "prompt",
+  "skill",
   "subagent"
  ],
  "decisions": [
   {
    "variant": "A",
-   "admissible": false,
-   "reason": "cost rule failed: within band: shaped=-0.768 (<= 0)",
-   "S": 0.4596875,
-   "C": 2287.405,
-   "delta_S": -0.005624999999999991,
-   "delta_C": 0.047030201495885104,
+   "admissible": true,
+   "reason": "admissible: S'=0.5194 >= S*-delta=0.4622; dC=+0.532 <= beta0+beta1*dS=1.750",
+   "S": 0.519375,
+   "C": 3487.93,
+   "delta_S": 0.04125000000000001,
+   "delta_C": 0.5317623085807637,
    "novelty": 1,
    "guards": []
   },
   {
    "variant": "B",
-   "admissible": false,
-   "reason": "critic_reject",
-   "S": null,
-   "C": null,
-   "delta_S": null,
-   "delta_C": null,
-   "novelty": 0,
+   "admissible": true,
+   "reason": "admissible: S'=0.5028 >= S*-delta=0.4622; dC=+0.118 <= beta0+beta1*dS=1.087",
+   "S": 0.5028125,
+   "C": 2546.05,
+   "delta_S": 0.024687499999999973,
+   "delta_C": 0.11812548582169191,
+   "novelty": 1,
    "guards": []
   }
  ],
- "gate_failures": {
-  "B": "critic_reject"
- }
+ "gate_failures": {}
 }

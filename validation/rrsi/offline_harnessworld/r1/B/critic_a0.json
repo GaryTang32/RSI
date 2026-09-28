@@ -1,16 +1,16 @@
 {
  "verdict": "reject",
  "reasons": [
-  "precheck: hard-coded evaluation data 'ans-00d02a'",
-  "precheck: hard-coded evaluation data 'ans-124148'",
-  "precheck: hard-coded evaluation data 'ans-1f8e7e'",
-  "precheck: hard-coded evaluation data 'ans-394976'",
-  "precheck: hard-coded evaluation data 'ans-3bb9c1'",
-  "precheck: hard-coded evaluation data 'ans-47668d'",
-  "precheck: hard-coded evaluation data 'ans-54580f'",
-  "precheck: hard-coded evaluation data 'ans-71c15b'",
-  "precheck: hard-coded evaluation data 'ans-7fe4e4'",
-  "precheck: hard-coded evaluation data 'ans-89051b'"
+  "precheck: hard-coded evaluation data 'hw-e-012'",
+  "precheck: hard-coded evaluation data 'hw-e-013'",
+  "precheck: hard-coded evaluation data 'hw-e-026'",
+  "precheck: hard-coded evaluation data 'hw-e-031'",
+  "precheck: hard-coded evaluation data 'hw-e-034'",
+  "precheck: hard-coded evaluation data 'hw-e-044'",
+  "precheck: hard-coded evaluation data 'hw-e-055'",
+  "precheck: hard-coded evaluation data 'hw-e-064'",
+  "precheck: hard-coded evaluation data 'hw-e-065'",
+  "precheck: hard-coded evaluation data 'hw-e-073'"
  ],
  "risk_notes": [],
  "stage": "precheck"

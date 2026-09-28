@@ -1,24 +1,25 @@
 {
- "artifact_id": "0ed4d0d03de1ee3f3e08eb4e9214d7862bc15a2ae8c299a7aeb1f9fb40f35d9f",
+ "gate_failure": "critic_reject",
+ "detail": "['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']",
  "edits": [
   {
    "id": "C1",
-   "component": "control_flow",
-   "hypothesis": "prune: [aq:self_consistency] Three samples with a majority vote",
+   "component": "memory",
+   "hypothesis": "[aq:answer_lookup] Remember answers seen during practice",
    "targets_mode": "wrong final answers",
    "why_not_lower_lever": "n/a",
    "trigger_condition": "every question",
    "predicted_affected": [
-    "evolve-numeric-002",
-    "evolve-numeric-004",
-    "evolve-numeric-006"
+    "evolve-numeric-011",
+    "evolve-numeric-000",
+    "evolve-numeric-001"
    ],
    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
    "regression_risk": "tokens",
-   "mechanism": "prune: [aq:self_consistency] Three samples with a majority vote",
-   "declared_component": "control_flow"
+   "mechanism": "[aq:answer_lookup] Remember answers seen during practice"
   }
  ],
  "diff_path": "r5/A/diff.patch",
- "mechanism": "prune: [aq:self_consistency] Three samples with a majority vote"
+ "artifact_id": null,
+ "mechanism": "[aq:answer_lookup] Remember answers seen during practice"
 }

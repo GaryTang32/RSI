@@ -1,0 +1,30 @@
+{
+ "policy": "d64aa01043",
+ "label": "t1m3",
+ "objective": "eq1",
+ "value": 0.716323,
+ "per_world": [
+  0.71632
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 0.7613226629691684,
+  "probes_frac": 0.6666666666666666,
+  "N": 6.0,
+  "k": 2.0,
+  "mean_batch": 3.0,
+  "batch_fill": 1.0,
+  "missed_ceiling_rate": 1.0,
+  "wasted_probe_frac": 0.5,
+  "serial_round_frac": 0.0,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0031,
+ "wall_s": 0.0826,
+ "n_episodes": 1
+}

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import difflib
 import fnmatch
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Mapping, Optional, Sequence
@@ -142,9 +143,19 @@ class ConstraintChecker:
 
 def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[Mutation], blast: dict,
                     max_files: Optional[int], estimate: Optional[dict], n_violations: int, validation: ValidationResult,
-                    n_protocol: int, canary_failed: bool = False, hollow: bool = False) -> float:
+                    n_protocol: int, canary_failed: bool = False, hollow: bool = False,
+                    estimate_key: str = "files_changed") -> float:
     """§4.10 weights: .05 signal + .10 selection + .05 mutation + .15 blast + .25 constraint
-    + .25 validation + .10 protocol + .05 canary."""
+    + .25 validation + .10 protocol + .05 canary.
+
+    ``estimate_key`` (N3): Evolver's composite reads ``blastRadiusEstimate.files_changed``
+    (deob ``solidify.js:540``) but dispatch writes the estimate as ``{files, lines}``, so the
+    x0.5 / x0.7 estimate-drift penalty never fires in Evolver. The faithful default reads the
+    same dead key; ``estimate_key="files"`` (``Config.estimate_drift_penalty``) turns on the
+    penalty the spec §4.10 text describes.
+
+    Rounding (N4) is JavaScript ``Math.round(s * 100) / 100`` (half-up), not Python's
+    banker's ``round``."""
     sig = 0.5 if n_signals == 0 else min(1.0, 0.4 + 0.1 * n_signals)
     sel = 0.3 if gene is None else (0.7 if gene.id.startswith("gene_auto_") else 0.9)
     if mutation is None:
@@ -167,15 +178,26 @@ def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[
         bc = 0.7
     else:
         bc = 0.2
-    if estimate and estimate.get("files") and files:
-        r = files / estimate["files"]
+    est_files = (estimate or {}).get(estimate_key) or 0
+    if est_files > 0 and files and files > 0:
+        r = files / est_files
         bc *= 0.5 if r > 3 else (0.7 if r > 2 else 1.0)
     cons = max(0.0, 1 - 0.25 * n_violations)
     val = validation.component
     prot = max(0.0, 1 - 0.3 * n_protocol)
     can = 0.0 if canary_failed else 1.0
     s = .05 * sig + .10 * sel + .05 * mut + .15 * bc + .25 * cons + .25 * val + .10 * prot + .05 * can
-    return max(0.0, min(1.0, round(s, 2)))
+    return max(0.0, min(1.0, js_round2(s)))
+
+
+def js_round2(x: float) -> float:
+    """``Math.round(x * 100) / 100`` exactly as JavaScript computes it (N4).
+
+    ``Math.round`` rounds half toward +infinity on the double ``x * 100``;
+    ``y - floor(y)`` is exact for doubles, so the tie test is exact too."""
+    y = x * 100
+    f = math.floor(y)
+    return (f + 1 if y - f >= 0.5 else f) / 100
 
 
 HARD_RX = re.compile(r"HARD CAP BREACH|CRITICAL_FILE_|critical_path_modified|forbidden_path touched|ethics:")
@@ -270,8 +292,9 @@ class Solidifier:
     def __init__(self, store, runner: ValidationRunner, *, mode: str = "faithful",
                  constraints: Optional[ConstraintChecker] = None, counted: Optional[CountedFilePolicy] = None,
                  vacuity: Optional[VacuityDetector] = None, require_task_success: bool = True,
-                 rollback: str = "stash") -> None:
+                 rollback: str = "stash", estimate_drift_penalty: bool = False) -> None:
         self.store = store
+        self.estimate_drift_penalty = estimate_drift_penalty   # N3: off = Evolver (dead key)
         self.runner = runner
         self.mode = mode
         self.constraints = constraints or ConstraintChecker()
@@ -317,7 +340,8 @@ class Solidifier:
         hollow = any(v.startswith("hollow_commit") for v in cc.violations)
         score = composite_score(n_signals=len(rs.signals), gene=gene, mutation=mut, blast=blast,
                                 max_files=gene.max_files if gene else 12, estimate=rs.estimate,
-                                n_violations=len(cc.violations), validation=val, n_protocol=len(pv), hollow=hollow)
+                                n_violations=len(cc.violations), validation=val, n_protocol=len(pv), hollow=hollow,
+                                estimate_key="files" if self.estimate_drift_penalty else "files_changed")
         fm = None if success else classify_failure_mode(cc.violations, pv, val.ok, extra=extra_fail)
         st = self.store
         vr = val.report

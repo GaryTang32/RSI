@@ -1,6 +1,6 @@
 {
  "experiment": "e2_offpolicy_validity",
- "created": "2026-09-25 05:56:40",
+ "created": "2026-09-25 16:45:43",
  "config": {
   "W": 4,
   "recording_grid": [

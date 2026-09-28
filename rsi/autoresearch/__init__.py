@@ -17,7 +17,7 @@ Any :class:`rsi.core.Domain` works too (``run(domain, seed_artifact, llm_task=..
 
 Modules: task (ResearchTask, ScriptResearchTask, DomainResearchTask, RunBudget),
 guard (ScopeGuard with the hardened tamper scan, BudgetEnforcer, CrashPolicy), results (ResultsLog, Workspace),
-keep (StrictKeep, BootstrapRigorKeep, SimplicityWeighted, GateKeep, NoiseCalibrator),
+keep (UpstreamKeep, StrictKeep, BootstrapRigorKeep, SimplicityWeighted, GateKeep, NoiseCalibrator),
 program (ProgramSpec), agent (LLMResearchAgent, MockResearchAgent), loop
 (AutoresearchLoop, Config, run), analysis (Analyzer, HiddenAudit, Reeval),
 executors (LocalProcessExecutor, FakeSlurmExecutor), parallel
@@ -29,7 +29,7 @@ from .agent import (AgentContext, LLMResearchAgent, MockResearchAgent, RandomSea
 from .analysis import Analyzer, HiddenAudit, Reeval
 from .guard import BudgetEnforcer, CrashPolicy, ScopeGuard, Violation, default_tamper_patterns
 from .keep import (BootstrapRigorKeep, GateKeep, KeepContext, KeepRule, NoiseCalibrator, Samples, SimplicityWeighted,
-                   StrictKeep, make_keep_rule)
+                   StrictKeep, UpstreamKeep, make_keep_rule)
 from .landscape import LandscapeTask, landscape_edit_pool
 from .loop import AutoresearchLoop, Config, agent_llms, make_agent, run
 from .program import ProgramSpec
@@ -41,7 +41,7 @@ __all__ = [
     "ResearchTask", "ScriptResearchTask", "DomainResearchTask", "RunBudget", "RunOutcome", "parse_summary",
     "ScopeGuard", "Violation", "default_tamper_patterns", "BudgetEnforcer", "CrashPolicy",
     "ResultsLog", "Row", "Workspace",
-    "KeepRule", "StrictKeep", "BootstrapRigorKeep", "SimplicityWeighted", "GateKeep", "NoiseCalibrator", "Samples",
+    "KeepRule", "UpstreamKeep", "StrictKeep", "BootstrapRigorKeep", "SimplicityWeighted", "GateKeep", "NoiseCalibrator", "Samples",
     "KeepContext", "make_keep_rule",
     "ProgramSpec",
     "ResearchAgent", "LLMResearchAgent", "MockResearchAgent", "RandomSearchAgent", "AgentContext", "ScriptedEdit", "knob_edit",

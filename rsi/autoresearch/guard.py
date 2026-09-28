@@ -217,14 +217,23 @@ _TRIVIAL = re.compile(r"^(SyntaxError|IndentationError|TabError|NameError|Import
                       r"UnboundLocalError)\b", re.M)
 
 
+#: crash kinds sent to the agent under ``Config(crash_fix="agent")`` (the default): upstream's agent reads
+#: ``tail -n 50 run.log`` after *any* crash and judges ("use your judgment ... if it's something dumb and easy to
+#: fix, fix it"; else skip). Timeouts are "treated as a failure" upstream; violations exist only in hardened mode.
+AGENT_FIX_KINDS = ("trivial", "oom", "nan", "error")
+
+
 class CrashPolicy:
     """Upstream crash handling, made explicit.
 
     ``kind(outcome)`` -> ``"ok" | "timeout" | "oom" | "nan" | "violation" |
-    "trivial" | "error"``. Only ``trivial`` crashes (typos, missing imports - the
-    "dumb and easy to fix" cases) are sent back to the agent for a fix, at most
-    ``max_fix_attempts`` times ("more than a few attempts" -> give up); every
-    other crash is logged with status ``crash`` (0.000000 / 0.0) and skipped.
+    "trivial" | "error"``. Crashes of a kind in ``fix_kinds`` are sent back to the
+    agent for a fix, at most ``max_fix_attempts`` times ("more than a few attempts"
+    -> give up); the agent may also decline (``GIVE_UP``). The loop's default is
+    :data:`AGENT_FIX_KINDS` (the agent judges every crash but a timeout or a
+    violation, as upstream); ``fix_kinds=("trivial",)`` is the mechanical variant
+    (only typos, missing imports: the "dumb and easy to fix" cases). Every crash
+    that is not fixed is logged with status ``crash`` (0.000000 / 0.0) and skipped.
     """
 
     def __init__(self, max_fix_attempts: int = 3, fix_kinds: Sequence[str] = ("trivial",)) -> None:

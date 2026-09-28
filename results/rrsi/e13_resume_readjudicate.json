@@ -116,25 +116,25 @@
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-2.010 (<= 0)"
+       true,
+       "admissible: S'=0.5800 >= S*-delta=0.5169; dC=+0.139 <= beta0+beta1*dS=1.987"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5522 >= S*-delta=0.5109; dC=+0.580 <= beta0+beta1*dS=1.113"
+       false,
+       "cost rule failed: within band: shaped=-0.910 (<= 0)"
       ]
      ],
      "after": [
       [
        "A",
-       false,
-       "below noise-adjusted floor: S'=0.5109 < S*-delta=0.5189 (S* 0.5269 - delta 0.008"
+       true,
+       "admissible: S'=0.5800 >= S*-delta=0.5248; dC=+0.139 <= beta0+beta1*dS=1.987"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5522 >= S*-delta=0.5189; dC=+0.580 <= beta0+beta1*dS=1.113"
+       false,
+       "cost rule failed: within band: shaped=-0.910 (<= 0)"
       ]
      ]
     },
@@ -143,36 +143,36 @@
      "delta_new": 0.03188,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
-     "verdicts_changed": 1,
+     "verdicts_changed": 0,
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-2.010 (<= 0)"
+       true,
+       "admissible: S'=0.5800 >= S*-delta=0.5169; dC=+0.139 <= beta0+beta1*dS=1.987"
       ],
       [
        "B",
-       true,
-       "admissible: S'=0.5522 >= S*-delta=0.5109; dC=+0.580 <= beta0+beta1*dS=1.113"
+       false,
+       "cost rule failed: within band: shaped=-0.910 (<= 0)"
       ]
      ],
      "after": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-2.010 (<= 0)"
+       true,
+       "admissible: S'=0.5800 >= S*-delta=0.5009; dC=+0.139 <= beta0+beta1*dS=1.987"
       ],
       [
        "B",
        false,
-       "cost rule failed: within band: shaped=-6.173 (<= 0)"
+       "cost rule failed: within band: shaped=-0.910 (<= 0)"
       ]
      ]
     }
    },
    "counterfactual_flips": {
-    "delta x0.5": 0,
-    "delta x2.0": 3
+    "delta x0.5": 1,
+    "delta x2.0": 1
    },
    "decisions_total": 20
   },
@@ -253,24 +253,24 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-1.536 (<= 0)"
+       "cost rule failed: within band: shaped=-1.167 (<= 0)"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5328 < S*-delta=0.5436 (S* 0.5606 - delta 0.017"
+       true,
+       "admissible: S'=0.6403 >= S*-delta=0.5864; dC=+0.138 <= beta0+beta1*dS=1.575"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.5450 < S*-delta=0.5521 (S* 0.5606 - delta 0.008"
+       "cost rule failed: within band: shaped=-1.167 (<= 0)"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5328 < S*-delta=0.5521 (S* 0.5606 - delta 0.008"
+       true,
+       "admissible: S'=0.6403 >= S*-delta=0.5949; dC=+0.138 <= beta0+beta1*dS=1.575"
       ]
      ]
     },
@@ -284,31 +284,31 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-1.536 (<= 0)"
+       "cost rule failed: within band: shaped=-1.167 (<= 0)"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5328 < S*-delta=0.5436 (S* 0.5606 - delta 0.017"
+       true,
+       "admissible: S'=0.6403 >= S*-delta=0.5864; dC=+0.138 <= beta0+beta1*dS=1.575"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-1.536 (<= 0)"
+       "cost rule failed: within band: shaped=-1.167 (<= 0)"
       ],
       [
        "B",
-       false,
-       "cost rule failed: within band: shaped=-28.639 (<= 0)"
+       true,
+       "admissible: S'=0.6403 >= S*-delta=0.5694; dC=+0.138 <= beta0+beta1*dS=1.575"
       ]
      ]
     }
    },
    "counterfactual_flips": {
     "delta x0.5": 0,
-    "delta x2.0": 0
+    "delta x2.0": 2
    },
    "decisions_total": 20
   },
@@ -384,29 +384,29 @@
      "delta_new": 0.007808,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
-     "verdicts_changed": 1,
+     "verdicts_changed": 0,
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-6.809 (<= 0)"
+       true,
+       "admissible: S'=0.5875 >= S*-delta=0.4931; dC=+0.062 <= beta0+beta1*dS=3.250"
       ],
       [
        "B",
        false,
-       "cost rule failed: within band: shaped=-2.755 (<= 0)"
+       "below noise-adjusted floor: S'=0.4747 < S*-delta=0.4931 (S* 0.5088 - delta 0.015"
       ]
      ],
      "after": [
       [
        "A",
        true,
-       "admissible: S'=0.5387 >= S*-delta=0.5166; dC=+0.550 <= beta0+beta1*dS=0.675"
+       "admissible: S'=0.5875 >= S*-delta=0.5009; dC=+0.062 <= beta0+beta1*dS=3.250"
       ],
       [
        "B",
        false,
-       "below noise-adjusted floor: S'=0.5116 < S*-delta=0.5166 (S* 0.5244 - delta 0.007"
+       "below noise-adjusted floor: S'=0.4747 < S*-delta=0.5009 (S* 0.5088 - delta 0.007"
       ]
      ]
     },
@@ -419,31 +419,31 @@
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-6.809 (<= 0)"
+       true,
+       "admissible: S'=0.5875 >= S*-delta=0.4931; dC=+0.062 <= beta0+beta1*dS=3.250"
       ],
       [
        "B",
        false,
-       "cost rule failed: within band: shaped=-2.755 (<= 0)"
+       "below noise-adjusted floor: S'=0.4747 < S*-delta=0.4931 (S* 0.5088 - delta 0.015"
       ]
      ],
      "after": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-6.809 (<= 0)"
+       true,
+       "admissible: S'=0.5875 >= S*-delta=0.4775; dC=+0.062 <= beta0+beta1*dS=3.250"
       ],
       [
        "B",
        false,
-       "cost rule failed: within band: shaped=-2.755 (<= 0)"
+       "below noise-adjusted floor: S'=0.4747 < S*-delta=0.4775 (S* 0.5088 - delta 0.031"
       ]
      ]
     }
    },
    "counterfactual_flips": {
-    "delta x0.5": 1,
+    "delta x0.5": 2,
     "delta x2.0": 0
    },
    "decisions_total": 20
@@ -524,25 +524,25 @@
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-1.049 (<= 0)"
+       true,
+       "admissible: S'=0.5684 >= S*-delta=0.5342; dC=-0.007 <= beta0+beta1*dS=0.863"
       ],
       [
        "B",
        true,
-       "admissible: S'=0.5981 >= S*-delta=0.5677; dC=+0.064 <= beta0+beta1*dS=0.713"
+       "admissible: S'=0.5519 >= S*-delta=0.5342; within band: shaped=+0.152 (> 0)"
       ]
      ],
      "after": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-1.049 (<= 0)"
+       true,
+       "admissible: S'=0.5684 >= S*-delta=0.5418; dC=-0.007 <= beta0+beta1*dS=0.863"
       ],
       [
        "B",
        true,
-       "admissible: S'=0.5981 >= S*-delta=0.5752; dC=+0.064 <= beta0+beta1*dS=0.713"
+       "admissible: S'=0.5519 >= S*-delta=0.5418; within band: shaped=+0.152 (> 0)"
       ]
      ]
     },
@@ -555,31 +555,31 @@
      "before": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-1.049 (<= 0)"
+       true,
+       "admissible: S'=0.5684 >= S*-delta=0.5342; dC=-0.007 <= beta0+beta1*dS=0.863"
       ],
       [
        "B",
        true,
-       "admissible: S'=0.5981 >= S*-delta=0.5677; dC=+0.064 <= beta0+beta1*dS=0.713"
+       "admissible: S'=0.5519 >= S*-delta=0.5342; within band: shaped=+0.152 (> 0)"
       ]
      ],
      "after": [
       [
        "A",
-       false,
-       "cost rule failed: within band: shaped=-1.049 (<= 0)"
+       true,
+       "admissible: S'=0.5684 >= S*-delta=0.5191; within band: shaped=+2.005 (> 0)"
       ],
       [
        "B",
        true,
-       "admissible: S'=0.5981 >= S*-delta=0.5525; within band: shaped=+0.575 (> 0)"
+       "admissible: S'=0.5519 >= S*-delta=0.5191; within band: shaped=+0.152 (> 0)"
       ]
      ]
     }
    },
    "counterfactual_flips": {
-    "delta x0.5": 0,
+    "delta x0.5": 2,
     "delta x2.0": 0
    },
    "decisions_total": 20
@@ -661,24 +661,24 @@
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.5988 < S*-delta=0.6040 (S* 0.6206 - delta 0.016"
+       "below noise-adjusted floor: S'=0.6012 < S*-delta=0.6178 (S* 0.6344 - delta 0.016"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5478 < S*-delta=0.6040 (S* 0.6206 - delta 0.016"
+       true,
+       "admissible: S'=0.6784 >= S*-delta=0.6178; dC=+0.102 <= beta0+beta1*dS=1.863"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.5988 < S*-delta=0.6123 (S* 0.6206 - delta 0.008"
+       "below noise-adjusted floor: S'=0.6012 < S*-delta=0.6261 (S* 0.6344 - delta 0.008"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5478 < S*-delta=0.6123 (S* 0.6206 - delta 0.008"
+       true,
+       "admissible: S'=0.6784 >= S*-delta=0.6261; dC=+0.102 <= beta0+beta1*dS=1.863"
       ]
      ]
     },
@@ -692,31 +692,31 @@
       [
        "A",
        false,
-       "below noise-adjusted floor: S'=0.5988 < S*-delta=0.6040 (S* 0.6206 - delta 0.016"
+       "below noise-adjusted floor: S'=0.6012 < S*-delta=0.6178 (S* 0.6344 - delta 0.016"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5478 < S*-delta=0.6040 (S* 0.6206 - delta 0.016"
+       true,
+       "admissible: S'=0.6784 >= S*-delta=0.6178; dC=+0.102 <= beta0+beta1*dS=1.863"
       ]
      ],
      "after": [
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-4.375 (<= 0)"
+       "cost rule failed: within band: shaped=-5.321 (<= 0)"
       ],
       [
        "B",
-       false,
-       "below noise-adjusted floor: S'=0.5478 < S*-delta=0.5874 (S* 0.6206 - delta 0.033"
+       true,
+       "admissible: S'=0.6784 >= S*-delta=0.6012; dC=+0.102 <= beta0+beta1*dS=1.863"
       ]
      ]
     }
    },
    "counterfactual_flips": {
     "delta x0.5": 0,
-    "delta x2.0": 1
+    "delta x2.0": 0
    },
    "decisions_total": 20
   },
@@ -924,8 +924,8 @@
    },
    "readjudicate": {
     "delta x0.5": {
-     "delta_old": 0.133512,
-     "delta_new": 0.066756,
+     "delta_old": 0.136808,
+     "delta_new": 0.068404,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
      "verdicts_changed": 0,
@@ -933,7 +933,7 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-0.236 (<= 0)"
+       "critic_reject"
       ],
       [
        "B",
@@ -945,7 +945,7 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-0.236 (<= 0)"
+       "critic_reject"
       ],
       [
        "B",
@@ -955,8 +955,8 @@
      ]
     },
     "delta x2.0": {
-     "delta_old": 0.133512,
-     "delta_new": 0.267024,
+     "delta_old": 0.136808,
+     "delta_new": 0.273616,
      "rollouts_spent": 0,
      "measurements_unchanged": true,
      "verdicts_changed": 0,
@@ -964,7 +964,7 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-0.236 (<= 0)"
+       "critic_reject"
       ],
       [
        "B",
@@ -976,7 +976,7 @@
       [
        "A",
        false,
-       "cost rule failed: within band: shaped=-0.236 (<= 0)"
+       "critic_reject"
       ],
       [
        "B",

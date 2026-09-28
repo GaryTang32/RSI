@@ -84,6 +84,9 @@ def audit_events(events: list[dict], domain=None) -> dict:
         return {"summary": _summ(A.rows), "checks": A.rows}
     cfg, sw = start["config"], start["switches"]
     K = start.get("K") or []
+    # Algorithm 2's tie tolerance as the run used it: 0.0 (raw floats, the code) unless Config.tie_eps was set;
+    # traces written before the option existed used rsi.core's TIE_EPS = 1e-9
+    eps = float(cfg["tie_eps"]) if "tie_eps" in cfg else EPS
     full_rules = sw.get("selection") == "rrsi" and sw.get("floor") == "S_star" and sw.get("cost_rule") \
         and sw.get("within_band") == "shaped" and not start.get("guards")
 
@@ -183,7 +186,8 @@ def audit_events(events: list[dict], domain=None) -> dict:
                       t, c)
                 if p.get("reserved_slot") and rs.get("untried_U_t"):
                     comps = [str(x).lower() for x in p.get("components") or []]
-                    alias = {"tool": "client_tool", "client_tool": "tool"}
+                    # aliases count only when the run accepted them (Config.component_aliases; older traces did)
+                    alias = {"tool": "client_tool", "client_tool": "tool"} if cfg.get("component_aliases", True) else {}
                     hit = any(x in rs["untried_U_t"] or alias.get(x) in rs["untried_U_t"] for x in comps)
                     A.add("reserved slot declares an untried component", "pass" if hit else "fail",
                           f"declared {comps}, U_t={rs['untried_U_t']}", t, c)
@@ -233,13 +237,13 @@ def audit_events(events: list[dict], domain=None) -> dict:
             A.eq("dS = S' - S_t", m.get("dS"), dS, t, c, tol=1e-9)
             A.eq("dC = (C' - C_t) / C_t", m.get("dC"), dC, t, c, tol=1e-9)
             if full_rules:
-                floor_ok = S_c >= S_star - delta - EPS
-                if dS > delta + EPS:
+                floor_ok = S_c >= S_star - delta - eps
+                if dS > delta + eps:
                     lim = cfg["beta0"] + cfg["beta1"] * dS
-                    c_ok, rule = dC <= lim + EPS, f"cost rule dC={dC:+.4f} <= {lim:.4f}"
+                    c_ok, rule = dC <= lim + eps, f"cost rule dC={dC:+.4f} <= {lim:.4f}"
                 else:
                     sh = cfg["w_s"] * dS - cfg["w_c"] * dC + cfg["w_n"] * (m.get("nu") or 0)
-                    c_ok, rule = sh > EPS, f"shaped {cfg['w_s']}*{dS:+.4f} - {cfg['w_c']}*{dC:+.4f} + " \
+                    c_ok, rule = sh > eps, f"shaped {cfg['w_s']}*{dS:+.4f} - {cfg['w_c']}*{dC:+.4f} + " \
                                            f"{cfg['w_n']}*{m.get('nu')} = {sh:+.4f} > 0"
                 want = bool(floor_ok and c_ok)
                 A.add("admissible = Alg. 2 re-derived", "pass" if want == gate["accept"] else "fail",

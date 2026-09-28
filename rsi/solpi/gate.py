@@ -6,6 +6,15 @@ candidates that pass the capability floor, the loop retains nondominated results
 [blog: Capability floors]. The gate spec is *predeclared*: a frozen dataclass whose
 digest is recorded, and "kept isolated from the optimizing agent's control".
 
+Capability metrics (predeclared, default): ``score`` - the mean task score - AND ``solved`` -
+the share of trials that reach full score (the resolve rate), both within tau = 2 % relative.
+"Efficiency has its own shortcut: an agent can spend fewer tokens by doing less. So capability
+works as a gate. Every capability metric must stay within a tolerance declared before the search
+starts" [ye-blog]. A do-less shortcut concentrates its loss: a 24-turn cap leaves 2-3 of 24 tasks
+unfinished (solved 0.875-0.917) while partial credit keeps the mean at >= 0.983, inside a
+score-only 2 % floor (claims audit L4 / S6). ``GateSpec(capability=(("score", 0.02),))`` is the
+former score-only floor (explicit option).
+
 Modes (spec B3.1 note - the sources describe an aggregate gate; "survives
 everywhere" read literally is the per-family option):
 
@@ -38,9 +47,13 @@ from ..core.gates import Scored
 EFFICIENCY_METRICS = ("tokens", "cost", "steps")
 
 
+SOLVED_EPS = 1e-9
+
+
 @dataclass(frozen=True)
 class GateSpec:
-    capability: tuple[tuple[str, float], ...] = (("score", 0.02),)
+    #: every capability metric within its tolerance: mean score AND the fully-solved rate (see module docstring)
+    capability: tuple[tuple[str, float], ...] = (("score", 0.02), ("solved", 0.02))
     efficiency: tuple[str, ...] = ("tokens", "cost")
     min_gain: float = 0.02                       # min relative improvement of an efficiency metric
     mode: str = "aggregate"                      # aggregate | per_family | efficiency_only | eta_better
@@ -73,14 +86,15 @@ def metrics_from_eval(ev: EvalResult, families: Optional[Iterable[str]] = None) 
         for t in trs:
             if fams is not None and t.family not in fams:
                 continue
-            r = {"score": t.score, "tokens": float(t.tokens), "cost": float(t.cost_usd), "steps": float(t.steps)}
+            r = {"score": t.score, "solved": float(t.score >= 1.0 - SOLVED_EPS), "tokens": float(t.tokens),
+                 "cost": float(t.cost_usd), "steps": float(t.steps)}
             rows.setdefault(t.family, []).append(r)
             allrows.append(r)
 
     def mean(rs):
         if not rs:
-            return {k: float("nan") for k in ("score", "tokens", "cost", "steps", "eta")}
-        m = {k: float(np.mean([r[k] for r in rs])) for k in ("score", "tokens", "cost", "steps")}
+            return {k: float("nan") for k in ("score", "solved", "tokens", "cost", "steps", "eta")}
+        m = {k: float(np.mean([r[k] for r in rs])) for k in ("score", "solved", "tokens", "cost", "steps")}
         m["eta"] = m["cost"] / m["score"] if m["score"] > 0 else float("inf")
         return m
 
@@ -120,6 +134,10 @@ class DualGate:
     def _cap(self, b: dict, c: dict) -> tuple[bool, dict]:
         out, ok = {}, True
         for m, tol in self.spec.capability:
+            if m not in b or m not in c:        # a predeclared metric that was not measured fails closed
+                out[m] = {"base": b.get(m), "cand": c.get(m), "tol": tol, "pass": False, "missing": True}
+                ok = False
+                continue
             p = _within(b[m], c[m], tol, self.spec.tolerance_kind)
             out[m] = {"base": b[m], "cand": c[m], "tol": tol, "pass": p}
             ok &= p

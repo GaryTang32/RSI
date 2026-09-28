@@ -1,23 +1,23 @@
 [
  {
   "variant": "A",
-  "admissible": false,
-  "reason": "below noise-adjusted floor: S'=0.4106 < S*-delta=0.4803 (S* 0.4963 - delta 0.0159)",
-  "S": 0.410625,
-  "C": 3657.28,
-  "delta_S": -0.085625,
-  "delta_C": 0.09272513508628051,
-  "novelty": 2,
+  "admissible": true,
+  "reason": "admissible: S'=0.5891 >= S*-delta=0.5441; dC=+0.071 <= beta0+beta1*dS=1.262",
+  "S": 0.5890625,
+  "C": 4284.55,
+  "delta_S": 0.02906249999999999,
+  "delta_C": 0.07093536095062059,
+  "novelty": 1,
   "guards": []
  },
  {
   "variant": "B",
-  "admissible": true,
-  "reason": "admissible: S'=0.5228 >= S*-delta=0.4803; dC=+0.035 <= beta0+beta1*dS=1.162",
-  "S": 0.5228125,
-  "C": 3462.515,
-  "delta_S": 0.02656249999999999,
-  "delta_C": 0.034533087735495294,
+  "admissible": false,
+  "reason": "cost rule failed: within band: shaped=-6.279 (<= 0)",
+  "S": 0.5684375,
+  "C": 5900.44,
+  "delta_S": 0.008437499999999987,
+  "delta_C": 0.4748316255306809,
   "novelty": 0,
   "guards": []
  }

@@ -209,3 +209,29 @@ class Memory(MemorySystem):
 '''
 
 SEED_PROGRAMS = {"no_memory": NO_MEMORY, "fewshot_all": FEWSHOT_ALL}
+
+#: Few-shot with at most N examples (port of the release's ``agents/fewshot_memory.py``: a random sample of N
+#: stored examples per query, shuffled, under the same global character cap). The paper's Table 2 reports
+#: few-shot with N in {4, 8, 16, 32, all}. These are *comparators*, not part of the initial population (the
+#: release's ``config.yaml`` baselines are ``no_memory`` and ``fewshot_all``): ``fewshot_all`` overflows
+#: MemoLM-A's context budget on two of three search datasets, so it is a weak comparator (audit N9), and
+#: "less context than fewshot_all" should be checked against the best of these as well.
+FEWSHOT_N = FEWSHOT_ALL.replace('"""Few-shot baseline using ALL training examples (global character cap)."""',
+                                '"""Few-shot baseline using at most MAX_EXAMPLES random stored examples per query."""') \
+    .replace("MAX_EXAMPLES = 9999", "MAX_EXAMPLES = {n}") \
+    .replace("""        to_use = list(self.examples[-MAX_EXAMPLES:])
+        if seed is not None:
+            random.Random(seed).shuffle(to_use)""", """        if seed is not None and len(self.examples) > MAX_EXAMPLES:
+            to_use = random.Random(seed).sample(self.examples, MAX_EXAMPLES)
+        else:
+            to_use = list(self.examples[-MAX_EXAMPLES:])
+            if seed is not None:
+                random.Random(seed).shuffle(to_use)""")
+
+
+def fewshot_program(n: int) -> str:
+    """``memory.py`` source of the few-shot-N comparator (see :data:`FEWSHOT_N`)."""
+    return FEWSHOT_N.replace("MAX_EXAMPLES = {n}", f"MAX_EXAMPLES = {int(n)}")
+
+
+COMPARATOR_PROGRAMS = {f"fewshot_{n}": fewshot_program(n) for n in (4, 8, 16, 32, 64)}

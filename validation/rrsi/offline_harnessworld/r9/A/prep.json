@@ -1,26 +1,45 @@
 {
- "artifact_id": "001d80d09c5b6683c53da9fca8bdd7f4315eb82b763c528e64fc97dc52a54ece",
+ "artifact_id": "e9a7584a4933732869fc7f9423176b8ba121191738de55cff5da0fcda1b34ccb",
  "edits": [
   {
    "id": "C1",
-   "component": "context_mgmt",
-   "hypothesis": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place",
+   "component": "control_flow",
+   "hypothesis": "[gen_13] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, arith, plan, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
-    "hw-e-022",
     "hw-e-008",
-    "hw-e-051"
+    "hw-e-036",
+    "hw-e-022"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "dec_00",
-   "prune": true,
-   "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stopped earning its place",
-   "declared_component": "context_mgmt"
+   "mechanism_id": "gen_13",
+   "prune": false,
+   "mechanism": "[gen_13] Bounded self-verification pass: Bounded self-verification pass; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "control_flow"
+  },
+  {
+   "id": "C2",
+   "component": "output_plumbing",
+   "hypothesis": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-036",
+    "hw-e-022"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_19",
+   "prune": false,
+   "mechanism": "[har_19] Answer-line extractor: Answer-line extractor; aimed at extract, arith, plan, format tasks.",
+   "declared_component": "output_plumbing"
   }
  ],
  "diff_path": "r9/A/diff.patch",
- "mechanism": "prune: [dec_00] Keep the last N tool results verbatim stoppe"
+ "mechanism": "[gen_13] Bounded self-verification pass: Bounded self-verifi; [har_19] Answer-line extractor: Answer-line extractor; aimed"
 }

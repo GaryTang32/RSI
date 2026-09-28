@@ -1,6 +1,6 @@
 {
  "experiment": "x17_failure_distiller",
- "generated_at": "2026-09-25 06:40:29",
+ "generated_at": "2026-09-28 11:15:31",
  "config": {
   "llm": "sim",
   "seeds": 10,
@@ -17,33 +17,33 @@
    "failure_distill": true,
    "seed": 0,
    "holdout_no_genes": 0.4583333333333333,
-   "holdout_library": 0.5347222222222222,
-   "n_genes": 13,
+   "holdout_library": 0.4930555555555556,
+   "n_genes": 12,
    "n_repair_genes": 7,
-   "cycle_share_on_repair_genes": 0.4270833333333333,
+   "cycle_share_on_repair_genes": 0.6145833333333334,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.34146341463414637,
-   "loop_solve_rate": 0.4791666666666667
+   "repair_cycles_task_solved": 0.3728813559322034,
+   "loop_solve_rate": 0.4270833333333333
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 1,
    "holdout_no_genes": 0.3958333333333333,
-   "holdout_library": 0.4513888888888889,
-   "n_genes": 11,
+   "holdout_library": 0.4236111111111111,
+   "n_genes": 8,
    "n_repair_genes": 5,
-   "cycle_share_on_repair_genes": 0.6666666666666666,
+   "cycle_share_on_repair_genes": 0.6979166666666666,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.375,
-   "loop_solve_rate": 0.46875
+   "repair_cycles_task_solved": 0.373134328358209,
+   "loop_solve_rate": 0.4375
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 2,
    "holdout_no_genes": 0.3472222222222222,
-   "holdout_library": 0.4027777777777778,
+   "holdout_library": 0.3888888888888889,
    "n_genes": 10,
    "n_repair_genes": 7,
    "cycle_share_on_repair_genes": 0.6041666666666666,
@@ -59,9 +59,9 @@
    "holdout_library": 0.3541666666666667,
    "n_genes": 11,
    "n_repair_genes": 5,
-   "cycle_share_on_repair_genes": 0.5416666666666666,
+   "cycle_share_on_repair_genes": 0.5520833333333334,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.4807692307692308,
+   "repair_cycles_task_solved": 0.49056603773584906,
    "loop_solve_rate": 0.5520833333333334
   },
   {
@@ -70,63 +70,63 @@
    "seed": 4,
    "holdout_no_genes": 0.3819444444444444,
    "holdout_library": 0.4444444444444444,
-   "n_genes": 10,
+   "n_genes": 11,
    "n_repair_genes": 5,
    "cycle_share_on_repair_genes": 0.5625,
    "repair_cycles_solidified": 1.0,
    "repair_cycles_task_solved": 0.3888888888888889,
-   "loop_solve_rate": 0.5
+   "loop_solve_rate": 0.4895833333333333
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 5,
    "holdout_no_genes": 0.4652777777777778,
-   "holdout_library": 0.5416666666666666,
-   "n_genes": 10,
-   "n_repair_genes": 4,
-   "cycle_share_on_repair_genes": 0.5,
+   "holdout_library": 0.5208333333333334,
+   "n_genes": 12,
+   "n_repair_genes": 5,
+   "cycle_share_on_repair_genes": 0.5104166666666666,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.3958333333333333,
-   "loop_solve_rate": 0.5104166666666666
+   "repair_cycles_task_solved": 0.3877551020408163,
+   "loop_solve_rate": 0.4583333333333333
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 6,
    "holdout_no_genes": 0.4444444444444444,
-   "holdout_library": 0.6666666666666666,
+   "holdout_library": 0.6875,
    "n_genes": 13,
-   "n_repair_genes": 5,
-   "cycle_share_on_repair_genes": 0.25,
+   "n_repair_genes": 4,
+   "cycle_share_on_repair_genes": 0.23958333333333334,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.2916666666666667,
-   "loop_solve_rate": 0.59375
+   "repair_cycles_task_solved": 0.30434782608695654,
+   "loop_solve_rate": 0.6145833333333334
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 7,
    "holdout_no_genes": 0.4722222222222222,
-   "holdout_library": 0.4930555555555556,
+   "holdout_library": 0.5138888888888888,
    "n_genes": 13,
    "n_repair_genes": 5,
    "cycle_share_on_repair_genes": 0.46875,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.4888888888888889,
-   "loop_solve_rate": 0.5833333333333334
+   "repair_cycles_task_solved": 0.4444444444444444,
+   "loop_solve_rate": 0.59375
   },
   {
    "domain": "geneworld",
    "failure_distill": true,
    "seed": 8,
    "holdout_no_genes": 0.4513888888888889,
-   "holdout_library": 0.5555555555555556,
-   "n_genes": 12,
-   "n_repair_genes": 2,
-   "cycle_share_on_repair_genes": 0.34375,
+   "holdout_library": 0.5069444444444444,
+   "n_genes": 14,
+   "n_repair_genes": 6,
+   "cycle_share_on_repair_genes": 0.3541666666666667,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.30303030303030304,
+   "repair_cycles_task_solved": 0.3235294117647059,
    "loop_solve_rate": 0.4583333333333333
   },
   {
@@ -134,20 +134,20 @@
    "failure_distill": true,
    "seed": 9,
    "holdout_no_genes": 0.3333333333333333,
-   "holdout_library": 0.5,
-   "n_genes": 14,
-   "n_repair_genes": 5,
-   "cycle_share_on_repair_genes": 0.40625,
+   "holdout_library": 0.3958333333333333,
+   "n_genes": 15,
+   "n_repair_genes": 4,
+   "cycle_share_on_repair_genes": 0.375,
    "repair_cycles_solidified": 1.0,
-   "repair_cycles_task_solved": 0.41025641025641024,
-   "loop_solve_rate": 0.5416666666666666
+   "repair_cycles_task_solved": 0.3333333333333333,
+   "loop_solve_rate": 0.46875
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 0,
    "holdout_no_genes": 0.4583333333333333,
-   "holdout_library": 0.7222222222222222,
+   "holdout_library": 0.6736111111111112,
    "n_genes": 11,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -160,20 +160,20 @@
    "failure_distill": false,
    "seed": 1,
    "holdout_no_genes": 0.3958333333333333,
-   "holdout_library": 0.6527777777777778,
-   "n_genes": 9,
+   "holdout_library": 0.5694444444444444,
+   "n_genes": 10,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.5625
+   "loop_solve_rate": 0.53125
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 2,
    "holdout_no_genes": 0.3472222222222222,
-   "holdout_library": 0.6180555555555556,
+   "holdout_library": 0.6527777777777778,
    "n_genes": 11,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -186,59 +186,59 @@
    "failure_distill": false,
    "seed": 3,
    "holdout_no_genes": 0.3263888888888889,
-   "holdout_library": 0.5833333333333334,
-   "n_genes": 13,
+   "holdout_library": 0.5208333333333334,
+   "n_genes": 12,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6458333333333334
+   "loop_solve_rate": 0.6145833333333334
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 4,
    "holdout_no_genes": 0.3819444444444444,
-   "holdout_library": 0.6319444444444444,
+   "holdout_library": 0.7083333333333334,
    "n_genes": 12,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6458333333333334
+   "loop_solve_rate": 0.6770833333333334
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 5,
    "holdout_no_genes": 0.4652777777777778,
-   "holdout_library": 0.6041666666666666,
-   "n_genes": 11,
+   "holdout_library": 0.5972222222222222,
+   "n_genes": 12,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.625
+   "loop_solve_rate": 0.5729166666666666
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 6,
    "holdout_no_genes": 0.4444444444444444,
-   "holdout_library": 0.7083333333333334,
+   "holdout_library": 0.7361111111111112,
    "n_genes": 11,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6458333333333334
+   "loop_solve_rate": 0.6666666666666666
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 7,
    "holdout_no_genes": 0.4722222222222222,
-   "holdout_library": 0.6458333333333334,
+   "holdout_library": 0.6944444444444444,
    "n_genes": 11,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -252,25 +252,25 @@
    "seed": 8,
    "holdout_no_genes": 0.4513888888888889,
    "holdout_library": 0.6319444444444444,
-   "n_genes": 12,
+   "n_genes": 10,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.4895833333333333
+   "loop_solve_rate": 0.5
   },
   {
    "domain": "geneworld",
    "failure_distill": false,
    "seed": 9,
    "holdout_no_genes": 0.3333333333333333,
-   "holdout_library": 0.6458333333333334,
-   "n_genes": 12,
+   "holdout_library": 0.5972222222222222,
+   "n_genes": 11,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6145833333333334
+   "loop_solve_rate": 0.5416666666666666
   },
   {
    "domain": "katas",
@@ -290,13 +290,13 @@
    "failure_distill": true,
    "seed": 1,
    "holdout_no_genes": 0.4,
-   "holdout_library": 0.5666666666666667,
+   "holdout_library": 0.5,
    "n_genes": 4,
    "n_repair_genes": 1,
    "cycle_share_on_repair_genes": 0.2,
    "repair_cycles_solidified": 1.0,
    "repair_cycles_task_solved": 0.3333333333333333,
-   "loop_solve_rate": 0.6666666666666666
+   "loop_solve_rate": 0.6
   },
   {
    "domain": "katas",
@@ -381,7 +381,7 @@
    "failure_distill": true,
    "seed": 8,
    "holdout_no_genes": 0.4333333333333333,
-   "holdout_library": 0.8333333333333334,
+   "holdout_library": 0.8666666666666666,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -420,20 +420,20 @@
    "failure_distill": false,
    "seed": 1,
    "holdout_no_genes": 0.4,
-   "holdout_library": 0.6666666666666666,
+   "holdout_library": 0.6,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.7
+   "loop_solve_rate": 0.6333333333333333
   },
   {
    "domain": "katas",
    "failure_distill": false,
    "seed": 2,
    "holdout_no_genes": 0.39999999999999997,
-   "holdout_library": 0.5333333333333333,
+   "holdout_library": 0.7333333333333333,
    "n_genes": 4,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -459,20 +459,20 @@
    "failure_distill": false,
    "seed": 4,
    "holdout_no_genes": 0.4666666666666666,
-   "holdout_library": 0.6333333333333333,
+   "holdout_library": 0.5,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6
+   "loop_solve_rate": 0.4666666666666667
   },
   {
    "domain": "katas",
    "failure_distill": false,
    "seed": 5,
    "holdout_no_genes": 0.2333333333333333,
-   "holdout_library": 0.7999999999999999,
+   "holdout_library": 0.6333333333333332,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -485,13 +485,13 @@
    "failure_distill": false,
    "seed": 6,
    "holdout_no_genes": 0.33333333333333337,
-   "holdout_library": 0.5333333333333332,
+   "holdout_library": 0.6666666666666667,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
    "repair_cycles_solidified": 0.0,
    "repair_cycles_task_solved": 0.0,
-   "loop_solve_rate": 0.6666666666666666
+   "loop_solve_rate": 0.7333333333333333
   },
   {
    "domain": "katas",
@@ -511,7 +511,7 @@
    "failure_distill": false,
    "seed": 8,
    "holdout_no_genes": 0.4333333333333333,
-   "holdout_library": 0.8333333333333334,
+   "holdout_library": 0.8666666666666666,
    "n_genes": 5,
    "n_repair_genes": 0,
    "cycle_share_on_repair_genes": 0.0,
@@ -542,27 +542,27 @@
     "n": 10
    },
    "holdout_library": {
-    "mean": 0.49444444444444446,
-    "lo": 0.44375,
-    "hi": 0.5472222222222223,
+    "mean": 0.4729166666666666,
+    "lo": 0.4208333333333333,
+    "hi": 0.53125,
     "n": 10
    },
    "n_genes": {
-    "mean": 11.7,
-    "lo": 10.8,
-    "hi": 12.6,
+    "mean": 11.9,
+    "lo": 10.7,
+    "hi": 13.1,
     "n": 10
    },
    "n_repair_genes": {
-    "mean": 5.0,
-    "lo": 4.1,
-    "hi": 5.8,
+    "mean": 5.3,
+    "lo": 4.7,
+    "hi": 5.9,
     "n": 10
    },
    "cycle_share_on_repair_genes": {
-    "mean": 0.4770833333333333,
-    "lo": 0.403125,
-    "hi": 0.546875,
+    "mean": 0.4979166666666667,
+    "lo": 0.415625,
+    "hi": 0.5760416666666667,
     "n": 10
    },
    "repair_cycles_solidified": {
@@ -572,15 +572,15 @@
     "n": 10
    },
    "repair_cycles_task_solved": {
-    "mean": 0.3941314377847179,
-    "lo": 0.3536013310059252,
-    "hi": 0.4341227536655943,
+    "mean": 0.38843979699647174,
+    "lo": 0.3533675053408774,
+    "hi": 0.4255644258298801,
     "n": 10
    },
    "loop_solve_rate": {
-    "mean": 0.5260416666666667,
-    "lo": 0.496875,
-    "hi": 0.5541666666666667,
+    "mean": 0.5072916666666666,
+    "lo": 0.4677083333333333,
+    "hi": 0.5489583333333332,
     "n": 10
    }
   },
@@ -592,15 +592,15 @@
     "n": 10
    },
    "holdout_library": {
-    "mean": 0.6444444444444444,
-    "lo": 0.6208333333333333,
-    "hi": 0.6715277777777777,
+    "mean": 0.6381944444444445,
+    "lo": 0.5993055555555555,
+    "hi": 0.6763888888888889,
     "n": 10
    },
    "n_genes": {
-    "mean": 11.3,
-    "lo": 10.6,
-    "hi": 11.9,
+    "mean": 11.1,
+    "lo": 10.7,
+    "hi": 11.5,
     "n": 10
    },
    "n_repair_genes": {
@@ -628,9 +628,9 @@
     "n": 10
    },
    "loop_solve_rate": {
-    "mean": 0.6166666666666666,
-    "lo": 0.578125,
-    "hi": 0.6510416666666666,
+    "mean": 0.6041666666666667,
+    "lo": 0.5625,
+    "hi": 0.6468749999999999,
     "n": 10
    }
   },
@@ -642,9 +642,9 @@
     "n": 10
    },
    "holdout_library": {
-    "mean": 0.5933333333333333,
-    "lo": 0.5166666666666667,
-    "hi": 0.6733333333333333,
+    "mean": 0.5899999999999999,
+    "lo": 0.51,
+    "hi": 0.6766666666666666,
     "n": 10
    },
    "n_genes": {
@@ -678,9 +678,9 @@
     "n": 10
    },
    "loop_solve_rate": {
-    "mean": 0.63,
-    "lo": 0.57,
-    "hi": 0.6866666666666668,
+    "mean": 0.6233333333333333,
+    "lo": 0.5633333333333334,
+    "hi": 0.6833333333333333,
     "n": 10
    }
   },
@@ -692,9 +692,9 @@
     "n": 10
    },
    "holdout_library": {
-    "mean": 0.7066666666666667,
+    "mean": 0.7066666666666666,
     "lo": 0.6366666666666666,
-    "hi": 0.7766666666666666,
+    "hi": 0.7699999999999999,
     "n": 10
    },
    "n_genes": {
@@ -728,25 +728,25 @@
     "n": 10
    },
    "loop_solve_rate": {
-    "mean": 0.6900000000000001,
-    "lo": 0.6399999999999999,
-    "hi": 0.7533333333333333,
+    "mean": 0.6766666666666666,
+    "lo": 0.6066666666666667,
+    "hi": 0.75,
     "n": 10
    }
   }
  },
  "paired_on_minus_off_holdout": {
   "geneworld": {
-   "mean_diff": -0.15,
-   "lo": -0.18819444444444447,
-   "hi": -0.10902777777777779,
+   "mean_diff": -0.16527777777777777,
+   "lo": -0.20625,
+   "hi": -0.12222222222222223,
    "n": 10,
    "p_better": 0.0
   },
   "katas": {
-   "mean_diff": -0.11333333333333333,
-   "lo": -0.18,
-   "hi": -0.05333333333333332,
+   "mean_diff": -0.11666666666666667,
+   "lo": -0.17333333333333337,
+   "hi": -0.06000000000000001,
    "n": 10,
    "p_better": 0.0
   }

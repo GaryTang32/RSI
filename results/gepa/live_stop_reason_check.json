@@ -1,0 +1,28 @@
+{
+ "experiment": "live stop_reason check (reflection truncation finding)",
+ "llm": "claude:haiku",
+ "cache": ".rsi_cache/gepa_fix_live",
+ "fresh": true,
+ "calls": [
+  {
+   "call": 0,
+   "cache_hit": false,
+   "finish_reason": "end_turn",
+   "parsed": true,
+   "rejected": {},
+   "new_text_head": "Route customer support tickets to the appropriate team based on the issue type.\n\nTEAM RESPONSIBILITIES:\n- billing: Payment issues, refunds, invoicing, subscript"
+  },
+  {
+   "call": 1,
+   "cache_hit": true,
+   "finish_reason": "end_turn",
+   "parsed": true,
+   "rejected": {},
+   "new_text_head": "Route customer support tickets to the appropriate team based on the issue type.\n\nTEAM RESPONSIBILITIES:\n- billing: Payment issues, refunds, invoicing, subscript"
+  }
+ ],
+ "cache_entry_stop_reason": "end_turn",
+ "spend_usd": 0.005095,
+ "verdict": "claude -p reports stop_reason; CachedLLM stores it and returns it on a hit; the reflection proposer sees the same reason on miss and hit: call 0 (miss) -> 'end_turn', call 1 (hit) -> 'end_turn'",
+ "generated_at": "2026-09-25 17:51:48"
+}

@@ -26,13 +26,15 @@ from .obspack import ObservationPack
 from .occ import OnlineContextCompact
 from .reducer import DeterministicReducer, EvidencePreservingReducer, LLMReducer, MockReducer
 from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, ToolSpec
-from .tricks import HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, TurnCap
+from .tricks import CostAttribution, FailBeforePassAfter, HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, \
+    TurnCap
 
 ORDER = ("action_fusion", "observation_pack", "evidence_preserving_reducer", "online_context_compact")
 GENERAL = ORDER
 TRICKS = ("tail_trim", "head_trim", "pytest_quiet")
 DO_LESS = ("no_verify", "turn_cap")
 DUDS = ("prompt_slim",)
+EVALUATION = ("cost_attribution", "fail_before_pass_after")     # family M (improvement & evaluation)
 
 
 def _reducer(cfg: dict, ctx: dict):
@@ -66,6 +68,8 @@ MECHANISMS: dict[str, Callable[[dict, dict], Extension]] = {
     "no_verify": lambda c, x: NoVerify(),
     "turn_cap": lambda c, x: TurnCap(int(c.get("max_turns", 24))),
     "prompt_slim": lambda c, x: PromptSlim(),
+    "cost_attribution": lambda c, x: CostAttribution(),
+    "fail_before_pass_after": lambda c, x: FailBeforePassAfter(),
 }
 
 

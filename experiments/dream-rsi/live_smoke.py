@@ -10,13 +10,15 @@ so a rerun is free.
 Budget: 2 live searches on a 3 x 2 grid (<= 6 agent calls each), M = 2 (one developer
 revision) -> about 13-15 LLM calls, typically well under $1 and ~5 minutes.
 
-    python experiments/dream-rsi/live_smoke.py --llm claude:haiku [--domain sumdiff|circlepack|lasso]
+    python experiments/dream-rsi/live_smoke.py --llm claude:haiku [--domain sumdiff|circlepack|lasso|autocorr]
+        [--cache DIR]   # a fresh DIR re-runs from scratch
 """
 import json
 import tempfile
 import time
 
-from _common import CACHE, domain_of, llm_of, parse_args, save
+import _common
+from _common import domain_of, llm_of, parse_args, save
 
 from rsi.dream import Config, EditorAgent, LLMPolicyDeveloper, run, static_check
 
@@ -56,15 +58,20 @@ def main():
         "deployed_policy_changed": res.trajectory[-1]["policy"] != res.trajectory[0]["policy"],
         "usage_by_role": usage, "cost": res.usage.get("_cost"),
         "usd": sum(v.get("cost_usd", 0.0) for k, v in usage.items() if k != "_total"),
+        # the dreaming stage is free of agent calls, not of developer calls (claims audit N7)
+        "developer_usd_share": (res.usage.get("_cost") or {}).get("developer_usd_share"),
     }
     print(json.dumps({k: v for k, v in summary.items() if k not in ("usage_by_role", "cost")}, indent=1, default=str))
     verdict = (f"live run completed: best {summary['best_score']:.4f} from seed {summary['seed_score']:.4f} in "
                f"{sum(r['calls'] for r in summary['per_round'])} agent calls; developer revision "
                f"{'selected' if d.get('selected') else 'not selected (incumbent kept)'}; "
-               f"${summary['usd']:.3f}, {wall:.0f}s")
+               f"${summary['usd']:.3f} (policy developer "
+               f"{100 * (summary['developer_usd_share'] or 0):.0f}% of it), {wall:.0f}s")
     print(verdict)
     save("live_smoke" if llm is not None else "live_smoke_dryrun",
-         {"config": {"rounds": 2, "grid": [3, 1], "W": 3, "M": 2, "cache": str(CACHE)}, "summary": summary,
+         {"config": {"rounds": 2, "grid": [3, 1], "W": 3, "M": 2, "cache": str(_common.CACHE),
+                     "prompts": "verbatim Listing 1 / Listing 2 (claims-audit fix)", "round_budget": "fallback (6)"},
+          "summary": summary,
           "verdict": verdict}, a.out)
 
 

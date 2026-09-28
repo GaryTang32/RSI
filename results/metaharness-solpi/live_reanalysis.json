@@ -1,50 +1,4 @@
 {
- "metaharness": [
-  {
-   "iteration": "iter001",
-   "name": "correct_first_fewshot",
-   "base_system": "fewshot_all",
-   "valid": true,
-   "reason": null,
-   "fence_wrapped_raw": true,
-   "search": 0.47368421052631576,
-   "test": 0.5595238095238095,
-   "context": 8667.666666666666
-  },
-  {
-   "iteration": "iter001",
-   "name": "similarity_retrieval",
-   "base_system": "fewshot_all",
-   "valid": true,
-   "reason": null,
-   "fence_wrapped_raw": false,
-   "search": 0.47368421052631576,
-   "test": 0.5595238095238095,
-   "context": 8667.666666666666
-  },
-  {
-   "iteration": "iter002",
-   "name": "weighted_recency_correctness",
-   "base_system": "fewshot_all",
-   "valid": true,
-   "reason": null,
-   "fence_wrapped_raw": true,
-   "search": 0.47368421052631576,
-   "test": 0.5595238095238095,
-   "context": 8667.666666666666
-  },
-  {
-   "iteration": "iter002",
-   "name": "label_stratified_diverse",
-   "base_system": "fewshot_all",
-   "valid": true,
-   "reason": null,
-   "fence_wrapped_raw": false,
-   "search": 0.47368421052631576,
-   "test": 0.5595238095238095,
-   "context": 8667.666666666666
-  }
- ],
  "lineage": [
   {
    "cache_file": "077a24b866c3165a",
@@ -125,10 +79,146 @@
    "base_cost": 0.31027191666666665
   }
  ],
+ "metaharness": [
+  {
+   "iteration": 1,
+   "name": "correct_first_fewshot",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "files_in_reply": [
+    "agents/correct_first_fewshot/src/memory.py"
+   ],
+   "memory_py_differs_from_base": true,
+   "base_fallback": false,
+   "search": 0.4561403508771929,
+   "test": 0.5476190476190476,
+   "context": 8667.666666666666,
+   "llm_calls_per_unit": 74.0
+  },
+  {
+   "iteration": 1,
+   "name": "similarity_retrieval",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "files_in_reply": [
+    "agents/similarity_retrieval/src/memory.py"
+   ],
+   "memory_py_differs_from_base": true,
+   "base_fallback": false,
+   "search": 0.42105263157894735,
+   "test": 0.5238095238095238,
+   "context": 2471.298245614035,
+   "llm_calls_per_unit": 74.0
+  },
+  {
+   "iteration": 2,
+   "name": "weighted_recency_correctness",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "files_in_reply": [
+    "agents/weighted_recency_correctness/src/memory.py"
+   ],
+   "memory_py_differs_from_base": true,
+   "base_fallback": false,
+   "search": 0.40350877192982454,
+   "test": 0.44047619047619047,
+   "context": 3181.6666666666665,
+   "llm_calls_per_unit": 74.0
+  },
+  {
+   "iteration": 2,
+   "name": "label_stratified_diverse",
+   "base_system": "fewshot_all",
+   "valid": true,
+   "reason": null,
+   "files_in_reply": [
+    "agents/label_stratified_diverse/src/memory.py"
+   ],
+   "memory_py_differs_from_base": true,
+   "base_fallback": false,
+   "search": 0.4561403508771929,
+   "test": 0.5238095238095238,
+   "context": 5946.333333333333,
+   "llm_calls_per_unit": 74.0
+  }
+ ],
+ "metaharness_replay": {
+  "baselines": {
+   "no_memory": {
+    "search": 0.14035087719298245,
+    "test": 0.14285714285714285,
+    "context": 191.0
+   },
+   "fewshot_all": {
+    "search": 0.47368421052631576,
+    "test": 0.5595238095238095,
+    "context": 8667.666666666666
+   }
+  },
+  "replay": [
+   {
+    "iteration": 1,
+    "cache_hit": true,
+    "error": null,
+    "reply_matches_recorded_response": true,
+    "original_usage": {
+     "calls": 1,
+     "input_tokens": 22195,
+     "output_tokens": 8032,
+     "cost_usd": 0.084541,
+     "latency_s": 84.21950030326843
+    }
+   },
+   {
+    "iteration": 2,
+    "cache_hit": true,
+    "error": null,
+    "reply_matches_recorded_response": true,
+    "original_usage": {
+     "calls": 1,
+     "input_tokens": 23840,
+     "output_tokens": 7352,
+     "cost_usd": 0.084431,
+     "latency_s": 72.2463698387146
+    }
+   }
+  ],
+  "frontier_search": [
+   {
+    "system": "fewshot_all",
+    "score": 0.47368421052631576,
+    "context_cost": 8667.666666666666
+   },
+   {
+    "system": "label_stratified_diverse",
+    "score": 0.4561403508771929,
+    "context_cost": 5946.333333333333
+   },
+   {
+    "system": "similarity_retrieval",
+    "score": 0.42105263157894735,
+    "context_cost": 2471.298245614035
+   },
+   {
+    "system": "no_memory",
+    "score": 0.14035087719298245,
+    "context_cost": 191.0
+   }
+  ],
+  "cache": {
+   "hits": 2,
+   "misses": 0,
+   "spend_usd": 0.0
+  }
+ },
  "baselines_search": {
   "no_memory": 0.14035087719298245,
   "fewshot_all": 0.47368421052631576
  },
- "verdict": "with fence cleanup: 4/4 cached haiku Meta-Harness candidates validate (best search 0.474 vs fewshot_all 0.474); 6/6 cached haiku mechanism files compile, 0 pass the dual gate on the training screen",
- "generated_at": "2026-09-25 06:54:38"
+ "lineage_note": "lineage rows kept from the previous run of this script (SoL-Pi; not re-run)",
+ "verdict": "cached replies replayed at $0 (cache hits 2, misses 0); with the current parser (fix 12: agents/<name>/src/<path> -> <path>) 4/4 haiku Meta-Harness candidates validate and 4/4 differ from their base; best search 0.456 vs fewshot_all 0.474: none beats the baseline (the old JSON's 0.4737 / 0.5595 / 8667.7 were fewshot_all's own numbers: dead-file copies); 6/6 cached haiku SoL-Pi mechanism files compile, 0 pass the dual gate on the training screen",
+ "generated_at": "2026-09-25 18:12:31"
 }

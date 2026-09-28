@@ -13,16 +13,17 @@ Two layers:
 2. **The research protocol**: an :class:`IdeaPool` ranked by oracle analysis,
    disposable :class:`Lineage` loops (rollouts -> map-reduce analysis -> one
    mechanism -> Ralph-loop implementation -> review -> validation), a predeclared
-   :class:`DualGate` (capability within tolerance AND an efficiency gain; aggregate
-   or per-family), a one-way :class:`HoldoutFirewall`, nondominated survivors and
+   :class:`DualGate` (every capability metric - mean score and the fully-solved rate
+   by default - within tolerance AND an efficiency gain; aggregate or per-family), a
+   one-way :class:`HoldoutFirewall`, nondominated (best-eta) variants per lineage and
    :func:`compose`.
 
 Quick start (any :class:`rsi.core.Domain` with task families + a held-out split)::
 
     from rsi.solpi import Config, GateSpec, run
     res = run(domain, base_harness, llm_task=agent_backend, llm_propose=None,   # None = offline proposer
-              config=Config(gate=GateSpec(capability=(("score", 0.02),), efficiency=("tokens", "cost"),
-                                          mode="aggregate")), out_dir="runs/solpi")
+              config=Config(gate=GateSpec(capability=(("score", 0.02), ("solved", 0.02)),
+                                          efficiency=("tokens", "cost"), mode="aggregate")), out_dir="runs/solpi")
     res.best                                  # composed harness of the surviving mechanisms
     res.meta["rounds"][0]["survivor_ideas"]   # which ideas survived; ["heldout_passed"] firewall verdicts
 
@@ -44,8 +45,8 @@ controls), ``registry`` (config -> extensions, code mechanisms, sol-pi.json),
 Config, run).
 """
 from .driver import AutoResearchDriver, Config, run
-from .fusion import (EDIT_THEN_RUN_DESCRIPTION, THEN_RUN_FAILED, THEN_RUN_SKIPPED, THEN_RUN_SUCCEEDED, ActionFusion,
-                     resolve_tool_path)
+from .fusion import (EDIT_THEN_RUN_DESCRIPTION, THEN_RUN_FAILED, THEN_RUN_SKIPPED, THEN_RUN_SUCCEEDED,
+                     WRITE_THEN_RUN_DESCRIPTION, ActionFusion, canonical_queue_key, resolve_tool_path)
 from .gate import DualGate, GateResult, GateSpec, HeldoutResult, HoldoutFirewall, Metrics, metrics_from_eval, \
     nondominated
 from .meter import PRICES, CostModel, PriceTable, TokenMeter, estimate_tokens
@@ -58,12 +59,12 @@ from .occ import (BOUNDARY_COMPACTION_INSTRUCTIONS, DEFAULT_COMPACTION_ECONOMICS
 from .reducer import (DIAGNOSTIC_COMMAND, FAILURE_SIGNAL, FALLBACK_REASONS, LIKELY_SECRET, ArchiveObject,
                       DeterministicReducer, EvidencePreservingReducer, LLMReducer, MockReducer, receipt_text,
                       reducer_input, reducer_instructions, validate_receipt)
-from .registry import (DO_LESS, DUDS, GENERAL, MECHANISMS, ORDER, TRICKS, build_extensions, harness_config,
-                       load_code_extension, parse_solpi_config, with_mechanism)
+from .registry import (DO_LESS, DUDS, EVALUATION, GENERAL, MECHANISMS, ORDER, TRICKS, build_extensions,
+                       harness_config, load_code_extension, parse_solpi_config, with_mechanism)
 from .research import (FAMILY_CODES, FrozenCandidate, Idea, IdeaPool, Lineage, LineageResult, MechanismProposal,
                        SmokeReviewer, analyze, compose, implement, merge3, oracle_estimate, reduce_findings)
 from .runtime import (EVENTS, AgentRuntime, Extension, Message, RunResult, ToolCall, ToolError, ToolResult,
                       ToolResultEvent, ToolSpec, builtin_tools, default_summarizer)
-from .tricks import HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, TurnCap
+from .tricks import CostAttribution, FailBeforePassAfter, HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, TurnCap
 
 __all__ = [n for n in dir() if not n.startswith("_")]

@@ -64,12 +64,41 @@ class AttemptRecord:
     error: Optional[str] = None
     direction: Optional[str] = None
 
-    def render(self, max_chars: int = 600) -> str:
+    def render(self, max_chars: Optional[int] = 600) -> str:
+        """Compact one-record view (proposal clipped to ``max_chars``; the error's informative end)."""
         head = f"[round {self.round} {self.cell}{' dir=' + self.direction if self.direction else ''}] "
         res = f"score={self.score:.6g}" if self.score is not None and self.fail_class == "ok" else \
             f"FAILED ({self.fail_class}): {_error_gist(self.error)}"
-        prop = (self.proposal or "").strip().replace("\n", " ")[:max_chars]
+        prop = (self.proposal or "").strip().replace("\n", " ")
+        prop = prop[:max_chars] if max_chars is not None else prop
         return f"{head}{res}\n  proposal: {prop}"
+
+    def render_dir(self, max_chars: Optional[int] = None) -> str:
+        """The attempt directory as Listing 1 has the agent read it: ``proposal.md`` in full,
+        ``eval/score.json`` and ``error.txt`` when it failed [paper:App.B.1 L1:9]. With
+        ``max_chars`` (a non-default history cap) the proposal is clipped and says so."""
+        ok = self.score is not None and self.fail_class == "ok" and not self.error
+        name = f"attempt_{self.cell.replace('/', '_').replace('.', '_')}/"
+        tag = f" (branch direction: {self.direction})" if self.direction else ""
+        prop = (self.proposal or "").strip() or "(empty)"
+        if max_chars is not None and len(prop) > max_chars:
+            prop = prop[:max_chars] + f" [... clipped by the calling system's history cap: {len(prop) - max_chars} " \
+                                      "more characters not shown]"
+        score = json.dumps({"score": self.score, "fail_class": self.fail_class}, default=float)
+        when = f"live search {self.round}" if "/" in self.cell else f"decision round {self.round}"
+        out = [f"{name}  [{when}]{tag}", "  proposal.md:", _indent(prop, 4),
+               f"  eval/score.json: {score}"]
+        if not ok:
+            err = str(self.error or "(no error text)")
+            if max_chars is not None:
+                err = _error_gist(err)
+            out += ["  error.txt:", _indent(err, 4)]
+        return "\n".join(out)
+
+
+def _indent(text: str, n: int) -> str:
+    pad = " " * n
+    return "\n".join(pad + line for line in str(text).splitlines() or [""])
 
 
 def _error_gist(error, n: int = 240) -> str:
@@ -98,6 +127,13 @@ class AttemptContext:
     direction: dict = field(default_factory=dict)
     direction_guidance: str = ""
     editable: Optional[Sequence[str]] = None
+    #: ``$baseline_dir`` of Listing 1: the baseline's proposal.md (None: the initial program has none)
+    #: and its evaluation (fail_class / error.txt)
+    baseline_proposal: Optional[str] = None
+    baseline_fail_class: str = "ok"
+    baseline_error: Optional[str] = None
+    #: history caps actually applied by the calling system (disclosed in the prompt; None = none)
+    history_note: str = ""
 
 
 @dataclass
@@ -215,66 +251,81 @@ class DiscoveryAgent:
         raise NotImplementedError
 
 
-#: Listing 1 [paper:App.B.1], adapted to a single-completion editor: the "directories"
-#: are rendered inline and the files to write are the program files + a proposal.
+#: Listing 1 [paper:App.B.1], verbatim. The ``$variables`` are "filled in by the calling system"
+#: (L1:5): :meth:`EditorAgent.build_instructions` substitutes them and - because a single-completion
+#: editor has no file tools - renders the directories they name (the sibling ``attempt_*/`` dirs,
+#: ``$history_dir``, ``$baseline_dir`` and ``$problem_file``) inline after the listing.
 EXPLORATION_PROMPT = """\
 You must read every historical proposal before proposing or implementing a new solution.
 
-{direction_guidance}
+$direction_guidance
 
-## Problem
-{problem}
+Variables (`$node_dir`, `$history_dir`, `$baseline_dir`, `$eval_program`, `$problem_file`) are filled in by the calling system. `$node_dir` is your own attempt directory -- exclude it when scanning sibling `attempt_*/` dirs.
 
 ## 1. Read the complete history first
-Below are every sibling attempt of the current search, the completed history of earlier
-rounds, and the baseline - in full, not a sample. Trust the measured result over what a
-proposal claims about itself.
 
-### This branch (the workspace you resume; oldest first)
-{lineage}
-
-### Sibling attempts in this search
-{siblings}
-
-### History of earlier rounds
-{history}
-
-### Baseline
-score = {baseline}
+Before proposing anything, read every `proposal.md` under sibling `attempt_*/` dirs, `$history_dir`, and `$baseline_dir` in full -- not a sample, not just recent cycles or the current branch. For each, read its matching `eval/score.json` (and `error.txt` if it failed). Trust the measured result over what the proposal claims about itself.
 
 ## 2. Learn from both successes and failures
-For every past attempt, note the mechanism and how it did. For failures, figure out *why*:
-a flawed core idea, or a good idea let down by a bug, bad parameters, or an implementation
-slip? Don't repeat the former. The latter is worth retrying - but only once you've actually
-located the bug in the code, and only with a specific fix in hand.
+
+For every past attempt, note the mechanism and how it did. For failures, figure out *why*: a flawed core idea, or a good idea let down by a bug, bad parameters, or an implementation slip? Don't repeat the former. The latter is worth retrying -- but only once you've actually located the bug in the code (not just guessed from the proposal), and only with a specific fix in hand.
 
 ## 3. Don't converge into a local optimum
-If most attempts cluster around small variations of one mechanism with flattening returns,
-that's a local optimum - resist proposing another small tweak there. Deliberately favor a
-structurally different mechanism or an untried combination over a safer marginal refinement.
-Exploration diversity matters as much as the next incremental gain.
+
+Look at the shape of what's been tried. If most attempts cluster around small variations of one mechanism with flattening returns, that's a local optimum - resist proposing another small tweak there. Deliberately favor a structurally different mechanism or an untried combination over a safer marginal refinement. Exploration diversity matters as much as the next incremental gain.
 
 ## 4. Propose and implement
-The new idea must be a genuinely new mechanism, a new combination of previously-successful
-pieces, or a targeted fix to a specific bug found in step 2 - never a repeat or rename of
-something already tried. Implement it in the program files of the current workspace (shown
-below; the parent's evaluation is in eval/score.json). Don't claim it compiles, is correct, or
-beats SOTA until it's actually evaluated.
+
+The new idea must be a genuinely new mechanism, a new combination of previously-successful pieces, or a targeted fix to a specific bug found in step 2 - never a repeat or rename of something already tried. Implement it in `$eval_program`. Don't claim it compiles, is correct, or beats SOTA until it's actually evaluated.
 
 ## Files
-In the JSON header, "change" is a one-line mechanism summary and "hypothesis" is the proposal
-(mechanism, evidence from history, why it's not a repeat, expected benefit/risk). Only the
-program files are yours to write; proposal.md, eval/ and error.txt are written by the system.
+
+Write only `$node_dir/proposal.md` (mechanism, evidence from history, why it's not a repeat, expected benefit/risk) and `$node_dir/$eval_program`. Everything else is read-only.
+
+## Note:
+Never execute pkill, kill, killall, or terminate unrelated processes.
+"""
+
+#: what the calling system appends to Listing 1 for a single-completion editor (no file tools):
+#: the directories the listing names, rendered inline, and where proposal.md goes in the reply
+WORKSPACE_VIEW = """\
+
+---
+# Files filled in by the calling system (rendered inline: this call has no file tools)
+
+`$node_dir` = `{node_dir}` (your own attempt: it is not listed below). `$eval_program` = {eval_program}. `$problem_file` = `problem.md`. `$history_dir` = `history/`. `$baseline_dir` = `baseline/`.
+{history_note}
+## problem.md
+{problem}
+
+## Sibling `attempt_*/` dirs of this search: the branch you resume (oldest first)
+{lineage}
+
+## Sibling `attempt_*/` dirs of this search: other branches
+{siblings}
+
+## `history/`: every attempt of the earlier live searches
+{history}
+
+## `baseline/`
+{baseline}
+
+## Writing `$node_dir/proposal.md` in this call
+Your reply's JSON header is `$node_dir/proposal.md`: "change" is a one-line mechanism summary and "hypothesis" is the proposal (mechanism, evidence from history, why it's not a repeat, expected benefit/risk). The files you return are `$node_dir/$eval_program`; `eval/` and `error.txt` are written by the evaluator.
 """
 
 
-def _render_records(recs: Sequence[AttemptRecord], limit: int, empty: str = "(none)") -> str:
+def _render_records(recs: Sequence[AttemptRecord], limit: Optional[int] = None, empty: str = "(none)",
+                    max_chars: Optional[int] = None) -> str:
+    """Every record (Listing 1: "not a sample"); with ``limit`` (a non-default cap) only the most
+    recent ``limit``, and the omission is stated."""
     if not recs:
         return empty
     recs = list(recs)
-    omitted = max(0, len(recs) - limit)
-    body = "\n".join(r.render() for r in recs[-limit:])
-    return (f"({omitted} older attempts omitted)\n" if omitted else "") + body
+    omitted = max(0, len(recs) - limit) if limit is not None else 0
+    shown = recs[-limit:] if limit is not None else recs
+    body = "\n".join(r.render_dir(max_chars) for r in shown)
+    return (f"({omitted} older attempts omitted by the calling system's history cap)\n" if omitted else "") + body
 
 
 class EditorAgent(DiscoveryAgent):
@@ -287,22 +338,42 @@ class EditorAgent(DiscoveryAgent):
     """
 
     def __init__(self, editor: Editor | LLM, *, editable: Optional[Sequence[str]] = None, role: str = "agent",
-                 max_history: int = 30, system: Optional[str] = None) -> None:
+                 max_history: Optional[int] = None, max_proposal_chars: Optional[int] = None,
+                 system: Optional[str] = None) -> None:
         self.editor = RewriteEditor(editor) if isinstance(editor, LLM) else editor
         self.editable = list(editable) if editable is not None else None
         self.role = role
+        # Listing 1: "read every proposal.md ... in full -- not a sample". Both caps are OFF by default;
+        # set them only to bound prompt length (a documented, non-default deviation that the prompt
+        # then states: omitted records and clipped proposals are announced, never silent)
         self.max_history = max_history
+        self.max_proposal_chars = max_proposal_chars
         self.system = system or ("You are an expert research engineer running one attempt of an automated "
                                  "discovery search. Write correct, efficient code.")
 
     def build_instructions(self, ctx: AttemptContext) -> str:
-        return EXPLORATION_PROMPT.format(
-            direction_guidance=ctx.direction_guidance or "",
+        editable = list(self.editable or ctx.editable or [])
+        prog = ", ".join(f"`{e}`" for e in editable) if editable else "the program files of the workspace below"
+        mc = self.max_proposal_chars
+        base = AttemptRecord("baseline", -1, -1, 0, ctx.baseline_proposal or "(the initial program: it has no "
+                             "proposal.md)", ctx.baseline_score, ctx.baseline_fail_class, ctx.baseline_error)
+        baseline = "\n".join(base.render_dir(mc).splitlines()[1:])          # no attempt_*/ header for baseline/
+        notes = [ctx.history_note] if ctx.history_note else []
+        if self.max_history is not None or mc is not None:
+            notes.append("NOTE: this calling system caps what it shows"
+                         + (f" to the {self.max_history} most recent attempts per section" if self.max_history else "")
+                         + (f"{' and' if self.max_history else ''} clips each proposal.md at {mc} characters"
+                            if mc is not None else "") + "; omissions are marked where they happen.")
+        listing = EXPLORATION_PROMPT.replace("$direction_guidance", ctx.direction_guidance or "")
+        return listing + WORKSPACE_VIEW.format(
+            node_dir=f"attempt_b{ctx.branch}_a{ctx.attempt}/", eval_program=prog,
+            history_note=("\n".join(notes) + "\n") if notes else "",
             problem=ctx.problem,
-            lineage=_render_records(ctx.lineage, self.max_history, "(this branch starts from the initial workspace)"),
-            siblings=_render_records(ctx.siblings, self.max_history),
-            history=_render_records(ctx.history, self.max_history),
-            baseline=f"{ctx.baseline_score:.6g}" if ctx.baseline_score is not None else "n/a",
+            lineage=_render_records(ctx.lineage, self.max_history,
+                                    "(none yet: this branch starts from the initial workspace)", mc),
+            siblings=_render_records(ctx.siblings, self.max_history, "(none)", mc),
+            history=_render_records(ctx.history, self.max_history, "(none: this is the first live search)", mc),
+            baseline=baseline,
         )
 
     def attempt(self, ctx: AttemptContext, *, seed: int) -> AgentAttempt:
@@ -429,8 +500,9 @@ def record_of(node, direction: Optional[str] = None) -> AttemptRecord:
                          direction or (node.tags or {}).get("direction"))
 
 
-def history_records(worlds: Sequence, max_records: int = 200) -> list[AttemptRecord]:
-    """``H_{t-1}`` as attempt records (newest last), each tagged with its live round."""
+def history_records(worlds: Sequence, max_records: Optional[int] = None) -> list[AttemptRecord]:
+    """``H_{t-1}`` as attempt records (newest last), each tagged with its live round. Every record by
+    default (Listing 1: "not just recent cycles"); ``max_records`` keeps only the newest ones."""
     out: list[AttemptRecord] = []
     for w in worlds:
         rnd = int(w.meta.get("round", 0))
@@ -439,7 +511,7 @@ def history_records(worlds: Sequence, max_records: int = 200) -> list[AttemptRec
             r.round = rnd
             r.cell = f"t{rnd}/{n.id}"
             out.append(r)
-    return out[-max_records:]
+    return out[-max_records:] if max_records is not None else out
 
 
 def score_json(ws: Artifact) -> dict:

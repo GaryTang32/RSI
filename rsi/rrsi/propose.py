@@ -254,12 +254,13 @@ class Proposer:
             miss = [f for f in REQUIRED_FIELDS if not e.get(f)]
             if miss:
                 problems.append(f"edit {e.get('id', '?')} missing {miss}")
-            comp = self.tax.canonical(str(e.get("component", "")))
+            comp = self.tax.canonical(e.get("component", ""), strip=False)
             if e.get("component") and comp not in self.tax.K:
                 problems.append(f"edit {e.get('id')} component {e['component']!r} not in {self.tax.K}")
         untried = explore.get("untried") or []
         if reserved and untried and edits and not any(
-                isinstance(e, dict) and self.tax.canonical(str(e.get("component", ""))) in untried for e in edits):
+                isinstance(e, dict) and self.tax.canonical(e.get("component", ""), strip=False) in untried
+                for e in edits):
             problems.append("this variant holds a RESERVED EXPLORATION SLOT: at least one edit must be on a "
                             f"never-exercised component from {untried}")
         return problems
@@ -365,7 +366,7 @@ class Proposer:
                     break
                 continue
             for e in edits:
-                e["component"] = self.tax.canonical(str(e.get("component", "")))
+                e["component"] = self.tax.canonical(e.get("component", ""), strip=False)
                 e.setdefault("mechanism", e.get("hypothesis"))
             rec["outcome"] = "done: accepted by the done() contract" if n_changes else "done: no file changes"
             return {"status": "done", "summary": header.get("summary"), "edits": edits,

@@ -17,7 +17,7 @@ Kept changes accumulate their practice effect ``e`` and unseen effect ``g``.
 The random streams are the demo's own ``mulberry32`` generators seeded per run
 (``s*101+7`` proposals, ``s*7+1`` plain-loop noise, ``s*13+5`` guarded noise,
 ``s*29+3`` critic), so :func:`simulate` reproduces the page's curves exactly
-(verified against Node in ``tests/test_rrsi_toy.py``).
+(verified against Node in ``tests/rrsi/test_rrsi_toy.py``).
 
 This is the demo author's toy, not RRSI: its band is half a null sd, whereas RRSI's
 noise band is ``delta = z * sd(null dS)`` with ``z = 2``. :func:`simulate` exposes

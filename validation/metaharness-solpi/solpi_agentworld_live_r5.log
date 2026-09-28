@@ -1,0 +1,4 @@
+[solpi_agentworld_live_r5] 701.9s audit_passed=True checks={'gate_arithmetic_recomputed': '4/4', 'gate_used_base_metrics_of_round': '4/4', 'no_sealed_eval_in_lineages': '8/8', 'oracle_selection_recomputed': '1/1', 'variant_walk_rule': '0/0', 'firewall_trace_eq_sink_eq_driver': '1/1', 'firewall_verdict_recomputed': '1/1', 'only_firewall_survivors_composed': '1/1', 'composition_is_union': '0/0', 'diff_is_actual': '6/6'}
+  spend: {'loop': {'usd': 0.3669, 'calls': 12}, 'shadow_monitor': {'usd': 0.0, 'calls': 0}, 'cache_ground_truth': {'entries': 12, 'usd': 0.3669, 'input_tokens': 26141, 'output_tokens': 68148}}
+  chosen ['L2', 'L1'] frozen ['L2'] survivors ['L2']
+exit=0

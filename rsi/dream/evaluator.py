@@ -122,12 +122,16 @@ class ReplayEvaluator:
     runner: ``"subprocess"`` (sandbox, default) / ``"inprocess"`` or a runner object.
     fallback / hard caps: the :class:`GridPlanningContext` fields.
     unguarded: pass the raw question to the policy (E8 ablation only; in-process only).
+    fresh_episodes: every (world, beta) episode starts from a fresh policy namespace ("replay
+        resets the policy's per-rollout state" [paper:§3 p.5]; default). ``False`` reuses one
+        namespace for all episodes of an evaluation - the pre-fix behaviour, kept only as the
+        E8 ablation that shows the cross-episode memo attack (claims audit N1).
     """
 
     def __init__(self, objective=None, *, W: int = 4, K2: Optional[int] = None, root_mode: str = "earliest",
                  hide_missing: bool = False, runner="subprocess", fallback: tuple[int, int] = (4, 4),
                  hard_max: tuple[int, int] = (16, 16), sweep_grid: Optional[Sequence[float]] = None,
-                 unguarded: bool = False, trace_rounds: bool = True) -> None:
+                 unguarded: bool = False, trace_rounds: bool = True, fresh_episodes: bool = True) -> None:
         self.objective = objective or Eq1Objective()
         self.W, self.K2 = W, K2
         self.root_mode, self.hide_missing = root_mode, hide_missing
@@ -137,6 +141,7 @@ class ReplayEvaluator:
             tuple(self.objective.beta_grid) if isinstance(self.objective, ParetoSweepObjective) else ())
         self.unguarded = unguarded
         self.trace_rounds = trace_rounds
+        self.fresh_episodes = fresh_episodes
         self.episodes_run = 0
         self.cpu_s = 0.0
 
@@ -160,6 +165,18 @@ class ReplayEvaluator:
         return GridPlan(b, r, plan.reason), note
 
     # ------------------------------------------------------------------- episodes
+    def _episode(self, session, code: str, world: DiscoveryTree, config: dict, context: GridPlanningContext,
+                 beta: Optional[float]) -> EpisodeResult:
+        """One replay episode in a fresh policy namespace (unless ``fresh_episodes=False``)."""
+        if not self.fresh_episodes:
+            return self.run_episode(session, world, config, context, beta)
+        begin = getattr(session, "begin_episode", None)
+        if begin is not None:
+            begin()
+            return self.run_episode(session, world, config, context, beta)
+        with self.runner.session(code) as fresh:      # a custom runner without episodes: one session each
+            return self.run_episode(fresh, world, config, context, beta)
+
     def run_episode(self, session, world: DiscoveryTree, config: dict, context: GridPlanningContext,
                     beta: Optional[float]) -> EpisodeResult:
         t0 = time.process_time()
@@ -194,18 +211,18 @@ class ReplayEvaluator:
             do_sweep = bool(self.sweep_grid) if sweep is None else (sweep and bool(self.sweep_grid))
         with self.runner.session(code) as sess:
             ctxs = [self.context(w, manifests) for w in worlds]
-            eps = [self.run_episode(sess, w, config, c, config.get("beta")) for w, c in zip(worlds, ctxs)]
+            eps = [self._episode(sess, code, w, config, c, config.get("beta")) for w, c in zip(worlds, ctxs)]
             by_beta: dict[float, list[EpisodeResult]] = {}
             sweep_eps: list[EpisodeResult] = []
             if do_sweep:
                 for b in self.sweep_grid:
                     cfg = {**config, "beta": float(b)}
-                    by_beta[float(b)] = [self.run_episode(sess, w, cfg, c, float(b)) for w, c in zip(worlds, ctxs)]
+                    by_beta[float(b)] = [self._episode(sess, code, w, cfg, c, float(b)) for w, c in zip(worlds, ctxs)]
                     sweep_eps.extend(by_beta[float(b)])
         sweep_res = None
         if do_sweep:
             obj = self.objective if isinstance(self.objective, ParetoSweepObjective) else \
-                ParetoSweepObjective(beta_grid=self.sweep_grid)
+                ParetoSweepObjective(beta_grid=self.sweep_grid, support=getattr(self.objective, "support", "no_reward"))
             sweep_res = obj.sweep(by_beta)
             eq1 = self.objective if isinstance(self.objective, Eq1Objective) else Eq1Objective()
             for p in sweep_res["points"]:

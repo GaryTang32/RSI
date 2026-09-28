@@ -30,5 +30,6 @@
  "policy": "2f081731b815",
  "agent_calls": 9,
  "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
- "plan_error": null
+ "plan_error": null,
+ "round_budget": 9
 }

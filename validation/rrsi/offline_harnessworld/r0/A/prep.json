@@ -1,26 +1,26 @@
 {
- "artifact_id": "5bae7e70cc8137b2b3b74f98829eb674a78361d40353e64c76bcd0ea2fb4247e",
+ "artifact_id": "4e7d838fceb653c90fcb18f7fe83b80ed09bd314774e9d0d8f15fd33beb2fb5c",
  "edits": [
   {
    "id": "C1",
-   "component": "memory",
-   "hypothesis": "[har_05] Semantic memory of general procedures: Semantic memory of general procedures; aimed at plan, format tasks.",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks.",
    "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
    "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
    "trigger_condition": "tasks of the targeted families",
    "predicted_affected": [
     "hw-e-019",
-    "hw-e-022",
-    "hw-e-042"
+    "hw-e-008",
+    "hw-e-036"
    ],
    "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
    "regression_risk": "extra tokens",
-   "mechanism_id": "har_05",
+   "mechanism_id": "gen_14",
    "prune": false,
-   "mechanism": "[har_05] Semantic memory of general procedures: Semantic memory of general procedures; aimed at plan, format tasks.",
-   "declared_component": "memory"
+   "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aimed at extract, format tasks.",
+   "declared_component": "context_mgmt"
   }
  ],
  "diff_path": "r0/A/diff.patch",
- "mechanism": "[har_05] Semantic memory of general procedures: Semantic mem"
+ "mechanism": "[gen_14] Pin the task statement: Pin the task statement; aim"
 }

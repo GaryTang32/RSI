@@ -13,8 +13,14 @@ history is never modified):
   lines (``PLACEHOLDER_EXCERPT_BYTES`` = 1024, split 512/512) and the recall
   instruction ("placeholder" entry with ``removedTokens``);
 * ``obs_recall(id, offset)`` pages the stored bytes (<= 16,384 - 512 header bytes,
-  <= 400 - 2 lines, UTF-8 safe) with ``next_offset`` / ``eof``;
+  <= 400 - 2 lines, UTF-8 safe) with ``next_offset`` / ``eof``; ``offset`` must be an
+  integer >= 0 (the release's schema ``Type.Integer({minimum: 0})``; Pi rejects anything
+  else before the tool runs);
 * any error fails open: the original message is kept.
+
+Excerpts split after ``\n`` only (``text.split(/(?<=\n)/)`` - not Python's ``splitlines``,
+which also breaks on ``\r``, ``\x0b``, U+2028 ...), and token estimates use the release's
+``ceil(text.length / 4)`` with JavaScript's UTF-16 ``length``.
 
 ``full_sends`` / ``excerpt_bytes`` / ``head_frac`` are exposed for the sweep the
 blog reports (V0-V7).
@@ -22,11 +28,12 @@ blog reports (V0-V7).
 from __future__ import annotations
 
 import hashlib
+import json
+import math
 import re
 from dataclasses import dataclass
 from typing import Optional
 
-from .meter import estimate_tokens
 from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, ToolSpec
 
 THRESHOLD_BYTES = 10 * 1024
@@ -43,6 +50,16 @@ STORE_PREFIX = "/.solpi/observation-pack/objects/"
 
 def sha(text: str | bytes) -> str:
     return hashlib.sha256(text.encode() if isinstance(text, str) else text).hexdigest()
+
+
+def utf16_len(text: str) -> int:
+    """JavaScript ``String.length`` (UTF-16 code units)."""
+    return len(text.encode("utf-16-le", "surrogatepass")) // 2
+
+
+def estimate_tokens(text: str) -> int:
+    """``observation.ts:estimateTokens`` = ``ceil(text.length / 4)`` (UTF-16 units)."""
+    return int(math.ceil(utf16_len(text or "") / 4))
 
 
 def count_lines(text: str) -> int:
@@ -77,7 +94,8 @@ def create_observation(msg: Message, threshold: int = THRESHOLD_BYTES) -> Option
 
 
 def complete_line_excerpt(text: str, budget: int, from_end: bool) -> str:
-    lines = text.splitlines(keepends=True)
+    """``observation.ts:completeLineExcerpt``: whole ``\n``-terminated lines within ``budget`` UTF-8 bytes."""
+    lines = re.split(r"(?<=\n)", text)
     sel, used = [], 0
     seq = reversed(lines) if from_end else iter(lines)
     for line in seq:
@@ -112,6 +130,8 @@ def placeholder_for(obs: Observation, *, full_sends: int = FULL_SENDS, excerpt_b
 
 
 def read_recall_chunk(data: bytes, offset: int, max_bytes: int, max_lines: int) -> dict:
+    if offset < 0:          # the tool schema (minimum 0) keeps this out; never page from the end
+        raise ToolError(f"Offset {offset} must be a non-negative integer")
     if offset > len(data):
         raise ToolError(f"Offset {offset} exceeds observation size {len(data)}")
     buf = data[offset:offset + max_bytes + 4]
@@ -194,7 +214,8 @@ class ObservationPack(Extension):
                 ph_tokens = estimate_tokens(ph)
                 removed = max(0, obs.tokens - ph_tokens)
                 self.ledger.append({"event": "placeholder", "id": obs.id, "request": request, "sendNumber": prev + 1,
-                                    "tool": obs.tool_name, "originalBytes": obs.bytes, "originalTokens": obs.tokens,
+                                    "tool": obs.tool_name, "originalBytes": obs.bytes, "originalLines": obs.lines,
+                                    "originalTokens": obs.tokens,
                                     "placeholderBytes": len(ph.encode()), "placeholderTokens": ph_tokens,
                                     "removedTokens": removed})
                 if prev == self.full_sends:
@@ -209,14 +230,30 @@ class ObservationPack(Extension):
         return projected
 
     # ---- recall tool
+    @staticmethod
+    def _validate_recall_args(args: dict) -> tuple[str, int]:
+        """Pi validates ``{id: string, offset?: integer >= 0}`` before ``execute`` runs."""
+        errors = []
+        oid, offset = args.get("id"), args.get("offset")
+        if not isinstance(oid, str):
+            errors.append("  - id: must be string")
+        if offset is not None and (isinstance(offset, bool) or not isinstance(offset, (int, float))
+                                   or offset != int(offset)):
+            errors.append("  - offset: must be integer")
+        elif offset is not None and offset < 0:
+            errors.append("  - offset: must be >= 0")
+        if errors:
+            raise ToolError('Validation failed for tool "obs_recall":\n' + "\n".join(errors) +
+                            "\n\nReceived arguments:\n" + json.dumps(args, indent=2, default=str))
+        return oid, int(offset or 0)
+
     def _recall(self, args: dict, rt: AgentRuntime, cid: str) -> ToolResult:
-        oid = str(args.get("id", ""))
+        oid, offset = self._validate_recall_args(args)
         if not OBS_ID.match(oid):
             raise ToolError(f"Unknown observation id: {oid}")
         text = rt.store.get(STORE_PREFIX + oid + ".txt")
         if text is None:
             raise ToolError(f"Unknown observation id: {oid}")
-        offset = int(args.get("offset") or 0)
         chunk = read_recall_chunk(text.encode("utf-8"), offset, RECALL_MAX_BYTES - RECALL_HEADER_RESERVE_BYTES,
                                   RECALL_MAX_LINES - RECALL_HEADER_LINES)
         header = (f"[obs_recall id={oid} offset={offset} next_offset={chunk['next_offset']} eof={chunk['eof']}]\n"
@@ -227,5 +264,6 @@ class ObservationPack(Extension):
         self.ledger.append({"event": "recall", "id": oid, "offset": offset, "bytes": chunk["bytes"],
                             "lines": chunk["lines"], "nextOffset": chunk["next_offset"], "eof": chunk["eof"]})
         self.stats["recalls"] += 1
-        return ToolResult(content, details={"id": oid, "offset": offset, "next_offset": chunk["next_offset"],
+        return ToolResult(content, details={"id": oid, "offset": offset, "bytes": chunk["bytes"], "lines": chunk["lines"],
+                                            "nextOffset": chunk["next_offset"], "next_offset": chunk["next_offset"],
                                             "eof": chunk["eof"], "obs_recall": True})
