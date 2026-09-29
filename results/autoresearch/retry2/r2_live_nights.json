@@ -1,0 +1,977 @@
+{
+ "experiment": "r2_live_nights",
+ "written_at": "2026-09-29 19:59:37",
+ "spend_usd": 3.3386719999999994,
+ "nights": {
+  "design_v1_s100": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "discard",
+      "description": "Increase CONTEXT from 6 to 12 (double the context window)",
+      "changed_constants": {
+       "CONTEXT": "12"
+      },
+      "parent_constants": {
+       "CONTEXT": "6"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "discard",
+      "description": "Increase HIDDEN from 128 to 192 (1.5x layer width)",
+      "changed_constants": {
+       "HIDDEN": "192"
+      },
+      "parent_constants": {
+       "HIDDEN": "128"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "keep",
+      "description": "BATCH_SIZE 32 -> 16 (double gradient steps within fixed time)",
+      "changed_constants": {
+       "BATCH_SIZE": "16"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "32"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "keep",
+      "description": "BATCH_SIZE 16 -> 8 (quadruple gradient steps within fixed time)",
+      "changed_constants": {
+       "BATCH_SIZE": "8"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "BATCH_SIZE 8 -> 4 (continue the winning pattern of more gradient steps within fixed budget)",
+      "changed_constants": {
+       "BATCH_SIZE": "4"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "8"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 6,
+      "status": "discard",
+      "description": "TRAIN_SEQ_LEN 16 -> 32 (longer training sequences closer to eval distribution)",
+      "changed_constants": {
+       "TRAIN_SEQ_LEN": "32"
+      },
+      "parent_constants": {
+       "TRAIN_SEQ_LEN": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 7,
+      "status": "keep",
+      "description": "Increase learning rate from 0.003 to 0.005 (better for smaller batch sizes)",
+      "changed_constants": {
+       "LR": "0.005"
+      },
+      "parent_constants": {
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 8,
+      "status": "discard",
+      "description": "LR 0.005 -> 0.006 (further increase for batch_size=8)",
+      "changed_constants": {
+       "LR": "0.006"
+      },
+      "parent_constants": {
+       "LR": "0.005"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 9,
+      "status": "discard",
+      "description": "DEPTH 1 -> 2, HIDDEN 128 -> 64 (deeper, narrower model with ~36% fewer parameters for more gradient steps in fixed time)",
+      "changed_constants": {
+       "DEPTH": "2",
+       "HIDDEN": "64"
+      },
+      "parent_constants": {
+       "DEPTH": "1",
+       "HIDDEN": "128"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 10,
+      "status": "discard",
+      "description": "WARMDOWN_RATIO 0.5 -> 0 (remove LR decay, maintain constant learning rate throughout training)",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.0"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.5"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 10,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.543242\t0.079\tkeep\tbaseline\nd1951d4\t3.785281\t0.082\tdiscard\tIncrease CONTEXT from 6 to 12 (double the context window)\naee77ea\t3.543756\t0.084\tdiscard\tIncrease HIDDEN from 128 to 192 (1.5x layer width)\nc0c6d63\t3.279500\t0.077\tkeep\tBATCH_SIZE 32 -> 16 (double gradient steps within fixed time)\n741e796\t3.215008\t0.076\tkeep\tBATCH_SIZE 16 -> 8 (quadruple gradient steps within fixed time)\nfc10ade\t3.216535\t0.075\tdiscard\tBATCH_SIZE 8 -> 4 (continue the winning pattern of more gradient steps within fixed budget)\n7c93693\t3.332688\t0.077\tdiscard\tTRAIN_SEQ_LEN 16 -> 32 (longer training sequences closer to eval distribution)\nbfbfc92\t3.043885\t0.076\tkeep\tIncrease learning rate from 0.003 to 0.005 (better for smaller batch sizes)\n1716273\t3.096096\t0.076\tdiscard\tLR 0.005 -> 0.006 (further increase for batch_size=8)\nccbb1e6\t3.077067\t0.072\tdiscard\tDEPTH 1 -> 2, HIDDEN 128 -> 64 (deeper, narrower model with ~36% fewer parameters for more gradient steps in fixed time)\nd74cd62\t3.148749\t0.076\tdiscard\tWARMDOWN_RATIO 0.5 -> 0 (remove LR decay, maintain constant learning rate throughout training)\n",
+   "honest": null
+  },
+  "eval_v1_s1": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "keep",
+      "description": "Increase learning rate from 0.003 to 0.01",
+      "changed_constants": {
+       "LR": "0.01"
+      },
+      "parent_constants": {
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "keep",
+      "description": "Increase learning rate from 0.01 to 0.02",
+      "changed_constants": {
+       "LR": "0.02"
+      },
+      "parent_constants": {
+       "LR": "0.01"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "Increase learning rate from 0.02 to 0.03",
+      "changed_constants": {
+       "LR": "0.03"
+      },
+      "parent_constants": {
+       "LR": "0.02"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "discard",
+      "description": "Increase HIDDEN from 128 to 160 for greater model expressiveness",
+      "changed_constants": {
+       "HIDDEN": "160"
+      },
+      "parent_constants": {
+       "HIDDEN": "128"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "Increase CONTEXT from 6 to 8 bytes for larger receptive field",
+      "changed_constants": {
+       "CONTEXT": "8"
+      },
+      "parent_constants": {
+       "CONTEXT": "6"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.449951\t0.079\tkeep\tbaseline\n6643391\t3.020359\t0.079\tkeep\tIncrease learning rate from 0.003 to 0.01\neae5c6d\t2.901389\t0.080\tkeep\tIncrease learning rate from 0.01 to 0.02\n216a55f\t2.946446\t0.080\tdiscard\tIncrease learning rate from 0.02 to 0.03\n4054681\t2.938074\t0.081\tdiscard\tIncrease HIDDEN from 128 to 160 for greater model expressiveness\n710ca4e\t3.055159\t0.079\tdiscard\tIncrease CONTEXT from 6 to 8 bytes for larger receptive field\n",
+   "honest": {
+    "baseline": [
+     3.4948383077221354,
+     3.443915791698717,
+     3.415333904911204
+    ],
+    "final": [
+     2.8899484669417568,
+     2.8982327565278636,
+     2.926637658867069
+    ],
+    "improvement": 0.5464230406651218
+   }
+  },
+  "eval_v1_s2": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "discard",
+      "description": "Scale model 2x: context 10, hidden 192, batch 48, seq 20, LR 0.0025, warmdown 0.2",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.2",
+       "HIDDEN": "192",
+       "EMBED_DIM": "24",
+       "BATCH_SIZE": "48",
+       "TRAIN_SEQ_LEN": "20",
+       "CONTEXT": "10",
+       "LR": "0.0025"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.5",
+       "HIDDEN": "128",
+       "EMBED_DIM": "16",
+       "BATCH_SIZE": "32",
+       "TRAIN_SEQ_LEN": "16",
+       "CONTEXT": "6",
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "keep",
+      "description": "Increase context 6\u21928, LR 0.003\u21920.0035, warmdown 0.5\u21920.35, final_lr_frac 0\u21920.05",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.35",
+       "FINAL_LR_FRAC": "0.05",
+       "CONTEXT": "8",
+       "LR": "0.0035"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.5",
+       "FINAL_LR_FRAC": "0.0",
+       "CONTEXT": "6",
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "Increase context 8\u219210, embed dim 16\u219218; model capacity +13%",
+      "changed_constants": {
+       "EMBED_DIM": "18",
+       "CONTEXT": "10"
+      },
+      "parent_constants": {
+       "EMBED_DIM": "16",
+       "CONTEXT": "8"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [
+       "CONTEXT"
+      ],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "discard",
+      "description": "Add weight decay (L2 regularization) to prevent overfitting on small corpus",
+      "changed_constants": {
+       "WEIGHT_DECAY": "0.0001"
+      },
+      "parent_constants": {
+       "WEIGHT_DECAY": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "keep",
+      "description": "Reduce warmdown_ratio from 0.35 to 0.25 to spend more training budget at higher learning rates",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.25"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.35"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.512163\t0.080\tkeep\tbaseline\n9383d63\t3.805123\t0.090\tdiscard\tScale model 2x: context 10, hidden 192, batch 48, seq 20, LR 0.0025, warmdown 0.2\na9fe13f\t3.422691\t0.079\tkeep\tIncrease context 6\u21928, LR 0.003\u21920.0035, warmdown 0.5\u21920.35, final_lr_frac 0\u21920.05\n59ec10f\t3.501782\t0.080\tdiscard\tIncrease context 8\u219210, embed dim 16\u219218; model capacity +13%\n8846c03\t3.513050\t0.079\tdiscard\tAdd weight decay (L2 regularization) to prevent overfitting on small corpus\n450cc10\t3.414947\t0.079\tkeep\tReduce warmdown_ratio from 0.35 to 0.25 to spend more training budget at higher learning rates\n",
+   "honest": {
+    "baseline": [
+     3.441793224888319,
+     3.452825049166384,
+     3.450814399540351
+    ],
+    "final": [
+     3.5160392242320184,
+     3.440227151081163,
+     3.403821455414857
+    ],
+    "improvement": -0.004885052377661125
+   }
+  },
+  "eval_v1_s3": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "discard",
+      "description": "Increase CONTEXT from 6 to 8 bytes",
+      "changed_constants": {
+       "CONTEXT": "8"
+      },
+      "parent_constants": {
+       "CONTEXT": "6"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "keep",
+      "description": "Increase learning rate 0.003 -> 0.006",
+      "changed_constants": {
+       "LR": "0.006"
+      },
+      "parent_constants": {
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "keep",
+      "description": "Increase learning rate 0.006 -> 0.009",
+      "changed_constants": {
+       "LR": "0.009"
+      },
+      "parent_constants": {
+       "LR": "0.006"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "keep",
+      "description": "Remove learning rate warmdown (WARMDOWN_RATIO 0.5 \u2192 0.0) to keep LR constant throughout training",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.0"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.5"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "Increase HIDDEN layer width from 128 to 256 to add model capacity",
+      "changed_constants": {
+       "HIDDEN": "256"
+      },
+      "parent_constants": {
+       "HIDDEN": "128"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.422317\t0.077\tkeep\tbaseline\ne62a984\t3.592942\t0.079\tdiscard\tIncrease CONTEXT from 6 to 8 bytes\n4965a7b\t3.186484\t0.080\tkeep\tIncrease learning rate 0.003 -> 0.006\nc7dcae5\t3.041144\t0.079\tkeep\tIncrease learning rate 0.006 -> 0.009\n963f75d\t3.026268\t0.080\tkeep\tRemove learning rate warmdown (WARMDOWN_RATIO 0.5 \u2192 0.0) to keep LR constant throughout training\n6c9e328\t3.203659\t0.090\tdiscard\tIncrease HIDDEN layer width from 128 to 256 to add model capacity\n",
+   "honest": {
+    "baseline": [
+     3.404843729102175,
+     3.4709879725586594,
+     3.408415229121853
+    ],
+    "final": [
+     3.013877454961509,
+     3.034717428927988,
+     3.0182387535751953
+    ],
+    "improvement": 0.4058044311059983
+   }
+  },
+  "eval_v2_s1": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "keep",
+      "description": "BATCH_SIZE 32\u21928, LR 0.003\u21920.005",
+      "changed_constants": {
+       "BATCH_SIZE": "8",
+       "LR": "0.005"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "32",
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "keep",
+      "description": "ACTIVATION tanh -> relu",
+      "changed_constants": {
+       "ACTIVATION": "\"relu\""
+      },
+      "parent_constants": {
+       "ACTIVATION": "\"tanh\""
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "FINAL_LR_FRAC 0.0 \u2192 0.1",
+      "changed_constants": {
+       "FINAL_LR_FRAC": "0.1"
+      },
+      "parent_constants": {
+       "FINAL_LR_FRAC": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "discard",
+      "description": "LR 0.005 -> 0.004",
+      "changed_constants": {
+       "LR": "0.004"
+      },
+      "parent_constants": {
+       "LR": "0.005"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "WEIGHT_DECAY 0.0 -> 0.001",
+      "changed_constants": {
+       "WEIGHT_DECAY": "0.001"
+      },
+      "parent_constants": {
+       "WEIGHT_DECAY": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.431058\t0.077\tkeep\tbaseline\n5b748f6\t3.015055\t0.076\tkeep\tBATCH_SIZE 32\u21928, LR 0.003\u21920.005\n983b2f3\t2.987139\t0.076\tkeep\tACTIVATION tanh -> relu\nd232c4d\t2.991032\t0.076\tdiscard\tFINAL_LR_FRAC 0.0 \u2192 0.1\n150b4c7\t3.020058\t0.076\tdiscard\tLR 0.005 -> 0.004\n17964d4\t3.149188\t0.076\tdiscard\tWEIGHT_DECAY 0.0 -> 0.001\n",
+   "honest": {
+    "baseline": [
+     3.4265821864960553,
+     3.541766116696366,
+     3.468524051563063
+    ],
+    "final": [
+     3.004455165084829,
+     2.993597634038644,
+     2.9923512821699743
+    ],
+    "improvement": 0.4821560911540126
+   }
+  },
+  "eval_v2_s2": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "keep",
+      "description": "BATCH_SIZE 32\u21928, LR 0.003\u21920.005 (apply wins from last night)",
+      "changed_constants": {
+       "BATCH_SIZE": "8",
+       "LR": "0.005"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "32",
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "keep",
+      "description": "ACTIVATION tanh \u2192 relu",
+      "changed_constants": {
+       "ACTIVATION": "\"relu\""
+      },
+      "parent_constants": {
+       "ACTIVATION": "\"tanh\""
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "WEIGHT_DECAY 0.0 \u2192 0.0001 (add L2 regularization)",
+      "changed_constants": {
+       "WEIGHT_DECAY": "0.0001"
+      },
+      "parent_constants": {
+       "WEIGHT_DECAY": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "discard",
+      "description": "LR 0.005 \u2192 0.004",
+      "changed_constants": {
+       "LR": "0.004"
+      },
+      "parent_constants": {
+       "LR": "0.005"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "EMBED_DIM 16\u219212 (make steps 25% cheaper, fit more training steps in budget)",
+      "changed_constants": {
+       "EMBED_DIM": "12"
+      },
+      "parent_constants": {
+       "EMBED_DIM": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.497089\t0.080\tkeep\tbaseline\n454d771\t3.035557\t0.076\tkeep\tBATCH_SIZE 32\u21928, LR 0.003\u21920.005 (apply wins from last night)\n1149ea0\t3.007116\t0.076\tkeep\tACTIVATION tanh \u2192 relu\nb39b998\t3.015992\t0.075\tdiscard\tWEIGHT_DECAY 0.0 \u2192 0.0001 (add L2 regularization)\nfc20b0c\t3.051138\t0.076\tdiscard\tLR 0.005 \u2192 0.004\n791faf5\t3.089430\t0.076\tdiscard\tEMBED_DIM 16\u219212 (make steps 25% cheaper, fit more training steps in budget)\n",
+   "honest": {
+    "baseline": [
+     3.4399698660852946,
+     3.4311257190369835,
+     3.4118064904008496
+    ],
+    "final": [
+     2.9491328901978857,
+     2.954480140063573,
+     2.976785918959325
+    ],
+    "improvement": 0.46750104210078147
+   }
+  },
+  "eval_v2_s3": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "keep",
+      "description": "Apply proven wins BATCH_SIZE=8, LR=0.005; try ACTIVATION=relu",
+      "changed_constants": {
+       "BATCH_SIZE": "8",
+       "ACTIVATION": "\"relu\"",
+       "LR": "0.005"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "32",
+       "ACTIVATION": "\"tanh\"",
+       "LR": "0.003"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "discard",
+      "description": "Add L2 regularization WEIGHT_DECAY=1e-4 to improve generalization",
+      "changed_constants": {
+       "WEIGHT_DECAY": "1e-4"
+      },
+      "parent_constants": {
+       "WEIGHT_DECAY": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "Reduce EMBED_DIM from 16 to 12 to decrease model size and fit more training steps in the fixed time budget",
+      "changed_constants": {
+       "EMBED_DIM": "12"
+      },
+      "parent_constants": {
+       "EMBED_DIM": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "keep",
+      "description": "FINAL_LR_FRAC 0.0 -> 0.1 to maintain learning signal during warmdown phase",
+      "changed_constants": {
+       "FINAL_LR_FRAC": "0.1"
+      },
+      "parent_constants": {
+       "FINAL_LR_FRAC": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "WARMUP_RATIO 0.0 -> 0.05 to stabilize training on small batches",
+      "changed_constants": {
+       "WARMUP_RATIO": "0.05"
+      },
+      "parent_constants": {
+       "WARMUP_RATIO": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": null,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 0,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 5,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t3.386069\t0.077\tkeep\tbaseline\nf7a1ffe\t2.979947\t0.076\tkeep\tApply proven wins BATCH_SIZE=8, LR=0.005; try ACTIVATION=relu\n77091eb\t3.007062\t0.076\tdiscard\tAdd L2 regularization WEIGHT_DECAY=1e-4 to improve generalization\n810caf1\t3.045584\t0.075\tdiscard\tReduce EMBED_DIM from 16 to 12 to decrease model size and fit more training steps in the fixed time budget\n85340b0\t2.975938\t0.075\tkeep\tFINAL_LR_FRAC 0.0 -> 0.1 to maintain learning signal during warmdown phase\n93935b0\t2.988155\t0.076\tdiscard\tWARMUP_RATIO 0.0 -> 0.05 to stabilize training on small batches\n",
+   "honest": {
+    "baseline": [
+     3.50387833615668,
+     3.4215041144016514,
+     3.4284625785199565
+    ],
+    "final": [
+     2.977836280841336,
+     2.9630782023223525,
+     3.005302961925337
+    ],
+    "improvement": 0.4692091946630872
+   }
+  }
+ },
+ "x5_primary": {
+  "v1": [
+   0.5464230406651218,
+   -0.004885052377661125,
+   0.4058044311059983
+  ],
+  "v2": [
+   0.4821560911540126,
+   0.46750104210078147,
+   0.4692091946630872
+  ],
+  "mean_v1": 0.3157808064644863,
+  "mean_v2": 0.47295544263929373,
+  "diff": 0.15717463617480742,
+  "welch_t": 0.9499453627018809,
+  "p_one_sided": 0.22113444404494872,
+  "pass": false
+ },
+ "x5b_behaviour": {
+  "v1": {
+   "discouraged": 8,
+   "n": 15,
+   "which": [
+    [
+     4,
+     "Increase HIDDEN from 128 to 160 for greater model expressiveness"
+    ],
+    [
+     5,
+     "Increase CONTEXT from 6 to 8 bytes for larger receptive field"
+    ],
+    [
+     1,
+     "Scale model 2x: context 10, hidden 192, batch 48, seq 20, LR 0.0025, warmdown 0.2"
+    ],
+    [
+     2,
+     "Increase context 6\u21928, LR 0.003\u21920.0035, warmdown 0.5\u21920.35, final_lr_frac 0\u21920.05"
+    ],
+    [
+     3,
+     "Increase context 8\u219210, embed dim 16\u219218; model capacity +13%"
+    ],
+    [
+     1,
+     "Increase CONTEXT from 6 to 8 bytes"
+    ],
+    [
+     4,
+     "Remove learning rate warmdown (WARMDOWN_RATIO 0.5 \u2192 0.0) to keep LR constant throughout training"
+    ],
+    [
+     5,
+     "Increase HIDDEN layer width from 128 to 256 to add model capacity"
+    ]
+   ]
+  },
+  "v2": {
+   "discouraged": 0,
+   "n": 15,
+   "which": []
+  },
+  "fisher_p_one_sided_v2_lower": 0.0010994502748625688,
+  "pass": true
+ }
+}

@@ -50,6 +50,10 @@ class Config:
     #                                              max_merge_invocations merges built and scored, accepted or not) |
     #                                              accepted (pre-audit "hard": caps accepted merges only)
     merge_zero_weight: str = "uniform"           # uniform (fix) | raise (reference crash)
+    merge_start_frac: float = 0.0                # extension (retry round 2, L13): no merge is *scheduled* before
+    #                                              this fraction of max_metric_calls is spent (paper Obs. 5: invoke
+    #                                              merge "once the optimization tree has evolved sufficiently
+    #                                              different lineages"). 0.0 = the reference schedule (default)
 
     # reflection
     reflection_template: Optional[str] = None    # None/"default" = paper meta-prompt | "optimize_anything" | custom
@@ -104,5 +108,9 @@ class Config:
             raise ValueError("module_selector must be 'round_robin' or 'all'")
         if self.merge_cap_mode not in ("reference_soft", "hard", "accepted"):
             raise ValueError("merge_cap_mode must be 'reference_soft', 'hard' or 'accepted'")
+        if not 0.0 <= self.merge_start_frac < 1.0:
+            raise ValueError("merge_start_frac must be in [0, 1)")
+        if self.merge_start_frac > 0 and self.max_metric_calls is None:
+            raise ValueError("merge_start_frac > 0 needs max_metric_calls (it is a fraction of the rollout budget)")
         if self.feedback not in ("full", "score_only", "none"):
             raise ValueError("feedback must be 'full', 'score_only' or 'none'")

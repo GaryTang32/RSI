@@ -193,6 +193,12 @@ class GEPAEngine:
     def usd(self) -> float:
         return float(self.usage_snapshot()["_total"]["cost_usd"])
 
+    def _merge_window_open(self) -> bool:
+        """``Config.merge_start_frac`` (extension, default 0 = the reference schedule): an accepted reflective
+        child schedules a merge only once that fraction of the rollout budget has been spent."""
+        f = self.cfg.merge_start_frac
+        return f <= 0 or self.state.counter.total >= f * float(self.cfg.max_metric_calls)
+
     def _emit(self, event: str, **payload) -> None:
         for cb in self.callbacks:
             cb(event, payload)
@@ -585,7 +591,7 @@ class GEPAEngine:
                                          {"components": comps, "sub_before": sum(before.scores),
                                           "sub_after": sum(after.scores), "subsample_ids": list(ids)})
             entry.update(event="accepted", new_program_idx=idx)
-            if self.merge is not None:
+            if self.merge is not None and self._merge_window_open():
                 self.merge.schedule_if_needed()
             if tr:
                 tr.decision(i, event="accepted", label=label, new_idx=idx, best_before=best_before,

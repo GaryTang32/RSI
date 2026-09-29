@@ -77,11 +77,36 @@ def paired_test(before: list, after: list) -> dict:
             "pass": bool(m > 0 and p < 0.05), "ci": ci(g.tolist())}
 
 
+def old_chain_budgets(budgets, seeds) -> None:
+    """X3c (claims-audit.md section 5): the 25 Sep DEPTH-2 chain at other budgets, 5 paired seeds."""
+    base_files = dict(TinyLMTask(budget_s=8.0).seed_artifact().files)
+    old = chains(base_files["train.py"])["old"]
+    out = {"config": {"seeds": seeds, "budgets": budgets, "chain": "DEPTH 2 (25 Sep auditor design)"}, "runs": {}}
+    for budget in budgets:
+        task = TinyLMTask(budget_s=budget)
+        task.prepare()
+        vals = {k: [] for k in old}
+        for s in seeds:
+            for name, src in old.items():
+                o = task.run(Artifact({**base_files, "train.py": src}), seed=s, mode="hardened")
+                vals[name].append(o.metric if o.metric is not None else float("nan"))
+                print(f"{budget:g}s seed {s} {name}: {vals[name][-1]:.4f}", flush=True)
+        out["runs"][f"{budget:g}s"] = {"vals": vals, "mean": {k: float(np.nanmean(v)) for k, v in vals.items()},
+                                       "old_moves": {m: paired_test(vals[b], vals[c]) for m, b, c in OLD_MOVES}}
+    write("r2_mlx_walk_old_chain_budgets", out)
+    print(json.dumps({b: {m: (round(t["mean_gain"], 4), round(t["p_one_sided"], 4), t["pass"])
+                          for m, t in r["old_moves"].items()} for b, r in out["runs"].items()}, indent=1))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--old-budgets", type=str, default="",
+                    help="X3c: run only the DEPTH-2 chain at these budgets (comma-separated seconds)")
     a = ap.parse_args()
+    if a.old_budgets:
+        return old_chain_budgets([float(x) for x in a.old_budgets.split(",")], list(range(a.seeds)))
     seeds = list(range(2 if a.quick else a.seeds))
     budgets = (8.0,) if a.quick else (8.0, 2.0, 24.0)
     seed_train = TinyLMTask(budget_s=8.0).seed_artifact()

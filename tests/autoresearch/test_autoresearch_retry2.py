@@ -90,3 +90,28 @@ def test_float32_port_adds_one_line_and_keeps_the_constants():
     moved = x7.with_constants(ported, {"LR": "0.024", "ACTIVATION": "'relu'"})
     assert x7.constants(moved)["LR"] == "0.024" and x7.constants(moved)["ACTIVATION"] == "'relu'"
     assert x7.PORT_LINE in moved
+
+
+def test_x5b_discouraged_measure_follows_the_preregistration():
+    import r2_live_nights as x5
+
+    def row(par, ch):
+        return {"changed_constants": ch, "parent_constants": par}
+
+    assert x5.discouraged(row({"CONTEXT": "6"}, {"CONTEXT": "12"}))
+    assert x5.discouraged(row({"BATCH_SIZE": "8"}, {"BATCH_SIZE": "48"}))
+    assert x5.discouraged(row({"WARMDOWN_RATIO": "0.5"}, {"WARMDOWN_RATIO": "0.0"}))
+    assert not x5.discouraged(row({"BATCH_SIZE": "32"}, {"BATCH_SIZE": "8"}))       # shrinking is encouraged
+    assert not x5.discouraged(row({"LR": "0.003", "ACTIVATION": '"tanh"'}, {"LR": "0.005", "ACTIVATION": '"relu"'}))
+    assert not x5.discouraged(row({"WARMDOWN_RATIO": "0.5"}, {"WARMDOWN_RATIO": "0.25"}))
+    assert x5.discouraged({"changed_constants": None}) is None                       # a turn without a candidate
+
+
+def test_x4b_crossover_cancels_a_window_term():
+    import r2_val_reuse_tinylm as x4
+
+    # a pure window term (+w on even seeds, -w on odd seeds) has opt == 0; a common shift survives
+    r = x4.crossover([0.03, 0.031, 0.029, 0.03], [-0.03, -0.029, -0.031, -0.03])
+    assert abs(r["opt"]) < 1e-9 and not r["pass"] and r["window_term"] == pytest.approx(-0.03)
+    r = x4.crossover([0.035, 0.036, 0.034, 0.035], [-0.025, -0.024, -0.026, -0.025])
+    assert r["opt"] == pytest.approx(0.005) and r["pass"]

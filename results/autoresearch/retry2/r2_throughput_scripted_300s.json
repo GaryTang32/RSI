@@ -1,0 +1,78 @@
+{
+ "experiment": "r2_throughput_scripted_300s",
+ "written_at": "2026-09-29 19:40:27",
+ "config": {
+  "arm": "scripted",
+  "budget_s": 300.0,
+  "experiments": 3,
+  "seed": 0,
+  "task": "tinylm",
+  "mode": "hardened",
+  "keep_rule": "upstream",
+  "shadow_monitor": false,
+  "hidden_audit": false,
+  "editor": null,
+  "llm": null
+ },
+ "decisions": [
+  {
+   "exp": 0,
+   "status": "keep",
+   "metric": 2.3529903431203745,
+   "description": "baseline",
+   "wall_s": 300.522,
+   "t": 300.529
+  },
+  {
+   "exp": 1,
+   "status": "discard",
+   "metric": 2.3782112493465606,
+   "description": "WEIGHT_DECAY 0.0 -> 0.0001",
+   "wall_s": 300.633,
+   "t": 601.169
+  },
+  {
+   "exp": 2,
+   "status": "keep",
+   "metric": 2.3461684767509174,
+   "description": "TRAIN_SEQ_LEN 16 -> 32",
+   "wall_s": 300.454,
+   "t": 901.632
+  },
+  {
+   "exp": 3,
+   "status": "discard",
+   "metric": 2.360153732931069,
+   "description": "TRAIN_SEQ_LEN 32 -> 64",
+   "wall_s": 300.551,
+   "t": 1202.191
+  }
+ ],
+ "per_experiment_loop_s": [
+  300.64,
+  300.46299999999997,
+  300.5590000000001
+ ],
+ "mean_loop_s": 300.55400000000003,
+ "experiments_per_hour": 11.977880846703087,
+ "run_wall_s": [
+  300.522,
+  300.633,
+  300.454,
+  300.551
+ ],
+ "llm_latency_s": [],
+ "total_wall_s": 1202.1951138973236,
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ },
+ "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t2.352990\t0.078\tkeep\tbaseline\nd551a05\t2.378211\t0.078\tdiscard\tWEIGHT_DECAY 0.0 -> 0.0001\n54fbb9a\t2.346168\t0.079\tkeep\tTRAIN_SEQ_LEN 16 -> 32\n2a64a3f\t2.360154\t0.080\tdiscard\tTRAIN_SEQ_LEN 32 -> 64\n",
+ "verdict": {
+  "experiments_per_hour": 11.977880846703087,
+  "within_pm15pct_of_12": true,
+  "projected_per_8h_night": 95.8230467736247
+ }
+}
