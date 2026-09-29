@@ -15,7 +15,7 @@ rewrites the strategy code, and repeats many times" [doc]; the prompt is Listing
   :class:`rsi.core.LeakageCritic` screen (no trace cell ids / scores copied into the
   code); a failed check gets one repair round.
 * :class:`ParametricMutator` - the offline mock developer: starts from the strongest
-  version so far, applies feedback-directed moves to the ``PARAMS`` block of the
+  version so far (``DevContext.base="latest"``: from pi^m, §3), applies feedback-directed moves to the ``PARAMS`` block of the
   adaptive template (premature stops -> more patience/width; wasted probes -> earlier
   stops; serial batches -> wider opening) plus random perturbations, and sets the
   baked-in default beta with the cross-cycle rule.
@@ -70,6 +70,10 @@ class DevContext:
     W: int
     forbidden_terms: list[str] = field(default_factory=list)
     first_in_phase: bool = True
+    # which version a revision starts from: "strongest" (default; Listing 2 L2:247 "Start from a strong
+    # recent policy") or "latest" (§3 p.6: the developer "revises pi^m into pi^(m+1)"; also the unpublished
+    # method draft's pi^(j) -> pi^(j+1)). The paper's two texts disagree (claims audit M12).
+    base: str = "strongest"
 
 
 @dataclass
@@ -90,6 +94,23 @@ class Revision:
 def strongest(versions: Sequence[VersionRecord]) -> VersionRecord:
     """"Start from a strong recent policy": best value, most recent on ties."""
     return max(versions, key=lambda v: (v.value, v.index))
+
+
+def latest(versions: Sequence[VersionRecord]) -> VersionRecord:
+    """pi^m of §3 ("revises pi^m into pi^(m+1)"): the most recently written version of this phase that
+    was evaluated (a rejected revision has no pi^m to revise, so the chain continues from the last
+    evaluated one)."""
+    ok = [v for v in versions if v.report is not None] or list(versions)
+    return max(ok, key=lambda v: v.index)
+
+
+def base_version(ctx: "DevContext") -> VersionRecord:
+    """The version a revision starts from (``DevContext.base``)."""
+    if ctx.base == "latest":
+        return latest(ctx.versions)
+    if ctx.base != "strongest":
+        raise ValueError(f"unknown developer base {ctx.base!r} (use 'strongest' or 'latest')")
+    return strongest(ctx.versions)
 
 
 def default_beta_of(code: str, fallback: float = 0.6) -> float:
@@ -178,7 +199,7 @@ class ParametricMutator(PolicyDeveloper):
 
     def revise(self, ctx: DevContext, *, seed: int = 0) -> Revision:
         rng = random.Random(seed)
-        base = strongest(ctx.versions)
+        base = base_version(ctx)
         params = get_params(base.code)
         moves: list[str] = []
         if not all(k in params for k in SPACE):
@@ -323,9 +344,9 @@ class LLMPolicyDeveloper(PolicyDeveloper):
         return chk, hits
 
     def revise(self, ctx: DevContext, *, seed: int = 0) -> Revision:
-        base = strongest(ctx.versions)
+        base = base_version(ctx)
         instructions = developer_prompt(ctx.objective, ctx.W, beta1=self.beta1, beta2=self.beta2, lam=self.lam,
-                                        trace_rows=self.max_trace_rows)
+                                        trace_rows=self.max_trace_rows, base=ctx.base)
         files = self.context_files(ctx, base)
         art = policy_artifact(base.code)
         usage = Usage()

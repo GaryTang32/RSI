@@ -161,7 +161,7 @@ This run was recorded before the claims-audit fixes. Its proposer prompts show �
 | T_t counts measured edits only | documented-deviation | spec §4.2 |
 | ν counts accepted edits in rounds < t | documented-deviation (impl §5.11) | recomputed |
 | Precheck on added lines; strict verdict parse | documented-deviation (impl §5.4: the code's whole-diff grep also rejects removals of flagged content; `precheck_scope="diff"` reproduces it) | 0 disagreements between the two scopes on the 53 diffs of the three runs |
-| Single-shot proposer and digesters | documented-deviation (impl §5.2–3) | – |
+| Single-shot proposer and digesters | documented-deviation (impl §5.2–3) in these runs. Retry round 2 added the code's own protocols as opt-ins (`Config(proposer_protocol="json_actions")`, `Config(analyst="agentic")`, `rsi.rrsi.agentic`), differential-tested against the reference; the validation runs below still use the single-shot default | `tests/rrsi/test_rrsi_agentic.py` |
 | Proposer shown δ, S*, S_t, T and numeric β/w as directives/rule parameters (the code shows none; both codes quote S* and δ inside L_t decision reasons from round 1) | **inconsistent-fixed** (claims N2; `Config.proposer_numbers` keeps the old view as an opt-in) | regenerated runs: stepcheck "proposer was NOT shown delta, S*, S_t or T" correct for every proposal; live (pre-fix) flagged questionable |
 | L_t render drops the BASELINE row | **inconsistent-fixed** (claims N5) | stepcheck history rows include BASELINE |
 | Precheck denylist holds the evolve answers (an oracle the code lacks) | **inconsistent-fixed** (claims N3; `Config.precheck_answers` opt-in) | AgentQA: all 11 leak drafts now stopped by the LLM review; HarnessWorld: unchanged (literal leaks carry task ids) |
@@ -169,7 +169,7 @@ This run was recorded before the claims-audit fixes. Its proposer prompts show �
 | Shadow monitor | documented-deviation (extension), verified write-only | tests + code |
 | Bundle credit shared, advisory B_t with empty lists | faithful (spec §8.3–8.4) | AgentQA r2; B_t rows |
 | Winner's curse / S* never re-measured | faithful (spec §8.1) | k = 10 references |
-| Bootstrap δ under-covers at k = 2 | faithful (E10 documented) | plug-in vs unbiased |
+| Bootstrap δ under-covers at k = 2 | faithful (E10 documented). Retry round 2 ran the **reference's own** `calibrate()` on the same pools: it clears the floor 90.8% (HarnessWorld) / 91.1% (AgentQA) of the time at k = 2, not ~97.5%, so the docstring overclaims for its own estimator (claims M37, E10b) | plug-in vs unbiased; `results/rrsi/e10b_reference_calibration.json` |
 | Mock phantom credit (declared edit overwritten) | **inconsistent-fixed** | superseded r0A; regression test |
 | Heuristic analyst ranks solved tasks as a failure mode | **inconsistent-fixed** | superseded r0–r7, new r3–r7 before the fix; regression test |
 | audit.py "dropped as no_proposal" message | **inconsistent-fixed** | now reports the gate failure |

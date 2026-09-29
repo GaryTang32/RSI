@@ -297,7 +297,7 @@ FRAMEWORK_NOTES = """\
 # Framework notes (this reimplementation's runner; not part of the paper's prompt)
 
 - Context files: ``{history_dir}/r####_<label>/`` holds each earlier version's ``method.py``, ``report.json`` and
-  ``proposal_results/beta_sweep.json``; the version shown as the current artifact (the strongest so far) also has
+  ``proposal_results/beta_sweep.json``; the version shown as the current artifact ({base_desc}) also has
   ``proposal_results/policy_execution_traces.jsonl`` (first {trace_rows} episodes). ``{history_dir}/baseline/method.py`` is
   parallel refine. Live manifests are ``{trace_pool}/iter<t>/live_cycle_manifest.json``. The API source is
   ``api/policy_api.py``: import it as ``from policy_api import ...`` (it also offers ``branch_trajectories``,
@@ -355,7 +355,7 @@ def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, la
 
 def developer_prompt(objective: str, W: int, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
                      trace_rows: Optional[int] = None, method_file: str = POLICY_FILE, history_dir: str = "history",
-                     trace_pool: str = "trace_pool") -> str:
+                     trace_pool: str = "trace_pool", base: str = "strongest") -> str:
     """Listing 2 (verbatim, runtime paths and the objective paragraph filled in) + the framework notes."""
     from .lint import ALLOWED_IMPORTS
 
@@ -363,5 +363,7 @@ def developer_prompt(objective: str, W: int, *, beta1: float = 0.01, beta2: floa
                                    objective_text=objective_text(objective, beta1, beta2, lam))
     notes = FRAMEWORK_NOTES.format(history_dir=history_dir, trace_pool=trace_pool, W=W,
                                    trace_rows="all" if trace_rows is None else f"at most {trace_rows}",
+                                   base_desc=("the latest version of this phase, pi^m: revise it into pi^(m+1)"
+                                              if base == "latest" else "the strongest so far"),
                                    imports=", ".join(sorted(i for i in ALLOWED_IMPORTS if i != "__future__")))
     return body + notes
