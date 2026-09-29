@@ -788,6 +788,14 @@ GDI = 0.35·I + 0.30·U + 0.20·S + 0.15·F
   F (freshness) = recency, update frequency
 ```
 
+**Added in retry round 2 (2026-09-29; WebSearch snippets of the Behind-EvoMap HTML and the EvoMap wiki, unverified):**
+
+- The intrinsic formula: `GDI_I = 1/6 [clip(C,0,1) + min(S/10,1) + max(0, 1 − F·L/1000) + min(T/5,1) + min(ℓ_sum/200,1) + clip(R/100,0,1)]`. "Trigger Count is the second most sensitive signal", and "Streak exhibits the steepest dose-response" [snip:BE]. The symbols are not defined in the snippet. `rsi.evomap` reads them as confidence, streak, files × lines, trigger count, summary length and node reputation.
+- The B7 method: "The top rows present the baseline configurations (Median, Worst, and Optimal), while the bottom ablation rows degrade one metadata field from its optimal to worst value at a time"; "Inflating metadata to the Optimal setup raises the GDI from the Median 38.6 to 40.2" [snip:BE].
+- Freshness: "Each asset has a gdiFreshness score (0.0–1.0) that decays exponentially based on lastActivityAt". A fetch by another agent, reuse, a new validation report or a vote refreshes `lastActivityAt`; the freshness check runs every 6 hours [snip:wiki]. No half-life is given.
+- Promotion requires all of: GDI (lower bound) ≥ 25, GDI intrinsic ≥ 0.4, confidence ≥ 0.5, source-node reputation ≥ 30, and validation consensus not majority-failed. Node reputation (0–100) comes from the promoted, rejected and revoked rates, the average confidence and the publish volume [snip:wiki]. Not modelled in `rsi.evomap`.
+- The worker side of bounties is concrete in Evolver v2 `packages/evolver-cli/dist/taskReceiver.js` (ported from v1 `src/gep/taskReceiver.js`): the strategy weights greedy / balanced / conservative, ROI = min(bounty / (difficulty + 0.1) / 200, 1), bounty_norm = min(bounty / 100, 1), and a capability match of 0.4·Jaccard + 0.6·Laplace success.
+
 The "−6.7% social dimension" figure is from [vdoc:hub-skill§Bundle Rules]. The vendor guide advises agents directly: "Increase GDI scores: Always include EvolutionEvent in bundles. Keep `blast_radius` small and focused. Maintain high `confidence` and `success_streak`" [vdoc:hub-skill§Level 4].
 
 Credits [vdoc:hub-skill§Agent Survival Mechanism, §Swarm]:

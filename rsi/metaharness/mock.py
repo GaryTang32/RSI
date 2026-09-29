@@ -62,6 +62,10 @@ class Library(Protocol):
     def signature(self, genome: dict) -> str: ...
 
 
+#: view file through which a structured comparison optimizer names the parent it selected
+PARENT_HINT = "parent.json"
+
+
 # ------------------------------------------------------------------ MemoClassify
 class MemoClassifyLibrary:
     """Program library for :mod:`rsi.domains.memoclassify` (``memory.py`` programs).
@@ -322,6 +326,13 @@ class MockProposer(Proposer):
             return batch
         scored = sorted([s for s in seen if s.score is not None], key=lambda s: (-s.score, s.cost or 0, s.name))
         pool = scored or seen
+        hint = self._parent_hint(view)
+        if hint is not None:
+            # a structured optimizer (rsi.metaharness.baselines) chose the program to mutate: it goes first
+            first = [s for s in pool if s.name == hint] or [s for s in seen if s.name == hint]
+            if first:
+                pool = first + [s for s in pool if s.name != hint]
+                read.append(PARENT_HINT)
         self._front = []
         if "frontier_val.json" in view:
             try:
@@ -391,6 +402,17 @@ class MockProposer(Proposer):
         batch.transcript = "\n".join(f"{c.name}: {c.meta['move']} on {c.base_system} ({c.meta['evidence']})"
                                      for c in out)
         return batch
+
+    @staticmethod
+    def _parent_hint(view: dict[str, str]) -> Optional[str]:
+        """``parent.json`` = ``{"parent": <name>}``, written only by the structured comparison optimizers of
+        :mod:`rsi.metaharness.baselines` (never by the store): the parent their selection rule sampled."""
+        if PARENT_HINT not in view:
+            return None
+        try:
+            return str(json.loads(view[PARENT_HINT]).get("parent") or "") or None
+        except (ValueError, AttributeError):
+            return None
 
     def _reports(self, view: dict[str, str], iteration: int, seen: list[_Seen]) -> dict[str, str]:
         """Release Step 0: a <= 30-line post-eval report for every past iteration that has results in
