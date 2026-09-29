@@ -381,3 +381,7 @@ The live runs r1–r5 are not re-run. Their recorded costs use the old compactio
 | SoL-Pi stage C increment (the Meta-Harness stage-C spend is reported in §6b / `docs/methods/metaharness-solpi/claims-audit-metaharness.md`) | **0.367** |
 
 Stage-B wall time: the live run took 8.8 min. The offline re-runs and the audit took about 2 min.
+
+## Meta-Harness retry round 2 addendum (2026-09-29)
+
+Re-reading the `mh_agentqa_live_r2` sources under the claim-audit rubric (search-set literals, or logic keyed on the generator's question templates) finds **4 of 6** candidates keyed on the four question templates, not only `explore-direct-pattern-computation` (§2.3, it 3): `exploit-expression-evaluation` (it 2, the run's selected best) recomputes modular-power, digit-sum and bit-count answers from template regexes over the reply; `explore-tool-driven-computation` (it 2, on the frontier) and `exploit-enhanced-computation-verification` (it 3) match the same templates in the question. `mh_agentqa_live`'s `harness_generated_solver` contains a template solver too, but in the dead file `src/src/harness.py` (the evaluated harness was a copy of the seed). The claims audit's retry round 2 pools these with every MemoClassify live candidate (0 of 50 hard-coded) for claim L4.

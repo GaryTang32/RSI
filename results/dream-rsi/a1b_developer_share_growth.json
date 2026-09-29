@@ -1,0 +1,178 @@
+{
+ "experiment": "a1b_developer_share_growth",
+ "created": "2026-09-29 23:12:04",
+ "config": {
+  "pool_at_dreaming": {
+   "sumdiff_live": 18.0,
+   "sumdiff_live_b": 9.0,
+   "sumdiff_live_c": 9.0,
+   "live_smoke": 6.0
+  },
+  "revisions_per_phase": 3,
+  "paper_rounds": {
+   "pro": [
+    110,
+    9,
+    28,
+    87,
+    83
+   ],
+   "flash": [
+    640,
+    336,
+    254,
+    299,
+    350
+   ]
+  }
+ },
+ "prices": {
+  "usd_per_input_token": 2.1412876404824223e-06,
+  "usd_per_output_token": 4.8168194054009636e-06,
+  "max_rel_fit_error": 0.015700387125162224
+ },
+ "per_run": {
+  "sumdiff_live": {
+   "pool": 18.0,
+   "dev_in_per_req": 18858.222222222223,
+   "dev_out_per_req": 11917.111111111111,
+   "agent_in_per_call": 6481.638888888889,
+   "agent_out_per_call": 8797.111111111111
+  },
+  "sumdiff_live_b": {
+   "pool": 9.0,
+   "dev_in_per_req": 13626.0,
+   "dev_out_per_req": 17191.0,
+   "agent_in_per_call": 4214.35294117647,
+   "agent_out_per_call": 9674.0
+  },
+  "sumdiff_live_c": {
+   "pool": 9.0,
+   "dev_in_per_req": 18144.333333333332,
+   "dev_out_per_req": 12994.333333333334,
+   "agent_in_per_call": 5284.111111111111,
+   "agent_out_per_call": 10906.944444444445
+  },
+  "live_smoke": {
+   "pool": 6.0,
+   "dev_in_per_req": 11975.0,
+   "dev_out_per_req": 14942.0,
+   "agent_in_per_call": 4335.833333333333,
+   "agent_out_per_call": 9002.0
+  }
+ },
+ "anchors": {
+  "dev_input_tokens_per_node": 1375.9409722222222,
+  "agent_input_tokens_per_node": 483.89892904953143,
+  "dev_output_tokens": 13297.0,
+  "agent_output_tokens": 9463.89156626506,
+  "affine_dev_input": {
+   "c0": 10479.487654320988,
+   "c1": 492.5144032921814
+  }
+ },
+ "results": {
+  "pro": {
+   "phases": [
+    {
+     "after_round": 1,
+     "pool_nodes": 110.0,
+     "next_round_agent_calls": 9,
+     "i_constant": 0.3705826591610119,
+     "ii_dev_grows": 0.693243217274059,
+     "iii_both_grow": 0.44776851802813006,
+     "ii_affine_sensitivity": 0.5410773417781456,
+     "dev_input_tokens_per_request_ii": 151353.50694444444
+    },
+    {
+     "after_round": 2,
+     "pool_nodes": 119.0,
+     "next_round_agent_calls": 28,
+     "i_constant": 0.15913236104342585,
+     "ii_dev_grows": 0.436945045531812,
+     "iii_both_grow": 0.20826986754912102,
+     "ii_affine_sensitivity": 0.2840434694793138,
+     "dev_input_tokens_per_request_ii": 163736.97569444444
+    },
+    {
+     "after_round": 3,
+     "pool_nodes": 147.0,
+     "next_round_agent_calls": 87,
+     "i_constant": 0.05741061397355427,
+     "ii_dev_grows": 0.23044018459210192,
+     "iii_both_grow": 0.07971897438137891,
+     "ii_affine_sensitivity": 0.12699598473247714,
+     "dev_input_tokens_per_request_ii": 202263.32291666666
+    },
+    {
+     "after_round": 4,
+     "pool_nodes": 234.0,
+     "next_round_agent_calls": 83,
+     "i_constant": 0.060011352546012316,
+     "ii_dev_grows": 0.3223581823419132,
+     "iii_both_grow": 0.08638020104537199,
+     "ii_affine_sensitivity": 0.17383199860012521,
+     "dev_input_tokens_per_request_ii": 321970.1875
+    }
+   ],
+   "phases_above_10pct": {
+    "i_constant": 2,
+    "ii_dev_grows": 4,
+    "iii_both_grow": 2,
+    "ii_affine_sensitivity": 4
+   },
+   "n_phases": 4
+  },
+  "flash": {
+   "phases": [
+    {
+     "after_round": 1,
+     "pool_nodes": 640.0,
+     "next_round_agent_calls": 336,
+     "i_constant": 0.015525799059996629,
+     "ii_dev_grows": 0.2331673333788,
+     "iii_both_grow": 0.02397302926708933,
+     "ii_affine_sensitivity": 0.10614722483401258,
+     "dev_input_tokens_per_request_ii": 880602.2222222222
+    },
+    {
+     "after_round": 2,
+     "pool_nodes": 976.0,
+     "next_round_agent_calls": 254,
+     "i_constant": 0.020435636057767662,
+     "ii_dev_grows": 0.3775136803401243,
+     "iii_both_grow": 0.031806356989589064,
+     "ii_affine_sensitivity": 0.18712035913023178,
+     "dev_input_tokens_per_request_ii": 1342918.3888888888
+    },
+    {
+     "after_round": 3,
+     "pool_nodes": 1230.0,
+     "next_round_agent_calls": 299,
+     "i_constant": 0.017413595867945258,
+     "ii_dev_grows": 0.39259271920333266,
+     "iii_both_grow": 0.027266856682647077,
+     "ii_affine_sensitivity": 0.19516848124168445,
+     "dev_input_tokens_per_request_ii": 1692407.3958333333
+    },
+    {
+     "after_round": 4,
+     "pool_nodes": 1529.0,
+     "next_round_agent_calls": 350,
+     "i_constant": 0.014914029186409689,
+     "ii_dev_grows": 0.4061947753390247,
+     "iii_both_grow": 0.023463789138028403,
+     "ii_affine_sensitivity": 0.20278819528972908,
+     "dev_input_tokens_per_request_ii": 2103813.7465277775
+    }
+   ],
+   "phases_above_10pct": {
+    "i_constant": 0,
+    "ii_dev_grows": 4,
+    "iii_both_grow": 0,
+    "ii_affine_sensitivity": 4
+   },
+   "n_phases": 4
+  }
+ }
+}

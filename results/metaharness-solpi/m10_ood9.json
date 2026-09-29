@@ -1,0 +1,1120 @@
+{
+ "claim": "Q6: the selected harness has the best average accuracy on 9 unseen datasets vs zero-shot and all few-shot baselines, and the best accuracy on 6/9 [MH Table 5] (ACE not available)",
+ "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P5",
+ "config": {
+  "seeds": 10,
+  "iterations": 20,
+  "k": 2,
+  "ood_datasets": [
+   "ood_delta",
+   "ood_epsilon",
+   "ood_zeta",
+   "ood_eta",
+   "ood_theta",
+   "ood_iota",
+   "ood_kappa",
+   "ood_lambda",
+   "ood_mu"
+  ],
+  "model": "MemoLM-A"
+ },
+ "mean_ood": {
+  "selected": {
+   "mean": 0.6227777777777778,
+   "lo": 0.6094444444444445,
+   "hi": 0.6383333333333334,
+   "n": 10
+  },
+  "no_memory": {
+   "mean": 0.13,
+   "lo": 0.12333333333333334,
+   "hi": 0.13703703703703704,
+   "n": 10
+  },
+  "fewshot_all": {
+   "mean": 0.4964814814814815,
+   "lo": 0.4837037037037038,
+   "hi": 0.5122268518518518,
+   "n": 10
+  },
+  "fewshot_4": {
+   "mean": 0.27185185185185184,
+   "lo": 0.2624074074074074,
+   "hi": 0.2844444444444444,
+   "n": 10
+  },
+  "fewshot_8": {
+   "mean": 0.33555555555555555,
+   "lo": 0.32166666666666666,
+   "hi": 0.3496296296296297,
+   "n": 10
+  },
+  "fewshot_16": {
+   "mean": 0.40499999999999997,
+   "lo": 0.395,
+   "hi": 0.41537037037037033,
+   "n": 10
+  },
+  "fewshot_32": {
+   "mean": 0.47814814814814816,
+   "lo": 0.46759259259259256,
+   "hi": 0.48981481481481487,
+   "n": 10
+  },
+  "fewshot_64": {
+   "mean": 0.49537037037037035,
+   "lo": 0.48185185185185186,
+   "hi": 0.5111111111111111,
+   "n": 10
+  }
+ },
+ "selected_minus_best_comparator": {
+  "mean_diff": 0.12055555555555557,
+  "lo": 0.10666666666666665,
+  "hi": 0.13314814814814818,
+  "n": 10,
+  "p_better": 1.0
+ },
+ "best_comparator_per_seed": [
+  "fewshot_32",
+  "fewshot_64",
+  "fewshot_32",
+  "fewshot_64",
+  "fewshot_64",
+  "fewshot_all",
+  "fewshot_all",
+  "fewshot_64",
+  "fewshot_all",
+  "fewshot_all"
+ ],
+ "per_dataset_mean": {
+  "ood_delta": {
+   "selected": 0.6316666666666666,
+   "no_memory": 0.365,
+   "fewshot_all": 0.5433333333333333,
+   "fewshot_4": 0.425,
+   "fewshot_8": 0.4600000000000001,
+   "fewshot_16": 0.5249999999999999,
+   "fewshot_32": 0.55,
+   "fewshot_64": 0.5433333333333333
+  },
+  "ood_epsilon": {
+   "selected": 0.59,
+   "no_memory": 0.0,
+   "fewshot_all": 0.5316666666666666,
+   "fewshot_4": 0.08666666666666668,
+   "fewshot_8": 0.15,
+   "fewshot_16": 0.20833333333333334,
+   "fewshot_32": 0.325,
+   "fewshot_64": 0.45166666666666666
+  },
+  "ood_zeta": {
+   "selected": 0.5516666666666666,
+   "no_memory": 0.0,
+   "fewshot_all": 0.4783333333333334,
+   "fewshot_4": 0.22166666666666668,
+   "fewshot_8": 0.33499999999999996,
+   "fewshot_16": 0.42000000000000004,
+   "fewshot_32": 0.47000000000000003,
+   "fewshot_64": 0.515
+  },
+  "ood_eta": {
+   "selected": 0.6333333333333334,
+   "no_memory": 0.3766666666666666,
+   "fewshot_all": 0.3716666666666667,
+   "fewshot_4": 0.4133333333333334,
+   "fewshot_8": 0.45000000000000007,
+   "fewshot_16": 0.5016666666666667,
+   "fewshot_32": 0.5250000000000001,
+   "fewshot_64": 0.40499999999999997
+  },
+  "ood_theta": {
+   "selected": 0.7316666666666668,
+   "no_memory": 0.0,
+   "fewshot_all": 0.6866666666666666,
+   "fewshot_4": 0.42666666666666664,
+   "fewshot_8": 0.5399999999999999,
+   "fewshot_16": 0.6300000000000001,
+   "fewshot_32": 0.7,
+   "fewshot_64": 0.6866666666666666
+  },
+  "ood_iota": {
+   "selected": 0.6416666666666666,
+   "no_memory": 0.0,
+   "fewshot_all": 0.4583333333333333,
+   "fewshot_4": 0.07500000000000001,
+   "fewshot_8": 0.08833333333333333,
+   "fewshot_16": 0.15166666666666667,
+   "fewshot_32": 0.26666666666666666,
+   "fewshot_64": 0.385
+  },
+  "ood_kappa": {
+   "selected": 0.6083333333333333,
+   "no_memory": 0.42833333333333334,
+   "fewshot_all": 0.3583333333333333,
+   "fewshot_4": 0.41166666666666674,
+   "fewshot_8": 0.44666666666666677,
+   "fewshot_16": 0.4633333333333334,
+   "fewshot_32": 0.51,
+   "fewshot_64": 0.43
+  },
+  "ood_lambda": {
+   "selected": 0.5116666666666666,
+   "no_memory": 0.0,
+   "fewshot_all": 0.43,
+   "fewshot_4": 0.11000000000000001,
+   "fewshot_8": 0.16,
+   "fewshot_16": 0.2333333333333333,
+   "fewshot_32": 0.36333333333333334,
+   "fewshot_64": 0.42666666666666664
+  },
+  "ood_mu": {
+   "selected": 0.7050000000000001,
+   "no_memory": 0.0,
+   "fewshot_all": 0.6100000000000001,
+   "fewshot_4": 0.27666666666666667,
+   "fewshot_8": 0.39,
+   "fewshot_16": 0.5116666666666667,
+   "fewshot_32": 0.5933333333333334,
+   "fewshot_64": 0.615
+  }
+ },
+ "datasets_won": [
+  "ood_delta",
+  "ood_epsilon",
+  "ood_zeta",
+  "ood_eta",
+  "ood_theta",
+  "ood_iota",
+  "ood_kappa",
+  "ood_lambda",
+  "ood_mu"
+ ],
+ "datasets_tied": [],
+ "criterion_i": true,
+ "criterion_ii": true,
+ "verdict": "PARTIAL (reproduced on CPU analogue: best average and best on >= 6/9; no ACE)",
+ "per_seed": [
+  {
+   "seed": 0,
+   "selected_name": "i10_0_errors_only_recent",
+   "selected": {
+    "ood_delta": 0.6333333333333333,
+    "ood_epsilon": 0.6,
+    "ood_zeta": 0.65,
+    "ood_eta": 0.6,
+    "ood_theta": 0.65,
+    "ood_iota": 0.6666666666666666,
+    "ood_kappa": 0.5666666666666667,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.6
+   },
+   "no_memory": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.31666666666666665,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.36666666666666664,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5833333333333334,
+    "ood_epsilon": 0.5166666666666667,
+    "ood_zeta": 0.5666666666666667,
+    "ood_eta": 0.31666666666666665,
+    "ood_theta": 0.6,
+    "ood_iota": 0.45,
+    "ood_kappa": 0.3,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.48333333333333334
+   },
+   "fewshot_4": {
+    "ood_delta": 0.45,
+    "ood_epsilon": 0.05,
+    "ood_zeta": 0.26666666666666666,
+    "ood_eta": 0.38333333333333336,
+    "ood_theta": 0.4166666666666667,
+    "ood_iota": 0.06666666666666667,
+    "ood_kappa": 0.4,
+    "ood_lambda": 0.05,
+    "ood_mu": 0.35
+   },
+   "fewshot_8": {
+    "ood_delta": 0.55,
+    "ood_epsilon": 0.08333333333333333,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.3,
+    "ood_theta": 0.5666666666666667,
+    "ood_iota": 0.1,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.08333333333333333,
+    "ood_mu": 0.45
+   },
+   "fewshot_16": {
+    "ood_delta": 0.6833333333333333,
+    "ood_epsilon": 0.11666666666666667,
+    "ood_zeta": 0.6,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.55,
+    "ood_iota": 0.15,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.5666666666666667
+   },
+   "fewshot_32": {
+    "ood_delta": 0.6,
+    "ood_epsilon": 0.31666666666666665,
+    "ood_zeta": 0.6333333333333333,
+    "ood_eta": 0.4666666666666667,
+    "ood_theta": 0.6333333333333333,
+    "ood_iota": 0.26666666666666666,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.2833333333333333,
+    "ood_mu": 0.5833333333333334
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5833333333333334,
+    "ood_epsilon": 0.38333333333333336,
+    "ood_zeta": 0.65,
+    "ood_eta": 0.31666666666666665,
+    "ood_theta": 0.6,
+    "ood_iota": 0.43333333333333335,
+    "ood_kappa": 0.3333333333333333,
+    "ood_lambda": 0.35,
+    "ood_mu": 0.55
+   }
+  },
+  {
+   "seed": 1,
+   "selected_name": "i13_0_param_note_words_8",
+   "selected": {
+    "ood_delta": 0.6666666666666666,
+    "ood_epsilon": 0.7166666666666667,
+    "ood_zeta": 0.6333333333333333,
+    "ood_eta": 0.6166666666666667,
+    "ood_theta": 0.6833333333333333,
+    "ood_iota": 0.6,
+    "ood_kappa": 0.6333333333333333,
+    "ood_lambda": 0.5833333333333334,
+    "ood_mu": 0.6833333333333333
+   },
+   "no_memory": {
+    "ood_delta": 0.4,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.3333333333333333,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.31666666666666665,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.6333333333333333,
+    "ood_epsilon": 0.5,
+    "ood_zeta": 0.5166666666666667,
+    "ood_eta": 0.3333333333333333,
+    "ood_theta": 0.65,
+    "ood_iota": 0.4166666666666667,
+    "ood_kappa": 0.3333333333333333,
+    "ood_lambda": 0.5,
+    "ood_mu": 0.4666666666666667
+   },
+   "fewshot_4": {
+    "ood_delta": 0.48333333333333334,
+    "ood_epsilon": 0.08333333333333333,
+    "ood_zeta": 0.23333333333333334,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.45,
+    "ood_iota": 0.05,
+    "ood_kappa": 0.31666666666666665,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.2833333333333333
+   },
+   "fewshot_8": {
+    "ood_delta": 0.5333333333333333,
+    "ood_epsilon": 0.13333333333333333,
+    "ood_zeta": 0.3333333333333333,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.6333333333333333,
+    "ood_iota": 0.06666666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.16666666666666666,
+    "ood_mu": 0.38333333333333336
+   },
+   "fewshot_16": {
+    "ood_delta": 0.6,
+    "ood_epsilon": 0.21666666666666667,
+    "ood_zeta": 0.4,
+    "ood_eta": 0.5833333333333334,
+    "ood_theta": 0.6833333333333333,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.21666666666666667,
+    "ood_mu": 0.43333333333333335
+   },
+   "fewshot_32": {
+    "ood_delta": 0.65,
+    "ood_epsilon": 0.25,
+    "ood_zeta": 0.4666666666666667,
+    "ood_eta": 0.6166666666666667,
+    "ood_theta": 0.6666666666666666,
+    "ood_iota": 0.21666666666666667,
+    "ood_kappa": 0.55,
+    "ood_lambda": 0.36666666666666664,
+    "ood_mu": 0.5333333333333333
+   },
+   "fewshot_64": {
+    "ood_delta": 0.6333333333333333,
+    "ood_epsilon": 0.43333333333333335,
+    "ood_zeta": 0.5,
+    "ood_eta": 0.5333333333333333,
+    "ood_theta": 0.65,
+    "ood_iota": 0.2833333333333333,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.5166666666666667,
+    "ood_mu": 0.43333333333333335
+   }
+  },
+  {
+   "seed": 2,
+   "selected_name": "i14_0_param_k_6",
+   "selected": {
+    "ood_delta": 0.65,
+    "ood_epsilon": 0.48333333333333334,
+    "ood_zeta": 0.6,
+    "ood_eta": 0.55,
+    "ood_theta": 0.8,
+    "ood_iota": 0.5333333333333333,
+    "ood_kappa": 0.6333333333333333,
+    "ood_lambda": 0.6,
+    "ood_mu": 0.7166666666666667
+   },
+   "no_memory": {
+    "ood_delta": 0.35,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.2833333333333333,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.55,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.3333333333333333,
+    "ood_theta": 0.75,
+    "ood_iota": 0.35,
+    "ood_kappa": 0.45,
+    "ood_lambda": 0.45,
+    "ood_mu": 0.6666666666666666
+   },
+   "fewshot_4": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.16666666666666666,
+    "ood_zeta": 0.15,
+    "ood_eta": 0.38333333333333336,
+    "ood_theta": 0.45,
+    "ood_iota": 0.06666666666666667,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.18333333333333332,
+    "ood_mu": 0.16666666666666666
+   },
+   "fewshot_8": {
+    "ood_delta": 0.48333333333333334,
+    "ood_epsilon": 0.18333333333333332,
+    "ood_zeta": 0.35,
+    "ood_eta": 0.48333333333333334,
+    "ood_theta": 0.6333333333333333,
+    "ood_iota": 0.1,
+    "ood_kappa": 0.45,
+    "ood_lambda": 0.2,
+    "ood_mu": 0.43333333333333335
+   },
+   "fewshot_16": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.25,
+    "ood_zeta": 0.36666666666666664,
+    "ood_eta": 0.5,
+    "ood_theta": 0.75,
+    "ood_iota": 0.16666666666666666,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.31666666666666665,
+    "ood_mu": 0.5166666666666667
+   },
+   "fewshot_32": {
+    "ood_delta": 0.55,
+    "ood_epsilon": 0.36666666666666664,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.55,
+    "ood_theta": 0.75,
+    "ood_iota": 0.26666666666666666,
+    "ood_kappa": 0.5666666666666667,
+    "ood_lambda": 0.45,
+    "ood_mu": 0.6833333333333333
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.43333333333333335,
+    "ood_zeta": 0.48333333333333334,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.75,
+    "ood_iota": 0.4,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.4666666666666667,
+    "ood_mu": 0.6666666666666666
+   }
+  },
+  {
+   "seed": 3,
+   "selected_name": "i14_1_notes",
+   "selected": {
+    "ood_delta": 0.6333333333333333,
+    "ood_epsilon": 0.5833333333333334,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.7166666666666667,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.6,
+    "ood_kappa": 0.5666666666666667,
+    "ood_lambda": 0.43333333333333335,
+    "ood_mu": 0.7166666666666667
+   },
+   "no_memory": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.4666666666666667,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.31666666666666665,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.55,
+    "ood_epsilon": 0.5,
+    "ood_zeta": 0.4,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.31666666666666665,
+    "ood_kappa": 0.3,
+    "ood_lambda": 0.38333333333333336,
+    "ood_mu": 0.7
+   },
+   "fewshot_4": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.06666666666666667,
+    "ood_zeta": 0.13333333333333333,
+    "ood_eta": 0.38333333333333336,
+    "ood_theta": 0.43333333333333335,
+    "ood_iota": 0.05,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.13333333333333333,
+    "ood_mu": 0.26666666666666666
+   },
+   "fewshot_8": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.16666666666666666,
+    "ood_zeta": 0.25,
+    "ood_eta": 0.48333333333333334,
+    "ood_theta": 0.5,
+    "ood_iota": 0.08333333333333333,
+    "ood_kappa": 0.38333333333333336,
+    "ood_lambda": 0.18333333333333332,
+    "ood_mu": 0.35
+   },
+   "fewshot_16": {
+    "ood_delta": 0.5333333333333333,
+    "ood_epsilon": 0.23333333333333334,
+    "ood_zeta": 0.31666666666666665,
+    "ood_eta": 0.5166666666666667,
+    "ood_theta": 0.6,
+    "ood_iota": 0.1,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.26666666666666666,
+    "ood_mu": 0.55
+   },
+   "fewshot_32": {
+    "ood_delta": 0.5333333333333333,
+    "ood_epsilon": 0.3333333333333333,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.65,
+    "ood_theta": 0.75,
+    "ood_iota": 0.2,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.3,
+    "ood_mu": 0.6166666666666667
+   },
+   "fewshot_64": {
+    "ood_delta": 0.55,
+    "ood_epsilon": 0.5166666666666667,
+    "ood_zeta": 0.4,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.31666666666666665,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.3333333333333333,
+    "ood_mu": 0.6166666666666667
+   }
+  },
+  {
+   "seed": 4,
+   "selected_name": "i20_0_param_cap_10",
+   "selected": {
+    "ood_delta": 0.65,
+    "ood_epsilon": 0.65,
+    "ood_zeta": 0.6166666666666667,
+    "ood_eta": 0.7166666666666667,
+    "ood_theta": 0.8,
+    "ood_iota": 0.7,
+    "ood_kappa": 0.5833333333333334,
+    "ood_lambda": 0.65,
+    "ood_mu": 0.7333333333333333
+   },
+   "no_memory": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.5666666666666667,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.48333333333333334,
+    "ood_zeta": 0.5166666666666667,
+    "ood_eta": 0.4666666666666667,
+    "ood_theta": 0.7333333333333333,
+    "ood_iota": 0.5333333333333333,
+    "ood_kappa": 0.45,
+    "ood_lambda": 0.5666666666666667,
+    "ood_mu": 0.6833333333333333
+   },
+   "fewshot_4": {
+    "ood_delta": 0.4,
+    "ood_epsilon": 0.13333333333333333,
+    "ood_zeta": 0.25,
+    "ood_eta": 0.6166666666666667,
+    "ood_theta": 0.45,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.4
+   },
+   "fewshot_8": {
+    "ood_delta": 0.38333333333333336,
+    "ood_epsilon": 0.23333333333333334,
+    "ood_zeta": 0.38333333333333336,
+    "ood_eta": 0.55,
+    "ood_theta": 0.55,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.21666666666666667,
+    "ood_mu": 0.5
+   },
+   "fewshot_16": {
+    "ood_delta": 0.43333333333333335,
+    "ood_epsilon": 0.23333333333333334,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.5833333333333334,
+    "ood_theta": 0.7,
+    "ood_iota": 0.16666666666666666,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.26666666666666666,
+    "ood_mu": 0.6
+   },
+   "fewshot_32": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.4,
+    "ood_zeta": 0.48333333333333334,
+    "ood_eta": 0.55,
+    "ood_theta": 0.7,
+    "ood_iota": 0.31666666666666665,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.45,
+    "ood_mu": 0.65
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.5333333333333333,
+    "ood_zeta": 0.5666666666666667,
+    "ood_eta": 0.5,
+    "ood_theta": 0.7333333333333333,
+    "ood_iota": 0.4666666666666667,
+    "ood_kappa": 0.36666666666666664,
+    "ood_lambda": 0.5833333333333334,
+    "ood_mu": 0.7
+   }
+  },
+  {
+   "seed": 5,
+   "selected_name": "i13_1_crossover",
+   "selected": {
+    "ood_delta": 0.6166666666666667,
+    "ood_epsilon": 0.5166666666666667,
+    "ood_zeta": 0.5833333333333334,
+    "ood_eta": 0.7166666666666667,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.6666666666666666,
+    "ood_kappa": 0.7333333333333333,
+    "ood_lambda": 0.38333333333333336,
+    "ood_mu": 0.7666666666666667
+   },
+   "no_memory": {
+    "ood_delta": 0.35,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.38333333333333336,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.6166666666666667,
+    "ood_epsilon": 0.5,
+    "ood_zeta": 0.5333333333333333,
+    "ood_eta": 0.36666666666666664,
+    "ood_theta": 0.6833333333333333,
+    "ood_iota": 0.4666666666666667,
+    "ood_kappa": 0.36666666666666664,
+    "ood_lambda": 0.2833333333333333,
+    "ood_mu": 0.5833333333333334
+   },
+   "fewshot_4": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.03333333333333333,
+    "ood_zeta": 0.18333333333333332,
+    "ood_eta": 0.45,
+    "ood_theta": 0.5,
+    "ood_iota": 0.05,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.25
+   },
+   "fewshot_8": {
+    "ood_delta": 0.4,
+    "ood_epsilon": 0.016666666666666666,
+    "ood_zeta": 0.25,
+    "ood_eta": 0.5166666666666667,
+    "ood_theta": 0.6,
+    "ood_iota": 0.03333333333333333,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.38333333333333336
+   },
+   "fewshot_16": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.06666666666666667,
+    "ood_zeta": 0.4,
+    "ood_eta": 0.55,
+    "ood_theta": 0.6666666666666666,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.45,
+    "ood_lambda": 0.18333333333333332,
+    "ood_mu": 0.5666666666666667
+   },
+   "fewshot_32": {
+    "ood_delta": 0.55,
+    "ood_epsilon": 0.2,
+    "ood_zeta": 0.48333333333333334,
+    "ood_eta": 0.5333333333333333,
+    "ood_theta": 0.7166666666666667,
+    "ood_iota": 0.26666666666666666,
+    "ood_kappa": 0.6,
+    "ood_lambda": 0.26666666666666666,
+    "ood_mu": 0.5833333333333334
+   },
+   "fewshot_64": {
+    "ood_delta": 0.6166666666666667,
+    "ood_epsilon": 0.4,
+    "ood_zeta": 0.48333333333333334,
+    "ood_eta": 0.36666666666666664,
+    "ood_theta": 0.6833333333333333,
+    "ood_iota": 0.3333333333333333,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.3,
+    "ood_mu": 0.6333333333333333
+   }
+  },
+  {
+   "seed": 6,
+   "selected_name": "i12_1_truncate_demos",
+   "selected": {
+    "ood_delta": 0.6,
+    "ood_epsilon": 0.5333333333333333,
+    "ood_zeta": 0.36666666666666664,
+    "ood_eta": 0.6333333333333333,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.65,
+    "ood_kappa": 0.65,
+    "ood_lambda": 0.55,
+    "ood_mu": 0.65
+   },
+   "no_memory": {
+    "ood_delta": 0.35,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.45,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.55,
+    "ood_zeta": 0.48333333333333334,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.7,
+    "ood_iota": 0.6166666666666667,
+    "ood_kappa": 0.36666666666666664,
+    "ood_lambda": 0.4666666666666667,
+    "ood_mu": 0.6166666666666667
+   },
+   "fewshot_4": {
+    "ood_delta": 0.38333333333333336,
+    "ood_epsilon": 0.06666666666666667,
+    "ood_zeta": 0.23333333333333334,
+    "ood_eta": 0.4,
+    "ood_theta": 0.45,
+    "ood_iota": 0.06666666666666667,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.06666666666666667,
+    "ood_mu": 0.23333333333333334
+   },
+   "fewshot_8": {
+    "ood_delta": 0.4,
+    "ood_epsilon": 0.21666666666666667,
+    "ood_zeta": 0.38333333333333336,
+    "ood_eta": 0.5,
+    "ood_theta": 0.55,
+    "ood_iota": 0.08333333333333333,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.13333333333333333,
+    "ood_mu": 0.35
+   },
+   "fewshot_16": {
+    "ood_delta": 0.45,
+    "ood_epsilon": 0.21666666666666667,
+    "ood_zeta": 0.5,
+    "ood_eta": 0.5,
+    "ood_theta": 0.6666666666666666,
+    "ood_iota": 0.15,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.23333333333333334,
+    "ood_mu": 0.55
+   },
+   "fewshot_32": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.3333333333333333,
+    "ood_zeta": 0.43333333333333335,
+    "ood_eta": 0.48333333333333334,
+    "ood_theta": 0.7166666666666667,
+    "ood_iota": 0.3,
+    "ood_kappa": 0.55,
+    "ood_lambda": 0.38333333333333336,
+    "ood_mu": 0.5666666666666667
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.48333333333333334,
+    "ood_zeta": 0.5666666666666667,
+    "ood_eta": 0.3333333333333333,
+    "ood_theta": 0.7,
+    "ood_iota": 0.4166666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.4666666666666667,
+    "ood_mu": 0.6333333333333333
+   }
+  },
+  {
+   "seed": 7,
+   "selected_name": "i19_0_param_char_budget_4500",
+   "selected": {
+    "ood_delta": 0.65,
+    "ood_epsilon": 0.6333333333333333,
+    "ood_zeta": 0.5,
+    "ood_eta": 0.6,
+    "ood_theta": 0.6833333333333333,
+    "ood_iota": 0.7166666666666667,
+    "ood_kappa": 0.6,
+    "ood_lambda": 0.4666666666666667,
+    "ood_mu": 0.75
+   },
+   "no_memory": {
+    "ood_delta": 0.38333333333333336,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.3,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.55,
+    "ood_zeta": 0.4666666666666667,
+    "ood_eta": 0.35,
+    "ood_theta": 0.7,
+    "ood_iota": 0.48333333333333334,
+    "ood_kappa": 0.35,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.5833333333333334
+   },
+   "fewshot_4": {
+    "ood_delta": 0.4166666666666667,
+    "ood_epsilon": 0.06666666666666667,
+    "ood_zeta": 0.31666666666666665,
+    "ood_eta": 0.2833333333333333,
+    "ood_theta": 0.45,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.13333333333333333,
+    "ood_mu": 0.3333333333333333
+   },
+   "fewshot_8": {
+    "ood_delta": 0.43333333333333335,
+    "ood_epsilon": 0.11666666666666667,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.36666666666666664,
+    "ood_theta": 0.5333333333333333,
+    "ood_iota": 0.1,
+    "ood_kappa": 0.48333333333333334,
+    "ood_lambda": 0.23333333333333334,
+    "ood_mu": 0.38333333333333336
+   },
+   "fewshot_16": {
+    "ood_delta": 0.45,
+    "ood_epsilon": 0.21666666666666667,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.5833333333333334,
+    "ood_iota": 0.21666666666666667,
+    "ood_kappa": 0.5333333333333333,
+    "ood_lambda": 0.31666666666666665,
+    "ood_mu": 0.4666666666666667
+   },
+   "fewshot_32": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.31666666666666665,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.45,
+    "ood_theta": 0.7,
+    "ood_iota": 0.3333333333333333,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.6166666666666667
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.4666666666666667,
+    "ood_zeta": 0.5666666666666667,
+    "ood_eta": 0.36666666666666664,
+    "ood_theta": 0.7,
+    "ood_iota": 0.38333333333333336,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.4666666666666667,
+    "ood_mu": 0.6166666666666667
+   }
+  },
+  {
+   "seed": 8,
+   "selected_name": "i19_0_answer_line",
+   "selected": {
+    "ood_delta": 0.6333333333333333,
+    "ood_epsilon": 0.6333333333333333,
+    "ood_zeta": 0.5666666666666667,
+    "ood_eta": 0.5666666666666667,
+    "ood_theta": 0.7666666666666667,
+    "ood_iota": 0.65,
+    "ood_kappa": 0.5666666666666667,
+    "ood_lambda": 0.43333333333333335,
+    "ood_mu": 0.6833333333333333
+   },
+   "no_memory": {
+    "ood_delta": 0.35,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.3,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.5833333333333334,
+    "ood_epsilon": 0.6333333333333333,
+    "ood_zeta": 0.43333333333333335,
+    "ood_eta": 0.26666666666666666,
+    "ood_theta": 0.7166666666666667,
+    "ood_iota": 0.45,
+    "ood_kappa": 0.4,
+    "ood_lambda": 0.4,
+    "ood_mu": 0.65
+   },
+   "fewshot_4": {
+    "ood_delta": 0.4166666666666667,
+    "ood_epsilon": 0.08333333333333333,
+    "ood_zeta": 0.23333333333333334,
+    "ood_eta": 0.4,
+    "ood_theta": 0.3333333333333333,
+    "ood_iota": 0.11666666666666667,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.06666666666666667,
+    "ood_mu": 0.2
+   },
+   "fewshot_8": {
+    "ood_delta": 0.4,
+    "ood_epsilon": 0.16666666666666666,
+    "ood_zeta": 0.2833333333333333,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.4666666666666667,
+    "ood_iota": 0.13333333333333333,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.1,
+    "ood_mu": 0.3
+   },
+   "fewshot_16": {
+    "ood_delta": 0.5666666666666667,
+    "ood_epsilon": 0.26666666666666666,
+    "ood_zeta": 0.4166666666666667,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.6333333333333333,
+    "ood_iota": 0.16666666666666666,
+    "ood_kappa": 0.4666666666666667,
+    "ood_lambda": 0.18333333333333332,
+    "ood_mu": 0.4
+   },
+   "fewshot_32": {
+    "ood_delta": 0.6,
+    "ood_epsilon": 0.4166666666666667,
+    "ood_zeta": 0.43333333333333335,
+    "ood_eta": 0.4666666666666667,
+    "ood_theta": 0.7166666666666667,
+    "ood_iota": 0.23333333333333334,
+    "ood_kappa": 0.5166666666666667,
+    "ood_lambda": 0.31666666666666665,
+    "ood_mu": 0.5666666666666667
+   },
+   "fewshot_64": {
+    "ood_delta": 0.5833333333333334,
+    "ood_epsilon": 0.5166666666666667,
+    "ood_zeta": 0.4666666666666667,
+    "ood_eta": 0.3333333333333333,
+    "ood_theta": 0.7166666666666667,
+    "ood_iota": 0.3333333333333333,
+    "ood_kappa": 0.38333333333333336,
+    "ood_lambda": 0.36666666666666664,
+    "ood_mu": 0.6
+   }
+  },
+  {
+   "seed": 9,
+   "selected_name": "i19_1_answer_line",
+   "selected": {
+    "ood_delta": 0.5833333333333334,
+    "ood_epsilon": 0.55,
+    "ood_zeta": 0.5833333333333334,
+    "ood_eta": 0.6166666666666667,
+    "ood_theta": 0.6333333333333333,
+    "ood_iota": 0.6333333333333333,
+    "ood_kappa": 0.55,
+    "ood_lambda": 0.6,
+    "ood_mu": 0.75
+   },
+   "no_memory": {
+    "ood_delta": 0.36666666666666664,
+    "ood_epsilon": 0.0,
+    "ood_zeta": 0.0,
+    "ood_eta": 0.36666666666666664,
+    "ood_theta": 0.0,
+    "ood_iota": 0.0,
+    "ood_kappa": 0.5,
+    "ood_lambda": 0.0,
+    "ood_mu": 0.0
+   },
+   "fewshot_all": {
+    "ood_delta": 0.45,
+    "ood_epsilon": 0.5333333333333333,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.5666666666666667,
+    "ood_iota": 0.5,
+    "ood_kappa": 0.26666666666666666,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.6666666666666666
+   },
+   "fewshot_4": {
+    "ood_delta": 0.4666666666666667,
+    "ood_epsilon": 0.11666666666666667,
+    "ood_zeta": 0.21666666666666667,
+    "ood_eta": 0.4166666666666667,
+    "ood_theta": 0.3333333333333333,
+    "ood_iota": 0.05,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.16666666666666666,
+    "ood_mu": 0.2833333333333333
+   },
+   "fewshot_8": {
+    "ood_delta": 0.5,
+    "ood_epsilon": 0.18333333333333332,
+    "ood_zeta": 0.25,
+    "ood_eta": 0.43333333333333335,
+    "ood_theta": 0.36666666666666664,
+    "ood_iota": 0.06666666666666667,
+    "ood_kappa": 0.4166666666666667,
+    "ood_lambda": 0.18333333333333332,
+    "ood_mu": 0.36666666666666664
+   },
+   "fewshot_16": {
+    "ood_delta": 0.5166666666666667,
+    "ood_epsilon": 0.26666666666666666,
+    "ood_zeta": 0.3333333333333333,
+    "ood_eta": 0.5166666666666667,
+    "ood_theta": 0.4666666666666667,
+    "ood_iota": 0.16666666666666666,
+    "ood_kappa": 0.4,
+    "ood_lambda": 0.25,
+    "ood_mu": 0.4666666666666667
+   },
+   "fewshot_32": {
+    "ood_delta": 0.48333333333333334,
+    "ood_epsilon": 0.31666666666666665,
+    "ood_zeta": 0.45,
+    "ood_eta": 0.48333333333333334,
+    "ood_theta": 0.65,
+    "ood_iota": 0.26666666666666666,
+    "ood_kappa": 0.43333333333333335,
+    "ood_lambda": 0.4,
+    "ood_mu": 0.5333333333333333
+   },
+   "fewshot_64": {
+    "ood_delta": 0.45,
+    "ood_epsilon": 0.35,
+    "ood_zeta": 0.4666666666666667,
+    "ood_eta": 0.45,
+    "ood_theta": 0.5666666666666667,
+    "ood_iota": 0.48333333333333334,
+    "ood_kappa": 0.4,
+    "ood_lambda": 0.4166666666666667,
+    "ood_mu": 0.7
+   }
+  }
+ ],
+ "generated_at": "2026-09-29 23:03:46"
+}

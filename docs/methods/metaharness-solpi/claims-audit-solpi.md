@@ -364,6 +364,17 @@ Cost magnitudes are not part of R7; they belong to Q2.
 - **Design:** P-Q13 is re-run with the identical design, seeds and thresholds, into `solpi_retry2/s2b_observation_pack_long_fixed.json`.
 - **Reporting:** both runs are reported; P-Q13's FAIL stands as a recorded result.
 
+**P-L2b (follow-up to P-L2, added 2026-09-29 23:10 UTC, AFTER P-L2's result was seen, in response to a reviewer objection).**
+- **Why:** L2 says "keep only the changes that survive **everywhere**". S5's own docstring labels `multi_per_family` (the dual gate must pass in every training family) as the literal arm, but P-L2 compared `single_env_dual` only with `multi_aggregate` (a pooled screen). P-L2 therefore did not test the claim's literal protocol.
+- **Not blind, stated openly:** P-L2's `multi_aggregate` result on these seeds is known, and in S5 (seeds 0–4) `multi_per_family` and `multi_aggregate` gave identical per-seed numbers. The outcome may therefore repeat P-L2; the run is done because it is the claim's literal arm, not because a different result is expected.
+- **Script:** `experiments/metaharness-solpi/s5c_per_family_power.py` (S5's `job` unchanged, as in s5b). Output `results/metaharness-solpi/solpi_retry2/s5c_per_family_power.json`.
+- **Seeds:** the same fresh seeds 10–29 (20); protocols `single_env_dual` (re-run, and checked for identity with s5b's rows) and `multi_per_family`.
+- **Primary (identical to P-L2):** held-out-family (`ood`) capability ratio of the training-admitted stack WITHOUT the firewall, paired `multi_per_family` − `single_env_dual`, averaged over backends A and B per seed.
+- **Pass (identical to P-L2):** pooled 95% bootstrap CI lower bound > 0 AND neither backend's CI upper bound < 0. A paired t-test p-value is reported alongside, not decisive.
+- **Power (stated before the run):** S5's hinted pooled effect is +0.019 (paired SD 0.028, seeds 0–4); at n = 20, α = 0.05 two-sided, power ≈ 0.82 (noncentral t).
+- **Secondary:** the same with the firewall (t-test and Wilcoxon p reported); tricks admitted at the training gate; `multi_per_family` vs `multi_aggregate` identity per seed.
+- **Verdict mapping:** L2 is at most PARTIAL (the environments are simulated families; see L5). PASS keeps PARTIAL with the direction supported on the literal arm; FAIL keeps PARTIAL only if the point estimate is ≥ 0 on both backends, otherwise NOT REPRODUCED.
+
 ### 7.2 Retry round 2: per-claim table
 
 Root causes: (a) implementation, (b) experiment design, (c) scale, (d) genuine negative, (e) source error. Paths are under `results/metaharness-solpi/` unless stated. "fresh seeds" means 10–29.
