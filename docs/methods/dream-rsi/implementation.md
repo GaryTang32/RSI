@@ -21,13 +21,13 @@ All numbers come from `results/dream-rsi/*.json`, produced by `experiments/dream
 | E10 | Replay can only test what was tried | **Reproduced** | go-deeper policy: replay error −0.013 on a shallow record (out of support), exactly 0.000 when the record covers its depth; all in-support errors are 0.000 |
 | live | Live end-to-end runs (Claude Haiku as agent and developer) | **Pipeline works end to end** with the verbatim Listing-1/Listing-2 prompts | Live smoke (re-run after the claims-audit fixes, fresh cache): sum-difference Γ 0.9105 → 1.0194 in 12 real agent calls (12 ok); Haiku's rewritten policy passed the static check and tied the incumbent on replay (0.955 vs 0.955), so the incumbent was kept; $0.72, of which the developer is 14%; 10 min. Validation run `sumdiff_live_c`: Γ 0.9105 → 1.0468 in 18 calls, $1.46 (developer 21%), step audit 49/49 correct |
 | E11 | The paper's protocol: 10 × 11 = 110 calls per round (Flash 32 × 20), identical per-round budgets, equal rounds (5 Lasso-like, 10 math) | **Fewer calls: reproduced. Better at equal rounds: not reproduced. Better at equal cumulative calls: synthetic worlds and circle packing only** | Fixed/Dream calls: Lasso 2.10 [1.65, 2.54] (the paper's 1.735 is inside the CI), synthetic 2.50, Flash grid 3.55, math 3.9–4.3. Quality after R rounds: Lasso held-out +2.7 [−0.5, +7.6] 1/s; synthetic −0.038 [−0.051, −0.025]; sum-diff −0.0006 n.s.; circle packing tie; autocorr −0.0070 [−0.0112, −0.0032]. Pacing: rounds 2–4 use 20–30 calls of 110, and effort rises after plateaus on sum-diff (+3.35 [+1.93, +4.92]) and autocorr (+3.12). The default-beta rule moves the default in 52% of 10-round runs |
-| E12 | Replay ranks policies on real tasks | **Reproduced** | Spearman(replay, 40-search online truth), in support: sum-diff 0.78 [0.40, 0.99], autocorr 0.81 [0.41, 0.98]. The replay pick beats parallel refine online under the same objective, as a frugal plan that finds less |
+| E12 | Replay ranks policies on real tasks | **Reproduced** | Spearman(replay, 40-search online truth), in support: sum-diff 0.78 [0.40, 0.99], autocorr 0.81 [0.41, 0.98]. The replay pick beats parallel refine online under the same objective, but only through the probe-cost term: it finds significantly less. Quality only (E12q, β1 = β2 = 0): in-support Spearman 0.887 and 0.986 |
 | E13 | Thousands of candidate policies | **Reproduced** | 2000 candidates × 6 worlds (10 × 11) = 12,000 episodes in 128 s in one process, 0 disqualified; sandbox 30 ms per episode |
 | E14 | Sensitivity of the Listing-2 objective | **Not robust** | Spearman ≥ 0.83 with our default over 12 variants (λ, attainment, grid), but the same winner in only 5/12 |
-| E15 | Written guidance (live LLM; mock on real tasks) | **The mechanism works live. No loss of diversity and no harm** | Live: the advice is in 12/12 guided prompts. Jaccard diversity U − G −0.0085 (p = 0.60); code distance U − G −0.150. Mock guidance on sum-diff and autocorr: no harm (autocorr +0.0075 [+0.0014, +0.0155] with guidance, for Dream) |
-| E16 | The paper's App. C Lasso solver, run under the benchmark protocol (`SimpleTESLassoDomain`) | **Correct and fast; beats sklearn 4/4; does not beat R glmnet everywhere** | 51/51 search checks and 4/4 held-out datasets correct. 1/geomean 19.8 ms vs sklearn 41.8. Faster than sklearn on DNA, Leukemia, Colon and Duke-like. Slower than R glmnet on 3/4 at glmnet's default tolerance, which fails the gate; slower on 2/4 at a tolerance that passes it. The paper's "glmnet" row matches the benchmark's C++ port, which App. C beats on 4/4 |
+| E15 | Written guidance (live LLM; mock on real tasks) | **The mechanism works live. No loss of diversity live; performance untested live** | Live: the advice is in 12/12 guided prompts. Jaccard diversity U − G −0.0085 (p = 0.60); code distance U − G −0.150 (guided more diverse). Power (P1, `e15_power.py`): 0.66 / 0.95 at a 10% / 15% reduction (bootstrap: 0.45 / 0.70). Live Γ (descriptive): guided 1.0310 vs 1.0346. Mock guidance on sum-diff and autocorr: no harm (autocorr +0.0075 [+0.0014, +0.0155] with guidance, for Dream), but in the mock guidance only acts through a hard-coded assignment bias |
+| E16 / E16c | The paper's App. C Lasso solver, run under the benchmark protocol (`SimpleTESLassoDomain`) | **Correct and fast; beats sklearn and R glmnet on 4/4 available datasets when timed symmetrically** | 51/51 search checks and 4/4 held-out datasets correct. 1/geomean 19.8 ms vs sklearn 41.8. Faster than sklearn on DNA, Leukemia, Colon and Duke-like. E16/E16b timed App. C with process spawn and pipe I/O, but R glmnet inside R, and so showed it slower than R glmnet on 2–3/4. E16c times every solver on its compute only (an `LD_PRELOAD` timer for the binaries, `Sys.time()` around `glmnet()`): App. C 19.6 / 7.0 / 4.3 / 9.0 ms vs gate-passing R glmnet 43.6 / 12.6 / 11.2 / 17.1 ms. The paper's "glmnet" row matches the benchmark's C++ port, which App. C beats on 4/4 |
 | E17 | Fig. 3b on the paper's axis (exact source data) | **The paper's own Pro curve contradicts "consistently superior"** | Pro Dream is worse at rounds 3–4 at equal rounds, and at rounds 2–4 at equal calls |
-| E18 / A1 | Developer base (§3 vs L2); the developer's cost share at paper scale | – | E18: the "latest" base (§3) − "strongest" (L2) = +0.0054 [+0.0008, +0.0113]. A1: the developer's share is 9.3% (Pro) and 1.7% (Flash) per dreaming phase with 3 revisions |
+| E18 / A1 | Developer base (§3 vs L2); the developer's cost share at paper scale | – | E18: the "latest" base (§3) − "strongest" (L2) = +0.0054 [+0.0008, +0.0113]. A1: the developer's share is 9.3% (Pro) and 1.7% (Flash) per dreaming phase at the mean round with 3 revisions, but 2 of the 4 Pro phases are above 10%. A1b: if the developer's input grows with the pool, it is above 10% in every phase for both models |
 
 ## 1. Module map
 
@@ -412,13 +412,16 @@ A second attempt on every PARTIAL, NOT REPRODUCED and CONTRADICTED claim. Experi
 - E5 with `--domains sumdiff,autocorr`.
 - `e16_lasso_paper_solvers.py` and `e16b_glmnet_tolerance.py`: R glmnet through `Rscript`.
 - `e17_fig3b_axis.py`, `e18_developer_base.py`, `a1_developer_share.py`.
+- Review round (`claims-audit.md` §6.1): `e16c_symmetric_timing.py` with `e16c/solve_timer.c` (an `LD_PRELOAD` compute-only timer) and `e16c/noop.c`; `e12_real_offpolicy.py --quality-only` (E12q); `e15_power.py` (P1); `a1_developer_share.py --growth` (A1b). No library code changed in the review round.
 
 The results are in the §0 table and in `claims-audit.md` §7.
 
 **Verdicts.**
-- Seven claims went up to REPRODUCED: M12, M27, L1, L2, L3, L10, and Q32 (was NOT TESTABLE HERE).
-- L5 went down to NOT REPRODUCED.
-- Q13 stays NOT REPRODUCED. The paper's own solver beats sklearn on every available dataset, but not R glmnet.
+These verdicts include the review round:
+- Six claims went up to REPRODUCED: M12 (as a non-default option), M27 (mechanism), L1, L3, L10 (borderline), and Q32 (was NOT TESTABLE HERE).
+- Q13 went up to PARTIAL. With symmetric timing, the paper's own solver beats sklearn and R glmnet on the 4 available datasets.
+- L6 went down to NOT REPRODUCED: the live test is negative.
+- L2 and L5 stay PARTIAL. The retry's upgrade of L2 and downgrade of L5 were reverted in the review round.
 - Q15, Q22 and C7 stay CONTRADICTED, each by the paper's own data or repository.
-- New counts: 44 reproduced, 10 partial, 2 not reproduced, 24 not testable here, 3 contradicted.
+- New counts: 43 reproduced, 12 partial, 1 not reproduced, 24 not testable here, 3 contradicted.
 

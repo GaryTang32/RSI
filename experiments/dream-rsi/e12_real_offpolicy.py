@@ -12,6 +12,12 @@ Preregistered (claims-audit §6): per domain, Spearman over in-support policies 
 that holds in both domains AND the replay pick beats parallel refine online (paired CI lower bound > 0) in both.
 
     python experiments/dream-rsi/e12_real_offpolicy.py [--domains sumdiff,autocorr] [--workers 2]
+    python experiments/dream-rsi/e12_real_offpolicy.py --quality-only     # E12q (review round, claims-audit §6.1)
+
+E12q (``--quality-only``) repeats E12 exactly (same worlds, zoo and fresh seeds) with beta1 = beta2 = 0, so replay
+value and online value are both the best score found (no probe-cost term). Preregistered: L1 stays REPRODUCED iff
+the quality-only in-support Spearman is >= 0.7 in both domains; otherwise PARTIAL. Saved to
+``e12q_real_offpolicy_quality.json``; ``e12_real_offpolicy.json`` is not touched.
 """
 import numpy as np
 
@@ -40,10 +46,10 @@ def online(job):
     return name, seed, r["round_best"] - b1 * r["N"] + b2 * r["N"] / max(1, r["k"]), r["round_best"], r["N"]
 
 
-def study(dom_name, workers):
+def study(dom_name, workers, quality_only=False):
     worlds = pmap(record, [(dom_name, 100 + i) for i in range(K)], workers)
     G = float(np.mean([w.ceiling - w.root_score for w in worlds]))
-    b1, b2 = 0.01 * G, 0.005 * G
+    b1, b2 = (0.0, 0.0) if quality_only else (0.01 * G, 0.005 * G)
     ev = ReplayEvaluator(Eq1Objective(beta1=b1, beta2=b2, normalize=False, support="no_reward"), W=W, fallback=GRID,
                          runner="inprocess", hard_max=(12, 12))
     pol = zoo()
@@ -88,17 +94,31 @@ def study(dom_name, workers):
 
 
 def main():
-    a = parse_args("E12 replay validity on real tasks", default_seeds=K, extra=lambda ap: ap.add_argument(
-        "--domains", default="sumdiff,autocorr"))
+    def extra(ap):
+        ap.add_argument("--domains", default="sumdiff,autocorr")
+        ap.add_argument("--quality-only", action="store_true", help="E12q: beta1 = beta2 = 0")
+
+    a = parse_args("E12 replay validity on real tasks", default_seeds=K, extra=extra)
     out = {}
     for d in a.domains.split(","):
-        out[d] = study(d, a.workers)
+        out[d] = study(d, a.workers, quality_only=a.quality_only)
         r = out[d]
         print(f"[{d}] Spearman in-support {r['spearman_in_support']:.3f} {r['spearman_in_support_ci']}, all "
               f"{r['spearman_all']:.3f}; replay pick {r['replay_pick']} (true best {r['true_best']}, regret "
               f"{r['regret_of_replay_pick']:.4g}); pick - pi1 online {r['pick_minus_parallel_refine_online_value']}",
               flush=True)
     holds = all(out[d]["passes_rho"] for d in out)
+    if a.quality_only:
+        verdict = ("L1 stays REPRODUCED (quality-only rho >= 0.7 in both domains)" if holds else
+                   "L1 -> PARTIAL (quality-only rho < 0.7 in " +
+                   ", ".join(d for d in out if not out[d]["passes_rho"]) + ")")
+        save("e12q_real_offpolicy_quality", {"config": {"W": W, "recording_grid": GRID, "recorded_worlds": K,
+                                                        "true_value_searches": N_TRUE, "objective":
+                                                        "quality only: raw Eq.1 with beta1 = beta2 = 0, "
+                                                        "support=no_reward", "policies": list(zoo())},
+                                             "results": out, "verdict": verdict})
+        print(verdict)
+        return
     verdict = ("L1 -> REPRODUCED" if holds and all(out[d]["pick_beats_pi1"] for d in out) else
                "L1 stays PARTIAL" + ("" if holds else " (Spearman < 0.7 in " +
                                      ", ".join(d for d in out if not out[d]["passes_rho"]) + ")"))
