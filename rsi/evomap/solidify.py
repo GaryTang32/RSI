@@ -283,6 +283,8 @@ class SolidifyResult:
     failure_mode: Optional[tuple] = None
     failed_capsule: Optional[dict] = None
     rolled_back: bool = False
+    git_rollback: Optional[str] = None       # I5: "stash" | "hard" when a GitWorkspace was rolled back
+    git_removed: Optional[dict] = None       # I5: untracked files created in the cycle and removed
     vacuity: Optional[VacuityVerdict] = None
     eligible_to_broadcast: bool = False
     publishable: bool = False
@@ -292,8 +294,11 @@ class Solidifier:
     def __init__(self, store, runner: ValidationRunner, *, mode: str = "faithful",
                  constraints: Optional[ConstraintChecker] = None, counted: Optional[CountedFilePolicy] = None,
                  vacuity: Optional[VacuityDetector] = None, require_task_success: bool = True,
-                 rollback: str = "stash", estimate_drift_penalty: bool = False) -> None:
+                 rollback: str = "stash", estimate_drift_penalty: bool = False, workspace=None) -> None:
         self.store = store
+        #: optional :class:`~rsi.evomap.gitws.GitWorkspace` (retry round 2, I5): the cycle's ``after`` state is
+        #: mirrored into a real git tree, blast radius comes from git, and a failed solidify rolls back through git
+        self.workspace = workspace
         self.estimate_drift_penalty = estimate_drift_penalty   # N3: off = Evolver (dead key)
         self.runner = runner
         self.mode = mode
@@ -320,7 +325,13 @@ class Solidifier:
             pv.append("forbidden_innovate_with_high_risk_personality")
         if rs.intent and mut is not None and rs.intent != mut.category:
             pv.append(f"intent_mismatch_with_mutation:{rs.intent}!={mut.category}")
-        blast = blast_radius(rs.before, rs.after, self.counted)
+        ws_baseline = None
+        if self.workspace is not None and not dry_run:
+            ws_baseline = self.workspace.untracked_files()
+            self.workspace.write(rs.after, delete_missing_from=rs.before)
+            blast = self.workspace.blast_radius(self.counted)
+        else:
+            blast = blast_radius(rs.before, rs.after, self.counted)
         cc = self.constraints.check(gene, blast, rs.estimate, rs.before, rs.after)
         specs = list(gene.validation) if gene is not None else []
         if gene is None and self.mode == "faithful":
@@ -398,6 +409,9 @@ class Solidifier:
             st.append_failed_capsule(res.failed_capsule)
         if not success and self.rollback != "none":
             res.rolled_back = True
+            if self.workspace is not None:
+                res.git_rollback = self.workspace.rollback(self.rollback)
+                res.git_removed = self.workspace.remove_new_untracked(ws_baseline or [])
         if gene is not None:
             learn = [s for s in rs.signals if s.startswith(("problem:", "area:"))] or list(rs.signals)
             entry = {"at": clock.iso(), "outcome": "success" if success else "failed",

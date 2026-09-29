@@ -96,7 +96,7 @@ class PopulationSimulator:
                  config: Config, model_factory: Callable[[AgentSpec], LLM],
                  proposer_factory: Optional[Callable[[AgentSpec], LLM]] = None, forge: Optional[Forge] = None,
                  truth: Optional[Callable[[Gene], float]] = None, injector: Optional[Injector] = None,
-                 seed: int = 0, clock_step_s: float = 3600.0) -> None:
+                 seed: int = 0, clock_step_s: float = 3600.0, bounties=None) -> None:
         self.domain, self.harness, self.hub = domain, harness, hub
         self.specs = list(specs)
         self.config = config
@@ -126,6 +126,7 @@ class PopulationSimulator:
                                              injector=injector, behavior=beh, cluster=sp.cluster)
         self.cycles: list[dict] = []
         self.epochs: list[dict] = []
+        self.bounties = bounties            # optional economy.BountyDriver (X19); None = no bounty board
 
     def _task(self, sp: AgentSpec, rng: random.Random):
         pool = [t for t in self.tasks if sp.classes is None or t.family in sp.classes]
@@ -135,6 +136,8 @@ class PopulationSimulator:
         for ep in range(epochs):
             order = list(self.specs)
             self.rng.shuffle(order)
+            if self.bounties is not None:
+                self.bounties.on_epoch_start(self, ep, random.Random(f"{self.seed}-bounties-{ep}"))
             for sp in order:
                 arng = random.Random(f"{self.seed}-{sp.name}-{ep}")
                 if sp.kind in ("farmer", "poisoner"):
@@ -148,8 +151,13 @@ class PopulationSimulator:
                     continue
                 ag = self.agents[sp.name]
                 for _ in range(sp.tasks_per_epoch):
-                    task = self._task(sp, arng)
+                    task = None
+                    if self.bounties is not None and sp.kind in ("honest", "inflator"):
+                        task = self.bounties.task_for(self, sp, ag, arng)
+                    task = task if task is not None else self._task(sp, arng)
                     cr = ag.cycle(task)
+                    if self.bounties is not None and sp.kind in ("honest", "inflator"):
+                        self.bounties.after_cycle(self, sp, ag, cr, ep)
                     row = {"epoch": ep, "agent": sp.name, "kind": sp.kind, "ability": sp.ability, **cr.to_json()}
                     # the genes actually injected into this cycle's solve - also when solidify rejected them
                     # (a direct-apply consumer runs a poisoned hub gene even if it never enters the store; a

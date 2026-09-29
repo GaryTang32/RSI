@@ -1,0 +1,241 @@
+{
+ "experiment": "x20_engine_coverage",
+ "generated_at": "2026-09-29 20:49:29",
+ "config": {
+  "seeds": 6,
+  "cycles": 150,
+  "mode": "faithful",
+  "domain": "geneworld",
+  "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"
+ },
+ "raw": [
+  {
+   "seed": 0,
+   "cycles": 150,
+   "suppression_firings": 116,
+   "suppression_ok": 116,
+   "ban_firings": 0,
+   "ban_ok": 0,
+   "repair_loop_cases": 0,
+   "repair_loop_ok": 0,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 0,
+   "plateau_ok": 0,
+   "plateau_active": 0,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 30,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 2 good capsules (< 10)": 1,
+    "only 3 good capsules (< 10)": 2,
+    "only 4 good capsules (< 10)": 2,
+    "only 5 good capsules (< 10)": 1,
+    "only 6 good capsules (< 10)": 12,
+    "only 7 good capsules (< 10)": 6,
+    "only 8 good capsules (< 10)": 6
+   },
+   "failure_distilled_genes": 0,
+   "solidify_count": 150,
+   "n_genes": 2
+  },
+  {
+   "seed": 1,
+   "cycles": 150,
+   "suppression_firings": 92,
+   "suppression_ok": 92,
+   "ban_firings": 0,
+   "ban_ok": 0,
+   "repair_loop_cases": 0,
+   "repair_loop_ok": 0,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 0,
+   "plateau_ok": 0,
+   "plateau_active": 0,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 30,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 2 good capsules (< 10)": 1,
+    "only 3 good capsules (< 10)": 8,
+    "only 4 good capsules (< 10)": 1,
+    "only 5 good capsules (< 10)": 20
+   },
+   "failure_distilled_genes": 0,
+   "solidify_count": 150,
+   "n_genes": 1
+  },
+  {
+   "seed": 2,
+   "cycles": 150,
+   "suppression_firings": 86,
+   "suppression_ok": 86,
+   "ban_firings": 6,
+   "ban_ok": 6,
+   "repair_loop_cases": 0,
+   "repair_loop_ok": 0,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 6,
+   "plateau_ok": 6,
+   "plateau_active": 6,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 26,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 4 good capsules (< 10)": 3,
+    "only 5 good capsules (< 10)": 7,
+    "only 6 good capsules (< 10)": 9,
+    "only 7 good capsules (< 10)": 7
+   },
+   "failure_distilled_genes": 2,
+   "solidify_count": 150,
+   "n_genes": 6
+  },
+  {
+   "seed": 3,
+   "cycles": 150,
+   "suppression_firings": 148,
+   "suppression_ok": 148,
+   "ban_firings": 0,
+   "ban_ok": 0,
+   "repair_loop_cases": 1,
+   "repair_loop_ok": 1,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 0,
+   "plateau_ok": 0,
+   "plateau_active": 0,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 28,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 2 good capsules (< 10)": 1,
+    "only 3 good capsules (< 10)": 1,
+    "only 4 good capsules (< 10)": 1,
+    "only 5 good capsules (< 10)": 14,
+    "only 6 good capsules (< 10)": 1,
+    "only 7 good capsules (< 10)": 10
+   },
+   "failure_distilled_genes": 3,
+   "solidify_count": 150,
+   "n_genes": 5
+  },
+  {
+   "seed": 4,
+   "cycles": 150,
+   "suppression_firings": 130,
+   "suppression_ok": 130,
+   "ban_firings": 0,
+   "ban_ok": 0,
+   "repair_loop_cases": 1,
+   "repair_loop_ok": 1,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 0,
+   "plateau_ok": 0,
+   "plateau_active": 0,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 28,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 1 good capsules (< 10)": 1,
+    "only 2 good capsules (< 10)": 3,
+    "only 3 good capsules (< 10)": 2,
+    "only 4 good capsules (< 10)": 1,
+    "only 5 good capsules (< 10)": 21
+   },
+   "failure_distilled_genes": 2,
+   "solidify_count": 150,
+   "n_genes": 4
+  },
+  {
+   "seed": 5,
+   "cycles": 150,
+   "suppression_firings": 160,
+   "suppression_ok": 160,
+   "ban_firings": 0,
+   "ban_ok": 0,
+   "repair_loop_cases": 9,
+   "repair_loop_ok": 9,
+   "empty_loop_cases": 0,
+   "empty_loop_ok": 0,
+   "plateau_cases": 0,
+   "plateau_ok": 0,
+   "plateau_active": 0,
+   "l3_calls": 30,
+   "l3_ok": true,
+   "l3_signals_merged": 29,
+   "distill_calls": 30,
+   "distill_firings": 0,
+   "distill_ok": 0,
+   "distill_validation_empty_literal": 0,
+   "distill_not_ok_reasons": {
+    "only 2 good capsules (< 10)": 1,
+    "only 3 good capsules (< 10)": 6,
+    "only 4 good capsules (< 10)": 9,
+    "only 5 good capsules (< 10)": 5,
+    "only 6 good capsules (< 10)": 9
+   },
+   "failure_distilled_genes": 0,
+   "solidify_count": 150,
+   "n_genes": 1
+  }
+ ],
+ "verdict": {
+  "suppression": {
+   "firings": 732,
+   "rederived": 732
+  },
+  "ban_gene": {
+   "firings": 6,
+   "rederived": 6
+  },
+  "plateau": {
+   "cases": 6,
+   "rederived": 6,
+   "active": 6
+  },
+  "repair_loop": {
+   "cases": 11,
+   "rederived": 11
+  },
+  "empty_loop": {
+   "cases": 0,
+   "rederived": 0
+  },
+  "layer3": {
+   "calls": 180,
+   "all_runs_on_schedule": true
+  },
+  "distiller": {
+   "firings": 0,
+   "rederived": 0,
+   "runs_with_firing": 0,
+   "literal_empty_validation": 0
+  },
+  "P7_pass": true,
+  "P8_pass": false
+ }
+}

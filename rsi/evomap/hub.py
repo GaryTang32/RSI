@@ -189,24 +189,71 @@ def similarity(gene: dict, signals: Sequence[str]) -> float:
 
 
 # ----------------------------------------------------------------------------- GDI
+DEFAULT_REPUTATION = 50.0          # Evolver's default node reputation (client reuse score, §4.16)
+
+
 @dataclass
 class GDIRanker:
-    """GDI = 100 * (0.35 I + 0.30 U + 0.20 S + 0.15 F). I = mean of six normalized
-    metadata metrics (5 self-reported: blast radius, confidence, streak, outcome
-    score, validation-report ok; 1 hub-computed: substance)."""
+    """GDI = 100 * (0.35 I + 0.30 U + 0.20 S + 0.15 F)  (weights: Behind-EvoMap snippets).
+
+    ``variant="be2026"`` (default; retry round 2, I1) - the intrinsic formula quoted from the Behind-EvoMap
+    HTML (second-hand search snippet, unverified)::
+
+        I = 1/6 [clip(C,0,1) + min(S/10,1) + max(0, 1 - F*L/1000) + min(T/5,1) + min(l_sum/200,1) + clip(R/100,0,1)]
+
+    read as C = claimed capsule confidence, S = claimed success streak, F*L = claimed blast files x lines,
+    T = trigger count (capsule ``trigger``, else gene ``signals_match``), l_sum = summary length in characters
+    (capsule summary, else gene summary), R = node reputation (hub-side, not public: ``reputation`` map, default
+    50 for every node). Five of the six are self-reported, as the study says. Freshness decays exponentially from
+    the asset's LAST ACTIVITY (publish, a fetch, a review/vote), as the EvoMap wiki describes ``gdiFreshness``.
+
+    ``variant="legacy"`` - our pre-round-2 reconstruction (six metrics: blast min(1,2/files)*min(1,50/lines),
+    confidence, streak/5, outcome score, report ok, substance len/400; freshness from the publish epoch).
+
+    Usage and social are our reconstruction in both variants (no source gives their formulas)."""
 
     w: tuple = (0.35, 0.30, 0.20, 0.15)
     fresh_half_life: float = 10.0          # epochs
     blast_files_opt: int = 2
     blast_lines_opt: int = 50
+    variant: str = "be2026"
+    reputation: Optional[dict] = None      # node -> reputation 0..100 (be2026 only); missing -> DEFAULT_REPUTATION
+
+    def __post_init__(self) -> None:
+        if self.variant not in ("be2026", "legacy"):
+            raise ValueError(f"unknown GDI variant {self.variant!r}")
 
     def blast_score(self, files: int, lines: int) -> float:
+        if self.variant == "be2026":
+            return max(0.0, 1.0 - max(0, files) * max(0, lines) / 1000.0)
         if files <= 0 or lines <= 0:
             return 0.0
         return min(1.0, self.blast_files_opt / files) * min(1.0, self.blast_lines_opt / lines)
 
+    @staticmethod
+    def trigger_count(rec: "AssetRecord") -> int:
+        cap = rec.bundle.capsule or {}
+        trig = cap.get("trigger")
+        if not trig:
+            trig = rec.bundle.gene.get("signals_match", [])
+        return len(list(trig or []))
+
+    @staticmethod
+    def summary_len(rec: "AssetRecord") -> int:
+        cap = rec.bundle.capsule or {}
+        return len(str(cap.get("summary") or rec.bundle.gene.get("summary") or ""))
+
     def intrinsic(self, rec: AssetRecord) -> tuple[float, dict]:
         cl = rec.claimed()
+        if self.variant == "be2026":
+            rep = (self.reputation or {}).get(rec.author, DEFAULT_REPUTATION)
+            m = {"confidence": min(1.0, max(0.0, cl["confidence"])),
+                 "streak": min(max(cl["success_streak"], 0) / 10.0, 1.0),
+                 "blast": self.blast_score(cl["files"], cl["lines"]),
+                 "trigger": min(self.trigger_count(rec) / 5.0, 1.0),
+                 "summary": min(self.summary_len(rec) / 200.0, 1.0),
+                 "reputation": min(1.0, max(0.0, rep / 100.0))}
+            return sum(m.values()) / len(m), m
         g = rec.bundle.gene
         cap = rec.bundle.capsule or {}
         text = " ".join(g.get("strategy", [])) + str(cap.get("content", ""))
@@ -228,17 +275,24 @@ class GDIRanker:
         rating = sum(r for _, r, _ in rec.reviews) / n / 5.0 if n else 0.0
         return 0.933 * min(1.0, n / 10.0) * rating + 0.067 * (1.0 if rec.bundle.event else 0.0)
 
-    def freshness(self, rec: AssetRecord, epoch: int) -> float:
-        return 0.5 ** (max(0, epoch - rec.epoch) / self.fresh_half_life)
+    @staticmethod
+    def last_activity(rec: AssetRecord) -> int:
+        """Epoch of the asset's last activity: publish, any fetch, any review / vote."""
+        return max([rec.epoch] + [e for _, e in rec.fetches] + [e for _, _, e in rec.reviews])
+
+    def freshness(self, rec: AssetRecord, epoch: int, half_life: Optional[float] = None) -> float:
+        hl = self.fresh_half_life if half_life is None else half_life
+        ref = self.last_activity(rec) if self.variant == "be2026" else rec.epoch
+        return 0.5 ** (max(0, epoch - ref) / hl)
 
     def score(self, rec: AssetRecord, epoch: int) -> float:
         I, _ = self.intrinsic(rec)
         return 100.0 * (self.w[0] * I + self.w[1] * self.usage(rec) + self.w[2] * self.social(rec) +
                         self.w[3] * self.freshness(rec, epoch))
 
-    def components(self, rec: AssetRecord, epoch: int) -> dict:
+    def components(self, rec: AssetRecord, epoch: int, half_life: Optional[float] = None) -> dict:
         I, m = self.intrinsic(rec)
-        return {"I": I, "U": self.usage(rec), "S": self.social(rec), "F": self.freshness(rec, epoch), **m}
+        return {"I": I, "U": self.usage(rec), "S": self.social(rec), "F": self.freshness(rec, epoch, half_life), **m}
 
 
 # ----------------------------------------------------------------------------- base hub
@@ -334,8 +388,9 @@ class NaiveEvoMapHub(_HubBase):
 
     def __init__(self, *, promote_rule: str = "self_report", ranker: Optional[GDIRanker] = None,
                  validator_executor=None, ledger: Optional[Ledger] = None, search_mode: str = "signal+semantic",
-                 semantic_limit: int = 10) -> None:
+                 semantic_limit: int = 10, signal_analyzer=None) -> None:
         super().__init__(ledger=ledger)
+        self.signal_analyzer = signal_analyzer        # /a2a/signal/analyze (server-side prompt not public)
         if search_mode not in ("signal+semantic", "signal", "legacy"):
             raise ValueError(f"unknown search_mode {search_mode!r}")
         self.search_mode = search_mode
@@ -387,6 +442,13 @@ class NaiveEvoMapHub(_HubBase):
         self._node("publish", rec.status, aid, author, validator_ok=vres.ok)
         return Decision(True, rec.status, aid, [] if ok else ["not promoted (self-report / eligibility)"],
                         vres.report.to_dict())
+
+    def analyze_signals(self, payload: dict) -> dict:
+        """``POST /a2a/signal/analyze`` (Evolver layer 3). The hub's LLM prompt is not public; without a plugged-in
+        ``signal_analyzer`` the hub returns no signals."""
+        if self.signal_analyzer is None:
+            return {"signals": []}
+        return self.signal_analyzer(payload)
 
     def _on_fetch(self, rec: AssetRecord, consumer: str) -> None:
         if consumer != rec.author:

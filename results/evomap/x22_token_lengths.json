@@ -1,0 +1,114 @@
+{
+ "experiment": "x22_token_lengths",
+ "generated_at": "2026-09-29 20:37:46",
+ "config": {
+  "counter": "rsi.core.llm.estimate_tokens",
+  "n_genes": 18,
+  "n_skills": 3,
+  "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"
+ },
+ "genes": [
+  {
+   "id": "gene_gep_repair_from_errors",
+   "tokens": 133
+  },
+  {
+   "id": "gene_gep_optimize_prompt_and_assets",
+   "tokens": 153
+  },
+  {
+   "id": "gene_gep_innovate_from_opportunity",
+   "tokens": 219
+  },
+  {
+   "id": "gene_gep_optimize_tool_usage",
+   "tokens": 248
+  },
+  {
+   "id": "gene_distilled_s2g-env-vars",
+   "tokens": 146
+  },
+  {
+   "id": "gene_tool_integrity",
+   "tokens": 103
+  },
+  {
+   "id": "gene_publish_feishu_doc",
+   "tokens": 369
+  },
+  {
+   "id": "gene_conventional_git_commit",
+   "tokens": 333
+  },
+  {
+   "id": "gene_poll_bugbot_review",
+   "tokens": 324
+  },
+  {
+   "id": "gene_gateway_timeout_recovery",
+   "tokens": 288
+  },
+  {
+   "id": "gene_github_webhook_listener",
+   "tokens": 379
+  },
+  {
+   "id": "gene_claude_prompt_budget_ledger",
+   "tokens": 337
+  },
+  {
+   "id": "gene_claude_context_schema_routing",
+   "tokens": 445
+  },
+  {
+   "id": "gene_claude_tool_schema_lazy_load",
+   "tokens": 326
+  },
+  {
+   "id": "gene_claude_skill_manual_routing",
+   "tokens": 301
+  },
+  {
+   "id": "gene_claude_transcript_handoff_compression",
+   "tokens": 339
+  },
+  {
+   "id": "gene_claude_memory_index_budget",
+   "tokens": 312
+  },
+  {
+   "id": "gene_example_retry_api_timeout",
+   "tokens": 153
+  }
+ ],
+ "skills": [
+  {
+   "repo": "evolver",
+   "path": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/src/EvoMap__evolver/SKILL.md",
+   "tokens": 2242
+  },
+  {
+   "repo": "skill2gep",
+   "path": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/retry2/evomap/skill2gep/SKILL.md",
+   "tokens": 7628
+  },
+  {
+   "repo": "pdf2gep",
+   "path": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/papers/evomap_secondary/pdf2gep_SKILL.md",
+   "tokens": 1036
+  }
+ ],
+ "verdict": {
+  "gene_median": 306.5,
+  "skill_median": 2242,
+  "ratio": 7.314845024469821,
+  "paper": {
+   "gene": 230,
+   "skill": 2500,
+   "ratio": 10.9
+  },
+  "gene_in_band": true,
+  "skill_in_band": true,
+  "pass": true
+ }
+}

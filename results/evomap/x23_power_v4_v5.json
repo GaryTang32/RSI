@@ -1,0 +1,64 @@
+{
+ "experiment": "x23_power_v4_v5",
+ "generated_at": "2026-09-29 20:37:46",
+ "config": {
+  "alpha": 0.05,
+  "power": 0.8,
+  "usd_per_trial_lower_bound": 0.00487,
+  "tokens_per_trial": 1623,
+  "haiku_prices_per_mtok": [
+   1.0,
+   5.0
+  ],
+  "cap_usd": 4.0,
+  "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"
+ },
+ "tests": {
+  "V4 complementary (44.9) < conflicting (53.2)": {
+   "p1": 0.449,
+   "p2": 0.532,
+   "n_per_arm": 566,
+   "trials": 1132,
+   "usd_lower_bound": 5.51,
+   "fits_cap": false
+  },
+  "V4 single (54.0) > conflicting (53.2)": {
+   "p1": 0.54,
+   "p2": 0.532,
+   "n_per_arm": 60998,
+   "trials": 121996,
+   "usd_lower_bound": 594.0,
+   "fits_cap": false
+  },
+  "V5 warnings only (54.4) > strategy only (52.3)": {
+   "p1": 0.544,
+   "p2": 0.523,
+   "n_per_arm": 8856,
+   "trials": 17712,
+   "usd_lower_bound": 86.24,
+   "fits_cap": false
+  },
+  "V5 warnings only (54.4) > failure first (50.5)": {
+   "p1": 0.544,
+   "p2": 0.505,
+   "n_per_arm": 2571,
+   "trials": 5142,
+   "usd_lower_bound": 25.04,
+   "fits_cap": false
+  }
+ },
+ "total": {
+  "V4_trials": 182994,
+  "V5_trials": 26568,
+  "usd_lower_bound": 1020.36
+ },
+ "paper_resolution": {
+  "trials": 4590,
+  "note": "if spread over >= 17 conditions (progressive 4, perturbation 4, failure 4, composition 4, main 3 minus overlaps), about 270 trials per condition: SE of a difference ~ 4.3 pp",
+  "se_diff_pp_at_270": 4.3
+ },
+ "verdict": {
+  "any_test_fits_cap": false,
+  "full_v4_v5_fits_cap": false
+ }
+}
