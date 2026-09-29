@@ -20,6 +20,14 @@ All numbers come from `results/dream-rsi/*.json`, produced by `experiments/dream
 | E9 | Selection can overfit past worlds | **Reproduced; the guarded selector helps partly** | argmax gap (dev − fresh V) grows with M: t=1 +0.070 → +0.175; t=3 +0.013 → +0.119; the guarded selector narrows it (t=3 at M=32: +0.088; t=6: +0.063 vs +0.094) and halves how often the pick is worse than the incumbent on fresh worlds (t=6, M=8: 17% → 8%), but its fresh-world value is within the CIs of the argmax pick |
 | E10 | Replay can only test what was tried | **Reproduced** | go-deeper policy: replay error −0.013 on a shallow record (out of support), exactly 0.000 when the record covers its depth; all in-support errors are 0.000 |
 | live | Live end-to-end runs (Claude Haiku as agent and developer) | **Pipeline works end to end** with the verbatim Listing-1/Listing-2 prompts | Live smoke (re-run after the claims-audit fixes, fresh cache): sum-difference Γ 0.9105 → 1.0194 in 12 real agent calls (12 ok); Haiku's rewritten policy passed the static check and tied the incumbent on replay (0.955 vs 0.955), so the incumbent was kept; $0.72, of which the developer is 14%; 10 min. Validation run `sumdiff_live_c`: Γ 0.9105 → 1.0468 in 18 calls, $1.46 (developer 21%), step audit 49/49 correct |
+| E11 | The paper's protocol: 10 × 11 = 110 calls per round (Flash 32 × 20), identical per-round budgets, equal rounds (5 Lasso-like, 10 math) | **Fewer calls: reproduced. Better at equal rounds: not reproduced. Better at equal cumulative calls: synthetic worlds and circle packing only** | Fixed/Dream calls: Lasso 2.10 [1.65, 2.54] (the paper's 1.735 is inside the CI), synthetic 2.50, Flash grid 3.55, math 3.9–4.3. Quality after R rounds: Lasso held-out +2.7 [−0.5, +7.6] 1/s; synthetic −0.038 [−0.051, −0.025]; sum-diff −0.0006 n.s.; circle packing tie; autocorr −0.0070 [−0.0112, −0.0032]. Pacing: rounds 2–4 use 20–30 calls of 110, and effort rises after plateaus on sum-diff (+3.35 [+1.93, +4.92]) and autocorr (+3.12). The default-beta rule moves the default in 52% of 10-round runs |
+| E12 | Replay ranks policies on real tasks | **Reproduced** | Spearman(replay, 40-search online truth), in support: sum-diff 0.78 [0.40, 0.99], autocorr 0.81 [0.41, 0.98]. The replay pick beats parallel refine online under the same objective, as a frugal plan that finds less |
+| E13 | Thousands of candidate policies | **Reproduced** | 2000 candidates × 6 worlds (10 × 11) = 12,000 episodes in 128 s in one process, 0 disqualified; sandbox 30 ms per episode |
+| E14 | Sensitivity of the Listing-2 objective | **Not robust** | Spearman ≥ 0.83 with our default over 12 variants (λ, attainment, grid), but the same winner in only 5/12 |
+| E15 | Written guidance (live LLM; mock on real tasks) | **The mechanism works live. No loss of diversity and no harm** | Live: the advice is in 12/12 guided prompts. Jaccard diversity U − G −0.0085 (p = 0.60); code distance U − G −0.150. Mock guidance on sum-diff and autocorr: no harm (autocorr +0.0075 [+0.0014, +0.0155] with guidance, for Dream) |
+| E16 | The paper's App. C Lasso solver, run under the benchmark protocol (`SimpleTESLassoDomain`) | **Correct and fast; beats sklearn 4/4; does not beat R glmnet everywhere** | 51/51 search checks and 4/4 held-out datasets correct. 1/geomean 19.8 ms vs sklearn 41.8. Faster than sklearn on DNA, Leukemia, Colon and Duke-like. Slower than R glmnet on 3/4 at glmnet's default tolerance, which fails the gate; slower on 2/4 at a tolerance that passes it. The paper's "glmnet" row matches the benchmark's C++ port, which App. C beats on 4/4 |
+| E17 | Fig. 3b on the paper's axis (exact source data) | **The paper's own Pro curve contradicts "consistently superior"** | Pro Dream is worse at rounds 3–4 at equal rounds, and at rounds 2–4 at equal calls |
+| E18 / A1 | Developer base (§3 vs L2); the developer's cost share at paper scale | – | E18: the "latest" base (§3) − "strongest" (L2) = +0.0054 [+0.0008, +0.0113]. A1: the developer's share is 9.3% (Pro) and 1.7% (Flash) per dreaming phase with 3 revisions |
 
 ## 1. Module map
 
@@ -247,7 +255,7 @@ All scripts accept `--llm sim|claude:haiku --seeds N --quick --workers W --out P
 
 ## 7. Tests
 
-`python -m pytest tests/dream-rsi/` runs 92 tests offline and deterministically in ≈45 s (`tests/dream-rsi/test_dream-rsi_fixes.py`: the 22 regressions of the claims-audit fixes, §10) (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all five discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
+`python -m pytest tests/dream-rsi/` runs 104 tests offline and deterministically in ≈35–45 s (`tests/dream-rsi/test_dream-rsi_retry2.py`: the 11 regressions of the claims-audit retry round 2, §11) (`tests/dream-rsi/test_dream-rsi_fixes.py`: the 22 regressions of the claims-audit fixes, §10) (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all five discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
 
 ## 8. Adversarial review (2026-09-25)
 
@@ -371,3 +379,46 @@ The claim-by-claim audit (`docs/methods/dream-rsi/claims-audit.md`) found seven 
 - **Offline.** Every offline experiment was re-run at full settings: demo, E1–E10, and E3 also with `--objective pareto`. E1, E2, E4, E7, E9 and E10 give the same numbers as before. E3, E5 and E6 changed only through W and the per-round budget, and all their verdicts are the same.
 - **Validation runs.** The two offline validation runs were re-recorded, and their step audits give 112/113 and 97/97 correct. The one questionable step is the frugality selection.
 - **Live.** One new live validation run, `sumdiff_live_c` (haiku, restored prompts; 49/49 steps correct; $1.46), and a re-run live smoke ($0.72). Total live spend: $2.18.
+
+## 11. Claims-audit retry round 2 (2026-09-29)
+
+A second attempt on every PARTIAL, NOT REPRODUCED and CONTRADICTED claim. Experiments were preregistered in `claims-audit.md` §6, and the results are in §7 there. The regression tests are in `tests/dream-rsi/test_dream-rsi_retry2.py`. Six of them fail on the pre-retry commit (`5c66366`) with the new domain file present, and all eleven fail without it.
+
+**Code changes.**
+1. **Developer base (claim M12).** `Config.developer_base` / `DevContext.base`:
+   - `"strongest"` is the default and follows Listing 2's L2:247.
+   - `"latest"` revises π^m into π^{m+1}, as §3 and the unpublished method draft describe.
+   - Both developers honour it (`developer.base_version`), and the framework notes of the developer prompt say which version is shown.
+2. **Ratio attainment (claim M18).** `ParetoSweepObjective(attainment_mode="ratio")` / `Config.pareto_attainment`. It uses clip(S/G, 0, 1), from the arXiv source's unpublished `method.tex` (positive scores only). The default stays `"shift"`, (S − root)/(G − root).
+3. **`SimpleTESLassoDomain` (`rsi/domains/discovery/lasso_cpp.py`; claims Q13, Q31, Q32).** The paper's Lasso setting, re-implemented from the benchmark's specification (the benchmark is AGPL and none of its code is copied):
+   - candidates are Python files with `CPP_CODE` and `COMPILE_FLAGS`; they are parsed as literals, never executed;
+   - compiled with `g++ -O3 -march=native -std=c++17` plus Eigen, and run once per problem with the binary stdin/stdout wire format;
+   - the 17 search shapes, whose generators were checked identical to the benchmark's on 2 seeds each;
+   - sklearn's `lasso_path(n_alphas=50, eps=1e-2)` gives the λ path and the 1e-6 correctness reference;
+   - score = 1/geomean(ms);
+   - a held-out split reads the six real datasets from a directory, skipping and listing the missing ones.
+
+   `experiments/dream-rsi/e16_prepare_heldout.py` builds 4 of the 6 datasets:
+   - DNA and Leukemia: the benchmark's own files.
+   - Colon: rebuilt with LIBSVM's recipe, which is verified by reproducing Leukemia from Golub et al.'s data.
+   - Duke-like: 49 samples, where LIBSVM keeps 44.
+
+   Gisette and RCV1 cannot be downloaded here. There is no offline mock agent: the domain needs a C++-writing agent.
+
+**Experiments added** (`experiments/dream-rsi/`):
+- `e11_paper_grid.py`: the paper's grids and round counts. The loop's hard caps must be at least the grid: the first Flash-grid run was clipped to 12 × 13 by the default caps, and was then fixed, tested and re-run.
+- `e12_real_offpolicy.py`, `e13_thousands.py`, `e14_pareto_sensitivity.py`.
+- `e15_guidance_live.py` (live haiku, $2.05).
+- E5 with `--domains sumdiff,autocorr`.
+- `e16_lasso_paper_solvers.py` and `e16b_glmnet_tolerance.py`: R glmnet through `Rscript`.
+- `e17_fig3b_axis.py`, `e18_developer_base.py`, `a1_developer_share.py`.
+
+The results are in the §0 table and in `claims-audit.md` §7.
+
+**Verdicts.**
+- Seven claims went up to REPRODUCED: M12, M27, L1, L2, L3, L10, and Q32 (was NOT TESTABLE HERE).
+- L5 went down to NOT REPRODUCED.
+- Q13 stays NOT REPRODUCED. The paper's own solver beats sklearn on every available dataset, but not R glmnet.
+- Q15, Q22 and C7 stay CONTRADICTED, each by the paper's own data or repository.
+- New counts: 44 reproduced, 10 partial, 2 not reproduced, 24 not testable here, 3 contradicted.
+
