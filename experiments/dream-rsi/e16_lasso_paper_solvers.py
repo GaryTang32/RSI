@@ -58,8 +58,10 @@ y <- readBin(con, "double", n)
 lam <- readBin(con, "double", K)
 close(con)
 reps <- as.integer(args[3])
+thresh <- if (length(args) >= 4) as.numeric(args[4]) else 1e-7   # glmnet's default convergence threshold
 glmnet.control(fdev = 0, devmax = 1.0)      # never stop the path early: all K lambdas are required
-fit_once <- function() glmnet(X, y, family = "gaussian", lambda = lam, standardize = FALSE, intercept = FALSE)
+fit_once <- function() glmnet(X, y, family = "gaussian", lambda = lam, standardize = FALSE, intercept = FALSE,
+                              thresh = thresh)
 fit <- fit_once()                            # warm-up
 best <- Inf
 for (i in seq_len(reps)) {
@@ -76,14 +78,15 @@ close(con)
 '''
 
 
-def glmnet_r(rscript, X, y, alphas, reps=5):
+def glmnet_r(rscript, X, y, alphas, reps=5, thresh=1e-7):
     with tempfile.TemporaryDirectory() as d:
         fin, fout, fr = Path(d) / "in.bin", Path(d) / "out.bin", Path(d) / "fit.R"
         fr.write_text(R_SCRIPT)
         Xc = np.ascontiguousarray(X, dtype=np.float64)
         fin.write_bytes(struct.pack("iii", *Xc.shape, len(alphas)) + Xc.tobytes()
                         + np.ascontiguousarray(y, np.float64).tobytes() + np.ascontiguousarray(alphas, np.float64).tobytes())
-        rr = subprocess.run([rscript, str(fr), str(fin), str(fout), str(reps)], capture_output=True, text=True,
+        rr = subprocess.run([rscript, str(fr), str(fin), str(fout), str(reps), repr(float(thresh))],
+                            capture_output=True, text=True,
                             timeout=3600, env={**os.environ, "OMP_NUM_THREADS": "1"})
         if rr.returncode != 0:
             raise RuntimeError(rr.stderr[-800:])

@@ -202,3 +202,8 @@ def test_e11_runs_the_paper_grid_at_the_paper_round_counts():
         else:
             assert (b, b * (r + 1)) == (10, 110)                        # 10 x 11 = 110 [paper:§4 p.7]
         assert st["rounds"] == (10 if d in ("sumdiff", "circlepack", "autocorr") else 5)   # §4.1 / §4.2
+        cfg = e11.config_of(d, 0, False)
+        # the loop clips every plan to the hard caps: they must not cut the paper's grid (the first E11 run
+        # ran the Flash grid 32 x 20 as 12 x 13 = 156 calls per round)
+        assert cfg.hard_max_branch >= b and cfg.hard_max_refine >= r
+        assert cfg.round_cap == b * (r + 1)

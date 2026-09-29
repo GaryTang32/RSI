@@ -28,8 +28,6 @@ import argparse
 import importlib
 import math
 import os
-import random
-import statistics as st
 import sys
 import time
 from pathlib import Path
@@ -37,7 +35,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np  # noqa: E402
-from _common import RESULTS, pmap, save  # noqa: E402
+from _common import pmap, save  # noqa: E402
 from scipy.stats import norm  # noqa: E402
 
 from rsi.core import summarize_runs  # noqa: E402

@@ -58,13 +58,22 @@ def best_path(loop, worlds):
     return out
 
 
+def config_of(name, seed, dream):
+    """The run's Config. The hard caps must not be below the fallback grid: the loop clips every plan (the
+    fallback included) to them, and the default 12 x 12 silently turned the Flash grid 32 x 20 into 12 x 13 =
+    156 calls per round in the first E11 run (kept in the result file as ``synthetic_flash_clipped_12x13``)."""
+    st = SETTINGS[name]
+    b, r = st["grid"]
+    return Config(rounds=st["rounds"], W=st["W"], branch_count=b, refine_count=r, M=st["M"], dream=dream,
+                  sandbox="inprocess", seed=seed, agent_workers=1, trace=False,
+                  hard_max_branch=max(12, b), hard_max_refine=max(12, r))
+
+
 def one(job):
     name, seed, dream = job
     st = SETTINGS[name]
     dom = domain_of("synthetic" if name == "synthetic_flash" else name, seed)
-    b, r = st["grid"]
-    cfg = Config(rounds=st["rounds"], W=st["W"], branch_count=b, refine_count=r, M=st["M"], dream=dream,
-                 sandbox="inprocess", seed=seed, agent_workers=1, trace=False)
+    cfg = config_of(name, seed, dream)
     t0 = time.time()
     loop = DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg, developer=ParametricMutator() if dream else None)
     res = loop.run()
@@ -122,7 +131,9 @@ def call_ratio(rows, dom):
     fx, dr = _by(rows, dom, "fixed"), _by(rows, dom, "dream")
     seeds = sorted(set(fx) & set(dr))
     rat = [fx[s]["cum_calls"][-1] / dr[s]["cum_calls"][-1] for s in seeds]
-    out = {"ratio_fixed_over_dream": summ(rat), "fixed_calls": summ([fx[s]["cum_calls"][-1] for s in seeds]),
+    per = SETTINGS[dom]["grid"][0] * (SETTINGS[dom]["grid"][1] + 1)
+    out = {"fixed_spends_its_grid_every_round": all(c == per for s in seeds for c in fx[s]["calls"]),
+           "ratio_fixed_over_dream": summ(rat), "fixed_calls": summ([fx[s]["cum_calls"][-1] for s in seeds]),
            "dream_calls": summ([dr[s]["cum_calls"][-1] for s in seeds]),
            "dream_over_fixed": summ([1 / x for x in rat]),
            "dream_llm_calls_incl_developer": summ([dr[s]["cum_calls"][-1] + dr[s]["developer_revisions"] for s in seeds])}
@@ -216,6 +227,7 @@ def analyse(rows):
     sh = {d: out[d]["default_beta_moved_share"] for d in out if "default_beta_moved_share" in out[d]}
     tests["T7_L10"] = {"per_domain": sh,
                        "pooled_share": float(np.mean([len(set(r["betas"])) > 1 for r in rows if r["arm"] == "dream"
+                                                      and r["domain"] in SETTINGS
                                                       and SETTINGS[r["domain"]]["rounds"] >= 10])) if sh else None}
     if sh:
         tests["T7_L10"]["holds"] = tests["T7_L10"]["pooled_share"] >= 0.5

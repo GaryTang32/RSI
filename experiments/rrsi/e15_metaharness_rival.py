@@ -27,14 +27,12 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import numpy as np  # noqa: E402
 from _common import RESULTS, paired, pmap, save, summarize  # noqa: E402
 
-from rsi.core import Artifact, paired_diff_ci  # noqa: E402
+from rsi.core import Artifact  # noqa: E402
 from rsi.domains.harnessworld import HarnessWorldMockLLM, ProposerProfile, make_domain  # noqa: E402
 from rsi.metaharness import Config as MHConfig  # noqa: E402
 from rsi.metaharness import run as mh_run  # noqa: E402
