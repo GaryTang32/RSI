@@ -358,6 +358,16 @@ The outcome matches r4: a haiku-written EPR-like condenser survives end to end w
 
 **The live EPR smoke** (`results/metaharness-solpi/live_smoke.json` `parts.epr`) was re-parsed at $0 with the fixed `LLMReducer`: 4/4 cache hits, 0 misses, and an identical outcome (4/4 receipts accepted, 0 non-verbatim quotes, 91,825 → 6,028 B). Its prompts are unchanged because the bench builds `source_lines` as `count("\n") + 1`.
 
+## 6d. SoL-Pi retry round 2 (2026-09-29)
+
+`solpi_agentworld_offline` was re-run from scratch ($0, 11.5 s) after R2-F1. That fix makes `AgentRuntime.compact` bill Pi 0.85.1's summarisation call as a standalone, uncached request; see `docs/methods/metaharness-solpi/claims-audit-solpi.md` §7.
+- **Audit:** 10/10 check types pass (gate arithmetic 18/18, firewall 5/5, composition = union 1/1, …).
+- **Ledger:** 30 of 32 rows are identical. The 2 rows that differ are the OCC (C6) lineage's variants: cost 0.23130 → 0.23186 on the screen, because its compaction summaries are now billed as Pi bills them.
+- **Unchanged:** oracle selection, frozen ideas (D1, T11, C6, P8, C23), survivors (D1, P8, C23), composition, and the screen savings (tokens −49.0%, cost −8.9%).
+- **Consequence:** the earlier statement that "the offline ledger matches line for line" now holds for the re-run directory, not for the stage-C copy.
+
+The live runs r1–r5 are not re-run. Their recorded costs use the old compaction billing, and so do their gate decisions; OCC was never a live survivor.
+
 ## 7. Spend
 
 | item | USD |

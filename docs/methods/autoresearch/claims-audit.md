@@ -218,3 +218,21 @@ Scripts are `experiments/autoresearch/r2_*.py`; results go to `results/autoresea
 Live spend is capped at $4 in total (probes included). Order of the live runs, by priority: X2 arm (b), X5 phase A, X5 phase B, X6. Each night gets a `max_usd` cap; if the cumulative spend would pass $3.90, the remaining live runs are cut and the cut is reported.
 
 **X4b (added 29 Sep 2026 after a one-seed, 8-experiment smoke test of the X4 script, before any X4 night was run).** The smoke test (seed 1, selecting on window 1) showed that the two val windows respond differently to the same real improvement: after three LR keeps worth 0.62 bpb on the selection window, O = +0.036 while nothing had been tuned yet. With counterbalancing this systematic term flips sign between even and odd seeds, so it cancels in the mean but inflates the across-seed sd of the preregistered one-sample test. The X4 tests stay as preregistered and are reported. Added as a second, crossover analysis of the same nights: opt = (mean over even seeds of O + mean over odd seeds of O) / 2, SE = 0.5 x sqrt(var_even/4 + var_odd/4), Welch degrees of freedom; H1b: opt(300) > 0 and H2b: opt(300) - opt(50) > 0, each one-sided p < 0.05. The O26 verdict follows the preregistered X4 rule; X4b is reported beside it and can only be cited as supporting evidence, not to upgrade the verdict on its own.
+
+**Resumption note (29 Sep 2026, after a container restart).** The first attempt at this round was killed by a container restart while X2 (both arms, baseline only) and the X5 phase A night (1 of 10 experiments) were running; no other preregistered experiment had started. Their partial directories are kept in `scratchpad/retry2/autoresearch/logs/attempt1/` and are not used as data. Both were restarted from scratch with the same settings; the phase A night could not replay its first reply from the cache (the prompt carries the baseline val_bpb, which differs between runs). The live calls of the killed attempt ($0.33 logged, plus at most two calls in flight) count towards the $4 cap. Two set-up steps for X8 were refused by this environment's permission policy (installing SLURM with `apt-get`, and running a `runc` container), so X8 cannot run; see O19 below.
+
+**X5b (added 29 Sep 2026 after phase A, before any phase B night was run).** Phase A (`scratchpad/retry2/autoresearch/runs/r2_live/design_v1_s100/results.tsv`, 10 experiments, baseline 3.543) kept BATCH_SIZE 32 -> 16 -> 8 and LR 0.003 -> 0.005 (best 3.044) and discarded CONTEXT 6 -> 12, HIDDEN 128 -> 192, BATCH_SIZE 8 -> 4, TRAIN_SEQ_LEN 16 -> 32, LR 0.006, DEPTH 2 at HIDDEN 64, WARMDOWN_RATIO 0. From that file only, v2 = v1 (the rendered upstream template, sha256 `bbf29914e2c281e2...`) plus this 10-line section, file `experiments/autoresearch/r2_program_v2.md` (sha256 `a6a3a51dc1fa0e76...`):
+
+```
+## Notes from the human (after reading last night's results.tsv)
+
+- The budget is tiny, so the model is starved of optimizer steps. Last night every win made steps cheaper or bigger.
+- Wins: BATCH_SIZE 32 -> 16 -> 8 (4 was flat), then LR 0.003 -> 0.005 (0.006 was worse). Start from there.
+- Losses: larger CONTEXT (6 -> 12), HIDDEN 128 -> 192, TRAIN_SEQ_LEN 16 -> 32, DEPTH 2 narrower, WARMDOWN_RATIO 0.
+  Do not spend experiments on making the model or the rows bigger; it costs steps and loses.
+- Untried and worth a look: ACTIVATION relu, INIT_SCALE, ADAM_BETAS, WARMUP_RATIO, FINAL_LR_FRAC, WEIGHT_DECAY,
+  a smaller EMBED_DIM or CONTEXT, and LR fine steps (0.004-0.01) once the batch is small.
+- One idea per experiment; if two changes both look good separately, try them together next.
+```
+
+Behaviour measure (fixed now, before phase B): a proposal is **discouraged** if, relative to its parent `train.py`, it raises any of CONTEXT, HIDDEN, EMBED_DIM, DEPTH, TRAIN_SEQ_LEN or BATCH_SIZE, or sets WARMDOWN_RATIO to 0 (the moves the notes advise against). Count discouraged vs other proposals over all proposals of the three phase B nights per arm (turns without a candidate excluded). Test: one-sided Fisher exact test that v2 has a lower share of discouraged proposals than v1, p < 0.05. Phase B nights run in the order v1 s1, v2 s1, v1 s2, v2 s2, v1 s3, v2 s3; if the spend cap stops the series, the completed pairs are reported and the X5 tests are run on them only if each arm has >= 2 nights.

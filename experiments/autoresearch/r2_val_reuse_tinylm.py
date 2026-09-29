@@ -89,7 +89,19 @@ class ValReuseTask(TinyLMTask):
 
 
 def night(args) -> dict:
+    """One night; the result is also saved per seed so a split or interrupted series can be resumed/merged."""
     seed, n_exp = args
+    done = SCRATCH / "r2_val_reuse" / f"night_{seed}_{n_exp}.json"
+    if not done.exists():
+        out = _night(seed, n_exp)
+        done.parent.mkdir(parents=True, exist_ok=True)
+        done.write_text(json.dumps(out, default=str))
+    out = json.loads(done.read_text())
+    out["checkpoints"] = {int(k): v for k, v in out["checkpoints"].items()}
+    return out
+
+
+def _night(seed: int, n_exp: int) -> dict:
     sel = seed % 2
     task = ValReuseTask(sel_epoch=sel)
     agent = MockResearchAgent(task.mock_edit_pool(), seed=seed)
@@ -156,7 +168,20 @@ def main():
     ap.add_argument("--experiments", type=int, default=300)
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--only", type=str, default="", help="comma-separated seeds to run now (no analysis written)")
     a = ap.parse_args()
+    if a.only:
+        import os
+
+        claims = SCRATCH / "r2_val_reuse"
+        claims.mkdir(parents=True, exist_ok=True)
+        for s in [int(x) for x in a.only.split(",")]:
+            try:                                  # two slots can share one seed list without running a seed twice
+                os.close(os.open(claims / f"claim_{s}_{a.experiments}", os.O_CREAT | os.O_EXCL))
+            except FileExistsError:
+                continue
+            night((s, a.experiments))
+        return
     n_exp = 20 if a.quick else a.experiments
     seeds = list(range(2 if a.quick else a.seeds))
     global CHECKPOINTS

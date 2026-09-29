@@ -167,7 +167,8 @@ def classify(d: Path) -> dict:
             reused = [k for k, v in changed.items() if any(pv.get(k) == v for pv in prior_vals)]
             desc = (row["description"] or "").lower()
             combo = (len(changed) >= 2 and len(reused) >= 2) or any(w in desc for w in ("combin", "near-miss", "near miss"))
-            row.update({"changed_constants": changed, "structural": s_changed, "combination": combo,
+            row.update({"changed_constants": changed, "parent_constants": {k: c0.get(k) for k in changed},
+                        "structural": s_changed, "combination": combo,
                         "reused_nonkept_settings": reused, "repeat": cand in tried_versions,
                         "kind": "S" if s_changed else "K"})
             if status in ("discard", "crash", "rejected"):
@@ -223,6 +224,29 @@ def main():
         analyze()
 
 
+GROWTH_KNOBS = ("CONTEXT", "HIDDEN", "EMBED_DIM", "DEPTH", "TRAIN_SEQ_LEN", "BATCH_SIZE")
+
+
+def _num(v):
+    try:
+        return float(ast.literal_eval(str(v)))
+    except (ValueError, SyntaxError, TypeError):
+        return None
+
+
+def discouraged(row: dict) -> bool | None:
+    """X5b behaviour measure: the proposal raises a growth knob or sets WARMDOWN_RATIO to 0 (None: no candidate)."""
+    ch, par = row.get("changed_constants"), row.get("parent_constants") or {}
+    if ch is None:
+        return None
+    for k in GROWTH_KNOBS:
+        if k in ch:
+            a, b = _num(par.get(k)), _num(ch.get(k))
+            if a is not None and b is not None and b > a:
+                return True
+    return "WARMDOWN_RATIO" in ch and _num(ch["WARMDOWN_RATIO"]) == 0.0
+
+
 def honest(d: Path) -> dict | None:
     s = json.loads((d / "summary.json").read_text())
     rv = s.get("reeval") or (s.get("meta") or {}).get("reeval")
@@ -253,6 +277,17 @@ def analyze() -> None:
                              "mean_v2": float(np.mean(ev["v2"])), "diff": float(np.mean(ev["v2"]) - np.mean(ev["v1"])),
                              "welch_t": float(t.statistic), "p_one_sided": float(t.pvalue),
                              "pass": bool(np.mean(ev["v2"]) > np.mean(ev["v1"]) and t.pvalue < 0.05)}
+    cnt = {}
+    for arm in ("v1", "v2"):
+        rows = [r for k, v in out["nights"].items() if k.startswith(f"eval_{arm}_")
+                for r in v["classification"]["proposals"] if discouraged(r) is not None]
+        cnt[arm] = {"discouraged": sum(discouraged(r) for r in rows), "n": len(rows),
+                    "which": [(r["round"], r["description"]) for r in rows if discouraged(r)]}
+    if cnt["v1"]["n"] and cnt["v2"]["n"]:
+        tab = [[cnt["v2"]["discouraged"], cnt["v2"]["n"] - cnt["v2"]["discouraged"]],
+               [cnt["v1"]["discouraged"], cnt["v1"]["n"] - cnt["v1"]["discouraged"]]]
+        p = float(stats.fisher_exact(tab, alternative="less").pvalue)
+        out["x5b_behaviour"] = {**cnt, "fisher_p_one_sided_v2_lower": p, "pass": bool(p < 0.05)}
     write("r2_live_nights", out)
     print(json.dumps({k: v for k, v in out.items() if k != "nights"}, indent=1, default=str))
     for k, v in out["nights"].items():

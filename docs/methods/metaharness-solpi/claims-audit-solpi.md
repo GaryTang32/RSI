@@ -26,28 +26,37 @@ The audit itself changed no code. A later fix pass (stage C, same day) resolved 
 
 ## 1. Summary
 
-After the stage-C fixes (§6):
+After retry round 2 (§7, 2026-09-29), with the stage-C figures for comparison:
 
-| verdict | count | before the fixes |
-|---|---|---|
-| REPRODUCED | 31 | 27 |
-| PARTIAL | 12 | 15 |
-| NOT REPRODUCED | 2 | 3 |
-| NOT TESTABLE HERE | 16 | 16 |
-| CONTRADICTED | 0 | 0 |
-| **total claims** | **61** | 61 |
+| verdict | count after retry round 2 | after the stage-C fixes | before the fixes |
+|---|---|---|---|
+| REPRODUCED | 32 | 31 | 27 |
+| PARTIAL | 11 | 12 | 15 |
+| NOT REPRODUCED | 1 | 2 | 3 |
+| NOT TESTABLE HERE | 17 | 16 | 16 |
+| CONTRADICTED | 0 | 0 | 0 |
+| **total claims** | **61** | 61 | 61 |
 
-By type (after the fixes):
+By type (after retry round 2):
 
 | type | claims | R | P | NR | NT |
 |---|---|---|---|---|---|
 | mechanism | 14 | 14 | 0 | 0 | 0 |
-| research protocol (mechanism) | 9 | 6 | 2 | 0 | 1 |
-| quantitative | 17 | 1 | 5 | 2 | 9 |
+| research protocol (mechanism) | 9 | 7 | 1 | 0 | 1 |
+| quantitative | 17 | 1 | 5 | 1 | 10 |
 | qualitative | 9 | 2 | 5 | 0 | 2 |
 | caveat | 12 | 8 | 0 | 0 | 4 |
 
-Verdict changes: M10, M13, R1, R4 PARTIAL → REPRODUCED; L4 NOT REPRODUCED → PARTIAL. Every other row keeps its verdict; the evidence of the re-run experiments (S1–S7, the offline validation run) is updated in place.
+**Retry round 2 verdict changes** (§7):
+- **R7:** PARTIAL → REPRODUCED. It had been judged on cost, which is Q2's claim. Its own preregistered test passes on 20 fresh seeds.
+- **Q3:** NOT REPRODUCED → NOT TESTABLE HERE. The MockAgent cannot lose quality by this channel, and a power analysis shows a live test needs ~100–400 frontier-agent task pairs.
+- **Everything else examined keeps its verdict,** with new evidence:
+  - Q13 stays NOT REPRODUCED: two preregistered 20-seed long-session runs, V2 bill saving ≈ 0%.
+  - L4 stays PARTIAL: its preregistered test FAILED on fresh seeds; see 7.3.
+  - L2 stays PARTIAL: its preregistered test FAILED narrowly.
+- **One implementation fix (R2-F1):** Pi's compaction summary is a standalone uncached request. The fix moves cost numbers by up to ~4 points (S7 A default cost −15.8% → −19.6%). S4's verdict and M14 are unchanged.
+
+Stage-C verdict changes (2026-09-25): M10, M13, R1, R4 PARTIAL → REPRODUCED; L4 NOT REPRODUCED → PARTIAL. Every other row keeps its verdict; the evidence of the re-run experiments (S1–S7, the offline validation run) is updated in place.
 
 - **The four runtime mechanisms are faithful ports.**
   - Every formula in OCC's economics matches the release (`decideCompaction`, `estimateRemainingRequests`), and the reference economics and state vectors pass exactly.
@@ -59,11 +68,16 @@ Verdict changes: M10, M13, R1, R4 PARTIAL → REPRODUCED; L4 NOT REPRODUCED → 
   - Lineages keep the nondominated best-η variant by default.
   - Diversity-driven survival is PARTIAL.
   - The capability floor now rejects both do-less shortcuts (S6), but a composed stack still loses 3.8 points to an environment-specific trick that passes the per-mechanism floor (L4 PARTIAL).
+  - Retry round 2 (20 fresh seeds) found the floor is only as strong as its screen sample. It admitted the 24-turn cap in 2/20 seeds. Tail-trim@120, admitted in 13/20, loses 4–11 points on unseen tasks in 7 of them. The preregistered L4 test FAILED (7.3).
 - **Headline numbers do not transfer as claimed.**
   - Tokens: the simulation shows a larger cut than the paper (−54…−69%).
   - Cost: "about a third" appears only in some cells (−16…−61%). The stack actually composed by the protocol saves just 8.9%.
-  - Quality: the paper's ~6% quality loss never appears, because the mock agent's quality does not degrade.
-  - The ObservationPack bill gate is unreachable in this world for a domain reason: the replayed outputs are at most 5–6% of the simulated bill (Q13).
+  - Quality: the paper's ~6% quality loss never appears, because the mock agent's quality does not degrade. Q3 is NOT TESTABLE HERE since retry round 2 (power analysis, 7.3).
+  - The ObservationPack bill gate is unreachable in this world for a domain reason: the replayed outputs are at most 5–6% of the simulated bill (Q13). Two things explain this:
+    - 89–100% of the large outputs in the long-running families (repofix, configfix) are failing commands (64–82% in buildfix), which the release never packs (Pi's bash tool throws on a non-zero exit, so they are `isError`);
+    - long sessions do not help: V2 saves ≈ 0% (retry round 2, 7.3).
+
+    The paper's own EdgeBench add-one row for ObservationPack is also below the gate: −5.1% cost ($1,339 → $1,271, vollero Table 4).
 
 ## 2. Claim table
 
@@ -89,7 +103,7 @@ Legend:
 | M11 | OCC economics. Symbols: `A = max(0, W−F−K)` with K = 20,000; `S = A − m` with m = 1,000; `b = W·max(0, ρ−1)/S`; `b_c = (D + W·ρ')/S`. Horizon: `μ`, `L` (the k·s and small-sample rules), `R_unb = 1 + ⌊L·B_rem·scale⌋`, `R_win = max(0, ⌊(W_win − C)/Δ̄⌋)`, `R = min(R_unb, R_win)`. First compaction: `R_eff = min(2R, R_win)`. Later compactions: `b ≤ R ∧ 1.5b ≤ R ∧ b_c ≤ R`. Window protection: `C ≥ W_win − 16,384`. Compact iff `S > 0 ∧ (window ∨ economic)`. The reason precedence is part of the claim. | code economics.ts, [sec] pengqian Q5 | mechanism | Exact port, line for line: `occ.py:69-89` ≙ `estimateRemainingRequests`; `:92-154` ≙ `decideCompaction`, including every intermediate and the reason ladder. Constants: `:44-66`. | All 6 ref `online-context-compact-economics.test.ts` vectors pass exactly (`test_occ_economics_test_vectors`; `s4_occ.json` `economics_vectors`). | R |
 | M12 | OCC state and cache-debt accounting:<br>• each request: `D ← max(0, D−r)`, and `r ← 0` once D = 0;<br>• a boundary appends the interval;<br>• a compaction: epoch+1, reset, count+1, `D = W·ρ'`, `r = A−m`, set to 0 if `fromExtension`;<br>• a correction resets. | code state.ts, extension.ts | mechanism | Exact: `occ.py:175-201` ≙ `state.ts`. `_session_compact` `:493-497` ≙ the ref handler. I verified in Pi 0.85.1 (`dist/core/agent-session.js:1495-1512`) that `fromExtension` is true only when a `session_before_compact` hook supplies the summary. Our default `from_extension=False` for OCC's own compaction is therefore correct. | All 6 ref `online-context-compact-state.test.ts` vectors pass (vectors.py `state.*`), except restore-from-session, which is not modelled. | R |
 | M13 | OCC runtime loop:<br>• `update_plan` marks boundaries;<br>• at a clean `turn_end` it prices the compaction, checks native feasibility, then aborts;<br>• at `agent_settled` it compacts with `BOUNDARY_COMPACTION_INSTRUCTIONS`;<br>• it then sends the hidden `POST_COMPACTION_PLAN_REMINDER`. | code extension.ts, tools.ts, plan.ts | mechanism | Control flow is faithful; the instruction and reminder strings are verbatim. Fixed (§6): the `{"steps":[…]}` snapshot, the release's three advice lines and strict parsing / argument validation (`occ.py:216-345`); `W` follows Pi's `getContextUsage` (`occ.py:401-411`, `runtime.py:269-290`); `turn_end` returns early on an error / aborted reply or an aborted signal (`occ.py:454`). Session restore and tree events are not modelled (no session files in the runtime; documented). | `test_occ_compacts_at_boundary_and_reminds`; `test_plan_*` (the release's plan vitest vectors), `test_occ_write_tokens_follow_pi_get_context_usage`, `test_occ_turn_end_skips_aborted_or_error_replies`. vectors_after.py: plan vectors 11/11. S4 re-run: verdict unchanged. | R |
-| M14 | OCC compacts only when the savings repay the cache rewrite. It is better than compacting at every boundary or never compacting, and near-best overall. | code, blog, [sec] | mechanism | as M11–M13 | S4 (re-run after the §6 fixes), 4 arms × 4 lengths × 2 backends:<br>• OCC's η is within 5% of the best arm in 8/8 cells and best in 5;<br>• 0 compactions with S ≤ 0;<br>• compacting at every boundary costs +30% vs late compaction (was +28%);<br>• never compacting overflows up to 40% of runs (`s4_occ.json`). | R |
+| M14 | OCC compacts only when the savings repay the cache rewrite. It is better than compacting at every boundary or never compacting, and near-best overall. | code, blog, [sec] | mechanism | as M11–M13 | S4 (re-run after the §6 fixes), 4 arms × 4 lengths × 2 backends:<br>• OCC's η is within 5% of the best arm in 8/8 cells and best in 5;<br>• 0 compactions with S ≤ 0;<br>• compacting at every boundary costs +30% vs late compaction (was +28%);<br>• never compacting overflows up to 40% of runs (`s4_occ.json`).<br>**Retry round 2** (after R2-F1, which bills compaction summaries as standalone uncached requests like Pi): S4 re-run, verdict unchanged. OCC is within 5% of the best arm in 8/8 cells, and compacting at every boundary now costs +34% vs late compaction (was +30%). | R |
 
 ### 2.2 Research protocol
 
@@ -101,17 +115,17 @@ Legend:
 | R4 | "Among candidates that pass the capability floor, the loop retains nondominated results." | blog, [sec] | mechanism | Fixed (§6): `Config.sweep=True` is the default. A lineage keeps iterating after a pass and freezes the nondominated passing variant with the best η = cost / score (`research.py:334-342`; `gate.py` `nondominated`); `sweep=False` restores first-pass freezing. Survivors of different lineages are different mechanisms and are composed, not filtered for dominance (our reading, documented). | Offline re-run: the C23 lineage evaluated all 4 ObservationPack variants (all pass; all raise cost 5.4–9.5%) and froze the best-η one. `test_lineage_sweeps_and_freezes_the_nondominated_best_eta_variant` | R |
 | R5 | Held-out firewall: a frozen candidate is evaluated once, no agent in the loop sees the result, and a failure rejects without becoming feedback. | blog, [sec] | mechanism | `gate.py:222-262`: a write-only sink, a bool return, and an exception on a second evaluation. | `test_firewall_is_one_way_and_lineages_cannot_read_holdout`; sink == trace (AUDIT §2.4) | R |
 | R6 | EdgeBench split: 11 of 51 tasks for one-way acceptance, 40 for final evaluation only. | [sec] pengqian Q5, vollero | mechanism | Analog: `holdout` (acceptance, used only by the firewall) and `ood` (final, never touched by the protocol), `domain.py:79-83`. S5 reports the final split only, which is stricter than the paper's 51-task aggregate. | S5 held-out numbers are on `ood` (`s5_survive.py:72-74`) | R |
-| R7 | Composition: the survivors are merged as independent opt-in extensions, each gated one at a time, and small losses may accumulate. | blog, [sec] | mechanism | `research.py:403-428` `compose`: a JSON-config union. Faithful, with no re-gating (`validate_composition` is an inferred option, off by default). | Offline protocol stack (re-run after §6, same survivors D1, P8, C23): +8.9% cost saving, against +33.5% for EPR alone. AF + EPR is the best subset (AUDIT §2.4 subset table). The loss comes from the ∃-efficiency rule admitting cost-raising ObservationPack variants (every variant saves tokens but raises cost) and the EPR × OP interaction under the MockAgent. | P |
-| R8 | Search environments: 535 of them, 495 repository issue→PR tasks kept only if the regression test fails before the fix and passes after, plus 40 verifier-first tasks with graded scores. None is derived from EdgeBench. | blog, ye-blog, [sec] | mechanism | `agentworld/base.py` `validity_filter` (fails before, passes after the reference fix). Only 5 simulated families (repofix, buildfix and logtriage for training; configfix and datalookup held out). Every family is scored as a fraction of subtasks (graded), and logtriage is verifier-first, but there are no synthesised verifier-first environments at scale. Not a code defect: a scale limit (documented). | `test_every_environment_passes_the_validity_filter` | P |
+| R7 | Composition: the survivors are merged as independent opt-in extensions, each gated one at a time, and small losses may accumulate. | blog, [sec] | mechanism | `research.py:403-428` `compose`: a JSON-config union. Faithful, with no re-gating (`validate_composition` is an inferred option, off by default). | Offline protocol stack (re-run after §6, same survivors D1, P8, C23): +8.9% cost saving, against +33.5% for EPR alone. AF + EPR is the best subset (AUDIT §2.4 subset table). The loss comes from the ∃-efficiency rule admitting cost-raising ObservationPack variants (every variant saves tokens but raises cost) and the EPR × OP interaction under the MockAgent.<br>**Retry round 2** (P-R7, 20 fresh seeds, `s6b_floor_fresh_seeds.json`): PASS. The composed harness is the union of the survivors' extensions in 20/20 seeds. Losses accumulate: the composed `evolve` success falls > 0.5 points below the worst standalone survivor in 19/20 seeds, and composed retention is 0.949 [0.930, 0.967] (the paper: ~94%). The old PARTIAL judged cost, which is Q2's claim. | R (mechanism, toy scale) |
+| R8 | Search environments: 535 of them, 495 repository issue→PR tasks kept only if the regression test fails before the fix and passes after, plus 40 verifier-first tasks with graded scores. None is derived from EdgeBench. | blog, ye-blog, [sec] | mechanism | `agentworld/base.py` `validity_filter` (fails before, passes after the reference fix). Only 5 simulated families (repofix, buildfix and logtriage for training; configfix and datalookup held out). Every family is scored as a fraction of subtasks (graded), and logtriage is verifier-first, but there are no synthesised verifier-first environments at scale. Not a code defect: a scale limit (documented). | `test_every_environment_passes_the_validity_filter`<br>**Retry round 2:** root cause (c). The validity filter is faithful and every family is graded. The claim is about scale (535 environments, 495 repository issue→PR tasks); a CPU analogue with 5 simulated families cannot show it. Needed: hundreds of real validity-filtered repositories plus verifier-first environments. No experiment; unchanged. | P |
 | R9 | Search on GPT-5.6 Sol at xhigh; the frozen stack is applied to Opus 5 "without any further search". | blog, ye-blog, [sec] | mechanism | Analog: MockAgent A for search, B for transfer (`policy.py`). There is no real frontier backend. | – | NT (no frontier-model backend; cost) |
 
 ### 2.3 Quantitative results
 
 | # | claim | source | type | fidelity + code ref | our evidence | verdict |
 |---|---|---|---|---|---|---|
-| Q1 | EdgeBench vs Pi: token traffic −49.0% (Sol, 2.1538 → 1.0990 B) and −44.7% (Opus, 2.3697 → 1.3101 B). | ye-blog, [sec] pengqian, vollero, doc | quantitative | `meter.py` (total tokens = cache_read + cache_write + output) | S7 (re-run after §6) full stack: −54.0% (A default), −58.4% (A long), −61.8% (B default), −68.5% (B long). The protocol-composed stack: −49% on screen, −69% held-out, −66% ood (offline re-run). The direction holds and the size is larger. It is a different world, not EdgeBench. | P |
-| Q2 | About one third lower API cost: −33.2% (Sol, $1,339 → $894) and −33.5% (Opus, $1,741 → $1,158). | same | quantitative | invented prices with ρ = 12.5 (`meter.py:34-39`) | S7 (re-run) full stack: −15.8% (A default), −30.8% (A long), −44.4% (B default), −61.1% (B long). The protocol stack saves only −8.9%. On backend A, EPR alone (−32.8%) is cheaper than the full stack. | P |
-| Q3 | At 93.7% (Sol: 44.833 → 42.003) and 94.3% (Opus: 44.756 → 42.224) of Pi's score. | ye-blog, [sec] | quantitative | – | Full-stack success ratio is 1.000 / 1.000 / 0.998 / 1.006. The quality loss is **not** observed: the MockAgent's skills read exactly the evidence the mechanisms preserve. | NR (the simulated agent cannot lose quality the way a frontier model does) |
+| Q1 | EdgeBench vs Pi: token traffic −49.0% (Sol, 2.1538 → 1.0990 B) and −44.7% (Opus, 2.3697 → 1.3101 B). | ye-blog, [sec] pengqian, vollero, doc | quantitative | `meter.py` (total tokens = cache_read + cache_write + output) | S7 (re-run after §6) full stack: −54.0% (A default), −58.4% (A long), −61.8% (B default), −68.5% (B long). The protocol-composed stack: −49% on screen, −69% held-out, −66% ood (offline re-run). The direction holds and the size is larger. It is a different world, not EdgeBench.<br>**Retry round 2** (S7 re-run after R2-F1): tokens −54.8% / −58.4% (A default / long) and −61.8% / −68.4% (B). In the long cells (the EdgeBench analogue) the CIs [56.8, 59.8] (A) and [68.1, 68.9] (B) exclude 49.0% and 44.7% (P-RERUN). The direction holds in 4/4 cells. Root cause (c). | P |
+| Q2 | About one third lower API cost: −33.2% (Sol, $1,339 → $894) and −33.5% (Opus, $1,741 → $1,158). | same | quantitative | invented prices with ρ = 12.5 (`meter.py:34-39`) | S7 (re-run) full stack: −15.8% (A default), −30.8% (A long), −44.4% (B default), −61.1% (B long). The protocol stack saves only −8.9%. On backend A, EPR alone (−32.8%) is cheaper than the full stack.<br>**Retry round 2** (S7 re-run after R2-F1): full-stack cost −19.6% / −32.7% (A default / long) and −44.4% / −61.0% (B).<br>• A long: 32.7% [29.5, 35.2] contains the paper's 33.2%.<br>• B long: 61.0% [60.4, 61.5] does not contain 33.5% (P-RERUN).<br>Root cause (c). The protocol-composed stack is unchanged at −8.9% (offline validation re-run). | P |
+| Q3 | At 93.7% (Sol: 44.833 → 42.003) and 94.3% (Opus: 44.756 → 42.224) of Pi's score. | ye-blog, [sec] | quantitative | – | Full-stack success ratio is 1.000 / 1.000 / 0.998 / 1.006. The quality loss is **not** observed: the MockAgent's skills read exactly the evidence the mechanisms preserve.<br>**Retry round 2:** root cause (c).<br>• The MockAgent has no channel for this loss.<br>• The stack's success ratio is 1.000 / 1.000 / 0.998 / 1.006 in S7's re-run.<br>• A live test is out of reach: with an assumed per-task paired SD of 10–20 points, detecting 44.83 → 42.00 at 80% power needs 98–392 task pairs. $4 of haiku buys about 14 short AgentWorld pairs, with a different model and different tasks (7.3). | NT (needs a frontier agent on EdgeBench-scale tasks; a paired test of −2.83 points needs ~100–400 task pairs, see 7.3) |
 | Q4 | EdgeBench table: Codex 34.74 / $1,787 / 3.05 B; Claude Code 43.69 / $2,535 / 2.00 B. Hourly savings $8.75–13.50 vs native harnesses and $4.36–5.71 vs Pi. | blog figs, [sec] | quantitative | – | – | NT (needs EdgeBench and the frontier backends) |
 | Q5 | Vs native harnesses: 35–64% fewer tokens and 50–54% lower cost (2.00× / 2.19× cost, 2.78× / 1.53× tokens). | blog | quantitative | – | – | NT (no native-harness baseline exists here) |
 | Q6 | Table 1 also includes an unranked GPT-5.5 reference row and OpenSquilla, Oh-My-Pi, OpenCode and Oh-My-Opencode (numbers unavailable). | [sec] pengqian Q6 | quantitative | – | – | NT |
@@ -119,10 +133,10 @@ Legend:
 | Q8 | Terminal-Bench 4 (63 CPU tasks): SoL-Pi solves 15, Pi 18, Codex 18. Cost $211.12 vs $286.45 (−26.3%); $14.07 vs $15.91 per solved task. | blog figs, ye-blog, [sec] | quantitative | – | – | NT |
 | Q9 | IMO 2026 (6 problems, Lean-verified): 3/6, 3/6 and 5/6. Cost $62.69 / $75.95 / $114.47. | [sec] | quantitative | – | – | NT |
 | Q10 | Kernel swarm (one 2 h run each): 1,127 cycles at $60.11 (SoL-Pi) vs 1,366 at $82.12 (Pi) vs 1,333 at $39.20 (single agent). 17.5% fewer cycles and 26.8% lower cost than the Pi swarm. | blog, ye-blog, [sec] | quantitative | – | – | NT |
-| Q11 | Action Fusion oracle: 12.3% of cross-turn transitions are edit→command (bash 85.1%). Counterfactual −10.8% turns, −11.5% tokens. 87.7% uptake. 27-iteration lineage. | blog fig, ye-blog, [sec] | quantitative | `oracle_stats` in `domain.py`; `research.py:69-81` | S1: the oracle share is 32%, predicted −29.9% requests against −23.1% measured. The oracle-predicts-saving relation holds; the magnitudes are those of the simulated world. | P |
-| Q12 | Activation depends on the model: AF fires 70.58 vs 13.54 times per triggered task (Sol vs Opus); OCC triggers on 92.2% vs 33.3% of tasks. | ye-blog, [sec] | quantitative | trigger counters in `domain.py` | S7 (re-run): AF 3.29 (A) vs 1.91 (B) per triggered task. OCC triggers on 5% / 38% of tasks (A default / long) vs 0% / 22% (B). The direction is reproduced; the magnitudes are much smaller. | P |
-| Q13 | ObservationPack sweep: V0–V7 with gates of 10% bill saving and −2% quality. V2 (2 sends) is "the only configuration inside the quality gate" (9.1% / −0.8%). The paired EdgeBench A/B gives bill −23.58% and score +22.92%. | blog fig | quantitative | `ObservationPack(excerpt_bytes, head_frac, full_sends)` | S2 (re-run, now with the blog's exact V2 point, 2,048 B head + 1,536 B tail / 2 sends): 9/9 configurations inside the quality gate, 0 reach the 10% bill-saving gate (bill −1.9…+3.3%, tokens −8…−15%). **A domain property, not a parameter one** (S2 `bill_decomposition`): replayed large outputs are only 5.9% (A) / 4.8% (B) of the base bill as cache reads, which is the ceiling for any packing. Packing cuts cache reads 15% / 11% but re-writes the prefix after each swap (cache writes +12% / +8%, priced 12.5×). Priced at ρ = 1 the same packing saves 5.8% / 6.1%, at the ceiling. Recall traffic is negligible (0.2 / 0.02 recalls per task). Longer sessions do not help: a scratch run at 16–20 subtasks gives bill −4…−5% for every setting (`scratchpad/claims_solpi/op_bill_probe.json`). | NR (domain: replay is too small a share of the simulated bill) |
-| Q14 | Add-one ablation: every mechanism reduces total tokens on its own under both backends, and the full stack has the lowest tokens **and** the lowest cost in both backend blocks (Table 4). | [sec] pengqian Q9 | quantitative | – | S7 (re-run): every mechanism saves tokens alone and the full stack has the fewest tokens in 4/4 cells, but the lowest cost in only 2/4 (backend B). On A, EPR alone is cheapest. | P |
+| Q11 | Action Fusion oracle: 12.3% of cross-turn transitions are edit→command (bash 85.1%). Counterfactual −10.8% turns, −11.5% tokens. 87.7% uptake. 27-iteration lineage. | blog fig, ye-blog, [sec] | quantitative | `oracle_stats` in `domain.py`; `research.py:69-81` | S1: the oracle share is 32%, predicted −29.9% requests against −23.1% measured. The oracle-predicts-saving relation holds; the magnitudes are those of the simulated world.<br>**Retry round 2:** root cause (c). The testable relation (the oracle share predicts the measured saving) holds. The magnitudes (12.3%, −10.8% turns, −11.5% tokens, 87.7% uptake, a 27-iteration lineage) describe GPT-5.6 Sol trajectories on the paper's environments. No CPU analogue can produce them without being tuned to them; unchanged. | P |
+| Q12 | Activation depends on the model: AF fires 70.58 vs 13.54 times per triggered task (Sol vs Opus); OCC triggers on 92.2% vs 33.3% of tasks. | ye-blog, [sec] | quantitative | trigger counters in `domain.py` | S7 (re-run): AF 3.29 (A) vs 1.91 (B) per triggered task. OCC triggers on 5% / 38% of tasks (A default / long) vs 0% / 22% (B). The direction is reproduced; the magnitudes are much smaller.<br>**Retry round 2** (S7 re-run): Action Fusion fires per triggered task at 3.29 / 13.1 (A default / long) vs 1.91 / 4.57 (B), a long-cell ratio of 2.87 (paper 5.2; within the preregistered 2× band). OCC triggers on 38.3% (A long) vs 21.7% (B long); A misses the ≥ 46.1% band (the paper: 92.2%). PARTIAL under P-RERUN. Root cause (c). | P |
+| Q13 | ObservationPack sweep: V0–V7 with gates of 10% bill saving and −2% quality. V2 (2 sends) is "the only configuration inside the quality gate" (9.1% / −0.8%). The paired EdgeBench A/B gives bill −23.58% and score +22.92%. | blog fig | quantitative | `ObservationPack(excerpt_bytes, head_frac, full_sends)` | S2 (re-run, now with the blog's exact V2 point, 2,048 B head + 1,536 B tail / 2 sends): 9/9 configurations inside the quality gate, 0 reach the 10% bill-saving gate (bill −1.9…+3.3%, tokens −8…−15%). **A domain property, not a parameter one** (S2 `bill_decomposition`): replayed large outputs are only 5.9% (A) / 4.8% (B) of the base bill as cache reads, which is the ceiling for any packing. Packing cuts cache reads 15% / 11% but re-writes the prefix after each swap (cache writes +12% / +8%, priced 12.5×). Priced at ρ = 1 the same packing saves 5.8% / 6.1%, at the ceiling. Recall traffic is negligible (0.2 / 0.02 recalls per task). Longer sessions do not help: a scratch run at 16–20 subtasks gives bill −4…−5% for every setting (`scratchpad/claims_solpi/op_bill_probe.json`).<br>**Retry round 2:** root cause (d). The port is re-checked against `observation-pack/{index,observation}.ts`, including `isPureTextResult`'s `!message.isError`. Pi 0.85.1's bash tool throws on a non-zero exit, so failing test runs are never packed, in the release as here.<br>• P-Q13 (20 fresh seeds, 16–20 subtasks): V2 bill saving on backend A +0.3% [−0.1, 0.6].<br>• P-Q13b (logtriage crash fixed): −0.0% [−0.4, 0.3]. The CI half-width is ~0.4 points against the claimed 9.1, so the test could detect the effect.<br>• Why it fails: in the long-running families (repofix, configfix) 89–100% of the > 10 KiB outputs are errors, and the replay ceiling is 4–6% of the bill.<br>• The quality-gate half needs a real LLM (c). | NR (two preregistered long-session runs: V2 saves ≈ 0% of the bill; see 7.3) |
+| Q14 | Add-one ablation: every mechanism reduces total tokens on its own under both backends, and the full stack has the lowest tokens **and** the lowest cost in both backend blocks (Table 4). | [sec] pengqian Q9 | quantitative | – | S7 (re-run): every mechanism saves tokens alone and the full stack has the fewest tokens in 4/4 cells, but the lowest cost in only 2/4 (backend B). On A, EPR alone is cheapest.<br>**Retry round 2** (S7 re-run plus the diagnostic `scratchpad/retry2/solpi/q14_probe.json`): unchanged at 2/4 cells. On backend A, EPR+AF is the cheapest configuration (−43% default / −57% long vs full −20% / −33%). Adding OP (−10 points of saving) or OCC (−3 / −10) to EPR raises cache writes, so the full stack is not cheapest there. Root cause (d), a property of this world. | P |
 | Q15 | About 1 idea in 40 survived validation. | blog, ye-blog | quantitative | – | 3 of 10 survived offline (a library of mostly real mechanisms); 1 of 2 live (r4). This is a property of the pool design. | NT (scale) |
 | Q16 | Search scale: more than 3,000 runs, more than 60,000 interactions, "not a scaling law". | ye-blog, [sec] | quantitative | – | – | NT |
 | Q17 | cacheWriteReadRatio 12.5 (GPT-5.6 Sol cache write/read). | code agents-install.md | quantitative | `occ.py:350` default; `meter.py` prices keep write/read = 12.5 | config | R |
@@ -131,15 +145,15 @@ Legend:
 
 | # | claim | source | type | fidelity + code ref | our evidence | verdict |
 |---|---|---|---|---|---|---|
-| L1 | "Same quality for less cost"; "matched the original Pi harness". | doc, [sec] abstract | qualitative | dual gate (non-inferiority + efficiency) | The simulation keeps 100% of quality at lower cost (S7). The overview's word "matched" is itself stronger than the sources, which report 93.7–94.3%, and the simulation cannot show whether that loss occurs. | P |
-| L2 | "Keep only the changes that survive everywhere": search across diverse environments makes the survivors transfer. | doc, blog | qualitative | `per_family` gate option (`gate.py`) plus the firewall | S5 (re-run after §6):<br>• multi-family dual gate + firewall: held-out capability 1.000, η saving +0.39;<br>• a single-environment efficiency objective: 0.603 / +0.27;<br>• a **single-environment dual gate**: 1.000 / +0.40, statistically the same.<br>The floor and the firewall do the work; the extra environments only reject more tricks at the gate (3.0 → 1.6). With the two-metric floor the multi-family gate no longer admits the turn cap (do-less 1.0 → 0.0). | P |
+| L1 | "Same quality for less cost"; "matched the original Pi harness". | doc, [sec] abstract | qualitative | dual gate (non-inferiority + efficiency) | The simulation keeps 100% of quality at lower cost (S7). The overview's word "matched" is itself stronger than the sources, which report 93.7–94.3%, and the simulation cannot show whether that loss occurs.<br>**Retry round 2:** unchanged. S7's re-run keeps success ratios 0.998–1.006 at lower cost in all 4 cells. Whether frontier quality is retained is Q3 (NT). Root cause (c). | P |
+| L2 | "Keep only the changes that survive everywhere": search across diverse environments makes the survivors transfer. | doc, blog | qualitative | `per_family` gate option (`gate.py`) plus the firewall | S5 (re-run after §6):<br>• multi-family dual gate + firewall: held-out capability 1.000, η saving +0.39;<br>• a single-environment efficiency objective: 0.603 / +0.27;<br>• a **single-environment dual gate**: 1.000 / +0.40, statistically the same.<br>The floor and the firewall do the work; the extra environments only reject more tricks at the gate (3.0 → 1.6). With the two-metric floor the multi-family gate no longer admits the turn cap (do-less 1.0 → 0.0).<br>**Retry round 2** (P-L2, 20 fresh seeds, `s5b_diversity_power.json`; power ≈ 0.99 for S5's hinted effect): FAIL at the preregistered threshold. Held-out capability without firewall, multi − single, is +0.011 [−0.0015, +0.023] (A +0.002 [−0.009, 0.012], B +0.020 [0.000, 0.040]). With the firewall (secondary) it is +0.011 [+0.001, +0.022]. The multi-family gate admits half the tricks (1.5 vs 3.0). The effect is small and positive but not significant as preregistered. Root cause (d). | P |
 | L3 | What survives transfers beyond where it was developed: to held-out tasks and to an unseen backend without further search. | doc, blog, [sec] | qualitative | – | S5: firewall survivors keep 0.99 of held-out success on backend B. The composed stack scores holdout 0.988 and ood 1.0 (RUNS). | R (in simulation) |
-| L4 | The capability floor blocks "saving by doing less". | ye-blog, blog | qualitative | Fixed (§6): the predeclared floor has two capability metrics, mean score AND solved rate (`gate.py:56`) | S6 (re-run): the dual gate now rejects both do-less shortcuts in 5/5 seeds (no-verify and the turn cap at every length; the 24-turn cap scores 0.984 but finishes only 22/24 tasks). The composed training stack still loses 3.8 points (−0.038 [−0.063, −0.012], was −0.073): the environment-specific trick tail-trim@120 passes the per-mechanism floor in 3/5 seeds and loses only in composition (caveat C1; the firewall, not the floor, stops tricks in S5). S6's predeclared criterion (≤ 2 points composed loss) is therefore still not met: the script's verdict stays NOT REPRODUCED. | P |
-| L5 | Efficiency waste is task-independent, so efficiency mechanisms transfer where score hacks do not. | ye-blog | qualitative | – | General mechanisms pass on the held-out families, and tricks break there. But which tricks break is built into the simulated families' log layouts (S5 caveat). | P |
+| L4 | The capability floor blocks "saving by doing less". | ye-blog, blog | qualitative | Fixed (§6): the predeclared floor has two capability metrics, mean score AND solved rate (`gate.py:56`) | S6 (re-run): the dual gate now rejects both do-less shortcuts in 5/5 seeds (no-verify and the turn cap at every length; the 24-turn cap scores 0.984 but finishes only 22/24 tasks). The composed training stack still loses 3.8 points (−0.038 [−0.063, −0.012], was −0.073): the environment-specific trick tail-trim@120 passes the per-mechanism floor in 3/5 seeds and loses only in composition (caveat C1; the firewall, not the floor, stops tricks in S5). S6's predeclared criterion (≤ 2 points composed loss) is therefore still not met: the script's verdict stays NOT REPRODUCED.<br>**Retry round 2** (P-L4, 20 fresh seeds, `s6b_floor_fresh_seeds.json`): FAIL.<br>• L4-1: 18/20 seeds admit no do-less candidate; the 24-turn cap passed the screen in seeds 12 and 18 and loses 1.7–2.1 points on unseen tasks.<br>• L4-2: PASS. Efficiency-only admits do-less candidates in 20/20 seeds and loses 49.7 points.<br>• L4-3: 108/115 admitted survivors within 2 points on the unseen `test` split, against a 95% threshold. Tail-trim@120 fails in 7 seeds (−4.2 … −11.5 points).<br>• The composed loss is −5.1 points [−7.0, −3.3]. Leave-one-out: T3 accounts for +6.0 points, Action Fusion +2.7, almost all through AF × T3.<br>The floor blocks most do-less savings, but only as far as its screen sample reveals them. Root cause (d). | P |
+| L5 | Efficiency waste is task-independent, so efficiency mechanisms transfer where score hacks do not. | ye-blog | qualitative | – | General mechanisms pass on the held-out families, and tricks break there. But which tricks break is built into the simulated families' log layouts (S5 caveat).<br>**Retry round 2:** root cause (c). Which tricks break where is set by how the simulated families lay out their logs, so any AgentWorld test of this claim is circular. A non-circular test needs independently authored environments (e.g. repository tasks and Terminal-Bench-style tasks) and a real agent. No experiment; unchanged. | P |
 | L6 | Breadth escapes local basins after 5–10 iterations of depth-first refinement. | blog, ye-blog ("qualitative observation") | qualitative | not implemented (spec S8) | – | NT (not run; the paper itself ran no equal-budget comparison) |
 | L7 | The four mechanisms are useful for any long-running agent: opt-in extensions, no patches to the base. | doc, code README | qualitative | extensions only through `register_tool` / `on` (`runtime.py:206-224`) | Genericity tests (`tests/metaharness-solpi/test_metaharness-solpi_genericity.py`); `example_new_problem.py` part 2 | R |
 | L8 | Recursive efficient improvement: SoL-Pi becomes the next base. | blog, [sec] ("long-term vision") | qualitative | `Config.rounds > 1` (`driver.py:72`), not evaluated | – | NT (the paper does not demonstrate it either) |
-| L9 | Agents propose, implement and validate the mechanisms (LLM roles, end to end). | ye-blog, blog | qualitative | `LLMMechanismProposer`, `LLMReviewer` (`mocks.py`) | Live r1–r3 had no survivor. Live r4, and r5 under the stage-C defaults (fresh cache, $0.37), each had one haiku-written EPR-like condenser survive the gate, the firewall and ood, but with the MockAgent backend. In r5 the sweep ran a second haiku variant, which the first dominated. Cost $2.81 in total (stages A–C). | P |
+| L9 | Agents propose, implement and validate the mechanisms (LLM roles, end to end). | ye-blog, blog | qualitative | `LLMMechanismProposer`, `LLMReviewer` (`mocks.py`) | Live r1–r3 had no survivor. Live r4, and r5 under the stage-C defaults (fresh cache, $0.37), each had one haiku-written EPR-like condenser survive the gate, the firewall and ood, but with the MockAgent backend. In r5 the sweep ran a second haiku variant, which the first dominated. Cost $2.81 in total (stages A–C).<br>**Retry round 2:** root cause (c). The research roles are LLM-driven end to end (r4 and r5), but the agent backend in rollouts is the MockAgent. An LLM agent backend on AgentWorld costs about $0.14–0.5 per task run, and a gated lineage needs ≥ 2 × 24 screen runs per variant, which is over the $4 cap. No live spend; unchanged. | P |
 
 ### 2.5 Caveats (from the sources)
 
@@ -252,3 +266,248 @@ Every finding was first reproduced with the auditor's probes (`scratchpad/claims
 **Verification (2026-09-28).** Every S1-S7 script was re-run with the current code (5 seeds, 2 workers) into a scratch directory, and the offline validation protocol was re-run as well. All seven JSONs match the committed `results/metaharness-solpi/s*.json` exactly (only the figure path differs), and the offline ledger matches `solpi_agentworld_offline/ledger.jsonl` line for line. The committed results therefore reflect the final code, including the `fusion.py` and `reducer.py` edits made after those runs.
 
 **Re-runs** (all offline at full settings, 5 seeds, 2 workers; `results/metaharness-solpi/`): S1 and S3 identical to the pre-fix results; S2 identical on the original 8 points, plus V2 and the decomposition; S4 verdict unchanged (+30% every-boundary vs late); S5 PARTIAL (do-less at the multi-family gate 1.0 → 0.0); S6 NOT REPRODUCED under its predeclared criterion (do-less 0.0, composed loss −3.8 points); S7 PARTIAL (A default −54.0% tokens / −15.8% cost). `validation/metaharness-solpi/solpi_agentworld_offline` was re-run from scratch with `experiments/metaharness-solpi/sp_validate.py` (audit 10/10 check types pass).
+
+## 7. Retry round 2 (2026-09-29)
+
+Second attempt on every PARTIAL / NOT REPRODUCED row (R7, R8, Q1, Q2, Q3, Q11, Q12, Q13, Q14, L1, L2, L4, L5, L9), plus a scan of the NOT TESTABLE rows. Scratch work is in `scratchpad/retry2/solpi/`.
+
+### 7.1 Retry round 2: preregistration
+
+Written 2026-09-29 18:51 UTC, before any of the experiments below were run. The diagnosis that led to it (R2-F1 below, plus the domain profile in P-Q13) used no claim-outcome data from the new experiments. Two exceptions are stated openly:
+- the S5 power analysis used S5's existing seeds 0–4;
+- the old S2/S6/S7 results were already known from round 1.
+
+For that reason every new experiment uses **fresh seeds**, disjoint from seeds 0–4, which are the seeds behind every round-1 number. Every run is reported, pass or fail. Unless stated otherwise, CIs are 95% bootstrap CIs over seeds (`rsi.core.stats` via `_common.summarize` / `paired`).
+
+**Code fix found by the diagnosis (applied before any re-run).**
+- **R2-F1 (root cause (a)): compaction billing.** Pi 0.85.1's native compaction (`dist/core/compaction/compaction.js:generateSummaryWithUsage`, `utils.js:serializeConversation`, `completeSummarization`) sends the summarisation as a standalone request:
+  - the summarisation system prompt plus ONE user message;
+  - the message holds the serialised conversation, with every tool result cut to 2,000 characters;
+  - it is sent with `cacheRetention: "none"`, so it shares no cached prefix with the conversation.
+
+  Our runtime billed it as a continuation of the conversation's cached prefix (mostly cache reads, `runtime.py:324` before the fix) and then reset the conversation's cache. This affects every cost number that involves Pi auto-compaction or OCC: S4 and S7, and S2 in long sessions.
+
+  Fix: `rsi/solpi/pi_compaction.py`, `AgentRuntime.compact`, `TokenMeter.uncached`. Regression test: `tests/metaharness-solpi/test_solpi_retry2.py`; it fails on the old code (the compaction request read 38,117 cached tokens). Pi's own `serializeConversation`, run under node 22, supplies the serialisation vector.
+
+**P-RERUN (M14, Q1, Q2, Q12, Q14, L1, and Q13's S2 half).** S2, S4 and S7 are re-run with the fixed code at their original settings (seeds 0–4, 2 workers). The scripts and their predeclared verdict logic are unchanged. The pre-fix JSONs are kept in `results/metaharness-solpi/solpi_retry2/pre_fix/`. Decision rules:
+- **M14 (currently R).** If S4's own verdict (OCC η within 5% of the best arm in every cell; 0 compactions with S ≤ 0) no longer holds, M14 is downgraded.
+- **Q14.** REPRODUCED only if S7's own criterion holds in all 4 cells: every mechanism saves tokens alone, AND the full stack has the lowest tokens AND the lowest cost in every cell. Otherwise PARTIAL (if every mechanism still saves tokens alone) or NOT REPRODUCED.
+- **Q1 / Q2.** REPRODUCED only if, in the long-task cells (the EdgeBench analogue), the full stack's 95% CI contains the paper's value on both backends:
+  - Q1, token saving: 49.0% for A, 44.7% for B;
+  - Q2, cost saving: 33.2% for A, 33.5% for B.
+
+  Otherwise PARTIAL if the direction holds in all 4 cells.
+- **Q12.** REPRODUCED only if both hold:
+  - the Action Fusion fires-per-triggered-task ratio A/B lies in [2.6, 10.4] (within 2× of 70.58 / 13.54 = 5.2);
+  - the OCC task-trigger rates are within 2× of the paper's (A ≥ 46.1%, B ≤ 66.6% and ≥ 16.7%) in the long cells.
+
+  Otherwise PARTIAL if the direction (A > B) holds in every cell.
+- **L1.** At most PARTIAL whatever the outcome: whether frontier-model quality is retained is Q3.
+
+**P-Q13 (Q13), `experiments/metaharness-solpi/s2b_observation_pack_long.py`.**
+- **Hypothesis:** in long sessions (the blog's stated reason for EdgeBench: replay "accumulates" over hours), the blog's V2 reaches its reported bill saving.
+- **Setting:** all five AgentWorld families, unchanged. There is no family selection and no change to outputs or the agent. Two lengths:
+  - default: 4–8 subtasks;
+  - long: 16–20 subtasks, `max_turns` 200. This is S4's longest bin, fixed before this experiment.
+- **Seeds and scale:** fresh seeds 10–29 (20 seeds); n_train = n_final = 6 per family; backends A and B.
+- **Arms:** base, V0 (0 B / 1 send), the release default (1,024 B / 2 sends), V2 (2,048 B head + 1,536 B tail / 2 sends).
+- **Primary metric:** V2's bill saving, 1 − cost/base cost, paired per seed, backend A, long cells.
+- **Pass ("bill component reproduced on CPU analogue"):** the 95% CI lower bound is > 0 AND the CI contains 9.1% or lies above it.
+- **Secondary checks** (reported, not decisive):
+  - "reaches the 10% gate": mean ≥ 10% AND quality change ≥ −2%;
+  - long minus default, paired by seed.
+- **Descriptive:**
+  - per family, the share of > 10 KiB results that are errors. Pi's bash tool throws on a non-zero exit, so the release never packs a failing test run. That is faithful; see the diagnosis in 7.2.
+  - the replay ceiling.
+- **Verdict cap:** Q13's quality-gate half ("V2 the only configuration inside −2%") and the EdgeBench A/B cannot be tested by the MockAgent. At most PARTIAL.
+
+**P-L4 (L4), `experiments/metaharness-solpi/s6b_floor_fresh_seeds.py`.**
+- **Claim tested** (blog wording): "A cheaper candidate fails if it saves by stopping early, skipping necessary verification, or removing evidence required to finish the task … The gate applies to one mechanism at a time, so the small losses it permits can accumulate once mechanisms combine … What the gate rules out is savings that come from getting less done."
+- **Setup:** fresh seeds 10–29 (20 seeds); S6's two main arms (efficiency-only objective vs the dual gate, no firewall, backend A); n_train = n_final = 8 and n_test = 8. The `test` tasks are fresh tasks of the training families that the gate never sees.
+- **Pass requires all three:**
+  - **L4-1:** the dual gate admits no do-less candidate (P14, any P20 variant) in 20/20 seeds.
+  - **L4-2:** the efficiency-only objective admits ≥ 1 do-less candidate in ≥ 19/20 seeds, and its composed stack loses > 2 points on `evolve` (the floor is what blocks them).
+  - **L4-3:** ≥ 95% of the (seed, admitted survivor) pairs of the dual gate lose ≤ 2 points *standalone* on the unseen `test` split. This tests whether admitted candidates really do not save by doing less, rather than only passing on the gate's own sample.
+- **Also reported, with the result stated plainly:** the old S6 criterion (composed stack within 2 points on `evolve`). The blog itself says composed losses accumulate (to ~94% retention), so that criterion is a stronger reading than the claim.
+
+**P-R7 (R7), same runs.** R7's claim: the survivors are merged as independent opt-in extensions, each gated one at a time, and small losses may accumulate. Pass requires both:
+- the composed harness's extension set equals the union of the survivors' mechanisms in 20/20 dual-gate seeds;
+- accumulation is observed: the composed `evolve` change is more than 0.5 points below the worst standalone survivor's `evolve` change in ≥ 3/20 seeds.
+
+Cost magnitudes are not part of R7; they belong to Q2.
+
+**D-LOO (diagnostic, no threshold), same runs.** For each dual-gate seed, the composed stack minus each survivor, on `evolve` and `test`. This attributes the composed loss to components. If a released mechanism is implicated, its port is re-checked against the TypeScript and its vitest vectors.
+
+**P-L2 (L2), `experiments/metaharness-solpi/s5b_diversity_power.py`.**
+- **Power analysis** from S5's seeds 0–4, multi_aggregate − single_env_dual, paired:
+  - backend B, no firewall: +0.037, SD 0.040 (5 seeds ≈ 50% power; about 9 seeds give 80%);
+  - backend A, no firewall: +0.001, SD 0.020.
+- **Design:** fresh seeds 10–29 (20 seeds); S5's `job` unchanged; protocols single_env_dual and multi_aggregate.
+- **Primary:** the held-out-family (`ood`) capability ratio of the training-admitted stack WITHOUT the firewall, paired multi − single, averaged over backends A and B per seed.
+- **Pass:** the pooled 95% CI lower bound is > 0 AND neither backend's CI upper bound is < 0.
+- **Secondary:** the same with the firewall; the tricks admitted at the training gate.
+
+**P-Q3 (Q3), power analysis only, no experiment.**
+- **Scenario:** a paired test of the paper's effect, 44.833 → 42.003 (−2.83 points on a 0–100 scale), with an assumed per-task paired SD of 20 points.
+- **What it needs:** n ≈ ((1.96 + 0.84) · 20 / 2.83)² ≈ 390 task pairs.
+- **What the budget buys:** at our cheapest live agent (haiku via `claude -p`, one full-transcript call per turn, about $0.3–0.5 per short AgentWorld task), $4 buys about 4–6 pairs.
+- **Consequence:** if the arithmetic holds, Q3 is reclassified NOT TESTABLE HERE with the requirement stated.
+
+**No new experiment (root cause (c)) for** R8, Q11, L5 and L9. The reason is given per row in 7.2.
+
+**Live LLM budget:** none planned ($0).
+
+**P-Q13b (follow-up to P-Q13, added 2026-09-29 18:55 UTC, AFTER P-Q13's result was seen).**
+- **Why:** P-Q13 ran as preregistered and FAILED (7.3). Its long cells had a domain defect: `LogTriageEnv` has only 15 sampleable items, so every logtriage task with ≥ 16 subtasks raised `ValueError: Sample larger than population` and scored 0 with 0 requests in every arm (both backends, all 20 seeds).
+- **Why it matters:** logtriage is the family whose large outputs are 0% errors, i.e. the most packable family. The defect therefore biased P-Q13 against ObservationPack.
+- **Fix:** logtriage is clamped to its 15-item maximum. The RNG sequence is unchanged for n ≤ 15, so no earlier result moves. Regression test: `test_logtriage_env_clamps_to_its_item_pool`.
+- **Design:** P-Q13 is re-run with the identical design, seeds and thresholds, into `solpi_retry2/s2b_observation_pack_long_fixed.json`.
+- **Reporting:** both runs are reported; P-Q13's FAIL stands as a recorded result.
+
+### 7.2 Retry round 2: per-claim table
+
+Root causes: (a) implementation, (b) experiment design, (c) scale, (d) genuine negative, (e) source error. Paths are under `results/metaharness-solpi/` unless stated. "fresh seeds" means 10–29.
+
+| claim | old verdict | root cause | what was done | evidence | new verdict |
+|---|---|---|---|---|---|
+| R7 | P | (b): the claim was judged on a metric that is not its own (the protocol stack's cost belongs to Q2) | P-R7 on fresh seeds, testing the stated claim: survivors merged as independent extensions, each gated alone, and losses may accumulate | `solpi_retry2/s6b_floor_fresh_seeds.json`: union 20/20; accumulation in 19/20 seeds; composed retention 0.949 [0.930, 0.967] | **R** (mechanism, toy scale) |
+| R8 | P | (c) | Diagnosis only: the filter is faithful; the environment count is scale | – | P |
+| Q1 | P | (c) | Implementation fix R2-F1, then S7 re-run (P-RERUN) | `s7_composition.json`: long-cell token saving A 58.4% [56.8, 59.8], B 68.4% [68.1, 68.9]; the paper's 49.0% / 44.7% lie outside both CIs; direction 4/4 | P |
+| Q2 | P | (c) | R2-F1, then S7 re-run | `s7_composition.json`: A long −32.7% [29.5, 35.2] contains 33.2%; B long −61.0% [60.4, 61.5] does not contain 33.5%. Protocol stack −8.9% (offline validation re-run) | P |
+| Q3 | NR | (c) | Power analysis (P-Q3); S7 re-run | 44.83 → 42.00 needs 98–392 task pairs (per-task paired SD 10–20); $4 buys about 14 haiku pairs on different tasks. MockAgent success ratio 0.998–1.006 | **NT** |
+| Q11 | P | (c) | Diagnosis only | The oracle-predicts-saving relation holds (S1); the magnitudes are Sol trajectories | P |
+| Q12 | P | (c) | S7 re-run (P-RERUN) | AF ratio A/B in long cells 2.87 (inside the band); OCC A-long trigger rate 38.3% < 46.1% (outside the band); direction A > B in every cell | P |
+| Q13 | NR | (d) | Port re-checked against the TS and Pi's bash tool; P-Q13 and P-Q13b (20 fresh seeds each, long sessions); S2 re-run | `solpi_retry2/s2b_observation_pack_long.json`: V2 A-long +0.3% [−0.1, 0.6]. `…_fixed.json`: −0.0% [−0.4, 0.3]. 89–100% of the large outputs in the long families are errors; replay ceiling 4–6% of the bill | NR |
+| Q14 | P | (d) | S7 re-run; add-to-EPR diagnostic | `s7_composition.json`: full stack cheapest in 2/4 cells. `scratchpad/retry2/solpi/q14_probe.json`: on A, EPR+AF −43% / −57% vs full −20% / −33%; OP and OCC raise cost on top of EPR | P |
+| L1 | P | (c) | S7 re-run | Success ratio 0.998–1.006 at lower cost in all cells; "matched Pi" at frontier scale is Q3 | P |
+| L2 | P | (d) | Power analysis on S5; P-L2 (20 fresh seeds, power ≈ 0.99 for S5's hinted effect) | `solpi_retry2/s5b_diversity_power.json`: pooled +0.011 [−0.0015, +0.023] → FAIL; B +0.020 [0.000, 0.040]; with firewall +0.011 [+0.001, +0.022]; tricks 3.0 → 1.5 | P |
+| L4 | P | (d) | P-L4 on fresh seeds (criteria from the blog's wording) + D-LOO attribution + Action Fusion pairwise probe | `solpi_retry2/s6b_floor_fresh_seeds.json`: FAIL. L4-1 18/20; L4-2 20/20 (−49.7 points); L4-3 108/115 < 95%. Old S6 criterion not met (−5.1 points). LOO: T3 +6.0, AF +2.7 (AF × T3) | P |
+| L5 | P | (c) | Diagnosis only: an AgentWorld test would be circular | – | P |
+| L9 | P | (c) | Diagnosis only: an LLM agent backend is over the $4 budget | – | P |
+| M14 | R | (a), examined because of R2-F1 | S4 re-run after the fix | `s4_occ.json`: within 5% of the best arm in 8/8 cells; every boundary +34% vs late | R |
+
+### 7.3 Retry round 2: results, every run reported
+
+All runs are offline, with 2 worker processes; there are no live LLM calls. Scratch copies are in `scratchpad/retry2/solpi/`.
+
+**R2-F1: implementation fix (compaction billing).**
+- **What was wrong:** the runtime billed Pi's summarisation call as a continuation of the conversation's cached prefix and then reset the conversation cache.
+- **What Pi 0.85.1 does:**
+  - sends the call standalone: `SUMMARIZATION_SYSTEM_PROMPT` plus one user message holding `<conversation>` (serialised with `serializeConversation`, tool results cut to 2,000 chars), `<previous-summary>` and the prompt;
+  - sets `cacheRetention: "none"`;
+  - leaves the conversation's cache untouched.
+- **Fix:** `rsi/solpi/pi_compaction.py`; `AgentRuntime.compact`; `TokenMeter.uncached`; `PriceTable.uncached`. Anthropic-like tables bill uncached input at write/1.25.
+- **Tests:** `tests/metaharness-solpi/test_solpi_retry2.py`, with the Pi `serializeConversation` vector produced by node.
+- **Effects:**
+  - S2 (default length) is identical.
+  - S4: every boundary vs late compaction goes from +30% to +34%; the verdict is unchanged.
+  - S7: full-stack cost savings rise by 0–4 points (A default −15.8% → −19.6%, A long −30.8% → −32.7%). Pi's own auto-compaction is now dearer for the base harness, and the full stack avoids some of it.
+  - Offline validation: 2 of 32 ledger rows change (OCC lineage cost 0.23130 → 0.23186); survivors, composition and the 10/10 audit checks are unchanged.
+
+**P-RERUN (S2, S4, S7, seeds 0–4; the scripts' own verdicts).**
+- S2: PARTIAL, text unchanged.
+- S4: REPRODUCED.
+- S7: PARTIAL (tokens −54.8%, cost −19.6% on A default; cheapest in 2/4 cells).
+- The decision rules for M14, Q1, Q2, Q12, Q14 and L1 are applied in 7.2.
+
+**P-Q13 (ran as preregistered): FAIL.**
+- **Primary (backend A, long sessions):** V2 bill saving +0.3% [−0.1, 0.6]; quality change 0.
+- **Other long cells:**
+  - V0 +1.8%, release default +0.7% on A;
+  - on B: V2 +0.5%, V0 +1.9%.
+- **Default cells:** V2 −1.0% (A) and −1.1% (B).
+- **Long minus default** (V2, A, paired): +1.3% [0.4, 2.4].
+- **Disclosed defect:** in the long cells every logtriage task crashed in every arm (0 requests; see P-Q13b).
+
+**P-Q13b (follow-up, logtriage clamped): FAIL.**
+- **Primary:** V2 A-long −0.0% [−0.4, 0.3]; long minus default +1.0% [0.0, 2.1].
+- **Other long cells:** V0 +1.7% (A) and +1.5% (B); release default +0.4% (A) and +0.3% (B).
+- **Why the domain cannot reach the paper's 9.1% (descriptive):**
+  - in the long-running families (repofix, configfix) 89–100% of the > 10 KiB outputs are failing commands;
+  - the release never packs a failing command, because Pi's bash tool throws on a non-zero exit and `isPureTextResult` requires `!isError`;
+  - the packable outputs sit in short batch tasks (logtriage and datalookup, about 6 requests);
+  - the base's replay-read ceiling is 5.2–5.5% of the bill.
+- **What would be needed:** real long-session trajectories whose large outputs are successful reads or commands (the blog's "a large file or tool result reappeared in every later request"), i.e. TB40 or EdgeBench with a real agent.
+- **Consistency with the paper's own table:** the add-one ObservationPack row there is −5.1% cost ($1,339 → $1,271), also below the 10% gate.
+
+**P-L4: FAIL.**
+
+| criterion | result |
+|---|---|
+| L4-1 | 18/20 seeds admit no do-less candidate |
+| L4-2 | 20/20 seeds; efficiency-only composed `evolve` change −0.497 |
+| L4-3 | 108/115 admitted survivors within 2 points (93.9%, threshold 95%) |
+
+- **The failures:**
+  - `turn_cap(max_turns=24)` in seeds 12 and 18 scores 0.0 on the gate's screen but −1.7 and −2.1 points on unseen tasks;
+  - `tail_trim` (@120 in 6 seeds, @40 in seed 13) scores −4.2 to −11.5 points on unseen tasks.
+- **The old S6 criterion** (composed `evolve` change ≥ −2 points) is not met: −0.051 [−0.070, −0.033], so the dual gate's retention is 94.9%.
+- **Held-out change:**
+  - `test` split: −0.042 [−0.057, −0.028];
+  - `ood` families: −0.025 [−0.039, −0.013].
+- **Composed cost saving:** 36.4% [33.2, 40.1].
+- **Plain statement:** the floor blocks almost all doing-less. Efficiency-only admits do-less candidates in 20/20 seeds and loses 49.7 points; the floor admits them in 2/20. But the floor only sees its screen sample: a 2% tolerance on 24 screen tasks admits a turn cap and an evidence-removing trick that lose on fresh tasks.
+
+**D-LOO attribution (diagnostic).**
+- **Mean success restored by removing each survivor** (evolve / test):
+  - T3 tail-trim: +6.0 / +5.6 points (13 seeds);
+  - P20: +3.5 / +1.0 (2 seeds);
+  - P8 Action Fusion: +2.7 / +0.6;
+  - C23 ObservationPack: +0.6 / +0.1;
+  - D1 EPR: +0.15 / −0.12;
+  - C6 OCC: 0.0 / +0.7;
+  - T11: −0.8 / −1.2.
+- **Pairwise follow-up on Action Fusion** (seeds 11, 16, 21, 23; `scratchpad/retry2/solpi/af_pairs.json`):
+  - P8 alone: 0.0;
+  - P8 with D1, T11 or C23: 0.0;
+  - P8 + C6: −0.6 to −0.7 points (3 seeds);
+  - P8 + T3: −4.2 to −12.5 points.
+- **Conclusion:** the composed loss comes from the environment-specific trick tail-trim, directly and through its interaction with Action Fusion.
+- **Port check:** the Action Fusion port passes the release's `then-run.ts` / `file-queue.ts` vectors (M1, M2; §6 F9–F11). The four released mechanisms composed without tricks keep success (S7: 0.998–1.006). No porting defect was found.
+
+**P-R7: PASS.**
+- Union: 20/20.
+- Accumulation: 19/20 seeds.
+- Retention: 0.949 [0.930, 0.967].
+
+**P-L2: FAIL.**
+- **Primary** (pooled, without firewall, multi − single): +0.0108 [−0.0015, +0.0230].
+  - backend A: +0.0016 [−0.0089, 0.0121];
+  - backend B: +0.0199 [0.0000, 0.0397].
+- **Secondary** (with firewall): +0.0107 [+0.0009, +0.0221].
+- **η cost:** without the firewall, multi-family keeps less η saving (A 0.270 vs 0.281, B 0.354 vs 0.385), because it admits fewer cost-cutting tricks.
+- **Tricks admitted:** 3.0 → 1.5.
+
+**P-Q3 (power analysis).**
+- **Required pairs** for a paired detection of −2.83 points (44.83 → 42.00) at α = 0.05 and 80% power:
+
+  | assumed per-task paired SD | task pairs needed |
+  |---|---|
+  | 5 | 25 |
+  | 10 | 98 |
+  | 20 | 392 |
+  | 30 | 882 |
+
+- **Budget:** a refined cost estimate for a haiku LLM agent is about 8 calls × ~15k tokens per short AgentWorld task, ≈ $0.14 per run and ≈ $0.28 per pair. $4 buys about 14 pairs (the preregistration's rougher estimate said 4–6).
+- **Validity:** even 14 pairs would test a different model on different tasks.
+- **Verdict:** NOT TESTABLE HERE. It needs a frontier agent on EdgeBench-scale tasks with ≥ 100 task pairs (or repeated runs).
+
+### 7.4 Retry round 2: scan of the NOT TESTABLE HERE rows
+
+No row gained a faithful CPU analogue:
+- **Q4–Q10, C4:** need the benchmarks and the frontier backends.
+- **R9:** needs a frontier search backend.
+- **Q15, Q16:** scale.
+- **L6:** the paper ran no equal-budget comparison. A LibraryProposer "depth" lineage walks a fixed grid, so an AgentWorld DFS-vs-BFS run would test our pool, not the claim.
+- **L8:** not demonstrated by the paper.
+- **C8–C10:** facts about the paper.
+
+Upstream check, `git ls-remote https://github.com/NVlabs/SoL-Pi.git` on 2026-09-29: `main` = `1559b5c`, the audited commit.
+
+### 7.5 Retry round 2: spend and tests
+
+- **Live LLM spend:** $0. Every experiment is offline, and no cache was used or created.
+- **Tests:** `tests/metaharness-solpi/` (the SoL-Pi files) pass at 116, including the 6 new cases in `test_solpi_retry2.py`.
+- **Regression checks on the old code:**
+  - the compaction-billing test fails (it read 38,117 cached tokens);
+  - the logtriage test fails (`ValueError`).

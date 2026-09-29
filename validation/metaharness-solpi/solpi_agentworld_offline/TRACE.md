@@ -795,11 +795,11 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 
 **Critic on `C6.0`: ACCEPT** (05 independent review (SmokeReviewer)) 
 
-**Eval `C6.0`** on screen: S=1.0000, C=366202.6000, errors=0.0, missing=0
+**Eval `C6.0`** on screen: S=1.0000, C=363544.9000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-repofix-02=1.0000, evolve-repofix-03=1.0000, evolve-repofix-04=1.0000, evolve-repofix-05=1.0000, evolve-repofix-06=1.0000, evolve-repofix-07=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-buildfix-02=1.0000, evolve-buildfix-03=1.0000, evolve-buildfix-04=1.0000, evolve-buildfix-05=1.0000, evolve-buildfix-06=1.0000, evolve-buildfix-07=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000, evolve-logtriage-02=1.0000, evolve-logtriage-03=1.0000, evolve-logtriage-04=1.0000, evolve-logtriage-05=1.0000, evolve-logtriage-06=1.0000, evolve-logtriage-07=1.0000
 
 **Gate on `C6.0`: ADMISSIBLE** - accepted
-  arithmetic: `{"rule": "accept iff every capability metric within tol of base AND some efficiency metric saves more than min_gain", "capability": {"score": {"base": 1.0, "cand": 1.0, "tol": 0.02, "pass": true}, "solved": {"base": 1.0, "cand": 1.0, "tol": 0.02, "pass": true}}, "efficiency": {"tokens": {"base": 449605.3333333333, "cand": 366202.625, "saving": 0.18550204401489895, "improved": true}, "cost": {"base": 0.24073210416666666, "cand": 0.23130069583333338, "saving": 0.03917802474240664, "improved": true}}, "per_family": {}, "spec_digest": "50987e8499eb3b89"}`
+  arithmetic: `{"rule": "accept iff every capability metric within tol of base AND some efficiency metric saves more than min_gain", "capability": {"score": {"base": 1.0, "cand": 1.0, "tol": 0.02, "pass": true}, "solved": {"base": 1.0, "cand": 1.0, "tol": 0.02, "pass": true}}, "efficiency": {"tokens": {"base": 449605.3333333333, "cand": 363544.9166666667, "saving": 0.19141324687726116, "improved": true}, "cost": {"base": 0.24073210416666666, "cand": 0.2318633791666667, "saving": 0.036840640888760975, "improved": true}}, "per_family": {}, "spec_digest": "50987e8499eb3b89"}`
 
 **Decision:** kept `C6.0`; incumbent `base(eb0223ae5a)` -> `base(eb0223ae5a)`. validation: frozen; next: passing variant recorded; sweep continues
 
@@ -808,14 +808,14 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
 ## Round 18
 **State at round start:** `{"phase": "lineage iteration", "driver_round": 1, "idea": {"id": "C6", "family": "C", "title": "Use layered context epochs and event-driven compaction", "mechanism": "online_context_compact", "grid": [{"cache_write_read_ratio": 12.5}]}, "idea_kind_ground_truth": "general", "lineage_iteration": 1, "max_iters": 4, "ralph_max": 3, "review_max": 2, "sweep": true, "screen_tasks": 24, "rollout_tasks": 6, "history": [{"iteration": 0, "change": "online_context_compact{\"cache_write_read_ratio\": 12.5}", "variant": 0, "stage": "validation", "outcome": "frozen", "gate_reason": "accepted"}], "base_metrics": {"score": 1.0, "solved": 1.0, "tokens": 449605.3333333333, "cost": 0.24073210416666666, "steps": 14.416666666666666, "eta": 0.24073210416666666}}`
 
-**Eval `rollouts(eed0227d9e)`** on rollouts: S=1.0000, C=466387.0000, errors=0.0, missing=0
+**Eval `rollouts(eed0227d9e)`** on rollouts: S=1.0000, C=462823.3000, errors=0.0, missing=0
   per-task: evolve-repofix-00=1.0000, evolve-repofix-01=1.0000, evolve-buildfix-00=1.0000, evolve-buildfix-01=1.0000, evolve-logtriage-00=1.0000, evolve-logtriage-01=1.0000
 
 **Analysis of the incumbent's failures/successes:**
 ```
 02 map-reduce evidence (mean over rollout trajectories):
 - score: 1.0
-- tokens: 466387.0
+- tokens: 462823.3333333333
 - requests: 14.833333333333334
 - repeated_actions: 2.5
 - context_growth: 3041.8920940170938
@@ -1333,7 +1333,7 @@ Oracle analysis on base trajectories (share of avoidable work each idea targets)
   arithmetic: `{"heldout_metrics": {"score": 1.0, "solved": 1.0, "tokens": 214342.0, "cost": 0.15568104166666666, "steps": 10.583333333333334, "eta": 0.15568104166666666}, "heldout_base_metrics": {"score": 1.0, "solved": 1.0, "tokens": 217299.33333333334, "cost": 0.15780472499999998, "steps": 10.583333333333334, "eta": 0.15780472499999998}, "screen_metrics": {"score": 1.0, "solved": 1.0, "tokens": 185892.79166666666, "cost": 0.14775023333333334, "steps": 14.416666666666666, "eta": 0.14775023333333334}, "idea_kind_ground_truth": "trick"}`
 
 **Gate on `C6:online_context_compact{"cache_write_read_ratio": 12.5}`: REJECTED** - held-out firewall: capability below floor
-  arithmetic: `{"heldout_metrics": {"score": 0.9861111111111112, "solved": 0.9166666666666666, "tokens": 233738.5, "cost": 0.1777769583333334, "steps": 10.666666666666666, "eta": 0.18028085915492964}, "heldout_base_metrics": {"score": 1.0, "solved": 1.0, "tokens": 217299.33333333334, "cost": 0.15780472499999998, "steps": 10.583333333333334, "eta": 0.15780472499999998}, "screen_metrics": {"score": 1.0, "solved": 1.0, "tokens": 366202.625, "cost": 0.23130069583333338, "steps": 13.625, "eta": 0.23130069583333338}, "idea_kind_ground_truth": "general"}`
+  arithmetic: `{"heldout_metrics": {"score": 0.9861111111111112, "solved": 0.9166666666666666, "tokens": 232979.0, "cost": 0.17798136666666672, "steps": 10.666666666666666, "eta": 0.1804881464788733}, "heldout_base_metrics": {"score": 1.0, "solved": 1.0, "tokens": 217299.33333333334, "cost": 0.15780472499999998, "steps": 10.583333333333334, "eta": 0.15780472499999998}, "screen_metrics": {"score": 1.0, "solved": 1.0, "tokens": 363544.9166666667, "cost": 0.2318633791666667, "steps": 13.625, "eta": 0.2318633791666667}, "idea_kind_ground_truth": "general"}`
 
 **Gate on `P8:action_fusion{}`: ADMISSIBLE** - held-out firewall: accepted
   arithmetic: `{"heldout_metrics": {"score": 1.0, "solved": 1.0, "tokens": 154046.91666666666, "cost": 0.13227710833333334, "steps": 7.583333333333333, "eta": 0.13227710833333334}, "heldout_base_metrics": {"score": 1.0, "solved": 1.0, "tokens": 217299.33333333334, "cost": 0.15780472499999998, "steps": 10.583333333333334, "eta": 0.15780472499999998}, "screen_metrics": {"score": 1.0, "solved": 1.0, "tokens": 315856.0, "cost": 0.1978719, "steps": 10.875, "eta": 0.1978719}, "idea_kind_ground_truth": "general"}`

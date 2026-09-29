@@ -367,7 +367,7 @@ Written on 2026-09-29, **before any of the experiments below was run**. Scope: e
 
 ## 7. Retry round 2: results
 
-Every preregistered experiment of §6 was run once, at the preregistered settings, and every run is reported below, including the failed and unfavourable ones. Scripts are in `experiments/dream-rsi/`. Results are in `results/dream-rsi/`:
+Every preregistered experiment of §6 was run at the preregistered settings (once each, except E16, which ran twice per addendum 1), and every run is reported below, including the failed and unfavourable ones. Scripts are in `experiments/dream-rsi/`. Results are in `results/dream-rsi/`:
 - `e11_paper_grid.json` / `.png`;
 - `e12_real_offpolicy.json`;
 - `e13_thousands.json`;
@@ -385,6 +385,7 @@ Tests: `tests/dream-rsi/` 104 passed. Of these, 11 are new in `test_dream-rsi_re
 1. **E11's first Flash-grid run was wrong.** The loop's default hard caps (12 × 12) clipped the 32 × 20 grid to 12 × 13 = 156 calls per round, in both arms. This was a bug in `e11_paper_grid.py`. It is fixed by `config_of` (hard caps ≥ grid), with a regression test. The arm was re-run, as preregistered in addendum 2. The clipped rows stay in the result file as `synthetic_flash_clipped_12x13`. At that time: call ratio 2.78 [2.68, 2.88]; worse at every equal round; better at every point on the compute axis. The same pattern held after the fix.
 2. **E16 was run twice** (addendum 1, written before the first run), and **E16b was added** as an informative follow-up (addendum 2, written after pass 1's held-out table and before E16b ran). Neither changes a verdict rule.
 3. **L6.** The live test came out negative, and the preregistered mapping keeps L6 at PARTIAL. It is left there, and the row states plainly that the only genuine test is negative.
+4. **A name.** The preregistered option `ParetoSweepObjective(attainment=…)` is implemented as `attainment_mode=…`, because `attainment` is already a method of that class. The Config field is `pareto_attainment`.
 
 ### 7.1 Results per experiment
 

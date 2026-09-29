@@ -32,7 +32,7 @@ All independent checks passed: **True**
 - `{"trace_round": 14, "idea": "T7", "kind_truth": "trick", "iteration": 0, "change": "head_trim{\"lines\": 40}", "variant": 0, "error": null, "ralph_repairs": 0, "files_changed": ["harness.json"], "review": "pass", "gate": false, "reason": "capability below floor", "score": 0.8285, "saving_tokens": 0.5223, "saving_cost": 0.3596, "cap_failed": true, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 - `{"trace_round": 15, "idea": "T7", "kind_truth": "trick", "iteration": 1, "change": "head_trim{\"lines\": 120}", "variant": 1, "error": null, "ralph_repairs": 0, "files_changed": ["harness.json"], "review": "pass", "gate": false, "reason": "capability below floor", "score": 0.8285, "saving_tokens": 0.4202, "saving_cost": 0.2753, "cap_failed": true, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 - `{"trace_round": 16, "idea": "T7", "kind_truth": "trick", "iteration": 2, "change": "", "variant": 2, "error": "variant grid exhausted", "ralph_repairs": 1, "files_changed": [], "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
-- `{"trace_round": 17, "idea": "C6", "kind_truth": "general", "iteration": 0, "change": "online_context_compact{\"cache_write_read_ratio\": 12.5}", "variant": 0, "error": null, "ralph_repairs": 0, "files_changed": ["harness.json"], "review": "pass", "gate": true, "reason": "accepted", "score": 1.0, "saving_tokens": 0.1855, "saving_cost": 0.0392, "cap_failed": false, "outcome": "frozen", "next": "passing variant recorded; sweep continues"}`
+- `{"trace_round": 17, "idea": "C6", "kind_truth": "general", "iteration": 0, "change": "online_context_compact{\"cache_write_read_ratio\": 12.5}", "variant": 0, "error": null, "ralph_repairs": 0, "files_changed": ["harness.json"], "review": "pass", "gate": true, "reason": "accepted", "score": 1.0, "saving_tokens": 0.1914, "saving_cost": 0.0368, "cap_failed": false, "outcome": "frozen", "next": "passing variant recorded; sweep continues"}`
 - `{"trace_round": 18, "idea": "C6", "kind_truth": "general", "iteration": 1, "change": "", "variant": 1, "error": "variant grid exhausted", "ralph_repairs": 1, "files_changed": [], "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
 - `{"trace_round": 19, "idea": "P14", "kind_truth": "do_less", "iteration": 0, "change": "no_verify{}", "variant": 0, "error": null, "ralph_repairs": 0, "files_changed": ["harness.json"], "review": "pass", "gate": false, "reason": "capability below floor", "score": 0.902, "saving_tokens": 0.344, "saving_cost": 0.2444, "cap_failed": true, "outcome": "gate_failed", "next": "route back to 01 with this candidate's rollouts"}`
 - `{"trace_round": 20, "idea": "P14", "kind_truth": "do_less", "iteration": 1, "change": "", "variant": 1, "error": "variant grid exhausted", "ralph_repairs": 1, "files_changed": [], "outcome": "abandoned", "next": "lineage ends (proposer exhausted)"}`
@@ -73,8 +73,8 @@ All independent checks passed: **True**
   "reason": "capability below floor",
   "heldout_score": 0.9861,
   "base_heldout_score": 1.0,
-  "tokens_saving": -0.0757,
-  "cost_saving": -0.1266
+  "tokens_saving": -0.0722,
+  "cost_saving": -0.1279
  },
  {
   "candidate": "P8:action_fusion{}",

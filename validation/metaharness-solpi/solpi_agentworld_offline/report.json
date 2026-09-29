@@ -1,7 +1,7 @@
 {
  "run": "solpi_agentworld_offline",
  "setup": "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed holdout = 6 x 2 held-out families (configfix, datalookup) used only by the firewall; sealed ood = 8 x 2 held-out families (final, never touched by the protocol). Base = untouched Pi-like harness (no extensions). Agent backend = MockAgentLLM('A') (offline). Idea pool = all 12 AGENTWORLD_IDEAS over the six families C, P, T, D, R, M (4 released mechanisms, 3 tricks, 2 do-less shortcuts, 1 dud, 2 evaluation-family ideas); the Oracle Analysis ranks them and the top n_lineages = 10 get rollouts. Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: score AND solved rate within 2% (relative) AND tokens or cost saving > 2%; lineages sweep their variants and freeze the nondominated best-eta one; firewall on holdout; compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.",
- "wall_s": 11.9,
+ "wall_s": 9.2,
  "transfer": {
   "splits": {
    "evolve": {
@@ -1087,14 +1087,14 @@
         "efficiency": {
          "tokens": {
           "base": 449605.3333333333,
-          "cand": 366202.625,
-          "saving": 0.18550204401489895,
+          "cand": 363544.9166666667,
+          "saving": 0.19141324687726116,
           "improved": true
          },
          "cost": {
           "base": 0.24073210416666666,
-          "cand": 0.23130069583333338,
-          "saving": 0.03917802474240664,
+          "cand": 0.2318633791666667,
+          "saving": 0.036840640888760975,
           "improved": true
          }
         },
@@ -1105,19 +1105,19 @@
         "agg": {
          "score": 1.0,
          "solved": 1.0,
-         "tokens": 366202.625,
-         "cost": 0.23130069583333338,
+         "tokens": 363544.9166666667,
+         "cost": 0.2318633791666667,
          "steps": 13.625,
-         "eta": 0.23130069583333338
+         "eta": 0.2318633791666667
         },
         "fam": {
          "repofix": {
           "score": 1.0,
           "solved": 1.0,
-          "tokens": 803273.625,
-          "cost": 0.43503355,
+          "tokens": 795300.5,
+          "cost": 0.43672160000000004,
           "steps": 21.5,
-          "eta": 0.43503355
+          "eta": 0.43672160000000004
          },
          "buildfix": {
           "score": 1.0,
@@ -1855,7 +1855,7 @@
     "latency_s": 0.0,
     "total_tokens": 0
    },
-   "seconds": 11.826488494873047
+   "seconds": 9.155273199081421
   }
  ],
  "usage": {
