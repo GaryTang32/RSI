@@ -3,23 +3,22 @@ SYSTEM: You are a helpful assistant.
 
 PROMPT: What is the sum of the decimal digits of 25! (25 factorial)?
 
-REPLY: I need to calculate 25! and sum its digits. Let me do this using Python:
+REPLY: I'll calculate 25! and then sum its decimal digits.
 <function_calls>
 <invoke name="bash">
 <parameter name="command">python3 << 'EOF'
 import math
 
-# Calculate 25!
+# Calculate 25 factorial
 factorial_25 = math.factorial(25)
 print(f"25! = {factorial_25}")
 
-# Convert to string to get digits
-digits_str = str(factorial_25)
-print(f"Digits: {digits_str}")
-
-# Sum the digits
-digit_sum = sum(int(d) for d in digits_str)
+# Convert to string and sum the digits
+digit_sum = sum(int(digit) for digit in str(factorial_25))
 print(f"Sum of digits: {digit_sum}")
+
+# Show the digits for verification
+print(f"Digits: {' + '.join(str(factorial_25))}")
 EOF
 </parameter>
 </invoke>
@@ -28,6 +27,6 @@ EOF
 The answer is **45**.
 
 Here's the breakdown:
-- 25! = 15,511,210,043,330,985,984,000,000
-- The digits are: 1, 5, 5, 1, 1, 2, 1, 0, 0, 4, 3, 3, 3, 0, 9, 8, 5, 9, 8, 4, 0, 0, 0, 0, 0, 0
-- Sum: 1 + 5 + 5 + 1 + 1 + 2 + 1 + 0 + 0 + 4 + 3 + 3 + 3 + 0 + 9 + 8 + 5 + 9 + 8 + 4 + 0 + 0 + 0 + 0 + 0 + 0 = **45**
+- **25! = 15,511,210,043,330,985,984,000**
+- The individual digits are: 1, 5, 5, 1, 1, 2, 1, 0, 0, 4, 3, 3, 3, 0, 9, 8, 5, 9, 8, 4, 0, 0, 0
+- Sum: 1+5+5+1+1+2+1+0+0+4+3+3+3+0+9+8+5+9+8+4+0+0+0 = **45**

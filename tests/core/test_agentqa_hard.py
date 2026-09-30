@@ -53,26 +53,30 @@ def _solve_logic(q: str) -> list[str]:
                 break
         else:
             raise AssertionError(c)
+    # attribute by attribute (the generator solves per value): try every permutation of an attribute's values
+    # over the houses, most-constrained attribute first, and check each clue once all its attributes are placed
+    need = [{r[0] for r in refs} for refs, _ in checks]
+    order = sorted(ATTR_ORDER, key=lambda a: -sum(a in s for s in need))
     sols, where = [], {}
 
-    def ok():
-        for refs, f in checks:
-            if all(r in where for r in refs) and not f([where[r] for r in refs]):
+    def ok(done: set) -> bool:
+        for (refs, f), s in zip(checks, need):
+            if s <= done and not f([where[r] for r in refs]):
                 return False
         return True
 
-    def place(h: int):
-        if h == n:
+    def place(i: int):
+        if i == len(order):
             sols.append(dict(where))
             return
-        free = [[v for v in vals[a] if (a, v) not in where] for a in ATTR_ORDER]
-        for combo in itertools.product(*free):
-            for a, v in zip(ATTR_ORDER, combo):
+        a = order[i]
+        for perm in itertools.permutations(range(n)):
+            for v, h in zip(vals[a], perm):
                 where[(a, v)] = h
-            if ok():
-                place(h + 1)
-            for a, v in zip(ATTR_ORDER, combo):
-                del where[(a, v)]
+            if ok(set(order[: i + 1])):
+                place(i + 1)
+        for v in vals[a]:
+            where.pop((a, v), None)
 
     place(0)
     m = re.search(r"Who (owns the (\w+)|drinks (\w+)|lives in the (\w+) house|does (\w+))\?", q)

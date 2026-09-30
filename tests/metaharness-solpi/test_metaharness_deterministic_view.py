@@ -45,6 +45,11 @@ def test_strip_is_byte_identical_without_volatile_keys():
     got = strip_volatile_fields("t.jsonl", '{"a": 1, "latency_s": 0.2}\nnot json\n')
     assert got == '{"a": 1}\nnot json\n'
     assert {"created_at", "latency_s", "timing_s"} <= VOLATILE_KEYS
+    # a session's usage is the proposer's bill: a cached replay meters it as $0, so it is dropped there only
+    sess = '{"iteration": 1, "usage": {"calls": 1, "cost_usd": 0.07}, "n_files_read": 3}'
+    assert '"usage"' not in strip_volatile_fields("sessions/iter001/meta.json", sess)
+    kept = '{"usage": {"calls": 1}}'
+    assert strip_volatile_fields("candidates/x/eval/search/scores.json", kept) is kept
 
 
 def test_config_default_is_deterministic():

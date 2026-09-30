@@ -5,11 +5,15 @@ PROMPT: What is 34462116119303 mod 650?
 
 REPLY: I need to calculate 34462116119303 mod 650.
 
-Let me compute this:
+Let me work through this:
 
-```python
-result = 34462116119303 % 650
-print(result)
-```
+**Step 1: Find the quotient**
+34462116119303 ÷ 650 ≈ 53018640183.something
 
-**34462116119303 mod 650 = 353**
+**Step 2: Calculate 53018640183 × 650**
+53018640183 × 650 = 34462116118950
+
+**Step 3: Find the remainder**
+34462116119303 - 34462116118950 = **353**
+
+Therefore, **34462116119303 mod 650 = 353**

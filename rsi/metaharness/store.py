@@ -76,14 +76,23 @@ def _drop_volatile(obj: Any) -> tuple[Any, bool]:
     return obj, False
 
 
+#: per-file-kind extra keys: a proposer session's ``usage`` is its own bill, which a cached replay meters as $0
+SESSION_VOLATILE_KEYS = frozenset({"usage"})
+
+
 def strip_volatile_fields(path: str, text: str) -> str:
-    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is JSON / JSONL; unchanged otherwise, and
-    byte-identical when no volatile key is present."""
+    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is JSON / JSONL (plus
+    :data:`SESSION_VOLATILE_KEYS` from ``sessions/*/meta.json``); unchanged otherwise, and byte-identical when no
+    volatile key is present."""
     if path.endswith(".json"):
         try:
             obj, hit = _drop_volatile(json.loads(text))
         except ValueError:
             return text
+        if path.startswith("sessions/") and path.endswith("/meta.json") and isinstance(obj, dict):
+            extra = SESSION_VOLATILE_KEYS & obj.keys()
+            obj = {k: v for k, v in obj.items() if k not in extra}
+            hit = hit or bool(extra)
         return json.dumps(obj, indent=1, default=str) if hit else text
     if path.endswith(".jsonl"):
         lines, changed = [], False
