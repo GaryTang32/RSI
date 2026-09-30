@@ -1,0 +1,17 @@
+{
+ "name": "code_extract_single",
+ "artifact_id": "6a23442a9384817c8cb59d354951935abf12fab8b9fa8c3d20e974f1e217e958",
+ "created_at": 1790755159.9220655,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

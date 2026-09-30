@@ -1,0 +1,32 @@
+{
+ "split": "ood",
+ "score": 0.75,
+ "per_unit": {
+  "ood-dates-000": 1.0,
+  "ood-dates-001": 1.0,
+  "ood-numbertheory-000": 0.0,
+  "ood-numbertheory-001": 0.0,
+  "ood-strings-000": 1.0,
+  "ood-strings-001": 1.0,
+  "ood-lists-000": 1.0,
+  "ood-lists-001": 1.0
+ },
+ "per_unit_cost": {
+  "ood-dates-000": 1848.0,
+  "ood-dates-001": 1273.0,
+  "ood-numbertheory-000": 1379.0,
+  "ood-numbertheory-001": 1346.0,
+  "ood-strings-000": 4128.0,
+  "ood-strings-001": 1073.0,
+  "ood-lists-000": 5684.0,
+  "ood-lists-001": 6622.0
+ },
+ "context_cost": 2919.125,
+ "tokens": 2919.125,
+ "families": {
+  "dates": 1.0,
+  "numbertheory": 0.0,
+  "strings": 1.0,
+  "lists": 1.0
+ }
+}

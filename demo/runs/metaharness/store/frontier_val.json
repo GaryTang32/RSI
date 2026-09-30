@@ -5,19 +5,19 @@
   "cost": 1174.0
  },
  "evolve-numeric-001": {
-  "best_system": "smart_extraction",
-  "score": 1.0,
-  "cost": 5640.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1490.0
  },
  "evolve-numeric-002": {
-  "best_system": "smart_extraction",
-  "score": 1.0,
-  "cost": 1812.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1571.0
  },
  "evolve-numeric-003": {
-  "best_system": "multi_check_verify",
-  "score": 1.0,
-  "cost": 4317.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1200.0
  },
  "evolve-numeric-004": {
   "best_system": "seed",
@@ -30,9 +30,9 @@
   "cost": 1238.0
  },
  "evolve-numeric-006": {
-  "best_system": "smart_extraction",
-  "score": 1.0,
-  "cost": 6868.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 3229.0
  },
  "evolve-numeric-007": {
   "best_system": "seed",
@@ -40,19 +40,19 @@
   "cost": 1219.0
  },
  "evolve-numeric-008": {
-  "best_system": "smart_extraction",
-  "score": 1.0,
-  "cost": 4978.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1100.0
  },
  "evolve-numeric-009": {
-  "best_system": "multi_check_verify",
-  "score": 1.0,
-  "cost": 4790.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1233.0
  },
  "evolve-numeric-010": {
-  "best_system": "multi_check_verify",
-  "score": 1.0,
-  "cost": 9104.0
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1580.0
  },
  "evolve-numeric-011": {
   "best_system": "seed",
@@ -61,18 +61,6 @@
  },
  "_pareto": [
   {
-   "system": "multi_check_verify",
-   "score": 0.6666666666666666,
-   "val_accuracy": 66.7,
-   "context_cost": 7198.916666666667
-  },
-  {
-   "system": "smart_extraction",
-   "score": 0.4166666666666667,
-   "val_accuracy": 41.7,
-   "context_cost": 3920.75
-  },
-  {
    "system": "seed",
    "score": 0.08333333333333333,
    "val_accuracy": 8.3,
@@ -80,9 +68,9 @@
   }
  ],
  "_best": {
-  "system": "multi_check_verify",
-  "score": 0.6666666666666666
+  "system": "seed",
+  "score": 0.08333333333333333
  },
- "_hypervolume": 2046.0944444444451,
- "_hv_ref_cost": 7919.808333333334
+ "_hypervolume": 12.796527777777783,
+ "_hv_ref_cost": 1679.1416666666667
 }

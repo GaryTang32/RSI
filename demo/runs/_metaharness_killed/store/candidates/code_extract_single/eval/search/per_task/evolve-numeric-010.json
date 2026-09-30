@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-010",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '27'; expected '14'.",
+  "output": "27",
+  "tokens": 1771,
+  "cost_usd": 0.004783,
+  "steps": 1,
+  "latency_s": 8.327238321304321,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]
