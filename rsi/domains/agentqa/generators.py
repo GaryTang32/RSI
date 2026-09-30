@@ -188,6 +188,14 @@ FAMILIES: dict[str, Callable[[random.Random], tuple[str, str, list]]] = {
 }
 
 
+def _register_hard() -> None:
+    from .hard import HARD_FAMILIES                     # logic, ledger, schedule, cipher
+    FAMILIES.update(HARD_FAMILIES)
+
+
+_register_hard()
+
+
 def make_suite(
     n_evolve: int = 20,
     n_holdout: int = 20,

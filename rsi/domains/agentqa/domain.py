@@ -194,9 +194,11 @@ class AgentQADomain(Domain):
     #: own-time budget of one harness run in seconds (model and tool calls excluded); see the module docstring
     harness_timeout_s: float = HARNESS_TIMEOUT_S
 
-    def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0) -> None:
+    def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0,
+                 ood_hint: Optional[str] = None) -> None:
         super().__init__(tasks or make_suite())
         self.tool_timeout_s = tool_timeout_s
+        self.ood_hint = ood_hint            # replaces the default sentence about unseen question kinds
 
     # ---- artifact
     @staticmethod
@@ -211,9 +213,10 @@ class AgentQADomain(Domain):
             "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps artifact file "
             "paths to their text (prompts, skills, memory). The returned string is graded by exact match of the "
             "final answer (a line 'ANSWER: <value>' is extracted if present, else the last line). "
-            f"Practice tasks are short questions of these kinds: {fams}. The harness will later be run unchanged "
-            "on other kinds of short questions with exact answers (dates, text manipulation, list statistics, "
-            "number theory), so improvements must be general."
+            f"Practice tasks are short questions of these kinds: {fams}. "
+            + (self.ood_hint or "The harness will later be run unchanged "
+               "on other kinds of short questions with exact answers (dates, text manipulation, list statistics, "
+               "number theory), so improvements must be general.")
         )
 
     # ---- execution

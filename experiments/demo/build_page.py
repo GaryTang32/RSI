@@ -45,8 +45,14 @@ def main() -> None:
     # every live call is in a run's cache, including runs that were restarted or stopped early
     cache_usd = {c.name[len(".cache_"):]: _cache_usd(c) for c in (DEMO / "runs").glob(".cache_*") if c.is_dir()}
     by = {d["run"]: d for d in runs}
-    if "metaharness_a" in by and "metaharness" in cache_usd:       # the two Meta-Harness runs share one cache
-        by["metaharness_a"]["usd_total"] = round(cache_usd["metaharness"] - (by["metaharness"].get("usd_total") or 0), 4)
+    old_cache = DEMO / "runs" / "_archive" / ".cache_metaharness_before_fix"
+    if old_cache.is_dir():
+        # the replicate and the archived pre-fix run shared one cache; the archived run metered its own share
+        old = json.loads((DEMO / "runs" / "_archive" / "metaharness_before_fix" / "summary.json").read_text())
+        spent = _cache_usd(old_cache)
+        cache_usd["metaharness_before_fix (archived)"] = spent
+        if "metaharness_a" in by:
+            by["metaharness_a"]["usd_total"] = round(spent - (old.get("usd_total") or 0), 4)
     runs.append({"run": "_spend", "cache_usd": cache_usd, "rows": [{"iter": 0, "candidates": []}]})
     tpl = (Path(__file__).parent / "page_template.html").read_text()
     data = json.dumps(runs, default=str).replace("</", "<\\/")

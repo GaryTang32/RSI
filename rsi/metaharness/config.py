@@ -43,6 +43,10 @@ class Config:
     k: int = 2                                 # candidates per iteration
     history_mode: str = "full"
     window: int = 5                            # window mode: last w evaluated candidates
+    # Strip wall-clock fields (created_at, latency_s, timing_s, ...) from the files the proposer reads.
+    # They carry no information about a harness, and they make every proposer prompt unique, which
+    # breaks exact replay of a run from its LLM cache. False shows the raw files, as the release does.
+    deterministic_view: bool = True
     objectives: tuple[str, ...] = ("score", "context_cost")   # Pareto; ("score",) = scalar objective
     cost_metric: str = "context_chars"         # Execution.meta key averaged per unit; "tokens" = EvalResult.C
     search_split: str = "evolve"               # Meta-Harness "search set"

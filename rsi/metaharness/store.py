@@ -55,6 +55,50 @@ def safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "__", str(s)).strip("_") or "x"
 
 
+#: wall-clock fields written by the store, the evaluator and the proposer accounting: they vary from run to
+#: run and say nothing about a harness (see Config.deterministic_view)
+VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s", "elapsed_s"})
+
+
+def _drop_volatile(obj: Any) -> tuple[Any, bool]:
+    if isinstance(obj, dict):
+        out, hit = {}, False
+        for k, v in obj.items():
+            if k in VOLATILE_KEYS:
+                hit = True
+                continue
+            out[k], h = _drop_volatile(v)
+            hit = hit or h
+        return out, hit
+    if isinstance(obj, list):
+        pairs = [_drop_volatile(v) for v in obj]
+        return [p[0] for p in pairs], any(p[1] for p in pairs)
+    return obj, False
+
+
+def strip_volatile_fields(path: str, text: str) -> str:
+    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is JSON / JSONL; unchanged otherwise, and
+    byte-identical when no volatile key is present."""
+    if path.endswith(".json"):
+        try:
+            obj, hit = _drop_volatile(json.loads(text))
+        except ValueError:
+            return text
+        return json.dumps(obj, indent=1, default=str) if hit else text
+    if path.endswith(".jsonl"):
+        lines, changed = [], False
+        for line in text.splitlines():
+            try:
+                obj, hit = _drop_volatile(json.loads(line))
+            except ValueError:
+                lines.append(line)
+                continue
+            lines.append(json.dumps(obj, default=str) if hit else line)
+            changed = changed or hit
+        return "\n".join(lines) + ("\n" if text.endswith("\n") else "") if changed else text
+    return text
+
+
 class FinalizedError(RuntimeError):
     """Raised when evolution is attempted after a complete finalisation."""
 
@@ -239,11 +283,19 @@ class ExperienceStore:
 
     # ------------------------------------------------------------ views
     def view(self, mode: str = "full", *, window: int = 5, focus: Optional[str] = None,
-             seeds: Iterable[str] = ()) -> dict[str, str]:
+             seeds: Iterable[str] = (), strip_volatile: bool = False) -> dict[str, str]:
         """Read-only projection ``{relative path: text}`` of the store for the proposer.
 
         ``focus`` = the candidate shown by ``last_only`` (default: current best);
-        ``seeds`` = the baseline names shown by ``seed_only``."""
+        ``seeds`` = the baseline names shown by ``seed_only``;
+        ``strip_volatile`` = drop wall-clock fields (:data:`VOLATILE_KEYS`) from JSON / JSONL files, so the
+        same run history always renders to the same text (exact LLM-cache replay)."""
+        files = self._view(mode, window=window, focus=focus, seeds=seeds)
+        if strip_volatile:
+            files = {p: strip_volatile_fields(p, text) for p, text in files.items()}
+        return files
+
+    def _view(self, mode: str, *, window: int, focus: Optional[str], seeds: Iterable[str]) -> dict[str, str]:
         files: dict[str, str] = {}
         names = self.names()
         evaluated = [n for n in names if self.scores(n) is not None]

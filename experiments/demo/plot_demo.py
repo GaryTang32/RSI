@@ -189,12 +189,14 @@ def plot_autoresearch(d: dict, path: Path) -> None:
 def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
     import matplotlib.pyplot as plt
     have = [d for d in runs if d.get("transfer")]
+    have.sort(key=lambda d: ("hard" in d["run"], d["run"]))
     if not have:
         return
     fig, axes = plt.subplots(1, len(have), figsize=(4.2 * len(have), 4.1), dpi=150, squeeze=False)
     fig.patch.set_facecolor(SURF)
     for ax, d in zip(axes[0], have):
-        _style(ax, {"metaharness": "Meta-Harness", "rrsi": "RRSI"}.get(d["run"], d["run"]),
+        _style(ax, {"metaharness": "Meta-Harness", "rrsi": "RRSI", "metaharness_hard": "Meta-Harness, hard",
+                    "rrsi_hard": "RRSI, hard"}.get(d["run"], d["run"]),
                "accuracy" if ax is axes[0][0] else "")
         splits = ["evolve", "holdout", "ood"]
         labels = ["practice", "held-out", "OOD"]
@@ -217,13 +219,15 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    names = [n for n in ("metaharness", "metaharness_a", "rrsi", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
+    names = [n for n in ("metaharness", "metaharness_hard", "rrsi_hard", "rrsi", "metaharness_a", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
     runs = [extract(n) for n in names]
     (DEMO / "data.json").write_text(json.dumps(runs, indent=1, default=str))
     figs = DEMO / "figures"
     figs.mkdir(parents=True, exist_ok=True)
     titles = {"metaharness": "Meta-Harness: Haiku rewrites its own AgentQA harness",
-              "metaharness_a": "Meta-Harness, replicate run (same settings)",
+              "metaharness_a": "Meta-Harness, replicate run (before the timestamp fix)",
+              "metaharness_hard": "Meta-Harness on the hard tasks (logic grids + ledgers)",
+              "rrsi_hard": "RRSI on the hard tasks (logic grids + ledgers)",
               "rrsi": "RRSI: Haiku edits the AgentQA harness under guards"}
     for d in runs:
         if d["run"] == "autoresearch":
