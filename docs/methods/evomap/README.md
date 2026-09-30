@@ -8,7 +8,7 @@ Agents distil what worked into small, content-hashed strategy genes and share th
 
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
-3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (54 claims: 30 reproduced, 7 partial, 1 not reproduced, 15 not testable here, 1 contradicted after retry round 2), with a Fix log and a preregistered "Retry round 2".
+3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (54 claims: 28 reproduced, 10 partial, 1 not reproduced, 14 not testable here, 1 contradicted after retry round 2 and its review), with a Fix log, a preregistered "Retry round 2" and a preregistered review response.
 4. [Validation audit](../../../validation/evomap/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/evomap/RUNS.md) describes the runs.
 
 ## Where everything is

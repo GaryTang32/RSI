@@ -19,6 +19,11 @@ independent check written here from the spec text (not by calling the engine's c
   argmax(2*count + mean score) over good capsules grouped by gene; validation = the source's first <= 4 commands
   (else the fallback), filtered by the faithful allowlist.
 
+P7r (review response, preregistered 2026-09-30): the checks above measure precision only (every firing obeys the
+rule). P7r adds recall: every dedup call where the suppression condition holds for a non-protected input signal
+must suppress it, and every call with >= 5 trailing non-empty failures and a gene in the last 8 events must emit
+``ban_gene``. It also recounts the distinct good capsules in each final store (M11).
+
 Run: python experiments/evomap/x20_engine_coverage.py [--seeds 6] [--workers 2] [--quick]
 """
 from __future__ import annotations
@@ -130,6 +135,18 @@ def check(seed, log, ag, policy, T):
         for s in d["suppressed"]:
             n_sup += 1
             ok_sup += sum(1 for e in last8 if collapse(s) in {collapse(x) for x in e.get("signals", [])}) >= 3
+    # --- suppression RECALL (P7r, review response): every non-protected input signal whose collapsed key is in
+    # >= 3 of the last 8 events must be suppressed ("task:" descriptors are protected, a documented deviation)
+    n_sup_due = hit_sup_due = n_sup_protected = 0
+    for d in log["dedup"]:
+        last8 = d["ev"][-8:]
+        for s in dict.fromkeys(d["in"]):
+            if sum(1 for e in last8 if collapse(s) in {collapse(x) for x in e.get("signals", [])}) >= 3:
+                if s.startswith("task:"):
+                    n_sup_protected += 1
+                    continue
+                n_sup_due += 1
+                hit_sup_due += s in d["suppressed"]
     # --- failure streak -> ban_gene
     n_ban = ok_ban = 0
     for d in log["dedup"]:
@@ -143,6 +160,19 @@ def check(seed, log, ag, policy, T):
             k += 1
         most = Counter(g for e in d["ev"][-8:] for g in e.get("genes_used", [])).most_common(1)
         ok_ban += k >= 5 and most and most[0][0] == d["ban"]
+    # --- ban_gene RECALL (P7r): >= 5 trailing non-empty failures in the last 10 events and a gene used in the
+    # last 8 -> a ban must fire
+    n_ban_due = hit_ban_due = 0
+    for d in log["dedup"]:
+        k = 0
+        for e in reversed(d["ev"][-10:]):
+            if is_empty(e) or (e.get("outcome") or {}).get("status") != "failed":
+                break
+            k += 1
+        used = [g for e in d["ev"][-8:] for g in e.get("genes_used", [])]
+        if k >= 5 and used:
+            n_ban_due += 1
+            hit_ban_due += bool(d["ban"])
     # --- repair loop / empty loop (fire iff the rule holds)
     n_rep = ok_rep = n_emp = ok_emp = 0
     for d in log["dedup"]:
@@ -200,7 +230,16 @@ def check(seed, log, ag, policy, T):
                  "distill_validation_empty_literal": lit_empty,
                  "distill_not_ok_reasons": dict(Counter(d["reason"] for d in log["distill"] if not d["ok"])),
                  "failure_distilled_genes": sum(1 for g in ag.store.genes if g.startswith("gene_repair_distilled_")),
-                 "solidify_count": ag.store.solidify_count, "n_genes": len(ag.store.genes)})
+                 "solidify_count": ag.store.solidify_count, "n_genes": len(ag.store.genes),
+                 "suppression_due": n_sup_due, "suppression_due_fired": hit_sup_due,
+                 "suppression_due_protected": n_sup_protected,
+                 "ban_due": n_ban_due, "ban_due_fired": hit_ban_due,
+                 # M11 recount (P7r): distinct good capsules in the final store, recomputed from the store itself
+                 "final_distinct_good_capsules": len({c.id for c in ag.store.capsules.values()
+                                                      if c.outcome.get("status") == "success"
+                                                      and float(c.outcome.get("score", 1)) >= 0.7}),
+                 "final_distinct_capsules": len(ag.store.capsules),
+                 "max_n_good_seen_by_distiller": max([d["n_good"] for d in log["distill"]] or [0])})
     return rows
 
 
@@ -219,6 +258,14 @@ def main():
                       "runs_with_firing": sum(r["distill_firings"] > 0 for r in rows),
                       "literal_empty_validation": tot("distill_validation_empty_literal")},
     }
+    v["recall"] = {"suppression": {"due": tot("suppression_due"), "fired": tot("suppression_due_fired"),
+                                   "protected_task_descriptors": tot("suppression_due_protected")},
+                   "ban_gene": {"due": tot("ban_due"), "fired": tot("ban_due_fired")},
+                   "distinct_good_capsules_per_run": [r["final_distinct_good_capsules"] for r in rows],
+                   "distinct_capsules_per_run": [r["final_distinct_capsules"] for r in rows]}
+    rc = v["recall"]
+    v["P7r_pass"] = bool(rc["suppression"]["due"] > 0 and rc["suppression"]["fired"] == rc["suppression"]["due"] and
+                         rc["ban_gene"]["due"] > 0 and rc["ban_gene"]["fired"] == rc["ban_gene"]["due"])
     full = lambda d, n="firings": d[n] > 0 and d["rederived"] == d[n]  # noqa: E731
     v["P7_pass"] = bool(full(v["suppression"]) and full(v["ban_gene"]) and
                         v["plateau"]["active"] > 0 and v["plateau"]["rederived"] == v["plateau"]["cases"] and

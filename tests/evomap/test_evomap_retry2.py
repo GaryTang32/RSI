@@ -245,3 +245,48 @@ def test_agent_runs_inside_a_git_repo_without_a_hub(tmp_path):
     assert all("evolver-rollback-" in s for s in stashes)
     assert _git(ws.root, "show", "stash@{0}^3:task.json")                         # the cycle's workspace, stashed
     assert ws.changed_files() == []                                             # tree back at HEAD
+
+
+# ----------------------------------------------------------------------------- review response (round 2)
+def test_selector_history_penalty_applies_to_soft_mode_only_as_selector_js():
+    """deob selector.js:130-138: success +0.12, mode 'hard' -0.22, mode 'soft' -0.08, any other mode adds nothing.
+    The pre-review port subtracted 0.08 for every non-success, non-hard entry."""
+    from rsi.evomap.selector import GeneScorer
+    sel = GeneScorer(mode="current")
+    base = dict(id="gene_h", signals_match=["x"], summary="s", strategy=["a"])
+    hist = [{"outcome": "failed", "mode": "none"}, {"outcome": "failed"}, {"outcome": "unknown", "mode": "x"}]
+    g = Gene(**base, learning_history=hist)
+    assert sel.adjustment(g, ["x"], None) == pytest.approx(0.0)
+    g2 = Gene(**base, learning_history=[{"outcome": "failed", "mode": "soft"}, {"outcome": "failed", "mode": "hard"},
+                                        {"outcome": "success", "mode": "none"}])
+    assert sel.adjustment(g2, ["x"], None) == pytest.approx(-0.08 - 0.22 + 0.12)
+
+
+def test_bounty_driver_can_let_farmers_self_report_completions():
+    """P5b: with claimant_kinds including "farmer", a publishing-only farmer claims a bounty and completes it with
+    one of its fresh capsule asset ids; the default driver (X19 / P5) never pays a farmer."""
+    from rsi.evomap import PopulationSimulator
+    from rsi.evomap.economy import BountyBoard, BountyDriver
+    from rsi.evomap.population import AgentSpec
+    from rsi.domains.geneworld import GeneWorldProposer
+    from rsi.domains.geneworld.forge import GeneWorldForge
+    dom = make_domain()
+
+    def run(kinds):
+        hub = NaiveEvoMapHub()
+        specs = [AgentSpec("a0_farmer", "farmer", farm_rate=2), AgentSpec("a1_honest", "honest", ability=0.5,
+                                                                         insight=0.9)]
+        drv = BountyDriver(BountyBoard(hub.credits), per_epoch=3, **({"claimant_kinds": kinds} if kinds else {}))
+        sim = PopulationSimulator(dom, dom.seed_artifact(), hub, specs, config=Config(mode="faithful", seed=0),
+                                  model_factory=lambda sp: GeneWorldModel(sp.ability),
+                                  proposer_factory=lambda sp: GeneWorldProposer(dom.world, sp.insight, 1.0),
+                                  forge=GeneWorldForge(dom.world), seed=0, bounties=drv)
+        sim.run(4)
+        return hub, drv
+    hub, drv = run(None)
+    assert not any(e["agent"] == "a0_farmer" for e in drv.log)
+    hub, drv = run(("honest", "inflator", "farmer"))
+    farm = [e for e in drv.log if e["agent"] == "a0_farmer"]
+    assert len(farm) == 4                                   # one self-reported completion per epoch
+    assert all(e["asset"] and e["asset"].startswith("sha256:") for e in farm)
+    assert sum(a for _, ag, a, r in hub.credits.history if ag == "a0_farmer" and r == "bounty") == 400

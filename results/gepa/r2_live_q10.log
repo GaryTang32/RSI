@@ -8,3 +8,54 @@ seed 303: gepa 0.778 (18 calls, $0.287, 513.0s), mipro 0.766 (10 calls, $0.183, 
 [saved] /home/user/RSI/results/gepa/r2_live_q10.json
 seed 304: gepa 0.777 (17 calls, $0.300, 536.2s), mipro 0.752 (10 calls, $0.195, 331.8s); spend so far $2.08
 [saved] /home/user/RSI/results/gepa/r2_live_q10.json
+seed 305: gepa 0.809 (20 calls, $0.360, 654.9s), mipro 0.743 (10 calls, $0.206, 346.9s); spend so far $2.65
+[saved] /home/user/RSI/results/gepa/r2_live_q10.json
+seed 306: gepa 0.699 (13 calls, $0.234, 426.0s), mipro 0.826 (10 calls, $0.166, 280.9s); spend so far $3.05
+[saved] /home/user/RSI/results/gepa/r2_live_q10.json
+seed 307: gepa 0.680 (15 calls, $0.282, 521.7s), mipro 0.837 (10 calls, $0.191, 320.6s); spend so far $3.52
+[saved] /home/user/RSI/results/gepa/r2_live_q10.json
+[saved] /home/user/RSI/results/gepa/r2_live_q10.json
+{
+ "D1_gepa_live_minus_mipro_live": {
+  "mean_diff": -0.03678295004132079,
+  "lo": -0.08973134361170496,
+  "hi": 0.013292765478917638,
+  "n": 8,
+  "p_better": 0.5
+ },
+ "mock_gepa_minus_mipro": {
+  "mean_diff": -0.17818251492006662,
+  "lo": -0.24746940651764987,
+  "hi": -0.1059331969058437,
+  "n": 8,
+  "p_better": 0.0
+ },
+ "gepa_live_minus_gepa_mock": {
+  "mean_diff": 0.17490484117659866,
+  "lo": 0.09549111571443412,
+  "hi": 0.25125362268270973,
+  "n": 8,
+  "p_better": 0.875
+ },
+ "mipro_live_minus_mipro_mock": {
+  "mean_diff": 0.03350527629785281,
+  "lo": -0.006305755418836573,
+  "hi": 0.07963481003799386,
+  "n": 8,
+  "p_better": 0.75
+ },
+ "D2_live_gap_minus_mock_gap": {
+  "mean_diff": 0.14139956487874583,
+  "lo": 0.07471996230641956,
+  "hi": 0.21640159284980134,
+  "n": 8,
+  "p_better": 1.0
+ },
+ "mean_gepa_live": 0.7337918203432644,
+ "mean_gepa_mock": 0.5588869791666657,
+ "mean_mipro_live": 0.7705747703845852,
+ "mean_mipro_mock": 0.7370694940867324,
+ "live_spend_usd": 3.523183,
+ "live_calls": 204,
+ "decision": "mock negative not confirmed with a live proposer: Q10 root cause (b), PARTIAL; L10 PARTIAL"
+}

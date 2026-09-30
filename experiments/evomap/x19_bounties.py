@@ -15,7 +15,13 @@ Metrics per seed: top-10 % earned-credit share (agents only; the poster is exter
 share of earned credits from promotion, fetches and bounties. Test: for every B, paired CI lower bound of
 (promotion share - bounty share) > 0 and top-10 % share > 0.5.
 
-Run: python experiments/evomap/x19_bounties.py [--seeds 10] [--workers 2] [--quick]
+P5b (review response, preregistered): ``--claimants honest,inflator,farmer`` lets farmers pursue bounties too. A
+farmer runs no solve cycle, so once per epoch, after publishing, it claims the head of its ``rankTasks`` ranking
+and self-reports completion with the capsule asset_id of a bundle it has just published (nothing checks it, as for
+every completion). In P5 the farmers could not claim, so the top decile's 0 % bounty share was structural.
+Output: results/evomap/x19b_bounties_farmers.json (P5's x19_bounties.json is kept).
+
+Run: python experiments/evomap/x19_bounties.py [--seeds 10] [--workers 2] [--quick] [--claimants ...]
 """
 from __future__ import annotations
 
@@ -38,7 +44,7 @@ def one(job):
     n, epochs = (24, 10) if args.quick else (40, 30)
     specs = population_specs(n, DEFAULT_MIX, seed, classes=world.domain.tasks.families("evolve"), farm_rate=FARM_RATE)
     hub = make_hub("naive", world)
-    drv = BountyDriver(BountyBoard(hub.credits), per_epoch=B)
+    drv = BountyDriver(BountyBoard(hub.credits), per_epoch=B, claimant_kinds=tuple(args.claimants.split(",")))
     sim = PopulationSimulator(world.domain, world.harness, hub, specs, config=agent_config("naive", seed),
                               model_factory=world.model_factory, proposer_factory=world.proposer_factory,
                               forge=world.forge, truth=world.truth, seed=seed, bounties=drv)
@@ -57,6 +63,7 @@ def one(job):
             "top10_share_promotion": by["promotion"] / tot, "top10_share_bounty": by["bounty"] / tot,
             "top10_share_fetch": by["fetch"] / tot,
             "top10_are_farmers": sum(a.endswith("farmer") for a in top) / len(top),
+            "bounties_completed_by_farmers": sum(1 for e in drv.log if e["agent"].endswith("farmer")),
             "bounties_posted": posted, "bounties_completed": done,
             "bounty_credits_all_agents": sum(a for _, ag, a, r in hub.credits.history if r == "bounty" and ag in names),
             "promotion_credits_all_agents": sum(a for _, ag, a, r in hub.credits.history
@@ -64,7 +71,8 @@ def one(job):
 
 
 def main():
-    args = parse_args(__doc__.split("\n")[0], default_seeds=10)
+    args = parse_args(__doc__.split("\n")[0], default_seeds=10,
+                      extra=lambda ap: ap.add_argument("--claimants", default="honest,inflator"))
     jobs = [(s, B, args) for B in RATES for s in range(args.seeds)]
     rows = pmap(one, jobs, args.workers)
     keys = [k for k in rows[0] if k not in ("seed", "B")]
@@ -76,11 +84,14 @@ def main():
         v[f"B{B}"] = {"promotion_minus_bounty_share": d, "top10_share": summ[B]["credit_top10_share"],
                       "pass": bool(d["lo"] > 0 and summ[B]["credit_top10_share"]["mean"] > 0.5)}
     v["rather_than_bounties_holds_for_all_B"] = all(v[f"B{B}"]["pass"] for B in RATES)
-    out = {"config": {"seeds": args.seeds, "rates": RATES, "amount": 100, "farm_rate": FARM_RATE,
+    v["promotion_gt_bounty_for_all_B"] = all(v[f"B{B}"]["promotion_minus_bounty_share"]["lo"] > 0 for B in RATES)
+    v["top10_gt_half_for_all_B"] = all(v[f"B{B}"]["top10_share"]["mean"] > 0.5 for B in RATES)
+    out = {"config": {"seeds": args.seeds, "rates": RATES, "claimant_kinds": args.claimants.split(","),
+                      "amount": 100, "farm_rate": FARM_RATE,
                       "population": "24x10 (quick)" if args.quick else "40 agents x 30 epochs",
                       "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"},
            "raw": rows, "summary": {str(B): s for B, s in summ.items()}, "verdict": v}
-    save("x19_bounties", out, args.out)
+    save("x19b_bounties_farmers" if "farmer" in args.claimants else "x19_bounties", out, args.out)
     for B in RATES:
         print(f"== B = {B}")
         for k in keys:

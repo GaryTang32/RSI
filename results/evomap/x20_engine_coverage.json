@@ -1,6 +1,6 @@
 {
  "experiment": "x20_engine_coverage",
- "generated_at": "2026-09-29 20:49:29",
+ "generated_at": "2026-09-30 00:56:32",
  "config": {
   "seeds": 6,
   "cycles": 150,
@@ -41,7 +41,15 @@
    },
    "failure_distilled_genes": 0,
    "solidify_count": 150,
-   "n_genes": 2
+   "n_genes": 2,
+   "suppression_due": 116,
+   "suppression_due_fired": 116,
+   "suppression_due_protected": 4,
+   "ban_due": 0,
+   "ban_due_fired": 0,
+   "final_distinct_good_capsules": 8,
+   "final_distinct_capsules": 8,
+   "max_n_good_seen_by_distiller": 8
   },
   {
    "seed": 1,
@@ -72,7 +80,15 @@
    },
    "failure_distilled_genes": 0,
    "solidify_count": 150,
-   "n_genes": 1
+   "n_genes": 1,
+   "suppression_due": 92,
+   "suppression_due_fired": 92,
+   "suppression_due_protected": 4,
+   "ban_due": 0,
+   "ban_due_fired": 0,
+   "final_distinct_good_capsules": 5,
+   "final_distinct_capsules": 5,
+   "max_n_good_seen_by_distiller": 5
   },
   {
    "seed": 2,
@@ -103,7 +119,15 @@
    },
    "failure_distilled_genes": 2,
    "solidify_count": 150,
-   "n_genes": 6
+   "n_genes": 6,
+   "suppression_due": 86,
+   "suppression_due_fired": 86,
+   "suppression_due_protected": 3,
+   "ban_due": 6,
+   "ban_due_fired": 6,
+   "final_distinct_good_capsules": 7,
+   "final_distinct_capsules": 7,
+   "max_n_good_seen_by_distiller": 7
   },
   {
    "seed": 3,
@@ -136,7 +160,15 @@
    },
    "failure_distilled_genes": 3,
    "solidify_count": 150,
-   "n_genes": 5
+   "n_genes": 5,
+   "suppression_due": 148,
+   "suppression_due_fired": 148,
+   "suppression_due_protected": 2,
+   "ban_due": 0,
+   "ban_due_fired": 0,
+   "final_distinct_good_capsules": 7,
+   "final_distinct_capsules": 7,
+   "max_n_good_seen_by_distiller": 7
   },
   {
    "seed": 4,
@@ -168,7 +200,15 @@
    },
    "failure_distilled_genes": 2,
    "solidify_count": 150,
-   "n_genes": 4
+   "n_genes": 4,
+   "suppression_due": 130,
+   "suppression_due_fired": 130,
+   "suppression_due_protected": 7,
+   "ban_due": 0,
+   "ban_due_fired": 0,
+   "final_distinct_good_capsules": 5,
+   "final_distinct_capsules": 5,
+   "max_n_good_seen_by_distiller": 5
   },
   {
    "seed": 5,
@@ -200,7 +240,15 @@
    },
    "failure_distilled_genes": 0,
    "solidify_count": 150,
-   "n_genes": 1
+   "n_genes": 1,
+   "suppression_due": 160,
+   "suppression_due_fired": 160,
+   "suppression_due_protected": 6,
+   "ban_due": 0,
+   "ban_due_fired": 0,
+   "final_distinct_good_capsules": 6,
+   "final_distinct_capsules": 6,
+   "max_n_good_seen_by_distiller": 6
   }
  ],
  "verdict": {
@@ -235,6 +283,34 @@
    "runs_with_firing": 0,
    "literal_empty_validation": 0
   },
+  "recall": {
+   "suppression": {
+    "due": 732,
+    "fired": 732,
+    "protected_task_descriptors": 26
+   },
+   "ban_gene": {
+    "due": 6,
+    "fired": 6
+   },
+   "distinct_good_capsules_per_run": [
+    8,
+    5,
+    7,
+    7,
+    5,
+    6
+   ],
+   "distinct_capsules_per_run": [
+    8,
+    5,
+    7,
+    7,
+    5,
+    6
+   ]
+  },
+  "P7r_pass": true,
   "P7_pass": true,
   "P8_pass": false
  }

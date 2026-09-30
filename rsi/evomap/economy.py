@@ -242,8 +242,12 @@ class BountyDriver:
 
     def __init__(self, board: BountyBoard, *, per_epoch: int = 4, amount: float = BOUNTY_REFERENCE,
                  poster: str = "bounty_poster", strategy: str = "balanced", expires_in: int = 3,
-                 extractor=None) -> None:
+                 extractor=None, claimant_kinds: Sequence[str] = ("honest", "inflator")) -> None:
         self.board = board
+        #: agent kinds that pursue bounties. X19 (P5) used honest + inflator only; P5b adds "farmer": a farmer
+        #: runs no solve cycle, so once per epoch it claims the head of its ranking and self-reports completion
+        #: with the capsule asset_id of a bundle it has just published (nothing checks it, as ``complete``).
+        self.claimant_kinds = tuple(claimant_kinds)
         self.per_epoch, self.amount, self.poster = per_epoch, float(amount), poster
         self.strategy, self.expires_in = strategy, expires_in
         self.extractor = extractor
@@ -281,6 +285,21 @@ class BountyDriver:
         fam = self.board.tasks[tid].meta.get("family")
         pool = [t for t in sim.tasks if t.family == fam]
         return rng.choice(pool) if pool else None
+
+    def farmer_turn(self, sim, sp, asset_ids: Sequence[str], ep: int) -> bool:
+        """P5b: a publishing-only agent claims one bounty and completes it with one of its own fresh asset ids."""
+        ids = [a for a in asset_ids if a]
+        if not ids:
+            return False
+        ranked = rank_tasks(self.board.tasks.values(), sp.name, [], self.strategy)
+        for e in ranked:
+            tid = e["task"].task_id
+            if self.board.claim(tid, sp.name):
+                if self.board.complete(tid, sp.name, ids[-1], ep):
+                    self.log.append({"epoch": ep, "agent": sp.name, "task": tid, "asset": ids[-1], "farmer": True})
+                    return True
+                return False
+        return False
 
     def after_cycle(self, sim, sp, ag, cr, ep: int) -> None:
         tid = self.active.get(sp.name)

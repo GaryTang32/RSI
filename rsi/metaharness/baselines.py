@@ -28,10 +28,21 @@ Policies (constants: OpenEvolve 0.4.0 ``config.py`` defaults, read from the rele
   ``n(s)`` the number of children already proposed from ``s`` and ``T`` the number of expansions; ``c = 1``.
   Context = the selected program's code and score. (The TTT-Discover paper was not reachable from this machine;
   the rule follows its published description; ``c`` and the rank prior are our choices.)
-* ``gepa`` - GEPA's reflective mutation: the parent is sampled from the per-unit Pareto front (the programs best
-  on at least one unit), with probability proportional to the number of units it leads; context = that parent's
-  code, scores, per-unit feedback and full traces (GEPA's reflective dataset). Not modelled: minibatch
-  acceptance (every candidate is evaluated, as in every arm here), merge.
+* ``gepa_minibatch`` - GEPA's reflective mutation as the reference implements it (``gepa/gepa_utils.py``
+  ``select_program_candidate_from_pareto_front`` / ``remove_dominated_programs``; ``api.py``
+  ``reflection_minibatch_size`` = 3 with the epoch-shuffled batch sampler). The Pareto front is taken per
+  search *instance* (instance = (unit, eval step); its 0/1 score read from the stored ``eval_step`` records);
+  dominated programs are removed (a program is dominated when, on every instance front it belongs to, some
+  other surviving program is also on that front; checked lowest aggregate score first), and the parent is drawn
+  uniformly from the list in which each surviving program appears once per instance front it is on. Context =
+  the parent's code, scores and meta plus a *reflective dataset* of 3 search examples (their full eval records:
+  prompts, prediction, gold label), drawn by an epoch-shuffled sampler over all instances (``trainset`` =
+  our search split). Not modelled: minibatch acceptance, merge (every candidate is evaluated, as in every arm).
+  Retry round 2, P7 (added after a review found the ``gepa`` policy below unfaithful).
+* ``gepa`` - the first, *unfaithful* GEPA-style arm, kept unchanged for M7's record: the parent is sampled from
+  a per-UNIT Pareto front (3 dataset-level units on MemoClassify, no dominated-program removal, so nearly
+  greedy), with probability proportional to the number of units it leads; context = that parent's code,
+  scores, per-unit feedback and FULL traces. Real GEPA reflects on a 3-example minibatch (see above).
 
 Duplicates: each slot sees only its optimiser's context, so a deterministic inner proposer (the offline mock)
 can return an exact copy of a program already in the store (same parent, same diagnosis). The wrapper then
@@ -50,7 +61,7 @@ from ..core.llm import Usage
 from .mock import PARENT_HINT
 from .proposer import ProposalBatch, Proposer, excerpt
 
-POLICIES = ("openevolve", "ttt_discover", "gepa")
+POLICIES = ("openevolve", "ttt_discover", "gepa", "gepa_minibatch")
 
 OE_ISLANDS = 5
 OE_EXPLORATION = 0.2
@@ -60,6 +71,8 @@ OE_TOP = 3
 OE_DIVERSE = 2
 OE_ARTIFACT_BYTES = 20 * 1024
 PUCT_C = 1.0
+#: GEPA ``reflection_minibatch_size`` default (``api.py``)
+GEPA_MINIBATCH = 3
 #: re-asks when the inner proposer returns an exact copy of an existing program (see ``propose``)
 MAX_DEDUP_RETRIES = 3
 
@@ -100,6 +113,7 @@ class StructuredOptimizerProposer(Proposer):
         self.seed = seed
         self.puct_c = puct_c
         self.role = getattr(inner, "role", "proposer")
+        self._inst_cache: dict[tuple[str, int], dict[tuple[str, str], tuple[float, str]]] = {}
 
     # ------------------------------------------------------------------ selection rules
     def _openevolve(self, progs: list[_Prog], slot_index: int, rng: random.Random) -> tuple[_Prog, list[_Prog]]:
@@ -158,6 +172,89 @@ class StructuredOptimizerProposer(Proposer):
             return max(progs, key=lambda p: p.score)
         return rng.choices(front, weights=[wins[p.name] for p in front], k=1)[0]
 
+    def _instances(self, view: dict[str, str], name: str) -> dict[tuple[str, str], tuple[float, str]]:
+        """``{(unit, step): (0/1 score, raw eval record line)}`` of program ``name``, from its stored traces."""
+        pre = f"candidates/{name}/eval/search/traces/"
+        paths = sorted(p for p in view if p.startswith(pre))
+        key = (name, sum(len(view[p]) for p in paths))
+        if key in self._inst_cache:
+            return self._inst_cache[key]
+        out: dict[tuple[str, str], tuple[float, str]] = {}
+        for p in paths:
+            unit = p[len(pre):].rsplit(".", 1)[0]
+            for line in view[p].splitlines():
+                if '"eval_step"' not in line:
+                    continue
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get("type") != "eval_step":
+                    continue
+                ok = r.get("ok")
+                ok = ok if isinstance(ok, bool) else str(ok).lower() == "true"
+                out[(unit, str(r.get("step")))] = (1.0 if ok else 0.0, line)
+        self._inst_cache[key] = out
+        return out
+
+    @staticmethod
+    def remove_dominated(fronts: dict, scores: dict[str, float]) -> dict:
+        """GEPA ``remove_dominated_programs``: drop programs every one of whose instance fronts also holds
+        another surviving program; checked in ascending aggregate score, one removal per sweep."""
+        progs = sorted({p for f in fronts.values() for p in f}, key=lambda x: scores[x])
+        dominated: set[str] = set()
+        found = True
+        while found:
+            found = False
+            for y in progs:
+                if y in dominated:
+                    continue
+                others = set(progs) - {y} - dominated
+                if all(any(o in others for o in f) for f in fronts.values() if y in f):
+                    dominated.add(y)
+                    found = True
+                    break
+        return {k: {p for p in f if p not in dominated} for k, f in fronts.items()}
+
+    def _gepa_minibatch(self, view: dict[str, str], progs: list[_Prog], rng: random.Random) -> _Prog:
+        inst = {p.name: self._instances(view, p.name) for p in progs}
+        keys = sorted({k for d in inst.values() for k in d})
+        if not keys:
+            return max(progs, key=lambda p: p.score)
+        fronts = {}
+        for k in keys:
+            vals = {n: d[k][0] for n, d in inst.items() if k in d}
+            best = max(vals.values())
+            fronts[k] = {n for n, v in vals.items() if v >= best - 1e-12}
+        fronts = self.remove_dominated(fronts, {p.name: p.score for p in progs})
+        freq: dict[str, int] = {}
+        for k in keys:
+            for n in sorted(fronts[k]):
+                freq[n] = freq.get(n, 0) + 1
+        by = {p.name: p for p in progs}
+        order = sorted(freq, key=lambda n: (by[n].order, n))
+        sampling = [n for n in order for _ in range(freq[n])]
+        return by[rng.choice(sampling)]
+
+    def _minibatch(self, view: dict[str, str], parent: str, n_proposed: int, seed: int) -> dict[str, str]:
+        """Reflective dataset: the parent's eval records of ``GEPA_MINIBATCH`` examples chosen by an
+        epoch-shuffled sampler over all search instances (proposal number ``n_proposed``)."""
+        inst = self._instances(view, parent)
+        keys = sorted(inst)
+        if not keys:
+            return {}
+        per_epoch = max(1, len(keys) // GEPA_MINIBATCH)
+        epoch, pos = divmod(n_proposed, per_epoch)
+        perm = list(keys)
+        random.Random(f"gepa-epoch|{self.seed}|{seed}|{epoch}").shuffle(perm)
+        chosen = perm[pos * GEPA_MINIBATCH:(pos + 1) * GEPA_MINIBATCH] or perm[:GEPA_MINIBATCH]
+        out: dict[str, list[str]] = {}
+        for unit, step in sorted(chosen):
+            out.setdefault(unit, []).append(inst[(unit, step)][1])
+        return {f"candidates/{parent}/eval/search/traces/{u}.jsonl": json.dumps({"type": "meta", "unit": u,
+                "note": f"GEPA reflective minibatch: {len(lines)} of this unit's examples"}) + "\n" + "\n".join(lines)
+                for u, lines in out.items()}
+
     # ------------------------------------------------------------------ context
     @staticmethod
     def _files(view: dict[str, str], name: str, *, traces: str = "none") -> dict[str, str]:
@@ -195,6 +292,11 @@ class StructuredOptimizerProposer(Proposer):
         elif self.policy == "ttt_discover":
             parent = self._puct(progs, extra_visits or {})
             sub.update(self._files(view, parent.name))
+        elif self.policy == "gepa_minibatch":
+            parent = self._gepa_minibatch(view, progs, rng)
+            sub.update(self._files(view, parent.name))
+            n_prop = sum(1 for p in progs if p.kind != "baseline") + slot
+            sub.update(self._minibatch(view, parent.name, n_prop, seed))
         else:
             parent = self._gepa(progs, rng)
             sub.update(self._files(view, parent.name, traces="full"))
@@ -231,7 +333,7 @@ class StructuredOptimizerProposer(Proposer):
             for c in b.candidates:
                 known.setdefault(c.artifact.id, f"new{slot}")
             for c in b.candidates:
-                c.name = f"{c.name}_{self.policy[:2]}{slot}"
+                c.name = f"{c.name}_{self.policy[:2]}{'m' if self.policy == 'gepa_minibatch' else ''}{slot}"
                 c.meta = {**(c.meta or {}), "policy": self.policy, "selected_parent": parent}
                 if self.policy == "openevolve":
                     c.meta["island"] = (sum(1 for p in programs_in(view) if p.kind != "baseline") + slot) % OE_ISLANDS

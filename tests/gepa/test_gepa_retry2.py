@@ -125,3 +125,23 @@ def test_r2_multitask_results():
     # equal total rollouts: the multi-task run never exceeds 30 k (+ the reference soft-budget overshoot)
     for r in o["raw"]:
         assert r["multi_rollouts"] <= 30 * r["k"] + 2 * 3 + 30
+
+
+def test_r2_live_q10_results_are_complete_and_within_spend_cap():
+    """R2-D (review of retry 2): live-proposer check of the Q10 negative, both arms live, fresh seeds."""
+    o = _load("r2_live_q10.json")
+    assert o["partial"] is False and o["setting"] == "ifbench" and o["model"] == "gpt"
+    raw = o["raw"]
+    live = [r for r in raw if r["proposer"] == "live"]
+    # every launched seed is reported for both arms (no dropped seeds), seeds are fresh (300+)
+    seeds = sorted({r["seed"] for r in live})
+    assert seeds == list(range(300, 300 + len(seeds))) and len(seeds) >= 2
+    for arm in ("gepa", "mipro"):
+        assert sorted(r["seed"] for r in live if r["arm"] == arm) == seeds
+        assert sorted(r["seed"] for r in raw if r["proposer"] == "mock" and r["arm"] == arm) == list(range(300, 308))
+    A = o["analysis"]
+    assert A["live_spend_usd"] <= 4.0
+    assert A["D1_gepa_live_minus_mipro_live"]["n"] == len(seeds)
+    # the preregistered decision string follows from D1's CI
+    confirmed = A["D1_gepa_live_minus_mipro_live"]["hi"] < 0
+    assert A["decision"].startswith("mock negative confirmed" if confirmed else "mock negative not confirmed")

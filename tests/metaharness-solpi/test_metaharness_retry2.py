@@ -90,3 +90,41 @@ def test_puct_prefers_unvisited_high_rank_programs():
     # once b has 8 children that did no better, its exploration bonus shrinks; a keeps Q = 0.6 through b
     kids = [_Prog(f"k{i}", 0.1, {"kind": "candidate", "order": 3 + i, "base_system": "b"}, {}) for i in range(8)]
     assert w._puct([a, b] + kids, {}).name == "a"
+
+
+# ---------------------------------------------------------------- faithful GEPA arm (retry 2, P7, after review)
+def test_gepa_minibatch_reflects_on_three_examples_of_the_parent(small_run):
+    """Q4/Q5 (retry 2, P7): the reviewed ``gepa`` arm handed the proposer the parent's FULL traces (MBs); GEPA's
+    reflective dataset is a minibatch of 3 examples (``reflection_minibatch_size`` default). Fails on the code
+    before P7 (no such policy)."""
+    dom, res = small_run
+    view = res.loop.store.view("full")
+    wrapper = StructuredOptimizerProposer(MockProposer(MemoClassifyLibrary(), seed=0), "gepa_minibatch", seed=0)
+    parent, sub = wrapper.select(view, iteration=3, slot=0, seed=0)
+    assert parent in {p.name for p in programs_in(view)}
+    traces = {p: t for p, t in sub.items() if "/traces/" in p}
+    assert traces and all(p.split("/")[1] == parent for p in traces)
+    evals = [json.loads(line) for t in traces.values() for line in t.splitlines() if '"eval_step"' in line]
+    assert len(evals) == 3
+    assert sum(len(t) for t in traces.values()) < sum(len(view[p]) for p in view
+                                                      if p.startswith(f"candidates/{parent}/eval/search/traces/")) / 10
+    assert {p.split("/")[1] for p in sub if p.startswith("candidates/")} == {parent}
+    # the epoch-shuffled sampler moves on to other examples for the next proposal
+    _, sub2 = wrapper.select(view, iteration=3, slot=1, seed=0)
+    e2 = [line for p, t in sub2.items() if "/traces/" in p for line in t.splitlines() if '"eval_step"' in line]
+    assert len(e2) == 3
+    batch = wrapper.propose(iteration=3, view=view, k=2, brief="b",
+                            artifacts={n: res.loop.store.artifact(n) for n in res.loop.store.names()}, seed=0)
+    assert len(batch.candidates) == 2 and batch.candidates[0].base_system == parent
+
+
+def test_gepa_minibatch_front_is_per_instance_and_drops_dominated_programs():
+    """GEPA ``remove_dominated_programs``: a program that leads a single instance stays on the front even with a
+    low aggregate score (the per-unit front of the old ``gepa`` arm was near-greedy); a program whose every
+    instance front also holds another survivor is removed."""
+    rd = StructuredOptimizerProposer.remove_dominated
+    fronts = {0: {"a", "b"}, 1: {"a", "b"}, 2: {"c"}}
+    out = rd(fronts, {"a": 0.9, "b": 0.5, "c": 0.1})
+    assert out == {0: {"a"}, 1: {"a"}, 2: {"c"}}        # b (dominated by a) removed; low-score c kept
+    # ties: of two programs on exactly the same fronts, the lower-scoring one is removed
+    assert rd({0: {"x", "y"}}, {"x": 0.2, "y": 0.3}) == {0: {"y"}}

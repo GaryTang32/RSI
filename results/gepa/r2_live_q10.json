@@ -3,14 +3,14 @@
  "setting": "ifbench",
  "model": "gpt",
  "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
- "partial": true,
+ "partial": false,
  "analysis": {
   "D1_gepa_live_minus_mipro_live": {
-   "mean_diff": -0.01520629617719289,
-   "lo": -0.0545336367862597,
-   "hi": 0.018281346363061335,
-   "n": 5,
-   "p_better": 0.6
+   "mean_diff": -0.03678295004132079,
+   "lo": -0.08973134361170496,
+   "hi": 0.013292765478917638,
+   "n": 8,
+   "p_better": 0.5
   },
   "mock_gepa_minus_mipro": {
    "mean_diff": -0.17818251492006662,
@@ -20,32 +20,32 @@
    "p_better": 0.0
   },
   "gepa_live_minus_gepa_mock": {
-   "mean_diff": 0.12909973983959017,
-   "lo": 0.03714164238596247,
-   "hi": 0.22105783729321785,
-   "n": 5,
-   "p_better": 0.8
+   "mean_diff": 0.17490484117659866,
+   "lo": 0.09549111571443412,
+   "hi": 0.25125362268270973,
+   "n": 8,
+   "p_better": 0.875
   },
   "mipro_live_minus_mipro_mock": {
-   "mean_diff": 0.02679467758449088,
-   "lo": -0.02754163393055571,
-   "hi": 0.10720061678819434,
-   "n": 5,
-   "p_better": 0.6
+   "mean_diff": 0.03350527629785281,
+   "lo": -0.006305755418836573,
+   "hi": 0.07963481003799386,
+   "n": 8,
+   "p_better": 0.75
   },
   "D2_live_gap_minus_mock_gap": {
-   "mean_diff": 0.10230506225509925,
-   "lo": 0.04774354795285374,
-   "hi": 0.19331200858047679,
-   "n": 5,
+   "mean_diff": 0.14139956487874583,
+   "lo": 0.07471996230641956,
+   "hi": 0.21640159284980134,
+   "n": 8,
    "p_better": 1.0
   },
-  "mean_gepa_live": 0.7363925176173669,
+  "mean_gepa_live": 0.7337918203432644,
   "mean_gepa_mock": 0.5588869791666657,
-  "mean_mipro_live": 0.7515988137945597,
+  "mean_mipro_live": 0.7705747703845852,
   "mean_mipro_mock": 0.7370694940867324,
-  "live_spend_usd": 2.083426,
-  "live_calls": 126,
+  "live_spend_usd": 3.523183,
+  "live_calls": 204,
   "decision": "mock negative not confirmed with a live proposer: Q10 root cause (b), PARTIAL; L10 PARTIAL"
  },
  "raw": [
@@ -542,7 +542,121 @@
     "prompts/answer.md": "You are the answer module of an order-fulfilment assistant. For each property that has a protocol defined for this customer type, output '<property>: <protocol>'.\n\nProtocols by customer type:\n- Government: lithium: zircon, fragile: quartz, rural: lavender, frozen: obsidian\n- Retail: lithium: granite, fragile: quartz, returned: nutmeg, holiday: hematite\n- Nonprofit: lithium: zircon\n\nOutput only properties listed for the customer type. Ignore all others.\n\nExample: Ticket T-8582 (nonprofit customer): the order is lithium, luxury, hazardous and prepaid. Choose the handling protocol for each order property. => lithium: zircon; luxury: beryl\nExample: Ticket T-4963 (retail customer): the order is lithium, luxury, embargoed, returned and holiday. Choose the handling protocol for each order property. => lithium: granite; luxury: beryl; embargoed: pumice; returned: nutmeg; holiday: hematite\nExample: Ticket T-1258 (wholesale customer): the order is luxury, holiday, hazardous and oversized. Choose the handling protocol for each order property. => luxury: beryl; holiday: hematite\nExample: Ticket T-7561 (retail customer): the order is luxury, returned and hazardous. Choose the handling protocol for each order property. => luxury: beryl; returned: nutmeg\n",
     "prompts/rewrite.md": "You are the rewrite module of an order-fulfillment assistant. For each handled order property, output '<property>: <protocol>'.\n\nHandle these properties with their protocols:\n- bulk: carnelian\n- warranty: hawthorn\n- oversized: primrose\n- perishable: bluebell\n- prepaid: tourmaline\n- subscription: fennel\n- hazardous: paprika (for wholesale customers); amethyst (for government customers)\n\nDo not output protocols for these properties: lithium, rural, frozen, luxury, fragile\n\nExample: Ticket T-1513 (wholesale customer): the order is embargoed, hazardous, perishable and prepaid. Choose the handling protocol for each order property. => hazardous: paprika; perishable: bluebell; prepaid: tourmaline\nExample: Ticket T-6758 (government customer): the order is fragile, rural, frozen and hazardous. Choose the handling protocol for each order property. => hazardous: amethyst\nExample: Ticket T-8167 (wholesale customer): the order is lithium, embargoed, hazardous, warranty, prepaid and liquid. Choose the handling protocol for each order property. => hazardous: paprika; warranty: hawthorn; prepaid: tourmaline; liquid: begonia\nExample: Ticket T-9365 (government customer): the order is lithium, frozen, hazardous and oversized. Choose the handling protocol for each order property. => hazardous: amethyst; oversized: primrose\n"
    }
+  },
+  {
+   "arm": "gepa",
+   "proposer": "live",
+   "seed": 305,
+   "B": 3593,
+   "final_test": 0.8086973952337773,
+   "best_val": 0.8372777777777777,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 483,
+   "llm_calls": 20,
+   "cost_usd": 0.359908,
+   "cache_hits": 0,
+   "wall_s": 654.9,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfillment assistant. For each order property mentioned in the request, determine and output its handling protocol.\n\nApply the following specific protocol rules:\n\nFor the 'holiday' property: use yttrium protocol\nFor the 'customized' property: use ochre protocol\nFor the 'international' property: use magnolia protocol\nFor the 'backordered' property: use azalea protocol\nFor the 'bulk' property: use tanzanite protocol\nFor the 'embargoed' property: use onyx protocol\nFor the 'fragile' property: use pumice protocol\nFor the 'returned' property: use obsidian protocol\n\nFor any other order properties not listed above: use the standard protocol.\n\nInstructions:\n- Identify all order properties mentioned in the request\n- For each property, apply the appropriate rule above to determine its protocol\n- Output every property mentioned, including those requiring the standard protocol\n- Present each assignment in the format '<property>: <protocol>'\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfilment assistant. Your task is to assign a handling protocol to each order property that has not yet been handled by earlier modules.\n\n## Process\n1. Identify which properties have already been assigned protocols in the \"Upstream notes from earlier modules\" section\n2. For all remaining properties, apply the protocol rules below\n3. If a property is not in the rules list, use the standard protocol\n4. Output each unhandled property in the format: <property>: <protocol>\n\n## Protocol Assignment Rules\nApply the following mappings for order properties:\n- oversized \u2192 dolomite\n- express \u2192 sequoia\n- insured \u2192 ginkgo\n- rural \u2192 topaz\n- warranty \u2192 agate\n- subscription \u2192 gneiss\n- lithium \u2192 chartreuse\n- gift \u2192 baobab\n\nFor all other properties not listed above, use: standard\n\n## Output Format\nOnly include properties that are NOT in the upstream notes. Output one assignment per line:\n<property>: <protocol>\n"
+   }
+  },
+  {
+   "arm": "mipro",
+   "proposer": "live",
+   "seed": 305,
+   "B": 3593,
+   "final_test": 0.7429053788261103,
+   "best_val": 0.7635555555555555,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 759,
+   "llm_calls": 10,
+   "cost_usd": 0.20633099999999996,
+   "cache_hits": 0,
+   "wall_s": 346.9,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfilment assistant. Your task is to output the handling protocol for order properties that require special processing.\n\nFor each order property that appears in the ticket:\n1. If it matches a property listed below, output '<property>: <protocol>' using the assigned protocol\n2. If it does not match, skip it (do not output)\n3. Output properties in the order they appear in the ticket\n\nSpecial handling properties:\n- holiday: Use \"carnelian\" for retail/wholesale customers; use \"yttrium\" for government customers\n- backordered: azalea\n- fragile: pumice\n- embargoed: onyx\n- returned: obsidian\n- international: magnolia\n- customized: ochre\n\nDo not output properties like oversized, insured, warranty, or rural\u2014they are either handled by other modules or use standard protocols.\n\nExample: Ticket T-2246 (government customer): the order is holiday, customized, returned, fragile, international and oversized. Choose the handling protocol for each order property. => holiday: yttrium; customized: ochre; returned: obsidian; fragile: pumice; international: magnolia\nExample: Ticket T-6697 (wholesale customer): the order is oversized, express and insured. Choose the handling protocol for each order property. => (nothing to handle)\nExample: Ticket T-4642 (nonprofit customer): the order is holiday, oversized, lithium, gift and subscription. Choose the handling protocol for each order property. => holiday: yttrium\nExample: Ticket T-5536 (retail customer): the order is holiday, backordered, bulk, fragile and oversized. Choose the handling protocol for each order property. => holiday: carnelian; backordered: azalea; bulk: tanzanite; fragile: pumice\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfilment assistant. Based on the customer type, apply these protocols to matching order properties:\n\n**Nonprofit customers:**\n- lithium: chartreuse\n- subscription: gneiss\n- gift: baobab\n\n**Government customers:**\n- oversized: dolomite\n\n**Wholesale customers:**\n- rural: topaz\n- warranty: agate\n\nFor each order property matching your handling rules, output '<property>: <protocol>'. Do not output properties outside these rules; they use the standard protocol instead.\n\nExample: Ticket T-6482 (government customer): the order is customized, fragile and oversized. Choose the handling protocol for each order property. => oversized: dolomite\nExample: Ticket T-8226 (wholesale customer): the order is embargoed, oversized, lithium, insured and rural. Choose the handling protocol for each order property. => oversized: lavender; lithium: chartreuse; insured: ginkgo; rural: topaz\nExample: Ticket T-6868 (wholesale customer): the order is express, insured, subscription and warranty. Choose the handling protocol for each order property. => express: sequoia; insured: ginkgo; subscription: gneiss; warranty: agate\nExample: Ticket T-8333 (wholesale customer): the order is oversized, express and rural. Choose the handling protocol for each order property. => oversized: lavender; express: sequoia; rural: topaz\n"
+   }
+  },
+  {
+   "arm": "gepa",
+   "proposer": "live",
+   "seed": 306,
+   "B": 3593,
+   "final_test": 0.6994541347111114,
+   "best_val": 0.7026666666666668,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 533,
+   "llm_calls": 13,
+   "cost_usd": 0.23382,
+   "cache_hits": 0,
+   "wall_s": 426.0,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfillment assistant. For each applicable order property, output '<property>: <protocol>'. Use the assigned protocol when a rule applies.\n\nHANDLED PROPERTIES:\nThis module processes the following order properties only:\n- lithium\n- international\n- gift\n- customized\n- insured\n- luxury\n\nProperties not listed above (such as oversized, bulk, perishable, hazardous, backordered, or returned) are handled by other modules and should NOT be processed by this module.\n\nPROTOCOL RULES (with customer type conditionals):\n- lithium: hafnium protocol (for nonprofit customers) | hemlock protocol (for retail/wholesale customers)\n- international \u2192 obsidian protocol\n- gift \u2192 osmium protocol\n- customized \u2192 foxglove protocol\n- insured \u2192 walnut protocol\n- luxury \u2192 acacia protocol\n\nOUTPUT FORMAT:\nOutput each handled property found in the order with its assigned protocol as '<property>: <protocol>'. Provide a trace showing your reasoning, including the customer type and how it affected any conditional protocol selections.\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfillment assistant. Your task is to assign handling protocols to order properties that have not already been processed by upstream modules.\n\nINSTRUCTIONS:\n\n1. Review the \"Upstream notes\" section and identify all properties already assigned a protocol. Skip these properties entirely in your output.\n\n2. For all remaining unprocessed properties, apply the following protocol assignment rules in order:\n   - hazardous \u2192 alder\n   - backordered \u2192 schist\n   - oversized \u2192 dahlia\n   - perishable \u2192 quartz\n   - bulk \u2192 onyx\n   - subscription \u2192 zinnia\n   - returned \u2192 lapis\n   - refurbished \u2192 chervil\n\n3. For any property not covered by the rules above, assign the standard protocol.\n\n4. Output each assigned property in the format: '<property>: <protocol>'\n   Separate multiple assignments with semicolons.\n\n5. If all properties have already been handled upstream, output: (no properties for this module)\n\n6. Provide a trace explaining each assignment, including which rule was applied (or noting \"no applicable rule\" for standard assignments).\n"
+   }
+  },
+  {
+   "arm": "mipro",
+   "proposer": "live",
+   "seed": 306,
+   "B": 3593,
+   "final_test": 0.8264056597222192,
+   "best_val": 0.8428888888888888,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 681,
+   "llm_calls": 10,
+   "cost_usd": 0.166235,
+   "cache_hits": 0,
+   "wall_s": 280.9,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfilment assistant. For each order property that has a special handling protocol, output '<property>: <protocol>'. Properties not listed below use the standard protocol and should not be output.\n\nSpecial handling protocols:\n- international: obsidian\n- customized: foxglove\n- liquid: thistle\n- fragile: topaz\n- lithium: hemlock\n- gift: osmium\n- insured: walnut\n- luxury: acacia\n\nOutput format: List each applicable property in the order it appears in the ticket, separated by semicolons and spaces. The customer type (wholesale, government, retail) does not affect protocol selection.\n\nExample: Ticket T-9882 (government customer): the order is liquid, fragile and oversized. Choose the handling protocol for each order property. => liquid: thistle; fragile: topaz\nExample: Ticket T-4339 (government customer): the order is liquid, fragile, customized, oversized and refurbished. Choose the handling protocol for each order property. => liquid: thistle; fragile: topaz; customized: foxglove\nExample: Ticket T-3838 (wholesale customer): the order is customized, oversized, bulk, returned and subscription. Choose the handling protocol for each order property. => customized: foxglove\nExample: Ticket T-3476 (wholesale customer): the order is lithium, customized, oversized, returned, subscription and refurbished. Choose the handling protocol for each order property. => lithium: hemlock; customized: foxglove\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfilment assistant. For order properties you handle, output 'property: protocol' in order of appearance, separated by '; '.\n\nHandle these properties:\n- oversized: dahlia\n- returned: lapis\n- subscription: zinnia\n- refurbished: chervil\n- bulk: onyx\n- hazardous: alder\n- backordered: schist\n\nExample: Ticket T-3042 (government customer): the order is liquid, fragile, customized and oversized. Choose the handling protocol for each order property. => oversized: gypsum\nExample: Ticket T-9002 (nonprofit customer): the order is luxury, oversized, perishable, hazardous and backordered. Choose the handling protocol for each order property. => oversized: gypsum; perishable: quartz; hazardous: alder; backordered: schist\nExample: Ticket T-3476 (wholesale customer): the order is lithium, customized, oversized, returned, subscription and refurbished. Choose the handling protocol for each order property. => oversized: dahlia; returned: lapis; subscription: zinnia; refurbished: chervil\nExample: Ticket T-3312 (nonprofit customer): the order is lithium, oversized, perishable, hazardous and backordered. Choose the handling protocol for each order property. => oversized: gypsum; perishable: quartz; hazardous: alder; backordered: schist\n"
+   }
+  },
+  {
+   "arm": "gepa",
+   "proposer": "live",
+   "seed": 307,
+   "B": 3593,
+   "final_test": 0.6802204447143926,
+   "best_val": 0.6792777777777776,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 519,
+   "llm_calls": 15,
+   "cost_usd": 0.282055,
+   "cache_hits": 0,
+   "wall_s": 521.7,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfillment assistant. This module handles order properties by mapping each property to its corresponding handling protocol.\n\nYour task:\n1. Extract all properties listed in the order\n2. For each in-scope property, output '<property>: <protocol>'\n3. Skip any properties outside your scope (handled by other modules)\n4. If no in-scope properties exist, output \"(no properties for this module)\"\n\nApply the following complete protocol mapping rules for in-scope properties:\n- lithium \u2192 ginkgo\n- gift \u2192 topaz\n- warranty \u2192 onyx\n- refurbished \u2192 alder\n- customized \u2192 mahogany\n- backordered \u2192 hibiscus\n- holiday \u2192 garnet\n- rural \u2192 gneiss\n\nCRITICAL: This is the complete and authoritative list of all in-scope properties and their protocols. Do NOT apply a \"standard protocol\" to any property. If a property is not listed above, it is either out-of-scope or the instruction is incomplete\u2014do not guess.\n\nProperties outside your scope (do NOT process these):\n- express\n- international\n- frozen\n- recalled\n- embargoed\n- returned\n- bulk\n- fragile\n\nImportant: Extract and process EVERY property listed in the order that matches the in-scope protocol mapping list above. Ignore all others.\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfillment assistant. For each order property you handle, output '<property>: <protocol>'.\n\nApply the following handling protocol rules:\n- recalled: quartz\n- fragile: yttrium\n- frozen: wisteria\n- embargoed: carnelian\n- returned: titanium\n- Use the standard protocol when no rule above applies.\n\nIMPORTANT CUSTOMER-TYPE-SPECIFIC RULES:\n- For government customers with a bulk property: use gardenia (not schist)\n- For other customer types, bulk: schist\n\nIMPORTANT: Only output protocols for properties that do NOT appear in the upstream notes from earlier modules. Properties already processed upstream should be omitted from your output.\n\nInclude a trace showing your reasoning for each property you output. The trace should identify which rule was applied (e.g., customer-specific rule, general rule, or standard protocol).\n"
+   }
+  },
+  {
+   "arm": "mipro",
+   "proposer": "live",
+   "seed": 307,
+   "B": 3593,
+   "final_test": 0.8372930555555536,
+   "best_val": 0.8531666666666666,
+   "seed_test": 0.0,
+   "oracle_test": 0.9499999999999947,
+   "tokens": 461,
+   "llm_calls": 10,
+   "cost_usd": 0.19140800000000002,
+   "cache_hits": 0,
+   "wall_s": 320.6,
+   "best_prompts": {
+    "prompts/answer.md": "You are the answer module of an order-fulfilment assistant. For each order property you handle, output '<property>: <protocol>'.\n\nYou handle these properties with their designated protocols:\n- lithium: ginkgo\n- holiday: garnet\n- gift: topaz\n- backordered: hibiscus\n- customized: mahogany\n- refurbished: alder\n- rural: gneiss\n- warranty: onyx\n\nFor any order properties not listed above, do not output anything; they are handled by other modules.\n\nExample: Ticket T-5290 (nonprofit customer): the order is bulk, frozen and recalled. Choose the handling protocol for each order property. => (nothing to handle)\nExample: Ticket T-8963 (government customer): the order is lithium, gift, refurbished, bulk, express and frozen. Choose the handling protocol for each order property. => lithium: aquamarine; gift: topaz; refurbished: alder\nExample: Ticket T-4089 (wholesale customer): the order is bulk, express and recalled. Choose the handling protocol for each order property. => (nothing to handle)\nExample: Ticket T-9481 (retail customer): the order is lithium, backordered and refurbished. Choose the handling protocol for each order property. => lithium: ginkgo; backordered: hibiscus; refurbished: alder\n",
+    "prompts/rewrite.md": "You are the rewrite module of an order-fulfillment assistant. Based on the customer type, determine which order properties require handling and output their protocols.\n\n**Wholesale customers handle:**\n- bulk: schist\n- international: tarragon\n- returned: titanium\n- express: pyrite\n- embargoed: carnelian\n\n**Nonprofit customers handle:**\n- bulk: gardenia\n- frozen: wisteria\n- recalled: quartz\n- fragile: yttrium\n\n**Retail customers:** no properties require handling\n\nFor each property that is both listed for the customer type AND present in the order, output '<property>: <protocol>'.\nIf no properties apply, output: (nothing to handle).\n"
+   }
   }
  ],
- "generated_at": "2026-09-30 00:16:51"
+ "generated_at": "2026-09-30 00:43:33"
 }

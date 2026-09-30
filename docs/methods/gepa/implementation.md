@@ -42,7 +42,7 @@ The layout mirrors `gepa/src/gepa/{core,proposer,strategies}`.
 
 The largest file, `rsi/gepa/engine.py`, has 617 lines.
 
-**Tests.** Run them with `python -m pytest -q tests/gepa/`. There are 89 tests, all offline and deterministic, taking about 20 s: `test_gepa_core.py` (14), `test_gepa_engine.py` (12), `test_gepa_ruleworld.py` (6), `test_gepa_baselines.py` (3), `test_gepa_review.py` (21), `test_gepa_validation.py` (7), `test_gepa_validation_stageb.py` (4) and `test_gepa_claims_fixes.py` (12, the claim-audit regression tests: merge invocation cap, truncation check on cache hits, monitor wall-time credit, reference tie-breaking, E9 records, and checks on the regenerated E1 / E4 / E9 result files). `test_gepa_retry2.py` (10) covers claim-audit retry round 2: the `merge_start_frac` option (§5.19), the paper-regime world shapes and the stored `r2_*` result files. `tests/gepa/test_gepa_validation.py` (7 tests) covers the audit trace: it is write-only (identical ledgers, run logs and results with the trace and shadow monitor on, off, or without a run directory; a USD stopper never sees the monitor's spend), complete (every event kind, one `round_start` / `decision` / `state` per iteration) and consistent with the ledger and artifact store (gate arithmetic, actual diffs, rollouts charged = rollouts counted, one monitor event per change of incumbent).
+**Tests.** Run them with `python -m pytest -q tests/gepa/`. There are 90 tests, all offline and deterministic, taking about 20 s: `test_gepa_core.py` (14), `test_gepa_engine.py` (12), `test_gepa_ruleworld.py` (6), `test_gepa_baselines.py` (3), `test_gepa_review.py` (21), `test_gepa_validation.py` (7), `test_gepa_validation_stageb.py` (4) and `test_gepa_claims_fixes.py` (12, the claim-audit regression tests: merge invocation cap, truncation check on cache hits, monitor wall-time credit, reference tie-breaking, E9 records, and checks on the regenerated E1 / E4 / E9 result files). `test_gepa_retry2.py` (11) covers claim-audit retry round 2: the `merge_start_frac` option (§5.19), the paper-regime world shapes and the stored `r2_*` result files, including the live R2-D file (all seeds reported, spend under the cap, decision consistent with the CI). `tests/gepa/test_gepa_validation.py` (7 tests) covers the audit trace: it is write-only (identical ledgers, run logs and results with the trace and shadow monitor on, off, or without a run directory; a USD stopper never sees the monitor's spend), complete (every event kind, one `round_start` / `decision` / `state` per iteration) and consistent with the ledger and artifact store (gate arithmetic, actual diffs, rollouts charged = rollouts counted, one monitor event per change of incumbent).
 
 `tests/gepa/test_gepa_review.py` holds the adversarial-review tests:
 - A new unit-conversion domain built inline with `rsi.core.FunctionDomain`, with no GEPA-specific hooks. It covers:
@@ -191,18 +191,21 @@ The mock reflection LM (`ReflectionProfile` defaults):
 
 The mock sees only its prompt.
 
-### Retry round 2 of the claim audit (`r2_paper_regime`, `r2_e1_replication`, `r2_multitask`)
+### Retry round 2 of the claim audit (`r2_paper_regime`, `r2_e1_replication`, `r2_multitask`, `r2_live_q10`)
 
-Three preregistered experiments, listed in `docs/methods/gepa/claims-audit.md` §6.
-- **`r2_paper_regime` re-runs E3, E4, E7 and E1** in RuleWorld settings mirroring the paper's six benchmarks: module counts, binary or partial metrics, split sizes and Table-1 budgets (B/\|V\| = 12–41 instead of 50–133), with a default ("gpt") and a weaker ("qwen") simulated task model. Findings:
+Four preregistered experiments, listed in `docs/methods/gepa/claims-audit.md` §6. The final verdicts, after two adversarial reviews, are in §6.5 there.
+- **`r2_paper_regime` re-runs E3, E4, E7 and E1** in RuleWorld settings that mirror the paper's six benchmarks. It copies their module counts, binary or partial metrics, split sizes and Table-1 budgets, so B/\|V\| is 12–41 instead of 50–133. It uses a default ("gpt") and a weaker ("qwen") simulated task model. Findings:
   - BeamSearch is the weakest selector.
-  - Greedy CurrentBest beats Pareto (aggregate −0.050 on qwen).
-  - GEPA beats MIPRO-lite in only 4 of 12 cells.
-  - Merge is sparse in 1- and 4-module programs but not in 2-module ones.
-  - Neither rationing merge nor delaying it helps on qwen.
-  - GEPA@Table-1 budget − ScalarRL@24k is +0.014 aggregate but ahead in only 4 of 6 settings.
-- **`r2_e1_replication`** repeats E1's matched-ratio test on 40 new seeds: +0.011 [−0.004, +0.027].
-- **`r2_multitask`** compares multi-task inference-time search with per-task runs: the multi-task prompt transfers to unseen tasks but loses at equal rollouts.
+  - Greedy CurrentBest beats Pareto: aggregate −0.050 on qwen.
+  - With the mock proposers, GEPA beats MIPRO-lite in only 4 of 12 cells.
+  - Merge is sparse in 1- and 4-module programs, but not in 2-module ones.
+  - Neither rationing merge nor delaying it removes merge's degradation.
+  - GEPA at the Table-1 budget minus ScalarRL at 24k is +0.014 in aggregate. That edge comes only from binary cells where RL gets no reward (every seed prompt scores 0); RL wins on the partial-scored cells.
+
+  **Limits of this regime.** No selector converges: the best candidate is found at 0.83–0.95 B. The rollouts-to-best ratio is therefore set by the budget. The mock reflection LM writes at most 2 rule lines per call, while the grounded proposer MIPRO-lite uses has no cap. The qwen 1-module cells are degenerate (oracle 0.091).
+- **`r2_e1_replication`** repeats E1's matched-ratio test on 40 new seeds: +0.011 [−0.004, +0.027]. That is a tie, and it excludes the paper's +0.059.
+- **`r2_multitask`** compares multi-task inference-time search with per-task runs. The multi-task prompt transfers to unseen tasks, but loses at equal rollouts.
+- **`r2_live_q10`** (review round, live) replaces the mock proposer with `claude -p --model haiku` for **both** GEPA and MIPRO-lite. It runs on the ifbench/gpt cell, 8 seeds, for $3.52. GEPA − MIPRO-lite is −0.037 [−0.090, +0.013] live, against −0.178 with the mocks on the same seeds. The mock understates GEPA relative to MIPRO-lite by +0.141 [+0.075, +0.216].
 
 ### E1: sample efficiency against scalar-reward RL (`e1_sample_efficiency`)
 
