@@ -1,0 +1,17 @@
+{
+ "name": "python_constrained_multi_check",
+ "artifact_id": "540a9156cb47dd79cfe5c27041b7f0e57d7aa14ba9e7a7f69c287546f9b170a0",
+ "created_at": 1790754717.128661,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 6,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

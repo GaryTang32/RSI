@@ -1,2 +1,12 @@
 commit	val_bpb	memory_gb	status	description
 fa8b780	2.955688	0.078	keep	baseline
+e62a984	3.069152	0.077	discard	Increase CONTEXT from 6 to 8 bytes
+3f4f61a	2.682188	0.077	keep	Increase learning rate from 0.003 to 0.01
+d137e15	2.647833	0.077	keep	Increase learning rate from 0.01 to 0.02
+931edb4	2.636879	0.089	keep	Increase HIDDEN layer width from 128 to 256
+413c7ca	2.697716	0.091	discard	Add second hidden layer (DEPTH 1→2, HIDDEN 256→160) to increase expressivity
+4d5e646	2.672288	0.089	discard	Increase EMBED_DIM from 16 to 24
+9ef1865	2.685372	0.088	discard	Add L2 regularization (weight_decay=0.0001) for better generalization with larger model
+67068b5	3.100739	0.088	discard	Remove learning rate warmdown schedule (keep LR constant)
+2733c4c	2.689675	0.089	discard	Increase training time at full LR by reducing warmdown onset (WARMDOWN_RATIO 0.5→0.33)
+f3fddc3	3.836317	0.090	discard	Switch optimizer from Adam to SGD with momentum

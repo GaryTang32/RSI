@@ -1,0 +1,311 @@
+[
+ {
+  "run": "metaharness",
+  "rows": [
+   {
+    "iter": 0,
+    "incumbent": "seed",
+    "S": 0.0833,
+    "sealed": {
+     "holdout": 0.375,
+     "ood": 0.75
+    },
+    "candidates": []
+   },
+   {
+    "iter": 1,
+    "incumbent": "smart_extraction",
+    "S": 0.4167,
+    "sealed": {
+     "holdout": 0.625,
+     "ood": 0.75
+    },
+    "candidates": [
+     {
+      "name": "solve_verify_answer",
+      "S": 0.0833,
+      "C": 1975.4,
+      "kept": false,
+      "change": "Structured prompting requiring explicit verification step and clear ANSWER format will catch computational errors and improve extraction reliability"
+     },
+     {
+      "name": "smart_extraction",
+      "S": 0.4167,
+      "C": 3920.8,
+      "kept": true,
+      "change": "Robust multi-strategy answer extraction handling formatting variations (commas, bold, patterns) will recover correct answers without requiring LLM prompt changes"
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> smart_extraction"
+   },
+   {
+    "iter": 2,
+    "incumbent": "multi_check_verify",
+    "S": 0.6667,
+    "sealed": {
+     "holdout": 0.625,
+     "ood": 0.375
+    },
+    "candidates": [
+     {
+      "name": "compute_then_extract",
+      "S": 0.0,
+      "C": 1704.2,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "multi_check_verify",
+      "S": 0.6667,
+      "C": 7198.9,
+      "kept": true,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed smart_extraction -> multi_check_verify"
+   },
+   {
+    "iter": 3,
+    "incumbent": "multi_check_verify",
+    "S": 0.6667,
+    "sealed": {
+     "holdout": 0.625,
+     "ood": 0.375
+    },
+    "candidates": [],
+    "why": null
+   }
+  ],
+  "usd_total": null,
+  "wall_s": null,
+  "stop_reason": null
+ },
+ {
+  "run": "autoresearch",
+  "rows": [
+   {
+    "iter": 0,
+    "incumbent": "baseline",
+    "S": 2.9556875035032344,
+    "sealed": {
+     "test_iid": 3.0037504524192458,
+     "test_shift": 3.0627687403286985
+    },
+    "candidates": []
+   },
+   {
+    "iter": 1,
+    "incumbent": "baseline",
+    "S": 2.9556875035032344,
+    "sealed": {
+     "test_iid": 3.0037504524192458,
+     "test_shift": 3.0627687403286985
+    },
+    "candidates": [
+     {
+      "name": "exp0001",
+      "S": 3.0691515055496796,
+      "C": 0.077,
+      "admissible": false,
+      "reason": "gain -0.1135 <= 0.0",
+      "kept": false,
+      "change": "Increase CONTEXT from 6 to 8 bytes"
+     }
+    ],
+    "why": "discard: gain -0.1135 <= 0.0; git reset to fa8b780"
+   },
+   {
+    "iter": 2,
+    "incumbent": "exp0002",
+    "S": 2.6821883179083783,
+    "sealed": {
+     "test_iid": 2.736233512869521,
+     "test_shift": 2.8135314216764113
+    },
+    "candidates": [
+     {
+      "name": "exp0002",
+      "S": 2.6821883179083783,
+      "C": 0.077,
+      "admissible": true,
+      "reason": "gain +0.2735 > 0.0",
+      "kept": true,
+      "change": "Increase learning rate from 0.003 to 0.01"
+     }
+    ],
+    "why": "kept: gain +0.2735 > 0.0; branch advances to 3f4f61a"
+   },
+   {
+    "iter": 3,
+    "incumbent": "exp0003",
+    "S": 2.6478326649002915,
+    "sealed": {
+     "test_iid": 2.7252344370858723,
+     "test_shift": 2.780168266765907
+    },
+    "candidates": [
+     {
+      "name": "exp0003",
+      "S": 2.6478326649002915,
+      "C": 0.077,
+      "admissible": true,
+      "reason": "gain +0.0344 > 0.0",
+      "kept": true,
+      "change": "Increase learning rate from 0.01 to 0.02"
+     }
+    ],
+    "why": "kept: gain +0.0344 > 0.0; branch advances to d137e15"
+   },
+   {
+    "iter": 4,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0004",
+      "S": 2.636878979180558,
+      "C": 0.089,
+      "admissible": true,
+      "reason": "gain +0.0110 > 0.0",
+      "kept": true,
+      "change": "Increase HIDDEN layer width from 128 to 256"
+     }
+    ],
+    "why": "kept: gain +0.0110 > 0.0; branch advances to 931edb4"
+   },
+   {
+    "iter": 5,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0005",
+      "S": 2.697716152368591,
+      "C": 0.091,
+      "admissible": false,
+      "reason": "gain -0.0608 <= 0.0",
+      "kept": false,
+      "change": "Add second hidden layer (DEPTH 1\u21922, HIDDEN 256\u2192160) to increase expressivity"
+     }
+    ],
+    "why": "discard: gain -0.0608 <= 0.0; git reset to 931edb4"
+   },
+   {
+    "iter": 6,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0006",
+      "S": 2.6722876295534714,
+      "C": 0.089,
+      "admissible": false,
+      "reason": "gain -0.0354 <= 0.0",
+      "kept": false,
+      "change": "Increase EMBED_DIM from 16 to 24"
+     }
+    ],
+    "why": "discard: gain -0.0354 <= 0.0; git reset to 931edb4"
+   },
+   {
+    "iter": 7,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0007",
+      "S": 2.68537201208306,
+      "C": 0.088,
+      "admissible": false,
+      "reason": "gain -0.0485 <= 0.0",
+      "kept": false,
+      "change": "Add L2 regularization (weight_decay=0.0001) for better generalization with larger model"
+     }
+    ],
+    "why": "discard: gain -0.0485 <= 0.0; git reset to 931edb4"
+   },
+   {
+    "iter": 8,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0008",
+      "S": 3.1007389117553097,
+      "C": 0.088,
+      "admissible": false,
+      "reason": "gain -0.4639 <= 0.0",
+      "kept": false,
+      "change": "Remove learning rate warmdown schedule (keep LR constant)"
+     }
+    ],
+    "why": "discard: gain -0.4639 <= 0.0; git reset to 931edb4"
+   },
+   {
+    "iter": 9,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0009",
+      "S": 2.689674999416948,
+      "C": 0.089,
+      "admissible": false,
+      "reason": "gain -0.0528 <= 0.0",
+      "kept": false,
+      "change": "Increase training time at full LR by reducing warmdown onset (WARMDOWN_RATIO 0.5\u21920.33)"
+     }
+    ],
+    "why": "discard: gain -0.0528 <= 0.0; git reset to 931edb4"
+   },
+   {
+    "iter": 10,
+    "incumbent": "exp0004",
+    "S": 2.636878979180558,
+    "sealed": {
+     "test_iid": 2.7336332084559793,
+     "test_shift": 2.8456890024969077
+    },
+    "candidates": [
+     {
+      "name": "exp0010",
+      "S": 3.836316686916548,
+      "C": 0.09,
+      "admissible": false,
+      "reason": "gain -1.1994 <= 0.0",
+      "kept": false,
+      "change": "Switch optimizer from Adam to SGD with momentum"
+     }
+    ],
+    "why": "discard: gain -1.1994 <= 0.0; git reset to 931edb4"
+   }
+  ],
+  "usd_total": 0.7018,
+  "wall_s": 1096.0,
+  "stop_reason": "max_rounds"
+ }
+]

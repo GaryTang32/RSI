@@ -1,0 +1,5 @@
+commit	status	description	val_bpb	loop_metric_rerun	test_iid	test_shift
+fa8b780	keep	baseline	2.955688	2.942977	3.003750	3.062769
+3f4f61a	keep	Increase learning rate from 0.003 to 0.01	2.682188	2.676133	2.736234	2.813531
+d137e15	keep	Increase learning rate from 0.01 to 0.02	2.647833	2.648103	2.725234	2.780168
+931edb4	keep	Increase HIDDEN layer width from 128 to 256	2.636879	2.663544	2.733633	2.845689

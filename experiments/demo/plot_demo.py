@@ -62,7 +62,7 @@ def extract(name: str) -> dict:
             rounds.setdefault(r, {"candidates": [], "decision": None})
             if r not in order:
                 order.append(r)
-            rounds[r].setdefault("proposals", {})[d.get("candidate")] = d.get("change") or d.get("description")
+            rounds[r].setdefault("proposals", {})[d.get("candidate")] = d.get("change") or d.get("hypothesis") or d.get("description")
         if e["kind"] == "decision" and r in rounds:
             rounds[r]["decision"] = e["data"]
     rows = [{"iter": 0, "incumbent": base_name, "S": base_S, "sealed": sealed.get(base_name, {}), "candidates": []}]
@@ -70,17 +70,17 @@ def extract(name: str) -> dict:
     for i, r in enumerate(order, start=1):
         R = rounds[r]
         dec = R["decision"] or {}
-        after = dec.get("incumbent_after") or inc
-        if after != inc:
-            got = [c for c in R["candidates"] if c["name"] == after]
-            if got:
-                inc_S = got[0]["S"]
-            elif dec.get("metric") is not None:
-                inc_S = dec["metric"]
-            inc = after
+        # the kept candidate: named directly (Meta-Harness, RRSI), or the round's single experiment when
+        # autoresearch's status is "keep" (its decision names commits, not candidates)
+        kept = next((c for c in R["candidates"] if c["name"] in (dec.get("kept"), dec.get("incumbent_after"))
+                     and dec.get("incumbent_after") != dec.get("incumbent_before")), None)
+        if kept is None and dec.get("status") == "keep" and len(R["candidates"]) == 1:
+            kept = R["candidates"][0]
+        if kept is not None:
+            inc, inc_S = kept["name"], kept["S"]
         props = R.get("proposals", {})
         for c in R["candidates"]:
-            c["kept"] = c["name"] == after and after != rows[-1]["incumbent"]
+            c["kept"] = c is kept
             c["change"] = props.get(c["name"])
         rows.append({"iter": i, "incumbent": inc, "S": inc_S, "sealed": sealed.get(inc, rows[-1]["sealed"]),
                      "candidates": R["candidates"], "why": dec.get("why")})
@@ -96,7 +96,7 @@ def extract(name: str) -> dict:
 
 def _style(ax, title: str, ylabel: str) -> None:
     ax.set_facecolor(SURF)
-    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="semibold")
+    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold")
     ax.set_ylabel(ylabel, color=INK2, fontsize=10)
     ax.tick_params(colors=INK2, labelsize=9)
     for s in ("top", "right"):
@@ -111,7 +111,7 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     import matplotlib.pyplot as plt
     rows = d["rows"]
     xs = [r["iter"] for r in rows]
-    fig, ax = plt.subplots(figsize=(8, 4.2), dpi=150)
+    fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, title, "accuracy (exact match)")
     # every candidate the proposer produced, at its practice score
@@ -135,7 +135,7 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     ax.set_xticks(xs, ["seed"] + [str(x) for x in xs[1:]])
     ax.set_xlabel("iteration", color=INK2, fontsize=10)
     ax.set_ylim(-0.03, 1.08)
-    ax.legend(loc="lower right", fontsize=8, frameon=False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=8, frameon=False)
     fig.tight_layout()
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
@@ -144,7 +144,7 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
 def plot_autoresearch(d: dict, path: Path) -> None:
     import matplotlib.pyplot as plt
     rows = d["rows"]
-    fig, ax = plt.subplots(figsize=(8, 4.2), dpi=150)
+    fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, "autoresearch: Haiku edits train.py, one experiment at a time", "val_bpb (lower is better)")
     for r in rows[1:]:
@@ -164,7 +164,7 @@ def plot_autoresearch(d: dict, path: Path) -> None:
     ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="experiment discarded")
     ax.set_xticks(xs, ["baseline"] + [str(x) for x in xs[1:]])
     ax.set_xlabel("experiment", color=INK2, fontsize=10)
-    ax.legend(loc="upper right", fontsize=8, frameon=False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=8, frameon=False)
     fig.tight_layout()
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
