@@ -1195,7 +1195,7 @@
     "pass": true
    }
   },
-  "o16b": "reproduced on CPU analogue (1 of 3 moves)",
+  "o16b": "PARTIAL (1 of 3 moves pass on the CPU analogue; the claim is an MLX night on a Mac)",
   "old_design_8s": {
    "M1 halve batch": {
     "mean_gain": 0.13555772857450538,
@@ -1257,6 +1257,7 @@
     }
    }
   },
-  "o17_flag_for_review": true
+  "o17_flag_for_review": true,
+  "o16b_note": "the DEPTH-8 baseline is compute-starved to about the byte-unigram level (val window 0 unigram 4.70 bpb vs base_d8 4.80 / 4.71 / 4.04 at 2 / 8 / 24 s), so the batch and LR moves (M1, M2) are not informative in this analogue. Label and note edited 29 Sep 2026 after review (was 'reproduced on CPU analogue (1 of 3 moves)'); no number changed"
  }
 }

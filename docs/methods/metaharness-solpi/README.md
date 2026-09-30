@@ -9,7 +9,7 @@ Meta-Harness: a coding agent reads every past candidate's code, scores and trace
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
 3. [claims-audit-metaharness.md](claims-audit-metaharness.md): claim-by-claim check against the paper (Meta-Harness, 38 claims: 14 reproduced, 12 partial, 2 not reproduced, 10 not testable here, 0 contradicted, after retry round 2), with a Fix log and the retry-round-2 preregistration and results.
-4. [claims-audit-solpi.md](claims-audit-solpi.md): claim-by-claim check against the paper (SoL-Pi, 61 claims: 32 reproduced, 11 partial, 1 not reproduced, 17 not testable here, 0 contradicted, after retry round 2), with a Fix log and the retry-round-2 preregistration and results (§7).
+4. [claims-audit-solpi.md](claims-audit-solpi.md): claim-by-claim check against the paper (SoL-Pi, 61 claims: 31 reproduced, 11 partial, 1 not reproduced, 18 not testable here, 0 contradicted, after retry round 2), with a Fix log and the retry-round-2 preregistration and results (§7).
 5. [Validation audit](../../../validation/metaharness-solpi/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/metaharness-solpi/RUNS.md) describes the runs.
 
 ## Where everything is

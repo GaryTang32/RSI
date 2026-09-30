@@ -18,6 +18,17 @@ conversation:
 The prompt texts below are copied verbatim from Pi 0.85.1 (MIT). The summary *content* is
 still produced by :func:`rsi.solpi.runtime.default_summarizer` (or an LLM summariser); this
 module only determines the request's size and billing.
+
+Known simplification (not ported): Pi's split-turn path. When ``findCutPoint`` cuts inside a turn
+(``isSplitTurn``: the first kept entry is not a user message), Pi's ``compact()`` sends a
+``TURN_PREFIX_SUMMARIZATION_PROMPT`` request over the turn's prefix (about 110 prompt tokens, no
+``<previous-summary>`` block, half the output budget), plus a separate history request only when
+messages precede the turn, and it appends a read/modified-files list (``formatFileOperations``) to
+the summary. In single-prompt AgentWorld tasks most auto-compactions are split turns. We always send
+ONE summarisation/update request over the archived messages instead. Both requests are uncached and
+serialise the same messages, so the billing difference is the prompt/previous-summary overhead
+(order 10^2 tokens per compaction, against serialised conversations of order 10^4) plus the short
+file list the next request writes to cache.
 """
 from __future__ import annotations
 

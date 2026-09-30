@@ -16,7 +16,7 @@ All: tinylm, 2 s wall-clock budget, hardened, default keep rule, live Claude Hai
 RewriteEditor (default settings, as every earlier live run), a fresh cache dir per night.
 Preregistered in docs/methods/autoresearch/claims-audit.md section 5 (X5, X5b, X6).
 
-Usage: python experiments/autoresearch/r2_live_nights.py design|eval|plateau|analyze [--arm v1|v2] [--seed N]
+Usage: python experiments/autoresearch/r2_live_nights.py design|eval|plateau|stuck|analyze [--arm v1|v2] [--seed N]
 """
 from __future__ import annotations
 
@@ -95,6 +95,77 @@ def night(name: str, *, program: str, seed: int, n: int, start: dict | None = No
     res = run(task, seed_art, llm_propose=llm, config=cfg, out_dir=LIVE / name)
     return {"name": name, "results_tsv": (LIVE / name / "results.tsv").read_text(), "reeval": res.meta.get("reeval"),
             "usage": (res.usage or {}).get("_total"), "stop_reason": res.meta.get("stop_reason")}
+
+
+# ------------------------------------------------------------------ X6b: a live agent at a replayed stuck point
+def tail_nonkeeps(results_tsv: str) -> int:
+    """Number of consecutive non-keep rows (discard/crash) at the end of a results.tsv."""
+    n = 0
+    for line in reversed([l for l in results_tsv.strip().splitlines()[1:] if l.strip()]):
+        cols = line.split("\t")
+        if len(cols) >= 4 and cols[3] in ("discard", "crash"):
+            n += 1
+        else:
+            break
+    return n
+
+
+class StuckSwitchAgent:
+    """X6b (preregistered review follow-up): the scripted greedy agent proposes until results.tsv ends in
+    >= ``stuck_after`` consecutive non-keeps (the X6 stuck point); from then on every proposal and crash fix
+    comes from the live agent, and after ``n_live`` live proposals a STOP file ends the night."""
+
+    name = "stuck-switch"
+
+    def __init__(self, scripted, live, *, n_live: int, stop_dir: Path, stuck_after: int = 4) -> None:
+        # only ``proposer`` is exposed: agent_llms() meters ``proposer`` and ``fixer`` separately, so exposing the
+        # same live agent as both double-counted its spend in the X6b night (usage 0.413 vs 0.207 in the cache),
+        # and max_usd stopped the night after 3 of the 4 preregistered live proposals
+        self.scripted, self.proposer = scripted, live
+        self.n_live, self.stop_dir, self.stuck_after = n_live, Path(stop_dir), stuck_after
+        self.switched_at = None
+        self.live_proposals = 0
+
+    def propose(self, ctx):
+        if self.switched_at is None and tail_nonkeeps(ctx.results_tsv) >= self.stuck_after:
+            self.switched_at = ctx.experiment
+        if self.switched_at is None:
+            return self.scripted.propose(ctx)
+        self.live_proposals += 1
+        if self.live_proposals >= self.n_live:
+            self.stop_dir.mkdir(parents=True, exist_ok=True)
+            (self.stop_dir / "STOP").touch()
+        return self.proposer.propose(ctx)
+
+    def fix_crash(self, ctx, candidate, description, log_tail):
+        who = self.scripted if self.switched_at is None else self.proposer
+        return who.fix_crash(ctx, candidate, description, log_tail)
+
+    def usage(self) -> dict:
+        return self.proposer.usage()
+
+
+def stuck_night(name: str, *, seed: int, n_live: int, max_usd: float, cap: int = 40) -> dict:
+    from rsi.autoresearch import MockResearchAgent
+    from rsi.autoresearch.loop import make_agent
+
+    task = TinyLMTask(budget_s=2.0)
+    files = dict(task.seed_artifact().files)
+    t = files["train.py"]
+    for k, v in PLATEAU_START.items():
+        t = setk(t, k, v)
+    seed_art = Artifact({**files, "train.py": t})
+    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), LIVE / f"cache_{name}")
+    agent = StuckSwitchAgent(MockResearchAgent(task.mock_edit_pool(), seed=seed), make_agent(task, llm),
+                             n_live=n_live, stop_dir=LIVE / name)
+    cfg = Config(max_experiments=cap, seed=seed, program="upstream", max_usd=max_usd, plot=False, overwrite=True,
+                 tag=f"r2-{name}")
+    res = run(task, seed_art, llm_propose=llm, agent=agent, config=cfg, out_dir=LIVE / name)
+    meta = {"switched_at_experiment": agent.switched_at, "live_proposals": agent.live_proposals,
+            "stop_reason": res.meta.get("stop_reason")}
+    (LIVE / name / "x6b_switch.json").write_text(json.dumps(meta))
+    return {"name": name, "results_tsv": (LIVE / name / "results.tsv").read_text(), **meta,
+            "usage": (res.usage or {}).get("_total")}
 
 
 # ------------------------------------------------------------------ classification
@@ -201,7 +272,7 @@ def classify(d: Path) -> dict:
 # ------------------------------------------------------------------ main
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("phase", choices=("design", "eval", "plateau", "analyze"))
+    ap.add_argument("phase", choices=("design", "eval", "plateau", "stuck", "analyze"))
     ap.add_argument("--arm", choices=("v1", "v2"))
     ap.add_argument("--seed", type=int)
     ap.add_argument("--experiments", type=int)
@@ -220,6 +291,11 @@ def main():
         guard(0.09 * n)
         out = night("plateau_v1_s200", program="upstream", seed=200, n=n, start=PLATEAU_START, max_usd=0.09 * n)
         print(out["results_tsv"])
+    elif a.phase == "stuck":
+        n = a.experiments or 4
+        guard(0.35)
+        out = stuck_night("stuck_v1_s200", seed=200, n_live=n, max_usd=0.35)
+        print(out["results_tsv"], json.dumps({k: v for k, v in out.items() if k != "results_tsv"}, default=str))
     else:
         analyze()
 
@@ -256,6 +332,41 @@ def honest(d: Path) -> dict | None:
     return {"baseline": b, "final": f, "improvement": float(np.mean(b) - np.mean(f))}
 
 
+def x6_pool(nights: dict, pick) -> dict:
+    """X6 secondary: stop/ask turns, invalid turns, longest non-keep run and K/S/C/R counts over some nights."""
+    names = sorted(k for k in nights if pick(k))
+    rows, longest, asks, invalid = [], 0, 0, 0
+    for k in names:
+        c = nights[k]["classification"]
+        rows += c["proposals"]
+        asks += len(c["asking_turns"])
+        invalid += c["n_invalid"]
+        run_ = 0
+        for r in c["proposals"]:
+            run_ = 0 if r["status"] == "keep" else run_ + 1
+            longest = max(longest, run_)
+    cand = [r for r in rows if r.get("kind") in ("K", "S")]
+    return {"nights": names, "n_proposals": len(rows), "asking_turns": asks, "invalid_turns": invalid,
+            "longest_nonkeep_run": longest, "stuck_point_reached": longest >= 4,
+            "K": sum(r["kind"] == "K" for r in cand), "S": sum(bool(r["structural"]) for r in cand),
+            "C": sum(bool(r["combination"]) for r in cand), "R": sum(bool(r["repeat"]) for r in cand)}
+
+
+def x6b(d: Path, c: dict) -> dict:
+    """X6b rule on the live proposals of the replayed-stuck night (rounds from the switch on)."""
+    meta = json.loads((d / "x6b_switch.json").read_text()) if (d / "x6b_switch.json").exists() else {}
+    sw = meta.get("switched_at_experiment")
+    live = [r for r in c["proposals"] if sw is not None and r["round"] >= sw]   # sw = round of the first live proposal
+    C = sum(bool(r["combination"]) for r in live)
+    S = sum(bool(r["structural"]) for r in live)
+    stops = len(c["asking_turns"])
+    rule = ("NOT RUN" if sw is None else "REPRODUCED-rule" if (stops == 0 and C >= 1 and S >= 1)
+            else "PARTIAL-rule" if (C >= 1 or S >= 1) else "NOT REPRODUCED-rule")
+    return {**meta, "classifier_stuck_at": c["stuck_at"], "live_rows": live, "n_live": len(live), "C": C, "S": S,
+            "R": sum(bool(r["repeat"]) for r in live), "asking_turns": stops,
+            "invalid": sum(r["status"] == "invalid" for r in live), "rule_outcome": rule}
+
+
 def analyze() -> None:
     from scipy import stats
 
@@ -288,6 +399,11 @@ def analyze() -> None:
                [cnt["v1"]["discouraged"], cnt["v1"]["n"] - cnt["v1"]["discouraged"]]]
         p = float(stats.fisher_exact(tab, alternative="less").pvalue)
         out["x5b_behaviour"] = {**cnt, "fisher_p_one_sided_v2_lower": p, "pass": bool(p < 0.05)}
+    out["x6_secondary"] = {
+        "preregistered_v1_nights": x6_pool(out["nights"], lambda k: k == "design_v1_s100" or k.startswith("eval_v1_")),
+        "extra_all_upstream_and_v2_nights": x6_pool(out["nights"], lambda k: k.startswith(("design_", "eval_")))}
+    if "stuck_v1_s200" in out["nights"]:
+        out["x6b_stuck"] = x6b(LIVE / "stuck_v1_s200", out["nights"]["stuck_v1_s200"]["classification"])
     write("r2_live_nights", out)
     print(json.dumps({k: v for k, v in out.items() if k != "nights"}, indent=1, default=str))
     for k, v in out["nights"].items():

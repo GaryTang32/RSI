@@ -424,6 +424,58 @@
    0.7433235285802395,
    1.3067261895615654,
    1.0340137551392081
-  ]
+  ],
+  "divergence_aware": {
+   "per_night": [
+    {
+     "backend": "float64",
+     "seed": 0,
+     "failed_transferred_runs": 3,
+     "n_transferred_runs": 5,
+     "failed_native_runs": 0,
+     "transferred_gain_failures_as_zero": 0.19021703896512188,
+     "transfer_ratio_failures_as_zero": 0.3157432668242025,
+     "transfer_ratio_nanmean": 0.7893581670605059,
+     "final_LR": "0.048"
+    },
+    {
+     "backend": "float64",
+     "seed": 1,
+     "failed_transferred_runs": 0,
+     "n_transferred_runs": 5,
+     "failed_native_runs": 0,
+     "transferred_gain_failures_as_zero": 0.3771981690335564,
+     "transfer_ratio_failures_as_zero": 0.7433235285802395,
+     "transfer_ratio_nanmean": 0.7433235285802395,
+     "final_LR": "0.024"
+    },
+    {
+     "backend": "float32",
+     "seed": 0,
+     "failed_transferred_runs": 0,
+     "n_transferred_runs": 5,
+     "failed_native_runs": 0,
+     "transferred_gain_failures_as_zero": 0.6391863487158131,
+     "transfer_ratio_failures_as_zero": 1.3067261895615654,
+     "transfer_ratio_nanmean": 1.3067261895615654,
+     "final_LR": "0.024"
+    },
+    {
+     "backend": "float32",
+     "seed": 1,
+     "failed_transferred_runs": 0,
+     "n_transferred_runs": 5,
+     "failed_native_runs": 0,
+     "transferred_gain_failures_as_zero": 0.5069568488811882,
+     "transfer_ratio_failures_as_zero": 1.0340137551392081,
+     "transfer_ratio_nanmean": 1.0340137551392081,
+     "final_LR": "0.012"
+    }
+   ],
+   "nights_with_failed_transfer_runs": 1,
+   "failed_transferred_runs": 3,
+   "transferred_runs": 20
+  },
+  "note": "transfer_ratios / transferred_gain use np.nanmean and drop diverged runs; see divergence_aware (a diverged run counts as a failed transfer, zero gain)"
  }
 }

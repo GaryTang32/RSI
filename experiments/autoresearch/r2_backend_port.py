@@ -13,7 +13,7 @@ loop, program.md, prepare.py and the rules are unchanged. Scripted greedy agent,
 other backend's baseline and scored with 5 fresh run seeds, next to that backend's own final.
 Preregistered (descriptive) in claims-audit.md section 5, X7.
 
-Usage: python experiments/autoresearch/r2_backend_port.py [--experiments 20] [--seeds 2]
+Usage: python experiments/autoresearch/r2_backend_port.py [--experiments 20] [--seeds 2] [--reanalyze]
 """
 from __future__ import annotations
 
@@ -79,12 +79,53 @@ def score(args):
     return [v if v is not None else float("nan") for v in vals]
 
 
+def divergence_aware(rows: list[dict]) -> dict:
+    """Review follow-up: transfer statistics that count a diverged run (NaN / no metric) as a failure
+    instead of dropping it (the nanmean above drops it). Per night: failed runs of the transferred edit
+    set, and the transferred gain / ratio with each failed run scored as the base mean (zero gain; the
+    loop would log it as a crash and discard it)."""
+    out = []
+    for r in rows:
+        ob, of = r["transferred"]["base"], r["transferred"]["final"]
+        nb = r["native"]["final"]
+        bm = float(np.nanmean(ob))
+        failed = [v is None or v != v for v in of]
+        vals = [bm if f else v for v, f in zip(of, failed)]
+        gain = bm - float(np.mean(vals))
+        native = r["native"]["gain"]
+        out.append({"backend": r["backend"], "seed": r["seed"], "failed_transferred_runs": int(sum(failed)),
+                    "n_transferred_runs": len(of), "failed_native_runs": int(sum(v is None or v != v for v in nb)),
+                    "transferred_gain_failures_as_zero": gain,
+                    "transfer_ratio_failures_as_zero": gain / native if native else None,
+                    "transfer_ratio_nanmean": r["transfer_ratio"],
+                    "final_LR": r["final_constants"].get("LR")})
+    return {"per_night": out, "nights_with_failed_transfer_runs": sum(o["failed_transferred_runs"] > 0 for o in out),
+            "failed_transferred_runs": sum(o["failed_transferred_runs"] for o in out),
+            "transferred_runs": sum(o["n_transferred_runs"] for o in out)}
+
+
+def reanalyze(path) -> dict:
+    """Add the divergence-aware statistics to an existing result file (no re-run)."""
+    d = json.loads(path.read_text())
+    d["verdict"]["divergence_aware"] = divergence_aware(d["nights"])
+    d["verdict"]["note"] = ("transfer_ratios / transferred_gain use np.nanmean and drop diverged runs; see "
+                            "divergence_aware (a diverged run counts as a failed transfer, zero gain)")
+    path.write_text(json.dumps(d, indent=1, default=str))
+    return d["verdict"]["divergence_aware"]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--experiments", type=int, default=20)
     ap.add_argument("--seeds", type=int, default=2)
     ap.add_argument("--workers", type=int, default=2)
+    ap.add_argument("--reanalyze", action="store_true", help="add divergence-aware stats to the existing result file")
     a = ap.parse_args()
+    if a.reanalyze:
+        from _common import RESULTS
+
+        print(json.dumps(reanalyze(RESULTS / "r2_backend_port.json"), indent=1, default=str))
+        return
     nights = pool_map(night, [(b, s, a.experiments) for b in ("float64", "float32") for s in range(a.seeds)], a.workers)
     rseeds = [20_000 + i for i in range(5)]
     jobs = []
@@ -108,7 +149,10 @@ def main():
                "native_gain": {b: ci([r["native"]["gain"] for r in rows if r["backend"] == b]) for b in ("float64", "float32")},
                "transferred_gain": {b: ci([r["transferred"]["gain"] for r in rows if r["backend"] == b])
                                     for b in ("float64", "float32")},
-               "transfer_ratios": [r["transfer_ratio"] for r in rows]}
+               "transfer_ratios": [r["transfer_ratio"] for r in rows],
+               "divergence_aware": divergence_aware(rows),
+               "note": ("transfer_ratios / transferred_gain use np.nanmean and drop diverged runs; see "
+                        "divergence_aware (a diverged run counts as a failed transfer, zero gain)")}
     write("r2_backend_port", {"config": {"experiments": a.experiments, "seeds": list(range(a.seeds)), "budget_s": 2.0,
                                          "port": PORT_LINE.strip(), "rescore_seeds": rseeds}, "nights": rows,
                               "verdict": verdict})

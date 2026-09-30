@@ -144,7 +144,10 @@ def main():
     verdict = {"primary_8s_moves_passing": n_pass,
                "primary_8s": {m: {"mean_gain": prim[m]["mean_gain"], "p": prim[m]["p_one_sided"], "pass": prim[m]["pass"]}
                               for m, _, _ in MOVES},
-               "o16b": f"reproduced on CPU analogue ({n_pass} of 3 moves)"}
+               "o16b": f"PARTIAL ({n_pass} of 3 moves pass on the CPU analogue; the claim is an MLX night on a Mac)",
+               "o16b_note": ("the DEPTH-8 baseline is compute-starved to about the byte-unigram level (val window 0 "
+                             "unigram 4.70 bpb vs base_d8 4.80 / 4.71 / 4.04 at 2 / 8 / 24 s), so the batch and LR "
+                             "moves (M1, M2) are not informative in this analogue")}
     if "old_moves" in out["runs"]["8s"]:
         verdict["old_design_8s"] = {m: {"mean_gain": v["mean_gain"], "p": v["p_one_sided"], "pass": v["pass"]}
                                     for m, v in out["runs"]["8s"]["old_moves"].items()}

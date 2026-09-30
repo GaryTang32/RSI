@@ -1,7 +1,7 @@
 {
  "experiment": "r2_live_nights",
- "written_at": "2026-09-29 19:59:37",
- "spend_usd": 3.3386719999999994,
+ "written_at": "2026-09-29 23:32:16",
+ "spend_usd": 3.6194449999999994,
  "nights": {
   "design_v1_s100": {
    "classification": {
@@ -311,22 +311,22 @@
       "status": "discard",
       "description": "Scale model 2x: context 10, hidden 192, batch 48, seq 20, LR 0.0025, warmdown 0.2",
       "changed_constants": {
-       "WARMDOWN_RATIO": "0.2",
-       "HIDDEN": "192",
-       "EMBED_DIM": "24",
        "BATCH_SIZE": "48",
-       "TRAIN_SEQ_LEN": "20",
+       "LR": "0.0025",
        "CONTEXT": "10",
-       "LR": "0.0025"
+       "EMBED_DIM": "24",
+       "TRAIN_SEQ_LEN": "20",
+       "WARMDOWN_RATIO": "0.2",
+       "HIDDEN": "192"
       },
       "parent_constants": {
-       "WARMDOWN_RATIO": "0.5",
-       "HIDDEN": "128",
-       "EMBED_DIM": "16",
        "BATCH_SIZE": "32",
-       "TRAIN_SEQ_LEN": "16",
+       "LR": "0.003",
        "CONTEXT": "6",
-       "LR": "0.003"
+       "EMBED_DIM": "16",
+       "TRAIN_SEQ_LEN": "16",
+       "WARMDOWN_RATIO": "0.5",
+       "HIDDEN": "128"
       },
       "structural": false,
       "combination": false,
@@ -339,16 +339,16 @@
       "status": "keep",
       "description": "Increase context 6\u21928, LR 0.003\u21920.0035, warmdown 0.5\u21920.35, final_lr_frac 0\u21920.05",
       "changed_constants": {
-       "WARMDOWN_RATIO": "0.35",
-       "FINAL_LR_FRAC": "0.05",
+       "LR": "0.0035",
        "CONTEXT": "8",
-       "LR": "0.0035"
+       "FINAL_LR_FRAC": "0.05",
+       "WARMDOWN_RATIO": "0.35"
       },
       "parent_constants": {
-       "WARMDOWN_RATIO": "0.5",
-       "FINAL_LR_FRAC": "0.0",
+       "LR": "0.003",
        "CONTEXT": "6",
-       "LR": "0.003"
+       "FINAL_LR_FRAC": "0.0",
+       "WARMDOWN_RATIO": "0.5"
       },
       "structural": false,
       "combination": false,
@@ -361,12 +361,12 @@
       "status": "discard",
       "description": "Increase context 8\u219210, embed dim 16\u219218; model capacity +13%",
       "changed_constants": {
-       "EMBED_DIM": "18",
-       "CONTEXT": "10"
+       "CONTEXT": "10",
+       "EMBED_DIM": "18"
       },
       "parent_constants": {
-       "EMBED_DIM": "16",
-       "CONTEXT": "8"
+       "CONTEXT": "8",
+       "EMBED_DIM": "16"
       },
       "structural": false,
       "combination": false,
@@ -798,13 +798,13 @@
       "description": "Apply proven wins BATCH_SIZE=8, LR=0.005; try ACTIVATION=relu",
       "changed_constants": {
        "BATCH_SIZE": "8",
-       "ACTIVATION": "\"relu\"",
-       "LR": "0.005"
+       "LR": "0.005",
+       "ACTIVATION": "\"relu\""
       },
       "parent_constants": {
        "BATCH_SIZE": "32",
-       "ACTIVATION": "\"tanh\"",
-       "LR": "0.003"
+       "LR": "0.003",
+       "ACTIVATION": "\"tanh\""
       },
       "structural": false,
       "combination": false,
@@ -907,6 +907,141 @@
     ],
     "improvement": 0.4692091946630872
    }
+  },
+  "stuck_v1_s200": {
+   "classification": {
+    "proposals": [
+     {
+      "round": 1,
+      "status": "discard",
+      "description": "TRAIN_SEQ_LEN 16 -> 8",
+      "changed_constants": {
+       "TRAIN_SEQ_LEN": "8"
+      },
+      "parent_constants": {
+       "TRAIN_SEQ_LEN": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 2,
+      "status": "discard",
+      "description": "BATCH_SIZE 16 -> 32",
+      "changed_constants": {
+       "BATCH_SIZE": "32"
+      },
+      "parent_constants": {
+       "BATCH_SIZE": "16"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 3,
+      "status": "discard",
+      "description": "HIDDEN 128 -> 256",
+      "changed_constants": {
+       "HIDDEN": "256"
+      },
+      "parent_constants": {
+       "HIDDEN": "128"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 4,
+      "status": "discard",
+      "description": "DEPTH 1 -> 2",
+      "changed_constants": {
+       "DEPTH": "2"
+      },
+      "parent_constants": {
+       "DEPTH": "1"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 5,
+      "status": "discard",
+      "description": "WARMDOWN_RATIO 0.5 -> 0.1 (reduce cooldown overhead)",
+      "changed_constants": {
+       "WARMDOWN_RATIO": "0.1"
+      },
+      "parent_constants": {
+       "WARMDOWN_RATIO": "0.5"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 6,
+      "status": "discard",
+      "description": "FINAL_LR_FRAC 0.0 -> 0.1 (maintain 10% LR at end of training)",
+      "changed_constants": {
+       "FINAL_LR_FRAC": "0.1"
+      },
+      "parent_constants": {
+       "FINAL_LR_FRAC": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     },
+     {
+      "round": 7,
+      "status": "discard",
+      "description": "Add warmup phase: WARMUP_RATIO 0.0 -> 0.1",
+      "changed_constants": {
+       "WARMUP_RATIO": "0.1"
+      },
+      "parent_constants": {
+       "WARMUP_RATIO": "0.0"
+      },
+      "structural": false,
+      "combination": false,
+      "reused_nonkept_settings": [],
+      "repeat": false,
+      "kind": "K"
+     }
+    ],
+    "stuck_at": 4,
+    "n_invalid": 0,
+    "asking_turns": [],
+    "after_stuck": {
+     "n": 3,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    },
+    "before_stuck": {
+     "n": 4,
+     "C": 0,
+     "S": 0,
+     "R": 0
+    }
+   },
+   "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\n75fb392\t2.779142\t0.074\tkeep\tbaseline\nd06bafb\t2.898787\t0.075\tdiscard\tTRAIN_SEQ_LEN 16 -> 8\nd92ad03\t2.780622\t0.077\tdiscard\tBATCH_SIZE 16 -> 32\n79c901b\t2.793529\t0.085\tdiscard\tHIDDEN 128 -> 256\ndc81d24\t2.859569\t0.083\tdiscard\tDEPTH 1 -> 2\n2c358d8\t2.879144\t0.075\tdiscard\tWARMDOWN_RATIO 0.5 -> 0.1 (reduce cooldown overhead)\n3a15e2e\t2.794754\t0.075\tdiscard\tFINAL_LR_FRAC 0.0 -> 0.1 (maintain 10% LR at end of training)\n262c6b8\t2.801968\t0.075\tdiscard\tAdd warmup phase: WARMUP_RATIO 0.0 -> 0.1\n",
+   "honest": null
   }
  },
  "x5_primary": {
@@ -973,5 +1108,107 @@
   },
   "fisher_p_one_sided_v2_lower": 0.0010994502748625688,
   "pass": true
+ },
+ "x6_secondary": {
+  "preregistered_v1_nights": {
+   "nights": [
+    "design_v1_s100",
+    "eval_v1_s1",
+    "eval_v1_s2",
+    "eval_v1_s3"
+   ],
+   "n_proposals": 25,
+   "asking_turns": 0,
+   "invalid_turns": 0,
+   "longest_nonkeep_run": 3,
+   "stuck_point_reached": false,
+   "K": 25,
+   "S": 0,
+   "C": 0,
+   "R": 0
+  },
+  "extra_all_upstream_and_v2_nights": {
+   "nights": [
+    "design_v1_s100",
+    "eval_v1_s1",
+    "eval_v1_s2",
+    "eval_v1_s3",
+    "eval_v2_s1",
+    "eval_v2_s2",
+    "eval_v2_s3"
+   ],
+   "n_proposals": 40,
+   "asking_turns": 0,
+   "invalid_turns": 0,
+   "longest_nonkeep_run": 3,
+   "stuck_point_reached": false,
+   "K": 40,
+   "S": 0,
+   "C": 0,
+   "R": 0
+  }
+ },
+ "x6b_stuck": {
+  "switched_at_experiment": 5,
+  "live_proposals": 3,
+  "stop_reason": null,
+  "classifier_stuck_at": 4,
+  "live_rows": [
+   {
+    "round": 5,
+    "status": "discard",
+    "description": "WARMDOWN_RATIO 0.5 -> 0.1 (reduce cooldown overhead)",
+    "changed_constants": {
+     "WARMDOWN_RATIO": "0.1"
+    },
+    "parent_constants": {
+     "WARMDOWN_RATIO": "0.5"
+    },
+    "structural": false,
+    "combination": false,
+    "reused_nonkept_settings": [],
+    "repeat": false,
+    "kind": "K"
+   },
+   {
+    "round": 6,
+    "status": "discard",
+    "description": "FINAL_LR_FRAC 0.0 -> 0.1 (maintain 10% LR at end of training)",
+    "changed_constants": {
+     "FINAL_LR_FRAC": "0.1"
+    },
+    "parent_constants": {
+     "FINAL_LR_FRAC": "0.0"
+    },
+    "structural": false,
+    "combination": false,
+    "reused_nonkept_settings": [],
+    "repeat": false,
+    "kind": "K"
+   },
+   {
+    "round": 7,
+    "status": "discard",
+    "description": "Add warmup phase: WARMUP_RATIO 0.0 -> 0.1",
+    "changed_constants": {
+     "WARMUP_RATIO": "0.1"
+    },
+    "parent_constants": {
+     "WARMUP_RATIO": "0.0"
+    },
+    "structural": false,
+    "combination": false,
+    "reused_nonkept_settings": [],
+    "repeat": false,
+    "kind": "K"
+   }
+  ],
+  "n_live": 3,
+  "C": 0,
+  "S": 0,
+  "R": 0,
+  "asking_turns": 0,
+  "invalid": 0,
+  "rule_outcome": "NOT REPRODUCED-rule"
  }
 }
