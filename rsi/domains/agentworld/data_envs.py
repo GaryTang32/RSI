@@ -17,7 +17,12 @@ class LogTriageEnv(Env):
     family = "logtriage"
     style = "batch"
 
+    #: the item pool is first_fatal + {errors, timeouts, warns} x 5 components; items are sampled without
+    #: replacement, so a task has at most 15 of them (retry round 2: n_subtasks >= 16 used to raise ValueError)
+    MAX_ITEMS = 15
+
     def __init__(self, task_id: str, seed: int = 0, n_subtasks: int = 3) -> None:
+        n_subtasks = min(n_subtasks, self.MAX_ITEMS)
         super().__init__(task_id, seed, n_subtasks)
         r = self.rng
         comps = r.sample(COMPONENTS, 5)

@@ -8,7 +8,7 @@ Reflects on full execution traces in plain language to rewrite prompts, keeping 
 
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
-3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (58 claims: 29 reproduced, 11 partial, 0 not reproduced, 17 not testable here, 1 contradicted), with a Fix log.
+3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (58 claims: 28 reproduced, 11 partial, 2 not reproduced, 17 not testable here, 0 contradicted, after retry round 2 and its review), with a Fix log and a preregistered retry round (§6).
 4. [Validation audit](../../../validation/gepa/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/gepa/RUNS.md) describes the runs.
 
 ## Where everything is

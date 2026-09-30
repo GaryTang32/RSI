@@ -1,0 +1,4452 @@
+{
+ "claim": "OCC compacts at boundaries only when savings repay the cache rewrite: lowest or near-lowest cost across lengths; never compacts when S <= 0; economics vectors pass [SoL-Pi code]",
+ "config": {
+  "llm": "sim",
+  "seeds": 5,
+  "bins": [
+   [
+    4,
+    8
+   ],
+   [
+    8,
+    12
+   ],
+   [
+    12,
+    16
+   ],
+   [
+    16,
+    20
+   ]
+  ],
+  "rho": 12.5
+ },
+ "per_seed": [
+  {
+   "seed": 0,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 736065.25,
+    "cost": 0.3571683583333333,
+    "requests": 19.25,
+    "cache_read": 676644.9166666666,
+    "cache_write": 53557.25,
+    "output": 5863.083333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 736065.25,
+    "cost": 0.3571683583333333,
+    "requests": 19.25,
+    "cache_read": 676644.9166666666,
+    "cache_write": 53557.25,
+    "output": 5863.083333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 496026.5,
+    "cost": 0.4362280166666666,
+    "requests": 19.416666666666668,
+    "cache_read": 390773.4166666667,
+    "cache_write": 97657.83333333333,
+    "output": 7595.25,
+    "compactions": 2.5833333333333335,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 84,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 31,
+     "native_not_compactable": 40,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 595692.25,
+    "cost": 0.344694925,
+    "requests": 18.75,
+    "cache_read": 532704.8333333334,
+    "cache_write": 56532.583333333336,
+    "output": 6454.833333333333,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 60,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 42,
+     "deferred_subsequent_margin": 1,
+     "economic": 4,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 672909.6666666666,
+    "cost": 0.7093103333333332,
+    "requests": 18.666666666666668,
+    "cache_read": 620145.6666666666,
+    "cache_write": 49059.333333333336,
+    "output": 3704.6666666666665,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 672909.6666666666,
+    "cost": 0.7093103333333332,
+    "requests": 18.666666666666668,
+    "cache_read": 620145.6666666666,
+    "cache_write": 49059.333333333336,
+    "output": 3704.6666666666665,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 525422.1666666666,
+    "cost": 0.6608607291666667,
+    "requests": 18.333333333333332,
+    "cache_read": 469722.5,
+    "cache_write": 51546.25,
+    "output": 4153.416666666667,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 38,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 6,
+     "native_not_compactable": 15,
+     "non_positive_saving": 17
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 525774.1666666666,
+    "cost": 0.6225799791666667,
+    "requests": 18.083333333333332,
+    "cache_read": 476273.5,
+    "cache_write": 45497.25,
+    "output": 4003.4166666666665,
+    "compactions": 0.16666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 34,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 17,
+     "economic": 2,
+     "non_positive_saving": 15
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 1805154.4166666667,
+    "cost": 0.7020974166666664,
+    "requests": 30.666666666666668,
+    "cache_read": 1707499.5833333333,
+    "cache_write": 88338.0,
+    "output": 9316.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 1805154.4166666667,
+    "cost": 0.7020974166666664,
+    "requests": 30.666666666666668,
+    "cache_read": 1707499.5833333333,
+    "cache_write": 88338.0,
+    "output": 9316.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1011812.6666666666,
+    "cost": 0.9167369999999999,
+    "requests": 30.75,
+    "cache_read": 785401.6666666666,
+    "cache_write": 210920.66666666666,
+    "output": 15490.333333333334,
+    "compactions": 6.583333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 163,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 79,
+     "native_not_compactable": 71,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1449308.25,
+    "cost": 0.6920786499999999,
+    "requests": 30.0,
+    "cache_read": 1335684.9166666667,
+    "cache_write": 102352.66666666667,
+    "output": 11270.666666666666,
+    "compactions": 0.8333333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 109,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 66,
+     "deferred_subsequent_margin": 15,
+     "economic": 10,
+     "native_not_compactable": 5,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9814814814814815,
+    "tokens": 1655707.5833333333,
+    "cost": 1.4299786666666663,
+    "requests": 30.333333333333332,
+    "cache_read": 1570557.3333333333,
+    "cache_write": 79149.66666666667,
+    "output": 6000.583333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9814814814814815,
+    "tokens": 1655707.5833333333,
+    "cost": 1.4299786666666663,
+    "requests": 30.333333333333332,
+    "cache_read": 1570557.3333333333,
+    "cache_write": 79149.66666666667,
+    "output": 6000.583333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1083669.0833333333,
+    "cost": 1.5144796458333334,
+    "requests": 28.666666666666668,
+    "cache_read": 942958.25,
+    "cache_write": 131987.75,
+    "output": 8723.083333333334,
+    "compactions": 3.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 92,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 39,
+     "native_not_compactable": 37,
+     "non_positive_saving": 16
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1199336.5,
+    "cost": 1.1812136666666666,
+    "requests": 28.166666666666668,
+    "cache_read": 1120291.9166666667,
+    "cache_write": 72269.16666666667,
+    "output": 6775.416666666667,
+    "compactions": 0.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 65,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 46,
+     "economic": 3,
+     "non_positive_saving": 16
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 3067260.5,
+    "cost": 1.0744194833333334,
+    "requests": 40.666666666666664,
+    "cache_read": 2934866.1666666665,
+    "cache_write": 119877.5,
+    "output": 12516.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3040303.25,
+    "cost": 1.0739020333333336,
+    "requests": 40.666666666666664,
+    "cache_read": 2906112.25,
+    "cache_write": 121614.83333333333,
+    "output": 12576.166666666666,
+    "compactions": 0.08333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9947916666666666,
+    "tokens": 1486555.8333333333,
+    "cost": 1.5649759666666663,
+    "requests": 41.75,
+    "cache_read": 1094804.8333333333,
+    "cache_write": 362420.0,
+    "output": 29331.0,
+    "compactions": 12.416666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 251,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 149,
+     "native_not_compactable": 92,
+     "non_positive_saving": 10
+    }
+   },
+   "occ": {
+    "score": 0.9947916666666666,
+    "tokens": 2372403.5,
+    "cost": 1.0830849916666665,
+    "requests": 40.916666666666664,
+    "cache_read": 2199284.3333333335,
+    "cache_write": 156284.75,
+    "output": 16834.416666666668,
+    "compactions": 1.5833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 162,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 1,
+     "deferred_economic": 95,
+     "deferred_subsequent_margin": 34,
+     "economic": 19,
+     "native_not_compactable": 3,
+     "non_positive_saving": 10
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9111111111111111,
+    "tokens": 3107035.3333333335,
+    "cost": 2.4254703958333335,
+    "requests": 41.5,
+    "cache_read": 2982202.25,
+    "cache_write": 116611.08333333333,
+    "output": 8222.0,
+    "compactions": 0.0,
+    "overflow_rate": 0.08333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9944444444444445,
+    "tokens": 3076447.9166666665,
+    "cost": 2.4473149583333336,
+    "requests": 42.166666666666664,
+    "cache_read": 2945967.4166666665,
+    "cache_write": 122009.66666666667,
+    "output": 8470.833333333334,
+    "compactions": 0.16666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9935897435897436,
+    "tokens": 1847113.6666666667,
+    "cost": 2.6974170625,
+    "requests": 40.0,
+    "cache_read": 1591758.0833333333,
+    "cache_write": 239058.75,
+    "output": 16296.833333333334,
+    "compactions": 6.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 146,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 80,
+     "native_not_compactable": 53,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 0.9935897435897436,
+    "tokens": 2216652.9166666665,
+    "cost": 2.0635147916666674,
+    "requests": 39.583333333333336,
+    "cache_read": 2084321.25,
+    "cache_write": 121970.0,
+    "output": 10361.666666666666,
+    "compactions": 0.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 97,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 63,
+     "deferred_subsequent_margin": 13,
+     "economic": 8,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4044835.9166666665,
+    "cost": 1.3764578333333333,
+    "requests": 46.666666666666664,
+    "cache_read": 3876637.0833333335,
+    "cache_write": 153748.16666666666,
+    "output": 14450.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4185893.6666666665,
+    "cost": 1.5007124083333334,
+    "requests": 53.25,
+    "cache_read": 3988648.5,
+    "cache_write": 180455.58333333334,
+    "output": 16789.583333333332,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9958333333333332,
+    "tokens": 1957830.25,
+    "cost": 2.384841966666667,
+    "requests": 53.166666666666664,
+    "cache_read": 1356553.5833333333,
+    "cache_write": 552449.5,
+    "output": 48827.166666666664,
+    "compactions": 19.416666666666668,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 355,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 232,
+     "native_not_compactable": 117,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9958333333333332,
+    "tokens": 3278357.0,
+    "cost": 1.5121312333333334,
+    "requests": 51.25,
+    "cache_read": 3032197.8333333335,
+    "cache_write": 222935.66666666666,
+    "output": 23223.5,
+    "compactions": 2.4166666666666665,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 216,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 11,
+     "deferred_economic": 101,
+     "deferred_subsequent_margin": 64,
+     "economic": 28,
+     "native_not_compactable": 6,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 0,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.6666666666666666,
+    "tokens": 4202860.0,
+    "cost": 3.1781114375000006,
+    "requests": 49.166666666666664,
+    "cache_read": 4047269.75,
+    "cache_write": 145881.58333333334,
+    "output": 9708.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.3333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4110069.6666666665,
+    "cost": 3.2340873958333334,
+    "requests": 52.666666666666664,
+    "cache_read": 3939771.6666666665,
+    "cache_write": 159639.91666666666,
+    "output": 10658.083333333334,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9950980392156863,
+    "tokens": 2656396.5,
+    "cost": 4.064700208333333,
+    "requests": 51.083333333333336,
+    "cache_read": 2269054.5833333335,
+    "cache_write": 360180.0,
+    "output": 27161.916666666668,
+    "compactions": 10.833333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 205,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 129,
+     "native_not_compactable": 67,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9950980392156863,
+    "tokens": 3330117.3333333335,
+    "cost": 2.9859296458333335,
+    "requests": 50.25,
+    "cache_read": 3146758.25,
+    "cache_write": 169142.75,
+    "output": 14216.333333333334,
+    "compactions": 1.1666666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 128,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 3,
+     "deferred_economic": 69,
+     "deferred_subsequent_margin": 34,
+     "economic": 13,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 956672.9166666666,
+    "cost": 0.441155975,
+    "requests": 22.833333333333332,
+    "cache_read": 885333.0,
+    "cache_write": 64480.75,
+    "output": 6859.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 956672.9166666666,
+    "cost": 0.441155975,
+    "requests": 22.833333333333332,
+    "cache_read": 885333.0,
+    "cache_write": 64480.75,
+    "output": 6859.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 617423.75,
+    "cost": 0.6413336333333335,
+    "requests": 23.666666666666668,
+    "cache_read": 450509.8333333333,
+    "cache_write": 156198.16666666666,
+    "output": 10715.75,
+    "compactions": 4.916666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 122,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 59,
+     "native_not_compactable": 53,
+     "non_positive_saving": 10
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 822774.0,
+    "cost": 0.45560539166666664,
+    "requests": 22.666666666666668,
+    "cache_read": 740550.9166666666,
+    "cache_write": 74068.08333333333,
+    "output": 8155.0,
+    "compactions": 0.5833333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 82,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 60,
+     "deferred_subsequent_margin": 2,
+     "economic": 7,
+     "native_not_compactable": 3,
+     "non_positive_saving": 10
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9861111111111112,
+    "tokens": 769570.0833333334,
+    "cost": 0.8035383749999999,
+    "requests": 21.5,
+    "cache_read": 710493.4166666666,
+    "cache_write": 54860.0,
+    "output": 4216.666666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9861111111111112,
+    "tokens": 769570.0833333334,
+    "cost": 0.8035383749999999,
+    "requests": 21.5,
+    "cache_read": 710493.4166666666,
+    "cache_write": 54860.0,
+    "output": 4216.666666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 611385.75,
+    "cost": 0.9373471041666667,
+    "requests": 21.166666666666668,
+    "cache_read": 520180.6666666667,
+    "cache_write": 85486.41666666667,
+    "output": 5718.666666666667,
+    "compactions": 1.8333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 63,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 22,
+     "native_not_compactable": 27,
+     "non_positive_saving": 14
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 636900.75,
+    "cost": 0.7550446666666666,
+    "requests": 20.833333333333332,
+    "cache_read": 577103.9166666666,
+    "cache_write": 54849.5,
+    "output": 4947.333333333333,
+    "compactions": 0.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 48,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 31,
+     "economic": 3,
+     "non_positive_saving": 14
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 2131804.9166666665,
+    "cost": 0.8132525833333334,
+    "requests": 34.0,
+    "cache_read": 2020706.6666666667,
+    "cache_write": 100589.0,
+    "output": 10509.25,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 2131804.9166666665,
+    "cost": 0.8132525833333334,
+    "requests": 34.0,
+    "cache_read": 2020706.6666666667,
+    "cache_write": 100589.0,
+    "output": 10509.25,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1099807.0833333333,
+    "cost": 1.1347655916666666,
+    "requests": 34.25,
+    "cache_read": 809904.0,
+    "cache_write": 270060.9166666667,
+    "output": 19842.166666666668,
+    "compactions": 9.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 201,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 108,
+     "native_not_compactable": 84,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1624451.1666666667,
+    "cost": 0.7942718499999999,
+    "requests": 33.083333333333336,
+    "cache_read": 1491080.0833333333,
+    "cache_write": 120360.83333333333,
+    "output": 13010.25,
+    "compactions": 1.0833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 132,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 2,
+     "deferred_economic": 89,
+     "deferred_subsequent_margin": 16,
+     "economic": 13,
+     "native_not_compactable": 3,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9916666666666667,
+    "tokens": 2124282.6666666665,
+    "cost": 1.7661185208333334,
+    "requests": 34.416666666666664,
+    "cache_read": 2024021.4166666667,
+    "cache_write": 93462.58333333333,
+    "output": 6798.666666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9916666666666667,
+    "tokens": 2124282.6666666665,
+    "cost": 1.7661185208333334,
+    "requests": 34.416666666666664,
+    "cache_read": 2024021.4166666667,
+    "cache_write": 93462.58333333333,
+    "output": 6798.666666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9930555555555555,
+    "tokens": 1232110.4166666667,
+    "cost": 1.8411663958333333,
+    "requests": 32.166666666666664,
+    "cache_read": 1054954.6666666667,
+    "cache_write": 166144.25,
+    "output": 11011.5,
+    "compactions": 4.416666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 110,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 53,
+     "native_not_compactable": 44,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 0.9930555555555555,
+    "tokens": 1483011.25,
+    "cost": 1.447186291666667,
+    "requests": 31.916666666666668,
+    "cache_read": 1386255.9166666667,
+    "cache_write": 88790.66666666667,
+    "output": 7964.666666666667,
+    "compactions": 0.4166666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 77,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 55,
+     "deferred_subsequent_margin": 4,
+     "economic": 5,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.8333333333333334,
+    "tokens": 3665199.0,
+    "cost": 1.2540457916666667,
+    "requests": 44.666666666666664,
+    "cache_read": 3513340.4166666665,
+    "cache_write": 138120.08333333334,
+    "output": 13738.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.16666666666666666,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3534984.4166666665,
+    "cost": 1.2504187916666665,
+    "requests": 45.583333333333336,
+    "cache_read": 3375934.5833333335,
+    "cache_write": 144841.25,
+    "output": 14208.583333333334,
+    "compactions": 0.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1604478.6666666667,
+    "cost": 1.8658938666666665,
+    "requests": 45.5,
+    "cache_read": 1130217.25,
+    "cache_write": 437925.6666666667,
+    "output": 36335.75,
+    "compactions": 15.166666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 293,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 182,
+     "native_not_compactable": 105,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 2567831.5,
+    "cost": 1.2026259666666665,
+    "requests": 44.583333333333336,
+    "cache_read": 2372202.75,
+    "cache_write": 176499.66666666666,
+    "output": 19129.083333333332,
+    "compactions": 1.8333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 185,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 4,
+     "deferred_economic": 107,
+     "deferred_subsequent_margin": 43,
+     "economic": 22,
+     "native_not_compactable": 3,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9880952380952381,
+    "tokens": 3637218.25,
+    "cost": 2.7803205833333333,
+    "requests": 45.833333333333336,
+    "cache_read": 3499395.3333333335,
+    "cache_write": 128797.33333333333,
+    "output": 9025.583333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9880952380952381,
+    "tokens": 3558461.0,
+    "cost": 2.7541937708333335,
+    "requests": 45.833333333333336,
+    "cache_read": 3418526.0833333335,
+    "cache_write": 130850.25,
+    "output": 9084.666666666666,
+    "compactions": 0.08333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9947916666666666,
+    "tokens": 2119608.1666666665,
+    "cost": 3.1525396250000006,
+    "requests": 43.666666666666664,
+    "cache_read": 1820818.8333333333,
+    "cache_write": 278805.5,
+    "output": 19983.833333333332,
+    "compactions": 7.916666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 169,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 95,
+     "native_not_compactable": 65,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9947916666666666,
+    "tokens": 2757495.0,
+    "cost": 2.4462333958333335,
+    "requests": 43.25,
+    "cache_read": 2609905.3333333335,
+    "cache_write": 135917.91666666666,
+    "output": 11671.75,
+    "compactions": 0.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 109,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 2,
+     "deferred_economic": 68,
+     "deferred_subsequent_margin": 21,
+     "economic": 9,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4330316.583333333,
+    "cost": 1.4651399999999999,
+    "requests": 48.666666666666664,
+    "cache_read": 4151747.9166666665,
+    "cache_write": 163499.16666666666,
+    "output": 15069.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9958333333333332,
+    "tokens": 4621888.0,
+    "cost": 1.6349136499999999,
+    "requests": 56.25,
+    "cache_read": 4409295.333333333,
+    "cache_write": 194866.83333333334,
+    "output": 17725.833333333332,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9953703703703703,
+    "tokens": 2070866.75,
+    "cost": 2.4419660999999997,
+    "requests": 56.166666666666664,
+    "cache_read": 1468382.5833333333,
+    "cache_write": 551117.8333333334,
+    "output": 51366.333333333336,
+    "compactions": 18.583333333333332,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 367,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 222,
+     "native_not_compactable": 139,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9953703703703703,
+    "tokens": 3652317.0,
+    "cost": 1.6858954916666666,
+    "requests": 54.916666666666664,
+    "cache_read": 3377386.8333333335,
+    "cache_write": 249082.75,
+    "output": 25847.416666666668,
+    "compactions": 2.8333333333333335,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 240,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 15,
+     "deferred_economic": 100,
+     "deferred_subsequent_margin": 80,
+     "economic": 33,
+     "native_not_compactable": 6,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 1,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4736026.75,
+    "cost": 3.540737604166667,
+    "requests": 52.166666666666664,
+    "cache_read": 4565886.666666667,
+    "cache_write": 159771.08333333334,
+    "output": 10369.0,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9958333333333332,
+    "tokens": 4457078.166666667,
+    "cost": 3.5335046250000004,
+    "requests": 56.083333333333336,
+    "cache_read": 4267586.333333333,
+    "cache_write": 178004.5,
+    "output": 11487.333333333334,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9958333333333332,
+    "tokens": 2856501.6666666665,
+    "cost": 4.5379524375,
+    "requests": 55.166666666666664,
+    "cache_read": 2422347.5833333335,
+    "cache_write": 401443.9166666667,
+    "output": 32710.166666666668,
+    "compactions": 12.166666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 233,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 144,
+     "native_not_compactable": 80,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9958333333333332,
+    "tokens": 3619620.8333333335,
+    "cost": 3.317344937500001,
+    "requests": 54.5,
+    "cache_read": 3410928.4166666665,
+    "cache_write": 192289.58333333334,
+    "output": 16402.833333333332,
+    "compactions": 1.5833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 147,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 5,
+     "deferred_economic": 66,
+     "deferred_subsequent_margin": 50,
+     "economic": 17,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 799711.8333333334,
+    "cost": 0.38736055833333327,
+    "requests": 20.583333333333332,
+    "cache_read": 734812.1666666666,
+    "cache_write": 58647.75,
+    "output": 6251.916666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 799711.8333333334,
+    "cost": 0.38736055833333327,
+    "requests": 20.583333333333332,
+    "cache_read": 734812.1666666666,
+    "cache_write": 58647.75,
+    "output": 6251.916666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 564599.0833333334,
+    "cost": 0.5196553083333333,
+    "requests": 21.083333333333332,
+    "cache_read": 435085.9166666667,
+    "cache_write": 120804.75,
+    "output": 8708.416666666666,
+    "compactions": 3.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 97,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 42,
+     "native_not_compactable": 43,
+     "non_positive_saving": 12
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 655038.5833333334,
+    "cost": 0.37827145,
+    "requests": 20.25,
+    "cache_read": 586059.3333333334,
+    "cache_write": 61890.333333333336,
+    "output": 7088.916666666667,
+    "compactions": 0.4166666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 68,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 51,
+     "economic": 5,
+     "non_positive_saving": 12
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 671222.1666666666,
+    "cost": 0.7248753749999999,
+    "requests": 19.916666666666668,
+    "cache_read": 616427.8333333334,
+    "cache_write": 50837.166666666664,
+    "output": 3957.1666666666665,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 671222.1666666666,
+    "cost": 0.7248753749999999,
+    "requests": 19.916666666666668,
+    "cache_read": 616427.8333333334,
+    "cache_write": 50837.166666666664,
+    "output": 3957.1666666666665,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 552207.1666666666,
+    "cost": 0.8167659374999999,
+    "requests": 19.833333333333332,
+    "cache_read": 474649.5833333333,
+    "cache_write": 72506.58333333333,
+    "output": 5051.0,
+    "compactions": 1.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 52,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 16,
+     "native_not_compactable": 22,
+     "non_positive_saving": 14
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 563771.75,
+    "cost": 0.6735878125,
+    "requests": 19.333333333333332,
+    "cache_read": 510216.25,
+    "cache_write": 49088.416666666664,
+    "output": 4467.083333333333,
+    "compactions": 0.16666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 40,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 24,
+     "economic": 2,
+     "non_positive_saving": 14
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 1888305.4166666667,
+    "cost": 0.7333559999999998,
+    "requests": 31.75,
+    "cache_read": 1786436.25,
+    "cache_write": 92157.5,
+    "output": 9711.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 1888305.4166666667,
+    "cost": 0.7333559999999998,
+    "requests": 31.75,
+    "cache_read": 1786436.25,
+    "cache_write": 92157.5,
+    "output": 9711.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1059626.4166666667,
+    "cost": 0.9879362,
+    "requests": 32.333333333333336,
+    "cache_read": 814118.5,
+    "cache_write": 228600.5,
+    "output": 16907.416666666668,
+    "compactions": 7.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 174,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 87,
+     "native_not_compactable": 76,
+     "non_positive_saving": 11
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1570370.6666666667,
+    "cost": 0.7454184166666667,
+    "requests": 31.666666666666668,
+    "cache_read": 1448281.6666666667,
+    "cache_write": 110045.83333333333,
+    "output": 12043.166666666666,
+    "compactions": 0.9166666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 116,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 76,
+     "deferred_subsequent_margin": 14,
+     "economic": 11,
+     "native_not_compactable": 4,
+     "non_positive_saving": 11
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 1841960.1666666667,
+    "cost": 1.5719756458333336,
+    "requests": 32.0,
+    "cache_read": 1749316.9166666667,
+    "cache_write": 86334.08333333333,
+    "output": 6309.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 1841960.1666666667,
+    "cost": 1.5719756458333336,
+    "requests": 32.0,
+    "cache_read": 1749316.9166666667,
+    "cache_write": 86334.08333333333,
+    "output": 6309.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9924242424242425,
+    "tokens": 1118830.8333333333,
+    "cost": 1.6284343541666664,
+    "requests": 29.75,
+    "cache_read": 964334.3333333334,
+    "cache_write": 144861.08333333334,
+    "output": 9635.416666666666,
+    "compactions": 3.6666666666666665,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 97,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 44,
+     "native_not_compactable": 39,
+     "non_positive_saving": 14
+    }
+   },
+   "occ": {
+    "score": 0.9924242424242425,
+    "tokens": 1277199.1666666667,
+    "cost": 1.2723722291666666,
+    "requests": 29.416666666666668,
+    "cache_read": 1190433.0,
+    "cache_write": 79573.25,
+    "output": 7192.916666666667,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 69,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 50,
+     "deferred_subsequent_margin": 1,
+     "economic": 4,
+     "non_positive_saving": 14
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 3335883.0,
+    "cost": 1.1542758166666667,
+    "requests": 42.5,
+    "cache_read": 3194835.3333333335,
+    "cache_write": 128032.5,
+    "output": 13015.166666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3268691.5,
+    "cost": 1.1453691666666665,
+    "requests": 42.5,
+    "cache_read": 3125983.3333333335,
+    "cache_write": 129636.0,
+    "output": 13072.166666666666,
+    "compactions": 0.08333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1603722.4166666667,
+    "cost": 1.6302727416666667,
+    "requests": 43.416666666666664,
+    "cache_read": 1199929.3333333333,
+    "cache_write": 373328.75,
+    "output": 30464.333333333332,
+    "compactions": 12.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 261,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 150,
+     "native_not_compactable": 104,
+     "non_positive_saving": 7
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 2583849.75,
+    "cost": 1.1500795333333331,
+    "requests": 42.5,
+    "cache_read": 2404283.0833333335,
+    "cache_write": 161942.16666666666,
+    "output": 17624.5,
+    "compactions": 1.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 169,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 2,
+     "deferred_economic": 109,
+     "deferred_subsequent_margin": 31,
+     "economic": 18,
+     "native_not_compactable": 2,
+     "non_positive_saving": 7
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 3406309.3333333335,
+    "cost": 2.622119145833333,
+    "requests": 43.916666666666664,
+    "cache_read": 3274799.75,
+    "cache_write": 122827.75,
+    "output": 8681.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3289473.0,
+    "cost": 2.5771843958333327,
+    "requests": 43.916666666666664,
+    "cache_read": 3155807.3333333335,
+    "cache_write": 124925.91666666667,
+    "output": 8739.75,
+    "compactions": 0.08333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9944444444444445,
+    "tokens": 2015578.1666666667,
+    "cost": 2.8112639999999995,
+    "requests": 41.583333333333336,
+    "cache_read": 1756805.0833333333,
+    "cache_write": 241944.83333333334,
+    "output": 16828.25,
+    "compactions": 6.583333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 148,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 78,
+     "native_not_compactable": 58,
+     "non_positive_saving": 12
+    }
+   },
+   "occ": {
+    "score": 0.9944444444444445,
+    "tokens": 2491374.5833333335,
+    "cost": 2.2641129374999998,
+    "requests": 41.333333333333336,
+    "cache_read": 2350033.1666666665,
+    "cache_write": 130370.08333333333,
+    "output": 10971.333333333334,
+    "compactions": 0.8333333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 101,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 66,
+     "deferred_subsequent_margin": 14,
+     "economic": 9,
+     "non_positive_saving": 12
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4263804.583333333,
+    "cost": 1.442376025,
+    "requests": 48.25,
+    "cache_read": 4088504.0833333335,
+    "cache_write": 160386.58333333334,
+    "output": 14913.916666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4406864.5,
+    "cost": 1.5693707833333332,
+    "requests": 55.0,
+    "cache_read": 4202112.25,
+    "cache_write": 187386.83333333334,
+    "output": 17365.416666666668,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9956140350877193,
+    "tokens": 2015141.1666666667,
+    "cost": 2.3639247833333337,
+    "requests": 54.5,
+    "cache_read": 1427809.3333333333,
+    "cache_write": 538529.1666666666,
+    "output": 48802.666666666664,
+    "compactions": 18.416666666666668,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 354,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 220,
+     "native_not_compactable": 128,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9956140350877193,
+    "tokens": 3360096.3333333335,
+    "cost": 1.5705574,
+    "requests": 52.75,
+    "cache_read": 3101347.4166666665,
+    "cache_write": 234475.66666666666,
+    "output": 24273.25,
+    "compactions": 2.5833333333333335,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 224,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 13,
+     "deferred_economic": 107,
+     "deferred_subsequent_margin": 62,
+     "economic": 29,
+     "native_not_compactable": 6,
+     "non_positive_saving": 6,
+     "window_protection": 1
+    }
+   }
+  },
+  {
+   "seed": 2,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.6666666666666666,
+    "tokens": 4273749.666666667,
+    "cost": 3.238686833333333,
+    "requests": 49.833333333333336,
+    "cache_read": 4114211.1666666665,
+    "cache_write": 149700.33333333334,
+    "output": 9838.166666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.3333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4167503.0833333335,
+    "cost": 3.2985592291666666,
+    "requests": 53.916666666666664,
+    "cache_read": 3991696.5833333335,
+    "cache_write": 164930.75,
+    "output": 10875.75,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9956140350877193,
+    "tokens": 2763255.6666666665,
+    "cost": 4.204709520833334,
+    "requests": 52.583333333333336,
+    "cache_read": 2365690.9166666665,
+    "cache_write": 368920.25,
+    "output": 28644.5,
+    "compactions": 11.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 213,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 131,
+     "native_not_compactable": 73,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9956140350877193,
+    "tokens": 3701850.0,
+    "cost": 3.2428742916666664,
+    "requests": 51.833333333333336,
+    "cache_read": 3508269.4166666665,
+    "cache_write": 178708.0,
+    "output": 14872.583333333334,
+    "compactions": 1.1666666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 133,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 3,
+     "deferred_economic": 57,
+     "deferred_subsequent_margin": 51,
+     "economic": 13,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 815426.5833333334,
+    "cost": 0.3942047666666666,
+    "requests": 21.416666666666668,
+    "cache_read": 750650.9166666666,
+    "cache_write": 58204.833333333336,
+    "output": 6570.833333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 815426.5833333334,
+    "cost": 0.3942047666666666,
+    "requests": 21.416666666666668,
+    "cache_read": 750650.9166666666,
+    "cache_write": 58204.833333333336,
+    "output": 6570.833333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 580944.25,
+    "cost": 0.5948363083333333,
+    "requests": 22.583333333333332,
+    "cache_read": 427728.4166666667,
+    "cache_write": 143115.75,
+    "output": 10100.083333333334,
+    "compactions": 4.416666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 116,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 53,
+     "native_not_compactable": 52,
+     "non_positive_saving": 11
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 735168.0833333334,
+    "cost": 0.41731262499999994,
+    "requests": 21.416666666666668,
+    "cache_read": 659701.6666666666,
+    "cache_write": 67729.91666666667,
+    "output": 7736.5,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 80,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 58,
+     "deferred_subsequent_margin": 4,
+     "economic": 6,
+     "native_not_compactable": 1,
+     "non_positive_saving": 11
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9833333333333334,
+    "tokens": 743230.25,
+    "cost": 0.7755385416666666,
+    "requests": 21.166666666666668,
+    "cache_read": 686579.1666666666,
+    "cache_write": 52481.5,
+    "output": 4169.583333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9833333333333334,
+    "tokens": 743230.25,
+    "cost": 0.7755385416666666,
+    "requests": 21.166666666666668,
+    "cache_read": 686579.1666666666,
+    "cache_write": 52481.5,
+    "output": 4169.583333333333,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 651304.5,
+    "cost": 0.9092824166666668,
+    "requests": 21.166666666666668,
+    "cache_read": 567735.6666666666,
+    "cache_write": 78069.66666666667,
+    "output": 5499.166666666667,
+    "compactions": 1.5833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 58,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 19,
+     "native_not_compactable": 23,
+     "non_positive_saving": 16
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 658350.0833333334,
+    "cost": 0.7490520625,
+    "requests": 20.833333333333332,
+    "cache_read": 601180.1666666666,
+    "cache_write": 52308.583333333336,
+    "output": 4861.333333333333,
+    "compactions": 0.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 46,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 27,
+     "economic": 3,
+     "non_positive_saving": 16
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 2000261.0833333333,
+    "cost": 0.7736609083333333,
+    "requests": 33.25,
+    "cache_read": 1893532.6666666667,
+    "cache_write": 96477.75,
+    "output": 10250.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 2000261.0833333333,
+    "cost": 0.7736609083333333,
+    "requests": 33.25,
+    "cache_read": 1893532.6666666667,
+    "cache_write": 96477.75,
+    "output": 10250.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1024405.9166666666,
+    "cost": 1.1375667166666668,
+    "requests": 33.833333333333336,
+    "cache_read": 728460.6666666666,
+    "cache_write": 275784.3333333333,
+    "output": 20160.916666666668,
+    "compactions": 9.333333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 200,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 112,
+     "native_not_compactable": 77,
+     "non_positive_saving": 11
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1636528.0833333333,
+    "cost": 0.7874861749999998,
+    "requests": 32.75,
+    "cache_read": 1506369.4166666667,
+    "cache_write": 117293.41666666667,
+    "output": 12865.25,
+    "compactions": 1.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 128,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 2,
+     "deferred_economic": 80,
+     "deferred_subsequent_margin": 19,
+     "economic": 12,
+     "native_not_compactable": 4,
+     "non_positive_saving": 11
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 1879436.25,
+    "cost": 1.6057357083333328,
+    "requests": 33.75,
+    "cache_read": 1785394.3333333333,
+    "cache_write": 87360.5,
+    "output": 6681.416666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 1879436.25,
+    "cost": 1.6057357083333328,
+    "requests": 33.75,
+    "cache_read": 1785394.3333333333,
+    "cache_write": 87360.5,
+    "output": 6681.416666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9924242424242425,
+    "tokens": 1253198.9166666667,
+    "cost": 1.8814009166666665,
+    "requests": 32.083333333333336,
+    "cache_read": 1071443.5,
+    "cache_write": 170571.0,
+    "output": 11184.416666666666,
+    "compactions": 4.666666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 112,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 56,
+     "native_not_compactable": 43,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 0.9924242424242425,
+    "tokens": 1406822.6666666667,
+    "cost": 1.3706744999999998,
+    "requests": 31.416666666666668,
+    "cache_read": 1316188.5833333333,
+    "cache_write": 82841.16666666667,
+    "output": 7792.916666666667,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 74,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 56,
+     "deferred_subsequent_margin": 1,
+     "economic": 4,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.9166666666666666,
+    "tokens": 3428908.4166666665,
+    "cost": 1.1928060833333334,
+    "requests": 43.25,
+    "cache_read": 3281076.25,
+    "cache_write": 134471.33333333334,
+    "output": 13360.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.08333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3350155.5,
+    "cost": 1.1978788833333331,
+    "requests": 44.333333333333336,
+    "cache_read": 3195761.0833333335,
+    "cache_write": 140575.16666666666,
+    "output": 13819.25,
+    "compactions": 0.16666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9947916666666666,
+    "tokens": 1508390.6666666667,
+    "cost": 1.83337215,
+    "requests": 43.75,
+    "cache_read": 1034200.3333333334,
+    "cache_write": 438905.8333333333,
+    "output": 35284.5,
+    "compactions": 15.333333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 291,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 184,
+     "native_not_compactable": 101,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9947916666666666,
+    "tokens": 2503800.75,
+    "cost": 1.1624595416666665,
+    "requests": 42.75,
+    "cache_read": 2315194.5833333335,
+    "cache_write": 170373.75,
+    "output": 18232.416666666668,
+    "compactions": 1.6666666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 181,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 4,
+     "deferred_economic": 106,
+     "deferred_subsequent_margin": 41,
+     "economic": 20,
+     "native_not_compactable": 4,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 3549248.0833333335,
+    "cost": 2.733766854166667,
+    "requests": 45.0,
+    "cache_read": 3411436.8333333335,
+    "cache_write": 128919.08333333333,
+    "output": 8892.166666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3549248.0833333335,
+    "cost": 2.733766854166667,
+    "requests": 45.0,
+    "cache_read": 3411436.8333333335,
+    "cache_write": 128919.08333333333,
+    "output": 8892.166666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9888888888888889,
+    "tokens": 2033851.25,
+    "cost": 3.0105330625,
+    "requests": 42.5,
+    "cache_read": 1748469.25,
+    "cache_write": 266573.4166666667,
+    "output": 18808.583333333332,
+    "compactions": 7.416666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 164,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 89,
+     "native_not_compactable": 66,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9888888888888889,
+    "tokens": 2587199.1666666665,
+    "cost": 2.3161380625,
+    "requests": 42.0,
+    "cache_read": 2446250.0833333335,
+    "cache_write": 129638.08333333333,
+    "output": 11311.0,
+    "compactions": 0.6666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 109,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 78,
+     "deferred_subsequent_margin": 14,
+     "economic": 8,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.6666666666666666,
+    "tokens": 4347009.666666667,
+    "cost": 1.4680902583333337,
+    "requests": 49.333333333333336,
+    "cache_read": 4169510.6666666665,
+    "cache_write": 162263.75,
+    "output": 15235.25,
+    "compactions": 0.0,
+    "overflow_rate": 0.3333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4544193.583333333,
+    "cost": 1.5852194500000003,
+    "requests": 54.833333333333336,
+    "cache_read": 4343622.25,
+    "cache_write": 183366.0,
+    "output": 17205.333333333332,
+    "compactions": 0.4166666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9947916666666666,
+    "tokens": 2111948.0833333335,
+    "cost": 2.4034328416666666,
+    "requests": 55.916666666666664,
+    "cache_read": 1524998.5833333333,
+    "cache_write": 536464.75,
+    "output": 50484.75,
+    "compactions": 18.333333333333332,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 361,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 220,
+     "native_not_compactable": 135,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9947916666666666,
+    "tokens": 3689546.75,
+    "cost": 1.658347825,
+    "requests": 54.75,
+    "cache_read": 3427865.1666666665,
+    "cache_write": 236195.91666666666,
+    "output": 25485.666666666668,
+    "compactions": 2.5833333333333335,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 235,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 13,
+     "deferred_economic": 93,
+     "deferred_subsequent_margin": 85,
+     "economic": 31,
+     "native_not_compactable": 7,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 3,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.6666666666666666,
+    "tokens": 4624921.0,
+    "cost": 3.4659697499999997,
+    "requests": 52.333333333333336,
+    "cache_read": 4458027.0,
+    "cache_write": 156554.33333333334,
+    "output": 10339.666666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.3333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4457621.25,
+    "cost": 3.48808075,
+    "requests": 55.25,
+    "cache_read": 4275199.0,
+    "cache_write": 171204.0,
+    "output": 11218.25,
+    "compactions": 0.4166666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9956140350877193,
+    "tokens": 2787153.1666666665,
+    "cost": 4.34468275,
+    "requests": 54.416666666666664,
+    "cache_read": 2372092.5833333335,
+    "cache_write": 384953.5,
+    "output": 30107.083333333332,
+    "compactions": 11.416666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 220,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 134,
+     "native_not_compactable": 77,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9956140350877193,
+    "tokens": 3616764.1666666665,
+    "cost": 3.3032257500000006,
+    "requests": 53.833333333333336,
+    "cache_read": 3408203.5833333335,
+    "cache_write": 192794.16666666666,
+    "output": 15766.416666666666,
+    "compactions": 1.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 141,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 3,
+     "deferred_economic": 68,
+     "deferred_subsequent_margin": 46,
+     "economic": 15,
+     "non_positive_saving": 9
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 840536.3333333334,
+    "cost": 0.4049285583333333,
+    "requests": 21.75,
+    "cache_read": 773689.6666666666,
+    "cache_write": 60200.75,
+    "output": 6645.916666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 840536.3333333334,
+    "cost": 0.4049285583333333,
+    "requests": 21.75,
+    "cache_read": 773689.6666666666,
+    "cache_write": 60200.75,
+    "output": 6645.916666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 599158.8333333334,
+    "cost": 0.5611372416666667,
+    "requests": 22.75,
+    "cache_read": 459416.4166666667,
+    "cache_write": 130150.58333333333,
+    "output": 9591.833333333334,
+    "compactions": 3.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 110,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 45,
+     "native_not_compactable": 53,
+     "non_positive_saving": 12
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 767930.3333333334,
+    "cost": 0.4247088833333333,
+    "requests": 21.916666666666668,
+    "cache_read": 692277.75,
+    "cache_write": 67882.83333333333,
+    "output": 7769.75,
+    "compactions": 0.4166666666666667,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 78,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 57,
+     "deferred_subsequent_margin": 3,
+     "economic": 5,
+     "native_not_compactable": 1,
+     "non_positive_saving": 12
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    4,
+    8
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 786521.4166666666,
+    "cost": 0.8098998958333334,
+    "requests": 21.833333333333332,
+    "cache_read": 728046.6666666666,
+    "cache_write": 54186.25,
+    "output": 4288.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 786521.4166666666,
+    "cost": 0.8098998958333334,
+    "requests": 21.833333333333332,
+    "cache_read": 728046.6666666666,
+    "cache_write": 54186.25,
+    "output": 4288.5,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 586527.6666666666,
+    "cost": 0.9045541458333334,
+    "requests": 21.0,
+    "cache_read": 498617.6666666667,
+    "cache_write": 82266.91666666667,
+    "output": 5643.083333333333,
+    "compactions": 1.8333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 59,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 22,
+     "native_not_compactable": 24,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 608994.3333333334,
+    "cost": 0.7249582499999999,
+    "requests": 20.75,
+    "cache_read": 551651.9166666666,
+    "cache_write": 52502.833333333336,
+    "output": 4839.583333333333,
+    "compactions": 0.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 45,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 29,
+     "economic": 3,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "A",
+   "never": {
+    "score": 1.0,
+    "tokens": 2086369.75,
+    "cost": 0.7954327416666666,
+    "requests": 33.916666666666664,
+    "cache_read": 1978658.5,
+    "cache_write": 97277.41666666667,
+    "output": 10433.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 2086369.75,
+    "cost": 0.7954327416666666,
+    "requests": 33.916666666666664,
+    "cache_read": 1978658.5,
+    "cache_write": 97277.41666666667,
+    "output": 10433.833333333334,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 1.0,
+    "tokens": 1134734.4166666667,
+    "cost": 1.2169769333333336,
+    "requests": 34.5,
+    "cache_read": 819226.3333333334,
+    "cache_write": 294359.1666666667,
+    "output": 21148.916666666668,
+    "compactions": 10.166666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 205,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 122,
+     "native_not_compactable": 72,
+     "non_positive_saving": 11
+    }
+   },
+   "occ": {
+    "score": 1.0,
+    "tokens": 1670830.1666666667,
+    "cost": 0.8053372250000002,
+    "requests": 33.333333333333336,
+    "cache_read": 1536445.5,
+    "cache_write": 121417.75,
+    "output": 12966.916666666666,
+    "compactions": 1.0833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 127,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 1,
+     "deferred_economic": 83,
+     "deferred_subsequent_margin": 14,
+     "economic": 13,
+     "native_not_compactable": 5,
+     "non_positive_saving": 11
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    8,
+    12
+   ],
+   "backend": "B",
+   "never": {
+    "score": 1.0,
+    "tokens": 1984715.1666666667,
+    "cost": 1.6827375,
+    "requests": 34.166666666666664,
+    "cache_read": 1886683.3333333333,
+    "cache_write": 91274.66666666667,
+    "output": 6757.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 1984715.1666666667,
+    "cost": 1.6827375,
+    "requests": 34.166666666666664,
+    "cache_read": 1886683.3333333333,
+    "cache_write": 91274.66666666667,
+    "output": 6757.166666666667,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9924242424242425,
+    "tokens": 1208355.3333333333,
+    "cost": 1.895516416666667,
+    "requests": 32.333333333333336,
+    "cache_read": 1021432.8333333334,
+    "cache_write": 175374.0,
+    "output": 11548.5,
+    "compactions": 4.833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 117,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 58,
+     "native_not_compactable": 46,
+     "non_positive_saving": 13
+    }
+   },
+   "occ": {
+    "score": 0.9924242424242425,
+    "tokens": 1417626.8333333333,
+    "cost": 1.3920107291666668,
+    "requests": 31.666666666666668,
+    "cache_read": 1324630.8333333333,
+    "cache_write": 85077.58333333333,
+    "output": 7918.416666666667,
+    "compactions": 0.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 76,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_economic": 56,
+     "deferred_subsequent_margin": 3,
+     "economic": 4,
+     "non_positive_saving": 13
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.9166666666666666,
+    "tokens": 3494234.5833333335,
+    "cost": 1.2099235083333333,
+    "requests": 43.5,
+    "cache_read": 3345110.25,
+    "cache_write": 135677.08333333334,
+    "output": 13447.25,
+    "compactions": 0.0,
+    "overflow_rate": 0.08333333333333333,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 3389186.0833333335,
+    "cost": 1.2088742666666668,
+    "requests": 44.583333333333336,
+    "cache_read": 3233869.25,
+    "cache_write": 141412.16666666666,
+    "output": 13904.666666666666,
+    "compactions": 0.16666666666666666,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9947916666666666,
+    "tokens": 1600059.5,
+    "cost": 1.7782502083333336,
+    "requests": 44.333333333333336,
+    "cache_read": 1148512.5,
+    "cache_write": 417972.5833333333,
+    "output": 33574.416666666664,
+    "compactions": 14.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 282,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 171,
+     "native_not_compactable": 104,
+     "non_positive_saving": 7
+    }
+   },
+   "occ": {
+    "score": 0.9947916666666666,
+    "tokens": 2647047.5833333335,
+    "cost": 1.1873983833333333,
+    "requests": 43.0,
+    "cache_read": 2459389.8333333335,
+    "cache_write": 169547.66666666666,
+    "output": 18110.083333333332,
+    "compactions": 1.5833333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 179,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 4,
+     "deferred_economic": 107,
+     "deferred_subsequent_margin": 39,
+     "economic": 19,
+     "native_not_compactable": 3,
+     "non_positive_saving": 7
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    12,
+    16
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.9888888888888889,
+    "tokens": 3413245.25,
+    "cost": 2.6421824583333335,
+    "requests": 44.666666666666664,
+    "cache_read": 3279175.3333333335,
+    "cache_write": 125288.16666666667,
+    "output": 8781.75,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 0.9888888888888889,
+    "tokens": 3413245.25,
+    "cost": 2.6421824583333335,
+    "requests": 44.666666666666664,
+    "cache_read": 3279175.3333333335,
+    "cache_write": 125288.16666666667,
+    "output": 8781.75,
+    "compactions": 0.0,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9944444444444445,
+    "tokens": 2061916.5833333333,
+    "cost": 3.1536952083333336,
+    "requests": 42.916666666666664,
+    "cache_read": 1757930.0,
+    "cache_write": 283996.5,
+    "output": 19990.083333333332,
+    "compactions": 8.25,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 169,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 99,
+     "native_not_compactable": 60,
+     "non_positive_saving": 10
+    }
+   },
+   "occ": {
+    "score": 0.9944444444444445,
+    "tokens": 2567405.4166666665,
+    "cost": 2.3320650833333336,
+    "requests": 42.333333333333336,
+    "cache_read": 2422017.6666666665,
+    "cache_write": 134060.66666666666,
+    "output": 11327.083333333334,
+    "compactions": 0.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 107,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 1,
+     "deferred_economic": 70,
+     "deferred_subsequent_margin": 17,
+     "economic": 9,
+     "non_positive_saving": 10
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "A",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4460760.666666667,
+    "cost": 1.4971553333333334,
+    "requests": 49.583333333333336,
+    "cache_read": 4280955.833333333,
+    "cache_write": 164488.66666666666,
+    "output": 15316.166666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4533405.75,
+    "cost": 1.5988244416666666,
+    "requests": 55.416666666666664,
+    "cache_read": 4327523.25,
+    "cache_write": 188393.41666666666,
+    "output": 17489.083333333332,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9950980392156863,
+    "tokens": 2070993.0833333333,
+    "cost": 2.427703666666667,
+    "requests": 56.5,
+    "cache_read": 1472922.5,
+    "cache_write": 547035.1666666666,
+    "output": 51035.416666666664,
+    "compactions": 18.583333333333332,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 365,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 222,
+     "native_not_compactable": 137,
+     "non_positive_saving": 6
+    }
+   },
+   "occ": {
+    "score": 0.9950980392156863,
+    "tokens": 3537735.0833333335,
+    "cost": 1.6461031666666666,
+    "requests": 55.166666666666664,
+    "cache_read": 3270176.25,
+    "cache_write": 241705.16666666666,
+    "output": 25853.666666666668,
+    "compactions": 2.75,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 236,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 13,
+     "deferred_economic": 98,
+     "deferred_subsequent_margin": 82,
+     "economic": 32,
+     "native_not_compactable": 5,
+     "non_positive_saving": 6
+    }
+   }
+  },
+  {
+   "seed": 4,
+   "bin": [
+    16,
+    20
+   ],
+   "backend": "B",
+   "never": {
+    "score": 0.5833333333333334,
+    "tokens": 4679118.25,
+    "cost": 3.5015061666666667,
+    "requests": 51.833333333333336,
+    "cache_read": 4510658.166666667,
+    "cache_write": 158150.66666666666,
+    "output": 10309.416666666666,
+    "compactions": 0.0,
+    "overflow_rate": 0.4166666666666667,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "late_pi": {
+    "score": 1.0,
+    "tokens": 4394873.75,
+    "cost": 3.4840490208333335,
+    "requests": 55.666666666666664,
+    "cache_read": 4208386.583333333,
+    "cache_write": 175057.25,
+    "output": 11429.916666666666,
+    "compactions": 0.5,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 0,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {}
+   },
+   "every_boundary": {
+    "score": 0.9956140350877193,
+    "tokens": 2874128.5833333335,
+    "cost": 4.415986583333335,
+    "requests": 54.666666666666664,
+    "cache_read": 2456156.5,
+    "cache_write": 387274.3333333333,
+    "output": 30697.75,
+    "compactions": 11.583333333333334,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 222,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "always": 137,
+     "native_not_compactable": 76,
+     "non_positive_saving": 9
+    }
+   },
+   "occ": {
+    "score": 0.9956140350877193,
+    "tokens": 3782610.75,
+    "cost": 3.3474139375000003,
+    "requests": 54.0,
+    "cache_read": 3580649.75,
+    "cache_write": 186236.58333333334,
+    "output": 15724.416666666666,
+    "compactions": 1.3333333333333333,
+    "overflow_rate": 0.0,
+    "n": 12,
+    "decisions": 140,
+    "compacted_with_nonpositive_saving": 0,
+    "reasons": {
+     "deferred_carried_debt": 2,
+     "deferred_economic": 55,
+     "deferred_subsequent_margin": 60,
+     "economic": 14,
+     "non_positive_saving": 9
+    }
+   }
+  }
+ ],
+ "summary": {
+  "A:4-8": {
+   "never": {
+    "cost": {
+     "mean": 0.3969636433333333,
+     "lo": 0.37396588166666667,
+     "hi": 0.42100665,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 829682.5833333334,
+     "lo": 772831.7333333334,
+     "hi": 897031.4333333333,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.3969636433333333,
+     "lo": 0.37396588166666667,
+     "hi": 0.42100665,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 0.3969636433333333,
+     "lo": 0.37396588166666667,
+     "hi": 0.42100665,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 829682.5833333334,
+     "lo": 772831.7333333334,
+     "hi": 897031.4333333333,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.3969636433333333,
+     "lo": 0.37396588166666667,
+     "hi": 0.42100665,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 0.5506381016666666,
+     "lo": 0.4861917066666666,
+     "hi": 0.6066954250000001,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 571630.4833333334,
+     "lo": 530367.4833333334,
+     "hi": 602831.95,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 3.8333333333333335,
+     "lo": 3.1333333333333337,
+     "hi": 4.483333333333334,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.5506381016666666,
+     "lo": 0.4861917066666666,
+     "hi": 0.6066954250000001,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 0.404118655,
+     "lo": 0.3674130216666666,
+     "hi": 0.435588235,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 715320.6500000001,
+     "lo": 642009.1333333334,
+     "hi": 783315.3500000001,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.45,
+     "lo": 0.3833333333333333,
+     "hi": 0.5166666666666667,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.404118655,
+     "lo": 0.3674130216666666,
+     "hi": 0.435588235,
+     "n": 5
+    }
+   }
+  },
+  "A:8-12": {
+   "never": {
+    "cost": {
+     "mean": 0.7635599299999999,
+     "lo": 0.7270161983333331,
+     "hi": 0.7982063116666667,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1982379.1166666665,
+     "lo": 1877436.15,
+     "hi": 2087322.0833333328,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7635599299999999,
+     "lo": 0.7270161983333331,
+     "hi": 0.7982063116666667,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 0.7635599299999999,
+     "lo": 0.7270161983333331,
+     "hi": 0.7982063116666667,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1982379.1166666665,
+     "lo": 1877436.15,
+     "hi": 2087322.0833333328,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7635599299999999,
+     "lo": 0.7270161983333331,
+     "hi": 0.7982063116666667,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 1.0787964883333334,
+     "lo": 0.9767849866666666,
+     "hi": 1.1687705783333335,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1066077.3000000003,
+     "lo": 1026412.7166666668,
+     "hi": 1105741.8833333333,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 8.466666666666665,
+     "lo": 7.299166666666666,
+     "hi": 9.6,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.0787964883333334,
+     "lo": 0.9767849866666666,
+     "hi": 1.1687705783333335,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 0.7649184633333334,
+     "lo": 0.7253654231250001,
+     "hi": 0.797340865,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1590297.6666666667,
+     "lo": 1517825.1166666667,
+     "hi": 1647833.5333333334,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.9833333333333332,
+     "lo": 0.9,
+     "hi": 1.0666666666666664,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7649184633333334,
+     "lo": 0.7253654231250001,
+     "hi": 0.797340865,
+     "n": 5
+    }
+   }
+  },
+  "A:12-16": {
+   "never": {
+    "cost": {
+     "mean": 1.1770941366666667,
+     "lo": 1.1217741233333334,
+     "hi": 1.22526734,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3398297.1,
+     "lo": 3211919.6666666665,
+     "hi": 3562620.35,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9333333333333333,
+     "lo": 0.8833333333333334,
+     "hi": 0.9833333333333332,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.06666666666666667,
+     "lo": 0.016666666666666666,
+     "hi": 0.11666666666666667,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.270941960909091,
+     "lo": 1.1394901642424242,
+     "hi": 1.3940167333333335,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 1.1752886283333333,
+     "lo": 1.1167823133333334,
+     "hi": 1.223293,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3316664.15,
+     "lo": 3164244.15,
+     "hi": 3447505.4166666665,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.14999999999999997,
+     "lo": 0.09999999999999999,
+     "hi": 0.2,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.1752886283333333,
+     "lo": 1.1167823133333334,
+     "hi": 1.223293,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 1.7345529866666667,
+     "lo": 1.6317145583333328,
+     "hi": 1.8308364033333333,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1560641.4166666667,
+     "lo": 1514356.1166666667,
+     "hi": 1603292.3333333335,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.996875,
+     "lo": 0.9947916666666666,
+     "hi": 0.9989583333333332,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 13.933333333333332,
+     "lo": 12.816666666666666,
+     "hi": 15.05,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.7399735084729493,
+     "lo": 1.6385504746160557,
+     "hi": 1.8364734313438045,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 1.157129683333333,
+     "lo": 1.1173465783333332,
+     "hi": 1.1885016483333333,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 2534986.6166666667,
+     "lo": 2451241.85,
+     "hi": 2605925.2333333334,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.996875,
+     "lo": 0.9947916666666666,
+     "hi": 0.9989583333333332,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 1.6333333333333333,
+     "lo": 1.5499999999999998,
+     "hi": 1.7333333333333332,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.160724387958115,
+     "lo": 1.1219922886561953,
+     "hi": 1.1922055816404886,
+     "n": 5
+    }
+   }
+  },
+  "A:16-20": {
+   "never": {
+    "cost": {
+     "mean": 1.44984389,
+     "lo": 1.4125207516666667,
+     "hi": 1.479796405,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 4289345.483333333,
+     "lo": 4162366.8,
+     "hi": 4395280.633333334,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.6,
+     "lo": 0.5833333333333334,
+     "hi": 0.6333333333333333,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.4,
+     "lo": 0.36666666666666664,
+     "hi": 0.4166666666666667,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.422528514642857,
+     "lo": 2.3065200325000004,
+     "hi": 2.525817151428571,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 1.5778081466666667,
+     "lo": 1.5345152250000003,
+     "hi": 1.613260125,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 4458449.1,
+     "lo": 4317286.7,
+     "hi": 4573113.783333333,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9991666666666668,
+     "lo": 0.9974999999999999,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.4833333333333334,
+     "lo": 0.45,
+     "hi": 0.5,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.5791762752440726,
+     "lo": 1.5345152250000003,
+     "hi": 1.6159963821548118,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 2.4043738716666665,
+     "lo": 2.3801932683333336,
+     "hi": 2.428554475,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 2045355.8666666667,
+     "lo": 1992216.8,
+     "hi": 2087349.816666667,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9953414889347553,
+     "lo": 0.9950231481481481,
+     "hi": 0.9956530214424951,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 18.666666666666664,
+     "lo": 18.400000000000002,
+     "hi": 19.050000000000004,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.415632414682361,
+     "lo": 2.39086682547154,
+     "hi": 2.4403980038931814,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 1.6146070233333334,
+     "lo": 1.5530597849999999,
+     "hi": 1.6644690283333332,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3503610.4333333336,
+     "lo": 3362928.35,
+     "hi": 3644292.5166666666,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9953414889347553,
+     "lo": 0.9950231481481481,
+     "hi": 0.9956530214424951,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 2.6333333333333337,
+     "lo": 2.5166666666666666,
+     "hi": 2.7500000000000004,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.6221826973957278,
+     "lo": 1.5599761712379747,
+     "hi": 1.6725856209921481,
+     "n": 5
+    }
+   }
+  },
+  "B:4-8": {
+   "never": {
+    "cost": {
+     "mean": 0.7646325041666666,
+     "lo": 0.7287819916666666,
+     "hi": 0.7992107125000001,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 728690.7166666666,
+     "lo": 686298.7833333333,
+     "hi": 769204.95,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.993888888888889,
+     "lo": 0.9872222222222223,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7695249367559878,
+     "lo": 0.731410935875706,
+     "hi": 0.8076389376362695,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 0.7646325041666666,
+     "lo": 0.7287819916666666,
+     "hi": 0.7992107125000001,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 728690.7166666666,
+     "lo": 686298.7833333333,
+     "hi": 769204.95,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.993888888888889,
+     "lo": 0.9872222222222223,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7695249367559878,
+     "lo": 0.731410935875706,
+     "hi": 0.8076389376362695,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 0.8457620666666668,
+     "lo": 0.7473390458333333,
+     "hi": 0.9186169833333334,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 585369.45,
+     "lo": 547971.8833333332,
+     "hi": 623501.2833333333,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 1.4166666666666665,
+     "lo": 0.9333333333333332,
+     "hi": 1.7833333333333332,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.8457620666666668,
+     "lo": 0.7473390458333333,
+     "hi": 0.9186169833333334,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 0.7050445541666667,
+     "lo": 0.6580759625000001,
+     "hi": 0.7454318208333334,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 598758.2166666667,
+     "lo": 555598.9999999999,
+     "hi": 639899.2,
+     "n": 5
+    },
+    "score": {
+     "mean": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.21666666666666665,
+     "lo": 0.1833333333333333,
+     "hi": 0.25,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 0.7050445541666667,
+     "lo": 0.6580759625000001,
+     "hi": 0.7454318208333334,
+     "n": 5
+    }
+   }
+  },
+  "B:8-12": {
+   "never": {
+    "cost": {
+     "mean": 1.6113092083333331,
+     "lo": 1.5089298291666664,
+     "hi": 1.701965395833333,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1897220.3666666667,
+     "lo": 1758759.6166666667,
+     "hi": 2026344.1,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9946296296296296,
+     "lo": 0.9872222222222223,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.6196736206668514,
+     "lo": 1.5251182669025156,
+     "hi": 1.710870195098039,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 1.6113092083333331,
+     "lo": 1.5089298291666664,
+     "hi": 1.701965395833333,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1897220.3666666667,
+     "lo": 1758759.6166666667,
+     "hi": 2026344.1,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9946296296296296,
+     "lo": 0.9872222222222223,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.6196736206668514,
+     "lo": 1.5251182669025156,
+     "hi": 1.710870195098039,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 1.7521995458333333,
+     "lo": 1.6106548416666666,
+     "hi": 1.8790002125,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1179232.9166666665,
+     "lo": 1120389.6999999997,
+     "hi": 1235794.8,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9940656565656566,
+     "lo": 0.9924242424242425,
+     "hi": 0.9970959595959595,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 4.166666666666666,
+     "lo": 3.616666666666667,
+     "hi": 4.683333333333333,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.7630270490540307,
+     "lo": 1.6160133687977098,
+     "hi": 1.8931078424064485,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 1.3326914833333334,
+     "lo": 1.2416047916666666,
+     "hi": 1.4098137083333335,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 1356799.2833333334,
+     "lo": 1258567.1,
+     "hi": 1441619.7666666666,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9940656565656566,
+     "lo": 0.9924242424242425,
+     "hi": 0.9970959595959595,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.3333333333333333,
+     "lo": 0.2833333333333333,
+     "hi": 0.38333333333333336,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 1.3408759131710528,
+     "lo": 1.2456725519083969,
+     "hi": 1.4202048291410878,
+     "n": 5
+    }
+   }
+  },
+  "B:12-16": {
+   "never": {
+    "cost": {
+     "mean": 2.6407718875,
+     "lo": 2.5264594375,
+     "hi": 2.7340714666666672,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3422611.25,
+     "lo": 3255332.6833333336,
+     "hi": 3557235.5833333335,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9776190476190475,
+     "lo": 0.9442857142857143,
+     "hi": 0.9977777777777778,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.016666666666666666,
+     "lo": 0.0,
+     "hi": 0.05,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.7007351954671113,
+     "lo": 2.648062300255778,
+     "hi": 2.7594682530120482,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 2.6309284875000003,
+     "lo": 2.5252619583333336,
+     "hi": 2.7195353583333337,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3377375.05,
+     "lo": 3211166.8499999996,
+     "hi": 3523890.1,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9942857142857143,
+     "lo": 0.9898412698412699,
+     "hi": 0.9988888888888889,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.06666666666666667,
+     "lo": 0.016666666666666666,
+     "hi": 0.11666666666666667,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.6462370177874392,
+     "lo": 2.5387825153631285,
+     "hi": 2.7411740576621093,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 2.9650897916666668,
+     "lo": 2.8055790375,
+     "hi": 3.1243694291666673,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 2015613.566666667,
+     "lo": 1923767.15,
+     "hi": 2084993.2166666663,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9932318376068376,
+     "lo": 0.9911111111111112,
+     "hi": 0.9945833333333333,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 7.383333333333335,
+     "lo": 6.816666666666667,
+     "hi": 7.95,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.9853014201534647,
+     "lo": 2.825587510817345,
+     "hi": 3.1445616196384627,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 2.284412854166667,
+     "lo": 2.1645641000000007,
+     "hi": 2.3837902375000004,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 2524025.4166666665,
+     "lo": 2356953.9166666665,
+     "hi": 2666253.0,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9932318376068376,
+     "lo": 0.9911111111111112,
+     "hi": 0.9945833333333333,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.75,
+     "lo": 0.7,
+     "hi": 0.8,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 2.299977153907412,
+     "lo": 2.1829615084632117,
+     "hi": 2.399209280074666,
+     "n": 5
+    }
+   }
+  },
+  "B:16-20": {
+   "never": {
+    "cost": {
+     "mean": 3.3850023583333333,
+     "lo": 3.2549054625000005,
+     "hi": 3.5100914583333336,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 4503335.133333334,
+     "lo": 4312289.583333334,
+     "hi": 4691042.2,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.6333333333333333,
+     "lo": 0.6,
+     "hi": 0.6666666666666666,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.36666666666666664,
+     "lo": 0.3333333333333333,
+     "hi": 0.4,
+     "n": 5
+    },
+    "eta": {
+     "mean": 5.379313984821429,
+     "lo": 4.8898698875,
+     "hi": 5.868758082142857,
+     "n": 5
+    }
+   },
+   "late_pi": {
+    "cost": {
+     "mean": 3.407656204166667,
+     "lo": 3.297780433333333,
+     "hi": 3.5046376083333337,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 4317429.183333334,
+     "lo": 4190003.849999999,
+     "hi": 4444854.516666668,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9991666666666668,
+     "lo": 0.9974999999999999,
+     "hi": 1.0,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 0.41666666666666663,
+     "lo": 0.35,
+     "hi": 0.4833333333333334,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 3.4106131118026504,
+     "lo": 3.297780433333333,
+     "hi": 3.5105514236053006,
+     "n": 5
+    }
+   },
+   "every_boundary": {
+    "cost": {
+     "mean": 4.313606300000001,
+     "lo": 4.162959345833333,
+     "hi": 4.450512158333334,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 2787487.116666666,
+     "lo": 2717789.366666666,
+     "hi": 2849682.7333333334,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9955546955624355,
+     "lo": 0.9953044375644995,
+     "hi": 0.9957456140350877,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 11.4,
+     "lo": 11.016666666666667,
+     "hi": 11.816666666666666,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 4.332831621766824,
+     "lo": 4.182568565038736,
+     "hi": 4.469716446283155,
+     "n": 5
+    }
+   },
+   "occ": {
+    "cost": {
+     "mean": 3.2393577125,
+     "lo": 3.109615433333334,
+     "hi": 3.326548700000001,
+     "n": 5
+    },
+    "tokens": {
+     "mean": 3610192.616666667,
+     "lo": 3462364.5666666673,
+     "hi": 3733289.2833333327,
+     "n": 5
+    },
+    "score": {
+     "mean": 0.9955546955624355,
+     "lo": 0.9953044375644995,
+     "hi": 0.9957456140350877,
+     "n": 5
+    },
+    "compactions": {
+     "mean": 1.35,
+     "lo": 1.2000000000000002,
+     "hi": 1.4999999999999998,
+     "n": 5
+    },
+    "overflow_rate": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 5
+    },
+    "eta": {
+     "mean": 3.2537922883794854,
+     "lo": 3.124247262500814,
+     "hi": 3.3409095995557854,
+     "n": 5
+    }
+   }
+  }
+ },
+ "ranking": {
+  "A:4-8": {
+   "occ_eta_vs_best": 0.018024350055298566,
+   "best_eta_arm": "never",
+   "occ_vs_late": 0.018024350055298566,
+   "occ_eta_vs_late": 0.018024350055298566,
+   "every_vs_late": 0.3871247680087715,
+   "never_overflow": 0.0
+  },
+  "A:8-12": {
+   "occ_eta_vs_best": 0.001779209830109263,
+   "best_eta_arm": "never",
+   "occ_vs_late": 0.001779209830109263,
+   "occ_eta_vs_late": 0.001779209830109263,
+   "every_vs_late": 0.4128511017246983,
+   "never_overflow": 0.0
+  },
+  "A:12-16": {
+   "occ_eta_vs_best": 0.0,
+   "best_eta_arm": "occ",
+   "occ_vs_late": -0.015450625967300624,
+   "occ_eta_vs_late": -0.012392054193421043,
+   "every_vs_late": 0.47585277765039,
+   "never_overflow": 0.06666666666666667
+  },
+  "A:16-20": {
+   "occ_eta_vs_best": 0.027233452544750403,
+   "best_eta_arm": "late_pi",
+   "occ_vs_late": 0.023322782775845985,
+   "occ_eta_vs_late": 0.027233452544750403,
+   "every_vs_late": 0.5238696014760931,
+   "never_overflow": 0.4
+  },
+  "B:4-8": {
+   "occ_eta_vs_best": 0.0,
+   "best_eta_arm": "occ",
+   "occ_vs_late": -0.07793018172166477,
+   "occ_eta_vs_late": -0.08379245364178167,
+   "every_vs_late": 0.10610268600655304,
+   "never_overflow": 0.0
+  },
+  "B:8-12": {
+   "occ_eta_vs_best": 0.0,
+   "best_eta_arm": "occ",
+   "occ_vs_late": -0.1729138787012764,
+   "occ_eta_vs_late": -0.17213202952642526,
+   "every_vs_late": 0.08743842384276501,
+   "never_overflow": 0.0
+  },
+  "B:12-16": {
+   "occ_eta_vs_best": 0.0,
+   "best_eta_arm": "occ",
+   "occ_vs_late": -0.1317084956811596,
+   "occ_eta_vs_late": -0.130849905564975,
+   "every_vs_late": 0.12701268991320935,
+   "never_overflow": 0.016666666666666666
+  },
+  "B:16-20": {
+   "occ_eta_vs_best": 0.0,
+   "best_eta_arm": "occ",
+   "occ_vs_late": -0.04938834248034829,
+   "occ_eta_vs_late": -0.04598024410346524,
+   "every_vs_late": 0.2658572466100293,
+   "never_overflow": 0.36666666666666664
+  }
+ },
+ "economics_vectors": {
+  "horizon": true,
+  "economic": true,
+  "non_positive_saving": true,
+  "window_protection": true,
+  "cache_ratio_unavailable": true,
+  "deferred_carried_debt": true,
+  "all_pass": true
+ },
+ "verdict": "REPRODUCED: economics test vectors pass; OCC never compacted with S<=0 (0 violations); OCC cost-per-score within 5% of the best arm in 8/8 (backend, length) cells; every-boundary costs +30% vs late on average; never-compact overflows up to 40% of runs",
+ "figure": "/home/user/RSI/results/metaharness-solpi/s4_occ.png",
+ "generated_at": "2026-09-25 18:38:00"
+}

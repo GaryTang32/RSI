@@ -428,6 +428,7 @@ Worked implications of the per-domain constants. These are [inferred] arithmetic
 `δ = z · sd(null ΔS)` with `z = delta_z = 2.0`, "so an unchanged harness clears the floor S* − δ about 97.5% of the time" [code:rrsi/rrsi/calibrate.py:module docstring].
 - **R ≥ 2 independent base evaluations:** `sd_null = stdev({Ŝ_r}) · √2` (the difference of two independent evaluations). This is preferred unless it is degenerate (0). The code also records `max_abs_diff` [code:rrsi/rrsi/calibrate.py:calibrate].
 - **A single base evaluation:** bootstrap Ŝ by resampling trials *within each task*, respecting weights (`reps = 2000`, `seed = 7`). This gives `se = pstdev(bootstrap Ŝ)` and `sd_boot = √2 · se · √(k_pooled / k_single)`, where the last factor rescales a pooled multi-evaluation back to a single evaluation's k [code:rrsi/rrsi/calibrate.py:bootstrap_se,pooled,calibrate].
+- *Checked (retry round 2, `results/rrsi/e10b_reference_calibration.json`):* the reference's own `calibrate()` at k = 2 clears the floor ≈ 91% of the time (plug-in bootstrap bias (k−1)/k; Φ(2·√½) = 92.1%), R = 2 repeats ≈ 88–91%, so "about 97.5%" holds only for a known sd or large k [inferred].
 - **In the paper runs δ was fixed per instance** [code:rrsi/domains/*/rrsi.json:_doc]:
   - coding `δ = 0.017` ("3 passes of 178");
   - workspace `δ = 0.004` ("60 criteria of about 14,100");

@@ -4,18 +4,34 @@ Seven independent auditors listed every claim each paper (and the overview) make
 
 Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here** (needs frontier models, GPUs or the original benchmarks), **contradicted**.
 
-| Method | Claims | Reproduced | Partial | Not reproduced | Not testable here | Contradicted |
-|---|---:|---:|---:|---:|---:|---:|
-| [RRSI](../methods/rrsi/claims-audit.md) | 116 | 60 (57) | 15 (18) | 3 | 37 | 1 |
-| [Dream-RSI](../methods/dream-rsi/claims-audit.md) | 83 | 37 (29) | 17 (25) | 1 (2) | 25 (24) | 3 |
-| [Autoresearch](../methods/autoresearch/claims-audit.md) | 65 | 52 (44) | 10 (18) | 0 | 2 | 1 |
-| [SoL-Pi](../methods/metaharness-solpi/claims-audit-solpi.md) | 61 | 31 (27) | 12 (15) | 2 (3) | 16 | 0 |
-| [GEPA](../methods/gepa/claims-audit.md) | 58 | 29 (27) | 11 (13) | 0 | 17 | 1 |
-| [EvoMap](../methods/evomap/claims-audit.md) | 54 | 25 (24) | 11 (12) | 5 | 12 | 1 |
-| [Meta-Harness](../methods/metaharness-solpi/claims-audit-metaharness.md) | 38 | 12 (10) | 13 (15) | 2 | 10 | 1 |
-| **Total** | **475** | **246** (218) | **89** (116) | **13** (15) | **119** (118) | **8** |
+| Method | Claims | Reproduced | Partial | Not reproduced | Not testable here | Contradicted | Retry-2 live spend |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| [RRSI](../methods/rrsi/claims-audit.md) | 116 | 63 (60) | 13 (15) | 1 (3) | 36 (37) | 3 (1) | $3.16 |
+| [Dream-RSI](../methods/dream-rsi/claims-audit.md) | 83 | 43 (37) | 12 (17) | 1 | 24 (25) | 3 | $2.05 |
+| [Autoresearch](../methods/autoresearch/claims-audit.md) | 65 | 51 (52) | 10 | 1 (0) | 2 | 1 | $3.62 |
+| [SoL-Pi](../methods/metaharness-solpi/claims-audit-solpi.md) | 61 | 31 | 11 (12) | 1 (2) | 18 (16) | 0 | $0 |
+| [GEPA](../methods/gepa/claims-audit.md) | 58 | 28 (29) | 11 | 2 (0) | 17 | 0 (1) | $3.52 |
+| [EvoMap](../methods/evomap/claims-audit.md) | 54 | 28 (25) | 10 (11) | 1 (5) | 14 (12) | 1 | $0 |
+| [Meta-Harness](../methods/metaharness-solpi/claims-audit-metaharness.md) | 38 | 13 (12) | 12 (13) | 0 (2) | 12 (10) | 1 | $3.85 |
+| **Total** | **475** | **257** (246) | **79** (89) | **7** (13) | **123** (119) | **9** (8) | **$16.20** |
 
-Numbers in parentheses are the counts at audit time, before the fix round (28 Sep 2026). Every mismatch the audit found was then fixed, documented, or classified as not testable here. Each method's file has a "Fix log" listing the finding, the fix, the code location, the regression test and the re-run evidence, and each fix was checked by an independent verifier.
+The counts are final after two rounds of work. Numbers in parentheses are the counts after the first fix round (28 Sep 2026), where they differ.
+
+**Fix round (28 Sep).** Every mismatch between our code and the papers was fixed, documented, or classified as not testable here. Each method's file has a "Fix log", and each fix was checked by an independent verifier. Counts moved from 218/116/15/118/8 at audit time to 246/89/13/119/8.
+
+**Retry round 2 (29-30 Sep).** Every claim still PARTIAL, NOT REPRODUCED or CONTRADICTED got a second attempt, 110 claims in total. Each one was diagnosed with a single root cause:
+- (a) our code still deviated from the paper;
+- (b) the experiment was a weak test;
+- (c) the claim needs scale we don't have;
+- (d) a genuine negative on a faithful implementation;
+- (e) an error in the paper or overview itself.
+
+The claim was then handled according to that cause:
+- a code deviation was fixed, with a regression test;
+- a weak test was replaced by a better experiment, run as preregistered: the hypothesis, metric, seeds and pass threshold were written into the claims file before the run, and every run is reported;
+- other claims had their evidence strengthened.
+
+Two independent skeptics then tried to refute every verdict change, one on statistics and honesty, one on fidelity to the paper and reference code. A resolve pass fixed each valid objection or rejected it with a reason. The reviews reversed or tempered several first-pass upgrades, for example RRSI L12/L4, Dream L2, GEPA L4, autoresearch O26 and Meta-Harness K4/L4. They also reverted one first-pass downgrade: Dream L5, which rested on a hard-coded mock. Each claims file has a "Retry round 2" section with the preregistration, a per-claim table (old verdict, root cause, action, evidence, new verdict) and the review outcomes.
 
 ## Short answer
 
@@ -25,44 +41,42 @@ Numbers in parentheses are the counts at audit time, before the fix round (28 Se
 - SoL-Pi: all the reference test vectors pass.
 - EvoMap: a hash fuzz against the GEP SDK found no mismatches outside two edge cases.
 
-**Headline numbers: not reproducible here.** 118 claims are table numbers on frontier models, GPUs or specific benchmarks (Terminal-Bench, Harvey, KernelBench, AIME, CritPt, EdgeBench, the H100 nanochat runs). They are marked "not testable here" rather than implied.
+**Headline numbers: not reproducible here.** 123 claims are table numbers or need a frontier-agent sample size (with a power analysis), on frontier models, GPUs or specific benchmarks (Terminal-Bench, Harvey, KernelBench, AIME, CritPt, EdgeBench, the H100 nanochat runs). They are marked "not testable here" rather than implied.
 
 **Qualitative claims: mostly directional.** Most qualitative findings reproduce in direction on CPU analogues. Some do not reproduce, and a few are contradicted.
 
-## Contradicted claims
+## Contradicted claims (9)
 
 - **Dream-RSI:**
-  - Fig. 3b says Dream-RSI is "consistently superior at lower compute". At equal rounds it is never better here, and on synthetic worlds it is significantly worse.
-  - The introduction says it "matches or surpasses" baselines in math. The paper's own Table 1 shows autocorrelation worse.
-  - The overview calls the code "open". It is not yet released.
-- **GEPA:** the paper says merge "occurs sparsely". Under the reference default cap, our runs attempt 25-69 merges.
-- **Meta-Harness:** the paper says code-space search "regularises towards coherent algorithms". A live run put a template-specific regex solver on the frontier.
-- **EvoMap:** the overview says the agent "looks locally, then asks the hub". Evolver actually searches the hub first.
-- **Autoresearch:** the overview says the agent "can't change how it is graded". Upstream's lock is only an instruction, and our faithful mode shows 9 of 11 grader exploits posting fake gains. Hardened mode fixes this.
-- **RRSI:** a third-party hypothesis (not a paper claim) that the edit budget explains the gain. Budget-only gives +2.7 on unseen tasks, against +16.2 for selection-only.
-
-## Not reproduced (after the fix round)
-
+  - Q15: Fig. 3b says Dream is "consistently superior" across both models. The paper's own source data show Pro is worse at rounds 3-4 at equal rounds.
+  - Q22: "matches or surpasses strong baselines" in math. The paper's own Table 1 has autocorrelation worse (1.456375 vs SimpleTES 1.453675; lower is better).
+  - C7: the overview calls the code "open". As of 29 Sep 2026, the official repository's README still says "Full codebase: Being prepared".
 - **RRSI:**
-  - Removing the proposal guards does not raise the practised score.
-  - A weaker search policy does not gain more.
-  - The z=2 noise band clears the unchanged harness 91.6% of the time, not about 97.5%, at k=2.
-- **Dream-RSI:**
-  - Discovered solvers do not beat scikit-learn.
-- **SoL-Pi:**
-  - The ObservationPack sweep never reaches the 10% bill-saving gate.
-  - The composed stack still loses capability overall (the floor now rejects the lenient turn cap; see the SoL-Pi Fix log).
-  - One quality claim did not reproduce.
-- **EvoMap:**
-  - "GDI collapses onto the intrinsic part" (it is 2-6% of the variance between assets here).
-  - "Blast radius is the dominant lever".
-  - The composition and failure-encoding ablations.
-  - Marketplace and bounties are not built.
-- **Meta-Harness:**
-  - "Matches the next-best method after 4 of 60 evaluations".
-  - "Summaries don't help", which holds only by construction of our summarizer.
+  - M9: the paper says the edit budget "ends at one". The released schedule always ends at 2, while the reference's own prompt and unit test say 1, so the source is internally inconsistent.
+  - M37: the z=2 noise band should let an unchanged harness clear the floor about 97.5% of the time. The reference's own `calibrate()` gives 90.8-91.1% at its default k=2; it is within tolerance at k=4.
+  - C7: a third-party hypothesis, not a paper claim, that the annealed budget explains the gain. Budget-only gives +2.9 on unseen tasks, against +17.3 for the full method.
+- **Autoresearch:** T3, the overview's claim that locking `prepare.py` means the agent "can't change how it is graded". Upstream's lock is only an instruction, and `evaluate_bpb` sums losses from the agent-owned `model.forward`. In faithful mode, 7 exploit classes that leave `prepare.py` untouched post fake gains (5 seeds). Our hardened mode delivers what the overview claims.
+- **EvoMap:** M8a, "looks locally, then asks the hub". Evolver asks the hub first (v1), and v2's reuse before solving is opt-in and pools hub and local candidates. The mismatch is in the study's description, not our code.
+- **Meta-Harness:** L4, code-space search "regularises towards coherent algorithms". On AgentQA, 4 of 12 live candidates keyed on the generator's question templates, 3 reached the frontier, and one was selected as best.
 
-## Mismatches found by this audit: all resolved
+No longer contradicted: GEPA L6, "merge occurs sparsely". The retry showed merges are sparse for 1- and 4-module programs, and the excess is confined to 2-module cells. The earlier pooled threshold had been set after a seed-0 run, so the claim is now PARTIAL.
+
+## Not reproduced (7)
+
+- **RRSI L4:** removing the proposal regularizers should lower unseen-task scores by 1.7. The primary run gives +0.4 [-1.4, +2.2]. The effect appears only with a mock proposer that collapses its prompts, and the preregistered prune-as-proposal grouping reverses it.
+- **Dream-RSI L6:** guidance "over-constrains the search". The live LLM test is negative (p = 0.60): guided code was more diverse, and the test had 0.70-0.95 power at a 15% reduction.
+- **Autoresearch P28:** "if you run out of ideas, think harder". At a replayed stuck point, live Haiku made only single-knob tweaks, with no combinations and no structural changes.
+- **SoL-Pi L2:** keeping only changes that "survive everywhere" should make them transfer. On 20 fresh seeds, held-out transfer is +0.008 [-0.008, +0.023], and backend A is negative.
+- **GEPA:**
+  - L2: GEPA should beat GRPO at GRPO's 4x budget. Our analogue ties (+0.011 [-0.004, +0.027]), and the interval excludes the paper's +0.059.
+  - L13: merge degradation should come from budget allocation and timing. Neither the hard cap nor late timing removes it.
+- **EvoMap B7:** "blast radius is the dominant GDI lever". Under the study's formula and a one-field ablation it is the smallest lever. The ranking depends on the per-field metadata ranges, which only the crawl has.
+
+No longer "not reproduced" after retry round 2:
+- **Resolved:** Dream-RSI Q13 (discovered solvers vs scikit-learn/glmnet) is now PARTIAL. The earlier loss came from asymmetric timing; with compute-only timing on both sides, the paper's solver is faster on 4 of 4 datasets. RRSI L12 (a weaker policy gains more) is now PARTIAL. EvoMap B9 (GDI collapse) and M19 (marketplace), and Meta-Harness L2 (summaries), are now PARTIAL.
+- **Reclassified as not testable here, each with a power analysis:** SoL-Pi Q3 and Q13, EvoMap V4 and V5, and Meta-Harness Q4 and Q5.
+
+## Mismatches found by this audit: all resolved (fix round)
 
 The audit found about 90 new mismatches across the seven methods. All were fixed (with a regression test that fails on the pre-fix code) or dispositioned, and the affected experiments were re-run. Highlights:
 
@@ -79,8 +93,27 @@ The audit found about 90 new mismatches across the seven methods. All were fixed
 
 What remains is scale (frontier models, GPUs, original benchmarks) and a few results that did not reproduce at our scale, all listed per method.
 
+## Code changes in retry round 2
+
+Every default stays faithful. New behaviour is either a faithful port or an opt-in option, and each change has a regression test.
+- **SoL-Pi:** a real deviation was fixed. The compaction summary is now billed as a standalone uncached request with Pi 0.85.1's verbatim prompts (`rsi/solpi/pi_compaction.py`); we had billed it as a cached continuation. The LogTriage environment no longer crashes at 16 or more subtasks.
+- **EvoMap:**
+  - the Behind-EvoMap GDI formula with last-activity freshness is now the default ranker;
+  - Evolver's layer-3 hub signal layer is ported;
+  - a `GitWorkspace` port of `gitOps.js` was added;
+  - bounties, swarm splits, referrals and dormancy were added, with task ranking ported from v2 `taskReceiver.js` (identical on 400 random cases).
+- **Meta-Harness:**
+  - the LLM summarizer now reads every trace unit fairly; it had been reading only the head of the first unit;
+  - new structured-optimizer baselines (OpenEvolve, TTT-Discover, GEPA policies) run at equal budget.
+- **RRSI:** opt-in ports of the reference's agentic protocols: the JSON-action proposer and the agentic analyst, with differential tests against the reference.
+- **Dream-RSI:**
+  - the paper's C++/Eigen Lasso setting (`lasso_cpp.py`) with its 17 search instances and held-out protocol;
+  - `developer_base` and `pareto_attainment` options for the two readings the paper leaves open.
+- **GEPA:** `merge_start_frac`, an opt-in merge schedule used to test the timing claim. The default is bit-identical.
+- **Autoresearch:** no library change was needed. The experiment harness is resumable, and the X3c/X5b follow-ups were preregistered.
+
 ## What would close the gaps
 
 - Run the papers' own settings with frontier models and the real benchmarks: Opus/Gemini proposers, Terminal-Bench, Harvey, KernelBench on GPU, H100 nanochat, EdgeBench.
-- Run larger live experiments than the current $10 of Haiku. Each method's file lists the specific runs needed.
-- Fix the open mismatches above and re-run the affected experiments.
+- Run larger live experiments than the roughly $26 of Haiku spent so far ($10 in the showcase and fix rounds, $16 in retry round 2). The power analyses in the claims files give the sample sizes needed, e.g. about 100-400 frontier-agent task pairs for SoL-Pi Q3, and 566-8,856 live trials per arm for EvoMap V4/V5.
+- Find task sets with headroom for Haiku, since the katas and AgentQA are near ceiling. Several representation and transfer claims are untestable until then.

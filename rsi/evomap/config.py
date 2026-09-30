@@ -33,12 +33,14 @@ MODE_DEFAULTS = {
                  "hub_when": "first", "new_gene_retries": 1, "new_gene_check": "single",
                  "require_task_success": False, "vacuity_check": False,
                  "failed_capsule_rule": "absolute", "carry_log_signals": True, "skip_geneless_success": False,
-                 "failure_distill": True, "reject_memory": False},
+                 "failure_distill": True, "reject_memory": False, "require_match": False,
+                 "llm_signal_layer": True},
     "safe": {"outcome_source": "safe", "outcome_timing": "immediate", "reuse_mode": "quarantine",
              "hub_when": "no_local", "new_gene_retries": 3, "new_gene_check": "paired",
              "require_task_success": True, "vacuity_check": True,
              "failed_capsule_rule": "relative", "carry_log_signals": False, "skip_geneless_success": True,
-             "failure_distill": False, "reject_memory": True},
+             "failure_distill": False, "reject_memory": True, "require_match": True,
+             "llm_signal_layer": False},
 }
 
 
@@ -59,12 +61,16 @@ class Config:
     use_memory: bool = True
     drift: bool = False                      # IS_RANDOM_DRIFT
     plateau_override: bool = True
-    require_match: bool = True               # port deviation: irrelevant genes score 0
+    require_match: Optional[bool] = None     # safe: True (our deviation: a gene with no pattern hit and no token
+    #                                          overlap scores 0); faithful: False (Evolver: tag overlap or history
+    #                                          alone can make it a candidate; retry round 2, I2)
     strategy_preset: str = "balanced"
     failed_capsule_bans: bool = True
     epigenetic_suppression: bool = True       # marks <= -0.3 in this environment hard-suppress a gene (§4.5)
     failed_capsule_rule: Optional[str] = None   # absolute (engine: >= 2 failures) | relative (and > successes)
     carry_log_signals: Optional[bool] = None  # faithful: signals also come from the previous cycle's log/trace
+    llm_signal_layer: Optional[bool] = None   # faithful: Evolver's layer 3 (every 5th cycle the corpus goes to the
+    #                                          hub's signal analyzer; empty without a hub analyzer); safe: off
     # outcome inference (None = mode default)
     outcome_source: Optional[str] = None     # faithful (transcript first) | safe (measured only)
     outcome_timing: Optional[str] = None     # next_cycle | immediate

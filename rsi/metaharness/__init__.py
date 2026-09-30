@@ -24,7 +24,9 @@ Optional, off by default: ``Config(reeval_incumbent=4)`` re-scores every new fro
 more seeds (noise band; not in the paper). ``Config(tradeoff="...")`` states the desired
 accuracy-context trade-off to the proposer. History-access ablations: ``Config(history_mode=
 "scores_only" | "scores_summary" | "full")``; equal-budget baseline arms: ``"seed_only"``
-(Best-of-N), ``"window"`` (OPRO-style), ``"last_only"`` (GEPA/TextGrad-style reflection).
+(Best-of-N), ``"window"`` (OPRO-style), ``"last_only"`` (GEPA/TextGrad-style reflection); structured
+optimisers with their own parent-selection rule and context (OpenEvolve, TTT-Discover PUCT, GEPA Pareto
+sampling): ``baselines.StructuredOptimizerProposer`` around the same proposer.
 
 Module map: ``config`` (Config, history modes), ``store`` (ExperienceStore = the
 filesystem D, views, sealed results, history CLI helpers), ``frontier`` (Pareto,
@@ -34,6 +36,7 @@ RewriteProposer, summarisers), ``mock`` (MockProposer + program libraries),
 ``api`` (run, make_proposer).
 """
 from .api import make_proposer, run
+from .baselines import POLICIES, StructuredOptimizerProposer
 from .config import HISTORY_MODES, Config
 from .frontier import dominates, hypervolume, pareto_frontier, per_unit_best
 from .loop import MetaHarnessLoop
@@ -47,4 +50,4 @@ __all__ = ["Config", "run", "make_proposer", "HISTORY_MODES", "MetaHarnessLoop",
            "FinalizedError", "pareto_frontier", "per_unit_best", "hypervolume", "dominates", "Proposer",
            "ProposalBatch", "CandidateSpec", "AgentProposer", "RewriteProposer", "LLMSummarizer", "SKILL_TEXT",
            "TASK_PROMPT", "render_view", "READ_MIX", "TranscriptCLI", "MockProposer", "MemoClassifyLibrary", "AgentQALibrary", "library_for",
-           "InterfaceValidator", "LeakageScreen", "cli_frontier", "cli_top", "cli_diff", "cli_show", "safe_name"]
+           "InterfaceValidator", "LeakageScreen", "StructuredOptimizerProposer", "POLICIES", "cli_frontier", "cli_top", "cli_diff", "cli_show", "safe_name"]

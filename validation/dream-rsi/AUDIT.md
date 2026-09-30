@@ -28,7 +28,7 @@ Scope: every run under `validation/dream-rsi/`. That is the three stage-A runs (
 - **Selection.** Argmax with the incumbent kept on ties. The version the next cycle deploys must be the one selected.
 - **Revisions.**
   - The revision diff must equal the diff between the files in `history/`.
-  - The base must be the strongest version so far (value, then recency).
+  - The base must be the strongest version so far (value, then recency). (This is the default, `Config.developer_base="strongest"`, following L2:247. Since the claims-audit retry round 2, `"latest"` also exists: it revises π^m into π^{m+1}, the §3 reading. These validation runs use the default.)
   - The mutator's claimed moves and `params_changed` must equal the real PARAMS diff.
   - A grep for leakage and for forbidden APIs (`best_so_far`, `budget_spent`, `open(`, `exec(` …).
 - **Beta sweep.** AUC, parallel penalty and the degenerate flag are recomputed from the traced points.

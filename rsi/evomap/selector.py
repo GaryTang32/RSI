@@ -89,7 +89,7 @@ class GeneScorer:
                 adj += 0.12
             elif h.get("mode") == "hard":
                 adj -= 0.22
-            else:
+            elif h.get("mode") == "soft":        # as selector.js: any other mode (none/missing) adds nothing
                 adj -= 0.08
         adj += epigenetic_boost(g, env)
         ex = expand_signals(signals)

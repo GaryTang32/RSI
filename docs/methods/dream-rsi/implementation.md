@@ -20,6 +20,14 @@ All numbers come from `results/dream-rsi/*.json`, produced by `experiments/dream
 | E9 | Selection can overfit past worlds | **Reproduced; the guarded selector helps partly** | argmax gap (dev − fresh V) grows with M: t=1 +0.070 → +0.175; t=3 +0.013 → +0.119; the guarded selector narrows it (t=3 at M=32: +0.088; t=6: +0.063 vs +0.094) and halves how often the pick is worse than the incumbent on fresh worlds (t=6, M=8: 17% → 8%), but its fresh-world value is within the CIs of the argmax pick |
 | E10 | Replay can only test what was tried | **Reproduced** | go-deeper policy: replay error −0.013 on a shallow record (out of support), exactly 0.000 when the record covers its depth; all in-support errors are 0.000 |
 | live | Live end-to-end runs (Claude Haiku as agent and developer) | **Pipeline works end to end** with the verbatim Listing-1/Listing-2 prompts | Live smoke (re-run after the claims-audit fixes, fresh cache): sum-difference Γ 0.9105 → 1.0194 in 12 real agent calls (12 ok); Haiku's rewritten policy passed the static check and tied the incumbent on replay (0.955 vs 0.955), so the incumbent was kept; $0.72, of which the developer is 14%; 10 min. Validation run `sumdiff_live_c`: Γ 0.9105 → 1.0468 in 18 calls, $1.46 (developer 21%), step audit 49/49 correct |
+| E11 | The paper's protocol: 10 × 11 = 110 calls per round (Flash 32 × 20), identical per-round budgets, equal rounds (5 Lasso-like, 10 math) | **Fewer calls: reproduced. Better at equal rounds: not reproduced. Better at equal cumulative calls: synthetic worlds and circle packing only** | Fixed/Dream calls: Lasso 2.10 [1.65, 2.54] (the paper's 1.735 is inside the CI), synthetic 2.50, Flash grid 3.55, math 3.9–4.3. Quality after R rounds: Lasso held-out +2.7 [−0.5, +7.6] 1/s; synthetic −0.038 [−0.051, −0.025]; sum-diff −0.0006 n.s.; circle packing tie; autocorr −0.0070 [−0.0112, −0.0032]. Pacing: rounds 2–4 use 20–30 calls of 110, and effort rises after plateaus on sum-diff (+3.35 [+1.93, +4.92]) and autocorr (+3.12). The default-beta rule moves the default in 52% of 10-round runs |
+| E12 | Replay ranks policies on real tasks | **Reproduced** | Spearman(replay, 40-search online truth), in support: sum-diff 0.78 [0.40, 0.99], autocorr 0.81 [0.41, 0.98]. The replay pick beats parallel refine online under the same objective, but only through the probe-cost term: it finds significantly less. Quality only (E12q, β1 = β2 = 0): in-support Spearman 0.887 and 0.986 |
+| E13 | Thousands of candidate policies | **Reproduced** | 2000 candidates × 6 worlds (10 × 11) = 12,000 episodes in 128 s in one process, 0 disqualified; sandbox 30 ms per episode |
+| E14 | Sensitivity of the Listing-2 objective | **Not robust** | Spearman ≥ 0.83 with our default over 12 variants (λ, attainment, grid), but the same winner in only 5/12 |
+| E15 | Written guidance (live LLM; mock on real tasks) | **The mechanism works live. No loss of diversity live; performance untested live** | Live: the advice is in 12/12 guided prompts. Jaccard diversity U − G −0.0085 (p = 0.60); code distance U − G −0.150 (guided more diverse). Power (P1, `e15_power.py`): 0.66 / 0.95 at a 10% / 15% reduction (bootstrap: 0.45 / 0.70). Live Γ (descriptive): guided 1.0310 vs 1.0346. Mock guidance on sum-diff and autocorr: no harm (autocorr +0.0075 [+0.0014, +0.0155] with guidance, for Dream), but in the mock guidance only acts through a hard-coded assignment bias |
+| E16 / E16c | The paper's App. C Lasso solver, run under the benchmark protocol (`SimpleTESLassoDomain`) | **Correct and fast; beats sklearn and R glmnet on 4/4 available datasets when timed symmetrically** | 51/51 search checks and 4/4 held-out datasets correct. 1/geomean 19.8 ms vs sklearn 41.8. Faster than sklearn on DNA, Leukemia, Colon and Duke-like. E16/E16b timed App. C with process spawn and pipe I/O, but R glmnet inside R, and so showed it slower than R glmnet on 2–3/4. E16c times every solver on its compute only (an `LD_PRELOAD` timer for the binaries, `Sys.time()` around `glmnet()`): App. C 19.6 / 7.0 / 4.3 / 9.0 ms vs gate-passing R glmnet 43.6 / 12.6 / 11.2 / 17.1 ms. The paper's "glmnet" row matches the benchmark's C++ port, which App. C beats on 4/4 |
+| E17 | Fig. 3b on the paper's axis (exact source data) | **The paper's own Pro curve contradicts "consistently superior"** | Pro Dream is worse at rounds 3–4 at equal rounds, and at rounds 2–4 at equal calls |
+| E18 / A1 | Developer base (§3 vs L2); the developer's cost share at paper scale | – | E18: the "latest" base (§3) − "strongest" (L2) = +0.0054 [+0.0008, +0.0113]. A1: the developer's share is 9.3% (Pro) and 1.7% (Flash) per dreaming phase at the mean round with 3 revisions, but 2 of the 4 Pro phases are above 10%. A1b: if the developer's input grows with the pool, it is above 10% in every phase for both models |
 
 ## 1. Module map
 
@@ -44,6 +52,7 @@ All numbers come from `results/dream-rsi/*.json`, produced by `experiments/dream
 | `rsi/dream/tracing.py` | `DreamTracer`: the per-iteration audit trace (`rsi.trace` format, `trace.jsonl`); `ShadowLLM` (the shadow monitor's spend, metered apart) | `rsi.trace.RunTracer`, `ShadowMonitor` |
 | `rsi/domains/discovery/base.py` | `ProgramDomain`: program artifact + locked evaluator with typed `fail_class`, optional subprocess sandbox | `rsi.core.Domain`, `call_function` |
 | `rsi/domains/discovery/lasso.py` | Lasso path: CPU-timed search instances, correctness gate `F_k ≤ F_k(sklearn ref) + 1e-6` on fresh instances, `holdout` split, mock agent over solver mechanisms | numpy, scikit-learn |
+| `rsi/domains/discovery/lasso_cpp.py` | `SimpleTESLassoDomain`: the paper's actual Lasso protocol (retry round 2): `CPP_CODE`/`COMPILE_FLAGS` candidates compiled with g++ (+ Eigen), binary stdin/stdout wire format, the 17 benchmark shapes (generators identical to the benchmark's), sklearn `lasso_path(n_alphas=50, eps=1e-2)` as path and gate (1e-6), score 1/geomean(ms), held-out split over the six real datasets present in a directory; candidate files are parsed as literals, never executed; no mock agent (needs a C++-writing agent) | g++, Eigen, scikit-learn |
 | `rsi/domains/discovery/sumdiff.py` | sum-difference Γ(A), staged construction recipe, mock agent (hill / anneal / window / fringe / grow) | numpy |
 | `rsi/domains/discovery/circlepack.py` | circle packing n=26, SLSQP + exact LP radii with an exact feasibility repair, mock agent that resumes from the parent's measured packing | scipy |
 | `rsi/domains/discovery/autocorr.py` | autocorrelation inequalities Φ1/Φ2/Φ3 (App. A Problem 4): step functions on [−1/4, 1/4], exact objectives from the discrete autoconvolution, mock agent (coord / gradient / smooth / upsample / shake) that resumes the parent's measured function; default Φ3 (Table 1's column) | numpy |
@@ -164,8 +173,8 @@ Spec §9.1 invariants: (a) recording policy reproduces its rollout: tested and E
 2. **Support.** The support of a live recording is its *planned* grid, including roots the recording policy never opened. Unrecorded cells inside the plan are missing continuations that reveal nothing. This is what makes invariant (a) hold for policies that do not open every root. Out-of-support plans get no replay reward by default (`support="no_reward"`, Listing 2's "cannot earn replay reward": no quality credit, costs still count; also in the Pareto sweep, where such an episode attains 0). `support="clip"` (intersect the plan with the support and score it as if it had asked for less) is a non-default option; it was the default until the claims audit (§10). E2 shows why this matters: clipping hides the probes such a policy would spend.
 3. **Missing continuations.** Following the paper formalism (`hide_missing=False`), an exhausted leaf stays legal until probed once. That probe reveals nothing, counts a round, and then the branch is closed, which keeps episodes finite. `hide_missing=True` gives the API's "irregular grid" semantics.
 4. **Eq. 1 normalization.** By default scores are normalized per world, `(s − s_r)/(ceiling_i − s_r)` (spec §9.3). The paper averages raw V_i; `normalize=False` does the same, and the demo, E2, E8 and E10 use it. Disqualified episodes score below every honest episode (§4.21).
-5. **Pareto objective.** `pareto.auc` is the area under the best-attainment-vs-probe-fraction step frontier traced by the beta sweep, with attainment normalized by each trace's ceiling. The paper does not define it exactly. λ = 0.1 and grid {0.2, …, 1.0} follow spec §9.3.
-6. **M semantics.** M versions including the incumbent means M−1 revisions (`m_semantics="versions"`, the default); `"revisions"` gives M revisions and M+1 candidates. The developer starts each revision from the strongest version so far ("start from a strong recent policy").
+5. **Pareto objective.** `pareto.auc` is the area under the best-attainment-vs-probe-fraction step frontier traced by the beta sweep, with attainment normalized by each trace's ceiling, `(S − root)/(G − root)`. The paper does not define it exactly. `Config.pareto_attainment="ratio"` (`ParetoSweepObjective(attainment_mode="ratio")`) uses `clip(S/G, 0, 1)`, the definition in the arXiv source's unpublished method draft (positive scores only; claims audit M18, retry round 2). λ = 0.1 and grid {0.2, …, 1.0} follow spec §9.3.
+6. **M semantics.** M versions including the incumbent means M−1 revisions (`m_semantics="versions"`, the default); `"revisions"` gives M revisions and M+1 candidates. The developer starts each revision from the strongest version so far ("start from a strong recent policy", L2:247). `Config.developer_base="latest"` instead revises π^m into π^{m+1}, as §3 (and the unpublished method draft) describe; the paper's two texts disagree (claims audit M12, retry round 2).
 7. **Dreaming after the last round** is skipped by default (`dream_last=False`), because it cannot affect any live search. Set it to True to return a dreamed final policy.
 8. **Beta sweep** is computed for the *deployed* version only under Eq. 1 (it feeds `beta_sweep.json` and the default-beta rule), and for every version under the Pareto objective, where the sweep *is* the selection value (before the review, the loop skipped it and scored every version −∞; see §8).
 9. **Mock developer.** `ParametricMutator` edits the `PARAMS` block of the adaptive template, a real code edit. It uses feedback-directed moves (premature stops → more patience/width; wasted probes → earlier stops; ceiling always reached → try cheaper; under-filled batches → open more) plus random perturbations and the cross-cycle default-beta rule. It is a stand-in for the LLM developer, not a claim about what an LLM would write.
@@ -246,7 +255,7 @@ All scripts accept `--llm sim|claude:haiku --seeds N --quick --workers W --out P
 
 ## 7. Tests
 
-`python -m pytest tests/dream-rsi/` runs 92 tests offline and deterministically in ≈45 s (`tests/dream-rsi/test_dream-rsi_fixes.py`: the 22 regressions of the claims-audit fixes, §10) (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all five discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
+`python -m pytest tests/dream-rsi/` runs 104 tests offline and deterministically in ≈35–45 s (`tests/dream-rsi/test_dream-rsi_retry2.py`: the 11 regressions of the claims-audit retry round 2, §11) (`tests/dream-rsi/test_dream-rsi_fixes.py`: the 22 regressions of the claims-audit fixes, §10) (`test_dream-rsi_validation.py`: the audit trace is write-only and complete, the monitor's spend is separate, the two live-run fixes of §9). They cover invariants (a)–(g), guard and sandbox, the static check, both objectives, ledger conversion, loop logging, both developer paths (incl. the leakage screen), the selectors, budgets, the guidance arm, all five discovery domains, `DomainTask` failure classes and AgentQA. `test_dream-rsi_review.py` and `test_dream-rsi_review2.py` hold the regressions of the two reviews (§8) and two genericity tests on new `FunctionDomain`s (through the LLM paths; and with a `train`-only split, the Pareto objective, the guarded selector and the sandbox).
 
 ## 8. Adversarial review (2026-09-25)
 
@@ -370,3 +379,49 @@ The claim-by-claim audit (`docs/methods/dream-rsi/claims-audit.md`) found seven 
 - **Offline.** Every offline experiment was re-run at full settings: demo, E1–E10, and E3 also with `--objective pareto`. E1, E2, E4, E7, E9 and E10 give the same numbers as before. E3, E5 and E6 changed only through W and the per-round budget, and all their verdicts are the same.
 - **Validation runs.** The two offline validation runs were re-recorded, and their step audits give 112/113 and 97/97 correct. The one questionable step is the frugality selection.
 - **Live.** One new live validation run, `sumdiff_live_c` (haiku, restored prompts; 49/49 steps correct; $1.46), and a re-run live smoke ($0.72). Total live spend: $2.18.
+
+## 11. Claims-audit retry round 2 (2026-09-29)
+
+A second attempt on every PARTIAL, NOT REPRODUCED and CONTRADICTED claim. Experiments were preregistered in `claims-audit.md` §6, and the results are in §7 there. The regression tests are in `tests/dream-rsi/test_dream-rsi_retry2.py`. Six of them fail on the pre-retry commit (`5c66366`) with the new domain file present, and all eleven fail without it.
+
+**Code changes.**
+1. **Developer base (claim M12).** `Config.developer_base` / `DevContext.base`:
+   - `"strongest"` is the default and follows Listing 2's L2:247.
+   - `"latest"` revises π^m into π^{m+1}, as §3 and the unpublished method draft describe.
+   - Both developers honour it (`developer.base_version`), and the framework notes of the developer prompt say which version is shown.
+2. **Ratio attainment (claim M18).** `ParetoSweepObjective(attainment_mode="ratio")` / `Config.pareto_attainment`. It uses clip(S/G, 0, 1), from the arXiv source's unpublished `method.tex` (positive scores only). The default stays `"shift"`, (S − root)/(G − root).
+3. **`SimpleTESLassoDomain` (`rsi/domains/discovery/lasso_cpp.py`; claims Q13, Q31, Q32).** The paper's Lasso setting, re-implemented from the benchmark's specification (the benchmark is AGPL and none of its code is copied):
+   - candidates are Python files with `CPP_CODE` and `COMPILE_FLAGS`; they are parsed as literals, never executed;
+   - compiled with `g++ -O3 -march=native -std=c++17` plus Eigen, and run once per problem with the binary stdin/stdout wire format;
+   - the 17 search shapes, whose generators were checked identical to the benchmark's on 2 seeds each;
+   - sklearn's `lasso_path(n_alphas=50, eps=1e-2)` gives the λ path and the 1e-6 correctness reference;
+   - score = 1/geomean(ms);
+   - a held-out split reads the six real datasets from a directory, skipping and listing the missing ones.
+
+   `experiments/dream-rsi/e16_prepare_heldout.py` builds 4 of the 6 datasets:
+   - DNA and Leukemia: the benchmark's own files.
+   - Colon: rebuilt with LIBSVM's recipe, which is verified by reproducing Leukemia from Golub et al.'s data.
+   - Duke-like: 49 samples, where LIBSVM keeps 44.
+
+   Gisette and RCV1 cannot be downloaded here. There is no offline mock agent: the domain needs a C++-writing agent.
+
+**Experiments added** (`experiments/dream-rsi/`):
+- `e11_paper_grid.py`: the paper's grids and round counts. The loop's hard caps must be at least the grid: the first Flash-grid run was clipped to 12 × 13 by the default caps, and was then fixed, tested and re-run.
+- `e12_real_offpolicy.py`, `e13_thousands.py`, `e14_pareto_sensitivity.py`.
+- `e15_guidance_live.py` (live haiku, $2.05).
+- E5 with `--domains sumdiff,autocorr`.
+- `e16_lasso_paper_solvers.py` and `e16b_glmnet_tolerance.py`: R glmnet through `Rscript`.
+- `e17_fig3b_axis.py`, `e18_developer_base.py`, `a1_developer_share.py`.
+- Review round (`claims-audit.md` §6.1): `e16c_symmetric_timing.py` with `e16c/solve_timer.c` (an `LD_PRELOAD` compute-only timer) and `e16c/noop.c`; `e12_real_offpolicy.py --quality-only` (E12q); `e15_power.py` (P1); `a1_developer_share.py --growth` (A1b). No library code changed in the review round.
+
+The results are in the §0 table and in `claims-audit.md` §7.
+
+**Verdicts.**
+These verdicts include the review round:
+- Six claims went up to REPRODUCED: M12 (as a non-default option), M27 (mechanism), L1, L3, L10 (borderline), and Q32 (was NOT TESTABLE HERE).
+- Q13 went up to PARTIAL. With symmetric timing, the paper's own solver beats sklearn and R glmnet on the 4 available datasets.
+- L6 went down to NOT REPRODUCED: the live test is negative.
+- L2 and L5 stay PARTIAL. The retry's upgrade of L2 and downgrade of L5 were reverted in the review round.
+- Q15, Q22 and C7 stay CONTRADICTED, each by the paper's own data or repository.
+- New counts: 43 reproduced, 12 partial, 1 not reproduced, 24 not testable here, 3 contradicted.
+

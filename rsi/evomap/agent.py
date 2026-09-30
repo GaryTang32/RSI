@@ -49,8 +49,8 @@ from .mutation import MutationBuilder, PersonalityModel, StrategyPolicy
 from .prompts import GENE_WRITER_SYSTEM, gene_writer_prompt, parse_gene
 from .quarantine import QuarantineGate
 from .selector import GeneScorer, GeneSelector
-from .signals import (PlateauDetector, PlateauOverride, RunContext, SignalDeduper, TaskSignalExtractor, has_error,
-                      is_problem, signal_key)
+from .signals import (HubSignalLayer, PlateauDetector, PlateauOverride, RunContext, SignalDeduper, TaskSignalExtractor,
+                      has_error, is_problem, merge_signals, signal_key)
 from .solidify import ConstraintChecker, CountedFilePolicy, RunState, Solidifier
 from .store import LocalStore
 from .tracing import eval_payload, gene_brief, injected_diff, loop_genes, trial_eval, validation_rows
@@ -106,7 +106,7 @@ class AgentNode:
                  extractor: Optional[TaskSignalExtractor] = None, ledger: Optional[Ledger] = None,
                  behavior: Optional[Behavior] = None, heldout_tasks: Optional[list] = None,
                  decision_tasks: Optional[list] = None, executor=None, counted: Optional[CountedFilePolicy] = None,
-                 cluster: Optional[str] = None, tracer: Optional[RunTracer] = None) -> None:
+                 cluster: Optional[str] = None, tracer: Optional[RunTracer] = None, workspace=None) -> None:
         self.name = name
         # write-only per-cycle trace (rsi.trace); the loop never reads it back
         self.tracer = tracer if tracer is not None else RunTracer(None, "evomap")
@@ -134,10 +134,14 @@ class AgentNode:
         self.counted = counted or getattr(domain, "counted_policy", None) or CountedFilePolicy()
         self.solidifier = Solidifier(self.store, self.runner, mode=cfg.mode, constraints=ConstraintChecker(),
                                      counted=self.counted, vacuity=vac, require_task_success=cfg.require_task_success,
-                                     rollback=cfg.rollback, estimate_drift_penalty=cfg.estimate_drift_penalty)
+                                     rollback=cfg.rollback, estimate_drift_penalty=cfg.estimate_drift_penalty,
+                                     workspace=workspace)
         self.selector = GeneSelector(GeneScorer(cfg.selector_mode, require_match=cfg.require_match),
                                      use_memory=cfg.use_memory)
         self.deduper = SignalDeduper()
+        # layer 3 (hub LLM signal analysis): empty without a hub analyzer, as Evolver without a hub / node secret
+        analyzer = getattr(hub, "analyze_signals", None) if hub is not None else None
+        self.llm_signals = HubSignalLayer(analyzer, sender_id=name) if cfg.llm_signal_layer else None
         self.plateau = PlateauDetector()
         self.policy = StrategyPolicy(cfg.strategy_preset)
         self.mutations = MutationBuilder()
@@ -444,6 +448,8 @@ class AgentNode:
         # faithful: the corpus is the recent session log (the previous attempt's trace), as in Evolver
         corpus = self._last_trace if cfg.carry_log_signals else ""
         base_sig = self.extractor.extract(RunContext(task=task, corpus=corpus))
+        if self.llm_signals is not None:
+            base_sig = merge_signals(base_sig, self.llm_signals.extract(corpus))
         if self._pending is not None:
             self._record_pending(cur_error=has_error(base_sig))
         dd = self.deduper.apply(base_sig, recent)

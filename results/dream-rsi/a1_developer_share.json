@@ -1,0 +1,113 @@
+{
+ "experiment": "a1_developer_share",
+ "created": "2026-09-29 16:48:20",
+ "config": {
+  "runs": [
+   "sumdiff_live",
+   "sumdiff_live_b",
+   "sumdiff_live_c",
+   "live_smoke"
+  ],
+  "revisions_per_phase": 3,
+  "paper_rounds": {
+   "pro": [
+    110,
+    9,
+    28,
+    87,
+    83
+   ],
+   "flash": [
+    640,
+    336,
+    254,
+    299,
+    350
+   ]
+  }
+ },
+ "runs": {
+  "sumdiff_live": {
+   "agent_calls": 36,
+   "agent_usd": 2.0303549999999997,
+   "developer_calls": 9,
+   "developer_usd": 0.875637,
+   "developer_revisions": null
+  },
+  "sumdiff_live_b": {
+   "agent_calls": 17,
+   "agent_usd": 0.938645,
+   "developer_calls": 3,
+   "developer_usd": 0.339594,
+   "developer_revisions": null
+  },
+  "sumdiff_live_c": {
+   "agent_calls": 18,
+   "agent_usd": 1.153541,
+   "developer_calls": 3,
+   "developer_usd": 0.30375399999999997,
+   "developer_revisions": 3
+  },
+  "live_smoke": {
+   "agent_calls": 12,
+   "agent_usd": 0.6219779999999999,
+   "developer_calls": 1,
+   "developer_usd": 0.09865099999999999,
+   "developer_revisions": 1
+  }
+ },
+ "results": {
+  "usd_per_agent_call": 0.05716287951807227,
+  "usd_per_developer_request": 0.10110224999999999,
+  "developer_over_agent_cost_ratio": 1.768669648071807,
+  "per_run_ratio": {
+   "sumdiff_live": 1.7250914248986018,
+   "sumdiff_live_b": 2.050153146290664,
+   "sumdiff_live_c": 1.579938641105951,
+   "live_smoke": 1.9033020460530758
+  },
+  "requests_per_revision_where_recorded": {
+   "sumdiff_live_c": 1.0,
+   "live_smoke": 1.0
+  },
+  "paper_scale": {
+   "pro": {
+    "dream_calls_per_round_after_1": [
+     9,
+     28,
+     87,
+     83
+    ],
+    "mean": 51.75,
+    "share_per_phase_M4": 0.09299649664250423,
+    "share_per_phase_M4_ratio_range": [
+     0.08390567124084668,
+     0.10622470872386248
+    ],
+    "share_smallest_round_M4": 0.37089372479113997,
+    "share_whole_run_M4": 0.06275141188033108,
+    "share_per_phase_1000_candidates": 0.9715724887638882,
+    "almost_free": true
+   },
+   "flash": {
+    "dream_calls_per_round_after_1": [
+     336,
+     254,
+     299,
+     350
+    ],
+    "mean": 309.75,
+    "share_per_phase_M4": 0.01684147831998632,
+    "share_per_phase_M4_ratio_range": [
+     0.01507144487144081,
+     0.019469612199352084
+    ],
+    "share_smallest_round_M4": 0.020462344724749146,
+    "share_whole_run_M4": 0.01116922814218837,
+    "share_per_phase_1000_candidates": 0.8509684989326571,
+    "almost_free": true
+   }
+  },
+  "holds_for_both": true
+ }
+}

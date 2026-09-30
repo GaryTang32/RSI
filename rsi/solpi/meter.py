@@ -24,18 +24,26 @@ class PriceTable:
     read: float
     write: float
     output: float
+    #: price of input sent with ``cacheRetention: "none"`` (no cache write); ``None`` = ``write`` (OpenAI-like
+    #: providers bill uncached input at the input price, which is the "write" side of the ratio). Anthropic-like
+    #: providers bill it at the base input price = cache write / 1.25.
+    uncached: Optional[float] = None
 
     @property
     def ratio(self) -> float:
         return self.write / self.read if self.read > 0 else float("inf")
 
+    @property
+    def uncached_price(self) -> float:
+        return self.write if self.uncached is None else self.uncached
+
 
 #: simulated backends. A ~ "GPT-5.6 Sol"-like, B ~ "Opus-5"-like (both rho = 12.5), reducer ~ "Luna"-like.
 PRICES = {
     "sim-a": PriceTable("sim-a", read=0.20, write=2.50, output=15.0),
-    "sim-b": PriceTable("sim-b", read=0.50, write=6.25, output=25.0),
+    "sim-b": PriceTable("sim-b", read=0.50, write=6.25, output=25.0, uncached=5.0),
     "reducer": PriceTable("reducer", read=0.02, write=0.25, output=2.0),
-    "haiku": PriceTable("haiku", read=0.10, write=1.25, output=5.0),
+    "haiku": PriceTable("haiku", read=0.10, write=1.25, output=5.0, uncached=1.0),
 }
 
 
@@ -130,6 +138,21 @@ class TokenMeter:
         u = self.request([f"{role}-standalone-{len(self.requests)}"], [input_tokens], role=role,
                          scope=f"{role}-standalone")
         self.add_output(output_tokens, role=role)
+        return u
+
+    def uncached(self, tokens: Sequence[int], *, role: str) -> RequestUsage:
+        """A request sent with ``cacheRetention: "none"`` (e.g. Pi's compaction summary): no prefix is read from or
+        written to the cache; every input token is billed at the uncached input price. Its scope is not remembered,
+        so it never disturbs another scope's cached prefix."""
+        n = int(sum(tokens))
+        p = self.price(role)
+        u = RequestUsage(role, n, 0, n, 0, n * p.uncached_price / 1e6, len(tokens))
+        self.requests.append(u)
+        t = self.by_role.setdefault(role, RoleTotals())
+        t.requests += 1
+        t.input += n
+        t.cache_write += n
+        t.cost += u.cost
         return u
 
     def reset_cache(self, scope: str = "main") -> None:

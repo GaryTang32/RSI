@@ -42,6 +42,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Optional, Protocol
 
 from .meter import TokenMeter, estimate_tokens
+from .pi_compaction import summarization_request_tokens
 
 EVENTS = ("session_start", "context", "before_provider_request", "tool_result", "turn_end", "agent_settled",
           "input", "session_compact")
@@ -319,12 +320,16 @@ class AgentRuntime:
         if cut <= 1:
             return None
         archived, kept = self.history[:cut], self.history[cut:]
-        # the summarisation request reads the cached conversation prefix and writes the summary
-        prefix = [self.system_message()] + archived
-        self.meter.request([m.key() for m in prefix], [m.tokens() for m in prefix], role="compaction", scope="main")
+        # Pi 0.85.1 summarisation request (``pi_compaction``): the archived messages serialised into ONE user
+        # message (tool results cut to 2,000 chars) under the summarisation system prompt, sent with
+        # cacheRetention "none" - it shares no cached prefix with the conversation, so every input token is
+        # billed uncached. (Before retry round 2 it was billed as a continuation of the conversation's cached
+        # prefix, i.e. mostly at the cache-read price.) The conversation's own cache is untouched: the next
+        # request re-reads the unchanged system prompt and writes the summary and the kept tail.
+        self.meter.uncached(summarization_request_tokens(archived, custom_instructions, MESSAGE_OVERHEAD_TOKENS),
+                            role="compaction")
         summary = self.summarizer(archived, custom_instructions, self)
         self.meter.add_output(estimate_tokens(summary), role="compaction")
-        self.meter.reset_cache("main")    # the next request after the rewrite starts from a fresh prefix
         self.history = [Message("user", "[compacted context summary]\n" + summary,
                                 details={"compaction": True})] + kept
         self.compactions += 1

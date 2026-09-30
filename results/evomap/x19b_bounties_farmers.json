@@ -1,0 +1,684 @@
+{
+ "experiment": "x19b_bounties_farmers",
+ "generated_at": "2026-09-30 01:03:47",
+ "config": {
+  "seeds": 10,
+  "rates": [
+   1,
+   4,
+   16
+  ],
+  "claimant_kinds": [
+   "honest",
+   "inflator",
+   "farmer"
+  ],
+  "amount": 100,
+  "farm_rate": 8,
+  "population": "40 agents x 30 epochs",
+  "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"
+ },
+ "raw": [
+  {
+   "seed": 0,
+   "B": 1,
+   "credit_top10_share": 0.5965948470694591,
+   "top10_share_promotion": 0.969794928780685,
+   "top10_share_bounty": 0.0050510152540660675,
+   "top10_share_fetch": 0.025154055965249014,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 7,
+   "bounties_posted": 30,
+   "bounties_completed": 24,
+   "bounty_credits_all_agents": 2400.0,
+   "promotion_credits_all_agents": 158800.0
+  },
+  {
+   "seed": 1,
+   "B": 1,
+   "credit_top10_share": 0.5915636625465018,
+   "top10_share_promotion": 0.9737295871792271,
+   "top10_share_bounty": 0.00405720661324678,
+   "top10_share_fetch": 0.022213206207526117,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 5,
+   "bounties_posted": 30,
+   "bounties_completed": 29,
+   "bounty_credits_all_agents": 2900.0,
+   "promotion_credits_all_agents": 159100.0
+  },
+  {
+   "seed": 2,
+   "B": 1,
+   "credit_top10_share": 0.5975675675675676,
+   "top10_share_promotion": 0.9648726066636515,
+   "top10_share_bounty": 0.004020302527765214,
+   "top10_share_fetch": 0.031107090808583347,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 6,
+   "bounties_posted": 30,
+   "bounties_completed": 29,
+   "bounty_credits_all_agents": 2900.0,
+   "promotion_credits_all_agents": 158900.0
+  },
+  {
+   "seed": 3,
+   "B": 1,
+   "credit_top10_share": 0.5967286066510313,
+   "top10_share_promotion": 0.9674493600725587,
+   "top10_share_bounty": 0.00503879875037791,
+   "top10_share_fetch": 0.027511841177063387,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 6,
+   "bounties_posted": 30,
+   "bounties_completed": 27,
+   "bounty_credits_all_agents": 2700.0,
+   "promotion_credits_all_agents": 158900.0
+  },
+  {
+   "seed": 4,
+   "B": 1,
+   "credit_top10_share": 0.59534127843987,
+   "top10_share_promotion": 0.9705793145283591,
+   "top10_share_bounty": 0.0010110201193003741,
+   "top10_share_fetch": 0.02840966535234051,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 2,
+   "bounties_posted": 30,
+   "bounties_completed": 26,
+   "bounty_credits_all_agents": 2600.0,
+   "promotion_credits_all_agents": 158900.0
+  },
+  {
+   "seed": 5,
+   "B": 1,
+   "credit_top10_share": 0.5946846846846847,
+   "top10_share_promotion": 0.9695500681714891,
+   "top10_share_bounty": 0.006059687926071807,
+   "top10_share_fetch": 0.024390243902439025,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 6,
+   "bounties_posted": 30,
+   "bounties_completed": 29,
+   "bounty_credits_all_agents": 2900.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 6,
+   "B": 1,
+   "credit_top10_share": 0.5884909336130676,
+   "top10_share_promotion": 0.9778456837280367,
+   "top10_share_bounty": 0.0071301247771836,
+   "top10_share_fetch": 0.01502419149477973,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 7,
+   "bounties_posted": 30,
+   "bounties_completed": 24,
+   "bounty_credits_all_agents": 2400.0,
+   "promotion_credits_all_agents": 159700.0
+  },
+  {
+   "seed": 7,
+   "B": 1,
+   "credit_top10_share": 0.5903397854617367,
+   "top10_share_promotion": 0.9745203532636281,
+   "top10_share_bounty": 0.002030250735965892,
+   "top10_share_fetch": 0.02344939600040605,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 2,
+   "bounties_posted": 30,
+   "bounties_completed": 28,
+   "bounty_credits_all_agents": 2800.0,
+   "promotion_credits_all_agents": 159400.0
+  },
+  {
+   "seed": 8,
+   "B": 1,
+   "credit_top10_share": 0.5985864661654136,
+   "top10_share_promotion": 0.9646786916545245,
+   "top10_share_bounty": 0.009043862734261167,
+   "top10_share_fetch": 0.026277445611214388,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 11,
+   "bounties_posted": 30,
+   "bounties_completed": 27,
+   "bounty_credits_all_agents": 2700.0,
+   "promotion_credits_all_agents": 158900.0
+  },
+  {
+   "seed": 9,
+   "B": 1,
+   "credit_top10_share": 0.5935561216843999,
+   "top10_share_promotion": 0.9695011108866896,
+   "top10_share_bounty": 0.004039587962027873,
+   "top10_share_fetch": 0.02645930115128257,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 4,
+   "bounties_posted": 30,
+   "bounties_completed": 29,
+   "bounty_credits_all_agents": 2900.0,
+   "promotion_credits_all_agents": 159200.0
+  },
+  {
+   "seed": 0,
+   "B": 4,
+   "credit_top10_share": 0.5713263904783703,
+   "top10_share_promotion": 0.9614903099804697,
+   "top10_share_bounty": 0.018027943312133806,
+   "top10_share_fetch": 0.020481746707396463,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 24,
+   "bounties_posted": 120,
+   "bounties_completed": 112,
+   "bounty_credits_all_agents": 11200.0,
+   "promotion_credits_all_agents": 158800.0
+  },
+  {
+   "seed": 1,
+   "B": 4,
+   "credit_top10_share": 0.5676301569602882,
+   "top10_share_promotion": 0.967059534602599,
+   "top10_share_bounty": 0.009066183136899365,
+   "top10_share_fetch": 0.023874282260501662,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 15,
+   "bounties_posted": 120,
+   "bounties_completed": 112,
+   "bounty_credits_all_agents": 11200.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 2,
+   "B": 4,
+   "credit_top10_share": 0.5700183129220556,
+   "top10_share_promotion": 0.9638070377993072,
+   "top10_share_bounty": 0.020079313287485568,
+   "top10_share_fetch": 0.016113648913207167,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 24,
+   "bounties_posted": 120,
+   "bounties_completed": 110,
+   "bounty_credits_all_agents": 11000.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 3,
+   "B": 4,
+   "credit_top10_share": 0.5785297415404077,
+   "top10_share_promotion": 0.9541320876608855,
+   "top10_share_bounty": 0.018883864234955028,
+   "top10_share_fetch": 0.02698404810415942,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 23,
+   "bounties_posted": 120,
+   "bounties_completed": 105,
+   "bounty_credits_all_agents": 10500.0,
+   "promotion_credits_all_agents": 158700.0
+  },
+  {
+   "seed": 4,
+   "B": 4,
+   "credit_top10_share": 0.5696550145889353,
+   "top10_share_promotion": 0.9641458270563422,
+   "top10_share_bounty": 0.016069097117605704,
+   "top10_share_fetch": 0.019785075826052025,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 19,
+   "bounties_posted": 120,
+   "bounties_completed": 111,
+   "bounty_credits_all_agents": 11100.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 5,
+   "B": 4,
+   "credit_top10_share": 0.5727958402377007,
+   "top10_share_promotion": 0.9576537483166243,
+   "top10_share_bounty": 0.014963339817447255,
+   "top10_share_fetch": 0.027382911865928474,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 23,
+   "bounties_posted": 120,
+   "bounties_completed": 114,
+   "bounty_credits_all_agents": 11400.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 6,
+   "B": 4,
+   "credit_top10_share": 0.5704177128509472,
+   "top10_share_promotion": 0.9603841536614646,
+   "top10_share_bounty": 0.02100840336134454,
+   "top10_share_fetch": 0.018607442977190875,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 28,
+   "bounties_posted": 120,
+   "bounties_completed": 109,
+   "bounty_credits_all_agents": 10900.0,
+   "promotion_credits_all_agents": 159600.0
+  },
+  {
+   "seed": 7,
+   "B": 4,
+   "credit_top10_share": 0.5712776286481238,
+   "top10_share_promotion": 0.9597600599850038,
+   "top10_share_bounty": 0.013996500874781305,
+   "top10_share_fetch": 0.026243439140214948,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 16,
+   "bounties_posted": 120,
+   "bounties_completed": 111,
+   "bounty_credits_all_agents": 11100.0,
+   "promotion_credits_all_agents": 159300.0
+  },
+  {
+   "seed": 8,
+   "B": 4,
+   "credit_top10_share": 0.5739541547277937,
+   "top10_share_promotion": 0.9585143028306126,
+   "top10_share_bounty": 0.01597523838051021,
+   "top10_share_fetch": 0.02551045878887724,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 23,
+   "bounties_posted": 120,
+   "bounties_completed": 108,
+   "bounty_credits_all_agents": 10800.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 9,
+   "B": 4,
+   "credit_top10_share": 0.5735365332573708,
+   "top10_share_promotion": 0.9536108075891527,
+   "top10_share_bounty": 0.022846925598490116,
+   "top10_share_fetch": 0.023542266812357205,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 25,
+   "bounties_posted": 120,
+   "bounties_completed": 115,
+   "bounty_credits_all_agents": 11500.0,
+   "promotion_credits_all_agents": 159300.0
+  },
+  {
+   "seed": 0,
+   "B": 16,
+   "credit_top10_share": 0.5000238652092979,
+   "top10_share_promotion": 0.9163802978235968,
+   "top10_share_bounty": 0.06204658266513936,
+   "top10_share_fetch": 0.021573119511263842,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 89,
+   "bounties_posted": 480,
+   "bounties_completed": 457,
+   "bounty_credits_all_agents": 45700.0,
+   "promotion_credits_all_agents": 159100.0
+  },
+  {
+   "seed": 1,
+   "B": 16,
+   "credit_top10_share": 0.48861832910912667,
+   "top10_share_promotion": 0.9307737056428156,
+   "top10_share_bounty": 0.04847779716889664,
+   "top10_share_fetch": 0.020748497188287765,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 71,
+   "bounties_posted": 480,
+   "bounties_completed": 473,
+   "bounty_credits_all_agents": 47300.0,
+   "promotion_credits_all_agents": 159100.0
+  },
+  {
+   "seed": 2,
+   "B": 16,
+   "credit_top10_share": 0.5000478331579451,
+   "top10_share_promotion": 0.9183087813277214,
+   "top10_share_bounty": 0.053568012244117086,
+   "top10_share_fetch": 0.02812320642816147,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 87,
+   "bounties_posted": 480,
+   "bounties_completed": 457,
+   "bounty_credits_all_agents": 45700.0,
+   "promotion_credits_all_agents": 158700.0
+  },
+  {
+   "seed": 3,
+   "B": 16,
+   "credit_top10_share": 0.49829327095218773,
+   "top10_share_promotion": 0.9197604790419162,
+   "top10_share_bounty": 0.060359281437125746,
+   "top10_share_fetch": 0.019880239520958083,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 90,
+   "bounties_posted": 480,
+   "bounties_completed": 456,
+   "bounty_credits_all_agents": 45600.0,
+   "promotion_credits_all_agents": 159100.0
+  },
+  {
+   "seed": 4,
+   "B": 16,
+   "credit_top10_share": 0.49782002716031737,
+   "top10_share_promotion": 0.9188801148600143,
+   "top10_share_bounty": 0.06700167504187604,
+   "top10_share_fetch": 0.014118210098109596,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 98,
+   "bounties_posted": 480,
+   "bounties_completed": 459,
+   "bounty_credits_all_agents": 45900.0,
+   "promotion_credits_all_agents": 159300.0
+  },
+  {
+   "seed": 5,
+   "B": 16,
+   "credit_top10_share": 0.4912247233880198,
+   "top10_share_promotion": 0.9320388349514563,
+   "top10_share_bounty": 0.05631067961165048,
+   "top10_share_fetch": 0.011650485436893204,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 81,
+   "bounties_posted": 480,
+   "bounties_completed": 457,
+   "bounty_credits_all_agents": 45700.0,
+   "promotion_credits_all_agents": 159300.0
+  },
+  {
+   "seed": 6,
+   "B": 16,
+   "credit_top10_share": 0.49959291187739463,
+   "top10_share_promotion": 0.9202895077409768,
+   "top10_share_bounty": 0.05560082442601735,
+   "top10_share_fetch": 0.0241096678330058,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 86,
+   "bounties_posted": 480,
+   "bounties_completed": 448,
+   "bounty_credits_all_agents": 44800.0,
+   "promotion_credits_all_agents": 159300.0
+  },
+  {
+   "seed": 7,
+   "B": 16,
+   "credit_top10_share": 0.4996292486904107,
+   "top10_share_promotion": 0.9191880505553428,
+   "top10_share_bounty": 0.062236690923018,
+   "top10_share_fetch": 0.01857525852163922,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 86,
+   "bounties_posted": 480,
+   "bounties_completed": 450,
+   "bounty_credits_all_agents": 45000.0,
+   "promotion_credits_all_agents": 159400.0
+  },
+  {
+   "seed": 8,
+   "B": 16,
+   "credit_top10_share": 0.49464408711968266,
+   "top10_share_promotion": 0.9219245174301354,
+   "top10_share_bounty": 0.05954095841736291,
+   "top10_share_fetch": 0.01853452415250168,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 91,
+   "bounties_posted": 480,
+   "bounties_completed": 468,
+   "bounty_credits_all_agents": 46800.0,
+   "promotion_credits_all_agents": 159000.0
+  },
+  {
+   "seed": 9,
+   "B": 16,
+   "credit_top10_share": 0.49289752482303195,
+   "top10_share_promotion": 0.9253012048192771,
+   "top10_share_bounty": 0.060722891566265064,
+   "top10_share_fetch": 0.013975903614457831,
+   "top10_are_farmers": 1.0,
+   "bounties_completed_by_farmers": 89,
+   "bounties_posted": 480,
+   "bounties_completed": 467,
+   "bounty_credits_all_agents": 46700.0,
+   "promotion_credits_all_agents": 159100.0
+  }
+ ],
+ "summary": {
+  "1": {
+   "credit_top10_share": {
+    "mean": 0.5943453953883733,
+    "lo": 0.592364718047549,
+    "hi": 0.596212937066284,
+    "n": 10
+   },
+   "top10_share_promotion": {
+    "mean": 0.9702521704928848,
+    "lo": 0.9678573549944642,
+    "hi": 0.972716427902523,
+    "n": 10
+   },
+   "top10_share_bounty": {
+    "mean": 0.004748185740026669,
+    "lo": 0.0034337305388398424,
+    "hi": 0.0061517264325011015,
+    "n": 10
+   },
+   "top10_share_fetch": {
+    "mean": 0.024999643767088416,
+    "lo": 0.02227825698976711,
+    "hi": 0.027348700265109775,
+    "n": 10
+   },
+   "top10_are_farmers": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "bounties_completed_by_farmers": {
+    "mean": 5.6,
+    "lo": 4.2,
+    "hi": 7.2,
+    "n": 10
+   },
+   "bounties_posted": {
+    "mean": 30.0,
+    "lo": 30.0,
+    "hi": 30.0,
+    "n": 10
+   },
+   "bounties_completed": {
+    "mean": 27.2,
+    "lo": 26.0,
+    "hi": 28.3,
+    "n": 10
+   },
+   "bounty_credits_all_agents": {
+    "mean": 2720.0,
+    "lo": 2600.0,
+    "hi": 2830.0,
+    "n": 10
+   },
+   "promotion_credits_all_agents": {
+    "mean": 159080.0,
+    "lo": 158930.0,
+    "hi": 159250.0,
+    "n": 10
+   }
+  },
+  "4": {
+   "credit_top10_share": {
+    "mean": 0.5719141486211993,
+    "lo": 0.5702897282772893,
+    "hi": 0.5737515123651512,
+    "n": 10
+   },
+   "top10_share_promotion": {
+    "mean": 0.9600557869482461,
+    "lo": 0.957597340916561,
+    "hi": 0.9625791999255505,
+    "n": 10
+   },
+   "top10_share_bounty": {
+    "mean": 0.01709168091216529,
+    "lo": 0.014598384607040426,
+    "hi": 0.019275852098082216,
+    "n": 10
+   },
+   "top10_share_fetch": {
+    "mean": 0.02285253213958855,
+    "lo": 0.02053178309670664,
+    "hi": 0.025094755575109904,
+    "n": 10
+   },
+   "top10_are_farmers": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "bounties_completed_by_farmers": {
+    "mean": 22.0,
+    "lo": 19.5,
+    "hi": 24.3,
+    "n": 10
+   },
+   "bounties_posted": {
+    "mean": 120.0,
+    "lo": 120.0,
+    "hi": 120.0,
+    "n": 10
+   },
+   "bounties_completed": {
+    "mean": 110.7,
+    "lo": 109.0,
+    "hi": 112.3,
+    "n": 10
+   },
+   "bounty_credits_all_agents": {
+    "mean": 11070.0,
+    "lo": 10900.0,
+    "hi": 11230.0,
+    "n": 10
+   },
+   "promotion_credits_all_agents": {
+    "mean": 159070.0,
+    "lo": 158920.0,
+    "hi": 159230.0,
+    "n": 10
+   }
+  },
+  "16": {
+   "credit_top10_share": {
+    "mean": 0.49627918214874145,
+    "lo": 0.4937533792253225,
+    "hi": 0.49856752580907915,
+    "n": 10
+   },
+   "top10_share_promotion": {
+    "mean": 0.9222845494193253,
+    "lo": 0.9193397241833865,
+    "hi": 0.9256676876773644,
+    "n": 10
+   },
+   "top10_share_bounty": {
+    "mean": 0.05858653935014687,
+    "lo": 0.05533603810511047,
+    "hi": 0.06152651326304529,
+    "n": 10
+   },
+   "top10_share_fetch": {
+    "mean": 0.01912891123052785,
+    "lo": 0.016292600535893875,
+    "hi": 0.022117817626067775,
+    "n": 10
+   },
+   "top10_are_farmers": {
+    "mean": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 10
+   },
+   "bounties_completed_by_farmers": {
+    "mean": 86.8,
+    "lo": 82.3,
+    "hi": 90.7,
+    "n": 10
+   },
+   "bounties_posted": {
+    "mean": 480.0,
+    "lo": 480.0,
+    "hi": 480.0,
+    "n": 10
+   },
+   "bounties_completed": {
+    "mean": 459.2,
+    "lo": 454.6,
+    "hi": 464.0,
+    "n": 10
+   },
+   "bounty_credits_all_agents": {
+    "mean": 45920.0,
+    "lo": 45460.0,
+    "hi": 46400.0,
+    "n": 10
+   },
+   "promotion_credits_all_agents": {
+    "mean": 159140.0,
+    "lo": 159019.75,
+    "hi": 159250.0,
+    "n": 10
+   }
+  }
+ },
+ "verdict": {
+  "B1": {
+   "promotion_minus_bounty_share": {
+    "mean_diff": 0.9655039847528583,
+    "lo": 0.9624392799260585,
+    "hi": 0.9683789077852505,
+    "n": 10,
+    "p_better": 1.0
+   },
+   "top10_share": {
+    "mean": 0.5943453953883733,
+    "lo": 0.592364718047549,
+    "hi": 0.596212937066284,
+    "n": 10
+   },
+   "pass": true
+  },
+  "B4": {
+   "promotion_minus_bounty_share": {
+    "mean_diff": 0.9429641060360808,
+    "lo": 0.938897964172807,
+    "hi": 0.9474795616556793,
+    "n": 10,
+    "p_better": 1.0
+   },
+   "top10_share": {
+    "mean": 0.5719141486211993,
+    "lo": 0.5702897282772893,
+    "hi": 0.5737515123651512,
+    "n": 10
+   },
+   "pass": true
+  },
+  "B16": {
+   "promotion_minus_bounty_share": {
+    "mean_diff": 0.8636980100691783,
+    "lo": 0.8584799607586682,
+    "hi": 0.8696369481669389,
+    "n": 10,
+    "p_better": 1.0
+   },
+   "top10_share": {
+    "mean": 0.49627918214874145,
+    "lo": 0.4937533792253225,
+    "hi": 0.49856752580907915,
+    "n": 10
+   },
+   "pass": false
+  },
+  "rather_than_bounties_holds_for_all_B": false,
+  "promotion_gt_bounty_for_all_B": true,
+  "top10_gt_half_for_all_B": false
+ }
+}

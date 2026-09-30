@@ -23,7 +23,9 @@ from rsi.dream import Config, LLMGuidanceSummarizer, MockGuidanceSummarizer, run
 ARMS = {"fixed": (False, False), "fixed+guidance": (False, True), "dream": (True, False),
         "dream+guidance": (True, True)}
 #: W = the grid's width, as in E3/E6: every workspace of pi_1 runs in parallel (claims audit N4; W was 4)
-SET = {"synthetic": dict(grid=(6, 4), W=6, rounds=8, M=6), "circlepack": dict(grid=(5, 3), W=5, rounds=5, M=4)}
+SET = {"synthetic": dict(grid=(6, 4), W=6, rounds=8, M=6), "circlepack": dict(grid=(5, 3), W=5, rounds=5, M=4),
+       # retry round 2 (claims audit L5): two non-saturated real tasks, E3's settings (math: 10 rounds for autocorr)
+       "sumdiff": dict(grid=(5, 3), W=5, rounds=5, M=4), "autocorr": dict(grid=(5, 3), W=5, rounds=10, M=4)}
 
 
 def one(job):
@@ -57,11 +59,14 @@ def main():
     a = parse_args("E5 replay vs written advice", default_seeds=15, extra=lambda ap: ap.add_argument(
         "--domains", default="synthetic,circlepack"))
     doms = a.domains.split(",")
-    n_seeds = {"synthetic": a.seeds, "circlepack": max(2, a.seeds // 4)}
+    n_seeds = {"synthetic": a.seeds, "circlepack": max(2, a.seeds // 4), "sumdiff": a.seeds, "autocorr": a.seeds}
     if a.llm != "sim":
         n_seeds = {d: 1 for d in doms}
     out = {}
     plt, png = figure("e5_replay_vs_advice")
+    if a.out:                               # a variant run (e.g. --domains sumdiff,autocorr) keeps its own figure
+        from pathlib import Path
+        png = Path(a.out).with_suffix(".png")
     fig, axes = plt.subplots(1, len(doms), figsize=(4.6 * len(doms), 3.5), squeeze=False)
     for i, d in enumerate(doms):
         rows = pmap(one, [(d, s, arm, a.llm, a.quick) for s in range(n_seeds[d]) for arm in ARMS], a.workers)

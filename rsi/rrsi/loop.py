@@ -35,6 +35,7 @@ from ..core.evaluate import Evaluator
 from ..core.gates import Gate
 from ..core.ledger import ArtifactStore, Ledger, Node
 from ..core.llm import LLM
+from .agentic import AgenticAnalyst, JsonActionProposer
 from .analyst import Analyst, build_traces, render_trace
 from .attribution import Scoreboard
 from .calibrate import calibrate as _calibrate
@@ -92,11 +93,24 @@ class RRSIRun:
         self.tax = Taxonomy.from_domain(domain, aliases=self.cfg.component_aliases)
         self.llm_task, self.llm_propose = llm_task, llm_propose
         self.llm_critic = llm_critic if llm_critic is not None else llm_propose
-        use_llm_analyst = self.cfg.analyst == "llm" or (self.cfg.analyst == "auto" and llm_analyst is not None)
+        if self.cfg.analyst not in ("auto", "llm", "heuristic", "agentic"):
+            raise ValueError(f"Config.analyst must be auto | llm | heuristic | agentic (got {self.cfg.analyst!r})")
+        if self.cfg.proposer_protocol not in ("rewrite", "json_actions"):
+            raise ValueError(f"Config.proposer_protocol must be rewrite | json_actions "
+                             f"(got {self.cfg.proposer_protocol!r})")
+        use_llm_analyst = self.cfg.analyst in ("llm", "agentic") or (self.cfg.analyst == "auto"
+                                                                      and llm_analyst is not None)
         self.llm_analyst = (llm_analyst if llm_analyst is not None else llm_propose) if use_llm_analyst else None
-        self.analyst = Analyst(self.llm_analyst, mode="llm" if use_llm_analyst else "heuristic",
-                               domain_brief=domain.describe(), max_digests=self.cfg.max_digests,
-                               workers=max(1, min(6, self.cfg.workers)))
+        if self.cfg.analyst == "agentic":
+            if self.llm_analyst is None:
+                raise ValueError('Config.analyst="agentic" needs an analyst LLM (llm_analyst or llm_propose)')
+            # the code's batch analyst + read-only tool-using digesters (rsi.rrsi.agentic, claim M4)
+            self.analyst = AgenticAnalyst(self.llm_analyst, domain_brief=domain.describe(),
+                                          workers=max(1, min(6, self.cfg.workers)))
+        else:
+            self.analyst = Analyst(self.llm_analyst, mode="llm" if use_llm_analyst else "heuristic",
+                                   domain_brief=domain.describe(), max_digests=self.cfg.max_digests,
+                                   workers=max(1, min(6, self.cfg.workers)))
         self.history = History(self.out / "history.jsonl", self.tax.K, timestamps=self.cfg.record_timestamps)
         thr = domain.regression_threshold(self.cfg.k) if hasattr(domain, "regression_threshold") \
             else 1.0 / max(1, self.cfg.k)
@@ -114,9 +128,18 @@ class RRSIRun:
         if constitution is None:
             constitution = domain.rrsi_constitution() if hasattr(domain, "rrsi_constitution") \
                 else default_constitution(self.cfg, self.tax, self.sw)
-        self.proposer = Proposer(self.editor, self.tax, self.cfg, domain_brief=domain.describe(),
-                                 constitution=constitution, editable=self.cfg.editable,
-                                 history_mode=self.sw.history_conditioning)
+        if self.cfg.proposer_protocol == "json_actions":
+            if llm_propose is None:
+                raise ValueError('Config.proposer_protocol="json_actions" needs llm_propose')
+            # the code's 40-turn strict-JSON action agent (rsi.rrsi.agentic, claim M28)
+            self.proposer = JsonActionProposer(llm_propose, self.tax, self.cfg, domain_brief=domain.describe(),
+                                               constitution=constitution,
+                                               source_exts=getattr(domain, "source_exts", None)
+                                               or ('.py', '.txt', '.md', '.json'))
+        else:
+            self.proposer = Proposer(self.editor, self.tax, self.cfg, domain_brief=domain.describe(),
+                                     constitution=constitution, editable=self.cfg.editable,
+                                     history_mode=self.sw.history_conditioning)
         dom_guards = getattr(domain, "rrsi_guards", ())
         self.guards = list(guards) + list(dom_guards() if callable(dom_guards) else dom_guards)
         self.gates = build_gates(self.cfg, self.sw, self.guards)
@@ -287,7 +310,9 @@ class RRSIRun:
         else:
             prior = read_json(self.out / "global_analysis.json", {})
             inputs = {tid: self.domain.tasks.get(tid).input for tid in traces if tid in self.domain.tasks.tasks}
-            report, digests = self.analyst.analyze(traces, inc_ev, inputs, prior, seed=_seed(cfg.seed, "an", t))
+            extra = {"workdir": rdir} if isinstance(self.analyst, AgenticAnalyst) else {}
+            report, digests = self.analyst.analyze(traces, inc_ev, inputs, prior, seed=_seed(cfg.seed, "an", t),
+                                                   **extra)
             write_json(digests_path, digests)
             write_json(report_path, report)
             self.spend.checkpoint()
@@ -462,6 +487,11 @@ class RRSIRun:
                       scoreboard=self._scoreboard_view(), explore=explore, reserved=reserved,
                       prune_set=prune, report=report, budget=budget, digests=digests,
                       traces_text=self._traces_text(traces))
+        if isinstance(self.proposer, JsonActionProposer):
+            # list_traces / read_trace read the incumbent's own traces, as in the code
+            common.update(traces=traces, task_means=inc_ev.task_means(),
+                          task_inputs={tid: self.domain.tasks.get(tid).input for tid in traces
+                                       if tid in self.domain.tasks.tasks})
         parent = self._incumbent_node()
         cap = self.trace.enabled
         prop = self.proposer.propose(inc_art, seed=_seed(cfg.seed, t, vid, 0), capture=cap, **common)

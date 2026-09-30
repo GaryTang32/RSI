@@ -747,9 +747,29 @@ class LLMSummarizer:
         self.max_chars = max_chars
 
     def __call__(self, traces: dict[str, str]) -> str:
-        text = "\n".join(f"--- {u} ---\n{t}" for u, t in traces.items())[: self.max_chars]
+        text = summarizer_input(traces, self.max_chars)
         resp = self.llm.complete(SUMMARY_PROMPT.format(traces=text), role="summarizer", seed=0)
         return resp.text.strip() if resp.ok else "(summary unavailable)"
+
+
+def summarizer_input(traces: dict[str, str], max_chars: int = 40000) -> str:
+    """What the summariser reads: every unit's trace, each cut to an equal share of ``max_chars`` with the
+    JSONL-aware :func:`excerpt` (first/last records plus failure records, latest first).
+
+    Retry round 2 (claim L2): the summariser used to read ``"\n".join(all traces)[:max_chars]``, i.e. only the
+    head of the FIRST unit. On MemoClassify full traces (0.5-8 MB per candidate) that head holds train-phase
+    records only: 0 of 144 evaluation records and 1 of 3 units reached the summariser, so the summary arm of
+    the Table 3 ablation was starved by construction, not by summarisation."""
+    if not traces:
+        return ""
+    units = list(traces)
+    share = max(1000, max_chars // len(units) - 40)
+    parts = []
+    for u, t in traces.items():
+        lines = [l for l in (t or "").splitlines() if l.strip()]
+        n_fail = sum(1 for l in lines if _FAIL_LINE.search(l))
+        parts.append(f"--- {u} --- ({len(lines)} records, {n_fail} failure-looking; excerpt)\n{excerpt(t or '', share)}")
+    return "\n".join(parts)[:max_chars]
 
 
 def generic_summary(traces: dict[str, str]) -> str:

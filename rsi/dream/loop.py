@@ -58,6 +58,9 @@ class Config:
     K1: Optional[int] = None               # online round cap (None: bounded by the grid)
     K2: Optional[int] = None               # replay round cap (None: the paper's budget=None)
     M: int = 4                             # policy versions per dreaming phase (incumbent included)
+    # the version each revision starts from: "strongest" (L2:247 "start from a strong recent policy") |
+    # "latest" (§3: "revises pi^m into pi^(m+1)"); the paper's two texts disagree (claims audit M12)
+    developer_base: str = "strongest"
     m_semantics: str = "versions"          # "versions": M-1 revisions | "revisions": M revisions (M+1 candidates)
     objective: str = "eq1"                 # "eq1" (paper Eq.1) | "pareto" (Listing-2 beta-sweep reward)
     beta1: float = 0.01
@@ -66,6 +69,7 @@ class Config:
     support: str = "no_reward"             # out-of-support plans "cannot earn replay reward" (L2) | "clip"
     lam: float = 0.1
     beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
+    pareto_attainment: str = "shift"       # "shift" (b - root)/(G - root) | "ratio" clip(S/G) (unpublished draft; M18)
     sweep: bool = True                     # beta sweep of the deployed version (feedback + default-beta rule)
     root_mode: str = "earliest"            # replay root semantics: "earliest" (paper §3) | "addressable"
     hide_missing: bool = False
@@ -164,7 +168,8 @@ class DreamRSILoop:
         self.runner = get_runner(c.sandbox, timeout_s=c.policy_timeout_s) if c.sandbox == "subprocess" \
             else get_runner("inprocess")
         if c.objective == "pareto":
-            objective = ParetoSweepObjective(beta_grid=tuple(c.beta_grid), lam=c.lam, support=c.support)
+            objective = ParetoSweepObjective(beta_grid=tuple(c.beta_grid), lam=c.lam, support=c.support,
+                                             attainment_mode=c.pareto_attainment)
         else:
             objective = Eq1Objective(c.beta1, c.beta2, c.normalize, c.support)
         self.replay = ReplayEvaluator(objective, W=c.W, K2=c.K2, root_mode=c.root_mode, hide_missing=c.hide_missing,
@@ -402,7 +407,7 @@ class DreamRSILoop:
             fb_versions = [self._restricted(v, dev_idx) for v in versions]
             dctx = DevContext(t, fb_versions, [self._restricted(h, dev_idx) for h in self.history],
                               [m_ for m_ in self.manifests], self.baseline_code, c.objective, c.W, forbidden,
-                              first_in_phase=(m == 0))
+                              first_in_phase=(m == 0), base=c.developer_base)
             rev = self.developer.revise(dctx, seed=c.seed * 100003 + t * 101 + m)
             self.meter.add_developer(rev.usage)
             rec = VersionRecord(self.rev_counter, rev.code or "", None, rev.change, rev.parent, t, f"t{t}m{m + 1}")

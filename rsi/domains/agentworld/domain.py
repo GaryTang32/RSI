@@ -166,7 +166,7 @@ def meter_tampering(rt: AgentRuntime, meter: TokenMeter) -> str:
     every main-agent provider request must be billed. Returns a reason or ''."""
     if rt.meter is not meter:
         return "runtime meter replaced"
-    patched = [k for k in ("request", "add_output", "simple", "total", "reset_cache") if k in vars(meter)]
+    patched = [k for k in ("request", "add_output", "simple", "uncached", "total", "reset_cache") if k in vars(meter)]
     if patched or type(meter) is not TokenMeter:
         return f"meter methods overridden: {patched or type(meter).__name__}"
     billed = sum(1 for u in meter.requests if u.role == "main")

@@ -315,8 +315,8 @@
    "gate": true,
    "reason": "accepted",
    "score": 1.0,
-   "saving_tokens": 0.1855,
-   "saving_cost": 0.0392,
+   "saving_tokens": 0.1914,
+   "saving_cost": 0.0368,
    "cap_failed": false,
    "outcome": "frozen",
    "next": "passing variant recorded; sweep continues"
@@ -553,8 +553,8 @@
    "reason": "capability below floor",
    "heldout_score": 0.9861,
    "base_heldout_score": 1.0,
-   "tokens_saving": -0.0757,
-   "cost_saving": -0.1266
+   "tokens_saving": -0.0722,
+   "cost_saving": -0.1279
   },
   {
    "candidate": "P8:action_fusion{}",

@@ -148,9 +148,26 @@ class ParetoSweepObjective:
     name: str = "pareto"
     #: "no_reward" (default, Listing 2): an out-of-support episode attains 0; "clip": plan ∩ support
     support: str = "no_reward"
+    #: per-trace attainment. "shift" (default, [inferred]): (best - root) / (ceiling - root), so the root
+    #: attains 0 on every trace. "ratio": clip(best / ceiling, 0, 1), the definition in the paper's
+    #: UNPUBLISHED method draft (arXiv source ``Main_Text/method.tex``, commented out of ``main.tex``):
+    #: a_{i,beta} = clip(S_{i,beta} / G_i, 0, 1). It needs positive scores (G_i > 0) and gives the root
+    #: root/ceiling for free, which compresses the quality range (claims audit M18, retry round 2).
+    attainment_mode: str = "shift"
 
     def attainment(self, e: EpisodeResult) -> float:
-        return 0.0 if (self.support == "no_reward" and e.out_of_support) else e.attainment
+        if self.support == "no_reward" and e.out_of_support:
+            return 0.0
+        if self.attainment_mode == "shift":
+            return e.attainment
+        if self.attainment_mode != "ratio":
+            raise ValueError(f"unknown attainment_mode {self.attainment_mode!r} (use 'shift' or 'ratio')")
+        if e.disqualified or e.best is None:
+            return 0.0
+        if not e.ceiling > 0:
+            raise ValueError("attainment_mode='ratio' (S/G) needs positive trace scores; this trace's best is "
+                             f"{e.ceiling!r}")
+        return float(min(1.0, max(0.0, e.best / e.ceiling)))
 
     def sweep(self, by_beta: dict[float, Sequence[EpisodeResult]]) -> dict:
         pts = []
@@ -194,4 +211,5 @@ class ParetoSweepObjective:
 
     def describe(self) -> str:
         return (f"pareto.reward = pareto.auc - {self.lam:g} * parallel_penalty over the beta grid "
-                f"{list(self.beta_grid)}")
+                f"{list(self.beta_grid)}" + (" (attainment = clip(S/G, 0, 1))" if self.attainment_mode == "ratio"
+                                             else ""))

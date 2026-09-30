@@ -263,6 +263,48 @@ class TaskSignalExtractor:
         return list(dict.fromkeys(sig))
 
 
+class HubSignalLayer:
+    """Layer 3, the hub LLM (Evolver ``signals.js:_extractLLM``; retry round 2, I3).
+
+    A per-agent call counter; on counts 1, 6, 11, ... (``count % interval == 1``) the first ``max_chars`` of the
+    corpus is sent to the hub's ``/a2a/signal/analyze`` as ``{corpus_summary, signal_types:
+    OPPORTUNITY_SIGNALS, sender_id}``; the reply's ``signals`` are kept if they are strings of length 1..199, at
+    most 10. Any error, a missing analyzer (no hub / no node secret) or a malformed reply yields ``[]``; the
+    counter advances on every cycle regardless, as in Evolver. The hub-side prompt is not public: the analyzer
+    is whatever callable the hub provides (:meth:`NaiveEvoMapHub.analyze_signals`)."""
+
+    def __init__(self, analyzer=None, *, sender_id: Optional[str] = None, interval: int = 5,
+                 max_chars: int = 2000, max_signals: int = 10) -> None:
+        self.analyzer = analyzer
+        self.sender_id = sender_id
+        self.interval = interval
+        self.max_chars = max_chars
+        self.max_signals = max_signals
+        self.count = 0
+        self.calls: list[dict] = []          # {count, payload, signals} for every request actually sent
+
+    def extract(self, corpus: str) -> list[str]:
+        self.count += 1
+        if self.count % self.interval != 1 or self.analyzer is None:
+            return []
+        payload = {"corpus_summary": (corpus or "")[: self.max_chars], "signal_types": list(OPPORTUNITY_SIGNALS),
+                   "sender_id": self.sender_id}
+        try:
+            reply = self.analyzer(payload)
+        except Exception:
+            reply = None
+        sig = reply.get("signals") if isinstance(reply, dict) else None
+        out = [x for x in sig if isinstance(x, str) and 0 < len(x) < 200][: self.max_signals] \
+            if isinstance(sig, list) else []
+        self.calls.append({"count": self.count, "payload": payload, "signals": out})
+        return out
+
+
+def merge_signals(regex_and_score: Sequence[str], llm: Sequence[str]) -> list[str]:
+    """``_mergeSignals``: the union, in layer order (regex, keyword score, llm)."""
+    return list(dict.fromkeys([*regex_and_score, *llm]))
+
+
 # ----------------------------------------------------------------------------- de-duplication
 def _collapse(s: str) -> str:
     for pre in ("errsig:", "recurring_errsig", "user_feature_request:", "user_improvement_suggestion:"):

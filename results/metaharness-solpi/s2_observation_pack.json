@@ -2425,5 +2425,5 @@
   "mean_pages": 13.683333333333334
  },
  "verdict": "PARTIAL: recall fidelity 100% over 300 payloads; fail-open ok; 9/9 configurations inside the -2% quality gate (e0_s1, e0_s2, e512_s1, e512_s2, e1024_s1, e1024_s2, e2048_s1, e2048_s2, v2_h2048_t1536_s2), 0 also inside the 10% bill-saving gate - the quality gate does not discriminate between configurations here. Bill gate out of reach by construction (domain, not parameters): replayed large outputs are only 5.9% of the base bill as cache reads; packing cuts cache reads -15% but re-writes the prefix after each swap (cache writes +12%, priced 12.5x); without that premium (rho = 1) the same packing saves 5.8% of the bill",
- "generated_at": "2026-09-25 18:36:46"
+ "generated_at": "2026-09-29 19:04:18"
 }

@@ -92,7 +92,10 @@ class Config:
     scoreboard_n: int = 20               # last 20 attribution rows
     trace_chars: int = 3000              # per-trace cap in stored evaluations / proposer context
     max_digests: int = 8                 # LLM analyst: digests per round (<= 8 per digest_many in the code)
-    analyst: str = "auto"                # "auto" | "llm" | "heuristic"
+    analyst: str = "auto"                # "auto" | "llm" | "heuristic" | "agentic" (the code's multi-turn analyst
+    #                                      + tool-using digesters, rsi.rrsi.agentic; needs an LLM)
+    proposer_protocol: str = "rewrite"   # "rewrite" (single-shot files + done(), or AgentEditor) | "json_actions"
+    #                                      (the code's 40-turn strict-JSON action agent, rsi.rrsi.agentic)
     # ---- fidelity options (defaults = the released code; the alternatives are documented extensions) ----
     tie_eps: float = 0.0                 # Algorithm 2 comparisons on raw floats as in the code (0.0); 1e-9 treats
     #                                      last-bit float differences as ties (rsi.core.TIE_EPS reading)

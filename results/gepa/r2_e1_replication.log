@@ -1,0 +1,2 @@
+[saved] /home/user/RSI/results/gepa/r2_e1_replication.json
+L2 (40 new seeds): GEPA@6000 - RL@24000 (rl_lr=2.0) = +0.011 [-0.004, +0.027] (MDE at 80% power 0.022); GEPA wins 20, RL wins 19; oracle reached RL 16/40, GEPA 4/40. Q7: 24000 / rollouts-to-best median 6.0x (range 4.1-14.4x, 100% of seeds in 4-35x).

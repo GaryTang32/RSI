@@ -8,7 +8,7 @@ Harness evolution with seven guards (annealed edit budget, failure memory, force
 
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
-3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (116 claims: 60 reproduced, 15 partial, 3 not reproduced, 37 not testable here, 1 contradicted), with a Fix log.
+3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (116 claims after retry round 2 and its review: 63 reproduced, 13 partial, 1 not reproduced, 36 not testable here, 3 contradicted), with a Fix log and the preregistered second attempt on every open claim (§6–7, review follow-ups in §7.1).
 4. [Validation audit](../../../validation/rrsi/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/rrsi/RUNS.md) describes the runs.
 
 ## Where everything is
