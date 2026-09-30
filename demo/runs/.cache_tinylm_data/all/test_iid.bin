@@ -1,0 +1,2081 @@
+Send a value into the generator.
+Return next yielded value or raise StopIteration.
+
+Remove original unmodified values for testing
+
+Returns True if universal builds are supported on this system
+
+Metaclass for defining Abstract Base Classes (ABCs).
+
+Use this metaclass to create an ABC.  An ABC can be subclassed
+directly, and then acts as a mix-in class.  You can also register
+unrelated concrete classes (even built-in classes) and unrelated
+ABCs as 'virtual subclasses' -- these and their descendants will
+be considered subclasses of the registering ABC by the built-in
+issubclass() function, but the registering ABC won't show up in
+their MRO (Method Resolution Order) nor will method
+implementations defined by the registering ABC be callable (not
+even via super()).
+
+Given integers n and e, return n * 10**e if it's an integer, else None.
+
+The computation is designed to avoid computing large powers of 10
+unnecessarily.
+
+>>> _decimal_lshift_exact(3, 4)
+30000
+>>> _decimal_lshift_exact(300, -999999999)  # returns None
+
+Given integers xc, xe, yc and ye representing Decimals x = xc*10**xe and
+y = yc*10**ye, compute x**y.  Returns a pair of integers (c, e) such that:
+
+  10**(p-1) <= c <= 10**p, and
+  (c-1)*10**e < x**y < (c+1)*10**e
+
+in other words, c*10**e is an approximation to x**y with p digits
+of precision, and with an error in c of at most 1.  (This is
+almost, but not quite, the same as the error being < 1ulp: when c
+== 10**(p-1) we can only guarantee error < 10ulp.)
+
+We assume that: x is positive and not equal to 1, and y is nonzero.
+
+Round down unless digit prec-1 is 0 or 5.
+
+Compares self to the other operand numerically.
+
+It's pretty much like compare(), but all NaNs signal, with signaling
+NaNs taking precedence over quiet NaNs.
+
+Return True if self is canonical; otherwise return False.
+
+Currently, the encoding of a Decimal instance is always
+canonical, so this method returns True for any Decimal.
+
+Applies an 'and' operation between self and other's digits.
+
+Returns a rotated copy of self, value-of-other times.
+
+Divides two numbers and returns the integer part of the result.
+
+>>> ExtendedContext.divide_int(Decimal('2'), Decimal('3'))
+Decimal('0')
+>>> ExtendedContext.divide_int(Decimal('10'), Decimal('3'))
+Decimal('3')
+>>> ExtendedContext.divide_int(Decimal('1'), Decimal('0.3'))
+Decimal('3')
+>>> ExtendedContext.divide_int(10, 3)
+Decimal('3')
+>>> ExtendedContext.divide_int(Decimal(10), 3)
+Decimal('3')
+>>> ExtendedContext.divide_int(10, Decimal(3))
+Decimal('3')
+
+Clear the registry (for debugging or testing).
+
+Return canonical form of filename.
+
+For real filenames, the canonical form is a case-normalized (on
+case insensitive filesystems) absolute path.  'Filenames' with
+angle brackets, such as "<stdin>", generated in interactive
+mode, are returned unchanged.
+
+Set quitting attribute to True.
+
+Raises BdbQuit exception in the next call to a dispatch_*() method.
+
+Delete all existing breakpoints.
+
+If none were set, return an error message.
+
+Return True if there is a breakpoint for filename:lineno.
+
+Insert item x in list a, and keep it sorted assuming a is sorted.
+
+If x is already in a, insert it to the left of the leftmost x.
+
+Optional args lo (default 0) and hi (default len(a)) bound the
+slice of a to be searched.
+
+A file object providing transparent bzip2 (de)compression.
+
+A BZ2File can act as a wrapper for an existing file object, or refer
+directly to a named file on disk.
+
+Note that BZ2File provides a *binary* file interface - data read is
+returned as bytes, and data to be written should be given as bytes.
+
+Return buffered data without advancing the file position.
+
+Always returns at least one byte of data, unless at EOF.
+The exact number of bytes returned is unspecified.
+
+Like itermonthdates(), but will yield (year, month, day) tuples.  Can be
+used for dates outside of datetime.date range.
+
+Dump a list of environment variables used by CGI as HTML.
+
+Return the name (ID) of the current chunk.
+
+Closely emulate the interactive Python console.
+
+The optional banner argument specifies the banner to print
+before the first interaction; by default it prints a banner
+similar to the one printed by the real Python interpreter,
+followed by the current class name in parentheses (so as not
+to confuse this with the real interpreter -- since it's so
+close!).
+
+The optional exitmsg argument specifies the exit message
+printed when exiting. Pass the empty string to suppress
+printing an exit message. If exitmsg is not given or None,
+a default message is printed.
+
+This subclass of IncrementalDecoder can be used as the baseclass for an
+incremental decoder if the decoder must be able to handle incomplete
+byte sequences.
+
+Return a wrapped version of file which provides transparent
+encoding translation.
+
+Data written to the wrapped file is decoded according
+to the given data_encoding and then encoded to the underlying
+file using file_encoding. The intermediate data type
+will usually be Unicode but depends on the specified codecs.
+
+Bytes read from the file are decoded using file_encoding and then
+passed back to the caller encoded using data_encoding.
+
+If file_encoding is not given, it defaults to data_encoding.
+
+errors may be given to define the error handling. It defaults
+to 'strict' which causes ValueErrors to be raised in case an
+encoding error occurs.
+
+The returned wrapped file object provides two extra attributes
+.data_encoding and .file_encoding which reflect the given
+parameters of the same name. The attributes can be used for
+introspection by Python programs.
+
+Return the next decoded line from the input stream.
+
+Creates a StreamRecoder instance which implements a two-way
+conversion: encode and decode work on the frontend (the
+data visible to .read() and .write()) while Reader and Writer
+work on the backend (the data in stream).
+
+You can use these objects to do transparent
+transcodings from e.g. latin-1 to utf-8 and back.
+
+stream must be a file-like object.
+
+encode and decode must adhere to the Codec interface; Reader and
+Writer must be factory functions or classes providing the
+StreamReader and StreamWriter interfaces resp.
+
+Error handling is done in the same way as defined for the
+StreamWriter/Readers.
+
+Return `self` upon entering the runtime context.
+
+Registers an arbitrary coroutine function and arguments.
+
+Cannot suppress exceptions.
+
+Keeps a reference to the object x in the memo.
+
+Because we remember objects by their id, we have
+to assure that possibly temporary objects are kept
+alive by referencing them.
+We store a reference at the id of the memo, which should
+normally not be used unless someone tries to deepcopy
+the memo itself...
+
+Return the timezone offset as timedelta positive east of UTC (negative west of
+UTC).
+
+Compare two sequences of lines; generate the delta as a context diff.
+
+Context diffs are a compact way of showing line changes and a few
+lines of context.  The number of context lines is set by 'n' which
+defaults to three.
+
+By default, the diff control lines (those with *** or ---) are
+created with a trailing newline.  This is helpful so that inputs
+created from file.readlines() result in diffs that are suitable for
+file.writelines() since both the inputs and outputs have trailing
+newlines.
+
+For inputs that do not have trailing newlines, set the lineterm
+argument to "" so that the output will be uniformly newline free.
+
+The context diff format normally has a header for filenames and
+modification times.  Any or all of these may be specified using
+strings for 'fromfile', 'tofile', 'fromfiledate', and 'tofiledate'.
+The modification times are normally expressed in the ISO 8601 format.
+If not specified, the strings default to blanks.
+
+Example:
+
+>>> print(''.join(context_diff('one\ntwo\nthree\nfour\n'.splitlines(True),
+...       'zero\none\ntree\nfour\n'.splitlines(True), 'Original', 'Current')),
+...       end="")
+*** Original
+--- Current
+***************
+*** 1,4 ****
+  one
+! two
+! three
+  four
+--- 1,4 ----
++ zero
+  one
+! tree
+  four
+
+Returns iterator that splits (wraps) mdiff text lines
+
+Disassemble a traceback (default: last traceback).
+
+Print details of methods, functions, or code to *file*.
+
+If *file* is not provided, the output is printed on stdout.
+
+Compile the source string, then disassemble the code object.
+
+Module doctest -- a framework for running examples in docstrings.
+
+In simplest use, end each module M to be tested with:
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == "__main__":
+    _test()
+
+Then running the module as a script will cause the examples in the
+docstrings to get executed and verified:
+
+python M.py
+
+This won't display anything unless an example fails, in which case the
+failing example(s) and the cause(s) of the failure(s) are printed to stdout
+(why not stderr? because stderr is a lame hack <0.2 wink>), and the final
+line of output is "Test failed.".
+
+Run it with the -v switch instead:
+
+python M.py -v
+
+and a detailed report of all examples tried is printed to stdout, along
+with assorted summaries at the end.
+
+You can force verbose mode by passing "verbose=True" to testmod, or prohibit
+it by passing "verbose=False".  In either of those cases, sys.argv is not
+examined by testmod.
+
+There are a variety of other ways to run doctests, including integration
+with the unittest framework, and support for running non-Python text
+files containing doctests.  There are also many ways to override parts
+of doctest's default behaviors.  See the Library Reference Manual for
+details.
+
+Essentially the only subtle case:
+>>> _ellipsis_match('aa...aa', 'aaa')
+False
+
+Sets the unittest option flags.
+
+The old flag is returned so that a runner could restore the old
+value if it wished to:
+
+  >>> import doctest
+  >>> old = doctest._unittest_reportflags
+  >>> doctest.set_unittest_reportflags(REPORT_NDIFF |
+  ...                          REPORT_ONLY_FIRST_FAILURE) == old
+  True
+
+  >>> doctest._unittest_reportflags == (REPORT_NDIFF |
+  ...                                   REPORT_ONLY_FIRST_FAILURE)
+  True
+
+Only reporting flags can be set:
+
+  >>> doctest.set_unittest_reportflags(ELLIPSIS)
+  Traceback (most recent call last):
+  ...
+  ValueError: ('Only reporting flags allowed', 8)
+
+  >>> doctest.set_unittest_reportflags(old) == (REPORT_NDIFF |
+  ...                                   REPORT_ONLY_FIRST_FAILURE)
+  True
+
+Returns True if a __dunder__ name, False otherwise.
+
+Like textwrap.dedent.  Rewritten because we cannot import textwrap.
+
+Create a new Enum subclass that replaces a collection of global constants
+
+Construct a list from those elements of the iterable NAMES that match PAT.
+
+An FTP client class.
+
+To create a connection, call the class using these arguments:
+        host, user, passwd, acct, timeout, source_address, encoding
+
+The first four arguments are all strings, and have default value ''.
+The parameter ´timeout´ must be numeric and defaults to None if not
+passed, meaning that no timeout will be set on any ftp socket(s).
+If a timeout is passed, then this is now the default timeout for all ftp
+socket operations for this instance.
+The last parameter is the encoding of filenames, which defaults to utf-8.
+
+Then use self.connect() with optional host and port argument.
+
+To download a file, use ftp.retrlines('RETR ' + filename),
+or ftp.retrbinary() with slightly different arguments.
+To upload a file, use ftp.storlines() or ftp.storbinary(),
+which have an open file as argument (see their definitions
+below for details).
+The download/upload functions first issue appropriate TYPE
+and PORT or PASV commands.
+
+Use passive or active mode for data transfers.
+With a false argument, use the normal PORT mode,
+With a true argument, use the PASV command.
+
+Initiate a transfer over the data connection.
+
+If the transfer is active, send a port command and the
+transfer command, and accept the connection.  If the server is
+passive, send a pasv command, connect to it, and start the
+transfer command.  Either way, return the socket for the
+connection and the expected size of the transfer.  The
+expected size may be None if it could not be determined.
+
+Optional `rest' argument can be a string that is sent as the
+argument to a REST command.  This is essentially a server
+marker used to tell the server to skip over any data up to the
+given marker.
+
+Switch back to a clear-text control connection.
+
+Return a <= b.  Computed by @total_ordering from (not a >= b) or (a == b).
+
+reduce(function, iterable[, initial]) -> value
+
+Apply a function of two arguments cumulatively to the items of a sequence
+or iterable, from left to right, so as to reduce the iterable to a single
+value.  For example, reduce(lambda x, y: x+y, [1, 2, 3, 4, 5]) calculates
+((((1+2)+3)+4)+5).  If initial is present, it is placed before the items
+of the iterable in the calculation, and serves as a default when the
+iterable is empty.
+
+Method descriptor with partial application of the given arguments
+and keywords.
+
+Supports wrapping existing descriptors and handles non-descriptor
+callables as instance methods.
+
+Create new mailbox.
+
+(typ, [data]) = <instance>.create(mailbox)
+
+TIFF (can be in Motorola or Intel byte order)
+
+**DEPRECATED**
+
+Given the path to a .py file, return the path to its .pyc file.
+
+The .py file does not need to exist; this simply returns the path to the
+.pyc file calculated as if the .py file were imported.
+
+If debug_override is not None, then it must be a boolean and is used in
+place of sys.flags.optimize.
+
+If sys.implementation.cache_tag is None then NotImplementedError is raised.
+
+Return true if the object is any kind of function or method.
+
+Return all members of an object as (name, value) pairs sorted by name
+without triggering dynamic lookup via the descriptor protocol,
+__getattr__ or __getattribute__. Optionally, only return members that
+satisfy a given predicate.
+
+Note: this function may not be able to retrieve all members
+   that getmembers can fetch (like dynamically created attributes)
+   and may find members that getmembers can't (like descriptors
+   that raise AttributeError). It can also return descriptor objects
+   instead of instance members in some cases.
+
+Return a list of source lines and starting line number for an object.
+
+The argument may be a module, class, method, function, traceback, frame,
+or code object.  The source code is returned as a list of the lines
+corresponding to the object and the line number indicates where in the
+original source file the first line of code was found.  An OSError is
+raised if the source code cannot be retrieved.
+
+Private helper. Checks if ``cls`` has an attribute
+named ``method_name`` and returns it only if it is a
+pure python function.
+
+Private helper function to get signature for arbitrary
+callable objects.
+
+Return true if the object is a getset descriptor.
+
+getset descriptors are specialized descriptors defined in extension
+modules.
+
+This class represents and manipulates 32-bit IPv4 network + addresses..
+
+Attributes: [examples for IPv4Network('192.0.2.0/27')]
+    .network_address: IPv4Address('192.0.2.0')
+    .hostmask: IPv4Address('0.0.0.31')
+    .broadcast_address: IPv4Address('192.0.2.32')
+    .netmask: IPv4Address('255.255.255.224')
+    .prefixlen: 27
+
+Represent and manipulate single IPv6 Addresses.
+
+The name of the reverse DNS pointer for the IP address, e.g.:
+>>> ipaddress.ip_address("127.0.0.1").reverse_pointer
+'1.0.0.127.in-addr.arpa'
+>>> ipaddress.ip_address("2001:db8::1").reverse_pointer
+'1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa'
+
+Compress a block of data.
+
+Refer to LZMACompressor's docstring for a description of the
+optional arguments *format*, *check*, *preset* and *filters*.
+
+For incremental compression, use an LZMACompressor instead.
+
+Open an LZMA-compressed file in binary mode.
+
+filename can be either an actual file name (given as a str,
+bytes, or PathLike object), in which case the named file is
+opened, or it can be an existing file object to read from or
+write to.
+
+mode can be "r" for reading (default), "w" for (over)writing,
+"x" for creating exclusively, or "a" for appending. These can
+equivalently be given as "rb", "wb", "xb" and "ab" respectively.
+
+format specifies the container format to use for the file.
+If mode is "r", this defaults to FORMAT_AUTO. Otherwise, the
+default is FORMAT_XZ.
+
+check specifies the integrity check to use. This argument can
+only be used when opening a file for writing. For FORMAT_XZ,
+the default is CHECK_CRC64. FORMAT_ALONE and FORMAT_RAW do not
+support integrity checks - for these formats, check must be
+omitted, or be CHECK_NONE.
+
+When opening a file for reading, the *preset* argument is not
+meaningful, and should be omitted. The *filters* argument should
+also be omitted, except when format is FORMAT_RAW (in which case
+it is required).
+
+When opening a file for writing, the settings used by the
+compressor can be specified either as a preset compression
+level (with the *preset* argument), or in detail as a custom
+filter chain (with the *filters* argument). For FORMAT_XZ and
+FORMAT_ALONE, the default is to use the PRESET_DEFAULT preset
+level. For FORMAT_RAW, the caller must always specify a filter
+chain; the raw compressor does not support preset compression
+levels.
+
+preset (if provided) should be an integer in the range 0-9,
+optionally OR-ed with the constant PRESET_EXTREME.
+
+filters (if provided) should be a sequence of dicts. Each dict
+should have an entry for "id" indicating ID of the filter, plus
+additional entries for options to the filter.
+
+Change the file position.
+
+The new position is specified by offset, relative to the
+position indicated by whence. Possible values for whence are:
+
+    0: start of stream (default): offset must not be negative
+    1: current stream position
+    2: end of stream; offset must not be positive
+
+Returns the new file position.
+
+Note that seeking is emulated, so depending on the parameters,
+this operation may be extremely slow.
+
+Message with Maildir-specific properties.
+
+Return the keyed message, or default if it doesn't exist.
+
+Return True if the keyed message exists, False otherwise.
+
+Return a Maildir instance for the named folder.
+
+Create a file in the tmp subdirectory and open and return it.
+
+Return the next message in a one-time iteration.
+
+Return a Message representation or raise a KeyError.
+
+Format a message and blindly write to self._file.
+
+Called after writing each message to file f.
+
+Return True if the keyed message exists, False otherwise.
+
+Return as a string the flags that are set.
+
+Set the given flags and unset all others.
+
+Warning raised when refusing unsafe input
+
+Load the MIME types database from Windows registry.
+
+If strict is true, information will be added to
+list of standard types, else to the list of non-standard
+types.
+
+An object-oriented interface to .netrc files.
+
+Process a STAT command.  Argument:
+- message_spec: article number or message id (if not specified,
+  the current article is selected)
+Returns:
+- resp: server response if successful
+- art_num: the article number
+- message_id: the message id
+
+divmod(other, self): The pair (self // other, self % other).
+
+Sometimes this can be computed faster than the pair of
+operations.
+
+float(self) = self.numerator / self.denominator
+
+It's important that this conversion use the integer's "true"
+division rather than casting one side to float before dividing
+so that ratios of huge integers convert without overflowing.
+
+execle(file, *args, env)
+
+Execute the executable file with argument list args and
+environment env, replacing the current process.
+
+spawnvpe(mode, file, args, env) -> integer
+
+Execute file (which is looked for along $PATH) with arguments from
+args in a subprocess with the supplied environment.
+If mode == P_NOWAIT return the pid of the process.
+If mode == P_WAIT return the process's exit code if it exits normally;
+otherwise return -SIG, where SIG is the signal that killed it.
+
+spawnle(mode, file, *args, env) -> integer
+
+Execute file with arguments from args in a subprocess with the
+supplied environment.
+If mode == P_NOWAIT return the pid of the process.
+If mode == P_WAIT return the process's exit code if it exits normally;
+otherwise return -SIG, where SIG is the signal that killed it.
+
+PurePath subclass for Windows systems.
+
+On a Windows system, instantiating a PurePath should return this object.
+However, you can also instantiate it directly on any system.
+
+Return True if the path is relative to another path or False.
+
+Open the file in bytes mode, read it, and close the file.
+
+This method is called when there is the remote possibility
+that we ever need to stop in this function.
+
+Handle alias expansion and ';;' separator.
+
+enable bpnumber [bpnumber ...]
+Enables the breakpoints given as a space separated list of
+breakpoint numbers.
+
+ignore bpnumber [count]
+Set the ignore count for the given breakpoint number.  If
+count is omitted, the ignore count is set to 0.  A breakpoint
+becomes active when the ignore count is zero.  When non-zero,
+the count is decremented each time the breakpoint is reached
+and the breakpoint is not disabled and any associated
+condition evaluates to true.
+
+w(here)
+Print a stack trace, with the most recent frame at the bottom.
+An arrow indicates the "current frame", which determines the
+context of most commands.  'bt' is an alias for this command.
+
+q(uit)
+exit
+        Quit from the debugger. The program being executed is aborted.
+
+This takes a binary file for writing a pickle data stream.
+
+The optional *protocol* argument tells the pickler to use the
+given protocol; supported protocols are 0, 1, 2, 3, 4 and 5.
+The default protocol is 4. It was introduced in Python 3.4, and
+is incompatible with previous versions.
+
+Specifying a negative protocol version selects the highest
+protocol version supported.  The higher the protocol used, the
+more recent the version of Python needed to read the pickle
+produced.
+
+The *file* argument must have a write() method that accepts a
+single bytes argument. It can thus be a file object opened for
+binary writing, an io.BytesIO instance, or any other custom
+object that meets this interface.
+
+If *fix_imports* is True and *protocol* is less than 3, pickle
+will try to map the new Python 3 names to the old module names
+used in Python 2, so that the pickle data stream is readable
+with Python 2.
+
+If *buffer_callback* is None (the default), buffer views are
+serialized into *file* as part of the pickle stream.
+
+If *buffer_callback* is not None, then it can be called any number
+of times with a buffer view.  If the callback returns a false value
+(such as None), the given buffer is out-of-band; otherwise the
+buffer is serialized in-band, i.e. inside the pickle stream.
+
+It is an error if *buffer_callback* is not None and *protocol*
+is None or smaller than 5.
+
+>>> import io
+>>> read_uint1(io.BytesIO(b'\xff'))
+255
+
+>>> import io
+>>> read_string4(io.BytesIO(b"\x00\x00\x00\x00abc"))
+''
+>>> read_string4(io.BytesIO(b"\x03\x00\x00\x00abcdef"))
+'abc'
+>>> read_string4(io.BytesIO(b"\x00\x00\x00\x03abcdef"))
+Traceback (most recent call last):
+...
+ValueError: expected 50331648 bytes in a string4, but only 6 remain
+
+t.append(cmd, kind) adds a new step at the end.
+
+Get a resource from a package.
+
+This is a wrapper round the PEP 302 loader get_data API. The package
+argument should be the name of a package, in standard module format
+(foo.bar). The resource argument should be in the form of a relative
+filename, using '/' as the path separator. The parent directory name '..'
+is not allowed, and nor is a rooted name (starting with a '/').
+
+The function returns a binary string, which is the contents of the
+specified resource.
+
+For packages located in the filesystem, which have already been imported,
+this is the rough equivalent of
+
+    d = os.path.dirname(sys.modules[package].__file__)
+    data = open(os.path.join(d, resource), 'rb').read()
+
+If the package cannot be located or loaded, or it uses a PEP 302 loader
+which does not support get_data(), then None is returned.
+
+Returns a tuple (buildno, builddate) stating the Python
+build number and date as strings.
+
+Return server capabilities (RFC 2449) as a dictionary
+>>> c=poplib.POP3('localhost')
+>>> c.capa()
+{'IMPLEMENTATION': ['Cyrus', 'POP3', 'server', 'v2.2.12'],
+ 'TOP': [], 'LOGIN-DELAY': ['0'], 'AUTH-RESP-CODE': [],
+ 'EXPIRE': ['NEVER'], 'USER': [], 'STLS': [], 'PIPELINING': [],
+ 'UIDL': [], 'RESP-CODES': []}
+>>>
+
+Really, according to RFC 2449, the cyrus folks should avoid
+having the implementation split into multiple arguments...
+
+Test whether a path exists.  Returns True for broken symbolic links
+
+Expand shell variables of form $var and ${var}.  Unknown variables
+are left unchanged.
+
+Given a sequence of path names, returns the longest common sub-path.
+
+Determine if object requires a recursive representation.
+
+Profiler class.
+
+self.cur is always a tuple.  Each such tuple corresponds to a stack
+frame that is currently active (self.cur[-2]).  The following are the
+definitions of its members.  We use this external "parallel stack" to
+avoid contaminating the program that we are profiling. (old profiler
+used to write into the frames local dictionary!!) Derived classes
+can change the definition of some entries, as long as they leave
+[-2:] intact (frame and previous tuple).  In case an internal error is
+detected, the -3 element is used as the function name.
+
+[ 0] = Time that needs to be charged to the parent frame's function.
+       It is used so that a function call will not have to access the
+       timing data for the parent frame.
+[ 1] = Total time spent in this frame's function, excluding time in
+       subfunctions (this latter is tallied in cur[2]).
+[ 2] = Total time spent in subfunctions, excluding time executing the
+       frame's function (this latter is tallied in cur[1]).
+[-3] = Name of the function that corresponds to this frame.
+[-2] = Actual frame that we correspond to (used to sync exception handling).
+[-1] = Our parent 6-tuple (corresponds to frame.f_back).
+
+Timing data for each function is stored as a 5-tuple in the dictionary
+self.timings[].  The index is always the name stored in self.cur[-3].
+The following are the definitions of the members:
+
+[0] = The number of times this function was called, not counting direct
+      or indirect recursion,
+[1] = Number of times this function appears on the stack, minus one
+[2] = Total time spent internal to this function
+[3] = Cumulative time that this function was present on the stack.  In
+      non-recursive functions, this is the total execution time from start
+      to finish of each invocation of a function, including time spent in
+      all subfunctions.
+[4] = A dictionary indicating for each function name, the number of times
+      it was called by us.
+
+The first time this is called, determine what kind of pager to use.
+
+Start the enhanced pydoc web server and open a web browser.
+
+Use port '0' to start the server on an arbitrary port.
+Set open_browser to False to suppress opening a browser.
+
+Ensures current directory is on sys.path, and __main__ directory is not.
+
+Exception: __main__ dir is left alone if it's also pydoc's directory.
+
+Produce text documentation for a given module object.
+
+Produce text documentation for a function or method object.
+
+Shuffle list x in place, and return None.
+
+Manage shelves of pickled objects.
+
+A "shelf" is a persistent, dictionary-like object.  The difference
+with dbm databases is that the values (not the keys!) in a shelf can
+be essentially arbitrary Python objects -- anything that the "pickle"
+module can handle.  This includes most class instances, recursive data
+types, and objects containing lots of shared sub-objects.  The keys
+are ordinary strings.
+
+To summarize the interface (key is a string, data is an arbitrary
+object):
+
+        import shelve
+        d = shelve.open(filename) # open, with (g)dbm filename -- no suffix
+
+        d[key] = data   # store data at key (overwrites old data if
+                        # using an existing key)
+        data = d[key]   # retrieve a COPY of the data at key (raise
+                        # KeyError if no such key) -- NOTE that this
+                        # access returns a *copy* of the entry!
+        del d[key]      # delete data stored at key (raises KeyError
+                        # if no such key)
+        flag = key in d # true if the key exists
+        list = d.keys() # a list of all existing keys (slow!)
+
+        d.close()       # close it
+
+Dependent on the implementation, closing a persistent dictionary may
+or may not be necessary to flush changes to disk.
+
+Normally, d[key] returns a COPY of the entry.  This needs care when
+mutable entries are mutated: for example, if d[key] is a list,
+        d[key].append(anitem)
+does NOT modify the entry d[key] itself, as stored in the persistent
+mapping -- it only modifies the copy, which is then immediately
+discarded, so that the append has NO effect whatsoever.  To append an
+item to d[key] in a way that will affect the persistent mapping, use:
+        data = d[key]
+        data.append(anitem)
+        d[key] = data
+
+To avoid the problem with mutable entries, you may pass the keyword
+argument writeback=True in the call to shelve.open.  When you use:
+        d = shelve.open(filename, writeback=True)
+then d keeps a cache of all entries you access, and writes them all back
+to the persistent mapping when you call d.close().  This ensures that
+such usage as d[key].append(anitem) works as intended.
+
+However, using keyword argument writeback=True may consume vast amount
+of memory for the cache, and it may make d.close() very slow, if you
+access many of d's entries after opening it in this way: d has no way to
+check which of the entries you access are mutable and/or which ones you
+actually mutate, so it must cache, and write back at close, all of the
+entries that you access.  You can call d.sync() to write back all the
+entries in the cache, and empty the cache (d.sync() also synchronizes
+the persistent dictionary on disk, if feasible).
+
+Shelf implementation using the "dbm" generic dbm interface.
+
+This is initialized with the filename for the dbm database.
+See the module's __doc__ string for an overview of the interface.
+
+Copy data and metadata. Return the file's destination.
+
+Metadata is copied with copystat(). Please see the copystat function
+for more information.
+
+The destination may be a directory.
+
+If follow_symlinks is false, symlinks won't be followed. This
+resembles GNU's "cp -P src dst".
+
+Returns a list of supported formats for archiving and unarchiving.
+
+Each element of the returned sequence is a tuple (name, description)
+
+Return disk usage statistics about the given path.
+
+Returned value is a named tuple with attributes 'total', 'used' and
+'free', which are the amount of total, used and free space, in bytes.
+
+Convert a possible numeric value to an IntEnum member.
+If it's not a known member, return the value itself.
+
+SMTP/ESMTP client class.
+
+This should follow RFC 821 (SMTP), RFC 1869 (ESMTP), RFC 2554 (SMTP
+Authentication) and RFC 2487 (Secure SMTP over TLS).
+
+Notes:
+
+Please remember, when doing ESMTP, that the names of the SMTP service
+extensions are NOT the same thing as the option keywords for the RCPT
+and MAIL commands!
+
+Example:
+
+  >>> import smtplib
+  >>> s=smtplib.SMTP("localhost")
+  >>> print(s.help())
+  This is Sendmail version 8.8.4
+  Topics:
+      HELO    EHLO    MAIL    RCPT    DATA
+      RSET    NOOP    QUIT    HELP    VRFY
+      EXPN    VERB    ETRN    DSN
+  For more info use "HELP <topic>".
+  To report bugs in the implementation send email to
+      sendmail-bugs@sendmail.org.
+  For local information send email to Postmaster at your site.
+  End of HELP info
+  >>> s.putcmd("vrfy","someone@here")
+  >>> s.getreply()
+  (250, "Somebody OverHere <somebody@here.my.org>")
+  >>> s.quit()
+
+LMTP - Local Mail Transfer Protocol
+
+The LMTP protocol, which is very similar to ESMTP, is heavily based
+on the standard SMTP client. It's common to use Unix sockets for
+LMTP, so our connect() method must support that as well as a regular
+host:port server.  local_hostname and source_address have the same
+meaning as they do in the SMTP class.  To specify a Unix socket,
+you must use an absolute path as the host, starting with a '/'.
+
+Authentication is supported, using the regular SMTP mechanism. When
+using a Unix socket, LMTP generally don't support or require any
+authentication, but your mileage might vary.
+
+This module provides socket operations and some related functions.
+On Unix, it supports IP (Internet Protocol) and Unix domain sockets.
+On other systems, it only supports IP. Functions specific for a
+socket are available as methods of the socket object.
+
+Functions:
+
+socket() -- create a new socket object
+socketpair() -- create a pair of new socket objects [*]
+fromfd() -- create a socket object from an open file descriptor [*]
+send_fds() -- Send file descriptor to the socket.
+recv_fds() -- Receive file descriptors from the socket.
+fromshare() -- create a socket object from data received from socket.share() [*]
+gethostname() -- return the current hostname
+gethostbyname() -- map a hostname to its IP number
+gethostbyaddr() -- map an IP number or hostname to DNS info
+getservbyname() -- map a service name and a protocol name to a port number
+getprotobyname() -- map a protocol name (e.g. 'tcp') to a number
+ntohs(), ntohl() -- convert 16, 32 bit int from network to host byte order
+htons(), htonl() -- convert 16, 32 bit int from host to network byte order
+inet_aton() -- convert IP addr string (123.45.67.89) to 32-bit packed format
+inet_ntoa() -- convert 32-bit packed format IP to string (123.45.67.89)
+socket.getdefaulttimeout() -- get the default timeout value
+socket.setdefaulttimeout() -- set the default timeout value
+create_connection() -- connects to an address, with an optional timeout and
+                       optional source address.
+
+ [*] not available on all platforms!
+
+Special objects:
+
+SocketType -- type object for socket objects
+error -- exception raised for I/O errors
+has_ipv6 -- boolean value indicating if IPv6 is supported
+
+IntEnum constants:
+
+AF_INET, AF_UNIX -- socket domains (first argument to socket() call)
+SOCK_STREAM, SOCK_DGRAM, SOCK_RAW -- socket types (second argument)
+
+Integer constants:
+
+Many other constants may be defined; these may be used in calls to
+the setsockopt() and getsockopt() methods.
+
+Read-only access to the address family for this socket.
+
+Stops the serve_forever loop.
+
+Blocks until the loop has finished. This must be called while
+serve_forever() is running in another thread, or it will
+deadlock.
+
+Call finish_request.
+
+Overridden by ForkingMixIn and ThreadingMixIn.
+
+Exact matching of IP addresses.
+
+RFC 6125 explicitly doesn't define an algorithm for this
+(section 1.7.2 - "Out of Scope").
+
+Create a SSLContext object for Python stdlib modules
+
+All Python stdlib modules shall use this function to create SSLContext
+objects in order to keep common settings in one place. The configuration
+is less restrict than create_default_context()'s to increase backward
+compatibility.
+
+Return the currently selected ALPN protocol as a string, or ``None``
+if a next protocol was not negotiated or if ALPN is not supported by one
+of the peers.
+
+Convert a file's mode to a string of the form '-rwxrwxrwx'.
+
+Return a list of the most frequently occurring values.
+
+Will return more than one result if there are multiple modes
+or an empty list if *data* is empty.
+
+>>> multimode('aabbbbbbbbcc')
+['b']
+>>> multimode('aabbbbccddddeeffffgg')
+['b', 'd', 'f']
+>>> multimode('')
+[]
+
+Negates mu while keeping sigma the same.
+
+Return a duplicate of handle, which is inheritable
+
+Return a tuple of globals in the function.
+
+Return size bytes from the stream.
+
+Return the current file position.
+
+Return the next member of the archive as a TarInfo object, when
+TarFile is opened for reading. Return None if there is no more
+available.
+
+Return any data available in the SB ... SE queue.
+
+Return b'' if no SB ... SE available. Should only be called
+after seeing a SB or SE command. When a new SB command is
+found, old unread SB data will be discarded. Don't block.
+
+Helper for mt_interact() -- this executes in the other thread.
+
+Temporary files.
+
+This module provides generic, low- and high-level interfaces for
+creating temporary files and directories.  All of the interfaces
+provided by this module can be used without fear of race conditions
+except for 'mktemp'.  'mktemp' is subject to race conditions and
+should not be used; it is provided for backward compatibility only.
+
+The default path names are returned as str.  If you supply bytes as
+input, all return values will be in bytes.  Ex:
+
+    >>> tempfile.mkstemp()
+    (4, '/tmp/tmptpu9nin8')
+    >>> tempfile.mkdtemp(suffix=b'')
+    b'/tmp/tmppbi8f0hy'
+
+This module also provides some data items to the user:
+
+  TMP_MAX  - maximum number of names that will be tried before
+             giving up.
+  tempdir  - If this is set to a string before the first use of
+             any routine from this module, it will be considered as
+             another candidate location to store temporary files.
+
+The default prefix for temporary directories as string.
+
+Fill a single paragraph of text, returning a new string.
+
+Reformat the single paragraph in 'text' to fit in lines of no more
+than 'width' columns, and return a new string containing the entire
+wrapped paragraph.  As with wrap(), tabs are expanded and other
+whitespace characters converted to space.  See TextWrapper class for
+available keyword args to customize wrapping behaviour.
+
+This class implements semaphore objects.
+
+Semaphores manage a counter representing the number of release() calls minus
+the number of acquire() calls, plus an initial value. The acquire() method
+blocks if necessary until it can return without making the counter
+negative. If not given, value defaults to 1.
+
+Return true if and only if the internal flag is true.
+
+This method is deprecated, use is_set() instead.
+
+Set a lock object which will be released by the interpreter when
+the underlying thread state (see pystate.h) gets deleted.
+
+Helper to print a traceback from the timed code.
+
+Typical use:
+
+    t = Timer(...)       # outside the try/except
+    try:
+        t.timeit(...)    # or t.repeat(...)
+    except:
+        t.print_exc()
+
+The advantage over the standard traceback is that source lines
+in the compiled template will be displayed.
+
+The optional file argument directs where the traceback is
+sent; it defaults to sys.stderr.
+
+Return lineno dict for all code objects reachable from code.
+
+Return True if the filename does not refer to a file
+we want to have reported.
+
+Redraw graphics items on canvas
+
+Set canvas' backgroundcolor if color is not None,
+else return backgroundcolor.
+
+Bind fun to mouse-button-release event on turtle.
+fun must be a function with two arguments, the coordinates
+of the point on the canvas where mouse button is released.
+num, the number of the mouse-button defaults to 1
+
+If a turtle is clicked, first _onclick-event will be performed,
+then _onscreensclick-event.
+
+Resize the canvas the turtles are drawing on. Does
+not alter the drawing window.
+
+Return the angle of the line from the turtle's position to (x, y).
+
+Arguments:
+x -- a number   or  a pair/vector of numbers   or   a turtle instance
+y -- a number       None                            None
+
+call: distance(x, y)         # two coordinates
+--or: distance((x, y))       # a pair (tuple) of coordinates
+--or: distance(vec)          # e.g. as returned by pos()
+--or: distance(mypen)        # where mypen is another turtle
+
+Return the angle, between the line from turtle-position to position
+specified by x, y and the turtle's start orientation. (Depends on
+modes - "standard" or "logo")
+
+Example (for a Turtle instance named turtle):
+>>> turtle.pos()
+(10.00, 10.00)
+>>> turtle.towards(0,0)
+225.0
+
+Define names for built-in types that aren't directly accessible as a builtin.
+
+Collect all type variables and parameter specifications in args
+in order of first appearance (lexicographic order).
+
+For example::
+
+    >>> P = ParamSpec('P')
+    >>> T = TypeVar('T')
+    >>> _collect_parameters((T, Callable[P, T]))
+    (~T, ~P)
+
+Special typing form to define literal types (a.k.a. value types).
+
+This form can be used to indicate to type checkers that the corresponding
+variable or function parameter has a value equivalent to the provided
+literal (or one of several literals)::
+
+    def validate_simple(data: Any) -> Literal[True]:  # always returns True
+        ...
+
+    MODE = Literal['r', 'rb', 'w', 'wb']
+    def open_helper(file: str, mode: MODE) -> str:
+        ...
+
+    open_helper('/some/path', 'r')  # Passes type check
+    open_helper('/other/path', 'typo')  # Error in type checker
+
+Literal[...] cannot be subclassed. At runtime, an arbitrary value
+is allowed as type argument to Literal[...], but type checkers may
+impose restrictions.
+
+Mixin giving __init__ bound and variance arguments.
+
+This is used by TypeVar and ParamSpec, which both employ the notions of
+a type 'bound' (restricting type arguments to be a subtype of some
+specified type) and type 'variance' (determining subtype relations between
+generic types).
+
+Type variable.
+
+Usage::
+
+  T = TypeVar('T')  # Can be anything
+  A = TypeVar('A', str, bytes)  # Must be str or bytes
+
+Type variables exist primarily for the benefit of static type
+checkers.  They serve as the parameters for generic types as well
+as for generic function definitions.  See class Generic for more
+information on generic types.  Generic functions work as follows:
+
+  def repeat(x: T, n: int) -> List[T]:
+      '''Return a list containing n references to x.'''
+      return [x]*n
+
+  def longest(x: A, y: A) -> A:
+      '''Return the longest of two strings.'''
+      return x if len(x) >= len(y) else y
+
+The latter example's signature is essentially the overloading
+of (str, str) -> str and (bytes, bytes) -> bytes.  Also note
+that if the arguments are instances of some subclass of str,
+the return type is still plain str.
+
+At runtime, isinstance(x, T) and issubclass(C, T) will raise TypeError.
+
+Type variables defined with covariant=True or contravariant=True
+can be used to declare covariant or contravariant generic types.
+See PEP 484 for more details. By default generic types are invariant
+in all type variables.
+
+Type variables can be introspected. e.g.:
+
+  T.__name__ == 'T'
+  T.__constraints__ == ()
+  T.__covariant__ == False
+  T.__contravariant__ = False
+  A.__constraints__ == (str, bytes)
+
+Note that only type variables defined in global scope can be pickled.
+
+Create a new typed dict class object.
+
+This method is called when TypedDict is subclassed,
+or when TypedDict is instantiated. This way
+TypedDict supports all three syntax forms described in its docstring.
+Subclasses and instances of TypedDict return actual dictionaries.
+
+Seek to specified position into the chunk.
+Default position is 0 (start of chunk).
+If the file is not seekable, this will result in an error.
+
+Mapping class that references keys weakly.
+
+Entries in the dictionary will be discarded when there is no
+longer a strong reference to the key. This can be used to
+associate additional data with an object owned by other parts of
+an application without adding attributes to those objects. This
+can be especially useful with objects that override attribute
+accesses.
+
+Quickly see if a file is a ZIP file by checking the magic number.
+
+The filename argument may be a file or file-like object too.
+
+A ZipFile subclass that ensures that implied directories
+are always included in the namelist.
+
+Read and return a line from the stream.
+
+If limit is specified, at most limit bytes will be read.
+
+Read in the table of contents for the ZIP file.
+
+Close the file, and for mode 'w', 'x' and 'a' write the ending
+records.
+
+Construct a Path from a ZipFile or filename.
+
+Note: When the source is an existing ZipFile object,
+its type (__class__) will be mutated to a
+specialized type. If the caller wishes to retain the
+original type, the caller should either create a
+separate ZipFile object or pass a filename.
+
+Reload the file data of the archive path.
+
+Close the event loop.
+
+This clears the queues and shuts down the executor,
+but does not wait for the executor to finish.
+
+The event loop must not be running.
+
+Return the time according to the event loop's clock.
+
+This is a float expressed in seconds since an epoch, but the
+epoch, precision, accuracy and drift are unspecified and may
+differ per event loop.
+
+Call the current event loop's exception handler.
+
+The context argument is a dict containing the following keys:
+
+- 'message': Error message;
+- 'exception' (optional): Exception object;
+- 'future' (optional): Future instance;
+- 'task' (optional): Task instance;
+- 'handle' (optional): Handle instance;
+- 'protocol' (optional): Protocol instance;
+- 'transport' (optional): Transport instance;
+- 'socket' (optional): Socket instance;
+- 'asyncgen' (optional): Asynchronous generator that caused
+                         the exception.
+
+New keys maybe introduced in the future.
+
+Note: do not overload this method in an event loop subclass.
+For custom exception handling, use the
+`set_exception_handler()` method.
+
+Return an asyncio event loop.
+
+When called from a coroutine or a callback (e.g. scheduled with call_soon
+or similar API), this function will always return the running event loop.
+
+If there is no running event loop set, the function will return
+the result of `get_event_loop_policy().get_event_loop()` call.
+
+Schedule the shutdown of the default executor.
+
+Create the CancelledError to raise if the Future is cancelled.
+
+This should only be called once when handling a cancellation since
+it erases the saved context exception value.
+
+Return the exception that was set on this future.
+
+The exception (or None if no exception was set) is returned only if
+the future is done.  If the future has been cancelled, raises
+CancelledError.  If the future isn't done yet, raises
+InvalidStateError.
+
+Remove all instances of a callback from the "call when done" list.
+
+Returns the number of callbacks removed.
+
+Reset the barrier to the initial state.
+
+Any tasks currently waiting will get the BrokenBarrier exception
+raised.
+
+Pause the receiving end.
+
+No data will be passed to the protocol's data_received()
+method until resume_reading() is called.
+
+Schedule a timeout that will trigger at a given loop time.
+
+- If `when` is `None`, the timeout will never trigger.
+- If `when < loop.time()`, the timeout will trigger on the next
+  iteration of the event loop.
+
+Return True if the transport is closing or closed.
+
+Close the transport.
+
+Buffered data will be flushed asynchronously.  No more data
+will be received.  After all buffered data is flushed, the
+protocol's connection_lost() method will (eventually) be
+called with None as its argument.
+
+List the n most common elements and their counts from the most
+common to the least.  If n is None, then list all element counts.
+
+>>> Counter('abracadabra').most_common(3)
+[('a', 5), ('b', 2), ('r', 2)]
+
+Add counts from two counters.
+
+>>> Counter('abbb') + Counter('bcc')
+Counter({'b': 4, 'c': 2, 'a': 1})
+
+Return the result of the call that the future represents.
+
+Args:
+    timeout: The number of seconds to wait for the result if the future
+        isn't done. If None, then there is no limit on the wait time.
+
+Returns:
+    The result of the call that the future represents.
+
+Raises:
+    CancelledError: If the future was cancelled.
+    TimeoutError: If the future didn't finish executing before the given
+        timeout.
+    Exception: If the call raised then that exception will be raised.
+
+Sets the return value of work associated with the future.
+
+Should only be used by Executor implementations and unit tests.
+
+Implements ProcessPoolExecutor.
+
+The following diagram and text describe the data-flow through the system:
+
+|======================= In-process =====================|== Out-of-process ==|
+
++----------+     +----------+       +--------+     +-----------+    +---------+
+|          |  => | Work Ids |       |        |     | Call Q    |    | Process |
+|          |     +----------+       |        |     +-----------+    |  Pool   |
+|          |     | ...      |       |        |     | ...       |    +---------+
+|          |     | 6        |    => |        |  => | 5, call() | => |         |
+|          |     | 7        |       |        |     | ...       |    |         |
+| Process  |     | ...      |       | Local  |     +-----------+    | Process |
+|  Pool    |     +----------+       | Worker |                      |  #1..n  |
+| Executor |                        | Thread |                      |         |
+|          |     +----------- +     |        |     +-----------+    |         |
+|          | <=> | Work Items | <=> |        | <=  | Result Q  | <= |         |
+|          |     +------------+     |        |     +-----------+    |         |
+|          |     | 6: call()  |     |        |     | ...       |    |         |
+|          |     |    future  |     |        |     | 4, result |    |         |
+|          |     | ...        |     |        |     | 3, except |    |         |
++----------+     +------------+     +--------+     +-----------+    +---------+
+
+Executor.submit() called:
+- creates a uniquely numbered _WorkItem and adds it to the "Work Items" dict
+- adds the id of the _WorkItem to the "Work Ids" queue
+
+Local worker thread:
+- reads work ids from the "Work Ids" queue and looks up the corresponding
+  WorkItem from the "Work Items" dict: if the work item has been cancelled then
+  it is simply removed from the dict, otherwise it is repackaged as a
+  _CallItem and put in the "Call Q". New _CallItems are put in the "Call Q"
+  until "Call Q" is full. NOTE: the size of the "Call Q" is kept small because
+  calls placed in the "Call Q" can no longer be cancelled with Future.cancel().
+- reads _ResultItems from "Result Q", updates the future stored in the
+  "Work Items" dict and deletes the dict entry
+
+Process #1..n:
+- reads _CallItems from "Call Q", executes the calls, and puts the resulting
+  _ResultItems in "Result Q"
+
+Guess which db package to use to open a db file.
+
+Return values:
+
+- None if the database file can't be read;
+- empty string if the file can be read but can't be recognized
+- the name of the dbm submodule (e.g. "ndbm" or "gnu") if recognized.
+
+Importing the given module may still fail, and opening the
+database using that module may still fail.
+
+Return the compiler option to add 'dir' to the list of
+directories searched for runtime libraries.
+
+Copy a file respecting verbose, dry-run and force flags.  (The
+former two default to whatever is in the Distribution object, and
+the latter defaults to false for commands that don't define it.)
+
+The option table provided to 'fancy_getopt()' is bogus.
+
+Syntactic/semantic errors in command options, such as use of
+mutually conflicting options, or inconsistent options,
+badly-spelled values, etc.  No distinction is made between option
+values originating in the setup script, the command line, config
+files, or what-have-you -- but if we *know* something originated in
+the setup script, we'll raise DistutilsSetupError instead.
+
+Print (to stderr) a warning message tied to the current logical
+line in the current file.  If the current logical line in the
+file spans multiple physical lines, the warning refers to the
+whole range, eg. "lines 3-5".  If 'line' supplied, it overrides
+the current line number; it may be a list or tuple to indicate a
+range of physical lines, or an integer for a single physical
+line.
+
+Version numbering for anarchists and software realists.
+Implements the standard interface for version number classes as
+described above.  A version number consists of a series of numbers,
+separated by either periods or strings of letters.  When comparing
+version numbers, the numeric components will be compared
+numerically, and the alphabetic components lexically.  The following
+are all valid version numbers, in no particular order:
+
+    1.5.1
+    1.5.2b2
+    161
+    3.10a
+    8.02
+    3.4j
+    1996.07.12
+    3.2.pl0
+    3.1.1.6
+    2g6
+    11g
+    0.960923
+    2.2beta29
+    1.13++
+    5.5.kw
+    2.0b1pl0
+
+In fact, there is no such thing as an invalid version number under
+this scheme; the rules for comparison are simple and predictable,
+but may not always give the results you want (for some definition
+of "want").
+
+distutils.command
+
+Package containing implementation of all the standard Distutils
+commands.
+
+Return filenames for package's data files in 'src_dir'
+
+Ensures that all required elements of meta-data are supplied.
+
+Required fields:
+    name, version, URL
+
+Recommended fields:
+    (author and author_email) or (maintainer and maintainer_email)
+
+Warns if any are missing.
+
+Try to compile, link to an executable, and run a program
+built from 'body' and 'headers'.  Return true on success, false
+otherwise.
+
+Determine if function 'func' is available by constructing a
+source file that refers to 'func', and compiles and links it.
+If everything succeeds, returns true; otherwise returns false.
+
+The constructed source file starts out by including the header
+files listed in 'headers'.  If 'decl' is true, it then declares
+'func' (as "int func()"); you probably shouldn't supply 'headers'
+and set 'decl' true in the same call, or you might get errors about
+a conflicting declarations for 'func'.  Finally, the constructed
+'main()' function either references 'func' or (if 'call' is true)
+calls it.  'libraries' and 'library_dirs' are used when
+linking.
+
+Calls `os.path.expanduser` on install_base, install_platbase and
+root.
+
+distutils.command.install_lib
+
+Implements the Distutils 'install_lib' command
+(install all Python modules).
+
+distutils.command.install_scripts
+
+Implements the Distutils 'install_scripts' command, for installing
+Python scripts.
+
+Reads the configuration file and set attributes.
+
+Routines for manipulating RFC2047 encoded words.
+
+This is currently a package-private API, but will be considered for promotion
+to a public API if there is demand.
+
+qcontent = qtext / quoted-pair
+
+We allow anything except the DQUOTE character, but if we find any ASCII
+other than the RFC defined printable ASCII, a NonPrintableDefect is
+added to the token's defects list.  Any quoted pairs are converted to their
+unquoted values, so what is returned is a 'ptext' token.  In this case it
+is a ValueTerminal.
+
+domain = dot-atom / domain-literal / obs-domain
+obs-domain = atom *("." atom))
+
+obs-route = obs-domain-list ":"
+obs-domain-list = *(CFWS / ",") "@" domain *("," [CFWS] ["@" domain])
+
+Returns an obs-route token with the appropriate sub-tokens (that is,
+there is no obs-domain-list in the parse tree).
+
+[CFWS] 1*extended_attrtext [CFWS]
+
+This is like the non-extended version except we allow % characters, so that
+we can pick up an encoded value as a single string.
+
+parameter *( ";" parameter )
+
+That BNF is meant to indicate this routine should only be called after
+finding and handling the leading ';'.  There is no corresponding rule in
+the formal RFC grammar, but it is more convenient for us for the set of
+parameters to be treated as its own TokenList.
+
+This is 'parse' routine because it consumes the remaining value, but it
+would never be called to parse a full header.  Instead it is called to
+parse everything after the non-parameter value of a specific MIME header.
+
+Address parser class by Ben Escoto.
+
+To understand what this class does, it helps to have a copy of RFC 2822 in
+front of you.
+
+Note: this class interface is deprecated and may be removed in the future.
+Use email.utils.AddressList instead.
+
+Return the output character set.
+
+This is self.output_charset if that is not None, otherwise it is
+self.input_charset.
+
+A start boundary was found, but not the corresponding close boundary.
+
+The addr_spec (username@domain) portion of the address, quoted
+according to RFC 5322 rules, but with no Content Transfer Encoding.
+
+Return the entire formatted message as a string.
+
+Return the boundary associated with the payload if present.
+
+The boundary is extracted from the Content-Type header's `boundary'
+parameter, and it is unquoted.
+
+Return best candidate mime part for display as 'body' of message.
+
+Do a depth first search, starting with self, looking for the first part
+matching each of the items in preferencelist, and return the part
+corresponding to the first item that has a match, or None if no items
+have a match.  If 'related' is not included in preferencelist, consider
+the root part of any multipart/related encountered as a candidate
+match.  Ignore parts with 'Content-Disposition: attachment'.
+
+Return True if the octet should be escaped with body quopri.
+
+Generic Python Character Mapping Codec.
+
+    Use this codec directly rather than through the automatic
+    conversion mechanisms supplied by unicode() and .encode().
+
+
+Written by Marc-Andre Lemburg (mal@lemburg.com).
+
+(c) Copyright CNRI, All Rights Reserved. NO WARRANTY.
+
+Python Character Mapping Codec cp1252 generated from 'MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1252.TXT' with gencodec.py.
+
+Python Character Mapping Codec cp1253 generated from 'MAPPINGS/VENDORS/MICSFT/WINDOWS/CP1253.TXT' with gencodec.py.
+
+Python Character Mapping Codec cp437 generated from 'VENDORS/MICSFT/PC/CP437.TXT' with gencodec.py.
+
+Python Character Mapping Codec iso8859_10 generated from 'MAPPINGS/ISO8859/8859-10.TXT' with gencodec.py.
+
+Python Character Mapping Codec iso8859_3 generated from 'MAPPINGS/ISO8859/8859-3.TXT' with gencodec.py.
+
+Python Character Mapping Codec mac_cyrillic generated from 'MAPPINGS/VENDORS/APPLE/CYRILLIC.TXT' with gencodec.py.
+
+Python 'zlib_codec' Codec - zlib compression encoding.
+
+This codec de/encodes from bytes to bytes.
+
+Written by Marc-Andre Lemburg (mal@lemburg.com).
+
+Returns an instance of the class mimetools.Message containing
+meta-information associated with the URL.
+
+When the method is HTTP, these headers are those returned by
+the server at the head of the retrieved HTML page (including
+Content-Length and Content-Type).
+
+When the method is FTP, a Content-Length header will be
+present if (as is now usual) the server passed back a file
+length in response to the FTP retrieval request. A
+Content-Type header will be present if the MIME type can be
+guessed.
+
+When the method is local-file, returned headers will include
+a Date representing the file's last-modified time, a
+Content-Length giving file size, and a Content-Type
+containing a guess at the file's type. See also the
+description of the mimetools module.
+
+Test whether a file-like object is a text or a binary stream.
+
+As for http2time, but parses the ISO 8601 formats:
+
+1994-02-03 14:15:29 -0100    -- ISO 8601 format
+1994-02-03 14:15:29          -- zone is optional
+1994-02-03                   -- only date
+1994-02-03T14:15:29          -- Use T as separator
+19940203T141529Z             -- ISO 8601 compact format
+19940203                     -- only date
+
+Return a tuple (request-host, effective request-host name).
+
+As defined by RFC 2965, except both are lowercased.
+
+Return true if (and only if) cookie should be returned to server.
+
+Return false if cookies should not be returned, given cookie domain.
+
+Return None, or the sequence of allowed domains (as a tuple).
+
+Clear some cookies.
+
+Invoking this method without arguments will clear all cookies.  If
+given a single argument, only cookies belonging to that domain will be
+removed.  If given two arguments, cookies belonging to the specified
+path within that domain are removed.  If given three arguments, then
+the cookie with the specified name, path and domain is removed.
+
+Raises KeyError if no matching cookie exists.
+
+Return cookies as a string of "\n"-separated "Set-Cookie3" headers.
+
+ignore_discard and ignore_expires: see docstring for FileCookieJar.save
+
+Send a MIME header to the headers buffer.
+
+Reload the module and return it.
+
+The module must have been successfully imported before.
+
+Simple substitute for functools.update_wrapper.
+
+Execute the spec's specified module in an existing module's namespace.
+
+Resolve a relative module name to an absolute one.
+
+Install importers for builtin and frozen modules
+
+Return None as built-in modules do not have code objects.
+
+Load a frozen module.
+
+This method is deprecated.  Use exec_module() instead.
+
+Release the import lock regardless of any raised exceptions.
+
+Convert a bytecode file path to a source path (if possible).
+
+This function exists purely for backwards-compatibility for
+PyImport_ExecCodeModuleWithFilenames() in the C API.
+
+Validate a pyc against the source last-modified time.
+
+*data* is the contents of the pyc file. (Only the first 16 bytes are
+required.)
+
+*source_mtime* is the last modified timestamp of the source file.
+
+*source_size* is None or the size of the source file in bytes.
+
+*name* is the name of the module being imported. It is used for logging.
+
+*exc_details* is a dictionary passed to ImportError if it raised for
+improved debugging.
+
+An ImportError is raised if the bytecode is stale.
+
+Meta path finder for modules declared in the Windows registry.
+
+Return (loader, namespace portion) for the path entry.
+
+The fullname is a str.  The namespace portion is a sequence of
+path entries contributing to part of a namespace package. The
+sequence may be empty.  If loader is not None, the portion will
+be ignored.
+
+The portion will be discarded if another path entry finder
+locates the module as a normal module or package.
+
+This method is deprecated since Python 3.4 in favor of
+finder.find_spec(). If find_spec() is provided than backwards-compatible
+functionality is provided.
+
+Return the spec for the specified module.
+
+First, sys.modules is checked to see if the module was already imported. If
+so, then sys.modules[name].__spec__ is returned. If that happens to be
+set to None, then ValueError is raised. If the module is not in
+sys.modules, then sys.meta_path is searched for a suitable spec with the
+value of 'path' given to the finders. None is returned if no spec could
+be found.
+
+Dotted names do not have their parent packages implicitly imported. You will
+most likely need to explicitly import all parent packages in the proper
+order for a submodule to get the correct spec.
+
+A loader that creates a module which defers loading until attribute access.
+
+Trigger the load and then perform the deletion.
+
+PEP 503 normalization plus dashes as underscores.
+
+Wrap lru_cache to support storing the cache data in the object instances.
+
+Abstracts the common paradigm where the method explicitly saves an
+underscore-prefixed protected property on first call and returns that
+subsequently.
+
+>>> class MyClass:
+...     calls = 0
+...
+...     @method_cache
+...     def method(self, value):
+...         self.calls += 1
+...         return value
+
+>>> a = MyClass()
+>>> a.method(3)
+3
+>>> for x in range(75):
+...     res = a.method(x)
+>>> a.calls
+75
+
+Note that the apparent behavior will be exactly like that of lru_cache
+except that the cache is stored on each instance, so values in one
+instance will not flush values from another, and when an instance is
+deleted, so are the cached values for that instance.
+
+>>> b = MyClass()
+>>> for x in range(35):
+...     res = b.method(x)
+>>> b.calls
+35
+>>> a.method(0)
+0
+>>> a.calls
+75
+
+Note that if method had been decorated with ``functools.lru_cache()``,
+a.calls would have been 76 (due to the cached value of 0 having been
+flushed by the 'b' instance).
+
+Clear the cache with ``.cache_clear()``
+
+>>> a.method.cache_clear()
+
+Same for a method that hasn't yet been called.
+
+>>> c = MyClass()
+>>> c.method.cache_clear()
+
+Another cache wrapper may be supplied:
+
+>>> cache = functools.lru_cache(maxsize=2)
+>>> MyClass.method2 = method_cache(lambda self: 3, cache_wrapper=cache)
+>>> a = MyClass()
+>>> a.method2()
+3
+
+Caution - do not subsequently wrap the method with another decorator, such
+as ``@property``, which changes the semantics of the function.
+
+See also
+http://code.activestate.com/recipes/577452-a-memoize-decorator-for-instance-methods/
+for another implementation and additional justification.
+
+Return the file system path to the specified resource.
+
+The 'resource' argument is expected to represent only a file name.
+If the resource does not exist on the file system, raise
+FileNotFoundError.
+
+mode may be 'r' or 'rb' to open as text or binary. Return a handle
+suitable for reading (same as pathlib.Path.open).
+
+When opening as text, accepts encoding parameters such as those
+accepted by io.TextIOWrapper.
+
+Traversable container for a package's resources via its reader.
+
+Constructor for JSONEncoder, with sensible defaults.
+
+If skipkeys is false, then it is a TypeError to attempt
+encoding of keys that are not str, int, float or None.  If
+skipkeys is True, such items are simply skipped.
+
+If ensure_ascii is true, the output is guaranteed to be str
+objects with all incoming non-ASCII characters escaped.  If
+ensure_ascii is false, the output can contain non-ASCII characters.
+
+If check_circular is true, then lists, dicts, and custom encoded
+objects will be checked for circular references during encoding to
+prevent an infinite recursion (which would cause an RecursionError).
+Otherwise, no such check takes place.
+
+If allow_nan is true, then NaN, Infinity, and -Infinity will be
+encoded as such.  This behavior is not JSON specification compliant,
+but is consistent with most JavaScript based encoders and decoders.
+Otherwise, it will be a ValueError to encode such floats.
+
+If sort_keys is true, then the output of dictionaries will be
+sorted by key; this is useful for regression tests to ensure
+that JSON serializations can be compared on a day-to-day basis.
+
+If indent is a non-negative integer, then JSON array
+elements and object members will be pretty-printed with that
+indent level.  An indent level of 0 will only insert newlines.
+None is the most compact representation.
+
+If specified, separators should be an (item_separator, key_separator)
+tuple.  The default is (', ', ': ') if *indent* is ``None`` and
+(',', ': ') otherwise.  To get the most compact JSON representation,
+you should specify (',', ':') to eliminate whitespace.
+
+If specified, default is a function that gets called for objects
+that can't otherwise be serialized.  It should return a JSON encodable
+version of the object or raise a ``TypeError``.
+
+Don't use this function, use critical() instead.
+
+Log 'msg % args' with the integer severity 'level' on the root logger. If
+the logger has no handlers, call basicConfig() to add a console handler
+with a pre-defined format.
+
+Perform any cleanup actions in the logging system (e.g. flushing
+buffers).
+
+Should be called at application exit.
+
+Return the frame object for the caller's stack frame.
+
+Validate the input format, ensure it matches the correct style
+
+Format the specified records and return the result as a string.
+
+Get a logger with the specified name (channel name), creating it
+if it doesn't yet exist. This name is a dot-separated hierarchical
+name, such as "a", "a.b", "a.b.c" or similar.
+
+If a PlaceHolder existed for the specified name [i.e. the logger
+didn't exist but a child of it did], replace it with the created
+logger and fix up the parent/child references which pointed to the
+placeholder to now point to the logger.
+
+Log 'msg % args' with severity 'ERROR'.
+
+To pass exception information, use the keyword argument exc_info with
+a true value, e.g.
+
+logger.error("Houston, we have a %s", "major problem", exc_info=True)
+
+Log 'msg % args' with severity 'CRITICAL'.
+
+To pass exception information, use the keyword argument exc_info with
+a true value, e.g.
+
+logger.critical("Houston, we have a %s", "major disaster", exc_info=True)
+
+Add the specified handler to this logger.
+
+Initialize the adapter with a logger and a dict-like object which
+provides contextual information. This constructor signature allows
+easy stacking of LoggerAdapters, if so desired.
+
+You can effectively pass keyword arguments as shown in the
+following example:
+
+adapter = LoggerAdapter(someLogger, dict(p1=v1, p2="v2"))
+
+The configurator base class which defines some useful defaults.
+
+Default converter for the cfg:// protocol.
+
+Emit a record.
+
+Output the record to the file, catering for rollover as described
+in doRollover().
+
+Handle an error during logging.
+
+An error has occurred during logging. Most likely cause -
+connection lost. Close the socket so that we can retry on the
+next event.
+
+Initialize the handler.
+
+Initialize the instance with the from and to addresses and subject
+line of the email. To specify a non-standard SMTP port, use the
+(host, port) tuple format for the mailhost argument. To specify
+authentication credentials, supply a (username, password) tuple
+for the credentials argument. To specify the use of a secure
+protocol (TLS), pass in a tuple for the secure argument. This will
+only be used when authentication credentials are supplied. The tuple
+will be either an empty tuple, or a single-value tuple with the name
+of a keyfile, or a 2-value tuple with the names of the keyfile and
+certificate file. (This tuple is passed to the `starttls` method).
+A timeout in seconds can be specified for the SMTP connection (the
+default is one second).
+
+Initialize the instance with the host, the request URL, and the method
+("GET" or "POST")
+
+Default implementation of mapping the log record into a dict
+that is sent as the CGI data. Overwrite in your class.
+Contributed by Franz Glasner.
+
+Accept a connection on the bound socket or named pipe of `self`.
+
+Returns a `Connection` object.
+
+Returns pair of connection objects at either end of a pipe
+
+A shared memory area backed by anonymous memory (Windows).
+
+Better than monkeypatching for now; merge into Server ultimately
+
+Returns a new ShareableList instance populated with the values
+from the input sequence, to be tracked by the manager.
+
+Unregister name of resource with resource tracker.
+
+Returns true if the process is shutting down
+
+Return the string obtained by replacing the leftmost
+non-overlapping occurrences of the pattern in string by the
+replacement repl.  repl can be either a string or a callable;
+if a string, backslash escapes in it are processed.  If it is
+a callable, it's passed the Match object and must return
+a replacement string to be used.
+
+An error raised if a document is not valid TOML.
+
+Execute all class cleanup functions. Normally called for you after
+tearDownClass.
+
+Just like self.assertTrue(a not in b), but with a nicer default message.
+
+Patch a dictionary, or dictionary like object, and restore the dictionary
+to its original state after the test.
+
+`in_dict` can be a dictionary or a mapping like container. If it is a
+mapping then it must at least support getting, setting and deleting items
+plus iterating over keys.
+
+`in_dict` can also be a string specifying the name of the dictionary, which
+will then be fetched by importing it.
+
+`values` can be a dictionary of values to set in the dictionary. `values`
+can also be an iterable of `(key, value)` pairs.
+
+If `clear` is True then the dictionary will be cleared before the new
+values are set.
+
+`patch.dict` can also be called with arbitrary keyword arguments to set
+values in the dictionary::
+
+    with patch.dict('sys.modules', mymodule=Mock(), other_module=Mock()):
+        ...
+
+`patch.dict` can be used as a context manager, decorator or class
+decorator. When used as a class decorator `patch.dict` honours
+`patch.TEST_PREFIX` for choosing which methods to wrap.
+
+MagicMock is a subclass of Mock with default implementations
+of most of the magic methods. You can use MagicMock without having to
+configure the magic methods yourself.
+
+If you use the `spec` or `spec_set` arguments then *only* magic
+methods that exist in the spec will be created.
+
+Attributes and the return value of a `MagicMock` will also be `MagicMocks`.
+
+Tells whether or not this result was a success.
+
+splithost('//host[:port]/path') --> 'host[:port]', '/path'.
+
+Use URLopener().open(file) instead of open(file, 'r').
+
+Error 301 -- also relocated (permanently).
+
+Return a dictionary of scheme -> proxy server URL mappings.
+
+This function uses the MacOSX framework SystemConfiguration
+to fetch the proxy information.
+
+Base class for addinfo and addclosehook. Is a good idea for garbage collection.
+
+Return first matching header value for 'name', or 'value'
+
+If there is no header named 'name', add a new header with name 'name'
+and value 'value'.
+
+Parse a document, returning the resulting Document node.
+
+'file' may be either a file name or an open file object.
+
+Mixin to create documents that conform to the load/save spec.
+
+An error when parsing an XML document.
+
+In addition to its exception value, a ParseError contains
+two extra attributes:
+    'code'     - the specific exception code
+    'position' - the line and column of the error
+
+An XML element.
+
+This class is the reference implementation of the Element interface.
+
+An element's length is its number of subelements.  That means if you
+want to check if an element is truly empty, you should check BOTH
+its length AND its text attribute.
+
+The element tag, attribute names, and attribute values can be either
+bytes or strings.
+
+*tag* is the element name.  *attrib* is an optional dictionary containing
+element attributes. *extra* are additional element attributes given as
+keyword arguments.
+
+Example form:
+    <tag attrib>text<child/>...</tag>tail
+
+Reports the end of a CDATA marked section.
+
+resolve_dotted_attribute(a, 'b.c.d') => a.b.c.d
+
+Resolves a dotted attribute name to an object.  Raises
+an AttributeError if any attribute in the chain starts with a '_'.
+
+If the optional allow_dotted_names argument is false, dots are not
+supported and this function operates similar to getattr(obj, attr).
+
+Generates documentation for an XML-RPC server.
+
+This class is designed as mix-in and should not
+be constructed directly.
+
+system.listMethods() => ['add', 'subtract', 'multiple']
+
+Returns a list of the methods supported by the server.

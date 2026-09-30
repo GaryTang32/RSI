@@ -1,0 +1,76 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1174.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1490.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1571.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1200.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1297.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1238.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 3229.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1219.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1100.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1233.0
+ },
+ "evolve-numeric-010": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1580.0
+ },
+ "evolve-numeric-011": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 1976.0
+ },
+ "_pareto": [
+  {
+   "system": "seed",
+   "score": 0.08333333333333333,
+   "val_accuracy": 8.3,
+   "context_cost": 1525.5833333333333
+  }
+ ],
+ "_best": {
+  "system": "seed",
+  "score": 0.08333333333333333
+ },
+ "_hypervolume": 12.796527777777783,
+ "_hv_ref_cost": 1679.1416666666667
+}
