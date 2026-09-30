@@ -7,6 +7,10 @@ at M7's exact configuration, re-runs the ``metaharness`` arm for seeds 0-1 as a 
 Q4/Q5 with the other arms taken unchanged from ``m7_optimizers_equal_budget.json``.
 
     python experiments/metaharness-solpi/m7b_gepa_faithful.py --seeds 20 --workers 2
+    python experiments/metaharness-solpi/m7b_gepa_faithful.py --reanalyse   # from the saved per-seed rows, $0
+
+Mean differences within ``TOL`` of 0 count as 0 (a tie): MH and TTT-D have identical final-best means, and their
+float difference is 1.7e-17, which must not count as "> 0" under P1's rule.
 """
 from __future__ import annotations
 
@@ -28,6 +32,7 @@ N_ITER, K = 20, 2
 BUDGET = N_ITER * K
 M7_ARMS = ("metaharness", "best_of_n", "openevolve", "ttt_discover", "gepa")
 NEW = "gepa_minibatch"
+TOL = 1e-9
 
 
 def job(spec):
@@ -74,15 +79,19 @@ def q5(by, seeds, pool):
         which.append(nb)
     return {"evals_to_match_per_seed": e, "median_evals_to_match": float(np.median(e)),
             "n_never": sum(x == BUDGET + 1 for x in e), "lead": summarize(lead), "next_best_arm_per_seed": which,
-            "speed_ok": float(np.median(e)) <= BUDGET / 10, "lead_ok": float(np.mean(lead)) >= 0.10}
+            "speed_ok": float(np.median(e)) <= BUDGET / 10, "lead_ok": float(np.mean(lead)) >= 0.10 - TOL}
 
 
 def main():
-    args = parse_args(__doc__.splitlines()[0], default_seeds=20)
+    args = parse_args(__doc__.splitlines()[0], default_seeds=20,
+                      extra=lambda ap: ap.add_argument("--reanalyse", action="store_true"))
     seeds = list(range(args.seeds))
     m7 = json.loads((RESULTS / "m7_optimizers_equal_budget.json").read_text())
-    jobs = [(NEW, s) for s in seeds] + [("metaharness", s) for s in (0, 1)]
-    rows = pool_map(job, jobs, min(args.workers, 2))
+    if args.reanalyse:
+        rows = json.loads((RESULTS / "m7b_gepa_faithful.json").read_text())["per_seed"]
+    else:
+        jobs = [(NEW, s) for s in seeds] + [("metaharness", s) for s in (0, 1)]
+        rows = pool_map(job, jobs, min(args.workers, 2))
     new = [r for r in rows if r["arm"] == NEW]
     check = [r for r in rows if r["arm"] == "metaharness"]
     by = {a: {r["seed"]: r for r in m7["per_seed"] if r["arm"] == a} for a in M7_ARMS}
@@ -95,8 +104,8 @@ def main():
     cmp = {a: {k: paired([by[a][s][k] for s in seeds], [by["metaharness"][s][k] for s in seeds])
                for k in ("final_best", "median_candidate", "selected_test")} for a in arms if a != "metaharness"}
     faithful = ["best_of_n", "openevolve", "ttt_discover", NEW]
-    all_ci = all(cmp[a][k].get("lo", -1) > 0 for a in faithful for k in ("final_best", "median_candidate"))
-    means = all(cmp[a]["final_best"].get("mean_diff", 0) > 0 for a in faithful)
+    all_ci = all(cmp[a][k].get("lo", -1) > TOL for a in faithful for k in ("final_best", "median_candidate"))
+    means = all(cmp[a]["final_best"].get("mean_diff", 0) > TOL for a in faithful)
     q4_analogue = ("reproduced on the CPU analogue" if all_ci else
                    "partially reproduced on the CPU analogue" if means else "not reproduced on the CPU analogue")
     q5r = {"next_best_any_faithful": q5(by, seeds, faithful),
