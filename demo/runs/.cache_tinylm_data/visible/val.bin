@@ -1,0 +1,2526 @@
+A Mapping is a generic container for associating key/value
+pairs.
+
+This class provides concrete generic implementations of all
+methods except for __getitem__, __iter__, and __len__.
+
+Return the next item from the iterator. When exhausted, raise StopIteration
+
+Remove an element. If not a member, raise a KeyError.
+
+S.insert(index, value) -- insert value before index
+
+S.append(value) -- append value to the end of the sequence
+
+Parser base class which provides some common support methods used
+by the SGML/HTML and XHTML parsers.
+
+Number got rounded (not  necessarily changed during rounding).
+
+This occurs and signals rounded whenever the result of an operation is
+rounded (that is, some zero or non-zero digits were discarded from the
+coefficient), or if an overflow or underflow condition occurs.  The
+result in all cases is unchanged.
+
+The rounded signal may be tested (or trapped) to determine if a given
+operation (or sequence of operations) caused a loss of precision.
+
+Create a decimal point instance.
+
+>>> Decimal('3.14')              # string input
+Decimal('3.14')
+>>> Decimal((0, (3, 1, 4), -2))  # tuple (sign, digit_tuple, exponent)
+Decimal('3.14')
+>>> Decimal(314)                 # int
+Decimal('314')
+>>> Decimal(Decimal(314))        # another decimal instance
+Decimal('314')
+>>> Decimal('  3.14  \n')        # leading and trailing whitespace okay
+Decimal('3.14')
+
+Also known as round-towards-0, truncate.
+
+Return the ceiling of self, as an integer.
+
+For a finite Decimal instance self, return the least integer n
+such that n >= self.  If self is infinite or a NaN then a
+Python exception is raised.
+
+Attempt to compute self**other exactly.
+
+Given Decimals self and other and an integer p, attempt to
+compute an exact result for the power self**other, with p
+digits of precision.  Return None if self**other is not
+exactly representable in p digits.
+
+Assumes that elimination of special cases has already been
+performed: self and other must both be nonspecial; self must
+be positive and not numerically equal to 1; other must be
+nonzero.  For efficiency, other._exp should not be too large,
+so that 10**abs(other._exp) is a feasible calculation.
+
+Returns the larger value.
+
+Like max(self, other) except if one is not a number, returns
+NaN (and signals if one is sNaN).  Also rounds.
+
+Returns the smaller value.
+
+Like min(self, other) except if one is not a number, returns
+NaN (and signals if one is sNaN).  Also rounds.
+
+Compares the values numerically with their sign ignored.
+
+Returns an indication of the class of self.
+
+The class is one of the following strings:
+  sNaN
+  NaN
+  -Infinity
+  -Normal
+  -Subnormal
+  -Zero
+  +Zero
+  +Subnormal
+  +Normal
+  +Infinity
+
+Return True if the operand is negative; otherwise return False.
+
+>>> ExtendedContext.is_signed(Decimal('2.50'))
+False
+>>> ExtendedContext.is_signed(Decimal('-12'))
+True
+>>> ExtendedContext.is_signed(Decimal('-0'))
+True
+>>> ExtendedContext.is_signed(8)
+False
+>>> ExtendedContext.is_signed(-8)
+True
+
+Converts a number to a string, using scientific notation.
+
+The operation is not affected by the context.
+
+Opens the provided file with mode ``'rb'``. This function
+should be used when the intent is to treat the contents as
+executable code.
+
+``path`` should be an absolute path.
+
+When supported by the runtime, this function can be hooked
+in order to allow embedders more control over code files.
+This functionality is not supported on the current runtime.
+
+Buffered I/O implementation using an in-memory bytes buffer.
+
+BufferedReader(raw[, buffer_size])
+
+A buffer for a readable, sequential BaseRawIO object.
+
+The constructor creates a BufferedReader for the given readable raw
+stream and buffer_size. If buffer_size is omitted, DEFAULT_BUFFER_SIZE
+is used.
+
+A buffer for a writeable sequential RawIO object.
+
+The constructor creates a BufferedWriter for the given writeable raw
+stream. If the buffer_size is not given, it defaults to
+DEFAULT_BUFFER_SIZE.
+
+Write the given bytes buffer to the IO stream.
+
+Return the number of bytes written, which is always the length of b
+in bytes.
+
+Raises BlockingIOError if the buffer is full and the
+underlying raw stream cannot accept more data at the moment.
+
+The objects used by the site module to add custom builtins.
+
+Return the dict for the current thread. Raises KeyError if none
+defined.
+
+Stuff to parse AIFF-C and AIFF files.
+
+Unless explicitly stated otherwise, the description below is true
+both for AIFF-C files and AIFF files.
+
+An AIFF-C file has the following structure.
+
+  +-----------------+
+  | FORM            |
+  +-----------------+
+  | <size>          |
+  +----+------------+
+  |    | AIFC       |
+  |    +------------+
+  |    | <chunks>   |
+  |    |    .       |
+  |    |    .       |
+  |    |    .       |
+  +----+------------+
+
+An AIFF file has the string "AIFF" instead of "AIFC".
+
+A chunk consists of an identifier (4 bytes) followed by a size (4 bytes,
+big endian order), followed by the data.  The size field does not include
+the size of the 8 byte header.
+
+The following chunk types are recognized.
+
+  FVER
+      <version number of AIFF-C defining document> (AIFF-C only).
+  MARK
+      <# of markers> (2 bytes)
+      list of markers:
+          <marker ID> (2 bytes, must be > 0)
+          <position> (4 bytes)
+          <marker name> ("pstring")
+  COMM
+      <# of channels> (2 bytes)
+      <# of sound frames> (4 bytes)
+      <size of the samples> (2 bytes)
+      <sampling frequency> (10 bytes, IEEE 80-bit extended
+          floating point)
+      in AIFF-C files only:
+      <compression type> (4 bytes)
+      <human-readable version of compression type> ("pstring")
+  SSND
+      <offset> (4 bytes, not used by this program)
+      <blocksize> (4 bytes, not used by this program)
+      <sound data>
+
+A pstring consists of 1 byte length, a string of characters, and 0 or 1
+byte pad to make the total length even.
+
+Usage.
+
+Reading AIFF files:
+  f = aifc.open(file, 'r')
+where file is either the name of a file or an open file pointer.
+The open file pointer must have methods read(), seek(), and close().
+In some types of audio files, if the setpos() method is not used,
+the seek() method is not necessary.
+
+This returns an instance of a class with the following public methods:
+  getnchannels()  -- returns number of audio channels (1 for
+             mono, 2 for stereo)
+  getsampwidth()  -- returns sample width in bytes
+  getframerate()  -- returns sampling frequency
+  getnframes()    -- returns number of audio frames
+  getcomptype()   -- returns compression type ('NONE' for AIFF files)
+  getcompname()   -- returns human-readable version of
+             compression type ('not compressed' for AIFF files)
+  getparams() -- returns a namedtuple consisting of all of the
+             above in the above order
+  getmarkers()    -- get the list of marks in the audio file or None
+             if there are no marks
+  getmark(id) -- get mark with the specified id (raises an error
+             if the mark does not exist)
+  readframes(n)   -- returns at most n frames of audio
+  rewind()    -- rewind to the beginning of the audio stream
+  setpos(pos) -- seek to the specified position
+  tell()      -- return the current position
+  close()     -- close the instance (make it unusable)
+The position returned by tell(), the position given to setpos() and
+the position of marks are all compatible and have nothing to do with
+the actual position in the file.
+The close() method is called automatically when the class instance
+is destroyed.
+
+Writing AIFF files:
+  f = aifc.open(file, 'w')
+where file is either the name of a file or an open file pointer.
+The open file pointer must have methods write(), tell(), seek(), and
+close().
+
+This returns an instance of a class with the following public methods:
+  aiff()      -- create an AIFF file (AIFF-C default)
+  aifc()      -- create an AIFF-C file
+  setnchannels(n) -- set the number of channels
+  setsampwidth(n) -- set the sample width
+  setframerate(n) -- set the frame rate
+  setnframes(n)   -- set the number of frames
+  setcomptype(type, name)
+          -- set the compression type and the
+             human-readable compression type
+  setparams(tuple)
+          -- set all parameters at once
+  setmark(id, pos, name)
+          -- add specified mark to the list of marks
+  tell()      -- return current position in output file (useful
+             in combination with setmark())
+  writeframesraw(data)
+          -- write audio frames without pathing up the
+             file header
+  writeframes(data)
+          -- write audio frames and patch up the file header
+  close()     -- patch up the file header and close the
+             output file
+You should set the parameters before the first writeframesraw or
+writeframes.  The total number of frames does not need to be set,
+but when it is set to the correct value, the header does not have to
+be patched up.
+It is best to first set all parameters, perhaps possibly the
+compression type, and then write audio frames using writeframesraw.
+When all frames have been written, either call writeframes(b'') or
+close() to patch up the sizes in the header.
+Marks can be added anytime.  If there are any marks, you must call
+close() after all frames have been written.
+The close() method is called automatically when the class instance
+is destroyed.
+
+When a file is opened with the extension '.aiff', an AIFF file is
+written, otherwise an AIFF-C file is written.  This default can be
+changed by calling aiff() or aifc() before the first writeframes or
+writeframesraw.
+
+Get source code segment of the *source* that generated *node*.
+
+If some location information (`lineno`, `end_lineno`, `col_offset`,
+or `end_col_offset`) is missing, return None.
+
+If *padded* is `True`, the first line of a multi-line statement will
+be padded with spaces to match its original position.
+
+predicate for inclusion in the writable for select()
+
+automatically close this channel once the outgoing queue is empty
+
+Decode the Ascii85 encoded bytes-like object or ASCII string b.
+
+foldspaces is a flag that specifies whether the 'y' short sequence should be
+accepted as shorthand for 4 consecutive spaces (ASCII 0x20). This feature is
+not supported by the "standard" Adobe encoding.
+
+adobe controls whether the input sequence is in Adobe Ascii85 format (i.e.
+is framed with <~ and ~>).
+
+ignorechars should be a byte string containing characters to ignore from the
+input. This should only contain whitespace characters, and by default
+contains all whitespace characters in ASCII.
+
+The result is returned as a bytes object.
+
+Return a breakpoint by its index in Breakpoint.bybpnumber.
+
+For invalid arg values or if the breakpoint doesn't exist,
+raise a ValueError.
+
+Print the output of bpformat().
+
+The optional out argument directs where the output is sent
+and defaults to standard output.
+
+Return the file descriptor for the underlying file.
+
+Return True for leap years, False for non-leap years.
+
+Return a header for a week as a table row.
+
+Like FieldStorage, for use when no file uploads are possible.
+
+Constructor.  Read multipart/* until last part.
+
+Arguments, all optional:
+
+fp              : file pointer; default: sys.stdin.buffer
+    (not used when the request method is GET)
+    Can be :
+    1. a TextIOWrapper object
+    2. an object whose read() and readline() methods return bytes
+
+headers         : header dictionary-like object; default:
+    taken from environ as per CGI spec
+
+outerboundary   : terminating multipart boundary
+    (for internal use only)
+
+environ         : environment dictionary; default: os.environ
+
+keep_blank_values: flag indicating whether blank values in
+    percent-encoded forms should be treated as blank strings.
+    A true value indicates that blanks should be retained as
+    blank strings.  The default false value indicates that
+    blank values are to be ignored and treated as if they were
+    not included.
+
+strict_parsing: flag indicating what to do with parsing errors.
+    If false (the default), errors are silently ignored.
+    If true, errors raise a ValueError exception.
+
+limit : used internally to read parts of multipart/form-data forms,
+    to exit from the reading loop when reached. It is the difference
+    between the form content-length and the number of bytes already
+    read
+
+encoding, errors : the encoding and error handler used to decode the
+    binary stream to strings. Must be the same as the charset defined
+    for the page sending the form (content-type : meta http-equiv or
+    header)
+
+max_num_fields: int. If set, then __init__ throws a ValueError
+    if there are more than n fields read by parse_qsl().
+
+Internal: read lines until EOF or outerboundary.
+
+A hook to replace sys.excepthook that shows tracebacks in HTML.
+
+Skip the rest of the chunk.
+If you are not interested in the contents of the chunk,
+this method should be called so that the file points to
+the start of the next chunk.
+
+A simple framework for writing line-oriented command interpreters.
+
+These are often useful for test harnesses, administrative tools, and
+prototypes that will later be wrapped in a more sophisticated interface.
+
+A Cmd instance or subclass instance is a line-oriented interpreter
+framework.  There is no good reason to instantiate Cmd itself; rather,
+it's useful as a superclass of an interpreter class you define yourself
+in order to inherit Cmd's methods and encapsulate action methods.
+
+Return the next possible completion for 'text'.
+
+If a command has not been entered, then complete against command list.
+Otherwise try to call complete_<command> to get list of completions.
+
+StreamReaderWriter instances allow wrapping streams which
+work in both read and write modes.
+
+The design is such that one can use the factory functions
+returned by the codec.lookup() function to construct the
+instance.
+
+ConfigParser that does not do interpolation.
+
+Indicate whether the named section is present in the configuration.
+
+The DEFAULT section is not acknowledged.
+
+@asynccontextmanager decorator.
+
+Typical usage:
+
+    @asynccontextmanager
+    async def some_async_generator(<arguments>):
+        <setup>
+        try:
+            yield <value>
+        finally:
+            <cleanup>
+
+This makes this:
+
+    async with some_async_generator(<arguments>) as <variable>:
+        <body>
+
+equivalent to this:
+
+    <setup>
+    try:
+        <variable> = <value>
+        <body>
+    finally:
+        <cleanup>
+
+Context manager for temporarily redirecting stderr to another file.
+
+Raise any exception triggered within the runtime context.
+
+Enters the supplied async context manager.
+
+If successful, also pushes its __aexit__ method as a callback and
+returns the result of the __aenter__ method.
+
+Generic (shallow and deep) copying operations.
+
+Interface summary:
+
+        import copy
+
+        x = copy.copy(y)        # make a shallow copy of y
+        x = copy.deepcopy(y)    # make a deep copy of y
+
+For module specific errors, copy.Error is raised.
+
+The difference between shallow and deep copying is only relevant for
+compound objects (objects that contain other objects, like lists or
+class instances).
+
+- A shallow copy constructs a new compound object and then (to the
+  extent possible) inserts *the same objects* into it that the
+  original contains.
+
+- A deep copy constructs a new compound object and then, recursively,
+  inserts *copies* into it of the objects found in the original.
+
+Two problems often exist with deep copy operations that don't exist
+with shallow copy operations:
+
+ a) recursive objects (compound objects that, directly or indirectly,
+    contain a reference to themselves) may cause a recursive loop
+
+ b) because deep copy copies *everything* it may copy too much, e.g.
+    administrative data structures that should be shared even between
+    copies
+
+Python's deep copy operation avoids these problems by:
+
+ a) keeping a table of objects already copied during the current
+    copying pass
+
+ b) letting user-defined classes override the copying operation or the
+    set of components copied
+
+This version does not copy types like module, class, function, method,
+nor stack trace, stack frame, nor file, socket, window, nor any
+similar types.
+
+Classes can use the same interfaces to control copying that they use
+to control pickling: they can define methods called __getinitargs__(),
+__getstate__() and __setstate__().  See the documentation for module
+"pickle" for information on these methods.
+
+Returns a dialect (or None) corresponding to the sample
+
+datetime -> DST offset as timedelta, positive for east of UTC.
+
+Return 0 if DST not in effect.  utcoffset() must include the DST
+offset.
+
+Construct a datetime from time.time() and optional time zone info.
+
+Construct a datetime from a string in one of the ISO 8601 formats.
+
+string, format -> new datetime parsed from a string (like time.strptime()).
+
+Subtract two datetimes, or a datetime and a timedelta.
+
+Set the second sequence to be compared.
+
+The first sequence to be compared is not changed.
+
+>>> s = SequenceMatcher(None, "abcd", "bcde")
+>>> s.ratio()
+0.75
+>>> s.set_seq2("abcd")
+>>> s.ratio()
+1.0
+>>>
+
+SequenceMatcher computes and caches detailed information about the
+second sequence, so if you want to compare one sequence S against
+many sequences, use .set_seq2(S) once and call .set_seq1(x)
+repeatedly for each of the other sequences.
+
+See also set_seqs() and set_seq1().
+
+Return a formatted view of the bytecode operations.
+
+A class used to parse strings containing doctest examples.
+
+A class used to run DocTest test cases, and accumulate statistics.
+The `run` method is used to process a single DocTest case.  It
+returns a tuple `(f, t)`, where `t` is the number of test cases
+tried, and `f` is the number of test cases that failed.
+
+    >>> tests = DocTestFinder().find(_TestClass)
+    >>> runner = DocTestRunner(verbose=False)
+    >>> tests.sort(key = lambda test: test.name)
+    >>> for test in tests:
+    ...     print(test.name, '->', runner.run(test))
+    _TestClass -> TestResults(failed=0, attempted=2)
+    _TestClass.__init__ -> TestResults(failed=0, attempted=2)
+    _TestClass.get -> TestResults(failed=0, attempted=2)
+    _TestClass.square -> TestResults(failed=0, attempted=1)
+
+The `summarize` method prints a summary of all the test cases that
+have been run by the runner, and returns an aggregated `(f, t)`
+tuple:
+
+    >>> runner.summarize(verbose=1)
+    4 items passed all tests:
+       2 tests in _TestClass
+       2 tests in _TestClass.__init__
+       2 tests in _TestClass.get
+       1 tests in _TestClass.square
+    7 tests in 4 items.
+    7 passed and 0 failed.
+    Test passed.
+    TestResults(failed=0, attempted=7)
+
+The aggregated number of tried examples and failed examples is
+also available via the `tries` and `failures` attributes:
+
+    >>> runner.tries
+    7
+    >>> runner.failures
+    0
+
+The comparison between expected outputs and actual outputs is done
+by an `OutputChecker`.  This comparison may be customized with a
+number of option flags; see the documentation for `testmod` for
+more information.  If the option flags are insufficient, then the
+comparison may also be customized by passing a subclass of
+`OutputChecker` to the constructor.
+
+The test runner's display output can be controlled in two ways.
+First, an output function (`out) can be passed to
+`TestRunner.run`; this function will be called with strings that
+should be displayed.  It defaults to `sys.stdout.write`.  If
+capturing the output is not sufficient, then the display output
+can be also customized by subclassing DocTestRunner, and
+overriding the methods `report_start`, `report_success`,
+`report_unexpected_exception`, and `report_failure`.
+
+Extract script from text with examples.
+
+Converts text with examples to a Python script.  Example input is
+converted to regular code.  Example output and all other words
+are converted to comments:
+
+>>> text = '''
+...       Here are examples of simple math.
+...
+...           Python has super accurate integer addition
+...
+...           >>> 2 + 2
+...           5
+...
+...           And very friendly error messages:
+...
+...           >>> 1/0
+...           To Infinity
+...           And
+...           Beyond
+...
+...           You can use logic if you want:
+...
+...           >>> if 0:
+...           ...    blah
+...           ...    blah
+...           ...
+...
+...           Ho hum
+...           '''
+
+>>> print(script_from_examples(text))
+# Here are examples of simple math.
+#
+#     Python has super accurate integer addition
+#
+2 + 2
+# Expected:
+## 5
+#
+#     And very friendly error messages:
+#
+1/0
+# Expected:
+## To Infinity
+## And
+## Beyond
+#
+#     You can use logic if you want:
+#
+if 0:
+   blah
+   blah
+#
+#     Ho hum
+<BLANKLINE>
+
+Return a dictionary containing option overrides extracted from
+option directives in the given source string.
+
+`name` is the string's name, and `lineno` is the line number
+where the example starts; both are used for error messages.
+
+Return a line number of the given object's docstring.
+
+Returns `None` if the given object does not have a docstring.
+
+Create a collection of name/value pairs.
+
+Example enumeration:
+
+>>> class Color(Enum):
+...     RED = 1
+...     BLUE = 2
+...     GREEN = 3
+
+Access them by:
+
+- attribute access::
+
+>>> Color.RED
+<Color.RED: 1>
+
+- value lookup:
+
+>>> Color(1)
+<Color.RED: 1>
+
+- name lookup:
+
+>>> Color['RED']
+<Color.RED: 1>
+
+Enumerations can be iterated over, and know how many members they have:
+
+>>> len(Color)
+3
+
+>>> list(Color)
+[<Color.RED: 1>, <Color.BLUE: 2>, <Color.GREEN: 3>]
+
+Methods can be added to enumerations, and members can have their own
+attributes -- see the documentation for details.
+
+Return True if member is a member of this enum
+raises TypeError if member is not an enum member
+
+note: in 3.12 TypeError will no longer be raised, and True will also be
+returned if member is the value of a member in this enum
+
+Returns True if self has at least the same flags set as other.
+
+Return the cumulative line number of the line that has just been read.
+Before the first line has been read, returns 0. After the last line
+of the last file has been read, returns the line number of that line.
+
+Return the line number in the current file. Before the first line
+has been read, returns 0. After the last line of the last file has
+been read, returns the line number of that line within the file.
+
+Return the file number of the current file. When no file is currently
+opened, returns -1.
+
+FileInput([files[, inplace[, backup]]], *, mode=None, openhook=None)
+
+Class FileInput is the implementation of the module; its methods
+filename(), lineno(), fileline(), isfirstline(), isstdin(), fileno(),
+nextfile() and close() correspond to the functions of the same name
+in the module.
+In addition it has a readline() method which returns the next
+input line, and a __getitem__() method which implements the
+sequence behavior. The sequence must be accessed in strictly
+sequential order; random access and readline() cannot be mixed.
+
+Filename matching with shell patterns.
+
+fnmatch(FILENAME, PATTERN) matches according to the local convention.
+fnmatchcase(FILENAME, PATTERN) always takes case in account.
+
+The functions operate by translating the pattern into a regular
+expression.  They cache the compiled regular expressions for speed.
+
+The function translate(PATTERN) returns a regular expression
+corresponding to PATTERN.  (It does not compile it.)
+
+Converts a finite Decimal instance to a rational number, exactly.
+
+Parse the '150' response for a RETR request.
+Returns the expected transfer size or None; size is not guaranteed to
+be present in the 150 message.
+
+Initialization method (called by class instantiation).
+Initialize host to localhost, port to standard ftp port.
+Optional arguments are host (for connect()),
+and user, passwd, acct (for login()).
+
+Return a >= b.  Computed by @total_ordering from (not a < b).
+
+Transform list into a maxheap, in-place, in O(len(x)) time.
+
+Return a separate copy of this hashing object.
+
+An update to this copy won't affect the original object.
+
+Return socket instance used to connect to IMAP4 server.
+
+socket = <instance>.socket()
+
+Checkpoint mailbox on server.
+
+(typ, [data]) = <instance>.check()
+
+Close currently selected mailbox.
+
+Deleted messages are removed from writable mailbox.
+This is the recommended command before 'LOGOUT'.
+
+(typ, [data]) = <instance>.close()
+
+Permanently remove deleted items from selected mailbox.
+
+Generates 'EXPUNGE' response for each deleted message.
+
+(typ, [data]) = <instance>.expunge()
+
+'data' is list of 'EXPUNGE'd message numbers in order received.
+
+Clean up indentation from docstrings.
+
+Any whitespace that can be uniformly removed from the second line
+onwards is removed.
+
+Private helper to test if `obj` is a duck type of FunctionType.
+A good example of such objects are functions compiled with
+Cython, which have all attributes that a pure Python function
+would have, but have their code statically compiled.
+
+Return true if the object is a member descriptor.
+
+Member descriptors are specialized descriptors defined in extension
+modules.
+
+Get a BoundArguments object, that maps the passed `args`
+and `kwargs` to the function's signature.  Raises `TypeError`
+if the passed arguments can not be bound.
+
+Return the longhand version of the IP address as a string.
+
+Return prefix length from a numeric string
+
+Args:
+    prefixlen_str: The string to be converted
+
+Returns:
+    An integer, the prefix length.
+
+Raises:
+    NetmaskValueError: If the input is not a valid netmask
+
+Returns an IP address as a formatted string.
+
+Supported presentation types are:
+'s': returns the IP address as a string (default)
+'b': converts to binary and returns a zero-padded string
+'X' or 'x': converts to upper- or lower-case hex and returns a zero-padded string
+'n': the same as 'b' for IPv4 and 'x' for IPv6
+
+For binary and hex presentation types, the alternate form specifier
+'#' and the grouping option '_' are supported.
+
+Turn the given IP string into an integer for comparison.
+
+Args:
+    ip_str: A string, the IP ip_str.
+
+Returns:
+    The IP ip_str as an integer.
+
+Raises:
+    AddressValueError: if ip_str isn't a valid IPv4 Address.
+
+Test if this address is allocated for public networks.
+
+Returns:
+    A boolean, True if the address is not reserved per
+    iana-ipv4-special-registry.
+
+Get a line for a Python source file from the cache.
+Update the cache if it doesn't contain an entry for this file already.
+
+strcoll(string,string) -> int.
+Compares two strings according to the locale.
+
+Returns the current setting for the given locale category as
+tuple (language code, encoding).
+
+category may be one of the LC_* value except LC_ALL. It
+defaults to LC_CTYPE.
+
+Except for the code 'C', the language code corresponds to RFC
+1766.  code and encoding can be None in case the values cannot
+be determined.
+
+Return whether the file supports seeking.
+
+Write a bytes object to the file.
+
+Returns the number of uncompressed bytes written, which is
+always the length of data in bytes. Note that due to buffering,
+the file on disk may not reflect the data written until close()
+is called.
+
+Called before writing each message to file f.
+
+Return a file-like representation or raise a KeyError.
+
+Remove the keyed message; raise KeyError if it doesn't exist.
+
+Copy format-specific state to message insofar as possible.
+
+Guess the MIME type of a file.
+
+This module defines two useful functions:
+
+guess_type(url, strict=True) -- guess the MIME type and encoding of a URL.
+
+guess_extension(type, strict=True) -- guess the extension for a given MIME type.
+
+It also contains the following, for tuning the behavior:
+
+Data:
+
+knownfiles -- list of files to parse
+inited -- flag set when init() has been called
+suffix_map -- dictionary mapping suffixes to suffixes
+encodings_map -- dictionary mapping suffixes to encodings
+types_map -- dictionary mapping suffixes to types
+
+Functions:
+
+init([files]) -- parse a list of files, default knownfiles (on Windows, the
+  default values are taken from the registry)
+read_mime_types(file) -- parse one file, return a dictionary or None
+
+Return a list of modules that appear to be missing. Use
+any_missing_maybe() if you want to know which modules are
+certain to be missing, and which *may* be missing.
+
+Set the debugging level.  Argument 'level' means:
+0: no debugging output (default)
+1: print commands and responses but not body text etc.
+2: also print raw lines read and sent before stripping CR/LF
+
+Internal: send a command and get the response plus following text.
+Same as _longcmd() and _getlongresp(), except that the returned `lines`
+are unicode strings rather than bytes objects.
+
+Get a description for a single group.  If more than one
+group matches ('group' is a pattern), return the first.  If no
+group matches, return an empty string.
+
+This elides the response code from the server, since it can
+only be '215' or '285' (for xgtitle) anyway.  If the response
+code is needed, use the 'descriptions' method.
+
+NOTE: This neither checks for a wildcard in 'group' nor does
+it check whether the group actually exists.
+
+This works identically to NNTP.__init__, except for the change
+in default port and the `ssl_context` argument for SSL connections.
+
+Declare that you are done with this OptionParser.  This cleans up
+reference cycles so the OptionParser (and all objects referenced by
+it) can be garbage-collected promptly.  After calling destroy(), the
+OptionParser is unusable.
+
+renames(old, new)
+
+Super-rename; create directories as necessary and delete any left
+empty.  Works like rename, except creation of any intermediate
+directories needed to make the new pathname good is attempted
+first.  After the rename, directories corresponding to rightmost
+path segments of the old name will be pruned until either the
+whole path is consumed or a nonempty directory is found.
+
+Note: this function can fail with the new directory structure made
+if you lack permissions needed to unlink the leaf directory or
+file.
+
+A list of the final component's suffixes, if any.
+
+These include the leading periods. For example: ['.tar', '.gz']
+
+Return an absolute version of this path by prepending the current
+working directory. No normalization or symlink resolution is performed.
+
+Use resolve() to get the canonical path to a file.
+
+Check whether specified line seems to be executable.
+
+Return `lineno` if it is, 0 if not (e.g. a docstring, comment, blank
+line or EOF). Warning: testing is not comprehensive.
+
+disable bpnumber [bpnumber ...]
+Disables the breakpoints given as a space separated list of
+breakpoint numbers.  Disabling a breakpoint means it cannot
+cause the program to stop execution, but unlike clearing a
+breakpoint, it remains in the list of breakpoints and can be
+(re-)enabled.
+
+d(own) [count]
+Move the current frame count (default one) levels down in the
+stack trace (to a newer frame).
+
+This takes a binary file for reading a pickle data stream.
+
+The protocol version of the pickle is detected automatically, so
+no proto argument is needed.
+
+The argument *file* must have two methods, a read() method that
+takes an integer argument, and a readline() method that requires
+no arguments.  Both methods should return bytes.  Thus *file*
+can be a binary file object opened for reading, an io.BytesIO
+object, or any other custom object that meets this interface.
+
+The file-like object must have two methods, a read() method
+that takes an integer argument, and a readline() method that
+requires no arguments.  Both methods should return bytes.
+Thus file-like object can be a binary file object opened for
+reading, a BytesIO object, or any other custom object that
+meets this interface.
+
+If *buffers* is not None, it should be an iterable of buffer-enabled
+objects that is consumed each time the pickle stream references
+an out-of-band buffer view.  Such buffers have been given in order
+to the *buffer_callback* of a Pickler object.
+
+If *buffers* is None (the default), then the buffers are taken
+from the pickle stream, assuming they are serialized there.
+It is an error for *buffers* to be None if the pickle stream
+was produced with a non-None *buffer_callback*.
+
+Other optional arguments are *fix_imports*, *encoding* and
+*errors*, which are used to control compatibility support for
+pickle stream generated by Python 2.  If *fix_imports* is True,
+pickle will try to map the old Python 2 names to the new names
+used in Python 3.  The *encoding* and *errors* tell pickle how
+to decode 8-bit string instances pickled by Python 2; these
+default to 'ASCII' and 'strict', respectively. *encoding* can be
+'bytes' to read these 8-bit string instances as bytes objects.
+
+Conversion pipeline templates.
+
+The problem:
+------------
+
+Suppose you have some data that you want to convert to another format,
+such as from GIF image format to PPM image format.  Maybe the
+conversion involves several steps (e.g. piping it through compress or
+uuencode).  Some of the conversion steps may require that their input
+is a disk file, others may be able to read standard input; similar for
+their output.  The input to the entire conversion may also be read
+from a disk file or from an open file, and similar for its output.
+
+The module lets you construct a pipeline template by sticking one or
+more conversion steps together.  It will take care of creating and
+removing temporary files if they are necessary to hold intermediate
+data.  You can then use the template to do conversions from many
+different sources to many different destinations.  The temporary
+file names used are different each time the template is used.
+
+The templates are objects so you can create templates for many
+different conversion steps and store them in a dictionary, for
+instance.
+
+
+Directions:
+-----------
+
+To create a template:
+    t = Template()
+
+To add a conversion step to a template:
+   t.append(command, kind)
+where kind is a string of two characters: the first is '-' if the
+command reads its standard input or 'f' if it requires a file; the
+second likewise for the output. The command must be valid /bin/sh
+syntax.  If input or output files are required, they are passed as
+$IN and $OUT; otherwise, it must be  possible to use the command in
+a pipeline.
+
+To add a conversion step at the beginning:
+   t.prepend(command, kind)
+
+To convert a file to another file using a template:
+  sts = t.copy(infile, outfile)
+If infile or outfile are the empty string, standard input is read or
+standard output is written, respectively.  The return value is the
+exit status of the conversion pipeline.
+
+To open a file for reading or writing through a conversion pipeline:
+   fp = t.open(file, mode)
+where mode is 'r' to read the file, or 'w' to write it -- just like
+for the built-in function open() or for os.popen().
+
+To create a new template object initialized to a given one:
+   t2 = t.clone()
+
+t.prepend(cmd, kind) adds a new step at the front.
+
+Returns the system's release version, e.g. '#3 on degas'
+
+An empty string is returned if the value cannot be determined.
+
+Returns the machine type, e.g. 'i386'
+
+An empty string is returned if the value cannot be determined.
+
+Send user name, return response
+
+(should indicate password required).
+
+Byte-compile one Python source file to Python bytecode.
+
+:param file: The source file name.
+:param cfile: The target byte compiled file name.  When not given, this
+    defaults to the PEP 3147/PEP 488 location.
+:param dfile: Purported file name, i.e. the file name that shows up in
+    error messages.  Defaults to the source file name.
+:param doraise: Flag indicating whether or not an exception should be
+    raised when a compile error is found.  If an exception occurs and this
+    flag is set to False, a string indicating the nature of the exception
+    will be printed, and the function will return to the caller. If an
+    exception occurs and this flag is set to True, a PyCompileError
+    exception will be raised.
+:param optimize: The optimization level for the compiler.  Valid values
+    are -1, 0, 1 and 2.  A value of -1 means to use the optimization
+    level of the current interpreter, as given by -O command line options.
+:param invalidation_mode:
+:param quiet: Return full output with False or 0, errors only with 1,
+    and no output with 2.
+
+:return: Path to the resulting byte compiled file.
+
+Note that it isn't necessary to byte-compile Python modules for
+execution efficiency -- Python itself byte-compiles a module when
+it is loaded, and if it can, writes out the bytecode to the
+corresponding .pyc file.
+
+However, if a Python installation is shared between users, it is a
+good idea to byte-compile all modules upon installation, since
+other users may not be able to write in the source directories,
+and thus they won't be able to write the .pyc file, and then
+they would be byte-compiling every module each time it is loaded.
+This can slow down program start-up considerably.
+
+See compileall.py for a script/module that uses this module to
+byte-compile all installed files (or all files in selected
+directories).
+
+Do note that FileExistsError is raised if cfile ends up pointing at a
+non-regular file or symlink. Because the compilation uses a file renaming,
+the resulting file would be regular and thus not the same type of file as
+it was previously.
+
+Get a class name and qualify it with a module name if necessary.
+
+Omit part of a string if needed to make it fit in a maximum length.
+
+Guess whether a path refers to a package directory.
+
+Start an HTTP server thread on a specific port.
+
+Start an HTML/text server thread, so HTML or text documents can be
+browsed dynamically and interactively with a web browser.  Example use:
+
+    >>> import time
+    >>> import pydoc
+
+    Define a URL handler.  To determine what the client is asking
+    for, check the URL and content_type.
+
+    Then get or generate some text or HTML code and return it.
+
+    >>> def my_url_handler(url, content_type):
+    ...     text = 'the URL sent was: (%s, %s)' % (url, content_type)
+    ...     return text
+
+    Start server thread on port 0.
+    If you use port 0, the server will pick a random port number.
+    You can then use serverthread.port to get the port number.
+
+    >>> port = 0
+    >>> serverthread = pydoc._start_server(my_url_handler, port)
+
+    Check that the server is really started.  If it is, open browser
+    and get first page.  Use serverthread.url as the starting page.
+
+    >>> if serverthread.serving:
+    ...    import webbrowser
+
+    The next two lines are commented out so a browser doesn't open if
+    doctest is run on this module.
+
+    #...    webbrowser.open(serverthread.url)
+    #True
+
+    Let the server do its thing. We just need to monitor its status.
+    Use time.sleep so the loop doesn't hog the CPU.
+
+    >>> starttime = time.monotonic()
+    >>> timeout = 1                    #seconds
+
+    This is a short timeout for testing purposes.
+
+    >>> while serverthread.serving:
+    ...     time.sleep(.01)
+    ...     if serverthread.serving and time.monotonic() - starttime > timeout:
+    ...          serverthread.stop()
+    ...          break
+
+    Print any errors that may have occurred.
+
+    >>> print(serverthread.error)
+    None
+
+Produce HTML documentation for a class object.
+
+Format an argument default value as text.
+
+Generate an HTML index for a directory of modules.
+
+Return the approximate size of the queue (not reliable!).
+
+Triangular distribution.
+
+Continuous distribution bounded by given lower and upper limits,
+and having a given mode value in-between.
+
+http://en.wikipedia.org/wiki/Triangular_distribution
+
+runpy.py - locating and running Python code using the module namespace
+
+Provides support for locating and running Python scripts using the Python
+module namespace instead of the native filesystem.
+
+This allows Python code to play nicely with non-filesystem based PEP 302
+importers when locating support scripts as well as when importing modules.
+
+Runs the designated module in the __main__ namespace
+
+Note that the executed module will have full access to the
+__main__ namespace. If this is not desirable, the run_module()
+function should be used to run the module code in a fresh namespace.
+
+At the very least, these variables in __main__ will be overwritten:
+    __name__
+    __file__
+    __cached__
+    __loader__
+    __package__
+
+Base class for shelf implementations.
+
+This is initialized with a dictionary-like object.
+See the module's __doc__ string for an overview of the interface.
+
+Return a shell-escaped string from *split_command*.
+
+Push a token onto the stack popped by the get_token method
+
+Returns the `user base` directory path.
+
+The `user base` directory can be used to store data. If the global
+variable ``USER_BASE`` is not initialized yet, this function will also set
+it.
+
+Base class for all exceptions raised by this module.
+
+The command or option is not supported by the SMTP server.
+
+This exception is raised when an attempt is made to run a command or a
+command with an option which is not supported by the server.
+
+Called to shutdown and close an individual request.
+
+Mix-in class to handle each request in a new process.
+
+Basic statistics module.
+
+This module provides functions for calculating statistics of data, including
+averages, variance, and standard deviation.
+
+Calculating averages
+--------------------
+
+==================  ==================================================
+Function            Description
+==================  ==================================================
+mean                Arithmetic mean (average) of data.
+fmean               Fast, floating point arithmetic mean.
+geometric_mean      Geometric mean of data.
+harmonic_mean       Harmonic mean of data.
+median              Median (middle value) of data.
+median_low          Low median of data.
+median_high         High median of data.
+median_grouped      Median, or 50th percentile, of grouped data.
+mode                Mode (most common value) of data.
+multimode           List of modes (most common values of data).
+quantiles           Divide data into intervals with equal probability.
+==================  ==================================================
+
+Calculate the arithmetic mean ("the average") of data:
+
+>>> mean([-1.0, 2.5, 3.25, 5.75])
+2.625
+
+
+Calculate the standard median of discrete data:
+
+>>> median([2, 3, 4, 5])
+3.5
+
+
+Calculate the median, or 50th percentile, of data grouped into class intervals
+centred on the data values provided. E.g. if your data points are rounded to
+the nearest whole number:
+
+>>> median_grouped([2, 2, 3, 3, 3, 4])  #doctest: +ELLIPSIS
+2.8333333333...
+
+This should be interpreted in this way: you have two data points in the class
+interval 1.5-2.5, three data points in the class interval 2.5-3.5, and one in
+the class interval 3.5-4.5. The median of these data points is 2.8333...
+
+
+Calculating variability or spread
+---------------------------------
+
+==================  =============================================
+Function            Description
+==================  =============================================
+pvariance           Population variance of data.
+variance            Sample variance of data.
+pstdev              Population standard deviation of data.
+stdev               Sample standard deviation of data.
+==================  =============================================
+
+Calculate the standard deviation of sample data:
+
+>>> stdev([2.5, 3.25, 5.5, 11.25, 11.75])  #doctest: +ELLIPSIS
+4.38961843444...
+
+If you have previously calculated the mean, you can pass it as the optional
+second argument to the four "spread" functions to avoid recalculating it:
+
+>>> data = [1, 2, 2, 4, 4, 4, 5, 6]
+>>> mu = mean(data)
+>>> pvariance(data, mu)
+2.5
+
+
+Statistics for relations between two inputs
+-------------------------------------------
+
+==================  ====================================================
+Function            Description
+==================  ====================================================
+covariance          Sample covariance for two variables.
+correlation         Pearson's correlation coefficient for two variables.
+linear_regression   Intercept and slope for simple linear regression.
+==================  ====================================================
+
+Calculate covariance, Pearson's correlation, and simple linear regression
+for two inputs:
+
+>>> x = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+>>> y = [1, 2, 3, 1, 2, 3, 1, 2, 3]
+>>> covariance(x, y)
+0.75
+>>> correlation(x, y)  #doctest: +ELLIPSIS
+0.31622776601...
+>>> linear_regression(x, y)  #doctest:
+LinearRegression(slope=0.1, intercept=1.5)
+
+
+Exceptions
+----------
+
+A single exception is defined: StatisticsError is a subclass of ValueError.
+
+Square root of n/m as a float, correctly rounded.
+
+Square root of n/m as a Decimal, correctly rounded.
+
+Convert data to floats and compute the geometric mean.
+
+Raises a StatisticsError if the input dataset is empty,
+if it contains a zero, or if it contains a negative value.
+
+No special efforts are made to achieve exact results.
+(However, this may change in the future.)
+
+>>> round(geometric_mean([54, 24, 36]), 9)
+36.0
+
+Compute the Standard Score.  (x - mean) / stdev
+
+Describes *x* in terms of the number of standard deviations
+above or below the mean of the normal distribution.
+
+Return the mode of the normal distribution
+
+The mode is the value x where which the probability density
+function (pdf) takes its maximum value.
+
+capwords(s [,sep]) -> string
+
+Split the argument into words using split, capitalize each
+word using capitalize, and join the capitalized words using
+join.  If the optional second argument sep is absent or None,
+runs of whitespace characters are replaced by a single space
+and leading and trailing whitespace are removed, otherwise
+sep is used to split and join the words.
+
+Check if child process has terminated.  Returns returncode
+attribute.
+
+This method is called by __del__, so it can only refer to objects
+in its local scope.
+
+Internal implementation of wait() on Windows.
+
+Construct and return tuple with IO objects:
+p2cread, p2cwrite, c2pread, c2pwrite, errread, errwrite
+
+Terminate the process with SIGTERM
+
+Return *True* if the symbol is local.
+
+Generate the Python module containing build-time variables.
+
+Initialize the module as appropriate for NT
+
+Display all information sysconfig detains.
+
+Convert a number field to a python number.
+
+Exception for unavailable compression methods.
+
+Return a POSIX.1-2008 extended or global header sequence
+that contains a list of keyword, value pairs. The values
+must be strings.
+
+Make a file from a TarInfo object with an unknown type
+at targetpath.
+
+Make a character or block device called targetpath.
+
+fill(text : string) -> string
+
+Reformat the single paragraph in 'text' to fit in lines of no
+more than 'self.width' columns, and return a new string
+containing the entire wrapped paragraph.
+
+Implements a Barrier.
+
+Useful for synchronizing a fixed number of threads at known synchronization
+points.  Threads block on 'wait()' and are simultaneously awoken once they
+have all made that call.
+
+Drop any shutdown locks that don't correspond to running threads anymore.
+
+Calling this from time to time avoids an ever-growing _shutdown_locks
+set when Thread objects are not joined explicitly. See bpo-37788.
+
+This must be called with _shutdown_locks_lock acquired.
+
+Wake up one or more threads waiting on this condition, if any.
+
+If the calling thread has not acquired the lock when this method is
+called, a RuntimeError is raised.
+
+This method wakes up at most n of the threads waiting for the condition
+variable; it is a no-op if no threads are waiting.
+
+A string used for identification purposes only.
+
+It has no semantics. Multiple threads may be given the same name. The
+initial name is set by the constructor.
+
+Class for timing execution speed of small code snippets.
+
+The constructor takes a statement to be timed, an additional
+statement used for setup, and a timer function.  Both statements
+default to 'pass'; the timer function is platform-dependent (see
+module doc string).  If 'globals' is specified, the code will be
+executed within that namespace (as opposed to inside timeit's
+namespace).
+
+To measure the execution time of the first statement, use the
+timeit() method.  The repeat() method is a convenience to call
+timeit() multiple times and return a list of results.
+
+The statements may contain newlines, as long as they don't contain
+multi-line string literals.
+
+Helper class: Datatype to store Turtle attributes
+
+Check if the string color is a legal Tkinter color string.
+
+Pop up a dialog window for input of a number.
+
+Arguments: title is the title of the dialog window,
+prompt is a text mostly describing what numerical information to input.
+default: default value
+minval: minimum value for input
+maxval: maximum value for input
+
+The number input must be in the range minval .. maxval if these are
+given. If not, a hint is issued and the dialog remains open for
+correction. Return the number input.
+If the dialog is canceled,  return None.
+
+Example (for a TurtleScreen instance named screen):
+>>> screen.numinput("Poker", "Your stakes:", 1000, minval=10, maxval=10000)
+
+Set or return backgroundcolor of the TurtleScreen.
+
+Arguments (if given): a color string or three numbers
+in the range 0..colormode or a 3-tuple of such numbers.
+
+Example (for a TurtleScreen instance named screen):
+>>> screen.bgcolor("orange")
+>>> screen.bgcolor()
+'orange'
+>>> screen.bgcolor(0.5,0,0.5)
+>>> screen.bgcolor()
+'#800080'
+
+Return the height of the turtle window.
+
+Example (for a TurtleScreen instance named screen):
+>>> screen.window_height()
+480
+
+Set the angle measurement units to radians.
+
+No arguments.
+
+Example (for a Turtle instance named turtle):
+>>> turtle.heading()
+90
+>>> turtle.radians()
+>>> turtle.heading()
+1.5707963267948966
+
+Move turtle to an absolute position.
+
+Aliases: setpos | setposition | goto:
+
+Arguments:
+x -- a number      or     a pair/vector of numbers
+y -- a number             None
+
+call: goto(x, y)         # two coordinates
+--or: goto((x, y))       # a pair (tuple) of coordinates
+--or: goto(vec)          # e.g. as returned by pos()
+
+Move turtle to an absolute position. If the pen is down,
+a line will be drawn. The turtle's orientation does not change.
+
+Example (for a Turtle instance named turtle):
+>>> tp = turtle.pos()
+>>> tp
+(0.00, 0.00)
+>>> turtle.setpos(60,30)
+>>> turtle.pos()
+(60.00,30.00)
+>>> turtle.setpos((20,80))
+>>> turtle.pos()
+(20.00,80.00)
+>>> turtle.setpos(tp)
+>>> turtle.pos()
+(0.00,0.00)
+
+Set resizemode to one of the values: "auto", "user", "noresize".
+
+(Optional) Argument:
+rmode -- one of the strings "auto", "user", "noresize"
+
+Different resizemodes have the following effects:
+  - "auto" adapts the appearance of the turtle
+           corresponding to the value of pensize.
+  - "user" adapts the appearance of the turtle according to the
+           values of stretchfactor and outlinewidth (outline),
+           which are set by shapesize()
+  - "noresize" no adaption of the turtle's appearance takes place.
+If no argument is given, return current resizemode.
+resizemode("user") is called by a call of shapesize with arguments.
+
+
+Examples (for a Turtle instance named turtle):
+>>> turtle.resizemode("noresize")
+>>> turtle.resizemode()
+'noresize'
+
+Draw a dot with diameter size, using color.
+
+Optional arguments:
+size -- an integer >= 1 (if given)
+color -- a colorstring or a numeric color tuple
+
+Draw a circular dot with diameter size, using color.
+If size is not given, the maximum of pensize+4 and 2*pensize is used.
+
+Example (for a Turtle instance named turtle):
+>>> turtle.dot()
+>>> turtle.fd(50); turtle.dot(20, "blue"); turtle.fd(50)
+
+Go into mainloop until the mouse is clicked.
+
+No arguments.
+
+Bind bye() method to mouseclick on TurtleScreen.
+If "using_IDLE" - value in configuration dictionary is False
+(default value), enter mainloop.
+If IDLE with -n switch (no subprocess) is used, this value should be
+set to True in turtle.cfg. In this case IDLE's mainloop
+is active also for the client script.
+
+This is a method of the Screen-class and not available for
+TurtleScreen instances.
+
+Example (for a Screen instance named screen):
+>>> screen.exitonclick()
+
+Call the __prepare__ method of the appropriate metaclass.
+
+Returns (metaclass, namespace, kwds) as a 3-tuple
+
+*metaclass* is the appropriate metaclass
+*namespace* is the prepared class namespace
+*kwds* is an updated copy of the passed in kwds argument with any
+'metaclass' entry removed. If no kwds argument is passed in, this will
+be an empty dict.
+
+Return the repr() of an object, special-casing types (internal helper).
+
+If obj is a type, we return a shorter version than the default
+type.__repr__, based on the module and qualified name, which is
+typically enough to uniquely identify a type.  For everything
+else, we fall back on repr(obj).
+
+Internal wrapper caching __getitem__ of generic types.
+
+For non-hashable arguments, the original function is used as a fallback.
+
+Special typing construct to indicate final names to type checkers.
+
+A final name cannot be re-assigned or overridden in a subclass.
+
+For example::
+
+    MAX_SIZE: Final = 9000
+    MAX_SIZE += 1  # Error reported by type checker
+
+    class Connection:
+        TIMEOUT: Final[int] = 10
+
+    class FastConnector(Connection):
+        TIMEOUT = 1  # Error reported by type checker
+
+There is no runtime checking of these properties.
+
+Optional[X] is equivalent to Union[X, None].
+
+The kwargs for a ParamSpec object.
+
+Given a ParamSpec object P, P.kwargs is an instance of ParamSpecKwargs.
+
+ParamSpecKwargs objects have a reference back to their ParamSpec:
+
+   P.kwargs.__origin__ is P
+
+This type is meant for runtime introspection and has no special meaning to
+static type checkers.
+
+Decorator to indicate that annotations are not type hints.
+
+The argument must be a class or function; if it is a class, it
+applies recursively to all methods and classes defined in that class
+(but not to methods defined in its superclasses or subclasses).
+
+This mutates the function(s) or class(es) in place.
+
+Ask a static type checker to reveal the inferred type of an expression.
+
+When a static type checker encounters a call to ``reveal_type()``,
+it will emit the inferred type of the argument::
+
+    x: int = 1
+    reveal_type(x)
+
+Running a static type checker (e.g., mypy) on this example
+will produce output similar to 'Revealed type is "builtins.int"'.
+
+At runtime, the function prints the runtime type of the
+argument and returns the argument unchanged.
+
+Used to setup TypeVars and ParamSpec's bound, covariant and
+contravariant attributes.
+
+Get the hardware address on Unix by running ifconfig.
+
+Warn that *name* is deprecated or should be removed.
+
+RuntimeError is raised if *remove* specifies a major/minor tuple older than
+the current Python version or the same version but past the alpha.
+
+The *message* argument is formatted with *name* and *remove* as a Python
+version (e.g. "3.11").
+
+Extract a member from the archive to the current working directory,
+using its full name. Its file information is extracted as accurately
+as possible. `member' may be a filename or a ZipInfo object. You can
+specify a different directory using `path'.
+
+Upgrade transport to TLS.
+
+Return a new transport that *protocol* should start using
+immediately.
+
+Set the current event loop policy.
+
+If policy is None, the default policy is restored.
+
+Run the event loop until a Future is done.
+
+Return the Future's result, or raise its exception.
+
+A coroutine which creates a UNIX Domain Socket server.
+
+The return value is a Server object, which can be used to stop
+the service.
+
+path is a str, representing a file system path to bind the
+server socket to.
+
+sock can optionally be specified in order to use a preexisting
+socket object.
+
+backlog is the maximum number of queued connections passed to
+listen() (defaults to 100).
+
+ssl can be set to an SSLContext to enable SSL over the
+accepted connections.
+
+ssl_handshake_timeout is the time in seconds that an SSL server
+will wait for the SSL handshake to complete (defaults to 60s).
+
+ssl_shutdown_timeout is the time in seconds that an SSL server
+will wait for the SSL shutdown to finish (defaults to 30s).
+
+start_serving set to True (default) causes the created server
+to start accepting connections immediately.  When set to False,
+the user should await Server.start_serving() or Server.serve_forever()
+to make the server to start accepting connections.
+
+A coroutine which creates a datagram endpoint.
+
+This method will try to establish the endpoint in the background.
+When successful, the coroutine returns a (transport, protocol) pair.
+
+protocol_factory must be a callable returning a protocol instance.
+
+socket family AF_INET, socket.AF_INET6 or socket.AF_UNIX depending on
+host (or family if specified), socket type SOCK_DGRAM.
+
+reuse_address tells the kernel to reuse a local socket in
+TIME_WAIT state, without waiting for its natural timeout to
+expire. If not specified it will automatically be set to True on
+UNIX.
+
+reuse_port tells the kernel to allow this endpoint to be bound to
+the same port as other existing endpoints are bound to, so long as
+they all set this flag when being created. This option is not
+supported on Windows and some UNIX's. If the
+:py:data:`~socket.SO_REUSEPORT` constant is not defined then this
+capability is unsupported.
+
+allow_broadcast tells the kernel to allow this endpoint to send
+messages to the broadcast address.
+
+sock can optionally be specified in order to use a preexisting
+socket object.
+
+Incomplete read error. Attributes:
+
+- partial: read bytes string before the end of stream was reached
+- expected: total number of expected bytes (or None if unknown)
+
+Return True if the future was cancelled.
+
+By default, wake up one coroutine waiting on this condition, if any.
+If the calling coroutine has not acquired the lock when this method
+is called, a RuntimeError is raised.
+
+This method wakes up at most n of the coroutines waiting for the
+condition variable; it is a no-op if no coroutines are waiting.
+
+Note: an awakened coroutine does not actually return from its
+wait() call until it can reacquire the lock. Since notify() does
+not release the lock, its caller should.
+
+Called when the transport's buffer drains below the low-water mark.
+
+See pause_writing() for details.
+
+Send data to the socket.
+
+The socket must be connected to a remote socket. This method continues
+to send data from data until either all data has been sent or an
+error occurs. None is returned on success. On error, an exception is
+raised, and there is no way to determine how much data, if any, was
+successfully processed by the receiving end of the connection.
+
+Close the transport.
+
+Buffered data will be flushed asynchronously.  No more data
+will be received.  After all buffered data is flushed, the
+protocol's connection_lost() method will (eventually) called
+with None as its argument.
+
+Resume the receiving end.
+
+Data received will once again be passed to the protocol's
+data_received() method.
+
+Wait for the Futures or Tasks given by fs to complete.
+
+The fs iterable must not be empty.
+
+Coroutines will be wrapped in Tasks.
+
+Returns two sets of Future: (done, pending).
+
+Usage:
+
+    done, pending = await asyncio.wait(fs)
+
+Note: This does not raise TimeoutError! Futures that aren't done
+when the timeout occurs are returned in the second set.
+
+Close the transport immediately.
+
+Buffered data will be lost.  No more data will be received.
+The protocol's connection_lost() method will (eventually) be
+called with None as its argument.
+
+Get subprocess returncode.
+
+See also
+http://docs.python.org/3/library/subprocess#subprocess.Popen.returncode
+
+UNIX event loop policy with a watcher for child processes.
+
+Wait for a handle.
+
+Return a Future object. The result of the future is True if the wait
+completed, or False if the wait did not complete (on timeout).
+
+Iterator over elements repeating each as many times as its count.
+
+>>> c = Counter('ABCABC')
+>>> sorted(c.elements())
+['A', 'A', 'B', 'B', 'C', 'C']
+
+# Knuth's example for prime factors of 1836:  2**2 * 3**3 * 17**1
+>>> import math
+>>> prime_factors = Counter({2: 2, 3: 3, 17: 1})
+>>> math.prod(prime_factors.elements())
+1836
+
+Note, if an element's count has been set to zero or is a negative
+number, elements() will ignore it.
+
+The operation is not allowed in this state.
+
+On AIX, the buildtime searchpath is stored in the executable.
+as "loader header information".
+The command /usr/bin/dump -H extracts this info.
+Prefix searched libraries with LD_LIBRARY_PATH (preferred),
+or LIBPATH if defined. These paths are appended to the paths
+to libraries the python executable is linked with.
+This mimics AIX dlopen() behavior.
+
+AIX implementation of ctypes.util.find_library()
+Find an archive member that will dlopen(). If not available,
+also search for a file (or link) with a .so suffix.
+
+AIX supports two types of schemes that can be used with dlopen().
+The so-called SystemV Release4 (svr4) format is commonly suffixed
+with .so while the (default) AIX scheme has the library (archive)
+ending with the suffix .a
+As an archive has multiple members (e.g., 32-bit and 64-bit) in one file
+the argument passed to dlopen must include both the library and
+the member names in a single string.
+
+find_library() looks first for an archive (.a) with a suitable member.
+If no archive+member pair is found, look for a .so file.
+
+Link a bunch of stuff together to create a static library file.
+The "bunch of stuff" consists of the list of object files supplied
+as 'objects', the extra object files supplied to
+'add_link_object()' and/or 'set_link_objects()', the libraries
+supplied to 'add_library()' and/or 'set_libraries()', and the
+libraries supplied as 'libraries' (if any).
+
+'output_libname' should be a library name, not a filename; the
+filename will be inferred from the library name.  'output_dir' is
+the directory where the library file will be put.
+
+'debug' is a boolean; if true, debugging information will be
+included in the library (note that on most platforms, it is the
+compile step where this matters: the 'debug' flag is included here
+just for consistency).
+
+'target_lang' is the target language for which the given objects
+are being compiled. This allows specific linkage time treatment of
+certain languages.
+
+Raises LibError on failure.
+
+Link a bunch of stuff together to create an executable or
+shared library file.
+
+The "bunch of stuff" consists of the list of object files supplied
+as 'objects'.  'output_filename' should be a filename.  If
+'output_dir' is supplied, 'output_filename' is relative to it
+(i.e. 'output_filename' can provide directory components if
+needed).
+
+'libraries' is a list of libraries to link against.  These are
+library names, not filenames, since they're translated into
+filenames in a platform-specific way (eg. "foo" becomes "libfoo.a"
+on Unix and "foo.lib" on DOS/Windows).  However, they can include a
+directory component, which means the linker will look in that
+specific directory rather than searching all the normal locations.
+
+'library_dirs', if supplied, should be a list of directories to
+search for libraries that were specified as bare library names
+(ie. no directory component).  These are on top of the system
+default and those supplied to 'add_library_dir()' and/or
+'set_library_dirs()'.  'runtime_library_dirs' is a list of
+directories that will be embedded into the shared library and used
+to search for other shared libraries that *it* depends on at
+run-time.  (This may only be relevant on Unix.)
+
+'export_symbols' is a list of symbols that the shared library will
+export.  (This appears to be relevant only on Windows.)
+
+'debug' is as for 'compile()' and 'create_static_lib()', with the
+slight distinction that it actually matters on most platforms (as
+opposed to 'create_static_lib()', which includes a 'debug' flag
+mostly for form's sake).
+
+'extra_preargs' and 'extra_postargs' are as for 'compile()' (except
+of course that they supply command-line arguments for the
+particular linker being used).
+
+'target_lang' is the target language for which the given objects
+are being compiled. This allows specific linkage time treatment of
+certain languages.
+
+Raises LinkError on failure.
+
+distutils.dep_util
+
+Utility functions for simple, timestamp-based dependency of files
+and groups of files; also, function based entirely on such
+timestamp dependency analysis.
+
+Unable to load an expected module, or to find an expected class
+within some module (in particular, command modules and classes).
+
+Remove duplicate values of an environment variable.
+
+Return the processor architecture.
+
+Possible results are "Intel" or "AMD64".
+
+Tries to find 'executable' in the directories listed in 'path'.
+
+A string listing directories separated by 'os.pathsep'; defaults to
+os.environ['PATH'].  Returns the complete filename or None if not found.
+
+distutils.util
+
+Miscellaneous utility functions -- anything that doesn't fit into
+one of the other *util.py modules.
+
+Construct a source file (just like 'try_cpp()'), run it through
+the preprocessor, and return true if any line of the output matches
+'pattern'.  'pattern' should either be a compiled regex object or a
+string containing a regex.  If both 'body' and 'headers' are None,
+preprocesses an empty file -- which can be useful to determine the
+symbols the preprocessor and compiler set by default.
+
+Try to compile and link a source file, built from 'body' and
+'headers', to executable form.  Return true on success, false
+otherwise.
+
+Convert an arbitrary string to a standard distribution name
+
+Any runs of non-alphanumeric/. characters are replaced with a single '-'.
+
+bare-quoted-string = DQUOTE *([FWS] qcontent) [FWS] DQUOTE
+
+A quoted-string without the leading or trailing white space.  Its
+value is the text between the quote marks, with whitespace
+preserved and quoted pairs decoded.
+
+Read everything up to one of the chars in endchars.
+
+This is outside the formal grammar.  The InvalidMailbox TokenList that is
+returned acts like a Mailbox, but the data attributes are None.
+
+ttext = <matches _ttext_matcher>
+
+We allow any non-TOKEN_ENDS in ttext, but add defects to the token's
+defects list if we find non-ttext characters.  We also register defects for
+*any* non-printables even though the RFC doesn't exclude all of them,
+because we follow the spirit of RFC 5322.
+
+token = [CFWS] 1*ttext [CFWS]
+
+The RFC equivalent of ttext is any US-ASCII chars except space, ctls, or
+tspecials.  We also exclude tabs even though the RFC doesn't.
+
+The RFC implies the CFWS but is not explicit about it in the BNF.
+
+attrtext = 1*(any non-ATTRIBUTE_ENDS character plus '%')
+
+This is a special parsing routine so that we get a value that
+includes % escapes as a single string (which we decode as a single
+string later).
+
+Encode a single header line with Base64 encoding in a given charset.
+
+charset names the character set to use to encode the header.  It defaults
+to iso-8859-1.  Base64 encoding is defined in RFC 2045.
+
+Return the content-transfer-encoding used for body encoding.
+
+This is either the string `quoted-printable' or `base64' depending on
+the encoding used, or it is a function in which case you should call
+the function with a single argument, the Message object being
+encoded.  The function should then set the Content-Transfer-Encoding
+header itself to whatever is appropriate.
+
+Returns "quoted-printable" if self.body_encoding is QP.
+Returns "base64" if self.body_encoding is BASE64.
+Returns conversion function otherwise.
+
+Clone this generator with the exact same options.
+
+Base class for message headers.
+
+Implements generic behavior and provides tools for subclasses.
+
+A subclass must define a classmethod named 'parse' that takes an unfolded
+value string and a dictionary as its arguments.  The dictionary will
+contain one key, 'defects', initialized to an empty list.  After the call
+the dictionary must contain two additional keys: parse_tree, set to the
+parse tree obtained from parsing the header, and 'decoded', set to the
+string value of the idealized representation of the data from the value.
+(That is, encoded words are decoded, and values that have canonical
+representations are so represented.)
+
+The defects key is intended to collect parsing defects, which the message
+parser will subsequently dispose of as appropriate.  The parser should not,
+insofar as practical, raise any errors.  Defects should be added to the
+list instead.  The standard header parsers register defects for RFC
+compliance issues, for obsolete RFC syntax, and for unrecoverable parsing
+errors.
+
+The parse method may add additional keys to the dictionary.  In this case
+the subclass must define an 'init' method, which will be passed the
+dictionary as its keyword arguments.  The method should use (usually by
+setting them as the value of similarly named attributes) and remove all the
+extra keys added by its parse method, and then use super to call its parent
+class with the remaining arguments and keywords.
+
+The subclass should also make sure that a 'max_count' attribute is defined
+that is either None or 1. XXX: need to better define this API.
+
+Return True if the message consists of multiple parts.
+
+Return a list containing the charset(s) used in this message.
+
+The returned list of items describes the Content-Type headers'
+charset parameter for this message and all the subparts in its
+payload.
+
+Each item will either be a string (the value of the charset parameter
+in the Content-Type header of that part) or the value of the
+'failobj' parameter (defaults to None), if the part does not have a
+main MIME type of "text", or the charset is not defined.
+
+The list will contain one string for each part of the message, plus
+one for the container message (i.e. self), so that a non-multipart
+message will still return a list of length 1.
+
+Create a message structure from a string.
+
+Returns the root of the message structure.  Optional headersonly is a
+flag specifying whether to stop parsing after reading the headers or
+not.  The default is False, meaning it parses the entire contents of
+the file.
+
+Return local time as an aware datetime object.
+
+If called without arguments, return current time.  Otherwise *dt*
+argument should be a datetime instance, and it is converted to the
+local time zone according to the system time zone database.  If *dt* is
+naive (that is, dt.tzinfo is None), it is assumed to be in local time.
+In this case, a positive or zero value for *isdst* causes localtime to
+presume initially that summer time (for example, Daylight Saving Time)
+is or is not (respectively) in effect for the specified time.  A
+negative value for *isdst* causes the localtime() function to attempt
+to divine whether summer time is in effect for the specified time.
+
+Create an application/* type MIME document.
+
+_data contains the bytes for the raw application data.
+
+_subtype is the MIME content type subtype, defaulting to
+'octet-stream'.
+
+_encoder is a function which will perform the actual encoding for
+transport of the application data, defaulting to base64 encoding.
+
+Any additional keyword arguments are passed to the base class
+constructor, which turns them into parameters on the Content-Type
+header.
+
+Python Character Mapping Codec mac_greek generated from 'MAPPINGS/VENDORS/APPLE/GREEK.TXT' with gencodec.py.
+
+Return a pair (index, pos), indicating the next occurrence of
+char in str. index is the position of the character considering
+only ordinals up to and including char, and pos is the position in
+the full string. index/pos is the starting position in the full
+string.
+
+Call data.encode("latin-1") but show a better error message.
+
+Read the number of bytes requested.
+
+This function should be used when <amt> bytes "should" be present for
+reading. If the bytes are truly not available (due to EOF), then the
+IncompleteRead exception can be used to detect the problem.
+
+Path component of request-URI, as defined by RFC 2965.
+
+Constructor arguments should be passed as keyword arguments only.
+
+Cookies are NOT loaded from the named file until either the .load() or
+.revert() method is called.
+
+Parse a request (internal).
+
+The request should be stored in self.raw_requestline; the results
+are in self.command, self.path, self.request_version and
+self.headers.
+
+Return True for success, False for failure; on failure, any relevant
+error response has already been sent back.
+
+Log an error.
+
+This is called when a request cannot be fulfilled.  By
+default it passes the message on to log_message().
+
+Arguments are the same as for log_message().
+
+XXX This should go to the separate error log.
+
+Create a module based on the provided spec.
+
+Decorator to verify that the module being requested matches the one the
+loader can handle.
+
+The first argument (self) must define _name which the second argument is
+compared against. If the comparison fails then ImportError is raised.
+
+Returns a list of file-based module loaders.
+
+Each item is a tuple (loader, suffixes).
+
+Use default semantics for module creation.
+
+Concrete implementation of InspectLoader.get_code.
+
+Reading of bytecode requires path_stats to be implemented. To write
+bytecode, set_data must also be implemented.
+
+Return the path to the source file as found by the finder.
+
+Path hook for importlib.machinery.FileFinder.
+
+Return a loader for the module.
+
+If no module is found, return None.  The fullname is a str and
+the path is a list of strings or None.
+
+This method is deprecated since Python 3.4 in favor of
+finder.find_spec(). If find_spec() exists then backwards-compatible
+functionality is provided for this method.
+
+Return a metadata dict for the source pointed to by the path (str).
+Possible keys:
+- 'mtime' (mandatory) is the numeric timestamp of last source
+  code modification;
+- 'size' (optional) is the size in bytes of the source code.
+
+Construct a callable which returns the eager loader made lazy.
+
+Allow an otherwise immutable object to implement mutability
+for compatibility.
+
+>>> recwarn = getfixture('recwarn')
+>>> dl = DeprecatedList(range(3))
+>>> dl[0] = 1
+>>> dl.append(3)
+>>> del dl[3]
+>>> dl.reverse()
+>>> dl.sort()
+>>> dl.extend([4])
+>>> dl.pop(-1)
+4
+>>> dl.remove(1)
+>>> dl += [5]
+>>> dl + [6]
+[1, 2, 5, 6]
+>>> dl + (6,)
+[1, 2, 5, 6]
+>>> dl.insert(0, 0)
+>>> dl
+[0, 1, 2, 5]
+>>> dl == [0, 1, 2, 5]
+True
+>>> dl == (0, 1, 2, 5)
+True
+>>> len(recwarn)
+1
+
+Get the ``Distribution`` instance for the named package.
+
+:param distribution_name: The name of the distribution package as a string.
+:return: A ``Distribution`` instance (or subclass thereof).
+
+Get all ``Distribution`` instances in the current environment.
+
+:return: An iterable of ``Distribution`` instances.
+
+Supply iter so one may construct dicts of EntryPoints by name.
+
+Return a Distribution for the indicated metadata path
+
+:param path: a string or path-like object
+:return: a concrete Distribution instance for the path
+
+Return a normalized version of the name.
+
+Return a file-like object opened for binary reading of the resource.
+
+True if `name` is a resource inside `package`.
+
+Directories are *not* resources.
+
+Return an opened, file-like object for binary reading.
+
+The 'resource' argument is expected to represent only a file name.
+If the resource cannot be found, FileNotFoundError is raised.
+
+Set the class to be used when instantiating a logger. The class should
+define __init__() such that only a name argument is required, and the
+__init__() should call Logger.__init__()
+
+Log a message with severity 'INFO' on the root logger. If the logger has
+no handlers, call basicConfig() to add a console handler with a pre-defined
+format.
+
+Optionally specify a formatter which will be used to format each
+individual record.
+
+Return the footer string for the specified records.
+
+Ensure that there are either loggers or placeholders all the way
+from the specified logger to the root of the logger hierarchy.
+
+Is this logger enabled for level 'level'?
+
+Delegate a warning call to the underlying logger.
+
+Delegate an exception call to the underlying logger.
+
+Resolve strings to objects using standard import and attribute
+syntax.
+
+Convert values to an appropriate type. dicts, lists and tuples are
+replaced by their converting alternatives. Strings are checked to
+see if they have a conversion format and are converted if they do.
+
+Determine the files to delete when rolling over.
+
+More specific than the earlier method, which just used glob.glob().
+
+Try to create a socket, using an exponential backoff with
+a max retry time. Thanks to Robert Olson for the original patch
+(SF #815911) which has been slightly refactored.
+
+Send a pickled string to the socket.
+
+This function allows for partial sends which can happen when the
+network is busy.
+
+Return the event category for the record.
+
+Override this if you want to specify your own categories. This version
+returns 0.
+
+Clean up this handler.
+
+You can remove the application name from the registry as a
+source of event log entries. However, if you do this, you will
+not be able to see the events as you intended in the Event Log
+Viewer - it needs to be able to access the registry to get the
+DLL name.
+
+Should the handler flush its buffer?
+
+Returns true if the buffer is up to capacity. This method can be
+overridden to implement custom flushing strategies.
+
+Emit a record.
+
+Writes the LogRecord to the queue, preparing it for pickling first.
+
+Returns two connection object connected by a pipe
+
+Controls how objects will be reduced to a form that can be
+shared with other processes.
+
+Apply `func` to each element in `iterable`, collecting the results
+in a list that is returned.
+
+Terminate process; sends SIGKILL signal or uses TerminateProcess()
+
+Return a file descriptor (Unix) or handle (Windows) suitable for
+waiting for process termination.
+
+Replacement for pickle.dump() using ForkingPickler.
+
+Receive a handle over a local connection.
+
+Create a random filename for the shared memory object.
+
+Used in concert with _back_transforms_mapping to convert values
+into the appropriate Python objects when retrieving them from
+the list as well as when storing them.
+
+L.index(value) -> integer -- return first index of value.
+Raises ValueError if the value is not present.
+
+Add a function, with arguments, to be called when the test is
+completed. Functions added are called on a LIFO basis and are
+called after tearDown on test failure or success.
+
+Cleanup items are called even if setUp fails (unlike tearDown).
+
+Return a context manager that will return the enclosed block
+of code in a subtest identified by the optional message and
+keyword parameters.  A failure in the subtest marks the test
+case as failed but resumes execution at the end of the enclosed
+block, allowing further test code to be executed.
+
+Honour the longMessage attribute when generating failure messages.
+If longMessage is False this means:
+* Use only an explicit message if it is provided
+* Otherwise use the standard message for the assert
+
+If longMessage is True:
+* Use the standard message
+* If an explicit message is provided, plus ' : ' and the explicit message
+
+Asserts that two iterables have the same elements, the same number of
+times, without regard to order.
+
+    self.assertEqual(Counter(list(first)),
+                     Counter(list(second)))
+
+ Example:
+    - [0, 1, 1] and [1, 0, 1] compare equal.
+    - [0, 0, 1] and [0, 1] compare unequal.
+
+Asserts that the message in a triggered warning matches a regexp.
+Basic functioning is similar to assertWarns() with the addition
+that only warnings whose messages also match the regular expression
+are considered successful matches.
+
+Args:
+    expected_warning: Warning class expected to be triggered.
+    expected_regex: Regex (re.Pattern object or string) expected
+            to be found in error message.
+    args: Function to be called and extra positional args.
+    kwargs: Extra kwargs.
+    msg: Optional message used in case of failure. Can only be used
+            when assertWarnsRegex is used as a context manager.
+
+A mock intended to be used as a property, or other descriptor, on a class.
+`PropertyMock` provides `__get__` and `__set__` methods so you can specify
+a return value when it is fetched.
+
+Fetching a `PropertyMock` instance from an object calls the mock, with
+no args. Setting it calls the mock with the value being set.
+
+assert that the mock was called at least once
+
+assert that the mock was called only once.
+
+assert the mock has been called with the specified calls.
+The `mock_calls` list is checked for the calls.
+
+If `any_order` is False (the default) then the calls must be
+sequential. There can be extra calls before or after the
+specified calls.
+
+If `any_order` is True then the calls can be in any order, but
+they must all appear in `mock_calls`.
+
+Renders self.mock_calls as a string.
+
+        Example: "
+Calls: [call(1), call(2)]."
+
+        If self.mock_calls is empty, an empty string is returned. The
+        output will be truncated if very long.
+
+Converts a sys.exc_info()-style tuple of values into a string.
+
+Same behavior as sorted_list_difference but
+for lists of unorderable items (like dicts).
+
+As it does a linear search per item (remove) it
+has O(n*n) performance.
+
+Transform a string like '<URL:scheme://host/path>' into 'scheme://host/path'.
+
+The string is returned unchanged if it's not a wrapped URL.
+
+splitattr('/path;attr1=value1;attr2=value2;...') ->
+'/path', ['attr1=value1', 'attr2=value2', ...].
+
+Retrieve a URL into a temporary location on disk.
+
+Requires a URL argument. If a filename is passed, it is used as
+the temporary file location. The reporthook argument should be
+a callable that accepts a block number, a read size, and the
+total file size of the URL target. The data argument should be
+valid URL encoded data.
+
+If a filename is passed and the URL points to a local resource,
+the result is a copy from local file to new file.
+
+Returns a tuple containing the path to the newly created
+data file as well as the resulting HTTPMessage object.
+
+Return True iff this host shouldn't be accessed using a proxy
+
+This function uses the MacOSX framework SystemConfiguration
+to fetch the proxy information.
+
+proxy_settings come from _scproxy._get_proxy_settings or get mocked ie:
+{ 'exclude_simple': bool,
+  'exceptions': ['foo.bar', '*.bar.com', '127.0.0.1', '10.1', '10.0/16']
+}
+
+OS-specific conversion from a file system path to a relative URL
+of the 'file' scheme; not recommended for general use.
+
+Default error handling -- don't raise an exception.
+
+Error 307 -- relocated, but turn POST into error.
+
+An entry has one or more user-agents and zero or more rulelines
+
+This class exists to allow virtual environment creation to be
+customized. The constructor parameters determine the builder's
+behaviour when called upon to create a virtual environment.
+
+By default, the builder makes the system (global) site-packages dir
+*un*available to the created environment.
+
+If invoked using the Python -m option, the default is to use copying
+on Windows platforms but symlinks elsewhere. If instantiated some
+other way, the default is to *not* use symlinks.
+
+:param system_site_packages: If True, the system (global) site-packages
+                             dir is available to created environments.
+:param clear: If True, delete the contents of the environment directory if
+              it already exists, before environment creation.
+:param symlinks: If True, attempt to symlink rather than copy files into
+                 virtual environment.
+:param upgrade: If True, upgrade an existing virtual environment.
+:param with_pip: If True, ensure pip is installed in the virtual
+                 environment
+:param prompt: Alternative terminal prefix for the environment.
+:param upgrade_deps: Update the base venv modules to the latest on PyPI
+
+Transmit headers to the client, via self._write()
+
+Delete all occurrences of a header, if present.
+
+Does *not* raise an exception if the header is missing.
+
+Simple implementation of the Level 1 DOM.
+
+Namespaces and other minor Level 2 features are also supported.
+
+parse("foo.xml")
+
+parseString("<foo><bar/></foo>")
+
+Todo:
+=====
+ * convenience methods for getting elements and text.
+ * more testing
+ * bring some of the writer and linearizer code into conformance with this
+        interface
+ * SAX 2 namespaces
+
+Object that represents content-model information for an element.
+
+This implementation is not expected to be used in practice; DOM
+builders should provide implementations which do the right thing
+using information available to it.
+
+Returns true iff the identified attribute is a DTD-style ID.
+
+Element structure builder for XML source data based on the expat parser.
+
+*target* is an optional target object which defaults to an instance of the
+standard TreeBuilder class, *encoding* is an optional encoding string
+which if given, overrides the encoding specified in the XML file:
+http://www.iana.org/assignments/character-sets
+
+Signals the start of an element in non-namespace mode.
+
+The name parameter contains the raw XML 1.0 name of the
+element type as a string and the attrs parameter holds an
+instance of the Attributes class containing the attributes of
+the element.
+
+Signals the end of an element in namespace mode.
+
+The name parameter contains the name of the element type, just
+as with the startElementNS event.
+
+Return the column number where the current event ends.
+
+Returns the public identifier of this InputSource.
+
+server -> an object used to boxcar method calls
+
+server should be a ServerProxy object.
+
+Methods can be added to the MultiCall using normal
+method call syntax e.g.:
+
+multicall = MultiCall(server_proxy)
+multicall.add(2,3)
+multicall.get_address("Guido")
+
+To execute the multicall, call the MultiCall object e.g.:
+
+add_result, address = multicall()

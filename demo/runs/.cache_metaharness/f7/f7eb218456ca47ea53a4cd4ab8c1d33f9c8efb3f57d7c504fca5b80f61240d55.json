@@ -1,0 +1,1 @@
+{"text": "modulo", "usage": {"calls": 1, "input_tokens": 1033, "output_tokens": 104, "cost_usd": 0.0015530000000000001, "latency_s": 3.232459783554077}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

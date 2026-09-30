@@ -1,0 +1,17 @@
+{
+ "name": "smart_extraction",
+ "artifact_id": "87fb6c782d583a2f966f05f06b298dc9f78e79a5472ae7e4b4d7a6915c659aa0",
+ "created_at": 1790753907.7902932,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Robust multi-strategy answer extraction handling formatting variations (commas, bold, patterns) will recover correct answers without requiring LLM prompt changes",
+ "axis": "exploration",
+ "components": [
+  "axis:C"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}

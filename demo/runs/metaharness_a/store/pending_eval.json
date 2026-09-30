@@ -1,0 +1,19 @@
+{
+ "iteration": 4,
+ "candidates": [
+  {
+   "name": "constrained_multi_verify",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "code_extract_single",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

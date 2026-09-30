@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '-183,764\")').",
+  "output": "print(f\"  Previous answer: -183,764\")",
+  "tokens": 4976,
+  "cost_usd": 0.013656000000000001,
+  "steps": 2,
+  "latency_s": 22.080381870269775,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 2,
+   "tool_calls": 0
+  }
+ }
+]

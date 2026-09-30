@@ -1,0 +1,1 @@
+{"text": "ANSWER: 353", "usage": {"calls": 1, "input_tokens": 946, "output_tokens": 106, "cost_usd": 0.0014759999999999999, "latency_s": 3.232272148132324}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

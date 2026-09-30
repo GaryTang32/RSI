@@ -1,0 +1,29 @@
+{
+ "split": "holdout",
+ "score": 0.625,
+ "per_unit": {
+  "holdout-numeric-000": 1.0,
+  "holdout-numeric-001": 1.0,
+  "holdout-numeric-002": 0.0,
+  "holdout-numeric-003": 0.0,
+  "holdout-numeric-004": 1.0,
+  "holdout-numeric-005": 1.0,
+  "holdout-numeric-006": 0.0,
+  "holdout-numeric-007": 1.0
+ },
+ "per_unit_cost": {
+  "holdout-numeric-000": 2101.0,
+  "holdout-numeric-001": 2047.0,
+  "holdout-numeric-002": 2723.0,
+  "holdout-numeric-003": 3726.0,
+  "holdout-numeric-004": 1918.0,
+  "holdout-numeric-005": 5743.0,
+  "holdout-numeric-006": 1810.0,
+  "holdout-numeric-007": 3339.0
+ },
+ "context_cost": 2925.875,
+ "tokens": 2925.875,
+ "families": {
+  "numeric": 0.625
+ }
+}

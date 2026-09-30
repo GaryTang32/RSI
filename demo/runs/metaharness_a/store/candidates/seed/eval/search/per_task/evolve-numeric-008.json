@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-008",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'To verify: 34462116119303 = 53,018,640,183 \u00d7 650 + 253'; expected '353'.",
+  "output": "To verify: 34462116119303 = 53,018,640,183 \u00d7 650 + 253",
+  "tokens": 1100,
+  "cost_usd": 0.002172,
+  "steps": 1,
+  "latency_s": 4.363845586776733,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

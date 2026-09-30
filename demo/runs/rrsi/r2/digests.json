@@ -1,0 +1,22 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "lens": "success",
+  "habits": [
+   {
+    "habit": "Strict tool-based computation: always generates and executes Python code for calculations, never manual arithmetic",
+    "where_shown": "LLM Calls 1–2 both invoke `python3` with `math.factorial(25)` and digit summation; system prompt enforces 'always generate and execute code'"
+   },
+   {
+    "habit": "Answer format compliance: provides final answer in exact mandatory format 'ANSWER: <value>'",
+    "where_shown": "LLM Call 2 concludes with 'ANSWER: 72' matching the prompted format specification"
+   },
+   {
+    "habit": "Re-execution on verification prompt: recalculates when given prior-results context, catching output discrepancies",
+    "where_shown": "LLM Call 2 triggered by 'Based on the following computation results' prompt re-executes same code, yielding sum=72 (correct) vs. Call 1's apparent display issue showing sum=51"
+   }
+  ],
+  "risk_if_removed": "Re-execution discipline is load-bearing: Call 1's capture shows 25! as '15,511,210,043,330,985,984,000' (fewer trailing zeros), yielding incorrect sum=51. Only Call 2's re-execution corrects to '15511210043330985984000000' (correct trailing zeros) and sum=72 (grading: Correct). Without re-verification, wrong answer persists. Format compliance ('ANSWER: 72') is critical for grader extraction.",
+  "family": "numeric"
+ }
+]

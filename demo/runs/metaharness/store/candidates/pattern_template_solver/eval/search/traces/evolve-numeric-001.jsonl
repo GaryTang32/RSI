@@ -1,0 +1,6 @@
+[python]
+
+print(f"ANSWER: {40627866717431 % 148}")
+
+[output]
+ANSWER: 91

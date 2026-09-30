@@ -1,0 +1,17 @@
+{
+ "name": "compute_then_extract",
+ "artifact_id": "2ea1272b72ff9916d5b22593cce8ec095b96cd25b031f204e6eab2b73e2ec3b5",
+ "created_at": 1790754217.164426,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 4,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

@@ -61,6 +61,12 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 The Claude Code skill in `.claude/skills/rsi-improve/SKILL.md` walks through these steps. Each
 method also ships `experiments/<method>/example_new_problem.py` as a template.
 
+## See it working
+
+[`demo/`](demo/README.md) has fresh live runs with Claude Haiku: Meta-Harness, RRSI and autoresearch improving a real LLM agent harness and a training script. Each has per-iteration graphs, every candidate the model proposed, the gate's verdict, sealed held-out and OOD scores, and the code it produced.
+
+![Meta-Harness iterations](demo/figures/metaharness_iterations.png)
+
 ## Repository map
 
 Every method uses one slug everywhere: `autoresearch`, `rrsi`, `dream-rsi`, `evomap`, `gepa`, `metaharness-solpi`.

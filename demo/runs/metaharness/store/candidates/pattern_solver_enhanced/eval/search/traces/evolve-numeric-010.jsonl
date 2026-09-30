@@ -1,0 +1,8 @@
+[python]
+
+n = 48**14
+answer = bin(n).count('1')
+print(f"ANSWER: {answer}")
+
+[output]
+ANSWER: 14

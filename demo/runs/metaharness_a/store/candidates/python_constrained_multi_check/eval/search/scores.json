@@ -1,0 +1,43 @@
+{
+ "split": "search",
+ "score": 0.0,
+ "avg_val": 0.0,
+ "per_unit": {
+  "evolve-numeric-000": 0.0,
+  "evolve-numeric-001": 0.0,
+  "evolve-numeric-002": 0.0,
+  "evolve-numeric-003": 0.0,
+  "evolve-numeric-004": 0.0,
+  "evolve-numeric-005": 0.0,
+  "evolve-numeric-006": 0.0,
+  "evolve-numeric-007": 0.0,
+  "evolve-numeric-008": 0.0,
+  "evolve-numeric-009": 0.0,
+  "evolve-numeric-010": 0.0,
+  "evolve-numeric-011": 0.0
+ },
+ "per_unit_cost": {
+  "evolve-numeric-000": 3246.0,
+  "evolve-numeric-001": 2897.0,
+  "evolve-numeric-002": 4291.0,
+  "evolve-numeric-003": 2844.0,
+  "evolve-numeric-004": 3157.0,
+  "evolve-numeric-005": 3421.0,
+  "evolve-numeric-006": 3336.0,
+  "evolve-numeric-007": 3334.0,
+  "evolve-numeric-008": 2958.0,
+  "evolve-numeric-009": 3502.0,
+  "evolve-numeric-010": 3189.0,
+  "evolve-numeric-011": 3389.0
+ },
+ "context_cost": 3297.0,
+ "tokens": 3297.0,
+ "steps": 2.0,
+ "n_units": 12,
+ "k": 1,
+ "error_rate": 0.0,
+ "n_missing": 0,
+ "families": {
+  "numeric": 0.0
+ }
+}

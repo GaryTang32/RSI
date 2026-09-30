@@ -1,0 +1,75 @@
+{
+ "status": "done",
+ "summary": "Enforce ANSWER: format requirement, always perform followup calls, improve answer extraction and markdown detection to fix output format mismatches and unverified tool outputs",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "Add explicit 'ANSWER: <value>' format requirement to the followup prompt and forbid manual verification attempts. This prevents narrative wrapping and forces the LLM to cite tool output directly rather than attempting to re-verify digits manually.",
+   "targets_mode": "output_format_mismatch (task 002) and unverified_tool_output (task 005): agent wraps computed values in narrative or re-verifies manually instead of reporting tool output directly",
+   "why_not_lower_lever": "The output contract is a structural specification: the prose instruction 'format as ANSWER: <value>' is the appropriate mechanism to enforce format compliance",
+   "trigger_condition": "Always: every followup prompt now includes the format requirement and explicit prohibition on manual verification",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) Task 002 would extract -183764 if ANSWER: format were required; task 005 would report 351 if manual verification were forbidden. (preservative) Success habits (multi-step decomposition, result deference) are unaffected; this change strengthens deference by removing manual re-verification. (transfer) Format enforcement generalizes to all numeric task families that require extractable answers",
+   "regression_risk": "None observed; format requirement aligns with grader expectations and success task patterns",
+   "mechanism": "Add explicit 'ANSWER: <value>' format requirement to the followup prompt and forbid manual verification attempts. This prevents narrative wrapping and forces the LLM to cite tool output directly rather than attempting to re-verify digits manually."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "Remove the conditional that skips followup calls when tool_output is empty. Always perform followup, even if no tools executed, to ensure consistent grounding and prevent silent fallback to initial unverified response.",
+   "targets_mode": "unverified_tool_output (task 005): current harness skips followup if no tool output, allowing unverified initial response to become final output",
+   "why_not_lower_lever": "This is a structural control flow decision: whether the grounding step is conditional or mandatory. Changing it requires altering the solve() function's dispatch logic, not just rewording",
+   "trigger_condition": "When tool execution produces no output (empty string or None), current code uses initial response directly; new code always calls followup to re-ground",
+   "predicted_affected": [
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) Task 005 would have received a followup prompt requesting explicit answer grounding, reducing likelihood of manual digit re-verification. (preservative) Successful tasks (000, 001, 003, 004, 009, 010) already have tool_output and use followup; behavior unchanged. (transfer) Consistent followup application generalizes to any numeric task where tool execution might fail silently",
+   "regression_risk": "Adds one LLM call cost when no tools execute; acceptable as it prevents costly unverified fallbacks",
+   "mechanism": "Remove the conditional that skips followup calls when tool_output is empty. Always perform followup, even if no tools executed, to ensure consistent grounding and prevent silent fallback to initial unverified response."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "Add extract_answer() function that searches for 'ANSWER: ' pattern in response before falling back to last line. This robustly extracts formatted answers and prevents narrative text from being returned when structured answer is present.",
+   "targets_mode": "output_format_mismatch (task 002) and extraction robustness: currently harness returns last line blindly, which captures narrative text even when ANSWER: line is present elsewhere",
+   "why_not_lower_lever": "This is extraction plumbing: how the final output is routed. It requires new logic (pattern matching + fallback), not just rewording instructions",
+   "trigger_condition": "After LLM generates response: if response contains any line matching '^ANSWER:\\s*(.+)$', return that line; else return last non-empty line",
+   "predicted_affected": [
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) Task 002 would extract ANSWER: line if present even if narrative appeared after it. (preservative) Success tasks that output answer mid-response with narrative tail would correctly extract the answer. (transfer) Extraction robustness generalizes to any answer type (numeric, text, date) that follows the ANSWER: format",
+   "regression_risk": "None; this is a more sophisticated extraction that strictly improves format compliance",
+   "mechanism": "Add extract_answer() function that searches for 'ANSWER: ' pattern in response before falling back to last line. This robustly extracts formatted answers and prevents narrative text from being returned when structured answer is present."
+  },
+  {
+   "id": "C4",
+   "component": "control_flow",
+   "hypothesis": "Make markdown code block regex pattern more flexible by allowing optional whitespace around 'python' keyword: change from r'```python\\n' to r'```\\s*python\\s*\\n'. This ensures code blocks are detected even with spacing variations in LLM-generated markdown.",
+   "targets_mode": "tool_invocation_avoidance (task 005 preventive): ensure markdown code detection is robust to whitespace variations that might prevent execution",
+   "why_not_lower_lever": "Regex pattern matching is control flow / parsing logic, not prose instruction",
+   "trigger_condition": "When LLM generates markdown code block with spacing like '``` python\\n' or '```\\npython\\n', new pattern matches whereas old pattern would miss it",
+   "predicted_affected": [
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) If task 005 LLM generated markdown with spacing variations, new pattern ensures code is detected. (preservative) Existing matching code blocks continue to match. (transfer) Flexible pattern detection generalizes to any numeric task using markdown code formatting",
+   "regression_risk": "Pattern is slightly more permissive but still requires 'python' keyword, so false positives are minimal",
+   "mechanism": "Make markdown code block regex pattern more flexible by allowing optional whitespace around 'python' keyword: change from r'```python\\n' to r'```\\s*python\\s*\\n'. This ensures code blocks are detected even with spacing variations in LLM-generated markdown."
+  }
+ ],
+ "mechanism": "Enforce ANSWER: format requirement, always perform followup calls, improve answer extraction and markdown detection to fix output format mismatches and unverified tool outputs",
+ "targets_mode": "output_format_mismatch (task 002) and unverified_tool_output (task 005): agent wraps computed values in narrative or re-verifies manually instead of reporting tool output directly, unverified_tool_out",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

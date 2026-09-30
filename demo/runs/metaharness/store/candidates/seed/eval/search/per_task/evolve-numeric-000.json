@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- **Sum of digits = 198**'; expected '144'.",
+  "output": "- **Sum of digits = 198**",
+  "tokens": 1174,
+  "cost_usd": 0.002526,
+  "steps": 1,
+  "latency_s": 0.004506111145019531,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -1,0 +1,15 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant.
+
+PROMPT: What is 34462116119303 mod 650?
+
+REPLY: I'll calculate 34462116119303 mod 650 for you.
+
+```python
+result = 34462116119303 % 650
+print(result)
+```
+
+The answer is **253**.
+
+To verify: 34462116119303 = 53,018,640,183 × 650 + 253

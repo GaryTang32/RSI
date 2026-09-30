@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-001",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '40627866717431 mod 148 = 31**'; expected '91'.",
+  "output": "**Answer: 40627866717431 mod 148 = 31**",
+  "tokens": 1490,
+  "cost_usd": 0.004122,
+  "steps": 1,
+  "latency_s": 0.002254486083984375,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

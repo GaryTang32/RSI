@@ -1,0 +1,19 @@
+{
+ "name": "pattern_template_solver",
+ "artifact_id": "82c3163cafb295fbabe9ca7df0764cdf937807c346f887494bf958c41182271c",
+ "created_at": 1790757073.7231858,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "code_execution",
+ "hypothesis": "Recognizing common problem patterns (digit sum, modulo, bit count) and substituting into hardcoded templates eliminates LLM code generation overhead, reducing cost while maintaining 100% accuracy.",
+ "axis": "exploration",
+ "components": [
+  "axis:C (retrieval: pattern-based template selection)",
+  "axis:B (state: template database)",
+  "axis:D (sizing: minimal code, no LLM generation)"
+ ],
+ "parents_read": [],
+ "order": 7,
+ "reason": ""
+}
