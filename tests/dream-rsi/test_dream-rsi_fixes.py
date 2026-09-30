@@ -413,9 +413,17 @@ def test_live_solve_gets_the_round_budget():
 
 # ------------------------------------------------------------------------------------ N4
 def test_e3_and_e6_run_every_workspace_in_parallel():
+    # Other experiment dirs also ship a `_common` module; drop any cached one so ours is imported.
+    saved = {k: sys.modules.pop(k) for k in ("_common", "e3_dream_vs_fixed", "e6_pacing") if k in sys.modules}
     sys.path.insert(0, str(ROOT / "experiments" / "dream-rsi"))
-    import e3_dream_vs_fixed as e3
-    import e6_pacing as e6
+    try:
+        import e3_dream_vs_fixed as e3
+        import e6_pacing as e6
+    finally:
+        sys.path.pop(0)
+        for k in ("_common", "e3_dream_vs_fixed", "e6_pacing"):
+            sys.modules.pop(k, None)
+        sys.modules.update(saved)
 
     for d, st in e3.SETTINGS.items():
         assert st["W"] >= st["grid"][0], d

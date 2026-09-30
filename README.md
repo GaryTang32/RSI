@@ -96,8 +96,10 @@ validation/     fresh traced runs from the seed per method, with AUDIT.md and RU
   Every detail is tagged with its source.
 - **Implementation notes** (`implementation.md`): module map, API, and each claim mapped to code, experiment and result.
 - **Claims audits** (`claims-audit*.md`, summary in [docs/reports/claims-summary.md](docs/reports/claims-summary.md)):
-  475 paper claims, each checked against our code and evidence. After the fix round, 246 reproduce, 89 partially,
-  13 do not, 119 need frontier models, GPUs or the original benchmarks, and 8 are contradicted.
+  475 paper claims, each checked against our code and evidence. After a fix round and a second, preregistered and
+  adversarially reviewed attempt at every claim that still failed, 257 reproduce, 79 partially, 7 do not,
+  123 need frontier models, GPUs or the original benchmarks, and 9 are contradicted (most of these by the
+  paper's own data or reference code).
 - **Step-by-step validation** ([validation/README.md](validation/README.md)): each method was run from its untouched
   seed, offline and with live Claude Haiku, with every iteration traced. Independent auditors re-derived each step
   from the raw trial scores and checked it against the paper: 2,195 of 2,370 steps verified correct, and no gate
