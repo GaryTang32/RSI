@@ -1,0 +1,72 @@
+{
+ "status": "done",
+ "summary": "Parse markdown Python blocks, force tool-grounded followup, strengthen arithmetic enforcement in prompt",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "tool",
+   "hypothesis": "Current parser only recognizes XML <invoke> blocks, missing markdown ``` python...``` blocks. Adding markdown detection enables tool execution for LLM responses that use markdown code formatting instead of XML.",
+   "targets_mode": "tool_invocation_avoidance (evolve-numeric-001)",
+   "why_not_lower_lever": "This is a structural parsing gap, not addressable via prompt wording. The regex pattern itself must be extended to recognize the alternate format.",
+   "trigger_condition": "When LLM response contains markdown Python blocks (``` python ... ```) instead of or in addition to XML invoke blocks",
+   "predicted_affected": [
+    "evolve-numeric-001"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-001 fails because markdown code is proposed but parser skips it; this fix captures and executes it. (preservative) evolve-numeric-006 succeeds with XML blocks which this change preserves. (transfer) Generalizes: any numeric task where LLM may use markdown formatting will now work.",
+   "regression_risk": "Could accidentally execute markdown code blocks from explanatory text, but low risk in mathematical problem context where Python blocks are deliberate.",
+   "mechanism": "Current parser only recognizes XML <invoke> blocks, missing markdown ``` python...``` blocks. Adding markdown detection enables tool execution for LLM responses that use markdown code formatting instead of XML."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "When tool execution succeeds, create mandatory followup LLM call that grounds the final answer in the actual computed output. This forces the LLM to cite and use the tool result rather than asserting answers mentally.",
+   "targets_mode": "unverified_mental_arithmetic, unverified_tool_output (multiple tasks)",
+   "why_not_lower_lever": "Prompt-only wording cannot force the LLM to acknowledge tool output if it has already committed to a wrong answer. Control flow separation ensures a fresh call that MUST use the output.",
+   "trigger_condition": "When parse_and_execute_tools() returns non-empty tool_output string",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-005",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks 000, 004, 005 fail because tool runs but LLM ignores/hallucinates result; forced followup makes LLM cite computed value. Task 010 fails with tool output unverified; followup ensures re-grounding. Task 003 asserts wrong mental value despite tool available; followup blocks this. (preservative) evolve-numeric-006 succeeds with single-call reasoning; this only adds followup when tools execute, so reasoning-only problems are unaffected. (transfer) Applies to any numeric task where tool results must be grounded in the answer.",
+   "regression_risk": "If tool output is malformed or empty, followup may fail; mitigated by only triggering on non-empty output. If tool output is very large, tokens increase; acceptable cost for correctness.",
+   "mechanism": "When tool execution succeeds, create mandatory followup LLM call that grounds the final answer in the actual computed output. This forces the LLM to cite and use the tool result rather than asserting answers mentally."
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "Current system prompt suggests tool use but does not mandate it. Strengthening it with explicit rules ('ALWAYS', 'Never skip', 'Use ONLY computed values') removes ambiguity and forces tool execution for all arithmetic, preventing mental-math fallbacks.",
+   "targets_mode": "unverified_mental_arithmetic (evolve-numeric-002, 003 and others)",
+   "why_not_lower_lever": "This IS the right lever: the policy model interprets prompts literally. Clear, unambiguous directives (e.g., 'ALWAYS generate Python code', 'Never perform mental arithmetic') work as behavioral constraints for frozen models.",
+   "trigger_condition": "Always active; system prompt is prepended to every request",
+   "predicted_affected": [
+    "evolve-numeric-002",
+    "evolve-numeric-003"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-002 fails on mental arithmetic (77 × 50,354 = 3,887,258, off by 10,000); stronger prompt mandates tool use for all multiplication. evolve-numeric-003 mixes bc and Python; prompt makes Python mandatory. (preservative) evolve-numeric-006 uses algorithmic reasoning within computed framework; stronger prompt reinforces structured computation without breaking multi-step logic. (transfer) Applies to any arithmetic-heavy task where mental estimates cause failures.",
+   "regression_risk": "Could cause over-reliance on tools for simple problems, increasing latency; acceptable for correctness on numeric tasks. If model misinterprets and generates code for non-numeric questions, irrelevant but harmless.",
+   "mechanism": "Current system prompt suggests tool use but does not mandate it. Strengthening it with explicit rules ('ALWAYS', 'Never skip', 'Use ONLY computed values') removes ambiguity and forces tool execution for all arithmetic, preventing mental-math fallbacks."
+  }
+ ],
+ "mechanism": "Parse markdown Python blocks, force tool-grounded followup, strengthen arithmetic enforcement in prompt",
+ "targets_mode": "tool_invocation_avoidance (evolve-numeric-001), unverified_mental_arithmetic, unverified_tool_output (multiple tasks), unverified_mental_arithmetic (evolve-numeric-002, 003 and others)",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  },
+  {
+   "turn": 1,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

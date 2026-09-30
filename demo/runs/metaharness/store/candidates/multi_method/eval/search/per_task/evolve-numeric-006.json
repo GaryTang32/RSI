@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-006",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '{method_a_answer}\")'; expected '154'.",
+  "output": "print(f\"\\nMethod A answer: {method_a_answer}\")",
+  "tokens": 15586,
+  "cost_usd": 0.056864,
+  "steps": 3,
+  "latency_s": 80.67244911193848,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 3,
+   "tool_calls": 0
+  }
+ }
+]

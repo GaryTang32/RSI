@@ -1,0 +1,1 @@
+{"text": "digit_sum_factorial", "usage": {"calls": 1, "input_tokens": 1037, "output_tokens": 211, "cost_usd": 0.002092, "latency_s": 3.5708413124084473}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

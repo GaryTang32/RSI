@@ -1,0 +1,9 @@
+[python]
+
+import math
+result = math.factorial(41)
+answer = sum(int(d) for d in str(result))
+print(f"ANSWER: {answer}")
+
+[output]
+ANSWER: 144

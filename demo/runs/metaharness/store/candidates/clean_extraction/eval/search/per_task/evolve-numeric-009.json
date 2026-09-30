@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'running_sum'; expected '72'.",
+  "output": "running_sum",
+  "tokens": 8444,
+  "cost_usd": 0.024536000000000002,
+  "steps": 3,
+  "latency_s": 37.54158973693848,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 3,
+   "tool_calls": 0
+  }
+ }
+]

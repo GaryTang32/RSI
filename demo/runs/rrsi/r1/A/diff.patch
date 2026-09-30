@@ -1,0 +1,58 @@
+--- a/harness.py
++++ b/harness.py
+@@ -14,19 +14,38 @@
+     # Parse and execute any tool invocations from the response
+     tool_output = parse_and_execute_tools(initial_response, tools)
+     
+-    # If tools were executed, make a followup call grounded in their output
++    # Only make followup call if tools actually executed and produced output
+     if tool_output:
+         followup_prompt = (
+-            f"Computation results:\n\n{tool_output}\n\n"
++            f"Based on the following computation results:\n\n"
++            f"{tool_output}\n\n"
+             f"Question: {question}\n\n"
+-            f"Based ONLY on the computation results above, what is your final answer?"
++            f"Provide your final answer in exactly this format: ANSWER: <value>\n"
++            f"Do not attempt manual verification or recalculation; report only the computed result."
+         )
+         final_response = llm(followup_prompt, system=system)
+     else:
+         final_response = initial_response
+     
+-    # Extract and return the last non-empty line
+-    lines = [line for line in final_response.strip().splitlines() if line.strip()]
++    # Extract answer: first try ANSWER: format, then fall back to last line
++    answer = extract_answer(final_response)
++    return answer
++
++
++def extract_answer(text):
++    """
++    Extract final answer from response text.
++    First tries to find 'ANSWER: <value>' pattern, then falls back to last line.
++    """
++    # Pattern 1: Look for ANSWER: line (case-insensitive, at start of line)
++    answer_pattern = r'^ANSWER:\s*(.+)$'
++    for line in text.splitlines():
++        match = re.search(answer_pattern, line, re.IGNORECASE)
++        if match:
++            return line.strip()  # Return full ANSWER: line
++    
++    # Pattern 2: Fall back to last non-empty line
++    lines = [line for line in text.strip().splitlines() if line.strip()]
+     return lines[-1] if lines else ""
+ 
+ 
+@@ -59,8 +78,9 @@
+                 pass
+     
+     # Pattern 2: markdown code blocks with python
+-    # Matches: ```python\n...\n``` or ```python\n...```
+-    markdown_pattern = r'```python\n(.*?)```'
++    # Flexible: allows optional whitespace around 'python' keyword and newline
++    # Matches: ```python\n...\n``` or ``` python \n...``` etc.
++    markdown_pattern = r'```\s*python\s*\n(.*?)```'
+     
+     for match in re.finditer(markdown_pattern, text, re.DOTALL):
+         code = match.group(1).strip()

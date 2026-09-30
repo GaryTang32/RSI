@@ -1,0 +1,1 @@
+{"text": "Based on the computation results provided, **the sum of the decimal digits of 34! is 144**.", "usage": {"calls": 1, "input_tokens": 1077, "output_tokens": 470, "cost_usd": 0.0034270000000000004, "latency_s": 5.726338148117065}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

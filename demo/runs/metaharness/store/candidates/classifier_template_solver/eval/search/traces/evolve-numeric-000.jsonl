@@ -1,0 +1,80 @@
+[llm call 1]
+SYSTEM: You are a Python expert. Solve problems by writing clean, executable Python code.
+Always:
+1. Write code that prints exactly: ANSWER: <value>
+2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
+3. Your code must be runnable and produce no errors.
+4. Use standard libraries only (math, itertools, etc.)
+
+PROMPT: Analyze this problem and classify its TYPE. Respond with ONLY the type name (one word or underscore-separated).
+
+Question: What is the sum of the decimal digits of 41! (41 factorial)?
+
+Problem types:
+- digit_sum_factorial: Sum of digits of N!
+- power_digit_sum: Sum of digits of base^exponent
+- modulo: N mod M operation
+- bit_count: Count of 1-bits in binary representation
+- ledger_arithmetic: Multi-operation arithmetic (add, subtract, deposits, payments)
+- unknown: Doesn't fit above categories
+
+Type:
+
+REPLY: Looking at this problem:
+
+The question asks: "What is the sum of the decimal digits of 41! (41 factorial)?"
+
+This is asking to:
+1. Calculate 41! (factorial)
+2. Sum the decimal digits of the result
+
+This directly matches the `digit_sum_factorial` type: "Sum of digits of N!"
+
+**Type:** digit_sum_factorial
+[llm call 2]
+SYSTEM: You are a Python expert. Solve problems by writing clean, executable Python code.
+Always:
+1. Write code that prints exactly: ANSWER: <value>
+2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
+3. Your code must be runnable and produce no errors.
+4. Use standard libraries only (math, itertools, etc.)
+
+PROMPT: Solve this problem by writing Python code.
+
+Question: What is the sum of the decimal digits of 41! (41 factorial)?
+
+Write Python code that:
+1. Solves the problem correctly
+2. Prints exactly: ANSWER: <value>
+   where <value> is ONLY the numeric/text answer
+
+Provide ONLY the Python code, inside ```python and ``` markers.
+Do not explain or add text outside the code block.
+
+```python
+# Write your solution here
+```
+
+REPLY: ```python
+import math
+
+# Calculate 41!
+factorial_41 = math.factorial(41)
+
+# Convert to string and sum all decimal digits
+digit_sum = sum(int(digit) for digit in str(factorial_41))
+
+print(f"ANSWER: {digit_sum}")
+```
+[python]
+import math
+
+# Calculate 41!
+factorial_41 = math.factorial(41)
+
+# Convert to string and sum all decimal digits
+digit_sum = sum(int(digit) for digit in str(factorial_41))
+
+print(f"ANSWER: {digit_sum}")
+[output]
+ANSWER: 144

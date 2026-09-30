@@ -1,0 +1,17 @@
+{
+ "name": "multi_method",
+ "artifact_id": "73a0ca74b4a701d161b52321c6b932f5009e7990f2926edbb0939751fdb34cf4",
+ "created_at": 1790755589.467525,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 3,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

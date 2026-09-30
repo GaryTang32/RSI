@@ -1,0 +1,17 @@
+{
+ "name": "classifier_template_solver",
+ "artifact_id": "15ed78bbf93b23bfd2c938f69914a95dd8e95a315ca127073f7accefa97808f8",
+ "created_at": 1790757212.7894454,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

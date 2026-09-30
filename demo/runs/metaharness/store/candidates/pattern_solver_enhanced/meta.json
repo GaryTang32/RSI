@@ -1,0 +1,17 @@
+{
+ "name": "pattern_solver_enhanced",
+ "artifact_id": "1041e526db30098d72523bd747b67ba707167e923ec5e39905834d287f7678b8",
+ "created_at": 1790757207.7867143,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 8,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

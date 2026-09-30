@@ -1,0 +1,1 @@
+{"text": "Based on the computation results provided, the **final answer is 237**.\n\nWhen 13^765 is divided by 464, the remainder is **237**.", "usage": {"calls": 1, "input_tokens": 964, "output_tokens": 164, "cost_usd": 0.001784, "latency_s": 3.825483798980713}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}
