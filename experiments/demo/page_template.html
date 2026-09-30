@@ -75,13 +75,14 @@ pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overf
 const RUNS = /*__DATA__*/null;
 const META = {
   metaharness: {title: "Meta-Harness", what: "Haiku reads the full history of harnesses, scores and raw traces, then writes new harness code.",
-    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "The jump at iteration 2 is a general strategy: the harness asks the model to write Python, runs it, and reads the printed answer. From iteration 3 the kept harness also hard-codes regex templates for the task generator's question shapes (“sum of digits of N!”, “N mod M”), chosen because they score the same with fewer tokens. The general code path stays as a fallback, which is why OOD still improved. The template layer is the brittle behaviour the claims audit recorded against the paper's “coherent algorithms” claim (Meta-Harness L4). Open the code below to see it.",
+    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "The jump at iteration 2 is a general strategy: the harness asks the model to write Python, runs it, and reads the printed answer. From iteration 3 the kept harness also hard-codes regex templates for the task generator's question shapes (“sum of digits of N!”, “N mod M”), chosen because they score the same with fewer tokens. Its comments quote six practice questions word for word (no answers): faithful Meta-Harness has no leakage guard, as in the paper. The general code path stays as a fallback, which is why OOD still improved. The template layer is the brittle behaviour the claims audit recorded against the paper's “coherent algorithms” claim (Meta-Harness L4). Open the code below to see it.",
     higher: true},
   metaharness_a: {title: "Meta-Harness, replicate run", what: "The same settings as the run above, started again from the same seed. This first attempt was stopped by a time limit after its 4 iterations, during the final re-scoring, so it has no re-scored summary; the chart shows its loop and sealed monitor only.",
     task: "Same task set, same seed harness, same model.", note: "Practice and held-out accuracy rose, but OOD fell from 0.75 to 0.38 once the incumbent switched to multi_check_verify. The sealed monitor exposes the overfit; the loop never saw these scores. Two runs with identical settings ending this differently is why a single live run is an anecdote.",
     higher: true},
   rrsi: {title: "RRSI", what: "Haiku analyses failures and proposes small tagged edits. A leakage critic, a noise band and a cost rule decide what survives.",
-    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", higher: true},
+    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "Round 0 kept a general fix: parse Python blocks from the model's reply, run them with the tool, and force a follow-up grounded in the tool output. The leakage critic rejected the first draft of both kept edits (one had numeric-domain branching and worked examples) and passed them only after repair. Round 1 reached 1.0 on practice; both round-2 candidates scored 0.92, below the incumbent, and were rejected before the $2.50 budget stopped the run. The final harness contains no task answer, id or question text. In-loop scores use one trial per task, so the re-scored practice figure (0.79, two trials) is lower than the 1.0 the loop saw: a winner's-curse effect.",
+    higher: true},
   autoresearch: {title: "Autoresearch", what: "Haiku edits train.py; each experiment trains for 8 s on CPU and is kept only if validation bits-per-byte improves.",
     task: "tinylm: a byte-level language model; hidden test split never shown to the agent.", note: "Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256. The last keep improved validation by 0.011, but the hidden test got slightly worse (2.725 → 2.734). That keep sits inside the noise band: the strict keep rule locks in luck, a weakness the claims audit documents. SGD, dropping the warmdown and a deeper net were all tried and rejected.",
     higher: false},
@@ -90,14 +91,17 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const f2 = v => v == null ? "–" : (+v).toFixed(v > 1.5 ? 3 : 2);
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
 
+const SPEND = (RUNS.find(d => d.run === "_spend") || {}).cache_usd || {};
+const RUNS_ = RUNS.filter(d => d.run !== "_spend");
 function facts() {
-  const usd = RUNS.reduce((a, d) => a + (d.usd_total || 0), 0);
+  const RUNS = RUNS_;
+  const usd = Object.values(SPEND).reduce((a, v) => a + v, 0) || RUNS.reduce((a, d) => a + (d.usd_total || 0), 0);
   const iters = RUNS.reduce((a, d) => a + d.rows.length - 1, 0);
   const cands = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.length, 0), 0);
   const kept = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.filter(c => c.kept).length, 0), 0);
   document.getElementById("facts").innerHTML = [
     [RUNS.length, "fresh live runs"], [iters, "iterations"], [cands, "candidates proposed and graded"],
-    [kept, "kept by the gate"], ["$" + usd.toFixed(2), "total Claude Haiku spend"]]
+    [kept, "kept by the gate"], ["$" + usd.toFixed(2), "total Claude Haiku spend, including one restarted run"]]
     .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
@@ -125,7 +129,7 @@ function chart(host, d, m) {
     let p = `M${x(pts[0][0])},${y(pts[0][1])}`;
     for (let j = 1; j < pts.length; j++) p += ` H${x(pts[j][0])} V${y(pts[j][1])}`;
     p += ` H${x(rows.length - 1)}`;
-    s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"${k === "ood" ? ' stroke-dasharray="6 4"' : ""}/>`;
     const last = pts[pts.length - 1][1];
     s += `<text x="${x(rows.length - 1) + 14}" y="${y(last) + 4}" style="fill:${col}">${f2(last)}</text>`;
   });
@@ -174,7 +178,7 @@ function chart(host, d, m) {
 
 function legend(m) {
   const items = m.higher
-    ? [["var(--s1)", "incumbent, practice tasks"], ["var(--s2)", "incumbent, sealed held-out"], ["var(--s3)", "incumbent, sealed OOD"]]
+    ? [["var(--s1)", "incumbent, practice tasks"], ["var(--s2)", "incumbent, sealed held-out"], ["var(--s3)", "incumbent, sealed OOD (dashed)"]]
     : [["var(--s1)", "running best, validation"], ["var(--s2)", "same model on a hidden test split"]];
   return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}`
     + `<span><i class="dot" style="background:var(--s1)"></i>candidate kept</span><span><i class="dot hollow"></i>candidate discarded</span></div>`;
@@ -199,7 +203,7 @@ function table(d, m) {
 
 function code(d) {
   const f = d.files || {};
-  if (!f.seed || !f.final) return "";
+  if (!f.seed || !f.final || !Object.keys(f.seed).length) return "";
   const names = [...new Set([...Object.keys(f.seed), ...Object.keys(f.final)])].sort();
   const changed = names.filter(n => f.seed[n] !== f.final[n]);
   return `<details><summary>The harness it produced: ${changed.length} of ${names.length} files changed from the seed</summary><div class="code-grid">`
@@ -216,6 +220,12 @@ function resultLine(d, m) {
     return `<div class="result">${parts.join("")}<span class="dim small">re-scored with k = 2 trials per task after the run; brackets = 95% CI of the paired gain</span></div>`;
   }
   const r0 = d.rows[0], rl = d.rows[d.rows.length - 1];
+  if (m.higher) {
+    const s0 = r0.sealed || {}, s1 = rl.sealed || {}, span = (lab, a, b) =>
+      `<span>${lab} <span class="v">${f2(a)} → <span class="${b > a ? "up" : ""}">${f2(b)}</span></span></span>`;
+    return `<div class="result">${span("practice", r0.S, rl.S)}${span("held-out", s0.holdout, s1.holdout)}${span("OOD", s0.ood, s1.ood)}`
+      + `<span class="dim small">in-loop scores (one trial per task); not re-scored</span></div>`;
+  }
   return `<div class="result"><span>val_bpb <span class="v">${f2(r0.S)} → <span class="up">${f2(rl.S)}</span></span></span>`
     + `<span>hidden test <span class="v">${f2(r0.sealed.test_iid)} → <span class="up">${f2(rl.sealed.test_iid)}</span></span></span>`
     + `<span class="dim small">lower is better</span></div>`;
@@ -223,7 +233,7 @@ function resultLine(d, m) {
 
 facts();
 const host = document.getElementById("runs");
-RUNS.forEach(d => {
+RUNS_.forEach(d => {
   const m = META[d.run]; if (!m) return;
   const sec = el("section", {class: "run", id: d.run});
   sec.innerHTML = `<div class="head"><h3>${esc(m.task)}</h3><h2>${esc(m.title)}</h2><p class="dim">${esc(m.what)}</p>${resultLine(d, m)}`

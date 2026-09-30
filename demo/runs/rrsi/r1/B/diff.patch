@@ -1,0 +1,59 @@
+--- a/harness.py
++++ b/harness.py
+@@ -17,17 +17,40 @@
+     # If tools were executed, make a followup call grounded in their output
+     if tool_output:
+         followup_prompt = (
+-            f"Computation results:\n\n{tool_output}\n\n"
++            f"Computation results:\n{tool_output}\n\n"
+             f"Question: {question}\n\n"
+-            f"Based ONLY on the computation results above, what is your final answer?"
++            f"Based ONLY on the computation results above, state your final answer in this format:\n"
++            f"ANSWER: <value>"
+         )
+         final_response = llm(followup_prompt, system=system)
+     else:
+         final_response = initial_response
+     
+-    # Extract and return the last non-empty line
+-    lines = [line for line in final_response.strip().splitlines() if line.strip()]
+-    return lines[-1] if lines else ""
++    # Extract and return the final answer
++    return extract_answer(final_response)
++
++
++def extract_answer(text):
++    """
++    Extract the final answer, preferring ANSWER: format.
++    Falls back to last non-empty line if no ANSWER: format found.
++    """
++    lines = text.strip().splitlines()
++    
++    # First, look for ANSWER: format
++    for line in lines:
++        if 'ANSWER:' in line:
++            # Extract content after ANSWER:
++            answer = line.split('ANSWER:', 1)[1].strip()
++            if answer:
++                return answer
++    
++    # Fallback to last non-empty line
++    for line in reversed(lines):
++        if line.strip():
++            return line.strip()
++    
++    return ""
+ 
+ 
+ def parse_and_execute_tools(text, tools):
+@@ -59,8 +82,8 @@
+                 pass
+     
+     # Pattern 2: markdown code blocks with python
+-    # Matches: ```python\n...\n``` or ```python\n...```
+-    markdown_pattern = r'```python\n(.*?)```'
++    # Matches: ```python\n...\n``` with flexible spacing around python keyword
++    markdown_pattern = r'```\s*python\s*(.*?)```'
+     
+     for match in re.finditer(markdown_pattern, text, re.DOTALL):
+         code = match.group(1).strip()

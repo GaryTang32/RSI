@@ -26,14 +26,14 @@
       "S": 0.1667,
       "C": 4350.5,
       "kept": false,
-      "change": null
+      "change": "Multi-turn guided harness: calculate with tool enforcement, then verify and format. Axis: A (prompt), F (model-written verification)."
      },
      {
       "name": "multi_method",
       "S": 0.25,
       "C": 11569.0,
       "kept": true,
-      "change": null
+      "change": "Multi-method harness: solve via two independent approaches, then compare and decide. Axis: C (selection via comparison), B (state: intermediate results), F (model usage: cross-verification)."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> multi_method"
@@ -52,14 +52,14 @@
       "S": 0.25,
       "C": 12373.5,
       "kept": false,
-      "change": null
+      "change": "Clean extraction harness: multi-method with robust ANSWER: parsing and markdown cleanup. Axis: F (extraction), A (format clarity). Base: multi_method, but fixes the extraction bottleneck."
      },
      {
       "name": "code_execution",
       "S": 1.0,
       "C": 4501.4,
       "kept": true,
-      "change": null
+      "change": "Code execution harness: LLM generates Python code, harness executes it and parses stdout. Axis: F (code execution via tools.python), C (stdout parsing instead of LLM text parsing). Guarantees arithmetic correctness by running code deterministically."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed multi_method -> code_execution"
@@ -104,14 +104,14 @@
       "S": 0.9167,
       "C": 1331.0,
       "kept": false,
-      "change": null
+      "change": "Enhanced pattern-template solver: Extended pattern database covering ledger/multi-op arithmetic. Axis: D (sizing: expanded template database), C (retrieval: comprehensive pattern matching). Recognizes more problem types deterministically to reduce LLM fallback rate toward zero."
      },
      {
       "name": "classifier_template_solver",
       "S": 1.0,
       "C": 1815.9,
       "kept": false,
-      "change": null
+      "change": "Classifier-template solver: Use LLM to classify problem type, then apply deterministic templates. Axis: F (model usage: model-based type classification), A (prompt: classification-first architecture). More general than hardcoded regex; cheaper than full code gen when classification succeeds. Falls back to full code generation if classification fails."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
@@ -224,14 +224,14 @@
       "S": 0.0,
       "C": 1704.2,
       "kept": false,
-      "change": null
+      "change": "Harness that enforces Python computation and extracts from code output."
      },
      {
       "name": "multi_check_verify",
       "S": 0.6667,
       "C": 7198.9,
       "kept": true,
-      "change": null
+      "change": "Harness with two-stage solving: initial solve, then independent re-verification."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed smart_extraction -> multi_check_verify"
@@ -250,14 +250,14 @@
       "S": 0.0,
       "C": 3297.0,
       "kept": false,
-      "change": null
+      "change": "Multi-stage solve with strict Python-first computation and tool-output-aware extraction."
      },
      {
       "name": "ensemble_voting_simple",
       "S": 0.0833,
       "C": 6947.7,
       "kept": false,
-      "change": null
+      "change": "Ensemble approach: three independent solves with majority-vote answer selection."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 0 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
@@ -276,14 +276,14 @@
       "S": 0.1667,
       "C": 3237.3,
       "kept": false,
-      "change": null
+      "change": "Two-stage solving with strict ANSWER format and Python-enforced computation."
      },
      {
       "name": "code_extract_single",
       "S": 0.0,
       "C": 1472.9,
       "kept": false,
-      "change": null
+      "change": "Single-stage: model writes Python, shows output, then extracts to ANSWER format."
      }
     ],
     "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
@@ -338,19 +338,118 @@
    },
    {
     "iter": 2,
-    "incumbent": "r0A",
-    "S": 0.8333333333333334,
+    "incumbent": "r1A",
+    "S": 1.0,
     "sealed": {
-     "holdout": 0.75,
+     "holdout": 0.875,
      "ood": 0.75
     },
-    "candidates": [],
-    "why": null
+    "candidates": [
+     {
+      "name": "r1A",
+      "S": 1.0,
+      "C": 2542.75,
+      "admissible": true,
+      "reason": "admissible: S'=1.0000 >= S*-delta=0.4251; within band: shaped=+16.246 (> 0)",
+      "kept": true,
+      "change": "Removed task-specific numeric predictions and made followup conditional on tool execution to reduce cost on non-computational tasks"
+     },
+     {
+      "name": "r1B",
+      "S": 1.0,
+      "C": 2495.6666666666665,
+      "admissible": true,
+      "reason": "admissible: S'=1.0000 >= S*-delta=0.4251; within band: shaped=+16.531 (> 0)",
+      "kept": false,
+      "change": "Three targeted control-flow edits to enforce and extract ANSWER: format (fixing evolve-numeric-002 output format mismatch) and improve markdown code detection (addressing potential parsing gaps in evolve-numeric-005)."
+     }
+    ],
+    "why": "argmax S' over the admissible set {'r1A': 1.0, 'r1B': 1.0} -> r1A (S'=1.0000); S* 0.8333 -> 1.0000"
+   },
+   {
+    "iter": 3,
+    "incumbent": "r1A",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 0.875,
+     "ood": 0.75
+    },
+    "candidates": [
+     {
+      "name": "r2A",
+      "S": 0.9166666666666666,
+      "C": 2476.5,
+      "admissible": false,
+      "reason": "cost rule failed: within band: shaped=-7.943 (<= 0)",
+      "kept": false,
+      "change": "Extend markdown code block regex to handle python3 language specifier variant, increasing parser coverage for LLM-generated code blocks that use '```python3' in addition to '```python'."
+     },
+     {
+      "name": "r2B",
+      "S": 0.9166666666666666,
+      "C": 2548.5833333333335,
+      "admissible": false,
+      "reason": "cost rule failed: within band: shaped=-7.868 (<= 0)",
+      "kept": false,
+      "change": "Add output truncation for large computations and create reusable verification skill for never-exercised structural component."
+     }
+    ],
+    "why": "no admissible candidate -> H_{t+1} = H_t; r2A: cost rule failed: within band: shaped=-7.943 (<= 0); r2B: cost rule failed: within band: shaped=-7.868 (<= 0)"
    }
   ],
-  "usd_total": null,
-  "wall_s": null,
-  "stop_reason": null
+  "usd_total": 2.4165,
+  "wall_s": 3041.1,
+  "stop_reason": "max_usd",
+  "transfer": {
+   "evolve": {
+    "seed": {
+     "S": 0.3333333333333333,
+     "vs": null
+    },
+    "final": {
+     "S": 0.7916666666666666,
+     "vs": {
+      "mean_diff": 0.4583333333333333,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 12,
+      "p_better": 0.75
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "vs": null
+    },
+    "final": {
+     "S": 0.9375,
+     "vs": {
+      "mean_diff": 0.4375,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.5625,
+     "vs": null
+    },
+    "final": {
+     "S": 0.75,
+     "vs": {
+      "mean_diff": 0.1875,
+      "lo": -0.1875,
+      "hi": 0.5625,
+      "n": 8,
+      "p_better": 0.375
+     }
+    }
+   }
+  }
  },
  {
   "run": "autoresearch",

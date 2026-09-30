@@ -1,0 +1,229 @@
+{
+ "run": "rrsi",
+ "setup": {
+  "method": "rrsi",
+  "config": {
+   "T": 4,
+   "m": 2,
+   "k": 1,
+   "workers": 4,
+   "seed": 0,
+   "analyst": "llm",
+   "calibration_repeats": 3,
+   "max_digests": 4,
+   "n_fail_traces": 6,
+   "n_success_traces": 3,
+   "repair_rounds": 2,
+   "max_done_bounces": 2
+  },
+  "llm": "claude haiku (task, proposer, critic, analyst)"
+ },
+ "stop_reason": "max_usd",
+ "wall_s": 3041.1,
+ "trajectory": [
+  {
+   "t": 0,
+   "S": 0.16666666666666666,
+   "C": 1604.8333333333333,
+   "event": "baseline"
+  },
+  {
+   "t": 1,
+   "S": 0.8333333333333334,
+   "C": 2473.3333333333335,
+   "S_star": 0.8333333333333334,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": "A",
+   "n_screened": 2,
+   "gate_failures": {},
+   "decisions": [
+    {
+     "variant": "A",
+     "admissible": true,
+     "S": 0.8333333333333334,
+     "delta_S": 0.6666666666666667,
+     "delta_C": 0.5411776923875794,
+     "novelty": 0,
+     "reason": "admissible: S'=0.8333 >= S*-delta=-0.2416; dC=+0.541 <= beta0+beta1*dS=26.767"
+    },
+    {
+     "variant": "B",
+     "admissible": false,
+     "S": 0.25,
+     "delta_S": 0.08333333333333334,
+     "delta_C": 2.7058365354657807,
+     "novelty": 0,
+     "reason": "cost rule failed: within band: shaped=-32.254 (<= 0)"
+    }
+   ]
+  },
+  {
+   "t": 2,
+   "S": 1.0,
+   "C": 2542.75,
+   "S_star": 1.0,
+   "b_t": 4,
+   "sigma_t": 0,
+   "winner": "A",
+   "n_screened": 2,
+   "gate_failures": {},
+   "decisions": [
+    {
+     "variant": "A",
+     "admissible": true,
+     "S": 1.0,
+     "delta_S": 0.16666666666666663,
+     "delta_C": 0.028066037735848995,
+     "novelty": 0,
+     "reason": "admissible: S'=1.0000 >= S*-delta=0.4251; within band: shaped=+16.246 (> 0)"
+    },
+    {
+     "variant": "B",
+     "admissible": true,
+     "S": 1.0,
+     "delta_S": 0.16666666666666663,
+     "delta_C": 0.009029649595687209,
+     "novelty": 0,
+     "reason": "admissible: S'=1.0000 >= S*-delta=0.4251; within band: shaped=+16.531 (> 0)"
+    }
+   ]
+  },
+  {
+   "t": 3,
+   "S": 1.0,
+   "C": 2542.75,
+   "S_star": 1.0,
+   "b_t": 3,
+   "sigma_t": 0,
+   "winner": null,
+   "n_screened": 2,
+   "gate_failures": {},
+   "decisions": [
+    {
+     "variant": "A",
+     "admissible": false,
+     "S": 0.9166666666666666,
+     "delta_S": -0.08333333333333337,
+     "delta_C": -0.02605446858715957,
+     "novelty": 0,
+     "reason": "cost rule failed: within band: shaped=-7.943 (<= 0)"
+    },
+    {
+     "variant": "B",
+     "admissible": false,
+     "S": 0.9166666666666666,
+     "delta_S": -0.08333333333333337,
+     "delta_C": 0.0022941041523285755,
+     "novelty": 1,
+     "reason": "cost rule failed: within band: shaped=-7.868 (<= 0)"
+    }
+   ]
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.3333333333333333,
+     "C": 1873.625,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.3333333333333333
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.7916666666666666,
+     "C": 2400.0,
+     "steps": 2.75,
+     "families": {
+      "numeric": 0.7916666666666666
+     },
+     "vs_reference": {
+      "mean_diff": 0.4583333333333333,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 12,
+      "p_better": 0.75
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "C": 1799.1875,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.9375,
+     "C": 2702.4375,
+     "steps": 3.1875,
+     "families": {
+      "numeric": 0.9375
+     },
+     "vs_reference": {
+      "mean_diff": 0.4375,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.5625,
+     "C": 2262.875,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.75
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.75,
+     "C": 2551.5625,
+     "steps": 2.6875,
+     "families": {
+      "dates": 0.75,
+      "numbertheory": 0.75,
+      "strings": 0.75,
+      "lists": 0.75
+     },
+     "vs_reference": {
+      "mean_diff": 0.1875,
+      "lo": -0.1875,
+      "hi": 0.5625,
+      "n": 8,
+      "p_better": 0.375
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.53125,
+   "final": 0.84375
+  }
+ },
+ "usd_total": 2.4165,
+ "usd_transfer_report": 0.4516,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "\"\"\"Harness that executes tool invocations and feeds results back to LLM.\"\"\"\n\nimport re\n\n\ndef solve(question, llm, tools, files):\n    \"\"\"Solve a question by invoking tools and grounding answers in their output.\"\"\"\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    \n    # First LLM call: generate solution approach and code\n    initial_response = llm(prompt, system=system)\n    \n    # Parse and execute any tool invocations from the response\n    tool_output = parse_and_execute_tools(initial_response, tools)\n    \n    # Only make followup call if tools actually executed and produced output\n    if tool_output:\n        followup_prompt = (\n            f\"Based on the following computation results:\\n\\n\"\n            f\"{tool_output}\\n\\n\"\n            f\"Question: {question}\\n\\n\"\n            f\"Provide your final answer in exactly this format: ANSWER: <value>\\n\"\n            f\"Do not attempt manual verification or recalculation; report only the computed result.\"\n        )\n        final_response = llm(followup_prompt, system=system)\n    else:\n        final_response = initial_response\n    \n    # Extract answer: first try ANSWER: format, then fall back to last line\n    answer = extract_answer(final_response)\n    return answer\n\n\ndef extract_answer(text):\n    \"\"\"\n    Extract final answer from response text.\n    First tries to find 'ANSWER: <value>' pattern, then falls back to last line.\n    \"\"\"\n    # Pattern 1: Look for ANSWER: line (case-insensitive, at start of line)\n    answer_pattern = r'^ANSWER:\\s*(.+)$'\n    for line in text.splitlines():\n        match = re.search(answer_pattern, line, re.IGNORECASE)\n        if match:\n            return line.strip()  # Return full ANSWER: line\n    \n    # Pattern 2: Fall back to last non-empty line\n    lines = [line for line in text.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n\n\ndef parse_and_execute_tools(text, tools):\n    \"\"\"\n    Parse and execute tool invocations from LLM response.\n    Supports both <invoke> XML blocks and markdown code blocks.\n    Returns concatenated tool outputs, or empty string if none found/executed.\n    \"\"\"\n    outputs = []\n    \n    # Pattern 1: <invoke name=\"bash\"><parameter name=\"command\">COMMAND</parameter></invoke>\n    invoke_pattern = r'<invoke name=\"bash\">\\s*<parameter name=\"command\">(.*?)</parameter>\\s*</invoke>'\n    \n    for match in re.finditer(invoke_pattern, text, re.DOTALL):\n        cmd = match.group(1).strip()\n        \n        # Only process python3 commands\n        if 'python3' not in cmd:\n            continue\n        \n        code = extract_python_code_from_bash(cmd)\n        if code:\n            try:\n                result = tools.python(code)\n                if result and result.strip():\n                    outputs.append(result)\n            except Exception:\n                # Skip execution errors to maintain robustness\n                pass\n    \n    # Pattern 2: markdown code blocks with python\n    # Flexible: allows optional whitespace around 'python' keyword and newline\n    # Matches: ```python\\n...\\n``` or ``` python \\n...``` etc.\n    markdown_pattern = r'```\\s*python\\s*\\n(.*?)```'\n    \n    for match in re.finditer(markdown_pattern, text, re.DOTALL):\n        code = match.group(1).strip()\n        if code:\n            try:\n                result = tools.python(code)\n                if result and result.strip():\n                    outputs.append(result)\n            except Exception:\n                # Skip execution errors to maintain robustness\n                pass\n    \n    return \"\\n\".join(outputs)\n\n\ndef extract_python_code_from_bash(cmd):\n    \"\"\"Extract Python code from a bash command string.\"\"\"\n    # Case 1: python3 -c \"...\" or python3 -c '...'\n    if ' -c ' in cmd:\n        match = re.search(r'-c\\s+[\"\\']([^\"\\']*)[\"\\']', cmd)\n        if match:\n            return match.group(1)\n    \n    # Case 2: python3 << 'EOF' ... EOF or python3 << \"EOF\" ... EOF\n    if '<<' in cmd:\n        match = re.search(r'<<\\s+[\"\\']?EOF[\"\\']?(.*?)EOF', cmd, re.DOTALL)\n        if match:\n            return match.group(1).strip()\n    \n    return None\n",
+  "prompts/system.md": "You are a helpful assistant.\n\nFor any problem requiring calculation or computation, always generate and execute code using the provided tools. Do not perform calculations mentally or rely on estimates.\n\nUse only the actual results from executed code in your final answer. Base your response on computed output, never on reasoning alone.\n\nAlways execute all generated code and never skip execution.\n",
+  "prompts/task.md": "{question}\n"
+ }
+}

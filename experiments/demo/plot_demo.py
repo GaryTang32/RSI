@@ -13,6 +13,7 @@ Everything plotted comes straight from the trace; nothing is re-computed or smoo
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -79,6 +80,13 @@ def extract(name: str) -> dict:
         if kept is not None:
             inc, inc_S = kept["name"], kept["S"]
         props = R.get("proposals", {})
+        for c in R["candidates"]:            # Meta-Harness: fall back to the docstring the model wrote atop harness.py
+            if not props.get(c["name"]):
+                src = RUNS / name / "store" / "candidates" / c["name"] / "src" / "harness.py"
+                if src.exists():
+                    m = re.match(r'\s*(?:"""|\'\'\')(.*?)(?:"""|\'\'\')', src.read_text(), re.S)
+                    if m:
+                        props[c["name"]] = " ".join(m.group(1).split())
         for c in R["candidates"]:
             c["kept"] = c is kept
             c["change"] = props.get(c["name"])
@@ -116,10 +124,12 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     _style(ax, title, "accuracy (exact match)")
     # every candidate the proposer produced, at its practice score
     for r in rows[1:]:
-        for c in r["candidates"]:
+        n = len(r["candidates"])
+        # spread same-iteration candidates sideways; draw the kept one last so it stays on top
+        for j, c in sorted(enumerate(r["candidates"]), key=lambda p: bool(p[1].get("kept"))):
             if c["S"] is None:
                 continue
-            ax.scatter(r["iter"], c["S"], s=46, zorder=3, facecolor=BLUE if c.get("kept") else "white",
+            ax.scatter(r["iter"] + (j - (n - 1) / 2) * 0.09, c["S"], s=46, zorder=4 if c.get("kept") else 3, facecolor=BLUE if c.get("kept") else "white",
                        edgecolor=BLUE if c.get("kept") else DISCARD, linewidth=1.5)
     series = [("incumbent, practice tasks", [r["S"] for r in rows], BLUE),
               ("incumbent, sealed held-out", [r["sealed"].get("holdout") for r in rows], ORANGE),
@@ -129,7 +139,7 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
         pts = [(x, y) for x, y in zip(xs, ys) if y is not None]
         if pts:
             ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=2, label=label,
-                    zorder=2.5 if col == BLUE else 2)
+                    zorder=2.5 if col == BLUE else 2, linestyle=(0, (5, 3)) if col == AQUA else "-")
             ax.annotate(f"{pts[-1][1]:.2f}", (pts[-1][0], pts[-1][1]), xytext=(14, 0), textcoords="offset points",
                         va="center", fontsize=9, color=col)
     ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label="candidate kept")
@@ -181,10 +191,11 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
     have = [d for d in runs if d.get("transfer")]
     if not have:
         return
-    fig, axes = plt.subplots(1, len(have), figsize=(4.2 * len(have), 3.8), dpi=150, squeeze=False)
+    fig, axes = plt.subplots(1, len(have), figsize=(4.2 * len(have), 4.1), dpi=150, squeeze=False)
     fig.patch.set_facecolor(SURF)
     for ax, d in zip(axes[0], have):
-        _style(ax, d["run"], "accuracy" if ax is axes[0][0] else "")
+        _style(ax, {"metaharness": "Meta-Harness", "rrsi": "RRSI"}.get(d["run"], d["run"]),
+               "accuracy" if ax is axes[0][0] else "")
         splits = ["evolve", "holdout", "ood"]
         labels = ["practice", "held-out", "OOD"]
         seed = [d["transfer"][s]["seed"]["S"] for s in splits]
@@ -199,8 +210,8 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
                         fontsize=8, color=INK)
         ax.set_xticks(list(x), labels)
         ax.set_ylim(0, 1.15)
-    axes[0][0].legend(loc="upper left", fontsize=8, frameon=False)
-    fig.tight_layout()
+    fig.legend(*axes[0][0].get_legend_handles_labels(), loc="lower center", ncol=2, fontsize=8, frameon=False)
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
 

@@ -1,0 +1,48 @@
+--- a/harness.py
++++ b/harness.py
+@@ -93,7 +93,18 @@
+                 # Skip execution errors to maintain robustness
+                 pass
+     
+-    return "\n".join(outputs)
++    full_output = "\n".join(outputs)
++    
++    # Truncate excessively long outputs to manage token usage
++    # while preserving essential computation results
++    MAX_OUTPUT_LEN = 5000
++    if len(full_output) > MAX_OUTPUT_LEN:
++        # Keep first and last parts to preserve key values from start and end of output
++        first_part = full_output[:2500]
++        last_part = full_output[-2500:]
++        full_output = f"{first_part}\n...[OUTPUT TRUNCATED]...\n{last_part}"
++    
++    return full_output
+ 
+ 
+ def extract_python_code_from_bash(cmd):
+--- a/skills/verification.md
++++ b/skills/verification.md
+@@ -0,0 +1,23 @@
++# Skill: Grounding Answers in Computed Results
++
++## Pattern
++
++When code execution produces output, always derive the final answer from the actual computed result rather than reformulating or paraphrasing.
++
++## Procedure
++
++1. Execute code and capture the exact output
++2. Cite the specific computed value (preserve formatting, precision, and notation)
++3. If output formatting appears ambiguous (spacing inconsistencies, formatting artifacts, unclear number grouping), re-execute the same computation to verify consistency
++4. Base the final answer exclusively on the verified computation
++5. Format the final answer as: `ANSWER: <computed_value>`
++
++## When to Apply
++
++- Any task where computation produces numeric or symbolic output
++- Any task where intermediate outputs might have formatting artifacts or display inconsistencies
++- Tasks where recalculation can verify result integrity
++
++## Why It Works
++
++Re-execution catches transient formatting errors, display artifacts, and encoding issues that might corrupt a one-pass result. Grounding in the actual computed output prevents manual arithmetic errors and ensures answers derive from executed code, not reasoning or paraphrase.

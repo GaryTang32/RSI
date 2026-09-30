@@ -21,6 +21,20 @@ def _files(run: str) -> dict:
     return {"seed": cut(s.get("seed_files")), "final": cut(s.get("final_files"))}
 
 
+def _cache_usd(cache: Path) -> float:
+    tot = 0.0
+    for p in cache.rglob("*"):
+        if not p.is_file():
+            continue
+        try:
+            d = json.loads(p.read_text())
+        except (ValueError, UnicodeDecodeError):
+            continue
+        u = d.get("usage") if isinstance(d, dict) else None
+        tot += ((u or {}).get("cost_usd") if isinstance(u, dict) else None) or (d.get("cost_usd") if isinstance(d, dict) else 0) or 0
+    return round(tot, 4)
+
+
 def main() -> None:
     runs = json.loads((DEMO / "data.json").read_text())
     for d in runs:
@@ -28,6 +42,12 @@ def main() -> None:
         if d["run"] == "autoresearch":
             tsv = (DEMO / "runs" / "autoresearch" / "results.tsv").read_text().strip().splitlines()
             d["results_tsv"] = [r.split("\t") for r in tsv]
+    # every live call is in a run's cache, including runs that were restarted or stopped early
+    cache_usd = {c.name[len(".cache_"):]: _cache_usd(c) for c in (DEMO / "runs").glob(".cache_*") if c.is_dir()}
+    by = {d["run"]: d for d in runs}
+    if "metaharness_a" in by and "metaharness" in cache_usd:       # the two Meta-Harness runs share one cache
+        by["metaharness_a"]["usd_total"] = round(cache_usd["metaharness"] - (by["metaharness"].get("usd_total") or 0), 4)
+    runs.append({"run": "_spend", "cache_usd": cache_usd, "rows": [{"iter": 0, "candidates": []}]})
     tpl = (Path(__file__).parent / "page_template.html").read_text()
     data = json.dumps(runs, default=str).replace("</", "<\\/")
     (DEMO / "index.html").write_text(tpl.replace("/*__DATA__*/null", data))

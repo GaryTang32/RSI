@@ -1,60 +1,23 @@
 {
- "failure_modes": [
-  {
-   "mode": "unverified_tool_output",
-   "n_tasks": 1,
-   "affected_tasks": [
-    "evolve-numeric-005"
-   ],
-   "description": "Computational tool is invoked and produces output, but the agent's final reported answer diverges significantly from the actual computed value; lack of verification between tool output and assertion allows errors to escape unchecked",
-   "needed_instead": "Explicit validation step after tool execution comparing reported answer against tool stdout; agent must display both raw computation output and final extracted value for independent verification before submission",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-numeric-005",
-     "where": "Answer accuracy gap",
-     "quote": "Agent reported 414 but correct value is 351 (63-point discrepancy); Python code sum(int(digit) for digit in str(math.factorial(66))) is syntactically correct"
-    },
-    {
-     "task_id": "evolve-numeric-005",
-     "where": "Digest uncertainty",
-     "quote": "The actual stdout from the Python execution is not shown in the trajectory, so it is unclear whether the Python code produced the wrong value, or the agent misread/misreported correct output (351) as 414"
-    }
-   ]
-  },
-  {
-   "mode": "output_format_mismatch",
-   "n_tasks": 1,
-   "affected_tasks": [
-    "evolve-numeric-002"
-   ],
-   "description": "Correct numerical result is computed and identified by the agent internally, but final output is formatted as narrative explanation rather than extractable answer line, causing grader extraction to fail despite accurate underlying computation",
-   "needed_instead": "Final output must include either explicit 'ANSWER: <value>' line or bare numeric value as final line, without narrative framing or interpretative text",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-numeric-002",
-     "where": "Python computation",
-     "quote": "Final Balance: -183764"
-    },
-    {
-     "task_id": "evolve-numeric-002",
-     "where": "Agent final output",
-     "quote": "The ledger shows a negative balance, meaning Morgan owes money overall after all transactions are accounted for"
-    }
-   ]
-  }
- ],
+ "failure_modes": [],
  "success_habits": [
-  {
-   "habit": "multi_step_algorithmic_decomposition",
-   "n_tasks": 7,
-   "description": "Agent systematically breaks numeric problems into sequential computational steps using Python tools—delegating factorial computation, digit summation, modular arithmetic, and binary manipulation to code rather than manual calculation",
-   "risk_if_broken": "Without tool-based computational delegation, agent would rely on manual arithmetic reasoning for large-number operations; errors in digit summation, modular reduction, and factorial evaluation would propagate unchecked to final answers, causing systematic failures across numeric task families"
-  },
   {
    "habit": "computed_result_deference",
    "n_tasks": 1,
-   "description": "When tool output contradicts prior reasoning, agent prioritizes the computed value and updates its answer accordingly, treating tool output as authoritative ground truth rather than rationalizing discrepancies away",
-   "risk_if_broken": "Agent would persist with incorrect initial reasoning despite having corrected tool output available; system prompt directive to use 'only the actual results from executed code' is load-bearing for overriding incorrect prior beliefs; its removal would allow rationalization to prevent adoption of corrected computed values"
+   "affected_tasks": [
+    "evolve-numeric-009"
+   ],
+   "description": "Agent commits to tool-based computation for all calculations, avoiding manual arithmetic; when given context about prior computational results, re-executes the same computation to verify consistency and detect transient errors or formatting artifacts in intermediate output",
+   "risk_if_broken": "Arithmetic errors escape detection without computational tool verification; transient errors or display artifacts in intermediate output can persist in final answer; computational accuracy degrades especially on multi-step problems"
+  },
+  {
+   "habit": "answer_format_compliance",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-009"
+   ],
+   "description": "Agent produces final answer in machine-extractable format using the required structure (line containing 'ANSWER: <value>' prefix); ensures correctly computed results are properly formatted for grader extraction",
+   "risk_if_broken": "Correctly computed results fail grader extraction when embedded in narrative explanation or formatted without the required structure; computational accuracy does not translate to score despite correct underlying work"
   }
  ]
 }

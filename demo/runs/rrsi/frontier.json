@@ -1,24 +1,24 @@
 {
  "domain": "agentqa",
  "incumbent": {
-  "t": 1,
-  "artifact_id": "7f0941a96e2f6b1d6337ffc030d4d30de9860e177b752ec1f08b1efe5a4d1046",
-  "job": "r0A",
-  "S": 0.8333333333333334,
-  "C": 2473.3333333333335,
+  "t": 3,
+  "artifact_id": "60ed2fb0c52effa8894834b7047daca6e53c10496fa13c9acadfe426a61090ef",
+  "job": "r1A",
+  "S": 1.0,
+  "C": 2542.75,
   "extra": {
-   "steps": 3.1666666666666665,
+   "steps": 3.25,
    "error_rate": 0.0,
    "families": {
-    "numeric": 0.8333333333333334
+    "numeric": 1.0
    },
-   "llm_calls": 1.9166666666666667,
+   "llm_calls": 2.0,
    "tool_calls": 1.25
   },
   "variant": "A",
-  "node": "r0A"
+  "node": "r1A"
  },
- "S_star": 0.8333333333333334,
+ "S_star": 1.0,
  "trajectory": [
   {
    "t": 0,
@@ -53,6 +53,42 @@
      "numeric": 0.8333333333333334
     },
     "llm_calls": 1.9166666666666667,
+    "tool_calls": 1.25
+   }
+  },
+  {
+   "t": 2,
+   "S": 1.0,
+   "C": 2542.75,
+   "artifact_id": "60ed2fb0c52effa8894834b7047daca6e53c10496fa13c9acadfe426a61090ef",
+   "job": "r1A",
+   "node": "r1A",
+   "variant": "A",
+   "extra": {
+    "steps": 3.25,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 1.0
+    },
+    "llm_calls": 2.0,
+    "tool_calls": 1.25
+   }
+  },
+  {
+   "t": 3,
+   "S": 1.0,
+   "C": 2542.75,
+   "artifact_id": "60ed2fb0c52effa8894834b7047daca6e53c10496fa13c9acadfe426a61090ef",
+   "job": "r1A",
+   "node": "r1A",
+   "variant": "A",
+   "extra": {
+    "steps": 3.25,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 1.0
+    },
+    "llm_calls": 2.0,
     "tool_calls": 1.25
    }
   }
