@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-006",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '3. **Combined using CRT** to get: 19^385 \u2261 **154** (mod 785)'; expected '154'.",
+  "output": "3. **Combined using CRT** to get: 19^385 \u2261 **154** (mod 785)",
+  "tokens": 3106,
+  "cost_usd": 0.012190000000000001,
+  "steps": 1,
+  "latency_s": 18.31825304031372,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -51,10 +51,11 @@ def _haiku(name: str, timeout_s: int = 300, offline: bool = False) -> CachedLLM:
 
 def _agentqa(suite: str = "easy"):
     if suite == "hard":
-        # 12 practice tasks (logic grids + transaction ledgers); sealed: 8 held-out of the same kinds and
-        # 8 OOD (business-day scheduling + chained string transformations)
+        # 8 practice tasks (logic grids + transaction ledgers); sealed: 6 held-out of the same kinds and
+        # 6 OOD (business-day scheduling + chained string transformations)
         from rsi.domains.agentqa.hard import OOD_HINT, make_hard_suite
-        return AgentQADomain(make_hard_suite(n_evolve=12, n_holdout=8, n_ood_per_family=4, seed=0), ood_hint=OOD_HINT)
+        # hard tasks cost ~$0.05 per harness run (long puzzles, 60-85 row ledgers), so the splits are smaller
+        return AgentQADomain(make_hard_suite(n_evolve=8, n_holdout=6, n_ood_per_family=3, seed=0), ood_hint=OOD_HINT)
     # 12 practice tasks (numeric word problems); sealed: 8 held-out numeric + 8 ood from 4 unseen families
     return AgentQADomain(make_suite(n_evolve=12, n_holdout=8, n_ood_per_family=2, seed=1))
 
@@ -67,11 +68,11 @@ def _usd(llm) -> float:
     return round(llm.meter.total().cost_usd, 4)
 
 
-def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict) -> None:
+def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict, k: int = 2) -> None:
     inspect(out)
     before = _usd(llm)
     rep = transfer_report(dom, llm, {"seed": res.baseline, "final": res.best},
-                          splits=("evolve", "holdout", "ood"), k=2, workers=4)
+                          splits=("evolve", "holdout", "ood"), k=k, workers=4)
     summ = {"run": name, "setup": setup, "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1),
             "trajectory": res.trajectory, "transfer": rep, "usd_total": _usd(llm),
             "usd_transfer_report": round(_usd(llm) - before, 4),
@@ -94,7 +95,7 @@ def metaharness(a) -> None:
     res = rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                       proposer_kind="rewrite")
     _finish(name, out, dom, res, llm, t0, {"method": "metaharness", "suite": a.suite, "config": MH_CFG,
-                                           "llm": "claude haiku (task + proposer)"})
+                                           "llm": "claude haiku (task + proposer)"}, k=1 if a.suite == "hard" else 2)
 
 
 def replay_check(name: str, a) -> None:
@@ -123,7 +124,7 @@ def rrsi_run(a) -> None:
            "max_digests": 4, "n_fail_traces": 6, "n_success_traces": 3, "repair_rounds": 2, "max_done_bounces": 2}
     res = rsi.improve(dom, method="rrsi", llm_task=llm, llm_propose=llm, config=cfg, out_dir=out,
                       llm_analyst=llm, budget=Budget(max_usd=a.max_usd, max_wall_s=45 * 60))
-    _finish(name, out, dom, res, llm, t0, {"method": "rrsi", "suite": a.suite, "config": cfg, "llm": "claude haiku (task, proposer, critic, analyst)"})
+    _finish(name, out, dom, res, llm, t0, k=1 if a.suite == "hard" else 2, setup={"method": "rrsi", "suite": a.suite, "config": cfg, "llm": "claude haiku (task, proposer, critic, analyst)"})
 
 
 def autoresearch(a) -> None:
