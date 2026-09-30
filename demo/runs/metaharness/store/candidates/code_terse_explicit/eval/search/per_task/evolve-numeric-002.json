@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer \"NameError: name 'answer_value' is not defined\"; expected '-183764'.",
+  "output": "NameError: name 'answer_value' is not defined",
+  "tokens": 1894,
+  "cost_usd": 0.0057139999999999995,
+  "steps": 2,
+  "latency_s": 9.195647239685059,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

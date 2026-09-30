@@ -1,0 +1,19 @@
+{
+ "name": "code_execution",
+ "artifact_id": "5d3a07a7848563a3cd80d79b09c8a6b5628f5dcf3f0d27eb72fdcfe68dded3ba",
+ "created_at": 1790760997.3004909,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Extracting answers from actual Python tool execution rather than LLM text will achieve perfect computational accuracy by using tool output as ground truth.",
+ "axis": "exploration",
+ "components": [
+  "C: retrieval from tool execution output",
+  "E: code execution as the verification trigger",
+  "F: model writes executable code blocks with marked output"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}

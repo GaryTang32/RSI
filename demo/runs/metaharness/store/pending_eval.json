@@ -1,0 +1,19 @@
+{
+ "iteration": 4,
+ "candidates": [
+  {
+   "name": "code_terse_explicit",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "code_approach_first",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

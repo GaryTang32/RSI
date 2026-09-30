@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-004",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- Summing the digits: 3+9+0+8+7+6+8+1+8+8+9+5+1+2+3+2+1+7+0+5+6 = **73**'; expected '100'.",
+  "output": "- Summing the digits: 3+9+0+8+7+6+8+1+8+8+9+5+1+2+3+2+1+7+0+5+6 = **73**",
+  "tokens": 1453,
+  "cost_usd": 0.003933,
+  "steps": 1,
+  "latency_s": 0.003659486770629883,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

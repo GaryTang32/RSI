@@ -1,0 +1,19 @@
+{
+ "name": "python_answer",
+ "artifact_id": "5907da6b093424c004e3314ee2f43ad81209b6aa9953d2e48737e6f3e47e23e0",
+ "created_at": 1790759985.5012333,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Requiring explicit Python execution with marked output format will eliminate arithmetic errors and formatting issues by making computation deterministic rather than relying on model recall.",
+ "axis": "exploitation",
+ "components": [
+  "A: system prompt enforces Python for computations",
+  "C: structured answer extraction via PYTHON_RESULT marker",
+  "F: model writes and outputs Python results"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": ""
+}

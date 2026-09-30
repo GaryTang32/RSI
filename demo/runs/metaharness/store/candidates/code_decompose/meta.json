@@ -1,0 +1,17 @@
+{
+ "name": "code_decompose",
+ "artifact_id": "ad16fe03717e1f54521403e0264322a76c7bc33c3485badb5765dafc45ba7452",
+ "created_at": 1790760351.260983,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 7,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

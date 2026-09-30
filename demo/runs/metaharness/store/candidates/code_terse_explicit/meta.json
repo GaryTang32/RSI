@@ -1,0 +1,17 @@
+{
+ "name": "code_terse_explicit",
+ "artifact_id": "9d994fd9af09a9bec886faf2ef5a10a009888b3225f206b555f84902c5b61185",
+ "created_at": 1790760496.9751077,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 8,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

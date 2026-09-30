@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-010",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer \"Binary has 79 bits (excluding '0b' prefix)\"; expected '14'.",
+  "output": "Binary has 79 bits (excluding '0b' prefix)",
+  "tokens": 1391,
+  "cost_usd": 0.003555,
+  "steps": 2,
+  "latency_s": 6.770057201385498,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

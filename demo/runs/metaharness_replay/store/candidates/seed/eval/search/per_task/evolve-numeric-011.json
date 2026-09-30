@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-011",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '- The digits are: 1 + 3 + 7 + 8 + 5 + 8 + 4 + 9 + 1 + 8 + 4 + 9 = **67**').",
+  "output": "- The digits are: 1 + 3 + 7 + 8 + 5 + 8 + 4 + 9 + 1 + 8 + 4 + 9 = **67**",
+  "tokens": 1863,
+  "cost_usd": 0.0059830000000000005,
+  "steps": 1,
+  "latency_s": 0.0024955272674560547,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

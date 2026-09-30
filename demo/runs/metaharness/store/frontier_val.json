@@ -1,76 +1,100 @@
 {
  "evolve-numeric-000": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1160.0
+  "best_system": "code_approach_first",
+  "score": 1.0,
+  "cost": 1250.0
  },
  "evolve-numeric-001": {
-  "best_system": "seed",
+  "best_system": "code_compact",
   "score": 1.0,
-  "cost": 5212.0
+  "cost": 1025.0
  },
  "evolve-numeric-002": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1536.0
+  "best_system": "code_json_answer",
+  "score": 1.0,
+  "cost": 1589.0
  },
  "evolve-numeric-003": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 4842.0
+  "best_system": "code_compact",
+  "score": 1.0,
+  "cost": 1018.0
  },
  "evolve-numeric-004": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1453.0
+  "best_system": "code_approach_first",
+  "score": 1.0,
+  "cost": 1197.0
  },
  "evolve-numeric-005": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1143.0
+  "best_system": "code_execution",
+  "score": 1.0,
+  "cost": 1282.0
  },
  "evolve-numeric-006": {
-  "best_system": "seed",
+  "best_system": "code_decompose",
   "score": 1.0,
-  "cost": 3675.0
+  "cost": 2086.0
  },
  "evolve-numeric-007": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1151.0
+  "best_system": "code_terse_explicit",
+  "score": 1.0,
+  "cost": 1325.0
  },
  "evolve-numeric-008": {
-  "best_system": "seed",
+  "best_system": "code_compact",
   "score": 1.0,
-  "cost": 1971.0
+  "cost": 1013.0
  },
  "evolve-numeric-009": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1494.0
+  "best_system": "code_approach_first",
+  "score": 1.0,
+  "cost": 1213.0
  },
  "evolve-numeric-010": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 1350.0
+  "best_system": "code_approach_first",
+  "score": 1.0,
+  "cost": 1441.0
  },
  "evolve-numeric-011": {
-  "best_system": "seed",
+  "best_system": "code_execution",
   "score": 1.0,
-  "cost": 1863.0
+  "cost": 1321.0
  },
  "_pareto": [
   {
-   "system": "seed",
-   "score": 0.3333333333333333,
-   "val_accuracy": 33.3,
-   "context_cost": 2237.5
+   "system": "code_execution",
+   "score": 1.0,
+   "val_accuracy": 100.0,
+   "context_cost": 1491.0
+  },
+  {
+   "system": "code_fallback",
+   "score": 1.0,
+   "val_accuracy": 100.0,
+   "context_cost": 1491.0
+  },
+  {
+   "system": "code_terse_explicit",
+   "score": 0.9166666666666666,
+   "val_accuracy": 91.7,
+   "context_cost": 1471.6666666666667
+  },
+  {
+   "system": "code_compact",
+   "score": 0.4166666666666667,
+   "val_accuracy": 41.7,
+   "context_cost": 1398.5
+  },
+  {
+   "system": "python_answer",
+   "score": 0.08333333333333333,
+   "val_accuracy": 8.3,
+   "context_cost": 1396.5
   }
  ],
  "_best": {
-  "system": "seed",
-  "score": 0.3333333333333333
+  "system": "code_execution",
+  "score": 1.0
  },
- "_hypervolume": 74.91666666666666,
+ "_hypervolume": 1019.625,
  "_hv_ref_cost": 2462.25
 }

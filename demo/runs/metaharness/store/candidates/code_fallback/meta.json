@@ -1,0 +1,19 @@
+{
+ "name": "code_fallback",
+ "artifact_id": "be87e7481c238be8ea12b7f6577baf73d4ce66ab456f165eae2455df64d3f827",
+ "created_at": 1790760202.461739,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "code_execution",
+ "hypothesis": "Implementing flexible answer extraction that tries both structured markers (ANSWER:) and last numeric output will improve robustness across different problem types and model response formats.",
+ "axis": "exploration",
+ "components": [
+  "C: dual-path retrieval (ANSWER: and fallback)",
+  "E: adaptive extraction trigger",
+  "F: model-guided code output structure"
+ ],
+ "parents_read": [],
+ "order": 5,
+ "reason": ""
+}

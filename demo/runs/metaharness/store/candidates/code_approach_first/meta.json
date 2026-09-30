@@ -1,0 +1,17 @@
+{
+ "name": "code_approach_first",
+ "artifact_id": "e3d0bee41720c9494060c332690054d5cf55a63f45b7c4a5488846f4ad53cb28",
+ "created_at": 1790760524.7089531,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}
