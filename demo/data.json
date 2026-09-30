@@ -14,6 +14,178 @@
    },
    {
     "iter": 1,
+    "incumbent": "multi_method",
+    "S": 0.25,
+    "sealed": {
+     "holdout": 0.25,
+     "ood": 0.25
+    },
+    "candidates": [
+     {
+      "name": "guided_format",
+      "S": 0.1667,
+      "C": 4350.5,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "multi_method",
+      "S": 0.25,
+      "C": 11569.0,
+      "kept": true,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> multi_method"
+   },
+   {
+    "iter": 2,
+    "incumbent": "code_execution",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 1.0,
+     "ood": 0.875
+    },
+    "candidates": [
+     {
+      "name": "clean_extraction",
+      "S": 0.25,
+      "C": 12373.5,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "code_execution",
+      "S": 1.0,
+      "C": 4501.4,
+      "kept": true,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed multi_method -> code_execution"
+   },
+   {
+    "iter": 3,
+    "incumbent": "pattern_template_solver",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 1.0,
+     "ood": 0.875
+    },
+    "candidates": [
+     {
+      "name": "self_checking_code",
+      "S": 0.9167,
+      "C": 2195.4,
+      "kept": false,
+      "change": "A single LLM call with inline self-verification instructions can achieve 100% accuracy while reducing token cost by eliminating the second verification turn."
+     },
+     {
+      "name": "pattern_template_solver",
+      "S": 1.0,
+      "C": 1465.5,
+      "kept": true,
+      "change": "Recognizing common problem patterns (digit sum, modulo, bit count) and substituting into hardcoded templates eliminates LLM code generation overhead, reducing cost while maintaining 100% accuracy."
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed code_execution -> pattern_template_solver"
+   },
+   {
+    "iter": 4,
+    "incumbent": "pattern_template_solver",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 1.0,
+     "ood": 0.875
+    },
+    "candidates": [
+     {
+      "name": "pattern_solver_enhanced",
+      "S": 0.9167,
+      "C": 1331.0,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "classifier_template_solver",
+      "S": 1.0,
+      "C": 1815.9,
+      "kept": false,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
+   }
+  ],
+  "usd_total": 2.9783,
+  "wall_s": 1969.5,
+  "stop_reason": "iterations",
+  "transfer": {
+   "evolve": {
+    "seed": {
+     "S": 0.20833333333333334,
+     "vs": null
+    },
+    "final": {
+     "S": 1.0,
+     "vs": {
+      "mean_diff": 0.7916666666666666,
+      "lo": 0.6666666666666666,
+      "hi": 0.9166666666666666,
+      "n": 12,
+      "p_better": 1.0
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "vs": null
+    },
+    "final": {
+     "S": 1.0,
+     "vs": {
+      "mean_diff": 0.5,
+      "lo": 0.25,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.75
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.625,
+     "vs": null
+    },
+    "final": {
+     "S": 0.875,
+     "vs": {
+      "mean_diff": 0.25,
+      "lo": -0.1875,
+      "hi": 0.625,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   }
+  }
+ },
+ {
+  "run": "metaharness_a",
+  "rows": [
+   {
+    "iter": 0,
+    "incumbent": "seed",
+    "S": 0.0833,
+    "sealed": {
+     "holdout": 0.375,
+     "ood": 0.75
+    },
+    "candidates": []
+   },
+   {
+    "iter": 1,
     "incumbent": "smart_extraction",
     "S": 0.4167,
     "sealed": {
@@ -71,6 +243,106 @@
     "sealed": {
      "holdout": 0.625,
      "ood": 0.375
+    },
+    "candidates": [
+     {
+      "name": "python_constrained_multi_check",
+      "S": 0.0,
+      "C": 3297.0,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "ensemble_voting_simple",
+      "S": 0.0833,
+      "C": 6947.7,
+      "kept": false,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 0 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
+   },
+   {
+    "iter": 4,
+    "incumbent": "multi_check_verify",
+    "S": 0.6667,
+    "sealed": {
+     "holdout": 0.625,
+     "ood": 0.375
+    },
+    "candidates": [
+     {
+      "name": "constrained_multi_verify",
+      "S": 0.1667,
+      "C": 3237.3,
+      "kept": false,
+      "change": null
+     },
+     {
+      "name": "code_extract_single",
+      "S": 0.0,
+      "C": 1472.9,
+      "kept": false,
+      "change": null
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
+   }
+  ],
+  "usd_total": null,
+  "wall_s": null,
+  "stop_reason": null
+ },
+ {
+  "run": "rrsi",
+  "rows": [
+   {
+    "iter": 0,
+    "incumbent": "H0",
+    "S": 0.16666666666666666,
+    "sealed": {
+     "holdout": 0.5,
+     "ood": 0.5
+    },
+    "candidates": []
+   },
+   {
+    "iter": 1,
+    "incumbent": "r0A",
+    "S": 0.8333333333333334,
+    "sealed": {
+     "holdout": 0.75,
+     "ood": 0.75
+    },
+    "candidates": [
+     {
+      "name": "r0A",
+      "S": 0.8333333333333334,
+      "C": 2473.3333333333335,
+      "admissible": true,
+      "reason": "admissible: S'=0.8333 >= S*-delta=-0.2416; dC=+0.541 <= beta0+beta1*dS=26.767",
+      "kept": true,
+      "change": "Complete candidate with 3 general fixes: markdown parser (C1), mandatory followup (C2), and universal tool-use mandate (C3). C3 now includes required predicted_affected field; prompt verified to be domain-general."
+     },
+     {
+      "name": "r0B",
+      "S": 0.25,
+      "C": 5947.25,
+      "admissible": false,
+      "reason": "cost rule failed: within band: shaped=-32.254 (<= 0)",
+      "kept": false,
+      "change": "Enforce computational discipline: mandate Python tool use in system prompt, require ANSWER: format and tool execution in task prompt, extract structured answers in harness"
+     }
+    ],
+    "why": "argmax S' over the admissible set {'r0A': 0.8333333333333334} -> r0A (S'=0.8333); S* 0.1667 -> 0.8333"
+   },
+   {
+    "iter": 2,
+    "incumbent": "r0A",
+    "S": 0.8333333333333334,
+    "sealed": {
+     "holdout": 0.75,
+     "ood": 0.75
     },
     "candidates": [],
     "why": null

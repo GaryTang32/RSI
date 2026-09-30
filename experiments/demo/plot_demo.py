@@ -124,18 +124,24 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     series = [("incumbent, practice tasks", [r["S"] for r in rows], BLUE),
               ("incumbent, sealed held-out", [r["sealed"].get("holdout") for r in rows], ORANGE),
               ("incumbent, sealed OOD (unseen task types)", [r["sealed"].get("ood") for r in rows], AQUA)]
-    for label, ys, col in series:
+    # sealed lines first, practice last, so the practice line stays visible where they coincide
+    for label, ys, col in series[1:] + series[:1]:
         pts = [(x, y) for x, y in zip(xs, ys) if y is not None]
         if pts:
-            ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=2, label=label)
-            ax.annotate(f"{pts[-1][1]:.2f}", (pts[-1][0], pts[-1][1]), xytext=(6, 0), textcoords="offset points",
-                        va="center", fontsize=9, color=INK2)
+            ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=2, label=label,
+                    zorder=2.5 if col == BLUE else 2)
+            ax.annotate(f"{pts[-1][1]:.2f}", (pts[-1][0], pts[-1][1]), xytext=(14, 0), textcoords="offset points",
+                        va="center", fontsize=9, color=col)
     ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label="candidate kept")
     ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="candidate discarded")
     ax.set_xticks(xs, ["seed"] + [str(x) for x in xs[1:]])
     ax.set_xlabel("iteration", color=INK2, fontsize=10)
     ax.set_ylim(-0.03, 1.08)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3, fontsize=8, frameon=False)
+    h, lab = ax.get_legend_handles_labels()
+    want = [s[0] for s in series] + ["candidate kept", "candidate discarded"]
+    pairs = sorted(zip(h, lab), key=lambda p: want.index(p[1]) if p[1] in want else 99)
+    ax.legend([p[0] for p in pairs], [p[1] for p in pairs], loc="upper center", bbox_to_anchor=(0.5, -0.2),
+              ncol=3, fontsize=8, frameon=False)
     fig.tight_layout()
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
@@ -200,12 +206,13 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    names = [n for n in ("metaharness", "rrsi", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
+    names = [n for n in ("metaharness", "metaharness_a", "rrsi", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
     runs = [extract(n) for n in names]
     (DEMO / "data.json").write_text(json.dumps(runs, indent=1, default=str))
     figs = DEMO / "figures"
     figs.mkdir(parents=True, exist_ok=True)
     titles = {"metaharness": "Meta-Harness: Haiku rewrites its own AgentQA harness",
+              "metaharness_a": "Meta-Harness, replicate run (same settings)",
               "rrsi": "RRSI: Haiku edits the AgentQA harness under guards"}
     for d in runs:
         if d["run"] == "autoresearch":

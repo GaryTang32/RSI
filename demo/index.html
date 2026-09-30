@@ -1,0 +1,236 @@
+<title>RSI Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each run is a section = chart, then the iteration log, then the code it produced. */
+:root{
+  --bg:#f7f7f4; --surface:#fcfcfb; --ink:#161614; --ink2:#52514e; --muted:#7d7c77; --line:#e2e1dc;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --discard:#9a9994; --keep-bg:#e6effa; --code-bg:#f0efeb;
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141413; --surface:#1a1a19; --ink:#f4f3ee; --ink2:#c3c2b7; --muted:#8f8e87; --line:#2f2f2c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --discard:#8a8983; --keep-bg:#1d2a3b; --code-bg:#22221f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141413; --surface:#1a1a19; --ink:#f4f3ee; --ink2:#c3c2b7; --muted:#8f8e87; --line:#2f2f2c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --discard:#8a8983; --keep-bg:#1d2a3b; --code-bg:#22221f; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--body);padding-inline:20px;padding-block:36px 72px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:48px}
+h1,h2{font-family:var(--display);font-weight:600;line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:clamp(30px,5vw,44px)} h2{font-size:27px}
+h3{font:600 12px/1.3 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+p{margin:0;max-width:70ch} .dim{color:var(--ink2)} .small{font-size:13px}
+code,.mono{font-family:var(--mono);font-size:12.5px}
+.lede{display:grid;gap:14px}
+.facts{display:flex;flex-wrap:wrap;gap:10px 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding-block:14px}
+.facts div{display:grid;gap:2px;min-width:0} .facts b{font:500 20px/1.2 var(--mono);font-variant-numeric:tabular-nums} .facts span{font-size:12.5px;color:var(--ink2)}
+section.run{display:grid;gap:20px}
+.head{display:grid;gap:8px}
+.result{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px}
+.result .v{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--s1);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--ink2)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
+.legend i.dot{width:9px;height:9px;border-radius:50%;vertical-align:0}
+.legend i.hollow{background:transparent!important;border:1.5px solid var(--discard);box-sizing:border-box}
+.chart{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 8px 4px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--ink2);font:11px var(--body)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;max-width:320px;box-shadow:0 4px 14px rgba(0,0,0,.12);line-height:1.45}
+.tip b{font-family:var(--mono);font-weight:500}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.kept td{background:var(--keep-bg)}
+tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font:500 11.5px/1 var(--body);padding:4px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.pill.keep{background:var(--s1);border-color:var(--s1);color:#fff}
+.cand{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+details{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+summary{cursor:pointer;padding:10px 14px;font-weight:500}
+summary:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:0 14px 14px}
+.code-grid>div{min-width:0;display:grid;gap:6px;align-content:start}
+pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overflow:auto;max-height:420px;font:12px/1.5 var(--mono);white-space:pre}
+.note{font-size:13px;color:var(--ink2);border-left:3px solid var(--line);padding-left:12px;max-width:75ch}
+@media (prefers-reduced-motion:no-preference){.chart circle{transition:r .12s}}
+</style>
+
+<div class="wrap">
+  <header class="lede">
+    <h3>rsi package · live runs with Claude Haiku</h3>
+    <h1>Watching the loop improve an LLM agent, one iteration at a time</h1>
+    <p>Each run below started from an untouched seed and ran through the package's public API. Claude Haiku played both roles: the frozen model the harness calls, and the proposer that rewrites the harness. Every point on a chart is one candidate the model proposed, scored by a locked exact-match grader. The orange and green lines are sealed held-out and out-of-distribution tasks. The loop never saw them; a write-only monitor scored each new incumbent on them.</p>
+    <div class="facts" id="facts"></div>
+  </header>
+  <div id="runs" class="wrap" style="gap:64px"></div>
+  <footer class="note">Reproduce: <code>python experiments/demo/live_demo.py metaharness|rrsi|autoresearch</code>, then <code>python experiments/demo/plot_demo.py &amp;&amp; python experiments/demo/build_page.py</code>. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (12 practice, 8 held-out, 8 OOD) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
+</div>
+
+<script>
+const RUNS = [{"run": "metaharness", "rows": [{"iter": 0, "incumbent": "seed", "S": 0.0833, "sealed": {"holdout": 0.375, "ood": 0.75}, "candidates": []}, {"iter": 1, "incumbent": "multi_method", "S": 0.25, "sealed": {"holdout": 0.25, "ood": 0.25}, "candidates": [{"name": "guided_format", "S": 0.1667, "C": 4350.5, "kept": false, "change": null}, {"name": "multi_method", "S": 0.25, "C": 11569.0, "kept": true, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> multi_method"}, {"iter": 2, "incumbent": "code_execution", "S": 1.0, "sealed": {"holdout": 1.0, "ood": 0.875}, "candidates": [{"name": "clean_extraction", "S": 0.25, "C": 12373.5, "kept": false, "change": null}, {"name": "code_execution", "S": 1.0, "C": 4501.4, "kept": true, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed multi_method -> code_execution"}, {"iter": 3, "incumbent": "pattern_template_solver", "S": 1.0, "sealed": {"holdout": 1.0, "ood": 0.875}, "candidates": [{"name": "self_checking_code", "S": 0.9167, "C": 2195.4, "kept": false, "change": "A single LLM call with inline self-verification instructions can achieve 100% accuracy while reducing token cost by eliminating the second verification turn."}, {"name": "pattern_template_solver", "S": 1.0, "C": 1465.5, "kept": true, "change": "Recognizing common problem patterns (digit sum, modulo, bit count) and substituting into hardcoded templates eliminates LLM code generation overhead, reducing cost while maintaining 100% accuracy."}], "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed code_execution -> pattern_template_solver"}, {"iter": 4, "incumbent": "pattern_template_solver", "S": 1.0, "sealed": {"holdout": 1.0, "ood": 0.875}, "candidates": [{"name": "pattern_solver_enhanced", "S": 0.9167, "C": 1331.0, "kept": false, "change": null}, {"name": "classifier_template_solver", "S": 1.0, "C": 1815.9, "kept": false, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"}], "usd_total": 2.9783, "wall_s": 1969.5, "stop_reason": "iterations", "transfer": {"evolve": {"seed": {"S": 0.20833333333333334, "vs": null}, "final": {"S": 1.0, "vs": {"mean_diff": 0.7916666666666666, "lo": 0.6666666666666666, "hi": 0.9166666666666666, "n": 12, "p_better": 1.0}}}, "holdout": {"seed": {"S": 0.5, "vs": null}, "final": {"S": 1.0, "vs": {"mean_diff": 0.5, "lo": 0.25, "hi": 0.75, "n": 8, "p_better": 0.75}}}, "ood": {"seed": {"S": 0.625, "vs": null}, "final": {"S": 0.875, "vs": {"mean_diff": 0.25, "lo": -0.1875, "hi": 0.625, "n": 8, "p_better": 0.5}}}}, "files": {"seed": {"harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n", "prompts/system.md": "You are a helpful assistant.\n", "prompts/task.md": "{question}\n"}, "final": {"harness.py": "\"\"\"\nPattern-template solver: Recognize problem patterns and use hardcoded templates.\nAxis: C (retrieval via pattern matching), B (state: template database), D (sizing: no LLM code gen).\nFalls back to LLM code generation if pattern doesn't match.\nReduces cost by eliminating LLM code generation for structured problems.\n\"\"\"\n\nimport re\n\n\ndef solve(question, llm, tools, files):\n    \"\"\"Try pattern-based solver first, then fall back to LLM code generation.\"\"\"\n    \n    # Attempt 1: Recognize and solve via template\n    answer = _try_pattern_solver(question, tools)\n    if answer:\n        return answer\n    \n    # Attempt 2: Fall back to LLM code generation (same as code_execution)\n    system = files.get(\"prompts/system.md\", \"\")\n    code_gen_prompt = files[\"prompts/generate_code.md\"].replace(\"{question}\", question)\n    code_response = llm(code_gen_prompt, system=system)\n    \n    code = _extract_code(code_response)\n    if not code:\n        code = code_response\n    \n    try:\n        output = tools.python(code)\n    except Exception:\n        output = \"\"\n    \n    answer = _extract_answer_from_stdout(output)\n    if answer:\n        return answer\n    \n    return \"\"\n\n\ndef _try_pattern_solver(question, tools):\n    \"\"\"\n    Recognize common problem patterns and solve with deterministic templates.\n    This avoids LLM code generation for structured problems.\n    \"\"\"\n    q = question.lower()\n    \n    # Pattern 1: Sum of digits of N!\n    # Examples: \"sum of digits of 41!\", \"sum of digits of 66!\"\n    match = re.search(r'sum.*?digits?.*?of\\s+(\\d+)!', q)\n    if match:\n        n = int(match.group(1))\n        code = f\"\"\"\nimport math\nresult = math.factorial({n})\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 2: Sum of digits of base^exp\n    # Examples: \"sum of digits of 52^12\"\n    match = re.search(r'sum.*?digits?.*?of\\s+(\\d+)\\^(\\d+)', q)\n    if match:\n        base, exp = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nresult = {base}**{exp}\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 3: Modulo operation\n    # Examples: \"40627866717431 mod 148\", \"73427123466896 mod 440\"\n    match = re.search(r'(\\d+)\\s+mod\\s+(\\d+)', q)\n    if match:\n        n, mod = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nprint(f\"ANSWER: {{{n} % {mod}}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 4: Bit count in binary representation\n    # Examples: \"How many 1 bits are in the binary representation of 48^14?\"\n    match = re.search(r'1\\s+bits?.*?binary.*?of\\s+(\\d+)\\^(\\d+)', q)\n    if match:\n        base, exp = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nn = {base}**{exp}\nanswer = bin(n).count('1')\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 5: Factorial digit sum (alternative phrasing)\n    # Examples: \"What is the sum of the decimal digits of 41! (41 factorial)?\"\n    match = re.search(r'digits?.*?(\\d+)!.*factorial', q)\n    if match:\n        n = int(match.group(1))\n        code = f\"\"\"\nimport math\nresult = math.factorial({n})\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # No pattern matched; will fall back to LLM\n    return None\n\n\ndef _extract_code(text):\n    \"\"\"Extract Python code from markdown code blocks.\"\"\"\n    pattern = r\"```python\\s*(.*?)\\s*```\"\n    matches = re.findall(pattern, text, re.DOTALL)\n    if matches:\n        return matches[0]\n    \n    pattern = r\"```\\s*(.*?)\\s*```\"\n    matches = re.findall(pattern, text, re.DOTALL)\n    if matches:\n        return matches[0]\n    \n    return \"\"\n\n\ndef _extract_answer_from_stdout(stdout):\n    \"\"\"Parse ANSWER: lines from program stdout.\"\"\"\n    for line in stdout.strip().splitlines():\n        if \"ANSWER:\" in line.upper():\n            idx = line.upper().find(\"ANSWER:\")\n            value = line[idx + 7:].strip()\n            value = value.split()[0] if value else \"\"\n            return value\n    return \"\"\n", "prompts/generate_code.md": "Solve this problem by writing Python code.\n\nQuestion: {question}\n\nWrite Python code that:\n1. Solves the problem correctly\n2. Prints exactly: ANSWER: <value>\n   where <value> is ONLY the numeric/text answer\n\nProvide ONLY the Python code, inside ```python and ``` markers.\nDo not explain or add text outside the code block.\n\n```python\n# Write your solution here\n```\n", "prompts/system.md": "You are a Python expert. Solve problems by writing clean, executable Python code.\nAlways:\n1. Write code that prints exactly: ANSWER: <value>\n2. The answer MUST be printed to stdout in the format \"ANSWER: <numeric_value>\"\n3. Your code must be runnable and produce no errors.\n4. Use standard libraries only (math, itertools, etc.)\n", "prompts/task.md": "{question}\n", "prompts/verify_code.md": "Original question: {question}\nPrevious answer: {previous_answer}\n\nVerify this answer using a DIFFERENT method in Python.\n\nWrite code that:\n1. Uses an alternative approach (different algorithm or calculation method)\n2. Prints exactly: ANSWER: <value>\n\nProvide ONLY the code, inside ```python and ``` markers.\n\n```python\n# Write your verification code here\n```\n"}}}, {"run": "metaharness_a", "rows": [{"iter": 0, "incumbent": "seed", "S": 0.0833, "sealed": {"holdout": 0.375, "ood": 0.75}, "candidates": []}, {"iter": 1, "incumbent": "smart_extraction", "S": 0.4167, "sealed": {"holdout": 0.625, "ood": 0.75}, "candidates": [{"name": "solve_verify_answer", "S": 0.0833, "C": 1975.4, "kept": false, "change": "Structured prompting requiring explicit verification step and clear ANSWER format will catch computational errors and improve extraction reliability"}, {"name": "smart_extraction", "S": 0.4167, "C": 3920.8, "kept": true, "change": "Robust multi-strategy answer extraction handling formatting variations (commas, bold, patterns) will recover correct answers without requiring LLM prompt changes"}], "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> smart_extraction"}, {"iter": 2, "incumbent": "multi_check_verify", "S": 0.6667, "sealed": {"holdout": 0.625, "ood": 0.375}, "candidates": [{"name": "compute_then_extract", "S": 0.0, "C": 1704.2, "kept": false, "change": null}, {"name": "multi_check_verify", "S": 0.6667, "C": 7198.9, "kept": true, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed smart_extraction -> multi_check_verify"}, {"iter": 3, "incumbent": "multi_check_verify", "S": 0.6667, "sealed": {"holdout": 0.625, "ood": 0.375}, "candidates": [{"name": "python_constrained_multi_check", "S": 0.0, "C": 3297.0, "kept": false, "change": null}, {"name": "ensemble_voting_simple", "S": 0.0833, "C": 6947.7, "kept": false, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 0 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"}, {"iter": 4, "incumbent": "multi_check_verify", "S": 0.6667, "sealed": {"holdout": 0.625, "ood": 0.375}, "candidates": [{"name": "constrained_multi_verify", "S": 0.1667, "C": 3237.3, "kept": false, "change": null}, {"name": "code_extract_single", "S": 0.0, "C": 1472.9, "kept": false, "change": null}], "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"}], "usd_total": null, "wall_s": null, "stop_reason": null, "files": {}}, {"run": "rrsi", "rows": [{"iter": 0, "incumbent": "H0", "S": 0.16666666666666666, "sealed": {"holdout": 0.5, "ood": 0.5}, "candidates": []}, {"iter": 1, "incumbent": "r0A", "S": 0.8333333333333334, "sealed": {"holdout": 0.75, "ood": 0.75}, "candidates": [{"name": "r0A", "S": 0.8333333333333334, "C": 2473.3333333333335, "admissible": true, "reason": "admissible: S'=0.8333 >= S*-delta=-0.2416; dC=+0.541 <= beta0+beta1*dS=26.767", "kept": true, "change": "Complete candidate with 3 general fixes: markdown parser (C1), mandatory followup (C2), and universal tool-use mandate (C3). C3 now includes required predicted_affected field; prompt verified to be domain-general."}, {"name": "r0B", "S": 0.25, "C": 5947.25, "admissible": false, "reason": "cost rule failed: within band: shaped=-32.254 (<= 0)", "kept": false, "change": "Enforce computational discipline: mandate Python tool use in system prompt, require ANSWER: format and tool execution in task prompt, extract structured answers in harness"}], "why": "argmax S' over the admissible set {'r0A': 0.8333333333333334} -> r0A (S'=0.8333); S* 0.1667 -> 0.8333"}, {"iter": 2, "incumbent": "r0A", "S": 0.8333333333333334, "sealed": {"holdout": 0.75, "ood": 0.75}, "candidates": [], "why": null}], "usd_total": null, "wall_s": null, "stop_reason": null, "files": {}}, {"run": "autoresearch", "rows": [{"iter": 0, "incumbent": "baseline", "S": 2.9556875035032344, "sealed": {"test_iid": 3.0037504524192458, "test_shift": 3.0627687403286985}, "candidates": []}, {"iter": 1, "incumbent": "baseline", "S": 2.9556875035032344, "sealed": {"test_iid": 3.0037504524192458, "test_shift": 3.0627687403286985}, "candidates": [{"name": "exp0001", "S": 3.0691515055496796, "C": 0.077, "admissible": false, "reason": "gain -0.1135 <= 0.0", "kept": false, "change": "Increase CONTEXT from 6 to 8 bytes"}], "why": "discard: gain -0.1135 <= 0.0; git reset to fa8b780"}, {"iter": 2, "incumbent": "exp0002", "S": 2.6821883179083783, "sealed": {"test_iid": 2.736233512869521, "test_shift": 2.8135314216764113}, "candidates": [{"name": "exp0002", "S": 2.6821883179083783, "C": 0.077, "admissible": true, "reason": "gain +0.2735 > 0.0", "kept": true, "change": "Increase learning rate from 0.003 to 0.01"}], "why": "kept: gain +0.2735 > 0.0; branch advances to 3f4f61a"}, {"iter": 3, "incumbent": "exp0003", "S": 2.6478326649002915, "sealed": {"test_iid": 2.7252344370858723, "test_shift": 2.780168266765907}, "candidates": [{"name": "exp0003", "S": 2.6478326649002915, "C": 0.077, "admissible": true, "reason": "gain +0.0344 > 0.0", "kept": true, "change": "Increase learning rate from 0.01 to 0.02"}], "why": "kept: gain +0.0344 > 0.0; branch advances to d137e15"}, {"iter": 4, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0004", "S": 2.636878979180558, "C": 0.089, "admissible": true, "reason": "gain +0.0110 > 0.0", "kept": true, "change": "Increase HIDDEN layer width from 128 to 256"}], "why": "kept: gain +0.0110 > 0.0; branch advances to 931edb4"}, {"iter": 5, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0005", "S": 2.697716152368591, "C": 0.091, "admissible": false, "reason": "gain -0.0608 <= 0.0", "kept": false, "change": "Add second hidden layer (DEPTH 1\u21922, HIDDEN 256\u2192160) to increase expressivity"}], "why": "discard: gain -0.0608 <= 0.0; git reset to 931edb4"}, {"iter": 6, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0006", "S": 2.6722876295534714, "C": 0.089, "admissible": false, "reason": "gain -0.0354 <= 0.0", "kept": false, "change": "Increase EMBED_DIM from 16 to 24"}], "why": "discard: gain -0.0354 <= 0.0; git reset to 931edb4"}, {"iter": 7, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0007", "S": 2.68537201208306, "C": 0.088, "admissible": false, "reason": "gain -0.0485 <= 0.0", "kept": false, "change": "Add L2 regularization (weight_decay=0.0001) for better generalization with larger model"}], "why": "discard: gain -0.0485 <= 0.0; git reset to 931edb4"}, {"iter": 8, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0008", "S": 3.1007389117553097, "C": 0.088, "admissible": false, "reason": "gain -0.4639 <= 0.0", "kept": false, "change": "Remove learning rate warmdown schedule (keep LR constant)"}], "why": "discard: gain -0.4639 <= 0.0; git reset to 931edb4"}, {"iter": 9, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0009", "S": 2.689674999416948, "C": 0.089, "admissible": false, "reason": "gain -0.0528 <= 0.0", "kept": false, "change": "Increase training time at full LR by reducing warmdown onset (WARMDOWN_RATIO 0.5\u21920.33)"}], "why": "discard: gain -0.0528 <= 0.0; git reset to 931edb4"}, {"iter": 10, "incumbent": "exp0004", "S": 2.636878979180558, "sealed": {"test_iid": 2.7336332084559793, "test_shift": 2.8456890024969077}, "candidates": [{"name": "exp0010", "S": 3.836316686916548, "C": 0.09, "admissible": false, "reason": "gain -1.1994 <= 0.0", "kept": false, "change": "Switch optimizer from Adam to SGD with momentum"}], "why": "discard: gain -1.1994 <= 0.0; git reset to 931edb4"}], "usd_total": 0.7018, "wall_s": 1096.0, "stop_reason": "max_rounds", "files": {"seed": {}, "final": {}}, "results_tsv": [["commit", "val_bpb", "memory_gb", "status", "description"], ["fa8b780", "2.955688", "0.078", "keep", "baseline"], ["e62a984", "3.069152", "0.077", "discard", "Increase CONTEXT from 6 to 8 bytes"], ["3f4f61a", "2.682188", "0.077", "keep", "Increase learning rate from 0.003 to 0.01"], ["d137e15", "2.647833", "0.077", "keep", "Increase learning rate from 0.01 to 0.02"], ["931edb4", "2.636879", "0.089", "keep", "Increase HIDDEN layer width from 128 to 256"], ["413c7ca", "2.697716", "0.091", "discard", "Add second hidden layer (DEPTH 1\u21922, HIDDEN 256\u2192160) to increase expressivity"], ["4d5e646", "2.672288", "0.089", "discard", "Increase EMBED_DIM from 16 to 24"], ["9ef1865", "2.685372", "0.088", "discard", "Add L2 regularization (weight_decay=0.0001) for better generalization with larger model"], ["67068b5", "3.100739", "0.088", "discard", "Remove learning rate warmdown schedule (keep LR constant)"], ["2733c4c", "2.689675", "0.089", "discard", "Increase training time at full LR by reducing warmdown onset (WARMDOWN_RATIO 0.5\u21920.33)"], ["f3fddc3", "3.836317", "0.090", "discard", "Switch optimizer from Adam to SGD with momentum"]]}];
+const META = {
+  metaharness: {title: "Meta-Harness", what: "Haiku reads the full history of harnesses, scores and raw traces, then writes new harness code.",
+    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "The jump at iteration 2 is a general strategy: the harness asks the model to write Python, runs it, and reads the printed answer. From iteration 3 the kept harness also hard-codes regex templates for the task generator's question shapes (“sum of digits of N!”, “N mod M”), chosen because they score the same with fewer tokens. The general code path stays as a fallback, which is why OOD still improved. The template layer is the brittle behaviour the claims audit recorded against the paper's “coherent algorithms” claim (Meta-Harness L4). Open the code below to see it.",
+    higher: true},
+  metaharness_a: {title: "Meta-Harness, replicate run", what: "The same settings as the run above, started again from the same seed. This first attempt was stopped by a time limit after its 4 iterations, during the final re-scoring, so it has no re-scored summary; the chart shows its loop and sealed monitor only.",
+    task: "Same task set, same seed harness, same model.", note: "Practice and held-out accuracy rose, but OOD fell from 0.75 to 0.38 once the incumbent switched to multi_check_verify. The sealed monitor exposes the overfit; the loop never saw these scores. Two runs with identical settings ending this differently is why a single live run is an anecdote.",
+    higher: true},
+  rrsi: {title: "RRSI", what: "Haiku analyses failures and proposes small tagged edits. A leakage critic, a noise band and a cost rule decide what survives.",
+    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", higher: true},
+  autoresearch: {title: "Autoresearch", what: "Haiku edits train.py; each experiment trains for 8 s on CPU and is kept only if validation bits-per-byte improves.",
+    task: "tinylm: a byte-level language model; hidden test split never shown to the agent.", note: "Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256. The last keep improved validation by 0.011, but the hidden test got slightly worse (2.725 → 2.734). That keep sits inside the noise band: the strict keep rule locks in luck, a weakness the claims audit documents. SGD, dropping the warmdown and a deeper net were all tried and rejected.",
+    higher: false},
+};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f2 = v => v == null ? "–" : (+v).toFixed(v > 1.5 ? 3 : 2);
+const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
+
+function facts() {
+  const usd = RUNS.reduce((a, d) => a + (d.usd_total || 0), 0);
+  const iters = RUNS.reduce((a, d) => a + d.rows.length - 1, 0);
+  const cands = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.length, 0), 0);
+  const kept = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.filter(c => c.kept).length, 0), 0);
+  document.getElementById("facts").innerHTML = [
+    [RUNS.length, "fresh live runs"], [iters, "iterations"], [cands, "candidates proposed and graded"],
+    [kept, "kept by the gate"], ["$" + usd.toFixed(2), "total Claude Haiku spend"]]
+    .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+}
+
+function chart(host, d, m) {
+  const rows = d.rows, W = 900, H = 330, L = 52, R = 70, T = 14, B = 34;
+  const vals = [];
+  rows.forEach(r => { vals.push(r.S); Object.values(r.sealed || {}).forEach(v => v != null && vals.push(v));
+    r.candidates.forEach(c => c.S != null && vals.push(c.S)); });
+  let lo = m.higher ? 0 : Math.min(...vals), hi = m.higher ? 1 : Math.max(...vals);
+  if (!m.higher) { const pad = (hi - lo) * 0.08; lo -= pad; hi += pad; }
+  const x = i => L + (W - L - R) * (rows.length === 1 ? 0 : i / (rows.length - 1));
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.title)} score by iteration">`;
+  const ticks = m.higher ? [0, .25, .5, .75, 1] : Array.from({length: 5}, (_, i) => lo + (hi - lo) * i / 4);
+  ticks.forEach(t => { s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/>`
+    + `<text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${m.higher ? t.toFixed(2) : t.toFixed(2)}</text>`; });
+  rows.forEach((r, i) => { s += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${i === 0 ? (m.higher ? "seed" : "base") : i}</text>`; });
+  const series = m.higher
+    ? [["S", "var(--s1)"], ["holdout", "var(--s2)"], ["ood", "var(--s3)"]]
+    : [["S", "var(--s1)"], ["test_iid", "var(--s2)"]];
+  // sealed lines first, practice last, so the practice line stays visible where they coincide
+  [...series.slice(1), series[0]].forEach(([k, col]) => {
+    const pts = rows.map((r, i) => [i, k === "S" ? r.S : (r.sealed || {})[k]]).filter(p => p[1] != null);
+    if (!pts.length) return;
+    let p = `M${x(pts[0][0])},${y(pts[0][1])}`;
+    for (let j = 1; j < pts.length; j++) p += ` H${x(pts[j][0])} V${y(pts[j][1])}`;
+    p += ` H${x(rows.length - 1)}`;
+    s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+    const last = pts[pts.length - 1][1];
+    s += `<text x="${x(rows.length - 1) + 14}" y="${y(last) + 4}" style="fill:${col}">${f2(last)}</text>`;
+  });
+  rows.forEach((r, i) => r.candidates.forEach((c, j) => {
+    const v = c.S == null ? null : c.S;
+    if (v == null) return;
+    const off = r.candidates.length > 1 ? (j - (r.candidates.length - 1) / 2) * 9 : 0;
+    s += `<circle class="pt" data-i="${i}" data-j="${j}" cx="${x(i) + off}" cy="${y(v)}" r="5.5" stroke-width="1.8" `
+      + (c.kept ? `fill="var(--s1)" stroke="var(--surface)"` : `fill="var(--surface)" stroke="var(--discard)"`) + `/>`;
+  }));
+  s += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  s += `<rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
+  s += `</svg>`;
+  const box = el("div", {class: "chart"}, s);
+  const tip = el("div", {class: "tip", hidden: ""});
+  box.appendChild(tip); host.appendChild(box);
+  const svg = box.querySelector("svg"), xh = box.querySelector(".xh");
+  const toSvg = e => { const r = svg.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height, r]; };
+  function show(e, i, c) {
+    const r = rows[i], sealed = r.sealed || {};
+    let h = `<div class="small dim">${i === 0 ? "starting point" : "iteration " + i}</div>`;
+    if (c) h += `<div><b>${esc(c.name)}</b> · ${m.higher ? "practice" : "val_bpb"} <b>${f2(c.S)}</b> · ${c.kept ? "kept" : "discarded"}</div>`
+      + (c.change ? `<div class="small" style="margin-top:4px">${esc(c.change).slice(0, 260)}</div>` : "");
+    else h += `<div>incumbent <b>${esc(r.incumbent)}</b></div>`;
+    h += `<div class="small dim" style="margin-top:4px">incumbent: ${m.higher ? "practice" : "val"} ${f2(r.S)}`
+      + (m.higher ? ` · held-out ${f2(sealed.holdout)} · OOD ${f2(sealed.ood)}` : ` · hidden test ${f2(sealed.test_iid)}`) + `</div>`;
+    tip.innerHTML = h; tip.hidden = false;
+    const br = box.getBoundingClientRect();
+    let left = e.clientX - br.left + 14, top = e.clientY - br.top + 14;
+    if (left + 330 > br.width) left = Math.max(8, e.clientX - br.left - 334);
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+  }
+  box.addEventListener("mousemove", e => {
+    const [sx, sy] = toSvg(e);
+    let best = null, bd = 1e9;
+    box.querySelectorAll(".pt").forEach(p => { const dx = +p.getAttribute("cx") - sx, dy = +p.getAttribute("cy") - sy, dd = dx * dx + dy * dy;
+      if (dd < bd) { bd = dd; best = p; } });
+    if (best && bd < 22 * 22) { show(e, +best.dataset.i, rows[+best.dataset.i].candidates[+best.dataset.j]); return; }
+    if (sx < L - 10 || sx > W - R + 10) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
+    const i = Math.max(0, Math.min(rows.length - 1, Math.round((sx - L) / ((W - L - R) / Math.max(1, rows.length - 1)))));
+    show(e, i, null);
+  });
+  box.addEventListener("mouseleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+}
+
+function legend(m) {
+  const items = m.higher
+    ? [["var(--s1)", "incumbent, practice tasks"], ["var(--s2)", "incumbent, sealed held-out"], ["var(--s3)", "incumbent, sealed OOD"]]
+    : [["var(--s1)", "running best, validation"], ["var(--s2)", "same model on a hidden test split"]];
+  return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}`
+    + `<span><i class="dot" style="background:var(--s1)"></i>candidate kept</span><span><i class="dot hollow"></i>candidate discarded</span></div>`;
+}
+
+function table(d, m) {
+  let h = `<div class="tbl"><table><thead><tr><th>iter</th><th>candidate</th><th>what the model proposed</th>`
+    + `<th class="num">${m.higher ? "practice" : "val_bpb"}</th><th>verdict</th>`
+    + (m.higher ? `<th class="num">held-out*</th><th class="num">OOD*</th>` : `<th class="num">hidden test*</th>`) + `</tr></thead><tbody>`;
+  const r0 = d.rows[0];
+  h += `<tr><td class="num">0</td><td class="cand">${esc(r0.incumbent)}</td><td class="dim">starting harness</td><td class="num">${f2(r0.S)}</td><td></td>`
+    + (m.higher ? `<td class="num">${f2(r0.sealed.holdout)}</td><td class="num">${f2(r0.sealed.ood)}</td>` : `<td class="num">${f2(r0.sealed.test_iid)}</td>`) + `</tr>`;
+  d.rows.slice(1).forEach(r => r.candidates.forEach(c => {
+    h += `<tr class="${c.kept ? "kept" : ""}"><td class="num">${r.iter}</td><td class="cand">${esc(c.name)}</td>`
+      + `<td>${esc((c.change || "").slice(0, 300))}</td><td class="num">${f2(c.S)}</td>`
+      + `<td>${c.kept ? `<span class="pill keep">kept</span>` : `<span class="pill">discarded</span>`}</td>`
+      + (m.higher ? `<td class="num">${c.kept ? f2(r.sealed.holdout) : ""}</td><td class="num">${c.kept ? f2(r.sealed.ood) : ""}</td>`
+                  : `<td class="num">${c.kept ? f2(r.sealed.test_iid) : ""}</td>`) + `</tr>`;
+  }));
+  return h + `</tbody></table></div><p class="small dim">* Sealed scores of the new incumbent, from the write-only shadow monitor. The loop never saw them.</p>`;
+}
+
+function code(d) {
+  const f = d.files || {};
+  if (!f.seed || !f.final) return "";
+  const names = [...new Set([...Object.keys(f.seed), ...Object.keys(f.final)])].sort();
+  const changed = names.filter(n => f.seed[n] !== f.final[n]);
+  return `<details><summary>The harness it produced: ${changed.length} of ${names.length} files changed from the seed</summary><div class="code-grid">`
+    + changed.map(n => `<div><h3>${esc(n)} · seed</h3><pre>${esc(f.seed[n] ?? "(did not exist)")}</pre></div>`
+      + `<div><h3>${esc(n)} · after the run</h3><pre>${esc(f.final[n] ?? "(removed)")}</pre></div>`).join("")
+    + `</div></details>`;
+}
+
+function resultLine(d, m) {
+  if (d.transfer) {
+    const t = d.transfer, parts = [["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, k]) => {
+      const a = t[k].seed.S, b = t[k].final.S, vs = t[k].final.vs || {}, ci = vs.ci ? ` <span class="dim small">[${f2(vs.ci[0])}, ${f2(vs.ci[1])}]</span>` : "";
+      return `<span>${lab} <span class="v">${f2(a)} → <span class="${b > a ? "up" : ""}">${f2(b)}</span></span>${ci}</span>`; });
+    return `<div class="result">${parts.join("")}<span class="dim small">re-scored with k = 2 trials per task after the run; brackets = 95% CI of the paired gain</span></div>`;
+  }
+  const r0 = d.rows[0], rl = d.rows[d.rows.length - 1];
+  return `<div class="result"><span>val_bpb <span class="v">${f2(r0.S)} → <span class="up">${f2(rl.S)}</span></span></span>`
+    + `<span>hidden test <span class="v">${f2(r0.sealed.test_iid)} → <span class="up">${f2(rl.sealed.test_iid)}</span></span></span>`
+    + `<span class="dim small">lower is better</span></div>`;
+}
+
+facts();
+const host = document.getElementById("runs");
+RUNS.forEach(d => {
+  const m = META[d.run]; if (!m) return;
+  const sec = el("section", {class: "run", id: d.run});
+  sec.innerHTML = `<div class="head"><h3>${esc(m.task)}</h3><h2>${esc(m.title)}</h2><p class="dim">${esc(m.what)}</p>${resultLine(d, m)}`
+    + (m.note ? `<p class="note">${esc(m.note)}</p>` : "")
+    + `<p class="small dim">${d.rows.length - 1} iterations · $${(d.usd_total || 0).toFixed(2)} · ${Math.round((d.wall_s || 0) / 60)} min · stopped: ${esc(d.stop_reason || "")}</p></div>` + legend(m);
+  host.appendChild(sec);
+  chart(sec, d, m);
+  sec.insertAdjacentHTML("beforeend", table(d, m) + code(d));
+});
+</script>

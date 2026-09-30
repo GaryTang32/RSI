@@ -75,11 +75,16 @@ pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overf
 const RUNS = /*__DATA__*/null;
 const META = {
   metaharness: {title: "Meta-Harness", what: "Haiku reads the full history of harnesses, scores and raw traces, then writes new harness code.",
-    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", higher: true},
+    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "The jump at iteration 2 is a general strategy: the harness asks the model to write Python, runs it, and reads the printed answer. From iteration 3 the kept harness also hard-codes regex templates for the task generator's question shapes (“sum of digits of N!”, “N mod M”), chosen because they score the same with fewer tokens. The general code path stays as a fallback, which is why OOD still improved. The template layer is the brittle behaviour the claims audit recorded against the paper's “coherent algorithms” claim (Meta-Harness L4). Open the code below to see it.",
+    higher: true},
+  metaharness_a: {title: "Meta-Harness, replicate run", what: "The same settings as the run above, started again from the same seed. This first attempt was stopped by a time limit after its 4 iterations, during the final re-scoring, so it has no re-scored summary; the chart shows its loop and sealed monitor only.",
+    task: "Same task set, same seed harness, same model.", note: "Practice and held-out accuracy rose, but OOD fell from 0.75 to 0.38 once the incumbent switched to multi_check_verify. The sealed monitor exposes the overfit; the loop never saw these scores. Two runs with identical settings ending this differently is why a single live run is an anecdote.",
+    higher: true},
   rrsi: {title: "RRSI", what: "Haiku analyses failures and proposes small tagged edits. A leakage critic, a noise band and a cost rule decide what survives.",
     task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", higher: true},
   autoresearch: {title: "Autoresearch", what: "Haiku edits train.py; each experiment trains for 8 s on CPU and is kept only if validation bits-per-byte improves.",
-    task: "tinylm: a byte-level language model; hidden test split never shown to the agent.", higher: false},
+    task: "tinylm: a byte-level language model; hidden test split never shown to the agent.", note: "Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256. The last keep improved validation by 0.011, but the hidden test got slightly worse (2.725 → 2.734). That keep sits inside the noise band: the strict keep rule locks in luck, a weakness the claims audit documents. SGD, dropping the warmdown and a deeper net were all tried and rejected.",
+    higher: false},
 };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const f2 = v => v == null ? "–" : (+v).toFixed(v > 1.5 ? 3 : 2);
@@ -113,7 +118,8 @@ function chart(host, d, m) {
   const series = m.higher
     ? [["S", "var(--s1)"], ["holdout", "var(--s2)"], ["ood", "var(--s3)"]]
     : [["S", "var(--s1)"], ["test_iid", "var(--s2)"]];
-  series.forEach(([k, col]) => {
+  // sealed lines first, practice last, so the practice line stays visible where they coincide
+  [...series.slice(1), series[0]].forEach(([k, col]) => {
     const pts = rows.map((r, i) => [i, k === "S" ? r.S : (r.sealed || {})[k]]).filter(p => p[1] != null);
     if (!pts.length) return;
     let p = `M${x(pts[0][0])},${y(pts[0][1])}`;
@@ -121,7 +127,7 @@ function chart(host, d, m) {
     p += ` H${x(rows.length - 1)}`;
     s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
     const last = pts[pts.length - 1][1];
-    s += `<text x="${x(rows.length - 1) + 8}" y="${y(last) + 4}">${f2(last)}</text>`;
+    s += `<text x="${x(rows.length - 1) + 14}" y="${y(last) + 4}" style="fill:${col}">${f2(last)}</text>`;
   });
   rows.forEach((r, i) => r.candidates.forEach((c, j) => {
     const v = c.S == null ? null : c.S;
@@ -221,6 +227,7 @@ RUNS.forEach(d => {
   const m = META[d.run]; if (!m) return;
   const sec = el("section", {class: "run", id: d.run});
   sec.innerHTML = `<div class="head"><h3>${esc(m.task)}</h3><h2>${esc(m.title)}</h2><p class="dim">${esc(m.what)}</p>${resultLine(d, m)}`
+    + (m.note ? `<p class="note">${esc(m.note)}</p>` : "")
     + `<p class="small dim">${d.rows.length - 1} iterations · $${(d.usd_total || 0).toFixed(2)} · ${Math.round((d.wall_s || 0) / 60)} min · stopped: ${esc(d.stop_reason || "")}</p></div>` + legend(m);
   host.appendChild(sec);
   chart(sec, d, m);

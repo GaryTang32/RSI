@@ -1,0 +1,204 @@
+{
+ "run": "metaharness",
+ "setup": {
+  "method": "metaharness",
+  "config": {
+   "iterations": 4,
+   "k": 2,
+   "history_mode": "full",
+   "seed": 0,
+   "test_splits": [
+    "holdout",
+    "ood"
+   ],
+   "cost_metric": "tokens",
+   "workers": 4,
+   "validate_timeout_s": 240.0,
+   "shadow_workers": 4
+  },
+  "llm": "claude haiku (task + proposer)"
+ },
+ "stop_reason": "iterations",
+ "wall_s": 1969.5,
+ "trajectory": [
+  {
+   "iteration": 1,
+   "best_score": 0.25,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 2,
+   "frontier_size": 3,
+   "hypervolume": 1727.9680555555558,
+   "files_read": 31,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 17388,
+   "read_chars": 17388,
+   "proposer_tokens": 17167,
+   "proposer_usd": 0.054851,
+   "error": null
+  },
+  {
+   "iteration": 2,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 4,
+   "frontier_size": 3,
+   "hypervolume": 9370.995833333334,
+   "files_read": 54,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 221135,
+   "read_chars": 114788,
+   "proposer_tokens": 34230,
+   "proposer_usd": 0.099183,
+   "error": null
+  },
+  {
+   "iteration": 3,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 6,
+   "frontier_size": 1,
+   "hypervolume": 12146.35,
+   "files_read": 55,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 390912,
+   "read_chars": 55845,
+   "proposer_tokens": 34775,
+   "proposer_usd": 0.106261,
+   "error": null
+  },
+  {
+   "iteration": 4,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 8,
+   "frontier_size": 2,
+   "hypervolume": 12269.641666666666,
+   "files_read": 61,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 448761,
+   "read_chars": 55271,
+   "proposer_tokens": 35415,
+   "proposer_usd": 0.112806,
+   "error": null
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.20833333333333334,
+     "C": 1765.3333333333333,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.20833333333333334
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1602.0,
+     "steps": 1.1666666666666667,
+     "families": {
+      "numeric": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.7916666666666666,
+      "lo": 0.6666666666666666,
+      "hi": 0.9166666666666666,
+      "n": 12,
+      "p_better": 1.0
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "C": 1976.75,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1416.8333333333333,
+     "steps": 1.375,
+     "families": {
+      "numeric": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.5,
+      "lo": 0.25,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.75
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.625,
+     "C": 2534.25,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.75,
+      "numbertheory": 0.0,
+      "strings": 0.75,
+      "lists": 1.0
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.875,
+     "C": 2645.1875,
+     "steps": 2.0,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 0.5,
+      "lists": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.25,
+      "lo": -0.1875,
+      "hi": 0.625,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.5625,
+   "final": 0.9375
+  }
+ },
+ "usd_total": 2.9783,
+ "usd_transfer_report": 0.1994,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "\"\"\"\nPattern-template solver: Recognize problem patterns and use hardcoded templates.\nAxis: C (retrieval via pattern matching), B (state: template database), D (sizing: no LLM code gen).\nFalls back to LLM code generation if pattern doesn't match.\nReduces cost by eliminating LLM code generation for structured problems.\n\"\"\"\n\nimport re\n\n\ndef solve(question, llm, tools, files):\n    \"\"\"Try pattern-based solver first, then fall back to LLM code generation.\"\"\"\n    \n    # Attempt 1: Recognize and solve via template\n    answer = _try_pattern_solver(question, tools)\n    if answer:\n        return answer\n    \n    # Attempt 2: Fall back to LLM code generation (same as code_execution)\n    system = files.get(\"prompts/system.md\", \"\")\n    code_gen_prompt = files[\"prompts/generate_code.md\"].replace(\"{question}\", question)\n    code_response = llm(code_gen_prompt, system=system)\n    \n    code = _extract_code(code_response)\n    if not code:\n        code = code_response\n    \n    try:\n        output = tools.python(code)\n    except Exception:\n        output = \"\"\n    \n    answer = _extract_answer_from_stdout(output)\n    if answer:\n        return answer\n    \n    return \"\"\n\n\ndef _try_pattern_solver(question, tools):\n    \"\"\"\n    Recognize common problem patterns and solve with deterministic templates.\n    This avoids LLM code generation for structured problems.\n    \"\"\"\n    q = question.lower()\n    \n    # Pattern 1: Sum of digits of N!\n    # Examples: \"sum of digits of 41!\", \"sum of digits of 66!\"\n    match = re.search(r'sum.*?digits?.*?of\\s+(\\d+)!', q)\n    if match:\n        n = int(match.group(1))\n        code = f\"\"\"\nimport math\nresult = math.factorial({n})\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 2: Sum of digits of base^exp\n    # Examples: \"sum of digits of 52^12\"\n    match = re.search(r'sum.*?digits?.*?of\\s+(\\d+)\\^(\\d+)', q)\n    if match:\n        base, exp = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nresult = {base}**{exp}\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 3: Modulo operation\n    # Examples: \"40627866717431 mod 148\", \"73427123466896 mod 440\"\n    match = re.search(r'(\\d+)\\s+mod\\s+(\\d+)', q)\n    if match:\n        n, mod = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nprint(f\"ANSWER: {{{n} % {mod}}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 4: Bit count in binary representation\n    # Examples: \"How many 1 bits are in the binary representation of 48^14?\"\n    match = re.search(r'1\\s+bits?.*?binary.*?of\\s+(\\d+)\\^(\\d+)', q)\n    if match:\n        base, exp = int(match.group(1)), int(match.group(2))\n        code = f\"\"\"\nn = {base}**{exp}\nanswer = bin(n).count('1')\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # Pattern 5: Factorial digit sum (alternative phrasing)\n    # Examples: \"What is the sum of the decimal digits of 41! (41 factorial)?\"\n    match = re.search(r'digits?.*?(\\d+)!.*factorial', q)\n    if match:\n        n = int(match.group(1))\n        code = f\"\"\"\nimport math\nresult = math.factorial({n})\nanswer = sum(int(d) for d in str(result))\nprint(f\"ANSWER: {{answer}}\")\n\"\"\"\n        try:\n            output = tools.python(code)\n            ans = _extract_answer_from_stdout(output)\n            if ans:\n                return ans\n        except:\n            pass\n    \n    # No pattern matched; will fall back to LLM\n    return None\n\n\ndef _extract_code(text):\n    \"\"\"Extract Python code from markdown code blocks.\"\"\"\n    pattern = r\"```python\\s*(.*?)\\s*```\"\n    matches = re.findall(pattern, text, re.DOTALL)\n    if matches:\n        return matches[0]\n    \n    pattern = r\"```\\s*(.*?)\\s*```\"\n    matches = re.findall(pattern, text, re.DOTALL)\n    if matches:\n        return matches[0]\n    \n    return \"\"\n\n\ndef _extract_answer_from_stdout(stdout):\n    \"\"\"Parse ANSWER: lines from program stdout.\"\"\"\n    for line in stdout.strip().splitlines():\n        if \"ANSWER:\" in line.upper():\n            idx = line.upper().find(\"ANSWER:\")\n            value = line[idx + 7:].strip()\n            value = value.split()[0] if value else \"\"\n            return value\n    return \"\"\n",
+  "prompts/generate_code.md": "Solve this problem by writing Python code.\n\nQuestion: {question}\n\nWrite Python code that:\n1. Solves the problem correctly\n2. Prints exactly: ANSWER: <value>\n   where <value> is ONLY the numeric/text answer\n\nProvide ONLY the Python code, inside ```python and ``` markers.\nDo not explain or add text outside the code block.\n\n```python\n# Write your solution here\n```\n",
+  "prompts/system.md": "You are a Python expert. Solve problems by writing clean, executable Python code.\nAlways:\n1. Write code that prints exactly: ANSWER: <value>\n2. The answer MUST be printed to stdout in the format \"ANSWER: <numeric_value>\"\n3. Your code must be runnable and produce no errors.\n4. Use standard libraries only (math, itertools, etc.)\n",
+  "prompts/task.md": "{question}\n",
+  "prompts/verify_code.md": "Original question: {question}\nPrevious answer: {previous_answer}\n\nVerify this answer using a DIFFERENT method in Python.\n\nWrite code that:\n1. Uses an alternative approach (different algorithm or calculation method)\n2. Prints exactly: ANSWER: <value>\n\nProvide ONLY the code, inside ```python and ``` markers.\n\n```python\n# Write your verification code here\n```\n"
+ }
+}
