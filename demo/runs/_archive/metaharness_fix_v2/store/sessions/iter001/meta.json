@@ -1,0 +1,85 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 11871,
+  "output_tokens": 13687,
+  "cost_usd": 0.09216799999999999,
+  "latency_s": 131.27276158332825,
+  "total_tokens": 25558
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-010.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-011.json",
+  "candidates/seed/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-005.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-006.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-007.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-008.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-009.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-010.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-011.jsonl"
+ ],
+ "n_files_read": 31,
+ "files_read_by_kind": {
+  "code": 3,
+  "traces": 24,
+  "scores": 3,
+  "other": 1
+ },
+ "files_scanned": [],
+ "n_files_scanned": 0,
+ "scanned_chars": 0,
+ "view_files": 31,
+ "view_chars": 19510,
+ "read_chars": 19510,
+ "error": null,
+ "seconds": 131.276,
+ "reports_written": [],
+ "proposer_meta": {
+  "rendered_chars": 21888
+ },
+ "candidates": [
+  {
+   "name": "code_gen_harness",
+   "base_system": "seed",
+   "hypothesis": "Delegating arithmetic to Python tool execution will reduce computational errors; the model's manual arithmetic in text (e.g., summing digits) is error-prone, so generating executable code and running it via tools.python() will be more reliable than extracting answers from model text.",
+   "axis": "exploitation",
+   "components": [
+    "axis:F (model-driven tool usage)"
+   ]
+  },
+  {
+   "name": "strict_answer_format_harness",
+   "base_system": "seed",
+   "hypothesis": "Explicit output formatting reduces extraction errors; instructing the model to output 'ANSWER: <value>' on a dedicated line will encourage consistent, unambiguous responses and make answer extraction more reliable than guessing the last line.",
+   "axis": "exploitation",
+   "components": [
+    "axis:A (prompt template)",
+    "axis:C (answer extraction/retrieval algorithm)"
+   ]
+  }
+ ]
+}

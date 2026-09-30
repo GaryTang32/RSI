@@ -1,0 +1,1 @@
+{"text": "```python\nfrom math import comb\n\n# Calculate C(51, 12)\nc_51_12 = comb(51, 12)\n\n# Sum the digits\ndigit_sum = sum(int(d) for d in str(c_51_12))\n\nprint(digit_sum)\n```", "usage": {"calls": 1, "input_tokens": 925, "output_tokens": 637, "cost_usd": 0.00411, "latency_s": 7.8655548095703125}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

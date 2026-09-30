@@ -1,0 +1,17 @@
+{
+ "name": "code_gen_harness",
+ "artifact_id": "62472ae0979170220aef62be60bca8330c9674bb63f177fe325a3b9915976034",
+ "created_at": 1790761373.8507738,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Delegating arithmetic to Python tool execution will reduce computational errors; the model's manual arithmetic in text (e.g., summing digits) is error-prone, so generating executable code and running it via tools.python() will be more reliable than extracting answers from model text.",
+ "axis": "exploitation",
+ "components": [
+  "axis:F (model-driven tool usage)"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": ""
+}

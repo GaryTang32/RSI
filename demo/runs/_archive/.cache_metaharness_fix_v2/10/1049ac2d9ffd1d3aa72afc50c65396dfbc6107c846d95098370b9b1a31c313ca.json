@@ -1,0 +1,1 @@
+{"text": "```python\nresult = pow(10, 793, 822)\nprint(result)\n```\n\nANSWER: 1", "usage": {"calls": 1, "input_tokens": 914, "output_tokens": 578, "cost_usd": 0.0038039999999999997, "latency_s": 7.948619842529297}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

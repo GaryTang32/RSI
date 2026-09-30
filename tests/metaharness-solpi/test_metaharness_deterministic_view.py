@@ -54,3 +54,28 @@ def test_strip_is_byte_identical_without_volatile_keys():
 
 def test_config_default_is_deterministic():
     assert Config().deterministic_view is True
+
+
+def test_view_is_identical_across_processes_with_different_hash_seeds(tmp_path):
+    """A cached replay runs in a new process; set/dict orders that depend on PYTHONHASHSEED must not leak."""
+    import json
+    import os
+    import subprocess
+    import sys
+    script = (
+        "import json, sys\n"
+        "from rsi.domains.memoclassify import make_domain\n"
+        "from rsi.metaharness import Config, run\n"
+        "from rsi.metaharness.store import ExperienceStore\n"
+        "out = sys.argv[1]\n"
+        "dom = make_domain(seed=0)\n"
+        "run(dom, dom.seed_artifact('fewshot_all'), llm_task=dom.make_model('A'), llm_propose=None,\n"
+        "    config=Config(iterations=1, k=2, seed=0), out_dir=out, baselines=dom.baselines())\n"
+        "json.dump(ExperienceStore(out + '/store').view('full', strip_volatile=True), open(out + '/view.json', 'w'))\n")
+    views = []
+    for seed in ("1", "987"):
+        out = tmp_path / f"h{seed}"
+        env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(__import__("pathlib").Path(__file__).resolve().parents[2])}
+        subprocess.run([sys.executable, "-c", script, str(out)], env=env, check=True, capture_output=True, timeout=300)
+        views.append(json.loads((out / "view.json").read_text()))
+    assert views[0] == views[1]

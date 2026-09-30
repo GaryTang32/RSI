@@ -1,0 +1,17 @@
+{
+ "name": "self_critique_code_harness",
+ "artifact_id": "9c9ae53fefb190a9b35cd4a5800287591f3fd2de58ac4a82ed6e48c2f24910bd",
+ "created_at": 1790762249.5004985,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 7,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

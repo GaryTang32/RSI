@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'The account has a deficit of $183,764.'; expected '-183764'.",
+  "output": "The account has a deficit of $183,764.",
+  "tokens": 1897,
+  "cost_usd": 0.0059770000000000005,
+  "steps": 1,
+  "latency_s": 0.004999399185180664,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

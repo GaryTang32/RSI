@@ -1,0 +1,17 @@
+{
+ "name": "hybrid_code_text_harness",
+ "artifact_id": "28f71830d22a3591eafe379c22636964013552d2cb04a171a06a28696268f1b4",
+ "created_at": 1790761918.7482991,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 5,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

@@ -9,6 +9,7 @@ determined adversary - use containers for that.
 """
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import resource
@@ -149,11 +150,29 @@ def run_python(
             path = Path(cwd) / "_rsi_main.py"
             path.write_text(code)
             script = path
-        return run_cmd([sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env,
-                       stdin=stdin)
+        rr = run_cmd([sys.executable, str(script), *args], cwd=cwd, timeout_s=timeout_s, mem_mb=mem_mb, env=env,
+                     stdin=stdin)
+        return _stable_paths(rr, tmpdir) if tmpdir is not None else rr
     finally:
         if tmpdir is not None:
             shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+#: what a fresh scratch directory is called in captured output
+SCRATCH_PLACEHOLDER = "/tmp/rsi_sandbox"
+
+
+def _stable_paths(rr: RunResult, scratch: str) -> RunResult:
+    """Replace the random scratch-directory path in ``rr``'s output with :data:`SCRATCH_PLACEHOLDER`.
+
+    Tracebacks name the file they ran (``/tmp/rsi_sbx_k3j9x/_rsi_main.py``), and that text reaches model prompts
+    (a harness feeding tool output back to its model, a proposer reading traces). A random path there makes
+    identical runs send different prompts, which defeats exact replay from an LLM cache."""
+    real = os.path.realpath(scratch)
+    out, err = rr.stdout, rr.stderr
+    for p in {scratch, real}:
+        out, err = out.replace(p, SCRATCH_PLACEHOLDER), err.replace(p, SCRATCH_PLACEHOLDER)
+    return dataclasses.replace(rr, stdout=out, stderr=err)
 
 
 def call_function(
@@ -178,7 +197,8 @@ def call_function(
         raise ValueError(f"unsafe extra_files names (absolute or escaping the directory): {bad[:5]}")
     d = tempfile.mkdtemp(prefix="rsi_fn_")
     try:
-        return _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files)
+        res, rr = _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files)
+        return res, _stable_paths(rr, d)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

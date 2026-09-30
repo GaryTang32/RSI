@@ -1,8 +1,8 @@
 {
  "name": "seed",
  "artifact_id": "498c3a88345f324905b855bf5ad656846e5e9259408f4f3ee9496f95499fa69a",
- "created_at": 1790761117.2374327,
- "status": "evaluated",
+ "created_at": 1790763122.5929654,
+ "status": "pending",
  "iteration": 0,
  "kind": "baseline",
  "order": 1

@@ -1,0 +1,12 @@
+{
+ "status": "complete",
+ "systems": [
+  "seed",
+  "lean_prompt_code_harness",
+  "pattern_aware_extraction_harness",
+  "context_extracted_code_harness"
+ ],
+ "started_at": 1790762572.9008327,
+ "failures": [],
+ "completed_at": 1790762635.423837
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- Sum: 1+5+5+1+1+2+1+0+0+4+3+3+3+0+9+8+5+9+8+4+0+0+0 = **45**'; expected '72'.",
+  "output": "- Sum: 1+5+5+1+1+2+1+0+0+4+3+3+3+0+9+8+5+9+8+4+0+0+0 = **45**",
+  "tokens": 1309,
+  "cost_usd": 0.003201,
+  "steps": 1,
+  "latency_s": 0.0036478042602539062,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

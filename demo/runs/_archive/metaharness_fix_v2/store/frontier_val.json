@@ -1,0 +1,76 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1198.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1158.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1428.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1144.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "pattern_aware_extraction_harness",
+  "score": 1.0,
+  "cost": 1413.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1185.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1396.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1178.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "context_extracted_code_harness",
+  "score": 1.0,
+  "cost": 1274.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1444.0
+ },
+ "evolve-numeric-010": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1258.0
+ },
+ "evolve-numeric-011": {
+  "best_system": "lean_prompt_code_harness",
+  "score": 1.0,
+  "cost": 1348.0
+ },
+ "_pareto": [
+  {
+   "system": "lean_prompt_code_harness",
+   "score": 1.0,
+   "val_accuracy": 100.0,
+   "context_cost": 1416.0833333333333
+  }
+ ],
+ "_best": {
+  "system": "lean_prompt_code_harness",
+  "score": 1.0
+ },
+ "_hypervolume": 8726.641666666666,
+ "_hv_ref_cost": 10142.725
+}

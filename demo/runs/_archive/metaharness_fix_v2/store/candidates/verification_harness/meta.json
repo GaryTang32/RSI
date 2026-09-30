@@ -1,0 +1,17 @@
+{
+ "name": "verification_harness",
+ "artifact_id": "df7fcaa7f8729b563d7dcd08984203ce58073a9a756a6642a318a605aa77aee9",
+ "created_at": 1790761691.3200788,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 4,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

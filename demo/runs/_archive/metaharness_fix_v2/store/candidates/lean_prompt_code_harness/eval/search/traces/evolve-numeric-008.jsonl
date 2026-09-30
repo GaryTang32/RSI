@@ -1,0 +1,23 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant.
+
+PROMPT: What is 34462116119303 mod 650?
+
+
+Solve this problem:
+
+1. Think through the approach step by step.
+2. Provide your answer either:
+   A) As Python code in a ```python code block that outputs ONLY the final answer.
+   B) As a single line: ANSWER: <value>
+
+Be concise. Output only code or the answer line; no extra explanation.
+REPLY: ```python
+print(34462116119303 % 650)
+```
+
+ANSWER: 303
+[python]
+print(34462116119303 % 650)
+[output]
+353

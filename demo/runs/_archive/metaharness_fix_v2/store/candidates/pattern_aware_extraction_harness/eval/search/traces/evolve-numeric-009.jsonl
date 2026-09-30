@@ -1,0 +1,51 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant.
+
+PROMPT: What is the sum of the decimal digits of 25! (25 factorial)?
+
+
+**Problem Context:**
+Key numbers in problem: 25
+Operations involved: factorial, digit sum
+
+
+Please solve this problem:
+
+1. Briefly explain the approach.
+2. Provide Python code in a ```python code block that outputs ONLY the final numerical answer on a single line.
+
+The Python code must be syntactically correct and compute the exact answer without intermediate output.
+REPLY: # Solution
+
+## Approach
+
+1. Calculate 25! (25 factorial)
+2. Convert the result to a string to access individual digits
+3. Sum all the decimal digits
+4. Return the result
+
+Python's `math.factorial()` can handle large integers natively, making this straightforward.
+
+## Python Code
+
+```python
+import math
+
+factorial_25 = math.factorial(25)
+digit_sum = sum(int(digit) for digit in str(factorial_25))
+print(digit_sum)
+```
+
+**Explanation:**
+- `math.factorial(25)` computes 25! = 15,511,210,043,330,985,984,000
+- `str(factorial_25)` converts it to a string to access individual digits
+- `sum(int(digit) for digit in ...)` converts each character back to an integer and sums them
+- The result is printed as a single number
+[python]
+import math
+
+factorial_25 = math.factorial(25)
+digit_sum = sum(int(digit) for digit in str(factorial_25))
+print(digit_sum)
+[output]
+72

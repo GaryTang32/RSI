@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-010",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- Of those 46 bits, **28 are 1s** and 18 are 0s'; expected '14'.",
+  "output": "- Of those 46 bits, **28 are 1s** and 18 are 0s",
+  "tokens": 1351,
+  "cost_usd": 0.003411,
+  "steps": 1,
+  "latency_s": 0.0008156299591064453,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -1,0 +1,18 @@
+{
+ "name": "strict_answer_format_harness",
+ "artifact_id": "115d979bfa7add74e19d5a23057b502c93c7cddf67fc3af3a5a0c075938da201",
+ "created_at": 1790762797.0421996,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Explicit output formatting reduces extraction errors; instructing the model to output 'ANSWER: <value>' on a dedicated line will encourage consistent, unambiguous responses and make answer extraction more reliable than guessing the last line.",
+ "axis": "exploitation",
+ "components": [
+  "axis:A (prompt template)",
+  "axis:C (answer extraction/retrieval algorithm)"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}
