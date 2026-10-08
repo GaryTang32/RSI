@@ -1,0 +1,301 @@
+{
+ "systems": [
+  "seed",
+  "answer_format_smart_extraction",
+  "python_enforced_arithmetic",
+  "result_variable_extraction"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.5,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1603.0,
+      "holdout-numeric-001": 1605.0,
+      "holdout-numeric-002": 1369.0,
+      "holdout-numeric-003": 1370.0,
+      "holdout-numeric-004": 1328.0,
+      "holdout-numeric-005": 4040.0,
+      "holdout-numeric-006": 1260.0,
+      "holdout-numeric-007": 1189.0
+     },
+     "context_cost": 1720.5,
+     "tokens": 1720.5,
+     "families": {
+      "numeric": 0.5
+     }
+    },
+    "answer_format_smart_extraction": {
+     "split": "holdout",
+     "score": 0.625,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 2063.0,
+      "holdout-numeric-001": 1797.0,
+      "holdout-numeric-002": 2208.0,
+      "holdout-numeric-003": 2363.0,
+      "holdout-numeric-004": 2251.0,
+      "holdout-numeric-005": 3188.0,
+      "holdout-numeric-006": 3235.0,
+      "holdout-numeric-007": 3302.0
+     },
+     "context_cost": 2550.875,
+     "tokens": 2550.875,
+     "families": {
+      "numeric": 0.625
+     }
+    },
+    "python_enforced_arithmetic": {
+     "split": "holdout",
+     "score": 0.0,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "context_cost": 0.0,
+     "tokens": 0.0,
+     "families": {
+      "numeric": 0.0
+     }
+    },
+    "result_variable_extraction": {
+     "split": "holdout",
+     "score": 0.0,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "context_cost": 0.0,
+     "tokens": 0.0,
+     "families": {
+      "numeric": 0.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "answer_format_smart_extraction",
+     "test_accuracy": 0.625,
+     "context_cost": 2550.875
+    },
+    {
+     "system": "seed",
+     "test_accuracy": 0.5,
+     "context_cost": 1720.5
+    },
+    {
+     "system": "python_enforced_arithmetic",
+     "test_accuracy": 0.0,
+     "context_cost": 0.0
+    },
+    {
+     "system": "result_variable_extraction",
+     "test_accuracy": 0.0,
+     "context_cost": 0.0
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.625,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1189.0,
+      "ood-dates-001": 1289.0,
+      "ood-numbertheory-000": 1379.0,
+      "ood-numbertheory-001": 1324.0,
+      "ood-strings-000": 1273.0,
+      "ood-strings-001": 1073.0,
+      "ood-lists-000": 3666.0,
+      "ood-lists-001": 4006.0
+     },
+     "context_cost": 1899.875,
+     "tokens": 1899.875,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "answer_format_smart_extraction": {
+     "split": "ood",
+     "score": 0.625,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 7577.0,
+      "ood-dates-001": 1484.0,
+      "ood-numbertheory-000": 13813.0,
+      "ood-numbertheory-001": 1996.0,
+      "ood-strings-000": 1648.0,
+      "ood-strings-001": 1444.0,
+      "ood-lists-000": 6453.0,
+      "ood-lists-001": 5890.0
+     },
+     "context_cost": 5038.125,
+     "tokens": 5038.125,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 0.5,
+      "strings": 0.5,
+      "lists": 1.0
+     }
+    },
+    "python_enforced_arithmetic": {
+     "split": "ood",
+     "score": 0.0,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 0.0,
+      "ood-lists-001": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 0.0,
+      "ood-lists-001": 0.0
+     },
+     "context_cost": 0.0,
+     "tokens": 0.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 0.0,
+      "lists": 0.0
+     }
+    },
+    "result_variable_extraction": {
+     "split": "ood",
+     "score": 0.0,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 0.0,
+      "ood-lists-001": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 0.0,
+      "ood-lists-001": 0.0
+     },
+     "context_cost": 0.0,
+     "tokens": 0.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 0.0,
+      "lists": 0.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "seed",
+     "test_accuracy": 0.625,
+     "context_cost": 1899.875
+    },
+    {
+     "system": "python_enforced_arithmetic",
+     "test_accuracy": 0.0,
+     "context_cost": 0.0
+    },
+    {
+     "system": "result_variable_extraction",
+     "test_accuracy": 0.0,
+     "context_cost": 0.0
+    }
+   ]
+  }
+ }
+}

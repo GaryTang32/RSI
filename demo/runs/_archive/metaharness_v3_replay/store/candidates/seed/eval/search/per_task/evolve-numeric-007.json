@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-007",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'The individual digits sum to 342.'; expected '324'.",
+  "output": "The individual digits sum to 342.",
+  "tokens": 1419,
+  "cost_usd": 0.003751,
+  "steps": 1,
+  "latency_s": 0.010247230529785156,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

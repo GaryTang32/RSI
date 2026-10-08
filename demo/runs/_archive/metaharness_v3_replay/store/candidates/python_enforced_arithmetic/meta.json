@@ -1,0 +1,17 @@
+{
+ "name": "python_enforced_arithmetic",
+ "artifact_id": "77a498e486738d0042ece60845ba08a34d4a7d244bd7e2b8f34a053fa87bd1c7",
+ "created_at": 1790764415.7633483,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 6,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

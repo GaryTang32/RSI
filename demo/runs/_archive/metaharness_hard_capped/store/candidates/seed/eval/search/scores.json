@@ -1,0 +1,36 @@
+{
+ "split": "search",
+ "score": 0.75,
+ "avg_val": 75.0,
+ "per_unit": {
+  "evolve-logic-000": 1.0,
+  "evolve-ledger-001": 1.0,
+  "evolve-logic-002": 1.0,
+  "evolve-ledger-003": 1.0,
+  "evolve-logic-004": 1.0,
+  "evolve-ledger-005": 0.0,
+  "evolve-logic-006": 1.0,
+  "evolve-ledger-007": 0.0
+ },
+ "per_unit_cost": {
+  "evolve-logic-000": 14147.0,
+  "evolve-ledger-001": 24446.0,
+  "evolve-logic-002": 15660.0,
+  "evolve-ledger-003": 23389.0,
+  "evolve-logic-004": 16477.0,
+  "evolve-ledger-005": 21003.0,
+  "evolve-logic-006": 16115.0,
+  "evolve-ledger-007": 14605.0
+ },
+ "context_cost": 18230.25,
+ "tokens": 18230.25,
+ "steps": 1.0,
+ "n_units": 8,
+ "k": 1,
+ "error_rate": 0.0,
+ "n_missing": 0,
+ "families": {
+  "logic": 1.0,
+  "ledger": 0.5
+ }
+}

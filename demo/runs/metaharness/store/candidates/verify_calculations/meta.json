@@ -1,0 +1,17 @@
+{
+ "name": "verify_calculations",
+ "artifact_id": "0491bd4c39232938dc1064e3fe130c6047b9f2cd6c62437cfd71ebefa152f7c8",
+ "created_at": 1791442967.1343415,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 4,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

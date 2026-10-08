@@ -1,0 +1,17 @@
+{
+ "name": "answer_format_smart_extraction",
+ "artifact_id": "2d69c112118c0a3db13b9470b15ae2626a3631251469795e98b3bdf083d6b225",
+ "created_at": 1790763356.6577091,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 2,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

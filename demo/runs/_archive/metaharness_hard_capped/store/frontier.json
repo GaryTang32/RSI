@@ -1,0 +1,81 @@
+{
+ "systems": [
+  "seed"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.5,
+     "per_unit": {
+      "holdout-logic-000": 1.0,
+      "holdout-ledger-001": 1.0,
+      "holdout-logic-002": 1.0,
+      "holdout-ledger-003": 0.0,
+      "holdout-logic-004": 0.0,
+      "holdout-ledger-005": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-logic-000": 6388.0,
+      "holdout-ledger-001": 12872.0,
+      "holdout-logic-002": 9996.0,
+      "holdout-ledger-003": 25457.0,
+      "holdout-logic-004": 0.0,
+      "holdout-ledger-005": 21873.0
+     },
+     "context_cost": 15317.2,
+     "tokens": 15317.2,
+     "families": {
+      "logic": 0.6666666666666666,
+      "ledger": 0.3333333333333333
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "seed",
+     "test_accuracy": 0.5,
+     "context_cost": 15317.2
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.0,
+     "per_unit": {
+      "ood-schedule-000": 0.0,
+      "ood-schedule-001": 0.0,
+      "ood-schedule-002": 0.0,
+      "ood-cipher-000": 0.0,
+      "ood-cipher-001": 0.0,
+      "ood-cipher-002": 0.0
+     },
+     "per_unit_cost": {
+      "ood-schedule-000": 0.0,
+      "ood-schedule-001": 0.0,
+      "ood-schedule-002": 0.0,
+      "ood-cipher-000": 0.0,
+      "ood-cipher-001": 0.0,
+      "ood-cipher-002": 0.0
+     },
+     "context_cost": 0.0,
+     "tokens": 0.0,
+     "families": {
+      "schedule": 0.0,
+      "cipher": 0.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "seed",
+     "test_accuracy": 0.0,
+     "context_cost": 0.0
+    }
+   ]
+  }
+ }
+}

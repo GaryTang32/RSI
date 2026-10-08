@@ -68,19 +68,39 @@ def _usd(llm) -> float:
     return round(llm.meter.total().cost_usd, 4)
 
 
+def infra_errors(out: Path) -> list[str]:
+    """Model calls that failed for infrastructure reasons (usage cap, timeouts, cache misses) anywhere in a run's
+    trace, plus evaluations with missing trials. A run with any of these is not a clean result."""
+    from rsi.trace import load_trace
+    found = []
+    for e in load_trace(out):
+        blob = json.dumps(e["data"], default=str)
+        if "llm error" in blob or "session limit" in blob:
+            found.append(f"{e['kind']} round {e['round']}: " + blob[blob.find("llm error"):][:120])
+        s = e["data"].get("summary") if isinstance(e["data"], dict) else None
+        if e["kind"] in ("eval", "baseline") and isinstance(s, dict) and (s.get("missing") or 0) > 0:
+            found.append(f"{e['kind']} {e['data'].get('candidate')}: {s['missing']} trials missing")
+    return found
+
+
 def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict, k: int = 2) -> None:
     inspect(out)
     before = _usd(llm)
     rep = transfer_report(dom, llm, {"seed": res.baseline, "final": res.best},
                           splits=("evolve", "holdout", "ood"), k=k, workers=4)
+    errs = infra_errors(out)
     summ = {"run": name, "setup": setup, "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1),
             "trajectory": res.trajectory, "transfer": rep, "usd_total": _usd(llm),
             "usd_transfer_report": round(_usd(llm) - before, 4),
+            "cache": {"hits": llm.hits, "misses": llm.misses},     # hits = calls replayed for $0 (a resumed run)
+            "infra_errors": errs, "clean": not errs,
             "seed_files": res.baseline.files, "final_files": res.best.files}
     (out / "summary.json").write_text(json.dumps(summ, indent=1, default=str))
     res.best.to_dir(out / "final_harness", clean=True)
     print(json.dumps({s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}, indent=1))
-    print("usd", summ["usd_total"])
+    print("usd", summ["usd_total"], "cache", summ["cache"])
+    if errs:
+        print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ")
 
 
 MH_CFG = {"iterations": 4, "k": 2, "history_mode": "full", "seed": 0, "test_splits": ("holdout", "ood"),

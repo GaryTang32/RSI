@@ -1,0 +1,203 @@
+{
+ "run": "metaharness",
+ "setup": {
+  "method": "metaharness",
+  "suite": "easy",
+  "config": {
+   "iterations": 4,
+   "k": 2,
+   "history_mode": "full",
+   "seed": 0,
+   "test_splits": [
+    "holdout",
+    "ood"
+   ],
+   "cost_metric": "tokens",
+   "workers": 4,
+   "validate_timeout_s": 240.0,
+   "shadow_workers": 4
+  },
+  "llm": "claude haiku (task + proposer)"
+ },
+ "stop_reason": "iterations",
+ "wall_s": 1292.7,
+ "trajectory": [
+  {
+   "iteration": 1,
+   "best_score": 0.5,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 2,
+   "frontier_size": 2,
+   "hypervolume": 983.7902777777778,
+   "files_read": 31,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 19371,
+   "read_chars": 19371,
+   "proposer_tokens": 24107,
+   "proposer_usd": 0.086155,
+   "error": null
+  },
+  {
+   "iteration": 2,
+   "best_score": 0.5,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 4,
+   "frontier_size": 3,
+   "hypervolume": 990.1652777777778,
+   "files_read": 61,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 84236,
+   "read_chars": 54023,
+   "proposer_tokens": 34620,
+   "proposer_usd": 0.09426300000000001,
+   "error": null
+  },
+  {
+   "iteration": 3,
+   "best_score": 0.5,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 6,
+   "frontier_size": 3,
+   "hypervolume": 1109.9777777777776,
+   "files_read": 52,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 176892,
+   "read_chars": 55370,
+   "proposer_tokens": 32709,
+   "proposer_usd": 0.089652,
+   "error": null
+  },
+  {
+   "iteration": 4,
+   "best_score": 0.5,
+   "n_candidates": 0,
+   "n_valid": 0,
+   "n_evaluated": 6,
+   "frontier_size": 3,
+   "hypervolume": 1109.9777777777776,
+   "files_read": 55,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 255411,
+   "read_chars": 55079,
+   "proposer_tokens": 15586,
+   "proposer_usd": 0.0,
+   "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)"
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.16666666666666666,
+     "C": 2201.4166666666665,
+     "steps": 0.5,
+     "families": {
+      "numeric": 0.16666666666666666
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.25,
+     "C": 3429.0,
+     "steps": 0.5,
+     "families": {
+      "numeric": 0.25
+     },
+     "vs_reference": {
+      "mean_diff": 0.08333333333333333,
+      "lo": -0.08333333333333333,
+      "hi": 0.25,
+      "n": 12,
+      "p_better": 0.25
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.25,
+     "C": 1720.5,
+     "steps": 0.5,
+     "families": {
+      "numeric": 0.25
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.3125,
+     "C": 2550.875,
+     "steps": 0.5,
+     "families": {
+      "numeric": 0.3125
+     },
+     "vs_reference": {
+      "mean_diff": 0.0625,
+      "lo": -0.125,
+      "hi": 0.25,
+      "n": 8,
+      "p_better": 0.25
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.3125,
+     "C": 1899.875,
+     "steps": 0.5,
+     "families": {
+      "dates": 0.25,
+      "numbertheory": 0.0,
+      "strings": 0.5,
+      "lists": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.3125,
+     "C": 5038.125,
+     "steps": 0.5,
+     "families": {
+      "dates": 0.25,
+      "numbertheory": 0.25,
+      "strings": 0.25,
+      "lists": 0.5
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": -0.25,
+      "hi": 0.25,
+      "n": 8,
+      "p_better": 0.25
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.28125,
+   "final": 0.3125
+  }
+ },
+ "usd_total": 1.3495,
+ "usd_transfer_report": 0.0,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "\"\"\"Smart extraction harness: regex-based answer detection + clear format guidance.\"\"\"\n\nimport re\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    \n    return extract_answer(reply)\n\n\ndef extract_answer(text):\n    \"\"\"Extract numeric answer using multiple strategies.\"\"\"\n    \n    # Strategy 1: Look for \"ANSWER: <value>\" pattern (most reliable)\n    match = re.search(r'ANSWER\\s*:\\s*(-?\\d+(?:[.,]\\d+)*)', text, re.IGNORECASE)\n    if match:\n        return clean_number(match.group(1))\n    \n    # Strategy 2: Look for bold numbers like **123** - take the last one\n    bold_matches = re.findall(r'\\*\\*(-?\\d+(?:[.,]\\d+)*)\\*\\*', text)\n    if bold_matches:\n        return clean_number(bold_matches[-1])\n    \n    # Strategy 3: Look for standalone numbers at the end of lines\n    lines = text.strip().split('\\n')\n    for line in reversed(lines):\n        line = line.strip()\n        if not line:\n            continue\n        # Extract number at or near end of line (allow some trailing text)\n        match = re.search(r'(-?\\d+(?:[.,]\\d+)*)\\s*(?:\\)|\\.)?$', line)\n        if match:\n            return clean_number(match.group(1))\n    \n    # Fallback: return last non-empty line (seed behavior)\n    for line in reversed(lines):\n        if line.strip():\n            return line.strip()\n    \n    return \"\"\n\n\ndef clean_number(s):\n    \"\"\"Remove commas and spaces from numeric string.\"\"\"\n    return s.replace(',', '').replace(' ', '')\n",
+  "prompts/system.md": "You are a helpful assistant that solves problems accurately.\n\nWhen providing numeric answers:\n- End your response with a clear numeric value\n- Optionally use \"ANSWER: <value>\" format for clarity\n- If highlighting, use **bold** for the final answer\n- Avoid commas or extra formatting in numeric answers\n\nShow your work step-by-step, then provide the final answer clearly.\n",
+  "prompts/task.md": "{question}\n\nSolve this step-by-step. After your work, provide your final numeric answer clearly.\n"
+ }
+}
