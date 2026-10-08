@@ -1,0 +1,82 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 11457,
+  "output_tokens": 12650,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 24107
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-010.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-011.json",
+  "candidates/seed/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-005.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-006.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-007.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-008.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-009.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-010.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-011.jsonl"
+ ],
+ "n_files_read": 31,
+ "files_read_by_kind": {
+  "code": 3,
+  "traces": 24,
+  "scores": 3,
+  "other": 1
+ },
+ "files_scanned": [],
+ "n_files_scanned": 0,
+ "scanned_chars": 0,
+ "view_files": 31,
+ "view_chars": 19371,
+ "read_chars": 19371,
+ "error": null,
+ "seconds": 0.002,
+ "reports_written": [
+  "reports/iter0.md"
+ ],
+ "proposer_meta": {
+  "rendered_chars": 21749
+ },
+ "candidates": [
+  {
+   "name": "answer_format_smart_extraction",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "iterative_format_refinement",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

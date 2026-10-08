@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '**Final balance: -183,764** (a deficit of $183,764)'; expected '-183764'.",
+  "output": "**Final balance: -183,764** (a deficit of $183,764)",
+  "tokens": 1580,
+  "cost_usd": 0.004392,
+  "steps": 1,
+  "latency_s": 0.004019975662231445,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

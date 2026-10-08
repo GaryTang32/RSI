@@ -1,10 +1,12 @@
 {
- "status": "in_progress",
+ "status": "complete",
  "systems": [
   "seed",
   "answer_format_smart_extraction",
   "python_enforced_arithmetic",
   "result_variable_extraction"
  ],
- "started_at": 1791443172.126912
+ "started_at": 1791443172.126912,
+ "failures": [],
+ "completed_at": 1791443273.5848527
 }

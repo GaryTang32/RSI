@@ -1,0 +1,82 @@
+[
+ {
+  "label": "Run 1",
+  "dir": "_archive/metaharness_before_fix",
+  "note": "before the replay fix",
+  "usd": 2.9783,
+  "scores": {
+   "evolve": {
+    "seed": 0.20833333333333334,
+    "final": 1.0
+   },
+   "holdout": {
+    "seed": 0.5,
+    "final": 1.0
+   },
+   "ood": {
+    "seed": 0.625,
+    "final": 0.875
+   }
+  }
+ },
+ {
+  "label": "Run 2",
+  "dir": "_archive/metaharness_fix_v1",
+  "note": "after part 1 of the fix",
+  "usd": 1.6843,
+  "scores": {
+   "evolve": {
+    "seed": 0.25,
+    "final": 1.0
+   },
+   "holdout": {
+    "seed": 0.3125,
+    "final": 1.0
+   },
+   "ood": {
+    "seed": 0.4375,
+    "final": 0.875
+   }
+  }
+ },
+ {
+  "label": "Run 3",
+  "dir": "_archive/metaharness_fix_v2",
+  "note": "after part 2 of the fix",
+  "usd": 2.5729,
+  "scores": {
+   "evolve": {
+    "seed": 0.20833333333333334,
+    "final": 1.0
+   },
+   "holdout": {
+    "seed": 0.5,
+    "final": 1.0
+   },
+   "ood": {
+    "seed": 0.5625,
+    "final": 1.0
+   }
+  }
+ },
+ {
+  "label": "Run 4",
+  "dir": "metaharness",
+  "note": "final code; resumed from cache after the usage cap",
+  "usd": 0.9119,
+  "scores": {
+   "evolve": {
+    "seed": 0.2916666666666667,
+    "final": 0.5416666666666666
+   },
+   "holdout": {
+    "seed": 0.5,
+    "final": 0.6875
+   },
+   "ood": {
+    "seed": 0.5625,
+    "final": 0.5625
+   }
+  }
+ }
+]

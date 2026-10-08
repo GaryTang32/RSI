@@ -56,6 +56,13 @@ def main() -> None:
     runs.append({"run": "_spend", "cache_usd": cache_usd, "rows": [{"iter": 0, "candidates": []}]})
     tpl = (Path(__file__).parent / "page_template.html").read_text()
     data = json.dumps(runs, default=str).replace("</", "<\\/")
+    extra = {}
+    if (DEMO / "replicates.json").exists():
+        extra["replicates"] = json.loads((DEMO / "replicates.json").read_text())
+    rc = DEMO / "runs" / "metaharness_replay" / "replay_check.json"
+    if rc.exists():
+        extra["replay"] = json.loads(rc.read_text())
+    tpl = tpl.replace("/*__EXTRA__*/null", json.dumps(extra).replace("</", "<\\/"))
     (DEMO / "index.html").write_text(tpl.replace("/*__DATA__*/null", data))
     print("wrote", DEMO / "index.html", round(len(data) / 1024), "KB of data")
 

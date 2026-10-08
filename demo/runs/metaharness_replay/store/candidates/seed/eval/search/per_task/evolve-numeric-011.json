@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-011",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '- Their sum: 1 + 3 + 7 + 8 + 5 + 8 + 4 + 9 + 1 + 8 + 4 + 9 = **67**').",
+  "output": "- Their sum: 1 + 3 + 7 + 8 + 5 + 8 + 4 + 9 + 1 + 8 + 4 + 9 = **67**",
+  "tokens": 1769,
+  "cost_usd": 0.0055130000000000005,
+  "steps": 1,
+  "latency_s": 0.0045223236083984375,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

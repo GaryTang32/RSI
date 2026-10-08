@@ -218,6 +218,63 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
     plt.close(fig)
 
 
+#: every complete Meta-Harness run on the standard AgentQA suite (same settings, same seed harness, same model);
+#: label, run directory, note. Run 4 is the current code: cut off by the account usage cap, then resumed.
+REPLICATES = [
+    ("Run 1", "_archive/metaharness_before_fix", "before the replay fix"),
+    ("Run 2", "_archive/metaharness_fix_v1", "after part 1 of the fix"),
+    ("Run 3", "_archive/metaharness_fix_v2", "after part 2 of the fix"),
+    ("Run 4", "metaharness", "final code; resumed from cache after the usage cap"),
+]
+
+
+def replicates() -> list[dict]:
+    out = []
+    for label, rel, note in REPLICATES:
+        p = RUNS / rel / "summary.json"
+        if not p.exists():
+            continue
+        s = json.loads(p.read_text())
+        sp = s["transfer"]["splits"]
+        out.append({"label": label, "dir": rel, "note": note, "usd": s.get("usd_total"),
+                    "scores": {k: {"seed": sp[k]["seed"]["S"], "final": sp[k]["final"]["S"]} for k in sp}})
+    return out
+
+
+def plot_replicates(reps: list[dict], path: Path) -> None:
+    """Dumbbell chart: one row per run, seed (gray) to final (blue), one panel per split."""
+    import matplotlib.pyplot as plt
+    if not reps:
+        return
+    splits = [("evolve", "practice"), ("holdout", "held-out"), ("ood", "OOD")]
+    fig, axes = plt.subplots(1, 3, figsize=(11, 0.55 * len(reps) + 1.9), dpi=150, sharey=True)
+    fig.patch.set_facecolor(SURF)
+    ys = list(range(len(reps)))[::-1]
+    for ax, (k, lab) in zip(axes, splits):
+        _style(ax, lab, "")
+        ax.grid(axis="y", visible=False)
+        ax.grid(axis="x", color=GRID, linewidth=0.8)
+        for y, r in zip(ys, reps):
+            a, b = r["scores"][k]["seed"], r["scores"][k]["final"]
+            ax.plot([a, b], [y, y], color=GRID, linewidth=3, zorder=1, solid_capstyle="round")
+            ax.scatter([a], [y], s=46, color=DISCARD, zorder=2)
+            ax.scatter([b], [y], s=46, color=BLUE, zorder=3)
+            ax.annotate(f"{b:.2f}", (b, y), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=8,
+                        color=INK)
+        ax.set_xlim(-0.05, 1.1)
+        ax.set_xticks([0, 0.5, 1])
+    axes[0].set_yticks(ys, [r["label"] for r in reps])
+    axes[0].set_ylim(-0.7, len(reps) - 0.3)
+    axes[0].scatter([], [], s=46, color=DISCARD, label="seed harness")
+    axes[0].scatter([], [], s=46, color=BLUE, label="harness after the run")
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=2, fontsize=8, frameon=False)
+    fig.suptitle("Meta-Harness, four complete runs with identical settings (re-scored, two trials per task)",
+                 x=0.01, ha="left", fontsize=11, color=INK, fontweight="bold")
+    fig.tight_layout(rect=(0, 0.08, 1, 0.95))
+    fig.savefig(path, facecolor=SURF)
+    plt.close(fig)
+
+
 def main() -> None:
     names = [n for n in ("metaharness", "metaharness_hard", "rrsi_hard", "rrsi", "metaharness_a", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
     runs = [extract(n) for n in names]
@@ -235,6 +292,9 @@ def main() -> None:
         else:
             plot_harness(d, titles[d["run"]], figs / f"{d['run']}_iterations.png")
     plot_seed_vs_final(runs, figs / "seed_vs_final.png")
+    reps = replicates()
+    plot_replicates(reps, figs / "metaharness_replicates.png")
+    (DEMO / "replicates.json").write_text(json.dumps(reps, indent=1))
     print(json.dumps([{"run": d["run"], "iters": len(d["rows"]) - 1, "usd": d["usd_total"]} for d in runs]))
 
 

@@ -1,0 +1,17 @@
+{
+ "name": "iterative_format_refinement",
+ "artifact_id": "ed8a24b3e595cc7fa8715fd30b703e64fcf85ad9c1bd0c6f0f8f4556e3bdd725",
+ "created_at": 1791443627.555583,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 3,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

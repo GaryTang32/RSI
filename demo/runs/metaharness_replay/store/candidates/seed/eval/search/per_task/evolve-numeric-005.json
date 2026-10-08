@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- Sum of all digits: 5+2+3+0+9+6+0+7+0+1+6+9+8+2+7+4+3+4+9+9+6+5+5+3+3+2+6+5+3+2+9+0+3+2+4+2+8+4+2+9+3+8+4+7+9+7+1+6+3 = **216**'; expected '351'.",
+  "output": "- Sum of all digits: 5+2+3+0+9+6+0+7+0+1+6+9+8+2+7+4+3+4+9+9+6+5+5+3+3+2+6+5+3+2+9+0+3+2+4+2+8+4+2+9+3+8+4+7+9+7+1+6+3 = **216**",
+  "tokens": 1271,
+  "cost_usd": 0.003011,
+  "steps": 1,
+  "latency_s": 0.0043218135833740234,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]
