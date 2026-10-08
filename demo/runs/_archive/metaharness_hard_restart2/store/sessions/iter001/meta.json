@@ -48,7 +48,7 @@
  "view_chars": 35099,
  "read_chars": 35099,
  "error": null,
- "seconds": 0.004,
+ "seconds": 0.003,
  "reports_written": [
   "reports/iter0.md"
  ],

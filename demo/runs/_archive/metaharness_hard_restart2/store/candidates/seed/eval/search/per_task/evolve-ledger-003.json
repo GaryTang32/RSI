@@ -8,7 +8,7 @@
   "tokens": 23389,
   "cost_usd": 0.103161,
   "steps": 1,
-  "latency_s": 0.0059051513671875,
+  "latency_s": 0.0036363601684570312,
   "error": null,
   "family": "ledger",
   "meta": {
