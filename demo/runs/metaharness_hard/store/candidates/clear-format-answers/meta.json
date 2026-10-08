@@ -1,0 +1,16 @@
+{
+ "name": "clear-format-answers",
+ "artifact_id": "c65b3a5c5c6aad225096a2b1004e56aaf03db6f72f1649699b5dd4d420621c05",
+ "created_at": 1791445822.4372387,
+ "status": "pending",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 2,
+ "base_fallback": true,
+ "claimed_base_system": "(none)"
+}
