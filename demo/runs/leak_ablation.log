@@ -1,0 +1,42 @@
+{
+ "replaced": {
+  "2379.20": "1234.50",
+  "`Harper`, `Delta`, `Cobalt`": "`Ingrid`, `Orion`, `Vesper`"
+ },
+ "files_changed": [
+  "prompts/system_data.md",
+  "prompts/system_logic.md"
+ ],
+ "scores": {
+  "holdout": {
+   "final": 0.9166666666666666,
+   "final_neutralised": 1.0
+  },
+  "ood": {
+   "final": 0.75,
+   "final_neutralised": 0.8333333333333334
+  }
+ },
+ "paired_vs_final": {
+  "holdout": {
+   "mean_diff": 0.08333333333333333,
+   "lo": 0.0,
+   "hi": 0.25,
+   "n": 6,
+   "p_better": 0.16666666666666666
+  },
+  "ood": {
+   "mean_diff": 0.08333333333333333,
+   "lo": 0.0,
+   "hi": 0.25,
+   "n": 6,
+   "p_better": 0.16666666666666666
+  }
+ },
+ "usd": 2.555,
+ "cache": {
+  "hits": 12,
+  "misses": 36
+ }
+}
+EXIT 0
