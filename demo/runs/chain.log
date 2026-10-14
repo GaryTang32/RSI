@@ -10,3 +10,4 @@
 == 2026-10-14T07:37:53Z metaharness --suite hard -> demo/runs/metaharness_suite_hard.log
 == 2026-10-14T08:32:32Z rrsi --suite hard --max-usd 5 -> demo/runs/rrsi_suite_hard_max_usd_5.log
 == chain done
+== 2026-10-14T11:50:28Z rescore.py metaharness_hard -> demo/runs/rescore_metaharness_hard.log

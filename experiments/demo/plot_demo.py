@@ -1,12 +1,14 @@
 """Turn the live demo traces into per-iteration data and graphs.
 
-Reads ``demo/runs/<method>/trace.jsonl`` (+ ``summary.json``) written by ``live_demo.py`` and writes
+Reads ``demo/runs/<method>/trace.jsonl`` (+ ``summary.json``, ``rescore.json``) written by ``live_demo.py`` and
+``rescore.py``, plus ``demo/spend.json`` from ``spend.py``, and writes
 
-- ``demo/data.json``: per-iteration rows for every run (candidates tried, the gate's verdict,
-  the incumbent's practice score, and the sealed held-out / ood scores from the shadow monitor);
-- ``demo/figures/*.png``: one iteration chart per method plus a seed-vs-final chart.
+- ``demo/data.json``: per-iteration rows for every run (candidates tried, what became of each, the incumbent's
+  practice score, and the sealed held-out / ood scores from the shadow monitor), the fresh post-run re-score and
+  each run's full cost;
+- ``demo/figures/*.png``: one iteration chart per method, a seed-vs-final chart and the replicates chart.
 
-Everything plotted comes straight from the trace; nothing is re-computed or smoothed::
+Everything plotted comes straight from those files; nothing is re-computed or smoothed::
 
     python experiments/demo/plot_demo.py
 """
@@ -25,6 +27,28 @@ RUNS = DEMO / "runs"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 INK, INK2, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 DISCARD = "#9a9994"
+
+
+def r2(v) -> str:
+    """Two decimals, exact halves rounded up: the same digits JavaScript's toFixed(2) gives the page."""
+    from decimal import ROUND_HALF_UP, Decimal
+    return str(Decimal(repr(float(v))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def spend() -> dict:
+    p = DEMO / "spend.json"
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+def fresh_transfer(rel: str) -> dict | None:
+    """The run's independent re-score (``rescore.json``: fresh trial seeds), as {split: {arm: {S, vs, missing}}}."""
+    p = RUNS / rel / "rescore.json"
+    if not p.exists():
+        return None
+    r = json.loads(p.read_text())
+    out = {sp: {a: {"S": v["S"], "vs": v.get("vs_reference"), "missing": v.get("missing")} for a, v in row.items()}
+           for sp, row in r["transfer"]["splits"].items()}
+    return {"splits": out, "k": r["k"], "seed_offset": r["seed_offset"], "usd": r["usd"], "clean": r["clean"]}
 
 
 def load(path: Path) -> list[dict]:
@@ -63,7 +87,12 @@ def extract(name: str) -> dict:
             rounds.setdefault(r, {"candidates": [], "decision": None})
             if r not in order:
                 order.append(r)
-            rounds[r].setdefault("proposals", {})[d.get("candidate")] = d.get("change") or d.get("hypothesis") or d.get("description")
+            props = rounds[r].setdefault("proposals", {})
+            text = d.get("change") or d.get("hypothesis") or d.get("description")
+            # a candidate can have several proposal events (critic repairs, failed retries): describe it by the
+            # last one that did not fail
+            if text and (not d.get("error") or d.get("candidate") not in props):
+                props[d.get("candidate")] = text
         if e["kind"] == "decision" and r in rounds:
             rounds[r]["decision"] = e["data"]
     rows = [{"iter": 0, "incumbent": base_name, "S": base_S, "sealed": sealed.get(base_name, {}), "candidates": []}]
@@ -87,18 +116,36 @@ def extract(name: str) -> dict:
                     m = re.match(r'\s*(?:"""|\'\'\')(.*?)(?:"""|\'\'\')', src.read_text(), re.S)
                     if m:
                         props[c["name"]] = " ".join(m.group(1).split())
+        per = dec.get("per_candidate") or {}
         for c in R["candidates"]:
-            c["kept"] = c is kept
+            c["kept"] = c is kept            # became the new incumbent
             c["change"] = props.get(c["name"])
+            if per:   # Meta-Harness keeps every candidate in its population; the Pareto frontier is what it ranks
+                c["state"] = ("incumbent" if c["kept"] else
+                              "frontier" if (per.get(c["name"]) or {}).get("on_frontier") else "population")
+            else:     # RRSI and autoresearch keep one version and discard the rest
+                c["state"] = "incumbent" if c["kept"] else "discarded"
         rows.append({"iter": i, "incumbent": inc, "S": inc_S, "sealed": sealed.get(inc, rows[-1]["sealed"]),
                      "candidates": R["candidates"], "why": dec.get("why")})
     summ_p = RUNS / name / "summary.json"
     summ = json.loads(summ_p.read_text()) if summ_p.exists() else {}
-    out = {"run": name, "rows": rows, "usd_total": summ.get("usd_total"), "wall_s": summ.get("wall_s"),
-           "stop_reason": summ.get("stop_reason")}
-    if "transfer" in summ:
+    end = next((e["data"] for e in reversed(ev) if e["kind"] == "run_end"), {})
+    sp = (spend().get("reported") or {}).get(name) or {}
+    out = {"run": name, "rows": rows, "suite": (summ.get("setup") or {}).get("suite") or "easy",
+           "usd_attempt": summ.get("usd_total"), "usd_full": sp.get("usd_full"), "attempts": sp.get("attempts"),
+           "stop_reason": summ.get("stop_reason") or end.get("stop_reason"), "has_summary": bool(summ),
+           "method": next(m for m in ("metaharness", "rrsi", "autoresearch") if name.startswith(m))}
+    fresh = fresh_transfer(name)
+    if fresh:
+        out["transfer"] = fresh["splits"]
+        out["transfer_k"], out["transfer_seed_offset"], out["transfer_fresh"] = fresh["k"], fresh["seed_offset"], True
+        out["usd_rescore"] = fresh["usd"]
+    elif "transfer" in summ:
+        # an older report: trial seeds from 0, so trial 0 repeats the loop's and the monitor's own samples
         out["transfer"] = {s: {a: {"S": v["S"], "vs": v.get("vs_reference")} for a, v in row.items()}
                            for s, row in summ["transfer"]["splits"].items()}
+        out["transfer_k"] = summ["transfer"].get("k") or (1 if out["suite"] == "hard" else 2)
+        out["transfer_seed_offset"], out["transfer_fresh"] = summ["transfer"].get("seed_offset", 0), False
     return out
 
 
@@ -122,33 +169,50 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, title, "accuracy (exact match)")
-    # every candidate the proposer produced, at its practice score
+    mh = d.get("method") == "metaharness"
+    # marker per state: filled = became the new incumbent; Meta-Harness also keeps the rest (ring = joined the
+    # Pareto frontier, hollow = in the population but dominated); RRSI discards the rest (hollow gray)
+    style = {"incumbent": dict(facecolor=BLUE, edgecolor=BLUE), "frontier": dict(facecolor="#cfe0f5", edgecolor=BLUE),
+             "population": dict(facecolor="white", edgecolor=DISCARD), "discarded": dict(facecolor="white", edgecolor=DISCARD)}
     for r in rows[1:]:
         n = len(r["candidates"])
-        # spread same-iteration candidates sideways; draw the kept one last so it stays on top
+        # spread same-iteration candidates sideways; draw the new incumbent last so it stays on top
         for j, c in sorted(enumerate(r["candidates"]), key=lambda p: bool(p[1].get("kept"))):
             if c["S"] is None:
                 continue
-            ax.scatter(r["iter"] + (j - (n - 1) / 2) * 0.09, c["S"], s=46, zorder=4 if c.get("kept") else 3, facecolor=BLUE if c.get("kept") else "white",
-                       edgecolor=BLUE if c.get("kept") else DISCARD, linewidth=1.5)
-    series = [("incumbent, practice tasks", [r["S"] for r in rows], BLUE),
-              ("incumbent, sealed held-out", [r["sealed"].get("holdout") for r in rows], ORANGE),
-              ("incumbent, sealed OOD (unseen task types)", [r["sealed"].get("ood") for r in rows], AQUA)]
-    # sealed lines first, practice last, so the practice line stays visible where they coincide
-    for label, ys, col in series[1:] + series[:1]:
+            ax.scatter(r["iter"] + (j - (n - 1) / 2) * 0.09, c["S"], s=46, zorder=4 if c.get("kept") else 3,
+                       linewidth=1.5, **style[c.get("state", "incumbent" if c.get("kept") else "discarded")])
+    series = [("incumbent, practice tasks", [r["S"] for r in rows], BLUE, 3.4),
+              ("incumbent, sealed held-out", [r["sealed"].get("holdout") for r in rows], ORANGE, 2),
+              ("incumbent, sealed OOD (unseen task types)", [r["sealed"].get("ood") for r in rows], AQUA, 2)]
+    # practice underneath and wider, sealed lines on top: where they coincide both stay visible
+    ends = []
+    for label, ys, col, lw in series:
         pts = [(x, y) for x, y in zip(xs, ys) if y is not None]
         if pts:
-            ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=2, label=label,
-                    zorder=2.5 if col == BLUE else 2, linestyle=(0, (5, 3)) if col == AQUA else "-")
-            ax.annotate(f"{pts[-1][1]:.2f}", (pts[-1][0], pts[-1][1]), xytext=(14, 0), textcoords="offset points",
-                        va="center", fontsize=9, color=col)
-    ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label="candidate kept")
-    ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="candidate discarded")
+            ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=lw, label=label,
+                    zorder=2 if col == BLUE else 2.5, linestyle=(0, (5, 3)) if col == AQUA else "-")
+            ends.append([pts[-1][1], pts[-1][1], col])
+    # end labels: keep coincident values apart
+    ends.sort(key=lambda e: e[0])
+    for i in range(1, len(ends)):
+        ends[i][1] = max(ends[i][1], ends[i - 1][1] + 0.06)
+    for v, ypos, col in ends:
+        ax.annotate(r2(v), (xs[-1], ypos), xytext=(14, 0), textcoords="offset points", va="center", fontsize=9,
+                    color=col, annotation_clip=False)
+    keep_lab = "candidate became the incumbent"
+    ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label=keep_lab)
+    if mh:
+        ax.scatter([], [], s=46, facecolor="#cfe0f5", edgecolor=BLUE, label="kept, joined the Pareto frontier")
+        ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="kept in the population, dominated")
+    else:
+        ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="candidate discarded")
     ax.set_xticks(xs, ["seed"] + [str(x) for x in xs[1:]])
     ax.set_xlabel("iteration", color=INK2, fontsize=10)
     ax.set_ylim(-0.03, 1.08)
     h, lab = ax.get_legend_handles_labels()
-    want = [s[0] for s in series] + ["candidate kept", "candidate discarded"]
+    want = [s[0] for s in series] + [keep_lab, "kept, joined the Pareto frontier", "kept in the population, dominated",
+                                     "candidate discarded"]
     pairs = sorted(zip(h, lab), key=lambda p: want.index(p[1]) if p[1] in want else 99)
     ax.legend([p[0] for p in pairs], [p[1] for p in pairs], loc="upper center", bbox_to_anchor=(0.5, -0.2),
               ncol=3, fontsize=8, frameon=False)
@@ -204,16 +268,20 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
         fin = [d["transfer"][s]["final"]["S"] for s in splits]
         x = range(len(splits))
         ax.bar([i - 0.19 for i in x], seed, width=0.36, color=DISCARD, label="seed harness")
-        ax.bar([i + 0.19 for i in x], fin, width=0.36, color=BLUE, label="improved harness")
+        ax.bar([i + 0.19 for i in x], fin, width=0.36, color=BLUE, label="harness after the run")
         for i, (a, b) in enumerate(zip(seed, fin)):
-            ax.annotate(f"{a:.2f}", (i - 0.19, a), xytext=(0, 3), textcoords="offset points", ha="center",
+            ax.annotate(r2(a), (i - 0.19, a), xytext=(0, 3), textcoords="offset points", ha="center",
                         fontsize=8, color=INK2)
-            ax.annotate(f"{b:.2f}", (i + 0.19, b), xytext=(0, 3), textcoords="offset points", ha="center",
+            ax.annotate(r2(b), (i + 0.19, b), xytext=(0, 3), textcoords="offset points", ha="center",
                         fontsize=8, color=INK)
         ax.set_xticks(list(x), labels)
         ax.set_ylim(0, 1.15)
     fig.legend(*axes[0][0].get_legend_handles_labels(), loc="lower center", ncol=2, fontsize=8, frameon=False)
-    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    ks = sorted({(d["transfer_k"], d["transfer_seed_offset"]) for d in have})
+    fig.suptitle("Seed vs final harness, re-scored after each run with fresh trials ("
+                 + "; ".join(f"{k} per task, seeds {o}-{o + k - 1}" for k, o in ks) + ")",
+                 x=0.01, ha="left", fontsize=11, color=INK, fontweight="bold")
+    fig.tight_layout(rect=(0, 0.07, 1, 0.93))
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
 
@@ -224,20 +292,22 @@ REPLICATES = [
     ("Run 1", "_archive/metaharness_before_fix", "before the replay fix"),
     ("Run 2", "_archive/metaharness_fix_v1", "after part 1 of the fix"),
     ("Run 3", "_archive/metaharness_fix_v2", "after part 2 of the fix"),
-    ("Run 4", "metaharness", "final code; resumed from cache after the usage cap"),
+    ("Run 4", "metaharness", "final code; cut off by the usage cap after iteration 3, then resumed from its cache"),
 ]
 
 
 def replicates() -> list[dict]:
     out = []
+    rep = spend().get("reported") or {}
     for label, rel, note in REPLICATES:
-        p = RUNS / rel / "summary.json"
-        if not p.exists():
+        fresh = fresh_transfer(rel)
+        if fresh is None:
             continue
-        s = json.loads(p.read_text())
-        sp = s["transfer"]["splits"]
-        out.append({"label": label, "dir": rel, "note": note, "usd": s.get("usd_total"),
-                    "scores": {k: {"seed": sp[k]["seed"]["S"], "final": sp[k]["final"]["S"]} for k in sp}})
+        sp = fresh["splits"]
+        out.append({"label": label, "dir": rel, "note": note, "usd": (rep.get(rel) or {}).get("usd_full"),
+                    "k": fresh["k"], "seed_offset": fresh["seed_offset"],
+                    "scores": {k: {"seed": sp[k]["seed"]["S"], "final": sp[k]["final"]["S"],
+                                   "vs": sp[k]["final"].get("vs")} for k in sp}})
     return out
 
 
@@ -259,7 +329,7 @@ def plot_replicates(reps: list[dict], path: Path) -> None:
             ax.plot([a, b], [y, y], color=GRID, linewidth=3, zorder=1, solid_capstyle="round")
             ax.scatter([a], [y], s=46, color=DISCARD, zorder=2)
             ax.scatter([b], [y], s=46, color=BLUE, zorder=3)
-            ax.annotate(f"{b:.2f}", (b, y), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=8,
+            ax.annotate(r2(b), (b, y), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=8,
                         color=INK)
         ax.set_xlim(-0.05, 1.1)
         ax.set_xticks([0, 0.5, 1])
@@ -268,7 +338,7 @@ def plot_replicates(reps: list[dict], path: Path) -> None:
     axes[0].scatter([], [], s=46, color=DISCARD, label="seed harness")
     axes[0].scatter([], [], s=46, color=BLUE, label="harness after the run")
     fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=2, fontsize=8, frameon=False)
-    fig.suptitle("Meta-Harness, four complete runs with identical settings (re-scored, two trials per task)",
+    fig.suptitle("Meta-Harness, four complete runs, same configuration (re-scored with fresh trials, two per task)",
                  x=0.01, ha="left", fontsize=11, color=INK, fontweight="bold")
     fig.tight_layout(rect=(0, 0.08, 1, 0.95))
     fig.savefig(path, facecolor=SURF)
@@ -295,7 +365,7 @@ def main() -> None:
     reps = replicates()
     plot_replicates(reps, figs / "metaharness_replicates.png")
     (DEMO / "replicates.json").write_text(json.dumps(reps, indent=1))
-    print(json.dumps([{"run": d["run"], "iters": len(d["rows"]) - 1, "usd": d["usd_total"]} for d in runs]))
+    print(json.dumps([{"run": d["run"], "iters": len(d["rows"]) - 1, "usd_full": d["usd_full"]} for d in runs]))
 
 
 if __name__ == "__main__":

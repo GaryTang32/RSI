@@ -89,6 +89,7 @@ REPORTED = {
     "rrsi": ["_rrsi_restarted", "rrsi"],
     "rrsi_hard": ["_archive/rrsi_hard_capped", "rrsi_hard"],
     "autoresearch": ["autoresearch"],
+    "metaharness_a": ["metaharness_a"],
     "_archive/metaharness_before_fix": ["_archive/metaharness_before_fix"],
     "_archive/metaharness_fix_v1": ["_archive/metaharness_fix_v1"],
     "_archive/metaharness_fix_v2": ["_archive/metaharness_fix_v2"],

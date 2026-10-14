@@ -35,6 +35,7 @@ section.run{display:grid;gap:20px}
 .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
 .legend i.dot{width:9px;height:9px;border-radius:50%;vertical-align:0}
 .legend i.hollow{background:transparent!important;border:1.5px solid var(--discard);box-sizing:border-box}
+.legend i.ring{background:var(--keep-bg)!important;border:1.5px solid var(--s1);box-sizing:border-box}
 .chart{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 8px 4px}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
 .chart text{fill:var(--ink2);font:11px var(--body)}
@@ -49,6 +50,7 @@ tr.kept td{background:var(--keep-bg)}
 tr:last-child td{border-bottom:none}
 .pill{display:inline-block;font:500 11.5px/1 var(--body);padding:4px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
 .pill.keep{background:var(--s1);border-color:var(--s1);color:#fff}
+.pill.front{background:var(--keep-bg);border-color:var(--s1)}
 .cand{font-family:var(--mono);font-size:12px;color:var(--ink2)}
 details{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 summary{cursor:pointer;padding:10px 14px;font-weight:500}
@@ -65,11 +67,11 @@ pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overf
   <header class="lede">
     <h3>rsi package · live runs with Claude Haiku</h3>
     <h1>Watching the loop improve an LLM agent, one iteration at a time</h1>
-    <p>Each run below started from an untouched seed and ran through the package's public API. Claude Haiku played both roles: the frozen model the harness calls, and the proposer that rewrites the harness. Every point on a chart is one candidate the model proposed, scored by a locked exact-match grader. The orange and green lines are sealed held-out and out-of-distribution tasks. The loop never saw them; a write-only monitor scored each new incumbent on them.</p>
+    <p>Each run below started from an untouched seed and ran through the package's public API (some were cut short by the account's usage cap or a container restart and resumed from their LLM cache). Claude Haiku played both roles: the frozen model the harness calls, and the proposer that rewrites the harness. Every point on a chart is one candidate the model proposed, scored by a locked exact-match grader. The orange and green lines are sealed held-out and out-of-distribution tasks. The loop never saw them; a write-only monitor scored each new incumbent on them.</p>
     <div class="facts" id="facts"></div>
   </header>
   <div id="runs" class="wrap" style="gap:64px"></div>
-  <footer class="note">Reproduce: <code>python experiments/demo/live_demo.py metaharness|rrsi|autoresearch</code>, then <code>python experiments/demo/plot_demo.py &amp;&amp; python experiments/demo/build_page.py</code>. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (12 practice, 8 held-out, 8 OOD) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
+  <footer class="note">Reproduce: <code>python experiments/demo/live_demo.py metaharness|rrsi|autoresearch</code>, then <code>python experiments/demo/plot_demo.py &amp;&amp; python experiments/demo/build_page.py</code>. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (standard: 12 practice, 8 held-out, 8 OOD; hard: 8, 6, 6) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
 </div>
 
 <script>
@@ -93,19 +95,25 @@ const META = {
 };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const f2 = v => v == null ? "–" : (+v).toFixed(v > 1.5 ? 3 : 2);
+const sgn = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+const STATE = {incumbent: "became the incumbent", frontier: "kept: joined the Pareto frontier",
+  population: "kept in the population (dominated)", discarded: "discarded"};
+const state = c => c.state || (c.kept ? "incumbent" : "discarded");
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
 
-const SPEND = (RUNS.find(d => d.run === "_spend") || {}).cache_usd || {};
-const RUNS_ = RUNS.filter(d => d.run !== "_spend");
+const SPEND = (EXTRA || {}).spend || {};
+const RUNS_ = RUNS;
 function facts() {
   const RUNS = RUNS_;
-  const usd = Object.values(SPEND).reduce((a, v) => a + v, 0) || RUNS.reduce((a, d) => a + (d.usd_total || 0), 0);
+  const usd = SPEND.total_usd;
   const iters = RUNS.reduce((a, d) => a + d.rows.length - 1, 0);
   const cands = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.length, 0), 0);
   const kept = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.filter(c => c.kept).length, 0), 0);
+  const resumed = RUNS.filter(d => Object.keys(d.attempts || {}).length > 1).length;
   document.getElementById("facts").innerHTML = [
-    [RUNS.length, "fresh live runs"], [iters, "iterations"], [cands, "candidates proposed and graded"],
-    [kept, "kept by the gate"], ["$" + usd.toFixed(2), "total Claude Haiku spend, including one restarted run"]]
+    [RUNS.length, `live runs (${resumed} resumed from their cache)`], [iters, "iterations"],
+    [cands, "candidates proposed and graded"], [kept, "candidates that became the new incumbent"],
+    ["$" + usd.toFixed(2), "total Claude Haiku spend, every attempt included: capped and restarted runs, replicates, re-scores, leak checks, calibrations"]]
     .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
@@ -141,8 +149,10 @@ function chart(host, d, m) {
     const v = c.S == null ? null : c.S;
     if (v == null) return;
     const off = r.candidates.length > 1 ? (j - (r.candidates.length - 1) / 2) * 9 : 0;
+    const st = state(c);
     s += `<circle class="pt" data-i="${i}" data-j="${j}" cx="${x(i) + off}" cy="${y(v)}" r="5.5" stroke-width="1.8" `
-      + (c.kept ? `fill="var(--s1)" stroke="var(--surface)"` : `fill="var(--surface)" stroke="var(--discard)"`) + `/>`;
+      + (st === "incumbent" ? `fill="var(--s1)" stroke="var(--surface)"` : st === "frontier" ? `fill="var(--keep-bg)" stroke="var(--s1)"`
+         : `fill="var(--surface)" stroke="var(--discard)"`) + `/>`;
   }));
   s += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
   s += `<rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
@@ -155,7 +165,7 @@ function chart(host, d, m) {
   function show(e, i, c) {
     const r = rows[i], sealed = r.sealed || {};
     let h = `<div class="small dim">${i === 0 ? "starting point" : "iteration " + i}</div>`;
-    if (c) h += `<div><b>${esc(c.name)}</b> · ${m.higher ? "practice" : "val_bpb"} <b>${f2(c.S)}</b> · ${c.kept ? "kept" : "discarded"}</div>`
+    if (c) h += `<div><b>${esc(c.name)}</b> · ${m.higher ? "practice" : "val_bpb"} <b>${f2(c.S)}</b> · ${STATE[state(c)]}</div>`
       + (c.change ? `<div class="small" style="margin-top:4px">${esc(c.change).slice(0, 260)}</div>` : "");
     else h += `<div>incumbent <b>${esc(r.incumbent)}</b></div>`;
     h += `<div class="small dim" style="margin-top:4px">incumbent: ${m.higher ? "practice" : "val"} ${f2(r.S)}`
@@ -180,12 +190,14 @@ function chart(host, d, m) {
   box.addEventListener("mouseleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
 }
 
-function legend(m) {
+function legend(m, d) {
   const items = m.higher
     ? [["var(--s1)", "incumbent, practice tasks"], ["var(--s2)", "incumbent, sealed held-out"], ["var(--s3)", "incumbent, sealed OOD (dashed)"]]
     : [["var(--s1)", "running best, validation"], ["var(--s2)", "same model on a hidden test split"]];
-  return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}`
-    + `<span><i class="dot" style="background:var(--s1)"></i>candidate kept</span><span><i class="dot hollow"></i>candidate discarded</span></div>`;
+  const marks = d.method === "metaharness"
+    ? `<span><i class="dot" style="background:var(--s1)"></i>became the incumbent</span><span><i class="dot ring"></i>kept, joined the Pareto frontier</span><span><i class="dot hollow"></i>kept in the population, dominated</span>`
+    : `<span><i class="dot" style="background:var(--s1)"></i>${m.higher ? "candidate" : "experiment"} kept</span><span><i class="dot hollow"></i>${m.higher ? "candidate" : "experiment"} discarded</span>`;
+  return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}${marks}</div>`;
 }
 
 function table(d, m) {
@@ -198,11 +210,11 @@ function table(d, m) {
   d.rows.slice(1).forEach(r => r.candidates.forEach(c => {
     h += `<tr class="${c.kept ? "kept" : ""}"><td class="num">${r.iter}</td><td class="cand">${esc(c.name)}</td>`
       + `<td>${esc((c.change || "").slice(0, 300))}</td><td class="num">${f2(c.S)}</td>`
-      + `<td>${c.kept ? `<span class="pill keep">kept</span>` : `<span class="pill">discarded</span>`}</td>`
+      + `<td><span class="pill ${{incumbent: "keep", frontier: "front"}[state(c)] || ""}">${{incumbent: d.method === "metaharness" ? "new incumbent" : "kept", frontier: "on frontier", population: "in population", discarded: "discarded"}[state(c)]}</span></td>`
       + (m.higher ? `<td class="num">${c.kept ? f2(r.sealed.holdout) : ""}</td><td class="num">${c.kept ? f2(r.sealed.ood) : ""}</td>`
                   : `<td class="num">${c.kept ? f2(r.sealed.test_iid) : ""}</td>`) + `</tr>`;
   }));
-  return h + `</tbody></table></div><p class="small dim">* Sealed scores of the new incumbent, from the write-only shadow monitor. The loop never saw them.</p>`;
+  return h + `</tbody></table></div><p class="small dim">* Sealed scores of the new incumbent, from the write-only shadow monitor (one trial per task). The loop never saw them.${d.method === "metaharness" ? " Meta-Harness keeps every candidate in its population and ranks them by a score/cost Pareto frontier; the incumbent is the highest-scoring frontier point." : ""}</p>`;
 }
 
 function code(d) {
@@ -218,10 +230,15 @@ function code(d) {
 
 function resultLine(d, m) {
   if (d.transfer) {
-    const t = d.transfer, parts = [["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, k]) => {
-      const a = t[k].seed.S, b = t[k].final.S, vs = t[k].final.vs || {}, ci = vs.ci ? ` <span class="dim small">[${f2(vs.ci[0])}, ${f2(vs.ci[1])}]</span>` : "";
+    const t = d.transfer, k = d.transfer_k, o = d.transfer_seed_offset;
+    const parts = [["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, s]) => {
+      const a = t[s].seed.S, b = t[s].final.S, vs = t[s].final.vs;
+      const ci = vs && vs.lo != null ? ` <span class="dim small">gain ${sgn(vs.mean_diff)} [${sgn(vs.lo)}, ${sgn(vs.hi)}], n = ${vs.n}</span>` : "";
       return `<span>${lab} <span class="v">${f2(a)} → <span class="${b > a ? "up" : ""}">${f2(b)}</span></span>${ci}</span>`; });
-    return `<div class="result">${parts.join("")}<span class="dim small">re-scored with k = 2 trials per task after the run; brackets = 95% CI of the paired gain</span></div>`;
+    const how = d.transfer_fresh
+      ? `re-scored after the run with ${k} fresh trial${k > 1 ? "s" : ""} per task (trial seeds ${o}–${o + k - 1}, which no loop decision or monitor reading used); brackets = 95% bootstrap CI of the paired gain over the split's n tasks`
+      : `post-run report with ${k} trial${k > 1 ? "s" : ""} per task from seed 0: trial 0 repeats the loop's and the monitor's own samples`;
+    return `<div class="result">${parts.join("")}<span class="dim small">${how}</span></div>`;
   }
   const r0 = d.rows[0], rl = d.rows[d.rows.length - 1];
   if (m.higher) {
@@ -242,21 +259,33 @@ RUNS_.forEach(d => {
   const sec = el("section", {class: "run", id: d.run});
   sec.innerHTML = `<div class="head"><h3>${esc(m.task)}</h3><h2>${esc(m.title)}</h2><p class="dim">${esc(m.what)}</p>${resultLine(d, m)}`
     + (m.note ? `<p class="note">${esc(m.note)}</p>` : "")
-    + `<p class="small dim">${d.rows.length - 1} iterations · $${(d.usd_total || 0).toFixed(2)} · ${Math.round((d.wall_s || 0) / 60)} min · stopped: ${esc(d.stop_reason || "")}</p></div>` + legend(m);
+    + `<p class="small dim">${runLine(d)}</p></div>` + legend(m, d);
   host.appendChild(sec);
   chart(sec, d, m);
   sec.insertAdjacentHTML("beforeend", table(d, m) + code(d));
   if (d.run === "metaharness") sec.insertAdjacentHTML("beforeend", replay() + replicates());
 });
 
+function runLine(d) {
+  const n = Object.keys(d.attempts || {}).length;
+  let s = `${d.rows.length - 1} iterations · stopped: ${esc(d.stop_reason || "?")}`;
+  if (d.usd_full != null) s += ` · $${d.usd_full.toFixed(2)} of Haiku calls` + (n > 1 ? ` across ${n} attempts (this attempt $${(d.usd_attempt || 0).toFixed(2)}; the rest were paid by ${n - 1} earlier attempt${n > 2 ? "s" : ""} cut short and replayed from the cache)` : "");
+  if (d.usd_rescore) s += ` · fresh re-score $${d.usd_rescore.toFixed(2)}`;
+  if (!d.has_summary) s += " · interrupted during its final report, so it has no re-score";
+  return s;
+}
+
 function replay() {
   const r = (EXTRA || {}).replay; if (!r) return "";
   const ok = r.prompts_identical && r.scores_identical;
   return `<div class="note"><b>Replay check${ok ? " passed" : " FAILED"}.</b> The whole run was re-executed from its LLM cache `
-    + `with the model switched off (a cache miss is an error): ${r.proposals} proposer prompts ${r.prompts_identical ? "identical" : "differ"}, `
-    + `every candidate score ${r.scores_identical ? "identical" : "differs"}, ${r.cache_hits} cached calls, ${r.cache_misses} misses, `
-    + `$${(r.usd_spent || 0).toFixed(2)} spent. Before the fix, wall-clock timestamps, latencies, the proposer's own bill and random `
-    + `sandbox paths in tracebacks made every prompt unique, so no run could be replayed.</div>`;
+    + `with the model switched off (a cache miss is an error): the prompts of all ${r.proposer_calls} proposer calls (one per iteration, `
+    + `each yielding 2 candidates) ${r.prompts_identical ? "identical" : "differ"}, all ${r.candidates_scored} candidate scores `
+    + `${r.scores_identical ? "identical" : "differ"}, ${r.cache_hits} cached calls in the main process (plus the interface-validation `
+    + `calls in forked children), ${r.cache_misses} misses, $${(r.usd_spent || 0).toFixed(2)} spent. The cache is keyed on a hash of the `
+    + `whole prompt, so zero misses proves the full prompts matched (the trace keeps only their first 60,000 characters). `
+    + `Before the fix, wall-clock timestamps and latencies, the proposer's own bill and random sandbox paths in tracebacks made `
+    + `every prompt unique, so no run could be replayed.</div>`;
 }
 
 function replicates() {
@@ -279,9 +308,10 @@ function replicates() {
     });
     return `<div class="chart" style="padding:8px">${s}</svg></div>`;
   };
-  const rows = reps.map(r => `<li><b>${esc(r.label)}</b> (${esc(r.note)}): $${(r.usd || 0).toFixed(2)}</li>`).join("");
-  return `<div class="head"><h3>Replicates</h3><p class="dim">Four complete Meta-Harness runs with identical settings, `
-    + `seed harness and model, each re-scored with two trials per task. Gray is the seed, blue the harness after the run.</p></div>`
+  const rows = reps.map(r => `<li><b>${esc(r.label)}</b> (${esc(r.note)}): $${(r.usd || 0).toFixed(2)} of Haiku calls</li>`).join("");
+  return `<div class="head"><h3>Replicates</h3><p class="dim">Four complete Meta-Harness runs with the same configuration, `
+    + `seed harness and model; the replay fix landed between them, so the code changed slightly from run to run. `
+    + `Each was re-scored after the run with ${reps[0].k} fresh trials per task. Gray is the seed, blue the harness after the run.</p></div>`
     + `<div class="rep-grid">${splits.map(panel).join("")}</div>`
     + `<div class="legend"><span><i class="dot" style="background:var(--discard)"></i>seed harness</span>`
     + `<span><i class="dot" style="background:var(--s1)"></i>harness after the run</span></div>`
