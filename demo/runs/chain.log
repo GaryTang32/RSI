@@ -13,3 +13,4 @@
 == 2026-10-14T11:50:28Z rescore.py metaharness_hard -> demo/runs/rescore_metaharness_hard.log
 == 2026-10-14T12:30:26Z leak_ablation.py -> demo/runs/leak_ablation.log
 == 2026-10-14T12:48:19Z rescore.py rrsi_hard -> demo/runs/rescore_rrsi_hard.log
+== 2026-10-14T13:04:14Z rescore.py metaharness -> demo/runs/rescore_metaharness.log
