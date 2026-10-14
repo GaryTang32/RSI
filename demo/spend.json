@@ -1,26 +1,26 @@
 {
  "method": "Every live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``). Several attempts can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that was running when the entry was written: the latest attempt that started at or before the file's write time. Attempt start times come from each attempt's trace (or the ``started_at`` its JSON records).",
- "total_usd": 41.5654,
+ "total_usd": 52.9225,
  "caches": {
   ".cache_autoresearch": {
    "usd": 0.7018,
    "entries": 10
   },
   ".cache_metaharness": {
-   "usd": 2.2613,
-   "entries": 232
+   "usd": 2.3246,
+   "entries": 243
   },
   ".cache_metaharness_hard": {
-   "usd": 11.3523,
-   "entries": 175
+   "usd": 20.0393,
+   "entries": 295
   },
   ".cache_rrsi": {
    "usd": 3.2133,
    "entries": 370
   },
   ".cache_rrsi_hard": {
-   "usd": 7.6211,
-   "entries": 102
+   "usd": 10.2279,
+   "entries": 142
   },
   ".cache_tinylm_data": {
    "usd": 0.0,
@@ -63,8 +63,8 @@
   "metaharness": {
    "cache": ".cache_metaharness",
    "what": "Run 4, resumed (reported)",
-   "usd": 0.9119,
-   "entries": 113
+   "usd": 0.9751,
+   "entries": 124
   },
   "metaharness_hard": {
    "cache": ".cache_metaharness_hard",
@@ -78,11 +78,23 @@
    "usd": 2.555,
    "entries": 36
   },
+  "metaharness_hard/rescore": {
+   "cache": ".cache_metaharness_hard",
+   "what": "fresh re-score",
+   "usd": 5.786,
+   "entries": 80
+  },
   "_archive/metaharness_hard_capped": {
    "cache": ".cache_metaharness_hard",
    "what": "hard Meta-Harness, crashed",
    "usd": 0.9916,
    "entries": 13
+  },
+  "metaharness_hard/leak_ablation": {
+   "cache": ".cache_metaharness_hard",
+   "what": "leak check",
+   "usd": 2.901,
+   "entries": 40
   },
   "_archive/metaharness_hard_restart2": {
    "cache": ".cache_metaharness_hard",
@@ -126,6 +138,12 @@
    "usd": 1.8009,
    "entries": 24
   },
+  "rrsi_hard/rescore": {
+   "cache": ".cache_rrsi_hard",
+   "what": "fresh re-score",
+   "usd": 2.6069,
+   "entries": 40
+  },
   "calibration": {
    "cache": "_archive/.cache_calib_hard",
    "what": "hard-suite calibration",
@@ -165,10 +183,10 @@
  },
  "reported": {
   "metaharness": {
-   "usd_full": 2.2614,
+   "usd_full": 2.3246,
    "attempts": {
     "_archive/metaharness_v3_capped": 1.3495,
-    "metaharness": 0.9119
+    "metaharness": 0.9751
    },
    "usd_rescore": 0.0
   },
@@ -181,7 +199,7 @@
     "_archive/metaharness_hard_capped2": 0.3019,
     "metaharness_hard": 6.848
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 5.786
   },
   "rrsi": {
    "usd_full": 3.2132,
@@ -197,12 +215,19 @@
     "_archive/rrsi_hard_capped": 1.8009,
     "rrsi_hard": 5.8202
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 2.6069
   },
   "autoresearch": {
    "usd_full": 0.7018,
    "attempts": {
     "autoresearch": 0.7018
+   },
+   "usd_rescore": 0.0
+  },
+  "metaharness_a": {
+   "usd_full": 2.7043,
+   "attempts": {
+    "metaharness_a": 2.7043
    },
    "usd_rescore": 0.0
   },
