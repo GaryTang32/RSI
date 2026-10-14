@@ -1,0 +1,1 @@
+{"text": "Harper", "usage": {"calls": 1, "input_tokens": 3033, "output_tokens": 39699, "cost_usd": 0.20152799999999998, "latency_s": 252.0632300376892}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}
