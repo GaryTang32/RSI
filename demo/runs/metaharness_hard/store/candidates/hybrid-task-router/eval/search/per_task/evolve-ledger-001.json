@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-001",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '1843.73').",
+  "output": "1843.73",
+  "tokens": 19031,
+  "cost_usd": 0.080941,
+  "steps": 2,
+  "latency_s": 88.16852736473083,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

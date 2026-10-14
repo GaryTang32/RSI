@@ -1,28 +1,28 @@
 {
  "evolve-ledger-001": {
-  "best_system": "seed",
+  "best_system": "structured-reasoning-with-code",
   "score": 1.0,
-  "cost": 24446.0
+  "cost": 12675.0
  },
  "evolve-ledger-003": {
-  "best_system": "seed",
+  "best_system": "structured-reasoning-with-code",
   "score": 1.0,
-  "cost": 23389.0
+  "cost": 9879.0
  },
  "evolve-ledger-005": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 21003.0
+  "best_system": "code-generation-execution",
+  "score": 1.0,
+  "cost": 10604.0
  },
  "evolve-ledger-007": {
-  "best_system": "seed",
-  "score": 0.0,
-  "cost": 14605.0
+  "best_system": "structured-reasoning-with-code",
+  "score": 1.0,
+  "cost": 13184.0
  },
  "evolve-logic-000": {
-  "best_system": "seed",
+  "best_system": "code-generation-execution",
   "score": 1.0,
-  "cost": 14147.0
+  "cost": 8946.0
  },
  "evolve-logic-002": {
   "best_system": "seed",
@@ -30,27 +30,33 @@
   "cost": 15660.0
  },
  "evolve-logic-004": {
-  "best_system": "seed",
+  "best_system": "clear-format-answers",
   "score": 1.0,
-  "cost": 16477.0
+  "cost": 11382.0
  },
  "evolve-logic-006": {
-  "best_system": "seed",
+  "best_system": "code-generation-execution",
   "score": 1.0,
-  "cost": 16115.0
+  "cost": 11881.0
  },
  "_pareto": [
   {
-   "system": "seed",
+   "system": "clear-format-answers",
    "score": 0.75,
    "val_accuracy": 75.0,
-   "context_cost": 18230.25
+   "context_cost": 17223.125
+  },
+  {
+   "system": "code-generation-execution",
+   "score": 0.625,
+   "val_accuracy": 62.5,
+   "context_cost": 13795.25
   }
  ],
  "_best": {
-  "system": "seed",
+  "system": "clear-format-answers",
   "score": 0.75
  },
- "_hypervolume": 1368.018750000001,
+ "_hypervolume": 4265.784375000001,
  "_hv_ref_cost": 20054.275
 }

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-007",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Delta').",
+  "output": "Delta",
+  "tokens": 24805,
+  "cost_usd": 0.11048,
+  "steps": 2,
+  "latency_s": 121.15012788772583,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

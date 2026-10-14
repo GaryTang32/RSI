@@ -1,15 +1,15 @@
 {
- "iteration": 1,
+ "iteration": 3,
  "candidates": [
   {
-   "name": "clear-format-answers",
+   "name": "hybrid-task-router",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",
    "components": []
   },
   {
-   "name": "code-generation-execution",
+   "name": "step-wise-validation",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",
