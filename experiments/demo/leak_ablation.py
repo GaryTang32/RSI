@@ -14,7 +14,10 @@ first checks that the neutral copy contains no task's answer and no practice exc
 
 The record is ``demo/runs/metaharness_hard/leak_ablation.json`` and is never replaced (``spend.py`` attributes cache
 entries by its ``started_at``). The check replays it with the model switched off (a cache miss is an error), compares
-the scores and writes per-task scores to ``leak_ablation_check.json``. If the scores hold, the copied strings did not drive the result; if they drop, they did.
+the scores and writes per-task scores to ``leak_ablation_check.json``. ``--seed-offset N`` checks
+``leak_ablation_s<N>.json`` the same way when it exists and records it when it does not; N must give trial seeds no
+evaluation of the run used (``live_demo.new_seed_problem``). If the scores hold, the copied strings did not drive the
+result; if they drop, they did.
 """
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from live_demo import RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, rescore  # noqa: E402
+from live_demo import RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem, rescore  # noqa: E402
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
 RUN = ROOT / "demo" / "runs" / "metaharness_hard"
@@ -74,9 +77,9 @@ def main() -> None:
     if left:
         raise SystemExit(f"the neutral copy still contains copied strings: {left}")
     offset = int(sys.argv[sys.argv.index("--seed-offset") + 1]) if "--seed-offset" in sys.argv else RESCORE_SEED_OFFSET
-    if offset in (0, 1) or (offset != RESCORE_SEED_OFFSET and "--seed-offset" not in sys.argv):
-        raise SystemExit("--seed-offset must give seeds no run used (e.g. 200)")
     rec = RUN / ("leak_ablation.json" if offset == RESCORE_SEED_OFFSET else f"leak_ablation_s{offset}.json")
+    if offset != RESCORE_SEED_OFFSET and (why := new_seed_problem(RUN, rec.name, offset)):
+        raise SystemExit(why)
     live = not rec.exists()
     if live and offset == RESCORE_SEED_OFFSET:
         raise SystemExit(f"{rec} is missing: the recorded leak check is the reference (use --seed-offset N)")

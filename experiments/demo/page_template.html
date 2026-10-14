@@ -61,7 +61,7 @@ tr:last-child td{border-bottom:none}
 details{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 summary{cursor:pointer;padding:10px 14px;font-weight:500}
 summary:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
-.code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:0 14px 14px}
+.code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;padding:0 14px 14px}
 .code-grid>div{min-width:0;display:grid;gap:6px;align-content:start}
 pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overflow:auto;max-height:420px;font:12px/1.5 var(--mono);white-space:pre}
 .rep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
@@ -77,7 +77,7 @@ pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overf
     <div class="facts" id="facts"></div>
   </header>
   <div id="runs" class="wrap" style="gap:64px"></div>
-  <footer class="note">Check the committed results at $0 (offline; a cache miss is an error): <code>python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check</code>, <code>rescore.py</code>, <code>leak_ablation.py</code>, <code>monitor_check.py</code>, <code>calibrate_hard.py</code> and <code>spend.py</code> (all in <code>experiments/demo/</code>), then rebuild with <code>plot_demo.py &amp;&amp; build_page.py</code>. New results: <code>live_demo.py metaharness|rrsi|autoresearch [--suite hard]</code>, <code>rescore.py --record &lt;run&gt;</code> or <code>--seed-offset N</code> for new trials, <code>spend.py --force</code> only on the machine that made the calls. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (standard: 12 practice, 8 held-out, 8 OOD; hard: 8, 6, 6) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
+  <footer class="note">Check the committed results at $0 (offline; a cache miss is an error, and each check exits non-zero on any difference): <code>python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check</code>, <code>rescore.py</code>, <code>leak_ablation.py</code>, <code>monitor_check.py</code>, <code>calibrate_hard.py</code> and <code>spend.py</code> (all in <code>experiments/demo/</code>; <code>run_chain.sh --check</code> runs several in a row), then rebuild with <code>plot_demo.py &amp;&amp; build_page.py</code>. New results: <code>live_demo.py metaharness|rrsi|autoresearch [--suite hard]</code>, <code>rescore.py --seed-offset N</code> or <code>leak_ablation.py --seed-offset N</code> for new trial seeds (N &ge; 102), then <code>spend.py --force</code> to account the new calls. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (standard: 12 practice, 8 held-out, 8 OOD; hard: 8, 6, 6) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
 </div>
 
 <script>
@@ -290,7 +290,8 @@ RUNS_.forEach(d => {
 function runLine(d) {
   const n = Object.keys(d.attempts || {}).length;
   let s = `${d.rows.length - 1} iterations · stopped: ${esc(d.stop_reason || "?")}`;
-  if (d.usd_full != null) s += ` · $${d.usd_full.toFixed(2)} of Haiku calls in the run (loop and shadow monitor)` + (n > 1 ? `: $${(d.usd_attempt || 0).toFixed(2)} in this attempt and $${(d.usd_full - (d.usd_attempt || 0)).toFixed(2)} in ${n - 1} earlier attempt${n > 2 ? "s" : ""} cut short, whose cached calls this attempt replayed where it repeated them` : "");
+  const paid = {metaharness: "loop, shadow monitor and final test evaluation", rrsi: "loop and shadow monitor", autoresearch: "research agent"}[d.method];
+  if (d.usd_full != null) s += ` · $${d.usd_full.toFixed(2)} of Haiku calls in the run${paid ? ` (${paid})` : ""}` + (n > 1 ? `: $${(d.usd_attempt || 0).toFixed(2)} in this attempt and $${(d.usd_full - (d.usd_attempt || 0)).toFixed(2)} in ${n - 1} earlier attempt${n > 2 ? "s" : ""} cut short, whose cached calls this attempt replayed where it repeated them` : "");
   if (d.usd_rescore) s += ` · fresh re-score $${d.usd_rescore.toFixed(2)}`;
   if (!d.has_summary) s += " · interrupted during its final report, so it has no re-score";
   return s;
@@ -306,8 +307,9 @@ function replay() {
       + `${r.scores_identical ? "identical" : "differ"}; ${r.cache_hits} cached calls and ${r.cache_misses} misses in the main `
       + `process; $${(r.usd_spent || 0).toFixed(2)} spent; ${(r.traces_identical || r.traces).identical} of ${(r.traces_identical || r.traces).files} candidate execution `
       + `traces byte-identical to the recorded run's. ${r.tool_calls ? `Its harnesses ran ${r.tool_calls} sandboxed Python `
-      + `calls in their practice evaluations (more in the monitor), and the identical traces include all 12 `
-      + `practice-evaluation timeouts and the 14 lines naming the stable /tmp/rsi_sandbox path. No sandbox path reached `
+      + `calls in their practice evaluations (more in the monitor and the final test), and the identical traces include `
+      + `all ${r.trace_lines.timeouts} practice-evaluation timeouts and the ${r.trace_lines.sandbox_path} lines naming `
+      + `the stable /tmp/rsi_sandbox path. No sandbox path reached `
       + `a prompt, so the prompt check itself does not test the stable path; a sandbox unit test does.` : `Its `
       + `harnesses ran no code, so this replay does not exercise the sandbox.`}</li>`;
   };

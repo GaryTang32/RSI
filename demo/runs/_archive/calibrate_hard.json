@@ -1,0 +1,38 @@
+{
+ "source": "transcribed from _archive/calibrate_hard.log, the original live calibration's output (usd 4.26)",
+ "k": 1,
+ "splits": {
+  "evolve": {
+   "seed": {
+    "S": 0.5,
+    "families": {
+     "logic": 1.0,
+     "ledger": 0.0
+    }
+   },
+   "code_exec": {
+    "S": 0.5,
+    "families": {
+     "logic": 0.0,
+     "ledger": 1.0
+    }
+   }
+  },
+  "ood": {
+   "seed": {
+    "S": 0.5,
+    "families": {
+     "schedule": 0.25,
+     "cipher": 0.75
+    }
+   },
+   "code_exec": {
+    "S": 1.0,
+    "families": {
+     "schedule": 1.0,
+     "cipher": 1.0
+    }
+   }
+  }
+ }
+}

@@ -7,13 +7,16 @@ recorded calibration at $0::
 
     python experiments/demo/calibrate_hard.py      # replay: demo/runs/_archive/calibrate_hard_replay.log
 
-(``_archive/calibrate_hard.log`` is the original live run's output, from an earlier copy of this script.)
+The replay compares every score and per-family score with ``_archive/calibrate_hard.json`` (transcribed from
+``_archive/calibrate_hard.log``, the original live run's output, from an earlier copy of this script) and exits 1 on
+any difference or cache miss.
 
 (``_archive/.cache_calib_hard_v1`` holds a first calibration, of an earlier and easier version of the families,
 kept for the spend total.)
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -39,3 +42,10 @@ if __name__ == "__main__":
     for s, row in rep["splits"].items():
         print(s, {a: round(v["S"], 3) for a, v in row.items()}, {a: v.get("families") for a, v in row.items()})
     print("usd", round(llm.meter.total().cost_usd, 3), "cache hits", llm.hits, "misses", llm.misses)
+    want = json.loads((RUNS / "_archive" / "calibrate_hard.json").read_text())["splits"]
+    got = {s: {a: {"S": round(v["S"], 3), "families": v.get("families")} for a, v in row.items()}
+           for s, row in rep["splits"].items()}
+    ok = got == want and llm.misses == 0
+    print("matches the recorded calibration" if ok else "DIFFERS from the recorded calibration")
+    if not ok:
+        raise SystemExit(1)

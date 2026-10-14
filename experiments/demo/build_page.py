@@ -27,6 +27,14 @@ def _tool_calls(run: Path) -> int:
                for n in re.findall(r'"tool_calls": (\d+)', p.read_text()))
 
 
+def _trace_lines(run: Path) -> dict:
+    """Lines of the practice-evaluation traces that show a sandbox timeout or name the stable sandbox path."""
+    lines = [ln for p in (run / "store" / "candidates").glob("*/eval/search/traces/*")
+             for ln in p.read_text(errors="replace").splitlines()]
+    return {"timeouts": sum("[killed: timeout]" in ln for ln in lines),
+            "sandbox_path": sum("/tmp/rsi_sandbox" in ln for ln in lines)}
+
+
 def _traces_identical(replay: Path) -> dict:
     """Same comparison as live_demo.traces_identical, for replays recorded before it existed."""
     src = replay.parent / replay.name.removesuffix("_replay")
@@ -49,7 +57,8 @@ def main() -> None:
     if (DEMO / "replicates.json").exists():
         extra["replicates"] = json.loads((DEMO / "replicates.json").read_text())
     extra["replay"] = [json.loads(rc.read_text()) | {"tool_calls": _tool_calls(rc.parent),
-                                                     "traces": _traces_identical(rc.parent)}
+                                                     "traces": _traces_identical(rc.parent),
+                                                     "trace_lines": _trace_lines(rc.parent)}
                        for rc in (DEMO / "runs" / "metaharness_replay" / "replay_check.json",
                                   DEMO / "runs" / "metaharness_hard_replay" / "replay_check.json") if rc.exists()]
     tpl = tpl.replace("/*__EXTRA__*/null", json.dumps(extra).replace("</", "<\\/"))

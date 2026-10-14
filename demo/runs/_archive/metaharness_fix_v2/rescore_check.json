@@ -1,5 +1,6 @@
 {
  "run": "_archive/metaharness_fix_v2",
+ "record": "rescore.json",
  "matches": true,
  "cache_misses": 0,
  "scores": {

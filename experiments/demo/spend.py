@@ -7,16 +7,14 @@ from the same cache, replaying the calls the earlier attempt paid for. A cache e
 running when the entry was written: the latest attempt that started at or before the file's write time. Attempt
 start times come from each attempt's trace (or the ``started_at`` its JSON records); a run's original post-run
 report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by
-hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it.
+hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it. Git keeps no write times,
+so the attribution is recorded entry by entry in ``demo/spend_entries.json``: a recorded entry keeps its attempt on
+any checkout, and only entries written since (on the machine that wrote them) are attributed by write time.
 
-Checks or writes ``demo/spend.json``::
+Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
 
-    python experiments/demo/spend.py            # recompute and compare with the committed record; writes nothing
-    python experiments/demo/spend.py --force    # rewrite the record (only on the machine that made the calls)
-
-Write times are not kept by git, so only the machine that made the calls can attribute them; elsewhere the committed
-``demo/spend.json`` is the record. The script refuses to write when the write times look like a fresh checkout's (in
-a cache shared by several attempts, every entry written after the last attempt started).
+    python experiments/demo/spend.py            # recompute and compare with the committed record; exits 1 if it differs
+    python experiments/demo/spend.py --force    # rewrite the record (recorded entries keep their attempt)
 """
 from __future__ import annotations
 
@@ -26,6 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNS = ROOT / "demo" / "runs"
+ENTRIES = ROOT / "demo" / "spend_entries.json"
 
 
 def trace_start(run: str) -> float:
@@ -132,17 +131,22 @@ def entry_cost(p: Path) -> float:
     return float(((u or {}).get("cost_usd") if isinstance(u, dict) else None) or d.get("cost_usd") or 0.0)
 
 
-def main() -> dict:
+def entry_key(p: Path) -> str:
+    """A cache entry's name in ``spend_entries.json``: the start of its prompt hash (unique within a cache)."""
+    return p.stem[:16]
+
+
+def main(recorded: dict | None = None) -> tuple[dict, dict]:
+    """(spend record, entry attribution {cache: {attempt: [entry keys]}})."""
+    if recorded is None:
+        recorded = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else {}
+    owner_of = {(c, k): a for c, by in recorded.items() for a, ks in by.items() for k in ks}
     per_attempt: dict[str, dict] = {}
-    caches = {}
+    caches, membership, missing, suspect = {}, {}, [], []
     known = attempts()
-    suspect = []
     for c in sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]):
         rel = str(c.relative_to(RUNS))
         files = [p for p in c.rglob("*.json") if p.is_file()]
-        starts = sorted(a[1] for a in known.get(rel, []))
-        if len(starts) > 1 and files and min(p.stat().st_mtime for p in files) >= starts[-1]:
-            suspect.append(rel)
         total = round(sum(entry_cost(p) for p in files), 4)
         caches[rel] = {"usd": total, "entries": len(files)}
         if not files or rel not in known:
@@ -150,50 +154,76 @@ def main() -> dict:
                 raise SystemExit(f"{rel} has ${total} of calls but no attempt list")
             continue
         atts = sorted(known[rel], key=lambda x: x[1])
+        what = {a[0]: a[2] for a in atts}
+        # with no record, a cache shared by several attempts whose every entry postdates the last start was checked out
+        if rel not in recorded and len(atts) > 1 and min(p.stat().st_mtime for p in files) >= atts[-1][1]:
+            suspect.append(rel)
+        present = set()
         for p in files:
-            t = p.stat().st_mtime
-            owner = next((a for a in reversed(atts) if a[1] <= t), atts[0])
-            rec = per_attempt.setdefault(owner[0], {"cache": rel, "what": owner[2], "usd": 0.0, "entries": 0})
+            k = entry_key(p)
+            present.add(k)
+            name = owner_of.get((rel, k))
+            if name is None:   # not in the record: written since, so its write time is real
+                t = p.stat().st_mtime
+                name = next((a for a in reversed(atts) if a[1] <= t), atts[0])[0]
+            if name not in what:
+                raise SystemExit(f"{rel}: recorded attempt {name!r} is not in the attempt list")
+            rec = per_attempt.setdefault(name, {"cache": rel, "what": what[name], "usd": 0.0, "entries": 0})
             rec["usd"] += entry_cost(p)
             rec["entries"] += 1
+            membership.setdefault(rel, {}).setdefault(name, []).append(k)
+        missing += [f"{rel}/{k}" for (c2, k) in owner_of if c2 == rel and k not in present]
+    missing += [f"{c2}/{k}" for (c2, k) in owner_of if c2 not in membership]
     for rec in per_attempt.values():
         rec["usd"] = round(rec["usd"], 4)
+    membership = {c: {a: sorted(ks) for a, ks in sorted(by.items())} for c, by in sorted(membership.items())}
     reported = {}
     for run, atts in REPORTED.items():
         parts = {a: per_attempt.get(a, {}).get("usd", 0.0) for a in atts}
         reported[run] = {"usd_full": round(sum(parts.values()), 4), "attempts": parts,
                          "usd_rescore": per_attempt.get(f"{run}/rescore", {}).get("usd", 0.0),
                          "usd_original_report": per_attempt.get(f"{run}/report", {}).get("usd", 0.0)}
+        new_seeds = {a: r["usd"] for a, r in per_attempt.items() if a.startswith(f"{run}/rescore_s")}
+        if new_seeds:
+            reported[run]["usd_rescore_new_seeds"] = new_seeds
     by_kind = {}
     for name, rec in per_attempt.items():
-        kind = name.rsplit("/", 1)[-1] if "/" in name and name.rsplit("/", 1)[-1] in ("rescore", "report") else None
-        kind = kind or ("leak_check" if "leak_ablation" in name else "calibration" if name.startswith("calibration")
-                        else "run")
+        tail = name.rsplit("/", 1)[-1] if "/" in name else ""
+        kind = ("rescore" if tail.startswith("rescore") else "report" if tail == "report"
+                else "leak_check" if tail.startswith("leak_ablation") else "calibration" if name.startswith("calibration")
+                else "run")
         by_kind[kind] = by_kind.get(kind, 0.0) + rec["usd"]
     total_raw = sum(entry_cost(p) for c in [*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]
                     for p in c.rglob("*.json") if p.is_file())
-    out = {"method": __doc__.split("\n\n")[1].replace("\n", " "), "untrusted_write_times": suspect,
+    out = {"method": __doc__.split("\n\n")[1].replace("\n", " "),
            "total_usd": round(total_raw, 4), "by_kind_usd": {k: round(v, 4) for k, v in by_kind.items()},
            "caches": caches, "attempts": per_attempt, "reported": reported}
-    return out
+    if missing:
+        out["recorded_entries_missing"] = missing
+    if suspect:
+        out["untrusted_write_times"] = suspect
+    return out, membership
 
 
 if __name__ == "__main__":
-    o = main()
+    o, entries = main()
     dest = ROOT / "demo" / "spend.json"
     old = json.loads(dest.read_text()) if dest.exists() else None
-    same = old is not None and {k: v for k, v in old.items() if k != "untrusted_write_times"} == \
-        {k: v for k, v in o.items() if k != "untrusted_write_times"}
-    if o["untrusted_write_times"]:
-        print("write times look like a fresh checkout in", o["untrusted_write_times"], "- not writing, and not "
-              "attributing; the committed demo/spend.json is the record. Total of every cache:", o["total_usd"])
-        sys.exit(0)
-    elif "--force" in sys.argv or old is None:
-        dest.write_text(json.dumps({k: v for k, v in o.items() if k != "untrusted_write_times"}, indent=1))
-        print("wrote", dest)
+    old_entries = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else None
+    if o.get("untrusted_write_times"):
+        print("no demo/spend_entries.json and the write times look like a fresh checkout in",
+              o["untrusted_write_times"], "- not writing; total of every cache:", o["total_usd"])
+        sys.exit(1)
+    same = old == o and old_entries == entries
+    if "--force" in sys.argv or old is None:
+        dest.write_text(json.dumps(o, indent=1))
+        ENTRIES.write_text(json.dumps(entries, indent=0, separators=(",", ":")) + "\n")
+        print("wrote", dest, "and", ENTRIES, "" if same else "(changed)")
     else:
         print("matches the committed record" if same else "DIFFERS from the committed record (--force to rewrite)")
     print("total", o["total_usd"])
+    if o.get("recorded_entries_missing"):
+        print("recorded entries missing from the caches:", len(o["recorded_entries_missing"]))
     for r, v in o["reported"].items():
         print(f"{r:36s} full ${v['usd_full']:.4f}  re-score ${v['usd_rescore']:.4f}  {v['attempts']}")
-    sys.exit(0)
+    sys.exit(0 if same or "--force" in sys.argv or old is None else 1)
