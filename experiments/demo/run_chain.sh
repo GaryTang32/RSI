@@ -9,7 +9,8 @@
 # directory holds a finished run is refused, which stops the chain): live_demo.py moves the unfinished attempt to
 # demo/runs/_archive/ and restarts it, replaying every call its LLM cache already holds for $0.
 #
-# Usage: experiments/demo/run_chain.sh "metaharness" "metaharness --replay-check" "rescore.py metaharness" ...
+# Usage: experiments/demo/run_chain.sh "metaharness --suite hard" "rescore.py metaharness_hard" ...
+#        experiments/demo/run_chain.sh "metaharness --replay-check" "rescore.py metaharness"   # $0 checks
 cd "$(dirname "$0")/../.."
 chain=demo/runs/chain.log
 for job in "$@"; do

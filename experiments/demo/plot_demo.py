@@ -169,8 +169,8 @@ def _style(ax, title: str, ylabel: str) -> None:
 
 
 SUBTITLE = {"metaharness": "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)",
-            "rrsi": "in-loop practice scores (one trial per task, a hashed trial seed per evaluation) and "
-                    "shadow-monitor readings (one trial per task, trial seed 0)"}
+            "rrsi": "in-loop practice scores: one trial per task, a hashed trial seed per evaluation\n"
+                    "shadow-monitor readings: one trial per task, trial seed 0"}
 
 
 def plot_harness(d: dict, title: str, path: Path) -> None:
@@ -180,8 +180,9 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, title, "accuracy (exact match)")
-    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=20)
-    ax.text(0, 1.015, SUBTITLE[d["method"]], transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
+    sub = SUBTITLE[d["method"]]
+    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=20 + 11 * sub.count("\n"))
+    ax.text(0, 1.015, sub, transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
     mh = d.get("method") == "metaharness"
     # marker per state: filled = became the new incumbent; Meta-Harness also keeps the rest (ring = joined the
     # Pareto frontier, hollow = in the population but dominated); RRSI discards the rest (hollow gray)
@@ -230,8 +231,23 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     ax.legend([p[0] for p in pairs], [p[1] for p in pairs], loc="upper center", bbox_to_anchor=(0.5, -0.2),
               ncol=3, fontsize=8, frameon=False)
     fig.tight_layout()
+    _check_inside(fig, path)
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
+
+
+def _check_inside(fig, path: Path) -> None:
+    """Fail the build rather than ship a figure whose title, subtitle or legend runs off the canvas."""
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    W, H = fig.bbox.width, fig.bbox.height
+    for t in [*fig.texts, *(t for ax in fig.axes for t in (ax.title, ax._left_title, *ax.texts)),
+              *(ax.get_legend() for ax in fig.axes if ax.get_legend())]:
+        if t is None or (hasattr(t, "get_text") and not t.get_text()):
+            continue
+        b = t.get_window_extent(r)
+        if b.x0 < -1 or b.x1 > W + 1 or b.y0 < -1 or b.y1 > H + 1:
+            raise SystemExit(f"{path.name}: {getattr(t, 'get_text', lambda: 'legend')()[:40]!r} runs off the figure")
 
 
 def plot_autoresearch(d: dict, path: Path) -> None:

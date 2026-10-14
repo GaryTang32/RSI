@@ -4,6 +4,11 @@
  "candidates_scored": 8,
  "prompts_identical": true,
  "scores_identical": true,
+ "traces_identical": {
+  "files": 72,
+  "identical": 72,
+  "missing_in_replay": 0
+ },
  "cache_misses": 0,
  "cache_hits": 192,
  "usd_spent": 0.0

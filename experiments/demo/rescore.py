@@ -1,19 +1,19 @@
 """Re-score recorded demo runs with fresh trials, independent of everything the run itself sampled.
 
-A run's loop and its shadow monitor score with trial seeds 0, 1, ... and the LLM cache is keyed on the seed, so a
-post-run report on seed 0 just replays the very samples the loop selected its winner on (and the monitor's single
-reading). This re-scores the seed and the final harness of each run on every split with trial seeds 100 and 101,
-which no loop or monitor used, and writes ``<run>/rescore.json``::
+Shadow monitors and Meta-Harness's loop score with trial seeds 0, 1, ... (RRSI's loop uses hashed per-job seeds), and
+the LLM cache is keyed on the seed, so a post-run report on seed 0 replays samples the run already drew (for
+Meta-Harness, the very samples the loop selected its winner on). This re-scores the seed and the final harness of
+each run on every split with trial seeds 100 and 101, which no loop decision or monitor reading used::
 
-    python experiments/demo/rescore.py                     # check: replay every recorded re-score offline at $0
-    python experiments/demo/rescore.py metaharness_hard    # check one run (its directory under demo/runs)
-    python experiments/demo/rescore.py --force rrsi        # record a new re-score (live calls; replaces rescore.json)
+    python experiments/demo/rescore.py                       # check: replay every recorded re-score offline at $0
+    python experiments/demo/rescore.py metaharness_hard      # check one run (its directory under demo/runs)
+    python experiments/demo/rescore.py --record new_run      # record a run's first re-score (live calls)
+    python experiments/demo/rescore.py --seed-offset 200 rrsi   # new samples: writes rescore_s200.json (live calls)
 
-By default nothing is written and no model is called: each recorded re-score is replayed from the run's cache with the
-model switched off (a miss is an error) and compared with ``rescore.json``; per-task scores go to
-``rescore_check.json``. ``--force`` records a new one; the original ``started_at`` and ``usd`` are what
-``spend.py`` attributes the cache entries by, so they are kept in ``rescore_history``. Runs recorded from now on get
-the same re-score from ``live_demo._finish``.
+The check replays a run's recorded ``rescore.json`` from its cache with the model switched off (a miss is an error),
+compares every score and writes the per-task scores to ``rescore_check.json``. A recorded ``rescore.json`` is never
+replaced: ``spend.py`` attributes the run's cache entries by its ``started_at``. Runs recorded from now on get the
+same re-score from ``live_demo._finish``.
 """
 from __future__ import annotations
 
@@ -42,35 +42,36 @@ RUNS = {
 }
 
 
-def rescore_run(run: str, force: bool = False) -> dict:
+def rescore_run(run: str, mode: str = "check", seed_offset: int = RESCORE_SEED_OFFSET) -> dict:
     d = OUT / run
     summ = json.loads((d / "summary.json").read_text())
     suite = (summ.get("setup") or {}).get("suite") or "easy"
-    prev = json.loads((d / "rescore.json").read_text()) if (d / "rescore.json").exists() else None
-    live = force or prev is None
+    rec = d / ("rescore.json" if seed_offset == RESCORE_SEED_OFFSET else f"rescore_s{seed_offset}.json")
+    live = mode == "record"
+    if live and rec.exists():
+        raise SystemExit(f"{rec} exists: a recorded re-score is never replaced (use --seed-offset N for new samples)")
+    if not live and not rec.exists():
+        raise SystemExit(f"{rec} does not exist: pass --record to make it (live calls)")
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), OUT / RUNS[run], offline=not live)
     t0 = time.time()
     arms = {"seed": Artifact(summ["seed_files"]), "final": Artifact(summ["final_files"])}
-    rep = rescore(_agentqa(suite), llm, arms)
-    # the run's own record is judged by its summary; here only the re-score's trials count
+    rep = rescore(_agentqa(suite), llm, arms, seed_offset=seed_offset)
     errs = [f"re-score {arm} {split}: {v['missing']} trials missing"
             for split, row in rep["splits"].items() for arm, v in row.items() if (v.get("missing") or 0) > 0]
     scores = {s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}
     if not live:
-        want = {s: {a: v["S"] for a, v in row.items()} for s, row in prev["transfer"]["splits"].items()}
-        check = {"run": run, "matches": scores == want and not errs and llm.misses == 0, "cache_misses": llm.misses,
-                 "scores": scores, "per_task": {s: {a: v.get("tasks") for a, v in row.items()}
-                                                for s, row in rep["splits"].items()}}
-        (d / "rescore_check.json").write_text(json.dumps(check, indent=1, default=str))
-        print(run, "replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses, flush=True)
+        want = {s: {a: v["S"] for a, v in row.items()} for s, row in json.loads(rec.read_text())["transfer"]["splits"].items()}
+        check = {"run": run, "record": rec.name, "matches": scores == want and not errs and llm.misses == 0,
+                 "cache_misses": llm.misses, "scores": scores,
+                 "per_task": {s: {a: v.get("tasks") for a, v in row.items()} for s, row in rep["splits"].items()}}
+        (d / rec.name.replace(".json", "_check.json")).write_text(json.dumps(check, indent=1, default=str))
+        print(run, rec.name, "replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses, flush=True)
         return {"clean": check["matches"]}
-    out = {"run": run, "suite": suite, "k": RESCORE_K, "seed_offset": RESCORE_SEED_OFFSET,
+    out = {"run": run, "suite": suite, "k": RESCORE_K, "seed_offset": seed_offset,
            "started_at": t0, "wall_s": round(time.time() - t0, 1), "transfer": rep,
            "usd": round(llm.meter.total().cost_usd, 4), "cache": {"hits": llm.hits, "misses": llm.misses},
-           "infra_errors": errs, "clean": not errs,
-           "rescore_history": ((prev or {}).get("rescore_history") or []) + ([{k: prev[k] for k in (
-               "started_at", "wall_s", "usd", "cache")}] if prev else [])}
-    (d / "rescore.json").write_text(json.dumps(out, indent=1, default=str))
+           "infra_errors": errs, "clean": not errs}
+    rec.write_text(json.dumps(out, indent=1, default=str))
     print(run, json.dumps({s: {a: round(v, 3) for a, v in row.items()} for s, row in scores.items()}),
           "usd", out["usd"], "cache", out["cache"], flush=True)
     if errs:
@@ -80,11 +81,18 @@ def rescore_run(run: str, force: bool = False) -> dict:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    force = "--force" in args
-    todo = [a for a in args if a != "--force"] or list(RUNS)
+    offset = RESCORE_SEED_OFFSET
+    if "--seed-offset" in args:
+        i = args.index("--seed-offset")
+        offset = int(args[i + 1])
+        del args[i:i + 2]
+        if offset in (0, 1, RESCORE_SEED_OFFSET):
+            raise SystemExit("--seed-offset must give seeds no run or recorded re-score used (e.g. 200)")
+    mode = "record" if ("--record" in args or offset != RESCORE_SEED_OFFSET) else "check"
+    todo = [a for a in args if a != "--record"] or list(RUNS)
     for run in todo:
         if run not in RUNS:
             raise SystemExit(f"unknown run {run!r}; choose from {list(RUNS)}")
     for run in todo:
-        if not rescore_run(run, force)["clean"]:
-            raise SystemExit(f"{run}: the replay differs or trials were lost; see its rescore_check.json / log")
+        if not rescore_run(run, mode, offset)["clean"]:
+            raise SystemExit(f"{run}: the replay differs or trials were lost; see its *_check.json / log")

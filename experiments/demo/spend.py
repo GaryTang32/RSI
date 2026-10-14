@@ -55,7 +55,7 @@ def attempts() -> dict[str, list[tuple[str, float, str]]]:
             ("metaharness/report", trace_end("metaharness"), REPORT),
             ("metaharness/rescore", started("metaharness/rescore.json"), "fresh re-score")],
         ".cache_metaharness_hard": [
-            ("_archive/metaharness_hard_capped", trace_start("_archive/metaharness_hard_capped"), "hard Meta-Harness, crashed"),
+            ("_archive/metaharness_hard_capped", trace_start("_archive/metaharness_hard_capped"), "hard Meta-Harness, usage cap"),
             ("_archive/metaharness_hard_restart1", trace_start("_archive/metaharness_hard_restart1"), "container restart"),
             ("_archive/metaharness_hard_restart2", trace_start("_archive/metaharness_hard_restart2"), "container restart"),
             ("_archive/metaharness_hard_capped2", trace_start("_archive/metaharness_hard_capped2"), "usage cap"),
@@ -94,6 +94,15 @@ def attempts() -> dict[str, list[tuple[str, float, str]]]:
         "_archive/.cache_calib_hard_v1": [("calibration_v1", 0.0, "first hard-suite calibration (earlier families)")],
         "_archive/.cache_calib_hard": [("calibration", 0.0, "hard-suite calibration")],
     }
+    # re-scores and leak checks with new trial seeds (rescore_s<N>.json, leak_ablation_s<N>.json) are attempts too
+    cache_of = {"metaharness": ".cache_metaharness", "metaharness_hard": ".cache_metaharness_hard", "rrsi": ".cache_rrsi",
+                "rrsi_hard": ".cache_rrsi_hard", "_archive/metaharness_before_fix": "_archive/.cache_metaharness_before_fix",
+                "_archive/metaharness_fix_v1": "_archive/.cache_metaharness_fix_v1",
+                "_archive/metaharness_fix_v2": "_archive/.cache_metaharness_fix_v2"}
+    for run, cache in cache_of.items():
+        for f in sorted((RUNS / run).glob("rescore_s*.json")) + sorted((RUNS / run).glob("leak_ablation_s*.json")):
+            if not f.stem.endswith("_check"):
+                a[cache].append((f"{run}/{f.stem}", started(f"{run}/{f.name}"), "re-score or leak check, new trial seeds"))
     return {c: [x for x in xs if x[1] is not None] for c, xs in a.items()}
 
 
@@ -176,8 +185,9 @@ if __name__ == "__main__":
     same = old is not None and {k: v for k, v in old.items() if k != "untrusted_write_times"} == \
         {k: v for k, v in o.items() if k != "untrusted_write_times"}
     if o["untrusted_write_times"]:
-        print("write times look like a fresh checkout in", o["untrusted_write_times"], "- not writing; the committed "
-              "demo/spend.json is the record")
+        print("write times look like a fresh checkout in", o["untrusted_write_times"], "- not writing, and not "
+              "attributing; the committed demo/spend.json is the record. Total of every cache:", o["total_usd"])
+        sys.exit(0)
     elif "--force" in sys.argv or old is None:
         dest.write_text(json.dumps({k: v for k, v in o.items() if k != "untrusted_write_times"}, indent=1))
         print("wrote", dest)

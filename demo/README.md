@@ -33,7 +33,7 @@ The practice tasks are large-number arithmetic (digit sums, modular arithmetic, 
 
 **How to read the tables.**
 - **Cells.** Each AgentQA cell is seed → final, with two fresh trials per task.
-- **Bold.** Bold marks a gain whose 95% bootstrap confidence interval, paired over tasks, excludes 0. The intervals are on the page; for Runs 1–3 they are in `demo/replicates.json`. For autoresearch, bold means the three training runs' ranges do not overlap.
+- **Bold.** Bold marks a gain whose recorded 95% bootstrap confidence interval (5,000 resamples, paired over tasks) excludes 0. Every bold cell keeps its status with 200,000 resamples. The intervals are on the page; for Runs 1–3 they are in `demo/replicates.json`. For autoresearch, bold means the three training runs' ranges do not overlap.
 - **Hard Meta-Harness.** Its gains are +0.31 [0, +0.63] on practice, +0.33 [−0.08, +0.75] on held-out and +0.33 [−0.33, +0.83] on OOD, so none is bold. The practice bound is borderline:
   - only 3 of the 8 practice tasks changed, all for the better;
   - the recorded bound of 0 is Monte-Carlo noise (5,000 resamples), and the exact bootstrap bound is +0.06;
@@ -164,7 +164,7 @@ The fix:
 - **Stable sandbox path.** The sandbox reports a stable path, `/tmp/rsi_sandbox`, and replaces the longer path first when the temp directory is a symlink. Sandboxed code also runs with `PYTHONHASHSEED=0`, so printed sets come out in the same order every run.
 - **Tests.** `tests/metaharness-solpi/test_metaharness_deterministic_view.py` and `tests/core/test_core_sandbox_stable_paths.py`.
 
-**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. Both checks below ran on the current code:
+**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. It compares every prompt, score and trace with the run. A repeat check replays into a scratch directory and must also reproduce the recorded `<run>_replay/replay_check.json`. Both checks below ran on the current code:
 
 | Replayed run | Proposer calls | Candidate scores | Cache hits / misses | Execution traces | Sandboxed calls (practice) | Spent |
 |---|---|---|---|---|---|---:|
@@ -178,7 +178,7 @@ Each run made one proposer call per iteration, yielding 2 candidates.
 - **Traces.** The replay reproduced all 72 of the hard run's candidate execution traces byte for byte (and all 108 of Run 4's). That includes the 12 timeouts and 14 lines (in 13 tracebacks) naming `/tmp/rsi_sandbox`, and no random scratch path. The stable path and `PYTHONHASHSEED=0` are also covered by `tests/core/test_core_sandbox_stable_paths.py`.
 - **Zero misses proves the full prompts matched**, because the cache is keyed on a hash of the whole prompt. The trace keeps only their first 60,000 characters.
 - **Forked children.** Hits and misses are counted in the main process. A miss in a forked interface-validation child would fail its smoke check and show as a score mismatch.
-- **Before the fix.** Replays of Runs 2 and 3, on the code before the fix, failed. Run 2's failed on the proposer bill, and Run 3's on random sandbox paths.
+- **Before the fix.** Replays of Runs 2 and 3, each on code with only part of the fix, failed. Run 2's failed on the proposer bill, and Run 3's on random sandbox paths.
 
 **What can still vary.** These can still make a replay miss:
 - output of model-written code that is not deterministic (object addresses, the current time, unseeded randomness);
@@ -216,7 +216,7 @@ Calibration on the default hard suite (seed 0: 12 practice tasks and 8 OOD tasks
 | "Write Python and run it" | 0.0 (11 of its 12 code executions, two per task, timed out; 1 crashed) | 1.0 | 1.0 | 1.0 |
 
 The seed row is one trial per task and partly measures answer format. The seed returns its reply's last line:
-- **Ledgers.** In 3 of the 6 ledger replies (all three "which customer" questions), the reply stated the correct answer above a last line that was a breakdown row or a sentence. The three "average" ledgers were real arithmetic misses, off by cents.
+- **Ledgers.** In 3 of the 6 ledger replies (all three "which customer" questions), the reply named the correct customer, but the line the seed returns, its last, was a breakdown row or a full sentence rather than the bare answer. The three "average" ledgers were real arithmetic misses, off by cents.
 - **Schedules.** In 2 of the 3 failed schedule replies, the reply stated the correct date above the last line.
 - **Sample variation.** The same seed solved 2 of the same 4 practice ledgers in the hard Meta-Harness run.
 
@@ -250,7 +250,7 @@ Rows are rounded separately, so they sum to $56.39. Run 1 shares its cache with 
   - candidates RRSI dropped as `eval_invalid`, and trials missing from RRSI's evaluation files (`evals/*.json`, which include its calibration repeats);
   - infrastructure errors on proposals and gates.
 - **Results.** Every reported run, the replicates and the restarted RRSI attempt scan clean. So does every `rescore.json`, which records the same check for its own trials.
-- **Monitor readings.** The recorded runs' monitor events predate the missing-trial count, so the scan cannot see a lost monitor trial in them. The reported runs' readings were checked separately, by replaying them offline: both Meta-Harness replay checks and the RRSI monitor readings replayed with 0 misses. The replicates' monitor readings were not replayed.
+- **Monitor readings.** The recorded runs' monitor events predate the missing-trial count, so the scan cannot see a lost monitor trial in them. `experiments/demo/monitor_check.py` replays every recorded monitor reading offline instead. All 46 readings, across the eight runs with a monitor (replicates included), reproduce exactly with no missing trial and 0 cache misses; each run's `monitor_check.json` records them.
 - **Older summaries.** The summaries of `rrsi`, `autoresearch` and Runs 1–3 predate the check. Those of `metaharness`, `metaharness_hard` and `rrsi_hard` carry an earlier version of it. Their traces were scanned afterwards.
 - **Chain.** `run_chain.sh` stops at the first job that exits non-zero or whose log reports a usage cap, `INFRA_ERRORS` or missing trials.
 - **Early-ended attempts.** Attempts that ended early sit under `runs/_archive/`, with their logs. The logs of the two container-restarted hard attempts and of the restarted RRSI attempt are empty; their traces are the record. The interrupted replicate `runs/metaharness_a` is shown on the page.
@@ -260,24 +260,28 @@ Rows are rounded separately, so they sum to $56.39. Run 1 shares its cache with 
 Checks of the committed results, all $0 with no model call (a cache miss is an error):
 
 ```bash
-python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check   # replay a finished run; writes <run>_replay
-python experiments/demo/rescore.py [run]          # replay each recorded re-score, compare with rescore.json
-python experiments/demo/leak_ablation.py          # replay the leak check, compare with leak_ablation.json
+python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check   # replay a finished run; compare with it and its record
+python experiments/demo/rescore.py [run]          # replay each recorded re-score; compare with rescore.json (writes rescore_check.json)
+python experiments/demo/leak_ablation.py          # replay the leak check; compare with leak_ablation.json
+python experiments/demo/monitor_check.py          # replay every shadow-monitor reading; compare with the traces
 python experiments/demo/calibrate_hard.py         # replay the hard-suite calibration
-python experiments/demo/spend.py                  # recompute the spend record and compare (writes nothing)
+python experiments/demo/spend.py                  # recompute the spend record and compare (only where the calls were made)
 python experiments/demo/plot_demo.py && python experiments/demo/build_page.py   # rebuild figures and page from the JSONs
+experiments/demo/run_chain.sh "metaharness --replay-check" "rescore.py metaharness"   # jobs one at a time; stops on any failure
 ```
 
-Commands that record new results (live Haiku calls, or CPU training whose results depend on the machine):
+`spend.py` needs the cache files' write times, which git does not keep. On a fresh clone it refuses to attribute and points to the committed `demo/spend.json`.
+
+Commands that record new results (live Haiku calls, or CPU training whose results depend on the machine). None of them replaces a committed record:
 
 ```bash
 python experiments/demo/live_demo.py metaharness [--suite hard]   # or rrsi, autoresearch; refuses to overwrite a run
 python experiments/demo/live_demo.py metaharness --resume         # archive an unfinished attempt, continue from its cache
-python experiments/demo/rescore.py --force [run]                  # a new fresh-trial re-score (keeps the old one's record)
-python experiments/demo/leak_ablation.py --force
-python experiments/demo/autoresearch_hidden.py                    # a new training session; never replaces hidden_reeval.json
-experiments/demo/run_chain.sh "metaharness --suite hard" "rescore.py --force metaharness_hard"   # one at a time; stops on any failure
-python experiments/demo/spend.py --force                          # only on the machine that made the calls
+python experiments/demo/rescore.py --record <run>                 # a run's first re-score (trial seeds 100, 101)
+python experiments/demo/rescore.py --seed-offset 200 [run]        # new trials: rescore_s200.json
+python experiments/demo/leak_ablation.py --seed-offset 200        # new trials: leak_ablation_s200.json
+python experiments/demo/autoresearch_hidden.py                    # a new training session: hidden_reeval_<time>.json
+python experiments/demo/spend.py --force                          # rewrite the record, only on the machine that made the calls
 ```
 
 Each `demo/runs/<run>/TRACE.md` holds every step: the proposer prompt and reply, the diff, the critic verdict, per-task scores and the gate arithmetic.

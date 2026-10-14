@@ -1,5 +1,6 @@
 {
  "run": "metaharness",
+ "record": "rescore.json",
  "matches": true,
  "cache_misses": 0,
  "scores": {

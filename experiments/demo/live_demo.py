@@ -10,7 +10,7 @@ as the proposer, and writes a full trace (``trace.jsonl`` -> ``TRACE.md``) plus 
     python experiments/demo/live_demo.py metaharness --suite hard   # harder tasks: logic grids + ledgers
     python experiments/demo/live_demo.py rrsi --suite hard
     python experiments/demo/live_demo.py metaharness --replay-check # re-run a finished run from its cache at $0
-                                                                    # and check every prompt and score matches
+                                                                    # and check every prompt, score and trace
 
 Outputs go to ``demo/runs/<method>/`` with a fresh LLM cache in ``demo/runs/.cache_<method>``
 (a re-run with the same cache replays at $0). The seed harness is one direct model call with
@@ -145,13 +145,14 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
     return found
 
 
-#: the post-run re-score draws fresh trials: loops and shadow monitors score with trial seeds 0, 1, ..., so these
-#: seeds (100, 101) are samples no loop decision and no monitor reading used
+#: the post-run re-score draws fresh trials: shadow monitors and Meta-Harness's loop score with trial seeds 0, 1, ...
+#: (RRSI's loop uses hashed per-job seeds), so these seeds (100, 101) are samples no loop decision and no monitor
+#: reading used
 RESCORE_K, RESCORE_SEED_OFFSET = 2, 100
 
 
-def rescore(dom, llm, arms: dict, splits=("evolve", "holdout", "ood")) -> dict:
-    return transfer_report(dom, llm, arms, splits=splits, k=RESCORE_K, workers=4, seed_offset=RESCORE_SEED_OFFSET)
+def rescore(dom, llm, arms: dict, splits=("evolve", "holdout", "ood"), seed_offset: int = RESCORE_SEED_OFFSET) -> dict:
+    return transfer_report(dom, llm, arms, splits=splits, k=RESCORE_K, workers=4, seed_offset=seed_offset)
 
 
 def _monitor_usd(out: Path) -> float:
@@ -211,11 +212,16 @@ def traces_identical(src: Path, out: Path) -> dict:
 
 def replay_check(name: str, a) -> None:
     """Re-run a finished Meta-Harness demo with its cache in offline mode (a cache miss is an error, so nothing
-    is sent to the model) and compare every proposer prompt and every candidate score with the recorded run."""
+    is sent to the model) and compare every proposer prompt, every candidate score and every execution trace with the
+    recorded run. The first check is recorded in ``<run>_replay/``; later checks replay into a scratch directory
+    (removed afterwards) and must also reproduce that record. ``--record`` refreshes the record from a matching
+    check (e.g. to add a field a newer check computes)."""
+    import shutil
     from rsi.trace import load_trace
-    src, out = OUT / name, OUT / f"{name}_replay"
+    src, rec = OUT / name, OUT / f"{name}_replay"
+    out = OUT / f"{name}_replaycheck" if rec.exists() else rec   # same depth as the run: paths never reach a prompt
     if out.exists():
-        raise SystemExit(f"{out} exists")
+        shutil.rmtree(out)
     llm, dom = _haiku(name, offline=True), _agentqa(a.suite)
     rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                 proposer_kind="rewrite")
@@ -230,8 +236,23 @@ def replay_check(name: str, a) -> None:
     rep = {"run": name, "proposer_calls": len(p0), "candidates_scored": len(s0), "prompts_identical": p0 == p1,
            "scores_identical": s0 == s1, "traces_identical": traces_identical(src, out),
            "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
-    (out / "replay_check.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
+    t = rep["traces_identical"]
+    ok = (rep["prompts_identical"] and rep["scores_identical"] and not rep["cache_misses"]
+          and t["identical"] == t["files"] and not t["missing_in_replay"])
+    if out == rec:
+        (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
+    else:
+        old = json.loads((rec / "replay_check.json").read_text())
+        same = all(old[k] == rep[k] for k in old if k in rep and k != "traces_identical")
+        ok = ok and same
+        print("MATCH: reproduces the run and its recorded replay check" if ok else "MISMATCH")
+        if ok and a.record:
+            (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
+            print("refreshed", rec / "replay_check.json")
+        shutil.rmtree(out)
+    if not ok:
+        raise SystemExit(1)
 
 
 def rrsi_run(a) -> None:
@@ -276,6 +297,8 @@ if __name__ == "__main__":
                     help="easy = numeric AgentQA (the first demo); hard = logic grids + ledgers (Meta-Harness, RRSI)")
     ap.add_argument("--replay-check", action="store_true",
                     help="Meta-Harness only: replay a finished run from its cache at $0 and compare it")
+    ap.add_argument("--record", action="store_true",
+                    help="with --replay-check: refresh <run>_replay/replay_check.json from a matching check")
     ap.add_argument("--resume", action="store_true",
                     help="archive an unfinished or unclean attempt of this run and restart it from its cache")
     a = ap.parse_args()

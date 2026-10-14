@@ -19,3 +19,6 @@
 == 2026-10-14T13:25:08Z rescore.py _archive/metaharness_fix_v1 -> demo/runs/rescore_archive_metaharness_fix_v1.log
 == 2026-10-14T13:30:21Z rescore.py _archive/metaharness_fix_v2 -> demo/runs/rescore_archive_metaharness_fix_v2.log
 == 2026-10-14T13:35:28Z chain done
+== 2026-10-14T16:28:02Z metaharness --replay-check -> demo/runs/metaharness_replay_check.log (offline $0 check of the committed results; its logs were not kept)
+== 2026-10-14T16:28:03Z rescore.py metaharness -> demo/runs/rescore_metaharness.log (offline $0 check of the committed results; its logs were not kept)
+== 2026-10-14T16:28:03Z chain done

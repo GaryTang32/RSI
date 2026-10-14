@@ -9,11 +9,12 @@ but no task's answer, and the code template copies practice task evolve-ledger-0
 neutral one, on all three splits, with the same fresh trial seeds the post-run re-score uses (``rescore.py``), and
 first checks that the neutral copy contains no task's answer and no practice exchange rate::
 
-    python experiments/demo/leak_ablation.py           # check: replay the recorded leak check offline at $0
-    python experiments/demo/leak_ablation.py --force   # record it again (live calls for anything not cached)
+    python experiments/demo/leak_ablation.py                     # check: replay the recorded leak check offline at $0
+    python experiments/demo/leak_ablation.py --seed-offset 200   # new samples: leak_ablation_s200.json (live calls)
 
-The record is ``demo/runs/metaharness_hard/leak_ablation.json``; by default it is only replayed (a cache miss is an
-error) and compared, with per-task scores written to ``leak_ablation_check.json``. If the scores hold, the copied strings did not drive the result; if they drop, they did.
+The record is ``demo/runs/metaharness_hard/leak_ablation.json`` and is never replaced (``spend.py`` attributes cache
+entries by its ``started_at``). The check replays it with the model switched off (a cache miss is an error), compares
+the scores and writes per-task scores to ``leak_ablation_check.json``. If the scores hold, the copied strings did not drive the result; if they drop, they did.
 """
 from __future__ import annotations
 
@@ -72,31 +73,36 @@ def main() -> None:
     before, left = copied_strings(final.files, dom), copied_strings(neutral.files, dom)
     if left:
         raise SystemExit(f"the neutral copy still contains copied strings: {left}")
-    rec = RUN / "leak_ablation.json"
-    live = "--force" in sys.argv or not rec.exists()
+    offset = int(sys.argv[sys.argv.index("--seed-offset") + 1]) if "--seed-offset" in sys.argv else RESCORE_SEED_OFFSET
+    if offset in (0, 1) or (offset != RESCORE_SEED_OFFSET and "--seed-offset" not in sys.argv):
+        raise SystemExit("--seed-offset must give seeds no run used (e.g. 200)")
+    rec = RUN / ("leak_ablation.json" if offset == RESCORE_SEED_OFFSET else f"leak_ablation_s{offset}.json")
+    live = not rec.exists()
+    if live and offset == RESCORE_SEED_OFFSET:
+        raise SystemExit(f"{rec} is missing: the recorded leak check is the reference (use --seed-offset N)")
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard",
                     offline=not live)
     t0 = time.time()
-    rep = rescore(dom, llm, {"final": final, "final_neutralised": neutral})
+    rep = rescore(dom, llm, {"final": final, "final_neutralised": neutral}, seed_offset=offset)
     if not live:
         want = json.loads(rec.read_text())["scores"]
         got = {s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}
         check = {"matches": got == want and llm.misses == 0, "cache_misses": llm.misses, "scores": got,
                  "per_task": {s: {a: v.get("tasks") for a, v in row.items()} for s, row in rep["splits"].items()}}
-        (RUN / "leak_ablation_check.json").write_text(json.dumps(check, indent=1, default=str))
+        (RUN / rec.name.replace(".json", "_check.json")).write_text(json.dumps(check, indent=1, default=str))
         print("replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses)
         if not check["matches"]:
             raise SystemExit(1)
         return
     missing = {s: {a: v["missing"] for a, v in row.items()} for s, row in rep["splits"].items()}
     out = {"replaced": NEUTRAL, "files_changed": changed, "copied_in_final": before, "copied_in_neutral": left,
-           "k": RESCORE_K, "seed_offset": RESCORE_SEED_OFFSET, "started_at": t0,
+           "k": RESCORE_K, "seed_offset": offset, "started_at": t0,
            "scores": {s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()},
            "families": {s: {a: v["families"] for a, v in row.items()} for s, row in rep["splits"].items()},
            "paired_vs_final": {s: row["final_neutralised"].get("vs_reference") for s, row in rep["splits"].items()},
            "missing": missing, "clean": not any(n for row in missing.values() for n in row.values()),
            "usd": round(llm.meter.total().cost_usd, 4), "cache": {"hits": llm.hits, "misses": llm.misses}}
-    (RUN / "leak_ablation.json").write_text(json.dumps(out, indent=1, default=str))
+    rec.write_text(json.dumps(out, indent=1, default=str))
     print(json.dumps(out, indent=1, default=str))
     if not out["clean"]:
         print("INFRA_ERRORS: trials missing", missing)
