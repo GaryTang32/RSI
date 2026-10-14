@@ -178,13 +178,298 @@
     "iter": 0,
     "incumbent": "seed",
     "S": 0.75,
-    "sealed": {},
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.16666666666666666
+    },
     "candidates": []
+   },
+   {
+    "iter": 1,
+    "incumbent": "clear-format-answers",
+    "S": 0.75,
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.5
+    },
+    "candidates": [
+     {
+      "name": "clear-format-answers",
+      "S": 0.75,
+      "C": 17223.1,
+      "kept": true,
+      "change": "Harness with explicit answer formatting: returns last line (which should be ANSWER: ...)."
+     },
+     {
+      "name": "code-generation-execution",
+      "S": 0.625,
+      "C": 13795.2,
+      "kept": false,
+      "change": "Harness with code generation and execution for data-intensive problems."
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 2 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed seed -> clear-format-answers"
+   },
+   {
+    "iter": 2,
+    "incumbent": "clear-format-answers",
+    "S": 0.75,
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.5
+    },
+    "candidates": [
+     {
+      "name": "structured-reasoning-with-code",
+      "S": 0.625,
+      "C": 13819.5,
+      "kept": false,
+      "change": "Harness combining reasoning and code: encourages both, extracts from code OR ANSWER: line."
+     },
+     {
+      "name": "code-generation-with-templates",
+      "S": 0.625,
+      "C": 17873.5,
+      "kept": false,
+      "change": "Harness with code generation enhanced by templates and worked examples."
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 0 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
+   },
+   {
+    "iter": 3,
+    "incumbent": "hybrid-task-router",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 1.0,
+     "ood": 0.6666666666666666
+    },
+    "candidates": [
+     {
+      "name": "hybrid-task-router",
+      "S": 1.0,
+      "C": 20712.9,
+      "kept": true,
+      "change": "Harness with task-type detection and routing to specialized strategies. - Logic tasks: Reasoning-based with formatted answer requirement - Data tasks: Code-first with calculation templates"
+     },
+     {
+      "name": "step-wise-validation",
+      "S": 0.0,
+      "C": 15599.1,
+      "kept": false,
+      "change": "Harness combining reasoning with step-wise validation blocks. Model structures reasoning into explicit steps, each with inline Python verification. Extracts answer from code output or ANSWER: marker."
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point changed clear-format-answers -> hybrid-task-router"
+   },
+   {
+    "iter": 4,
+    "incumbent": "hybrid-task-router",
+    "S": 1.0,
+    "sealed": {
+     "holdout": 1.0,
+     "ood": 0.6666666666666666
+    },
+    "candidates": [
+     {
+      "name": "semantic-task-router",
+      "S": 1.0,
+      "C": 20712.9,
+      "kept": false,
+      "change": "Harness with semantic task-type detection (signal scoring) instead of keyword lists. Routes to specialized logic or data strategies based on weighted semantic signals."
+     },
+     {
+      "name": "structured-plan-executor",
+      "S": 0.875,
+      "C": 22870.2,
+      "kept": false,
+      "change": "Harness with two-phase execution: plan outline \u2192 implementation. Phase 1: Model outlines the solution approach. Phase 2: Model implements the plan with code or reasoning. Harness validates and executes, extracting the final answer."
+     }
+    ],
+    "why": "Meta-Harness keeps every evaluated candidate in the population; 1 of 2 joined the Pareto frontier. Incumbent = highest-score Pareto point (unchanged)"
    }
   ],
-  "usd_total": null,
-  "wall_s": null,
-  "stop_reason": null
+  "usd_total": 6.848,
+  "wall_s": 3272.9,
+  "stop_reason": "iterations",
+  "transfer": {
+   "evolve": {
+    "seed": {
+     "S": 0.75,
+     "vs": null
+    },
+    "final": {
+     "S": 1.0,
+     "vs": {
+      "mean_diff": 0.25,
+      "lo": 0.0,
+      "hi": 0.625,
+      "n": 8,
+      "p_better": 0.25
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.6666666666666666,
+     "vs": null
+    },
+    "final": {
+     "S": 1.0,
+     "vs": {
+      "mean_diff": 0.3333333333333333,
+      "lo": 0.0,
+      "hi": 0.6666666666666666,
+      "n": 6,
+      "p_better": 0.3333333333333333
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.16666666666666666,
+     "vs": null
+    },
+    "final": {
+     "S": 0.6666666666666666,
+     "vs": {
+      "mean_diff": 0.5,
+      "lo": 0.16666666666666666,
+      "hi": 0.8333333333333334,
+      "n": 6,
+      "p_better": 0.5
+     }
+    }
+   }
+  }
+ },
+ {
+  "run": "rrsi_hard",
+  "rows": [
+   {
+    "iter": 0,
+    "incumbent": "H0",
+    "S": 0.75,
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.16666666666666666
+    },
+    "candidates": []
+   },
+   {
+    "iter": 1,
+    "incumbent": "H0",
+    "S": 0.75,
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.16666666666666666
+    },
+    "candidates": [
+     {
+      "name": "r0A",
+      "S": 0.75,
+      "C": 18916.5,
+      "admissible": false,
+      "reason": "cost rule failed: within band: shaped=-0.628 (<= 0)",
+      "kept": false,
+      "change": "Implement smart extraction in harness.py and generalize system prompt; remove undeclared E3 to fix reviewer objections"
+     },
+     {
+      "name": "r0B",
+      "S": 0.75,
+      "C": 22378.875,
+      "admissible": false,
+      "reason": "cost rule failed: within band: shaped=-3.489 (<= 0)",
+      "kept": false,
+      "change": "Answer extraction with ANSWER: pattern + input validation instruction to fix format non-compliance and truncation assumption issues"
+     }
+    ],
+    "why": "no admissible candidate -> H_{t+1} = H_t; r0A: cost rule failed: within band: shaped=-0.628 (<= 0); r0B: cost rule failed: within band: shaped=-3.489 (<= 0)"
+   },
+   {
+    "iter": 2,
+    "incumbent": "H0",
+    "S": 0.75,
+    "sealed": {
+     "holdout": 0.6666666666666666,
+     "ood": 0.16666666666666666
+    },
+    "candidates": [
+     {
+      "name": "r1A",
+      "S": 0.5,
+      "C": 17018.125,
+      "admissible": false,
+      "reason": "below noise-adjusted floor: S'=0.5000 < S*-delta=0.5459 (S* 0.7500 - delta 0.2041)",
+      "kept": false,
+      "change": "Repair: Remove task-specific metadata from markdown extraction edit; reframe as general pattern-handling mechanism to eliminate leakage"
+     },
+     {
+      "name": "r1B",
+      "S": 0.125,
+      "C": 20645.625,
+      "admissible": false,
+      "reason": "below noise-adjusted floor: S'=0.1250 < S*-delta=0.5459 (S* 0.7500 - delta 0.2041)",
+      "kept": false,
+      "change": "Add Python tool for robust answer extraction (ANSWER: prefix and markdown handling)"
+     }
+    ],
+    "why": "no admissible candidate -> H_{t+1} = H_t; r1A: below noise-adjusted floor: S'=0.5000 < S*-delta=0.5459 (S* 0.7500 - delta 0.2041); r1B: below noise-adjusted floor: S'=0.1250 < S*-delta=0.5459 (S* 0.7500 - delta 0.2041)"
+   }
+  ],
+  "usd_total": 5.8202,
+  "wall_s": 3782.8,
+  "stop_reason": "max_usd",
+  "transfer": {
+   "evolve": {
+    "seed": {
+     "S": 0.625,
+     "vs": null
+    },
+    "final": {
+     "S": 0.625,
+     "vs": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 8,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.6666666666666666,
+     "vs": null
+    },
+    "final": {
+     "S": 0.6666666666666666,
+     "vs": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.16666666666666666,
+     "vs": null
+    },
+    "final": {
+     "S": 0.16666666666666666,
+     "vs": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   }
+  }
  },
  {
   "run": "rrsi",
