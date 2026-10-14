@@ -4,10 +4,10 @@
 # ("rescore.py metaharness_hard", "leak_ablation.py").
 #
 # The chain stops at the first job that exits non-zero or whose log shows lost model calls (usage cap, infrastructure
-# errors, missing trials). To continue after the cause is fixed (e.g. the cap has reset), run the same chain again
-# with --resume as a live_demo argument for the job that stopped: live_demo.py moves the unfinished attempt to
-# demo/runs/_archive/ and restarts it, replaying every call its LLM cache already holds for $0. A job whose run
-# directory holds a clean finished run is refused, which also stops the chain.
+# errors, missing trials). To continue after the cause is fixed (e.g. the cap has reset), start a new chain from the
+# job that stopped, with --resume added to it, and leave out the jobs that already finished (a job whose run
+# directory holds a finished run is refused, which stops the chain): live_demo.py moves the unfinished attempt to
+# demo/runs/_archive/ and restarts it, replaying every call its LLM cache already holds for $0.
 #
 # Usage: experiments/demo/run_chain.sh "metaharness" "metaharness --replay-check" "rescore.py metaharness" ...
 cd "$(dirname "$0")/../.."

@@ -23,7 +23,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from live_demo import OUT, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, infra_errors, rescore  # noqa: E402
+from live_demo import OUT, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, rescore  # noqa: E402
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
 #: run directory -> its LLM cache (both under demo/runs)
@@ -46,8 +46,9 @@ def rescore_run(run: str) -> dict:
     t0 = time.time()
     arms = {"seed": Artifact(summ["seed_files"]), "final": Artifact(summ["final_files"])}
     rep = rescore(_agentqa(suite), llm, arms)
-    errs = infra_errors(d, rep) if (d / "trace.jsonl").exists() else []
-    errs = [e for e in errs if e.startswith("re-score")]   # the run's own record is judged by its summary
+    # the run's own record is judged by its summary; here only the re-score's trials count
+    errs = [f"re-score {arm} {split}: {v['missing']} trials missing"
+            for split, row in rep["splits"].items() for arm, v in row.items() if (v.get("missing") or 0) > 0]
     out = {"run": run, "suite": suite, "k": RESCORE_K, "seed_offset": RESCORE_SEED_OFFSET,
            "started_at": t0, "wall_s": round(time.time() - t0, 1), "transfer": rep,
            "usd": round(llm.meter.total().cost_usd, 4), "cache": {"hits": llm.hits, "misses": llm.misses},

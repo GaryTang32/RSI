@@ -1,6 +1,13 @@
 {
- "method": "Every live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``). Several attempts can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that was running when the entry was written: the latest attempt that started at or before the file's write time. Attempt start times come from each attempt's trace (or the ``started_at`` its JSON records).",
+ "method": "Every successful live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``); a call that failed or timed out is not cached, so it is not counted here, whether or not it was billed. Several attempts can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that was running when the entry was written: the latest attempt that started at or before the file's write time. Attempt start times come from each attempt's trace (or the ``started_at`` its JSON records); a run's original post-run report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it.",
  "total_usd": 56.3844,
+ "by_kind_usd": {
+  "run": 30.1226,
+  "rescore": 11.9182,
+  "report": 2.412,
+  "leak_check": 5.456,
+  "calibration": 6.4758
+ },
  "caches": {
   ".cache_autoresearch": {
    "usd": 0.7018,
@@ -66,11 +73,17 @@
    "usd": 1.2131,
    "entries": 112
   },
+  "metaharness/report": {
+   "cache": ".cache_metaharness",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.5553,
+   "entries": 56
+  },
   "metaharness": {
    "cache": ".cache_metaharness",
    "what": "Run 4, resumed (reported)",
-   "usd": 0.9119,
-   "entries": 113
+   "usd": 0.3565,
+   "entries": 57
   },
   "metaharness_hard": {
    "cache": ".cache_metaharness_hard",
@@ -123,8 +136,8 @@
   "rrsi": {
    "cache": ".cache_rrsi",
    "what": "RRSI (reported)",
-   "usd": 2.5359,
-   "entries": 313
+   "usd": 2.0844,
+   "entries": 203
   },
   "rrsi/rescore": {
    "cache": ".cache_rrsi",
@@ -132,7 +145,13 @@
    "usd": 0.7112,
    "entries": 162
   },
-  "_rrsi_restarted": {
+  "rrsi/report": {
+   "cache": ".cache_rrsi",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.4516,
+   "entries": 110
+  },
+  "_archive/rrsi_restarted": {
    "cache": ".cache_rrsi",
    "what": "RRSI, restarted",
    "usd": 0.6773,
@@ -141,8 +160,8 @@
   "rrsi_hard": {
    "cache": ".cache_rrsi_hard",
    "what": "hard RRSI (reported)",
-   "usd": 5.8202,
-   "entries": 78
+   "usd": 5.39,
+   "entries": 72
   },
   "_archive/rrsi_hard_capped": {
    "cache": ".cache_rrsi_hard",
@@ -155,6 +174,12 @@
    "what": "fresh re-score",
    "usd": 2.6069,
    "entries": 40
+  },
+  "rrsi_hard/report": {
+   "cache": ".cache_rrsi_hard",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.4302,
+   "entries": 6
   },
   "calibration": {
    "cache": "_archive/.cache_calib_hard",
@@ -171,8 +196,8 @@
   "_archive/metaharness_before_fix": {
    "cache": "_archive/.cache_metaharness_before_fix",
    "what": "Run 1",
-   "usd": 2.9783,
-   "entries": 272
+   "usd": 2.7789,
+   "entries": 243
   },
   "_archive/metaharness_before_fix/rescore": {
    "cache": "_archive/.cache_metaharness_before_fix",
@@ -180,11 +205,23 @@
    "usd": 0.5132,
    "entries": 82
   },
+  "_archive/metaharness_before_fix/report": {
+   "cache": "_archive/.cache_metaharness_before_fix",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.1994,
+   "entries": 29
+  },
   "metaharness_a": {
    "cache": "_archive/.cache_metaharness_before_fix",
    "what": "replicate, interrupted during its report",
-   "usd": 2.7043,
-   "entries": 313
+   "usd": 2.5047,
+   "entries": 284
+  },
+  "metaharness_a/report": {
+   "cache": "_archive/.cache_metaharness_before_fix",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score), interrupted",
+   "usd": 0.1996,
+   "entries": 29
   },
   "_archive/metaharness_fix_v1/rescore": {
    "cache": "_archive/.cache_metaharness_fix_v1",
@@ -195,8 +232,14 @@
   "_archive/metaharness_fix_v1": {
    "cache": "_archive/.cache_metaharness_fix_v1",
    "what": "Run 2",
-   "usd": 1.6843,
-   "entries": 284
+   "usd": 1.3858,
+   "entries": 228
+  },
+  "_archive/metaharness_fix_v1/report": {
+   "cache": "_archive/.cache_metaharness_fix_v1",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.2985,
+   "entries": 56
   },
   "_archive/metaharness_fix_v2/rescore": {
    "cache": "_archive/.cache_metaharness_fix_v2",
@@ -204,21 +247,28 @@
    "usd": 0.5408,
    "entries": 112
   },
+  "_archive/metaharness_fix_v2/report": {
+   "cache": "_archive/.cache_metaharness_fix_v2",
+   "what": "original post-run report (trial seeds from 0; superseded by the fresh re-score)",
+   "usd": 0.2774,
+   "entries": 56
+  },
   "_archive/metaharness_fix_v2": {
    "cache": "_archive/.cache_metaharness_fix_v2",
    "what": "Run 3",
-   "usd": 2.5729,
-   "entries": 288
+   "usd": 2.2954,
+   "entries": 232
   }
  },
  "reported": {
   "metaharness": {
-   "usd_full": 2.2614,
+   "usd_full": 1.706,
    "attempts": {
     "_archive/metaharness_v3_capped": 1.3495,
-    "metaharness": 0.9119
+    "metaharness": 0.3565
    },
-   "usd_rescore": 1.2131
+   "usd_rescore": 1.2131,
+   "usd_original_report": 0.5553
   },
   "metaharness_hard": {
    "usd_full": 8.7974,
@@ -229,58 +279,66 @@
     "_archive/metaharness_hard_capped2": 0.3019,
     "metaharness_hard": 6.848
    },
-   "usd_rescore": 5.786
+   "usd_rescore": 5.786,
+   "usd_original_report": 0.0
   },
   "rrsi": {
-   "usd_full": 3.2132,
+   "usd_full": 2.7617,
    "attempts": {
-    "_rrsi_restarted": 0.6773,
-    "rrsi": 2.5359
+    "_archive/rrsi_restarted": 0.6773,
+    "rrsi": 2.0844
    },
-   "usd_rescore": 0.7112
+   "usd_rescore": 0.7112,
+   "usd_original_report": 0.4516
   },
   "rrsi_hard": {
-   "usd_full": 7.6211,
+   "usd_full": 7.1909,
    "attempts": {
     "_archive/rrsi_hard_capped": 1.8009,
-    "rrsi_hard": 5.8202
+    "rrsi_hard": 5.39
    },
-   "usd_rescore": 2.6069
+   "usd_rescore": 2.6069,
+   "usd_original_report": 0.4302
   },
   "autoresearch": {
    "usd_full": 0.7018,
    "attempts": {
     "autoresearch": 0.7018
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.0,
+   "usd_original_report": 0.0
   },
   "metaharness_a": {
-   "usd_full": 2.7043,
+   "usd_full": 2.5047,
    "attempts": {
-    "metaharness_a": 2.7043
+    "metaharness_a": 2.5047
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.0,
+   "usd_original_report": 0.1996
   },
   "_archive/metaharness_before_fix": {
-   "usd_full": 2.9783,
+   "usd_full": 2.7789,
    "attempts": {
-    "_archive/metaharness_before_fix": 2.9783
+    "_archive/metaharness_before_fix": 2.7789
    },
-   "usd_rescore": 0.5132
+   "usd_rescore": 0.5132,
+   "usd_original_report": 0.1994
   },
   "_archive/metaharness_fix_v1": {
-   "usd_full": 1.6843,
+   "usd_full": 1.3858,
    "attempts": {
-    "_archive/metaharness_fix_v1": 1.6843
+    "_archive/metaharness_fix_v1": 1.3858
    },
-   "usd_rescore": 0.547
+   "usd_rescore": 0.547,
+   "usd_original_report": 0.2985
   },
   "_archive/metaharness_fix_v2": {
-   "usd_full": 2.5729,
+   "usd_full": 2.2954,
    "attempts": {
-    "_archive/metaharness_fix_v2": 2.5729
+    "_archive/metaharness_fix_v2": 2.2954
    },
-   "usd_rescore": 0.5408
+   "usd_rescore": 0.5408,
+   "usd_original_report": 0.2774
   }
  }
 }

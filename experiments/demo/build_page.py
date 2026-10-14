@@ -20,6 +20,13 @@ def _files(run: str) -> dict:
     return {"seed": cut(s.get("seed_files")), "final": cut(s.get("final_files"))}
 
 
+def _tool_calls(run: Path) -> int:
+    """Sandboxed tool calls the replayed run made (0 means its replay never exercised the sandbox)."""
+    import re
+    return sum(int(n) for p in (run / "store" / "candidates").glob("*/eval/search/per_task/*.json")
+               for n in re.findall(r'"tool_calls": (\d+)', p.read_text()))
+
+
 def main() -> None:
     runs = json.loads((DEMO / "data.json").read_text())
     for d in runs:
@@ -33,9 +40,9 @@ def main() -> None:
     extra = {"spend": json.loads((DEMO / "spend.json").read_text())}
     if (DEMO / "replicates.json").exists():
         extra["replicates"] = json.loads((DEMO / "replicates.json").read_text())
-    rc = DEMO / "runs" / "metaharness_replay" / "replay_check.json"
-    if rc.exists():
-        extra["replay"] = json.loads(rc.read_text())
+    extra["replay"] = [json.loads(rc.read_text()) | {"tool_calls": _tool_calls(rc.parent)}
+                       for rc in (DEMO / "runs" / "metaharness_replay" / "replay_check.json",
+                                  DEMO / "runs" / "metaharness_hard_replay" / "replay_check.json") if rc.exists()]
     tpl = tpl.replace("/*__EXTRA__*/null", json.dumps(extra).replace("</", "<\\/"))
     (DEMO / "index.html").write_text(tpl.replace("/*__DATA__*/null", data))
     print("wrote", DEMO / "index.html", round(len(data) / 1024), "KB of data")

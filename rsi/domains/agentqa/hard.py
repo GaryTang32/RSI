@@ -270,8 +270,11 @@ def _cipher(rng: random.Random):
         elif k == 3:
             r = rng.randint(2, 7)
             n = r % len(x) if x else 0   # deletions can leave fewer than r characters: rotation wraps around
+            ops.append(f"rotate the string left by {r} positions (move the first {r} characters to the end)"
+                       if r <= len(x) else
+                       f"rotate the string left by {r} positions, wrapping around (move the first character to "
+                       f"the end, {r} times)")
             x = x[n:] + x[:n]
-            ops.append(f"rotate the string left by {r} positions (move the first {r} characters to the end)")
         elif k == 4:
             m = rng.randint(3, 5)
             x = "".join(c for i, c in enumerate(x) if (i + 1) % m)

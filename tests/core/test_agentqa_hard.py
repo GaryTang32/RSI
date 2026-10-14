@@ -160,6 +160,7 @@ def test_cipher_rotation_wraps_when_the_string_is_shorter():
         q, target, _ = _cipher(random.Random(f"e-{i}"))
         if re.search(r"rotate the string left by (\d+)", q) and _run_cipher(q, set(), check_short_rotation=True):
             assert _run_cipher(q, set()) == target
+            assert "wrapping around (move the first character to the end" in q   # the wording says so
             return
     pytest.skip("no short-string rotation in the sampled tasks")
 

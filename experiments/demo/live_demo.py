@@ -45,15 +45,17 @@ RESUME = False   # set by --resume
 
 def _fresh(name: str) -> Path:
     """The run directory for a new run. An existing one is refused, except with ``--resume`` when it holds an
-    unfinished or unclean attempt: that attempt (and its log) moves to ``runs/_archive/<name>_<UTC time>`` and the
-    run restarts, replaying every call its cache already holds for $0."""
+    unfinished or unclean attempt: that attempt moves to ``runs/_archive/<name>_<UTC time>`` (its log stays where the
+    chain wrote it) and the run restarts, replaying every call its cache already holds for $0."""
     out = OUT / name
     if out.exists():
         summ = out / "summary.json"
-        clean = summ.exists() and json.loads(summ.read_text()).get("clean") is True
-        if not RESUME or clean:
+        # a finished run (summary written, and not marked unclean) is never replaced; summaries from before the
+        # infrastructure check have no "clean" key and count as finished
+        finished = summ.exists() and json.loads(summ.read_text()).get("clean", True) is not False
+        if not RESUME or finished:
             raise SystemExit(f"{out} exists: refusing to overwrite a recorded run"
-                             + ("" if clean else " (pass --resume to archive this attempt and continue from the cache)"))
+                             + ("" if finished else " (pass --resume to archive this attempt and continue from the cache)"))
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         dest = OUT / "_archive" / f"{name}_{stamp}"
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -89,10 +91,16 @@ INFRA = re.compile(r"llm error|agent error|infra:|session limit")
 
 
 def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
-    """Model calls lost to infrastructure (usage cap, timeouts, offline cache misses) anywhere in a run: trials
-    missing from loop evaluations, the shadow monitor or the final re-score, and errors recorded on proposals,
-    analyses, critics and gates. Only error fields are read, never prompts or replies, so a harness that merely
-    mentions such text is not flagged. A run with any of these is not a clean result."""
+    """Model calls lost to infrastructure anywhere in a run, read from structured fields only (never from prompts or
+    replies, so a harness that merely mentions such text is not flagged):
+
+    - trials missing from loop evaluations, shadow-monitor readings and the post-run re-score;
+    - every recorded model-call error of RRSI's critic (``llm.replies[].error``) and of its digesters and analyst
+      (``llm_calls[].error``): any error there is a failed call (timeout, usage cap, CLI error, offline cache miss);
+    - candidates RRSI dropped as ``eval_invalid`` (too many trials lost);
+    - infrastructure errors on proposals, analyses, gates and other events (``error`` / ``status`` / ``reason``).
+
+    A run with any of these is not a clean result."""
     from rsi.trace import load_trace
     found = []
 
@@ -109,6 +117,16 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
             for split, v in (d.get("sealed") or {}).items():
                 if isinstance(v, dict) and (v.get("missing") or 0) > 0:
                     found.append(f"monitor {d.get('version')} {split}: {v['missing']} trials missing")
+        llm = d.get("llm") if isinstance(d.get("llm"), dict) else {}
+        for i, r in enumerate(llm.get("replies") or []):
+            if isinstance(r, dict) and r.get("error"):
+                found.append(f"{where} {d.get('candidate', '')} reply {i}: {str(r['error'])[:120]}")
+        for c in d.get("llm_calls") or []:
+            if isinstance(c, dict) and c.get("error"):
+                found.append(f"{where} {c.get('role', 'call')}: {str(c['error'])[:120]}")
+        math = d.get("math") if isinstance(d.get("math"), dict) else {}
+        if math.get("gate_failure") == "eval_invalid" or d.get("stage") == "eval_invalid":
+            found.append(f"{where} {d.get('candidate', '')} eval_invalid: {str(math.get('detail') or d.get('detail'))[:120]}")
         for key in ("error", "status", "reason"):
             hit(f"{where} {key}", d.get(key))
     for split, row in ((rep or {}).get("splits") or {}).items():
@@ -209,13 +227,6 @@ def rrsi_run(a) -> None:
                                            "llm": "claude haiku (task, proposer, critic, analyst)"})
 
 
-def autoresearch_crashes(out: Path) -> list[str]:
-    """autoresearch logs a crashed experiment as a ``crash`` row in results.tsv (its evals have no missing count)."""
-    tsv = out / "results.tsv"
-    rows = [r.split("\t") for r in tsv.read_text().strip().splitlines()[1:]] if tsv.exists() else []
-    return [f"results.tsv: crash {r[0]}" for r in rows if len(r) > 3 and r[3].strip() == "crash"]
-
-
 def autoresearch(a) -> None:
     from rsi.autoresearch import Config, run
     from rsi.domains.tinylm import TinyLMTask
@@ -227,7 +238,7 @@ def autoresearch(a) -> None:
                  tag="demo-live", seed=0)
     res = run(task, llm_propose=llm, config=cfg, out_dir=out)
     inspect(out)
-    errs = infra_errors(out) + autoresearch_crashes(out)
+    errs = infra_errors(out)   # a "crash" row in results.tsv is a graded outcome (the edit broke training), not lost calls
     summ = {"run": name, "setup": {"method": "autoresearch", "task": "tinylm, 8 s CPU training budget",
                                    "llm": "claude haiku (research agent)", "max_experiments": 10},
             "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1), "trajectory": res.trajectory,
@@ -235,6 +246,8 @@ def autoresearch(a) -> None:
             "infra_errors": errs, "clean": not errs}
     (out / "summary.json").write_text(json.dumps(summ, indent=1, default=str))
     print("usd", summ["usd_total"])
+    if errs:
+        print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ")
 
 
 if __name__ == "__main__":

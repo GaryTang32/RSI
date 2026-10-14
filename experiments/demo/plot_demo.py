@@ -132,7 +132,9 @@ def extract(name: str) -> dict:
     end = next((e["data"] for e in reversed(ev) if e["kind"] == "run_end"), {})
     sp = (spend().get("reported") or {}).get(name) or {}
     out = {"run": name, "rows": rows, "suite": (summ.get("setup") or {}).get("suite") or "easy",
-           "usd_attempt": summ.get("usd_total"), "usd_full": sp.get("usd_full"), "attempts": sp.get("attempts"),
+           "usd_attempt": (sp.get("attempts") or {}).get(name, summ.get("usd_total")), "usd_full": sp.get("usd_full"),
+           "attempts": sp.get("attempts"), "usd_original_report": sp.get("usd_original_report"),
+           "kept_seed": bool(summ) and summ.get("seed_files") == summ.get("final_files"),
            "stop_reason": summ.get("stop_reason") or end.get("stop_reason"), "has_summary": bool(summ),
            "method": next(m for m in ("metaharness", "rrsi", "autoresearch") if name.startswith(m))}
     fresh = fresh_transfer(name)
@@ -141,11 +143,15 @@ def extract(name: str) -> dict:
         out["transfer_k"], out["transfer_seed_offset"], out["transfer_fresh"] = fresh["k"], fresh["seed_offset"], True
         out["usd_rescore"] = fresh["usd"]
     elif "transfer" in summ:
-        # an older report: trial seeds from 0, so trial 0 repeats the loop's and the monitor's own samples
+        # recorded by live_demo._finish: fresh when it used a seed offset (runs from now on); an older report used
+        # trial seeds from 0, so its trial 0 repeats the loop's and the monitor's own samples
         out["transfer"] = {s: {a: {"S": v["S"], "vs": v.get("vs_reference")} for a, v in row.items()}
                            for s, row in summ["transfer"]["splits"].items()}
         out["transfer_k"] = summ["transfer"].get("k") or (1 if out["suite"] == "hard" else 2)
-        out["transfer_seed_offset"], out["transfer_fresh"] = summ["transfer"].get("seed_offset", 0), False
+        out["transfer_seed_offset"] = summ["transfer"].get("seed_offset", 0)
+        out["transfer_fresh"] = out["transfer_seed_offset"] > 0
+        if out["transfer_fresh"]:
+            out["usd_rescore"] = summ.get("usd_transfer_report")
     return out
 
 
@@ -162,6 +168,9 @@ def _style(ax, title: str, ylabel: str) -> None:
     ax.set_axisbelow(True)
 
 
+SUBTITLE = "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)"
+
+
 def plot_harness(d: dict, title: str, path: Path) -> None:
     import matplotlib.pyplot as plt
     rows = d["rows"]
@@ -169,6 +178,8 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, title, "accuracy (exact match)")
+    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=20)
+    ax.text(0, 1.015, SUBTITLE, transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
     mh = d.get("method") == "metaharness"
     # marker per state: filled = became the new incumbent; Meta-Harness also keeps the rest (ring = joined the
     # Pareto frontier, hollow = in the population but dominated); RRSI discards the rest (hollow gray)
@@ -227,6 +238,10 @@ def plot_autoresearch(d: dict, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
     _style(ax, "autoresearch: Haiku edits train.py, one experiment at a time", "val_bpb (lower is better)")
+    ax.set_title("autoresearch: Haiku edits train.py, one experiment at a time", loc="left", fontsize=12, color=INK,
+                 fontweight="bold", pad=20)
+    ax.text(0, 1.015, "values the loop selected on (one training run each); hidden test from the shadow audit "
+            "(one audit run per kept version)", transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
     for r in rows[1:]:
         for c in r["candidates"]:
             if c["S"] is None:
@@ -259,7 +274,7 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
     fig, axes = plt.subplots(1, len(have), figsize=(4.2 * len(have), 4.1), dpi=150, squeeze=False)
     fig.patch.set_facecolor(SURF)
     for ax, d in zip(axes[0], have):
-        _style(ax, {"metaharness": "Meta-Harness", "rrsi": "RRSI", "metaharness_hard": "Meta-Harness, hard",
+        _style(ax, {"metaharness": "Meta-Harness (Run 4)", "rrsi": "RRSI", "metaharness_hard": "Meta-Harness, hard",
                     "rrsi_hard": "RRSI, hard"}.get(d["run"], d["run"]),
                "accuracy" if ax is axes[0][0] else "")
         splits = ["evolve", "holdout", "ood"]
@@ -329,6 +344,8 @@ def plot_replicates(reps: list[dict], path: Path) -> None:
             ax.plot([a, b], [y, y], color=GRID, linewidth=3, zorder=1, solid_capstyle="round")
             ax.scatter([a], [y], s=46, color=DISCARD, zorder=2)
             ax.scatter([b], [y], s=46, color=BLUE, zorder=3)
+            if abs(a - b) < 1e-9:   # unchanged: show the seed as a ring around the final point
+                ax.scatter([a], [y], s=130, facecolor="none", edgecolor=DISCARD, linewidth=1.8, zorder=4)
             ax.annotate(r2(b), (b, y), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=8,
                         color=INK)
         ax.set_xlim(-0.05, 1.1)
@@ -351,8 +368,8 @@ def main() -> None:
     (DEMO / "data.json").write_text(json.dumps(runs, indent=1, default=str))
     figs = DEMO / "figures"
     figs.mkdir(parents=True, exist_ok=True)
-    titles = {"metaharness": "Meta-Harness: Haiku rewrites its own AgentQA harness",
-              "metaharness_a": "Meta-Harness, replicate run (before the timestamp fix)",
+    titles = {"metaharness": "Meta-Harness Run 4: Haiku rewrites its own AgentQA harness",
+              "metaharness_a": "Meta-Harness, interrupted replicate (before the replay fix)",
               "metaharness_hard": "Meta-Harness on the hard tasks (logic grids + ledgers)",
               "rrsi_hard": "RRSI on the hard tasks (logic grids + ledgers)",
               "rrsi": "RRSI: Haiku edits the AgentQA harness under guards"}

@@ -5,7 +5,9 @@ tasks and 8 OOD tasks): the plain one-call seed, and a "write Python and run it"
 ``code_execution`` candidate). The calls are cached in ``demo/runs/_archive/.cache_calib_hard``, so this replays the
 recorded calibration at $0::
 
-    python experiments/demo/calibrate_hard.py      # recorded output: demo/runs/_archive/calibrate_hard.log
+    python experiments/demo/calibrate_hard.py      # replay: demo/runs/_archive/calibrate_hard_replay.log
+
+(``_archive/calibrate_hard.log`` is the original live run's output, from an earlier copy of this script.)
 
 (``_archive/.cache_calib_hard_v1`` holds a first calibration, of an earlier and easier version of the families,
 kept for the spend total.)

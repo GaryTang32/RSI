@@ -1,0 +1,55 @@
+"""Re-evaluate autoresearch's baseline, previous keep and final ``train.py`` on the hidden test splits over fresh
+training seeds.
+
+The run's shadow audit trained each kept version once, at the loop's training seed 0, so its hidden-test values are
+single readings, and training stops on wall-clock time, so a single run is noisy. The run's own post-run
+re-evaluation covered only validation. This trains each version again in audit mode (locked files restored, hidden
+data visible to the locked evaluator only) at the same three seeds as that re-evaluation, 10000-10002. CPU only, no
+model calls; run it on an otherwise idle machine, since the training budget is wall-clock time::
+
+    python experiments/demo/autoresearch_hidden.py    # writes demo/runs/autoresearch/hidden_reeval.json
+"""
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from rsi.core import Artifact  # noqa: E402
+from rsi.domains.tinylm import TinyLMTask  # noqa: E402
+
+RUN = ROOT / "demo" / "runs" / "autoresearch"
+COMMITS = {"fa8b780": "baseline", "d137e15": "previous keep (lr 0.02)", "931edb4": "final (hidden width 256)"}
+SEEDS = (10000, 10001, 10002)
+
+
+def main() -> None:
+    led = [json.loads(line) for line in (RUN / "ledger.jsonl").read_text().splitlines() if line.strip()]
+    ids = {(e.get("meta") or {}).get("commit"): e["artifact_id"] for e in led}
+    task = TinyLMTask(budget_s=8.0, data_root=ROOT / "demo" / "runs" / ".cache_tinylm_data")
+    task.prepare()
+    out = {"seeds": list(SEEDS), "budget_s": 8.0, "started_at": time.time(), "versions": {}}
+    for commit, label in COMMITS.items():
+        aid = ids[commit]
+        art = Artifact(json.loads((RUN / "artifacts" / aid[:2] / f"{aid}.json").read_text())["files"])
+        runs = [task.audit(art, seed=s) for s in SEEDS]
+        row = {"label": label, "runs": runs}
+        for k in ("test_iid", "test_shift", "loop_metric_rerun"):
+            vals = [r[k] for r in runs if isinstance(r.get(k), (int, float))]
+            row[k] = {"mean": float(np.mean(vals)) if vals else None, "min": min(vals, default=None),
+                      "max": max(vals, default=None), "n": len(vals)}
+        out["versions"][commit] = row
+        print(commit, label, {k: round(row[k]["mean"], 4) for k in ("test_iid", "test_shift", "loop_metric_rerun")
+                              if row[k]["mean"] is not None}, flush=True)
+    (RUN / "hidden_reeval.json").write_text(json.dumps(out, indent=1, default=str))
+
+
+if __name__ == "__main__":
+    main()
