@@ -20,7 +20,10 @@ one segment per process that worked on the directory. A process's charge is
 The loop checkpoints the current segment after every persisted step (baseline and
 calibration evaluations, the analysis report, each drafted candidate, each evaluation,
 each settled round), so a kill loses no recorded spend, and a call replayed on resume was
-never recorded before (no double counting). The budget of the resumed process is checked
+never recorded before (no double counting across segments). Within one process, a cache hit
+on an entry the same process wrote earlier (e.g. two candidates making the identical smoke
+call) is also counted at its original price, so such a call is counted twice: the ledger can
+overstate spend, never understate it. The budget of the resumed process is checked
 against ``prior segments + this process``. The write-only shadow monitor has its own
 meter and is not part of any segment.
 """

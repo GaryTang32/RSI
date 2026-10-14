@@ -134,14 +134,14 @@ def extract(name: str) -> dict:
     out = {"run": name, "rows": rows, "suite": (summ.get("setup") or {}).get("suite") or "easy",
            "usd_attempt": (sp.get("attempts") or {}).get(name, summ.get("usd_total")), "usd_full": sp.get("usd_full"),
            "attempts": sp.get("attempts"), "usd_original_report": sp.get("usd_original_report"),
-           "kept_seed": bool(summ) and summ.get("seed_files") == summ.get("final_files"),
+           "kept_seed": bool(summ.get("seed_files")) and summ.get("seed_files") == summ.get("final_files"),
            "stop_reason": summ.get("stop_reason") or end.get("stop_reason"), "has_summary": bool(summ),
            "method": next(m for m in ("metaharness", "rrsi", "autoresearch") if name.startswith(m))}
     fresh = fresh_transfer(name)
     if fresh:
         out["transfer"] = fresh["splits"]
         out["transfer_k"], out["transfer_seed_offset"], out["transfer_fresh"] = fresh["k"], fresh["seed_offset"], True
-        out["usd_rescore"] = fresh["usd"]
+        out["usd_rescore"] = sp.get("usd_rescore") or fresh["usd"]   # the spend record survives a $0 replay
     elif "transfer" in summ:
         # recorded by live_demo._finish: fresh when it used a seed offset (runs from now on); an older report used
         # trial seeds from 0, so its trial 0 repeats the loop's and the monitor's own samples
@@ -168,7 +168,9 @@ def _style(ax, title: str, ylabel: str) -> None:
     ax.set_axisbelow(True)
 
 
-SUBTITLE = "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)"
+SUBTITLE = {"metaharness": "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)",
+            "rrsi": "in-loop practice scores (one trial per task, a hashed trial seed per evaluation) and "
+                    "shadow-monitor readings (one trial per task, trial seed 0)"}
 
 
 def plot_harness(d: dict, title: str, path: Path) -> None:
@@ -179,7 +181,7 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
     fig.patch.set_facecolor(SURF)
     _style(ax, title, "accuracy (exact match)")
     ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=20)
-    ax.text(0, 1.015, SUBTITLE, transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
+    ax.text(0, 1.015, SUBTITLE[d["method"]], transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
     mh = d.get("method") == "metaharness"
     # marker per state: filled = became the new incumbent; Meta-Harness also keeps the rest (ring = joined the
     # Pareto frontier, hollow = in the population but dominated); RRSI discards the rest (hollow gray)
@@ -254,7 +256,7 @@ def plot_autoresearch(d: dict, path: Path) -> None:
     hid = [(r["iter"], r["sealed"].get("test_iid")) for r in rows if r["sealed"].get("test_iid") is not None]
     if hid:
         ax.step([h[0] for h in hid] + [xs[-1]], [h[1] for h in hid] + [hid[-1][1]], where="post", color=ORANGE,
-                linewidth=2, label="same model on a hidden test split")
+                linewidth=2, label="hidden test split (the shadow audit's own training run of the same train.py)")
     ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label="experiment kept")
     ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="experiment discarded")
     ax.set_xticks(xs, ["baseline"] + [str(x) for x in xs[1:]])

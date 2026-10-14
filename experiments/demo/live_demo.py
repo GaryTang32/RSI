@@ -97,7 +97,8 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
     - trials missing from loop evaluations, shadow-monitor readings and the post-run re-score;
     - every recorded model-call error of RRSI's critic (``llm.replies[].error``) and of its digesters and analyst
       (``llm_calls[].error``): any error there is a failed call (timeout, usage cap, CLI error, offline cache miss);
-    - candidates RRSI dropped as ``eval_invalid`` (too many trials lost);
+    - candidates RRSI dropped as ``eval_invalid`` (too many trials lost), and trials missing from any of RRSI's
+      evaluation files (``evals/*.json``, which include its calibration repeats);
     - infrastructure errors on proposals, analyses, gates and other events (``error`` / ``status`` / ``reason``).
 
     A run with any of these is not a clean result."""
@@ -129,6 +130,14 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
             found.append(f"{where} {d.get('candidate', '')} eval_invalid: {str(math.get('detail') or d.get('detail'))[:120]}")
         for key in ("error", "status", "reason"):
             hit(f"{where} {key}", d.get(key))
+    # RRSI's calibration repeats and other evaluation jobs are files, not trace events
+    for f in sorted((out / "evals").glob("*.json")) if (out / "evals").is_dir() else []:
+        try:
+            miss = json.loads(f.read_text()).get("missing") or 0
+        except ValueError:
+            continue
+        if miss > 0:
+            found.append(f"evals/{f.name}: {miss} trials missing")
     for split, row in ((rep or {}).get("splits") or {}).items():
         for arm, v in row.items():
             if (v.get("missing") or 0) > 0:
@@ -192,6 +201,14 @@ def metaharness(a) -> None:
                                            "llm": "claude haiku (task + proposer)"})
 
 
+def traces_identical(src: Path, out: Path) -> dict:
+    """Byte-compare every candidate's execution traces (model replies, tool output with sandbox paths and timeouts)
+    between a recorded run and its replay."""
+    rel = lambda d: {p.relative_to(d): p.read_bytes() for p in (d / "store" / "candidates").glob("*/eval/*/traces/*")}
+    a, b = rel(src), rel(out)
+    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k]), "missing_in_replay": len(set(a) - set(b))}
+
+
 def replay_check(name: str, a) -> None:
     """Re-run a finished Meta-Harness demo with its cache in offline mode (a cache miss is an error, so nothing
     is sent to the model) and compare every proposer prompt and every candidate score with the recorded run."""
@@ -211,7 +228,8 @@ def replay_check(name: str, a) -> None:
     # the trace keeps at most 60,000 characters of a prompt; zero cache misses is the full-prompt proof, because the
     # cache is keyed on a hash of the whole prompt
     rep = {"run": name, "proposer_calls": len(p0), "candidates_scored": len(s0), "prompts_identical": p0 == p1,
-           "scores_identical": s0 == s1, "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
+           "scores_identical": s0 == s1, "traces_identical": traces_identical(src, out),
+           "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
     (out / "replay_check.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
 

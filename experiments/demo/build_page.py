@@ -27,6 +27,14 @@ def _tool_calls(run: Path) -> int:
                for n in re.findall(r'"tool_calls": (\d+)', p.read_text()))
 
 
+def _traces_identical(replay: Path) -> dict:
+    """Same comparison as live_demo.traces_identical, for replays recorded before it existed."""
+    src = replay.parent / replay.name.removesuffix("_replay")
+    rel = lambda d: {p.relative_to(d): p.read_bytes() for p in (d / "store" / "candidates").glob("*/eval/*/traces/*")}
+    a, b = rel(src), rel(replay)
+    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k])}
+
+
 def main() -> None:
     runs = json.loads((DEMO / "data.json").read_text())
     for d in runs:
@@ -40,7 +48,8 @@ def main() -> None:
     extra = {"spend": json.loads((DEMO / "spend.json").read_text())}
     if (DEMO / "replicates.json").exists():
         extra["replicates"] = json.loads((DEMO / "replicates.json").read_text())
-    extra["replay"] = [json.loads(rc.read_text()) | {"tool_calls": _tool_calls(rc.parent)}
+    extra["replay"] = [json.loads(rc.read_text()) | {"tool_calls": _tool_calls(rc.parent),
+                                                     "traces": _traces_identical(rc.parent)}
                        for rc in (DEMO / "runs" / "metaharness_replay" / "replay_check.json",
                                   DEMO / "runs" / "metaharness_hard_replay" / "replay_check.json") if rc.exists()]
     tpl = tpl.replace("/*__EXTRA__*/null", json.dumps(extra).replace("</", "<\\/"))

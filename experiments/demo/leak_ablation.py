@@ -9,9 +9,11 @@ but no task's answer, and the code template copies practice task evolve-ledger-0
 neutral one, on all three splits, with the same fresh trial seeds the post-run re-score uses (``rescore.py``), and
 first checks that the neutral copy contains no task's answer and no practice exchange rate::
 
-    python experiments/demo/leak_ablation.py      # writes demo/runs/metaharness_hard/leak_ablation.json
+    python experiments/demo/leak_ablation.py           # check: replay the recorded leak check offline at $0
+    python experiments/demo/leak_ablation.py --force   # record it again (live calls for anything not cached)
 
-If the scores hold, the copied strings did not drive the result; if they drop, they did.
+The record is ``demo/runs/metaharness_hard/leak_ablation.json``; by default it is only replayed (a cache miss is an
+error) and compared, with per-task scores written to ``leak_ablation_check.json``. If the scores hold, the copied strings did not drive the result; if they drop, they did.
 """
 from __future__ import annotations
 
@@ -70,9 +72,22 @@ def main() -> None:
     before, left = copied_strings(final.files, dom), copied_strings(neutral.files, dom)
     if left:
         raise SystemExit(f"the neutral copy still contains copied strings: {left}")
-    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard")
+    rec = RUN / "leak_ablation.json"
+    live = "--force" in sys.argv or not rec.exists()
+    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard",
+                    offline=not live)
     t0 = time.time()
     rep = rescore(dom, llm, {"final": final, "final_neutralised": neutral})
+    if not live:
+        want = json.loads(rec.read_text())["scores"]
+        got = {s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}
+        check = {"matches": got == want and llm.misses == 0, "cache_misses": llm.misses, "scores": got,
+                 "per_task": {s: {a: v.get("tasks") for a, v in row.items()} for s, row in rep["splits"].items()}}
+        (RUN / "leak_ablation_check.json").write_text(json.dumps(check, indent=1, default=str))
+        print("replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses)
+        if not check["matches"]:
+            raise SystemExit(1)
+        return
     missing = {s: {a: v["missing"] for a, v in row.items()} for s, row in rep["splits"].items()}
     out = {"replaced": NEUTRAL, "files_changed": changed, "copied_in_final": before, "copied_in_neutral": left,
            "k": RESCORE_K, "seed_offset": RESCORE_SEED_OFFSET, "started_at": t0,

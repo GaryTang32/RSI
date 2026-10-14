@@ -29,15 +29,21 @@ The practice tasks are large-number arithmetic (digit sums, modular arithmetic, 
 |---|---|---|---|---|---:|
 | `runs/metaharness` (Run 4) | Meta-Harness | 0.17 → **0.46** | 0.31 → **0.75** | 0.56 → 0.56 | $1.71 |
 | `runs/rrsi` | RRSI | 0.25 → **0.92** | 0.50 → **0.94** | 0.56 → 0.81 | $2.76 |
-| `runs/autoresearch` | autoresearch (tinylm) | val_bpb 2.952 → **2.653** | hidden test 2.905 → **2.682** | shifted test 2.969 → **2.733** | $0.70 |
+| `runs/autoresearch` | autoresearch (tinylm) | val_bpb 2.835 → **2.599** | hidden test 2.905 → **2.682** | shifted test 2.969 → **2.733** | $0.70 |
 
 **How to read the tables.**
 - **Cells.** Each AgentQA cell is seed → final, with two fresh trials per task.
-- **Bold.** Bold marks a gain whose 95% bootstrap confidence interval (paired over tasks, on the page) excludes 0.
-- **Hard Meta-Harness.** Its gains are +0.31 [0, +0.63] on practice, +0.33 [−0.08, +0.75] on held-out and +0.33 [−0.33, +0.83] on OOD. With 6–8 tasks per split, not even the practice gain excludes 0. Sampling noise is large too: the same seed harness, re-scored with the same trial seeds in the two hard runs' separate caches, scored 0.69 / 0.58 / 0.42 and 0.63 / 0.50 / 0.58.
-- **autoresearch.** Lower is better. Each cell is the mean of three fresh training runs of the baseline and final `train.py` (seeds 10000–10002). Validation was measured by the run's own post-run re-evaluation. The hidden and shifted test splits were measured by `experiments/demo/autoresearch_hidden.py` (CPU only, no model calls). The three runs' ranges do not overlap for any of the three. The values the loop selected on were 2.956 → 2.637.
+- **Bold.** Bold marks a gain whose 95% bootstrap confidence interval, paired over tasks, excludes 0. The intervals are on the page; for Runs 1–3 they are in `demo/replicates.json`. For autoresearch, bold means the three training runs' ranges do not overlap.
+- **Hard Meta-Harness.** Its gains are +0.31 [0, +0.63] on practice, +0.33 [−0.08, +0.75] on held-out and +0.33 [−0.33, +0.83] on OOD, so none is bold. The practice bound is borderline:
+  - only 3 of the 8 practice tasks changed, all for the better;
+  - the recorded bound of 0 is Monte-Carlo noise (5,000 resamples), and the exact bootstrap bound is +0.06;
+  - an exact sign-flip test on the 3 changed tasks gives p = 0.25.
 
-**Cost.** Cost is every Haiku call the run's loop made, across all its attempts. That includes attempts cut short by the account's usage cap or a container restart, whose calls the final attempt replayed from the cache. The fresh re-scores and each run's original post-run report are listed separately under [Spend](#spend).
+  Sampling noise is large too: the same seed harness, re-scored with the same trial seeds in the two hard runs' separate caches, scored 0.69 / 0.58 / 0.42 and 0.63 / 0.50 / 0.58.
+- **autoresearch.** Lower is better. Each cell is the mean of three fresh training runs of the baseline and final `train.py` (seeds 10000–10002), all three splits scored on the same models by `experiments/demo/autoresearch_hidden.py` (CPU only, no model calls).
+  - **Sessions differ.** Training stops after 8 s of wall-clock time, so a seed fixes the data order but not the number of steps. A session's results depend on the machine and its load, so compare splits only within one session. The run's own post-run re-evaluation, in an earlier session at the same seeds, gave 2.952 → 2.653 on validation. These runs scored lower (baseline validation 2.835 vs 2.952), most likely because they fit more training steps into the 8 s. The loop selected on 2.956 → 2.637.
+
+**Cost.** Cost is every Haiku call the run's attempts made in the loop and the shadow monitor. That includes attempts cut short by the account's usage cap, a container restart or a crash; the final attempt replayed from the cache the calls it repeated. The fresh re-scores and each run's original post-run report are listed separately under [Spend](#spend).
 
 ![Meta-Harness, hard tasks](figures/metaharness_hard_iterations.png)
 ![RRSI, hard tasks](figures/rrsi_hard_iterations.png)
@@ -47,7 +53,7 @@ The practice tasks are large-number arithmetic (digit sums, modular arithmetic, 
 ![Meta-Harness Run 4](figures/metaharness_iterations.png)
 ![autoresearch](figures/autoresearch_iterations.png)
 
-The iteration charts show in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0). The tables above are the fresh re-score, so their values differ.
+The Meta-Harness and RRSI iteration charts show in-loop practice scores and shadow-monitor readings, one trial per task. Meta-Harness's practice scores and every monitor reading use trial seed 0; RRSI draws a hashed trial seed for each evaluation (`job_seeds` in `rsi/rrsi/evaluate.py`), and its rounds 0, 1, 2 are iterations 1, 2, 3 on the charts. The autoresearch chart shows one training run per experiment. The tables above are the fresh re-score, so their values differ.
 
 ## What happened
 
@@ -87,9 +93,13 @@ RRSI kept the seed.
   - in round 1, because the edit's description named a practice task and its answer (the repair changed only that description).
 
   It passed both round-0 candidates although each quoted the practice answer `Sawyer`. One put it in its system prompt as a format example, the same kind of copy as in the Meta-Harness router; the other quoted it in a code comment. Neither was kept.
-- **Budget.** The $5 cap is checked between rounds. Round 1 started at $4.41 and ended at $6.49 by the run's own accounting: $5.39 live plus $1.10 replayed from an earlier attempt that crashed during calibration. The cap then stopped the run after 2 of its 4 rounds.
+- **Budget.** The $5 cap is checked between rounds, and the cap then stopped the run after 2 of its 4 rounds. The 45-minute wall-clock cap had also run out (3,629 s). By the run's own accounting:
+  - round 1 started at $4.29: $3.30 live plus $0.99 replayed from an earlier attempt that crashed during calibration;
+  - it ended at $6.49: $5.39 live plus $1.10 replayed.
 
-This is not a controlled comparison with Meta-Harness. There is one run of each, and RRSI's per-round overhead (calibration, failure analysis, critic repairs, smoke tests) meant its cap allowed only 4 candidates. Meta-Harness, with no cap, found its router at its 5th candidate. After 4 candidates, neither method had beaten the seed on practice. Whether RRSI would find something like the router with all 4 rounds is untested.
+  $0.11 of that replay is the second round-1 candidate's smoke test reusing the first one's cached calls, which the ledger counts again.
+
+This is not a controlled comparison with Meta-Harness. There is one run of each, and RRSI's overhead (one calibration, then per-round failure analysis, critic repairs and smoke tests) meant its cap allowed only 4 candidates. Meta-Harness, with no cap, found its router at its 5th candidate. After 4 candidates, neither method had beaten the seed on practice. Whether RRSI would find something like the router with all 4 rounds is untested.
 
 ### Meta-Harness on the standard tasks: four runs
 
@@ -120,7 +130,7 @@ One run is an anecdote. The spread across runs is the result. Three of four runs
 - **Round 0.** It kept a general fix: parse the Python in the model's reply, run it with the tool, and force a follow-up grounded in the tool output. In-loop practice went 0.17 → 0.83.
 - **Round 1.** It reached 1.0 in the loop.
 - **Round 2.** Both candidates scored 0.92, inside the noise band, and the cost rule rejected them. The $2.50 budget then stopped the run.
-- **Leakage critic.** It rejected the first draft of both kept edits and passed them after repair. One draft's code had numeric-domain branching and worked examples. The other's code was general, but its edit description named task ids and their answers.
+- **Leakage critic.** It rejected the first draft of both kept edits and passed them after repair. One draft's system prompt listed the suite's numeric domains, with a formula example for each. The other's code was general, but its edit description named task ids and their answers.
 
 The final harness contains no task answer, task id or question text. The fresh re-score puts it at 0.92 on practice, below the loop's 1.0: the loop's single-trial winner was partly lucky. It also scored 0.94 on held-out and 0.81 on OOD.
 
@@ -129,18 +139,18 @@ The final harness contains no task answer, task id or question text. The fresh r
 Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256.
 - **The last keep.** It improved validation by 0.011 in the loop, inside the run's noise. Re-running that commit gave 2.664, worse than the previous keep's 2.648.
 - **Hidden splits, one run.** The shadow audit trained each kept version once. That single run made the last keep look worse on the shifted split, 2.780 → 2.846.
-- **Hidden splits, three runs.** Over three fresh training seeds, the last keep made no difference: in-distribution 2.670 → 2.682 and shifted 2.736 → 2.733, with overlapping ranges.
+- **Three runs, one later session.** Over three fresh training seeds the last keep showed no improvement. Validation went 2.591 → 2.599 and the in-distribution test 2.669 → 2.682, both slightly worse at each seed. The shifted test was unchanged, 2.736 → 2.733.
 
 The strict keep rule locked in noise, and one training run per version was too few to judge it.
 
 ## How the numbers were measured
 
 A Meta-Harness or RRSI run produces three kinds of score:
-- **In-loop scores.** The practice scores the loop decided on (one trial per task, trial seed 0 for Meta-Harness). They carry selection bias: the winner is the candidate whose sample happened to score highest.
+- **In-loop scores.** The practice scores the loop decided on: one trial per task, trial seed 0 for Meta-Harness, and a hashed seed per evaluation for RRSI. They carry selection bias: the winner is the candidate whose sample happened to score highest.
 - **Shadow-monitor readings.** The sealed held-out and OOD scores of each new incumbent (one trial per task, trial seed 0). The loop never saw them; they are the orange and green lines on the charts.
 - **The fresh re-score.** Each run's seed and final harness on every split, two trials per task, with trial seeds 100 and 101. The re-score is `experiments/demo/rescore.py`, written to each run's `rescore.json`; runs recorded from now on get it from `live_demo.py`. These are the tables above.
 
-The LLM cache is keyed on the trial seed. The first version of the post-run report used seeds from 0, so its trial 0 replayed the very samples the loop and the monitor had drawn. On the hard Meta-Harness run it made no new model call at all: its "re-scored" 1.00 on practice was the sample that selected the router. That report is still in each run's `summary.json` (`transfer`); `rescore.json` supersedes it. `transfer_report(seed_offset=...)` makes the independent re-score possible.
+The LLM cache is keyed on the trial seed. The first version of the post-run report used seeds from 0, so its trial 0 replayed the monitor's samples and, for Meta-Harness, the loop's own practice samples. On the hard Meta-Harness run it made no new model call at all: its "re-scored" 1.00 on practice was the sample that selected the router. That report is still in each run's `summary.json` (`transfer`); `rescore.json` supersedes it. `transfer_report(seed_offset=...)` makes the independent re-score possible.
 
 ## The replay fix, and a verified replay
 
@@ -156,14 +166,16 @@ The fix:
 
 **Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. Both checks below ran on the current code:
 
-| Replayed run | Proposer calls | Candidate scores | Cache hits / misses | Sandboxed tool calls | Spent |
-|---|---|---|---|---|---:|
-| Run 4 (standard) | 4 of 4 prompts identical | 8 of 8 identical | 208 / 0 | 0 | $0 |
-| Hard Meta-Harness | 4 of 4 prompts identical | 8 of 8 identical | 192 / 0 | 62 | $0 |
+| Replayed run | Proposer calls | Candidate scores | Cache hits / misses | Execution traces | Sandboxed calls (practice) | Spent |
+|---|---|---|---|---|---|---:|
+| Run 4 (standard) | 4 of 4 prompts identical | 8 of 8 identical | 208 / 0 | 108 of 108 identical | 0 | $0 |
+| Hard Meta-Harness | 4 of 4 prompts identical | 8 of 8 identical | 192 / 0 | 72 of 72 identical | 62 | $0 |
 
 Each run made one proposer call per iteration, yielding 2 candidates.
-- **Run 4 ran no code**, so it verifies the store view and the proposer bill.
-- **The hard run executed model-written code 62 times**, including the 12 calls that hit the 10-second timeout. So its replay also verifies the stable sandbox path: its traces hold `/tmp/rsi_sandbox` and no random scratch path.
+- **What the prompt check verifies.** Both checks verify the store view and the proposer bill.
+- **Run 4 ran no code.**
+- **The hard run executed model-written code.** It made 62 sandboxed calls in its practice evaluations (more in the monitor and the final test), 12 of which hit the 10-second timeout. No sandbox path reached any prompt in this run: every harness makes its model calls before it runs code, and the proposer prompts hold no traceback. So the prompt check would have passed with random paths too.
+- **Traces.** The replay reproduced all 72 of the hard run's candidate execution traces byte for byte (and all 108 of Run 4's). That includes the 12 timeouts and 14 lines (in 13 tracebacks) naming `/tmp/rsi_sandbox`, and no random scratch path. The stable path and `PYTHONHASHSEED=0` are also covered by `tests/core/test_core_sandbox_stable_paths.py`.
 - **Zero misses proves the full prompts matched**, because the cache is keyed on a hash of the whole prompt. The trace keeps only their first 60,000 characters.
 - **Forked children.** Hits and misses are counted in the main process. A miss in a forked interface-validation child would fail its smoke check and show as a score mismatch.
 - **Before the fix.** Replays of Runs 2 and 3, on the code before the fix, failed. Run 2's failed on the proposer bill, and Run 3's on random sandbox paths.
@@ -196,7 +208,7 @@ The hard Meta-Harness run was resumed the same way after two container restarts 
 - the schedules with numpy's business-day calendar;
 - the ciphers by applying each step as worded, checking that every operation occurs.
 
-Calibration on the default hard suite (seed 0: 12 practice tasks and 8 OOD tasks), one trial per task. It replays at $0 with `python experiments/demo/calibrate_hard.py`:
+Calibration on the default hard suite (seed 0: 12 practice tasks and 8 OOD tasks), one trial per task. It replays at $0 with `python experiments/demo/calibrate_hard.py` (offline; `--live` to calibrate for real):
 
 | Harness | Logic | Ledger | Schedule (OOD) | Cipher (OOD) |
 |---|---:|---:|---:|---:|
@@ -235,25 +247,37 @@ Rows are rounded separately, so they sum to $56.39. Run 1 shares its cache with 
 - **What the check covers.** `experiments/demo/live_demo.py`'s `infra_errors` scans a run's trace for lost model calls:
   - trials missing from loop evaluations, monitor readings and the re-score;
   - any recorded error of RRSI's critic, digester and analyst calls;
-  - candidates RRSI dropped as `eval_invalid`;
+  - candidates RRSI dropped as `eval_invalid`, and trials missing from RRSI's evaluation files (`evals/*.json`, which include its calibration repeats);
   - infrastructure errors on proposals and gates.
 - **Results.** Every reported run, the replicates and the restarted RRSI attempt scan clean. So does every `rescore.json`, which records the same check for its own trials.
+- **Monitor readings.** The recorded runs' monitor events predate the missing-trial count, so the scan cannot see a lost monitor trial in them. The reported runs' readings were checked separately, by replaying them offline: both Meta-Harness replay checks and the RRSI monitor readings replayed with 0 misses. The replicates' monitor readings were not replayed.
 - **Older summaries.** The summaries of `rrsi`, `autoresearch` and Runs 1–3 predate the check. Those of `metaharness`, `metaharness_hard` and `rrsi_hard` carry an earlier version of it. Their traces were scanned afterwards.
 - **Chain.** `run_chain.sh` stops at the first job that exits non-zero or whose log reports a usage cap, `INFRA_ERRORS` or missing trials.
-- **Early-ended attempts.** Attempts that ended early sit under `runs/_archive/`, with their logs. The interrupted replicate `runs/metaharness_a` is shown on the page.
+- **Early-ended attempts.** Attempts that ended early sit under `runs/_archive/`, with their logs. The logs of the two container-restarted hard attempts and of the restarted RRSI attempt are empty; their traces are the record. The interrupted replicate `runs/metaharness_a` is shown on the page.
 
 ## Reproduce
+
+Checks of the committed results, all $0 with no model call (a cache miss is an error):
+
+```bash
+python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check   # replay a finished run; writes <run>_replay
+python experiments/demo/rescore.py [run]          # replay each recorded re-score, compare with rescore.json
+python experiments/demo/leak_ablation.py          # replay the leak check, compare with leak_ablation.json
+python experiments/demo/calibrate_hard.py         # replay the hard-suite calibration
+python experiments/demo/spend.py                  # recompute the spend record and compare (writes nothing)
+python experiments/demo/plot_demo.py && python experiments/demo/build_page.py   # rebuild figures and page from the JSONs
+```
+
+Commands that record new results (live Haiku calls, or CPU training whose results depend on the machine):
 
 ```bash
 python experiments/demo/live_demo.py metaharness [--suite hard]   # or rrsi, autoresearch; refuses to overwrite a run
 python experiments/demo/live_demo.py metaharness --resume         # archive an unfinished attempt, continue from its cache
-python experiments/demo/live_demo.py metaharness --replay-check   # $0 replay of a finished run, compares every prompt and score
-python experiments/demo/rescore.py [run]                          # fresh-trial re-score of recorded runs
-python experiments/demo/leak_ablation.py                          # neutralise the copied strings, re-score with the same trials
-python experiments/demo/autoresearch_hidden.py                    # hidden splits over three training seeds (CPU only)
-python experiments/demo/calibrate_hard.py                         # the hard-suite calibration ($0 from its cache)
-experiments/demo/run_chain.sh "metaharness --suite hard" "rescore.py metaharness_hard"   # one at a time; stops on any failure
-python experiments/demo/spend.py && python experiments/demo/plot_demo.py && python experiments/demo/build_page.py
+python experiments/demo/rescore.py --force [run]                  # a new fresh-trial re-score (keeps the old one's record)
+python experiments/demo/leak_ablation.py --force
+python experiments/demo/autoresearch_hidden.py                    # a new training session; never replaces hidden_reeval.json
+experiments/demo/run_chain.sh "metaharness --suite hard" "rescore.py --force metaharness_hard"   # one at a time; stops on any failure
+python experiments/demo/spend.py --force                          # only on the machine that made the calls
 ```
 
 Each `demo/runs/<run>/TRACE.md` holds every step: the proposer prompt and reply, the diff, the critic verdict, per-task scores and the gate arithmetic.

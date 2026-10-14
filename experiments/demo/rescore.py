@@ -5,11 +5,15 @@ post-run report on seed 0 just replays the very samples the loop selected its wi
 reading). This re-scores the seed and the final harness of each run on every split with trial seeds 100 and 101,
 which no loop or monitor used, and writes ``<run>/rescore.json``::
 
-    python experiments/demo/rescore.py                     # every reported run and the replicates
-    python experiments/demo/rescore.py metaharness_hard    # one run (its directory under demo/runs)
+    python experiments/demo/rescore.py                     # check: replay every recorded re-score offline at $0
+    python experiments/demo/rescore.py metaharness_hard    # check one run (its directory under demo/runs)
+    python experiments/demo/rescore.py --force rrsi        # record a new re-score (live calls; replaces rescore.json)
 
-Each run's own cache is used, so a rerun replays at $0. Runs recorded from now on get the same re-score from
-``live_demo._finish``.
+By default nothing is written and no model is called: each recorded re-score is replayed from the run's cache with the
+model switched off (a miss is an error) and compared with ``rescore.json``; per-task scores go to
+``rescore_check.json``. ``--force`` records a new one; the original ``started_at`` and ``usd`` are what
+``spend.py`` attributes the cache entries by, so they are kept in ``rescore_history``. Runs recorded from now on get
+the same re-score from ``live_demo._finish``.
 """
 from __future__ import annotations
 
@@ -38,23 +42,36 @@ RUNS = {
 }
 
 
-def rescore_run(run: str) -> dict:
+def rescore_run(run: str, force: bool = False) -> dict:
     d = OUT / run
     summ = json.loads((d / "summary.json").read_text())
     suite = (summ.get("setup") or {}).get("suite") or "easy"
-    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), OUT / RUNS[run])
+    prev = json.loads((d / "rescore.json").read_text()) if (d / "rescore.json").exists() else None
+    live = force or prev is None
+    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), OUT / RUNS[run], offline=not live)
     t0 = time.time()
     arms = {"seed": Artifact(summ["seed_files"]), "final": Artifact(summ["final_files"])}
     rep = rescore(_agentqa(suite), llm, arms)
     # the run's own record is judged by its summary; here only the re-score's trials count
     errs = [f"re-score {arm} {split}: {v['missing']} trials missing"
             for split, row in rep["splits"].items() for arm, v in row.items() if (v.get("missing") or 0) > 0]
+    scores = {s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}
+    if not live:
+        want = {s: {a: v["S"] for a, v in row.items()} for s, row in prev["transfer"]["splits"].items()}
+        check = {"run": run, "matches": scores == want and not errs and llm.misses == 0, "cache_misses": llm.misses,
+                 "scores": scores, "per_task": {s: {a: v.get("tasks") for a, v in row.items()}
+                                                for s, row in rep["splits"].items()}}
+        (d / "rescore_check.json").write_text(json.dumps(check, indent=1, default=str))
+        print(run, "replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses, flush=True)
+        return {"clean": check["matches"]}
     out = {"run": run, "suite": suite, "k": RESCORE_K, "seed_offset": RESCORE_SEED_OFFSET,
            "started_at": t0, "wall_s": round(time.time() - t0, 1), "transfer": rep,
            "usd": round(llm.meter.total().cost_usd, 4), "cache": {"hits": llm.hits, "misses": llm.misses},
-           "infra_errors": errs, "clean": not errs}
+           "infra_errors": errs, "clean": not errs,
+           "rescore_history": ((prev or {}).get("rescore_history") or []) + ([{k: prev[k] for k in (
+               "started_at", "wall_s", "usd", "cache")}] if prev else [])}
     (d / "rescore.json").write_text(json.dumps(out, indent=1, default=str))
-    print(run, json.dumps({s: {a: round(v["S"], 3) for a, v in row.items()} for s, row in rep["splits"].items()}),
+    print(run, json.dumps({s: {a: round(v, 3) for a, v in row.items()} for s, row in scores.items()}),
           "usd", out["usd"], "cache", out["cache"], flush=True)
     if errs:
         print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ", flush=True)
@@ -62,10 +79,12 @@ def rescore_run(run: str) -> dict:
 
 
 if __name__ == "__main__":
-    todo = sys.argv[1:] or list(RUNS)
+    args = sys.argv[1:]
+    force = "--force" in args
+    todo = [a for a in args if a != "--force"] or list(RUNS)
     for run in todo:
         if run not in RUNS:
             raise SystemExit(f"unknown run {run!r}; choose from {list(RUNS)}")
     for run in todo:
-        if not rescore_run(run)["clean"]:
-            raise SystemExit(f"{run}: trials lost to infrastructure errors; rerun after the cause is fixed")
+        if not rescore_run(run, force)["clean"]:
+            raise SystemExit(f"{run}: the replay differs or trials were lost; see its rescore_check.json / log")

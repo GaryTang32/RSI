@@ -4,10 +4,15 @@ training seeds.
 The run's shadow audit trained each kept version once, at the loop's training seed 0, so its hidden-test values are
 single readings, and training stops on wall-clock time, so a single run is noisy. The run's own post-run
 re-evaluation covered only validation. This trains each version again in audit mode (locked files restored, hidden
-data visible to the locked evaluator only) at the same three seeds as that re-evaluation, 10000-10002. CPU only, no
-model calls; run it on an otherwise idle machine, since the training budget is wall-clock time::
+data visible to the locked evaluator only) at the same three seed numbers as that re-evaluation, 10000-10002, and
+records the validation of the same models too. CPU only, no model calls::
 
-    python experiments/demo/autoresearch_hidden.py    # writes demo/runs/autoresearch/hidden_reeval.json
+    python experiments/demo/autoresearch_hidden.py    # writes demo/runs/autoresearch/hidden_reeval.json (once)
+
+Training stops after 8 s of wall-clock time, so a seed fixes the data order but not the number of steps: results
+depend on the machine and its load, and a later session trains a different amount than the run's own re-evaluation
+did. Compare the splits within this file (``loop_metric_rerun`` is the same models' validation), not with
+``summary.json`` ``meta.reeval``. The recorded file is never replaced; another session goes to a new file.
 """
 from __future__ import annotations
 
@@ -48,7 +53,11 @@ def main() -> None:
         out["versions"][commit] = row
         print(commit, label, {k: round(row[k]["mean"], 4) for k in ("test_iid", "test_shift", "loop_metric_rerun")
                               if row[k]["mean"] is not None}, flush=True)
-    (RUN / "hidden_reeval.json").write_text(json.dumps(out, indent=1, default=str))
+    dest = RUN / "hidden_reeval.json"
+    if dest.exists():   # a new session trains a different amount: keep the recorded one
+        dest = RUN / f"hidden_reeval_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.json"
+    dest.write_text(json.dumps(out, indent=1, default=str))
+    print("wrote", dest)
 
 
 if __name__ == "__main__":

@@ -118,8 +118,9 @@ def transfer_report(
     final, report-only step) and give paired differences against ``reference``
     (default: the first arm, usually the starting artifact).
 
-    Trials use seeds ``seed_offset .. seed_offset + k - 1``. Loops and shadow monitors score with seeds from 0, so
-    with the default offset trial 0 repeats a sample the run already drew (and, with a cached LLM, replays it). Pass
+    Trials use seeds ``seed_offset .. seed_offset + k - 1``. Shadow monitors and Meta-Harness's loop score with seeds
+    from 0 (RRSI's loop uses hashed per-job seeds), so with the default offset trial 0 repeats a sample the run
+    already drew (and, with a cached LLM, replays it). Pass
     an offset no loop used (e.g. 100) for a re-score that is independent of the run. Each row reports ``missing``:
     trials lost to infrastructure errors, which score 0 over the full denominator."""
     ev = Evaluator(domain, llm, workers=workers, allow_sealed=True, cache_dir=cache_dir, seed_offset=seed_offset)
@@ -136,7 +137,7 @@ def transfer_report(
             ids = sorted(ts)
             cmp = paired_diff_ci([ref[i] for i in ids], [ts[i] for i in ids]) if name != reference else None
             row[name] = {"S": r.score, "C": r.cost, "steps": r.steps, "families": r.family_scores(),
-                         "missing": r.n_missing, "vs_reference": cmp}
+                         "missing": r.n_missing, "tasks": ts, "vs_reference": cmp}
         out["splits"][split] = row
     unseen = [s for s in splits if s in ("holdout", "ood") and s in out["splits"]]
     if unseen:

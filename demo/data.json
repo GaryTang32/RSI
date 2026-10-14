@@ -1113,7 +1113,7 @@
    "autoresearch": 0.7018
   },
   "usd_original_report": 0.0,
-  "kept_seed": true,
+  "kept_seed": false,
   "stop_reason": "max_rounds",
   "has_summary": true,
   "method": "autoresearch"

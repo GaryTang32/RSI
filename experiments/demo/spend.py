@@ -9,12 +9,14 @@ start times come from each attempt's trace (or the ``started_at`` its JSON recor
 report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by
 hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it.
 
-Writes ``demo/spend.json``::
+Checks or writes ``demo/spend.json``::
 
-    python experiments/demo/spend.py
+    python experiments/demo/spend.py            # recompute and compare with the committed record; writes nothing
+    python experiments/demo/spend.py --force    # rewrite the record (only on the machine that made the calls)
 
-Write times are not kept by git, so run this on the machine that made the calls; the committed ``demo/spend.json``
-is the record.
+Write times are not kept by git, so only the machine that made the calls can attribute them; elsewhere the committed
+``demo/spend.json`` is the record. The script refuses to write when the write times look like a fresh checkout's (in
+a cache shared by several attempts, every entry written after the last attempt started).
 """
 from __future__ import annotations
 
@@ -125,9 +127,13 @@ def main() -> dict:
     per_attempt: dict[str, dict] = {}
     caches = {}
     known = attempts()
+    suspect = []
     for c in sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]):
         rel = str(c.relative_to(RUNS))
         files = [p for p in c.rglob("*.json") if p.is_file()]
+        starts = sorted(a[1] for a in known.get(rel, []))
+        if len(starts) > 1 and files and min(p.stat().st_mtime for p in files) >= starts[-1]:
+            suspect.append(rel)
         total = round(sum(entry_cost(p) for p in files), 4)
         caches[rel] = {"usd": total, "entries": len(files)}
         if not files or rel not in known:
@@ -157,15 +163,26 @@ def main() -> dict:
         by_kind[kind] = by_kind.get(kind, 0.0) + rec["usd"]
     total_raw = sum(entry_cost(p) for c in [*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]
                     for p in c.rglob("*.json") if p.is_file())
-    out = {"method": __doc__.split("\n\n")[1].replace("\n", " "),
+    out = {"method": __doc__.split("\n\n")[1].replace("\n", " "), "untrusted_write_times": suspect,
            "total_usd": round(total_raw, 4), "by_kind_usd": {k: round(v, 4) for k, v in by_kind.items()},
            "caches": caches, "attempts": per_attempt, "reported": reported}
-    (ROOT / "demo" / "spend.json").write_text(json.dumps(out, indent=1))
     return out
 
 
 if __name__ == "__main__":
     o = main()
+    dest = ROOT / "demo" / "spend.json"
+    old = json.loads(dest.read_text()) if dest.exists() else None
+    same = old is not None and {k: v for k, v in old.items() if k != "untrusted_write_times"} == \
+        {k: v for k, v in o.items() if k != "untrusted_write_times"}
+    if o["untrusted_write_times"]:
+        print("write times look like a fresh checkout in", o["untrusted_write_times"], "- not writing; the committed "
+              "demo/spend.json is the record")
+    elif "--force" in sys.argv or old is None:
+        dest.write_text(json.dumps({k: v for k, v in o.items() if k != "untrusted_write_times"}, indent=1))
+        print("wrote", dest)
+    else:
+        print("matches the committed record" if same else "DIFFERS from the committed record (--force to rewrite)")
     print("total", o["total_usd"])
     for r, v in o["reported"].items():
         print(f"{r:36s} full ${v['usd_full']:.4f}  re-score ${v['usd_rescore']:.4f}  {v['attempts']}")

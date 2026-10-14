@@ -43,3 +43,11 @@ def test_prompts_and_replies_that_mention_errors_are_not_flagged(tmp_path):
                                "report": {"error": "analyst output unusable; heuristic fallback"}}),
                  ("eval", {"candidate": "c1", "summary": {"S": 1.0, "missing": 0}}))
     assert infra_errors(run) == []
+
+
+def test_rrsi_evaluation_files_with_missing_trials_are_flagged(tmp_path):
+    run = _trace(tmp_path, ("eval", {"candidate": "c1", "summary": {"S": 1.0, "missing": 0}}))
+    (run / "evals").mkdir()
+    (run / "evals" / "base_r1.json").write_text(json.dumps({"job": "base_r1", "missing": 1}))
+    (run / "evals" / "base.json").write_text(json.dumps({"job": "base", "missing": 0}))
+    assert infra_errors(run) == ["evals/base_r1.json: 1 trials missing"]
