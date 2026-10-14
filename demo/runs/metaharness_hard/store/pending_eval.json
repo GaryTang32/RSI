@@ -1,15 +1,15 @@
 {
- "iteration": 3,
+ "iteration": 4,
  "candidates": [
   {
-   "name": "hybrid-task-router",
+   "name": "semantic-task-router",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",
    "components": []
   },
   {
-   "name": "step-wise-validation",
+   "name": "structured-plan-executor",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",

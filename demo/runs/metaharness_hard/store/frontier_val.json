@@ -47,6 +47,12 @@
    "context_cost": 20712.875
   },
   {
+   "system": "semantic-task-router",
+   "score": 1.0,
+   "val_accuracy": 100.0,
+   "context_cost": 20712.875
+  },
+  {
    "system": "clear-format-answers",
    "score": 0.75,
    "val_accuracy": 75.0,
@@ -63,6 +69,6 @@
   "system": "hybrid-task-router",
   "score": 1.0
  },
- "_hypervolume": 6832.021875000003,
- "_hv_ref_cost": 22785.162500000002
+ "_hypervolume": 9205.134375000001,
+ "_hv_ref_cost": 25158.275
 }
