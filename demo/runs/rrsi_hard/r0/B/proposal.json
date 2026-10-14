@@ -1,0 +1,46 @@
+{
+ "status": "done",
+ "summary": "Answer extraction with ANSWER: pattern + input validation instruction to fix format non-compliance and truncation assumption issues",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "control_flow",
+   "hypothesis": "Extraction mechanism that prioritizes 'ANSWER: ' pattern in output, combined with system instruction to use this structured format, decouples answers from narrative/explanation and markdown, ensuring correct format for exact-match grading",
+   "targets_mode": "output_format_non_compliance: model adds markdown and sentence wrappers despite format instructions",
+   "why_not_lower_lever": "Prompt instruction alone doesn't guarantee extraction of clean values; extraction alone requires model cooperation on format; together they form a complete mechanism where instruction guides model behavior and extraction mechanism capitalizes on it",
+   "trigger_condition": "Activates when model produces text output; prioritizes ANSWER: pattern when present, falls back to last line if pattern absent",
+   "predicted_affected": [
+    "evolve-logic-002"
+   ],
+   "retroactive_check": "(corrective) evolve-logic-002 output '**Sawyer** owns the rabbit.' instead of plain 'Sawyer'; with ANSWER: instruction + pattern extraction, model would output 'ANSWER: Sawyer' on dedicated line and extraction captures plain 'Sawyer'; (preservative) evolve-logic-006 succeeded with strong constraint logic—changing output format to ANSWER: pattern is compatible and doesn't break the reasoning; (transfer) any task requiring exact-format answers (logic puzzles, data tasks with numeric precision) benefits from this decoupling of reasoning from final answer",
+   "regression_risk": "If model doesn't follow ANSWER: instruction on tasks without format emphasis, extraction may fail to find pattern and fall back to last line, which works for most outputs but may include spurious text if reasoning ends without ANSWER: line",
+   "mechanism": "Extraction mechanism that prioritizes 'ANSWER: ' pattern in output, combined with system instruction to use this structured format, decouples answers from narrative/explanation and markdown, ensuring correct format for exact-match grading"
+  },
+  {
+   "id": "E2",
+   "component": "prompt",
+   "hypothesis": "System instruction to validate input completeness and report truncation/ambiguities before processing prevents the model from proceeding with implicit assumptions about filtering criteria, date ranges, or missing data",
+   "targets_mode": "incomplete_input_assumption_inference: agent infers unspecified filtering criteria and proceeds with calculation despite truncated input",
+   "why_not_lower_lever": "General validation tool would require task-specific detection logic (pipe-delimited vs prose vs CSV formats); prompt instruction applies universally to any task with data input and guides model to self-check before processing",
+   "trigger_condition": "Instruction present in system prompt; activates when model receives structured/tabular input data and should validate completeness before processing",
+   "predicted_affected": [
+    "evolve-ledger-003"
+   ],
+   "retroactive_check": "(corrective) evolve-ledger-003 input ended mid-row ('T1010 | 31/10/2024 | South | Acme | 1.646,52 EU' truncated); with validation instruction, model should detect incomplete final record before applying implicit date/status filters; (preservative) logic tasks have prose input without truncation markers—model skips validation when not applicable; (transfer) any task with structured data (ledger, tables, lists) benefits from upfront completeness check before calculation",
+   "regression_risk": "If model over-applies validation and pauses on valid but sparse data, it might flag false positives; mitigated by phrasing 'if data appears incomplete' rather than 'check all data'",
+   "mechanism": "System instruction to validate input completeness and report truncation/ambiguities before processing prevents the model from proceeding with implicit assumptions about filtering criteria, date ranges, or missing data"
+  }
+ ],
+ "mechanism": "Answer extraction with ANSWER: pattern + input validation instruction to fix format non-compliance and truncation assumption issues",
+ "targets_mode": "output_format_non_compliance: model adds markdown and sentence wrappers despite format instructions, incomplete_input_assumption_inference: agent infers unspecified filtering criteria and proceeds wit",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}
