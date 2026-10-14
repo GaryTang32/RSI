@@ -1,4 +1,8 @@
 """Sandbox output must not carry the random scratch-directory path (it reaches model prompts via tracebacks)."""
+import os
+import subprocess
+import sys
+
 from rsi.core.sandbox import SCRATCH_PLACEHOLDER, call_function, run_python
 
 
@@ -18,3 +22,18 @@ def test_call_function_errors_are_stable():
     code = "def f(x):\n    raise RuntimeError('no')\n"
     (r1, rr1), (r2, rr2) = (call_function(code, "f", {"x": 1}, timeout_s=20) for _ in range(2))
     assert r1 is None and r2 is None and rr1.stderr == rr2.stderr and "rsi_fn_" not in rr1.stderr
+
+
+def test_symlinked_scratch_is_replaced_whatever_the_hash_seed():
+    # on macOS /tmp -> /private/tmp: the real path contains the link path, so the longer one must go first, and
+    # the order must not depend on set iteration (it changes with PYTHONHASHSEED)
+    code = ("from rsi.core import sandbox\n"
+            "from rsi.core.sandbox import RunResult, _stable_paths\n"
+            "sandbox.os.path.realpath = lambda p: '/private' + p\n"
+            "rr = _stable_paths(RunResult(1, '', 'File \"/private/tmp/rsi_sbx_k3/_rsi_main.py\"', 0.0, False), "
+            "'/tmp/rsi_sbx_k3')\n"
+            "print(rr.stderr)\n")
+    outs = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
+                           env={**os.environ, "PYTHONHASHSEED": str(seed)}).stdout.strip()
+            for seed in range(8)}
+    assert outs == {f'File "{SCRATCH_PLACEHOLDER}/_rsi_main.py"'}

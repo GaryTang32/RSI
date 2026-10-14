@@ -170,7 +170,7 @@ def _stable_paths(rr: RunResult, scratch: str) -> RunResult:
     identical runs send different prompts, which defeats exact replay from an LLM cache."""
     real = os.path.realpath(scratch)
     out, err = rr.stdout, rr.stderr
-    for p in {scratch, real}:
+    for p in sorted({scratch, real}, key=len, reverse=True):  # longest first: one can contain the other
         out, err = out.replace(p, SCRATCH_PLACEHOLDER), err.replace(p, SCRATCH_PLACEHOLDER)
     return dataclasses.replace(rr, stdout=out, stderr=err)
 

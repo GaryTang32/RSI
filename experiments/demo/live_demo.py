@@ -128,11 +128,16 @@ def replay_check(name: str, a) -> None:
     llm, dom = _haiku(name, offline=True), _agentqa(a.suite)
     rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                 proposer_kind="rewrite")
-    pick = lambda d: ([e["data"].get("prompt") for e in load_trace(d) if e["kind"] == "proposal"],
+    # one proposer call yields k candidates; the trace stores its prompt on the first and a placeholder on the rest
+    same_call = "(same proposer call as the first candidate)"
+    pick = lambda d: ([e["data"].get("prompt") for e in load_trace(d)
+                       if e["kind"] == "proposal" and e["data"].get("prompt") != same_call],
                       [(e["data"]["candidate"], e["data"]["summary"]["S"]) for e in load_trace(d) if e["kind"] == "eval"])
     (p0, s0), (p1, s1) = pick(src), pick(out)
-    rep = {"run": name, "proposals": len(p0), "prompts_identical": p0 == p1, "scores_identical": s0 == s1,
-           "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
+    # the trace keeps at most 60,000 characters of a prompt; zero cache misses is the full-prompt proof, because the
+    # cache is keyed on a hash of the whole prompt
+    rep = {"run": name, "proposer_calls": len(p0), "candidates_scored": len(s0), "prompts_identical": p0 == p1,
+           "scores_identical": s0 == s1, "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
     (out / "replay_check.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
 
