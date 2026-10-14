@@ -346,7 +346,7 @@ def plot_replicates(reps: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    names = [n for n in ("metaharness", "metaharness_hard", "rrsi_hard", "rrsi", "metaharness_a", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
+    names = [n for n in ("metaharness_hard", "rrsi_hard", "metaharness", "metaharness_a", "rrsi", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
     runs = [extract(n) for n in names]
     (DEMO / "data.json").write_text(json.dumps(runs, indent=1, default=str))
     figs = DEMO / "figures"

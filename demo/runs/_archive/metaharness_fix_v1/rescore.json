@@ -1,0 +1,116 @@
+{
+ "run": "_archive/metaharness_fix_v1",
+ "suite": "easy",
+ "k": 2,
+ "seed_offset": 100,
+ "started_at": 1791984308.769873,
+ "wall_s": 312.4,
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.20833333333333334,
+     "C": 1899.375,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.20833333333333334
+     },
+     "missing": 0,
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1681.7083333333333,
+     "steps": 2.0,
+     "families": {
+      "numeric": 1.0
+     },
+     "missing": 0,
+     "vs_reference": {
+      "mean_diff": 0.7916666666666666,
+      "lo": 0.5833333333333334,
+      "hi": 0.9583333333333334,
+      "n": 12,
+      "p_better": 0.9166666666666666
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.375,
+     "C": 2107.25,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.375
+     },
+     "missing": 0,
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1864.0625,
+     "steps": 2.0,
+     "families": {
+      "numeric": 1.0
+     },
+     "missing": 0,
+     "vs_reference": {
+      "mean_diff": 0.625,
+      "lo": 0.3125,
+      "hi": 0.875,
+      "n": 8,
+      "p_better": 0.75
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.625,
+     "C": 2224.0625,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 1.0
+     },
+     "missing": 0,
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.875,
+     "C": 2026.9375,
+     "steps": 2.0,
+     "families": {
+      "dates": 0.75,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 0.75
+     },
+     "missing": 0,
+     "vs_reference": {
+      "mean_diff": 0.25,
+      "lo": -0.125,
+      "hi": 0.6875,
+      "n": 8,
+      "p_better": 0.375
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "k": 2,
+  "seed_offset": 100,
+  "unseen_mean": {
+   "seed": 0.5,
+   "final": 0.9375
+  }
+ },
+ "usd": 0.547,
+ "cache": {
+  "hits": 0,
+  "misses": 112
+ },
+ "infra_errors": [],
+ "clean": true
+}

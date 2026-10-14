@@ -80,7 +80,23 @@ This is not a controlled comparison with Meta-Harness. There is one run of each,
 
 ### Meta-Harness on the standard tasks: four runs
 
-⟨REPLICATES⟩
+There were four complete runs with the same configuration. The replay fix landed between them, so the code changed slightly from run to run. Run 1 also shares its LLM cache with the interrupted replicate shown on the page.
+
+| Run | Practice | Held-out | OOD | What it found |
+|---|---|---|---|---|
+| Run 1 | 0.17 → **1.00** | 0.38 → **1.00** | 0.69 → **0.88** | write Python, run it with the tool, read the printed answer |
+| Run 2 | 0.21 → **1.00** | 0.38 → **1.00** | 0.63 → **0.88** | the same |
+| Run 3 | 0.21 → **1.00** | 0.38 → **1.00** | 0.56 → **1.00** | the same |
+| Run 4 | 0.17 → **0.46** | 0.31 → **0.75** | 0.56 → 0.56 | better answer extraction; never executed code |
+
+All four runs are fresh re-scores, two trials per task.
+- **Run 1's harness.** Its final harness also hard-coded regex templates for five of the generator's question shapes, and its comments quote six practice questions.
+- **Run 4 never executed code.** From iteration 2 on, its candidates told Haiku to write and run Python, but none called the Python tool: there were 0 tool calls in all 96 candidate task runs.
+  - Haiku printed imitation tool calls with made-up, often wrong outputs, e.g. `ANSWER: 63` for 40627866717431 mod 148, which is 91.
+  - Those candidates scored 0.08–0.25 in the loop. 40 of their 42 failures were wrong answers and 2 were extraction losses.
+  - The proposer's own report misread its traces as "Python got it right, extraction picked the wrong number"; the traces contain no Python output.
+
+One run is an anecdote. The spread across runs is the result: three of four found code execution and reached 1.0 on practice and held-out.
 
 ### RRSI, standard tasks
 
@@ -172,11 +188,21 @@ Even so, no single trick wins. Plain reasoning gets the logic grids right but is
 
 ## Spend
 
-The whole demo cost ⟨TOTAL⟩ of live Haiku calls. `experiments/demo/spend.py` sums every LLM cache and credits each call to the attempt that was running when it was written. Its output, `demo/spend.json`, is the record; git does not keep the write times the attribution needs.
+The whole demo cost $56.38 of live Haiku calls. `experiments/demo/spend.py` sums every LLM cache and credits each call to the attempt that was running when it was written. Its output, `demo/spend.json`, is the record; git does not keep the write times the attribution needs.
 
 | What | Cost |
 |---|---:|
-| ⟨SPEND_TABLE⟩ | |
+| Meta-Harness, hard tasks: four attempts cut short (two by the usage cap, two by container restarts), then the final one | $8.80 |
+| RRSI, hard tasks: an attempt that crashed in calibration when the usage cap hit, then the final one | $7.62 |
+| RRSI, standard tasks: a restarted attempt, then the final one | $3.21 |
+| Meta-Harness Run 4: cut off by the usage cap after iteration 3, then resumed | $2.26 |
+| Meta-Harness Runs 1–3 ($2.98, $1.68, $2.57) | $7.24 |
+| The interrupted replicate (`runs/metaharness_a`) | $2.70 |
+| autoresearch | $0.70 |
+| Fresh re-scores of the seven runs above | $11.92 |
+| Leak checks (the first $2.56, the complete one $2.90) | $5.46 |
+| Hard-suite calibrations | $6.48 |
+| **Total** | **$56.38** |
 
 Run directories that ended early sit under `runs/_archive/`, with their logs. Each run's `summary.json` records `infra_errors` and `clean`. Those infrastructure errors are failed model calls (usage cap, timeouts, offline cache misses) and trials missing from the loop's evaluations, the monitor or the re-score. `rrsi` and `autoresearch` predate that check. Their traces were scanned afterwards with the same check, `results.tsv` was checked for crash rows, and they are clean. Every `rescore.json` records the same check for the re-score. `run_chain.sh` stops at the first job that exits non-zero or loses a model call.
 

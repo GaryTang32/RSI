@@ -1,22 +1,22 @@
 {
  "method": "Every live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``). Several attempts can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that was running when the entry was written: the latest attempt that started at or before the file's write time. Attempt start times come from each attempt's trace (or the ``started_at`` its JSON records).",
- "total_usd": 52.9225,
+ "total_usd": 56.3844,
  "caches": {
   ".cache_autoresearch": {
    "usd": 0.7018,
    "entries": 10
   },
   ".cache_metaharness": {
-   "usd": 2.3246,
-   "entries": 243
+   "usd": 3.4745,
+   "entries": 344
   },
   ".cache_metaharness_hard": {
    "usd": 20.0393,
    "entries": 295
   },
   ".cache_rrsi": {
-   "usd": 3.2133,
-   "entries": 370
+   "usd": 3.9245,
+   "entries": 532
   },
   ".cache_rrsi_hard": {
    "usd": 10.2279,
@@ -35,16 +35,16 @@
    "entries": 60
   },
   "_archive/.cache_metaharness_before_fix": {
-   "usd": 5.6826,
-   "entries": 585
+   "usd": 6.1958,
+   "entries": 667
   },
   "_archive/.cache_metaharness_fix_v1": {
-   "usd": 1.6843,
-   "entries": 284
+   "usd": 2.2312,
+   "entries": 396
   },
   "_archive/.cache_metaharness_fix_v2": {
-   "usd": 2.5729,
-   "entries": 288
+   "usd": 3.1136,
+   "entries": 400
   }
  },
  "attempts": {
@@ -60,11 +60,17 @@
    "usd": 1.3495,
    "entries": 119
   },
+  "metaharness/rescore": {
+   "cache": ".cache_metaharness",
+   "what": "fresh re-score",
+   "usd": 1.2131,
+   "entries": 112
+  },
   "metaharness": {
    "cache": ".cache_metaharness",
    "what": "Run 4, resumed (reported)",
-   "usd": 0.9751,
-   "entries": 124
+   "usd": 0.9119,
+   "entries": 113
   },
   "metaharness_hard": {
    "cache": ".cache_metaharness_hard",
@@ -120,6 +126,12 @@
    "usd": 2.5359,
    "entries": 313
   },
+  "rrsi/rescore": {
+   "cache": ".cache_rrsi",
+   "what": "fresh re-score",
+   "usd": 0.7112,
+   "entries": 162
+  },
   "_rrsi_restarted": {
    "cache": ".cache_rrsi",
    "what": "RRSI, restarted",
@@ -162,17 +174,35 @@
    "usd": 2.9783,
    "entries": 272
   },
+  "_archive/metaharness_before_fix/rescore": {
+   "cache": "_archive/.cache_metaharness_before_fix",
+   "what": "fresh re-score",
+   "usd": 0.5132,
+   "entries": 82
+  },
   "metaharness_a": {
    "cache": "_archive/.cache_metaharness_before_fix",
    "what": "replicate, interrupted during its report",
    "usd": 2.7043,
    "entries": 313
   },
+  "_archive/metaharness_fix_v1/rescore": {
+   "cache": "_archive/.cache_metaharness_fix_v1",
+   "what": "fresh re-score",
+   "usd": 0.547,
+   "entries": 112
+  },
   "_archive/metaharness_fix_v1": {
    "cache": "_archive/.cache_metaharness_fix_v1",
    "what": "Run 2",
    "usd": 1.6843,
    "entries": 284
+  },
+  "_archive/metaharness_fix_v2/rescore": {
+   "cache": "_archive/.cache_metaharness_fix_v2",
+   "what": "fresh re-score",
+   "usd": 0.5408,
+   "entries": 112
   },
   "_archive/metaharness_fix_v2": {
    "cache": "_archive/.cache_metaharness_fix_v2",
@@ -183,12 +213,12 @@
  },
  "reported": {
   "metaharness": {
-   "usd_full": 2.3246,
+   "usd_full": 2.2614,
    "attempts": {
     "_archive/metaharness_v3_capped": 1.3495,
-    "metaharness": 0.9751
+    "metaharness": 0.9119
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 1.2131
   },
   "metaharness_hard": {
    "usd_full": 8.7974,
@@ -207,7 +237,7 @@
     "_rrsi_restarted": 0.6773,
     "rrsi": 2.5359
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.7112
   },
   "rrsi_hard": {
    "usd_full": 7.6211,
@@ -236,21 +266,21 @@
    "attempts": {
     "_archive/metaharness_before_fix": 2.9783
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.5132
   },
   "_archive/metaharness_fix_v1": {
    "usd_full": 1.6843,
    "attempts": {
     "_archive/metaharness_fix_v1": 1.6843
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.547
   },
   "_archive/metaharness_fix_v2": {
    "usd_full": 2.5729,
    "attempts": {
     "_archive/metaharness_fix_v2": 2.5729
    },
-   "usd_rescore": 0.0
+   "usd_rescore": 0.5408
   }
  }
 }

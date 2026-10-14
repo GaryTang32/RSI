@@ -316,9 +316,10 @@ function replicates() {
     + `<div class="legend"><span><i class="dot" style="background:var(--discard)"></i>seed harness</span>`
     + `<span><i class="dot" style="background:var(--s1)"></i>harness after the run</span></div>`
     + `<ul class="small dim">${rows}</ul>`
-    + `<p class="note">Three of four runs found the general strategy (write Python, run it, read the printed answer) and `
-    + `reached 1.0 on practice and held-out tasks. Run 1's final harness also hard-coded regex templates for the task `
-    + `generator's question shapes and quoted six practice questions in its comments: faithful Meta-Harness has no leakage `
+    + `<p class="note">Runs 1–3 found the general strategy (write Python, run it with the tool, read the printed answer) and `
+    + `scored 1.00 on practice and held-out tasks with fresh trials. Run 4 never executed code: its candidates only told Haiku `
+    + `to write Python, and Haiku made up the outputs. Run 1's final harness also hard-coded regex templates for five of the `
+    + `task generator's question shapes and quoted six practice questions in its comments: faithful Meta-Harness has no leakage `
     + `guard, as in the paper, and this is the brittle behaviour the claims audit recorded against its \u201ccoherent `
     + `algorithms\u201d claim. One run is an anecdote; the spread across runs is the result.</p>`;
 }

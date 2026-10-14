@@ -16,3 +16,6 @@
 == 2026-10-14T13:04:14Z rescore.py metaharness -> demo/runs/rescore_metaharness.log
 == 2026-10-14T13:13:57Z rescore.py rrsi -> demo/runs/rescore_rrsi.log
 == 2026-10-14T13:20:59Z rescore.py _archive/metaharness_before_fix -> demo/runs/rescore_archive_metaharness_before_fix.log
+== 2026-10-14T13:25:08Z rescore.py _archive/metaharness_fix_v1 -> demo/runs/rescore_archive_metaharness_fix_v1.log
+== 2026-10-14T13:30:21Z rescore.py _archive/metaharness_fix_v2 -> demo/runs/rescore_archive_metaharness_fix_v2.log
+== 2026-10-14T13:35:28Z chain done
