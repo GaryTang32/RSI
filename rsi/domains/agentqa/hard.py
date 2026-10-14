@@ -269,7 +269,8 @@ def _cipher(rng: random.Random):
                        "character stays in place)")
         elif k == 3:
             r = rng.randint(2, 7)
-            x = x[r:] + x[:r]
+            n = r % len(x) if x else 0   # deletions can leave fewer than r characters: rotation wraps around
+            x = x[n:] + x[:n]
             ops.append(f"rotate the string left by {r} positions (move the first {r} characters to the end)")
         elif k == 4:
             m = rng.randint(3, 5)

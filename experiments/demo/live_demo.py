@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -38,10 +40,25 @@ from rsi.trace import inspect  # noqa: E402
 OUT = ROOT / "demo" / "runs"
 
 
+RESUME = False   # set by --resume
+
+
 def _fresh(name: str) -> Path:
+    """The run directory for a new run. An existing one is refused, except with ``--resume`` when it holds an
+    unfinished or unclean attempt: that attempt (and its log) moves to ``runs/_archive/<name>_<UTC time>`` and the
+    run restarts, replaying every call its cache already holds for $0."""
     out = OUT / name
     if out.exists():
-        raise SystemExit(f"{out} exists: refusing to overwrite a recorded run")
+        summ = out / "summary.json"
+        clean = summ.exists() and json.loads(summ.read_text()).get("clean") is True
+        if not RESUME or clean:
+            raise SystemExit(f"{out} exists: refusing to overwrite a recorded run"
+                             + ("" if clean else " (pass --resume to archive this attempt and continue from the cache)"))
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        dest = OUT / "_archive" / f"{name}_{stamp}"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        out.rename(dest)
+        print(f"archived the unfinished attempt to {dest}", flush=True)
     return out
 
 
@@ -68,31 +85,70 @@ def _usd(llm) -> float:
     return round(llm.meter.total().cost_usd, 4)
 
 
-def infra_errors(out: Path) -> list[str]:
-    """Model calls that failed for infrastructure reasons (usage cap, timeouts, cache misses) anywhere in a run's
-    trace, plus evaluations with missing trials. A run with any of these is not a clean result."""
+INFRA = re.compile(r"llm error|agent error|infra:|session limit")
+
+
+def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
+    """Model calls lost to infrastructure (usage cap, timeouts, offline cache misses) anywhere in a run: trials
+    missing from loop evaluations, the shadow monitor or the final re-score, and errors recorded on proposals,
+    analyses, critics and gates. Only error fields are read, never prompts or replies, so a harness that merely
+    mentions such text is not flagged. A run with any of these is not a clean result."""
     from rsi.trace import load_trace
     found = []
+
+    def hit(where: str, text) -> None:
+        if isinstance(text, str) and (m := INFRA.search(text)):
+            found.append(f"{where}: {text[m.start():][:120]}")
+
     for e in load_trace(out):
-        blob = json.dumps(e["data"], default=str)
-        if "llm error" in blob or "session limit" in blob:
-            found.append(f"{e['kind']} round {e['round']}: " + blob[blob.find("llm error"):][:120])
-        s = e["data"].get("summary") if isinstance(e["data"], dict) else None
+        d, where = e["data"] if isinstance(e["data"], dict) else {}, f"{e['kind']} round {e['round']}"
+        s = d.get("summary")
         if e["kind"] in ("eval", "baseline") and isinstance(s, dict) and (s.get("missing") or 0) > 0:
-            found.append(f"{e['kind']} {e['data'].get('candidate')}: {s['missing']} trials missing")
+            found.append(f"{e['kind']} {d.get('candidate')}: {s['missing']} trials missing")
+        if e["kind"] == "monitor":
+            for split, v in (d.get("sealed") or {}).items():
+                if isinstance(v, dict) and (v.get("missing") or 0) > 0:
+                    found.append(f"monitor {d.get('version')} {split}: {v['missing']} trials missing")
+        for key in ("error", "status", "reason"):
+            hit(f"{where} {key}", d.get(key))
+    for split, row in ((rep or {}).get("splits") or {}).items():
+        for arm, v in row.items():
+            if (v.get("missing") or 0) > 0:
+                found.append(f"re-score {arm} {split}: {v['missing']} trials missing")
     return found
 
 
-def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict, k: int = 2) -> None:
+#: the post-run re-score draws fresh trials: loops and shadow monitors score with trial seeds 0, 1, ..., so these
+#: seeds (100, 101) are samples no loop decision and no monitor reading used
+RESCORE_K, RESCORE_SEED_OFFSET = 2, 100
+
+
+def rescore(dom, llm, arms: dict, splits=("evolve", "holdout", "ood")) -> dict:
+    return transfer_report(dom, llm, arms, splits=splits, k=RESCORE_K, workers=4, seed_offset=RESCORE_SEED_OFFSET)
+
+
+def _monitor_usd(out: Path) -> float:
+    """Spend a run metered outside its main LLM (RRSI's shadow monitor has its own meter)."""
+    from rsi.trace import load_trace
+    end = [e for e in load_trace(out) if e["kind"] == "run_end"]
+    sp = (end[-1]["data"].get("spend") or {}) if end else {}
+    return float(sp.get("shadow_monitor_usd") or 0.0)
+
+
+def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict) -> None:
     inspect(out)
-    before = _usd(llm)
-    rep = transfer_report(dom, llm, {"seed": res.baseline, "final": res.best},
-                          splits=("evolve", "holdout", "ood"), k=k, workers=4)
-    errs = infra_errors(out)
+    before, h0, m0 = _usd(llm), llm.hits, llm.misses
+    rep = rescore(dom, llm, {"seed": res.baseline, "final": res.best})
+    errs = infra_errors(out, rep)
+    monitor = _monitor_usd(out)
     summ = {"run": name, "setup": setup, "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1),
-            "trajectory": res.trajectory, "transfer": rep, "usd_total": _usd(llm),
+            "trajectory": res.trajectory, "transfer": rep,
+            "usd_total": round(_usd(llm) + monitor, 4), "usd_shadow_monitor": round(monitor, 4),
             "usd_transfer_report": round(_usd(llm) - before, 4),
-            "cache": {"hits": llm.hits, "misses": llm.misses},     # hits = calls replayed for $0 (a resumed run)
+            # hits = lookups answered from the cache at $0: calls replayed from an earlier attempt, plus repeats of
+            # prompts this run already sent. Calls made inside forked interface-validation children are not counted.
+            "cache": {"loop_hits": h0, "loop_misses": m0, "rescore_hits": llm.hits - h0,
+                      "rescore_misses": llm.misses - m0},
             "infra_errors": errs, "clean": not errs,
             "seed_files": res.baseline.files, "final_files": res.best.files}
     (out / "summary.json").write_text(json.dumps(summ, indent=1, default=str))
@@ -115,7 +171,7 @@ def metaharness(a) -> None:
     res = rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                       proposer_kind="rewrite")
     _finish(name, out, dom, res, llm, t0, {"method": "metaharness", "suite": a.suite, "config": MH_CFG,
-                                           "llm": "claude haiku (task + proposer)"}, k=1 if a.suite == "hard" else 2)
+                                           "llm": "claude haiku (task + proposer)"})
 
 
 def replay_check(name: str, a) -> None:
@@ -149,7 +205,15 @@ def rrsi_run(a) -> None:
            "max_digests": 4, "n_fail_traces": 6, "n_success_traces": 3, "repair_rounds": 2, "max_done_bounces": 2}
     res = rsi.improve(dom, method="rrsi", llm_task=llm, llm_propose=llm, config=cfg, out_dir=out,
                       llm_analyst=llm, budget=Budget(max_usd=a.max_usd, max_wall_s=45 * 60))
-    _finish(name, out, dom, res, llm, t0, k=1 if a.suite == "hard" else 2, setup={"method": "rrsi", "suite": a.suite, "config": cfg, "llm": "claude haiku (task, proposer, critic, analyst)"})
+    _finish(name, out, dom, res, llm, t0, {"method": "rrsi", "suite": a.suite, "config": cfg,
+                                           "llm": "claude haiku (task, proposer, critic, analyst)"})
+
+
+def autoresearch_crashes(out: Path) -> list[str]:
+    """autoresearch logs a crashed experiment as a ``crash`` row in results.tsv (its evals have no missing count)."""
+    tsv = out / "results.tsv"
+    rows = [r.split("\t") for r in tsv.read_text().strip().splitlines()[1:]] if tsv.exists() else []
+    return [f"results.tsv: crash {r[0]}" for r in rows if len(r) > 3 and r[3].strip() == "crash"]
 
 
 def autoresearch(a) -> None:
@@ -163,10 +227,12 @@ def autoresearch(a) -> None:
                  tag="demo-live", seed=0)
     res = run(task, llm_propose=llm, config=cfg, out_dir=out)
     inspect(out)
+    errs = infra_errors(out) + autoresearch_crashes(out)
     summ = {"run": name, "setup": {"method": "autoresearch", "task": "tinylm, 8 s CPU training budget",
                                    "llm": "claude haiku (research agent)", "max_experiments": 10},
             "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1), "trajectory": res.trajectory,
-            "meta": res.meta, "usd_total": _usd(llm)}
+            "meta": res.meta, "usd_total": _usd(llm), "cache": {"loop_hits": llm.hits, "loop_misses": llm.misses},
+            "infra_errors": errs, "clean": not errs}
     (out / "summary.json").write_text(json.dumps(summ, indent=1, default=str))
     print("usd", summ["usd_total"])
 
@@ -179,6 +245,9 @@ if __name__ == "__main__":
                     help="easy = numeric AgentQA (the first demo); hard = logic grids + ledgers (Meta-Harness, RRSI)")
     ap.add_argument("--replay-check", action="store_true",
                     help="Meta-Harness only: replay a finished run from its cache at $0 and compare it")
+    ap.add_argument("--resume", action="store_true",
+                    help="archive an unfinished or unclean attempt of this run and restart it from its cache")
     a = ap.parse_args()
+    RESUME = a.resume
     OUT.mkdir(parents=True, exist_ok=True)
     {"metaharness": metaharness, "rrsi": rrsi_run, "autoresearch": autoresearch}[a.which](a)

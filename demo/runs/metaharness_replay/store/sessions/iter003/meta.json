@@ -77,7 +77,7 @@
  "view_chars": 176892,
  "read_chars": 55370,
  "error": null,
- "seconds": 0.005,
+ "seconds": 0.002,
  "reports_written": [
   "reports/iter2.md"
  ],

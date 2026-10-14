@@ -97,6 +97,9 @@ def run_cmd(
     base_env.setdefault("OMP_NUM_THREADS", "1")
     base_env.setdefault("OPENBLAS_NUM_THREADS", "1")
     base_env.setdefault("MKL_NUM_THREADS", "1")
+    # a fixed string-hash seed: printed sets and dicts keyed by strings come out in the same order on every run,
+    # so tool output fed back to a model (and the model's cached reply to it) does not vary between runs
+    base_env.setdefault("PYTHONHASHSEED", "0")
     if env:
         base_env.update(env)
     t0 = time.time()

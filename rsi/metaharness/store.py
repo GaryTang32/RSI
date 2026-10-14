@@ -80,10 +80,18 @@ def _drop_volatile(obj: Any) -> tuple[Any, bool]:
 SESSION_VOLATILE_KEYS = frozenset({"usage"})
 
 
+#: files the store itself writes (view paths); only these are stripped. Candidate sources and raw execution traces
+#: (model replies, tool output) are shown exactly as written, even when a line happens to be JSON with such a key.
+STORE_WRITTEN = re.compile(r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?|sessions/[^/]+/meta\.json"
+                           r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json|eval/search/per_task/[^/]+\.json))$")
+
+
 def strip_volatile_fields(path: str, text: str) -> str:
-    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is JSON / JSONL (plus
-    :data:`SESSION_VOLATILE_KEYS` from ``sessions/*/meta.json``); unchanged otherwise, and byte-identical when no
-    volatile key is present."""
+    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is a JSON / JSONL file the store writes
+    (:data:`STORE_WRITTEN`), plus :data:`SESSION_VOLATILE_KEYS` from ``sessions/*/meta.json``; unchanged otherwise,
+    and byte-identical when no volatile key is present."""
+    if not STORE_WRITTEN.match(path):
+        return text
     if path.endswith(".json"):
         try:
             obj, hit = _drop_volatile(json.loads(text))
@@ -96,7 +104,7 @@ def strip_volatile_fields(path: str, text: str) -> str:
         return json.dumps(obj, indent=1, default=str) if hit else text
     if path.endswith(".jsonl"):
         lines, changed = [], False
-        for line in text.splitlines():
+        for line in text.split("\n")[:-1] if text.endswith("\n") else text.split("\n"):
             try:
                 obj, hit = _drop_volatile(json.loads(line))
             except ValueError:
@@ -314,7 +322,8 @@ class ExperienceStore:
             rel = f"candidates/{safe_name(n)}"
             if src and (d / "src").exists():
                 for p in sorted((d / "src").rglob("*")):
-                    if p.is_file():
+                    # a candidate's source is what the store wrote; bytecode left by anyone importing it is not
+                    if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
                         files[f"{rel}/src/{p.relative_to(d / 'src')}"] = p.read_text()
             if meta and (d / "meta.json").exists():
                 files[f"{rel}/meta.json"] = (d / "meta.json").read_text()

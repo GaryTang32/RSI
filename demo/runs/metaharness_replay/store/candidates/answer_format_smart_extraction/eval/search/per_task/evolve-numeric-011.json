@@ -8,7 +8,7 @@
   "tokens": 2533,
   "cost_usd": 0.008933,
   "steps": 1,
-  "latency_s": 0.0024199485778808594,
+  "latency_s": 0.0018153190612792969,
   "error": null,
   "family": "numeric",
   "meta": {

@@ -80,7 +80,7 @@
  "view_chars": 255411,
  "read_chars": 55079,
  "error": null,
- "seconds": 0.004,
+ "seconds": 0.002,
  "reports_written": [
   "reports/iter3.md"
  ],

@@ -37,3 +37,13 @@ def test_symlinked_scratch_is_replaced_whatever_the_hash_seed():
                            env={**os.environ, "PYTHONHASHSEED": str(seed)}).stdout.strip()
             for seed in range(8)}
     assert outs == {f'File "{SCRATCH_PLACEHOLDER}/_rsi_main.py"'}
+
+
+def test_set_order_in_sandbox_output_is_stable():
+    # the child gets PYTHONHASHSEED=0 unless the caller sets it: string sets print in the same order every run
+    code = "print({'red', 'green', 'blue', 'white', 'yellow', 'cyan', 'magenta'})"
+    outs = {run_python(code, timeout_s=20).stdout for _ in range(4)}
+    assert len(outs) == 1
+    assert run_python("import os; print(os.environ['PYTHONHASHSEED'])", timeout_s=20).stdout.strip() == "0"
+    assert run_python("import os; print(os.environ['PYTHONHASHSEED'])", timeout_s=20,
+                      env={"PYTHONHASHSEED": "7"}).stdout.strip() == "7"

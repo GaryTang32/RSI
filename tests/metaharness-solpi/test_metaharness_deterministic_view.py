@@ -40,9 +40,9 @@ def test_raw_view_still_carries_wall_clock_fields(tmp_path):
 
 def test_strip_is_byte_identical_without_volatile_keys():
     text = '{\n "score": 0.5,\n "nested": {"n": 1}\n}'
-    assert strip_volatile_fields("x.json", text) is text
-    assert strip_volatile_fields("x.md", '"created_at": 1') == '"created_at": 1'
-    got = strip_volatile_fields("t.jsonl", '{"a": 1, "latency_s": 0.2}\nnot json\n')
+    assert strip_volatile_fields("candidates/x/meta.json", text) is text
+    assert strip_volatile_fields("reports/x.md", '"created_at": 1') == '"created_at": 1'
+    got = strip_volatile_fields("evolution_summary.jsonl", '{"a": 1, "latency_s": 0.2}\nnot json\n')
     assert got == '{"a": 1}\nnot json\n'
     assert {"created_at", "latency_s", "timing_s"} <= VOLATILE_KEYS
     # a session's usage is the proposer's bill: a cached replay meters it as $0, so it is dropped there only
@@ -79,3 +79,14 @@ def test_view_is_identical_across_processes_with_different_hash_seeds(tmp_path):
         subprocess.run([sys.executable, "-c", script, str(out)], env=env, check=True, capture_output=True, timeout=300)
         views.append(json.loads((out / "view.json").read_text()))
     assert views[0] == views[1]
+
+
+def test_strip_leaves_traces_and_sources_alone():
+    # model replies and tool output are raw data: a reply line that is JSON with a "seconds" key stays as written
+    reply = '{"hours": 2, "seconds": 7200}\n{"created_at": "2024-01-02", "total": 5}\n'
+    assert strip_volatile_fields("candidates/x/eval/search/traces/u.jsonl", reply) == reply
+    src = '{"seconds": 30, "name": "café"}'
+    assert strip_volatile_fields("candidates/x/src/config.json", src) == src
+    # files the store writes are still stripped
+    assert strip_volatile_fields("candidates/x/meta.json", '{"name": "x", "created_at": 1.5}') == '{\n "name": "x"\n}'
+    assert strip_volatile_fields("evolution_summary.jsonl", '{"a": 1, "latency_s": 2}\n') == '{"a": 1}\n'

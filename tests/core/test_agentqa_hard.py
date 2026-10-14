@@ -3,27 +3,38 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
+import random
 import re
 
+import numpy as np
 import pytest
 
 from rsi.domains.agentqa import AgentQADomain
-from rsi.domains.agentqa.hard import OOD_HINT, make_hard_suite
+from rsi.domains.agentqa.hard import OOD_HINT, _cipher, make_hard_suite
+
+
+#: a 34-task suite with every family, plus the suite the live demo ran on (experiments/demo/live_demo.py)
+SUITES = (dict(n_evolve=12, n_holdout=6, n_ood_per_family=8, seed=3),
+          dict(n_evolve=8, n_holdout=6, n_ood_per_family=3, seed=0))
 
 
 def _tasks(fam: str):
-    s = make_hard_suite(n_evolve=12, n_holdout=6, n_ood_per_family=8, seed=3)
-    for split in ("holdout", "ood"):
-        s.unseal(split)
-    return [t for split in ("evolve", "holdout", "ood") for t in s.split(split) if t.family == fam]
+    out = []
+    for kw in SUITES:
+        s = make_hard_suite(**kw)
+        for split in ("holdout", "ood"):
+            s.unseal(split)
+        out += [t for split in ("evolve", "holdout", "ood") for t in s.split(split) if t.family == fam]
+    return out
 
 
 ATTR_ORDER = ("name", "color", "pet", "drink", "hobby")
 
 
 def _solve_logic(q: str) -> list[str]:
-    """Independent solver: fills houses left to right (not the generator's per-value CSP) and checks each clue
-    as soon as every value it mentions is placed."""
+    """Independent solver: parses the clues from the question text and searches attribute by attribute (every
+    permutation of one attribute's values over the houses, most-constrained attribute first), checking each clue
+    once all the attributes it mentions are placed. The generator instead backtracks over single values."""
     head = q.split("Clues:")[0]
     names = re.search(r"people are ([^.]+)\.", head).group(1).split(", ")
     lists = re.findall(r"\(([^)]+)\)", head)
@@ -132,36 +143,55 @@ def test_ledger_targets_recompute_from_the_table():
 def test_schedule_and_cipher_targets_recompute():
     for t in _tasks("schedule"):
         n = int(re.search(r"needs (\d+) business days", t.input).group(1))
-        d = dt.date.fromisoformat(re.search(r"starts on (\S+)", t.input).group(1))
-        hol = {dt.date.fromisoformat(x) for x in re.findall(r"\d{4}-\d\d-\d\d", t.input.split("holidays")[1])}
-        while True:
-            if d.weekday() < 5 and d not in hol:
-                n -= 1
-                if n == 0:
-                    break
-            d += dt.timedelta(days=1)
-        assert d.isoformat() == t.target, t.id
+        start = re.search(r"starts on (\S+)", t.input).group(1)
+        hol = re.findall(r"\d{4}-\d\d-\d\d", t.input.split("holidays")[1])
+        # numpy's business-day calendar, not the generator's loop: the start day counts if it is a business day
+        first = np.busday_offset(start, 0, roll="forward", holidays=hol)
+        assert str(np.busday_offset(first, n - 1, roll="forward", holidays=hol)) == t.target, t.id
+    seen = set()
     for t in _tasks("cipher"):
-        x = re.search(r"string '(\w+)'", t.input).group(1)
-        for step in re.findall(r"^\d+\. (.+)$", t.input, re.M):
-            if step.startswith("reverse"):
-                x = x[::-1]
-            elif m := re.match(r"shift every letter forward in the alphabet by (\d+)", step):
-                x = "".join(chr((ord(c) - 97 + int(m.group(1))) % 26 + 97) for c in x)
-            elif step.startswith("swap"):
-                x = "".join(x[i:i + 2][::-1] for i in range(0, len(x), 2))
-            elif m := re.match(r"rotate the string left by (\d+)", step):
-                r = int(m.group(1)); x = x[r:] + x[:r]
-            elif m := re.match(r"delete every (\d+)(?:rd|th)", step):
-                k = int(m.group(1)); x = "".join(c for i, c in enumerate(x) if (i + 1) % k)
-            elif step.startswith("replace each vowel"):
-                x = x.translate(str.maketrans("aeiou", "eioua"))
-            elif step.startswith("split the string"):
-                h = (len(x) + 1) // 2
-                x = "".join(p + q for p, q in itertools.zip_longest(x[:h], x[h:], fillvalue=""))
-            else:
-                raise AssertionError(step)
-        assert x == t.target, t.id
+        assert _run_cipher(t.input, seen) == t.target, t.id
+    assert seen == set(CIPHER_OPS), f"cipher ops never generated: {set(CIPHER_OPS) - seen}"
+
+
+def test_cipher_rotation_wraps_when_the_string_is_shorter():
+    # deletions can shrink the string below the rotation count; "rotate left by r" then wraps around (r mod len)
+    for i in range(3000):
+        q, target, _ = _cipher(random.Random(f"e-{i}"))
+        if re.search(r"rotate the string left by (\d+)", q) and _run_cipher(q, set(), check_short_rotation=True):
+            assert _run_cipher(q, set()) == target
+            return
+    pytest.skip("no short-string rotation in the sampled tasks")
+
+
+CIPHER_OPS = ("reverse", "shift", "swap", "rotate", "delete", "vowel", "interleave")
+
+
+def _run_cipher(q: str, seen: set, check_short_rotation: bool = False):
+    """Apply the steps as the question words them. With ``check_short_rotation`` return whether any rotation
+    count exceeded the string length instead."""
+    short = False
+    x = re.search(r"string '(\w+)'", q).group(1)
+    for step in re.findall(r"^\d+\. (.+)$", q, re.M):
+        if step.startswith("reverse"):
+            seen.add("reverse"); x = x[::-1]
+        elif m := re.match(r"shift every letter forward in the alphabet by (\d+)", step):
+            seen.add("shift"); x = "".join(chr((ord(c) - 97 + int(m.group(1))) % 26 + 97) for c in x)
+        elif step.startswith("swap"):
+            seen.add("swap"); x = "".join(x[i:i + 2][::-1] for i in range(0, len(x), 2))
+        elif m := re.match(r"rotate the string left by (\d+)", step):
+            seen.add("rotate"); short = short or int(m.group(1)) > len(x)
+            r = int(m.group(1)) % len(x) if x else 0; x = x[r:] + x[:r]
+        elif m := re.match(r"delete every (\d+)(?:rd|th)", step):
+            seen.add("delete"); k = int(m.group(1)); x = "".join(c for i, c in enumerate(x) if (i + 1) % k)
+        elif step.startswith("replace each vowel"):
+            seen.add("vowel"); x = x.translate(str.maketrans("aeiou", "eioua"))
+        elif step.startswith("split the string"):
+            seen.add("interleave"); h = (len(x) + 1) // 2
+            x = "".join(p + q for p, q in itertools.zip_longest(x[:h], x[h:], fillvalue=""))
+        else:
+            raise AssertionError(step)
+    return short if check_short_rotation else x
 
 
 def test_hard_suite_splits_and_domain_hint():
