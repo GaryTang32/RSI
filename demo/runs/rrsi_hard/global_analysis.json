@@ -6,13 +6,13 @@
    "affected_tasks": [
     "evolve-logic-002"
    ],
-   "description": "Final output includes markdown formatting and sentence structure around the answer when task specification requires plain value in exact format; extraction captures the formatted text and fails exact-match grading despite correct underlying reasoning",
-   "needed_instead": "Final answer must strictly adhere to specified output format (plain value, no markdown, no sentence wrapper, no explanatory text) to enable accurate extraction and grading",
+   "description": "Final output includes markdown formatting and sentence structure around the answer when task specification explicitly requires plain value in minimal format; extraction captures the formatted text instead of the plain value and fails exact-match grading despite correct underlying reasoning",
+   "needed_instead": "When task instruction specifies minimal-format output (name only, number only), respond with exactly the value specified, without markdown formatting, explanatory context, or additional text",
    "representative_evidence": [
     {
      "task_id": "evolve-logic-002",
-     "where": "PROMPT instruction vs OUTPUT",
-     "quote": "Prompt: 'Answer with the name only.' Output: '**Sawyer** owns the rabbit.' Grading result: Extracted answer '**Sawyer** owns the rabbit.'; expected 'Sawyer'."
+     "where": "PROMPT specification vs. ACTUAL OUTPUT",
+     "quote": "Instruction: 'Answer with the name only.' | Agent output: '**Sawyer** owns the rabbit.' | Expected: 'Sawyer'"
     }
    ]
   },
@@ -22,13 +22,13 @@
    "affected_tasks": [
     "evolve-ledger-003"
    ],
-   "description": "When task specification or input data is truncated or ambiguous, the system proceeds with implicit assumptions about unspecified filtering criteria (date ranges, status values, data selection rules) rather than detecting incompleteness and requesting clarification; this produces incorrect intermediate results diverging from expected answer",
-   "needed_instead": "Task inputs must be complete and explicit before processing; if input is truncated or incomplete, the system must detect and surface this before calculation proceeds, or explicitly state and confirm all assumptions in advance",
+   "description": "When task data selection or filtering criteria are unspecified or ambiguous, the system proceeds with implicit assumptions about which records or values to include without detecting the ambiguity; this produces incorrect intermediate aggregations, sums, or derived values, diverging from the expected answer",
+   "needed_instead": "Explicitly enumerate and validate assumptions about data scope and filtering before performing aggregations or calculations; verify the interpretation against expected result magnitude; request clarification if the specification is ambiguous about inclusion criteria",
    "representative_evidence": [
     {
      "task_id": "evolve-ledger-003",
-     "where": "INPUT truncation and agent inference",
-     "quote": "Input was truncated (ending 'T1026 | 202'); agent inferred filtering for status 'paid'/'PAID' and date range 2024-07-31 to 2024-10-10, calculated average as $2,368.15. Expected answer was $2,379.20. Inferred filtering criteria did not match intended specification."
+     "where": "CALCULATED vs. EXPECTED numeric answer",
+     "quote": "Agent calculated: 30,786.20 ÷ 13 = 2,368.15. Expected: 2379.20. Discrepancy indicates misaligned assumptions about which values to sum or how many records to include in the aggregation."
     }
    ]
   }
@@ -37,26 +37,26 @@
   {
    "habit": "constraint_anchor_and_keystone_deduction",
    "n_tasks": 1,
-   "description": "For problems with multiple interrelated constraints, identify and anchor reasoning in foundational relationships that establish key variable bindings before exploring the full solution space; use these keystone facts as pivots for subsequent systematic constraint propagation",
-   "risk_if_broken": "Without such anchoring, the system must perform exhaustive combinatorial search across the full solution space; exploration becomes inefficient and may fail to complete for large search spaces or time-bounded contexts"
+   "description": "Identify and anchor the solution search space using high-leverage constraints that maximally reduce combinatorial branching; treat these anchors as load-bearing foundations for subsequent deduction rather than treating all constraints equally in the search",
+   "risk_if_broken": "Without constraint anchors to prune the search space, the system faces exponential branching in possible configurations; reasoning degrades to trial-and-error enumeration; invalid partial assignments propagate unchecked; the problem becomes computationally intractable"
   },
   {
    "habit": "scenario_enumeration_and_systematic_testing",
    "n_tasks": 1,
-   "description": "Enumerate all feasible values for key variables, then systematically test scenarios (e.g., in order of constraint density or likelihood) rather than exploring the solution space randomly; track which scenarios are eliminated by constraints",
-   "risk_if_broken": "May miss viable solutions, explore unlikely branches inefficiently, or fail to complete the search of solution space; token usage increases due to redundant or unfocused exploration"
+   "description": "Enumerate discrete, bounded scenarios consistent with anchor constraints; systematically test each scenario against the full set of constraints before committing to intermediate conclusions; validate that all constraints remain satisfied across the proposed solution",
+   "risk_if_broken": "Without scenario-by-scenario validation against all constraints, the system commits to partial assignments that violate downstream constraints; conflicts accumulate undetected; the final answer appears well-reasoned but is internally inconsistent and unsupported by constraint satisfaction"
   },
   {
    "habit": "constraint_chain_propagation",
    "n_tasks": 1,
-   "description": "Apply constraints iteratively to derive new facts from established facts; propagate implications through chains of logical rules until no new facts can be derived and solution is complete",
-   "risk_if_broken": "Solution may remain incomplete or incorrect despite sufficient constraints; deductions stop prematurely, leaving derived facts undiscovered that are necessary to reach the answer"
+   "description": "Iteratively apply constraints to derive new facts and assignments; cite constraint references explicitly when applying them; propagate newly derived facts forward to further restrict or eliminate candidate assignments; repeat until no new facts can be derived",
+   "risk_if_broken": "Without forward-chaining propagation of derived facts, constraints are applied only in local isolation; new facts from constraint application are not used to eliminate other candidates; the reasoning chain remains incomplete; valid solutions appear invalid due to lack of closure under constraint application"
   },
   {
    "habit": "output_format_specification_compliance",
-   "n_tasks": 1,
-   "description": "Explicitly structure final answer output to match the specified format (e.g., 'ANSWER: <value>' or 'Answer: <value>' when instructed), ensuring the extraction mechanism can identify and isolate the answer correctly from surrounding explanation",
-   "risk_if_broken": "Correct reasoning and logic fail grading due to format mismatch; extraction and exact-match comparison cannot isolate the answer from surrounding narrative or formatting, causing failure despite sound problem-solving"
+   "n_tasks": 6,
+   "description": "Adhere precisely to explicit output format instructions in task specification; deliver answers in the exact format required (plain value, numeric format, markdown/plain text as specified, structured fields) without deviating to add explanation, padding, or alternative formulations",
+   "risk_if_broken": "Violating format specification causes exact-match string grading to fail even when the underlying reasoning, calculation, or answer identification is correct; the harness cannot extract and validate the answer if output format does not match the expected extraction pattern; all successful task completions depend on meeting format expectations"
   }
  ]
 }
