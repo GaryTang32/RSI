@@ -21,8 +21,8 @@ The practice tasks are large-number arithmetic (digit sums, modular arithmetic, 
 
 | Run | Method | Practice | Held-out | OOD | Cost |
 |---|---|---|---|---|---:|
-| `runs/metaharness` (Run 4) | Meta-Harness | ⟨MH⟩ | | | $2.26 |
-| `runs/rrsi` | RRSI | ⟨RRSI⟩ | | | $3.21 |
+| `runs/metaharness` (Run 4) | Meta-Harness | 0.17 → **0.46** | 0.31 → **0.75** | 0.56 → 0.56 | $2.26 |
+| `runs/rrsi` | RRSI | 0.25 → **0.92** | 0.50 → **0.94** | 0.56 → **0.81** | $3.21 |
 | `runs/autoresearch` | autoresearch (tinylm) | val_bpb 2.952 → **2.653** | hidden test 3.004 → 2.734 | shifted test 3.063 → 2.846 | $0.70 |
 
 Each cell is seed → final, two fresh trials per task. The 95% confidence intervals of the paired gains are on the page. On the hard suite they are wide: Meta-Harness's gain is +0.31 [0, +0.63] on practice, +0.33 [−0.08, +0.75] on held-out and +0.33 [−0.33, +0.83] on OOD. The same seed harness, re-scored with the same trial seeds in the two hard runs' separate caches, scored 0.69 / 0.58 / 0.42 and 0.63 / 0.50 / 0.58: sampling noise alone moves a 6-task split by 0.17.
@@ -84,7 +84,12 @@ This is not a controlled comparison with Meta-Harness. There is one run of each,
 
 ### RRSI, standard tasks
 
-⟨RRSI_STD⟩
+- **Round 0.** It kept a general fix: parse the Python in the model's reply, run it with the tool, and force a follow-up grounded in the tool output. In-loop practice went 0.17 → 0.83.
+- **Round 1.** It reached 1.0 in the loop.
+- **Round 2.** Both candidates scored 0.92, inside the noise band, and the cost rule rejected them. The $2.50 budget then stopped the run.
+- **Leakage critic.** It rejected the first draft of both kept edits and passed them after repair. One draft had numeric-domain branching and worked examples; the other named task ids and answers.
+
+The final harness contains no task answer, task id or question text. The fresh re-score puts it at 0.92 on practice, below the loop's 1.0: the loop's single-trial winner was partly lucky. It also scored 0.94 on held-out and 0.81 on OOD.
 
 ### autoresearch
 
