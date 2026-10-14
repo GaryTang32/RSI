@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-003",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '2458.49'; expected '2379.20'.",
+  "output": "ANSWER: 2458.49",
+  "tokens": 19219,
+  "cost_usd": 0.080203,
+  "steps": 1,
+  "latency_s": 0.012992620468139648,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]
