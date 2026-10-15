@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import ast
 import os
-import sys
 import threading
 import time
 import traceback
@@ -65,11 +64,18 @@ class InterfaceValidator:
         r, w = os.pipe()
         pid = os.fork()
         if pid == 0:                                     # child
-            os.close(r)
+            exiting = [False]
+
+            def on_signal(signum, frame) -> None:
+                # a SIGTERM (the parent's cleanup below, `kill`, `timeout`) or SIGINT ends the smoke through the
+                # finally below, which closes the sandboxes it started; once the child is leaving it does nothing
+                if not exiting[0]:
+                    raise (SystemExit(143) if signum == signal.SIGTERM else KeyboardInterrupt())
+
             try:
-                # a SIGTERM (from the parent's cleanup below, or `kill`/`timeout`) ends the smoke through the
-                # finally below, which closes the sandboxes it started instead of orphaning them
-                signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+                os.close(r)
+                signal.signal(signal.SIGTERM, on_signal)
+                signal.signal(signal.SIGINT, on_signal)
                 lock = threading.Lock()
 
                 def send(msg) -> None:
@@ -84,7 +90,13 @@ class InterfaceValidator:
                     err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
                 send(("done", err))
             finally:
-                _child_exit()
+                # first, before any bytecode that runs pending handlers (a call, a loop's back-jump): from here on
+                # no signal can make the child unwind into the parent's code
+                exiting[0] = True
+                try:
+                    _child_exit()
+                finally:
+                    os._exit(0)
         os.close(w)
         deadline = time.monotonic() + self.timeout_s
         done, err, buf = False, None, b""
@@ -124,20 +136,19 @@ class InterfaceValidator:
 
 
 def _child_exit() -> None:
-    """Leave a forked smoke child: close its sandboxes (``sandbox.close_sandboxes``: kill the sandboxed processes it
-    started, in whatever thread, and remove their scratch directories), then ``os._exit``. Another signal arriving
-    meanwhile (the parent's SIGTERM on top of a group SIGINT, say) must never let the child unwind into the parent's
-    code, so the signals are ignored and the close is retried until it completes."""
+    """Close a leaving forked smoke child's sandboxes (``sandbox.close_sandboxes``: kill the sandboxed processes it
+    started, in whatever thread, and remove their scratch directories). Its handlers are no-ops by now and SIGTERM /
+    SIGINT are ignored as well; anything that still interrupts the close makes it run again. The caller
+    ``os._exit``s afterwards whatever happens here."""
     import signal
-    while True:
+    for _ in range(100):
         try:
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             _sandbox.close_sandboxes()
-            break
-        except BaseException:  # noqa: BLE001 - a handler that ran before SIG_IGN took effect: close again
+            return
+        except BaseException:  # noqa: BLE001 - close again
             continue
-    os._exit(0)
 
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:

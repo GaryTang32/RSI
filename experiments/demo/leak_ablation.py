@@ -36,7 +36,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
         sys.path.insert(0, str(p))
 
 from live_demo import (JOURNAL, NEW_SEED_RECORD, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa,  # noqa: E402
-                       drop_unwritten_journal_lines, new_seed_problem, rescore)
+                       begin_live_write, new_seed_problem, rescore)
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
 RUN = ROOT / "demo" / "runs" / "metaharness_hard"
@@ -109,7 +109,7 @@ def run(offset: int, record: bool) -> None:
     if live and (why := new_seed_problem(RUN, rec.name, offset)):
         raise SystemExit(why)
     if live:
-        drop_unwritten_journal_lines()   # leftovers of a killed writer must not claim entries this one pays for
+        begin_live_write()   # one live writer at a time; a killed writer's leftovers must not claim entries
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard",
                     offline=not live, journal=RUN / f"{rec.stem}.{JOURNAL}" if live else None)
     t0 = time.time()

@@ -460,6 +460,30 @@ def test_forked_smoke_child_never_runs_the_parents_code(tmp_path, monkeypatch):
     assert not list(tmp_path.glob("escaped_*"))
 
 
+def test_forked_smoke_child_ignores_the_parents_sigterm_once_leaving(tmp_path):
+    """The smoke finishes, and the child is held at the entry of its exit path while the parent's cleanup SIGTERM
+    arrives: the child's handlers are already no-ops there, so it does not unwind into the caller's code."""
+
+    class HeldAtExit:
+        def smoke(self, artifact, llm):
+            def hold(frame, event, arg):
+                if event == "call" and frame.f_code.co_name == "_child_exit":
+                    time.sleep(0.5)            # the parent got "done" and sends SIGTERM meanwhile
+            sys.setprofile(hold)
+            return None
+
+    parent = os.getpid()
+    try:
+        ok, msg = InterfaceValidator(timeout_s=10, isolate=True).validate(HeldAtExit(), Artifact({"h.py": "x = 1\n"}),
+                                                                          None)
+    finally:
+        if os.getpid() != parent:              # the child escaped: record it and stop it here
+            (tmp_path / f"escaped_{os.getpid()}").write_text("x")
+            os._exit(0)
+    assert ok, msg
+    assert not list(tmp_path.glob("escaped_*"))
+
+
 def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):
     """A sandbox the harness thread is just starting when the smoke is stopped is closed too (spawn and
     registration happen under one lock)."""

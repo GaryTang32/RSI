@@ -110,8 +110,11 @@ def close_sandboxes() -> int:
     me = os.getpid()
     with _LIVE_LOCK:
         _CLOSED.add(me)
-        groups = [g for owner, g in _LIVE_GROUPS if owner == me]
+        groups = {g for owner, g in _LIVE_GROUPS if owner == me}
         dirs = [d for owner, d in _LIVE_DIRS if owner == me]
+    # every sandbox leads its own session as a direct child: also catch one an interrupted run_cmd never registered
+    # (or deregistered before killing it)
+    groups |= _child_session_leaders(me)
     for g in groups:
         try:
             os.killpg(g, 9)
@@ -120,6 +123,27 @@ def close_sandboxes() -> int:
     for d in dirs:
         shutil.rmtree(d, ignore_errors=True)
     return len(groups)
+
+
+def _child_session_leaders(pid: int) -> set[int]:
+    """Direct children of ``pid`` that lead their own process group (Linux /proc; empty elsewhere)."""
+    found: set[int] = set()
+    try:
+        entries = os.listdir("/proc")
+    except OSError:
+        return found
+    for e in entries:
+        if not e.isdigit():
+            continue
+        try:
+            with open(f"/proc/{e}/stat") as f:
+                stat = f.read()
+        except OSError:
+            continue
+        fields = stat[stat.rfind(")") + 2:].split()   # after "pid (comm)": state ppid pgrp ...
+        if len(fields) > 2 and int(fields[1]) == pid and int(fields[2]) == int(e):
+            found.add(int(e))
+    return found
 
 
 def _closed_error() -> RuntimeError:
@@ -216,8 +240,9 @@ def run_cmd(
             pass
         raise
     finally:
-        with _LIVE_LOCK:
-            _LIVE_GROUPS.discard(live)
+        if proc.returncode is not None:   # reaped; one that is not stays registered for close_sandboxes()
+            with _LIVE_LOCK:
+                _LIVE_GROUPS.discard(live)
 
 
 def run_python(

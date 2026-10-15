@@ -47,6 +47,7 @@ def _fresh(name: str) -> Path:
     """The run directory for a new run. An existing one is refused, except with ``--resume`` when it holds an
     unfinished or unclean attempt: that attempt moves to ``runs/_archive/<name>_<UTC time>`` (its log stays where the
     chain wrote it) and the run restarts, replaying every call its cache already holds for $0."""
+    begin_live_write()
     out = OUT / name
     if out.exists():
         summ = out / "summary.json"
@@ -61,15 +62,35 @@ def _fresh(name: str) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
         out.rename(dest)
         print(f"archived the unfinished attempt to {dest}", flush=True)
-    drop_unwritten_journal_lines()
     return out
+
+
+_WRITER_LOCK = None
+
+
+def begin_live_write() -> None:
+    """Call before a live writer (a run, a ``--record``) makes its first model call: take the demo's writer lock,
+    held until the process exits (a second live writer is refused: each drops the others' unfinished journal lines),
+    then drop the journal lines killed writers left (:func:`drop_unwritten_journal_lines`)."""
+    global _WRITER_LOCK
+    if _WRITER_LOCK is None:
+        import fcntl
+        OUT.mkdir(parents=True, exist_ok=True)
+        f = open(OUT / ".live_writer.lock", "w")
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            f.close()
+            raise SystemExit(f"another live demo command holds {OUT / '.live_writer.lock'}: run them one at a time")
+        _WRITER_LOCK = f
+    drop_unwritten_journal_lines()
 
 
 def drop_unwritten_journal_lines(root: Optional[Path] = None) -> int:
     """A journal line is written just before its cache entry appears, so an attempt killed in between lists an entry
     it never wrote; a later attempt that writes the entry would then share it. Every live writer (a run, a
-    ``--record``) calls this before it starts, when no other live writer is running (the demo runs one job at a
-    time), so any line without an entry is such a leftover: drop them all. Returns how many lines it dropped."""
+    ``--record``) calls this before it starts, holding the writer lock (:func:`begin_live_write`), so no other writer
+    is running and any line without an entry is such a leftover: drop them all. Returns how many lines it dropped."""
     root = OUT if root is None else root
     caches = {c.name: c for c in [*root.glob(".cache_*"), *(root / "_archive").glob(".cache_*")]}
     dropped = 0

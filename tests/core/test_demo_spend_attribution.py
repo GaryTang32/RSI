@@ -116,6 +116,7 @@ def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_
     import live_demo
     monkeypatch.setattr(live_demo, "OUT", tmp_path)
     monkeypatch.setattr(live_demo, "RESUME", True)
+    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
     written = _entry(tmp_path / ".cache_run", "a", 1.0, T0)
     old = _entry(tmp_path / "_archive" / ".cache_old", "c", 1.0, T0)
     run = tmp_path / "run"
@@ -129,3 +130,57 @@ def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_
     assert (archived / "cache_writes.txt").read_text() == f".cache_run/{written}\n"
     assert (tmp_path / "x" / "rescore_s200.cache_writes.txt").read_text() == (f".cache_old/{old}\n"
                                                                             f".cache_gone/{'e' * 64}\n")
+
+
+def test_every_live_writer_takes_the_lock_and_drops_dangling_lines(tmp_path, monkeypatch):
+    """A new run (not only --resume) drops what a killed writer left; a second live writer is refused while the
+    first holds demo/runs/.live_writer.lock."""
+    import subprocess
+    import live_demo
+    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+    monkeypatch.setattr(live_demo, "RESUME", False)
+    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
+    written = _entry(tmp_path / ".cache_run", "a", 1.0, T0)
+    _journal(tmp_path / "old" / "rescore_s200.cache_writes.txt", written, "b" * 64)
+    assert live_demo._fresh("newrun") == tmp_path / "newrun"
+    assert (tmp_path / "old" / "rescore_s200.cache_writes.txt").read_text() == f".cache_run/{written}\n"
+    probe = ("import fcntl, sys; f = open(sys.argv[1], 'w')\n"
+             "try:\n    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB); print('free')\n"
+             "except BlockingIOError:\n    print('held')")
+    lock = str(tmp_path / ".live_writer.lock")
+    held = subprocess.run([sys.executable, "-c", probe, lock], capture_output=True, text=True).stdout.strip()
+    live_demo._WRITER_LOCK.close()
+    assert held == "held"
+
+
+class _Called(Exception):
+    pass
+
+
+def _stop(*_a, **_k):
+    raise _Called
+
+
+def _no_model(*_a, **_k):
+    raise AssertionError("a test must never build a live model client")
+
+
+def test_rescore_record_begins_a_live_write(tmp_path, monkeypatch):
+    import rescore
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "summary.json").write_text(json.dumps({"setup": {"suite": "easy"}, "seed_files": {}, "final_files": {}}))
+    (tmp_path / ".cache_run").mkdir()
+    monkeypatch.setattr(rescore, "OUT", tmp_path)
+    monkeypatch.setattr(rescore, "ClaudeCLI", _no_model)   # never a live call, even if the lock step went missing
+    monkeypatch.setattr(rescore, "begin_live_write", _stop)
+    with pytest.raises(_Called):
+        rescore.rescore_run("run", 200, record=True)
+
+
+def test_leak_check_record_begins_a_live_write(monkeypatch):
+    import leak_ablation
+    monkeypatch.setattr(leak_ablation, "ClaudeCLI", _no_model)
+    monkeypatch.setattr(leak_ablation, "begin_live_write", _stop)
+    with pytest.raises(_Called):
+        leak_ablation.run(9000, True)

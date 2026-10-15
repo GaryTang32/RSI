@@ -31,7 +31,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
         sys.path.insert(0, str(p))
 
 from live_demo import (JOURNAL, NEW_SEED_RECORD, OUT, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa,  # noqa: E402
-                       drop_unwritten_journal_lines, new_seed_problem, rescore)
+                       begin_live_write, new_seed_problem, rescore)
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
 
@@ -70,7 +70,7 @@ def rescore_run(run: str, seed_offset: int = RESCORE_SEED_OFFSET, record: bool =
     if not cache_of(run).is_dir():
         raise SystemExit(f"{cache_of(run)} does not exist")
     if live:
-        drop_unwritten_journal_lines()   # leftovers of a killed writer must not claim entries this one pays for
+        begin_live_write()   # one live writer at a time; a killed writer's leftovers must not claim entries
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache_of(run), offline=not live,
                     journal=d / f"{rec.stem}.{JOURNAL}" if live else None)
     t0 = time.time()

@@ -240,7 +240,10 @@ def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
     inherit, fits under the hard one, and the memory limit is set as well."""
     import subprocess as _sp
     import sys as _sys
-    for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"), ((100, 102), "(45, 50)")):
+    import os as _os
+    b = 10 * max(4, len(_os.sched_getaffinity(0))) + 5      # the backstop for a 10 s wall timeout on this machine
+    for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"),
+                         ((1000, 1002), f"({b}, {min(b + 5, 1002)})")):
         code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
                 "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
                 "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
@@ -257,3 +260,17 @@ def test_a_closed_process_starts_no_sandbox():
             "    try:\n        f(); print('started')\n    except RuntimeError as e:\n        print('refused')")
     out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.split()
     assert out == ["refused", "refused"], out
+
+
+def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
+    """A signal between spawn and registration (or between a failed kill and deregistration) leaves a sandbox
+    the registry does not hold; close_sandboxes() still kills it: every sandbox leads its own session as a direct
+    child."""
+    import subprocess as _sp
+    import sys as _sys
+    code = ("import subprocess, sys, time, os\n"
+            "from rsi.core.sandbox import close_sandboxes\n"
+            "p = subprocess.Popen([sys.executable, '-c', 'while True: pass'], start_new_session=True)\n"
+            "time.sleep(0.2); close_sandboxes(); p.wait(timeout=5); print(p.returncode)")
+    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
+    assert out == "-9", out
