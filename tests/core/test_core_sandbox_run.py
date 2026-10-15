@@ -203,3 +203,13 @@ def test_transfer_report_unseals_for_reporting_only():
     rep2 = transfer_report(dom, None, arms, splits=("holdout",), reference="evolved", workers=1)
     assert rep2["splits"]["holdout"]["seed"]["vs_reference"]["mean_diff"] == pytest.approx(-0.5)
     assert "unseen_mean" not in transfer_report(dom, None, arms, splits=("evolve",), workers=1)
+
+
+def test_child_gets_a_cpu_backstop_from_its_wall_timeout():
+    """A child that outlives a SIGKILLed parent (no one left to enforce the wall timeout) still stops: without an
+    explicit cpu_s it gets RLIMIT_CPU of 4x the wall budget plus 5 s; an explicit cpu_s wins."""
+    import sys as _sys
+    from rsi.core.sandbox import run_cmd
+    probe = [_sys.executable, "-c", "import resource; print(resource.getrlimit(resource.RLIMIT_CPU)[0])"]
+    assert run_cmd(probe, timeout_s=10).stdout.strip() == "45"
+    assert run_cmd(probe, timeout_s=10, cpu_s=3).stdout.strip() == "3"

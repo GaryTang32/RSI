@@ -9,7 +9,7 @@ but no task's answer, and the code template copies practice task evolve-ledger-0
 neutral one, on all three splits, with the same fresh trial seeds the post-run re-score uses (``rescore.py``), and
 first checks that the neutral copy contains no task's answer and no practice exchange rate::
 
-    python experiments/demo/leak_ablation.py                     # check: replay every recorded leak check offline at $0
+    python experiments/demo/leak_ablation.py                     # check: replay leak_ablation.json (+ any _s<N>) at $0
     python experiments/demo/leak_ablation.py --seed-offset 200   # check only leak_ablation_s200.json
     python experiments/demo/leak_ablation.py --record --seed-offset 200   # new samples: leak_ablation_s200.json (live)
 
@@ -18,7 +18,8 @@ The record is ``demo/runs/metaharness_hard/leak_ablation.json`` (trial seeds 100
 its ``started_at``). A check replays a record with the model switched off (a cache miss is an error), compares the
 scores, writes per-task scores to ``<record>_check.json`` and exits 1 on any difference; it never calls the model.
 Only ``--record`` does, for an N that gives trial seeds no evaluation of the run used
-(``live_demo.new_seed_problem``). If the scores hold, the copied strings did not drive the result; if they drop, they
+(``live_demo.new_seed_problem``). The superseded first check, ``leak_ablation_v1.json`` (an earlier copy of this
+script), is not replayed. If the scores hold, the copied strings did not drive the result; if they drop, they
 did.
 """
 from __future__ import annotations
@@ -34,7 +35,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from live_demo import (NEW_SEED_RECORD, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem,  # noqa: E402
+from live_demo import (JOURNAL, NEW_SEED_RECORD, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem,  # noqa: E402
                        rescore)
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
@@ -108,7 +109,7 @@ def run(offset: int, record: bool) -> None:
     if live and (why := new_seed_problem(RUN, rec.name, offset)):
         raise SystemExit(why)
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard",
-                    offline=not live)
+                    offline=not live, journal=RUN / f"{rec.stem}.{JOURNAL}" if live else None)
     t0 = time.time()
     rep = rescore(dom, llm, {"final": final, "final_neutralised": neutral}, seed_offset=offset)
     if not live:

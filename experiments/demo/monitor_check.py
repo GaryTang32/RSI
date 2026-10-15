@@ -1,11 +1,15 @@
-"""Replay every recorded shadow-monitor reading offline and compare it with the trace.
+"""Replay the shadow-monitor readings of the reported AgentQA runs and replicates offline and compare them with the
+trace.
 
 The charts' orange and green lines are the shadow monitor's sealed held-out and OOD readings (one trial per task,
 trial seed 0). The recorded traces predate the monitor's missing-trial count, so a lost trial there would not show in
 ``infra_errors``. This re-evaluates each monitored version from the run's LLM cache with the model switched off (a
 cache miss is an error) and checks that every reading reproduces with no missing trial, at $0::
 
-    python experiments/demo/monitor_check.py          # writes <run>/monitor_check.json for every run with a monitor
+    python experiments/demo/monitor_check.py          # writes <run>/monitor_check.json for each run in RUNS
+
+The early-ended attempts and the archived replays under ``_archive/`` are not replayed, nor is autoresearch's shadow
+audit (CPU training, no model call).
 """
 from __future__ import annotations
 

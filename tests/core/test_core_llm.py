@@ -174,6 +174,22 @@ def test_cached_llm_does_not_cache_errors(tmp_path):
     assert c.complete("p").ok and len(inner.calls) == 2
 
 
+def test_cached_llm_journal_lists_only_the_entries_it_wrote(tmp_path):
+    inner = _Priced()
+    cache = tmp_path / ".cache_run"
+    CachedLLM(_Priced(), cache).complete("old", seed=0)          # written by someone else, before
+    j = tmp_path / "run" / "cache_writes.txt"
+    c = CachedLLM(inner, cache, journal=j)
+    c.complete("old", seed=0)                                    # a hit: not this object's write
+    c.complete("new", seed=0)
+    c.complete("new", seed=1)
+    inner.fail = True
+    c.complete("failed", seed=0)                                 # not cached, so not listed
+    keys = [c._key(p, None, None, s).stem for p, s in (("new", 0), ("new", 1))]
+    assert j.read_text().splitlines() == [f".cache_run/{k}" for k in keys]
+    assert CachedLLM(_Priced(), cache).journal is None
+
+
 def test_cached_llm_corrupt_entry_is_a_miss(tmp_path):
     inner = _Priced()
     c = CachedLLM(inner, tmp_path)

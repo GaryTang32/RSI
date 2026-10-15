@@ -30,7 +30,7 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from live_demo import (NEW_SEED_RECORD, OUT, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem,  # noqa: E402
+from live_demo import (JOURNAL, NEW_SEED_RECORD, OUT, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem,  # noqa: E402
                        rescore)
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
@@ -69,7 +69,8 @@ def rescore_run(run: str, seed_offset: int = RESCORE_SEED_OFFSET, record: bool =
         raise SystemExit(f"{rec} does not exist (a check never calls the model; --record makes a new one)")
     if not cache_of(run).is_dir():
         raise SystemExit(f"{cache_of(run)} does not exist")
-    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache_of(run), offline=not live)
+    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache_of(run), offline=not live,
+                    journal=d / f"{rec.stem}.{JOURNAL}" if live else None)
     t0 = time.time()
     arms = {"seed": Artifact(summ["seed_files"]), "final": Artifact(summ["final_files"])}
     rep = rescore(_agentqa(suite), llm, arms, seed_offset=seed_offset)

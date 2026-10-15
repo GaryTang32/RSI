@@ -300,13 +300,13 @@ function runLine(d) {
 function replay() {
   const rs = (EXTRA || {}).replay || []; if (!rs.length) return "";
   const one = r => {
-    const ok = r.prompts_identical && r.scores_identical && !r.cache_misses;
+    const ok = r.prompts_identical && r.scores_identical && !r.cache_misses && (!r.beyond_practice || r.beyond_practice.identical);
     return `<li><b>${r.run === "metaharness_hard" ? "Hard Meta-Harness run" : "Run 4"}: ${ok ? "passed" : "FAILED"}.</b> `
       + `The prompts of all ${r.proposer_calls} proposer calls (one per iteration, each yielding 2 candidates) `
       + `${r.prompts_identical ? "identical" : "differ"}; all ${r.candidates_scored} candidate scores `
       + `${r.scores_identical ? "identical" : "differ"}; ${r.cache_hits} cached calls and ${r.cache_misses} misses in the main `
       + `process; $${(r.usd_spent || 0).toFixed(2)} spent; ${(r.traces_identical || r.traces).identical} of ${(r.traces_identical || r.traces).files} candidate execution `
-      + `traces byte-identical to the recorded run's. ${r.tool_calls ? `Its harnesses ran ${r.tool_calls} sandboxed Python `
+      + `traces byte-identical to the recorded run's. ${r.beyond_practice ? `The seed's score, all ${r.beyond_practice.monitor_readings} shadow-monitor readings and all ${r.beyond_practice.test_results} final test results ${r.beyond_practice.identical ? "are identical" : "DIFFER"}. ` : ""}${r.tool_calls ? `Its harnesses ran ${r.tool_calls} sandboxed Python `
       + `calls in their practice evaluations (more in the monitor and the final test), and the identical traces include `
       + `all ${r.trace_lines.timeouts} practice-evaluation timeouts and the ${r.trace_lines.sandbox_path} lines naming `
       + `the stable /tmp/rsi_sandbox path. No sandbox path reached `

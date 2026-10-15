@@ -7,11 +7,11 @@ from the same cache, replaying the calls the earlier attempt paid for. A cache e
 running when the entry was written: the latest attempt that started at or before the file's write time. Attempt
 start times come from each attempt's trace (or the ``started_at`` its JSON records); a run's original post-run
 report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by
-hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it. Git keeps no write times,
-so the attribution is recorded entry by entry in ``demo/spend_entries.json``: a recorded entry keeps its attempt on
-any checkout. An entry not in the record is attributed by its write time only to a new attempt, one with no recorded
-entries that started after every recorded entry on this disk was written (so after any checkout of them); any other
-is reported as unattributed until the attempt list covers it.
+hand. Git keeps no write times, so that attribution, made on the machine that made the calls, is recorded entry by
+entry in ``demo/spend_entries.json``, and a recorded entry keeps its attempt on any checkout. Entries written since
+are attributed without write times, by the cache-write journal of the attempt that wrote them (``CachedLLM(journal=
+...)``: ``<run>/cache_writes.txt`` for a run, ``<run>/<record>.cache_writes.txt`` for a re-score or leak check); an
+entry neither the record nor a journal lists is reported as unattributed.
 
 Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
 
@@ -29,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RUNS = ROOT / "demo" / "runs"
 ENTRIES = ROOT / "demo" / "spend_entries.json"
+JOURNAL = "cache_writes.txt"   # live_demo.JOURNAL
 
 
 def trace_start(run: str) -> float:
@@ -140,17 +141,29 @@ def entry_key(p: Path) -> str:
     return p.stem[:16]
 
 
+def journal_owners() -> dict[tuple[str, str], str]:
+    """(cache directory name, entry key) -> the attempt whose cache-write journal lists the entry:
+    ``<run>/cache_writes.txt`` is the attempt ``<run>``, ``<run>/<record>.cache_writes.txt`` the attempt
+    ``<run>/<record>``. (Two journals list one entry only if two processes raced to write it; the first, in path
+    order, keeps it.)"""
+    owners: dict[tuple[str, str], str] = {}
+    for j in sorted(RUNS.rglob(f"*{JOURNAL}")):
+        run = str(j.parent.relative_to(RUNS))
+        att = run if j.name == JOURNAL else f"{run}/{j.name[:-len(JOURNAL) - 1]}"
+        for line in j.read_text().splitlines():
+            cache, _, key = line.partition("/")
+            owners.setdefault((cache, key[:16]), att)
+    return owners
+
+
 def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
     """(spend record, entry attribution {cache: {attempt: [entry keys]}}, problems {"missing": [...],
     "unattributed": [...]})."""
     if recorded is None:
         recorded = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else {}
     owner_of = {(c, k): a for c, by in recorded.items() for a, ks in by.items() for k in ks}
-    recorded_attempts = {a for by in recorded.values() for a in by}
+    journaled = journal_owners()
     all_caches = sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")])
-    # write times count only after every recorded entry on this disk was written (a checkout writes them all)
-    newest = max((p.stat().st_mtime for c in all_caches for p in c.rglob("*.json")
-                  if (str(c.relative_to(RUNS)), entry_key(p)) in owner_of), default=float("inf"))
     per_attempt: dict[str, dict] = {}
     caches, membership, missing, unattributed = {}, {}, [], []
     known = attempts()
@@ -159,29 +172,21 @@ def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
         files = [p for p in c.rglob("*.json") if p.is_file()]
         total = round(sum(entry_cost(p) for p in files), 4)
         caches[rel] = {"usd": total, "entries": len(files)}
-        if not files or rel not in known:
-            if total:
-                raise SystemExit(f"{rel} has ${total} of calls but no attempt list")
+        if not files or (rel not in known and not total):   # e.g. the tinylm data cache: no model calls
             continue
-        atts = sorted(known[rel], key=lambda x: x[1])
-        what = {a[0]: a[2] for a in atts}
+        what = {a[0]: a[2] for a in known.get(rel, [])}
         present = set()
         for p in files:
             k = entry_key(p)
             present.add(k)
             name = owner_of.get((rel, k))
-            if name is None:   # not in the record: attribute by write time, to a new attempt only
-                t = p.stat().st_mtime
-                att = next((a for a in reversed(atts) if a[1] <= t), None)
-                why = ("no listed attempt had started" if att is None
-                       else f"{att[0]} has recorded entries" if att[0] in recorded_attempts
-                       else f"{att[0]} started before the newest recorded entry was written" if att[1] <= newest
-                       else None)
-                if why:
-                    unattributed.append(f"{rel}/{k} (written at {t:.0f}: {why})")
+            if name is None:   # not in the record: the journal of the attempt that wrote it
+                name = journaled.get((c.name, k))
+                if name is None:
+                    unattributed.append(f"{rel}/{k}: in neither the record nor any attempt's cache-write journal")
                     continue
-                name = att[0]
-            if name not in what:
+                what.setdefault(name, "found by its cache-write journal")
+            elif name not in what:
                 raise SystemExit(f"{rel}: recorded attempt {name!r} is not in the attempt list")
             rec = per_attempt.setdefault(name, {"cache": rel, "what": what[name], "usd": 0.0, "entries": 0})
             rec["usd"] += entry_cost(p)
@@ -222,7 +227,7 @@ if __name__ == "__main__":
     old = json.loads(dest.read_text()) if dest.exists() else None
     old_entries = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else None
     for kind, why in (("missing", "recorded entries missing from the caches"),
-                      ("unattributed", "entries no listed attempt can own (add the attempt that wrote them)")):
+                      ("unattributed", "entries no record or journal attributes (written without a journal?)")):
         if problems[kind]:
             print(f"{why}: {len(problems[kind])}", *problems[kind][:5], sep="\n  ")
     same = old == o and old_entries == entries and not any(problems.values())

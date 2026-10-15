@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 import os
 import resource
 import secrets
@@ -107,6 +108,10 @@ def run_cmd(
         list(cmd), cwd=str(cwd) if cwd else None, env=base_env, stdin=subprocess.PIPE if stdin is not None else None,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,  # own group: killpg
     )
+    if cpu_s is None and timeout_s and math.isfinite(timeout_s):
+        # a backstop, not the timeout: if this process dies without killing the child (SIGKILL), the child still
+        # stops; generous enough (4x the wall budget) that a single-threaded child always meets the wall timeout first
+        cpu_s = math.ceil(timeout_s) * 4 + 5
     _apply_limits(proc.pid, cpu_s, mem_mb)
     try:
         out, err = proc.communicate(input=stdin, timeout=timeout_s)

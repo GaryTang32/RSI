@@ -341,14 +341,20 @@ class CachedLLM(LLM):
     ``raw = {"cached": True, "usage": <original usage dict>}``, so a domain that
     records the *artifact's* inference cost (not the spend) can report the same
     dollars on a replay as on the original run (see :func:`artifact_usage`).
+    With ``journal`` set, every entry this object writes is also appended to that file as a
+    ``<cache dir name>/<key>`` line, so the calls a run paid for can be told apart in a cache that
+    several runs share, without relying on file times.
     """
 
-    def __init__(self, inner: LLM, cache_dir: str | Path, *, offline: bool = False) -> None:
+    def __init__(self, inner: LLM, cache_dir: str | Path, *, offline: bool = False,
+                 journal: str | Path | None = None) -> None:
         super().__init__()
         self.inner = inner
         #: offline=True replays recorded runs for $0: a cache miss returns an error response
         #: instead of calling the backend.
         self.offline = offline
+        #: file that lists every entry this object writes (None: no journal); may be reassigned
+        self.journal = Path(journal) if journal is not None else None
         self.name = f"cached:{inner.name}"
         self.dir = Path(cache_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -398,6 +404,10 @@ class CachedLLM(LLM):
             tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model,
                                        "stop_reason": stop}))
             tmp.replace(path)
+            if self.journal is not None:
+                self.journal.parent.mkdir(parents=True, exist_ok=True)
+                with open(self.journal, "a") as f:   # one short appended line: atomic across threads and forks
+                    f.write(f"{self.dir.name}/{path.stem}\n")
         return resp
 
 

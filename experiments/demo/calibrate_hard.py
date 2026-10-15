@@ -32,9 +32,9 @@ RUNS = ROOT / "demo" / "runs"
 
 if __name__ == "__main__":
     dom = AgentQADomain(make_hard_suite(seed=0), ood_hint=OOD_HINT)
-    # offline: a cache miss is an error, never a paid call (pass --live to calibrate for real)
-    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), RUNS / "_archive" / ".cache_calib_hard",
-                    offline="--live" not in sys.argv)
+    # offline: a cache miss is an error, never a paid call. A new calibration would need a new cache directory (this
+    # one holds the recorded calls, and a hit is replayed whether or not the cache is offline).
+    llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), RUNS / "_archive" / ".cache_calib_hard", offline=True)
     arms = {"seed": AgentQADomain.seed_artifact(),
             "code_exec": Artifact.from_dir(RUNS / "_archive" / "metaharness_before_fix" / "store" / "candidates"
                                            / "code_execution" / "src")}

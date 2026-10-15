@@ -64,8 +64,15 @@ def _fresh(name: str) -> Path:
     return out
 
 
+#: an attempt's cache-write journal (every cache entry it paid for; spend.py attributes entries by it)
+JOURNAL = "cache_writes.txt"
+
+
 def _haiku(name: str, timeout_s: int = 300, offline: bool = False) -> CachedLLM:
-    return CachedLLM(ClaudeCLI("haiku", timeout_s=timeout_s), OUT / f".cache_{name}", offline=offline)
+    """The run's cached Haiku. A live one journals its writes into the run directory (it moves with an archived
+    attempt); an offline replay writes nothing."""
+    return CachedLLM(ClaudeCLI("haiku", timeout_s=timeout_s), OUT / f".cache_{name}", offline=offline,
+                     journal=None if offline else OUT / name / JOURNAL)
 
 
 def _agentqa(suite: str = "easy"):
@@ -227,6 +234,7 @@ def _monitor_usd(out: Path) -> float:
 def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict) -> None:
     inspect(out)
     before, h0, m0 = _usd(llm), llm.hits, llm.misses
+    llm.journal = out / f"rescore.{JOURNAL}"   # the post-run re-score is its own attempt (<run>/rescore)
     rep = rescore(dom, llm, {"seed": res.baseline, "final": res.best})
     errs = infra_errors(out, rep)
     monitor = _monitor_usd(out)
@@ -282,26 +290,42 @@ def _subset_equal(old, new) -> bool:
 
 def replay_check(name: str, a) -> None:
     """Re-run a finished Meta-Harness demo with its cache in offline mode (a cache miss is an error, so nothing
-    is sent to the model) and compare every proposer prompt, every candidate score and every execution trace with the
-    recorded run. The first check that passes is recorded in ``<run>_replay/``; a failing or interrupted one is
+    is sent to the model) and compare with the recorded run every proposer prompt, every candidate's practice score,
+    every candidate execution trace, the seed's score, every shadow-monitor reading and every final test result. The first check that passes is recorded in ``<run>_replay/``; a failing or interrupted one is
     removed, so the next check starts over. Later checks replay into a scratch directory (removed afterwards) and must
     also reproduce that record, trace counts included. ``--record`` refreshes the record from a check that passes on
     its own (e.g. to add a field a newer check computes), never with fewer traces than it records."""
     import shutil
+    import signal
     from rsi.trace import load_trace
     src, rec = OUT / name, OUT / f"{name}_replay"
     first = not (rec / "replay_check.json").exists()
     out = rec if first else OUT / f"{name}_replaycheck"   # same depth as the run: paths never reach a prompt
-    if out.exists():   # an interrupted earlier check
+    if out.exists():   # left by a check that was killed (SIGKILL); the next one removes it
         shutil.rmtree(out)
     keep = False
+    old_term = signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))   # so `kill`/`timeout` still clean up
     try:
         keep = _replay_compare(name, a, src, rec, out, first, load_trace)
     finally:
+        signal.signal(signal.SIGTERM, old_term)
         if out != rec or not keep:
             shutil.rmtree(out, ignore_errors=True)
     if not keep:
         raise SystemExit(1)
+
+
+def _scores_beyond_practice(d: Path, load_trace) -> dict:
+    """What a Meta-Harness run scored outside its practice candidates: the seed's score, every shadow-monitor reading
+    (sealed splits, model-written code included) and every one-time final test result."""
+    ev = load_trace(d)
+    return {"baseline": [(e["data"].get("artifact"), e["data"]["summary"]["S"]) for e in ev if e["kind"] == "baseline"],
+            "monitor": [(e["data"].get("version"), e["data"].get("artifact"), e["data"].get("decision_score"),
+                         {sp: v.get("S") for sp, v in sorted((e["data"].get("sealed") or {}).items())})
+                        for e in ev if e["kind"] == "monitor"],
+            "test": {str(p.relative_to(d)): (json.loads(p.read_text()).get("score"),
+                                             json.loads(p.read_text()).get("per_unit"))
+                     for p in sorted((d / "store" / "results").glob("*/*/test.json"))}}
 
 
 def _replay_compare(name: str, a, src: Path, rec: Path, out: Path, first: bool, load_trace) -> bool:
@@ -317,13 +341,18 @@ def _replay_compare(name: str, a, src: Path, rec: Path, out: Path, first: bool, 
     (p0, s0), (p1, s1) = pick(src), pick(out)
     # the trace keeps at most 60,000 characters of a prompt; zero cache misses is the full-prompt proof, because the
     # cache is keyed on a hash of the whole prompt
+    b0, b1 = _scores_beyond_practice(src, load_trace), _scores_beyond_practice(out, load_trace)
     rep = {"run": name, "proposer_calls": len(p0), "candidates_scored": len(s0), "prompts_identical": p0 == p1,
            "scores_identical": s0 == s1, "traces_identical": traces_identical(src, out),
-           "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm)}
+           "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm),
+           # the seed's score, the monitor readings and the final test: scores the practice comparison leaves out
+           "beyond_practice": {"baseline": len(b0["baseline"]), "monitor_readings": sum(len(m[3]) for m in b0["monitor"]),
+                               "test_results": len(b0["test"]), "identical": b0 == b1}}
     print(json.dumps(rep, indent=1))
-    t = rep["traces_identical"]
+    t, bp = rep["traces_identical"], rep["beyond_practice"]
     ok = (rep["prompts_identical"] and rep["scores_identical"] and not rep["cache_misses"]
-          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"] and not t["extra_in_replay"])
+          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"] and not t["extra_in_replay"]
+          and bp["identical"] and bp["baseline"] == 1 and bp["test_results"] > 0)
     if first:
         if ok:
             (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))

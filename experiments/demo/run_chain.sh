@@ -9,24 +9,25 @@
 # directory holds a finished run is refused, which stops the chain): live_demo.py moves the unfinished attempt to
 # demo/runs/_archive/ and restarts it, replaying every call its LLM cache already holds for $0.
 #
-# With --check first, the jobs are checks of committed results: their logs and chain log go to a new directory
-# under ${TMPDIR:-/tmp}, and nothing under demo/runs is archived or appended to.
+# With --check first, the jobs are checks of committed results: their logs, chain log and any archived log go to a
+# new directory under ${TMPDIR:-/tmp}, and nothing under demo/runs is archived or appended to.
 #
 # Usage: experiments/demo/run_chain.sh "metaharness --suite hard" "rescore.py metaharness_hard" ...
 #        experiments/demo/run_chain.sh --check "metaharness --replay-check" "rescore.py" "spend.py"   # $0 checks
 cd "$(dirname "$0")/../.."
 logs=demo/runs
+archive=demo/runs/_archive
 if [ "$1" = "--check" ]; then
   shift
-  logs="${TMPDIR:-/tmp}/rsi_checks_$(date -u +%Y%m%dT%H%M%SZ)"
-  mkdir -p "$logs"
+  logs="$(mktemp -d "${TMPDIR:-/tmp}/rsi_checks_$(date -u +%Y%m%dT%H%M%SZ)_XXXX")"
+  archive="$logs/_archive"
 fi
 chain="$logs/chain.log"
 for job in "$@"; do
   log="$logs/$(echo "$job" | tr ' /-' '___' | tr -s '_' | sed 's/\.py//').log"
   if [ -e "$log" ]; then   # never overwrite an earlier attempt's log
-    mkdir -p demo/runs/_archive
-    mv "$log" "demo/runs/_archive/$(basename "$log" .log)_$(date -u +%Y%m%dT%H%M%SZ).log"
+    mkdir -p "$archive"
+    mv "$log" "$archive/$(basename "$log" .log)_$(date -u +%Y%m%dT%H%M%SZ)_$$_$RANDOM.log"
   fi
   echo "== $(date -u +%FT%TZ) $job -> $log" | tee -a "$chain"
   first=${job%% *}

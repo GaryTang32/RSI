@@ -88,7 +88,7 @@ The Meta-Harness and RRSI iteration charts show in-loop practice scores and shad
   - **Held-out.** The two versions differ in one trial: `holdout-logic-004`, which the router as found missed once. The held-out ledger task whose answer, `Delta`, was copied scored 2/2 with and without it.
   - **OOD.** The versions disagree on three cipher trials, in both directions: one cipher went from 1/2 to 2/2 and another from 2/2 to 0/2, a net of −1 of 12. No copied string is an OOD answer.
 
-  There is no sign the copied text drove the result. With 6 tasks per sealed split, a small effect cannot be ruled out. (A first check, now in `leak_ablation_v1.json`, missed the comma-formatted `$2,379.20` and the exchange rate.)
+  There is no sign the copied text drove the result. With 6 tasks per sealed split, a small effect cannot be ruled out. (A first check, now in `leak_ablation_v1.json`, missed the comma-formatted `$2,379.20` and the exchange rate; it is superseded and not replayed.)
 
 ### RRSI, hard tasks
 
@@ -171,12 +171,12 @@ The fix:
 - **Stable sandbox path.** The sandbox reports a stable path, `/tmp/rsi_sandbox`, and replaces the longer path first when the temp directory is a symlink. Sandboxed code also runs with `PYTHONHASHSEED=0`, so printed sets come out in the same order every run.
 - **Tests.** `tests/metaharness-solpi/test_metaharness_deterministic_view.py` and `tests/core/test_core_sandbox_stable_paths.py`.
 
-**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. It compares every prompt, score and trace with the run. A failing or interrupted first check is not recorded. A repeat check replays into a scratch directory and must also reproduce the recorded `<run>_replay/replay_check.json`, trace counts included. Both checks below ran on the current code:
+**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. It compares every proposer prompt, every candidate's practice score and execution trace, the seed's score, every shadow-monitor reading and every final test result with the run. A failing or interrupted first check is not recorded. A repeat check replays into a scratch directory and must also reproduce the recorded `<run>_replay/replay_check.json`, trace counts included. Both checks below ran on the current code:
 
-| Replayed run | Proposer calls | Candidate scores | Cache hits / misses | Execution traces | Sandboxed calls (practice) | Spent |
-|---|---|---|---|---|---|---:|
-| Run 4 (standard) | 4 of 4 prompts identical | 8 of 8 identical | 208 / 0 | 108 of 108 identical | 0 | $0 |
-| Hard Meta-Harness | 4 of 4 prompts identical | 8 of 8 identical | 192 / 0 | 72 of 72 identical | 62 | $0 |
+| Replayed run | Proposer calls | Candidate scores | Seed score, monitor readings, final test results | Cache hits / misses | Execution traces | Sandboxed calls (practice) | Spent |
+|---|---|---|---|---|---|---|---:|
+| Run 4 (standard) | 4 of 4 prompts identical | 8 of 8 identical | 1, 4 and 8, all identical | 208 / 0 | 108 of 108 identical | 0 | $0 |
+| Hard Meta-Harness | 4 of 4 prompts identical | 8 of 8 identical | 1, 6 and 12, all identical | 192 / 0 | 72 of 72 identical | 62 | $0 |
 
 Each run made one proposer call per iteration, yielding 2 candidates.
 - **What the prompt check verifies.** Both checks verify the store view and the proposer bill.
@@ -215,7 +215,7 @@ The hard Meta-Harness run was resumed the same way after two container restarts 
 - the schedules with numpy's business-day calendar;
 - the ciphers by applying each step as worded, checking that every operation occurs.
 
-Calibration on the default hard suite (seed 0: 12 practice tasks and 8 OOD tasks), one trial per task. It replays at $0 with `python experiments/demo/calibrate_hard.py` (offline; `--live` to calibrate for real), which compares every score with `runs/_archive/calibrate_hard.json`, transcribed from the live run's output:
+Calibration on the default hard suite (seed 0: 12 practice tasks and 8 OOD tasks), one trial per task. It replays at $0 with `python experiments/demo/calibrate_hard.py` (offline), which compares every score with `runs/_archive/calibrate_hard.json`, transcribed from the live run's output:
 
 | Harness | Logic | Ledger | Schedule (OOD) | Cipher (OOD) |
 |---|---:|---:|---:|---:|
@@ -231,7 +231,7 @@ Even so, no single trick wins. Plain reasoning gets the logic grids right but is
 
 ## Spend
 
-The whole demo cost $56.38 of live Haiku calls. `experiments/demo/spend.py` sums every LLM cache and credits each call to the attempt that was running when it was written. Its outputs are the record: `demo/spend.json`, and `demo/spend_entries.json`, which names the attempt of every cache entry because git does not keep the write times the attribution needs. The total counts every successful call. A call that failed or timed out is not cached, so it is not counted, whether or not it was billed.
+The whole demo cost $56.38 of live Haiku calls. `experiments/demo/spend.py` sums every LLM cache and credits each call to the attempt that was running when it was written (calls made from now on, to the attempt whose cache-write journal lists them). Its outputs are the record: `demo/spend.json`, and `demo/spend_entries.json`, which names the attempt of every cache entry because git does not keep the write times the attribution needs. The total counts every successful call. A call that failed or timed out is not cached, so it is not counted, whether or not it was billed.
 
 | What | Cost |
 |---|---:|
@@ -257,7 +257,7 @@ Rows are rounded separately, so they sum to $56.39. Run 1 shares its cache with 
   - candidates RRSI dropped as `eval_invalid`, and trials missing from RRSI's evaluation files (`evals/*.json`, which include its calibration repeats);
   - infrastructure errors on proposals and gates.
 - **Results.** Every reported run, the replicates and the restarted RRSI attempt scan clean. So does every `rescore.json`, which records the same check for its own trials.
-- **Monitor readings.** The recorded runs' monitor events predate the missing-trial count, so the scan cannot see a lost monitor trial in them. `experiments/demo/monitor_check.py` replays every monitor reading of the reported runs and replicates offline instead. All 46 readings, across the eight runs with a monitor (replicates included), reproduce exactly with no missing trial and 0 cache misses; each run's `monitor_check.json` records them. The 16 readings in the traces of the seven early-ended attempts under `runs/_archive/` were not replayed.
+- **Monitor readings.** The recorded runs' monitor events predate the missing-trial count, so the scan cannot see a lost monitor trial in them. `experiments/demo/monitor_check.py` replays every shadow-monitor reading of the reported AgentQA runs and replicates offline instead. All 46 readings, across those eight runs, reproduce exactly with no missing trial and 0 cache misses; each run's `monitor_check.json` records them. Not replayed: the 16 readings in the traces of the seven early-ended attempts under `runs/_archive/`, the archived replays, and autoresearch's shadow audit (CPU training, no model call).
 - **Older summaries.** The summaries of `rrsi`, `autoresearch` and Runs 1–3 predate the check. Those of `metaharness`, `metaharness_hard` and `rrsi_hard` carry an earlier version of it. Their traces were scanned afterwards.
 - **Chain.** `run_chain.sh` stops at the first job that exits non-zero or whose log reports a usage cap, `INFRA_ERRORS` or missing trials.
 - **Early-ended attempts.** Attempts that ended early sit under `runs/_archive/`, with their logs. The logs of the two container-restarted hard attempts and of the restarted RRSI attempt are empty; their traces are the record. The interrupted replicate `runs/metaharness_a` is shown on the page.
@@ -270,15 +270,15 @@ Checks of the committed results, all $0 with no model call (a cache miss is an e
 python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check   # replay a finished run; compare with it and its record
 python experiments/demo/rescore.py [run]          # replay every recorded re-score (rescore.json, any rescore_s<N>.json)
 python experiments/demo/rescore.py --seed-offset N [run]   # only the recorded rescore_s<N>.json
-python experiments/demo/leak_ablation.py          # replay every recorded leak check; compare with leak_ablation.json
+python experiments/demo/leak_ablation.py          # replay leak_ablation.json (and any leak_ablation_s<N>.json); compare
 python experiments/demo/monitor_check.py          # replay the reported runs' shadow-monitor readings; compare with the traces
 python experiments/demo/calibrate_hard.py         # replay the hard-suite calibration; compare with _archive/calibrate_hard.json
 python experiments/demo/spend.py                  # recompute the spend record and compare
-python experiments/demo/plot_demo.py && python experiments/demo/build_page.py   # rebuild figures and page from the JSONs
+python experiments/demo/plot_demo.py && python experiments/demo/build_page.py && git diff --exit-code -- demo/data.json demo/index.html demo/figures   # rebuild the page and figures; compare
 experiments/demo/run_chain.sh --check "metaharness --replay-check" "rescore.py" "spend.py"   # one after another; logs under $TMPDIR
 ```
 
-The checks write their per-task results beside the records (`rescore_check.json`, `leak_ablation_check.json`, `monitor_check.json`); when a check matches, these come out identical to the committed ones. The replay check replays into a scratch directory and removes it. None of them calls the model. `spend.py` works on a fresh clone: recorded cache entries keep the attempt `demo/spend_entries.json` names. An entry not in the record is attributed by write time only to a new attempt, one with no recorded entries that started after every recorded entry on this disk was written; any other is reported, the check fails and `--force` refuses.
+The checks write their per-task results beside the records (`rescore_check.json`, `leak_ablation_check.json`, `monitor_check.json`); when a check matches, these come out identical to the committed ones. The replay check replays into a scratch directory and removes it (a killed check's directory is removed by the next check). None of them calls the model. `spend.py` works on a fresh clone: recorded cache entries keep the attempt `demo/spend_entries.json` names, and newer entries go to the attempt whose cache-write journal lists them (`<run>/cache_writes.txt`, `<run>/<record>.cache_writes.txt`, written by every live run, re-score and leak check). An entry neither lists is reported, the check fails and `--force` refuses.
 
 Commands that record new results (live Haiku calls, or CPU training whose results depend on the machine). None of them replaces a committed run, re-score or leak-check record; `spend.py --force` rewrites `demo/spend.json` and `demo/spend_entries.json`, keeping every recorded entry's attempt:
 
@@ -288,7 +288,7 @@ python experiments/demo/live_demo.py metaharness --resume         # archive an u
 python experiments/demo/rescore.py --record --seed-offset 200 rrsi  # new trials, seeds 200 and 201: rescore_s200.json
 python experiments/demo/leak_ablation.py --record --seed-offset 200 # new trials: leak_ablation_s200.json
 python experiments/demo/autoresearch_hidden.py                    # a new training session: hidden_reeval_<time>.json
-python experiments/demo/spend.py --force                          # account the new calls (list a new run's attempts first)
+python experiments/demo/spend.py --force                          # account the new calls (add a new run to REPORTED for its row)
 ```
 
 `--record --seed-offset N` must give trial seeds no other evaluation of the run used: N ≥ 102, no seed the run's RRSI loop recorded, and no overlap with another `rescore_s*`/`leak_ablation_s*` record of the run (a re-score and a leak check may share N, as the recorded pair shares 100). Only `--record` calls the model, and it never replaces a record. A new run gets its re-score from `live_demo.py` itself (in `summary.json`).
