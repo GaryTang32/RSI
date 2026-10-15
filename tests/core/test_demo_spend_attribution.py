@@ -204,13 +204,14 @@ def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkey
     (tmp_path / ".cache_run").mkdir()
     holder = open(tmp_path / ".live_writer.lock", "w")
     fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)               # another writer (a separate open file)
-    import signal
+    real_flock = fcntl.flock
 
-    def hung(*_):
-        raise AssertionError("a live writer waited for the lock instead of refusing")
+    def no_waiting(f, op):
+        if not op & fcntl.LOCK_NB:                                 # would wait for the holder instead of refusing
+            raise AssertionError("a live writer waited for the lock instead of refusing")
+        return real_flock(f, op)
 
-    old_alarm = signal.signal(signal.SIGALRM, hung)
-    signal.alarm(20)
+    monkeypatch.setattr(fcntl, "flock", no_waiting)
     try:
         with pytest.raises(SystemExit, match="one at a time"):
             live_demo._fresh("run")
@@ -224,6 +225,4 @@ def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkey
         with pytest.raises(SystemExit, match="one at a time"):
             leak_ablation.run(9000, True)
     finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_alarm)
         holder.close()

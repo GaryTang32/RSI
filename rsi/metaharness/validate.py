@@ -61,16 +61,23 @@ class InterfaceValidator:
         import pickle
         import select
         import signal
-        r, w = os.pipe()
         # SIGINT/SIGTERM stay blocked across the fork until each side has its handlers: a signal landing in the
-        # fork's after-fork hooks would otherwise run the parent's handler in the child, outside its finally
+        # fork's after-fork hooks would otherwise run the parent's handler in the child, outside its finally.
+        # Only this thread blocks them (other threads, e.g. numpy's, still take them and the handler then runs
+        # here at the next chance), so every path below restores the mask whatever is raised.
         stop_signals = {signal.SIGINT, signal.SIGTERM}
-        mask = signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
+        fds: list[int] = []
         try:
+            signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
+            fds = list(os.pipe())
             pid = os.fork()
         except BaseException:
+            for fd in fds:
+                os.close(fd)
             signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             raise
+        r, w = fds
         if pid == 0:                                     # child
             exiting = [False]
 
@@ -106,13 +113,16 @@ class InterfaceValidator:
                     _child_exit()
                 finally:
                     os._exit(0)
-        deadline = time.monotonic() + self.timeout_s
         done, err, buf = False, None, b""
         inflight: dict[int, int] = {}
         try:
-            # inside the try: a signal held since the fork arrives here, and the finally still stops the child
-            os.close(w)
-            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            # inside the try: a signal held since the fork (or taken by another thread meanwhile) arrives here, the
+            # mask is restored whatever happens, and the finally still stops the child
+            try:
+                os.close(w)
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            deadline = time.monotonic() + self.timeout_s
             while not done:
                 left = deadline - time.monotonic()
                 if left <= 0:

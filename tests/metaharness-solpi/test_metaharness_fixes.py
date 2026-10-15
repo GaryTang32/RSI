@@ -514,6 +514,41 @@ print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
     assert float(lines[0].split()[1]) < 5, lines
 
 
+def test_the_signal_mask_is_restored_when_a_stop_signal_surfaces_right_after_the_fork(tmp_path):
+    """Blocking SIGINT/SIGTERM across the fork covers only the validating thread: another thread may take a stop
+    signal meanwhile, and the handler then runs in the validating thread at its next chance, which can be the
+    parent's first call after the fork. Simulated deterministically: that call (closing the pipe's write end)
+    raises KeyboardInterrupt while the signals are still blocked. The mask must come back unblocked and the child
+    must still be stopped."""
+    code = """
+import os, signal, sys, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+parent, real_close, raised = os.getpid(), os.close, []
+def close(fd):
+    real_close(fd)
+    blocked = signal.SIGINT in signal.pthread_sigmask(signal.SIG_BLOCK, [])
+    if os.getpid() == parent and blocked and not raised:   # the parent's first call after the fork
+        raised.append(fd)
+        raise KeyboardInterrupt
+os.close = close
+
+class Smoke:
+    def smoke(self, artifact, llm):
+        time.sleep(30)
+
+t0 = time.monotonic()
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    print("no interrupt", end=" ")
+except KeyboardInterrupt:
+    print("interrupted", end=" ")
+print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), time.monotonic() - t0 < 5)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert out.stdout.strip() == "interrupted [] True", (out.stdout, out.stderr[-1500:])
+
+
 def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):
     """A sandbox the harness thread is just starting when the smoke is stopped is closed too (spawn and
     registration happen under one lock)."""

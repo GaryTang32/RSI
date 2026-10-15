@@ -282,31 +282,34 @@ def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
     assert out == "-9", out
 
 
-def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8():
-    """The kernel cuts a process name to 15 bytes, possibly inside a character: scanning /proc must still kill
-    both the registered sandbox and an unregistered one."""
+def _inner(code: str, tmp_path, **env) -> str:
+    """Run ``code`` in a fresh interpreter (close_sandboxes marks a process closed for good) with its temp files
+    under ``tmp_path``; return its stdout, or fail with its stderr."""
+    import os as _os
     import subprocess as _sp
     import sys as _sys
-    inner = r"""
+    tmp = tmp_path / "tmp"
+    tmp.mkdir(exist_ok=True)
+    root = str(Path(__file__).resolve().parents[2])                 # the package, importable from any cwd
+    path = _os.pathsep.join(p for p in (root, _os.environ.get("PYTHONPATH")) if p)
+    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
+                  env={**_os.environ, "TMPDIR": str(tmp), "PYTHONPATH": path, **env}, cwd=tmp_path)
+    leftovers = [p.name for p in tmp.iterdir() if p.name.startswith(("rsi_sbx_", "rsi_fn_"))]
+    return out.stdout.strip() + (f" leftovers={leftovers}" if leftovers else "") + (
+        f" stderr={out.stderr[-1500:]}" if out.returncode else "")
+
+
+_SPIN = r"""
 import ctypes, os, subprocess, sys, threading, time
-from rsi.core.sandbox import close_sandboxes, run_cmd
 die_with_parent = 'import ctypes; ctypes.CDLL(None).prctl(1, 9)\n'   # PR_SET_PDEATHSIG: never outlive this script
 spin = die_with_parent + 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\nwhile True: pass'
-name = bytes.fromhex('74656d70c3a9726174757265735fc3')          # 'temp' + e-acute + 'ratures_' + half a character
-odd = subprocess.Popen([sys.executable, '-c', die_with_parent + 'import ctypes, sys, time; '
-                        'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(bytes.fromhex(sys.argv[1])), 0, 0, 0); '
-                        'time.sleep(30)', name.hex()])
-loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-threading.Thread(target=run_cmd, args=([sys.executable, '-c', spin],), kwargs={'timeout_s': 30}, daemon=True).start()
 
 def stat(pid):
     try:
         with open(f'/proc/{pid}/stat', 'rb') as f:
-            s = f.read()
+            return f.read()
     except OSError:
         return None
-    return s
 
 def live_session_children():
     out = []
@@ -319,51 +322,121 @@ def live_session_children():
             out.append(int(d))
     return out
 
+def settle(want_at_least, deadline=5):
+    end = time.monotonic() + deadline
+    while len(live_session_children()) < want_at_least and time.monotonic() < end:
+        time.sleep(0.02)
+
+def gone(deadline=5):
+    end = time.monotonic() + deadline
+    while (left := live_session_children()) and time.monotonic() < end:
+        time.sleep(0.05)
+    return left
+"""
+
+
+def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8(tmp_path):
+    """The kernel cuts a process name to 15 bytes, possibly inside a character: scanning /proc must still kill
+    a sandbox with such a name, an unregistered one and the registered one."""
+    code = _SPIN + r"""
+from rsi.core.sandbox import close_sandboxes, run_cmd
+name = bytes.fromhex('74656d70c3a9726174757265735fc3')          # 'temp' + e-acute + 'ratures_' + half a character
+odd = subprocess.Popen([sys.executable, '-c', die_with_parent + 'import ctypes, sys, time; '
+                        'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(bytes.fromhex(sys.argv[1])), 0, 0, 0); '
+                        'time.sleep(30)', name.hex()], start_new_session=True)
+loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+threading.Thread(target=run_cmd, args=([sys.executable, '-c', spin],), kwargs={'timeout_s': 30}, daemon=True).start()
 try:
     end = time.monotonic() + 5
     while b'\xc3)' not in (stat(odd.pid) or b''):
         if time.monotonic() > end:
             raise SystemExit('the odd process name never appeared')
         time.sleep(0.02)
-    while len(live_session_children()) < 2 and time.monotonic() < end:   # loose and the registered sandbox
-        time.sleep(0.02)
+    settle(3)
     close_sandboxes()
-    loose.wait(timeout=5)
-    end = time.monotonic() + 5
-    while (left := live_session_children()) and time.monotonic() < end:
-        time.sleep(0.05)
-    print(loose.returncode, left)
+    odd.wait(timeout=5); loose.wait(timeout=5)
+    print(odd.returncode, loose.returncode, gone())
 finally:
-    odd.kill()
-    if loose.poll() is None:
-        os.killpg(loose.pid, 9)
+    for p in (odd, loose):
+        if p.poll() is None:
+            os.killpg(p.pid, 9)
 """
-    out = _sp.run([_sys.executable, "-c", inner], capture_output=True, text=True, timeout=60)
-    assert out.stdout.strip() == "-9 []", (out.stdout, out.stderr[-2000:])
+    assert _inner(code, tmp_path) == "-9 -9 []"
 
 
-def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it():
-    """The directory is registered before it exists, so close_sandboxes() removes it even if a stop signal lands
-    the moment it is created."""
-    import subprocess as _sp
-    import sys as _sys
-    inner = r"""
-import os, signal, sys
+def test_a_failing_proc_scan_does_not_spare_the_registered_sandboxes(tmp_path):
+    """close_sandboxes() kills the registered groups and removes their directories before it scans /proc."""
+    code = _SPIN + r"""
 from rsi.core import sandbox
-made = []
-real_mkdir = os.mkdir
+threading.Thread(target=sandbox.run_python, args=(spin,), kwargs={'timeout_s': 30}, daemon=True).start()
+settle(1)
+def broken(pid):
+    raise RuntimeError('scan failed')
+sandbox._child_session_leaders = broken
+try:
+    sandbox.close_sandboxes()
+except RuntimeError as e:
+    print(e, end=' ')
+print(gone())
+"""
+    assert _inner(code, tmp_path) == "scan failed []"
+
+
+def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it(tmp_path):
+    """The directory is registered before it exists, and a failed creation stays registered until it is gone:
+    a stop signal as it appears, then another one during the cleanup, still leave it to close_sandboxes()."""
+    code = r"""
+import os
+from rsi.core import sandbox
+seen = []
+real_mkdir, real_rmtree = os.mkdir, sandbox.shutil.rmtree
 def mkdir(path, *a, **k):
+    seen.append(any(p == path for _, p in sandbox._LIVE_DIRS))   # registered before it exists
     real_mkdir(path, *a, **k)
-    made.append(path)
-    raise KeyboardInterrupt   # as if a signal handler ran right after the directory appeared
-os.mkdir = mkdir
+    raise KeyboardInterrupt                                        # a stop signal the moment it appears
+calls = []
+def rmtree(path, *a, **k):
+    calls.append(path)
+    if len(calls) == 1:
+        raise SystemExit(143)                                      # a second one during the cleanup
+    return real_rmtree(path, *a, **k)
+os.mkdir, sandbox.shutil.rmtree = mkdir, rmtree
 try:
     sandbox.run_python('pass')
-except KeyboardInterrupt:
+except SystemExit:
     pass
 os.mkdir = real_mkdir
 sandbox.close_sandboxes()
-print(len(made), [p for p in made if os.path.exists(p)])
+print(seen)
 """
-    out = _sp.run([_sys.executable, "-c", inner], capture_output=True, text=True, timeout=60)
-    assert out.stdout.strip() == "1 []", (out.stdout, out.stderr[-2000:])
+    assert _inner(code, tmp_path) == "[True]"
+
+
+def test_a_scratch_directory_made_by_another_thread_while_closing_is_removed(tmp_path):
+    """close_sandboxes() waits for a creation in progress in another thread (as AgentQA's harness thread)."""
+    code = r"""
+import os, threading, time
+from rsi.core import sandbox
+real_mkdir = os.mkdir
+started = threading.Event()
+def slow_mkdir(path, *a, **k):
+    started.set()
+    time.sleep(0.5)
+    real_mkdir(path, *a, **k)
+os.mkdir = slow_mkdir
+sandbox.run_cmd = lambda *a, **k: time.sleep(30)     # the thread never gets back to its own cleanup
+threading.Thread(target=sandbox.run_python, args=('pass',), daemon=True).start()
+started.wait(5)
+sandbox.close_sandboxes()
+time.sleep(1.0)
+print('done', flush=True)
+os._exit(0)                                          # as the forked smoke child leaves: no thread cleans up
+"""
+    assert _inner(code, tmp_path) == "done"
+
+
+def test_run_python_works_with_a_relative_temp_dir(tmp_path):
+    """Scratch paths are absolute (as mkdtemp's since Python 3.12), so a relative TMPDIR still works."""
+    code = "from rsi.core.sandbox import run_python; print(run_python('print(42)').stdout.strip())"
+    assert _inner(code, tmp_path, TMPDIR=".") == "42"             # gettempdir() keeps "." relative

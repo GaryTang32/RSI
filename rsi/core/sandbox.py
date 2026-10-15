@@ -168,23 +168,23 @@ def _mkscratch(prefix: str) -> str:
     """A scratch directory (private, like ``tempfile.mkdtemp``), registered before it is created, so that
     close_sandboxes() can remove it even if a signal interrupts its creation or its user never gets to."""
     me = os.getpid()
+    base = os.path.abspath(tempfile.gettempdir())   # absolute, as mkdtemp returns since Python 3.12
     while True:
-        d = os.path.join(tempfile.gettempdir(), f"{prefix}{secrets.token_hex(5)}")
+        d = os.path.join(base, f"{prefix}{secrets.token_hex(5)}")
+        # under the lock throughout: close_sandboxes() (from another thread, say) waits for a creation in progress
         with _LIVE_LOCK:
             if me in _CLOSED:
                 raise _closed_error()
             _LIVE_DIRS.add((me, d))
-        try:
-            os.mkdir(d, 0o700)
-            return d
-        except FileExistsError:   # a name already taken: not ours, so forget it and draw another
-            with _LIVE_LOCK:
+            try:
+                os.mkdir(d, 0o700)
+                return d
+            except FileExistsError:   # a name already taken: not ours, so forget it and draw another
                 _LIVE_DIRS.discard((me, d))
-        except BaseException:
-            with _LIVE_LOCK:
+            except BaseException:
+                shutil.rmtree(d, ignore_errors=True)   # gone first: it stays registered until it is
                 _LIVE_DIRS.discard((me, d))
-            shutil.rmtree(d, ignore_errors=True)
-            raise
+                raise
 
 
 def _rmscratch(d: str) -> None:
