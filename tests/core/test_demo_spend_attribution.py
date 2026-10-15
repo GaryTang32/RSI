@@ -204,10 +204,11 @@ def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkey
     (tmp_path / ".cache_run").mkdir()
     holder = open(tmp_path / ".live_writer.lock", "w")
     fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)               # another writer (a separate open file)
-    real_flock = fcntl.flock
+    real_flock, attempts = fcntl.flock, []
 
     def no_waiting(f, op):
-        if not op & fcntl.LOCK_NB:                                 # would wait for the holder instead of refusing
+        attempts.append(op)                                        # one attempt per refused command, no retrying
+        if not op & fcntl.LOCK_NB or len(attempts) > 3:
             raise AssertionError("a live writer waited for the lock instead of refusing")
         return real_flock(f, op)
 

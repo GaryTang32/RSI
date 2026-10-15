@@ -369,6 +369,7 @@ def test_a_failing_proc_scan_does_not_spare_the_registered_sandboxes(tmp_path):
     """close_sandboxes() kills the registered groups and removes their directories before it scans /proc."""
     code = _SPIN + r"""
 from rsi.core import sandbox
+sandbox._rmscratch = lambda d: None      # only close_sandboxes() may remove the directory
 threading.Thread(target=sandbox.run_python, args=(spin,), kwargs={'timeout_s': 30}, daemon=True).start()
 settle(1)
 def broken(pid):
@@ -440,3 +441,30 @@ def test_run_python_works_with_a_relative_temp_dir(tmp_path):
     """Scratch paths are absolute (as mkdtemp's since Python 3.12), so a relative TMPDIR still works."""
     code = "from rsi.core.sandbox import run_python; print(run_python('print(42)').stdout.strip())"
     assert _inner(code, tmp_path, TMPDIR=".") == "42"             # gettempdir() keeps "." relative
+
+
+def test_a_signal_as_the_scratch_lock_is_released_leaves_no_directory(tmp_path):
+    """A stop signal can surface when the lock is released after the directory was made: the directory is
+    removed and forgotten, not left for a close_sandboxes() that a long-lived process never calls."""
+    code = r"""
+import os
+from rsi.core import sandbox
+real = sandbox._LIVE_LOCK
+class Lock:
+    exits = 0
+    def __enter__(self):
+        return real.__enter__()
+    def __exit__(self, *exc):
+        real.__exit__(*exc)
+        Lock.exits += 1
+        if Lock.exits == 1 and exc[0] is None:
+            raise KeyboardInterrupt   # as a handler would at the release
+sandbox._LIVE_LOCK = Lock()
+try:
+    sandbox.run_python('pass')
+    print('returned', end=' ')
+except KeyboardInterrupt:
+    print('interrupted', end=' ')
+print(len(sandbox._LIVE_DIRS))
+"""
+    assert _inner(code, tmp_path) == "interrupted 0"

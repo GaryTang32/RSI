@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import os
 import threading
 import time
@@ -61,67 +62,35 @@ class InterfaceValidator:
         import pickle
         import select
         import signal
-        # SIGINT/SIGTERM stay blocked across the fork until each side has its handlers: a signal landing in the
-        # fork's after-fork hooks would otherwise run the parent's handler in the child, outside its finally.
-        # Only this thread blocks them (other threads, e.g. numpy's, still take them and the handler then runs
-        # here at the next chance), so every path below restores the mask whatever is raised.
+        # The fork and the cleanup run with stop signals deferred (_stop_signals_deferred): a Ctrl-C or kill landing
+        # there is recorded and raised once they are done, so it can neither leak the pipe, leave the signals
+        # blocked or the child running, nor be swallowed by an after-fork hook. In the child, SIGINT/SIGTERM stay
+        # blocked from the fork until its own handlers are in place, so the parent's never run there.
         stop_signals = {signal.SIGINT, signal.SIGTERM}
-        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
-        fds: list[int] = []
+        st: dict = {"r": None, "pid": None}
         try:
-            signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
-            fds = list(os.pipe())
-            pid = os.fork()
-        except BaseException:
-            for fd in fds:
-                os.close(fd)
-            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
-            raise
-        r, w = fds
-        if pid == 0:                                     # child
-            exiting = [False]
-
-            def on_signal(signum, frame) -> None:
-                # a SIGTERM (the parent's cleanup below, `kill`, `timeout`) or SIGINT ends the smoke through the
-                # finally below, which closes the sandboxes it started; once the child is leaving it does nothing
-                if not exiting[0]:
-                    raise (SystemExit(143) if signum == signal.SIGTERM else KeyboardInterrupt())
-
-            try:
-                os.close(r)
-                signal.signal(signal.SIGTERM, on_signal)
-                signal.signal(signal.SIGINT, on_signal)
-                signal.pthread_sigmask(signal.SIG_SETMASK, mask)   # a signal held since the fork arrives now
-                lock = threading.Lock()
-
-                def send(msg) -> None:
-                    data = pickle.dumps(msg)
-                    with lock:
-                        os.write(w, len(data).to_bytes(8, "big") + data)
-
-                _stream_usage(llm, send)
+            with _stop_signals_deferred():
+                mask = signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
+                fds: tuple = ()
                 try:
-                    err = domain.smoke(artifact, llm)
-                except Exception as e:  # noqa: BLE001
-                    err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
-                send(("done", err))
-            finally:
-                # first, before any bytecode that runs pending handlers (a call, a loop's back-jump): from here on
-                # no signal can make the child unwind into the parent's code
-                exiting[0] = True
-                try:
-                    _child_exit()
-                finally:
-                    os._exit(0)
-        done, err, buf = False, None, b""
-        inflight: dict[int, int] = {}
-        try:
-            # inside the try: a signal held since the fork (or taken by another thread meanwhile) arrives here, the
-            # mask is restored whatever happens, and the finally still stops the child
-            try:
-                os.close(w)
-            finally:
-                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+                    fds = os.pipe()
+                    pid = os.fork()
+                except BaseException:
+                    for fd in fds:
+                        os.close(fd)
+                    signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+                    raise
+                r, w = fds
+                if pid:
+                    st["r"], st["pid"] = r, pid
+                    try:
+                        os.close(w)
+                    finally:
+                        signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+                else:
+                    self._child(domain, artifact, llm, r, w, mask)   # never returns
+            done, err, buf = False, None, b""
+            inflight: dict[int, int] = {}
             deadline = time.monotonic() + self.timeout_s
             while not done:
                 left = deadline - time.monotonic()
@@ -144,8 +113,14 @@ class InterfaceValidator:
                     elif msg[0] == "done":
                         done, err = True, msg[1]
         finally:
-            os.close(r)
-            _stop_child(pid)
+            try:
+                with _stop_signals_deferred():
+                    _close_and_stop(st)
+            except BaseException:
+                # a stop signal raised on the way in, before it could be deferred: it is used up, so again
+                with _stop_signals_deferred():
+                    _close_and_stop(st)
+                raise
         if not done:
             if time.monotonic() >= deadline:
                 err = f"smoke timed out after {self.timeout_s}s"
@@ -154,6 +129,107 @@ class InterfaceValidator:
             else:
                 err = "smoke process died"
         return (err is None), (err or "OK")
+
+    def _child(self, domain, artifact: Artifact, llm, r: int, w: int, mask) -> None:
+        """The forked smoke child: run the smoke, stream usage back through ``w``, then leave through
+        :func:`_child_exit` (never returns)."""
+        import pickle
+        import signal
+        exiting = [False]
+
+        def on_signal(signum, frame) -> None:
+            # a SIGTERM (the parent's cleanup below, `kill`, `timeout`) or SIGINT ends the smoke through the
+            # finally below, which closes the sandboxes it started; once the child is leaving it does nothing
+            if not exiting[0]:
+                raise (SystemExit(143) if signum == signal.SIGTERM else KeyboardInterrupt())
+
+        try:
+            os.close(r)
+            signal.signal(signal.SIGTERM, on_signal)
+            signal.signal(signal.SIGINT, on_signal)
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)   # a signal held since the fork arrives now
+            lock = threading.Lock()
+
+            def send(msg) -> None:
+                data = pickle.dumps(msg)
+                with lock:
+                    os.write(w, len(data).to_bytes(8, "big") + data)
+
+            _stream_usage(llm, send)
+            try:
+                err = domain.smoke(artifact, llm)
+            except Exception as e:  # noqa: BLE001
+                err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
+            send(("done", err))
+        finally:
+            # first, before any bytecode that runs pending handlers (a call, a loop's back-jump): from here on
+            # no signal can make the child unwind into the parent's code
+            exiting[0] = True
+            try:
+                _child_exit()
+            finally:
+                os._exit(0)
+
+
+def _close_and_stop(st: dict) -> None:
+    """Close the parent's end of the pipe and stop the smoke child, once each (a retry skips what is done)."""
+    r, st["r"] = st["r"], None
+    if r is not None:
+        os.close(r)
+    pid, st["pid"] = st["pid"], None
+    if pid:
+        _stop_child(pid)
+
+
+class _Deferring:
+    """A SIGINT/SIGTERM handler standing in for ``orig``: while a deferred region is open it records the signal,
+    otherwise it calls ``orig`` (one left installed by an interrupted restore behaves exactly like ``orig``)."""
+
+    def __init__(self, orig) -> None:
+        self.orig = orig
+
+    def __call__(self, signum, frame):
+        if _DEFERRED["depth"]:
+            _DEFERRED["got"].append(signum)
+            return None
+        return self.orig(signum, frame)
+
+
+_DEFERRED: dict = {"depth": 0, "got": []}
+
+
+@contextlib.contextmanager
+def _stop_signals_deferred():
+    """Within the block a SIGINT or SIGTERM with a Python handler is recorded instead of raised, and raised again
+    (``signal.raise_signal``) once the block is done. Python runs signal handlers only in the main thread: in any
+    other thread the block cannot be interrupted by them and nothing changes. A signal pending on the way in
+    raises before anything is deferred."""
+    import signal
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    installed: dict = {}
+    entered = False
+    try:
+        if not _DEFERRED["depth"]:
+            _DEFERRED["got"].clear()   # left by an exit that another signal interrupted: that one was raised
+        _DEFERRED["depth"] += 1
+        entered = True                 # (no call between these two lines: no signal can land in between)
+        for s in (signal.SIGINT, signal.SIGTERM):
+            h = signal.getsignal(s)
+            if callable(h) and not isinstance(h, _Deferring):   # None/SIG_DFL/SIG_IGN never raise in Python
+                signal.signal(s, _Deferring(h))
+                installed[s] = h
+        yield
+    finally:
+        if entered:
+            _DEFERRED["depth"] -= 1
+        for s, h in installed.items():
+            signal.signal(s, h)
+        if not _DEFERRED["depth"] and _DEFERRED["got"]:
+            n = _DEFERRED["got"][0]
+            _DEFERRED["got"].clear()
+            signal.raise_signal(n)
 
 
 def _child_exit() -> None:

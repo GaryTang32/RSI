@@ -24,6 +24,13 @@ from rsi.metaharness.proposer import _collect
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
+def _run_inner(code: str, *args: str) -> subprocess.CompletedProcess:
+    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi`` from any working directory."""
+    path = os.pathsep.join(p for p in (str(ROOT), os.environ.get("PYTHONPATH")) if p)
+    return subprocess.run([sys.executable, "-c", code, *args], capture_output=True, text=True, timeout=60,
+                          env={**os.environ, "PYTHONPATH": path})
+
 TWO_CALL = SEED_PROGRAMS["fewshot_all"].replace(
     '''        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
         return extract_json_field(response, "final_answer"), {"num_examples": len(self.examples)}''',
@@ -507,7 +514,7 @@ t0 = time.monotonic()
 ok, msg = InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({{"h.py": "x = 1\\n"}}), None)
 print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
 """
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    out = _run_inner(code)
     lines = out.stdout.strip().splitlines()
     assert len(lines) == 1, (out.stdout, out.stderr[-1500:])          # one process printed: no child escaped
     assert not marker.exists(), "the smoke ran although a stop signal arrived during the fork"
@@ -525,6 +532,13 @@ import os, signal, sys, time
 from rsi.core import Artifact
 from rsi.metaharness import InterfaceValidator
 parent, real_close, raised = os.getpid(), os.close, []
+real_fork, kids = os.fork, []
+def fork():
+    pid = real_fork()
+    if pid:
+        kids.append(pid)
+    return pid
+os.fork = fork
 def close(fd):
     real_close(fd)
     blocked = signal.SIGINT in signal.pthread_sigmask(signal.SIG_BLOCK, [])
@@ -543,10 +557,134 @@ try:
     print("no interrupt", end=" ")
 except KeyboardInterrupt:
     print("interrupted", end=" ")
-print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), time.monotonic() - t0 < 5)
+print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), time.monotonic() - t0 < 5, end=" ")
+try:
+    os.waitpid(kids[0], os.WNOHANG)
+    os.kill(kids[0], 9)
+    print("child left running")
+except ChildProcessError:
+    print("child reaped")
 """
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
-    assert out.stdout.strip() == "interrupted [] True", (out.stdout, out.stderr[-1500:])
+    out = _run_inner(code)
+    assert out.stdout.strip() == "interrupted [] True child reaped", (out.stdout, out.stderr[-1500:])
+
+
+_REAPED = """
+try:
+    os.waitpid(kids[0], os.WNOHANG)
+    os.kill(kids[0], 9)
+    reaped = "child left running"
+except ChildProcessError:
+    reaped = "child reaped"
+except IndexError:
+    reaped = "no child"
+"""
+
+_FORK_SPY = """
+real_fork, kids = os.fork, []
+def fork():
+    pid = real_fork()
+    if pid:
+        kids.append(pid)
+    return pid
+os.fork = fork
+"""
+
+
+def test_a_failed_fork_restores_the_mask_and_closes_the_pipe():
+    """A fork that fails (or a stop signal surfacing at it) leaves no pipe end open and the signals unblocked."""
+    code = """
+import os, signal, sys
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+def fork():
+    raise KeyboardInterrupt
+os.fork = fork
+fds_before = len(os.listdir("/proc/self/fd"))
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    print("no interrupt", end=" ")
+except KeyboardInterrupt:
+    print("interrupted", end=" ")
+print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), len(os.listdir("/proc/self/fd")) - fds_before)
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "interrupted [] 0", (out.stdout, out.stderr[-1500:])
+
+
+def test_two_stop_signals_in_a_row_still_stop_the_smoke_child(tmp_path):
+    """Ctrl-C then a kill, back to back, while the smoke runs: the first interrupts the wait, the second must not
+    interrupt the cleanup (it is deferred and raised once the child is stopped and reaped)."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))       # as the demo's replay check does
+""" + _FORK_SPY + """
+marker = sys.argv[1]
+class Smoke:
+    def smoke(self, artifact, llm):
+        open(marker, "w").write("x")
+        time.sleep(30)
+main = threading.main_thread().ident
+def stopper():
+    while not os.path.exists(marker):
+        time.sleep(0.01)
+    time.sleep(0.2)
+    signal.pthread_kill(main, signal.SIGINT)
+    signal.pthread_kill(main, signal.SIGTERM)
+threading.Thread(target=stopper, daemon=True).start()
+try:
+    InterfaceValidator(timeout_s=20, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except BaseException as e:
+    res = type(e).__name__
+""" + _REAPED + """
+print(res, reaped, sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
+"""
+    out = _run_inner(code, str(tmp_path / "smoke_started"))
+    assert out.stdout.strip() in ("SystemExit child reaped []", "KeyboardInterrupt child reaped []"), (
+        out.stdout, out.stderr[-1500:])
+
+
+def test_a_ctrl_c_during_an_after_fork_hook_is_not_lost():
+    """Another thread takes a SIGINT while the parent runs its after-fork hooks (logging's, say): the handler
+    used to run inside the hook, where Python reports and drops the exception, so the Ctrl-C was lost and
+    validation went on. Deferred, it is raised once the fork is done."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+""" + _FORK_SPY + """
+go, sent = threading.Event(), threading.Event()
+def sender():          # started before the validation, so SIGINT is not blocked in it: it takes the signal
+    go.wait()
+    os.kill(os.getpid(), signal.SIGINT)
+    sent.set()
+threading.Thread(target=sender, daemon=True).start()
+def hook():
+    go.set()
+    sent.wait(5)
+    # a check for pending signals in the main thread (a GIL switch to a busy thread does the same): the handler
+    # runs here, inside the hook
+    signal.pthread_sigmask(signal.SIG_BLOCK, [])
+os.register_at_fork(after_in_parent=hook)
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except KeyboardInterrupt:
+    res = "interrupted"
+""" + _REAPED + """
+print(res, reaped)
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "interrupted child reaped", (out.stdout, out.stderr[-1500:])
 
 
 def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):

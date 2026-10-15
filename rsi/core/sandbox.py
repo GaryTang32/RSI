@@ -171,20 +171,29 @@ def _mkscratch(prefix: str) -> str:
     base = os.path.abspath(tempfile.gettempdir())   # absolute, as mkdtemp returns since Python 3.12
     while True:
         d = os.path.join(base, f"{prefix}{secrets.token_hex(5)}")
-        # under the lock throughout: close_sandboxes() (from another thread, say) waits for a creation in progress
-        with _LIVE_LOCK:
-            if me in _CLOSED:
-                raise _closed_error()
-            _LIVE_DIRS.add((me, d))
-            try:
-                os.mkdir(d, 0o700)
-                return d
-            except FileExistsError:   # a name already taken: not ours, so forget it and draw another
+        state = ""   # "made": os.mkdir may have run; "taken": the name is someone else's, never remove it
+        try:
+            # under the lock: close_sandboxes() (from another thread, say) waits for a creation in progress
+            with _LIVE_LOCK:
+                if me in _CLOSED:
+                    raise _closed_error()
+                _LIVE_DIRS.add((me, d))
+                state = "made"
+                try:
+                    os.mkdir(d, 0o700)
+                except FileExistsError:   # draw another name
+                    state = "taken"
+                    _LIVE_DIRS.discard((me, d))
+        except BaseException:
+            # failed, or a signal anywhere up to and including the lock's release: remove what may have been
+            # made first (it stays registered until it is gone), then forget it
+            if state == "made":
+                shutil.rmtree(d, ignore_errors=True)
+            with _LIVE_LOCK:
                 _LIVE_DIRS.discard((me, d))
-            except BaseException:
-                shutil.rmtree(d, ignore_errors=True)   # gone first: it stays registered until it is
-                _LIVE_DIRS.discard((me, d))
-                raise
+            raise
+        if state == "made":
+            return d
 
 
 def _rmscratch(d: str) -> None:
