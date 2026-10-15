@@ -9,15 +9,17 @@ but no task's answer, and the code template copies practice task evolve-ledger-0
 neutral one, on all three splits, with the same fresh trial seeds the post-run re-score uses (``rescore.py``), and
 first checks that the neutral copy contains no task's answer and no practice exchange rate::
 
-    python experiments/demo/leak_ablation.py                     # check: replay the recorded leak check offline at $0
-    python experiments/demo/leak_ablation.py --seed-offset 200   # new samples: leak_ablation_s200.json (live calls)
+    python experiments/demo/leak_ablation.py                     # check: replay every recorded leak check offline at $0
+    python experiments/demo/leak_ablation.py --seed-offset 200   # check only leak_ablation_s200.json
+    python experiments/demo/leak_ablation.py --record --seed-offset 200   # new samples: leak_ablation_s200.json (live)
 
-The record is ``demo/runs/metaharness_hard/leak_ablation.json`` and is never replaced (``spend.py`` attributes cache
-entries by its ``started_at``). The check replays it with the model switched off (a cache miss is an error), compares
-the scores and writes per-task scores to ``leak_ablation_check.json``. ``--seed-offset N`` checks
-``leak_ablation_s<N>.json`` the same way when it exists and records it when it does not; N must give trial seeds no
-evaluation of the run used (``live_demo.new_seed_problem``). If the scores hold, the copied strings did not drive the
-result; if they drop, they did.
+The record is ``demo/runs/metaharness_hard/leak_ablation.json`` (trial seeds 100 and 101), plus any
+``leak_ablation_s<N>.json`` (seeds N and N + 1); a record is never replaced (``spend.py`` attributes cache entries by
+its ``started_at``). A check replays a record with the model switched off (a cache miss is an error), compares the
+scores, writes per-task scores to ``<record>_check.json`` and exits 1 on any difference; it never calls the model.
+Only ``--record`` does, for an N that gives trial seeds no evaluation of the run used
+(``live_demo.new_seed_problem``). If the scores hold, the copied strings did not drive the result; if they drop, they
+did.
 """
 from __future__ import annotations
 
@@ -32,7 +34,8 @@ for p in (ROOT, ROOT / "experiments" / "demo"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-from live_demo import RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem, rescore  # noqa: E402
+from live_demo import (NEW_SEED_RECORD, RESCORE_K, RESCORE_SEED_OFFSET, _agentqa, new_seed_problem,  # noqa: E402
+                       rescore)
 from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
 
 RUN = ROOT / "demo" / "runs" / "metaharness_hard"
@@ -60,7 +63,29 @@ def copied_strings(files: dict[str, str], dom) -> list[str]:
     return found
 
 
+def records() -> list[int]:
+    """Seed offsets of the recorded leak checks: 100 for ``leak_ablation.json``, N for ``leak_ablation_s<N>.json``."""
+    found = [RESCORE_SEED_OFFSET] if (RUN / "leak_ablation.json").exists() else []
+    found += [int(m.group(2)) for p in RUN.glob("leak_ablation_s*.json")
+              if (m := NEW_SEED_RECORD.fullmatch(p.name)) and m.group(1) == "leak_ablation"]
+    return sorted(found)
+
+
 def main() -> None:
+    args = sys.argv[1:]
+    record = "--record" in args
+    offset = int(args[args.index("--seed-offset") + 1]) if "--seed-offset" in args else None
+    if record and offset is None:
+        raise SystemExit("--record needs --seed-offset N (new trial seeds)")
+    todo = [offset] if record else [o for o in records() if offset is None or o == offset]
+    if not todo:
+        raise SystemExit(f"no recorded leak check{'' if offset is None else f' with --seed-offset {offset}'} to check")
+    for o in todo:
+        run(o, record)
+
+
+def run(offset: int, record: bool) -> None:
+    """Check the recorded leak check with ``offset`` offline, or (``record``) record a new one live."""
     final = Artifact.from_dir(RUN / "final_harness")
     files = dict(final.files)
     changed = []
@@ -76,13 +101,12 @@ def main() -> None:
     before, left = copied_strings(final.files, dom), copied_strings(neutral.files, dom)
     if left:
         raise SystemExit(f"the neutral copy still contains copied strings: {left}")
-    offset = int(sys.argv[sys.argv.index("--seed-offset") + 1]) if "--seed-offset" in sys.argv else RESCORE_SEED_OFFSET
     rec = RUN / ("leak_ablation.json" if offset == RESCORE_SEED_OFFSET else f"leak_ablation_s{offset}.json")
-    if offset != RESCORE_SEED_OFFSET and (why := new_seed_problem(RUN, rec.name, offset)):
+    live = record
+    if live and rec.exists():
+        raise SystemExit(f"{rec} exists: a recorded leak check is never replaced")
+    if live and (why := new_seed_problem(RUN, rec.name, offset)):
         raise SystemExit(why)
-    live = not rec.exists()
-    if live and offset == RESCORE_SEED_OFFSET:
-        raise SystemExit(f"{rec} is missing: the recorded leak check is the reference (use --seed-offset N)")
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), ROOT / "demo" / "runs" / ".cache_metaharness_hard",
                     offline=not live)
     t0 = time.time()
@@ -93,7 +117,7 @@ def main() -> None:
         check = {"matches": got == want and llm.misses == 0, "cache_misses": llm.misses, "scores": got,
                  "per_task": {s: {a: v.get("tasks") for a, v in row.items()} for s, row in rep["splits"].items()}}
         (RUN / rec.name.replace(".json", "_check.json")).write_text(json.dumps(check, indent=1, default=str))
-        print("replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses)
+        print(rec.name, "replay", "matches" if check["matches"] else "DIFFERS", "misses", llm.misses)
         if not check["matches"]:
             raise SystemExit(1)
         return

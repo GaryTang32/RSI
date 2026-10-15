@@ -158,19 +158,51 @@ def rescore(dom, llm, arms: dict, splits=("evolve", "holdout", "ood"), seed_offs
 NEW_SEED_RECORD = re.compile(r"(rescore|leak_ablation)_s(-?\d+)\.json")
 
 
+def recorded_seeds(run_dir: Path) -> set[int]:
+    """Every trial seed a run's files record under ``seeds`` (RRSI's loop: its hashed per-job seeds), apart from the
+    new-seed records, whose seeds :func:`new_seed_problem` checks separately."""
+    found: set[int] = set()
+
+    def walk(x) -> None:
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k == "seeds" and isinstance(v, list):
+                    found.update(s for s in v if isinstance(s, int))
+                else:
+                    walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+
+    for p in run_dir.rglob("*.json"):
+        if NEW_SEED_RECORD.fullmatch(p.name) or NEW_SEED_RECORD.fullmatch(p.name.replace("_check.json", ".json")):
+            continue
+        text = p.read_text(errors="replace")
+        if '"seeds"' in text:
+            try:
+                walk(json.loads(text))
+            except ValueError:
+                pass
+    return found
+
+
 def new_seed_problem(run_dir: Path, record: str, seed_offset: int) -> Optional[str]:
     """Why a re-score or leak check with ``seed_offset`` would not draw new trial seeds, or None.
 
     A re-score uses trial seeds ``seed_offset .. seed_offset + RESCORE_K - 1`` and the LLM cache is keyed on the seed,
-    so any seed another evaluation of the run already used replays its samples. The loops and monitors use seeds from
-    0 (RRSI's loop: hashed seeds in the millions) and the recorded re-score and leak check use 100 and 101, so new
-    seeds start at 102. They must not overlap an existing ``rescore_s<N>``/``leak_ablation_s<N>`` record either,
-    except that a re-score and a leak check may share an offset, as the recorded pair does (the leak check's final
-    arm then replays the re-score's)."""
+    so any seed another evaluation of the run already used replays its samples. Meta-Harness's loop and the monitors
+    use seeds from 0 and the recorded re-score and leak check use 100 and 101, so new seeds start at 102. RRSI's loop
+    uses hashed seeds, which its evaluation files record (:func:`recorded_seeds`); none of them may fall in the range.
+    Nor may the seeds of an existing ``rescore_s<N>``/``leak_ablation_s<N>`` record, except that a re-score and a
+    leak check may share an offset, as the recorded pair does (the leak check's final arm then replays the
+    re-score's)."""
     first = RESCORE_SEED_OFFSET + RESCORE_K
     if seed_offset < first:
         return (f"--seed-offset must be at least {first}: seeds below it were used by the loops, the monitors or the "
                 f"recorded re-score")
+    hit = sorted(s for s in recorded_seeds(run_dir) if seed_offset <= s < seed_offset + RESCORE_K)
+    if hit:
+        return f"--seed-offset {seed_offset}: trial seed {hit[0]} was used by an evaluation of the run (its loop)"
     kind = NEW_SEED_RECORD.fullmatch(record).group(1)
     for f in sorted(run_dir.glob("*_s*.json")):
         m = NEW_SEED_RECORD.fullmatch(f.name)
@@ -236,22 +268,44 @@ def traces_identical(src: Path, out: Path) -> dict:
     between a recorded run and its replay."""
     rel = lambda d: {p.relative_to(d): p.read_bytes() for p in (d / "store" / "candidates").glob("*/eval/*/traces/*")}
     a, b = rel(src), rel(out)
-    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k]), "missing_in_replay": len(set(a) - set(b))}
+    # the replay writes every trace afresh, so a trace only it has means the recorded run lost one
+    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k]), "missing_in_replay": len(set(a) - set(b)),
+            "extra_in_replay": len(set(b) - set(a))}
+
+
+def _subset_equal(old, new) -> bool:
+    """``new`` reproduces ``old``: equal, except that a dict may carry keys ``old`` predates."""
+    if isinstance(old, dict) and isinstance(new, dict):
+        return all(k in new and _subset_equal(v, new[k]) for k, v in old.items())
+    return old == new
 
 
 def replay_check(name: str, a) -> None:
     """Re-run a finished Meta-Harness demo with its cache in offline mode (a cache miss is an error, so nothing
     is sent to the model) and compare every proposer prompt, every candidate score and every execution trace with the
-    recorded run. The first check that passes is recorded in ``<run>_replay/`` (a failing one is removed, so the next
-    check starts over); later checks replay into a scratch directory (removed afterwards) and must also reproduce that
-    record, trace counts included. ``--record`` refreshes the record from a check that passes on its own (e.g. to add
-    a field a newer check computes)."""
+    recorded run. The first check that passes is recorded in ``<run>_replay/``; a failing or interrupted one is
+    removed, so the next check starts over. Later checks replay into a scratch directory (removed afterwards) and must
+    also reproduce that record, trace counts included. ``--record`` refreshes the record from a check that passes on
+    its own (e.g. to add a field a newer check computes), never with fewer traces than it records."""
     import shutil
     from rsi.trace import load_trace
     src, rec = OUT / name, OUT / f"{name}_replay"
-    out = OUT / f"{name}_replaycheck" if rec.exists() else rec   # same depth as the run: paths never reach a prompt
-    if out.exists():
+    first = not (rec / "replay_check.json").exists()
+    out = rec if first else OUT / f"{name}_replaycheck"   # same depth as the run: paths never reach a prompt
+    if out.exists():   # an interrupted earlier check
         shutil.rmtree(out)
+    keep = False
+    try:
+        keep = _replay_compare(name, a, src, rec, out, first, load_trace)
+    finally:
+        if out != rec or not keep:
+            shutil.rmtree(out, ignore_errors=True)
+    if not keep:
+        raise SystemExit(1)
+
+
+def _replay_compare(name: str, a, src: Path, rec: Path, out: Path, first: bool, load_trace) -> bool:
+    """Replay ``name`` into ``out`` and compare; True when the check passes (and, for the first, is recorded)."""
     llm, dom = _haiku(name, offline=True), _agentqa(a.suite)
     rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                 proposer_kind="rewrite")
@@ -269,28 +323,26 @@ def replay_check(name: str, a) -> None:
     print(json.dumps(rep, indent=1))
     t = rep["traces_identical"]
     ok = (rep["prompts_identical"] and rep["scores_identical"] and not rep["cache_misses"]
-          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"])
-    if out == rec:
+          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"] and not t["extra_in_replay"])
+    if first:
         if ok:
             (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
             print("recorded", rec / "replay_check.json")
         else:   # a failing first check is not a record
-            shutil.rmtree(rec)
             print("FAILED: nothing recorded")
-    else:
-        old = json.loads((rec / "replay_check.json").read_text())
-        # the trace counts too: a run whose recorded traces went missing would otherwise compare fewer files
-        same = all(old[k] == rep[k] for k in old if k in rep)
-        print("MATCH: reproduces the run and its recorded replay check" if ok and same else
-              "MISMATCH" if ok else "FAILED")
-        if ok and a.record:
-            (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
-            print("refreshed", rec / "replay_check.json")
-        else:
-            ok = ok and same
-        shutil.rmtree(out)
-    if not ok:
-        raise SystemExit(1)
+        return ok
+    old = json.loads((rec / "replay_check.json").read_text())
+    # every recorded field, the trace counts included (a record predating a field still compares on the rest)
+    same = all(k in rep and _subset_equal(v, rep[k]) for k, v in old.items())
+    print("MATCH: reproduces the run and its recorded replay check" if ok and same else "MISMATCH" if ok else "FAILED")
+    if ok and a.record:
+        if t["files"] < (old.get("traces_identical") or {}).get("files", 0):
+            print("not refreshed: the record has more traces than this run now holds")
+            return False
+        (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
+        print("refreshed", rec / "replay_check.json")
+        return True
+    return ok and same
 
 
 def rrsi_run(a) -> None:

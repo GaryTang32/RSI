@@ -25,3 +25,25 @@ def test_overlap_with_an_existing_record_is_refused_except_a_paired_offset(tmp_p
         assert "rescore_s200.json" in new_seed_problem(tmp_path, f"rescore_s{offset}.json", offset)
         assert "rescore_s200.json" in new_seed_problem(tmp_path, f"leak_ablation_s{offset}.json", offset)
     assert new_seed_problem(tmp_path, "rescore_s202.json", 202) is None
+
+
+def test_seeds_an_rrsi_loop_recorded_are_refused(tmp_path):
+    (tmp_path / "evals").mkdir()
+    (tmp_path / "evals" / "base.json").write_text(json.dumps({"job": "base", "seeds": [5000]}))
+    (tmp_path / "r0" / "A").mkdir(parents=True)
+    (tmp_path / "r0" / "A" / "eval.json").write_text(json.dumps({"summary": {"seeds": [7000, 7001]}}))
+    for offset in (4999, 5000, 6999, 7000, 7001):
+        assert "used by an evaluation of the run" in new_seed_problem(tmp_path, f"rescore_s{offset}.json", offset)
+    for offset in (5001, 6998, 7002):
+        assert new_seed_problem(tmp_path, f"rescore_s{offset}.json", offset) is None
+
+
+def test_a_replay_with_traces_the_run_lost_is_flagged(tmp_path):
+    from live_demo import traces_identical
+    for d, names in ((tmp_path / "run", ("t1", "t2")), (tmp_path / "replay", ("t1", "t2", "t3"))):
+        tr = d / "store" / "candidates" / "c1" / "eval" / "search" / "traces"
+        tr.mkdir(parents=True)
+        for n in names:
+            (tr / n).write_text(n)
+    assert traces_identical(tmp_path / "run", tmp_path / "replay") == {
+        "files": 2, "identical": 2, "missing_in_replay": 0, "extra_in_replay": 1}

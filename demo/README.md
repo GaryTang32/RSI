@@ -171,7 +171,7 @@ The fix:
 - **Stable sandbox path.** The sandbox reports a stable path, `/tmp/rsi_sandbox`, and replaces the longer path first when the temp directory is a symlink. Sandboxed code also runs with `PYTHONHASHSEED=0`, so printed sets come out in the same order every run.
 - **Tests.** `tests/metaharness-solpi/test_metaharness_deterministic_view.py` and `tests/core/test_core_sandbox_stable_paths.py`.
 
-**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. It compares every prompt, score and trace with the run. A failing first check is not recorded. A repeat check replays into a scratch directory and must also reproduce the recorded `<run>_replay/replay_check.json`, trace counts included. Both checks below ran on the current code:
+**Proof.** `python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check` re-runs a finished run from its cache with the model switched off, so any cache miss is an error. It compares every prompt, score and trace with the run. A failing or interrupted first check is not recorded. A repeat check replays into a scratch directory and must also reproduce the recorded `<run>_replay/replay_check.json`, trace counts included. Both checks below ran on the current code:
 
 | Replayed run | Proposer calls | Candidate scores | Cache hits / misses | Execution traces | Sandboxed calls (practice) | Spent |
 |---|---|---|---|---|---|---:|
@@ -268,9 +268,9 @@ Checks of the committed results, all $0 with no model call (a cache miss is an e
 
 ```bash
 python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check   # replay a finished run; compare with it and its record
-python experiments/demo/rescore.py [run]          # replay each recorded re-score; compare with rescore.json
-python experiments/demo/rescore.py --seed-offset N [run]   # the same for a recorded rescore_s<N>.json
-python experiments/demo/leak_ablation.py          # replay the leak check; compare with leak_ablation.json
+python experiments/demo/rescore.py [run]          # replay every recorded re-score (rescore.json, any rescore_s<N>.json)
+python experiments/demo/rescore.py --seed-offset N [run]   # only the recorded rescore_s<N>.json
+python experiments/demo/leak_ablation.py          # replay every recorded leak check; compare with leak_ablation.json
 python experiments/demo/monitor_check.py          # replay the reported runs' shadow-monitor readings; compare with the traces
 python experiments/demo/calibrate_hard.py         # replay the hard-suite calibration; compare with _archive/calibrate_hard.json
 python experiments/demo/spend.py                  # recompute the spend record and compare
@@ -278,19 +278,19 @@ python experiments/demo/plot_demo.py && python experiments/demo/build_page.py   
 experiments/demo/run_chain.sh --check "metaharness --replay-check" "rescore.py" "spend.py"   # one after another; logs under $TMPDIR
 ```
 
-The checks write their per-task results beside the records (`rescore_check.json`, `leak_ablation_check.json`, `monitor_check.json`); when a check matches, these come out identical to the committed ones. The replay check replays into a scratch directory and removes it. `spend.py` works on a fresh clone: recorded cache entries keep the attempt `demo/spend_entries.json` names, and only entries written since are attributed by write time.
+The checks write their per-task results beside the records (`rescore_check.json`, `leak_ablation_check.json`, `monitor_check.json`); when a check matches, these come out identical to the committed ones. The replay check replays into a scratch directory and removes it. None of them calls the model. `spend.py` works on a fresh clone: recorded cache entries keep the attempt `demo/spend_entries.json` names. An entry not in the record is attributed by write time only to a new attempt, one with no recorded entries that started after every recorded entry on this disk was written; any other is reported, the check fails and `--force` refuses.
 
 Commands that record new results (live Haiku calls, or CPU training whose results depend on the machine). None of them replaces a committed run, re-score or leak-check record; `spend.py --force` rewrites `demo/spend.json` and `demo/spend_entries.json`, keeping every recorded entry's attempt:
 
 ```bash
 python experiments/demo/live_demo.py metaharness [--suite hard]   # or rrsi, autoresearch; refuses to overwrite a run
 python experiments/demo/live_demo.py metaharness --resume         # archive an unfinished attempt, continue from its cache
-python experiments/demo/rescore.py --seed-offset 200 [run]        # new trials, seeds 200 and 201: rescore_s200.json
-python experiments/demo/leak_ablation.py --seed-offset 200        # new trials: leak_ablation_s200.json
+python experiments/demo/rescore.py --record --seed-offset 200 rrsi  # new trials, seeds 200 and 201: rescore_s200.json
+python experiments/demo/leak_ablation.py --record --seed-offset 200 # new trials: leak_ablation_s200.json
 python experiments/demo/autoresearch_hidden.py                    # a new training session: hidden_reeval_<time>.json
-python experiments/demo/spend.py --force                          # account the new calls (add a new attempt to its list first)
+python experiments/demo/spend.py --force                          # account the new calls (list a new run's attempts first)
 ```
 
-`--seed-offset N` must give trial seeds no other evaluation of the run used: N ≥ 102, and no overlap with another `rescore_s*`/`leak_ablation_s*` record of the run (a re-score and a leak check may share N, as the recorded pair shares 100). Run with an N whose record exists, it checks that record instead. A new run gets its re-score from `live_demo.py` itself (in `summary.json`).
+`--record --seed-offset N` must give trial seeds no other evaluation of the run used: N ≥ 102, no seed the run's RRSI loop recorded, and no overlap with another `rescore_s*`/`leak_ablation_s*` record of the run (a re-score and a leak check may share N, as the recorded pair shares 100). Only `--record` calls the model, and it never replaces a record. A new run gets its re-score from `live_demo.py` itself (in `summary.json`).
 
 Each `demo/runs/<run>/TRACE.md` holds every step: the proposer prompt and reply, the diff, the critic verdict, per-task scores and the gate arithmetic.

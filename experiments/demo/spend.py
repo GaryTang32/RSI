@@ -9,12 +9,16 @@ start times come from each attempt's trace (or the ``started_at`` its JSON recor
 report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by
 hand: an attempt archived later (e.g. by ``live_demo.py --resume``) must be added to it. Git keeps no write times,
 so the attribution is recorded entry by entry in ``demo/spend_entries.json``: a recorded entry keeps its attempt on
-any checkout, and only entries written since (on the machine that wrote them) are attributed by write time.
+any checkout. An entry not in the record is attributed by its write time only to a new attempt, one with no recorded
+entries that started after every recorded entry on this disk was written (so after any checkout of them); any other
+is reported as unattributed until the attempt list covers it.
 
 Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
 
     python experiments/demo/spend.py            # recompute and compare with the committed record; exits 1 if it differs
     python experiments/demo/spend.py --force    # rewrite the record (recorded entries keep their attempt)
+
+``--force`` refuses while a recorded entry is missing from the caches or an entry is unattributed.
 """
 from __future__ import annotations
 
@@ -136,15 +140,21 @@ def entry_key(p: Path) -> str:
     return p.stem[:16]
 
 
-def main(recorded: dict | None = None) -> tuple[dict, dict]:
-    """(spend record, entry attribution {cache: {attempt: [entry keys]}})."""
+def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
+    """(spend record, entry attribution {cache: {attempt: [entry keys]}}, problems {"missing": [...],
+    "unattributed": [...]})."""
     if recorded is None:
         recorded = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else {}
     owner_of = {(c, k): a for c, by in recorded.items() for a, ks in by.items() for k in ks}
+    recorded_attempts = {a for by in recorded.values() for a in by}
+    all_caches = sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")])
+    # write times count only after every recorded entry on this disk was written (a checkout writes them all)
+    newest = max((p.stat().st_mtime for c in all_caches for p in c.rglob("*.json")
+                  if (str(c.relative_to(RUNS)), entry_key(p)) in owner_of), default=float("inf"))
     per_attempt: dict[str, dict] = {}
-    caches, membership, missing, suspect = {}, {}, [], []
+    caches, membership, missing, unattributed = {}, {}, [], []
     known = attempts()
-    for c in sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]):
+    for c in all_caches:
         rel = str(c.relative_to(RUNS))
         files = [p for p in c.rglob("*.json") if p.is_file()]
         total = round(sum(entry_cost(p) for p in files), 4)
@@ -155,17 +165,22 @@ def main(recorded: dict | None = None) -> tuple[dict, dict]:
             continue
         atts = sorted(known[rel], key=lambda x: x[1])
         what = {a[0]: a[2] for a in atts}
-        # with no record, a cache shared by several attempts whose every entry postdates the last start was checked out
-        if rel not in recorded and len(atts) > 1 and min(p.stat().st_mtime for p in files) >= atts[-1][1]:
-            suspect.append(rel)
         present = set()
         for p in files:
             k = entry_key(p)
             present.add(k)
             name = owner_of.get((rel, k))
-            if name is None:   # not in the record: written since, so its write time is real
+            if name is None:   # not in the record: attribute by write time, to a new attempt only
                 t = p.stat().st_mtime
-                name = next((a for a in reversed(atts) if a[1] <= t), atts[0])[0]
+                att = next((a for a in reversed(atts) if a[1] <= t), None)
+                why = ("no listed attempt had started" if att is None
+                       else f"{att[0]} has recorded entries" if att[0] in recorded_attempts
+                       else f"{att[0]} started before the newest recorded entry was written" if att[1] <= newest
+                       else None)
+                if why:
+                    unattributed.append(f"{rel}/{k} (written at {t:.0f}: {why})")
+                    continue
+                name = att[0]
             if name not in what:
                 raise SystemExit(f"{rel}: recorded attempt {name!r} is not in the attempt list")
             rec = per_attempt.setdefault(name, {"cache": rel, "what": what[name], "usd": 0.0, "entries": 0})
@@ -198,32 +213,29 @@ def main(recorded: dict | None = None) -> tuple[dict, dict]:
     out = {"method": __doc__.split("\n\n")[1].replace("\n", " "),
            "total_usd": round(total_raw, 4), "by_kind_usd": {k: round(v, 4) for k, v in by_kind.items()},
            "caches": caches, "attempts": per_attempt, "reported": reported}
-    if missing:
-        out["recorded_entries_missing"] = missing
-    if suspect:
-        out["untrusted_write_times"] = suspect
-    return out, membership
+    return out, membership, {"missing": missing, "unattributed": unattributed}
 
 
 if __name__ == "__main__":
-    o, entries = main()
+    o, entries, problems = main()
     dest = ROOT / "demo" / "spend.json"
     old = json.loads(dest.read_text()) if dest.exists() else None
     old_entries = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else None
-    if o.get("untrusted_write_times"):
-        print("no demo/spend_entries.json and the write times look like a fresh checkout in",
-              o["untrusted_write_times"], "- not writing; total of every cache:", o["total_usd"])
-        sys.exit(1)
-    same = old == o and old_entries == entries
-    if "--force" in sys.argv or old is None:
+    for kind, why in (("missing", "recorded entries missing from the caches"),
+                      ("unattributed", "entries no listed attempt can own (add the attempt that wrote them)")):
+        if problems[kind]:
+            print(f"{why}: {len(problems[kind])}", *problems[kind][:5], sep="\n  ")
+    same = old == o and old_entries == entries and not any(problems.values())
+    if "--force" in sys.argv and any(problems.values()):
+        print("not writing: fix the entries above first")
+    elif "--force" in sys.argv:
         dest.write_text(json.dumps(o, indent=1))
         ENTRIES.write_text(json.dumps(entries, indent=0, separators=(",", ":")) + "\n")
-        print("wrote", dest, "and", ENTRIES, "" if same else "(changed)")
+        print("wrote", dest, "and", ENTRIES, "" if old == o and old_entries == entries else "(changed)")
+        same = True
     else:
-        print("matches the committed record" if same else "DIFFERS from the committed record (--force to rewrite)")
+        print("matches the committed record" if same else "DIFFERS from the committed record")
     print("total", o["total_usd"])
-    if o.get("recorded_entries_missing"):
-        print("recorded entries missing from the caches:", len(o["recorded_entries_missing"]))
     for r, v in o["reported"].items():
         print(f"{r:36s} full ${v['usd_full']:.4f}  re-score ${v['usd_rescore']:.4f}  {v['attempts']}")
-    sys.exit(0 if same or "--force" in sys.argv or old is None else 1)
+    sys.exit(0 if same else 1)
