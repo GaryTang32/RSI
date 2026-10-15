@@ -403,11 +403,11 @@ class CachedLLM(LLM):
             stop = resp.raw.get("stop_reason") if isinstance(resp.raw, dict) else None
             tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model,
                                        "stop_reason": stop}))
-            tmp.replace(path)
-            if self.journal is not None:
+            if self.journal is not None:   # before the entry appears: a kill in between leaves no unlisted entry
                 self.journal.parent.mkdir(parents=True, exist_ok=True)
                 with open(self.journal, "a") as f:   # one short appended line: atomic across threads and forks
                     f.write(f"{self.dir.name}/{path.stem}\n")
+            tmp.replace(path)
         return resp
 
 

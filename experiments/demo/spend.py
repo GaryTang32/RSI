@@ -174,7 +174,9 @@ def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
         caches[rel] = {"usd": total, "entries": len(files)}
         if not files or (rel not in known and not total):   # e.g. the tinylm data cache: no model calls
             continue
-        what = {a[0]: a[2] for a in known.get(rel, [])}
+        # attempts found by a journal stay valid once --force has recorded their entries
+        what = {**{a: "found by its cache-write journal" for a in set(journaled.values())},
+                **{a[0]: a[2] for a in known.get(rel, [])}}
         present = set()
         for p in files:
             k = entry_key(p)
@@ -185,9 +187,8 @@ def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
                 if name is None:
                     unattributed.append(f"{rel}/{k}: in neither the record nor any attempt's cache-write journal")
                     continue
-                what.setdefault(name, "found by its cache-write journal")
             elif name not in what:
-                raise SystemExit(f"{rel}: recorded attempt {name!r} is not in the attempt list")
+                raise SystemExit(f"{rel}: recorded attempt {name!r} is in neither the attempt list nor a journal")
             rec = per_attempt.setdefault(name, {"cache": rel, "what": what[name], "usd": 0.0, "entries": 0})
             rec["usd"] += entry_cost(p)
             rec["entries"] += 1

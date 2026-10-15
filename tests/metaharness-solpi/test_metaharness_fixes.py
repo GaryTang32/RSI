@@ -356,6 +356,31 @@ def test_forked_smoke_killed_on_timeout_still_reports_completed_calls():
     assert t.calls == 2 and t.cost_usd == pytest.approx(0.02)          # before: 0 (the delta died with the child)
 
 
+def test_forked_smoke_timeout_kills_its_sandboxed_process(tmp_path):
+    """The forked smoke child is stopped with SIGTERM first, so the sandboxed process it started is killed by
+    run_cmd's own cleanup; before, the child was SIGKILLed and its CPU-bound sandbox process kept running."""
+    from rsi.core.sandbox import run_cmd
+    pidfile = tmp_path / "pid"
+
+    class Spins:
+        def smoke(self, artifact, llm):
+            run_cmd([sys.executable, "-c", f"import os; open({str(pidfile)!r}, 'w').write(str(os.getpid()))\n"
+                                           "while True: pass"], timeout_s=60)
+
+    ok, msg = InterfaceValidator(timeout_s=1.5, isolate=True).validate(Spins(), Artifact({"h.py": "x = 1\n"}), None)
+    assert not ok and "timed out" in msg
+    pid = int(pidfile.read_text())
+    for _ in range(100):                       # the group kill lands within moments
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        os.kill(pid, 9)
+        pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
+
+
 # ------------------------------------------------------------------ N10: unknown base system
 def test_unknown_base_system_is_recorded_not_silently_replaced(dom, tmp_path):
     arts = {"fewshot_all": dom.seed_artifact("fewshot_all"), "no_memory": dom.seed_artifact("no_memory")}

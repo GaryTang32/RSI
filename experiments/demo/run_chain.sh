@@ -19,7 +19,9 @@ logs=demo/runs
 archive=demo/runs/_archive
 if [ "$1" = "--check" ]; then
   shift
-  logs="$(mktemp -d "${TMPDIR:-/tmp}/rsi_checks_$(date -u +%Y%m%dT%H%M%SZ)_XXXX")"
+  base="${TMPDIR:-/tmp}"
+  mkdir -p "$base" && logs="$(mktemp -d "$base/rsi_checks_$(date -u +%Y%m%dT%H%M%SZ)_XXXX")" \
+    || { echo "cannot create a log directory under $base" >&2; exit 2; }
   archive="$logs/_archive"
 fi
 chain="$logs/chain.log"

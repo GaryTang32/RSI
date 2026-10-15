@@ -9,8 +9,8 @@ as the proposer, and writes a full trace (``trace.jsonl`` -> ``TRACE.md``) plus 
     python experiments/demo/live_demo.py autoresearch   # tinylm train.py, autoresearch, 10 experiments
     python experiments/demo/live_demo.py metaharness --suite hard   # harder tasks: logic grids + ledgers
     python experiments/demo/live_demo.py rrsi --suite hard
-    python experiments/demo/live_demo.py metaharness --replay-check # re-run a finished run from its cache at $0
-                                                                    # and check every prompt, score and trace
+    python experiments/demo/live_demo.py metaharness --replay-check # re-run a finished run from its cache at $0 and
+                # compare its proposer prompts, practice scores and traces, seed score, monitor readings and test results
 
 Outputs go to ``demo/runs/<method>/`` with a fresh LLM cache in ``demo/runs/.cache_<method>``
 (a re-run with the same cache replays at $0). The seed harness is one direct model call with

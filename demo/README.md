@@ -274,7 +274,7 @@ python experiments/demo/leak_ablation.py          # replay leak_ablation.json (a
 python experiments/demo/monitor_check.py          # replay the reported runs' shadow-monitor readings; compare with the traces
 python experiments/demo/calibrate_hard.py         # replay the hard-suite calibration; compare with _archive/calibrate_hard.json
 python experiments/demo/spend.py                  # recompute the spend record and compare
-python experiments/demo/plot_demo.py && python experiments/demo/build_page.py && git diff --exit-code -- demo/data.json demo/index.html demo/figures   # rebuild the page and figures; compare
+python experiments/demo/plot_demo.py && python experiments/demo/build_page.py && git diff --exit-code -- demo/data.json demo/replicates.json demo/index.html demo/figures   # rebuild and compare
 experiments/demo/run_chain.sh --check "metaharness --replay-check" "rescore.py" "spend.py"   # one after another; logs under $TMPDIR
 ```
 

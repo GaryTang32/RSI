@@ -14,8 +14,8 @@ first checks that the neutral copy contains no task's answer and no practice exc
     python experiments/demo/leak_ablation.py --record --seed-offset 200   # new samples: leak_ablation_s200.json (live)
 
 The record is ``demo/runs/metaharness_hard/leak_ablation.json`` (trial seeds 100 and 101), plus any
-``leak_ablation_s<N>.json`` (seeds N and N + 1); a record is never replaced (``spend.py`` attributes cache entries by
-its ``started_at``). A check replays a record with the model switched off (a cache miss is an error), compares the
+``leak_ablation_s<N>.json`` (seeds N and N + 1); a record is never replaced (``spend.py`` attributes the cache entries
+a ``--record`` writes by its cache-write journal, ``leak_ablation_s<N>.cache_writes.txt``). A check replays a record with the model switched off (a cache miss is an error), compares the
 scores, writes per-task scores to ``<record>_check.json`` and exits 1 on any difference; it never calls the model.
 Only ``--record`` does, for an N that gives trial seeds no evaluation of the run used
 (``live_demo.new_seed_problem``). The superseded first check, ``leak_ablation_v1.json`` (an earlier copy of this

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import os
+import sys
 import threading
 import time
 import traceback
@@ -65,6 +66,9 @@ class InterfaceValidator:
         if pid == 0:                                     # child
             os.close(r)
             try:
+                # a SIGTERM (from the parent's cleanup below, or `kill`/`timeout`) unwinds through the smoke, so a
+                # sandboxed process it started is killed by run_cmd's own cleanup instead of being orphaned
+                signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
                 lock = threading.Lock()
 
                 def send(msg) -> None:
@@ -107,11 +111,7 @@ class InterfaceValidator:
                         done, err = True, msg[1]
         finally:
             os.close(r)
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            os.waitpid(pid, 0)
+            _stop_child(pid)
         if not done:
             if time.monotonic() >= deadline:
                 err = f"smoke timed out after {self.timeout_s}s"
@@ -120,6 +120,26 @@ class InterfaceValidator:
             else:
                 err = "smoke process died"
         return (err is None), (err or "OK")
+
+
+def _stop_child(pid: int, grace_s: float = 2.0) -> None:
+    """End a forked smoke child: SIGTERM first, so it unwinds and kills any sandboxed process it started, then
+    SIGKILL if it has not exited within ``grace_s``."""
+    import signal
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    end = time.monotonic() + grace_s
+    while time.monotonic() < end:
+        if os.waitpid(pid, os.WNOHANG)[0]:
+            return
+        time.sleep(0.01)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    os.waitpid(pid, 0)
 
 
 def _meters(llm) -> list:

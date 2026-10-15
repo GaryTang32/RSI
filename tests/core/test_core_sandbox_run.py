@@ -206,10 +206,25 @@ def test_transfer_report_unseals_for_reporting_only():
 
 
 def test_child_gets_a_cpu_backstop_from_its_wall_timeout():
-    """A child that outlives a SIGKILLed parent (no one left to enforce the wall timeout) still stops: without an
-    explicit cpu_s it gets RLIMIT_CPU of 4x the wall budget plus 5 s; an explicit cpu_s wins."""
+    """A CPU-bound child that outlives a SIGKILLed parent (no one left to enforce the wall timeout) still stops:
+    without an explicit cpu_s it gets RLIMIT_CPU of the wall budget times the usable cores (at least 4), plus 5 s;
+    an explicit cpu_s wins, and the memory limit is applied either way."""
+    import os as _os
     import sys as _sys
     from rsi.core.sandbox import run_cmd
-    probe = [_sys.executable, "-c", "import resource; print(resource.getrlimit(resource.RLIMIT_CPU)[0])"]
-    assert run_cmd(probe, timeout_s=10).stdout.strip() == "45"
-    assert run_cmd(probe, timeout_s=10, cpu_s=3).stdout.strip() == "3"
+    cores = len(_os.sched_getaffinity(0))
+    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_CPU)[0], r.getrlimit(r.RLIMIT_AS)[0])"]
+    assert run_cmd(probe, timeout_s=10, mem_mb=512).stdout.split() == [str(10 * max(4, cores) + 5), str(512 << 20)]
+    assert run_cmd(probe, timeout_s=10, cpu_s=3, mem_mb=512).stdout.split() == ["3", str(512 << 20)]
+
+
+def test_backstop_stays_within_an_inherited_hard_cpu_limit_and_keeps_the_memory_limit():
+    """Under a hard RLIMIT_CPU this process may not raise, the backstop fits inside it, and the memory limit is still
+    set (a failing CPU prlimit used to skip it)."""
+    import subprocess as _sp
+    import sys as _sys
+    code = ("import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, (30, 30)); from rsi.core.sandbox import run_cmd; "
+            "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
+            "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
+    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
+    assert out == f"(25, 30) {512 << 20}", out

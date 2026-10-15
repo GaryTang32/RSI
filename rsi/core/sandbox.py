@@ -63,14 +63,19 @@ def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None
     has threads (the Evaluator's workers reach this through tool calls): the
     child could deadlock between fork and exec. The child starts a few
     microseconds before the limits apply, far less than an interpreter start."""
-    try:
-        if cpu_s:
+    # each limit on its own: one that cannot be set (the child already exited, or a hard limit this process may not
+    # raise) never drops the other
+    if cpu_s:
+        try:
             resource.prlimit(pid, resource.RLIMIT_CPU, (cpu_s, cpu_s + 5))
-        if mem_mb:
-            b = mem_mb * 1024 * 1024
+        except (ProcessLookupError, PermissionError, ValueError):
+            pass
+    if mem_mb:
+        b = mem_mb * 1024 * 1024
+        try:
             resource.prlimit(pid, resource.RLIMIT_AS, (b, b))
-    except (ProcessLookupError, PermissionError):
-        pass   # the child already exited (a zombie cannot be limited, and needs no limits)
+        except (ProcessLookupError, PermissionError, ValueError):
+            pass
 
 
 def _kill_group(proc: subprocess.Popen) -> None:
@@ -78,6 +83,20 @@ def _kill_group(proc: subprocess.Popen) -> None:
         os.killpg(proc.pid, 9)
     except (ProcessLookupError, PermissionError):
         pass
+
+
+def _cpu_backstop(timeout_s: float) -> Optional[int]:
+    """RLIMIT_CPU for a child given only a wall timeout: a backstop, not the timeout. If this process dies without
+    killing the child (SIGKILL), a CPU-bound child still stops; a blocked or sleeping one is not stopped by it.
+    RLIMIT_CPU counts every thread, so it allows every core the child may use (at least 4) for the whole wall budget,
+    plus 5 s: a child is never stopped by it before its wall timeout. It stays within an inherited hard limit
+    (None when that leaves no room)."""
+    cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
+    cpu = math.ceil(timeout_s) * max(4, cores) + 5
+    hard = resource.getrlimit(resource.RLIMIT_CPU)[1]
+    if hard != resource.RLIM_INFINITY:
+        cpu = min(cpu, hard - 5)
+    return cpu if cpu > 0 else None
 
 
 SAFE_ENV_KEYS = ("PATH", "HOME", "LANG", "LC_ALL", "PYTHONPATH", "TMPDIR", "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
@@ -109,9 +128,7 @@ def run_cmd(
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,  # own group: killpg
     )
     if cpu_s is None and timeout_s and math.isfinite(timeout_s):
-        # a backstop, not the timeout: if this process dies without killing the child (SIGKILL), the child still
-        # stops; generous enough (4x the wall budget) that a single-threaded child always meets the wall timeout first
-        cpu_s = math.ceil(timeout_s) * 4 + 5
+        cpu_s = _cpu_backstop(timeout_s)
     _apply_limits(proc.pid, cpu_s, mem_mb)
     try:
         out, err = proc.communicate(input=stdin, timeout=timeout_s)

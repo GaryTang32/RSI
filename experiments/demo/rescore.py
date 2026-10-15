@@ -14,9 +14,9 @@ A check replays a recorded re-score (``rescore.json``, trial seeds 100 and 101, 
 N + 1) from the run's cache with the model switched off (a miss is an error), compares every score, writes the
 per-task scores to ``<record>_check.json`` and exits 1 on any difference. Checks never call the model. Only
 ``--record`` does, and only for the runs it names and an N that gives trial seeds no evaluation of the run used
-(``live_demo.new_seed_problem``). A recorded re-score is never replaced: ``spend.py`` attributes the run's cache
-entries by its ``started_at``. Runs recorded from now on carry the seed-100 re-score in their ``summary.json``
-(``live_demo._finish``).
+(``live_demo.new_seed_problem``). A recorded re-score is never replaced; ``spend.py`` attributes the cache entries
+a ``--record`` writes by its cache-write journal, ``<run>/rescore_s<N>.cache_writes.txt``. Runs recorded from now on
+carry the seed-100 re-score in their ``summary.json`` (``live_demo._finish``).
 """
 from __future__ import annotations
 

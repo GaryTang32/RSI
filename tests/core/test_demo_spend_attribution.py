@@ -73,6 +73,8 @@ def test_new_entries_go_to_the_attempt_whose_journal_lists_them(demo):
     assert o["by_kind_usd"]["rescore"] == 2.5 and o["reported"]["run"]["usd_full"] == 1.0
     assert o["reported"]["run"]["usd_rescore_new_seeds"] == {"run/rescore_s200": 0.5}
     assert o["attempts"]["_archive/run2_killed"]["what"] == "found by its cache-write journal"
+    o2, entries2, problems2 = spend.main(recorded=entries)   # what --force wrote is read back the same way
+    assert (o2, entries2) == (o, entries) and not any(problems2.values())
 
 
 def test_entries_no_journal_lists_are_reported(demo):
