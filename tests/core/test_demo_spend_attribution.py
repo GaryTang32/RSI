@@ -184,3 +184,37 @@ def test_leak_check_record_begins_a_live_write(monkeypatch):
     monkeypatch.setattr(leak_ablation, "begin_live_write", _stop)
     with pytest.raises(_Called):
         leak_ablation.run(9000, True)
+
+
+def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkeypatch):
+    """While another process holds demo/runs/.live_writer.lock, --resume refuses before archiving the attempt or
+    touching a journal, and --record refuses before building a model client."""
+    import fcntl
+    import live_demo
+    import leak_ablation
+    import rescore
+    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+    monkeypatch.setattr(live_demo, "RESUME", True)
+    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "summary.json").write_text(json.dumps({"clean": False, "setup": {"suite": "easy"}, "seed_files": {},
+                                                  "final_files": {}}))
+    _journal(run / "cache_writes.txt", "b" * 64)                    # dangling: no such entry
+    (tmp_path / ".cache_run").mkdir()
+    holder = open(tmp_path / ".live_writer.lock", "w")
+    fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)               # another writer (a separate open file)
+    try:
+        with pytest.raises(SystemExit, match="one at a time"):
+            live_demo._fresh("run")
+        assert run.exists() and not (tmp_path / "_archive").exists()
+        assert (run / "cache_writes.txt").read_text() == f".cache_run/{'b' * 64}\n"
+        monkeypatch.setattr(rescore, "OUT", tmp_path)
+        monkeypatch.setattr(rescore, "ClaudeCLI", _no_model)
+        with pytest.raises(SystemExit, match="one at a time"):
+            rescore.rescore_run("run", 200, record=True)
+        monkeypatch.setattr(leak_ablation, "ClaudeCLI", _no_model)
+        with pytest.raises(SystemExit, match="one at a time"):
+            leak_ablation.run(9000, True)
+    finally:
+        holder.close()

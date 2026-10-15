@@ -241,7 +241,7 @@ def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
     import subprocess as _sp
     import sys as _sys
     import os as _os
-    b = 10 * max(4, len(_os.sched_getaffinity(0))) + 5      # the backstop for a 10 s wall timeout on this machine
+    b = min(10 * max(4, len(_os.sched_getaffinity(0))) + 5, 1000)   # the backstop for a 10 s wall timeout here
     for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"),
                          ((1000, 1002), f"({b}, {min(b + 5, 1002)})")):
         code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
@@ -270,7 +270,44 @@ def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
     import sys as _sys
     code = ("import subprocess, sys, time, os\n"
             "from rsi.core.sandbox import close_sandboxes\n"
-            "p = subprocess.Popen([sys.executable, '-c', 'while True: pass'], start_new_session=True)\n"
-            "time.sleep(0.2); close_sandboxes(); p.wait(timeout=5); print(p.returncode)")
+            "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
+            "p = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,\n"
+            "                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "try:\n"
+            "    time.sleep(0.2); close_sandboxes(); p.wait(timeout=5); print(p.returncode)\n"
+            "finally:\n"
+            "    if p.poll() is None:\n"
+            "        os.killpg(p.pid, 9)")
     out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
     assert out == "-9", out
+
+
+def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8():
+    """The kernel cuts a process name to 15 bytes, possibly inside a character: scanning /proc must still kill
+    both the registered sandbox and an unregistered one."""
+    import subprocess as _sp
+    import sys as _sys
+    code = ("import ctypes, os, subprocess, sys, threading, time\n"
+            "from rsi.core.sandbox import close_sandboxes, run_cmd\n"
+            "odd = subprocess.Popen([sys.executable, '-c', 'import ctypes, time; '\n"
+            "    'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(b\"temp\\xc3\\xa9ratures_\\xc3\"), 0, 0, 0); time.sleep(30)'])\n"
+            "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
+            "loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,\n"
+            "                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "pid = []\n"
+            "def reg():\n"
+            "    run_cmd([sys.executable, '-c', 'import os, sys; print(os.getpid(), flush=True)\\n' + spin], timeout_s=30)\n"
+            "threading.Thread(target=reg, daemon=True).start()\n"
+            "try:\n"
+            "    time.sleep(1.0)\n"
+            "    close_sandboxes(); loose.wait(timeout=5)\n"
+            "    regs = [int(d) for d in os.listdir('/proc') if d.isdigit() and int(d) not in (loose.pid, odd.pid)\n"
+            "            and open(f'/proc/{d}/stat', 'rb').read().split(b' ')[3] == str(os.getpid()).encode()\n"
+            "            and open(f'/proc/{d}/stat', 'rb').read().split(b' ')[2] != b'Z']\n"
+            "    print(loose.returncode, regs)\n"
+            "finally:\n"
+            "    odd.kill()\n"
+            "    if loose.poll() is None:\n"
+            "        os.killpg(loose.pid, 9)")
+    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert out.stdout.strip() == "-9 []", (out.stdout, out.stderr[-2000:])

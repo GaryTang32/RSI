@@ -112,17 +112,31 @@ def close_sandboxes() -> int:
         _CLOSED.add(me)
         groups = {g for owner, g in _LIVE_GROUPS if owner == me}
         dirs = [d for owner, d in _LIVE_DIRS if owner == me]
-    # every sandbox leads its own session as a direct child: also catch one an interrupted run_cmd never registered
-    # (or deregistered before killing it)
-    groups |= _child_session_leaders(me)
     for g in groups:
-        try:
-            os.killpg(g, 9)
-        except (ProcessLookupError, PermissionError):
-            pass
+        _killpg(g)
     for d in dirs:
         shutil.rmtree(d, ignore_errors=True)
-    return len(groups)
+    # every sandbox leads its own session as a direct child: also catch one an interrupted run_cmd never registered
+    # (or deregistered before killing it); after the registered ones, so a failing scan can never stop those
+    extra = kill_child_sessions(me) - groups
+    return len(groups) + len(extra)
+
+
+def _killpg(g: int) -> None:
+    try:
+        os.killpg(g, 9)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def kill_child_sessions(pid: int) -> set[int]:
+    """Kill the process group of every direct child of ``pid`` that leads its own (every sandbox does): the
+    sandboxes of a process that cannot close them itself, e.g. a forked child about to be SIGKILLed. Returns the
+    groups signalled."""
+    groups = _child_session_leaders(pid)
+    for g in groups:
+        _killpg(g)
+    return groups
 
 
 def _child_session_leaders(pid: int) -> set[int]:
@@ -136,13 +150,13 @@ def _child_session_leaders(pid: int) -> set[int]:
         if not e.isdigit():
             continue
         try:
-            with open(f"/proc/{e}/stat") as f:
+            with open(f"/proc/{e}/stat", "rb") as f:   # bytes: a process name need not be valid UTF-8
                 stat = f.read()
-        except OSError:
+            fields = stat[stat.rfind(b")") + 2:].split()   # after "pid (comm)": state ppid pgrp ...
+            if int(fields[1]) == pid and int(fields[2]) == int(e):
+                found.add(int(e))
+        except (OSError, ValueError, IndexError):
             continue
-        fields = stat[stat.rfind(")") + 2:].split()   # after "pid (comm)": state ppid pgrp ...
-        if len(fields) > 2 and int(fields[1]) == pid and int(fields[2]) == int(e):
-            found.add(int(e))
     return found
 
 

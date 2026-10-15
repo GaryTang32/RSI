@@ -62,7 +62,15 @@ class InterfaceValidator:
         import select
         import signal
         r, w = os.pipe()
-        pid = os.fork()
+        # SIGINT/SIGTERM stay blocked across the fork until each side has its handlers: a signal landing in the
+        # fork's after-fork hooks would otherwise run the parent's handler in the child, outside its finally
+        stop_signals = {signal.SIGINT, signal.SIGTERM}
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
+        try:
+            pid = os.fork()
+        except BaseException:
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            raise
         if pid == 0:                                     # child
             exiting = [False]
 
@@ -76,6 +84,7 @@ class InterfaceValidator:
                 os.close(r)
                 signal.signal(signal.SIGTERM, on_signal)
                 signal.signal(signal.SIGINT, on_signal)
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)   # a signal held since the fork arrives now
                 lock = threading.Lock()
 
                 def send(msg) -> None:
@@ -97,11 +106,13 @@ class InterfaceValidator:
                     _child_exit()
                 finally:
                     os._exit(0)
-        os.close(w)
         deadline = time.monotonic() + self.timeout_s
         done, err, buf = False, None, b""
         inflight: dict[int, int] = {}
         try:
+            # inside the try: a signal held since the fork arrives here, and the finally still stops the child
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+            os.close(w)
             while not done:
                 left = deadline - time.monotonic()
                 if left <= 0:
@@ -152,18 +163,21 @@ def _child_exit() -> None:
 
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
-    """End a forked smoke child: SIGTERM first, so it closes the sandboxes it started on its way out
-    (:func:`_child_exit`), then SIGKILL if it has not exited within ``grace_s``."""
+    """End a forked smoke child: SIGTERM (repeated), so it closes the sandboxes it started on its way out
+    (:func:`_child_exit`); if it has not exited within ``grace_s``, kill its sandboxes from here, then SIGKILL it."""
     import signal
-    try:
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    end = time.monotonic() + grace_s
+    end, resend = time.monotonic() + grace_s, 0.0
     while time.monotonic() < end:
+        if time.monotonic() >= resend:   # again now and then: one may have landed before the child could act on it
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            resend = time.monotonic() + 0.2
         if os.waitpid(pid, os.WNOHANG)[0]:
             return
         time.sleep(0.01)
+    _sandbox.kill_child_sessions(pid)   # a child that never closed its sandboxes: kill them from here
     try:
         os.kill(pid, signal.SIGKILL)
     except ProcessLookupError:

@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 import stat
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -482,6 +483,35 @@ def test_forked_smoke_child_ignores_the_parents_sigterm_once_leaving(tmp_path):
             os._exit(0)
     assert ok, msg
     assert not list(tmp_path.glob("escaped_*"))
+
+
+def test_a_stop_signal_during_the_fork_reaches_the_childs_own_handler(tmp_path):
+    """A SIGTERM landing in the fork's after-fork hooks, under a parent that turns SIGTERM into SystemExit (as the
+    replay check does), is held until the child's own handler is in place: the smoke never runs and the child
+    leaves through its exit path (before, the parent's handler ran in the hook, the error was ignored and the
+    smoke went on)."""
+    marker = tmp_path / "smoke_ran"
+    code = f"""
+import os, signal, sys, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+os.register_at_fork(after_in_child=lambda: os.kill(os.getpid(), signal.SIGTERM))
+
+class Smoke:
+    def smoke(self, artifact, llm):
+        open({str(marker)!r}, "w").write("x")
+        time.sleep(30)
+
+t0 = time.monotonic()
+ok, msg = InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({{"h.py": "x = 1\\n"}}), None)
+print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    lines = out.stdout.strip().splitlines()
+    assert len(lines) == 1, (out.stdout, out.stderr[-1500:])          # one process printed: no child escaped
+    assert not marker.exists(), "the smoke ran although a stop signal arrived during the fork"
+    assert float(lines[0].split()[1]) < 5, lines
 
 
 def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):
