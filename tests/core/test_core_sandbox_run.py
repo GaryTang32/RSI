@@ -287,27 +287,83 @@ def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8():
     both the registered sandbox and an unregistered one."""
     import subprocess as _sp
     import sys as _sys
-    code = ("import ctypes, os, subprocess, sys, threading, time\n"
-            "from rsi.core.sandbox import close_sandboxes, run_cmd\n"
-            "odd = subprocess.Popen([sys.executable, '-c', 'import ctypes, time; '\n"
-            "    'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(b\"temp\\xc3\\xa9ratures_\\xc3\"), 0, 0, 0); time.sleep(30)'])\n"
-            "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
-            "loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,\n"
-            "                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
-            "pid = []\n"
-            "def reg():\n"
-            "    run_cmd([sys.executable, '-c', 'import os, sys; print(os.getpid(), flush=True)\\n' + spin], timeout_s=30)\n"
-            "threading.Thread(target=reg, daemon=True).start()\n"
-            "try:\n"
-            "    time.sleep(1.0)\n"
-            "    close_sandboxes(); loose.wait(timeout=5)\n"
-            "    regs = [int(d) for d in os.listdir('/proc') if d.isdigit() and int(d) not in (loose.pid, odd.pid)\n"
-            "            and open(f'/proc/{d}/stat', 'rb').read().split(b' ')[3] == str(os.getpid()).encode()\n"
-            "            and open(f'/proc/{d}/stat', 'rb').read().split(b' ')[2] != b'Z']\n"
-            "    print(loose.returncode, regs)\n"
-            "finally:\n"
-            "    odd.kill()\n"
-            "    if loose.poll() is None:\n"
-            "        os.killpg(loose.pid, 9)")
-    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    inner = r"""
+import ctypes, os, subprocess, sys, threading, time
+from rsi.core.sandbox import close_sandboxes, run_cmd
+die_with_parent = 'import ctypes; ctypes.CDLL(None).prctl(1, 9)\n'   # PR_SET_PDEATHSIG: never outlive this script
+spin = die_with_parent + 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\nwhile True: pass'
+name = bytes.fromhex('74656d70c3a9726174757265735fc3')          # 'temp' + e-acute + 'ratures_' + half a character
+odd = subprocess.Popen([sys.executable, '-c', die_with_parent + 'import ctypes, sys, time; '
+                        'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(bytes.fromhex(sys.argv[1])), 0, 0, 0); '
+                        'time.sleep(30)', name.hex()])
+loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+threading.Thread(target=run_cmd, args=([sys.executable, '-c', spin],), kwargs={'timeout_s': 30}, daemon=True).start()
+
+def stat(pid):
+    try:
+        with open(f'/proc/{pid}/stat', 'rb') as f:
+            s = f.read()
+    except OSError:
+        return None
+    return s
+
+def live_session_children():
+    out = []
+    for d in os.listdir('/proc'):
+        s = stat(d) if d.isdigit() else None
+        if s is None:
+            continue
+        f = s[s.rfind(b')') + 2:].split()
+        if int(f[1]) == os.getpid() and int(f[2]) == int(d) and f[0] != b'Z':
+            out.append(int(d))
+    return out
+
+try:
+    end = time.monotonic() + 5
+    while b'\xc3)' not in (stat(odd.pid) or b''):
+        if time.monotonic() > end:
+            raise SystemExit('the odd process name never appeared')
+        time.sleep(0.02)
+    while len(live_session_children()) < 2 and time.monotonic() < end:   # loose and the registered sandbox
+        time.sleep(0.02)
+    close_sandboxes()
+    loose.wait(timeout=5)
+    end = time.monotonic() + 5
+    while (left := live_session_children()) and time.monotonic() < end:
+        time.sleep(0.05)
+    print(loose.returncode, left)
+finally:
+    odd.kill()
+    if loose.poll() is None:
+        os.killpg(loose.pid, 9)
+"""
+    out = _sp.run([_sys.executable, "-c", inner], capture_output=True, text=True, timeout=60)
     assert out.stdout.strip() == "-9 []", (out.stdout, out.stderr[-2000:])
+
+
+def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it():
+    """The directory is registered before it exists, so close_sandboxes() removes it even if a stop signal lands
+    the moment it is created."""
+    import subprocess as _sp
+    import sys as _sys
+    inner = r"""
+import os, signal, sys
+from rsi.core import sandbox
+made = []
+real_mkdir = os.mkdir
+def mkdir(path, *a, **k):
+    real_mkdir(path, *a, **k)
+    made.append(path)
+    raise KeyboardInterrupt   # as if a signal handler ran right after the directory appeared
+os.mkdir = mkdir
+try:
+    sandbox.run_python('pass')
+except KeyboardInterrupt:
+    pass
+os.mkdir = real_mkdir
+sandbox.close_sandboxes()
+print(len(made), [p for p in made if os.path.exists(p)])
+"""
+    out = _sp.run([_sys.executable, "-c", inner], capture_output=True, text=True, timeout=60)
+    assert out.stdout.strip() == "1 []", (out.stdout, out.stderr[-2000:])

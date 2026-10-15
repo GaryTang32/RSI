@@ -111,8 +111,8 @@ class InterfaceValidator:
         inflight: dict[int, int] = {}
         try:
             # inside the try: a signal held since the fork arrives here, and the finally still stops the child
-            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             os.close(w)
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
             while not done:
                 left = deadline - time.monotonic()
                 if left <= 0:

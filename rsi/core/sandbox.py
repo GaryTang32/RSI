@@ -165,13 +165,26 @@ def _closed_error() -> RuntimeError:
 
 
 def _mkscratch(prefix: str) -> str:
-    """A scratch directory, registered so close_sandboxes() can remove it if its user never gets to."""
-    with _LIVE_LOCK:
-        if os.getpid() in _CLOSED:
-            raise _closed_error()
-        d = tempfile.mkdtemp(prefix=prefix)
-        _LIVE_DIRS.add((os.getpid(), d))
-    return d
+    """A scratch directory (private, like ``tempfile.mkdtemp``), registered before it is created, so that
+    close_sandboxes() can remove it even if a signal interrupts its creation or its user never gets to."""
+    me = os.getpid()
+    while True:
+        d = os.path.join(tempfile.gettempdir(), f"{prefix}{secrets.token_hex(5)}")
+        with _LIVE_LOCK:
+            if me in _CLOSED:
+                raise _closed_error()
+            _LIVE_DIRS.add((me, d))
+        try:
+            os.mkdir(d, 0o700)
+            return d
+        except FileExistsError:   # a name already taken: not ours, so forget it and draw another
+            with _LIVE_LOCK:
+                _LIVE_DIRS.discard((me, d))
+        except BaseException:
+            with _LIVE_LOCK:
+                _LIVE_DIRS.discard((me, d))
+            shutil.rmtree(d, ignore_errors=True)
+            raise
 
 
 def _rmscratch(d: str) -> None:
