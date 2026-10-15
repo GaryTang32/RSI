@@ -185,12 +185,12 @@ def _mkscratch(prefix: str) -> str:
                     state = "taken"
                     _LIVE_DIRS.discard((me, d))
         except BaseException:
-            # failed, or a signal anywhere up to and including the lock's release: remove what may have been
-            # made first (it stays registered until it is gone), then forget it
+            # failed, or a signal surfacing at the lock's release: remove what may have been made first (it stays
+            # registered until it is gone), then forget it. Not under the lock: under a tracer (pdb) a signal can
+            # surface here while this thread still holds it, and set.discard needs no lock
             if state == "made":
                 shutil.rmtree(d, ignore_errors=True)
-            with _LIVE_LOCK:
-                _LIVE_DIRS.discard((me, d))
+            _LIVE_DIRS.discard((me, d))
             raise
         if state == "made":
             return d

@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import ast
-import contextlib
+import functools
+import itertools
 import os
+import sys
 import threading
 import time
 import traceback
@@ -25,6 +27,11 @@ from typing import Iterable, Optional
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
 from ..core import sandbox as _sandbox
+
+try:   # the C function: it sets the mask before running pending handlers (signal's wrapper may run them first)
+    from _signal import pthread_sigmask as _c_sigmask
+except ImportError:  # pragma: no cover - platforms without it never fork here
+    _c_sigmask = None
 
 #: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
@@ -62,35 +69,38 @@ class InterfaceValidator:
         import pickle
         import select
         import signal
-        # The fork and the cleanup run with stop signals deferred (_stop_signals_deferred): a Ctrl-C or kill landing
-        # there is recorded and raised once they are done, so it can neither leak the pipe, leave the signals
-        # blocked or the child running, nor be swallowed by an after-fork hook. In the child, SIGINT/SIGTERM stay
-        # blocked from the fork until its own handlers are in place, so the parent's never run there.
-        stop_signals = {signal.SIGINT, signal.SIGTERM}
-        st: dict = {"r": None, "pid": None}
+        buf = b""
+        # Every signal is blocked in this thread across the fork, so the child gets none until its own handlers
+        # are in place, inside its try, which always ends in os._exit: no handler of the parent's ever runs there.
+        # In the parent a stop signal can be handled at almost any point (another thread may take it), so the pipe
+        # and the child are stored with no gap after they are made, a stop handled inside an after-fork hook (where
+        # Python would drop it) is kept and raised, and the cleanup is idempotent and retried until done.
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
+        fds: list[int] = []
+        pids: list[int] = []
+        held: list[BaseException] = []
+        done, err, deadline = False, None, 0.0
+        inflight: dict[int, int] = {}
         try:
-            with _stop_signals_deferred():
-                mask = signal.pthread_sigmask(signal.SIG_BLOCK, stop_signals)
-                fds: tuple = ()
+            signal.pthread_sigmask(signal.SIG_BLOCK, signal.valid_signals())
+            # extend() stores what the call returns from C, before any bytecode could run a signal handler
+            fds.extend(itertools.chain.from_iterable(itertools.starmap(os.pipe, [()])))
+            prev_hook, hook = sys.unraisablehook, functools.partial(_hold_stop, held, sys.unraisablehook)
+            sys.unraisablehook = hook
+            try:
+                pids.extend(itertools.starmap(os.fork, [()]))
+            finally:
+                sys.unraisablehook = prev_hook
+            if pids[0] == 0:                                  # child
                 try:
-                    fds = os.pipe()
-                    pid = os.fork()
-                except BaseException:
-                    for fd in fds:
-                        os.close(fd)
-                    signal.pthread_sigmask(signal.SIG_SETMASK, mask)
-                    raise
-                r, w = fds
-                if pid:
-                    st["r"], st["pid"] = r, pid
-                    try:
-                        os.close(w)
-                    finally:
-                        signal.pthread_sigmask(signal.SIG_SETMASK, mask)
-                else:
-                    self._child(domain, artifact, llm, r, w, mask)   # never returns
-            done, err, buf = False, None, b""
-            inflight: dict[int, int] = {}
+                    self._child(domain, artifact, llm, fds[0], fds[1], mask)
+                finally:
+                    os._exit(1)
+            os.close(fds.pop())          # the write end (a signal between the pop and the close leaks it, at worst)
+            _c_sigmask(signal.SIG_SETMASK, mask)   # sets the mask, then runs what is pending
+            if held:
+                raise held[0]
+            r = fds[0]
             deadline = time.monotonic() + self.timeout_s
             while not done:
                 left = deadline - time.monotonic()
@@ -113,14 +123,19 @@ class InterfaceValidator:
                     elif msg[0] == "done":
                         done, err = True, msg[1]
         finally:
-            try:
-                with _stop_signals_deferred():
-                    _close_and_stop(st)
-            except BaseException:
-                # a stop signal raised on the way in, before it could be deferred: it is used up, so again
-                with _stop_signals_deferred():
-                    _close_and_stop(st)
-                raise
+            # a second stop signal can land here too (Ctrl-C twice, or Ctrl-C then a kill): each step is idempotent,
+            # so the cleanup is retried, with less grace for the child each time, until it completes; the first
+            # such interruption is raised afterwards (no call before the try: nothing can run a handler there)
+            first = None
+            for grace in (2.0, 0.5, 0.0, 0.0, 0.0):
+                try:
+                    _cleanup_fork(fds, pids, mask, grace)
+                    break
+                except BaseException as e:  # noqa: BLE001
+                    if first is None:
+                        first = e
+            if first is not None:
+                raise first
         if not done:
             if time.monotonic() >= deadline:
                 err = f"smoke timed out after {self.timeout_s}s"
@@ -171,65 +186,27 @@ class InterfaceValidator:
                 os._exit(0)
 
 
-def _close_and_stop(st: dict) -> None:
-    """Close the parent's end of the pipe and stop the smoke child, once each (a retry skips what is done)."""
-    r, st["r"] = st["r"], None
-    if r is not None:
-        os.close(r)
-    pid, st["pid"] = st["pid"], None
-    if pid:
-        _stop_child(pid)
+def _hold_stop(held: list, prev, unraisable) -> None:
+    """``sys.unraisablehook`` while forking: a stop signal handled inside an after-fork hook raises there, where
+    Python reports it as 'Exception ignored' and drops it. Keep it instead, to raise once the fork is done; pass
+    anything else on. (A process another thread forks meanwhile inherits this hook: there it only keeps such an
+    exception unprinted, since an unraisable one is never raised anyway.)"""
+    if isinstance(unraisable.exc_value, (KeyboardInterrupt, SystemExit)):
+        held.append(unraisable.exc_value)
+    else:
+        prev(unraisable)
 
 
-class _Deferring:
-    """A SIGINT/SIGTERM handler standing in for ``orig``: while a deferred region is open it records the signal,
-    otherwise it calls ``orig`` (one left installed by an interrupted restore behaves exactly like ``orig``)."""
-
-    def __init__(self, orig) -> None:
-        self.orig = orig
-
-    def __call__(self, signum, frame):
-        if _DEFERRED["depth"]:
-            _DEFERRED["got"].append(signum)
-            return None
-        return self.orig(signum, frame)
-
-
-_DEFERRED: dict = {"depth": 0, "got": []}
-
-
-@contextlib.contextmanager
-def _stop_signals_deferred():
-    """Within the block a SIGINT or SIGTERM with a Python handler is recorded instead of raised, and raised again
-    (``signal.raise_signal``) once the block is done. Python runs signal handlers only in the main thread: in any
-    other thread the block cannot be interrupted by them and nothing changes. A signal pending on the way in
-    raises before anything is deferred."""
+def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
+    """Restore the signal mask, close what is left of the pipe and stop the smoke child. Each step is idempotent,
+    so a retry after an interruption does only what remains."""
     import signal
-    if threading.current_thread() is not threading.main_thread():
-        yield
-        return
-    installed: dict = {}
-    entered = False
-    try:
-        if not _DEFERRED["depth"]:
-            _DEFERRED["got"].clear()   # left by an exit that another signal interrupted: that one was raised
-        _DEFERRED["depth"] += 1
-        entered = True                 # (no call between these two lines: no signal can land in between)
-        for s in (signal.SIGINT, signal.SIGTERM):
-            h = signal.getsignal(s)
-            if callable(h) and not isinstance(h, _Deferring):   # None/SIG_DFL/SIG_IGN never raise in Python
-                signal.signal(s, _Deferring(h))
-                installed[s] = h
-        yield
-    finally:
-        if entered:
-            _DEFERRED["depth"] -= 1
-        for s, h in installed.items():
-            signal.signal(s, h)
-        if not _DEFERRED["depth"] and _DEFERRED["got"]:
-            n = _DEFERRED["got"][0]
-            _DEFERRED["got"].clear()
-            signal.raise_signal(n)
+    _c_sigmask(signal.SIG_SETMASK, mask)
+    while fds:
+        os.close(fds.pop())
+    if pids and pids[0] > 0:
+        _stop_child(pids[0], grace_s)
+        pids.clear()
 
 
 def _child_exit() -> None:
@@ -250,25 +227,37 @@ def _child_exit() -> None:
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
     """End a forked smoke child: SIGTERM (repeated), so it closes the sandboxes it started on its way out
-    (:func:`_child_exit`); if it has not exited within ``grace_s``, kill its sandboxes from here, then SIGKILL it."""
+    (:func:`_child_exit`); if it has not exited within ``grace_s``, kill its sandboxes from here, then SIGKILL it.
+    It is signalled only while still unreaped (its pid cannot have been reused), so stopping it again after an
+    interruption is safe."""
     import signal
+
+    def reaped() -> bool:
+        try:
+            return bool(os.waitpid(pid, os.WNOHANG)[0])
+        except ChildProcessError:                  # reaped already, by an earlier (interrupted) stop
+            return True
+
     end, resend = time.monotonic() + grace_s, 0.0
-    while time.monotonic() < end:
+    while not reaped():
+        if time.monotonic() >= end:
+            _sandbox.kill_child_sessions(pid)      # a child that never closed its sandboxes: kill them from here
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+            return
         if time.monotonic() >= resend:   # again now and then: one may have landed before the child could act on it
             try:
                 os.kill(pid, signal.SIGTERM)
             except ProcessLookupError:
                 pass
             resend = time.monotonic() + 0.2
-        if os.waitpid(pid, os.WNOHANG)[0]:
-            return
         time.sleep(0.01)
-    _sandbox.kill_child_sessions(pid)   # a child that never closed its sandboxes: kill them from here
-    try:
-        os.kill(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    os.waitpid(pid, 0)
 
 
 def _meters(llm) -> list:

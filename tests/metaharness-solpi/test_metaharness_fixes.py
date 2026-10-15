@@ -26,10 +26,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _run_inner(code: str, *args: str) -> subprocess.CompletedProcess:
-    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi`` from any working directory."""
+    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi`` from any working directory: the
+    checkout is on PYTHONPATH and the interpreter starts there (so no other ``rsi`` in the caller's cwd shadows
+    it)."""
     path = os.pathsep.join(p for p in (str(ROOT), os.environ.get("PYTHONPATH")) if p)
     return subprocess.run([sys.executable, "-c", code, *args], capture_output=True, text=True, timeout=60,
-                          env={**os.environ, "PYTHONPATH": path})
+                          env={**os.environ, "PYTHONPATH": path}, cwd=ROOT)
 
 TWO_CALL = SEED_PROGRAMS["fewshot_all"].replace(
     '''        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
@@ -616,8 +618,8 @@ print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), len(os.listdir("/pro
 
 
 def test_two_stop_signals_in_a_row_still_stop_the_smoke_child(tmp_path):
-    """Ctrl-C then a kill, back to back, while the smoke runs: the first interrupts the wait, the second must not
-    interrupt the cleanup (it is deferred and raised once the child is stopped and reaped)."""
+    """Ctrl-C then a kill, back to back, while the smoke runs: the first interrupts the wait and the second surfaces
+    as the cleanup starts, which then runs again: the child is still stopped and reaped."""
     code = """
 import os, signal, sys, threading, time
 from rsi.core import Artifact
@@ -648,6 +650,103 @@ print(res, reaped, sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
     out = _run_inner(code, str(tmp_path / "smoke_started"))
     assert out.stdout.strip() in ("SystemExit child reaped []", "KeyboardInterrupt child reaped []"), (
         out.stdout, out.stderr[-1500:])
+
+
+def test_a_stop_signal_during_the_childs_grace_period_still_reaps_it(tmp_path):
+    """The child ignores SIGTERM, so the cleanup waits out its grace period; a second stop signal in that wait
+    interrupts it, and the retried cleanup kills and reaps the child at once."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+""" + _FORK_SPY + """
+marker = sys.argv[1]
+class Smoke:
+    def smoke(self, artifact, llm):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)            # a child slow to stop
+        open(marker, "w").write("x")
+        time.sleep(30)
+main = threading.main_thread().ident
+def stopper():
+    while not os.path.exists(marker):
+        time.sleep(0.01)
+    time.sleep(0.2)
+    signal.pthread_kill(main, signal.SIGINT)                     # ends the wait; the cleanup's grace starts
+    time.sleep(0.5)
+    signal.pthread_kill(main, signal.SIGTERM)                    # lands inside that grace period
+threading.Thread(target=stopper, daemon=True).start()
+t0 = time.monotonic()
+try:
+    InterfaceValidator(timeout_s=20, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except BaseException as e:
+    res = type(e).__name__
+""" + _REAPED + """
+print(res, reaped, time.monotonic() - t0 < 5)
+"""
+    out = _run_inner(code, str(tmp_path / "smoke_started"))
+    assert out.stdout.strip() in ("SystemExit child reaped True", "KeyboardInterrupt child reaped True"), (
+        out.stdout, out.stderr[-1500:])
+
+
+def test_a_process_another_thread_forks_during_validation_still_stops_on_ctrl_c():
+    """Validation changes no process-wide signal handler: a worker another thread forks while it cleans up
+    (a multiprocessing pool, say) still stops on SIGINT."""
+    code = """
+import multiprocessing as mp, os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+import rsi.metaharness.validate as v
+workers, real_stop = [], v._stop_child
+def stop(pid, *a, **k):                                          # fork a worker from another thread right now
+    p = mp.get_context("fork").Process(target=time.sleep, args=(30,))
+    t = threading.Thread(target=p.start)
+    t.start()
+    t.join()
+    workers.append(p)
+    return real_stop(pid, *a, **k)
+v._stop_child = stop
+class Smoke:
+    def smoke(self, artifact, llm):
+        time.sleep(30)
+InterfaceValidator(timeout_s=0.5, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+p = workers[0]
+time.sleep(0.3)
+os.kill(p.pid, signal.SIGINT)
+p.join(5)
+print("stopped" if p.exitcode is not None else "still running")
+if p.exitcode is None:
+    p.kill()
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "stopped", (out.stdout, out.stderr[-1500:])
+
+
+def test_a_raising_handler_of_another_signal_cannot_make_the_child_escape():
+    """Every signal stays blocked in the child until it is inside its own try (which ends in os._exit): an alarm
+    whose handler raises, firing right after the fork, can no longer unwind the child into the caller's code."""
+    code = """
+import functools, hashlib, os, signal, sys
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+def alarm(*_):
+    raise RuntimeError("alarm")
+signal.signal(signal.SIGALRM, alarm)
+# in the child, from C: arm a short timer, then stay busy in C past it (no bytecode, so no handler runs there)
+os.register_at_fork(after_in_child=functools.partial(signal.setitimer, signal.ITIMER_REAL, 0.005))
+os.register_at_fork(after_in_child=functools.partial(hashlib.pbkdf2_hmac, "sha256", b"x", b"y", 200000))
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+except RuntimeError:
+    pass
+os.write(1, f"{os.getpid()}\\n".encode())        # unbuffered: an escaped child may be killed before it flushes
+"""
+    out = _run_inner(code)
+    assert len(out.stdout.split()) == 1, (out.stdout, out.stderr[-1500:])     # only the parent wrote
 
 
 def test_a_ctrl_c_during_an_after_fork_hook_is_not_lost():

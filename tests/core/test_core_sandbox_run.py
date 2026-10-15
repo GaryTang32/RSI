@@ -235,11 +235,23 @@ def test_a_refused_cpu_limit_keeps_the_memory_limit(monkeypatch):
     assert sandbox.run_cmd(probe, timeout_s=10, cpu_s=100, mem_mb=512).stdout.strip() == str(512 << 20)
 
 
+def _checkout_python(code: str, **kw):
+    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi``, from any working directory: the
+    checkout is on PYTHONPATH and the interpreter starts there (so no other ``rsi`` in the caller's cwd shadows
+    it)."""
+    import os as _os
+    import subprocess as _sp
+    import sys as _sys
+    root = str(Path(__file__).resolve().parents[2])
+    env = {**_os.environ, "PYTHONPATH": _os.pathsep.join(p for p in (root, _os.environ.get("PYTHONPATH")) if p),
+           **kw.pop("env", {})}
+    return _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60, env=env,
+                   cwd=kw.pop("cwd", root), **kw)
+
+
 def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
     """Under an inherited RLIMIT_CPU the backstop never raises the soft limit nor lowers it below what the child would
     inherit, fits under the hard one, and the memory limit is set as well."""
-    import subprocess as _sp
-    import sys as _sys
     import os as _os
     b = min(10 * max(4, len(_os.sched_getaffinity(0))) + 5, 1000)   # the backstop for a 10 s wall timeout here
     for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"),
@@ -247,18 +259,16 @@ def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
         code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
                 "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
                 "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
-        out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
+        out = _checkout_python(code).stdout.strip()
         assert out == f"{want} {512 << 20}", (limits, out)
 
 
 def test_a_closed_process_starts_no_sandbox():
     """close_sandboxes() (a process about to exit) refuses new sandboxes and scratch directories."""
-    import subprocess as _sp
-    import sys as _sys
     code = ("from rsi.core.sandbox import close_sandboxes, run_cmd, run_python; import sys; close_sandboxes()\n"
             "for f in (lambda: run_cmd([sys.executable, '-c', 'pass']), lambda: run_python('pass')):\n"
             "    try:\n        f(); print('started')\n    except RuntimeError as e:\n        print('refused')")
-    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.split()
+    out = _checkout_python(code).stdout.split()
     assert out == ["refused", "refused"], out
 
 
@@ -266,8 +276,6 @@ def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
     """A signal between spawn and registration (or between a failed kill and deregistration) leaves a sandbox
     the registry does not hold; close_sandboxes() still kills it: every sandbox leads its own session as a direct
     child."""
-    import subprocess as _sp
-    import sys as _sys
     code = ("import subprocess, sys, time, os\n"
             "from rsi.core.sandbox import close_sandboxes\n"
             "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
@@ -278,22 +286,16 @@ def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
             "finally:\n"
             "    if p.poll() is None:\n"
             "        os.killpg(p.pid, 9)")
-    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
+    out = _checkout_python(code).stdout.strip()
     assert out == "-9", out
 
 
 def _inner(code: str, tmp_path, **env) -> str:
     """Run ``code`` in a fresh interpreter (close_sandboxes marks a process closed for good) with its temp files
     under ``tmp_path``; return its stdout, or fail with its stderr."""
-    import os as _os
-    import subprocess as _sp
-    import sys as _sys
     tmp = tmp_path / "tmp"
     tmp.mkdir(exist_ok=True)
-    root = str(Path(__file__).resolve().parents[2])                 # the package, importable from any cwd
-    path = _os.pathsep.join(p for p in (root, _os.environ.get("PYTHONPATH")) if p)
-    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60,
-                  env={**_os.environ, "TMPDIR": str(tmp), "PYTHONPATH": path, **env}, cwd=tmp_path)
+    out = _checkout_python(code, env={"TMPDIR": str(tmp), **env}, cwd=tmp_path)
     leftovers = [p.name for p in tmp.iterdir() if p.name.startswith(("rsi_sbx_", "rsi_fn_"))]
     return out.stdout.strip() + (f" leftovers={leftovers}" if leftovers else "") + (
         f" stderr={out.stderr[-1500:]}" if out.returncode else "")
@@ -466,5 +468,41 @@ try:
 except KeyboardInterrupt:
     print('interrupted', end=' ')
 print(len(sandbox._LIVE_DIRS))
+"""
+    assert _inner(code, tmp_path) == "interrupted 0"
+
+
+def test_a_signal_while_the_scratch_lock_is_still_held_does_not_hang(tmp_path):
+    """Under a tracer (pdb) a stop signal can surface while this thread still holds the registry lock: the
+    cleanup must not wait for that lock (it used to deadlock on the first Ctrl-C)."""
+    code = r"""
+import threading
+from rsi.core import sandbox
+real = sandbox._LIVE_LOCK
+class Lock:
+    exits = 0
+    def __enter__(self):
+        return real.__enter__()
+    def __exit__(self, *exc):
+        Lock.exits += 1
+        if Lock.exits == 1 and exc[0] is None:
+            raise KeyboardInterrupt   # before the release, the lock still held by this thread
+        return real.__exit__(*exc)
+    def acquire(self, *a, **k):
+        return real.acquire(*a, **k)
+    def release(self):
+        return real.release()
+sandbox._LIVE_LOCK = Lock()
+out = []
+def go():
+    try:
+        sandbox.run_python('pass')
+        out.append('returned')
+    except KeyboardInterrupt:
+        out.append('interrupted')
+t = threading.Thread(target=go, daemon=True)
+t.start()
+t.join(10)
+print(out[0] if out else 'hung', len(sandbox._LIVE_DIRS))
 """
     assert _inner(code, tmp_path) == "interrupted 0"
