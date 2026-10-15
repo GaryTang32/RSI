@@ -24,6 +24,7 @@ from typing import Iterable, Optional
 
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
+from ..core.sandbox import kill_live_groups
 
 #: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
@@ -66,8 +67,8 @@ class InterfaceValidator:
         if pid == 0:                                     # child
             os.close(r)
             try:
-                # a SIGTERM (from the parent's cleanup below, or `kill`/`timeout`) unwinds through the smoke, so a
-                # sandboxed process it started is killed by run_cmd's own cleanup instead of being orphaned
+                # a SIGTERM (from the parent's cleanup below, or `kill`/`timeout`) ends the smoke through the
+                # finally below, which kills the sandboxed processes it started instead of orphaning them
                 signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
                 lock = threading.Lock()
 
@@ -83,6 +84,8 @@ class InterfaceValidator:
                     err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
                 send(("done", err))
             finally:
+                # sandboxed processes still running (the smoke was interrupted in whatever thread started them)
+                kill_live_groups()
                 os._exit(0)
         os.close(w)
         deadline = time.monotonic() + self.timeout_s
@@ -123,8 +126,8 @@ class InterfaceValidator:
 
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
-    """End a forked smoke child: SIGTERM first, so it unwinds and kills any sandboxed process it started, then
-    SIGKILL if it has not exited within ``grace_s``."""
+    """End a forked smoke child: SIGTERM first, so it kills the sandboxed processes it started on its way out
+    (``sandbox.kill_live_groups``), then SIGKILL if it has not exited within ``grace_s``."""
     import signal
     try:
         os.kill(pid, signal.SIGTERM)

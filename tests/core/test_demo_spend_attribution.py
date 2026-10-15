@@ -89,3 +89,32 @@ def test_a_missing_recorded_entry_is_reported(demo):
     recorded = {".cache_run": {"run": ["aaaaaaaaaaaaaaaa"], "run/rescore": ["bbbbbbbbbbbbbbbb", "ffffffffffffffff"]}}
     o, entries, problems = spend.main(recorded=recorded)
     assert problems["missing"] == [".cache_run/ffffffffffffffff"]
+
+
+def test_a_recorded_journal_attempt_follows_its_journal_when_archived(demo):
+    """--force recorded a journal-only attempt under its run's name; --resume then moved the run directory (and its
+    journal) to _archive and a new attempt took the name. The journal decides, so neither attempt is misnamed."""
+    runs, cache = demo
+    c = _entry(cache, "c", 0.5, T0 + 300)
+    _journal(runs / "newrun" / "cache_writes.txt", c)
+    o, entries, problems = spend.main(recorded=RECORDED)
+    assert entries[".cache_run"]["newrun"] == [c[:16]]
+    (runs / "_archive").mkdir()
+    (runs / "newrun").rename(runs / "_archive" / "newrun_20260101T000000Z")
+    d = _entry(cache, "d", 0.25, T0 + 400)
+    _journal(runs / "newrun" / "cache_writes.txt", d)          # the resumed attempt
+    o2, entries2, problems2 = spend.main(recorded=entries)
+    assert not any(problems2.values())
+    assert entries2[".cache_run"]["_archive/newrun_20260101T000000Z"] == [c[:16]]
+    assert entries2[".cache_run"]["newrun"] == [d[:16]]
+
+
+def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_path, monkeypatch):
+    import live_demo
+    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+    cache = tmp_path / ".cache_run"
+    written = _entry(cache, "a", 1.0, T0)
+    att = tmp_path / "_archive" / "run_x"
+    _journal(att / "cache_writes.txt", written, "b" * 64)        # killed before "b..." appeared
+    live_demo._drop_unwritten_journal_lines(att)
+    assert (att / "cache_writes.txt").read_text() == f".cache_run/{written}\n"

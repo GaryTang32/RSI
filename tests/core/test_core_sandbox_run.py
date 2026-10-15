@@ -218,13 +218,31 @@ def test_child_gets_a_cpu_backstop_from_its_wall_timeout():
     assert run_cmd(probe, timeout_s=10, cpu_s=3, mem_mb=512).stdout.split() == ["3", str(512 << 20)]
 
 
-def test_backstop_stays_within_an_inherited_hard_cpu_limit_and_keeps_the_memory_limit():
-    """Under a hard RLIMIT_CPU this process may not raise, the backstop fits inside it, and the memory limit is still
-    set (a failing CPU prlimit used to skip it)."""
+def test_a_refused_cpu_limit_keeps_the_memory_limit(monkeypatch):
+    """A CPU prlimit the kernel refuses (a hard limit this process may not raise) no longer skips the memory cap."""
+    import resource as _resource
+    import sys as _sys
+    from rsi.core import sandbox
+    real = _resource.prlimit
+
+    def refuse_cpu(pid, res, limits=None):
+        if res == _resource.RLIMIT_CPU and limits is not None:
+            raise PermissionError("not permitted")
+        return real(pid, res, limits) if limits is not None else real(pid, res)
+
+    monkeypatch.setattr(sandbox.resource, "prlimit", refuse_cpu)
+    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_AS)[0])"]
+    assert sandbox.run_cmd(probe, timeout_s=10, cpu_s=100, mem_mb=512).stdout.strip() == str(512 << 20)
+
+
+def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
+    """Under an inherited RLIMIT_CPU the backstop never raises the soft limit, fits under the hard one, and the
+    memory limit is set as well."""
     import subprocess as _sp
     import sys as _sys
-    code = ("import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, (30, 30)); from rsi.core.sandbox import run_cmd; "
-            "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
-            "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
-    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
-    assert out == f"(25, 30) {512 << 20}", out
+    for limits, want in (((30, 30), "(25, 30)"), ((20, -1), "(20, 25)")):
+        code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
+                "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
+                "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
+        out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
+        assert out == f"{want} {512 << 20}", (limits, out)

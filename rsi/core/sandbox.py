@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,6 +79,37 @@ def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None
             pass
 
 
+#: (pid of the process that started it, process group) for every sandboxed child still running
+_LIVE_GROUPS: set[tuple[int, int]] = set()
+_LIVE_LOCK = threading.Lock()
+
+
+def _fresh_lock_after_fork() -> None:
+    """A forked child gets a new lock: another thread may have held the parent's at the fork, and nothing in the
+    child would ever release it."""
+    global _LIVE_LOCK
+    _LIVE_LOCK = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_fresh_lock_after_fork)
+
+
+def kill_live_groups() -> int:
+    """Kill every sandboxed process group this process started that is still running (e.g. from a forked child
+    about to exit, whichever thread started them); returns how many. Groups a parent started before a fork are not
+    touched."""
+    me = os.getpid()
+    with _LIVE_LOCK:
+        mine = [g for owner, g in _LIVE_GROUPS if owner == me]
+    for g in mine:
+        try:
+            os.killpg(g, 9)
+        except (ProcessLookupError, PermissionError):
+            pass
+    return len(mine)
+
+
 def _kill_group(proc: subprocess.Popen) -> None:
     try:
         os.killpg(proc.pid, 9)
@@ -89,12 +121,14 @@ def _cpu_backstop(timeout_s: float) -> Optional[int]:
     """RLIMIT_CPU for a child given only a wall timeout: a backstop, not the timeout. If this process dies without
     killing the child (SIGKILL), a CPU-bound child still stops; a blocked or sleeping one is not stopped by it.
     RLIMIT_CPU counts every thread, so it allows every core the child may use (at least 4) for the whole wall budget,
-    plus 5 s: a child is never stopped by it before its wall timeout. It stays within an inherited hard limit
-    (None when that leaves no room)."""
+    plus 5 s: a child is never stopped by it before its wall timeout. It stays within the inherited soft and hard
+    limits (None when they leave no room)."""
     cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
     cpu = math.ceil(timeout_s) * max(4, cores) + 5
-    hard = resource.getrlimit(resource.RLIMIT_CPU)[1]
-    if hard != resource.RLIM_INFINITY:
+    soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
+    if soft != resource.RLIM_INFINITY:   # never more than the limit the child would otherwise inherit
+        cpu = min(cpu, soft)
+    if hard != resource.RLIM_INFINITY:   # (cpu, cpu + 5) must fit under a hard limit this process may not raise
         cpu = min(cpu, hard - 5)
     return cpu if cpu > 0 else None
 
@@ -130,6 +164,9 @@ def run_cmd(
     if cpu_s is None and timeout_s and math.isfinite(timeout_s):
         cpu_s = _cpu_backstop(timeout_s)
     _apply_limits(proc.pid, cpu_s, mem_mb)
+    live = (os.getpid(), proc.pid)
+    with _LIVE_LOCK:
+        _LIVE_GROUPS.add(live)
     try:
         out, err = proc.communicate(input=stdin, timeout=timeout_s)
         return RunResult(proc.returncode, out, err, time.time() - t0, False)
@@ -145,6 +182,9 @@ def run_cmd(
         except BaseException:  # noqa: BLE001 - best effort reaping
             pass
         raise
+    finally:
+        with _LIVE_LOCK:
+            _LIVE_GROUPS.discard(live)
 
 
 def run_python(

@@ -10,8 +10,8 @@ report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace 
 hand. Git keeps no write times, so that attribution, made on the machine that made the calls, is recorded entry by
 entry in ``demo/spend_entries.json``, and a recorded entry keeps its attempt on any checkout. Entries written since
 are attributed without write times, by the cache-write journal of the attempt that wrote them (``CachedLLM(journal=
-...)``: ``<run>/cache_writes.txt`` for a run, ``<run>/<record>.cache_writes.txt`` for a re-score or leak check); an
-entry neither the record nor a journal lists is reported as unattributed.
+...)``: ``<run>/cache_writes.txt`` for a run, ``<run>/<record>.cache_writes.txt`` for a re-score or leak check),
+which moves with an archived attempt and wins over the record; an entry neither lists is reported as unattributed.
 
 Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
 
@@ -144,8 +144,9 @@ def entry_key(p: Path) -> str:
 def journal_owners() -> dict[tuple[str, str], str]:
     """(cache directory name, entry key) -> the attempt whose cache-write journal lists the entry:
     ``<run>/cache_writes.txt`` is the attempt ``<run>``, ``<run>/<record>.cache_writes.txt`` the attempt
-    ``<run>/<record>``. (Two journals list one entry only if two processes raced to write it; the first, in path
-    order, keeps it.)"""
+    ``<run>/<record>``. A journal line is written just before its entry appears, so an attempt killed in between lists
+    an entry it never wrote; ``live_demo.py --resume`` drops such lines from the attempt it archives. (Two journals
+    list one entry only if two processes raced to write it; the first, in path order, keeps it.)"""
     owners: dict[tuple[str, str], str] = {}
     for j in sorted(RUNS.rglob(f"*{JOURNAL}")):
         run = str(j.parent.relative_to(RUNS))
@@ -181,13 +182,13 @@ def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
         for p in files:
             k = entry_key(p)
             present.add(k)
-            name = owner_of.get((rel, k))
-            if name is None:   # not in the record: the journal of the attempt that wrote it
-                name = journaled.get((c.name, k))
-                if name is None:
-                    unattributed.append(f"{rel}/{k}: in neither the record nor any attempt's cache-write journal")
-                    continue
-            elif name not in what:
+            # a journal names the attempt that wrote the entry and moves with it (an attempt archived by --resume),
+            # so it wins over the name the record kept; the record alone covers entries from before journals
+            name = journaled.get((c.name, k)) or owner_of.get((rel, k))
+            if name is None:
+                unattributed.append(f"{rel}/{k}: in neither the record nor any attempt's cache-write journal")
+                continue
+            if name not in what:
                 raise SystemExit(f"{rel}: recorded attempt {name!r} is in neither the attempt list nor a journal")
             rec = per_attempt.setdefault(name, {"cache": rel, "what": what[name], "usd": 0.0, "entries": 0})
             rec["usd"] += entry_cost(p)

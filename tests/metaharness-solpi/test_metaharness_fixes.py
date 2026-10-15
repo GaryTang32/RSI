@@ -381,6 +381,51 @@ def test_forked_smoke_timeout_kills_its_sandboxed_process(tmp_path):
         pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
 
 
+def test_forked_smoke_timeout_kills_a_sandbox_started_from_a_harness_thread(tmp_path):
+    """As in AgentQA, the harness runs in a thread and the smoke's main thread only joins it: a signal handler runs
+    in the main thread, so the child kills the sandbox groups it started on its way out. A sandboxed process the
+    parent itself is running at the fork is left alone."""
+    import threading
+    from rsi.core.sandbox import run_cmd
+    spin = "import os, sys; open(sys.argv[1], 'w').write(str(os.getpid()))\nwhile True: pass"
+    mine, theirs = tmp_path / "smoke_pid", tmp_path / "parent_pid"
+
+    class Threaded:
+        def smoke(self, artifact, llm):
+            th = threading.Thread(target=run_cmd, args=([sys.executable, "-c", spin, str(mine)],),
+                                  kwargs={"timeout_s": 60}, daemon=True)
+            th.start()
+            while th.is_alive():
+                th.join(0.05)
+
+    parent = threading.Thread(target=run_cmd, args=([sys.executable, "-c", spin, str(theirs)],),
+                              kwargs={"timeout_s": 20}, daemon=True)
+    parent.start()
+    for _ in range(100):
+        if theirs.exists() and theirs.read_text():
+            break
+        time.sleep(0.05)
+    ok, msg = InterfaceValidator(timeout_s=1.5, isolate=True).validate(Threaded(), Artifact({"h.py": "x = 1\n"}), None)
+    assert not ok and "timed out" in msg
+    pid, parent_pid = int(mine.read_text()), int(theirs.read_text())
+    try:
+        for _ in range(100):
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.05)
+        else:
+            os.kill(pid, 9)
+            pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
+        os.kill(parent_pid, 0)                 # the parent's own sandboxed process is still running
+    finally:
+        try:
+            os.kill(parent_pid, 9)
+        except ProcessLookupError:
+            pass
+
+
 # ------------------------------------------------------------------ N10: unknown base system
 def test_unknown_base_system_is_recorded_not_silently_replaced(dom, tmp_path):
     arts = {"fewshot_all": dom.seed_artifact("fewshot_all"), "no_memory": dom.seed_artifact("no_memory")}

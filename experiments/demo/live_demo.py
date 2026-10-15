@@ -60,8 +60,20 @@ def _fresh(name: str) -> Path:
         dest = OUT / "_archive" / f"{name}_{stamp}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         out.rename(dest)
+        _drop_unwritten_journal_lines(dest)
         print(f"archived the unfinished attempt to {dest}", flush=True)
     return out
+
+
+def _drop_unwritten_journal_lines(attempt_dir: Path) -> None:
+    """A journal line is written just before its cache entry appears, so an attempt killed in between lists an entry
+    it never wrote (the restarted attempt writes and lists it). Drop those lines from an archived attempt."""
+    for j in attempt_dir.rglob(f"*{JOURNAL}"):
+        lines = j.read_text().splitlines()
+        kept = [ln for ln in lines if (OUT / ln.partition("/")[0] / ln.partition("/")[2][:2]
+                                       / f"{ln.partition('/')[2]}.json").exists()]
+        if kept != lines:
+            j.write_text("".join(f"{ln}\n" for ln in kept))
 
 
 #: an attempt's cache-write journal (every cache entry it paid for; spend.py attributes entries by it)
