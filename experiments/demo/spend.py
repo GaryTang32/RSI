@@ -16,7 +16,8 @@ which moves with an archived attempt and wins over the record; an entry neither 
 Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
 
     python experiments/demo/spend.py            # recompute and compare with the committed record; exits 1 if it differs
-    python experiments/demo/spend.py --force    # rewrite the record (recorded entries keep their attempt)
+    python experiments/demo/spend.py --force    # rewrite the record (an entry keeps its attempt unless a journal
+                                                #  names another: a journal moves with an archived attempt)
 
 ``--force`` refuses while a recorded entry is missing from the caches or an entry is unattributed.
 """
@@ -145,8 +146,9 @@ def journal_owners() -> dict[tuple[str, str], str]:
     """(cache directory name, entry key) -> the attempt whose cache-write journal lists the entry:
     ``<run>/cache_writes.txt`` is the attempt ``<run>``, ``<run>/<record>.cache_writes.txt`` the attempt
     ``<run>/<record>``. A journal line is written just before its entry appears, so an attempt killed in between lists
-    an entry it never wrote; ``live_demo.py --resume`` drops such lines from the attempt it archives. (Two journals
-    list one entry only if two processes raced to write it; the first, in path order, keeps it.)"""
+    an entry it never wrote; every live writer drops such lines before it starts
+    (``live_demo.drop_unwritten_journal_lines``). (Two journals list one entry only if two processes raced to write
+    it; the first, in path order, keeps it.)"""
     owners: dict[tuple[str, str], str] = {}
     for j in sorted(RUNS.rglob(f"*{JOURNAL}")):
         run = str(j.parent.relative_to(RUNS))

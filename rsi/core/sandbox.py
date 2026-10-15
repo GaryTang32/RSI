@@ -67,8 +67,11 @@ def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None
     # each limit on its own: one that cannot be set (the child already exited, or a hard limit this process may not
     # raise) never drops the other
     if cpu_s:
+        # the hard limit 5 s above the soft one, but never above a hard limit this process may not raise
+        hard = resource.getrlimit(resource.RLIMIT_CPU)[1]
+        hard = cpu_s + 5 if hard == resource.RLIM_INFINITY else min(cpu_s + 5, hard)
         try:
-            resource.prlimit(pid, resource.RLIMIT_CPU, (cpu_s, cpu_s + 5))
+            resource.prlimit(pid, resource.RLIMIT_CPU, (min(cpu_s, hard), hard))
         except (ProcessLookupError, PermissionError, ValueError):
             pass
     if mem_mb:
@@ -81,6 +84,10 @@ def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None
 
 #: (pid of the process that started it, process group) for every sandboxed child still running
 _LIVE_GROUPS: set[tuple[int, int]] = set()
+#: (pid of the process that made it, path) for every scratch directory still in use
+_LIVE_DIRS: set[tuple[int, str]] = set()
+#: processes that called close_sandboxes(): they start no new sandbox
+_CLOSED: set[int] = set()
 _LIVE_LOCK = threading.Lock()
 
 
@@ -95,19 +102,44 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_fresh_lock_after_fork)
 
 
-def kill_live_groups() -> int:
-    """Kill every sandboxed process group this process started that is still running (e.g. from a forked child
-    about to exit, whichever thread started them); returns how many. Groups a parent started before a fork are not
-    touched."""
+def close_sandboxes() -> int:
+    """For a process about to exit (e.g. a forked child): start no new sandbox, kill every sandboxed process group
+    this process started that is still running, whichever thread started it, and remove this process's scratch
+    directories. A spawn in progress registers under the same lock, so none slips through. Groups and directories a
+    parent made before a fork are left alone. Returns how many groups it killed; safe to call again."""
     me = os.getpid()
     with _LIVE_LOCK:
-        mine = [g for owner, g in _LIVE_GROUPS if owner == me]
-    for g in mine:
+        _CLOSED.add(me)
+        groups = [g for owner, g in _LIVE_GROUPS if owner == me]
+        dirs = [d for owner, d in _LIVE_DIRS if owner == me]
+    for g in groups:
         try:
             os.killpg(g, 9)
         except (ProcessLookupError, PermissionError):
             pass
-    return len(mine)
+    for d in dirs:
+        shutil.rmtree(d, ignore_errors=True)
+    return len(groups)
+
+
+def _closed_error() -> RuntimeError:
+    return RuntimeError("sandbox closed: this process is exiting (close_sandboxes)")
+
+
+def _mkscratch(prefix: str) -> str:
+    """A scratch directory, registered so close_sandboxes() can remove it if its user never gets to."""
+    with _LIVE_LOCK:
+        if os.getpid() in _CLOSED:
+            raise _closed_error()
+        d = tempfile.mkdtemp(prefix=prefix)
+        _LIVE_DIRS.add((os.getpid(), d))
+    return d
+
+
+def _rmscratch(d: str) -> None:
+    shutil.rmtree(d, ignore_errors=True)
+    with _LIVE_LOCK:
+        _LIVE_DIRS.discard((os.getpid(), d))
 
 
 def _kill_group(proc: subprocess.Popen) -> None:
@@ -121,15 +153,13 @@ def _cpu_backstop(timeout_s: float) -> Optional[int]:
     """RLIMIT_CPU for a child given only a wall timeout: a backstop, not the timeout. If this process dies without
     killing the child (SIGKILL), a CPU-bound child still stops; a blocked or sleeping one is not stopped by it.
     RLIMIT_CPU counts every thread, so it allows every core the child may use (at least 4) for the whole wall budget,
-    plus 5 s: a child is never stopped by it before its wall timeout. It stays within the inherited soft and hard
-    limits (None when they leave no room)."""
+    plus 5 s: a child is never stopped by it before its wall timeout. It never exceeds the soft limit the child
+    would otherwise inherit (a lower inherited limit applies as it would without the backstop)."""
     cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
     cpu = math.ceil(timeout_s) * max(4, cores) + 5
-    soft, hard = resource.getrlimit(resource.RLIMIT_CPU)
+    soft = resource.getrlimit(resource.RLIMIT_CPU)[0]
     if soft != resource.RLIM_INFINITY:   # never more than the limit the child would otherwise inherit
         cpu = min(cpu, soft)
-    if hard != resource.RLIM_INFINITY:   # (cpu, cpu + 5) must fit under a hard limit this process may not raise
-        cpu = min(cpu, hard - 5)
     return cpu if cpu > 0 else None
 
 
@@ -157,16 +187,19 @@ def run_cmd(
     if env:
         base_env.update(env)
     t0 = time.time()
-    proc = subprocess.Popen(
-        list(cmd), cwd=str(cwd) if cwd else None, env=base_env, stdin=subprocess.PIPE if stdin is not None else None,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,  # own group: killpg
-    )
+    with _LIVE_LOCK:   # spawn and register in one step, so close_sandboxes() never misses a child
+        if os.getpid() in _CLOSED:
+            raise _closed_error()
+        proc = subprocess.Popen(
+            list(cmd), cwd=str(cwd) if cwd else None, env=base_env,
+            stdin=subprocess.PIPE if stdin is not None else None,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,  # own group: killpg
+        )
+        live = (os.getpid(), proc.pid)
+        _LIVE_GROUPS.add(live)
     if cpu_s is None and timeout_s and math.isfinite(timeout_s):
         cpu_s = _cpu_backstop(timeout_s)
     _apply_limits(proc.pid, cpu_s, mem_mb)
-    live = (os.getpid(), proc.pid)
-    with _LIVE_LOCK:
-        _LIVE_GROUPS.add(live)
     try:
         out, err = proc.communicate(input=stdin, timeout=timeout_s)
         return RunResult(proc.returncode, out, err, time.time() - t0, False)
@@ -208,7 +241,7 @@ def run_python(
     if cwd is None:
         if code is None:
             script = Path(script).resolve()  # a relative script path means relative to the caller, not the scratch dir
-        tmpdir = tempfile.mkdtemp(prefix="rsi_sbx_")
+        tmpdir = _mkscratch("rsi_sbx_")
         cwd = tmpdir
     try:
         if code is not None:
@@ -220,7 +253,7 @@ def run_python(
         return _stable_paths(rr, tmpdir) if tmpdir is not None else rr
     finally:
         if tmpdir is not None:
-            shutil.rmtree(tmpdir, ignore_errors=True)
+            _rmscratch(tmpdir)
 
 
 #: what a fresh scratch directory is called in captured output
@@ -260,12 +293,12 @@ def call_function(
     bad = [n for n in (extra_files or {}) if not is_safe_relpath(n)]
     if bad:  # extra files often come from an artifact: they must stay inside the scratch dir
         raise ValueError(f"unsafe extra_files names (absolute or escaping the directory): {bad[:5]}")
-    d = tempfile.mkdtemp(prefix="rsi_fn_")
+    d = _mkscratch("rsi_fn_")
     try:
         res, rr = _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files)
         return res, _stable_paths(rr, d)
     finally:
-        shutil.rmtree(d, ignore_errors=True)
+        _rmscratch(d)
 
 
 def _call_in(d, module_code, func, payload, timeout_s, mem_mb, extra_files):

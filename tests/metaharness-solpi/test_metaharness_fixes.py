@@ -381,19 +381,30 @@ def test_forked_smoke_timeout_kills_its_sandboxed_process(tmp_path):
         pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
 
 
+def _gone(pid: int, tries: int = 100) -> bool:
+    for _ in range(tries):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.05)
+    os.kill(pid, 9)
+    return False
+
+
 def test_forked_smoke_timeout_kills_a_sandbox_started_from_a_harness_thread(tmp_path):
     """As in AgentQA, the harness runs in a thread and the smoke's main thread only joins it: a signal handler runs
-    in the main thread, so the child kills the sandbox groups it started on its way out. A sandboxed process the
-    parent itself is running at the fork is left alone."""
+    in the main thread, so the child closes the sandboxes it started on its way out (process and scratch directory).
+    A sandboxed process the parent itself is running at the fork is left alone."""
     import threading
-    from rsi.core.sandbox import run_cmd
-    spin = "import os, sys; open(sys.argv[1], 'w').write(str(os.getpid()))\nwhile True: pass"
+    from rsi.core.sandbox import run_cmd, run_python
+    spin = "import os, sys; open(sys.argv[1], 'w').write(f'{os.getpid()} {os.getcwd()}')\nwhile True: pass"
     mine, theirs = tmp_path / "smoke_pid", tmp_path / "parent_pid"
 
     class Threaded:
         def smoke(self, artifact, llm):
-            th = threading.Thread(target=run_cmd, args=([sys.executable, "-c", spin, str(mine)],),
-                                  kwargs={"timeout_s": 60}, daemon=True)
+            th = threading.Thread(target=run_python, args=(spin,), kwargs={"args": [str(mine)], "timeout_s": 60},
+                                  daemon=True)
             th.start()
             while th.is_alive():
                 th.join(0.05)
@@ -407,23 +418,75 @@ def test_forked_smoke_timeout_kills_a_sandbox_started_from_a_harness_thread(tmp_
         time.sleep(0.05)
     ok, msg = InterfaceValidator(timeout_s=1.5, isolate=True).validate(Threaded(), Artifact({"h.py": "x = 1\n"}), None)
     assert not ok and "timed out" in msg
-    pid, parent_pid = int(mine.read_text()), int(theirs.read_text())
+    pid, scratch = mine.read_text().split(" ", 1)
+    parent_pid = int(theirs.read_text().split()[0])
     try:
-        for _ in range(100):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                break
-            time.sleep(0.05)
-        else:
-            os.kill(pid, 9)
-            pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
+        assert _gone(int(pid)), f"sandboxed process {pid} outlived the timed-out smoke"
+        assert not os.path.exists(scratch), f"scratch directory {scratch} was left behind"
         os.kill(parent_pid, 0)                 # the parent's own sandboxed process is still running
     finally:
         try:
             os.kill(parent_pid, 9)
         except ProcessLookupError:
             pass
+
+
+def test_forked_smoke_child_never_runs_the_parents_code(tmp_path, monkeypatch):
+    """A signal landing while the child closes its sandboxes (simulated: the close raises SystemExit once) must not
+    let the child unwind out of its exit path into the caller's code."""
+    from rsi.core import sandbox
+    real, calls = sandbox.close_sandboxes, []
+
+    def interrupted_once():
+        calls.append(1)
+        if len(calls) == 1:
+            raise SystemExit(143)
+        return real()
+
+    monkeypatch.setattr(sandbox, "close_sandboxes", interrupted_once)
+
+    class Quick:
+        def smoke(self, artifact, llm):
+            return None
+
+    parent = os.getpid()
+    try:
+        ok, msg = InterfaceValidator(timeout_s=10, isolate=True).validate(Quick(), Artifact({"h.py": "x = 1\n"}), None)
+    finally:
+        if os.getpid() != parent:              # the child escaped: record it and stop it here
+            (tmp_path / f"escaped_{os.getpid()}").write_text("x")
+            os._exit(0)
+    assert ok, msg
+    assert not list(tmp_path.glob("escaped_*"))
+
+
+def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):
+    """A sandbox the harness thread is just starting when the smoke is stopped is closed too (spawn and
+    registration happen under one lock)."""
+    import threading
+    from rsi.core.sandbox import run_cmd
+    tag = f"rsi_spawn_race_{os.getpid()}"
+    spin = f"import time\n# {tag}\nwhile True: pass"
+
+    class Spawner:
+        def smoke(self, artifact, llm):
+            def loop():
+                while True:
+                    run_cmd([sys.executable, "-S", "-c", spin], timeout_s=0.1)
+            th = threading.Thread(target=loop, daemon=True)
+            th.start()
+            while th.is_alive():
+                th.join(0.05)
+
+    for i in range(8):
+        InterfaceValidator(timeout_s=0.6 + 0.03 * i, isolate=True).validate(Spawner(), Artifact({"h.py": "x = 1\n"}),
+                                                                            None)
+    time.sleep(0.3)
+    left = [d for d in os.listdir("/proc") if d.isdigit()
+            and tag in open(f"/proc/{d}/cmdline", "rb").read().decode(errors="replace")] if os.path.isdir("/proc") else []
+    for d in left:
+        os.kill(int(d), 9)
+    assert not left, f"{len(left)} sandboxes outlived their stopped smokes"
 
 
 # ------------------------------------------------------------------ N10: unknown base system

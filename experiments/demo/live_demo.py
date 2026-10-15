@@ -60,20 +60,31 @@ def _fresh(name: str) -> Path:
         dest = OUT / "_archive" / f"{name}_{stamp}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         out.rename(dest)
-        _drop_unwritten_journal_lines(dest)
         print(f"archived the unfinished attempt to {dest}", flush=True)
+    drop_unwritten_journal_lines()
     return out
 
 
-def _drop_unwritten_journal_lines(attempt_dir: Path) -> None:
+def drop_unwritten_journal_lines(root: Optional[Path] = None) -> int:
     """A journal line is written just before its cache entry appears, so an attempt killed in between lists an entry
-    it never wrote (the restarted attempt writes and lists it). Drop those lines from an archived attempt."""
-    for j in attempt_dir.rglob(f"*{JOURNAL}"):
+    it never wrote; a later attempt that writes the entry would then share it. Every live writer (a run, a
+    ``--record``) calls this before it starts, when no other live writer is running (the demo runs one job at a
+    time), so any line without an entry is such a leftover: drop them all. Returns how many lines it dropped."""
+    root = OUT if root is None else root
+    caches = {c.name: c for c in [*root.glob(".cache_*"), *(root / "_archive").glob(".cache_*")]}
+    dropped = 0
+    for j in root.rglob(f"*{JOURNAL}"):
         lines = j.read_text().splitlines()
-        kept = [ln for ln in lines if (OUT / ln.partition("/")[0] / ln.partition("/")[2][:2]
-                                       / f"{ln.partition('/')[2]}.json").exists()]
+        kept = []
+        for ln in lines:
+            cache, _, key = ln.partition("/")
+            if cache in caches and not (caches[cache] / key[:2] / f"{key}.json").exists():
+                continue   # an entry that never appeared (an unknown cache is left alone)
+            kept.append(ln)
         if kept != lines:
             j.write_text("".join(f"{ln}\n" for ln in kept))
+            dropped += len(lines) - len(kept)
+    return dropped
 
 
 #: an attempt's cache-write journal (every cache entry it paid for; spend.py attributes entries by it)

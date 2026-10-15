@@ -24,7 +24,7 @@ from typing import Iterable, Optional
 
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
-from ..core.sandbox import kill_live_groups
+from ..core import sandbox as _sandbox
 
 #: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
@@ -68,7 +68,7 @@ class InterfaceValidator:
             os.close(r)
             try:
                 # a SIGTERM (from the parent's cleanup below, or `kill`/`timeout`) ends the smoke through the
-                # finally below, which kills the sandboxed processes it started instead of orphaning them
+                # finally below, which closes the sandboxes it started instead of orphaning them
                 signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
                 lock = threading.Lock()
 
@@ -84,9 +84,7 @@ class InterfaceValidator:
                     err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
                 send(("done", err))
             finally:
-                # sandboxed processes still running (the smoke was interrupted in whatever thread started them)
-                kill_live_groups()
-                os._exit(0)
+                _child_exit()
         os.close(w)
         deadline = time.monotonic() + self.timeout_s
         done, err, buf = False, None, b""
@@ -125,9 +123,26 @@ class InterfaceValidator:
         return (err is None), (err or "OK")
 
 
+def _child_exit() -> None:
+    """Leave a forked smoke child: close its sandboxes (``sandbox.close_sandboxes``: kill the sandboxed processes it
+    started, in whatever thread, and remove their scratch directories), then ``os._exit``. Another signal arriving
+    meanwhile (the parent's SIGTERM on top of a group SIGINT, say) must never let the child unwind into the parent's
+    code, so the signals are ignored and the close is retried until it completes."""
+    import signal
+    while True:
+        try:
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            _sandbox.close_sandboxes()
+            break
+        except BaseException:  # noqa: BLE001 - a handler that ran before SIG_IGN took effect: close again
+            continue
+    os._exit(0)
+
+
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
-    """End a forked smoke child: SIGTERM first, so it kills the sandboxed processes it started on its way out
-    (``sandbox.kill_live_groups``), then SIGKILL if it has not exited within ``grace_s``."""
+    """End a forked smoke child: SIGTERM first, so it closes the sandboxes it started on its way out
+    (:func:`_child_exit`), then SIGKILL if it has not exited within ``grace_s``."""
     import signal
     try:
         os.kill(pid, signal.SIGTERM)

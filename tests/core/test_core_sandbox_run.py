@@ -236,13 +236,24 @@ def test_a_refused_cpu_limit_keeps_the_memory_limit(monkeypatch):
 
 
 def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
-    """Under an inherited RLIMIT_CPU the backstop never raises the soft limit, fits under the hard one, and the
-    memory limit is set as well."""
+    """Under an inherited RLIMIT_CPU the backstop never raises the soft limit nor lowers it below what the child would
+    inherit, fits under the hard one, and the memory limit is set as well."""
     import subprocess as _sp
     import sys as _sys
-    for limits, want in (((30, 30), "(25, 30)"), ((20, -1), "(20, 25)")):
+    for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"), ((100, 102), "(45, 50)")):
         code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
                 "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
                 "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
         out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.strip()
         assert out == f"{want} {512 << 20}", (limits, out)
+
+
+def test_a_closed_process_starts_no_sandbox():
+    """close_sandboxes() (a process about to exit) refuses new sandboxes and scratch directories."""
+    import subprocess as _sp
+    import sys as _sys
+    code = ("from rsi.core.sandbox import close_sandboxes, run_cmd, run_python; import sys; close_sandboxes()\n"
+            "for f in (lambda: run_cmd([sys.executable, '-c', 'pass']), lambda: run_python('pass')):\n"
+            "    try:\n        f(); print('started')\n    except RuntimeError as e:\n        print('refused')")
+    out = _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60).stdout.split()
+    assert out == ["refused", "refused"], out

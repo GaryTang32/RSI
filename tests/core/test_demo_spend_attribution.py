@@ -1,5 +1,6 @@
-"""spend.py: recorded cache entries keep their attempt on any checkout; an unrecorded entry goes to the attempt
-whose cache-write journal lists it, whatever the file times, and is otherwise reported instead of guessed."""
+"""spend.py: recorded cache entries keep their attempt on any checkout unless a cache-write journal names another
+(journals move with archived attempts); an unrecorded entry goes to the attempt whose journal lists it, whatever the
+file times, and is otherwise reported instead of guessed."""
 import json
 import os
 import sys
@@ -110,11 +111,21 @@ def test_a_recorded_journal_attempt_follows_its_journal_when_archived(demo):
 
 
 def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_path, monkeypatch):
+    """--resume (live_demo._fresh) archives the unclean attempt and, like every live writer, first drops the journal
+    lines of entries that never appeared; a cache under _archive is resolved, an unknown one left alone."""
     import live_demo
     monkeypatch.setattr(live_demo, "OUT", tmp_path)
-    cache = tmp_path / ".cache_run"
-    written = _entry(cache, "a", 1.0, T0)
-    att = tmp_path / "_archive" / "run_x"
-    _journal(att / "cache_writes.txt", written, "b" * 64)        # killed before "b..." appeared
-    live_demo._drop_unwritten_journal_lines(att)
-    assert (att / "cache_writes.txt").read_text() == f".cache_run/{written}\n"
+    monkeypatch.setattr(live_demo, "RESUME", True)
+    written = _entry(tmp_path / ".cache_run", "a", 1.0, T0)
+    old = _entry(tmp_path / "_archive" / ".cache_old", "c", 1.0, T0)
+    run = tmp_path / "run"
+    _journal(run / "cache_writes.txt", written, "b" * 64)          # killed before "b..." appeared
+    (run / "summary.json").write_text(json.dumps({"clean": False}))
+    (tmp_path / "x").mkdir()
+    (tmp_path / "x" / "rescore_s200.cache_writes.txt").write_text(f".cache_old/{old}\n.cache_old/{'d' * 64}\n"
+                                                                   f".cache_gone/{'e' * 64}\n")
+    assert live_demo._fresh("run") == run and not run.exists()
+    archived = next((tmp_path / "_archive").glob("run_*"))
+    assert (archived / "cache_writes.txt").read_text() == f".cache_run/{written}\n"
+    assert (tmp_path / "x" / "rescore_s200.cache_writes.txt").read_text() == (f".cache_old/{old}\n"
+                                                                            f".cache_gone/{'e' * 64}\n")
