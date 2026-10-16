@@ -1,0 +1,17 @@
+{
+ "name": "code-generation-execution",
+ "artifact_id": "d5f451bbe6e71a6cf21c5ef81e174a77e990327db907cad9c15d0d516ada9d7c",
+ "created_at": 1791988633.8718867,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 3,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

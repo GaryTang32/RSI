@@ -1,0 +1,17 @@
+{
+ "name": "python_priority_extraction",
+ "artifact_id": "ed569b62bfe9d9cfe11fd8f8d7c00ef995993d7a510a2d870c17d49ae0958598",
+ "created_at": 1791443125.9349194,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

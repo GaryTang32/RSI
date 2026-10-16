@@ -1,44 +1,51 @@
-# Iteration 1 Analysis & Output
+Looking at the evolution history, I see a baseline at 33.3% accuracy (4/12 correct) on numeric tasks, costing 2201 tokens average. Let me analyze the failures to formulate hypotheses.
 
-## Step 0: Post-eval Report for Iteration 0
+## Analysis of Baseline Failures
 
-=== FILE: reports/iter0.md ===
-# Iteration 0: Baseline Seed Harness Report
+Reading through the traces, I identify two distinct failure modes:
 
-**What changed**: Baseline only—single LLM call, last-line extraction.
+1. **Extraction/Formatting Issues** (3 cases):
+   - evolve-numeric-002: Model outputs "-183,764" (with comma) but expected "-183764"
+   - evolve-numeric-006: Correct calculation ("154") but extraction fails to parse cleanly
+   - Several cases: Last line is explanatory text, not clean numbers
 
-**Score & cost**: 8.3% accuracy (1/12 correct) on search set; ~1,526 tokens per task.
+2. **Arithmetic Errors** (5 cases):
+   - evolve-numeric-000: Model claims 41! digit sum = 197 (expected 144)
+   - evolve-numeric-005: 66! digit sum = 216 (expected 351)  
+   - evolve-numeric-007, -009, -010: Similar discrepancies despite using Python
+   
+The baseline's "extract last line" approach is fragile, and model reasoning sometimes diverges from correct calculations.
 
-**Unit performance**:
-- **Success**: evolve-numeric-011 (sum of digits of 13^10 = 67)
-- **Failures** (11/12): All were arithmetic or formatting errors:
-  - Off-by-N errors in digit sums (evolve-numeric-000: 198 vs 144; -004: 81 vs 100)
-  - Wrong modulo results (evolve-numeric-001: 31 vs 91; evolve-numeric-003: 16 vs 56)
-  - Format mismatches (evolve-numeric-002: "-183,764" vs "-183764"; evolve-numeric-008: "253" appeared mid-explanation)
-  - Non-numeric last lines (evolve-numeric-010: explanation about binary patterns instead of "14")
+## Two Hypotheses
 
-**Why**: Baseline has no verification, no tool enforcement, and no output format control. The model calculates but often makes arithmetic mistakes and doesn't isolate answers clearly.
+**H1 (Exploitation)**: Failures are partly due to fragile answer extraction. A regex-based extractor looking for common numeric patterns (bold numbers, "ANSWER:" prefix, line-ending numbers) plus clear formatting guidance will improve accuracy without additional LLM calls.
 
-**Takeaway**: Next candidates should (1) explicitly enforce Python tool usage, (2) add verification/multi-attempt steps, and (3) require "ANSWER: <value>" format to isolate numeric answers.
+**H2 (Exploration)**: When the model's initial response lacks a clear numeric answer format, a retry loop with explicit formatting request can recover the answer the model computed but didn't format cleanly. This adds a learning/update trigger.
 
 ---
 
-## Hypotheses & Prototypes
+=== FILE: reports/iter0.md ===
+## Iteration 0: Baseline Analysis
 
-**Hypothesis 1** (Axis A+F: Prompt + Model-Written Verification):  
-Strict prompting + multi-turn verification reduces errors. If the prompt enforces tool use and adds a verification pass, the model will catch arithmetic mistakes.  
-*Prototype walk-through (evolve-numeric-001: 40627866717431 mod 148)*:
-- Turn 1 (calculate): LLM uses Python, computes 40627866717431 % 148, gets result (correct or wrong)
-- Turn 2 (verify): LLM re-computes independently to check, formats as "ANSWER: <value>"
-- If Turn 1 was wrong, Turn 2 might catch it via re-verification
+**System**: seed (one LLM call, extract last line)  
+**Score**: 33.3% (4/12 correct)  
+**Context Cost**: 2201.4 tokens  
 
-**Hypothesis 2** (Axis C+B: Multiple methods + State):  
-Multiple independent solution attempts increase reliability. If the harness collects 2+ methods and has the LLM compare, the correct answer is more likely to be selected.  
-*Prototype walk-through (same task)*:
-- Attempt A: "Compute directly using Python"
-- Attempt B: "Verify using division reconstruction: a = (a // mod) * mod + (a % mod)"
-- Compare turn: LLM checks if both agree, picks the right one, formats "ANSWER: <value>"
-- Mismatch alerts the model to recompute
+### Error Breakdown
+- **Correct** (4 cases: -001, -003, -008, -011): Returned clean answers like "**Answer: 91**" or line-ending numbers
+- **Extraction/Formatting** (3 cases: -002, -006, others): Model has correct reasoning but outputs don't match extraction (commas, extraneous text)
+- **Calculation** (5 cases: -000, -004, -005, -007, -009, -010): Wrong numeric result despite using Python or manual math
+
+### Root Causes
+1. Last-line extraction too fragile (grabs bullets, explanations, formatting artifacts)
+2. Model sometimes reports incorrect results even when tool is available
+3. No guidance on output format → inconsistent answers
+
+### Takeaways for Evolution
+- Extraction algorithm (mechanism C) should be regex-based, tolerating multiple formats
+- Prompt clarity (mechanism A) should guide format ("ANSWER: <value>", bold numbers)
+- Retry logic (mechanism E) could recover misformatted but correct answers
+- Cost/benefit: fixing extraction is free; retries cost tokens but may be worth it
 
 ---
 
@@ -47,162 +54,158 @@ Multiple independent solution attempts increase reliability. If the harness coll
   "iteration": 1,
   "candidates": [
     {
-      "name": "guided_format",
+      "name": "answer_format_smart_extraction",
       "base_system": "seed",
-      "hypothesis": "Strict multi-turn prompts with explicit tool enforcement and verification reduce arithmetic errors by forcing recalculation and explicit ANSWER: <value> format.",
+      "hypothesis": "Failures stem from fragile answer extraction. A regex-based extraction algorithm that searches for numeric patterns (ANSWER: prefix, bold numbers, line-ending values) plus prompt guidance on output format will improve accuracy without additional LLM calls.",
       "axis": "exploitation",
-      "components": ["axis:A (prompt template)", "axis:F (model-written verification)"]
+      "components": ["axis:A_prompt_guidance", "axis:C_retrieval_algorithm"]
     },
     {
-      "name": "multi_method",
+      "name": "iterative_format_refinement",
       "base_system": "seed",
-      "hypothesis": "Multiple independent solution attempts with comparison increase robustness; disagreement triggers re-verification, catching errors the model might make on a single pass.",
+      "hypothesis": "Some models have correct reasoning but poor formatting; a retry loop that detects extraction failure and re-asks with explicit formatting instructions will recover answers without recalculating.",
       "axis": "exploration",
-      "components": ["axis:C (selection algorithm - multi-attempt comparison)", "axis:B (state storage - intermediate results)", "axis:F (model usage - cross-check reasoning)"]
+      "components": ["axis:E_learning_trigger", "axis:B_state_tracking", "axis:A_format_request"]
     }
   ]
 }
 ```
 
----
+=== FILE: agents/answer_format_smart_extraction/harness.py ===
+"""Smart extraction harness: regex-based answer detection + clear format guidance."""
 
-## Candidate 1: guided_format
-
-=== FILE: agents/guided_format/harness.py ===
-"""
-Multi-turn guided harness: calculate with tool enforcement, then verify and format.
-Axis: A (prompt), F (model-written verification).
-"""
+import re
 
 
 def solve(question, llm, tools, files):
     system = files.get("prompts/system.md", "")
+    prompt = files["prompts/task.md"].replace("{question}", question)
+    reply = llm(prompt, system=system)
     
-    # Turn 1: Calculate with explicit tool usage
-    calc_prompt = files["prompts/calculate.md"].replace("{question}", question)
-    calc_reply = llm(calc_prompt, system=system)
+    return extract_answer(reply)
+
+
+def extract_answer(text):
+    """Extract numeric answer using multiple strategies."""
     
-    # Turn 2: Verify and format answer
-    verify_prompt = files["prompts/verify.md"].replace(
-        "{question}", question
-    ).replace(
-        "{calculation}", calc_reply
-    )
-    verify_reply = llm(verify_prompt, system=system)
+    # Strategy 1: Look for "ANSWER: <value>" pattern (most reliable)
+    match = re.search(r'ANSWER\s*:\s*(-?\d+(?:[.,]\d+)*)', text, re.IGNORECASE)
+    if match:
+        return clean_number(match.group(1))
     
-    # Extract final answer: prioritize ANSWER: line
-    for line in verify_reply.strip().splitlines():
-        line_upper = line.upper()
-        if "ANSWER:" in line_upper:
+    # Strategy 2: Look for bold numbers like **123** - take the last one
+    bold_matches = re.findall(r'\*\*(-?\d+(?:[.,]\d+)*)\*\*', text)
+    if bold_matches:
+        return clean_number(bold_matches[-1])
+    
+    # Strategy 3: Look for standalone numbers at the end of lines
+    lines = text.strip().split('\n')
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        # Extract number at or near end of line (allow some trailing text)
+        match = re.search(r'(-?\d+(?:[.,]\d+)*)\s*(?:\)|\.)?$', line)
+        if match:
+            return clean_number(match.group(1))
+    
+    # Fallback: return last non-empty line (seed behavior)
+    for line in reversed(lines):
+        if line.strip():
             return line.strip()
     
-    # Fallback: last non-empty line
-    lines = [line for line in verify_reply.strip().splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    return ""
 
-=== FILE: agents/guided_format/prompts/system.md ===
-You are a precise computational assistant. You solve problems by:
-1. Always using Python tools for all numeric calculations.
-2. Showing every step clearly.
-3. Verifying your work before providing a final answer.
-4. Ending every response with exactly: ANSWER: <final_value>
 
-=== FILE: agents/guided_format/prompts/calculate.md ===
-Solve this problem step by step. Use Python code for all numeric operations.
+def clean_number(s):
+    """Remove commas and spaces from numeric string."""
+    return s.replace(',', '').replace(' ', '')
 
-Question: {question}
+=== FILE: agents/answer_format_smart_extraction/prompts/system.md ===
+You are a helpful assistant that solves problems accurately.
 
-Show your Python code and its output. Be precise with all calculations.
+When providing numeric answers:
+- End your response with a clear numeric value
+- Optionally use "ANSWER: <value>" format for clarity
+- If highlighting, use **bold** for the final answer
+- Avoid commas or extra formatting in numeric answers
 
-=== FILE: agents/guided_format/prompts/verify.md ===
-Original question: {question}
+Show your work step-by-step, then provide the final answer clearly.
 
-Earlier calculation:
-{calculation}
+=== FILE: agents/answer_format_smart_extraction/prompts/task.md ===
+{question}
 
-Now verify this answer is correct:
-- Recompute the result independently using Python.
-- Check your arithmetic.
-- If you find an error, recalculate.
+Solve this step-by-step. After your work, provide your final numeric answer clearly.
 
-End your response with: ANSWER: <value>
+=== FILE: agents/iterative_format_refinement/harness.py ===
+"""Iterative refinement harness: retry if initial extraction fails."""
 
----
-
-## Candidate 2: multi_method
-
-=== FILE: agents/multi_method/harness.py ===
-"""
-Multi-method harness: solve via two independent approaches, then compare and decide.
-Axis: C (selection via comparison), B (state: intermediate results), F (model usage: cross-verification).
-"""
+import re
 
 
 def solve(question, llm, tools, files):
     system = files.get("prompts/system.md", "")
+    prompt = files["prompts/task.md"].replace("{question}", question)
     
-    # Method A: Direct calculation
-    method_a_prompt = files["prompts/method.md"].replace(
-        "{question}", question
-    ).replace(
-        "{method_label}", "Method A: Direct Calculation"
-    )
-    result_a = llm(method_a_prompt, system=system)
+    # First attempt
+    reply = llm(prompt, system=system)
+    answer = extract_answer(reply)
     
-    # Method B: Alternative/verification approach
-    method_b_prompt = files["prompts/method.md"].replace(
-        "{question}", question
-    ).replace(
-        "{method_label}", "Method B: Alternative Approach"
-    )
-    result_b = llm(method_b_prompt, system=system)
+    # If no clear numeric answer found, retry with explicit format request
+    if not answer:
+        format_prompt = (
+            "Based on your work above, please provide your final answer in this exact format:\n\n"
+            "ANSWER: <numeric value>\n\n"
+            "If you had any intermediate results, verify them and state the correct numeric answer."
+        )
+        retry_reply = llm(format_prompt, system=system)
+        answer = extract_answer(retry_reply)
     
-    # Compare and select
-    compare_prompt = files["prompts/compare.md"].replace(
-        "{question}", question
-    ).replace(
-        "{method_a_result}", result_a
-    ).replace(
-        "{method_b_result}", result_b
-    )
-    final_reply = llm(compare_prompt, system=system)
+    # Final fallback: last non-empty line from initial attempt
+    if not answer:
+        lines = [line for line in reply.strip().splitlines() if line.strip()]
+        return lines[-1] if lines else ""
     
-    # Extract final answer: prioritize ANSWER: line
-    for line in final_reply.strip().splitlines():
-        line_upper = line.upper()
-        if "ANSWER:" in line_upper:
-            return line.strip()
+    return answer
+
+
+def extract_answer(text):
+    """Extract numeric answer using multiple strategies."""
     
-    # Fallback: last non-empty line
-    lines = [line for line in final_reply.strip().splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    # Strategy 1: "ANSWER: <value>"
+    match = re.search(r'ANSWER\s*:\s*(-?\d+(?:[.,]\d+)*)', text, re.IGNORECASE)
+    if match:
+        return clean_number(match.group(1))
+    
+    # Strategy 2: Bold numbers
+    bold_matches = re.findall(r'\*\*(-?\d+(?:[.,]\d+)*)\*\*', text)
+    if bold_matches:
+        return clean_number(bold_matches[-1])
+    
+    # Strategy 3: Line-ending numbers
+    lines = text.strip().split('\n')
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        match = re.search(r'(-?\d+(?:[.,]\d+)*)\s*(?:\)|\.)?$', line)
+        if match:
+            return clean_number(match.group(1))
+    
+    return None
 
-=== FILE: agents/multi_method/prompts/system.md ===
-You solve complex problems by exploring multiple approaches. Always:
-1. Use Python tools for numeric work.
-2. Show your reasoning and calculations clearly.
-3. Compare results from different methods.
-4. End with: ANSWER: <final_value>
 
-=== FILE: agents/multi_method/prompts/method.md ===
-{method_label}
+def clean_number(s):
+    """Remove commas and spaces from numeric string."""
+    return s.replace(',', '').replace(' ', '')
 
-Question: {question}
+=== FILE: agents/iterative_format_refinement/prompts/system.md ===
+You are a helpful assistant that solves problems step-by-step with clear reasoning.
 
-Solve this carefully using Python. Show all steps and your final result clearly.
+Always show your work for numeric problems. Provide numeric answers without ambiguity.
+If asked to format your answer, use the exact format requested.
 
-=== FILE: agents/multi_method/prompts/compare.md ===
-Original question: {question}
+=== FILE: agents/iterative_format_refinement/prompts/task.md ===
+{question}
 
-Result from Method A:
-{method_a_result}
-
-Result from Method B:
-{method_b_result}
-
-Compare these two results:
-- Do they agree?
-- Which approach is more reliable?
-- If they differ, determine the correct answer through independent verification.
-
-End with: ANSWER: <value>
+Solve this problem step-by-step. Show all your work and calculations. Provide a clear final numeric answer.

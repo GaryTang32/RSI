@@ -55,6 +55,67 @@ def safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "__", str(s)).strip("_") or "x"
 
 
+#: wall-clock fields written by the store, the evaluator and the proposer accounting: they vary from run to
+#: run and say nothing about a harness (see Config.deterministic_view)
+VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s", "elapsed_s"})
+
+
+def _drop_volatile(obj: Any) -> tuple[Any, bool]:
+    if isinstance(obj, dict):
+        out, hit = {}, False
+        for k, v in obj.items():
+            if k in VOLATILE_KEYS:
+                hit = True
+                continue
+            out[k], h = _drop_volatile(v)
+            hit = hit or h
+        return out, hit
+    if isinstance(obj, list):
+        pairs = [_drop_volatile(v) for v in obj]
+        return [p[0] for p in pairs], any(p[1] for p in pairs)
+    return obj, False
+
+
+#: per-file-kind extra keys: a proposer session's ``usage`` is its own bill, which a cached replay meters as $0
+SESSION_VOLATILE_KEYS = frozenset({"usage"})
+
+
+#: files the store itself writes (view paths); only these are stripped. Candidate sources and raw execution traces
+#: (model replies, tool output) are shown exactly as written, even when a line happens to be JSON with such a key.
+STORE_WRITTEN = re.compile(r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?|sessions/[^/]+/meta\.json"
+                           r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json|eval/search/per_task/[^/]+\.json))$")
+
+
+def strip_volatile_fields(path: str, text: str) -> str:
+    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is a JSON / JSONL file the store writes
+    (:data:`STORE_WRITTEN`), plus :data:`SESSION_VOLATILE_KEYS` from ``sessions/*/meta.json``; unchanged otherwise,
+    and byte-identical when no volatile key is present."""
+    if not STORE_WRITTEN.match(path):
+        return text
+    if path.endswith(".json"):
+        try:
+            obj, hit = _drop_volatile(json.loads(text))
+        except ValueError:
+            return text
+        if path.startswith("sessions/") and path.endswith("/meta.json") and isinstance(obj, dict):
+            extra = SESSION_VOLATILE_KEYS & obj.keys()
+            obj = {k: v for k, v in obj.items() if k not in extra}
+            hit = hit or bool(extra)
+        return json.dumps(obj, indent=1, default=str) if hit else text
+    if path.endswith(".jsonl"):
+        lines, changed = [], False
+        for line in text.split("\n")[:-1] if text.endswith("\n") else text.split("\n"):
+            try:
+                obj, hit = _drop_volatile(json.loads(line))
+            except ValueError:
+                lines.append(line)
+                continue
+            lines.append(json.dumps(obj, default=str) if hit else line)
+            changed = changed or hit
+        return "\n".join(lines) + ("\n" if text.endswith("\n") else "") if changed else text
+    return text
+
+
 class FinalizedError(RuntimeError):
     """Raised when evolution is attempted after a complete finalisation."""
 
@@ -239,11 +300,19 @@ class ExperienceStore:
 
     # ------------------------------------------------------------ views
     def view(self, mode: str = "full", *, window: int = 5, focus: Optional[str] = None,
-             seeds: Iterable[str] = ()) -> dict[str, str]:
+             seeds: Iterable[str] = (), strip_volatile: bool = False) -> dict[str, str]:
         """Read-only projection ``{relative path: text}`` of the store for the proposer.
 
         ``focus`` = the candidate shown by ``last_only`` (default: current best);
-        ``seeds`` = the baseline names shown by ``seed_only``."""
+        ``seeds`` = the baseline names shown by ``seed_only``;
+        ``strip_volatile`` = drop wall-clock fields (:data:`VOLATILE_KEYS`) from JSON / JSONL files, so the
+        same run history always renders to the same text (exact LLM-cache replay)."""
+        files = self._view(mode, window=window, focus=focus, seeds=seeds)
+        if strip_volatile:
+            files = {p: strip_volatile_fields(p, text) for p, text in files.items()}
+        return files
+
+    def _view(self, mode: str, *, window: int, focus: Optional[str], seeds: Iterable[str]) -> dict[str, str]:
         files: dict[str, str] = {}
         names = self.names()
         evaluated = [n for n in names if self.scores(n) is not None]
@@ -253,7 +322,8 @@ class ExperienceStore:
             rel = f"candidates/{safe_name(n)}"
             if src and (d / "src").exists():
                 for p in sorted((d / "src").rglob("*")):
-                    if p.is_file():
+                    # a candidate's source is what the store wrote; bytecode left by anyone importing it is not
+                    if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
                         files[f"{rel}/src/{p.relative_to(d / 'src')}"] = p.read_text()
             if meta and (d / "meta.json").exists():
                 files[f"{rel}/meta.json"] = (d / "meta.json").read_text()

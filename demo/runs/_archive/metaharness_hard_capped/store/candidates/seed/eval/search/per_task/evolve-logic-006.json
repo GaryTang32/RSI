@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-logic-006",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '**Casey**').",
+  "output": "**Casey**",
+  "tokens": 16115,
+  "cost_usd": 0.075955,
+  "steps": 1,
+  "latency_s": 119.15790557861328,
+  "error": null,
+  "family": "logic",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

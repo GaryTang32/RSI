@@ -96,7 +96,12 @@ def solve(q: str) -> str:
     raise AssertionError(f"unrecognised question: {q[:80]}")
 
 
-@pytest.mark.parametrize("family", sorted(FAMILIES))
+# The harder families (logic, ledger, schedule, cipher) are re-solved from their question text by their own
+# independent checkers in tests/core/test_agentqa_hard.py; ``solve`` above only parses the standard families.
+from rsi.domains.agentqa.hard import HARD_FAMILIES  # noqa: E402
+
+
+@pytest.mark.parametrize("family", sorted(f for f in FAMILIES if f not in HARD_FAMILIES))
 def test_every_family_answer_is_exact(family):
     rng = random.Random(f"answers-{family}")
     kinds = set()

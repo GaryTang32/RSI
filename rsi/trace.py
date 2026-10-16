@@ -149,7 +149,7 @@ class ShadowMonitor:
         scores = {}
         for s in self.splits:
             r = self.ev.evaluate(artifact, s, self.k)
-            scores[s] = {"S": r.score, "C": r.cost, "families": r.family_scores()}
+            scores[s] = {"S": r.score, "C": r.cost, "families": r.family_scores(), "missing": r.n_missing}
         self.last_elapsed_s = time.time() - t0
         self.elapsed_s += self.last_elapsed_s
         tracer.event("monitor", round, version=name, artifact=artifact.short_id, decision_score=decision_score,

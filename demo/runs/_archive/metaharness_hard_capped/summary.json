@@ -1,0 +1,203 @@
+{
+ "run": "metaharness_hard",
+ "setup": {
+  "method": "metaharness",
+  "suite": "hard",
+  "config": {
+   "iterations": 4,
+   "k": 2,
+   "history_mode": "full",
+   "seed": 0,
+   "test_splits": [
+    "holdout",
+    "ood"
+   ],
+   "cost_metric": "tokens",
+   "workers": 4,
+   "validate_timeout_s": 240.0,
+   "shadow_workers": 4
+  },
+  "llm": "claude haiku (task + proposer)"
+ },
+ "stop_reason": "iterations",
+ "wall_s": 1037.8,
+ "trajectory": [
+  {
+   "iteration": 1,
+   "best_score": 0.75,
+   "n_candidates": 0,
+   "n_valid": 0,
+   "n_evaluated": 0,
+   "frontier_size": 1,
+   "hypervolume": 1368.018750000001,
+   "files_read": 23,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 35099,
+   "read_chars": 35099,
+   "proposer_tokens": 9833,
+   "proposer_usd": 0.0,
+   "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)"
+  },
+  {
+   "iteration": 2,
+   "best_score": 0.75,
+   "n_candidates": 0,
+   "n_valid": 0,
+   "n_evaluated": 0,
+   "frontier_size": 1,
+   "hypervolume": 1368.018750000001,
+   "files_read": 24,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 36845,
+   "read_chars": 36845,
+   "proposer_tokens": 10282,
+   "proposer_usd": 0.0,
+   "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)"
+  },
+  {
+   "iteration": 3,
+   "best_score": 0.75,
+   "n_candidates": 0,
+   "n_valid": 0,
+   "n_evaluated": 0,
+   "frontier_size": 1,
+   "hypervolume": 1368.018750000001,
+   "files_read": 25,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 38623,
+   "read_chars": 38623,
+   "proposer_tokens": 10739,
+   "proposer_usd": 0.0,
+   "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)"
+  },
+  {
+   "iteration": 4,
+   "best_score": 0.75,
+   "n_candidates": 0,
+   "n_valid": 0,
+   "n_evaluated": 0,
+   "frontier_size": 1,
+   "hypervolume": 1368.018750000001,
+   "files_read": 26,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 40433,
+   "read_chars": 40433,
+   "proposer_tokens": 11204,
+   "proposer_usd": 0.0,
+   "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)"
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.75,
+     "C": 18230.25,
+     "steps": 1.0,
+     "families": {
+      "logic": 1.0,
+      "ledger": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.75,
+     "C": 18230.25,
+     "steps": 1.0,
+     "families": {
+      "logic": 1.0,
+      "ledger": 0.5
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 8,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "C": 15317.2,
+     "steps": 0.8333333333333334,
+     "families": {
+      "logic": 0.6666666666666666,
+      "ledger": 0.3333333333333333
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.5,
+     "C": 15317.2,
+     "steps": 0.8333333333333334,
+     "families": {
+      "logic": 0.6666666666666666,
+      "ledger": 0.3333333333333333
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.0,
+     "C": 0.0,
+     "steps": 0.0,
+     "families": {
+      "schedule": 0.0,
+      "cipher": 0.0
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.0,
+     "C": 0.0,
+     "steps": 0.0,
+     "families": {
+      "schedule": 0.0,
+      "cipher": 0.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 6,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.25,
+   "final": 0.25
+  }
+ },
+ "usd_total": 0.9916,
+ "usd_transfer_report": 0.0,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ }
+}

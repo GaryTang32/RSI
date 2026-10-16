@@ -69,7 +69,7 @@ def isolated_llm(llm: Optional[LLM]) -> Optional[LLM]:
     if llm is None:
         return None
     if isinstance(llm, CachedLLM):
-        return CachedLLM(isolated_llm(llm.inner), llm.dir, offline=llm.offline)
+        return CachedLLM(isolated_llm(llm.inner), llm.dir, offline=llm.offline, journal=llm.journal)
     if isinstance(llm, MockLLM):
         return MockLLM(llm.responder, name=llm.name)
     return _SeparateMeter(llm)

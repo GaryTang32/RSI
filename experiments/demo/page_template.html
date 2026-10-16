@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RSI Live Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -35,8 +38,12 @@ section.run{display:grid;gap:20px}
 .legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
 .legend i.dot{width:9px;height:9px;border-radius:50%;vertical-align:0}
 .legend i.hollow{background:transparent!important;border:1.5px solid var(--discard);box-sizing:border-box}
+.legend i.ring{background:var(--keep-bg)!important;border:1.5px solid var(--s1);box-sizing:border-box}
 .chart{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 8px 4px}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart.iter{min-width:0}
+/* phones: the chart scrolls sideways inside .sc; the tooltip stays in the outer, non-scrolling box */
+@media (max-width:640px){.chart.iter{padding:0}.chart.iter .sc{overflow-x:auto;padding:12px 8px 4px}.chart.iter svg{min-width:620px}}
 .chart text{fill:var(--ink2);font:11px var(--body)}
 .tip{position:absolute;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:12.5px;max-width:320px;box-shadow:0 4px 14px rgba(0,0,0,.12);line-height:1.45}
 .tip b{font-family:var(--mono);font-weight:500}
@@ -49,14 +56,16 @@ tr.kept td{background:var(--keep-bg)}
 tr:last-child td{border-bottom:none}
 .pill{display:inline-block;font:500 11.5px/1 var(--body);padding:4px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
 .pill.keep{background:var(--s1);border-color:var(--s1);color:#fff}
+.pill.front{background:var(--keep-bg);border-color:var(--s1)}
 .cand{font-family:var(--mono);font-size:12px;color:var(--ink2)}
 details{border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 summary{cursor:pointer;padding:10px 14px;font-weight:500}
 summary:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
-.code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:0 14px 14px}
+.code-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;padding:0 14px 14px}
 .code-grid>div{min-width:0;display:grid;gap:6px;align-content:start}
 pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overflow:auto;max-height:420px;font:12px/1.5 var(--mono);white-space:pre}
-.note{font-size:13px;color:var(--ink2);border-left:3px solid var(--line);padding-left:12px;max-width:75ch}
+.rep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.note{font-size:13px;color:var(--ink2);border-left:3px solid var(--line);padding-left:12px;max-width:75ch;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:no-preference){.chart circle{transition:r .12s}}
 </style>
 
@@ -64,44 +73,53 @@ pre{margin:0;background:var(--code-bg);border-radius:4px;padding:10px 12px;overf
   <header class="lede">
     <h3>rsi package · live runs with Claude Haiku</h3>
     <h1>Watching the loop improve an LLM agent, one iteration at a time</h1>
-    <p>Each run below started from an untouched seed and ran through the package's public API. Claude Haiku played both roles: the frozen model the harness calls, and the proposer that rewrites the harness. Every point on a chart is one candidate the model proposed, scored by a locked exact-match grader. The orange and green lines are sealed held-out and out-of-distribution tasks. The loop never saw them; a write-only monitor scored each new incumbent on them.</p>
+    <p>Each run below started from an untouched seed and ran through the package's public API (some were cut short by the account's usage cap, a container restart or a crash and resumed from their LLM cache). In the AgentQA runs Claude Haiku played both roles: the frozen model the harness calls, and the proposer that rewrites the harness; every point on their charts is one candidate the model proposed, scored by a locked exact-match grader. In autoresearch Haiku edits a training script, and every point is one 8-second training run scored by validation bits per byte. On the AgentQA charts the orange and green lines are sealed held-out and out-of-distribution tasks: the loop never saw any of those tasks or their scores, and a write-only monitor scored each new incumbent on them. The proposer's domain description does name the OOD kinds (e.g. "business-day scheduling, chained text transformations"), so OOD measures transfer to unseen tasks of announced kinds. Where a run was re-scored, the result line above its chart is that re-score, with fresh trials; other result lines say what they show. The AgentQA charts show in-loop scores and monitor readings, one trial per task; RRSI's rounds 0, 1, 2 are iterations 1, 2, 3 on its charts.</p>
     <div class="facts" id="facts"></div>
   </header>
   <div id="runs" class="wrap" style="gap:64px"></div>
-  <footer class="note">Reproduce: <code>python experiments/demo/live_demo.py metaharness|rrsi|autoresearch</code>, then <code>python experiments/demo/plot_demo.py &amp;&amp; python experiments/demo/build_page.py</code>. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (12 practice, 8 held-out, 8 OOD) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
+  <footer class="note">Check the committed results at $0 (offline; a cache miss is an error, and each check exits non-zero on any difference): <code>python experiments/demo/live_demo.py metaharness [--suite hard] --replay-check</code>, <code>rescore.py</code>, <code>leak_ablation.py</code>, <code>monitor_check.py</code>, <code>calibrate_hard.py</code> and <code>spend.py</code> (all in <code>experiments/demo/</code>; <code>run_chain.sh --check</code> runs several in a row), then rebuild with <code>plot_demo.py &amp;&amp; build_page.py</code>. New results: <code>live_demo.py metaharness|rrsi|autoresearch [--suite hard]</code>, <code>rescore.py --record --seed-offset N &lt;run&gt;</code> or <code>leak_ablation.py --record --seed-offset N</code> for new trial seeds (N &ge; 102, none a loop used), then <code>spend.py --force</code> to account the new calls. Full per-step traces (prompts, diffs, gate arithmetic) are in <code>demo/runs/&lt;run&gt;/TRACE.md</code>. Small task sets (standard: 12 practice, 8 held-out, 8 OOD; hard: 8, 6, 6) make single runs noisy; treat each chart as one real trajectory, not a benchmark.</footer>
 </div>
 
 <script>
 const RUNS = /*__DATA__*/null;
+const EXTRA = /*__EXTRA__*/null;
 const META = {
   metaharness: {title: "Meta-Harness", what: "Haiku reads the full history of harnesses, scores and raw traces, then writes new harness code.",
-    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "The jump at iteration 2 is a general strategy: the harness asks the model to write Python, runs it, and reads the printed answer. From iteration 3 the kept harness also hard-codes regex templates for the task generator's question shapes (“sum of digits of N!”, “N mod M”), chosen because they score the same with fewer tokens. Its comments quote six practice questions word for word (no answers): faithful Meta-Harness has no leakage guard, as in the paper. The general code path stays as a fallback, which is why OOD still improved. The template layer is the brittle behaviour the claims audit recorded against the paper's “coherent algorithms” claim (Meta-Harness L4). Open the code below to see it.",
+    task: "AgentQA: large-number arithmetic (digit sums, modular arithmetic, bit counts) plus one word problem; OOD = dates, number theory, strings, lists.", note: "This is Run 4, on the final code. Its best harness tightened answer extraction: a regex for an ANSWER line, then the last bold number, then a trailing number (in-loop practice 0.33 → 0.50). From iteration 2 on, its candidates told Haiku to write and run Python, but no Run 4 harness ever called the Python tool (0 tool calls in all 96 candidate task runs). Haiku printed imitation tool calls with made-up, often wrong outputs (e.g. “ANSWER: 63” for 40627866717431 mod 148, which is 91). Those six candidates scored 0.08–0.25, 59 of their 61 failures being wrong answers and 2 extraction losses, and none became the incumbent. The proposer's iteration-3 report says the “Model runs print(result) = 144 then later writes ANSWER: 169”; no trace contains a Python output of 144. The account usage cap cut the run off after iteration 3. The attempt was moved to runs/_archive/metaharness_v3_capped and the same command run again: it replayed the seed evaluation and iterations 1–3 from the cache for $0 (119 cached calls, which had cost $1.35 before the cap) and ran iteration 4 live.",
     higher: true},
-  metaharness_a: {title: "Meta-Harness, replicate run", what: "The same settings as the run above, started again from the same seed. This first attempt was stopped by a time limit after its 4 iterations, during the final re-scoring, so it has no re-scored summary; the chart shows its loop and sealed monitor only.",
-    task: "Same task set, same seed harness, same model.", note: "Practice and held-out accuracy rose, but OOD fell from 0.75 to 0.38 once the incumbent switched to multi_check_verify. The sealed monitor exposes the overfit; the loop never saw these scores. Two runs with identical settings ending this differently is why a single live run is an anecdote.",
+  metaharness_a: {title: "Meta-Harness, replicate run (before the fix)", what: "The same configuration as Run 4, recorded before the replay fix. It shares its LLM cache with Run 1 (in the replicates panel above), so both start from the same seed samples. Its loop finished 4 iterations, but the process was interrupted during its final report, so it has no summary and no re-score: the chart shows its loop and sealed monitor only.",
+    task: "Same task set, same seed harness, same model.", note: "Practice and held-out accuracy rose, but OOD fell from 0.75 to 0.38 once the incumbent switched to multi_check_verify. The sealed monitor exposes the overfit; the loop never saw these scores. Runs with the same configuration ending this differently is why a single live run is an anecdote.",
     higher: true},
+  metaharness_hard: {"title": "Meta-Harness on the hard tasks", "what": "Same method and model, on tasks built so that no single trick works: Haiku solves the 5-house logic grids by reasoning but its brute-force code usually times out, while on the messy ledgers its arithmetic without code is unreliable.", "task": "Hard AgentQA: 5×5 logic grids + messy transaction ledgers; OOD = business-day scheduling, chained string transformations.", "note": "Iteration 1 kept a stricter answer-format harness: in-loop practice stayed at 0.75 while the monitor's OOD reading rose from 0.17 to 0.50. Iteration 3's hybrid-task-router, the 5th candidate, combined two earlier ones: clear-format-answers (strong on the logic grids) and code-generation-with-templates (strong on the ledgers). It routes by keywords: a question with more data words (transactions, totals, dates) than logic words goes to a write-the-code-and-run-it path; everything else, ties included, goes to step-by-step reasoning. Scheduling questions mention dates, so they go to code (OOD schedule 0 → 1.0 in the re-score). Ciphers match no data word, fall to reasoning and did worse than the seed (0.83 → 0.50). From iteration 1 on, most candidates copied strings from practice traces into their prompts as format examples. The router's prompts contain three practice answers (2379.20, also written $2,379.20; Harper; Delta), a ledger customer name (Cobalt) and one practice task's exchange rate (1.145). Delta is also the answer of one held-out ledger task, but that task routes to the code path, whose prompts do not contain it. Faithful Meta-Harness has no leakage guard, as in the paper. The re-score's practice interval [0, +0.63] touches 0 only by resampling noise (5,000 resamples; the exact bound is +0.06): just 3 of the 8 practice tasks changed, all for the better, and an exact sign-flip test gives p = 0.25. Leak check on the same fresh trials: with all of these replaced by neutral strings, the harness scored 1.00 (vs 1.00) on practice, 1.00 (vs 0.92) on held-out and 0.67 (vs 0.75) on OOD. Held-out differs by one logic trial. On OOD the versions disagree on three cipher trials in both directions (one gained, two lost; net −1 of 12), and no copied string is an OOD answer. The held-out task whose answer (Delta) was copied scored 2/2 either way. There is no sign the copied text drove the result, but 6 tasks per sealed split cannot rule out a small effect.", "higher": true},
+  rrsi_hard: {"title": "RRSI on the hard tasks", "what": "RRSI's guarded, small-edit loop on the same hard tasks: failure analysis, tagged edits, a leakage critic, a noise band and a cost rule.", "task": "Hard AgentQA: 5×5 logic grids + messy transaction ledgers; OOD = business-day scheduling, chained string transformations.", "note": "RRSI kept the seed harness. In round 0 both candidates tied the seed on practice (0.75 in the loop) but cost more tokens, so the cost rule rejected them. In round 1 both fell below the noise-adjusted floor of 0.55 (0.50 and 0.125). The leakage critic (an LLM review; the answer-denylist precheck was off) rejected the first draft of one candidate per round: in round 0 because the draft declared two edits it did not make, in round 1 because the edit's description named a practice task and its answer (the repair changed only that description). It passed both round-0 candidates although each quoted the practice answer “Sawyer”: one in its system prompt as a format example (the same kind of copy as in the Meta-Harness router), the other in a code comment; neither was kept. The $5 cap is checked between rounds. By the run's own accounting, round 1 started at $4.29 ($3.30 live plus $0.99 replayed from an attempt that crashed in calibration) and ended at $6.49 ($5.39 live plus $1.10 replayed; $0.11 of that is the second round-1 candidate's smoke test reusing the first one's cached calls, which the ledger counts again), so the cap stopped the run after 2 of its 4 rounds; the 45-minute wall-clock cap had also run out. This is not a controlled comparison with Meta-Harness: one run each, and RRSI's overhead (one calibration, then per-round failure analysis, critic repairs and smoke tests) meant its cap allowed only 4 candidates, while Meta-Harness, with no cap, found its router at its 5th. After 4 candidates neither had beaten the seed on practice. The fresh re-score puts the kept seed at 0.63 / 0.50 / 0.58; the same seed harness re-scored with the same trial seeds in the Meta-Harness run's cache scored 0.69 / 0.58 / 0.42, so sampling noise alone moves a split by up to 0.17.", "higher": true},
   rrsi: {title: "RRSI", what: "Haiku analyses failures and proposes small tagged edits. A leakage critic, a noise band and a cost rule decide what survives.",
-    task: "AgentQA: numeric word problems; OOD = dates, number theory, strings, lists.", note: "Round 0 kept a general fix: parse Python blocks from the model's reply, run them with the tool, and force a follow-up grounded in the tool output. The leakage critic rejected the first draft of both kept edits (one had numeric-domain branching and worked examples) and passed them only after repair. Round 1 reached 1.0 on practice; both round-2 candidates scored 0.92, below the incumbent, and were rejected before the $2.50 budget stopped the run. The final harness contains no task answer, id or question text. In-loop scores use one trial per task, so the re-scored practice figure (0.79, two trials) is lower than the 1.0 the loop saw: a winner's-curse effect.",
+    task: "AgentQA: large-number arithmetic (digit sums, modular arithmetic, bit counts) plus one word problem; OOD = dates, number theory, strings, lists.", note: "Round 0 kept a general fix: parse the Python in the model's reply, run it with the tool, and force a follow-up grounded in the tool output (in-loop practice 0.17 → 0.83). Round 1 reached 1.0 in the loop. Both round-2 candidates scored 0.92, inside the noise band, and the cost rule rejected them before the $2.50 budget stopped the run. The leakage critic rejected the first draft of both kept edits and passed them after repair: one draft's system prompt listed the suite's numeric domains, with a formula example for each; the other's code was general, but its edit description named task ids and their answers. The final harness contains no task answer, task id or question text. The fresh re-score puts it at 0.92 on practice, below the loop's 1.0: the loop's single-trial winner was partly lucky.",
     higher: true},
   autoresearch: {title: "Autoresearch", what: "Haiku edits train.py; each experiment trains for 8 s on CPU and is kept only if validation bits-per-byte improves.",
-    task: "tinylm: a byte-level language model; hidden test split never shown to the agent.", note: "Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256. The last keep improved validation by 0.011, but the hidden test got slightly worse (2.725 → 2.734). That keep sits inside the noise band: the strict keep rule locks in luck, a weakness the claims audit documents. SGD, dropping the warmdown and a deeper net were all tried and rejected.",
+    task: "tinylm: a byte-level language model; hidden test splits never shown to the agent.", note: "Three changes were kept: learning rate 0.003 → 0.01 → 0.02, then hidden width 128 → 256. The last keep improved validation by 0.011, inside the run's noise; re-running that commit gave 2.664, worse than the previous keep's 2.648. The shadow audit's single run of each version made it look worse on the shifted hidden split (2.780 → 2.846). Retrained three times in one later session (seeds 10000–10002), it showed no improvement: validation 2.591 → 2.599 and in-distribution test 2.669 → 2.682, both slightly worse at each seed, and shifted test unchanged at 2.736 → 2.733. The strict keep rule locked in noise, a weakness the claims audit documents. In that session, baseline → final is 2.835 → 2.599 on validation, 2.905 → 2.682 on the hidden test and 2.969 → 2.733 on the shifted test, all on the same models. Training stops after 8 s of wall-clock time, so a seed does not pin the model: the run's own re-evaluation, in an earlier session, gave 2.952 → 2.653 on validation. The chart shows the single values of the run itself. SGD, dropping the warmdown and a deeper net were all tried and rejected.",
     higher: false},
 };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const f2 = v => v == null ? "–" : (+v).toFixed(v > 1.5 ? 3 : 2);
+const sgn = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2);
+const STATE = {incumbent: "became the incumbent", frontier: "kept: joined the Pareto frontier",
+  population: "kept in the population (dominated)", discarded: "discarded"};
+const state = c => c.state || (c.kept ? "incumbent" : "discarded");
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); e.innerHTML = html; return e; };
 
-const SPEND = (RUNS.find(d => d.run === "_spend") || {}).cache_usd || {};
-const RUNS_ = RUNS.filter(d => d.run !== "_spend");
+const SPEND = (EXTRA || {}).spend || {};
+const RUNS_ = RUNS;
 function facts() {
   const RUNS = RUNS_;
-  const usd = Object.values(SPEND).reduce((a, v) => a + v, 0) || RUNS.reduce((a, d) => a + (d.usd_total || 0), 0);
+  const usd = SPEND.total_usd;
   const iters = RUNS.reduce((a, d) => a + d.rows.length - 1, 0);
   const cands = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.length, 0), 0);
   const kept = RUNS.reduce((a, d) => a + d.rows.slice(1).reduce((b, r) => b + r.candidates.filter(c => c.kept).length, 0), 0);
+  const resumed = RUNS.filter(d => Object.keys(d.attempts || {}).length > 1).length;
   document.getElementById("facts").innerHTML = [
-    [RUNS.length, "fresh live runs"], [iters, "iterations"], [cands, "candidates proposed and graded"],
-    [kept, "kept by the gate"], ["$" + usd.toFixed(2), "total Claude Haiku spend, including one restarted run"]]
+    [RUNS.length, `live runs charted below (${resumed} resumed from their cache; Meta-Harness Runs 1–3 are in the replicates panel)`], [iters, "iterations"],
+    [cands, "candidates proposed and graded"], [kept, "candidates that became the new incumbent"],
+    ["$" + usd.toFixed(2), "total Claude Haiku spend, every attempt included: capped and restarted runs, replicates, re-scores, leak checks, calibrations"]]
     .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
@@ -122,28 +140,35 @@ function chart(host, d, m) {
   const series = m.higher
     ? [["S", "var(--s1)"], ["holdout", "var(--s2)"], ["ood", "var(--s3)"]]
     : [["S", "var(--s1)"], ["test_iid", "var(--s2)"]];
-  // sealed lines first, practice last, so the practice line stays visible where they coincide
-  [...series.slice(1), series[0]].forEach(([k, col]) => {
+  // practice underneath and wider, sealed lines on top: where they coincide all stay visible
+  const ends = [];
+  series.forEach(([k, col]) => {
     const pts = rows.map((r, i) => [i, k === "S" ? r.S : (r.sealed || {})[k]]).filter(p => p[1] != null);
     if (!pts.length) return;
     let p = `M${x(pts[0][0])},${y(pts[0][1])}`;
     for (let j = 1; j < pts.length; j++) p += ` H${x(pts[j][0])} V${y(pts[j][1])}`;
     p += ` H${x(rows.length - 1)}`;
-    s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"${k === "ood" ? ' stroke-dasharray="6 4"' : ""}/>`;
-    const last = pts[pts.length - 1][1];
-    s += `<text x="${x(rows.length - 1) + 14}" y="${y(last) + 4}" style="fill:${col}">${f2(last)}</text>`;
+    s += `<path d="${p}" fill="none" stroke="${col}" stroke-width="${k === "S" ? 4.5 : 2}" stroke-linejoin="round"${k === "ood" ? ' stroke-dasharray="6 4"' : ""}/>`;
+    ends.push({v: pts[pts.length - 1][1], col});
   });
+  // end labels: keep coincident values at least 13 px apart
+  ends.sort((a, b) => y(b.v) - y(a.v));
+  let prevY = Infinity;
+  ends.forEach(e => { let ly = y(e.v) + 4; if (ly > prevY - 13) ly = prevY - 13; prevY = ly;
+    s += `<text x="${x(rows.length - 1) + 14}" y="${ly}" style="fill:${e.col}">${f2(e.v)}</text>`; });
   rows.forEach((r, i) => r.candidates.forEach((c, j) => {
     const v = c.S == null ? null : c.S;
     if (v == null) return;
     const off = r.candidates.length > 1 ? (j - (r.candidates.length - 1) / 2) * 9 : 0;
+    const st = state(c);
     s += `<circle class="pt" data-i="${i}" data-j="${j}" cx="${x(i) + off}" cy="${y(v)}" r="5.5" stroke-width="1.8" `
-      + (c.kept ? `fill="var(--s1)" stroke="var(--surface)"` : `fill="var(--surface)" stroke="var(--discard)"`) + `/>`;
+      + (st === "incumbent" ? `fill="var(--s1)" stroke="var(--surface)"` : st === "frontier" ? `fill="var(--keep-bg)" stroke="var(--s1)"`
+         : `fill="var(--surface)" stroke="var(--discard)"`) + `/>`;
   }));
   s += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
   s += `<rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
   s += `</svg>`;
-  const box = el("div", {class: "chart"}, s);
+  const box = el("div", {class: "chart iter"}, `<div class="sc">${s}</div>`);
   const tip = el("div", {class: "tip", hidden: ""});
   box.appendChild(tip); host.appendChild(box);
   const svg = box.querySelector("svg"), xh = box.querySelector(".xh");
@@ -151,7 +176,7 @@ function chart(host, d, m) {
   function show(e, i, c) {
     const r = rows[i], sealed = r.sealed || {};
     let h = `<div class="small dim">${i === 0 ? "starting point" : "iteration " + i}</div>`;
-    if (c) h += `<div><b>${esc(c.name)}</b> · ${m.higher ? "practice" : "val_bpb"} <b>${f2(c.S)}</b> · ${c.kept ? "kept" : "discarded"}</div>`
+    if (c) h += `<div><b>${esc(c.name)}</b> · ${m.higher ? "practice" : "val_bpb"} <b>${f2(c.S)}</b> · ${STATE[state(c)]}</div>`
       + (c.change ? `<div class="small" style="margin-top:4px">${esc(c.change).slice(0, 260)}</div>` : "");
     else h += `<div>incumbent <b>${esc(r.incumbent)}</b></div>`;
     h += `<div class="small dim" style="margin-top:4px">incumbent: ${m.higher ? "practice" : "val"} ${f2(r.S)}`
@@ -163,7 +188,7 @@ function chart(host, d, m) {
     tip.style.left = left + "px"; tip.style.top = top + "px";
     xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
   }
-  box.addEventListener("mousemove", e => {
+  const onMove = e => {
     const [sx, sy] = toSvg(e);
     let best = null, bd = 1e9;
     box.querySelectorAll(".pt").forEach(p => { const dx = +p.getAttribute("cx") - sx, dy = +p.getAttribute("cy") - sy, dd = dx * dx + dy * dy;
@@ -172,16 +197,24 @@ function chart(host, d, m) {
     if (sx < L - 10 || sx > W - R + 10) { tip.hidden = true; xh.setAttribute("visibility", "hidden"); return; }
     const i = Math.max(0, Math.min(rows.length - 1, Math.round((sx - L) / ((W - L - R) / Math.max(1, rows.length - 1)))));
     show(e, i, null);
-  });
-  box.addEventListener("mouseleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+  };
+  const hide = () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); };
+  box.addEventListener("pointermove", e => { if (e.pointerType !== "touch") onMove(e); });   // mouse and pen hover
+  box.addEventListener("click", onMove);   // a tap opens the tooltip (a scroll drag fires no click)
+  // touch fires pointerleave right after every tap, so only a mouse or pen leaving the chart closes it
+  box.addEventListener("pointerleave", e => { if (e.pointerType !== "touch") hide(); });
+  box.querySelector(".sc").addEventListener("scroll", hide);
+  document.addEventListener("pointerdown", e => { if (!box.contains(e.target)) hide(); });
 }
 
-function legend(m) {
+function legend(m, d) {
   const items = m.higher
     ? [["var(--s1)", "incumbent, practice tasks"], ["var(--s2)", "incumbent, sealed held-out"], ["var(--s3)", "incumbent, sealed OOD (dashed)"]]
-    : [["var(--s1)", "running best, validation"], ["var(--s2)", "same model on a hidden test split"]];
-  return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}`
-    + `<span><i class="dot" style="background:var(--s1)"></i>candidate kept</span><span><i class="dot hollow"></i>candidate discarded</span></div>`;
+    : [["var(--s1)", "running best, validation"], ["var(--s2)", "hidden test split (the shadow audit's own training run of the same train.py)"]];
+  const marks = d.method === "metaharness"
+    ? `<span><i class="dot" style="background:var(--s1)"></i>became the incumbent</span><span><i class="dot ring"></i>kept, joined the Pareto frontier</span><span><i class="dot hollow"></i>kept in the population, dominated</span>`
+    : `<span><i class="dot" style="background:var(--s1)"></i>${m.higher ? "candidate" : "experiment"} kept</span><span><i class="dot hollow"></i>${m.higher ? "candidate" : "experiment"} discarded</span>`;
+  return `<div class="legend">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join("")}${marks}</div>`;
 }
 
 function table(d, m) {
@@ -189,16 +222,19 @@ function table(d, m) {
     + `<th class="num">${m.higher ? "practice" : "val_bpb"}</th><th>verdict</th>`
     + (m.higher ? `<th class="num">held-out*</th><th class="num">OOD*</th>` : `<th class="num">hidden test*</th>`) + `</tr></thead><tbody>`;
   const r0 = d.rows[0];
-  h += `<tr><td class="num">0</td><td class="cand">${esc(r0.incumbent)}</td><td class="dim">starting harness</td><td class="num">${f2(r0.S)}</td><td></td>`
+  h += `<tr><td class="num">0</td><td class="cand">${esc(r0.incumbent)}</td><td class="dim">${m.higher ? "starting harness" : "baseline train.py"}</td><td class="num">${f2(r0.S)}</td><td></td>`
     + (m.higher ? `<td class="num">${f2(r0.sealed.holdout)}</td><td class="num">${f2(r0.sealed.ood)}</td>` : `<td class="num">${f2(r0.sealed.test_iid)}</td>`) + `</tr>`;
   d.rows.slice(1).forEach(r => r.candidates.forEach(c => {
     h += `<tr class="${c.kept ? "kept" : ""}"><td class="num">${r.iter}</td><td class="cand">${esc(c.name)}</td>`
       + `<td>${esc((c.change || "").slice(0, 300))}</td><td class="num">${f2(c.S)}</td>`
-      + `<td>${c.kept ? `<span class="pill keep">kept</span>` : `<span class="pill">discarded</span>`}</td>`
+      + `<td><span class="pill ${{incumbent: "keep", frontier: "front"}[state(c)] || ""}">${{incumbent: d.method === "metaharness" ? "new incumbent" : "kept", frontier: "on frontier", population: "in population", discarded: "discarded"}[state(c)]}</span></td>`
       + (m.higher ? `<td class="num">${c.kept ? f2(r.sealed.holdout) : ""}</td><td class="num">${c.kept ? f2(r.sealed.ood) : ""}</td>`
                   : `<td class="num">${c.kept ? f2(r.sealed.test_iid) : ""}</td>`) + `</tr>`;
   }));
-  return h + `</tbody></table></div><p class="small dim">* Sealed scores of the new incumbent, from the write-only shadow monitor. The loop never saw them.</p>`;
+  const foot = m.higher
+    ? `* Sealed scores of the new incumbent, from the write-only shadow monitor (one trial per task). The loop never saw them.${d.method === "metaharness" ? " Meta-Harness keeps every candidate in its population and ranks them by a score/cost Pareto frontier; the incumbent is the highest-scoring frontier point." : ""}`
+    : `* Hidden test split of each kept commit, from the shadow audit (one audit training run per commit, at the loop's training seed). The loop never saw it.`;
+  return h + `</tbody></table></div><p class="small dim">${foot}</p>`;
 }
 
 function code(d) {
@@ -214,10 +250,16 @@ function code(d) {
 
 function resultLine(d, m) {
   if (d.transfer) {
-    const t = d.transfer, parts = [["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, k]) => {
-      const a = t[k].seed.S, b = t[k].final.S, vs = t[k].final.vs || {}, ci = vs.ci ? ` <span class="dim small">[${f2(vs.ci[0])}, ${f2(vs.ci[1])}]</span>` : "";
+    const t = d.transfer, k = d.transfer_k, o = d.transfer_seed_offset;
+    const parts = [["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, s]) => {
+      const a = t[s].seed.S, b = t[s].final.S, vs = t[s].final.vs;
+      const ci = vs && vs.lo != null ? ` <span class="dim small">gain ${sgn(vs.mean_diff)} [${sgn(vs.lo)}, ${sgn(vs.hi)}], n = ${vs.n}</span>` : "";
       return `<span>${lab} <span class="v">${f2(a)} → <span class="${b > a ? "up" : ""}">${f2(b)}</span></span>${ci}</span>`; });
-    return `<div class="result">${parts.join("")}<span class="dim small">re-scored with k = 2 trials per task after the run; brackets = 95% CI of the paired gain</span></div>`;
+    if (d.kept_seed) return `<div class="result">${[["practice", "evolve"], ["held-out", "holdout"], ["OOD", "ood"]].map(([lab, s]) => `<span>${lab} <span class="v">${f2(t[s].final.S)}</span></span>`).join("")}<span class="dim small">the run kept the seed harness, so there is no gain by construction; re-scored after the run with ${k} fresh trial${k > 1 ? "s" : ""} per task (trial seeds ${o}–${o + k - 1})</span></div>`;
+    const how = d.transfer_fresh
+      ? `re-scored after the run with ${k} fresh trial${k > 1 ? "s" : ""} per task (trial seeds ${o}–${o + k - 1}, which no loop decision or monitor reading used); brackets = 95% bootstrap CI of the paired gain over the split's n tasks`
+      : `post-run report with ${k} trial${k > 1 ? "s" : ""} per task from seed 0: trial 0 repeats the loop's and the monitor's own samples`;
+    return `<div class="result">${parts.join("")}<span class="dim small">${how}</span></div>`;
   }
   const r0 = d.rows[0], rl = d.rows[d.rows.length - 1];
   if (m.higher) {
@@ -228,7 +270,7 @@ function resultLine(d, m) {
   }
   return `<div class="result"><span>val_bpb <span class="v">${f2(r0.S)} → <span class="up">${f2(rl.S)}</span></span></span>`
     + `<span>hidden test <span class="v">${f2(r0.sealed.test_iid)} → <span class="up">${f2(rl.sealed.test_iid)}</span></span></span>`
-    + `<span class="dim small">lower is better</span></div>`;
+    + `<span class="dim small">lower is better; val_bpb: the single values the loop selected on; hidden test: the shadow audit's one run of each version, never shown to the loop</span></div>`;
 }
 
 facts();
@@ -238,9 +280,83 @@ RUNS_.forEach(d => {
   const sec = el("section", {class: "run", id: d.run});
   sec.innerHTML = `<div class="head"><h3>${esc(m.task)}</h3><h2>${esc(m.title)}</h2><p class="dim">${esc(m.what)}</p>${resultLine(d, m)}`
     + (m.note ? `<p class="note">${esc(m.note)}</p>` : "")
-    + `<p class="small dim">${d.rows.length - 1} iterations · $${(d.usd_total || 0).toFixed(2)} · ${Math.round((d.wall_s || 0) / 60)} min · stopped: ${esc(d.stop_reason || "")}</p></div>` + legend(m);
+    + `<p class="small dim">${runLine(d)}</p></div>` + legend(m, d);
   host.appendChild(sec);
   chart(sec, d, m);
   sec.insertAdjacentHTML("beforeend", table(d, m) + code(d));
+  if (d.run === "metaharness") sec.insertAdjacentHTML("beforeend", replay() + replicates());
 });
+
+function runLine(d) {
+  const n = Object.keys(d.attempts || {}).length;
+  let s = `${d.rows.length - 1} iterations · stopped: ${esc(d.stop_reason || "?")}`;
+  const paid = {metaharness: "loop, shadow monitor and final test evaluation", rrsi: "loop and shadow monitor", autoresearch: "research agent"}[d.method];
+  if (d.usd_full != null) s += ` · $${d.usd_full.toFixed(2)} of Haiku calls in the run${paid ? ` (${paid})` : ""}` + (n > 1 ? `: $${(d.usd_attempt || 0).toFixed(2)} in this attempt and $${(d.usd_full - (d.usd_attempt || 0)).toFixed(2)} in ${n - 1} earlier attempt${n > 2 ? "s" : ""} cut short, whose cached calls this attempt replayed where it repeated them` : "");
+  if (d.usd_rescore) s += ` · fresh re-score $${d.usd_rescore.toFixed(2)}`;
+  if (!d.has_summary) s += " · interrupted during its final report, so it has no re-score";
+  return s;
+}
+
+function replay() {
+  const rs = (EXTRA || {}).replay || []; if (!rs.length) return "";
+  const one = r => {
+    const ok = r.prompts_identical && r.scores_identical && !r.cache_misses && (!r.beyond_practice || r.beyond_practice.identical);
+    return `<li><b>${r.run === "metaharness_hard" ? "Hard Meta-Harness run" : "Run 4"}: ${ok ? "passed" : "FAILED"}.</b> `
+      + `The prompts of all ${r.proposer_calls} proposer calls (one per iteration, each yielding 2 candidates) `
+      + `${r.prompts_identical ? "identical" : "differ"}; all ${r.candidates_scored} candidate scores `
+      + `${r.scores_identical ? "identical" : "differ"}; ${r.cache_hits} cached calls and ${r.cache_misses} misses in the main `
+      + `process; $${(r.usd_spent || 0).toFixed(2)} spent; ${(r.traces_identical || r.traces).identical} of ${(r.traces_identical || r.traces).files} candidate execution `
+      + `traces byte-identical to the recorded run's. ${r.beyond_practice ? `The seed's score, all ${r.beyond_practice.monitor_readings} shadow-monitor readings and all ${r.beyond_practice.test_results} final test results ${r.beyond_practice.identical ? "are identical" : "DIFFER"}. ` : ""}${r.tool_calls ? `Its harnesses ran ${r.tool_calls} sandboxed Python `
+      + `calls in their practice evaluations (more in the monitor and the final test), and the identical traces include `
+      + `all ${r.trace_lines.timeouts} practice-evaluation timeouts and the ${r.trace_lines.sandbox_path} lines naming `
+      + `the stable /tmp/rsi_sandbox path. No sandbox path reached `
+      + `a prompt, so the prompt check itself does not test the stable path; a sandbox unit test does.` : `Its `
+      + `harnesses ran no code, so this replay does not exercise the sandbox.`}</li>`;
+  };
+  return `<div class="note"><b>Replay checks.</b> A finished run was re-executed from its LLM cache with the model switched `
+    + `off (a cache miss is an error):<ul>${rs.map(one).join("")}</ul>The cache is keyed on a hash of the whole prompt, so `
+    + `zero misses proves the full prompts matched (the trace keeps only their first 60,000 characters). A miss in a forked `
+    + `interface-validation child would fail its smoke check and show as a score mismatch. Before the fix, wall-clock `
+    + `timestamps and latencies, the proposer's own bill and random sandbox paths in tracebacks made the proposer's `
+    + `prompts differ on every run, so no run could be replayed exactly.</div>`;
+}
+
+function replicates() {
+  const reps = (EXTRA || {}).replicates || []; if (!reps.length) return "";
+  const splits = [["evolve", "practice"], ["holdout", "held-out"], ["ood", "OOD"]];
+  const W = 300, rowH = 30, L = 58, R = 34, T = 22, H = T + rowH * reps.length + 18;
+  const x = v => L + (W - L - R) * v;
+  const panel = ([k, lab]) => {
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${lab}: seed vs final per run">`
+      + `<text x="${L}" y="12" style="font-weight:600;fill:var(--ink)">${lab}</text>`;
+    [0, 0.5, 1].forEach(v => { s += `<line x1="${x(v)}" x2="${x(v)}" y1="${T - 4}" y2="${H - 16}" stroke="var(--line)"/>`
+      + `<text x="${x(v)}" y="${H - 4}" text-anchor="middle">${v}</text>`; });
+    reps.forEach((r, i) => {
+      const y = T + rowH * i + rowH / 2, a = r.scores[k].seed, b = r.scores[k].final;
+      s += `<text x="${L - 8}" y="${y + 4}" text-anchor="end">${esc(r.label)}</text>`
+        + `<line x1="${x(a)}" x2="${x(b)}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="4" stroke-linecap="round"/>`
+        + `<circle cx="${x(a)}" cy="${y}" r="5" fill="var(--discard)"><title>${esc(r.label)} seed ${f2(a)}</title></circle>`
+        + `<circle cx="${x(b)}" cy="${y}" r="5" fill="var(--s1)"><title>${esc(r.label)} after the run ${f2(b)}</title></circle>`
+        + (Math.abs(a - b) < 1e-9 ? `<circle cx="${x(a)}" cy="${y}" r="7.5" fill="none" stroke="var(--discard)" stroke-width="2"><title>${esc(r.label)}: seed and final both ${f2(a)}</title></circle>` : "")
+        + `<text x="${x(b) + (Math.abs(a - b) < 1e-9 ? 0 : b > 0.92 ? -9 : 9)}" y="${y - (Math.abs(a - b) < 1e-9 ? 11 : 7)}" text-anchor="middle" style="fill:var(--ink)">${f2(b)}</text>`;
+    });
+    return `<div class="chart" style="padding:8px">${s}</svg></div>`;
+  };
+  const rows = reps.map(r => `<li><b>${esc(r.label)}</b> (${esc(r.note)}): $${(r.usd || 0).toFixed(2)} of Haiku calls</li>`).join("");
+  return `<div class="head"><h3>Replicates</h3><p class="dim">Four complete Meta-Harness runs with the same configuration, `
+    + `seed harness and model; the replay fix landed between them, so the code changed slightly from run to run. `
+    + `Each was re-scored after the run with ${reps[0].k} fresh trials per task. Gray is the seed, blue the harness after the run.</p></div>`
+    + `<div class="rep-grid">${splits.map(panel).join("")}</div>`
+    + `<div class="legend"><span><i class="dot" style="background:var(--discard)"></i>seed harness</span>`
+    + `<span><i class="dot" style="background:var(--s1)"></i>harness after the run</span></div>`
+    + `<ul class="small dim">${rows}</ul>`
+    + `<p class="note">Runs 1–3 found the general strategy (write Python, run it with the tool, read the printed answer). `
+    + `Runs 2 and 3 scored 1.00 on practice and held-out tasks with fresh trials using it alone. Run 1 found it at iteration 2, `
+    + `but its final harness is a template-first solver: five regex templates covering four of the task generator's six `
+    + `question shapes run fixed Python without calling the model, answering 10 of 12 practice and 5 of 8 held-out tasks; `
+    + `model-written code is only the fallback (the other 5 tasks and all of OOD). Its comments also quote six practice `
+    + `questions: faithful Meta-Harness has no leakage guard, as in the paper, and this is the brittle behaviour the claims audit `
+    + `recorded against its \u201ccoherent algorithms\u201d claim. Run 4 never executed code: its candidates only told Haiku `
+    + `to write Python, and Haiku made up the outputs. One run is an anecdote; the spread across runs is the result.</p>`;
+}
 </script>

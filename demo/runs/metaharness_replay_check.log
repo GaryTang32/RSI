@@ -1,0 +1,15 @@
+{
+ "run": "metaharness",
+ "proposer_calls": 4,
+ "candidates_scored": 8,
+ "prompts_identical": true,
+ "scores_identical": true,
+ "cache_misses": 0,
+ "cache_hits": 208,
+ "usd_spent": 0.0
+}
+
+real	0m0.638s
+user	0m0.755s
+sys	0m0.220s
+EXIT 0

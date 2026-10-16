@@ -1,16 +1,16 @@
 {
  "evolve": {
-  "seed": 0.20833333333333334,
-  "final": 1.0
+  "seed": 0.2916666666666667,
+  "final": 0.5416666666666666
  },
  "holdout": {
   "seed": 0.5,
-  "final": 1.0
+  "final": 0.6875
  },
  "ood": {
-  "seed": 0.625,
-  "final": 0.875
+  "seed": 0.5625,
+  "final": 0.5625
  }
 }
-usd 2.9783
+usd 0.9119 cache {'hits': 209, 'misses': 111}
 EXIT 0

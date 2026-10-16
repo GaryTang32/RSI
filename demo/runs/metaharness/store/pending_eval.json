@@ -2,14 +2,14 @@
  "iteration": 4,
  "candidates": [
   {
-   "name": "pattern_solver_enhanced",
+   "name": "gentle_python_trust",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",
    "components": []
   },
   {
-   "name": "classifier_template_solver",
+   "name": "python_priority_extraction",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",

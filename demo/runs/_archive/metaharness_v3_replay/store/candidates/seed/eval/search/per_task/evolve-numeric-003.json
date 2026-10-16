@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-003",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '73427123466896 mod 440 = **56**').",
+  "output": "73427123466896 mod 440 = **56**",
+  "tokens": 5898,
+  "cost_usd": 0.026162,
+  "steps": 1,
+  "latency_s": 0.0041658878326416016,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

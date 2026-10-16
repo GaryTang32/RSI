@@ -1,0 +1,19 @@
+{
+ "name": "code_compact",
+ "artifact_id": "7d8596c08f3761f42173e72d1c1b8cf5ed62fcbb742095631cd6d2afac08727f",
+ "created_at": 1790760176.0415158,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "code_execution",
+ "hypothesis": "Using a minimal system prompt that eliminates unnecessary framing will reduce token consumption by 30-50% on verbose problems while maintaining perfect accuracy, since deterministic code execution is invariant to instruction verbosity.",
+ "axis": "exploitation",
+ "components": [
+  "A: minimal system prompt",
+  "D: no explanations encouraged",
+  "C: ANSWER: marker extraction"
+ ],
+ "parents_read": [],
+ "order": 4,
+ "reason": ""
+}

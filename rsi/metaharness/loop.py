@@ -222,7 +222,8 @@ class MetaHarnessLoop:
         self.store.clear_pending()
         pre_best = self.best_score()
         pre_best_name = (self.store.frontier().get("_best") or {}).get("system")
-        view = self.store.view(self.cfg.history_mode, window=self.cfg.window, seeds=self.seed_names)
+        view = self.store.view(self.cfg.history_mode, window=self.cfg.window, seeds=self.seed_names,
+                               strip_volatile=self.cfg.deterministic_view)
         visible = {n: self.store.artifact(n) for n in self.store.names()
                    if any(p.startswith(f"candidates/{safe_name(n)}/src/") for p in view)}
         k = self.cfg.k

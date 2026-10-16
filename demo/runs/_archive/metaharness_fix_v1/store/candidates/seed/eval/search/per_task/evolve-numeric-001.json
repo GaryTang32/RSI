@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-001",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'To verify: 40627866717431 = 274,512,612,955 \u00d7 148 + 91').",
+  "output": "To verify: 40627866717431 = 274,512,612,955 \u00d7 148 + 91",
+  "tokens": 5212,
+  "cost_usd": 0.022732000000000002,
+  "steps": 1,
+  "latency_s": 37.48581671714783,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

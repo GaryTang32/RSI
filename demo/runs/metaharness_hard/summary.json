@@ -1,0 +1,213 @@
+{
+ "run": "metaharness_hard",
+ "setup": {
+  "method": "metaharness",
+  "suite": "hard",
+  "config": {
+   "iterations": 4,
+   "k": 2,
+   "history_mode": "full",
+   "seed": 0,
+   "test_splits": [
+    "holdout",
+    "ood"
+   ],
+   "cost_metric": "tokens",
+   "workers": 4,
+   "validate_timeout_s": 240.0,
+   "shadow_workers": 4
+  },
+  "llm": "claude haiku (task + proposer)"
+ },
+ "stop_reason": "iterations",
+ "wall_s": 3272.9,
+ "trajectory": [
+  {
+   "iteration": 1,
+   "best_score": 0.75,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 2,
+   "frontier_size": 2,
+   "hypervolume": 4265.784375000001,
+   "files_read": 23,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 35099,
+   "read_chars": 35099,
+   "proposer_tokens": 29011,
+   "proposer_usd": 0.0,
+   "error": null
+  },
+  {
+   "iteration": 2,
+   "best_score": 0.75,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 4,
+   "frontier_size": 2,
+   "hypervolume": 4265.784375000001,
+   "files_read": 43,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 134017,
+   "read_chars": 73253,
+   "proposer_tokens": 36488,
+   "proposer_usd": 0.10478200000000001,
+   "error": null
+  },
+  {
+   "iteration": 3,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 6,
+   "frontier_size": 3,
+   "hypervolume": 6832.021875000003,
+   "files_read": 50,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 254584,
+   "read_chars": 63839,
+   "proposer_tokens": 40756,
+   "proposer_usd": 0.130634,
+   "error": null
+  },
+  {
+   "iteration": 4,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 8,
+   "frontier_size": 4,
+   "hypervolume": 9205.134375000001,
+   "files_read": 53,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 397093,
+   "read_chars": 70670,
+   "proposer_tokens": 36236,
+   "proposer_usd": 0.112462,
+   "error": null
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.75,
+     "C": 18230.25,
+     "steps": 1.0,
+     "families": {
+      "logic": 1.0,
+      "ledger": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 20712.875,
+     "steps": 1.5,
+     "families": {
+      "logic": 1.0,
+      "ledger": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.25,
+      "lo": 0.0,
+      "hi": 0.625,
+      "n": 8,
+      "p_better": 0.25
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.6666666666666666,
+     "C": 16480.5,
+     "steps": 1.0,
+     "families": {
+      "logic": 1.0,
+      "ledger": 0.3333333333333333
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 18436.333333333332,
+     "steps": 1.5,
+     "families": {
+      "logic": 1.0,
+      "ledger": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.3333333333333333,
+      "lo": 0.0,
+      "hi": 0.6666666666666666,
+      "n": 6,
+      "p_better": 0.3333333333333333
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.16666666666666666,
+     "C": 8630.166666666666,
+     "steps": 1.0,
+     "families": {
+      "schedule": 0.0,
+      "cipher": 0.3333333333333333
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 0.6666666666666666,
+     "C": 12017.333333333334,
+     "steps": 1.5,
+     "families": {
+      "schedule": 1.0,
+      "cipher": 0.3333333333333333
+     },
+     "vs_reference": {
+      "mean_diff": 0.5,
+      "lo": 0.16666666666666666,
+      "hi": 0.8333333333333334,
+      "n": 6,
+      "p_better": 0.5
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.41666666666666663,
+   "final": 0.8333333333333333
+  }
+ },
+ "usd_total": 6.848,
+ "usd_transfer_report": 0.0,
+ "cache": {
+  "hits": 128,
+  "misses": 104
+ },
+ "infra_errors": [],
+ "clean": true,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "\"\"\"\nHarness with task-type detection and routing to specialized strategies.\n- Logic tasks: Reasoning-based with formatted answer requirement\n- Data tasks: Code-first with calculation templates\n\"\"\"\n\nimport re\n\n\ndef detect_task_type(question):\n    \"\"\"Detect whether the question is logic-heavy or data-heavy.\"\"\"\n    question_lower = question.lower()\n    \n    # Keywords indicating data/calculation tasks\n    data_keywords = [\n        \"transaction\", \"ledger\", \"average\", \"sum\", \"total\", \"date\", \"amount\",\n        \"currency\", \"convert\", \"rate\", \"paid\", \"refund\", \"filter\", \"calculate\",\n        \"export\", \"usd\", \"eur\", \"settled\", \"status\", \"balance\", \"accounting\"\n    ]\n    \n    # Keywords indicating logic/reasoning tasks\n    logic_keywords = [\n        \"logic puzzle\", \"clue\", \"must be\", \"person\", \"house\", \"color\", \"hobby\",\n        \"pet\", \"drink\", \"constraint\", \"immediately left\", \"next to\", \"different\",\n        \"standing in a row\", \"position\"\n    ]\n    \n    data_score = sum(1 for kw in data_keywords if kw in question_lower)\n    logic_score = sum(1 for kw in logic_keywords if kw in question_lower)\n    \n    return \"data\" if data_score > logic_score else \"logic\"\n\n\ndef solve(question, llm, tools, files):\n    task_type = detect_task_type(question)\n    \n    if task_type == \"data\":\n        return solve_data(question, llm, tools, files)\n    else:\n        return solve_logic(question, llm, tools, files)\n\n\ndef solve_data(question, llm, tools, files):\n    \"\"\"Solve data-intensive tasks using code-first approach with templates.\"\"\"\n    system = files.get(\"prompts/system_data.md\", \"\")\n    prompt = files.get(\"prompts/task_data.md\", \"\").replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    \n    # Priority 1: Execute Python code blocks\n    code_pattern = r'```python\\n(.*?)\\n```'\n    code_matches = re.findall(code_pattern, reply, re.DOTALL)\n    \n    for code in code_matches:\n        try:\n            execution_result = tools.python(code)\n            output_lines = [line.strip() for line in execution_result.strip().split('\\n') if line.strip()]\n            if output_lines:\n                return output_lines[-1]\n        except Exception:\n            pass\n    \n    # Priority 2: Extract ANSWER: marker\n    for line in reply.strip().splitlines():\n        stripped = line.strip()\n        if stripped.startswith('ANSWER:'):\n            answer_text = stripped[7:].strip()\n            if answer_text:\n                return answer_text\n    \n    # Priority 3: Last line fallback\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n\n\ndef solve_logic(question, llm, tools, files):\n    \"\"\"Solve logic tasks using step-by-step reasoning with formatted answer.\"\"\"\n    system = files.get(\"prompts/system_logic.md\", \"\")\n    prompt = files.get(\"prompts/task_logic.md\", \"\").replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    \n    # Priority 1: Extract ANSWER: marker (preferred for logic)\n    for line in reply.strip().splitlines():\n        stripped = line.strip()\n        if stripped.startswith('ANSWER:'):\n            answer_text = stripped[7:].strip()\n            if answer_text:\n                return answer_text\n    \n    # Priority 2: Execute code if present (optional for logic)\n    code_pattern = r'```python\\n(.*?)\\n```'\n    code_matches = re.findall(code_pattern, reply, re.DOTALL)\n    for code in code_matches:\n        try:\n            execution_result = tools.python(code)\n            output_lines = [line.strip() for line in execution_result.strip().split('\\n') if line.strip()]\n            if output_lines:\n                return output_lines[-1]\n        except Exception:\n            pass\n    \n    # Priority 3: Last line fallback\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/system_data.md": "You are a helpful assistant who solves data-processing and calculation problems by writing Python code.\n\nFor all data-intensive problems (involving transactions, calculations, filtering, currency conversion, averaging, ledger analysis, etc.):\n\n1. **Parse and organize the data** in Python, handling multiple date and currency formats\n2. **Apply all rules and constraints** from the problem (date ranges, status filters, corrections, conversions)\n3. **Compute the result** using Python\n4. **Print the final answer** on the last line of your code output\n\n## Code Template for Ledger/Transaction Problems\n\n```python\nfrom datetime import datetime\nimport re\n\n# Define transactions (parse from the problem statement)\ntransactions = [\n    # (ID, date_string, amount_string, currency, status)\n    ...\n]\n\ndef parse_date(date_str):\n    \"\"\"Handle YYYY-MM-DD, DD/MM/YYYY, and 'Mon DD YYYY' formats.\"\"\"\n    formats = [\"%Y-%m-%d\", \"%d/%m/%Y\", \"%b %d %Y\"]\n    for fmt in formats:\n        try:\n            return datetime.strptime(date_str.strip(), fmt).date()\n        except ValueError:\n            continue\n    return None\n\ndef convert_to_usd(amount_str, currency, rate):\n    \"\"\"Extract numeric amount and convert to USD if needed.\"\"\"\n    # Remove currency symbols and parse the number\n    amount_str = amount_str.replace('.', '').replace(',', '.')\n    amount = float(re.sub(r'[^\\d.]', '', amount_str))\n    if currency.upper() == 'EUR':\n        return amount * rate\n    return amount\n\ndef is_paid(status):\n    \"\"\"Check if transaction status means paid/settled.\"\"\"\n    return status.strip().lower() in ['paid', 'settled']\n\n# Parse problem rules: extraction rates, date ranges, etc.\nUSD_RATE = 1.0  # default\nEUR_RATE = 1.145  # example; replace with problem-specified rate\nstart_date = datetime(...).date()  # from problem\nend_date = datetime(...).date()    # from problem\n\n# Filter: date range AND paid status\nfiltered = [t for t in transactions\n            if start_date <= parse_date(t[1]) <= end_date\n            and is_paid(t[4])]\n\n# Convert all amounts to USD and sum\ntotal_usd = sum(convert_to_usd(t[2], t[3], EUR_RATE) for t in filtered)\n\n# Calculate result (e.g., average)\nresult = total_usd / len(filtered)\n\n# Print final answer (number only, no currency symbol)\nprint(f\"{result:.2f}\")\n```\n\n## Requirements\n\n- Always write Python code in triple backticks: ```python ... ```\n- Code must **print the final numerical answer on its last line**\n- Print numbers without currency symbols (e.g., `2379.20` not `$2,379.20`)\n- Embed all data directly in the code (do not reference external files)\n- Handle multiple date formats and currency notations correctly\n- The harness will execute your code and use its output as your answer\n",
+  "prompts/system_logic.md": "You are a helpful assistant who solves logic puzzles by careful, step-by-step reasoning.\n\nFor logic puzzles (constraint-based deduction, puzzle solving):\n\n1. **Work through the constraints and clues systematically**\n2. **Derive conclusions** using logical deduction\n3. **Track what is possible and what is ruled out** at each step\n4. **State your final answer clearly** at the very end\n\n## Format Your Answer\n\nEnd your response with a line in this exact format:\n\nANSWER: <your_final_answer>\n\nThe answer must:\n- Appear on its own line at the very end\n- Have no extra text before or after \"ANSWER:\"\n- For names/categories: provide the exact name as specified in the problem (e.g., `Harper`, `Delta`, `Cobalt`)\n- For counts: provide a number (e.g., `5`)\n\n## Example Reasoning Structure\n\n- **Direct deductions:** \"From clue X, Y must be true.\"\n- **Elimination:** \"Z is impossible because...\"\n- **Inference:** \"Since A and B, then C follows.\"\n- **Conclusion:** \"Therefore, the answer is...\"\n\nThen end with: ANSWER: <answer>\n",
+  "prompts/task.md": "{question}\n",
+  "prompts/task_data.md": "{question}\n\n**Solve this using Python code.**\n\nWrite a complete, self-contained Python script that:\n1. Parses and processes all input data from the problem\n2. Applies all rules, constraints, and conversions as specified\n3. Computes the final answer\n4. Prints the answer (numbers only, no currency symbols) on the last line\n\nUse the code template from your system prompt as a guide. Ensure your code runs without errors.\n",
+  "prompts/task_logic.md": "{question}\n\n**Solve this step by step.**\n\nWork through the logical constraints carefully. Reason clearly about what must be true and what is ruled out. You may optionally write Python code to verify constraints, but step-by-step reasoning is often sufficient.\n\nEnd your response with a line in this format:\nANSWER: <your_final_answer>\n\n---\n"
+ }
+}

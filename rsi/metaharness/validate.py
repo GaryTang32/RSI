@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import ast
+import itertools
 import os
 import threading
 import time
@@ -23,6 +24,12 @@ from typing import Iterable, Optional
 
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
+from ..core import sandbox as _sandbox
+
+try:   # the C function: it sets the mask before running pending handlers (signal's wrapper may run them first)
+    from _signal import pthread_sigmask as _c_sigmask
+except ImportError:  # pragma: no cover - platforms without it never fork here
+    _c_sigmask = None
 
 #: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
@@ -60,31 +67,34 @@ class InterfaceValidator:
         import pickle
         import select
         import signal
-        r, w = os.pipe()
-        pid = os.fork()
-        if pid == 0:                                     # child
-            os.close(r)
-            try:
-                lock = threading.Lock()
-
-                def send(msg) -> None:
-                    data = pickle.dumps(msg)
-                    with lock:
-                        os.write(w, len(data).to_bytes(8, "big") + data)
-
-                _stream_usage(llm, send)
-                try:
-                    err = domain.smoke(artifact, llm)
-                except Exception as e:  # noqa: BLE001
-                    err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
-                send(("done", err))
-            finally:
-                os._exit(0)
-        os.close(w)
-        deadline = time.monotonic() + self.timeout_s
-        done, err, buf = False, None, b""
+        buf = b""
+        # Every signal is blocked in this thread across the fork, so the child gets none until its own handlers
+        # are in place, inside its try, which always ends in os._exit: no handler of the parent's ever runs there.
+        # In the parent a stop signal can be handled at almost any point (another thread may take it), so the pipe
+        # and the child are stored, and the write end popped and closed, with no bytecode in between, and the cleanup
+        # is idempotent and retried until done. Known limit: a stop that another thread takes during the fork can be
+        # handled inside another library's after-fork hook, where Python reports it as 'Exception ignored' and drops
+        # it (rare, and only with other Python threads running); pressing Ctrl-C again stops the run. Nothing here
+        # changes process-wide state (handlers, hooks): only this thread's signal mask, for the fork.
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
+        fds: list[int] = []
+        pids: list[int] = []
+        done, err, deadline = False, None, 0.0
         inflight: dict[int, int] = {}
         try:
+            signal.pthread_sigmask(signal.SIG_BLOCK, signal.valid_signals())
+            # extend() stores what the call returns from C, before any bytecode could run a signal handler
+            fds.extend(itertools.chain.from_iterable(itertools.starmap(os.pipe, [()])))
+            pids.extend(itertools.starmap(os.fork, [()]))
+            if pids[0] == 0:                                  # child
+                try:
+                    self._child(domain, artifact, llm, fds[0], fds[1], mask)
+                finally:
+                    os._exit(1)
+            _pop_close(fds)                                   # the write end
+            _c_sigmask(signal.SIG_SETMASK, mask)   # sets the mask, then runs what is pending
+            r = fds[0]
+            deadline = time.monotonic() + self.timeout_s
             while not done:
                 left = deadline - time.monotonic()
                 if left <= 0:
@@ -106,12 +116,20 @@ class InterfaceValidator:
                     elif msg[0] == "done":
                         done, err = True, msg[1]
         finally:
-            os.close(r)
+            # a second stop signal can land here too (Ctrl-C twice, or Ctrl-C then a kill): each step is idempotent,
+            # so the cleanup is retried, with less grace for the child each time; nested, so that every point where
+            # a pending handler can run is inside a try. The first interruption is raised afterwards
             try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            os.waitpid(pid, 0)
+                _cleanup_fork(fds, pids, mask, 2.0)
+            except BaseException:
+                try:
+                    _cleanup_fork(fds, pids, mask, 0.5)
+                except BaseException:
+                    try:
+                        _cleanup_fork(fds, pids, mask, 0.0)
+                    except BaseException:
+                        _cleanup_fork(fds, pids, mask, 0.0)
+                raise
         if not done:
             if time.monotonic() >= deadline:
                 err = f"smoke timed out after {self.timeout_s}s"
@@ -120,6 +138,115 @@ class InterfaceValidator:
             else:
                 err = "smoke process died"
         return (err is None), (err or "OK")
+
+    def _child(self, domain, artifact: Artifact, llm, r: int, w: int, mask) -> None:
+        """The forked smoke child: run the smoke, stream usage back through ``w``, then leave through
+        :func:`_child_exit` (never returns)."""
+        import pickle
+        import signal
+        exiting = [False]
+
+        def on_signal(signum, frame) -> None:
+            # a SIGTERM (the parent's cleanup below, `kill`, `timeout`) or SIGINT ends the smoke through the
+            # finally below, which closes the sandboxes it started; once the child is leaving it does nothing
+            if not exiting[0]:
+                raise (SystemExit(143) if signum == signal.SIGTERM else KeyboardInterrupt())
+
+        try:
+            os.close(r)
+            signal.signal(signal.SIGTERM, on_signal)
+            signal.signal(signal.SIGINT, on_signal)
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)   # a signal held since the fork arrives now
+            lock = threading.Lock()
+
+            def send(msg) -> None:
+                data = pickle.dumps(msg)
+                with lock:
+                    os.write(w, len(data).to_bytes(8, "big") + data)
+
+            _stream_usage(llm, send)
+            try:
+                err = domain.smoke(artifact, llm)
+            except Exception as e:  # noqa: BLE001
+                err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
+            send(("done", err))
+        finally:
+            # first, before any bytecode that runs pending handlers (a call, a loop's back-jump): from here on
+            # no signal can make the child unwind into the parent's code
+            exiting[0] = True
+            try:
+                _child_exit()
+            finally:
+                os._exit(0)
+
+
+def _pop_close(fds: list) -> None:
+    """Close and forget the last fd in ``fds``, with no bytecode between the pop and the close (both run from C),
+    so a signal handled in between can neither leak it nor make a retry close it twice."""
+    next(map(os.close, map(list.pop, [fds])))
+
+
+def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
+    """Restore the signal mask, close what is left of the pipe and stop the smoke child. Each step is idempotent,
+    so a retry after an interruption does only what remains."""
+    import signal
+    _c_sigmask(signal.SIG_SETMASK, mask)
+    while fds:
+        _pop_close(fds)
+    if pids and pids[0] > 0:
+        _stop_child(pids[0], grace_s)
+        pids.clear()
+
+
+def _child_exit() -> None:
+    """Close a leaving forked smoke child's sandboxes (``sandbox.close_sandboxes``: kill the sandboxed processes it
+    started, in whatever thread, and remove their scratch directories). Its handlers are no-ops by now and SIGTERM /
+    SIGINT are ignored as well; anything that still interrupts the close makes it run again. The caller
+    ``os._exit``s afterwards whatever happens here."""
+    import signal
+    for _ in range(100):
+        try:
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            _sandbox.close_sandboxes()
+            return
+        except BaseException:  # noqa: BLE001 - close again
+            continue
+
+
+def _stop_child(pid: int, grace_s: float = 2.0) -> None:
+    """End a forked smoke child: SIGTERM (repeated), so it closes the sandboxes it started on its way out
+    (:func:`_child_exit`); if it has not exited within ``grace_s``, kill its sandboxes from here, then SIGKILL it.
+    It is signalled only while still unreaped (its pid cannot have been reused), so stopping it again after an
+    interruption is safe."""
+    import signal
+
+    def reaped() -> bool:
+        try:
+            return bool(os.waitpid(pid, os.WNOHANG)[0])
+        except ChildProcessError:                  # reaped already, by an earlier (interrupted) stop
+            return True
+
+    end, resend = time.monotonic() + grace_s, 0.0
+    while not reaped():
+        if time.monotonic() >= end:
+            _sandbox.kill_child_sessions(pid)      # a child that never closed its sandboxes: kill them from here
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                os.waitpid(pid, 0)
+            except ChildProcessError:
+                pass
+            return
+        if time.monotonic() >= resend:   # again now and then: one may have landed before the child could act on it
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            resend = time.monotonic() + 0.2
+        time.sleep(0.01)
 
 
 def _meters(llm) -> list:

@@ -1,0 +1,2 @@
+metaharness_hard {"evolve": {"seed": 0.688, "final": 1.0}, "holdout": {"seed": 0.583, "final": 0.917}, "ood": {"seed": 0.417, "final": 0.75}} usd 5.786 cache {'hits': 0, 'misses': 80}
+EXIT 0

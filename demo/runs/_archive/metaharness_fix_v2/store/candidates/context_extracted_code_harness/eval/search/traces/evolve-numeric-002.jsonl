@@ -1,0 +1,49 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant.
+
+PROMPT: Morgan's ledger starts at 49249. Add 84718, subtract 10095, add 77 payments of 50354, subtract 80 refunds of 96898, and add 38 deposits of 93867. What is the final balance?
+
+---
+
+
+**Problem Context:**
+Key numbers in problem: 49249, 84718, 10095, 77, 50354
+
+
+Please solve this problem:
+
+1. Briefly explain the approach.
+2. Provide Python code in a ```python code block that outputs ONLY the final numerical answer on a single line.
+
+The Python code must be syntactically correct and compute the exact answer without intermediate output.
+REPLY: ## Approach
+
+This is a ledger calculation problem. We need to:
+1. Start with the initial balance (49249)
+2. Add and subtract various transactions in sequence
+3. For multiple payments/refunds/deposits, multiply the count by the amount
+4. Calculate the final balance
+
+## Solution
+
+```python
+balance = 49249
+balance += 84718
+balance -= 10095
+balance += 77 * 50354
+balance -= 80 * 96898
+balance += 38 * 93867
+print(balance)
+```
+
+**Output:** `-183764`
+[python]
+balance = 49249
+balance += 84718
+balance -= 10095
+balance += 77 * 50354
+balance -= 80 * 96898
+balance += 38 * 93867
+print(balance)
+[output]
+-183764

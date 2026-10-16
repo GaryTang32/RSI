@@ -7,3 +7,4 @@ __pycache__/
 .rsi_cache/
 run.log
 validation/**/.cache_*/
+demo/runs/.live_writer.lock

@@ -1,0 +1,57 @@
+{
+ "run": "metaharness_hard",
+ "readings": 6,
+ "matches": true,
+ "cache_hits": 36,
+ "cache_misses": 0,
+ "rows": [
+  {
+   "version": "seed",
+   "split": "holdout",
+   "recorded": 0.6666666666666666,
+   "replayed": 0.6666666666666666,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "seed",
+   "split": "ood",
+   "recorded": 0.16666666666666666,
+   "replayed": 0.16666666666666666,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "clear-format-answers",
+   "split": "holdout",
+   "recorded": 0.6666666666666666,
+   "replayed": 0.6666666666666666,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "clear-format-answers",
+   "split": "ood",
+   "recorded": 0.5,
+   "replayed": 0.5,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "hybrid-task-router",
+   "split": "holdout",
+   "recorded": 1.0,
+   "replayed": 1.0,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "hybrid-task-router",
+   "split": "ood",
+   "recorded": 0.6666666666666666,
+   "replayed": 0.6666666666666666,
+   "missing": 0,
+   "matches": true
+  }
+ ]
+}

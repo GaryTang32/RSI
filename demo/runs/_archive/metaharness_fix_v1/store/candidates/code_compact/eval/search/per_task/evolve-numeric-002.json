@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '- Add 38 \u00d7 93,867 \u2192 **-183,764**').",
+  "output": "- Add 38 \u00d7 93,867 \u2192 **-183,764**",
+  "tokens": 2043,
+  "cost_usd": 0.006651000000000001,
+  "steps": 1,
+  "latency_s": 11.004658699035645,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

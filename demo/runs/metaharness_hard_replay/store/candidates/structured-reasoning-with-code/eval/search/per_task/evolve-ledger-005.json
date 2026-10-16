@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'Average: $520.72'; expected '2805.10'.",
+  "output": "Average: $520.72",
+  "tokens": 12986,
+  "cost_usd": 0.049986,
+  "steps": 2,
+  "latency_s": 0.03405904769897461,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

@@ -1,0 +1,77 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant.
+
+PROMPT: Rules for this export: dates appear as YYYY-MM-DD, DD/MM/YYYY or 'Mon DD YYYY'. USD amounts are written like $1,234.56; EUR amounts use European notation, 1.234,56 EUR, and convert at 1 EUR = 1.152 USD. Status 'paid', 'PAID' and 'settled' mean paid; 'refunded', 'REFUND' and 'chargeback' mean refunded; 'pending' and 'on hold' mean pending. When an id appears more than once, the LAST row with that id is a correction that replaces the earlier ones.
+Transactions (id | date | region | customer | amount | status):
+T1000 | 2024-11-20 | East | Garnet | $1,145.05 | PAID
+T1001 | 09/10/2024 | West | Fjord | 1.664,94 EUR | settled
+T1002 | 04/10/2024 | North | Fjord | $463.97 | chargeback
+T1003 | 07/08/2024 | West | Fjord | $2,266.07 | settled
+T1004 | 29/10/2024 | East | Delta | 3.268,29 EUR | REFUND
+T1005 | 09/07/2024 | North | Delta | 426,44 EUR | paid
+T1006 | 05/11/2024 | South | Cobalt | 2.464,59 EUR | pending
+T1007 | 19/10/2024 | North | Cobalt | 2.969,09 EUR | settled
+T1008 | 30/09/2024 | East | Cobalt | $2,470.09 | PAID
+T1009 | 02/07/2024 | North | Birch | $2,448.67 | paid
+T1010 | 31/10/2024 | South | Acme | 1.646,52 EUR | on hold
+T1011 | 02/10/2024 | North | Cobalt | 2.382,47 EUR | settled
+T1012 | 2024-11-20 | West | Garnet | 1.081,69 EUR | refunded
+T1013 | Aug 29 2024 | West | Acme | $2,561.09 | PAID
+T1014 | 04/10/2024 | South | Acme | $647.74 | REFUND
+T1015 | 18/09/2024 | East | Delta | $3,760.27 | settled
+T1016 | 04/09/2024 | South | Garnet | $2,831.90 | paid
+T1017 | 2024-11-20 | North | Fjord | $4,578.37 | settled
+T1018 | 26/07/2024 | South | Cobalt | 439,86 EUR | paid
+T1019 | Sep 30 2024 | North | Delta | $1,726.34 | on hold
+T1020 | Oct 29 2024 | West | Acme | $4,118.86 | REFUND
+T1021 | 23/08/2024 | North | Birch | 815,84 EUR | paid
+T1022 | 08/11/2024 | East | Ember | $3,046.56 | settled
+T1023 | Aug 28 2024 | South | Acme | $271.68 | on hold
+T1024 | 16/11/2024 | South | Birch | 368,84 EUR | chargeback
+T1025 | 2024-08-02 | East | Ember | 721,57 EUR | paid
+T1026 | 202
+REPLY: Looking at this transaction data, I need to:
+1. Filter for dates between 2024-07-31 and 2024-10-10 inclusive
+2. Filter for paid transactions (status: "paid", "PAID", or "settled")
+3. Convert EUR to USD (1 EUR = 1.152 USD)
+4. Calculate the average
+
+Let me identify the valid transactions systematically, noting that when an ID appears multiple times, the last entry is the correction:
+
+**Valid Transactions (within date range AND paid/settled status):**
+
+| ID | Date | Amount | Currency | USD Value |
+|---|---|---|---|---|
+| T1001 | 09/10/2024 | 1,664.94 | EUR | 1,918.22 |
+| T1003 | 07/08/2024 | 2,266.07 | USD | 2,266.07 |
+| T1008 | 30/09/2024 | 2,470.09 | USD | 2,470.09 |
+| T1011 | 02/10/2024 | 2,382.47 | EUR | 2,745.23 |
+| T1013 | Aug 29 2024 | 2,561.09 | USD | 2,561.09 |
+| T1015 | 18/09/2024 | 3,760.27 | USD | 3,760.27 |
+| T1016 | 04/09/2024 | 2,831.90 | USD | 2,831.90 |
+| T1021 | 2024-08-23 | 1,452.65 | EUR | 1,673.05 |
+| T1025 | 2024-08-02 | 721.57 | EUR | 830.89 |
+| T1027 | Aug 31 2024 | 1,132.46 | USD | 1,132.46 |
+| T1028 | 06/10/2024 | 1,600.38 | EUR | 1,843.64 |
+| T1031 | 2024-08-21 | 781.80 | USD | 781.80 |
+| T1033 | 2024-08-06 | 1,589.96 | EUR | 1,831.71 |
+| T1034 | 18/08/2024 | 2,830.45 | EUR | 3,263.08 |
+| T1036 | Aug 25 2024 | 1,119.37 | EUR | 1,289.62 |
+| T1037 | 2024-09-02 | 3,160.31 | USD | 3,160.31 |
+| T1043 | 09/09/2024 | 3,878.60 | USD | 3,878.60 |
+| T1048 | Sep 16 2024 | 2,777.49 | EUR | 3,197.95 |
+| T1055 | 2024-08-04 | 1,656.03 | EUR | 1,908.94 |
+| T1062 | Aug 14 2024 | 3,675.78 | EUR | 4,234.30 |
+| T1064 | Aug 29 2024 | 909.57 | EUR | 1,048.04 |
+| T1066 | 2024-09-21 | 1,632.38 | EUR | 1,881.03 |
+| T1067 | 13/08/2024 | 1,853.76 | EUR | 2,134.33 |
+| T1069 | 09/10/2024 | 3,859.28 | USD | 3,859.28 |
+| T1070 | 07/10/2024 | 2,586.37 | EUR | 2,979.54 |
+
+**Calculation:**
+- USD subtotal: 26,701.87
+- EUR subtotal (28,453.17 EUR × 1.152): 32,778.05
+- **Total in USD: 59,479.92**
+- **Count: 25 transactions**
+
+**Average = 59,479.92 ÷ 25 = $2,379.20**

@@ -1,0 +1,17 @@
+{
+ "name": "result_variable_extraction",
+ "artifact_id": "994f079069faf1584485e58645d90d8424f38c5a123b6003c9270a0f4f128f30",
+ "created_at": 1790764019.475414,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 7,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

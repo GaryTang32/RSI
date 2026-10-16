@@ -328,13 +328,14 @@ class MemoClassifyDomain(Domain):
         done = {"type": "done", "train_acc": train_ok / max(1, n_train) if self.mode == "online" else None,
                 "eval_acc": sum(r["ok"] for r in records if r["type"] == "eval_step") / n_eval,
                 "memory_context_chars": sum(ctx) / n_eval, "memory_context_chars_last_call": sum(ctx_last) / n_eval,
-                "llm_calls": state["calls"], "runtime_seconds": round(time.time() - t0, 3)}
-        records.append(done)
+                "llm_calls": state["calls"]}
+        records.append(done)   # wall-clock runtime goes in meta, not the trace: traces are shown to proposers verbatim
         return Execution(output=preds, trace="\n".join(json.dumps(r) for r in records), tokens=state["tokens"],
                          cost_usd=state["usd"], steps=state["calls"],
                          meta={"context_chars": sum(ctx) / n_eval, "context_chars_last_call": sum(ctx_last) / n_eval,
                                "llm_calls": state["calls"], "train_acc": done["train_acc"],
-                               "memory_state_chars": len(mem_state), "dataset": ds.name, "part": part})
+                               "memory_state_chars": len(mem_state), "dataset": ds.name, "part": part,
+                               "runtime_seconds": round(time.time() - t0, 3)})
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         ds = self.datasets[task.input["dataset"]]

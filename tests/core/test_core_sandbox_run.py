@@ -203,3 +203,328 @@ def test_transfer_report_unseals_for_reporting_only():
     rep2 = transfer_report(dom, None, arms, splits=("holdout",), reference="evolved", workers=1)
     assert rep2["splits"]["holdout"]["seed"]["vs_reference"]["mean_diff"] == pytest.approx(-0.5)
     assert "unseen_mean" not in transfer_report(dom, None, arms, splits=("evolve",), workers=1)
+
+
+def test_child_gets_a_cpu_backstop_from_its_wall_timeout():
+    """A CPU-bound child that outlives a SIGKILLed parent (no one left to enforce the wall timeout) still stops:
+    without an explicit cpu_s it gets RLIMIT_CPU of the wall budget times the usable cores (at least 4), plus 5 s;
+    an explicit cpu_s wins, and the memory limit is applied either way."""
+    import os as _os
+    import sys as _sys
+    from rsi.core.sandbox import run_cmd
+    cores = len(_os.sched_getaffinity(0))
+    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_CPU)[0], r.getrlimit(r.RLIMIT_AS)[0])"]
+    assert run_cmd(probe, timeout_s=10, mem_mb=512).stdout.split() == [str(10 * max(4, cores) + 5), str(512 << 20)]
+    assert run_cmd(probe, timeout_s=10, cpu_s=3, mem_mb=512).stdout.split() == ["3", str(512 << 20)]
+
+
+def test_a_refused_cpu_limit_keeps_the_memory_limit(monkeypatch):
+    """A CPU prlimit the kernel refuses (a hard limit this process may not raise) no longer skips the memory cap."""
+    import resource as _resource
+    import sys as _sys
+    from rsi.core import sandbox
+    real = _resource.prlimit
+
+    def refuse_cpu(pid, res, limits=None):
+        if res == _resource.RLIMIT_CPU and limits is not None:
+            raise PermissionError("not permitted")
+        return real(pid, res, limits) if limits is not None else real(pid, res)
+
+    monkeypatch.setattr(sandbox.resource, "prlimit", refuse_cpu)
+    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_AS)[0])"]
+    assert sandbox.run_cmd(probe, timeout_s=10, cpu_s=100, mem_mb=512).stdout.strip() == str(512 << 20)
+
+
+def _checkout_python(code: str, **kw):
+    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi``, from any working directory: the
+    checkout is on PYTHONPATH and the interpreter starts there (so no other ``rsi`` in the caller's cwd shadows
+    it)."""
+    import os as _os
+    import subprocess as _sp
+    import sys as _sys
+    root = str(Path(__file__).resolve().parents[2])
+    env = {**_os.environ, "PYTHONPATH": _os.pathsep.join(p for p in (root, _os.environ.get("PYTHONPATH")) if p),
+           **kw.pop("env", {})}
+    return _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60, env=env,
+                   cwd=kw.pop("cwd", root), **kw)
+
+
+def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
+    """Under an inherited RLIMIT_CPU the backstop never raises the soft limit nor lowers it below what the child would
+    inherit, fits under the hard one, and the memory limit is set as well."""
+    import os as _os
+    b = min(10 * max(4, len(_os.sched_getaffinity(0))) + 5, 1000)   # the backstop for a 10 s wall timeout here
+    for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"),
+                         ((1000, 1002), f"({b}, {min(b + 5, 1002)})")):
+        code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
+                "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
+                "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
+        out = _checkout_python(code).stdout.strip()
+        assert out == f"{want} {512 << 20}", (limits, out)
+
+
+def test_a_closed_process_starts_no_sandbox():
+    """close_sandboxes() (a process about to exit) refuses new sandboxes and scratch directories."""
+    code = ("from rsi.core.sandbox import close_sandboxes, run_cmd, run_python; import sys; close_sandboxes()\n"
+            "for f in (lambda: run_cmd([sys.executable, '-c', 'pass']), lambda: run_python('pass')):\n"
+            "    try:\n        f(); print('started')\n    except RuntimeError as e:\n        print('refused')")
+    out = _checkout_python(code).stdout.split()
+    assert out == ["refused", "refused"], out
+
+
+def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
+    """A signal between spawn and registration (or between a failed kill and deregistration) leaves a sandbox
+    the registry does not hold; close_sandboxes() still kills it: every sandbox leads its own session as a direct
+    child."""
+    code = ("import subprocess, sys, time, os\n"
+            "from rsi.core.sandbox import close_sandboxes\n"
+            "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
+            "p = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,\n"
+            "                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+            "try:\n"
+            "    time.sleep(0.2); close_sandboxes(); p.wait(timeout=5); print(p.returncode)\n"
+            "finally:\n"
+            "    if p.poll() is None:\n"
+            "        os.killpg(p.pid, 9)")
+    out = _checkout_python(code).stdout.strip()
+    assert out == "-9", out
+
+
+def _inner(code: str, tmp_path, **env) -> str:
+    """Run ``code`` in a fresh interpreter (close_sandboxes marks a process closed for good) with its temp files
+    under ``tmp_path``; return its stdout, or fail with its stderr."""
+    tmp = tmp_path / "tmp"
+    tmp.mkdir(exist_ok=True)
+    out = _checkout_python(code, env={"TMPDIR": str(tmp), **env}, cwd=tmp_path)
+    leftovers = [p.name for p in tmp.iterdir() if p.name.startswith(("rsi_sbx_", "rsi_fn_"))]
+    return out.stdout.strip() + (f" leftovers={leftovers}" if leftovers else "") + (
+        f" stderr={out.stderr[-1500:]}" if out.returncode else "")
+
+
+_SPIN = r"""
+import ctypes, os, subprocess, sys, threading, time
+die_with_parent = 'import ctypes; ctypes.CDLL(None).prctl(1, 9)\n'   # PR_SET_PDEATHSIG: never outlive this script
+spin = die_with_parent + 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\nwhile True: pass'
+
+def stat(pid):
+    try:
+        with open(f'/proc/{pid}/stat', 'rb') as f:
+            return f.read()
+    except OSError:
+        return None
+
+def live_session_children():
+    out = []
+    for d in os.listdir('/proc'):
+        s = stat(d) if d.isdigit() else None
+        if s is None:
+            continue
+        f = s[s.rfind(b')') + 2:].split()
+        if int(f[1]) == os.getpid() and int(f[2]) == int(d) and f[0] != b'Z':
+            out.append(int(d))
+    return out
+
+def settle(want_at_least, deadline=5):
+    end = time.monotonic() + deadline
+    while len(live_session_children()) < want_at_least and time.monotonic() < end:
+        time.sleep(0.02)
+
+def gone(deadline=5):
+    end = time.monotonic() + deadline
+    while (left := live_session_children()) and time.monotonic() < end:
+        time.sleep(0.05)
+    return left
+"""
+
+
+def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8(tmp_path):
+    """The kernel cuts a process name to 15 bytes, possibly inside a character: scanning /proc must still kill
+    a sandbox with such a name, an unregistered one and the registered one."""
+    code = _SPIN + r"""
+from rsi.core.sandbox import close_sandboxes, run_cmd
+name = bytes.fromhex('74656d70c3a9726174757265735fc3')          # 'temp' + e-acute + 'ratures_' + half a character
+odd = subprocess.Popen([sys.executable, '-c', die_with_parent + 'import ctypes, sys, time; '
+                        'ctypes.CDLL(None).prctl(15, ctypes.c_char_p(bytes.fromhex(sys.argv[1])), 0, 0, 0); '
+                        'time.sleep(30)', name.hex()], start_new_session=True)
+loose = subprocess.Popen([sys.executable, '-c', spin], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+threading.Thread(target=run_cmd, args=([sys.executable, '-c', spin],), kwargs={'timeout_s': 30}, daemon=True).start()
+try:
+    end = time.monotonic() + 5
+    while b'\xc3)' not in (stat(odd.pid) or b''):
+        if time.monotonic() > end:
+            raise SystemExit('the odd process name never appeared')
+        time.sleep(0.02)
+    settle(3)
+    close_sandboxes()
+    odd.wait(timeout=5); loose.wait(timeout=5)
+    print(odd.returncode, loose.returncode, gone())
+finally:
+    for p in (odd, loose):
+        if p.poll() is None:
+            os.killpg(p.pid, 9)
+"""
+    assert _inner(code, tmp_path) == "-9 -9 []"
+
+
+def test_a_failing_proc_scan_does_not_spare_the_registered_sandboxes(tmp_path):
+    """close_sandboxes() kills the registered groups and removes their directories before it scans /proc."""
+    code = _SPIN + r"""
+from rsi.core import sandbox
+sandbox._rmscratch = lambda d: None      # only close_sandboxes() may remove the directory
+threading.Thread(target=sandbox.run_python, args=(spin,), kwargs={'timeout_s': 30}, daemon=True).start()
+settle(1)
+def broken(pid):
+    raise RuntimeError('scan failed')
+sandbox._child_session_leaders = broken
+try:
+    sandbox.close_sandboxes()
+except RuntimeError as e:
+    print(e, end=' ')
+print(gone())
+"""
+    assert _inner(code, tmp_path) == "scan failed []"
+
+
+def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it(tmp_path):
+    """The directory is registered before it exists, and a failed creation stays registered until it is gone:
+    a stop signal as it appears, then another one during the cleanup, still leave it to close_sandboxes()."""
+    code = r"""
+import os
+from rsi.core import sandbox
+seen = []
+real_mkdir, real_rmtree = os.mkdir, sandbox.shutil.rmtree
+def mkdir(path, *a, **k):
+    seen.append(any(p == path for _, p in sandbox._LIVE_DIRS))   # registered before it exists
+    real_mkdir(path, *a, **k)
+    raise KeyboardInterrupt                                        # a stop signal the moment it appears
+calls = []
+def rmtree(path, *a, **k):
+    calls.append(path)
+    if len(calls) == 1:
+        raise SystemExit(143)                                      # a second one during the cleanup
+    return real_rmtree(path, *a, **k)
+os.mkdir, sandbox.shutil.rmtree = mkdir, rmtree
+try:
+    sandbox.run_python('pass')
+except SystemExit:
+    pass
+os.mkdir = real_mkdir
+sandbox.close_sandboxes()
+print(seen)
+"""
+    assert _inner(code, tmp_path) == "[True]"
+
+
+def test_a_scratch_directory_made_by_another_thread_while_closing_is_removed(tmp_path):
+    """close_sandboxes() waits for a creation in progress in another thread (as AgentQA's harness thread)."""
+    code = r"""
+import os, threading, time
+from rsi.core import sandbox
+real_mkdir = os.mkdir
+started = threading.Event()
+def slow_mkdir(path, *a, **k):
+    started.set()
+    time.sleep(0.5)
+    real_mkdir(path, *a, **k)
+os.mkdir = slow_mkdir
+sandbox.run_cmd = lambda *a, **k: time.sleep(30)     # the thread never gets back to its own cleanup
+threading.Thread(target=sandbox.run_python, args=('pass',), daemon=True).start()
+started.wait(5)
+sandbox.close_sandboxes()
+time.sleep(1.0)
+print('done', flush=True)
+os._exit(0)                                          # as the forked smoke child leaves: no thread cleans up
+"""
+    assert _inner(code, tmp_path) == "done"
+
+
+def test_run_python_works_with_a_relative_temp_dir(tmp_path):
+    """Scratch paths are absolute (as mkdtemp's since Python 3.12), so a relative TMPDIR still works."""
+    code = "from rsi.core.sandbox import run_python; print(run_python('print(42)').stdout.strip())"
+    assert _inner(code, tmp_path, TMPDIR=".") == "42"             # gettempdir() keeps "." relative
+
+
+def test_a_signal_as_the_scratch_lock_is_released_leaves_no_directory(tmp_path):
+    """A stop signal can surface when the lock is released after the directory was made: the directory is
+    removed and forgotten, not left for a close_sandboxes() that a long-lived process never calls."""
+    code = r"""
+import os
+from rsi.core import sandbox
+real = sandbox._LIVE_LOCK
+class Lock:
+    exits = 0
+    def __enter__(self):
+        return real.__enter__()
+    def __exit__(self, *exc):
+        real.__exit__(*exc)
+        Lock.exits += 1
+        if Lock.exits == 1 and exc[0] is None:
+            raise KeyboardInterrupt   # as a handler would at the release
+sandbox._LIVE_LOCK = Lock()
+try:
+    sandbox.run_python('pass')
+    print('returned', end=' ')
+except KeyboardInterrupt:
+    print('interrupted', end=' ')
+print(len(sandbox._LIVE_DIRS))
+"""
+    assert _inner(code, tmp_path) == "interrupted 0"
+
+
+def test_a_signal_while_the_scratch_lock_is_still_held_does_not_hang(tmp_path):
+    """Under a tracer (pdb) a stop signal can surface while this thread still holds the registry lock: the
+    cleanup must not wait for that lock (it used to deadlock on the first Ctrl-C)."""
+    code = r"""
+import threading
+from rsi.core import sandbox
+real = sandbox._LIVE_LOCK
+class Lock:
+    exits = 0
+    def __enter__(self):
+        return real.__enter__()
+    def __exit__(self, *exc):
+        Lock.exits += 1
+        if Lock.exits == 1 and exc[0] is None:
+            raise KeyboardInterrupt   # before the release, the lock still held by this thread
+        return real.__exit__(*exc)
+    def acquire(self, *a, **k):
+        return real.acquire(*a, **k)
+    def release(self):
+        return real.release()
+sandbox._LIVE_LOCK = Lock()
+out = []
+def go():
+    try:
+        sandbox.run_python('pass')
+        out.append('returned')
+    except KeyboardInterrupt:
+        out.append('interrupted')
+t = threading.Thread(target=go, daemon=True)
+t.start()
+t.join(10)
+print(out[0] if out else 'hung', len(sandbox._LIVE_DIRS))
+"""
+    assert _inner(code, tmp_path) == "interrupted 0"
+
+
+def test_close_sandboxes_iterates_a_copy_of_the_registry(tmp_path):
+    """_mkscratch's cleanup discards from the registry without the lock: close_sandboxes must not iterate the
+    live set while that can happen (it raised 'Set changed size during iteration')."""
+    code = r"""
+from rsi.core import sandbox
+class Live(set):
+    def __iter__(self):
+        it = super().__iter__()
+        first = next(it)
+        self.discard(first)            # as another thread's unlocked discard would, mid-iteration
+        yield first
+        yield from it
+sandbox._LIVE_DIRS = Live({(1, '/nonexistent/a'), (1, '/nonexistent/b')})
+try:
+    sandbox.close_sandboxes()
+    print('ok')
+except RuntimeError as e:
+    print('RuntimeError', e)
+"""
+    assert _inner(code, tmp_path) == "ok"

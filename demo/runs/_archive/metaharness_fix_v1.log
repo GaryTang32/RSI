@@ -1,0 +1,16 @@
+{
+ "evolve": {
+  "seed": 0.25,
+  "final": 1.0
+ },
+ "holdout": {
+  "seed": 0.3125,
+  "final": 1.0
+ },
+ "ood": {
+  "seed": 0.4375,
+  "final": 0.875
+ }
+}
+usd 1.6843
+EXIT 0

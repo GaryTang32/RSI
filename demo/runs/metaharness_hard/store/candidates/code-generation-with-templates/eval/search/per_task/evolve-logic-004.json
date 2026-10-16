@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-logic-004",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '[killed: timeout]'; expected 'Harper'.",
+  "output": "[killed: timeout]",
+  "tokens": 13587,
+  "cost_usd": 0.05925899999999999,
+  "steps": 2,
+  "latency_s": 70.85008263587952,
+  "error": null,
+  "family": "logic",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

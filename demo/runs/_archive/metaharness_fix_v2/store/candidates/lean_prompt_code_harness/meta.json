@@ -1,0 +1,17 @@
+{
+ "name": "lean_prompt_code_harness",
+ "artifact_id": "2d6f8b70e9a177a934bda856ae21b8e2e0c40f447e1d7c27c1fab69be796e942",
+ "created_at": 1790762516.234044,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

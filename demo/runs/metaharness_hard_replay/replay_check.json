@@ -1,0 +1,22 @@
+{
+ "run": "metaharness_hard",
+ "proposer_calls": 4,
+ "candidates_scored": 8,
+ "prompts_identical": true,
+ "scores_identical": true,
+ "traces_identical": {
+  "files": 72,
+  "identical": 72,
+  "missing_in_replay": 0,
+  "extra_in_replay": 0
+ },
+ "cache_misses": 0,
+ "cache_hits": 192,
+ "usd_spent": 0.0,
+ "beyond_practice": {
+  "baseline": 1,
+  "monitor_readings": 6,
+  "test_results": 12,
+  "identical": true
+ }
+}

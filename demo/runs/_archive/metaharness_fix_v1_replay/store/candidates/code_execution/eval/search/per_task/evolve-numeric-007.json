@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-007",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Sum of decimal digits: 324').",
+  "output": "Sum of decimal digits: 324",
+  "tokens": 1421,
+  "cost_usd": 0.0033569999999999997,
+  "steps": 2,
+  "latency_s": 0.035051584243774414,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

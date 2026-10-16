@@ -1,0 +1,59 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,9 +1,38 @@
+-"""Seed harness: one direct model call, return the last line of the reply."""
++"""Harness with structured answer extraction using ANSWER: pattern."""
++
++import re
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    lines = [line for line in reply.strip().splitlines() if line.strip()]
+-    return lines[-1] if lines else ""
++    answer = extract_answer(reply)
++    return answer
++
++
++def extract_answer(reply):
++    """
++    Extract answer from reply, prioritizing ANSWER: pattern.
++    Falls back to last non-empty line if pattern not found.
++    """
++    lines = reply.strip().split('\n')
++    
++    # Try to find ANSWER: pattern (case-insensitive)
++    for line in lines:
++        if re.search(r'[Aa][Nn][Ss][Ww][Ee][Rr]:', line):
++            match = re.search(r'[Aa][Nn][Ss][Ww][Ee][Rr]:\s*(.+)', line)
++            if match:
++                answer = match.group(1).strip()
++                # Remove markdown formatting
++                answer = re.sub(r'[*_`]', '', answer)
++                if answer:
++                    return answer
++    
++    # Fallback: last non-empty line, with markdown removed
++    for line in reversed(lines):
++        cleaned = re.sub(r'[*_`]', '', line.strip())
++        if cleaned:
++            return cleaned
++    
++    return ""
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,12 @@
+ You are a helpful assistant.
++
++Format your final answer clearly:
++- Always end your response with a line starting with "ANSWER: " followed by the answer value
++- The answer value must be plain text only, with no markdown, bold, or explanation
++- Example: "ANSWER: Sawyer" (not "**Sawyer** owns the rabbit")
++
++Before processing any task with data input:
++- Verify that the input data is complete and not truncated
++- If any record or line appears cut off or incomplete (e.g., ends mid-value), report this issue before processing
++- Do not make implicit assumptions about filtering criteria, date ranges, or data selection rules
++- If data is ambiguous or filtering requirements are not explicitly stated, flag these issues

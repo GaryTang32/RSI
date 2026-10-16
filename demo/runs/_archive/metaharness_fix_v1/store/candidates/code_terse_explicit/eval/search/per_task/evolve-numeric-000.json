@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '144').",
+  "output": "144",
+  "tokens": 1267,
+  "cost_usd": 0.002743,
+  "steps": 2,
+  "latency_s": 0.02817058563232422,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

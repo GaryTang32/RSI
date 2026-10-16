@@ -1,0 +1,56 @@
+{
+ "evolve-ledger-001": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 24446.0
+ },
+ "evolve-ledger-003": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 23389.0
+ },
+ "evolve-ledger-005": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 21003.0
+ },
+ "evolve-ledger-007": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 14605.0
+ },
+ "evolve-logic-000": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 14147.0
+ },
+ "evolve-logic-002": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 15660.0
+ },
+ "evolve-logic-004": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 16477.0
+ },
+ "evolve-logic-006": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 16115.0
+ },
+ "_pareto": [
+  {
+   "system": "seed",
+   "score": 0.75,
+   "val_accuracy": 75.0,
+   "context_cost": 18230.25
+  }
+ ],
+ "_best": {
+  "system": "seed",
+  "score": 0.75
+ },
+ "_hypervolume": 1368.018750000001,
+ "_hv_ref_cost": 20054.275
+}

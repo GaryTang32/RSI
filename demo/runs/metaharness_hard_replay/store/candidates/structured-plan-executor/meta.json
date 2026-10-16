@@ -1,0 +1,17 @@
+{
+ "name": "structured-plan-executor",
+ "artifact_id": "8a3ee88877263e3e2bb3859f9de7329faa3a63f6202dec8e6c2e8020e910e86a",
+ "created_at": 1791988695.5911798,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 9,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

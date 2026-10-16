@@ -1,0 +1,26 @@
+{
+ "split": "holdout",
+ "score": 0.0,
+ "per_unit": {
+  "holdout-logic-000": 0.0,
+  "holdout-ledger-001": 0.0,
+  "holdout-logic-002": 0.0,
+  "holdout-ledger-003": 0.0,
+  "holdout-logic-004": 0.0,
+  "holdout-ledger-005": 0.0
+ },
+ "per_unit_cost": {
+  "holdout-logic-000": 0.0,
+  "holdout-ledger-001": 0.0,
+  "holdout-logic-002": 0.0,
+  "holdout-ledger-003": 0.0,
+  "holdout-logic-004": 0.0,
+  "holdout-ledger-005": 0.0
+ },
+ "context_cost": 0.0,
+ "tokens": 0.0,
+ "families": {
+  "logic": 0.0,
+  "ledger": 0.0
+ }
+}

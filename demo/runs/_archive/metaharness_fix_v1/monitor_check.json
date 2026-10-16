@@ -1,0 +1,41 @@
+{
+ "run": "_archive/metaharness_fix_v1",
+ "readings": 4,
+ "matches": true,
+ "cache_hits": 32,
+ "cache_misses": 0,
+ "rows": [
+  {
+   "version": "seed",
+   "split": "holdout",
+   "recorded": 0.25,
+   "replayed": 0.25,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "seed",
+   "split": "ood",
+   "recorded": 0.5,
+   "replayed": 0.5,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "code_execution",
+   "split": "holdout",
+   "recorded": 1.0,
+   "replayed": 1.0,
+   "missing": 0,
+   "matches": true
+  },
+  {
+   "version": "code_execution",
+   "split": "ood",
+   "recorded": 0.875,
+   "replayed": 0.875,
+   "missing": 0,
+   "matches": true
+  }
+ ]
+}

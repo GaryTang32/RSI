@@ -2,12 +2,12 @@
  "iteration": 1,
  "history_mode": "full",
  "usage": {
-  "calls": 1,
-  "input_tokens": 10325,
-  "output_tokens": 6842,
-  "cost_usd": 0.054851,
-  "latency_s": 70.93613696098328,
-  "total_tokens": 17167
+  "calls": 0,
+  "input_tokens": 11457,
+  "output_tokens": 12650,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 24107
  },
  "files_read": [
   "evolution_summary.jsonl",
@@ -53,26 +53,26 @@
  "n_files_scanned": 0,
  "scanned_chars": 0,
  "view_files": 31,
- "view_chars": 17388,
- "read_chars": 17388,
+ "view_chars": 19371,
+ "read_chars": 19371,
  "error": null,
- "seconds": 70.939,
+ "seconds": 0.003,
  "reports_written": [
   "reports/iter0.md"
  ],
  "proposer_meta": {
-  "rendered_chars": 19766
+  "rendered_chars": 21749
  },
  "candidates": [
   {
-   "name": "guided_format",
+   "name": "answer_format_smart_extraction",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",
    "components": []
   },
   {
-   "name": "multi_method",
+   "name": "iterative_format_refinement",
    "base_system": "seed",
    "hypothesis": "",
    "axis": "",

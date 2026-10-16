@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 import stat
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -22,6 +23,15 @@ from rsi.metaharness import (SKILL_TEXT, AgentProposer, CandidateSpec, Config, E
 from rsi.metaharness.proposer import _collect
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _run_inner(code: str, *args: str) -> subprocess.CompletedProcess:
+    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi`` from any working directory: the
+    checkout is on PYTHONPATH and the interpreter starts there (so no other ``rsi`` in the caller's cwd shadows
+    it)."""
+    path = os.pathsep.join(p for p in (str(ROOT), os.environ.get("PYTHONPATH")) if p)
+    return subprocess.run([sys.executable, "-c", code, *args], capture_output=True, text=True, timeout=60,
+                          env={**os.environ, "PYTHONPATH": path}, cwd=ROOT)
 
 TWO_CALL = SEED_PROGRAMS["fewshot_all"].replace(
     '''        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
@@ -354,6 +364,485 @@ def test_forked_smoke_killed_on_timeout_still_reports_completed_calls():
     assert not ok and "timed out" in msg
     t = llm.meter.total()
     assert t.calls == 2 and t.cost_usd == pytest.approx(0.02)          # before: 0 (the delta died with the child)
+
+
+def test_forked_smoke_timeout_kills_its_sandboxed_process(tmp_path):
+    """The forked smoke child is stopped with SIGTERM first, so the sandboxed process it started is killed by
+    run_cmd's own cleanup; before, the child was SIGKILLed and its CPU-bound sandbox process kept running."""
+    from rsi.core.sandbox import run_cmd
+    pidfile = tmp_path / "pid"
+
+    class Spins:
+        def smoke(self, artifact, llm):
+            run_cmd([sys.executable, "-c", f"import os; open({str(pidfile)!r}, 'w').write(str(os.getpid()))\n"
+                                           "while True: pass"], timeout_s=60)
+
+    ok, msg = InterfaceValidator(timeout_s=1.5, isolate=True).validate(Spins(), Artifact({"h.py": "x = 1\n"}), None)
+    assert not ok and "timed out" in msg
+    pid = int(pidfile.read_text())
+    for _ in range(100):                       # the group kill lands within moments
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        os.kill(pid, 9)
+        pytest.fail(f"sandboxed process {pid} outlived the timed-out smoke")
+
+
+def _gone(pid: int, tries: int = 100) -> bool:
+    for _ in range(tries):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.05)
+    os.kill(pid, 9)
+    return False
+
+
+def test_forked_smoke_timeout_kills_a_sandbox_started_from_a_harness_thread(tmp_path):
+    """As in AgentQA, the harness runs in a thread and the smoke's main thread only joins it: a signal handler runs
+    in the main thread, so the child closes the sandboxes it started on its way out (process and scratch directory).
+    A sandboxed process the parent itself is running at the fork is left alone."""
+    import threading
+    from rsi.core.sandbox import run_cmd, run_python
+    spin = "import os, sys; open(sys.argv[1], 'w').write(f'{os.getpid()} {os.getcwd()}')\nwhile True: pass"
+    mine, theirs = tmp_path / "smoke_pid", tmp_path / "parent_pid"
+
+    class Threaded:
+        def smoke(self, artifact, llm):
+            th = threading.Thread(target=run_python, args=(spin,), kwargs={"args": [str(mine)], "timeout_s": 60},
+                                  daemon=True)
+            th.start()
+            while th.is_alive():
+                th.join(0.05)
+
+    parent = threading.Thread(target=run_cmd, args=([sys.executable, "-c", spin, str(theirs)],),
+                              kwargs={"timeout_s": 20}, daemon=True)
+    parent.start()
+    for _ in range(100):
+        if theirs.exists() and theirs.read_text():
+            break
+        time.sleep(0.05)
+    ok, msg = InterfaceValidator(timeout_s=1.5, isolate=True).validate(Threaded(), Artifact({"h.py": "x = 1\n"}), None)
+    assert not ok and "timed out" in msg
+    pid, scratch = mine.read_text().split(" ", 1)
+    parent_pid = int(theirs.read_text().split()[0])
+    try:
+        assert _gone(int(pid)), f"sandboxed process {pid} outlived the timed-out smoke"
+        assert not os.path.exists(scratch), f"scratch directory {scratch} was left behind"
+        os.kill(parent_pid, 0)                 # the parent's own sandboxed process is still running
+    finally:
+        try:
+            os.kill(parent_pid, 9)
+        except ProcessLookupError:
+            pass
+
+
+def test_forked_smoke_child_never_runs_the_parents_code(tmp_path, monkeypatch):
+    """A signal landing while the child closes its sandboxes (simulated: the close raises SystemExit once) must not
+    let the child unwind out of its exit path into the caller's code."""
+    from rsi.core import sandbox
+    real, calls = sandbox.close_sandboxes, []
+
+    def interrupted_once():
+        calls.append(1)
+        if len(calls) == 1:
+            raise SystemExit(143)
+        return real()
+
+    monkeypatch.setattr(sandbox, "close_sandboxes", interrupted_once)
+
+    class Quick:
+        def smoke(self, artifact, llm):
+            return None
+
+    parent = os.getpid()
+    try:
+        ok, msg = InterfaceValidator(timeout_s=10, isolate=True).validate(Quick(), Artifact({"h.py": "x = 1\n"}), None)
+    finally:
+        if os.getpid() != parent:              # the child escaped: record it and stop it here
+            (tmp_path / f"escaped_{os.getpid()}").write_text("x")
+            os._exit(0)
+    assert ok, msg
+    assert not list(tmp_path.glob("escaped_*"))
+
+
+def test_forked_smoke_child_ignores_the_parents_sigterm_once_leaving(tmp_path):
+    """The smoke finishes, and the child is held at the entry of its exit path while the parent's cleanup SIGTERM
+    arrives: the child's handlers are already no-ops there, so it does not unwind into the caller's code."""
+
+    class HeldAtExit:
+        def smoke(self, artifact, llm):
+            def hold(frame, event, arg):
+                if event == "call" and frame.f_code.co_name == "_child_exit":
+                    time.sleep(0.5)            # the parent got "done" and sends SIGTERM meanwhile
+            sys.setprofile(hold)
+            return None
+
+    parent = os.getpid()
+    try:
+        ok, msg = InterfaceValidator(timeout_s=10, isolate=True).validate(HeldAtExit(), Artifact({"h.py": "x = 1\n"}),
+                                                                          None)
+    finally:
+        if os.getpid() != parent:              # the child escaped: record it and stop it here
+            (tmp_path / f"escaped_{os.getpid()}").write_text("x")
+            os._exit(0)
+    assert ok, msg
+    assert not list(tmp_path.glob("escaped_*"))
+
+
+def test_a_stop_signal_during_the_fork_reaches_the_childs_own_handler(tmp_path):
+    """A SIGTERM landing in the fork's after-fork hooks, under a parent that turns SIGTERM into SystemExit (as the
+    replay check does), is held until the child's own handler is in place: the smoke never runs and the child
+    leaves through its exit path (before, the parent's handler ran in the hook, the error was ignored and the
+    smoke went on)."""
+    marker = tmp_path / "smoke_ran"
+    code = f"""
+import os, signal, sys, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+os.register_at_fork(after_in_child=lambda: os.kill(os.getpid(), signal.SIGTERM))
+
+class Smoke:
+    def smoke(self, artifact, llm):
+        open({str(marker)!r}, "w").write("x")
+        time.sleep(30)
+
+t0 = time.monotonic()
+ok, msg = InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({{"h.py": "x = 1\\n"}}), None)
+print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
+"""
+    out = _run_inner(code)
+    lines = out.stdout.strip().splitlines()
+    assert len(lines) == 1, (out.stdout, out.stderr[-1500:])          # one process printed: no child escaped
+    assert not marker.exists(), "the smoke ran although a stop signal arrived during the fork"
+    assert float(lines[0].split()[1]) < 5, lines
+
+
+def test_the_signal_mask_is_restored_when_a_stop_signal_surfaces_right_after_the_fork(tmp_path):
+    """Blocking SIGINT/SIGTERM across the fork covers only the validating thread: another thread may take a stop
+    signal meanwhile, and the handler then runs in the validating thread at its next chance, which can be the
+    parent's first call after the fork. Simulated deterministically: that call (closing the pipe's write end)
+    raises KeyboardInterrupt while the signals are still blocked. The mask must come back unblocked and the child
+    must still be stopped."""
+    code = """
+import os, signal, sys, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+parent, real_close, raised = os.getpid(), os.close, []
+real_fork, kids = os.fork, []
+def fork():
+    pid = real_fork()
+    if pid:
+        kids.append(pid)
+    return pid
+os.fork = fork
+def close(fd):
+    real_close(fd)
+    blocked = signal.SIGINT in signal.pthread_sigmask(signal.SIG_BLOCK, [])
+    if os.getpid() == parent and blocked and not raised:   # the parent's first call after the fork
+        raised.append(fd)
+        raise KeyboardInterrupt
+os.close = close
+
+class Smoke:
+    def smoke(self, artifact, llm):
+        time.sleep(30)
+
+t0 = time.monotonic()
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    print("no interrupt", end=" ")
+except KeyboardInterrupt:
+    print("interrupted", end=" ")
+print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), time.monotonic() - t0 < 5, end=" ")
+try:
+    os.waitpid(kids[0], os.WNOHANG)
+    os.kill(kids[0], 9)
+    print("child left running")
+except ChildProcessError:
+    print("child reaped")
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "interrupted [] True child reaped", (out.stdout, out.stderr[-1500:])
+
+
+_REAPED = """
+try:
+    os.waitpid(kids[0], os.WNOHANG)
+    os.kill(kids[0], 9)
+    reaped = "child left running"
+except ChildProcessError:
+    reaped = "child reaped"
+except IndexError:
+    reaped = "no child"
+"""
+
+_FORK_SPY = """
+real_fork, kids = os.fork, []
+def fork():
+    pid = real_fork()
+    if pid:
+        kids.append(pid)
+    return pid
+os.fork = fork
+"""
+
+
+def test_a_failed_fork_restores_the_mask_and_closes_the_pipe():
+    """A fork that fails (or a stop signal surfacing at it) leaves no pipe end open and the signals unblocked."""
+    code = """
+import os, signal, sys
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+def fork():
+    raise KeyboardInterrupt
+os.fork = fork
+fds_before = len(os.listdir("/proc/self/fd"))
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    print("no interrupt", end=" ")
+except KeyboardInterrupt:
+    print("interrupted", end=" ")
+print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), len(os.listdir("/proc/self/fd")) - fds_before)
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "interrupted [] 0", (out.stdout, out.stderr[-1500:])
+
+
+def test_two_stop_signals_in_a_row_still_stop_the_smoke_child(tmp_path):
+    """Ctrl-C then a kill, back to back, while the smoke runs: the first interrupts the wait and the second surfaces
+    as the cleanup starts, which then runs again: the child is still stopped and reaped."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))       # as the demo's replay check does
+""" + _FORK_SPY + """
+marker = sys.argv[1]
+class Smoke:
+    def smoke(self, artifact, llm):
+        open(marker, "w").write("x")
+        time.sleep(30)
+main = threading.main_thread().ident
+def stopper():
+    while not os.path.exists(marker):
+        time.sleep(0.01)
+    time.sleep(0.2)
+    signal.pthread_kill(main, signal.SIGINT)
+    signal.pthread_kill(main, signal.SIGTERM)
+threading.Thread(target=stopper, daemon=True).start()
+try:
+    InterfaceValidator(timeout_s=20, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except BaseException as e:
+    res = type(e).__name__
+""" + _REAPED + """
+print(res, reaped, sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
+"""
+    out = _run_inner(code, str(tmp_path / "smoke_started"))
+    assert out.stdout.strip() in ("SystemExit child reaped []", "KeyboardInterrupt child reaped []"), (
+        out.stdout, out.stderr[-1500:])
+
+
+def test_a_stop_signal_during_the_childs_grace_period_still_reaps_it(tmp_path):
+    """The child ignores SIGTERM, so the cleanup waits out its grace period; a second stop signal in that wait
+    interrupts it, and the retried cleanup gives the child a shorter grace (0.5 s), then kills and reaps it."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+""" + _FORK_SPY + """
+marker = sys.argv[1]
+class Smoke:
+    def smoke(self, artifact, llm):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)            # a child slow to stop
+        open(marker, "w").write("x")
+        time.sleep(30)
+main = threading.main_thread().ident
+def stopper():
+    while not os.path.exists(marker):
+        time.sleep(0.01)
+    time.sleep(0.2)
+    signal.pthread_kill(main, signal.SIGINT)                     # ends the wait; the cleanup's grace starts
+    time.sleep(0.5)
+    second.append(time.monotonic())
+    signal.pthread_kill(main, signal.SIGTERM)                    # lands inside that grace period
+second = []
+threading.Thread(target=stopper, daemon=True).start()
+try:
+    InterfaceValidator(timeout_s=20, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except BaseException as e:
+    res = type(e).__name__
+""" + _REAPED + """
+print(res, reaped, time.monotonic() - second[0] < 1.5)          # the shorter grace, not the first 2 s again
+"""
+    out = _run_inner(code, str(tmp_path / "smoke_started"))
+    assert out.stdout.strip() in ("SystemExit child reaped True", "KeyboardInterrupt child reaped True"), (
+        out.stdout, out.stderr[-1500:])
+
+
+def test_two_stop_signals_pending_together_during_the_cleanup_still_reap_the_child(tmp_path):
+    """Both arrive while the cleanup waits for a child slow to stop: the first interrupts it, the second runs as
+    the retry starts, and a further retry (nested: no point between them where a handler could escape) still
+    kills and reaps the child."""
+    code = """
+import os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+""" + _FORK_SPY + """
+marker = sys.argv[1]
+class Smoke:
+    def smoke(self, artifact, llm):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        open(marker, "w").write("x")
+        time.sleep(30)
+main = threading.main_thread().ident
+def stopper():
+    while not os.path.exists(marker):
+        time.sleep(0.01)
+    time.sleep(1.0)                                              # past the 0.5 s timeout: inside the cleanup
+    signal.pthread_kill(main, signal.SIGINT)
+    signal.pthread_kill(main, signal.SIGTERM)
+threading.Thread(target=stopper, daemon=True).start()
+try:
+    InterfaceValidator(timeout_s=0.5, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+    res = "returned"
+except BaseException as e:
+    res = type(e).__name__
+""" + _REAPED + """
+print(res, reaped)
+"""
+    out = _run_inner(code, str(tmp_path / "smoke_started"))
+    assert out.stdout.strip() in ("KeyboardInterrupt child reaped", "SystemExit child reaped"), (
+        out.stdout, out.stderr[-1500:])
+
+
+def test_an_interrupt_between_popping_and_closing_the_write_end_cannot_leak_it():
+    """The parent pops the pipe's write end and closes it with no bytecode in between: an interrupt injected
+    right after a pop called from Python (as a stop signal could land there) has no such point to hit."""
+    code = """
+import os, signal, sys
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+parent, fired = os.getpid(), []
+def prof(frame, event, arg):
+    if (event == "c_return" and getattr(arg, "__name__", "") == "pop" and os.getpid() == parent and not fired
+            and frame.f_code.co_filename.endswith("validate.py")):
+        fired.append(frame.f_code.co_name)
+        raise KeyboardInterrupt
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+before = len(os.listdir("/proc/self/fd"))
+sys.setprofile(prof)
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+except KeyboardInterrupt:
+    pass
+sys.setprofile(None)
+print(len(os.listdir("/proc/self/fd")) - before, sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "0 []", (out.stdout, out.stderr[-1500:])
+
+
+def test_a_process_another_thread_forks_during_validation_still_stops_on_ctrl_c():
+    """Validation changes no process-wide signal handler: a worker another thread forks while it cleans up
+    (a multiprocessing pool, say) still stops on SIGINT."""
+    code = """
+import multiprocessing as mp, os, signal, sys, threading, time
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+import rsi.metaharness.validate as v
+workers, real_stop = [], v._stop_child
+def stop(pid, *a, **k):                                          # fork a worker from another thread right now
+    p = mp.get_context("fork").Process(target=time.sleep, args=(30,))
+    t = threading.Thread(target=p.start)
+    t.start()
+    t.join()
+    workers.append(p)
+    return real_stop(pid, *a, **k)
+v._stop_child = stop
+class Smoke:
+    def smoke(self, artifact, llm):
+        time.sleep(30)
+InterfaceValidator(timeout_s=0.5, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+p = workers[0]
+time.sleep(0.3)
+os.kill(p.pid, signal.SIGINT)
+p.join(5)
+print("stopped" if p.exitcode is not None else "still running")
+if p.exitcode is None:
+    p.kill()
+"""
+    out = _run_inner(code)
+    assert out.stdout.strip() == "stopped", (out.stdout, out.stderr[-1500:])
+
+
+def test_a_raising_handler_of_another_signal_cannot_make_the_child_escape():
+    """Every signal stays blocked in the child until it is inside its own try (which ends in os._exit): an alarm
+    whose handler raises, firing right after the fork, can no longer unwind the child into the caller's code."""
+    code = """
+import functools, hashlib, os, signal, sys
+from rsi.core import Artifact
+from rsi.metaharness import InterfaceValidator
+def alarm(*_):
+    raise RuntimeError("alarm")
+signal.signal(signal.SIGALRM, alarm)
+# in the child, from C: arm a short timer, then stay busy in C past it (no bytecode, so no handler runs there)
+os.register_at_fork(after_in_child=functools.partial(signal.setitimer, signal.ITIMER_REAL, 0.005))
+os.register_at_fork(after_in_child=functools.partial(hashlib.pbkdf2_hmac, "sha256", b"x", b"y", 200000))
+class Smoke:
+    def smoke(self, artifact, llm):
+        return None
+try:
+    InterfaceValidator(timeout_s=8, isolate=True).validate(Smoke(), Artifact({"h.py": "x = 1\\n"}), None)
+except RuntimeError:
+    pass
+os.write(1, f"{os.getpid()}\\n".encode())        # unbuffered: an escaped child may be killed before it flushes
+"""
+    out = _run_inner(code)
+    assert len(out.stdout.split()) == 1, (out.stdout, out.stderr[-1500:])     # only the parent wrote
+
+
+def test_forked_smoke_stopped_while_its_harness_thread_spawns(tmp_path):
+    """A sandbox the harness thread is just starting when the smoke is stopped is closed too (spawn and
+    registration happen under one lock)."""
+    import threading
+    from rsi.core.sandbox import run_cmd
+    tag = f"rsi_spawn_race_{os.getpid()}"
+    spin = f"import time\n# {tag}\nwhile True: pass"
+
+    class Spawner:
+        def smoke(self, artifact, llm):
+            def loop():
+                while True:
+                    run_cmd([sys.executable, "-S", "-c", spin], timeout_s=0.1)
+            th = threading.Thread(target=loop, daemon=True)
+            th.start()
+            while th.is_alive():
+                th.join(0.05)
+
+    for i in range(8):
+        InterfaceValidator(timeout_s=0.6 + 0.03 * i, isolate=True).validate(Spawner(), Artifact({"h.py": "x = 1\n"}),
+                                                                            None)
+    time.sleep(0.3)
+    left = [d for d in os.listdir("/proc") if d.isdigit()
+            and tag in open(f"/proc/{d}/cmdline", "rb").read().decode(errors="replace")] if os.path.isdir("/proc") else []
+    for d in left:
+        os.kill(int(d), 9)
+    assert not left, f"{len(left)} sandboxes outlived their stopped smokes"
 
 
 # ------------------------------------------------------------------ N10: unknown base system

@@ -3,19 +3,28 @@ SYSTEM: You are a helpful assistant.
 
 PROMPT: What is 73427123466896 mod 440?
 
-REPLY: I'll calculate this for you using Python:
+REPLY: I need to calculate 73427123466896 mod 440.
 
-```python
+Let me compute this:
+<function_calls>
+<invoke name="bash">
+<parameter name="command">python3 << 'EOF'
 result = 73427123466896 % 440
-print(result)
-```
+print(f"73427123466896 mod 440 = {result}")
+EOF
+</parameter>
+</invoke>
+</function_calls>
+<function_calls>
+<invoke name="bash">
+<parameter name="command">python3 << 'EOF'
+result = 73427123466896 % 440
+print(f"73427123466896 mod 440 = {result}")
+EOF
+</parameter>
+</invoke>
+</function_calls>
 
-Let me run this:
+**Answer: 56**
 
-```bash
-python3 -c "print(73427123466896 % 440)"
-```
-
-The answer is **16**.
-
-73427123466896 mod 440 = **16**
+73427123466896 mod 440 = **56**

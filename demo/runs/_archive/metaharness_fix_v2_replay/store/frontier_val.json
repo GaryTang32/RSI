@@ -1,0 +1,88 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1199.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 4812.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "strict_answer_format_harness",
+  "score": 1.0,
+  "cost": 1622.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 7671.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "code_gen_harness",
+  "score": 0.0,
+  "cost": 1252.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1183.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 3794.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "code_gen_harness",
+  "score": 1.0,
+  "cost": 1430.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 2747.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1309.0
+ },
+ "evolve-numeric-010": {
+  "best_system": "code_gen_harness",
+  "score": 0.0,
+  "cost": 1214.0
+ },
+ "evolve-numeric-011": {
+  "best_system": "code_gen_harness",
+  "score": 1.0,
+  "cost": 1573.0
+ },
+ "_pareto": [
+  {
+   "system": "strict_answer_format_harness",
+   "score": 0.4166666666666667,
+   "val_accuracy": 41.7,
+   "context_cost": 4013.6666666666665
+  },
+  {
+   "system": "seed",
+   "score": 0.3333333333333333,
+   "val_accuracy": 33.3,
+   "context_cost": 2494.5833333333335
+  },
+  {
+   "system": "code_gen_harness",
+   "score": 0.25,
+   "val_accuracy": 25.0,
+   "context_cost": 1430.0833333333333
+  }
+ ],
+ "_best": {
+  "system": "strict_answer_format_harness",
+  "score": 0.4166666666666667
+ },
+ "_hypervolume": 940.138888888889,
+ "_hv_ref_cost": 4416.033333333334
+}

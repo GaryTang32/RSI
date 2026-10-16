@@ -1,60 +1,82 @@
-# Iteration 3: Pattern Templates Break Through Cost Barrier
+## Iteration 3: Enforcement Fails; Parsing Needed
 
-**What changed**:
-- `self_checking_code`: Single-pass with inline verification (exploit axis E: update trigger)
-- `pattern_template_solver`: Hardcoded patterns for digit_sum, modulo, bit_count, fallback to LLM (explore axis C+B+D: retrieval + state + sizing)
+**Systems tested:**
+- `python_enforced_arithmetic`: 25.0%, cost 1697
+- `result_variable_extraction`: 8.3%, cost 1980
 
-**Score & cost**:
-- **pattern_template_solver: 100% (12/12), 1,465 tokens/task** — NEW SOLE FRONTIER POINT
-- self_checking_code: 91.7% (11/12), 2,195 tokens — regressed on accuracy
-- Iteration 2's code_execution (100%, 4,501) now dominated
+### Findings
+`python_enforced_arithmetic` attempted strict enforcement ("MUST use Python, do NOT manually calculate") but only achieved 25%, worse than seed. Cost improved but score regressed significantly. Likely reason: aggressive tone ("CRITICAL", "MUST") made model anxious and more prone to overthinking—the opposite of intended effect.
 
-**Why pattern_template_solver wins**:
-- **Mechanism shift**: Regex pattern matching (digit sum, modulo, bit count) → hardcoded Python templates → deterministic execution
-- 10/12 tasks matched patterns with **zero LLM cost**: evolve-numeric-{0,1,3,4,5,7,8,9,10,11}
-- Only 2 tasks (002, 006) fall back to LLM code gen: ~1,686 and ~1,245 tokens
-- **Key insight**: Structured problems can be solved without LLM by recognizing syntax (e.g., "mod", "digits of", "bits")
+`result_variable_extraction` (requiring "Result: <value>" format) achieved only 8.3%—model didn't consistently adopt the format, and extraction failed.
 
-**Why self_checking_code regressed**:
-- Embedding verification in a single code block failed for 1 task (11/12 = 91.7%)
-- Model didn't reliably self-verify inline; cost was half of code_execution but accuracy suffered
-- **Takeaway**: Two-pass (generate + verify) is more robust than single-pass
+### Rootcause
+The real problem: **extraction doesn't distinguish what the model *computed* (Python output, early in response) from what it *claims* (narrative, end of response)**. Model runs `print(result) = 144` then later writes "ANSWER: 169". Extraction currently searches globally and grabs the last/loudest answer (169).
 
-**Frontier dynamics**:
-- pattern_template_solver's cost (1,465) comes from only 2 fallback tasks; 10/12 are free
-- code_execution was too costly (4,501) for same accuracy
-- Pareto frontier: only 1 point (pattern_template_solver)
-
-**Takeaways for iter4**:
-- Pattern matching is powerful but incomplete (2 tasks missed)
-- Axis C (retrieval) and D (sizing) are high-leverage: small pattern additions could push cost near-zero
-- Could also explore: LLM-based classification (cheaper than full code gen) + template lookup
-- Next iteration should either (1) expand pattern DB or (2) use model to classify, then apply templates
+### Takeaway
+To break 50%, need two things: (1) **gentle** guidance (not aggressive enforcement), (2) **extraction that prioritizes Python-computed values** over narrative claims. Next iteration should parse code output regions specifically.
 
 ---
+
+## Step 1–3: Analysis & Hypotheses
+
+### Frontier Status
+- **Best:** `answer_format_smart_extraction` (50%, cost 3429)
+- **Second:** `seed` (33.3%, cost 2201)
+- **Regressing trend:** iterations 2–3 scored below frontier
+
+### Core Problem
+Detailed trace analysis (e.g., evolve-numeric-000):
+- Model runs Python: `digit_sum = sum(...)` → output `144` ✓
+- Model then manually sums digits: `3+3+4+5+...` → writes `169` ✗
+- Extraction grabs narrative `169`, ignores Python `144`
+
+**The harness extracts from the wrong part of the response.**
+
+### Hypothesis 1 (Exploitation, Axis A): Gentle Python Trust
+
+**Falsifiable claim:** By adding *soft* guidance ("Python is your source of truth") without aggressive mandates, and keeping prompts simple, the model gains confidence in its code outputs and commits to them instead of second-guessing with manual arithmetic.
+
+**Mechanism:** 
+- System: brief, encouraging tone ("use Python as your source of truth")
+- Prompt: simple ("use Python, state final answer clearly")
+- Extraction: same smart regex as base
+
+**Why this differs from iter3:** Gentle persuasion vs. aggressive enforcement; fewer words, no verbose scaffolding.
+
+### Hypothesis 2 (Exploration, Axes B + C): Prioritized Python Value Extraction
+
+**Falsifiable claim:** By parsing responses to identify *code output blocks* and extracting numeric values from them first (before ANSWER tags or narrative), we bypass the model's narrative errors entirely. Storage of extracted Python values in memory makes them the authoritative source.
+
+**Mechanism:**
+- Extract lines matching patterns like `"result: X"`, `"= X"` (code-output style)
+- Store these extracted values
+- Prioritize stored Python values in final extraction over ANSWER tags
+- Decouple what model *computed* from what it *claims*
+
+**Why different:** New retrieval algorithm that respects code-output locality instead of global text search.
+
+---
+
+## Step 4: Implementation
 
 ```json
 {
   "iteration": 4,
   "candidates": [
     {
-      "name": "pattern_solver_enhanced",
-      "base_system": "pattern_template_solver",
-      "hypothesis": "Extending the pattern database to recognize multi-operation arithmetic (ledger-style) and other structured problems reduces LLM fallback rate from 2/12 to 0/12, approaching zero-cost exact-match execution.",
+      "name": "gentle_python_trust",
+      "base_system": "answer_format_smart_extraction",
+      "hypothesis": "By adding gentle, encouraging guidance that Python is the source of truth and keeping prompts minimal (no aggressive mandates or verbose scaffolding), the model gains confidence in its code outputs and reports them instead of second-guessing with wrong manual arithmetic.",
       "axis": "exploitation",
-      "components": ["axis:D (sizing: expanded pattern/template database)", "axis:C (retrieval: more comprehensive pattern matching rules)"]
+      "components": ["axis:A_gentle_prompt_guidance", "axis:A_prompt_minimalism"]
     },
     {
-      "name": "classifier_template_solver",
-      "base_system": "pattern_template_solver",
-      "hypothesis": "Using an LLM to classify problem type (single cheap call per task) and then applying deterministic templates is more general and cheaper than hardcoded regex patterns, while maintaining accuracy through fallback.",
+      "name": "python_priority_extraction",
+      "base_system": "answer_format_smart_extraction",
+      "hypothesis": "By extracting numeric values that appear in code-output patterns ('result: X', 'X =', lines with descriptive colons) and prioritizing them over ANSWER tags or narrative, we bypass the model's narrative override errors and use only what was actually computed.",
       "axis": "exploration",
-      "components": ["axis:F (model usage: model-based classification)", "axis:A (prompt architecture: classification-first design)"]
+      "components": ["axis:C_code_output_prioritization", "axis:B_extracted_value_storage"]
     }
   ]
 }
 ```
-
----
-
-## Candidate 1: pattern_solver_enhanced

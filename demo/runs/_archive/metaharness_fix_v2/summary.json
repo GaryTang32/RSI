@@ -1,0 +1,203 @@
+{
+ "run": "metaharness",
+ "setup": {
+  "method": "metaharness",
+  "suite": "easy",
+  "config": {
+   "iterations": 4,
+   "k": 2,
+   "history_mode": "full",
+   "seed": 0,
+   "test_splits": [
+    "holdout",
+    "ood"
+   ],
+   "cost_metric": "tokens",
+   "workers": 4,
+   "validate_timeout_s": 240.0,
+   "shadow_workers": 4
+  },
+  "llm": "claude haiku (task + proposer)"
+ },
+ "stop_reason": "iterations",
+ "wall_s": 1679.4,
+ "trajectory": [
+  {
+   "iteration": 1,
+   "best_score": 0.4166666666666667,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 2,
+   "frontier_size": 3,
+   "hypervolume": 940.138888888889,
+   "files_read": 31,
+   "files_scanned": 0,
+   "reports_written": 0,
+   "n_reevaluations": 0,
+   "view_chars": 19510,
+   "read_chars": 19510,
+   "proposer_tokens": 25558,
+   "proposer_usd": 0.09216799999999999,
+   "error": null
+  },
+  {
+   "iteration": 2,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 4,
+   "frontier_size": 3,
+   "hypervolume": 7411.322222222223,
+   "files_read": 64,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 80407,
+   "read_chars": 54068,
+   "proposer_tokens": 34218,
+   "proposer_usd": 0.09227099999999999,
+   "error": null
+  },
+  {
+   "iteration": 3,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 6,
+   "frontier_size": 2,
+   "hypervolume": 8579.641666666666,
+   "files_read": 58,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 163767,
+   "read_chars": 55083,
+   "proposer_tokens": 33550,
+   "proposer_usd": 0.095549,
+   "error": null
+  },
+  {
+   "iteration": 4,
+   "best_score": 1.0,
+   "n_candidates": 2,
+   "n_valid": 2,
+   "n_evaluated": 8,
+   "frontier_size": 1,
+   "hypervolume": 8726.641666666666,
+   "files_read": 63,
+   "files_scanned": 0,
+   "reports_written": 1,
+   "n_reevaluations": 0,
+   "view_chars": 219028,
+   "read_chars": 54463,
+   "proposer_tokens": 30008,
+   "proposer_usd": 0.085087,
+   "error": null
+  }
+ ],
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.20833333333333334,
+     "C": 2204.5416666666665,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.20833333333333334
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1390.8333333333333,
+     "steps": 2.0,
+     "families": {
+      "numeric": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.7916666666666666,
+      "lo": 0.5833333333333334,
+      "hi": 0.9583333333333334,
+      "n": 12,
+      "p_better": 0.9166666666666666
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "C": 1984.75,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.5
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1326.0,
+     "steps": 2.0,
+     "families": {
+      "numeric": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.5,
+      "lo": 0.1875,
+      "hi": 0.8125,
+      "n": 8,
+      "p_better": 0.625
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.5625,
+     "C": 2015.75,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.75,
+      "numbertheory": 0.0,
+      "strings": 0.5,
+      "lists": 1.0
+     },
+     "vs_reference": null
+    },
+    "final": {
+     "S": 1.0,
+     "C": 1663.625,
+     "steps": 2.0,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.4375,
+      "lo": 0.125,
+      "hi": 0.75,
+      "n": 8,
+      "p_better": 0.5
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.53125,
+   "final": 1.0
+  }
+ },
+ "usd_total": 2.5729,
+ "usd_transfer_report": 0.2775,
+ "seed_files": {
+  "harness.py": "\"\"\"Seed harness: one direct model call, return the last line of the reply.\"\"\"\n\n\ndef solve(question, llm, tools, files):\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt = files[\"prompts/task.md\"].replace(\"{question}\", question)\n    reply = llm(prompt, system=system)\n    lines = [line for line in reply.strip().splitlines() if line.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ },
+ "final_files": {
+  "harness.py": "import re\n\ndef solve(question, llm, tools, files):\n    \"\"\"\n    Lean prompt code harness: Simplified, minimal-overhead prompt without context extraction.\n    Relies on direct model reasoning and code generation without augmented scaffolding.\n    This reduces token usage while maintaining accuracy through clear, unified instructions.\n    \"\"\"\n    system = files.get(\"prompts/system.md\", \"\")\n    prompt_template = files[\"prompts/task.md\"]\n    prompt = prompt_template.replace(\"{question}\", question)\n    \n    # Minimal, unified prompt: no context extraction, no augmentation\n    lean_prompt = f\"\"\"{prompt}\n\nSolve this problem:\n\n1. Think through the approach step by step.\n2. Provide your answer either:\n   A) As Python code in a ```python code block that outputs ONLY the final answer.\n   B) As a single line: ANSWER: <value>\n\nBe concise. Output only code or the answer line; no extra explanation.\"\"\"\n    \n    reply = llm(lean_prompt, system=system)\n    \n    # Extract all Python code blocks\n    code_blocks = re.findall(r'```(?:python)?\\s*\\n(.*?)\\n```', reply, re.DOTALL)\n    \n    # Try code blocks in reverse order (prefer the last/final code block)\n    if code_blocks:\n        for code in reversed(code_blocks):\n            try:\n                output = tools.python(code)\n                lines = [l.strip() for l in output.strip().splitlines() if l.strip()]\n                if lines:\n                    return lines[-1]\n            except Exception:\n                continue\n    \n    # Fallback 1: Look for ANSWER: marker\n    for line in reply.strip().splitlines():\n        line_stripped = line.strip()\n        if line_stripped.startswith(\"ANSWER:\"):\n            answer = line_stripped[len(\"ANSWER:\"):].strip()\n            if answer:\n                return answer\n    \n    # Fallback 2: Return last non-empty line\n    lines = [l for l in reply.strip().splitlines() if l.strip()]\n    return lines[-1] if lines else \"\"\n",
+  "prompts/system.md": "You are a helpful assistant.\n",
+  "prompts/task.md": "{question}\n"
+ }
+}

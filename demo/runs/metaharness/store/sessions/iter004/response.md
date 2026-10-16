@@ -1,569 +1,250 @@
-# Iteration 4: Frontier Evolution Report & New Candidates
+Looking at the history, I need to analyze the current state and formulate new hypotheses.
 
-## Post-Eval Report: Iteration 3
+## Step 0: Post-Eval Reports
 
-=== FILE: reports/iter3.md ===
-# Iteration 3: Pattern Templates Break Through Cost Barrier
+Iterations 2 and 3 lack reports in the `reports/` directory. Let me write them first.
 
-**What changed**:
-- `self_checking_code`: Single-pass with inline verification (exploit axis E: update trigger)
-- `pattern_template_solver`: Hardcoded patterns for digit_sum, modulo, bit_count, fallback to LLM (explore axis C+B+D: retrieval + state + sizing)
+=== FILE: reports/iter2.md ===
+## Iteration 2: Verification & Structure Backfire
 
-**Score & cost**:
-- **pattern_template_solver: 100% (12/12), 1,465 tokens/task** — NEW SOLE FRONTIER POINT
-- self_checking_code: 91.7% (11/12), 2,195 tokens — regressed on accuracy
-- Iteration 2's code_execution (100%, 4,501) now dominated
+**Systems tested:**
+- `verify_calculations`: 25.0% (−25.0), cost 2246
+- `structured_numeric_solver`: 16.7% (−33.3), cost 2163
 
-**Why pattern_template_solver wins**:
-- **Mechanism shift**: Regex pattern matching (digit sum, modulo, bit count) → hardcoded Python templates → deterministic execution
-- 10/12 tasks matched patterns with **zero LLM cost**: evolve-numeric-{0,1,3,4,5,7,8,9,10,11}
-- Only 2 tasks (002, 006) fall back to LLM code gen: ~1,686 and ~1,245 tokens
-- **Key insight**: Structured problems can be solved without LLM by recognizing syntax (e.g., "mod", "digits of", "bits")
+### Findings
+Both candidates significantly regressed from seed (33.3%). Root cause: added verbal scaffolding (5-step templates, verification phrases, "Final Answer:" sections) encouraged the model to use *narrative reasoning* instead of trusting Python tool outputs.
 
-**Why self_checking_code regressed**:
-- Embedding verification in a single code block failed for 1 task (11/12 = 91.7%)
-- Model didn't reliably self-verify inline; cost was half of code_execution but accuracy suffered
-- **Takeaway**: Two-pass (generate + verify) is more robust than single-pass
+Analysis of failures shows model correctly computed via Python but then manually re-derived wrong answers (e.g., 41! digit sum: Python output 144, manual recount 169). Iterations 2's emphasis on "verify" and "structure" made this worse—the model overthought rather than committed to code results.
 
-**Frontier dynamics**:
-- pattern_template_solver's cost (1,465) comes from only 2 fallback tasks; 10/12 are free
-- code_execution was too costly (4,501) for same accuracy
-- Pareto frontier: only 1 point (pattern_template_solver)
-
-**Takeaways for iter4**:
-- Pattern matching is powerful but incomplete (2 tasks missed)
-- Axis C (retrieval) and D (sizing) are high-leverage: small pattern additions could push cost near-zero
-- Could also explore: LLM-based classification (cheaper than full code gen) + template lookup
-- Next iteration should either (1) expand pattern DB or (2) use model to classify, then apply templates
+### Takeaway
+Avoid prescriptive structure. The bottleneck is not extraction or formatting, but **model confidence in Python outputs**. Need to focus on: (1) making Python authoritative without verbose scaffolding, (2) detection of hand-calculation override, (3) extraction that prioritizes computed values over narrative claims.
 
 ---
+
+=== FILE: reports/iter3.md ===
+## Iteration 3: Enforcement Fails; Parsing Needed
+
+**Systems tested:**
+- `python_enforced_arithmetic`: 25.0%, cost 1697
+- `result_variable_extraction`: 8.3%, cost 1980
+
+### Findings
+`python_enforced_arithmetic` attempted strict enforcement ("MUST use Python, do NOT manually calculate") but only achieved 25%, worse than seed. Cost improved but score regressed significantly. Likely reason: aggressive tone ("CRITICAL", "MUST") made model anxious and more prone to overthinking—the opposite of intended effect.
+
+`result_variable_extraction` (requiring "Result: <value>" format) achieved only 8.3%—model didn't consistently adopt the format, and extraction failed.
+
+### Rootcause
+The real problem: **extraction doesn't distinguish what the model *computed* (Python output, early in response) from what it *claims* (narrative, end of response)**. Model runs `print(result) = 144` then later writes "ANSWER: 169". Extraction currently searches globally and grabs the last/loudest answer (169).
+
+### Takeaway
+To break 50%, need two things: (1) **gentle** guidance (not aggressive enforcement), (2) **extraction that prioritizes Python-computed values** over narrative claims. Next iteration should parse code output regions specifically.
+
+---
+
+## Step 1–3: Analysis & Hypotheses
+
+### Frontier Status
+- **Best:** `answer_format_smart_extraction` (50%, cost 3429)
+- **Second:** `seed` (33.3%, cost 2201)
+- **Regressing trend:** iterations 2–3 scored below frontier
+
+### Core Problem
+Detailed trace analysis (e.g., evolve-numeric-000):
+- Model runs Python: `digit_sum = sum(...)` → output `144` ✓
+- Model then manually sums digits: `3+3+4+5+...` → writes `169` ✗
+- Extraction grabs narrative `169`, ignores Python `144`
+
+**The harness extracts from the wrong part of the response.**
+
+### Hypothesis 1 (Exploitation, Axis A): Gentle Python Trust
+
+**Falsifiable claim:** By adding *soft* guidance ("Python is your source of truth") without aggressive mandates, and keeping prompts simple, the model gains confidence in its code outputs and commits to them instead of second-guessing with manual arithmetic.
+
+**Mechanism:** 
+- System: brief, encouraging tone ("use Python as your source of truth")
+- Prompt: simple ("use Python, state final answer clearly")
+- Extraction: same smart regex as base
+
+**Why this differs from iter3:** Gentle persuasion vs. aggressive enforcement; fewer words, no verbose scaffolding.
+
+### Hypothesis 2 (Exploration, Axes B + C): Prioritized Python Value Extraction
+
+**Falsifiable claim:** By parsing responses to identify *code output blocks* and extracting numeric values from them first (before ANSWER tags or narrative), we bypass the model's narrative errors entirely. Storage of extracted Python values in memory makes them the authoritative source.
+
+**Mechanism:**
+- Extract lines matching patterns like `"result: X"`, `"= X"` (code-output style)
+- Store these extracted values
+- Prioritize stored Python values in final extraction over ANSWER tags
+- Decouple what model *computed* from what it *claims*
+
+**Why different:** New retrieval algorithm that respects code-output locality instead of global text search.
+
+---
+
+## Step 4: Implementation
 
 ```json
 {
   "iteration": 4,
   "candidates": [
     {
-      "name": "pattern_solver_enhanced",
-      "base_system": "pattern_template_solver",
-      "hypothesis": "Extending the pattern database to recognize multi-operation arithmetic (ledger-style) and other structured problems reduces LLM fallback rate from 2/12 to 0/12, approaching zero-cost exact-match execution.",
+      "name": "gentle_python_trust",
+      "base_system": "answer_format_smart_extraction",
+      "hypothesis": "By adding gentle, encouraging guidance that Python is the source of truth and keeping prompts minimal (no aggressive mandates or verbose scaffolding), the model gains confidence in its code outputs and reports them instead of second-guessing with wrong manual arithmetic.",
       "axis": "exploitation",
-      "components": ["axis:D (sizing: expanded pattern/template database)", "axis:C (retrieval: more comprehensive pattern matching rules)"]
+      "components": ["axis:A_gentle_prompt_guidance", "axis:A_prompt_minimalism"]
     },
     {
-      "name": "classifier_template_solver",
-      "base_system": "pattern_template_solver",
-      "hypothesis": "Using an LLM to classify problem type (single cheap call per task) and then applying deterministic templates is more general and cheaper than hardcoded regex patterns, while maintaining accuracy through fallback.",
+      "name": "python_priority_extraction",
+      "base_system": "answer_format_smart_extraction",
+      "hypothesis": "By extracting numeric values that appear in code-output patterns ('result: X', 'X =', lines with descriptive colons) and prioritizing them over ANSWER tags or narrative, we bypass the model's narrative override errors and use only what was actually computed.",
       "axis": "exploration",
-      "components": ["axis:F (model usage: model-based classification)", "axis:A (prompt architecture: classification-first design)"]
+      "components": ["axis:C_code_output_prioritization", "axis:B_extracted_value_storage"]
     }
   ]
 }
 ```
 
----
-
-## Candidate 1: pattern_solver_enhanced
-
-=== FILE: agents/pattern_solver_enhanced/harness.py ===
-"""
-Enhanced pattern-template solver: Extended pattern database covering ledger/multi-op arithmetic.
-Axis: D (sizing: expanded template database), C (retrieval: comprehensive pattern matching).
-Recognizes more problem types deterministically to reduce LLM fallback rate toward zero.
-"""
-
-import re
-
-
-def solve(question, llm, tools, files):
-    """Try pattern-based solver first, then fall back to LLM code generation."""
-    
-    # Attempt 1: Recognize and solve via template
-    answer = _try_pattern_solver(question, tools)
-    if answer:
-        return answer
-    
-    # Attempt 2: Fall back to LLM code generation (same as code_execution)
-    system = files.get("prompts/system.md", "")
-    code_gen_prompt = files["prompts/generate_code.md"].replace("{question}", question)
-    code_response = llm(code_gen_prompt, system=system)
-    
-    code = _extract_code(code_response)
-    if not code:
-        code = code_response
-    
-    try:
-        output = tools.python(code)
-    except Exception:
-        output = ""
-    
-    answer = _extract_answer_from_stdout(output)
-    if answer:
-        return answer
-    
-    return ""
-
-
-def _try_pattern_solver(question, tools):
-    """
-    Recognize common problem patterns and solve with deterministic templates.
-    This avoids LLM code generation for structured problems.
-    Extended patterns: ledger, sequence arithmetic, factorial modulo.
-    """
-    q = question.lower()
-    
-    # Pattern 1: Sum of digits of N!
-    match = re.search(r'sum.*?digits?.*?of\s+(\d+)!', q)
-    if match:
-        n = int(match.group(1))
-        code = f"""
-import math
-result = math.factorial({n})
-answer = sum(int(d) for d in str(result))
-print(f"ANSWER: {{answer}}")
-"""
-        try:
-            output = tools.python(code)
-            ans = _extract_answer_from_stdout(output)
-            if ans:
-                return ans
-        except:
-            pass
-    
-    # Pattern 2: Sum of digits of base^exp
-    match = re.search(r'sum.*?digits?.*?of\s+(\d+)\^(\d+)', q)
-    if match:
-        base, exp = int(match.group(1)), int(match.group(2))
-        code = f"""
-result = {base}**{exp}
-answer = sum(int(d) for d in str(result))
-print(f"ANSWER: {{answer}}")
-"""
-        try:
-            output = tools.python(code)
-            ans = _extract_answer_from_stdout(output)
-            if ans:
-                return ans
-        except:
-            pass
-    
-    # Pattern 3: Modulo operation
-    match = re.search(r'(\d+)\s+mod\s+(\d+)', q)
-    if match:
-        n, mod = int(match.group(1)), int(match.group(2))
-        code = f"""
-print(f"ANSWER: {{{n} % {mod}}}")
-"""
-        try:
-            output = tools.python(code)
-            ans = _extract_answer_from_stdout(output)
-            if ans:
-                return ans
-        except:
-            pass
-    
-    # Pattern 4: Bit count in binary representation
-    match = re.search(r'1\s+bits?.*?binary.*?of\s+(\d+)\^(\d+)', q)
-    if match:
-        base, exp = int(match.group(1)), int(match.group(2))
-        code = f"""
-n = {base}**{exp}
-answer = bin(n).count('1')
-print(f"ANSWER: {{answer}}")
-"""
-        try:
-            output = tools.python(code)
-            ans = _extract_answer_from_stdout(output)
-            if ans:
-                return ans
-        except:
-            pass
-    
-    # Pattern 5: Factorial digit sum (alternative phrasing)
-    match = re.search(r'digits?.*?(\d+)!.*factorial', q)
-    if match:
-        n = int(match.group(1))
-        code = f"""
-import math
-result = math.factorial({n})
-answer = sum(int(d) for d in str(result))
-print(f"ANSWER: {{answer}}")
-"""
-        try:
-            output = tools.python(code)
-            ans = _extract_answer_from_stdout(output)
-            if ans:
-                return ans
-        except:
-            pass
-    
-    # Pattern 6: Ledger/multi-operation arithmetic
-    # "Morgan's ledger starts at 49249. Add 84718, subtract 10095, add 77 payments of 50354, ..."
-    ans = _try_pattern_ledger(question, tools)
-    if ans:
-        return ans
-    
-    # No pattern matched; will fall back to LLM
-    return None
-
-
-def _try_pattern_ledger(question, tools):
-    """
-    Parse ledger-style multi-operation arithmetic.
-    Recognizes: "starts at X", then "Add Y", "subtract Z", "N payments of M", etc.
-    Builds and executes arithmetic operations dynamically.
-    """
-    q = question.lower()
-    
-    # Check if it looks like a ledger problem
-    if not ("ledger" in q or ("starts at" in q and ("add" in q or "subtract" in q or "deposit" in q))):
-        return None
-    
-    # Extract starting balance
-    match = re.search(r'(?:starts?\s+at|begins?\s+at|balance[:\s]*)\s*(\d+)', q)
-    if not match:
-        return None
-    
-    starting = int(match.group(1))
-    code_lines = [f"balance = {starting}"]
-    
-    # Extract all operations: (add|subtract|plus|minus) + amount
-    # Handle "N payments of M" as "N * M"
-    # Strategy: find all operation keywords and their operands
-    
-    operations = re.findall(
-        r'\b(add|subtract|plus|minus)\s+(.*?)(?=\b(?:add|subtract|plus|minus|and)|\.$)',
-        question,
-        re.IGNORECASE | re.DOTALL
-    )
-    
-    for op, operand in operations:
-        op_lower = op.lower()
-        sign = '+' if op_lower in ['add', 'plus'] else '-'
-        
-        # Extract all numbers from operand
-        # "84718" → [84718]
-        # "77 payments of 50354" → [77, 50354]
-        numbers = re.findall(r'\d+', operand)
-        
-        if len(numbers) == 0:
-            continue
-        elif len(numbers) == 1:
-            value = numbers[0]
-        else:
-            # Interpret as "N * M" (e.g., "77 payments of 50354")
-            # Take first two numbers
-            value = f"({numbers[0]} * {numbers[1]})"
-        
-        code_lines.append(f"balance {sign}= {value}")
-    
-    # Only execute if we found operations
-    if len(code_lines) <= 1:
-        return None
-    
-    code_lines.append('print(f"ANSWER: {balance}")')
-    code = '\n'.join(code_lines)
-    
-    try:
-        output = tools.python(code)
-        ans = _extract_answer_from_stdout(output)
-        if ans:
-            return ans
-    except:
-        pass
-    
-    return None
-
-
-def _extract_code(text):
-    """Extract Python code from markdown code blocks."""
-    pattern = r"```python\s*(.*?)\s*```"
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        return matches[0]
-    
-    pattern = r"```\s*(.*?)\s*```"
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        return matches[0]
-    
-    return ""
-
-
-def _extract_answer_from_stdout(stdout):
-    """Parse ANSWER: lines from program stdout."""
-    for line in stdout.strip().splitlines():
-        if "ANSWER:" in line.upper():
-            idx = line.upper().find("ANSWER:")
-            value = line[idx + 7:].strip()
-            value = value.split()[0] if value else ""
-            return value
-    return ""
-
-=== FILE: agents/pattern_solver_enhanced/prompts/generate_code.md ===
-Solve this problem by writing Python code.
-
-Question: {question}
-
-Write Python code that:
-1. Solves the problem correctly
-2. Prints exactly: ANSWER: <value>
-   where <value> is ONLY the numeric/text answer
-
-Provide ONLY the Python code, inside ```python and ``` markers.
-Do not explain or add text outside the code block.
-
-```python
-# Write your solution here
-```
-
-=== FILE: agents/pattern_solver_enhanced/prompts/system.md ===
-You are a Python expert. Solve problems by writing clean, executable Python code.
-Always:
-1. Write code that prints exactly: ANSWER: <value>
-2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
-3. Your code must be runnable and produce no errors.
-4. Use standard libraries only (math, itertools, etc.)
-
----
-
-## Candidate 2: classifier_template_solver
-
-=== FILE: agents/classifier_template_solver/harness.py ===
-"""
-Classifier-template solver: Use LLM to classify problem type, then apply deterministic templates.
-Axis: F (model usage: model-based type classification), A (prompt: classification-first architecture).
-More general than hardcoded regex; cheaper than full code gen when classification succeeds.
-Falls back to full code generation if classification fails.
-"""
+=== FILE: agents/gentle_python_trust/harness.py ===
+"""Gentle Python trust: soft guidance that Python is authoritative, minimal structure."""
 
 import re
 
 
 def solve(question, llm, tools, files):
     system = files.get("prompts/system.md", "")
+    prompt = files["prompts/task.md"].replace("{question}", question)
+    reply = llm(prompt, system=system)
     
-    # Turn 1: Classify problem type (cheap LLM call)
-    classify_prompt = files["prompts/classify.md"].replace("{question}", question)
-    classify_response = llm(classify_prompt, system=system)
-    problem_type = classify_response.strip().lower().split()[0]  # Take first word only
-    
-    # Turn 2: Apply template based on classification
-    answer = _apply_template(problem_type, question, tools)
-    if answer:
-        return answer
-    
-    # Fallback: Full LLM code generation (if classification didn't work)
-    code_gen_prompt = files["prompts/generate_code.md"].replace("{question}", question)
-    code_response = llm(code_gen_prompt, system=system)
-    
-    code = _extract_code(code_response)
-    if not code:
-        code = code_response
-    
-    try:
-        output = tools.python(code)
-    except Exception:
-        output = ""
-    
-    answer = _extract_answer_from_stdout(output)
-    if answer:
-        return answer
-    
-    return ""
+    return extract_answer(reply)
 
 
-def _apply_template(problem_type, question, tools):
-    """Execute a template based on classified problem type."""
+def extract_answer(text):
+    """Extract numeric answer using multiple strategies."""
     
-    if "digit_sum_factorial" in problem_type or "factorial_digit" in problem_type:
-        match = re.search(r'(\d+)!', question)
-        if match:
-            n = int(match.group(1))
-            code = f"""
-import math
-result = math.factorial({n})
-answer = sum(int(d) for d in str(result))
-print(f"ANSWER: {{answer}}")
-"""
-            try:
-                output = tools.python(code)
-                ans = _extract_answer_from_stdout(output)
-                if ans:
-                    return ans
-            except:
-                pass
+    # Strategy 1: Look for "ANSWER: <value>" pattern (most reliable)
+    match = re.search(r'ANSWER\s*:\s*(-?\d+(?:[.,]\d+)*)', text, re.IGNORECASE)
+    if match:
+        return clean_number(match.group(1))
     
-    elif "power_digit" in problem_type or "digit_sum_power" in problem_type:
-        match = re.search(r'(\d+)\^(\d+)', question)
-        if match:
-            base, exp = int(match.group(1)), int(match.group(2))
-            code = f"""
-result = {base}**{exp}
-answer = sum(int(d) for d in str(result))
-print(f"ANSWER: {{answer}}")
-"""
-            try:
-                output = tools.python(code)
-                ans = _extract_answer_from_stdout(output)
-                if ans:
-                    return ans
-            except:
-                pass
+    # Strategy 2: Look for bold numbers like **123** - take the last one
+    bold_matches = re.findall(r'\*\*(-?\d+(?:[.,]\d+)*)\*\*', text)
+    if bold_matches:
+        return clean_number(bold_matches[-1])
     
-    elif "modulo" in problem_type or "mod" in problem_type:
-        match = re.search(r'(\d+)\s+mod\s+(\d+)', question)
-        if match:
-            n, mod = int(match.group(1)), int(match.group(2))
-            code = f'print(f"ANSWER: {{{n} % {mod}}}")'
-            try:
-                output = tools.python(code)
-                ans = _extract_answer_from_stdout(output)
-                if ans:
-                    return ans
-            except:
-                pass
-    
-    elif "bit_count" in problem_type or "1_bits" in problem_type or "binary" in problem_type:
-        match = re.search(r'(\d+)\^(\d+)', question)
-        if match:
-            base, exp = int(match.group(1)), int(match.group(2))
-            code = f"""
-n = {base}**{exp}
-answer = bin(n).count('1')
-print(f"ANSWER: {{answer}}")
-"""
-            try:
-                output = tools.python(code)
-                ans = _extract_answer_from_stdout(output)
-                if ans:
-                    return ans
-            except:
-                pass
-    
-    elif "ledger" in problem_type or "arithmetic" in problem_type or "balance" in problem_type:
-        ans = _try_pattern_ledger(question, tools)
-        if ans:
-            return ans
-    
-    # Unknown type or template failed; return None to trigger fallback
-    return None
-
-
-def _try_pattern_ledger(question, tools):
-    """
-    Parse ledger-style multi-operation arithmetic.
-    Recognizes: "starts at X", then "Add Y", "subtract Z", "N payments of M", etc.
-    """
-    q = question.lower()
-    
-    # Extract starting balance
-    match = re.search(r'(?:starts?\s+at|begins?\s+at|balance[:\s]*)\s*(\d+)', q)
-    if not match:
-        return None
-    
-    starting = int(match.group(1))
-    code_lines = [f"balance = {starting}"]
-    
-    # Extract all operations
-    operations = re.findall(
-        r'\b(add|subtract|plus|minus)\s+(.*?)(?=\b(?:add|subtract|plus|minus|and)|\.$)',
-        question,
-        re.IGNORECASE | re.DOTALL
-    )
-    
-    for op, operand in operations:
-        op_lower = op.lower()
-        sign = '+' if op_lower in ['add', 'plus'] else '-'
-        
-        numbers = re.findall(r'\d+', operand)
-        
-        if len(numbers) == 0:
+    # Strategy 3: Look for standalone numbers at the end of lines
+    lines = text.strip().split('\n')
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
             continue
-        elif len(numbers) == 1:
-            value = numbers[0]
-        else:
-            value = f"({numbers[0]} * {numbers[1]})"
-        
-        code_lines.append(f"balance {sign}= {value}")
+        # Extract number at or near end of line (allow some trailing text)
+        match = re.search(r'(-?\d+(?:[.,]\d+)*)\s*(?:\)|\.)?$', line)
+        if match:
+            return clean_number(match.group(1))
     
-    if len(code_lines) <= 1:
-        return None
-    
-    code_lines.append('print(f"ANSWER: {balance}")')
-    code = '\n'.join(code_lines)
-    
-    try:
-        output = tools.python(code)
-        ans = _extract_answer_from_stdout(output)
-        if ans:
-            return ans
-    except:
-        pass
-    
-    return None
-
-
-def _extract_code(text):
-    """Extract Python code from markdown code blocks."""
-    pattern = r"```python\s*(.*?)\s*```"
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        return matches[0]
-    
-    pattern = r"```\s*(.*?)\s*```"
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        return matches[0]
+    # Fallback: return last non-empty line
+    for line in reversed(lines):
+        if line.strip():
+            return line.strip()
     
     return ""
 
 
-def _extract_answer_from_stdout(stdout):
-    """Parse ANSWER: lines from program stdout."""
-    for line in stdout.strip().splitlines():
-        if "ANSWER:" in line.upper():
-            idx = line.upper().find("ANSWER:")
-            value = line[idx + 7:].strip()
-            value = value.split()[0] if value else ""
-            return value
+def clean_number(s):
+    """Remove commas and spaces from numeric string."""
+    return s.replace(',', '').replace(' ', '')
+
+=== FILE: agents/gentle_python_trust/prompts/system.md ===
+You are a helpful assistant that solves problems accurately.
+
+For numeric problems:
+- Use Python code to perform calculations
+- Trust the Python output as your source of truth
+- Show your reasoning clearly
+- Provide your final numeric answer in clear format
+
+Python is reliable—use it and trust it.
+
+=== FILE: agents/gentle_python_trust/prompts/task.md ===
+{question}
+
+Solve this step-by-step using Python for all arithmetic. Show your work, then provide your final numeric answer clearly.
+
+=== FILE: agents/python_priority_extraction/harness.py ===
+"""Python-priority extraction: extract values from code-output patterns first."""
+
+import re
+
+
+def solve(question, llm, tools, files):
+    system = files.get("prompts/system.md", "")
+    prompt = files["prompts/task.md"].replace("{question}", question)
+    reply = llm(prompt, system=system)
+    
+    return extract_answer(reply)
+
+
+def extract_answer(text):
+    """Extract numeric answer, prioritizing code-output patterns."""
+    
+    # Strategy 1: Lines with "descriptor: value" pattern (typical Python output)
+    # Look for patterns like "result: 144", "sum: 82", "answer: 56", etc.
+    # These usually appear early in response (from Python print statements)
+    matches = re.findall(
+        r'(?:result|sum|total|value|computed|output|answer|digit|final|remainder)[\s\w]*:\s*(-?\d+(?:[.,]\d+)*)',
+        text,
+        re.IGNORECASE
+    )
+    if matches:
+        # Take the first occurrence (usually from Python output)
+        return clean_number(matches[0])
+    
+    # Strategy 2: Look for "ANSWER: <value>" pattern
+    match = re.search(r'ANSWER\s*:\s*(-?\d+(?:[.,]\d+)*)', text, re.IGNORECASE)
+    if match:
+        return clean_number(match.group(1))
+    
+    # Strategy 3: Look for bold numbers like **123** - take the last one
+    bold_matches = re.findall(r'\*\*(-?\d+(?:[.,]\d+)*)\*\*', text)
+    if bold_matches:
+        return clean_number(bold_matches[-1])
+    
+    # Strategy 4: Look for standalone numbers at the end of lines
+    lines = text.strip().split('\n')
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:
+            continue
+        # Extract number at or near end of line
+        match = re.search(r'(-?\d+(?:[.,]\d+)*)\s*(?:\)|\.)?$', line)
+        if match:
+            return clean_number(match.group(1))
+    
+    # Fallback: return last non-empty line
+    for line in reversed(lines):
+        if line.strip():
+            return line.strip()
+    
     return ""
 
-=== FILE: agents/classifier_template_solver/prompts/classify.md ===
-Analyze this problem and classify its TYPE. Respond with ONLY the type name (one word or underscore-separated).
 
-Question: {question}
+def clean_number(s):
+    """Remove commas and spaces from numeric string."""
+    return s.replace(',', '').replace(' ', '')
 
-Problem types:
-- digit_sum_factorial: Sum of digits of N!
-- power_digit_sum: Sum of digits of base^exponent
-- modulo: N mod M operation
-- bit_count: Count of 1-bits in binary representation
-- ledger_arithmetic: Multi-operation arithmetic (add, subtract, deposits, payments)
-- unknown: Doesn't fit above categories
+=== FILE: agents/python_priority_extraction/prompts/system.md ===
+You are a helpful assistant that solves problems accurately.
 
-Type:
+When solving numeric problems:
+- Write Python code to perform all calculations
+- Show the code and its output clearly
+- State your result in the form "result: <value>" or let the Python output be clear
+- Provide your final numeric answer
 
-=== FILE: agents/classifier_template_solver/prompts/generate_code.md ===
-Solve this problem by writing Python code.
+Show your work step-by-step, then provide the final answer clearly.
 
-Question: {question}
+=== FILE: agents/python_priority_extraction/prompts/task.md ===
+{question}
 
-Write Python code that:
-1. Solves the problem correctly
-2. Prints exactly: ANSWER: <value>
-   where <value> is ONLY the numeric/text answer
-
-Provide ONLY the Python code, inside ```python and ``` markers.
-Do not explain or add text outside the code block.
-
-```python
-# Write your solution here
-```
-
-=== FILE: agents/classifier_template_solver/prompts/system.md ===
-You are a Python expert. Solve problems by writing clean, executable Python code.
-Always:
-1. Write code that prints exactly: ANSWER: <value>
-2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
-3. Your code must be runnable and produce no errors.
-4. Use standard libraries only (math, itertools, etc.)
+Solve this step-by-step. Use Python code for all arithmetic operations. Show the code output clearly. Then state your final numeric answer.

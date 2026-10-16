@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-003",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer \"NameError: name 'filtered' is not defined. Did you mean: 'filter'?\"; expected '2379.20'.",
+  "output": "NameError: name 'filtered' is not defined. Did you mean: 'filter'?",
+  "tokens": 17529,
+  "cost_usd": 0.073509,
+  "steps": 5,
+  "latency_s": 77.16894054412842,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 4
+  }
+ }
+]

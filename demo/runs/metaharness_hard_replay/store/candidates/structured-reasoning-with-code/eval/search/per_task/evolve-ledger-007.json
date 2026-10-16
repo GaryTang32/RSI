@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-007",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Highest net amount: Delta').",
+  "output": "Highest net amount: Delta",
+  "tokens": 13184,
+  "cost_usd": 0.049632,
+  "steps": 2,
+  "latency_s": 0.03022146224975586,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

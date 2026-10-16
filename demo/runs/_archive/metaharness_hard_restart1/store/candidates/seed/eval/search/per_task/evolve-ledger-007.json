@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-007",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- T1054 (Jul 4): \u20ac3,287.94 = $3,514.42 (PAID)'; expected 'Delta'.",
+  "output": "- T1054 (Jul 4): \u20ac3,287.94 = $3,514.42 (PAID)",
+  "tokens": 14605,
+  "cost_usd": 0.059545,
+  "steps": 1,
+  "latency_s": 0.003129243850708008,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]
