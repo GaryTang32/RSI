@@ -2,6 +2,7 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 from rsi.core.sandbox import SCRATCH_PLACEHOLDER, call_function, run_python
 
@@ -33,8 +34,10 @@ def test_symlinked_scratch_is_replaced_whatever_the_hash_seed():
             "rr = _stable_paths(RunResult(1, '', 'File \"/private/tmp/rsi_sbx_k3/_rsi_main.py\"', 0.0, False), "
             "'/tmp/rsi_sbx_k3')\n"
             "print(rr.stderr)\n")
-    outs = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True,
-                           env={**os.environ, "PYTHONHASHSEED": str(seed)}).stdout.strip()
+    root = str(Path(__file__).resolve().parents[2])     # this checkout, importable and not shadowed from any cwd
+    path = os.pathsep.join(p for p in (root, os.environ.get("PYTHONPATH")) if p)
+    outs = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=root,
+                           env={**os.environ, "PYTHONHASHSEED": str(seed), "PYTHONPATH": path}).stdout.strip()
             for seed in range(8)}
     assert outs == {f'File "{SCRATCH_PLACEHOLDER}/_rsi_main.py"'}
 

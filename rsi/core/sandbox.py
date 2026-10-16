@@ -110,8 +110,9 @@ def close_sandboxes() -> int:
     me = os.getpid()
     with _LIVE_LOCK:
         _CLOSED.add(me)
-        groups = {g for owner, g in _LIVE_GROUPS if owner == me}
-        dirs = [d for owner, d in _LIVE_DIRS if owner == me]
+        # copies (one C call each): an unlocked discard (see _mkscratch) may change the sets meanwhile
+        groups = {g for owner, g in _LIVE_GROUPS.copy() if owner == me}
+        dirs = [d for owner, d in _LIVE_DIRS.copy() if owner == me]
     for g in groups:
         _killpg(g)
     for d in dirs:
@@ -187,7 +188,8 @@ def _mkscratch(prefix: str) -> str:
         except BaseException:
             # failed, or a signal surfacing at the lock's release: remove what may have been made first (it stays
             # registered until it is gone), then forget it. Not under the lock: under a tracer (pdb) a signal can
-            # surface here while this thread still holds it, and set.discard needs no lock
+            # surface here while this thread still holds it. A single set.discard is atomic, and close_sandboxes
+            # iterates a copy, so this needs no lock
             if state == "made":
                 shutil.rmtree(d, ignore_errors=True)
             _LIVE_DIRS.discard((me, d))

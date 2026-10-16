@@ -506,3 +506,25 @@ t.join(10)
 print(out[0] if out else 'hung', len(sandbox._LIVE_DIRS))
 """
     assert _inner(code, tmp_path) == "interrupted 0"
+
+
+def test_close_sandboxes_iterates_a_copy_of_the_registry(tmp_path):
+    """_mkscratch's cleanup discards from the registry without the lock: close_sandboxes must not iterate the
+    live set while that can happen (it raised 'Set changed size during iteration')."""
+    code = r"""
+from rsi.core import sandbox
+class Live(set):
+    def __iter__(self):
+        it = super().__iter__()
+        first = next(it)
+        self.discard(first)            # as another thread's unlocked discard would, mid-iteration
+        yield first
+        yield from it
+sandbox._LIVE_DIRS = Live({(1, '/nonexistent/a'), (1, '/nonexistent/b')})
+try:
+    sandbox.close_sandboxes()
+    print('ok')
+except RuntimeError as e:
+    print('RuntimeError', e)
+"""
+    assert _inner(code, tmp_path) == "ok"

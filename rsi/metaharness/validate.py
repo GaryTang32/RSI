@@ -14,10 +14,8 @@
 from __future__ import annotations
 
 import ast
-import functools
 import itertools
 import os
-import sys
 import threading
 import time
 import traceback
@@ -73,33 +71,28 @@ class InterfaceValidator:
         # Every signal is blocked in this thread across the fork, so the child gets none until its own handlers
         # are in place, inside its try, which always ends in os._exit: no handler of the parent's ever runs there.
         # In the parent a stop signal can be handled at almost any point (another thread may take it), so the pipe
-        # and the child are stored with no gap after they are made, a stop handled inside an after-fork hook (where
-        # Python would drop it) is kept and raised, and the cleanup is idempotent and retried until done.
+        # and the child are stored, and the write end popped and closed, with no bytecode in between, and the cleanup
+        # is idempotent and retried until done. Known limit: a stop that another thread takes during the fork can be
+        # handled inside another library's after-fork hook, where Python reports it as 'Exception ignored' and drops
+        # it (rare, and only with other Python threads running); pressing Ctrl-C again stops the run. Nothing here
+        # changes process-wide state (handlers, hooks): only this thread's signal mask, for the fork.
         mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
         fds: list[int] = []
         pids: list[int] = []
-        held: list[BaseException] = []
         done, err, deadline = False, None, 0.0
         inflight: dict[int, int] = {}
         try:
             signal.pthread_sigmask(signal.SIG_BLOCK, signal.valid_signals())
             # extend() stores what the call returns from C, before any bytecode could run a signal handler
             fds.extend(itertools.chain.from_iterable(itertools.starmap(os.pipe, [()])))
-            prev_hook, hook = sys.unraisablehook, functools.partial(_hold_stop, held, sys.unraisablehook)
-            sys.unraisablehook = hook
-            try:
-                pids.extend(itertools.starmap(os.fork, [()]))
-            finally:
-                sys.unraisablehook = prev_hook
+            pids.extend(itertools.starmap(os.fork, [()]))
             if pids[0] == 0:                                  # child
                 try:
                     self._child(domain, artifact, llm, fds[0], fds[1], mask)
                 finally:
                     os._exit(1)
-            os.close(fds.pop())          # the write end (a signal between the pop and the close leaks it, at worst)
+            _pop_close(fds)                                   # the write end
             _c_sigmask(signal.SIG_SETMASK, mask)   # sets the mask, then runs what is pending
-            if held:
-                raise held[0]
             r = fds[0]
             deadline = time.monotonic() + self.timeout_s
             while not done:
@@ -124,18 +117,19 @@ class InterfaceValidator:
                         done, err = True, msg[1]
         finally:
             # a second stop signal can land here too (Ctrl-C twice, or Ctrl-C then a kill): each step is idempotent,
-            # so the cleanup is retried, with less grace for the child each time, until it completes; the first
-            # such interruption is raised afterwards (no call before the try: nothing can run a handler there)
-            first = None
-            for grace in (2.0, 0.5, 0.0, 0.0, 0.0):
+            # so the cleanup is retried, with less grace for the child each time; nested, so that every point where
+            # a pending handler can run is inside a try. The first interruption is raised afterwards
+            try:
+                _cleanup_fork(fds, pids, mask, 2.0)
+            except BaseException:
                 try:
-                    _cleanup_fork(fds, pids, mask, grace)
-                    break
-                except BaseException as e:  # noqa: BLE001
-                    if first is None:
-                        first = e
-            if first is not None:
-                raise first
+                    _cleanup_fork(fds, pids, mask, 0.5)
+                except BaseException:
+                    try:
+                        _cleanup_fork(fds, pids, mask, 0.0)
+                    except BaseException:
+                        _cleanup_fork(fds, pids, mask, 0.0)
+                raise
         if not done:
             if time.monotonic() >= deadline:
                 err = f"smoke timed out after {self.timeout_s}s"
@@ -186,15 +180,10 @@ class InterfaceValidator:
                 os._exit(0)
 
 
-def _hold_stop(held: list, prev, unraisable) -> None:
-    """``sys.unraisablehook`` while forking: a stop signal handled inside an after-fork hook raises there, where
-    Python reports it as 'Exception ignored' and drops it. Keep it instead, to raise once the fork is done; pass
-    anything else on. (A process another thread forks meanwhile inherits this hook: there it only keeps such an
-    exception unprinted, since an unraisable one is never raised anyway.)"""
-    if isinstance(unraisable.exc_value, (KeyboardInterrupt, SystemExit)):
-        held.append(unraisable.exc_value)
-    else:
-        prev(unraisable)
+def _pop_close(fds: list) -> None:
+    """Close and forget the last fd in ``fds``, with no bytecode between the pop and the close (both run from C),
+    so a signal handled in between can neither leak it nor make a retry close it twice."""
+    next(map(os.close, map(list.pop, [fds])))
 
 
 def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
@@ -203,7 +192,7 @@ def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
     import signal
     _c_sigmask(signal.SIG_SETMASK, mask)
     while fds:
-        os.close(fds.pop())
+        _pop_close(fds)
     if pids and pids[0] > 0:
         _stop_child(pids[0], grace_s)
         pids.clear()
