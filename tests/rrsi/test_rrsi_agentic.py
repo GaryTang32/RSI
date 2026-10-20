@@ -1,14 +1,5 @@
-"""Retry round 2 (claims M4, M28): the released code's agentic protocols, ported in ``rsi.rrsi.agentic``.
-
-* self-contained protocol tests (always run): the JSON action proposer's done() contract, bounces, caps
-  and in-memory workspace; the agentic analyst's digest_many / report loop and the read-only digester tools;
-  an end-to-end RRSI run with ``proposer_protocol="json_actions"`` and ``analyst="agentic"``;
-* differential tests against the reference implementation (``google-research/rrsi@be50316``, imported from
-  ``$RRSI_REF_SRC``; skipped when it is not on disk): the same scripted replies must give the same prompts,
-  system prompts, interaction logs, file results, statuses, digests and reports.
-
-Every test here fails on the pre-retry code, which had no ``rsi.rrsi.agentic`` and no such Config options.
-"""
+"""The released code's agentic protocols (``rsi.rrsi.agentic``): JSON action proposer, agentic analyst, and
+differential tests against google-research/rrsi@be50316 from ``$RRSI_REF_SRC`` (skipped when absent)."""
 import importlib
 import json
 import os
@@ -24,6 +15,8 @@ from rsi.rrsi.agentic import (ANALYST_SYSTEM_TMPL, JSON_SUFFIX, AgenticAnalyst, 
 from rsi.rrsi.analyst import render_trace, task_row
 from rsi.rrsi.components import Taxonomy
 from rsi.rrsi.evaluate import TaskResult, aggregate
+
+from rrsi_helpers import ACCEPT
 
 REF = os.environ.get("RRSI_REF_SRC", "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/"
                                      "src/google-research__rrsi")
@@ -63,24 +56,15 @@ SCRIPT = [
 ]
 
 
-def _proposer(llm, K=None):
-    tax = Taxonomy(K or ["prompt", "control_flow", "client_tool"], ["client_tool"])
-    return JsonActionProposer(llm, tax, Config(), domain_brief=BRIEF, constitution=("SKILL", "PATTERNS"))
-
-
-def _scripted(script):
+def _run_ours(script):
     it = iter(script)
-    return MockLLM(lambda prompt, system, seed, i: next(it))
-
-
-def _run_ours(script, **kw):
-    llm = _scripted(script)
-    prop = _proposer(llm)
-    base = Artifact(dict(FILES))
-    out = prop.propose(base, budget=2, explore={"text": "explore text", "untried": ["client_tool"]},
+    llm = MockLLM(lambda prompt, system, seed, i: next(it))
+    tax = Taxonomy(["prompt", "control_flow", "client_tool"], ["client_tool"])
+    prop = JsonActionProposer(llm, tax, Config(), domain_brief=BRIEF, constitution=("SKILL", "PATTERNS"))
+    out = prop.propose(Artifact(dict(FILES)), budget=2, explore={"text": "explore text", "untried": ["client_tool"]},
                        reserved=False, prune_set=[], report={"failure_modes": []}, history_rows=[{"t": 0}],
                        scoreboard=[], digests=DIGESTS, variant_brief="You are variant A.", traces=TRACES,
-                       task_means=MEANS, capture=True, **kw)
+                       task_means=MEANS, capture=True)
     return out, llm
 
 
@@ -98,7 +82,7 @@ def test_json_action_protocol_contract_and_workspace():
                      "3 edits exceed the budget b_t = 2", "not in ['prompt', 'control_flow', 'client_tool']",
                      "ERROR: no trace for nope", "[step 2] wrote X", "=== GRADING / VERIFIER ==="):
         assert expected in log, expected
-    assert "[step 1] read" not in log.split('"from_step": 2')[1].split("[you]")[0]   # the step filter
+    assert "[step 1] read" not in log.split('"from_step": 2')[1].split("[you]")[0]
     assert llm.calls[0]["system"].endswith(JSON_SUFFIX)
     assert llm.calls[0]["prompt"].startswith("=== CONSTITUTION (SKILL.md) ===\n\nSKILL")
 
@@ -160,7 +144,6 @@ def test_agentic_analyst_digests_with_read_only_tools_and_reports(tmp_path):
     assert '"mode": "old"' in last
 
 
-# ---------------------------------------------------------------------------------- end to end in the loop
 def _toy_domain():
     tasks = [Task(f"t{i}", {"x": i}, str(i * 2), "dbl") for i in range(12)]
     suite = TaskSuite(tasks, {"evolve": [f"t{i}" for i in range(8)], "holdout": [f"t{i}" for i in range(8, 12)]})
@@ -183,7 +166,7 @@ def _loop_responder(prompt, system, seed, i):
                  "predicted_affected": ["t1"], "retroactive_check": "(corrective) t1 moves"}]})
         return json.dumps({"action": "edit_file", "path": "factor.txt", "old": "1", "new": "2"})
     if "strict reviewer of harness" in s:
-        return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
+        return ACCEPT
     return _analyst_responder(prompt, system, seed, i).replace('"t1"', '"t0"').replace('"t2"', '"t1"')
 
 
@@ -201,7 +184,6 @@ def test_loop_runs_with_json_actions_proposer_and_agentic_analyst(tmp_path):
             out_dir=tmp_path / "bad")
 
 
-# ---------------------------------------------------------------------------------- differential vs reference
 def _ref():
     if not Path(REF, "rrsi", "propose.py").exists():
         pytest.skip(f"reference code not found at {REF} (set RRSI_REF_SRC)")
@@ -245,7 +227,7 @@ def test_json_action_proposer_matches_the_reference_turn_by_turn(tmp_path, monke
         (hdir / p).write_text(t)
     per_task = {t: RE.TaskResult(rewards=[m]) for t, m in MEANS.items()}
     orig_K = list(RP.K)
-    RP.K[:] = ["prompt", "control_flow", "client_tool"]                   # the same K for both (restored below)
+    RP.K[:] = ["prompt", "control_flow", "client_tool"]                   # the same K as ours
     try:
         ref = RP.propose(_RefDomain, hdir, {"failure_modes": []}, [{"t": 0}], "SKILL", "PATTERNS", 2,
                          {"text": "explore text", "untried": ["client_tool"]}, False, [], traces=TRACES,
@@ -278,9 +260,8 @@ def test_agentic_analyst_matches_the_reference(tmp_path, monkeypatch):
         TRACES, meas, prior={"failure_modes": prior_modes, "success_habits": []}, workdir=tmp_path / "ours")
     assert {k: v for k, v in ours.items() if k != "analyst"} == ref_rep
     assert digests == RA.load_digests(tmp_path / "ref")
-    key = lambda c: (c["system"][:40], c["prompt"])                        # noqa: E731 (parallel digests: any order)
-    ours_c = sorted(({"system": c["system"], "prompt": c["prompt"]} for c in llm.calls), key=key)
-    ref_c = sorted(({"system": c["system"] + JSON_SUFFIX, "prompt": c["prompt"]} for c in ref_calls), key=key)
+    ours_c = sorted((c["system"], c["prompt"]) for c in llm.calls)                # parallel digests: any order
+    ref_c = sorted((c["system"] + JSON_SUFFIX, c["prompt"]) for c in ref_calls)
     assert ours_c == ref_c
     for p in (tmp_path / "ref" / "analysis" / "rendered").iterdir():
         assert (tmp_path / "ours" / "analysis" / "rendered" / p.name).read_text() == p.read_text()
