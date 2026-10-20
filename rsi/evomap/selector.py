@@ -1,26 +1,4 @@
-"""Gene scoring and selection (spec §3.3, §4.2, §4.3, §4.5).
-
-:class:`GeneScorer`
-    ``mode="spec"``: score = #matching ``signals_match`` patterns.
-    ``mode="current"``: base = hits + 0.6*tag + 0.4*cosine (tag = |geneTags ∩
-    expandSignals(signals)|), adj = learning history (+0.12 success, -0.22 hard,
-    -0.08 soft over the last 8) + epigenetic boost - anti-pattern penalties
-    (0.4 hard / 0.18 soft over the last 6 that share a learning signal),
-    clamped to [-1.5, 1.5]; distilled genes x0.8.
-
-:func:`drift_intensity`
-    I = min(1, 1/sqrt(Ne) + offset) with maturity-dependent offset when drift is
-    on (0.7 for Ne <= 1), I = min(1, 1/sqrt(Ne)) otherwise; plateau raises I to
-    0.7 / 1.0. With probability I the selector picks uniformly among the top
-    n = min(|cands|, max(2, ceil(|cands|*I))).
-
-:class:`GeneSelector`
-    bans = memory-graph bans ∪ failed-capsule bans (>= 2 failed capsules whose
-    trigger overlaps the signals >= 0.6) ∪ ``ban_gene:<id>`` signals; forced
-    gene; preferred gene x1.5 (not on a plateau); epigenetic suppression
-    (boost <= -0.3 in this environment); distilled fallback; capsule chosen by
-    trigger match independently of the gene.
-"""
+"""Gene scoring, drift and selection with memory, failed-capsule and epigenetic bans (spec §3.3, §4.2-4.5)."""
 from __future__ import annotations
 
 import math
@@ -31,7 +9,7 @@ from typing import Optional, Sequence
 
 from .assets import Capsule, Gene
 from .memory import Advice
-from .signals import (PlateauOverride, cosine, expand_signals, match_pattern, pattern_hits, tokens)
+from .signals import PlateauOverride, cosine, expand_signals, match_pattern, pattern_hits, tokens
 
 EPIGENETIC_HARD_BOOST = -0.3
 DISTILLED_FACTOR = 0.8
@@ -55,30 +33,33 @@ def suppressed(g: Gene, env: Optional[str]) -> bool:
     return epigenetic_boost(g, env) <= EPIGENETIC_HARD_BOOST
 
 
+def _semantic(g: Gene, signals: Sequence[str]) -> float:
+    return cosine(tokens(" ".join(signals)), tokens(" ".join([*g.signals_match, g.summary, g.id])))
+
+
 class GeneScorer:
+    """``spec``: number of matching patterns. ``current`` (Evolver): hits + 0.6 tags + w cosine, plus learning
+    history, epigenetic boost and anti-pattern penalties clamped to [-1.5, 1.5]; distilled genes x0.8."""
+
     def __init__(self, mode: str = "current", semantic_weight: float = 0.4, require_match: bool = True) -> None:
         self.mode = mode
         self.w_sem = semantic_weight
-        #: port deviation (documented): a gene with no pattern hit and no token overlap scores 0, so tag
-        #: overlap or learning history alone cannot make an irrelevant gene a candidate. False = engine rule.
+        # our deviation: without a pattern hit or token overlap a gene scores 0 (False = engine rule)
         self.require_match = require_match
 
     def relevant(self, g: Gene, signals: Sequence[str]) -> bool:
         if pattern_hits(g.signals_match, signals) > 0:
             return True
-        return self.mode == "current" and cosine(tokens(" ".join(signals)),
-                                                 tokens(" ".join([*g.signals_match, g.summary, g.id]))) > 0
+        return self.mode == "current" and _semantic(g, signals) > 0
 
     def base(self, g: Gene, signals: Sequence[str]) -> float:
         hits = pattern_hits(g.signals_match, signals)
         if self.mode == "spec":
             return float(hits)
-        ex = expand_signals(signals)
-        tag = len(gene_tags(g) & ex)
+        tag = len(gene_tags(g) & expand_signals(signals))
         if not g.signals_match:
             return 0.6 * tag
-        cos = cosine(tokens(" ".join(signals)), tokens(" ".join([*g.signals_match, g.summary, g.id])))
-        return hits + 0.6 * tag + self.w_sem * cos
+        return hits + 0.6 * tag + self.w_sem * _semantic(g, signals)
 
     def adjustment(self, g: Gene, signals: Sequence[str], env: Optional[str]) -> float:
         if self.mode == "spec":
@@ -89,7 +70,7 @@ class GeneScorer:
                 adj += 0.12
             elif h.get("mode") == "hard":
                 adj -= 0.22
-            elif h.get("mode") == "soft":        # as selector.js: any other mode (none/missing) adds nothing
+            elif h.get("mode") == "soft":        # any other mode adds nothing (selector.js)
                 adj -= 0.08
         adj += epigenetic_boost(g, env)
         ex = expand_signals(signals)
@@ -101,14 +82,14 @@ class GeneScorer:
     def score(self, g: Gene, signals: Sequence[str], env: Optional[str] = None) -> float:
         if self.require_match and not self.relevant(g, signals):
             return 0.0
-        b = self.base(g, signals)
-        s = b + self.adjustment(g, signals, env)
+        s = self.base(g, signals) + self.adjustment(g, signals, env)
         if s > 0 and g.id.startswith("gene_distilled_"):
             s *= DISTILLED_FACTOR
         return s
 
 
 def drift_intensity(ne: int, drift_enabled: bool, memory_evidence: int = 0) -> float:
+    """I = min(1, 1/sqrt(Ne) + offset), offset shrinking with memory maturity when drift is on (§4.3)."""
     if drift_enabled:
         if ne <= 1:
             return 0.7
@@ -120,19 +101,17 @@ def drift_intensity(ne: int, drift_enabled: bool, memory_evidence: int = 0) -> f
 
 def ban_from_failed_capsules(failed: Sequence[dict], signals: Sequence[str], min_overlap: float = 0.6,
                              min_count: int = 2, successes: Optional[dict] = None) -> set[str]:
-    """Genes with >= ``min_count`` failed capsules whose trigger overlaps the signals >= 0.6.
-    ``successes`` (gene -> successful solidifies) switches on the *relative* variant used in
-    safe mode: the failures must also outnumber the gene's successes (stochastic graders)."""
+    """Genes with >= ``min_count`` failed capsules overlapping the signals; with ``successes`` the failures
+    must also outnumber the gene's successes (safe mode, stochastic graders)."""
     sig = set(signals)
+    if not sig:
+        return set()
     counts: dict = {}
     for fc in failed:
         trig = set(fc.get("trigger") or fc.get("learning_signals") or [])
-        if not sig:
-            continue
-        if len(sig & trig) / len(sig) >= min_overlap:
-            gid = fc.get("gene")
-            if gid:
-                counts[gid] = counts.get(gid, 0) + 1
+        gid = fc.get("gene")
+        if len(sig & trig) / len(sig) >= min_overlap and gid:
+            counts[gid] = counts.get(gid, 0) + 1
     return {g for g, n in counts.items() if n >= min_count and (successes is None or n > successes.get(g, 0))}
 
 
@@ -160,10 +139,11 @@ class GeneSelector:
         self.distilled_fallback = distilled_fallback
 
     def select(self, genes: Sequence[Gene], capsules: Sequence[Capsule], signals: Sequence[str], *,
-               advice: Optional[Advice] = None, failed_capsules: Sequence[dict] = (), rng: Optional[random.Random] = None,
-               drift_enabled: bool = False, plateau: Optional[PlateauOverride] = None, env: Optional[str] = None,
-               forced_gene_id: Optional[str] = None, capability_gaps: Sequence[str] = (),
-               novelty: float = 1.0, gene_successes: Optional[dict] = None) -> SelectorDecision:
+               advice: Optional[Advice] = None, failed_capsules: Sequence[dict] = (),
+               rng: Optional[random.Random] = None, drift_enabled: bool = False,
+               plateau: Optional[PlateauOverride] = None, env: Optional[str] = None,
+               forced_gene_id: Optional[str] = None, capability_gaps: Sequence[str] = (), novelty: float = 1.0,
+               gene_successes: Optional[dict] = None) -> SelectorDecision:
         rng = rng or random.Random(0)
         advice = advice if (advice is not None and self.use_memory) else Advice()
         bans = set(advice.banned_gene_ids)
@@ -187,10 +167,10 @@ class GeneSelector:
         scored.sort(key=lambda x: (-x[1], x[0].id))
         if not scored:
             if self.distilled_fallback:
-                for g in genes:
-                    if g.id.startswith("gene_distilled_") and g.id not in bans and not suppressed(g, env):
-                        dec.gene, dec.mode = g, "distilled_fallback"
-                        break
+                dec.gene = next((g for g in genes if g.id.startswith("gene_distilled_") and g.id not in bans
+                                 and not suppressed(g, env)), None)
+                if dec.gene is not None:
+                    dec.mode = "distilled_fallback"
             dec.capsule = self.best_capsule(capsules, signals)
             return dec
         plateau_active = bool(plateau and plateau.active)
@@ -211,6 +191,7 @@ class GeneSelector:
             I = max(I, 1.0 if plateau.severity == "required" else 0.7)
         dec.drift_intensity = I
         idx, mode = 0, "selection"
+        # with probability I pick among the top n = max(2, ceil(|cands| * I))
         if I > 0 and len(cands) > 1 and rng.random() < I:
             n = min(len(cands), max(2, math.ceil(len(cands) * I)))
             gaps = list(capability_gaps)[:5]

@@ -1,20 +1,4 @@
-"""JSON Schema validation against the GEP 1.14.0 schemas (spec §5).
-
-``jsonschema`` is not a dependency, so :class:`JsonSchemaValidator` implements
-the Draft-07 subset the four GEP schemas use: ``type`` (incl. unions), ``const``,
-``enum``, ``required``, ``properties``, ``additionalProperties: false``,
-``items``, ``min/maxItems``, ``min/maxLength``, ``pattern``, ``minimum`` /
-``maximum`` and ``allOf`` with ``if``/``then``/``else``.
-
-Two modes:
-
-* ``strict=True`` - the schema as published (``additionalProperties: false``).
-  Engine-written objects fail it in the same places the spec documents
-  ("schema/engine drift": ``avoid``, object-valued ``epigenetic_marks``,
-  string ``diff``/``content`` ...).
-* ``strict=False`` - extra properties allowed and the known drift fields
-  tolerated; used by hubs, which accept the engine's objects.
-"""
+"""Validator for the Draft-07 subset used by the GEP 1.14.0 JSON schemas (``jsonschema`` is not a dependency)."""
 from __future__ import annotations
 
 import json
@@ -26,8 +10,9 @@ from typing import Any
 SCHEMA_DIR = Path(__file__).parent / "schemas"
 KIND_FILES = {"Gene": "gene.schema.json", "Capsule": "capsule.schema.json",
               "EvolutionEvent": "evolution-event.schema.json", "Mutation": "mutation.schema.json"}
-#: fields the engine writes with a different type than the strict schema (spec §5 "schema/engine drift")
-DRIFT_FIELDS = {"Gene": {"epigenetic_marks"}, "Capsule": {"content", "diff"}, "EvolutionEvent": set(), "Mutation": set()}
+# fields the engine writes with a different type than the strict schema (spec §5 "schema/engine drift")
+DRIFT_FIELDS = {"Gene": {"epigenetic_marks"}, "Capsule": {"content", "diff"}, "EvolutionEvent": set(),
+                "Mutation": set()}
 
 _TYPES = {
     "object": lambda v: isinstance(v, dict),
@@ -53,11 +38,9 @@ def _check(value: Any, schema: dict, path: str, errors: list[str], strict: bool)
         errors.append(f"{path}: {value!r} not in {schema['enum']}")
         return
     t = schema.get("type")
-    if t is not None:
-        types = t if isinstance(t, list) else [t]
-        if not any(_TYPES[x](value) for x in types):
-            errors.append(f"{path}: expected {t}, got {type(value).__name__}")
-            return
+    if t is not None and not any(_TYPES[x](value) for x in (t if isinstance(t, list) else [t])):
+        errors.append(f"{path}: expected {t}, got {type(value).__name__}")
+        return
     if isinstance(value, str):
         if "minLength" in schema and len(value) < schema["minLength"]:
             errors.append(f"{path}: shorter than {schema['minLength']}")
@@ -79,9 +62,7 @@ def _check(value: Any, schema: dict, path: str, errors: list[str], strict: bool)
             for i, v in enumerate(value):
                 _check(v, schema["items"], f"{path}[{i}]", errors, strict)
     if isinstance(value, dict):
-        for req in schema.get("required", []):
-            if req not in value:
-                errors.append(f"{path}: missing required {req!r}")
+        errors += [f"{path}: missing required {req!r}" for req in schema.get("required", []) if req not in value]
         props = schema.get("properties", {})
         for k, v in value.items():
             if k in props:
@@ -100,7 +81,7 @@ def _check(value: Any, schema: dict, path: str, errors: list[str], strict: bool)
 
 
 class JsonSchemaValidator:
-    """Validate an asset dict against its GEP schema (kind from ``obj["type"]``)."""
+    """Validate an asset against its GEP schema; ``strict=False`` allows extra and engine-drift fields."""
 
     def __init__(self, strict: bool = True) -> None:
         self.strict = strict
@@ -112,12 +93,8 @@ class JsonSchemaValidator:
         kind = kind or d.get("type")
         if kind not in KIND_FILES:
             return [f"unknown asset type {kind!r}"]
-        schema = load_schema(kind)
         if not self.strict:
             d = {k: v for k, v in d.items() if k not in DRIFT_FIELDS.get(kind, set())}
         errors: list[str] = []
-        _check(d, schema, "$", errors, self.strict)
+        _check(d, load_schema(kind), "$", errors, self.strict)
         return errors
-
-    def is_valid(self, obj: Any, kind: str | None = None) -> bool:
-        return not self.validate(obj, kind)

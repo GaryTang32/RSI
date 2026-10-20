@@ -1,13 +1,6 @@
-"""``run(...)``: one agent's local evolution loop on any Domain -> ImprovementResult.
-
-The artifact being improved is the agent's **gene library**, not its harness:
-``result.best`` is the seed harness plus ``genes/library.json``; evaluate it
-with :class:`~rsi.evomap.inject.GeneRoutedDomain` (see :func:`evaluate_library`),
-which routes one gene per task and injects it into the unchanged harness.
-"""
+"""``run``: one agent's local evolution loop; the improved artifact is the harness plus ``genes/library.json``."""
 from __future__ import annotations
 
-import json
 import random
 from pathlib import Path
 from typing import Optional
@@ -20,10 +13,15 @@ from .config import Config
 from .inject import GeneRoutedDomain, Injector, library_artifact
 from .signals import TaskSignalExtractor
 from .store import LocalStore
-from .tracing import eval_payload, library_fingerprint
+from .tracing import eval_payload, library_fingerprint, loop_genes
+
+
+def _zero_usage() -> dict:
+    return {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}
 
 
 def merged_usage(*llms: Optional[LLM]) -> dict:
+    """Per-role usage summed over distinct LLM objects, plus ``_total`` (cached roles excluded)."""
     out: dict = {}
     seen = set()
     for llm in llms:
@@ -31,24 +29,17 @@ def merged_usage(*llms: Optional[LLM]) -> dict:
             continue
         seen.add(id(llm))
         for role, u in llm.meter.snapshot().items():
-            if role == "_total":
-                continue
-            cur = out.setdefault(role, {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
-                                        "latency_s": 0.0, "total_tokens": 0})
-            for k in cur:
-                cur[k] += u.get(k, 0)
-    tot = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_s": 0.0, "total_tokens": 0}
+            if role != "_total":
+                cur = out.setdefault(role, _zero_usage())
+                for k in cur:
+                    cur[k] += u.get(k, 0)
+    tot = _zero_usage()
     for r, u in out.items():
-        if r.endswith(":cached"):
-            continue
-        for k in tot:
-            tot[k] += u[k]
+        if not r.endswith(":cached"):
+            for k in tot:
+                tot[k] += u[k]
     out["_total"] = tot
     return out
-
-
-def library_genes(store: LocalStore, include_auto: bool = False) -> list:
-    return [g for g in store.genes.values() if include_auto or not g.id.startswith("gene_auto_")]
 
 
 def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm_propose: Optional[LLM] = None,
@@ -56,34 +47,10 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         injector: Optional[Injector] = None, extractor: Optional[TaskSignalExtractor] = None,
         store: Optional[LocalStore] = None, executor=None, budget: Optional[Budget] = None,
         name: str = "agent0", monitor: Optional[ShadowMonitor] = None) -> ImprovementResult:
-    """Run ``config.cycles`` evolution cycles of one :class:`AgentNode` over the
-    domain's decision split and return the evolved gene library.
+    """Run ``config.cycles`` cycles of one :class:`AgentNode` over the decision split and return the gene library.
 
-    Parameters
-    ----------
-    domain, seed_artifact:
-        any rsi.core problem and the frozen harness genes are injected into.
-    llm_task:
-        the frozen model the harness uses.
-    llm_propose:
-        writes new genes from failures (and distils with ``config.llm_distill``);
-        ``None`` = reuse-only agent.
-    hub:
-        optional :class:`~rsi.evomap.hub.Hub` (``NaiveEvoMapHub`` / ``SafeHub``); ``None`` = offline.
-    injector / extractor / executor:
-        injection interface, signal extractor, validation executor (defaults:
-        ``FileInjector``, ``TaskSignalExtractor``, the domain's ``validation_executor()``
-        or a sandboxed subprocess).
-    monitor:
-        optional :class:`rsi.trace.ShadowMonitor` (by default one is attached over
-        :class:`GeneRoutedDomain` when the domain has holdout / ood splits and
-        ``config.shadow_monitor``). It scores each new library version for the trace only.
-
-    Tracing: with ``out_dir`` and ``config.trace`` every cycle is written to
-    ``out_dir/trace.jsonl`` (see :mod:`rsi.evomap.tracing`); render it with
-    ``rsi.trace.inspect(out_dir)``. Baseline and monitor rollouts are excluded from the
-    ``Budget`` usd check so tracing cannot change when the loop stops.
-    """
+    ``llm_propose=None`` gives a reuse-only agent; ``hub=None`` an offline one. Trace-only rollouts (baseline,
+    shadow monitor) are excluded from the budget so tracing cannot change when the loop stops."""
     cfg = (config or Config()).resolved()
     out = Path(out_dir) if out_dir else None
     if out:
@@ -98,7 +65,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
     if not tasks:
         raise ValueError(f"split {cfg.split!r} is empty")
     llms = list({id(x): x for x in (llm_task, llm_propose) if x}.values())
-    overhead = [0.0]          # usd spent by trace-only evaluations (baseline, shadow monitor)
+    overhead = [0.0]          # usd spent by trace-only evaluations
 
     def _spent() -> float:
         return sum(l.meter.total().cost_usd for l in llms)
@@ -110,13 +77,13 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
         finally:
             overhead[0] += _spent() - u0
 
-    last_fp = [library_fingerprint(library_genes(store))]
+    last_fp = library_fingerprint(loop_genes(store))
     if tracer.enabled:
         tracer.event("run_start", None, seed=seed_artifact.short_id, agent=name, domain=domain.name,
                      config=cfg.to_json(), hub=getattr(hub, "name", None),
                      splits={s: len(domain.tasks.splits[s]) for s in domain.tasks.splits},
                      decision_split=cfg.split, heldout_split=cfg.heldout_split,
-                     resumed_library=[g.id for g in library_genes(store)],
+                     resumed_library=[g.id for g in loop_genes(store)],
                      seed_files={p: seed_artifact[p][:600] for p in sorted(seed_artifact)},
                      what_improves="the gene library (genes/library.json) routed into the frozen harness")
         if cfg.trace_baseline_k > 0 and llm_task is not None:
@@ -136,7 +103,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
                                     k=cfg.monitor_k, workers=max(1, cfg.monitor_workers))
         if monitor is not None:
             tracer.monitor = monitor
-            _overhead(lambda: tracer.kept(0, "seed(no genes)", library_artifact(seed_artifact, library_genes(store)),
+            _overhead(lambda: tracer.kept(0, "seed(no genes)", library_artifact(seed_artifact, loop_genes(store)),
                                           None))
     rng = random.Random(cfg.seed)
     order: list = []
@@ -153,29 +120,28 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
             order = list(tasks)
             if cfg.task_order == "shuffle":
                 rng.shuffle(order)
-        task = order.pop(0)
-        cr = agent.cycle(task)
+        cr = agent.cycle(order.pop(0))
         solved_window = (solved_window + [int(cr.task_success)])[-10:]
         row = cr.to_json()
-        row.update({"n_genes": len(library_genes(store)), "rolling_solve_rate": sum(solved_window) / len(solved_window)})
+        row.update({"n_genes": len(loop_genes(store)), "rolling_solve_rate": sum(solved_window) / len(solved_window)})
         traj.append(row)
         if tracer.enabled and tracer.monitor is not None:
-            fp = library_fingerprint(library_genes(store))
-            if fp != last_fp[0]:
-                last_fp[0] = fp
+            fp = library_fingerprint(loop_genes(store))
+            if fp != last_fp:
+                last_fp = fp
                 _overhead(lambda: tracer.kept(cr.cycle, f"library@c{cr.cycle}",
-                                              library_artifact(seed_artifact, library_genes(store)),
+                                              library_artifact(seed_artifact, loop_genes(store)),
                                               row["rolling_solve_rate"]))
     agent.flush()
-    genes = library_genes(store)
+    genes = loop_genes(store)
     best = library_artifact(seed_artifact, genes)
     audit = store.audit()
     meta = {"config": cfg.to_json(), "n_genes": len(genes), "genes": [g.id for g in genes],
             "n_events": len(store.events), "n_capsules": len(store.capsules), "audit": audit.to_dict(),
             "proposer_calls": agent.proposer_calls, "rollouts": agent.n_rollouts, "quarantined": agent.n_quarantined,
             "quarantine_rejected": agent.n_quarantine_rejected, "mode": cfg.mode,
-            "safe_mode_fixes": _safe_fixes(cfg), "evaluate_with": "rsi.evomap.GeneRoutedDomain(domain)"}
-    meta["trace_overhead_usd"] = overhead[0]
+            "safe_mode_fixes": _safe_fixes(cfg), "evaluate_with": "rsi.evomap.GeneRoutedDomain(domain)",
+            "trace_overhead_usd": overhead[0]}
     if tracer.enabled:
         tracer.event("run_end", None, stop_reason=stop, cycles=len(traj), library=[g.id for g in genes],
                      n_events=len(store.events), n_capsules=len(store.capsules), audit=audit.to_dict(),
@@ -187,13 +153,11 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
     res = ImprovementResult(method="evomap", baseline=seed_artifact, best=best, ledger=ledger, trajectory=traj,
                             usage=merged_usage(llm_task, llm_propose), stop_reason=stop,
                             out_dir=str(out) if out else None, meta=meta)
-    res.meta["agent"] = agent       # live object for callers (not serialized)
     if out:
-        res.meta.pop("agent")
-        res.save(out)
-        res.meta["agent"] = agent
+        res.save(out)       # before the live agent object goes into meta (it is not serializable)
         store.export_archive(out / "store.gepx.tgz")
         (out / "library.json").write_text(best["genes/library.json"])
+    res.meta["agent"] = agent
     return res
 
 
@@ -219,7 +183,7 @@ def _safe_fixes(cfg: Config) -> list[str]:
 def evaluate_library(domain: Domain, llm: Optional[LLM], result: ImprovementResult, *,
                      splits=("evolve", "holdout", "ood"), k: int = 1, workers: int = 4,
                      injector: Optional[Injector] = None, extractor=None) -> dict:
-    """transfer_report over :class:`GeneRoutedDomain`: no genes vs the evolved library."""
+    """``transfer_report`` over :class:`GeneRoutedDomain`: no genes vs the evolved library."""
     routed = GeneRoutedDomain(domain, injector=injector, extractor=extractor)
     return transfer_report(routed, llm, {"no_genes": result.baseline, "gene_library": result.best},
                            splits=splits, k=k, workers=workers)

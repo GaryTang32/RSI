@@ -1,41 +1,26 @@
-"""Katas: small Python coding tasks with hidden unit-test graders (EvoMap spec §9.3 Tier 2).
+"""Katas: small Python coding tasks graded by hidden asserts, with an offline simulated solver and gene writer.
 
-The artifact is a solver harness (``prompts/system.md`` + ``prompts/task.md``).
-At solve time every file under ``genes/`` or ``skills/`` (the strategy cards an
-agent injected) is appended to the system prompt, each wrapped in a
-``--- guidance file: <path> ---`` delimiter. The model writes the function; the
-**hidden** asserts (never shown to agents; kept inside the domain object) grade
-it: a sandboxed subprocess only evaluates the calls to the function and returns
-their values as canonical builtin data, and the asserts are evaluated in this
-(trusted) process - so the model's code cannot print a fake pass marker or
-return an always-equal object (:func:`check_asserts`). Score 1 iff all hidden
-asserts hold.
-
-Workspace hooks for validation: W0 = ``solution.py`` stub + ``smoke_test.py``
-(the public asserts), W1 = the model's solution + the same smoke test, so the
-gene validation ``python smoke_test.py`` is discriminative (fails on the stub)
-though weak (public tests do not exercise the pitfalls).
-
-Offline stand-ins: :class:`KataSimSolver` (chooses the correct or the pitfall
-implementation with a probability driven by the guidance it reads - hint
-phrases, AVOID warnings, contradictory advice, dilution inside long skill
-documents, composition and length penalties; all *knobs*) and
-:class:`KataMockProposer` (writes a gene card after a failure).
+Injected files under ``genes/`` or ``skills/`` are appended to the system prompt as guidance. Validation
+workspaces: W0 = stub + ``smoke_test.py`` (public asserts), W1 = the model's solution + the same smoke test.
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import math
 import random
 import re
 import threading
+from decimal import Decimal
+from fractions import Fraction
 from typing import Optional, Sequence
 
 from rsi.core import Artifact, Domain, Execution, MockLLM, Task, TaskSuite
 from rsi.core.llm import estimate_tokens, extract_code
 from rsi.core.sandbox import run_python
 
+from .genes import CLASS_GENES
 from .katas import CLASS_KEYWORDS, CLASSES, KATA_BY_ID, KATAS, Kata
 
 SYSTEM = ("You are an expert Python programmer. Write one correct, self-contained function that satisfies the "
@@ -50,11 +35,8 @@ def seed_harness() -> Artifact:
 
 
 def make_suite(scheme: str = "default") -> TaskSuite:
-    """``default``: evolve = katas 0-2 of each class, holdout = 3-4.
-    ``hub``: evolve = 0-1, val = 2, test (hub bank) = 3-4.
-    ``audit``: evolve = 0, val = 1, test (hub bank) = 2-3, holdout = 4 - every split a verified hub run needs
-    (practice, the consumer's quarantine tasks, a hub bank with >= 2 in-scope tasks per class, and a sealed
-    holdout the loop never reads) at the cost of tiny splits (5 katas per class)."""
+    """Split layouts by kata index per class: ``default`` evolve 0-2 / holdout 3-4; ``hub`` evolve 0-1 / val 2 /
+    test 3-4; ``audit`` evolve 0 / val 1 / test 2-3 / holdout 4 (every split a verified hub run needs)."""
     tasks, splits = [], {}
     by_cls = {c: [k for k in KATAS if k.cls == c] for c in CLASSES}
     layout = {"default": {"evolve": (0, 3), "holdout": (3, 5)},
@@ -71,11 +53,8 @@ def make_suite(scheme: str = "default") -> TaskSuite:
     return TaskSuite(tasks, splits, name=f"katas-{scheme}")
 
 
-# ----------------------------------------------------------------------------- locked grader
-# The model's code runs in a sandboxed child process that only EVALUATES the calls to the kata function and prints
-# their results as canonical builtin values; every comparison happens here, in the trusted parent. So a solution can
-# neither print a fake "passed" marker nor return an object whose __eq__ / __bool__ always says yes: to pass, the
-# child must hand back the correct values (hard-coding them would require the hidden asserts).
+# Locked grader: the sandboxed child only evaluates the calls and prints canonical builtin values; the asserts run
+# here, so a solution can neither print a fake pass marker nor return an always-equal object.
 _SAFE = {"len": len, "list": list, "tuple": tuple, "range": range, "sorted": sorted, "sum": sum, "min": min,
          "max": max, "abs": abs, "round": round, "set": set, "dict": dict, "str": str, "int": int, "float": float,
          "bool": bool, "any": any, "all": all}
@@ -151,10 +130,8 @@ def _decanon(c):
     if tag == "dict":
         return {_decanon(k): _decanon(v) for k, v in c[1]}
     if tag == "decimal":
-        from decimal import Decimal
         return Decimal(c[1])
     if tag == "fraction":
-        from fractions import Fraction
         return Fraction(c[1])
     raise ValueError(f"unknown value tag {tag!r}")
 
@@ -162,8 +139,6 @@ def _decanon(c):
 def _split_assert(a: str, exprs: list) -> tuple:
     """Replace every outermost non-builtin call in assert ``a`` by ``_v[i]``; the call's source goes to ``exprs``
     (evaluated in the child). Returns (compiled predicate, indices it reads)."""
-    import ast
-
     tree = ast.parse(a, mode="eval")
     used: list[int] = []
 
@@ -181,7 +156,7 @@ def _split_assert(a: str, exprs: list) -> tuple:
 
 
 def check_asserts(code: str, asserts: Sequence[str], *, timeout_s: float = 10.0) -> tuple[int, str]:
-    """Number of ``asserts`` that hold for ``code`` (see the locked-grader note above) and an error tail."""
+    """(number of ``asserts`` that hold for ``code``, error tail)."""
     exprs: list[str] = []
     preds = [_split_assert(a, exprs) for a in asserts]
     rr = run_python(_CHILD.format(code=code, exprs=exprs, mark=_VALS_MARK), timeout_s=timeout_s, mem_mb=512)
@@ -229,7 +204,6 @@ class KatasDomain(Domain):
         return ("Katas: a solver harness prompts a model to write one small Python function; hidden unit tests grade "
                 "it. Strategy genes are injected as guidance files under genes/ (or skills/).")
 
-    # ------------------------------------------------------------------ prompts
     @staticmethod
     def guidance(artifact: Artifact) -> str:
         parts = [f"--- guidance file: {p} ---\n{t.strip()}\n" for p, t in artifact.items()
@@ -247,7 +221,6 @@ class KatasDomain(Domain):
                                                               public_tests="\n".join(i["public_tests"]))
         return system, prompt
 
-    # ------------------------------------------------------------------ execute / grade
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm) -> Execution:
         if llm is None:
             raise ValueError("katas needs a task LLM")
@@ -281,15 +254,12 @@ class KatasDomain(Domain):
         for t in self.tasks.split(split, allow_sealed=True):
             terms.append(t.id)
             for a in KATA_BY_ID[t.id].hidden:
-                terms += [x for x in re.findall(r"'([^']{3,})'", a)]
+                terms += re.findall(r"'([^']{3,})'", a)
         return sorted(set(terms))
 
-    # ------------------------------------------------------------------ hooks for rsi.evomap
     @staticmethod
     def smoke_script(k: Kata) -> str:
-        # a pytest-collectable test function AND a plain script: the gene-writer prompt allows both
-        # `python smoke_test.py` and `pytest -q smoke_test.py` (a module-level-assert script made pytest exit 5,
-        # "no tests collected", and a correct live gene was rejected - validation/evomap/RUNS.md)
+        """A pytest-collectable test that also runs as a plain script (genes may validate either way)."""
         return ("from solution import *\n\n\ndef test_public():\n"
                 + "".join(f"    assert {a}, {a!r}\n" for a in k.public)
                 + "\n\nif __name__ == '__main__':\n    test_public()\n    print('public tests passed')\n")
@@ -310,13 +280,13 @@ class KatasDomain(Domain):
         return f"public tests: {ok}/{len(k.public)} passed" + (f"; error: {err}" if err else "")
 
 
-# ----------------------------------------------------------------------------- offline solver
 HINTS = {
     "boundaries": [r"inclusive", r"b \+ 1|<=", r"ceil|-\(-", r"n == 0|edges?|empty input", r"max\(0"],
     "unicode": [r"normaliz|nfc|nfd", r"casefold", r"combining"],
     "dates": [r"fromisoformat|strptime", r"timedelta|datetime", r"leap", r"weekday\(\)|monday == 0", r"month/day"],
     "rounding": [r"decimal", r"half.?up", r"divmod|remainder", r"integer cents"],
-    "retry": [r"min\(cap|cap every|each delay", r"min\(success_at|number of attempts", r"429", r"max\(0\.0|non-negative"],
+    "retry": [r"min\(cap|cap every|each delay", r"min\(success_at|number of attempts", r"429",
+              r"max\(0\.0|non-negative"],
 }
 PITFALLS = {
     "boundaries": [r"lst\[-n:\]", r"floor division"], "unicode": [r"ascii', 'ignore'|encode\(", r"code points|raw"],
@@ -338,7 +308,8 @@ def _u(*parts) -> float:
 
 
 class KataSimSolver(MockLLM):
-    """Simulated coder (see module doc). All effects are knobs, not facts."""
+    """Offline coder: writes the correct or the pitfall implementation with a probability driven by the guidance
+    (hint phrases, AVOID warnings, contradictory advice, skill dilution, composition and length). All knobs."""
 
     def __init__(self, ability: float = 0.0, *, hint_gain: float = 0.9, max_hints: float = 2.5,
                  avoid_gain: float = 0.5, log_weight: float = 0.5, anti_gain: float = 1.0, skill_dilution: float = 0.5,
@@ -373,10 +344,9 @@ class KataSimSolver(MockLLM):
             if log_part and any(re.search(rx, log_part) for rx in PITFALLS[kata.cls]):
                 avoid_w += kw["log_weight"]
             anti += sum(1 for rx in ANTI[kata.cls] if re.search(rx, strat))
-        z = (self.ability + CLASS_BASE[kata.cls] + kw["hint_gain"] * min(kw["max_hints"], hint_w)
-             + kw["avoid_gain"] * min(1.0, avoid_w) - kw["anti_gain"] * min(2, anti)
-             - kw["lc"] * max(0, len(units) - 1) - kw["ll"] * toks / 1000.0)
-        return z
+        return (self.ability + CLASS_BASE[kata.cls] + kw["hint_gain"] * min(kw["max_hints"], hint_w)
+                + kw["avoid_gain"] * min(1.0, avoid_w) - kw["anti_gain"] * min(2, anti)
+                - kw["lc"] * max(0, len(units) - 1) - kw["ll"] * toks / 1000.0)
 
     def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
         k = next((k for k in KATAS if f"def {k.fn}(" in prompt), None)
@@ -388,8 +358,7 @@ class KataSimSolver(MockLLM):
 
 
 class KataMockProposer(MockLLM):
-    """Writes a gene card after a failure: the class's real lesson with probability
-    ``insight`` (else a shallow generic card); validation per the prompt's hint."""
+    """Writes the class's real lesson with probability ``insight``, else a shallow generic card."""
 
     def __init__(self, insight: float = 0.7, p_real_validation: float = 1.0, name: str = "kata-proposer") -> None:
         self.insight = insight
@@ -397,7 +366,6 @@ class KataMockProposer(MockLLM):
         super().__init__(self._respond, name=name)
 
     def _respond(self, prompt: str, system, seed, i) -> str:
-        from .genes import CLASS_GENES
         m = re.search(r"Signals[^:]*:\s*(.*)", prompt)
         sig = [s.strip() for s in (m.group(1) if m else "").split(",")]
         cls = next((s.split(":", 1)[1] for s in sig if s.startswith("task:")), None)

@@ -1,18 +1,7 @@
-"""Solidify: the keep rule (spec §3.6, §4.8, §4.10, §4.12, §4.13).
+"""Solidify, the keep rule: blast radius, constraints, validation, composite score, event/capsule, gene learning.
 
-After a cycle's change, :class:`Solidifier` measures blast radius from the
-workspace diff (counted-file policy), checks constraints, runs the gene's
-validation, computes the composite process score, classifies the failure mode,
-writes the EvolutionEvent (+ Capsule on success, FailedCapsule on failure with a
-non-empty diff), updates the gene's learning history / anti-patterns /
-epigenetic marks, and rolls back on failure.
-
-``mode="faithful"`` - success = constraints ok AND validation ok (with the
-faithful runner: empty / skipped = ok) AND no protocol violations.
-``mode="safe"`` - additionally the validation must be non-vacuous (lint +
-discriminative, :class:`~rsi.evomap.validation.VacuityDetector`) and, when
-``require_task_success``, the cycle's graded task result on the agent's OWN
-decision task must be a success (``RunState.task_success``).
+``faithful``: success = constraints ok AND validation ok AND no protocol violation. ``safe`` also requires a
+non-vacuous validation and, with ``require_task_success``, a solved own task (spec §3.6, §4.8, §4.10, §4.12).
 """
 from __future__ import annotations
 
@@ -45,17 +34,14 @@ ETHICS = [
 
 @dataclass
 class CountedFilePolicy:
-    """What counts toward blast radius. Domain-configurable (Evolver's default
-    counts only JS/config files; a Python port must count ``.py``)."""
+    """Which paths count toward blast radius (Evolver counts JS/config only; this port also counts ``.py``)."""
 
     include_ext: tuple = (".py", ".js", ".ts", ".json", ".yaml", ".yml", ".toml", ".ini", ".sh", ".md", ".txt")
     exclude_prefixes: tuple = ("logs/", "memory/", ".evolver/", "assets/gep/", "out/", "temp/", "__pycache__/")
     exclude_patterns: tuple = ("*capsule*", "*events.jsonl", "*event.jsonl", "*.pyc")
 
     def counts(self, path: str) -> bool:
-        if path.startswith(self.exclude_prefixes):
-            return False
-        if any(fnmatch.fnmatch(path, p) for p in self.exclude_patterns):
+        if path.startswith(self.exclude_prefixes) or any(fnmatch.fnmatch(path, p) for p in self.exclude_patterns):
             return False
         return path.endswith(self.include_ext)
 
@@ -64,26 +50,23 @@ def diff_text(before: Mapping[str, str], after: Mapping[str, str], max_chars: in
     chunks = []
     for name in sorted(set(before) | set(after)):
         a, b = before.get(name), after.get(name)
-        if a == b:
-            continue
-        chunks.extend(difflib.unified_diff((a or "").splitlines(keepends=True), (b or "").splitlines(keepends=True),
-                                           f"a/{name}", f"b/{name}", n=1))
+        if a != b:
+            chunks.extend(difflib.unified_diff((a or "").splitlines(keepends=True),
+                                               (b or "").splitlines(keepends=True), f"a/{name}", f"b/{name}", n=1))
     return "".join(chunks)[:max_chars]
 
 
 def blast_radius(before: Mapping[str, str], after: Mapping[str, str],
                  policy: Optional[CountedFilePolicy] = None) -> dict:
-    """{files, lines, changed, counted}: lines = added + deleted on counted files
-    (new files count all their lines)."""
+    """{files, lines, changed, counted}: lines added + deleted on counted files."""
     policy = policy or CountedFilePolicy()
     changed = sorted(n for n in set(before) | set(after) if before.get(n) != after.get(n))
     counted = [n for n in changed if policy.counts(n)]
     lines = 0
     for n in counted:
         a, b = (before.get(n) or "").splitlines(), (after.get(n) or "").splitlines()
-        for ln in difflib.unified_diff(a, b, n=0, lineterm=""):
-            if (ln.startswith("+") or ln.startswith("-")) and not ln.startswith(("+++", "---")):
-                lines += 1
+        lines += sum(1 for ln in difflib.unified_diff(a, b, n=0, lineterm="")
+                     if ln.startswith(("+", "-")) and not ln.startswith(("+++", "---")))
     return {"files": len(counted), "lines": lines, "changed": changed, "counted": counted}
 
 
@@ -95,6 +78,10 @@ class ConstraintResult:
     blast: dict = field(default_factory=dict)
 
 
+def _under(path: str, roots: Sequence[str]) -> bool:
+    return any(path == r or path.startswith(r.rstrip("/") + "/") for r in roots)
+
+
 class ConstraintChecker:
     def __init__(self, *, protected_paths: Sequence[str] = (), critical_files: Sequence[str] = (),
                  default_max_files: int = 20) -> None:
@@ -103,7 +90,8 @@ class ConstraintChecker:
         self.default_max_files = default_max_files
 
     def check(self, gene: Optional[Gene], blast: dict, estimate: Optional[dict] = None,
-              before: Optional[Mapping[str, str]] = None, after: Optional[Mapping[str, str]] = None) -> ConstraintResult:
+              before: Optional[Mapping[str, str]] = None,
+              after: Optional[Mapping[str, str]] = None) -> ConstraintResult:
         v, w = [], []
         files, lines = blast.get("files", 0), blast.get("lines", 0)
         if files > HARD_CAP_FILES or lines > HARD_CAP_LINES:
@@ -121,17 +109,15 @@ class ConstraintChecker:
                 w.append(f"estimate_drift: actual/estimate={ratio:.1f}")
         forb = gene.forbidden_paths if gene is not None else []
         for path in blast.get("changed", []):
-            if any(path == f or path.startswith(f.rstrip("/") + "/") for f in forb):
+            if _under(path, forb):
                 v.append(f"forbidden_path touched: {path}")
-            if any(path == p or path.startswith(p.rstrip("/") + "/") for p in self.protected_paths):
+            if _under(path, self.protected_paths):
                 v.append(f"critical_path_modified: {path}")
         if blast.get("changed") and not blast.get("counted"):
             v.append("hollow_commit: files changed but none counted")
         if gene is not None:
             text = (gene.summary + "\n" + "\n".join(gene.strategy)).lower()
-            for rx, tag in ETHICS:
-                if re.search(rx, text):
-                    v.append(tag)
+            v += [tag for rx, tag in ETHICS if re.search(rx, text)]
         if before is not None and after is not None:
             for cf in self.critical_files:
                 if cf in before and (cf not in after):
@@ -145,17 +131,11 @@ def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[
                     max_files: Optional[int], estimate: Optional[dict], n_violations: int, validation: ValidationResult,
                     n_protocol: int, canary_failed: bool = False, hollow: bool = False,
                     estimate_key: str = "files_changed") -> float:
-    """§4.10 weights: .05 signal + .10 selection + .05 mutation + .15 blast + .25 constraint
-    + .25 validation + .10 protocol + .05 canary.
+    """§4.10: .05 signal + .10 selection + .05 mutation + .15 blast + .25 constraint + .25 validation + .10 protocol
+    + .05 canary, rounded like JS ``Math.round(s*100)/100``.
 
-    ``estimate_key`` (N3): Evolver's composite reads ``blastRadiusEstimate.files_changed``
-    (deob ``solidify.js:540``) but dispatch writes the estimate as ``{files, lines}``, so the
-    x0.5 / x0.7 estimate-drift penalty never fires in Evolver. The faithful default reads the
-    same dead key; ``estimate_key="files"`` (``Config.estimate_drift_penalty``) turns on the
-    penalty the spec §4.10 text describes.
-
-    Rounding (N4) is JavaScript ``Math.round(s * 100) / 100`` (half-up), not Python's
-    banker's ``round``."""
+    Evolver reads the estimate under ``files_changed``, a key dispatch never writes, so its drift penalty never
+    fires; ``estimate_key="files"`` applies it as the spec text describes."""
     sig = 0.5 if n_signals == 0 else min(1.0, 0.4 + 0.1 * n_signals)
     sel = 0.3 if gene is None else (0.7 if gene.id.startswith("gene_auto_") else 0.9)
     if mutation is None:
@@ -191,10 +171,7 @@ def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[
 
 
 def js_round2(x: float) -> float:
-    """``Math.round(x * 100) / 100`` exactly as JavaScript computes it (N4).
-
-    ``Math.round`` rounds half toward +infinity on the double ``x * 100``;
-    ``y - floor(y)`` is exact for doubles, so the tie test is exact too."""
+    """``Math.round(x * 100) / 100`` exactly as JavaScript computes it (half toward +infinity)."""
     y = x * 100
     f = math.floor(y)
     return (f + 1 if y - f >= 0.5 else f) / 100
@@ -205,14 +182,8 @@ HARD_RX = re.compile(r"HARD CAP BREACH|CRITICAL_FILE_|critical_path_modified|for
 
 def classify_failure_mode(violations: Sequence[str], protocol: Sequence[str], validation_ok: bool,
                           canary_failed: bool = False, extra: Sequence[str] = ()) -> tuple[str, str, bool]:
-    """(mode, reason_class, retryable) - hard: constraint/protocol/canary; soft: validation.
-
-    ``extra`` = the safe-mode keep-rule failures (``vacuous_validation:*``, ``task_check_failed``). They are
-    not constraint violations (spec §4.12 lists only blast/path/ethics/destructive checks there): a vacuous
-    validation is a validation failure and a missed own task is a (re-sampled, stochastic) outcome check, so
-    both are soft and retryable. (Validation audit: they used to fall into the generic ``hard/constraint``
-    branch, so one unlucky retry of a working gene cost -0.22 history and a -0.4 hard anti-pattern and made
-    the next cycle "cautious".)"""
+    """(mode, reason_class, retryable). Safe-mode ``extra`` failures (vacuous validation, missed own task) are
+    soft and retryable: they are validation or stochastic outcome checks, not constraint violations (§4.12)."""
     if any(HARD_RX.search(v) for v in violations):
         return "hard", "constraint_destructive", False
     if protocol:
@@ -231,19 +202,18 @@ def classify_failure_mode(violations: Sequence[str], protocol: Sequence[str], va
 def apply_epigenetic_marks(gene: Gene, env: str, success: bool, now_s: float, created_at: str = "") -> None:
     marks = [m for m in (gene.epigenetic_marks or []) if isinstance(m, dict)]
     marks = [m for m in marks if now_s - float(m.get("t", now_s)) <= 90 * 86400]
+    reason = "success_in_environment" if success else "failure_in_environment"
     for m in marks:
         if m.get("context") == env:
             m["boost"] = round(min(0.5, m["boost"] + 0.05) if success else max(-0.5, m["boost"] - 0.1), 4)
-            m["reason"] = "success_in_environment" if success else "failure_in_environment"
+            m["reason"] = reason
             break
     else:
-        marks.append({"context": env, "boost": 0.1 if success else -0.1,
-                      "reason": "success_in_environment" if success else "failure_in_environment",
+        marks.append({"context": env, "boost": 0.1 if success else -0.1, "reason": reason,
                       "created_at": created_at, "t": now_s})
     gene.epigenetic_marks = marks[-10:]
 
 
-# ----------------------------------------------------------------------------- solidify
 @dataclass
 class RunState:
     """Engine-held state of one cycle (Evolver's ``last_run``)."""
@@ -264,7 +234,7 @@ class RunState:
     intent: Optional[str] = None
     summary: str = ""
     task_id: str = ""
-    task_success: Optional[bool] = None     # graded on the agent's own decision task (safe mode may use it)
+    task_success: Optional[bool] = None     # graded on the agent's own decision task
     hidden_score: Optional[float] = None    # measurement only; never read by the keep rule
     derivation_tokens: Optional[dict] = None
     env: str = "sim/py3.11"
@@ -283,11 +253,30 @@ class SolidifyResult:
     failure_mode: Optional[tuple] = None
     failed_capsule: Optional[dict] = None
     rolled_back: bool = False
-    git_rollback: Optional[str] = None       # I5: "stash" | "hard" when a GitWorkspace was rolled back
-    git_removed: Optional[dict] = None       # I5: untracked files created in the cycle and removed
+    git_rollback: Optional[str] = None       # "stash" | "hard" when a GitWorkspace was rolled back
+    git_removed: Optional[dict] = None       # untracked files created in the cycle and removed
     vacuity: Optional[VacuityVerdict] = None
     eligible_to_broadcast: bool = False
     publishable: bool = False
+
+
+def _protocol_violations(rs: RunState) -> list[str]:
+    mut, pers = rs.mutation, rs.personality
+    pv: list[str] = []
+    if mut is None or not mut.category:
+        pv.append("missing_or_invalid_mutation")
+    if pers is None:
+        pv.append("missing_or_invalid_personality_state")
+    if mut is not None and mut.risk_level == "high":
+        if not (pers.rigor >= 0.6 and pers.risk_tolerance <= 0.5):
+            pv.append("high_risk_mutation_not_allowed_by_personality")
+        if not rs.personality_known:
+            pv.append("high_risk_mutation_forbidden_under_unknown_personality")
+    if mut is not None and mut.category == "innovate" and (pers.rigor < 0.5 or pers.risk_tolerance > 0.6):
+        pv.append("forbidden_innovate_with_high_risk_personality")
+    if rs.intent and mut is not None and rs.intent != mut.category:
+        pv.append(f"intent_mismatch_with_mutation:{rs.intent}!={mut.category}")
+    return pv
 
 
 class Solidifier:
@@ -296,10 +285,9 @@ class Solidifier:
                  vacuity: Optional[VacuityDetector] = None, require_task_success: bool = True,
                  rollback: str = "stash", estimate_drift_penalty: bool = False, workspace=None) -> None:
         self.store = store
-        #: optional :class:`~rsi.evomap.gitws.GitWorkspace` (retry round 2, I5): the cycle's ``after`` state is
-        #: mirrored into a real git tree, blast radius comes from git, and a failed solidify rolls back through git
+        # optional GitWorkspace: mirrors ``after`` into a real tree, measures blast via git, rolls back via git
         self.workspace = workspace
-        self.estimate_drift_penalty = estimate_drift_penalty   # N3: off = Evolver (dead key)
+        self.estimate_drift_penalty = estimate_drift_penalty
         self.runner = runner
         self.mode = mode
         self.constraints = constraints or ConstraintChecker()
@@ -309,22 +297,9 @@ class Solidifier:
         self.rollback = rollback
 
     def solidify(self, rs: RunState, *, dry_run: bool = False) -> SolidifyResult:
-        clock = self.store.clock
+        st, clock = self.store, self.store.clock
         gene, mut, pers = rs.gene, rs.mutation, rs.personality
-        pv: list[str] = []
-        if mut is None or not mut.category:
-            pv.append("missing_or_invalid_mutation")
-        if pers is None:
-            pv.append("missing_or_invalid_personality_state")
-        if mut is not None and mut.risk_level == "high":
-            if not (pers.rigor >= 0.6 and pers.risk_tolerance <= 0.5):
-                pv.append("high_risk_mutation_not_allowed_by_personality")
-            if not rs.personality_known:
-                pv.append("high_risk_mutation_forbidden_under_unknown_personality")
-        if mut is not None and mut.category == "innovate" and (pers.rigor < 0.5 or pers.risk_tolerance > 0.6):
-            pv.append("forbidden_innovate_with_high_risk_personality")
-        if rs.intent and mut is not None and rs.intent != mut.category:
-            pv.append(f"intent_mismatch_with_mutation:{rs.intent}!={mut.category}")
+        pv = _protocol_violations(rs)
         ws_baseline = None
         if self.workspace is not None and not dry_run:
             ws_baseline = self.workspace.untracked_files()
@@ -354,35 +329,14 @@ class Solidifier:
                                 n_violations=len(cc.violations), validation=val, n_protocol=len(pv), hollow=hollow,
                                 estimate_key="files" if self.estimate_drift_penalty else "files_changed")
         fm = None if success else classify_failure_mode(cc.violations, pv, val.ok, extra=extra_fail)
-        st = self.store
         vr = val.report
         if vac is not None:
             vr.discriminative = vac.to_dict()
             vr.stamp()
         ev_id = st.new_id("evt")
-        capsule = None
-        if success:
-            cap_id = rs.capsule.id if rs.capsule is not None else st.new_id("capsule")
-            trace = [{"step": 1, "stage": "build", "cmd": f"apply -- {blast['files']} file(s), {blast['lines']} line(s)",
-                      "exit": 0}]
-            for i, row in enumerate(vr.commands):
-                if row.get("skipped"):
-                    continue
-                trace.append({"step": len(trace) + 1, "stage": "validate", "cmd": row.get("command", ""),
-                              "exit": 0 if row.get("ok") else 1, "stdout_tail": str(row.get("stdout", ""))[-300:]})
-            capsule = Capsule(id=cap_id, gene=gene.id if gene else "none",
-                              trigger=list(rs.capsule.trigger) if rs.capsule is not None else list(rs.signals[:8]),
-                              summary=rs.summary or f"{mut.category if mut else 'repair'} via "
-                                                    f"{gene.id if gene else 'no gene'} on {rs.task_id}",
-                              confidence=score, blast_radius={"files": blast["files"], "lines": blast["lines"]},
-                              outcome={"status": "success", "score": score}, success_reason="validation passed",
-                              source_type=rs.source_type, reused_asset_id=rs.reused_asset_id,
-                              content=("\n".join(gene.strategy) if gene else rs.summary)[:CONTENT_MAX],
-                              diff=diff_text(rs.before, rs.after), strategy=list(gene.strategy) if gene else [],
-                              execution_trace=trace, derivation_tokens=rs.derivation_tokens,
-                              env_fingerprint={"context": rs.env},
-                              gene_library_version=st.gene_library_version())
-        event = EvolutionEvent(id=ev_id, parent=rs.parent_event_id if rs.parent_event_id is not None else st.last_event_id(),
+        capsule = self._capsule(rs, blast, vr, score) if success else None
+        parent = rs.parent_event_id if rs.parent_event_id is not None else st.last_event_id()
+        event = EvolutionEvent(id=ev_id, parent=parent,
                                intent=mut.category if mut else "repair", signals=list(rs.signals),
                                genes_used=[gene.id] if gene else [], mutation_id=mut.id if mut else "",
                                personality_state=pers.to_dict() if pers else None,
@@ -413,29 +367,54 @@ class Solidifier:
                 res.git_rollback = self.workspace.rollback(self.rollback)
                 res.git_removed = self.workspace.remove_new_untracked(ws_baseline or [])
         if gene is not None:
-            learn = [s for s in rs.signals if s.startswith(("problem:", "area:"))] or list(rs.signals)
-            entry = {"at": clock.iso(), "outcome": "success" if success else "failed",
-                     "mode": fm[0] if fm else "none", "reason_class": fm[1] if fm else "ok",
-                     "retryable": fm[2] if fm else True, "learning_signals": learn[:12]}
-            gene.learning_history = (gene.learning_history + [entry])[-20:]
-            if success:
-                for s in rs.signals:
-                    if s.startswith(("problem:", "area:")) and s not in gene.signals_match:
-                        gene.signals_match.append(s)
-            else:
-                gene.anti_patterns = (gene.anti_patterns + [{"at": clock.iso(), "mode": fm[0], "reason_class": fm[1],
-                                                             "learning_signals": learn[:8]}])[-12:]
-            apply_epigenetic_marks(gene, rs.env, success, clock.now(), clock.iso())
-            if st.has_gene(gene.id):
-                st.upsert_gene(gene)
+            self._learn(gene, rs, success, fm, clock)
         st.append_report(vr)
         st.append_event(event)
         if capsule is not None:
             capsule.success_streak = st.success_streak(capsule.id)
             safe_blast = blast["files"] <= A2A_MAX_FILES and blast["lines"] <= A2A_MAX_LINES
-            res.eligible_to_broadcast = safe_blast and score >= BROADCAST_SCORE and capsule.success_streak >= \
-                BROADCAST_STREAK
+            res.eligible_to_broadcast = (safe_blast and score >= BROADCAST_SCORE
+                                         and capsule.success_streak >= BROADCAST_STREAK)
             capsule.a2a = {"eligible_to_broadcast": res.eligible_to_broadcast}
             res.publishable = res.eligible_to_broadcast and score >= MIN_PUBLISH_SCORE and rs.source_type != "reused"
             st.upsert_capsule(capsule)
         return res
+
+    def _capsule(self, rs: RunState, blast: dict, vr, score: float) -> Capsule:
+        st, gene, mut = self.store, rs.gene, rs.mutation
+        cap_id = rs.capsule.id if rs.capsule is not None else st.new_id("capsule")
+        trace = [{"step": 1, "stage": "build", "cmd": f"apply -- {blast['files']} file(s), {blast['lines']} line(s)",
+                  "exit": 0}]
+        for row in vr.commands:
+            if not row.get("skipped"):
+                trace.append({"step": len(trace) + 1, "stage": "validate", "cmd": row.get("command", ""),
+                              "exit": 0 if row.get("ok") else 1, "stdout_tail": str(row.get("stdout", ""))[-300:]})
+        return Capsule(id=cap_id, gene=gene.id if gene else "none",
+                       trigger=list(rs.capsule.trigger) if rs.capsule is not None else list(rs.signals[:8]),
+                       summary=rs.summary or f"{mut.category if mut else 'repair'} via "
+                                             f"{gene.id if gene else 'no gene'} on {rs.task_id}",
+                       confidence=score, blast_radius={"files": blast["files"], "lines": blast["lines"]},
+                       outcome={"status": "success", "score": score}, success_reason="validation passed",
+                       source_type=rs.source_type, reused_asset_id=rs.reused_asset_id,
+                       content=("\n".join(gene.strategy) if gene else rs.summary)[:CONTENT_MAX],
+                       diff=diff_text(rs.before, rs.after), strategy=list(gene.strategy) if gene else [],
+                       execution_trace=trace, derivation_tokens=rs.derivation_tokens,
+                       env_fingerprint={"context": rs.env}, gene_library_version=st.gene_library_version())
+
+    def _learn(self, gene: Gene, rs: RunState, success: bool, fm: Optional[tuple], clock) -> None:
+        """Gene learning: history entry, widened signals on success, anti-pattern on failure, epigenetic mark."""
+        learn = [s for s in rs.signals if s.startswith(("problem:", "area:"))] or list(rs.signals)
+        entry = {"at": clock.iso(), "outcome": "success" if success else "failed",
+                 "mode": fm[0] if fm else "none", "reason_class": fm[1] if fm else "ok",
+                 "retryable": fm[2] if fm else True, "learning_signals": learn[:12]}
+        gene.learning_history = (gene.learning_history + [entry])[-20:]
+        if success:
+            for s in rs.signals:
+                if s.startswith(("problem:", "area:")) and s not in gene.signals_match:
+                    gene.signals_match.append(s)
+        else:
+            gene.anti_patterns = (gene.anti_patterns + [{"at": clock.iso(), "mode": fm[0], "reason_class": fm[1],
+                                                         "learning_signals": learn[:8]}])[-12:]
+        apply_epigenetic_marks(gene, rs.env, success, clock.now(), clock.iso())
+        if self.store.has_gene(gene.id):
+            self.store.upsert_gene(gene)

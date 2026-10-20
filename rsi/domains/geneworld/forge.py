@@ -1,26 +1,16 @@
-"""Adversary kit for GeneWorld populations: farmer and poisoner bundles (EvoMap spec §9.3).
-
-* **farmer** - generic-sounding strategy cards with *no* effective strategy key (or a
-  weak generic one), broad ``signals_match`` (keywords of several classes, so they
-  match many searches), a vacuous validation kind (``python --version``, print-only
-  script, constant assert, weak assert, missing script, empty list, ``python -c``,
-  ``echo``), a cosmetic diff, and inflated self-reported metadata;
-* **poisoner** - a targeted card for one class whose strategy contains the class's
-  *harmful* key or ``sk_poison`` (sometimes an injection string), with a genuinely
-  discriminative proof (real ``check.py``, buggy -> fixed ``mod.py``) so only a
-  task-level uplift test can catch it.
-"""
+"""GeneWorld adversary kit (spec §9.3): farmer bundles (broad, vacuous, inflated) and poisoner bundles (a harmful
+key with a genuinely discriminative proof, so only a task-level uplift test catches it)."""
 from __future__ import annotations
 
 import random
 from typing import Sequence
 
-from rsi.evomap.assets import Capsule, EvolutionEvent, Gene
+from rsi.evomap.assets import Gene
 from rsi.evomap.hub import Bundle
-from rsi.evomap.solidify import diff_text
-from rsi.evomap.validation import ValidationRunner, InProcessExecutor
+from rsi.evomap.population import forged_bundle
+from rsi.evomap.validation import InProcessExecutor, ValidationRunner
 
-from .world import INJECTIONS, VACUOUS_KINDS, GeneWorld
+from .world import INJECTIONS, KEY_RE, VACUOUS_KINDS, GeneWorld
 
 GENERIC_STEPS = ["Collect the symptoms and the relevant logs.", "Apply the standard remediation checklist.",
                  "Keep the change small and focused.", "Confirm the service is healthy afterwards.",
@@ -39,23 +29,9 @@ class GeneWorldForge:
 
     def _bundle(self, g: Gene, author: str, cl: str, before: dict, after: dict, *, claims: dict) -> Bundle:
         self._n += 1
-        g.stamp()
         rep = self._runner.run(g.validation, after, gene_id=g.id, signer="local")
-        cap = Capsule(id=f"capsule_{author}_{self._n:06d}", gene=g.id, trigger=list(g.signals_match),
-                      summary=f"Resolved {cl}-class incident using {g.id} successfully",
-                      confidence=claims["confidence"], blast_radius={"files": claims["files"], "lines": claims["lines"]},
-                      outcome={"status": "success", "score": claims["score"]}, success_streak=claims["streak"],
-                      content="\n".join(g.strategy), diff=diff_text(before, after), strategy=list(g.strategy),
-                      execution_trace=[{"step": 1, "stage": "build", "cmd": "apply", "exit": 0},
-                                       {"step": 2, "stage": "validate", "cmd": (g.validation or ["-"])[0], "exit": 0}],
-                      source_type="generated").stamp()
-        ev = EvolutionEvent(id=f"evt_{author}_{self._n:06d}", intent="repair", signals=list(g.signals_match),
-                            genes_used=[g.id], mutation_id=f"mut_{self._n}", capsule_id=cap.id,
-                            blast_radius={"files": claims["files"], "lines": claims["lines"]},
-                            outcome={"status": "success", "score": claims["score"]}).stamp()
-        return Bundle(gene=g.to_dict(), capsule=cap.to_dict(), event=ev.to_dict(),
-                      report={**rep.report.to_dict(), "overall_ok": True}, pre_state=before, post_state=after,
-                      meta={"author": author, "forged": True})
+        return forged_bundle(g, author, self._n, f"Resolved {cl}-class incident using {g.id} successfully", before,
+                             after, claims, {**rep.report.to_dict(), "overall_ok": True}, source_type="generated")
 
     def farm_bundle(self, author: str, rng: random.Random, epoch: int) -> Bundle:
         w = self.world
@@ -65,10 +41,10 @@ class GeneWorldForge:
         steps = rng.sample(GENERIC_STEPS, 3)
         if rng.random() < self.farm_generic_key:
             steps.insert(1, w.strategy_step("sk_gen_1"))
-        kind = rng.choice(self.vacuous_kinds)
-        val, extra = w.vacuous_validation(kind, cl)
+        val, extra = w.vacuous_validation(rng.choice(self.vacuous_kinds), cl)
         before = {"mod.py": w.module(cl, "buggy"), "check.py": w.check_script(cl)}
-        after = {**before, **extra, "mod.py": before["mod.py"].replace("handler", f"handler v{epoch}.{rng.randrange(99)}")}
+        cosmetic = before["mod.py"].replace("handler", f"handler v{epoch}.{rng.randrange(99)}")
+        after = {**before, **extra, "mod.py": cosmetic}
         g = Gene(id=f"gene_{author}_{epoch}_{rng.randrange(10 ** 6):06d}", category="optimize", signals_match=sm,
                  strategy=steps, summary=f"Universal remediation for {', '.join(sm)} incidents", validation=val,
                  provenance={"kind": "manual", "author": author})
@@ -95,9 +71,7 @@ class GeneWorldForge:
 
     def is_poisoned(self, gene: Gene) -> bool:
         text = gene.text()
-        from .world import KEY_RE
-        keys = set(KEY_RE.findall(text))
-        if any(self.world.kind.get(k) in ("harmful", "poison") for k in keys):
+        if any(self.world.kind.get(k) in ("harmful", "poison") for k in set(KEY_RE.findall(text))):
             return True
         low = text.lower()
         return any(s.lower()[:24] in low for s in INJECTIONS)
