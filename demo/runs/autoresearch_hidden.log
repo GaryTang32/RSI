@@ -1,3 +1,0 @@
-fa8b780 baseline {'test_iid': 2.9046, 'test_shift': 2.9689, 'loop_metric_rerun': 2.8355}
-d137e15 previous keep (lr 0.02) {'test_iid': 2.6695, 'test_shift': 2.7356, 'loop_metric_rerun': 2.5912}
-931edb4 final (hidden width 256) {'test_iid': 2.6821, 'test_shift': 2.7332, 'loop_metric_rerun': 2.5988}

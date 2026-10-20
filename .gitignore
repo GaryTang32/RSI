@@ -8,3 +8,8 @@ __pycache__/
 run.log
 validation/**/.cache_*/
 demo/runs/.live_writer.lock
+# recorded output lives on the data branch
+/results/
+/validation/
+/demo/runs/
+/demo/*.json

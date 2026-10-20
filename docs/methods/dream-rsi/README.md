@@ -9,7 +9,7 @@ Improves a discovery system's search policy (written as code) by replaying it ov
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
 3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (83 claims: 43 reproduced, 12 partial, 1 not reproduced, 24 not testable here, 3 contradicted), with a Fix log and a preregistered second attempt (retry round 2, §6–§7).
-4. [Validation audit](../../../validation/dream-rsi/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/dream-rsi/RUNS.md) describes the runs.
+4. [Validation audit](https://github.com/GaryTang32/RSI/blob/data/validation/dream-rsi/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](https://github.com/GaryTang32/RSI/blob/data/validation/dream-rsi/RUNS.md) describes the runs.
 
 ## Where everything is
 
@@ -19,8 +19,8 @@ Improves a discovery system's search policy (written as code) by replaying it ov
 | Domains | [`rsi/domains/discovery/`](../../../rsi/domains/discovery) |
 | Tests | [`tests/dream-rsi/`](../../../tests/dream-rsi) |
 | Experiments (scripts) | [`experiments/dream-rsi/`](../../../experiments/dream-rsi) |
-| Results (JSON, figures) | [`results/dream-rsi/`](../../../results/dream-rsi) |
-| Validation runs (traces, TRACE.md) | [`validation/dream-rsi/`](../../../validation/dream-rsi) |
+| Results (JSON, figures) | [`results/dream-rsi/`](https://github.com/GaryTang32/RSI/tree/data/results/dream-rsi) |
+| Validation runs (traces, TRACE.md) | [`validation/dream-rsi/`](https://github.com/GaryTang32/RSI/tree/data/validation/dream-rsi) |
 
 ## Run it
 

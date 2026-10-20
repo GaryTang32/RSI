@@ -74,12 +74,12 @@ Its docs hub is `docs/methods/<slug>/README.md`.
 
 | Method | Docs hub | Code | Tests | Experiments | Results | Validation |
 |---|---|---|---|---|---|---|
-| Autoresearch | [docs](docs/methods/autoresearch/README.md) | [`rsi/autoresearch`](rsi/autoresearch) | [tests](tests/autoresearch) | [scripts](experiments/autoresearch) | [results](results/autoresearch) | [runs](validation/autoresearch) |
-| RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [results](results/rrsi) | [runs](validation/rrsi) |
-| Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [results](results/dream-rsi) | [runs](validation/dream-rsi) |
-| EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [results](results/evomap) | [runs](validation/evomap) |
-| GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [results](results/gepa) | [runs](validation/gepa) |
-| Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [results](results/metaharness-solpi) | [runs](validation/metaharness-solpi) |
+| Autoresearch | [docs](docs/methods/autoresearch/README.md) | [`rsi/autoresearch`](rsi/autoresearch) | [tests](tests/autoresearch) | [scripts](experiments/autoresearch) | [results](https://github.com/GaryTang32/RSI/tree/data/results/autoresearch) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/autoresearch) |
+| RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/rrsi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/rrsi) |
+| Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/dream-rsi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/dream-rsi) |
+| EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [results](https://github.com/GaryTang32/RSI/tree/data/results/evomap) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/evomap) |
+| GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [results](https://github.com/GaryTang32/RSI/tree/data/results/gepa) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/gepa) |
+| Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/metaharness-solpi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/metaharness-solpi) |
 
 ```
 rsi/            the Python package
@@ -93,8 +93,12 @@ docs/           README index; guide/ (RSI-101, architecture); methods/<slug>/ (h
                 implementation, claims audit); core/; reports/ (claims summary, HTML report)
 tests/          core/ and one folder per method; offline and deterministic (pytest -m live for live checks)
 experiments/    reproduction scripts per method; they write results/<slug>/*.json and figures
-validation/     fresh traced runs from the seed per method, with AUDIT.md and RUNS.md
+demo/           live-demo page (index.html), README and figures
 ```
+
+Recorded output (`results/`, `validation/`, `demo/runs/`, `demo/*.json`) lives on the
+[`data`](https://github.com/GaryTang32/RSI/tree/data) branch at the same paths. Restore it into a checkout with
+`git fetch origin data && git archive origin/data results validation demo | tar -x`.
 
 ## What is verified
 
@@ -106,7 +110,7 @@ validation/     fresh traced runs from the seed per method, with AUDIT.md and RU
   adversarially reviewed attempt at every claim that still failed, 257 reproduce, 79 partially, 7 do not,
   123 need frontier models, GPUs or the original benchmarks, and 9 are contradicted (most of these by the
   paper's own data or reference code).
-- **Step-by-step validation** ([validation/README.md](validation/README.md)): each method was run from its untouched
+- **Step-by-step validation** ([validation/README.md](https://github.com/GaryTang32/RSI/blob/data/validation/README.md)): each method was run from its untouched
   seed, offline and with live Claude Haiku, with every iteration traced. Independent auditors re-derived each step
   from the raw trial scores and checked it against the paper: 2,195 of 2,370 steps verified correct, and no gate
   decision was miscomputed.

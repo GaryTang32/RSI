@@ -1,1 +1,0 @@
-{"text": "Casey", "usage": {"calls": 1, "input_tokens": 35060, "output_tokens": 32148, "cost_usd": 0.22934700000000002, "latency_s": 193.32366704940796}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

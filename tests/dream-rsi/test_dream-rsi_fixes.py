@@ -16,6 +16,8 @@ Each test fails on the code before the fix:
 """
 from __future__ import annotations
 
+import gzip
+import json
 import sys
 from pathlib import Path
 
@@ -218,9 +220,9 @@ def test_memo_on_an_imported_module_is_rejected_and_gains_nothing_in_the_sandbox
 
 def test_recorded_llm_policies_still_pass_the_static_check():
     """No false positive on the recorded validation policies (LLM-written and mutator versions)."""
-    paths = sorted(ROOT.glob("validation/dream-rsi/*/history/*/method.py"))
-    assert paths
-    bad = [str(p) for p in paths if not static_check(p.read_text()).ok]
+    policies = json.loads(gzip.decompress((ROOT / "tests/dream-rsi/data/recorded_policies.json.gz").read_bytes()))
+    assert policies
+    bad = [path for path, src in policies.items() if not static_check(src).ok]
     assert not bad, bad
 
 
