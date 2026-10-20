@@ -1,32 +1,4 @@
-"""ExperienceStore: Meta-Harness's filesystem ``D`` of every earlier candidate.
-
-"Each evaluated harness contributes a directory containing its source code,
-scores, and execution traces" [paper:MH §3]. Layout (release names kept where
-they exist, spec A5)::
-
-    <root>/
-      candidates/<name>/
-        src/<artifact files>                  # the harness source
-        meta.json                             # iteration, base_system, hypothesis, axis, components, status
-        eval/search/scores.json               # aggregate + per-unit scores, context cost, tokens
-        eval/search/per_task/<unit>.json      # graded trial records (score, feedback, cost), no trace
-        eval/search/traces/<unit>.jsonl       # raw execution traces (prompts, predictions, tool calls ...)
-        eval/search/summary.md                # trace summary (only for the scores_summary ablation)
-      evolution_summary.jsonl                 # one row per candidate (all iterations)
-      frontier_val.json                       # per-unit best + "_pareto" + "_best" (search split)
-      pending_eval.json                       # proposer -> loop handoff of the current iteration
-      reports/                                # post-eval reports written by proposers
-      sessions/iter<N>/{prompt.md, response.md, meta.json}   # proposer transcripts + accounting
-      results/<split>/<name>/scores.json      # TEST results - written only by finalize(), never in a view
-      frontier.json, finalized.json           # written only by finalize()
-
-:meth:`ExperienceStore.view` projects the store for the proposer: ``full``
-(everything except ``results/`` and ``frontier.json``), ``scores_summary`` (code +
-scores + summaries, no traces), ``scores_only`` (code + scores), ``window``
-(last-w candidates' code + scores), ``last_only`` (the current best candidate's
-code, scores and traces), ``seed_only`` (the run's seed harness code only - Best-of-N). Views never
-include test results - the operational isolation the release implements.
-"""
+"""ExperienceStore: the filesystem holding every candidate's code, scores and raw traces, and its history views."""
 from __future__ import annotations
 
 import json
@@ -45,8 +17,7 @@ SEARCH = "search"
 
 
 def context_mean(cost: dict[str, float]) -> float:
-    """A system's context cost = mean over units of the NON-ZERO per-unit context (0 if all are zero),
-    as ``benchmark.py:print_frontier`` averages ``memory_context_chars`` over datasets."""
+    """Mean of the non-zero per-unit context costs (0 if all are zero), as the release's ``print_frontier``."""
     nz = [float(v) for v in cost.values() if v]
     return float(sum(nz) / len(nz)) if nz else 0.0
 
@@ -55,9 +26,16 @@ def safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "__", str(s)).strip("_") or "x"
 
 
-#: wall-clock fields written by the store, the evaluator and the proposer accounting: they vary from run to
-#: run and say nothing about a harness (see Config.deterministic_view)
-VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s", "elapsed_s"})
+#: wall-clock fields: they vary between runs and say nothing about a harness (see Config.deterministic_view)
+VOLATILE_KEYS = frozenset({"created_at", "latency_s", "runtime_seconds", "timing_s", "seconds", "wall_s",
+                           "elapsed_s"})
+#: a proposer session's own bill, which a cached replay meters as $0
+SESSION_VOLATILE_KEYS = frozenset({"usage"})
+#: the files the store writes; sources and raw traces are always shown exactly as written
+STORE_WRITTEN = re.compile(r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?"
+                           r"|sessions/[^/]+/meta\.json"
+                           r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json"
+                           r"|eval/search/per_task/[^/]+\.json))$")
 
 
 def _drop_volatile(obj: Any) -> tuple[Any, bool]:
@@ -76,20 +54,8 @@ def _drop_volatile(obj: Any) -> tuple[Any, bool]:
     return obj, False
 
 
-#: per-file-kind extra keys: a proposer session's ``usage`` is its own bill, which a cached replay meters as $0
-SESSION_VOLATILE_KEYS = frozenset({"usage"})
-
-
-#: files the store itself writes (view paths); only these are stripped. Candidate sources and raw execution traces
-#: (model replies, tool output) are shown exactly as written, even when a line happens to be JSON with such a key.
-STORE_WRITTEN = re.compile(r"^(evolution_summary\.jsonl|frontier_val\.json|reports/[^/]+\.jsonl?|sessions/[^/]+/meta\.json"
-                           r"|candidates/[^/]+/(meta\.json|eval/search/scores\.json|eval/search/per_task/[^/]+\.json))$")
-
-
 def strip_volatile_fields(path: str, text: str) -> str:
-    """``text`` with :data:`VOLATILE_KEYS` removed when ``path`` is a JSON / JSONL file the store writes
-    (:data:`STORE_WRITTEN`), plus :data:`SESSION_VOLATILE_KEYS` from ``sessions/*/meta.json``; unchanged otherwise,
-    and byte-identical when no volatile key is present."""
+    """``text`` without volatile keys when ``path`` is a JSON/JSONL file the store writes; byte-identical otherwise."""
     if not STORE_WRITTEN.match(path):
         return text
     if path.endswith(".json"):
@@ -104,7 +70,7 @@ def strip_volatile_fields(path: str, text: str) -> str:
         return json.dumps(obj, indent=1, default=str) if hit else text
     if path.endswith(".jsonl"):
         lines, changed = [], False
-        for line in text.split("\n")[:-1] if text.endswith("\n") else text.split("\n"):
+        for line in (text[:-1] if text.endswith("\n") else text).split("\n"):
             try:
                 obj, hit = _drop_volatile(json.loads(line))
             except ValueError:
@@ -120,6 +86,10 @@ class FinalizedError(RuntimeError):
     """Raised when evolution is attempted after a complete finalisation."""
 
 
+def _read_json(p: Path, default: Any = None) -> Any:
+    return json.loads(p.read_text()) if p.exists() else default
+
+
 class ExperienceStore:
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
@@ -132,7 +102,6 @@ class ExperienceStore:
         self.results_dir = self.root / "results"
         self.finalized_path = self.root / "finalized.json"
 
-    # ------------------------------------------------------------ candidates
     def cand_dir(self, name: str) -> Path:
         return self.root / "candidates" / safe_name(name)
 
@@ -150,28 +119,23 @@ class ExperienceStore:
 
     def update_meta(self, name: str, **fields: Any) -> dict:
         p = self.cand_dir(name) / "meta.json"
-        m = json.loads(p.read_text()) if p.exists() else {"name": name}
+        m = _read_json(p, {"name": name})
         m.update(fields)
         p.write_text(json.dumps(m, indent=1, default=str))
         return m
 
     def meta(self, name: str) -> dict:
-        p = self.cand_dir(name) / "meta.json"
-        return json.loads(p.read_text()) if p.exists() else {}
+        return _read_json(self.cand_dir(name) / "meta.json", {})
 
     def artifact(self, name: str) -> Artifact:
         return Artifact.from_dir(self.cand_dir(name) / "src")
 
     def names(self, status: Optional[str] = None) -> list[str]:
-        out = []
-        for d in sorted((self.root / "candidates").iterdir(), key=lambda p: (p.stat().st_mtime_ns, p.name)):
-            mp = d / "meta.json"
-            if mp.exists():
-                m = json.loads(mp.read_text())
-                if status is None or m.get("status") == status:
-                    out.append(m["name"])
-        out.sort(key=lambda n: (self.meta(n).get("order", 0), n))
-        return out
+        """Candidate names in registration order."""
+        dirs = sorted((self.root / "candidates").iterdir(), key=lambda p: (p.stat().st_mtime_ns, p.name))
+        metas = [json.loads((d / "meta.json").read_text()) for d in dirs if (d / "meta.json").exists()]
+        metas.sort(key=lambda m: (m.get("order", 0), m["name"]))
+        return [m["name"] for m in metas if status is None or m.get("status") == status]
 
     def write_eval(self, name: str, ev: EvalResult, *, cost: dict[str, float], extra: Optional[dict] = None,
                    split: str = SEARCH) -> dict:
@@ -204,8 +168,7 @@ class ExperienceStore:
         return self.cand_dir(name) / "eval" / split
 
     def scores(self, name: str) -> Optional[dict]:
-        p = self.cand_dir(name) / "eval" / SEARCH / "scores.json"
-        return json.loads(p.read_text()) if p.exists() else None
+        return _read_json(self.cand_dir(name) / "eval" / SEARCH / "scores.json")
 
     def traces(self, name: str) -> dict[str, str]:
         d = self.cand_dir(name) / "eval" / SEARCH / "traces"
@@ -216,7 +179,6 @@ class ExperienceStore:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text)
 
-    # ------------------------------------------------------------ run files
     def append_summary(self, row: dict) -> None:
         with self.summary_path.open("a") as f:
             f.write(json.dumps(row, default=float) + "\n")
@@ -233,7 +195,7 @@ class ExperienceStore:
         self.frontier_path.write_text(json.dumps(frontier, indent=1, default=float))
 
     def frontier(self) -> dict:
-        return json.loads(self.frontier_path.read_text()) if self.frontier_path.exists() else {}
+        return _read_json(self.frontier_path, {})
 
     def write_pending(self, iteration: int, candidates: list[dict]) -> None:
         self.pending_path.write_text(json.dumps({"iteration": iteration, "candidates": candidates}, indent=1))
@@ -246,8 +208,7 @@ class ExperienceStore:
         return self.root / "reports"
 
     def write_reports(self, reports: dict[str, str]) -> list[str]:
-        """Store proposer-written post-eval reports (``{"reports/<file>": text}``, release Step 0). A report
-        that already exists is kept (Step 0 writes only missing reports). Returns the paths written."""
+        """Store post-eval reports ``{"reports/<file>": text}``, keeping existing ones; returns the paths written."""
         written = []
         for rel, text in (reports or {}).items():
             name = safe_name(str(rel).split("/", 1)[-1].replace("/", "_"))
@@ -271,14 +232,11 @@ class ExperienceStore:
         (d / "meta.json").write_text(json.dumps(meta, indent=1, default=str))
         return d
 
-    # ------------------------------------------------------------ finalisation
     def is_finalized(self) -> bool:
-        if not self.finalized_path.exists():
-            return False
-        return json.loads(self.finalized_path.read_text()).get("status") == "complete"
+        return _read_json(self.finalized_path, {}).get("status") == "complete"
 
     def write_finalized(self, status: str, systems: list[str], **extra: Any) -> None:
-        d = json.loads(self.finalized_path.read_text()) if self.finalized_path.exists() else {}
+        d = _read_json(self.finalized_path, {})
         d.update({"status": status, "systems": systems, **extra})
         d.setdefault("started_at", time.time())
         if status == "complete":
@@ -289,24 +247,16 @@ class ExperienceStore:
         d = self.results_dir / safe_name(split) / safe_name(name)
         d.mkdir(parents=True, exist_ok=True)
         res = {"split": split, "score": ev.score, "per_unit": ev.task_scores(), "per_unit_cost": cost,
-               "context_cost": context_mean(cost), "tokens": ev.cost,
-               "families": ev.family_scores()}
+               "context_cost": context_mean(cost), "tokens": ev.cost, "families": ev.family_scores()}
         (d / "test.json").write_text(json.dumps(res, indent=1, default=float))
         return res
 
     def test_result(self, split: str, name: str) -> Optional[dict]:
-        p = self.results_dir / safe_name(split) / safe_name(name) / "test.json"
-        return json.loads(p.read_text()) if p.exists() else None
+        return _read_json(self.results_dir / safe_name(split) / safe_name(name) / "test.json")
 
-    # ------------------------------------------------------------ views
     def view(self, mode: str = "full", *, window: int = 5, focus: Optional[str] = None,
              seeds: Iterable[str] = (), strip_volatile: bool = False) -> dict[str, str]:
-        """Read-only projection ``{relative path: text}`` of the store for the proposer.
-
-        ``focus`` = the candidate shown by ``last_only`` (default: current best);
-        ``seeds`` = the baseline names shown by ``seed_only``;
-        ``strip_volatile`` = drop wall-clock fields (:data:`VOLATILE_KEYS`) from JSON / JSONL files, so the
-        same run history always renders to the same text (exact LLM-cache replay)."""
+        """Read-only ``{relative path: text}`` projection of the store for the proposer (see ``HISTORY_MODES``)."""
         files = self._view(mode, window=window, focus=focus, seeds=seeds)
         if strip_volatile:
             files = {p: strip_volatile_fields(p, text) for p, text in files.items()}
@@ -315,44 +265,32 @@ class ExperienceStore:
     def _view(self, mode: str, *, window: int, focus: Optional[str], seeds: Iterable[str]) -> dict[str, str]:
         files: dict[str, str] = {}
         names = self.names()
-        evaluated = [n for n in names if self.scores(n) is not None]
 
         def add_cand(n: str, *, src=True, meta=True, scores=True, traces=False, per_task=False, summary=False):
             d = self.cand_dir(n)
             rel = f"candidates/{safe_name(n)}"
             if src and (d / "src").exists():
                 for p in sorted((d / "src").rglob("*")):
-                    # a candidate's source is what the store wrote; bytecode left by anyone importing it is not
                     if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc":
                         files[f"{rel}/src/{p.relative_to(d / 'src')}"] = p.read_text()
-            if meta and (d / "meta.json").exists():
-                files[f"{rel}/meta.json"] = (d / "meta.json").read_text()
             ev = d / "eval" / SEARCH
-            if scores and (ev / "scores.json").exists():
-                files[f"{rel}/eval/search/scores.json"] = (ev / "scores.json").read_text()
-            if per_task and (ev / "per_task").exists():
-                for p in sorted((ev / "per_task").glob("*.json")):
-                    files[f"{rel}/eval/search/per_task/{p.name}"] = p.read_text()
-            if traces and (ev / "traces").exists():
-                for p in sorted((ev / "traces").glob("*.jsonl")):
-                    files[f"{rel}/eval/search/traces/{p.name}"] = p.read_text()
-            if summary and (ev / "summary.md").exists():
-                files[f"{rel}/eval/search/summary.md"] = (ev / "summary.md").read_text()
+            for want, folder, pattern in ((meta, d, "meta.json"), (scores, ev, "scores.json"),
+                                          (per_task, ev / "per_task", "*.json"), (traces, ev / "traces", "*.jsonl"),
+                                          (summary, ev, "summary.md")):
+                if want:
+                    for p in sorted(folder.glob(pattern)):
+                        files[f"{rel}/{p.relative_to(d).as_posix()}"] = p.read_text()
 
         if mode == "full":
             for n in names:
                 add_cand(n, traces=True, per_task=True)
             self._add_run_files(files, reports=True, sessions=True)
-        elif mode == "scores_summary":
+        elif mode in ("scores_summary", "scores_only"):
             for n in names:
-                add_cand(n, summary=True)
-            self._add_run_files(files)
-        elif mode == "scores_only":
-            for n in names:
-                add_cand(n)
+                add_cand(n, summary=mode == "scores_summary")
             self._add_run_files(files)
         elif mode == "window":
-            for n in evaluated[-window:]:
+            for n in [n for n in names if self.scores(n) is not None][-window:]:
                 add_cand(n, meta=False)
         elif mode == "last_only":
             target = focus or self._best_name()
@@ -392,7 +330,7 @@ class ExperienceStore:
 
     @staticmethod
     def materialize(files: dict[str, str], dest: str | Path, read_only: bool = True) -> Path:
-        """Write a view to ``dest`` (e.g. for a coding agent's working directory)."""
+        """Write a view to ``dest`` (e.g. a coding agent's working directory)."""
         d = Path(dest)
         if d.exists():
             for p in d.rglob("*"):
@@ -408,7 +346,6 @@ class ExperienceStore:
         return d
 
 
-# ------------------------------------------------------------------ history CLI
 def cli_frontier(store: ExperienceStore) -> str:
     """Text listing of the Pareto frontier (paper App. D's "short CLI")."""
     fr = store.frontier()

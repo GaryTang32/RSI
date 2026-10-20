@@ -1,31 +1,12 @@
-"""Proposers: who writes new harnesses from the experience store.
-
-* :class:`AgentProposer` - the paper's proposer: a headless coding agent
-  (``claude -p`` via :class:`rsi.core.AgentEditor`) whose working directory holds the
-  whole history view read-only under ``_context/`` and which writes ``k`` complete
-  new harnesses under ``agents/<name>/``, ``pending_eval.json`` and post-eval reports
-  under ``reports/``. With ``prototype=True`` (default, as the release's Bash-enabled
-  Claude Code) it may run ``python3`` and read-only shell commands to prototype; the
-  ``--verbose`` transcript gives the files it actually opened (``files_read``).
-* :class:`RewriteProposer` - one completion from any :class:`rsi.core.LLM`; the
-  history view is *rendered* into the prompt (budgeted by file kind, so raw traces are
-  always included) and the reply carries ``pending_eval`` JSON +
-  ``=== FILE: agents/<name>/<path> ===`` blocks (and optional ``reports/`` blocks).
-* :class:`rsi.metaharness.mock.MockProposer` - deterministic offline proposer.
-
-The skill text adapts the release's ``SKILL.md`` (spec A3.3/A6) to any domain: you do
-not run benchmarks; write exactly k candidates; change mechanisms, not parameters;
-rotate exploitation axes; no dataset-specific hints; post-eval reports (Step 0);
-prototype before implementing (Step 2); complete files only.
-"""
+"""Proposers that turn a history view into k new whole-program harnesses (coding agent, single completion)."""
 from __future__ import annotations
 
 import json
 import os
 import re
-import shlex
 import subprocess
 import time
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
@@ -67,18 +48,17 @@ candidate you write and stores its code, scores and raw execution traces in the 
    is this a genuinely new mechanism? If the logic is identical to the base except for numbers, rewrite it.
 """
 
-#: Step 2 of the release skill when the proposer can run code (AgentProposer with ``prototype=True``)
+#: skill Step 2 when the proposer can run code (AgentProposer with ``prototype=True``)
 PROTOTYPE_RUN = """Prototype (MANDATORY): for each candidate, write a small test script under `scratch/` that exercises the new
    retrieval / learning logic in isolation on real examples pulled from the traces, try 2-3 variants and compare
    them, and run it with `python3 scratch/<file>.py`. Everything outside agents/ and reports/ is discarded."""
 
-#: Step 2 when the proposer cannot run code (RewriteProposer: one completion, no tools)
+#: skill Step 2 when the proposer cannot run code
 PROTOTYPE_ON_PAPER = """Prototype on paper (you cannot run code here): walk each mechanism through 2-3 real examples taken from the
    traces - what would it store, retrieve and show the model? - and compare variants before writing the code."""
 
 
 def format_skill(skill: str, k: int, prototype: str) -> str:
-    """Fill the skill template (custom skills may omit ``{prototype}``)."""
     return skill.format(k=k, prototype=prototype)
 
 
@@ -143,12 +123,7 @@ class CandidateSpec:
 
 @dataclass
 class ProposalBatch:
-    """One proposer call. ``files_read`` = history files whose content the proposal was based on (what a
-    coding agent would open: for :class:`AgentProposer` the files its transcript shows it opened, for
-    :class:`RewriteProposer` the files rendered into its prompt, for the mock the parents' code and the
-    traces / summaries it diagnosed); ``files_scanned`` = files only parsed mechanically for bookkeeping
-    (e.g. the mock reading every candidate's config to avoid repeats). ``reports`` = post-eval reports
-    ``{"reports/<file>": text}`` (release Step 0)."""
+    """One proposer call; ``files_read``: files the proposal is based on, ``files_scanned``: files only parsed."""
 
     candidates: list[CandidateSpec] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
@@ -168,8 +143,7 @@ class Proposer:
 
     def propose(self, *, iteration: int, view: dict[str, str], k: int, brief: str,
                 artifacts: dict[str, Artifact], seed: int = 0) -> ProposalBatch:  # pragma: no cover
-        """``view`` = what the proposer may read; ``artifacts`` = sources of visible systems
-        (for copying unchanged files from ``base_system``)."""
+        """``artifacts``: sources of the visible systems, for copying unchanged files from ``base_system``."""
         raise NotImplementedError
 
 
@@ -177,8 +151,7 @@ _FENCE_OPEN = re.compile(r"^\s*```[A-Za-z0-9_+.-]*[^\n]*\n")
 
 
 def clean_code_block(text: str) -> str:
-    """Unwrap a file body that is still inside a Markdown fence (``rsi.core.parse_file_blocks`` only
-    unwraps it when nothing follows the closing fence) and drop prose after the closing fence."""
+    """Unwrap a file body still inside a Markdown fence and drop prose after the closing fence."""
     if text is None:
         return text
     m = _FENCE_OPEN.match(text)
@@ -194,8 +167,7 @@ def clean_code_block(text: str) -> str:
 
 
 def resolve_base(name: str, artifacts: dict[str, Artifact]) -> tuple[str, bool]:
-    """``(system, fell_back)``: the visible system a candidate's ``base_system`` names (exact, then by safe name
-    or case), else the first visible system with ``fell_back=True``."""
+    """``(system, fell_back)``: the visible system ``name`` refers to, else the first visible one."""
     name = str(name or "")
     if name in artifacts:
         return name, False
@@ -207,7 +179,7 @@ def resolve_base(name: str, artifacts: dict[str, Artifact]) -> tuple[str, bool]:
 
 
 def reports_from(files: dict[str, str]) -> dict[str, str]:
-    """Post-eval reports among a proposer's output files (``reports/<file>``; nested paths are flattened)."""
+    """Post-eval reports among a proposer's output files (nested ``reports/`` paths are flattened)."""
     out = {}
     for path, text in files.items():
         m = re.match(r"^reports/(.+)$", path)
@@ -218,28 +190,21 @@ def reports_from(files: dict[str, str]) -> dict[str, str]:
 
 def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, Artifact],
              taken: set[str], iteration: int) -> list[CandidateSpec]:
-    """Group ``agents/<name>/<path>`` files into candidates, completing them from their base system.
-
-    A ``base_system`` that names no visible system is NOT replaced silently (audit N10): the candidate is
-    completed from the first visible system, and ``meta`` records ``base_fallback=True`` and the claimed name,
-    which the store, the ledger and the audit trace keep."""
+    """Group ``agents/<name>/<path>`` files into candidates completed from their base system."""
     groups: dict[str, dict[str, Optional[str]]] = {}
     for path, text in files.items():
         m = re.match(r"^agents/([^/]+)/(.+)$", path)
         if m:
             groups.setdefault(m.group(1), {})[m.group(2)] = clean_code_block(text)
     rows = header.get("candidates") if isinstance(header, dict) else None
-    rows = rows if isinstance(rows, list) else []
-    by_name = {str(r.get("name")): r for r in rows if isinstance(r, dict)}
+    by_name = {str(r.get("name")): r for r in (rows if isinstance(rows, list) else []) if isinstance(r, dict)}
     out = []
     for raw_name, updates in groups.items():
         row = by_name.get(raw_name, {})
         claimed = str(row.get("base_system") or "")
         base_name, fell_back = resolve_base(claimed, artifacts)
         base = artifacts.get(base_name) or Artifact({})
-        # the history shows sources under candidates/<name>/src/<path>; a proposer that copies that layout
-        # (agents/<name>/src/harness.py) would add dead files and leave the real harness unchanged
-        # (observed live with haiku, validation/metaharness-solpi/mh_agentqa_live) -> map src/<path> to <path>
+        # a proposer copying the history layout writes agents/<name>/src/<path>; map it back to <path>
         if not any(p.startswith("src/") for p in base.files):
             updates = {(p[4:] if p.startswith("src/") else p): t for p, t in updates.items()}
         art = base.with_files({p: (None if (t or "").strip() == "<<DELETE>>" else t) for p, t in updates.items()})
@@ -280,9 +245,8 @@ class RewriteProposer(Proposer):
             batch.error = f"llm error: {resp.error}"
             return batch
         header: dict = {}
-        head_text = resp.text.split("=== FILE:")[0]
         try:
-            h = extract_json(head_text)
+            h = extract_json(resp.text.split("=== FILE:")[0])
             header = h if isinstance(h, dict) else {"candidates": h} if isinstance(h, list) else {}
         except ValueError:
             pass
@@ -294,32 +258,13 @@ class RewriteProposer(Proposer):
         return batch
 
 
-#: shell commands the prototyping agent may run (release: full Bash with --dangerously-skip-permissions)
+#: shell commands the prototyping agent may run
 PROTOTYPE_COMMANDS = ("python3", "python")
 INSPECT_COMMANDS = ("cat", "head", "tail", "grep", "ls", "wc", "find", "sort", "uniq", "diff", "jq")
 
 
 class AgentProposer(Proposer):
-    """The paper's proposer: a coding agent over the history directory (``claude -p``).
-
-    Uses :class:`rsi.core.AgentEditor`: the view is written read-only under ``_context/``; the agent may only
-    write ``agents/*``, ``pending_eval.json`` and ``reports/*`` (post-eval reports, release Step 0).
-
-    ``prototype=True`` (default, the release's behaviour): the agent also gets Bash, restricted by
-    ``--allowedTools`` to ``python3``/``python`` and read-only inspection commands, so it can run the skill's
-    mandatory prototype step (scripts under ``scratch/`` are discarded with everything else outside the
-    editable paths). SAFETY: the allow-list filters *shell commands* only (checked live: Claude Code also
-    auto-allows read-only commands and edits inside the workspace, and denies under ``-p`` what needs approval,
-    e.g. network access or writes outside the workspace), but ``python3`` itself is unrestricted code
-    execution with your permissions, as in the release (which even runs Claude Code with
-    ``--dangerously-skip-permissions``). Use ``prototype=False`` (no Bash at all, the earlier behaviour) or run
-    inside a container when that is not acceptable.
-
-    ``files_read`` is taken from the agent's ``--verbose`` transcript (files it opened with Read, or named in
-    a Bash command - cat/head/tail/grep or a Python script that opens them), not the whole view; ``meta``
-    carries the tool calls, files searched with Grep/Glob/ls, and the prototype activity (Python runs and the
-    scripts it wrote, wherever it put them). ``max_budget_usd`` caps one proposer session
-    (``claude -p --max-budget-usd``)."""
+    """The paper's proposer: a ``claude -p`` coding agent over a read-only history directory."""
 
     def __init__(self, cli: ClaudeCLI, *, timeout_s: float = 2400.0, skill: str = SKILL_TEXT,
                  tools: Optional[tuple[str, ...]] = None, prototype: bool = True,
@@ -327,7 +272,7 @@ class AgentProposer(Proposer):
                  max_budget_usd: Optional[float] = None) -> None:
         self.cli = cli
         self.skill = skill
-        self.prototype = prototype
+        self.prototype = prototype              # Bash limited to allowed_commands; python3 itself is unrestricted
         if tools is None:
             tools = ("Read", "Edit", "Write", "Glob", "Grep") + (("Bash",) if prototype else ())
         allowed = [f"Bash({c} *)" for c in allowed_commands] if prototype and "Bash" in tools else []
@@ -343,18 +288,18 @@ class AgentProposer(Proposer):
         agent_cli = getattr(self, "agent_cli", None)
         if agent_cli is not None:
             agent_cli.reset()
+        step2 = PROTOTYPE_RUN if getattr(self, "prototype", False) else PROTOTYPE_ON_PAPER
         prop = self.editor.edit(workspace, prompt, context=view,
                                 editable=["agents/*", "pending_eval.json", "reports/*"],
-                                system=format_skill(self.skill, k, PROTOTYPE_RUN if getattr(self, "prototype", False)
-                                                    else PROTOTYPE_ON_PAPER),
-                                seed=seed, role=self.role)
+                                system=format_skill(self.skill, k, step2), seed=seed, role=self.role)
         calls = tool_calls(agent_cli.last_messages) if agent_cli is not None else []
         read, searched = files_touched(calls, view)
         blocked = list(getattr(prop, "blocked_files", []) or [])
         batch = ProposalBatch(usage=prop.usage, transcript=prop.raw, prompt=prompt, files_read=read,
                               meta={"seconds": time.time() - t0, "files_searched": searched,
-                                    "tool_summary": _tool_summary(calls),
-                                    "tool_calls": [{"name": c["name"], "input": _short(c["input"])} for c in calls][:300],
+                                    "tool_summary": dict(Counter(c["name"] for c in calls)),
+                                    "tool_calls": [{"name": c["name"], "input": _short(c["input"])}
+                                                   for c in calls][:300],
                                     "prototype_files": sorted(b for b in blocked if b.startswith("scratch/")),
                                     "prototype": prototype_activity(calls),
                                     "transcript_available": bool(agent_cli is not None and agent_cli.last_messages)})
@@ -362,9 +307,7 @@ class AgentProposer(Proposer):
             batch.error = prop.error or "agent produced no files"
             return batch
         if prop.error and prop.error.startswith("agent error"):
-            # release: a failed or timed-out proposer (claude_wrapper returns ok=False, e.g. exit 124) skips the
-            # iteration even if pending_eval.json was already written [spec A3.2]
-            batch.error = prop.error
+            batch.error = prop.error          # release: a failed or timed-out proposer skips the iteration
             return batch
         files = {n: prop.artifact[n] for n in prop.artifact if n not in ("agents/README.md", "reports/README.md")}
         header: dict = {}
@@ -381,22 +324,13 @@ class AgentProposer(Proposer):
 
 
 class TranscriptCLI:
-    """A :class:`ClaudeCLI` adapter for :class:`rsi.core.AgentEditor` (which calls ``run_agent``):
-
-    * adds ``--allowedTools`` patterns (the restricted Bash of the prototype step; in ``acceptEdits`` mode a
-      command that matches no pattern is denied, since nobody answers permission prompts under ``-p``);
-    * adds ``--verbose``, so ``--output-format json`` returns the whole message list, and keeps it in
-      ``last_messages`` (the tool calls the agent made - the data the release's ``claude_wrapper`` logs as
-      ``files_read``);
-    * does not retry a timed-out session (release: exit 124 skips the iteration).
-
-    Usage is metered on the wrapped CLI's meter, as ``ClaudeCLI.run_agent`` does."""
+    """ClaudeCLI adapter for AgentEditor: adds ``--allowedTools`` and ``--verbose`` and keeps the transcript."""
 
     def __init__(self, cli: ClaudeCLI, *, allowed_tools: Sequence[str] = (),
                  max_budget_usd: Optional[float] = None) -> None:
         self.cli = cli
         self.allowed_tools = list(allowed_tools)
-        self.max_budget_usd = max_budget_usd          # claude -p --max-budget-usd (per proposer session)
+        self.max_budget_usd = max_budget_usd
         self.last_messages: list = []
 
     @property
@@ -427,8 +361,7 @@ class TranscriptCLI:
 
 def run_transcript(cli: ClaudeCLI, cmd: list[str], prompt: str, *, cwd: Optional[str] = None,
                    timeout: Optional[float] = None) -> tuple[LLMResponse, list]:
-    """Run a ``claude -p --output-format json --verbose`` command; return (response, message list).
-    Mirrors ``ClaudeCLI._run`` (retries on malformed output / CLI errors) but keeps the transcript."""
+    """Run a ``claude -p --output-format json --verbose`` command; returns ``(response, message list)``."""
     last_err = "unknown"
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}          # prototype runs leave no __pycache__
     for attempt in range(max(1, cli.retries)):
@@ -463,7 +396,7 @@ def run_transcript(cli: ClaudeCLI, cmd: list[str], prompt: str, *, cwd: Optional
 
 
 def _parse_messages(stdout: str) -> list:
-    """``--output-format json`` (+ ``--verbose``: a JSON list) or stream-json (one object per line)."""
+    """A JSON list (``--output-format json --verbose``) or one JSON object per line (stream-json)."""
     try:
         data = json.loads(stdout)
         return data if isinstance(data, list) else [data]
@@ -492,21 +425,16 @@ def tool_calls(messages: list) -> list[dict]:
     return out
 
 
-_READ_CMDS = ("cat", "head", "tail", "grep", "sed", "awk", "less", "more", "wc", "jq", "diff")
 _CTX_PATH = re.compile(r"_context/[^\s'\"`|;&<>()]*")
 _RUNS_CODE = re.compile(r"(^|[\s;&|(])(python3?|pytest)(\s|$)")
 
 
 def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], list[str]]:
-    """(files read, files/dirs searched) as history-view paths. Read = ``Read`` targets and every history file
-    named in a Bash command (cat/head/tail/grep, or a python script / heredoc that opens it); searched =
-    ``Grep``/``Glob`` paths and directories listed or searched in Bash."""
+    """(files read, files/dirs searched) as history-view paths, from Read/Grep/Glob/Bash tool calls."""
     def rel(p: str) -> Optional[str]:
         p = str(p or "").strip().strip("'\"")
         i = p.find("_context/")
-        if i < 0:
-            return None
-        return p[i + len("_context/"):].rstrip("/")
+        return None if i < 0 else p[i + len("_context/"):].rstrip("/")
 
     read, searched = [], []
     for c in calls:
@@ -514,10 +442,8 @@ def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], l
         name = c.get("name")
         if name == "Read":
             r = rel(inp.get("file_path", ""))
-            if r is not None and r in view:
-                read.append(r)
-            elif r is not None:
-                searched.append(r)
+            if r is not None:
+                (read if r in view else searched).append(r)
         elif name in ("Grep", "Glob"):
             r = rel(inp.get("path", "")) or rel(inp.get("pattern", ""))
             if r is not None:
@@ -525,15 +451,13 @@ def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], l
         elif name == "Bash":
             for m in _CTX_PATH.finditer(str(inp.get("command", ""))):
                 r = rel(m.group(0))
-                if r is None or r == "":
-                    continue
-                (read if r in view else searched).append(r)
+                if r:
+                    (read if r in view else searched).append(r)
     return sorted(set(read)), sorted(set(searched))
 
 
 def prototype_activity(calls: list[dict], editable_prefixes: Sequence[str] = ("agents/", "reports/")) -> dict:
-    """The release's Step 2, seen in a transcript: Bash calls that run Python, and files written outside the
-    candidate / report / handoff paths (test scripts, wherever the agent put them)."""
+    """Skill Step 2 in a transcript: Bash calls that run Python, and files written outside the editable paths."""
     runs = [str((c.get("input") or {}).get("command", ""))[:300] for c in calls
             if c.get("name") == "Bash" and _RUNS_CODE.search(str((c.get("input") or {}).get("command", "")))]
     written = []
@@ -547,20 +471,12 @@ def prototype_activity(calls: list[dict], editable_prefixes: Sequence[str] = ("a
     return {"python_runs": len(runs), "python_commands": runs[:20], "scripts_written": sorted(set(written))}
 
 
-def _tool_summary(calls: list[dict]) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for c in calls:
-        out[c["name"]] = out.get(c["name"], 0) + 1
-    return out
-
-
 def _short(inp: dict, n: int = 2000) -> dict:
     return {k: (v[:n] + "...") if isinstance(v, str) and len(v) > n else v for k, v in (inp or {}).items()
             if k not in ("content", "new_string", "old_string")}
 
 
-#: The paper's median proposer reading mix per iteration (App. A.1, Table 8: 41% code, 40% traces, 6% scores,
-#: 13% other). :func:`render_view` splits its character budget this way, so raw traces are always rendered.
+#: The paper's median proposer reading mix (App. A.1, Table 8); render_view splits its budget this way.
 READ_MIX = {"code": 0.41, "traces": 0.40, "scores": 0.06, "other": 0.13}
 
 _FAIL_LINE = re.compile(r'"ok":\s*false|"error"|Traceback|Incorrect|incorrect|FAIL|expected ', re.I)
@@ -568,89 +484,77 @@ _FAIL_LINE = re.compile(r'"ok":\s*false|"error"|Traceback|Incorrect|incorrect|FA
 
 def _view_kind(path: str) -> str:
     if not path.startswith("candidates/"):
-        return "other"                        # run files, reports, session meta
+        return "other"
     if "/src/" in path:
         return "code"
     if "/traces/" in path or "/per_task/" in path:
         return "traces"
-    return "scores"                           # scores.json, meta.json, summary.md
+    return "scores"
 
 
 def excerpt(text: str, cap: int, field_cap: int = 700) -> str:
-    """At most ~``cap`` chars of a file. JSONL traces keep the first and last records plus as many
-    failure-looking records (``"ok": false``, errors, tracebacks; latest first) as fit, each long string field
-    cut in the middle; other text keeps its head and tail."""
+    """At most ~``cap`` chars: JSONL keeps first, last and failure records; other text keeps head and tail."""
     if len(text) <= cap:
         return text
     lines = text.splitlines()
-    if lines and sum(1 for l in lines if l.lstrip().startswith("{")) >= 0.8 * len(lines):
-        def shrink(line: str) -> str:
-            if len(line) <= 2 * field_cap:
-                return line
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                return line[:field_cap] + f" ...[{len(line) - 2 * field_cap} chars cut]... " + line[-field_cap:]
+    if not (lines and sum(1 for l in lines if l.lstrip().startswith("{")) >= 0.8 * len(lines)):
+        h = cap // 3
+        return text[:h] + f"\n...[{len(text) - cap} chars omitted]...\n" + text[-(cap - h):]
 
-            def cut(v):
-                if isinstance(v, str) and len(v) > field_cap:
-                    h = field_cap // 2
-                    return v[:h] + f" ...[{len(v) - 2 * h} chars cut]... " + v[-h:]
-                if isinstance(v, list):
-                    return [cut(x) for x in v]
-                if isinstance(v, dict):
-                    return {k: cut(x) for k, x in v.items()}
-                return v
-            return json.dumps({k: cut(v) for k, v in rec.items()})
+    def cut(v):
+        if isinstance(v, str) and len(v) > field_cap:
+            h = field_cap // 2
+            return v[:h] + f" ...[{len(v) - 2 * h} chars cut]... " + v[-h:]
+        if isinstance(v, list):
+            return [cut(x) for x in v]
+        if isinstance(v, dict):
+            return {k: cut(x) for k, x in v.items()}
+        return v
 
-        n = len(lines)
-        # first/last records, then failures from the END backwards (the final evaluation phase comes last in a
-        # trace), then everything else, also latest first
-        order = [0, n - 1] + [i for i in range(n - 2, 0, -1) if _FAIL_LINE.search(lines[i])] + list(range(n - 2, 0, -1))
-        keep, used = set(), 0
-        for i in order:
-            if i in keep:
-                continue
-            ln = shrink(lines[i])
-            if used + len(ln) + 1 > cap and keep:
-                continue
-            keep.add(i)
-            used += len(ln) + 1
-            if used >= cap:
-                break
-        out, last = [], -1
-        for i in sorted(keep):
-            if i > last + 1:
-                out.append(f"... [{i - last - 1} lines omitted] ...")
-            out.append(shrink(lines[i]))
-            last = i
-        if last < n - 1:
-            out.append(f"... [{n - 1 - last} lines omitted] ...")
-        return "\n".join(out)
-    h = cap // 3
-    return text[:h] + f"\n...[{len(text) - cap} chars omitted]...\n" + text[-(cap - h):]
+    def shrink(line: str) -> str:
+        if len(line) <= 2 * field_cap:
+            return line
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            return line[:field_cap] + f" ...[{len(line) - 2 * field_cap} chars cut]... " + line[-field_cap:]
+        return json.dumps({k: cut(v) for k, v in rec.items()})
+
+    n = len(lines)
+    # first/last records, then failures latest first (the evaluation phase ends a trace), then the rest
+    order = [0, n - 1] + [i for i in range(n - 2, 0, -1) if _FAIL_LINE.search(lines[i])] + list(range(n - 2, 0, -1))
+    keep, used = set(), 0
+    for i in order:
+        if i in keep:
+            continue
+        ln = shrink(lines[i])
+        if used + len(ln) + 1 > cap and keep:
+            continue
+        keep.add(i)
+        used += len(ln) + 1
+        if used >= cap:
+            break
+    out, last = [], -1
+    for i in sorted(keep):
+        if i > last + 1:
+            out.append(f"... [{i - last - 1} lines omitted] ...")
+        out.append(shrink(lines[i]))
+        last = i
+    if last < n - 1:
+        out.append(f"... [{n - 1 - last} lines omitted] ...")
+    return "\n".join(out)
 
 
 def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
                 mix: Optional[dict] = None) -> tuple[str, list[str]]:
-    """Render a history view into prompt text under ``budget`` characters.
-
-    The budget is split by file kind following the paper's median reading mix (:data:`READ_MIX`: code, raw
-    traces, scores, other); budget one kind leaves unused flows to the others. Within a kind, candidates go by
-    search score. Traces: all units of the best candidate first, then one unit per remaining candidate in
-    turn; each trace is an :func:`excerpt` (first/last records + failures), widened up to ``per_file`` when
-    budget is left over. Before this change every source
-    and score outranked every trace, and on MemoClassify 0 of 42 trace files fit (audit N3). Returns
-    ``(text, rendered paths)``."""
+    """Render a view under ``budget`` chars split by file kind as ``mix``; returns ``(text, rendered paths)``."""
     mix = dict(mix or READ_MIX)
 
     def cand(path: str) -> Optional[str]:
         m = re.match(r"candidates/([^/]+)/", path)
         return m.group(1) if m else None
 
-    def cand_score(name: Optional[str]) -> float:
-        if name is None:
-            return 0.0
+    def cand_score(name: str) -> float:
         s = view.get(f"candidates/{name}/eval/search/scores.json")
         try:
             return float(json.loads(s)["score"]) if s else -1.0
@@ -664,14 +568,14 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
     def unit_of(path: str) -> str:
         return path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
 
-    units_of: dict[Optional[str], list[str]] = {}
+    units_of: dict[Optional[str], set[str]] = {}
     for q in view:
         if _view_kind(q) == "traces":
-            units_of.setdefault(cand(q), []).append(unit_of(q))
-    units_of = {c: sorted(set(u)) for c, u in units_of.items()}
+            units_of.setdefault(cand(q), set()).add(unit_of(q))
+    sorted_units = {c: sorted(u) for c, u in units_of.items()}
 
     def unit_index(path: str) -> int:                    # per_task/<u>.json and traces/<u>.jsonl share an index
-        us = units_of.get(cand(path), [])
+        us = sorted_units.get(cand(path), [])
         return us.index(unit_of(path)) if unit_of(path) in us else 0
 
     def prio(path: str) -> tuple:
@@ -680,14 +584,13 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
             return (run_first.index(path) if path in run_first else 2, path)
         r = rank.get(cand(path), len(rank))
         if k == "traces":
-            per_task = 0 if "/per_task/" in path else 1
-            return (0 if r < 1 else 1, 0 if r < 1 else unit_index(path), r, per_task, path)
+            # all units of the best candidate first, then one unit per remaining candidate in turn
+            return (0 if r < 1 else 1, 0 if r < 1 else unit_index(path), r, 0 if "/per_task/" in path else 1, path)
         return (r, path)
 
     kinds = ("other", "code", "scores", "traces")
     by_kind = {k: sorted((p for p in view if _view_kind(p) == k), key=prio) for k in kinds}
-    n_traces = max(1, len(by_kind["traces"]))
-    trace_cap = min(per_file, max(1500, int(budget * mix.get("traces", 0)) // min(n_traces, 8)))
+    trace_cap = min(per_file, max(1500, int(budget * mix.get("traces", 0)) // min(max(1, len(by_kind["traces"])), 8)))
     chunks: dict[str, str] = {}
     used = 0
 
@@ -697,29 +600,27 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
             text = excerpt(text, cap) + f"\n...[excerpt: {len(view[path]):,} chars in full]"
         return f"=== HISTORY FILE: {path} ===\n{text}\n"
 
-    def fill(paths, limit: int, cap_of) -> None:
+    def fill(paths, limit: int) -> None:
         nonlocal used
         spent = 0
         for path in paths:
             if path in chunks:
                 continue
-            ch = chunk_for(path, cap_of(path))
+            ch = chunk_for(path, trace_cap if _view_kind(path) == "traces" else per_file)
             if spent + len(ch) > limit or used + len(ch) > budget:
                 continue
             chunks[path] = ch
             spent += len(ch)
             used += len(ch)
 
-    cap_of = lambda p: trace_cap if _view_kind(p) == "traces" else per_file   # noqa: E731
-    for k in kinds:                                       # pass 1: each kind within its share
-        fill(by_kind[k], int(budget * mix.get(k, 0)), cap_of)
-    for k in kinds:                                       # pass 2: leftover budget, same priority order
-        fill(by_kind[k], budget - used, cap_of)
-    for path in by_kind["traces"]:                        # pass 3: widen trace excerpts with what is left
+    for k in kinds:                                       # each kind within its share
+        fill(by_kind[k], int(budget * mix.get(k, 0)))
+    for k in kinds:                                       # leftover budget, same priority order
+        fill(by_kind[k], budget - used)
+    for path in by_kind["traces"]:                        # widen trace excerpts with what is left
         if path not in chunks or len(view[path]) <= trace_cap:
             continue
-        room = budget - used + len(chunks[path])
-        cap = min(per_file, room - len(path) - 200)
+        cap = min(per_file, budget - used + len(chunks[path]) - len(path) - 200)
         if cap <= trace_cap:
             break
         wider = chunk_for(path, cap)
@@ -731,7 +632,6 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
     return "".join(chunks[p] for p in order), order
 
 
-# ------------------------------------------------------------------ summarisers
 SUMMARY_PROMPT = """Summarise the execution traces of one harness candidate in at most 5 sentences for an engineer
 who will improve the harness: overall accuracy, recurring failure patterns, anything notable. Do not quote
 individual examples.
@@ -740,7 +640,7 @@ individual examples.
 
 
 class LLMSummarizer:
-    """Trace summaries for the ``scores_summary`` ablation (paper Table 3, row 2)."""
+    """Trace summaries for the ``scores_summary`` ablation (paper Table 3)."""
 
     def __init__(self, llm: LLM, max_chars: int = 40000) -> None:
         self.llm = llm
@@ -753,25 +653,14 @@ class LLMSummarizer:
 
 
 def summarizer_input(traces: dict[str, str], max_chars: int = 40000) -> str:
-    """What the summariser reads: every unit's trace, each cut to an equal share of ``max_chars`` with the
-    JSONL-aware :func:`excerpt` (first/last records plus failure records, latest first).
-
-    Retry round 2 (claim L2): the summariser used to read ``"\n".join(all traces)[:max_chars]``, i.e. only the
-    head of the FIRST unit. On MemoClassify full traces (0.5-8 MB per candidate) that head holds train-phase
-    records only: 0 of 144 evaluation records and 1 of 3 units reached the summariser, so the summary arm of
-    the Table 3 ablation was starved by construction, not by summarisation."""
+    """Every unit's trace cut to an equal share of ``max_chars`` with :func:`excerpt`."""
     if not traces:
         return ""
-    units = list(traces)
-    share = max(1000, max_chars // len(units) - 40)
+    share = max(1000, max_chars // len(traces) - 40)
     parts = []
     for u, t in traces.items():
         lines = [l for l in (t or "").splitlines() if l.strip()]
         n_fail = sum(1 for l in lines if _FAIL_LINE.search(l))
-        parts.append(f"--- {u} --- ({len(lines)} records, {n_fail} failure-looking; excerpt)\n{excerpt(t or '', share)}")
+        parts.append(f"--- {u} --- ({len(lines)} records, {n_fail} failure-looking; excerpt)\n"
+                     f"{excerpt(t or '', share)}")
     return "\n".join(parts)[:max_chars]
-
-
-def generic_summary(traces: dict[str, str]) -> str:
-    n = sum(len(t.splitlines()) for t in traces.values())
-    return f"{len(traces)} evaluation units, {n} trace lines. No further detail."

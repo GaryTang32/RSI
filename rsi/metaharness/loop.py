@@ -1,31 +1,7 @@
-"""The Meta-Harness outer loop (spec A3.2, ``reference_examples/text_classification/meta_harness.py``).
-
-::
-
-    baselines -> evaluate on the search split -> frontier                        (phase 0)
-    for t in 1..N:                                                               (evolution)
-        view = store.view(history_mode)                    # what the proposer may read
-        candidates = proposer.propose(t, view, k)          # k whole-program candidates
-        valid = [c for c in candidates if interface_ok(c) (and not leaky, if screened)]
-        evaluate valid on the search split; store code + scores + raw traces
-        recompute frontier (per-unit best + Pareto score up / context cost down)
-        append evolution_summary rows
-    finalize(): test ONCE on baselines + Pareto + per-unit best, write results/, lock
-
-No parent-selection rule, no mutation operators, no archive policy: every valid
-candidate is evaluated and kept; the frontier is the output. The test split is
-sealed during evolution (``rsi.core.TaskSuite`` raises on access) and results go
-to ``results/``, which no history view exposes.
-
-The proposer's brief is the domain description plus an objective statement (the
-Pareto objectives, the context metric and ``Config.tradeoff``: "given only the current
-metrics and the desired trade-off" [paper §4.1]). Post-eval reports the proposer writes
-go to ``reports/`` (release Step 0). Optional, off by default: ``Config.reeval_incumbent``
-re-evaluates every new ``_best`` on more seeds before it is accepted (noise band; not
-in the paper or release).
-"""
+"""The Meta-Harness outer loop: propose k harnesses from the history, evaluate and keep all, report the frontier."""
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from typing import Callable, Optional
@@ -37,7 +13,7 @@ from ..core.domain import Domain
 from ..core.evaluate import EvalResult, Evaluator
 from ..core.ledger import Ledger, Node
 from ..core.llm import LLM, Usage
-from ..core.run import ImprovementResult
+from ..trace import RunTracer
 from .config import Config
 from .frontier import hypervolume, pareto_frontier, per_unit_best
 from .proposer import CandidateSpec, Proposer
@@ -45,9 +21,15 @@ from .store import ExperienceStore, FinalizedError, safe_name
 from .tracing import MHTracer
 from .validate import InterfaceValidator, LeakageScreen
 
+_COST_METRICS = {
+    "context_chars": "characters injected into the model's prompt(s) besides the input, summed over every model "
+                     "call made for one query",
+    "context_chars_last_call": "characters injected into the LAST model prompt of a query besides the input",
+    "tokens": "model tokens per task"}
+
 
 class MetaHarnessLoop:
-    """Stateful loop over one :class:`ExperienceStore` (resumable, finalise once)."""
+    """Stateful loop over one :class:`ExperienceStore` (resumable, finalised once)."""
 
     def __init__(self, domain: Domain, *, llm_task: Optional[LLM], proposer: Proposer, config: Config,
                  out_dir: str | Path, baselines: dict[str, Artifact],
@@ -64,60 +46,59 @@ class MetaHarnessLoop:
         self.store = ExperienceStore(self.out / "store")
         self.ledger = Ledger(self.out / "ledger.jsonl")
         self.baselines = dict(baselines)
-        #: what the ``seed_only`` (Best-of-N) view exposes: the seed harness(es), default all baselines
-        self.seed_names = list(seed_names) if seed_names else list(self.baselines)
+        self.seed_names = list(seed_names) if seed_names else list(self.baselines)   # what seed_only shows
         self.summarizer = summarizer
+        if config.leakage_screen and leakage_screen is None:
+            leakage_screen = LeakageScreen.for_domain(domain)
         self.screen = leakage_screen if config.leakage_screen else None
-        if config.leakage_screen and self.screen is None:
-            self.screen = LeakageScreen.for_domain(domain)
         self.validator = validator or InterfaceValidator(config.validate_timeout_s, config.validate_in_subprocess)
         self.evaluator = Evaluator(domain, llm_task, workers=config.workers)
         self.on_eval = on_eval
         self.node_of: dict[str, str] = {n.meta.get("system"): n.id for n in self.ledger.nodes() if n.meta}
-        self.n_evaluated = len([n for n in self.ledger.nodes(kind="candidate") if n.status == "evaluated"])
-        self.n_proposed = len(self.ledger.nodes(kind="candidate"))
-        self.curve: list[dict] = []          # one row per evaluation: best-so-far (search) vs #evaluations
+        cands = self.ledger.nodes(kind="candidate")
+        self.n_evaluated = sum(n.status == "evaluated" for n in cands)
+        self.n_proposed = len(cands)
+        self.curve: list[dict] = []          # one row per evaluation: best-so-far vs #evaluations
         self.iter_rows: list[dict] = []
         self.proposer_usage = Usage()
         self.n_reevaluations = 0
         self.order = len(self.store.names())
         if tracer is None:
-            from ..trace import RunTracer
             tracer = MHTracer(self, RunTracer(None, "metaharness"))
         tracer.loop = self
-        #: write-only audit trace (never read back by the loop)
-        self.tr = tracer
+        self.tr = tracer                     # write-only audit trace
 
-    # ------------------------------------------------------------ evaluation
     def _cost(self, ev: EvalResult) -> dict[str, float]:
-        out = {}
+        metric, out = self.cfg.cost_metric, {}
         for tid, trs in ev.trials.items():
-            vals = [t.meta.get(self.cfg.cost_metric) for t in trs if t.meta.get(self.cfg.cost_metric) is not None]
-            if self.cfg.cost_metric == "tokens" or not vals:
+            vals = [t.meta.get(metric) for t in trs if t.meta.get(metric) is not None]
+            if metric == "tokens" or not vals:
                 vals = [float(t.tokens) for t in trs]
             out[tid] = float(np.mean(vals)) if vals else 0.0
         return out
 
+    def _summarize(self, name: str) -> None:
+        if self.summarizer is not None and self._want_summaries():
+            self.store.write_summary_text(name, self.summarizer(self.store.traces(name)))
+
     def _evaluate(self, name: str, artifact: Artifact, t: Optional[int] = None) -> dict:
         ev = self.evaluator.evaluate(artifact, self.cfg.search_split, k=self.cfg.trials)
-        cost = self._cost(ev)
-        scores = self.store.write_eval(name, ev, cost=cost)
+        scores = self.store.write_eval(name, ev, cost=self._cost(ev))
         if t is None:
             self.tr.baseline(name, ev, scores)
         else:
             self.tr.evaluation(t, name, ev, scores)
-        if self.summarizer is not None and self._want_summaries():
-            self.store.write_summary_text(name, self.summarizer(self.store.traces(name)))
+        self._summarize(name)
         return scores
 
     def _reeval_incumbent(self, t: int, fr: dict) -> dict:
-        """``Config.reeval_incumbent`` > 0 (off by default): while the frontier's ``_best`` has been scored on
-        fewer than ``trials + reeval_incumbent`` seeds, re-evaluate it on that many seeds, store the pooled
-        scores (``single_seed_score`` keeps the first value) and recompute the frontier - so a lucky single
-        seed cannot keep the incumbent slot (audit N5). Returns the (possibly new) frontier."""
-        n_total = self.cfg.trials + max(0, int(self.cfg.reeval_incumbent))
-        done = 0
-        while self.cfg.reeval_incumbent > 0 and fr.get("_best") and done < self.cfg.reeval_max_per_iteration:
+        """Re-score the frontier ``_best`` on ``trials + reeval_incumbent`` seeds, so a lucky seed cannot keep it."""
+        if self.cfg.reeval_incumbent <= 0:
+            return fr
+        n_total = self.cfg.trials + int(self.cfg.reeval_incumbent)
+        for _ in range(self.cfg.reeval_max_per_iteration):
+            if not fr.get("_best"):
+                break
             name = fr["_best"]["system"]
             old = self.store.scores(name) or {}
             if int(old.get("k", self.cfg.trials)) >= n_total:
@@ -127,23 +108,17 @@ class MetaHarnessLoop:
             first = old.get("single_seed_score", old.get("score"))
             scores = self.store.write_eval(name, ev, cost=self._cost(ev),
                                            extra={"single_seed_score": first, "reevaluated_at_iteration": t})
-            if self.summarizer is not None and self._want_summaries():
-                self.store.write_summary_text(name, self.summarizer(self.store.traces(name)))
+            self._summarize(name)
             self.store.update_meta(name, reevaluated_at_iteration=t, n_seeds=n_total)
             self.n_reevaluations += 1
             self.tr.reevaluation(t, name, ev, scores, before=old)
             fr = self.recompute_frontier()
-            done += 1
         return fr
 
     def objective_text(self) -> str:
         """The objective statement given to the proposer (with ``Config.tradeoff`` when set)."""
         if "context_cost" in self.cfg.objectives:
-            metric = {"context_chars": "characters injected into the model's prompt(s) besides the input, summed "
-                                       "over every model call made for one query",
-                      "context_chars_last_call": "characters injected into the LAST model prompt of a query "
-                                                 "besides the input",
-                      "tokens": "model tokens per task"}.get(self.cfg.cost_metric, self.cfg.cost_metric)
+            metric = _COST_METRICS.get(self.cfg.cost_metric, self.cfg.cost_metric)
             txt = ("## Objective\nCandidates are compared by Pareto dominance on (search score: higher is better; "
                    f"context cost = {metric}: lower is better). Every non-dominated harness is kept on the frontier, "
                    "so accurate-but-costly and cheap-but-weaker designs are both useful; the highest-score frontier "
@@ -162,6 +137,7 @@ class MetaHarnessLoop:
         return float(scores["context_cost"]) if "context_cost" in self.cfg.objectives else 0.0
 
     def recompute_frontier(self) -> dict:
+        with_cost = "context_cost" in self.cfg.objectives
         pts, per_unit = [], {}
         for n in self.store.names():
             s = self.store.scores(n)
@@ -169,10 +145,9 @@ class MetaHarnessLoop:
                 continue
             pts.append((n, float(s["score"]), self._cost_value(s)))
             pu_cost = s.get("per_unit_cost", {})
-            per_unit[n] = {u: (v, pu_cost.get(u, 0.0) if "context_cost" in self.cfg.objectives else 0.0)
-                           for u, v in s["per_unit"].items()}
+            per_unit[n] = {u: (v, pu_cost.get(u, 0.0) if with_cost else 0.0) for u, v in s["per_unit"].items()}
         front = pareto_frontier(pts)
-        fr: dict = {u: v for u, v in per_unit_best(per_unit).items()}
+        fr: dict = dict(per_unit_best(per_unit))
         fr["_pareto"] = [{"system": n, "score": s, "val_accuracy": round(100 * s, 1), "context_cost": c}
                          for n, s, c in front]
         fr["_best"] = {"system": front[0][0], "score": front[0][1]} if front else None
@@ -187,7 +162,6 @@ class MetaHarnessLoop:
         fr = self.store.frontier()
         return float(fr["_best"]["score"]) if fr.get("_best") else 0.0
 
-    # ------------------------------------------------------------ phase 0
     def run_baselines(self) -> None:
         for name, art in self.baselines.items():
             if self.store.has(name) and self.store.scores(name):
@@ -204,8 +178,7 @@ class MetaHarnessLoop:
                                        "axis": "baseline", "hypothesis": "baseline", "delta": None,
                                        "outcome": f"{scores['avg_val']:.1f}% (baseline)",
                                        "context_cost": scores["context_cost"]})
-        fr = self.recompute_frontier()
-        self._reeval_incumbent(0, fr)
+        self._reeval_incumbent(0, self.recompute_frontier())
         self.tr.after_baselines()
 
     def _next_order(self) -> int:
@@ -215,7 +188,6 @@ class MetaHarnessLoop:
     def budget_left(self) -> Optional[int]:
         return None if self.cfg.eval_budget is None else max(0, self.cfg.eval_budget - self.n_evaluated)
 
-    # ------------------------------------------------------------ one iteration
     def iterate(self, t: int) -> list[dict]:
         if self.store.is_finalized():
             raise FinalizedError("run is finalised; start a new run to evolve further")
@@ -226,10 +198,8 @@ class MetaHarnessLoop:
                                strip_volatile=self.cfg.deterministic_view)
         visible = {n: self.store.artifact(n) for n in self.store.names()
                    if any(p.startswith(f"candidates/{safe_name(n)}/src/") for p in view)}
-        k = self.cfg.k
         left = self.budget_left()
-        if left is not None:
-            k = min(k, left)
+        k = self.cfg.k if left is None else min(self.cfg.k, left)
         self.tr.round_start(t, view, sorted(visible), k)
         t0 = time.time()
         batch = self.proposer.propose(iteration=t, view=view, k=k,
@@ -253,12 +223,9 @@ class MetaHarnessLoop:
             "candidates": [c.pending_row() for c in batch.candidates]})
         self.store.write_pending(t, [c.pending_row() for c in batch.candidates])
         self.tr.proposals(t, batch)
-        rows = []
         t1 = time.time()
-        for c in batch.candidates:
-            rows.append(self._handle(t, c, pre_best))
-        post = self.recompute_frontier()
-        post = self._reeval_incumbent(t, post)
+        rows = [self._handle(t, c, pre_best) for c in batch.candidates]
+        post = self._reeval_incumbent(t, self.recompute_frontier())
         post_best = float(post["_best"]["score"]) if post.get("_best") else 0.0
         for i, r in enumerate(rows):
             if r["outcome"] != "failed":
@@ -292,25 +259,21 @@ class MetaHarnessLoop:
             "axis": c.axis, "components": c.components, "parents_read": c.parents_read,
             "order": self._next_order(), **{k: v for k, v in c.meta.items() if isinstance(v, (str, int, float))}})
         if c.meta.get("base_fallback"):
-            # audit N10: the proposer named a base system that does not exist; the candidate was completed from
-            # c.base_system instead - recorded, never silent
             self.tr.note(t, "unknown base_system", candidate=name, claimed=c.meta.get("claimed_base_system"),
                          completed_from=c.base_system)
         parent_node = self.node_of.get(c.base_system)
         base_art = self.store.artifact(c.base_system) if c.base_system and self.store.has(c.base_system) else None
         row = {"iteration": t, "system": name, "avg_val": 0.0, "axis": c.axis, "hypothesis": c.hypothesis,
                "components": c.components, "delta": None, "outcome": "failed"}
-        status, reason, scores = "evaluated", "", None
-        validated = None
+        status, reason, scores, validated = "evaluated", "", None, None
         if self.screen is not None:
             r = self.screen.check(c.artifact, base_art)
             self.tr.screen(t, name, r or "")
             if r:
                 status, reason = "rejected_leakage", r
         if status == "evaluated" and self.cfg.validate:
-            ok, msg = self.validator.validate(self.domain, c.artifact, self.llm_task)
-            validated = ok
-            if not ok:
+            validated, msg = self.validator.validate(self.domain, c.artifact, self.llm_task)
+            if not validated:
                 status, reason = "invalid", msg[:500]
         self.tr.admissibility(t, name, status, reason, validated)
         if status == "evaluated":
@@ -335,7 +298,6 @@ class MetaHarnessLoop:
         self.node_of[name] = node.id
         return row
 
-    # ------------------------------------------------------------ driver
     def run(self, iterations: Optional[int] = None) -> list[dict]:
         self.run_baselines()
         start = self.store.last_iteration() + 1
@@ -346,10 +308,8 @@ class MetaHarnessLoop:
             self.iterate(t)
         return self.iter_rows
 
-    # ------------------------------------------------------------ finalisation
     def finalize(self, splits: Optional[tuple[str, ...]] = None, llm: Optional[LLM] = None) -> dict:
-        """Evaluate baselines + Pareto systems + per-unit bests ONCE on the test split(s),
-        write ``results/`` and ``frontier.json``, and lock further evolution. Idempotent."""
+        """Evaluate baselines, Pareto systems and per-unit bests once on the test split(s), then lock evolution."""
         splits = tuple(splits or self.cfg.test_splits)
         fr = self.recompute_frontier()
         systems = list(dict.fromkeys(list(self.baselines) + [p["system"] for p in fr.get("_pareto", [])] +
@@ -366,13 +326,13 @@ class MetaHarnessLoop:
                 try:
                     r = ev.evaluate(self.store.artifact(s), split, k=self.cfg.trials)
                     self.store.write_test_result(split, s, r, self._cost(r))
-                    if r.n_missing:     # release: complete only if every (system, unit) has a test result
+                    if r.n_missing:     # complete only if every (system, unit) has a test result
                         failures.append(f"{s}/{split}: {r.n_missing} missing trials (infrastructure errors)")
                 except Exception as e:  # noqa: BLE001
                     failures.append(f"{s}/{split}: {e}")
         rep = self._final_report(splits, systems)
-        (self.store.root / "frontier.json").write_text(__import__("json").dumps(rep, indent=1, default=float))
-        status = "complete" if not failures else "incomplete"     # incomplete leaves evolution allowed
+        (self.store.root / "frontier.json").write_text(json.dumps(rep, indent=1, default=float))
+        status = "incomplete" if failures else "complete"     # incomplete leaves evolution allowed
         self.store.write_finalized(status, systems, failures=failures)
         self.tr.finalize(rep, status, failures)
         return {**rep, "status": status, "failures": failures}
@@ -380,8 +340,7 @@ class MetaHarnessLoop:
     def _final_report(self, splits, systems) -> dict:
         out = {"systems": systems, "splits": {}}
         for split in splits:
-            rows = {s: self.store.test_result(split, s) for s in systems}
-            rows = {s: r for s, r in rows.items() if r}
+            rows = {s: r for s in systems if (r := self.store.test_result(split, s))}
             pts = [(s, r["score"], r["context_cost"] if "context_cost" in self.cfg.objectives else 0.0)
                    for s, r in rows.items()]
             out["splits"][split] = {"results": rows, "_pareto": [{"system": n, "test_accuracy": sc, "context_cost": c}
@@ -390,11 +349,10 @@ class MetaHarnessLoop:
 
 
 def _jsonable(d: dict) -> dict:
-    import json as _json
     out = {}
     for k, v in (d or {}).items():
         try:
-            _json.dumps(v)
+            json.dumps(v)
             out[k] = v
         except (TypeError, ValueError):
             out[k] = repr(v)[:500]

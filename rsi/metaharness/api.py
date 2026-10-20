@@ -16,17 +16,19 @@ from .proposer import AgentProposer, LLMSummarizer, Proposer, RewriteProposer
 from .tracing import make_tracer, shadow_usage
 
 
-def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
-                  leak_rate: float = 0.0) -> Proposer:
-    """``auto``: ClaudeCLI -> coding agent (paper); any other LLM -> RewriteProposer;
-    None / plain MockLLM -> offline MockProposer for the domain's program library (a plain
-    MockLLM on a domain without a library is used as a scripted RewriteProposer backend)."""
-    has_lib = True
+def _has_library(domain: Domain) -> bool:
     try:
         library_for(domain)
     except ValueError:
-        has_lib = False
-    if kind == "mock" or llm_propose is None or (type(llm_propose) is MockLLM and kind == "auto" and has_lib):
+        return False
+    return True
+
+
+def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
+                  leak_rate: float = 0.0) -> Proposer:
+    """``auto``: ClaudeCLI -> coding agent, None or a plain MockLLM -> MockProposer, other LLMs -> RewriteProposer."""
+    if kind == "mock" or llm_propose is None or (type(llm_propose) is MockLLM and kind == "auto"
+                                                 and _has_library(domain)):
         return MockProposer(library_for(domain), leak_rate=leak_rate, seed=config.seed)
     if kind == "agent" or (kind == "auto" and isinstance(llm_propose, ClaudeCLI)):
         cli = llm_propose.inner if isinstance(llm_propose, CachedLLM) else llm_propose
@@ -41,36 +43,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         baselines: Optional[dict[str, Artifact]] = None, proposer: Optional[Proposer] = None,
         proposer_kind: str = "auto", summarizer_llm: Optional[LLM] = None, leak_rate: float = 0.0,
         finalize_llm: Optional[LLM] = None, monitor=None) -> ImprovementResult:
-    """Run Meta-Harness on any :class:`rsi.core.Domain`.
-
-    Parameters
-    ----------
-    domain, seed_artifact:
-        the problem and a valid starting harness. ``baselines`` (default
-        ``{seed name: seed_artifact}``) is the initial population ``H0``.
-    llm_task:
-        the frozen base model the harness calls (``None`` lets the domain pick its default).
-    llm_propose:
-        the proposer model: ``ClaudeCLI`` -> coding agent reading the history
-        directory (the paper's proposer); any other LLM -> :class:`RewriteProposer`
-        with rendered history; ``None`` -> deterministic :class:`MockProposer`.
-    config:
-        :class:`Config` (iterations, k, history_mode, objectives, budget, leakage screen ...).
-    out_dir:
-        run directory (the experience store lives in ``out_dir/store``).
-
-    monitor:
-        the write-only shadow monitor of the audit trace (``<out_dir>/trace.jsonl``, written when
-        ``out_dir`` is given and ``config.trace``): None = ``config.shadow_monitor`` (auto: every new
-        frontier ``_best`` is scored on the domain's sealed holdout/ood splits), False = off, or an
-        :class:`rsi.trace.ShadowMonitor`. Its numbers go only to the trace; its model calls are metered
-        as ``shadow:*`` and reported separately in ``usage["shadow_monitor"]``.
-
-    Returns an :class:`rsi.core.ImprovementResult` whose ``best`` is the highest-score
-    Pareto point on the search split; ``meta`` holds the frontier, the evaluation
-    curve (best-so-far vs #evaluations) and, if ``config.finalize``, the one-time
-    test report.
-    """
+    """Run Meta-Harness; ``best`` is the highest-score Pareto point on the search split."""
     cfg = config or Config()
     out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="metaharness_"))
     seed_name = seed_artifact.meta.get("name", "seed")
@@ -78,11 +51,8 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     prop = proposer or make_proposer(domain, llm_propose, cfg, kind=proposer_kind, leak_rate=leak_rate)
     summarizer = None
     if cfg.summaries == "always" or (cfg.summaries == "auto" and cfg.history_mode == "scores_summary"):
-        if isinstance(prop, MockProposer):
-            summarizer = prop.lib.summarize
-        else:
-            summarizer = LLMSummarizer(summarizer_llm or llm_propose)
-    # Best-of-N ("independent samples from the seed"): the seed_only view shows the run's seed harness only
+        is_mock = isinstance(prop, MockProposer)
+        summarizer = prop.lib.summarize if is_mock else LLMSummarizer(summarizer_llm or llm_propose)
     seeds = [seed_name] if seed_name in pop else list(pop)
     loop = MetaHarnessLoop(domain, llm_task=llm_task, proposer=prop, config=cfg, out_dir=out, baselines=pop,
                            summarizer=summarizer, seed_names=seeds)
@@ -104,15 +74,14 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         usage["propose_llm"] = llm_propose.meter.snapshot()
     usage["_total"] = loop.proposer_usage.to_dict()
     usage["shadow_monitor"] = shadow_usage(loop.tr)
+    screen = {"screened": loop.screen.n_screened, "rejected": loop.screen.n_rejected} if loop.screen else None
     res = ImprovementResult(
         method="metaharness", baseline=pop.get(seed_name, seed_artifact), best=loop.store.artifact(best_name),
         ledger=loop.ledger, trajectory=loop.iter_rows, usage=usage,
         stop_reason="eval_budget" if loop.budget_left() == 0 else "iterations", out_dir=str(out),
         meta={"frontier": fr, "best_system": best_name, "curve": loop.curve, "final": final,
               "n_evaluated": loop.n_evaluated, "n_proposed": loop.n_proposed, "config": cfg.to_json(),
-              "n_reevaluations": loop.n_reevaluations,
-              "store": str(loop.store.root), "screen": ({"screened": loop.screen.n_screened,
-                                                         "rejected": loop.screen.n_rejected} if loop.screen else None)})
+              "n_reevaluations": loop.n_reevaluations, "store": str(loop.store.root), "screen": screen})
     loop.tr.run_end({"best_system": best_name, "stop_reason": res.stop_reason, "usage": usage,
                      "final_status": (final or {}).get("status"), "curve": loop.curve})
     res.loop = loop  # type: ignore[attr-defined]

@@ -1,43 +1,37 @@
-"""Pre-evaluation checks: interface validation and the (optional) leakage screen.
-
-* :class:`InterfaceValidator` - Meta-Harness's ``validate_candidates``: every
-  Python file must compile, then the domain's ``smoke`` (import, instantiate, call
-  the interface on a tiny input) must pass within ``timeout_s`` (release: "prints
-  OK within 30 s"). With ``isolate=True`` the smoke runs in a forked child that is
-  killed on timeout, so a hung candidate cannot stall the loop.
-* :class:`LeakageScreen` - OFF by default (the paper's loop has no mechanical
-  guard; spec A8.2). ON reproduces the experimental pilot's ``validate_source``:
-  a case-insensitive forbidden-reference check over the candidate source, plus a
-  shape check for large hard-coded string tables. Uses :class:`rsi.core.LeakageCritic`
-  for the denylist (whole-token matching over added lines).
-"""
+"""Pre-evaluation checks: interface validation (fork-isolated smoke) and the optional leakage screen."""
 from __future__ import annotations
 
 import ast
 import itertools
 import os
+import pickle
+import select
+import signal
 import threading
 import time
 import traceback
 from dataclasses import asdict, dataclass, field
-from typing import Iterable, Optional
+from typing import Optional
 
+from ..core import sandbox as _sandbox
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
-from ..core import sandbox as _sandbox
+from ..core.llm import Usage
 
-try:   # the C function: it sets the mask before running pending handlers (signal's wrapper may run them first)
+try:   # the C function sets the mask before running pending handlers (signal's wrapper may run them first)
     from _signal import pthread_sigmask as _c_sigmask
 except ImportError:  # pragma: no cover - platforms without it never fork here
     _c_sigmask = None
 
-#: pilot's UNIVERSAL_FORBIDDEN adapted to this framework's store layout
+#: the pilot's UNIVERSAL_FORBIDDEN adapted to this store layout
 UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
                        "/solution")
 
 
 @dataclass
 class InterfaceValidator:
+    """Every Python file must compile, then ``domain.smoke`` must pass within ``timeout_s`` (forked if ``isolate``)."""
+
     timeout_s: float = 30.0
     isolate: bool = True
 
@@ -57,25 +51,11 @@ class InterfaceValidator:
         return self._forked(domain, artifact, llm)
 
     def _forked(self, domain, artifact: Artifact, llm) -> tuple[bool, str]:
-        """Run the smoke in a raw forked child (works inside daemonic pool workers too);
-        kill it on timeout.
-
-        The child's model calls are real spend that the parent's meters would never see (live: $0.02-0.03 per
-        run missing from the loop meter, fix 17). Every usage the child meters is streamed back through the pipe
-        *as it happens*, so a child killed on timeout still reports the calls it completed (register #24). A
-        call still in flight when the child is killed has no usage yet; it is counted in the returned message."""
-        import pickle
-        import select
-        import signal
+        """Smoke in a raw forked child that streams its metered usage back and is killed on timeout."""
         buf = b""
-        # Every signal is blocked in this thread across the fork, so the child gets none until its own handlers
-        # are in place, inside its try, which always ends in os._exit: no handler of the parent's ever runs there.
-        # In the parent a stop signal can be handled at almost any point (another thread may take it), so the pipe
-        # and the child are stored, and the write end popped and closed, with no bytecode in between, and the cleanup
-        # is idempotent and retried until done. Known limit: a stop that another thread takes during the fork can be
-        # handled inside another library's after-fork hook, where Python reports it as 'Exception ignored' and drops
-        # it (rare, and only with other Python threads running); pressing Ctrl-C again stops the run. Nothing here
-        # changes process-wide state (handlers, hooks): only this thread's signal mask, for the fork.
+        # All signals are blocked across the fork, so the child gets none until its own handlers are set. In the
+        # parent the pipe and pid are stored, and the write end popped and closed, with no bytecode in between,
+        # so a stop signal handled at any point leaves a cleanup that is idempotent and retried until done.
         mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
         fds: list[int] = []
         pids: list[int] = []
@@ -116,8 +96,7 @@ class InterfaceValidator:
                     elif msg[0] == "done":
                         done, err = True, msg[1]
         finally:
-            # a second stop signal can land here too (Ctrl-C twice, or Ctrl-C then a kill): each step is idempotent,
-            # so the cleanup is retried, with less grace for the child each time; nested, so that every point where
+            # retried with less grace each time if another stop signal lands here; nested so that every point where
             # a pending handler can run is inside a try. The first interruption is raised afterwards
             try:
                 _cleanup_fork(fds, pids, mask, 2.0)
@@ -140,15 +119,11 @@ class InterfaceValidator:
         return (err is None), (err or "OK")
 
     def _child(self, domain, artifact: Artifact, llm, r: int, w: int, mask) -> None:
-        """The forked smoke child: run the smoke, stream usage back through ``w``, then leave through
-        :func:`_child_exit` (never returns)."""
-        import pickle
-        import signal
+        """The forked smoke child: run the smoke, stream usage through ``w``, leave via :func:`_child_exit`."""
         exiting = [False]
 
         def on_signal(signum, frame) -> None:
-            # a SIGTERM (the parent's cleanup below, `kill`, `timeout`) or SIGINT ends the smoke through the
-            # finally below, which closes the sandboxes it started; once the child is leaving it does nothing
+            # SIGTERM / SIGINT unwind through the finally below, which closes the sandboxes the smoke started
             if not exiting[0]:
                 raise (SystemExit(143) if signum == signal.SIGTERM else KeyboardInterrupt())
 
@@ -171,8 +146,7 @@ class InterfaceValidator:
                 err = f"{type(e).__name__}: {e}\n{traceback.format_exc(limit=3)}"
             send(("done", err))
         finally:
-            # first, before any bytecode that runs pending handlers (a call, a loop's back-jump): from here on
-            # no signal can make the child unwind into the parent's code
+            # first, before any bytecode that runs pending handlers: no signal can unwind into the parent's code
             exiting[0] = True
             try:
                 _child_exit()
@@ -181,15 +155,12 @@ class InterfaceValidator:
 
 
 def _pop_close(fds: list) -> None:
-    """Close and forget the last fd in ``fds``, with no bytecode between the pop and the close (both run from C),
-    so a signal handled in between can neither leak it nor make a retry close it twice."""
+    """Close and forget the last fd, with no bytecode between the pop and the close (both run from C)."""
     next(map(os.close, map(list.pop, [fds])))
 
 
 def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
-    """Restore the signal mask, close what is left of the pipe and stop the smoke child. Each step is idempotent,
-    so a retry after an interruption does only what remains."""
-    import signal
+    """Restore the signal mask, close the rest of the pipe and stop the child; idempotent, so retries finish it."""
     _c_sigmask(signal.SIG_SETMASK, mask)
     while fds:
         _pop_close(fds)
@@ -199,11 +170,7 @@ def _cleanup_fork(fds: list, pids: list, mask, grace_s: float) -> None:
 
 
 def _child_exit() -> None:
-    """Close a leaving forked smoke child's sandboxes (``sandbox.close_sandboxes``: kill the sandboxed processes it
-    started, in whatever thread, and remove their scratch directories). Its handlers are no-ops by now and SIGTERM /
-    SIGINT are ignored as well; anything that still interrupts the close makes it run again. The caller
-    ``os._exit``s afterwards whatever happens here."""
-    import signal
+    """Close a leaving smoke child's sandboxes, ignoring SIGTERM/SIGINT; an interrupted close runs again."""
     for _ in range(100):
         try:
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -215,12 +182,7 @@ def _child_exit() -> None:
 
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
-    """End a forked smoke child: SIGTERM (repeated), so it closes the sandboxes it started on its way out
-    (:func:`_child_exit`); if it has not exited within ``grace_s``, kill its sandboxes from here, then SIGKILL it.
-    It is signalled only while still unreaped (its pid cannot have been reused), so stopping it again after an
-    interruption is safe."""
-    import signal
-
+    """SIGTERM a smoke child until it exits; after ``grace_s`` kill its sandboxes and SIGKILL it."""
     def reaped() -> bool:
         try:
             return bool(os.waitpid(pid, os.WNOHANG)[0])
@@ -230,7 +192,7 @@ def _stop_child(pid: int, grace_s: float = 2.0) -> None:
     end, resend = time.monotonic() + grace_s, 0.0
     while not reaped():
         if time.monotonic() >= end:
-            _sandbox.kill_child_sessions(pid)      # a child that never closed its sandboxes: kill them from here
+            _sandbox.kill_child_sessions(pid)
             try:
                 os.kill(pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -262,9 +224,7 @@ def _meters(llm) -> list:
 
 
 def _stream_usage(llm, send) -> None:
-    """In the forked child: make every meter along the wrapper chain forward each ``add`` to the parent
-    (``send(("usage", meter index, role, usage dict))``), and bracket every model call with
-    ``("call", +1)`` / ``("call", -1)`` so the parent knows how many calls were in flight at a kill."""
+    """In the forked child: forward every meter ``add`` to the parent and bracket each model call."""
     for i, m in enumerate(_meters(llm)):
         orig = m.add
 
@@ -274,7 +234,7 @@ def _stream_usage(llm, send) -> None:
 
         try:
             m.add = add                               # the child's copy only (fork), never the parent's
-        except AttributeError:                        # a meter that forbids instance attributes: no streaming
+        except AttributeError:
             pass
     if llm is not None and hasattr(llm, "complete"):
         orig_complete = llm.complete
@@ -293,8 +253,6 @@ def _stream_usage(llm, send) -> None:
 
 
 def _apply_one(llm, idx: int, role: str, u: dict) -> None:
-    """Add one usage record streamed by the forked smoke to the parent's matching meter."""
-    from ..core.llm import Usage
     ms = _meters(llm)
     if 0 <= idx < len(ms):
         ms[idx].add(role, Usage(**u))
@@ -302,7 +260,7 @@ def _apply_one(llm, idx: int, role: str, u: dict) -> None:
 
 @dataclass
 class LeakageScreen:
-    """Forbidden-reference + table-shape screen (the pilot's pre-evaluation check)."""
+    """Forbidden-reference + table-shape screen (the pilot's pre-evaluation check; off in the paper's loop)."""
 
     forbidden: list[str] = field(default_factory=list)
     universal: tuple[str, ...] = UNIVERSAL_FORBIDDEN
@@ -323,8 +281,7 @@ class LeakageScreen:
     def check(self, artifact: Artifact, base: Optional[Artifact] = None) -> Optional[str]:
         """Return a rejection reason or None."""
         self.n_screened += 1
-        diff = (base or Artifact({})).diff(artifact)
-        v = self.critic.screen(diff)
+        v = self.critic.screen((base or Artifact({})).diff(artifact))
         if not v.accept:
             self.n_rejected += 1
             return f"leakage: {v.objections[0] if v.objections else v.stage}"
@@ -338,21 +295,18 @@ class LeakageScreen:
 
 
 def _max_string_table(src: str) -> int:
-    """Largest dict/list/set literal made mostly of string constants (lookup-table shape)."""
+    """Most string constants in one list/set/tuple literal or among one dict literal's keys."""
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return 0
     best = 0
     for node in ast.walk(tree):
-        elts: Iterable = ()
         if isinstance(node, ast.Dict):
-            elts = list(node.keys) + list(node.values)
+            elts = node.keys
         elif isinstance(node, (ast.List, ast.Set, ast.Tuple)):
             elts = node.elts
-        strs = [e for e in elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]
-        if isinstance(node, ast.Dict):
-            best = max(best, len([k for k in node.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)]))
         else:
-            best = max(best, len(strs))
+            continue
+        best = max(best, sum(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in elts))
     return best

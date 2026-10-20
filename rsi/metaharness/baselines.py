@@ -1,60 +1,11 @@
-"""Structured text optimisers as comparison arms for Meta-Harness (paper §4.1, Table 4, Figs. 1 and 4).
-
-The paper compares Meta-Harness with Best-of-N, OpenEvolve, TTT-Discover and GEPA "using the same proposer
-configuration", selecting "solely based on search-set performance" and giving "each method the same budget of
-proposal harness evaluations". It attributes Meta-Harness's advantage to the proposer's input: "both OpenEvolve
-and TTT-Discover operate with more structured and substantially more limited proposer inputs than full
-filesystem access". What differs between the arms is therefore (1) the rule that chooses which program to
-mutate and (2) what the proposer sees. :class:`StructuredOptimizerProposer` wraps any :class:`Proposer` (the
-same one Meta-Harness uses) and, for every candidate slot, applies an optimiser's selection rule to the full
-store view, hands the inner proposer only that optimiser's context (plus ``parent.json`` naming the program to
-mutate) and asks it for ONE candidate. Run it with ``Config(history_mode="full")``: the wrapper does the
-restriction itself. Best-of-N is the store's ``seed_only`` view and needs no wrapper.
-
-Policies (constants: OpenEvolve 0.4.0 ``config.py`` defaults, read from the released wheel):
-
-* ``openevolve`` - 5 islands (a new program joins island ``(#programs proposed) mod 5``; the seed programs
-  belong to every island); parent sampling: 20% exploration (uniform over the current island), 70%
-  exploitation (uniform over the archive - the top 100 programs, i.e. every program at our budgets - restricted
-  to the island), 10% uniform over all programs; context = the parent's code, scores and *artifacts* (its
-  traces, excerpted to ``max_artifact_bytes`` = 20 KB, OpenEvolve's ``include_artifacts=True`` default), the
-  island's top 3 programs (``num_top_programs``) and 2 other island programs (``num_diverse_programs``), code and
-  scores only. Not modelled: MAP-Elites feature cells, migration (every 50 generations, beyond our budgets),
-  diff-based edits.
-* ``ttt_discover`` - TTT-Discover's text-optimisation component only ("proposal selection via the PUCT reuse
-  rule"): a buffer of every evaluated program; the program to extend maximises
-  ``Q(s) + c * P(s) * sqrt(1 + T) / (1 + n(s))`` with ``Q(s)`` the best score among ``s`` and its descendants
-  (TTT-Discover tracks the maximum descendant reward, not the mean), ``P(s)`` a linear rank prior over scores,
-  ``n(s)`` the number of children already proposed from ``s`` and ``T`` the number of expansions; ``c = 1``.
-  Context = the selected program's code and score. (The TTT-Discover paper was not reachable from this machine;
-  the rule follows its published description; ``c`` and the rank prior are our choices.)
-* ``gepa_minibatch`` - GEPA's reflective mutation as the reference implements it (``gepa/gepa_utils.py``
-  ``select_program_candidate_from_pareto_front`` / ``remove_dominated_programs``; ``api.py``
-  ``reflection_minibatch_size`` = 3 with the epoch-shuffled batch sampler). The Pareto front is taken per
-  search *instance* (instance = (unit, eval step); its 0/1 score read from the stored ``eval_step`` records);
-  dominated programs are removed (a program is dominated when, on every instance front it belongs to, some
-  other surviving program is also on that front; checked lowest aggregate score first), and the parent is drawn
-  uniformly from the list in which each surviving program appears once per instance front it is on. Context =
-  the parent's code, scores and meta plus a *reflective dataset* of 3 search examples (their full eval records:
-  prompts, prediction, gold label), drawn by an epoch-shuffled sampler over all instances (``trainset`` =
-  our search split). Not modelled: minibatch acceptance, merge (every candidate is evaluated, as in every arm).
-  Retry round 2, P7 (added after a review found the ``gepa`` policy below unfaithful).
-* ``gepa`` - the first, *unfaithful* GEPA-style arm, kept unchanged for M7's record: the parent is sampled from
-  a per-UNIT Pareto front (3 dataset-level units on MemoClassify, no dominated-program removal, so nearly
-  greedy), with probability proportional to the number of units it leads; context = that parent's code,
-  scores, per-unit feedback and FULL traces. Real GEPA reflects on a 3-example minibatch (see above).
-
-Duplicates: each slot sees only its optimiser's context, so a deterministic inner proposer (the offline mock)
-can return an exact copy of a program already in the store (same parent, same diagnosis). The wrapper then
-shows that copy (source only, unscored) and asks again, up to ``MAX_DEDUP_RETRIES`` times; Meta-Harness's full
-view never needs this. Exact copies only (``Artifact.id``); near-duplicates are kept.
-"""
+"""Structured optimisers (OpenEvolve, TTT-Discover PUCT, GEPA) as equal-budget comparison arms (paper §4.1)."""
 from __future__ import annotations
 
 import json
 import math
 import random
 import re
+from collections import Counter
 from typing import Optional
 
 from ..core.llm import Usage
@@ -63,6 +14,7 @@ from .proposer import ProposalBatch, Proposer, excerpt
 
 POLICIES = ("openevolve", "ttt_discover", "gepa", "gepa_minibatch")
 
+# OpenEvolve 0.4.0 ``config.py`` defaults
 OE_ISLANDS = 5
 OE_EXPLORATION = 0.2
 OE_EXPLOITATION = 0.7
@@ -73,7 +25,7 @@ OE_ARTIFACT_BYTES = 20 * 1024
 PUCT_C = 1.0
 #: GEPA ``reflection_minibatch_size`` default (``api.py``)
 GEPA_MINIBATCH = 3
-#: re-asks when the inner proposer returns an exact copy of an existing program (see ``propose``)
+#: re-asks when the inner proposer returns an exact copy of an existing program
 MAX_DEDUP_RETRIES = 3
 
 
@@ -85,11 +37,14 @@ class _Prog:
         self.order = int(meta.get("order", 0) or 0)
 
 
+def _cand_names(view: dict[str, str]) -> set[str]:
+    return {m.group(1) for p in view for m in [re.match(r"candidates/([^/]+)/", p)] if m}
+
+
 def programs_in(view: dict[str, str]) -> list[_Prog]:
     """Every evaluated program of a full view, in registration order."""
     out = []
-    names = sorted({m.group(1) for p in view for m in [re.match(r"candidates/([^/]+)/", p)] if m})
-    for n in names:
+    for n in sorted(_cand_names(view)):
         sc = view.get(f"candidates/{n}/eval/search/scores.json")
         if not sc:
             continue
@@ -102,8 +57,12 @@ def programs_in(view: dict[str, str]) -> list[_Prog]:
     return sorted(out, key=lambda p: (p.order, p.name))
 
 
+def _n_proposed(progs: list[_Prog]) -> int:
+    return sum(1 for p in progs if p.kind != "baseline")
+
+
 class StructuredOptimizerProposer(Proposer):
-    """Apply a structured optimiser's selection rule and context to any inner proposer (see module docstring)."""
+    """Per slot, apply an optimiser's parent selection and context to the full view; ``inner`` writes one candidate."""
 
     def __init__(self, inner: Proposer, policy: str, *, seed: int = 0, puct_c: float = PUCT_C) -> None:
         if policy not in POLICIES:
@@ -115,27 +74,26 @@ class StructuredOptimizerProposer(Proposer):
         self.role = getattr(inner, "role", "proposer")
         self._inst_cache: dict[tuple[str, int], dict[tuple[str, str], tuple[float, str]]] = {}
 
-    # ------------------------------------------------------------------ selection rules
     def _openevolve(self, progs: list[_Prog], slot_index: int, rng: random.Random) -> tuple[_Prog, list[_Prog]]:
+        # islands; 20% exploration, 70% exploitation (archive), 10% uniform; context = top + diverse island programs
         island = slot_index % OE_ISLANDS
         members = [p for p in progs if p.kind == "baseline" or p.meta.get("island") in (None, "") or
                    int(p.meta.get("island", -1)) == island]
         members = members or progs
-        archive = set(p.name for p in sorted(progs, key=lambda p: -p.score)[:OE_ARCHIVE])
+        archive = {p.name for p in sorted(progs, key=lambda p: -p.score)[:OE_ARCHIVE]}
         r = rng.random()
         if r < OE_EXPLORATION:
             parent = rng.choice(members)
         elif r < OE_EXPLORATION + OE_EXPLOITATION:
-            pool = [p for p in members if p.name in archive] or [p for p in progs if p.name in archive]
-            parent = rng.choice(pool)
+            parent = rng.choice([p for p in members if p.name in archive] or [p for p in progs if p.name in archive])
         else:
             parent = rng.choice(progs)
         top = [p for p in sorted(members, key=lambda p: (-p.score, p.order)) if p.name != parent.name][:OE_TOP]
         rest = [p for p in members if p.name != parent.name and p not in top]
-        diverse = rng.sample(rest, min(OE_DIVERSE, len(rest)))
-        return parent, top + diverse
+        return parent, top + rng.sample(rest, min(OE_DIVERSE, len(rest)))
 
     def _puct(self, progs: list[_Prog], extra_visits: dict[str, int]) -> _Prog:
+        """argmax ``Q(s) + c * P(s) * sqrt(1 + T) / (1 + n(s))``, Q = best score among s and its descendants."""
         children: dict[str, list[_Prog]] = {}
         for p in progs:
             if p.base:
@@ -149,10 +107,9 @@ class StructuredOptimizerProposer(Proposer):
             return max([p.score] + [best_desc(c, seen) for c in children.get(p.name, [])])
 
         ranked = sorted(progs, key=lambda p: (-p.score, p.order))
-        n = len(ranked)
-        w = {p.name: n - i for i, p in enumerate(ranked)}
+        w = {p.name: len(ranked) - i for i, p in enumerate(ranked)}
         tot = sum(w.values())
-        t = sum(1 for p in progs if p.kind != "baseline") + sum(extra_visits.values())
+        t = _n_proposed(progs) + sum(extra_visits.values())
 
         def score(p: _Prog) -> float:
             visits = len(children.get(p.name, [])) + extra_visits.get(p.name, 0)
@@ -160,9 +117,9 @@ class StructuredOptimizerProposer(Proposer):
         return max(progs, key=lambda p: (score(p), -p.order))
 
     def _gepa(self, progs: list[_Prog], rng: random.Random) -> _Prog:
-        units = sorted({u for p in progs for u in p.per_unit})
+        # the earlier per-unit variant (not GEPA's per-instance front), kept unchanged for M7's record
         wins: dict[str, int] = {}
-        for u in units:
+        for u in sorted({u for p in progs for u in p.per_unit}):
             best = max(p.per_unit.get(u, -1.0) for p in progs)
             for p in progs:
                 if u in p.per_unit and p.per_unit[u] >= best - 1e-12:
@@ -199,8 +156,7 @@ class StructuredOptimizerProposer(Proposer):
 
     @staticmethod
     def remove_dominated(fronts: dict, scores: dict[str, float]) -> dict:
-        """GEPA ``remove_dominated_programs``: drop programs every one of whose instance fronts also holds
-        another surviving program; checked in ascending aggregate score, one removal per sweep."""
+        """GEPA ``remove_dominated_programs``: drop programs each of whose instance fronts holds another survivor."""
         progs = sorted({p for f in fronts.values() for p in f}, key=lambda x: scores[x])
         dominated: set[str] = set()
         found = True
@@ -217,6 +173,7 @@ class StructuredOptimizerProposer(Proposer):
         return {k: {p for p in f if p not in dominated} for k, f in fronts.items()}
 
     def _gepa_minibatch(self, view: dict[str, str], progs: list[_Prog], rng: random.Random) -> _Prog:
+        # GEPA select_program_candidate_from_pareto_front over (unit, eval step) instances
         inst = {p.name: self._instances(view, p.name) for p in progs}
         keys = sorted({k for d in inst.values() for k in d})
         if not keys:
@@ -227,24 +184,18 @@ class StructuredOptimizerProposer(Proposer):
             best = max(vals.values())
             fronts[k] = {n for n, v in vals.items() if v >= best - 1e-12}
         fronts = self.remove_dominated(fronts, {p.name: p.score for p in progs})
-        freq: dict[str, int] = {}
-        for k in keys:
-            for n in sorted(fronts[k]):
-                freq[n] = freq.get(n, 0) + 1
+        freq = Counter(n for k in keys for n in fronts[k])
         by = {p.name: p for p in progs}
-        order = sorted(freq, key=lambda n: (by[n].order, n))
-        sampling = [n for n in order for _ in range(freq[n])]
+        sampling = [n for n in sorted(freq, key=lambda n: (by[n].order, n)) for _ in range(freq[n])]
         return by[rng.choice(sampling)]
 
     def _minibatch(self, view: dict[str, str], parent: str, n_proposed: int, seed: int) -> dict[str, str]:
-        """Reflective dataset: the parent's eval records of ``GEPA_MINIBATCH`` examples chosen by an
-        epoch-shuffled sampler over all search instances (proposal number ``n_proposed``)."""
+        """GEPA reflective dataset: the parent's records of an epoch-shuffled minibatch of search instances."""
         inst = self._instances(view, parent)
         keys = sorted(inst)
         if not keys:
             return {}
-        per_epoch = max(1, len(keys) // GEPA_MINIBATCH)
-        epoch, pos = divmod(n_proposed, per_epoch)
+        epoch, pos = divmod(n_proposed, max(1, len(keys) // GEPA_MINIBATCH))
         perm = list(keys)
         random.Random(f"gepa-epoch|{self.seed}|{seed}|{epoch}").shuffle(perm)
         chosen = perm[pos * GEPA_MINIBATCH:(pos + 1) * GEPA_MINIBATCH] or perm[:GEPA_MINIBATCH]
@@ -255,10 +206,9 @@ class StructuredOptimizerProposer(Proposer):
                 "note": f"GEPA reflective minibatch: {len(lines)} of this unit's examples"}) + "\n" + "\n".join(lines)
                 for u, lines in out.items()}
 
-    # ------------------------------------------------------------------ context
     @staticmethod
     def _files(view: dict[str, str], name: str, *, traces: str = "none") -> dict[str, str]:
-        """``traces``: none | full | artifacts (OpenEvolve: excerpt within OE_ARTIFACT_BYTES over all units)."""
+        """Code, scores and meta of ``name``; ``traces``: none | full | artifacts (excerpted to OE_ARTIFACT_BYTES)."""
         pre = f"candidates/{name}/"
         out = {}
         tr = {p: t for p, t in view.items() if p.startswith(pre + "eval/search/traces/")}
@@ -282,9 +232,9 @@ class StructuredOptimizerProposer(Proposer):
         if not progs:
             return "", {}
         rng = random.Random(f"{self.policy}|{self.seed}|{seed}|{iteration}|{slot}")
+        n_prop = _n_proposed(progs) + slot
         sub: dict[str, str] = {}
         if self.policy == "openevolve":
-            n_prop = sum(1 for p in progs if p.kind != "baseline") + slot
             parent, ctx = self._openevolve(progs, n_prop, rng)
             sub.update(self._files(view, parent.name, traces="artifacts"))
             for p in ctx:
@@ -295,7 +245,6 @@ class StructuredOptimizerProposer(Proposer):
         elif self.policy == "gepa_minibatch":
             parent = self._gepa_minibatch(view, progs, rng)
             sub.update(self._files(view, parent.name))
-            n_prop = sum(1 for p in progs if p.kind != "baseline") + slot
             sub.update(self._minibatch(view, parent.name, n_prop, seed))
         else:
             parent = self._gepa(progs, rng)
@@ -308,6 +257,7 @@ class StructuredOptimizerProposer(Proposer):
         usage = Usage()
         visits: dict[str, int] = {}
         known = {a.id: n for n, a in artifacts.items()}      # exact programs already in the store
+        suffix = self.policy[:2] + ("m" if self.policy == "gepa_minibatch" else "")
         read, scanned, transcripts = [], [], []
         for slot in range(k):
             parent, sub = self.select(view, iteration, slot, seed, visits)
@@ -315,7 +265,7 @@ class StructuredOptimizerProposer(Proposer):
                 out.error = "no evaluated program in the view"
                 break
             visits[parent] = visits.get(parent, 0) + 1
-            names = {m.group(1) for p in sub for m in [re.match(r"candidates/([^/]+)/", p)] if m}
+            names = _cand_names(sub)
             for attempt in range(1 + MAX_DEDUP_RETRIES):
                 b = self.inner.propose(iteration=iteration, view=sub, k=1, brief=brief,
                                        artifacts={n: a for n, a in artifacts.items() if n in names},
@@ -324,8 +274,7 @@ class StructuredOptimizerProposer(Proposer):
                 dup = [c for c in b.candidates if c.artifact.id in known]
                 if not dup:
                     break
-                # an exact copy of a program this optimiser already produced: show it (source only, unscored)
-                # and ask again, as a sampling LLM would not repeat itself verbatim
+                # an exact copy: show it (source only, unscored) and ask again, as a sampling LLM would not repeat
                 out.meta["dedup_retries"] = out.meta.get("dedup_retries", 0) + 1
                 for c in dup:
                     for rel, text in c.artifact.files.items():
@@ -333,10 +282,10 @@ class StructuredOptimizerProposer(Proposer):
             for c in b.candidates:
                 known.setdefault(c.artifact.id, f"new{slot}")
             for c in b.candidates:
-                c.name = f"{c.name}_{self.policy[:2]}{'m' if self.policy == 'gepa_minibatch' else ''}{slot}"
+                c.name = f"{c.name}_{suffix}{slot}"
                 c.meta = {**(c.meta or {}), "policy": self.policy, "selected_parent": parent}
                 if self.policy == "openevolve":
-                    c.meta["island"] = (sum(1 for p in programs_in(view) if p.kind != "baseline") + slot) % OE_ISLANDS
+                    c.meta["island"] = (_n_proposed(programs_in(view)) + slot) % OE_ISLANDS
                 out.candidates.append(c)
             out.meta["parents"].append(parent)
             read += [p for p in b.files_read if p != PARENT_HINT]
