@@ -1,29 +1,8 @@
-"""Evaluate(H', D_evolve, k): the empirical score and cost of Eq. (estimate)
-(mirrors ``rrsi/evaluate.py``)::
-
-    S_hat(H) = 1/(k|D|) sum_x sum_j r(x, tau_x^(j))
-    C_hat(H) = 1/(k|D|) sum_x sum_j c(tau_x^(j))
-
-with r in [0, 1] and c the policy tokens of a trajectory. A missing trial (crash,
-timeout, infrastructure) contributes r = 0 with the full denominator, never an absent
-slot, "so a candidate cannot look better by destroying the trials it finds hard".
-C_hat is the mean over trials that report a positive token count.
-
-Rollouts run through :class:`rsi.core.Evaluator` (parallel, optional per-trial disk
-cache, infra failures -> missing). Each evaluation *job* draws its own trial seeds
-(derived from the job name), so re-measuring an unchanged harness gives an
-independent sample, exactly as re-running a job does in the released code. Rewards
-may carry weights (Harvey-LAB style criteria counts): ``trial.meta["weight"]``, else the
-task's ``Task.meta["weight"]``, else 1. A MISSING trial (infrastructure failure, or a
-trial that never came back) carries its task's weight, as the code's workspace adapter
-gives it the task's criteria count, so a weighted domain cannot look better by losing
-the trials of its heavy tasks either.
-"""
+"""Evaluate(H', D, k): S_hat and C_hat of Eq. (estimate); a missing trial scores 0 in the full denominator."""
 from __future__ import annotations
 
 import hashlib
 import json
-import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional, Sequence
@@ -40,7 +19,7 @@ from ..core.llm import LLM
 
 @dataclass
 class TaskResult:
-    rewards: list[float]                                  # one per trial, missing trials -> 0.0
+    rewards: list[float]                                  # missing trials -> 0.0
     weights: list[float] = field(default_factory=list)    # default 1.0 each
     tokens: list = field(default_factory=list)            # int or None per trial
     missing: int = 0
@@ -60,7 +39,7 @@ class TaskResult:
 
 @dataclass
 class Measurement:
-    """One stored evaluation (the code's ``eval.json``)."""
+    """One stored evaluation (``eval.json``)."""
 
     job: str
     k: int
@@ -73,9 +52,8 @@ class Measurement:
     artifact_id: str = ""
     seeds: list = field(default_factory=list)
     split: str = "evolve"
-    trials: dict = field(default_factory=dict)      # task_id -> [compact trial dict] (traces for the analyst)
+    trials: dict = field(default_factory=dict)      # task_id -> [compact trial dict]
 
-    # ---- persistence --------------------------------------------------------------
     def to_json(self) -> dict:
         return {"job": self.job, "k": self.k, "S": self.S, "C": self.C, "n_expected": self.n_expected,
                 "missing": self.missing, "extra": self.extra, "artifact_id": self.artifact_id,
@@ -100,21 +78,12 @@ class Measurement:
     def load(cls, path: str | Path) -> "Measurement":
         return cls.from_json(json.loads(Path(path).read_text()))
 
-    # ---- views --------------------------------------------------------------------
     def task_means(self) -> dict[str, float]:
         return {t: r.mean for t, r in self.per_task.items()}
 
-    def trial_matrix(self) -> np.ndarray:
-        """tasks x k matrix of rewards (unweighted), rows in per_task order."""
-        k = max([len(r.rewards) for r in self.per_task.values()] + [1])
-        m = np.zeros((len(self.per_task), k))
-        for i, r in enumerate(self.per_task.values()):
-            m[i, :len(r.rewards)] = r.rewards
-        return m
-
     def as_scored(self, novelty: int = 0) -> Scored:
-        """The :class:`rsi.core.Scored` view the gates consume."""
-        metrics = {k: float(v) for k, v in self.extra.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+        metrics = {k: float(v) for k, v in self.extra.items()
+                   if isinstance(v, (int, float)) and not isinstance(v, bool)}
         metrics.update({"score": self.S, "cost": self.C or 0.0})
         return Scored(score=self.S, cost=self.C or 0.0, per_task=self.task_means(), metrics=metrics, novelty=novelty)
 
@@ -153,21 +122,23 @@ def _compact_trial(tr, trace_chars: int) -> dict:
     return d
 
 
+def _is_missing(tr) -> bool:
+    return bool(tr.error and str(tr.error).startswith("infra:"))
+
+
 def _task_weight(trs, declared: Optional[float]) -> float:
-    """The weight of one task: ``Task.meta["weight"]`` if the domain declares it, else the weight its
-    graded trials reported, else 1.0 (every coding / engineering trial has weight 1 in the code)."""
+    """``Task.meta["weight"]`` if declared, else the first graded trial's weight, else 1.0."""
     if declared is not None:
         return float(declared)
     for tr in trs:
-        if not (tr.error and str(tr.error).startswith("infra:")) and "weight" in (tr.meta or {}):
+        if not _is_missing(tr) and "weight" in (tr.meta or {}):
             return float(tr.meta["weight"])
     return 1.0
 
 
 def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars: int = 3000,
               keep_trials: bool = True, task_weights: Optional[dict] = None) -> Measurement:
-    """Convert an :class:`rsi.core.EvalResult` to a stored :class:`Measurement`.
-    ``task_weights``: optional ``{task_id: weight}`` (``Task.meta["weight"]``) for weighted domains."""
+    """Convert an :class:`rsi.core.EvalResult` to a stored :class:`Measurement`."""
     per: dict[str, TaskResult] = {}
     trials: dict[str, list[dict]] = {}
     fam: dict[str, list[float]] = {}
@@ -178,10 +149,9 @@ def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars
         rewards, weights, tokens, miss = [], [], [], 0
         w_task = _task_weight(trs, task_weights.get(tid))
         for tr in trs:
-            is_missing = bool(tr.error and str(tr.error).startswith("infra:"))
+            is_missing = _is_missing(tr)
             miss += is_missing
             rewards.append(0.0 if is_missing else float(tr.score))
-            # a missing trial carries its task's weight (code: workspace adapter), a graded one its own
             weights.append(w_task if is_missing else float((tr.meta or {}).get("weight", w_task)))
             tokens.append(None if is_missing else (tr.tokens or None))
             steps.append(tr.steps)
@@ -190,13 +160,11 @@ def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars
             for mk, mv in (tr.meta or {}).items():
                 if isinstance(mv, (bool, int, float)) and mk != "weight":
                     meta_sums.setdefault(mk, []).append(float(mv))
-        # pad to k: trials that never came back are missing with reward 0 (full denominator)
-        while len(rewards) < ev.k:
-            rewards.append(0.0)
-            weights.append(w_task)
-            tokens.append(None)
-            miss += 1
-        per[tid] = TaskResult(rewards, weights, tokens, miss)
+        pad = max(0, ev.k - len(rewards))          # trials that never came back: missing, full denominator
+        rewards += [0.0] * pad
+        weights += [w_task] * pad
+        tokens += [None] * pad
+        per[tid] = TaskResult(rewards, weights, tokens, miss + pad)
         if trs:
             fam.setdefault(trs[0].family, []).append(per[tid].mean)
         if keep_trials:
@@ -209,7 +177,7 @@ def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars
 
 
 def job_seeds(job: str, k: int, run_seed: int = 0) -> list[int]:
-    """Trial seeds for one evaluation job: a stable block derived from (run seed, job)."""
+    """A stable block of trial seeds derived from (run seed, job)."""
     h = int(hashlib.sha256(f"{run_seed}|{job}".encode()).hexdigest()[:12], 16) % 10 ** 7
     return [h * 16 + j for j in range(k)]
 
@@ -237,14 +205,3 @@ class Measurer:
                    if tid in ev.trials and isinstance(t.meta, dict) and "weight" in t.meta}
         return from_core(ev, job, seeds=seeds, trace_chars=self.trace_chars, keep_trials=keep_trials,
                          task_weights=weights)
-
-
-def null_sd_theory(m: Measurement) -> float:
-    """Plug-in sd of the null difference implied by within-task trial variance (diagnostic)."""
-    v = 0.0
-    n = len(m.per_task)
-    for r in m.per_task.values():
-        k = len(r.rewards)
-        if k > 1:
-            v += float(np.var(r.rewards, ddof=1)) / k
-    return math.sqrt(2.0 * v) / n if n else 0.0

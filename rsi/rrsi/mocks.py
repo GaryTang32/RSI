@@ -1,22 +1,4 @@
-"""Scripted mock search LLM for the shared AgentQA domain (offline RRSI demos/tests).
-
-:class:`AgentQAMockLLM` answers RRSI proposer prompts with concrete harness edits for
-``rsi.domains.agentqa`` and critic prompts with a verdict. Its idea pool mixes
-
-* generic improvements - route computation through the Python tool (control_flow),
-  state the answer format (prompt), step-by-step / verification directives (prompt);
-* costly ones - a verbose persona prompt, 3-sample self-consistency, a checker sub-call;
-* a harmful one - a "use Python" skill injected into a harness that cannot run code;
-* a null rewording;
-* a LEAKY one - an answer lookup table for practice questions, built from the grader
-  feedback visible in the traces (``memory/answers.json`` + a lookup in ``harness.py``).
-
-It honours b_t, reserved exploration slots (components in U_t), prune directives
-(reverting listed ideas), visible negative evidence (skips rejected ideas) and repair
-objections (drops the objected-to idea). Replies depend only on (prompt, seed). It never bundles two
-ideas that rewrite the same part of ``solve()`` (e.g. self-consistency and the Python tool), because the
-second would silently erase the first while both stay declared (phantom credit in L_t).
-"""
+"""Scripted offline RRSI proposer + critic for AgentQA: generic, costly, harmful, null and leaky harness ideas."""
 from __future__ import annotations
 
 import hashlib
@@ -40,7 +22,7 @@ SKILL_TEXT = "When a question involves computation, write Python code that compu
 
 
 def render_harness(base: str = "direct", lookup: bool = False, checker: bool = False) -> str:
-    """harness.py from a small state (mock-internal composition of harness ideas)."""
+    """harness.py composed from the mock's idea state."""
     lines = ['"""Evolved harness."""', "import re", "", "", "def solve(question, llm, tools, files):",
              '    system = files.get("prompts/system.md", "")',
              '    prompt = files["prompts/task.md"].replace("{question}", question)']
@@ -52,7 +34,8 @@ def render_harness(base: str = "direct", lookup: bool = False, checker: bool = F
                   '            return "ANSWER: " + _v']
     if base == "tool":
         lines += ["    # [rrsi:tool] compute with the Python tool, then report its output",
-                  '    reply = llm(prompt + "\\n\\nWrite python code that prints the final answer, in a ```python block.",'
+                  '    reply = llm(prompt + "\\n\\nWrite python code that prints the final answer, '
+                  'in a ```python block.",'
                   " system=system)",
                   '    blocks = re.findall(r"```python\\n(.*?)```", reply, re.S)',
                   "    if blocks:",
@@ -169,7 +152,8 @@ def default_ideas() -> list[Idea]:
              lambda f, c: None if harness_state(f.get("harness.py", ""))["base"] != "direct"
              else _harness_update(f, base="sc3"), lambda f: _harness_update(f, base="direct")),
         Idea("aq:checker", "subagent", "costly", "Bounded checker sub-call", _checker,
-             lambda f: (lambda u: dict(u, **{"agents/checker.md": None}) if u else None)(_harness_update(f, checker=False))),
+             lambda f: (lambda u: dict(u, **{"agents/checker.md": None}) if u else None)(
+                 _harness_update(f, checker=False))),
         Idea("aq:python_skill", "skill", "harmful", "Skill card: write Python for computations", _skill, _unskill),
         Idea("aq:null_reword", "prompt", "null", "Reword the system prompt",
              lambda f, c: {"prompts/system.md": f.get("prompts/system.md", "").replace(
@@ -186,7 +170,7 @@ class AgentQAMockProfile:
     fill_budget_p: float = 0.5
     respect_history: bool = True
     prune_p: float = 0.4
-    catch_rate: float = 1.0          # LLM-critic stage on lookup tables that slip past the denylist
+    catch_rate: float = 1.0          # LLM critic on lookup tables that pass the denylist
     weights: dict = field(default_factory=dict)
 
 
@@ -195,7 +179,7 @@ def _rng(*parts) -> random.Random:
 
 
 class AgentQAMockLLM(MockLLM):
-    """Scripted RRSI proposer + critic for AgentQA (use with ``SimModel`` as the task model)."""
+    """Scripted proposer + critic; never bundles two ideas that rewrite the same ``solve()`` field."""
 
     def __init__(self, profile: Optional[AgentQAMockProfile] = None, ideas: Optional[list[Idea]] = None,
                  name: str = "agentqa-mock") -> None:
@@ -209,7 +193,8 @@ class AgentQAMockLLM(MockLLM):
             return self._propose(prompt, seed)
         if "strict reviewer of harness" in s:
             added = "\n".join(l for l in prompt.split("=== DIFF ===")[-1].splitlines() if l.startswith("+"))
-            if "memory/answers.json" in prompt and '": "' in added and _rng("c", seed).random() < self.profile.catch_rate:
+            if "memory/answers.json" in prompt and '": "' in added \
+                    and _rng("c", seed).random() < self.profile.catch_rate:
                 return json.dumps({"verdict": "reject", "reasons": ["[aq:answer_lookup] LEAKAGE: persists answers "
                                                                     "keyed by practice questions"], "risk_notes": []})
             return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
@@ -271,10 +256,7 @@ class AgentQAMockLLM(MockLLM):
         want_reserved = bool(d.get("reserved_slot")) and untried
         cur = dict(files)
         updates: dict = {}
-        # harness.py state fields (base / lookup / checker) already set by an edit of THIS candidate: a later
-        # idea that rewrites the same field would silently overwrite the earlier one, which would then be
-        # declared (and credited in L_t) without being in the diff. Such conflicting ideas are not drawn.
-        claimed: set = set()
+        claimed: set = set()            # harness.py fields already changed by this candidate
 
         def _fields(before: dict, upd: dict) -> set:
             if "harness.py" not in upd or upd["harness.py"] is None:
@@ -300,7 +282,7 @@ class AgentQAMockLLM(MockLLM):
                     if u is not None and not (_fields(cur, u) & claimed):
                         out.append(i)
                 return out
-            pool = _pool(avoid) or (_pool(set()) if not chosen else [])   # nothing new left: revisit refuted ideas
+            pool = _pool(avoid) or (_pool(set()) if not chosen else [])   # nothing new: revisit refuted ideas
             if not pool:
                 break
             w = [self.profile.weights.get(i.id, i.weight) for i in pool]

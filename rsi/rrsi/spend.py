@@ -1,32 +1,4 @@
-"""USD accounting of one run directory across processes (resume-safe budgets).
-
-A run killed mid-way and resumed in a new process starts with fresh LLM meters, so a
-budget checked against ``meter.total()`` alone forgets everything the killed process
-paid for (the recorded live validation run spent $0.88 before its kill that its USD
-budget never saw). :class:`SpendLedger` keeps ``<out_dir>/spend.json``::
-
-    {"segments": [{"segment": 0, "usd": ..., "live_usd": ..., "replayed_usd": ...}, ...]}
-
-one segment per process that worked on the directory. A process's charge is
-
-* ``live_usd``: what its LLM backends actually paid (``meter.total()``), plus
-* ``replayed_usd``: the original price of the calls a :class:`rsi.core.CachedLLM`
-  replayed from its cache (``CachedLLM.saved``). On a resume these are exactly the
-  killed process's calls that were not yet persisted as run state (drafts, evaluations,
-  analyses are reused from disk and never replayed), so they carry the pre-kill spend
-  that the last checkpoint had not recorded; on a $0 replay of a recorded run they make
-  the budget bind where it bound originally.
-
-The loop checkpoints the current segment after every persisted step (baseline and
-calibration evaluations, the analysis report, each drafted candidate, each evaluation,
-each settled round), so a kill loses no recorded spend, and a call replayed on resume was
-never recorded before (no double counting across segments). Within one process, a cache hit
-on an entry the same process wrote earlier (e.g. two candidates making the identical smoke
-call) is also counted at its original price, so such a call is counted twice: the ledger can
-overstate spend, never understate it. The budget of the resumed process is checked
-against ``prior segments + this process``. The write-only shadow monitor has its own
-meter and is not part of any segment.
-"""
+"""Resume-safe USD accounting of one run directory (``spend.json``, one segment per process)."""
 from __future__ import annotations
 
 import json

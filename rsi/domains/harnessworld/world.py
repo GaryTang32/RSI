@@ -1,32 +1,4 @@
-"""HarnessWorld: a synthetic harness-evolution world with analytic ground truth.
-
-A *harness* is a set of *mechanisms* (one file each). Every candidate mechanism in the
-world's catalog has
-
-* a component (RRSI's K: prompt, control_flow, config, output_plumbing, context_mgmt,
-  client_tool, skill, memory, subagent) and a file path derived from it;
-* a true **generic effect** per task family (logit units; families shared by the
-  evolve/holdout splits and shifted OOD families);
-* a **suite-specific (trick) effect** that only helps listed evolve tasks - only while
-  the mechanism's leak payload (a lookup table keyed by evolve task ids / answers, or an
-  obfuscated hash table) is present in its file;
-* a multiplicative **token cost**;
-* possibly **decaying usefulness**: its generic effect vanishes once a superseding
-  mechanism is present (so it keeps costing tokens after it stopped helping).
-
-The frozen policy solves task x with per-criterion success probability
-``p = sigmoid(a_pi - d_x + sum_m e_m(x))``; a trial's reward is the fraction of
-``n_criteria`` rubric criteria passed (Binomial), its tokens are
-``base * prod(cost_m) * lognormal`` (mean-preserving). Ground truth ``E[S]`` and
-``E[C]`` are analytic (:meth:`World.expected`).
-
-Mechanism kinds in the catalog (the mock proposer draws from them with set shares):
-``generic``, ``structural`` (K_str components, larger effects), ``narrow`` (practice
-families only: transfers to holdout, not OOD), ``leak`` (literal evolve ids/answers in
-the text: the regex denylist catches it), ``obfuscated_leak`` (hash-keyed: only an LLM
-critic can catch it), ``null``, ``costly`` (small gain, large cost), ``harmful``
-(plausible-looking, negative effect: hitchhikers), ``decaying`` (+ its superseders).
-"""
+"""HarnessWorld: tasks, a mechanism catalog with true effects and token costs, and analytic E[S], E[C]."""
 from __future__ import annotations
 
 import hashlib
@@ -102,10 +74,6 @@ class Mechanism:
         lines.append(self.enable_line)
         return "\n".join(lines) + "\n"
 
-    def catalog_row(self) -> dict:
-        return {"id": self.id, "component": self.component, "title": self.title, "description": self.description,
-                "path": self.path}
-
 
 @dataclass
 class WorldConfig:
@@ -123,7 +91,7 @@ class WorldConfig:
     tool_surface_p_ood: float = 0.6
     base_tokens: float = 2000.0
     token_noise_sd: float = 0.25
-    # catalog composition (number of mechanisms of each kind)
+    # catalog composition (mechanisms per kind)
     n_generic: int = 20
     n_structural: int = 12
     n_narrow: int = 8
@@ -133,7 +101,7 @@ class WorldConfig:
     n_costly: int = 10
     n_harmful: int = 20
     n_decaying: int = 6
-    # effect scales (logit units): (mean, sd) of a mechanism's base effect on a covered family
+    # (mean, sd) of a mechanism's logit effect on a covered family
     generic_effect: tuple = (0.12, 0.04)
     structural_effect: tuple = (0.20, 0.05)
     narrow_effect: tuple = (0.12, 0.03)
@@ -145,7 +113,7 @@ class WorldConfig:
     leak_fraction: tuple = (0.12, 0.25)       # share of evolve tasks a leak helps
     family_coverage: float = 0.6              # P(a generic mechanism helps a given family)
     structural_coverage: float = 0.7
-    # extra token cost ranges U(lo, hi): a mechanism multiplies tokens by 1 + U(lo, hi)
+    # a mechanism multiplies tokens by 1 + U(lo, hi)
     generic_cost: tuple = (0.0, 0.06)
     structural_cost: tuple = (0.03, 0.12)
     narrow_cost: tuple = (0.0, 0.04)
@@ -156,11 +124,9 @@ class WorldConfig:
     decaying_cost: tuple = (0.04, 0.10)
     leak_offtarget: tuple = (-0.06, 0.03)     # generic effect of a leak (a lookup table is distracting context)
     narrow_offtarget: float = -0.04           # practice-tuned instructions confuse never-seen families
-    context_penalty: float = 0.15             # logit penalty per unit log(cost factor): a bigger harness dilutes
-                                              # the policy's context (set 0 to make complexity cost tokens only)
+    context_penalty: float = 0.15             # logit penalty per unit log(cost factor): context dilution
     decaying_components: tuple = ("prompt", "prompt", "context_mgmt", "output_plumbing")
     seed_mechanisms: int = 2                  # generic mechanisms already in H_0
-    # overrides by kind (e.g. {"prompt": 0.0} to exhaust non-structural gains in E9)
     nonstructural_effect_scale: float = 1.0
 
 
@@ -177,8 +143,7 @@ class Policy:
 
 
 STRONG = Policy("strong", 0.0, {})
-#: a weaker policy never used in the search: lower base skill, gains more from tools,
-#: less from textual skills, hurt by sub-calls ("sub-calls tend to HURT on small policies").
+# never used in the search: gains more from tools, less from skills, hurt by sub-calls
 WEAK = Policy("weak", -1.0, {"subagent": -0.5, "skill": 0.5, "client_tool": 1.3, "memory": 0.8, "prompt": 0.9,
                              "control_flow": 0.9, "config": 0.8, "output_plumbing": 1.0, "context_mgmt": 1.0})
 
@@ -210,7 +175,6 @@ class World:
         self.catalog: dict[str, Mechanism] = {}
         self._make_catalog()
 
-    # ---------------------------------------------------------------- tasks --
     def _make_tasks(self) -> None:
         c, rng = self.cfg, self.rng
         pf, of = c.practice_families, c.ood_families
@@ -232,7 +196,6 @@ class World:
     def split_ids(self, split: str) -> list[str]:
         return [t.id for t in self.tasks if t.split == split]
 
-    # -------------------------------------------------------------- catalog --
     def _effects(self, base: float, coverage: float, fams: tuple) -> dict:
         rng = self.rng
         eff = {}
@@ -241,13 +204,10 @@ class World:
                 eff[f] = base * rng.uniform(0.5, 1.5)
             else:
                 eff[f] = rng.gauss(0.0, 0.01)
-        if all(abs(eff[f]) < 0.02 for f in fams):                   # guarantee at least one target family
+        if all(abs(eff[f]) < 0.02 for f in fams):                   # at least one target family
             f = rng.choice(list(fams))
             eff[f] = base
         return eff
-
-    def _add(self, m: Mechanism) -> None:
-        self.catalog[m.id] = m
 
     def _title(self, comp: str) -> str:
         return self.rng.choice(_TITLES[comp])
@@ -264,13 +224,11 @@ class World:
             eff = self._effects(base, coverage, fams)
             targets = tuple(f for f in fams if abs(eff[f]) >= 0.02)
             title = self._title(comp)
-            # the text a proposer reads names practice families only: which mechanisms help the sealed OOD
-            # families is ground truth about a split the loop must never see
+            # the description names practice families only: OOD effects are sealed ground truth
             shown = [f for f in targets if f in c.practice_families]
             desc = kw.pop("desc", None) or (f"{title}; aimed at {', '.join(shown) or 'general'} tasks.")
-            m = Mechanism(f"{kind[:3]}_{i:02d}" if kind not in ("obfuscated_leak",) else f"obf_{i:02d}", kind, comp,
-                          title, desc, eff, cost=cost, targets=targets, **kw)
-            self._add(m)
+            m = Mechanism(f"{kind[:3]}_{i:02d}", kind, comp, title, desc, eff, cost=cost, targets=targets, **kw)
+            self.catalog[m.id] = m
             return m
 
         allf = self.families
@@ -307,13 +265,14 @@ class World:
                           comp, title, desc, eff, cost=1.0 + rng.uniform(*c.leak_cost),
                           trick=rng.gauss(*c.trick_effect), leak_keys=keys, payload=payload,
                           targets=tuple(c.practice_families))
-            self._add(m)
+            self.catalog[m.id] = m
         for i in range(c.n_null):
             comp = comp_ns()
             title = self._title(comp)
-            self._add(Mechanism(f"nul_{i:02d}", "null", comp, title, f"{title} (rewording of existing guidance).",
-                                {f: rng.gauss(0.0, c.null_effect_sd) for f in allf}, cost=1.0 + rng.uniform(*c.null_cost),
-                                targets=tuple(rng.sample(list(allf), 2))))
+            m = Mechanism(f"nul_{i:02d}", "null", comp, title, f"{title} (rewording of existing guidance).",
+                          {f: rng.gauss(0.0, c.null_effect_sd) for f in allf}, cost=1.0 + rng.uniform(*c.null_cost),
+                          targets=tuple(rng.sample(list(allf), 2)))
+            self.catalog[m.id] = m
         for i in range(c.n_costly):
             comp = rng.choice(["control_flow", "subagent", "prompt", "context_mgmt"])
             mk("costly", i, comp, rng.gauss(*c.costly_effect), 0.6, allf, 1.0 + rng.uniform(*c.costly_cost),
@@ -321,42 +280,38 @@ class World:
         for i in range(c.n_harmful):
             comp = rng.choice(K)
             mk("harmful", i, comp, rng.gauss(*c.harmful_effect), 0.7, allf, 1.0 + rng.uniform(*c.harmful_cost))
-        # decaying mechanisms: useful until a superseding (generic / structural) mechanism is present
+        # decaying mechanisms: useful until a superseding generic / structural mechanism is present
         sup_pool = [m for m in self.catalog.values() if m.kind in ("generic", "structural")]
         for i in range(c.n_decaying):
             comp = rng.choice(list(c.decaying_components))
-            m = mk("decaying", i, comp, nsx * rng.gauss(*c.decaying_effect), 0.8, allf, 1.0 + rng.uniform(*c.decaying_cost))
+            m = mk("decaying", i, comp, nsx * rng.gauss(*c.decaying_effect), 0.8, allf,
+                   1.0 + rng.uniform(*c.decaying_cost))
             overlap = [s for s in sup_pool if set(s.targets) & set(m.targets)] or sup_pool
             sups = tuple(sorted(s.id for s in rng.sample(overlap, min(2, len(overlap)))))
             self.catalog[m.id] = replace(m, superseded_by=sups, description=m.description +
                                          " (a stop-gap until a dedicated mechanism exists)")
-        # H_0: a few generic mechanisms are already in the seed harness
         self.seed_ids = tuple(sorted(rng.sample([m.id for m in self.catalog.values() if m.kind == "generic"],
                                                 min(c.seed_mechanisms, c.n_generic))))
 
-    # -------------------------------------------------------------- scoring --
     def active(self, files: dict) -> tuple[list[Mechanism], list[str], float]:
-        """(active catalog mechanisms, mechanisms whose leak payload is present, free-text extra cost)."""
+        """(active catalog mechanisms, ids with a live leak payload, free-text extra cost)."""
         mechs, payload, extra = [], [], 0.0
         for path, text in files.items():
             if path == "harness.md":
                 continue
-            mid = None
-            for line in text.splitlines()[:3]:
-                if line.startswith("# mechanism:"):
-                    mid = line.split(":", 1)[1].strip()
-                    break
+            mid = next((l.split(":", 1)[1].strip() for l in text.splitlines()[:3] if l.startswith("# mechanism:")),
+                       None)
             m = self.catalog.get(mid) if mid else None
             if m is not None and m.enable_line in text and m not in mechs:
                 mechs.append(m)
                 if m.payload and m.payload in text:
                     payload.append(m.id)
             else:
-                extra += len(text) / 20000.0                          # free text: no effect, costs context tokens
+                extra += len(text) / 20000.0                          # free text costs context tokens only
         return mechs, payload, extra
 
-    # vectorised ground truth: per-mechanism effect vectors over all tasks (cached)
     def _vectors(self, m: Mechanism) -> tuple:
+        """Cached (generic effect, trick) vectors of ``m`` over all tasks."""
         cache = self.__dict__.setdefault("_vec_cache", {})
         v = cache.get(m.id)
         if v is None:

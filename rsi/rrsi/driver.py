@@ -1,17 +1,4 @@
-"""Sequential driver and the public entry point (mirrors ``rrsi/driver.py`` + ``rrsi.py run``).
-
-:func:`drive` runs baseline + calibration if missing, then rounds ``start..T-1``:
-
-* a round is *settled* once the frontier trajectory has an entry for t+1 (resume rule);
-* a file named ``STOP`` in the run directory stops the driver at the next round boundary;
-* consecutive infrastructure failures (a round raising) stop the driver after
-  ``MAX_CONSECUTIVE_INFRA = 3`` so a broken environment cannot burn the whole budget.
-  (The code re-launches the next round; we retry the same round, which is resume-safe.)
-* a USD budget is checked against the whole run directory's spend, including what
-  earlier (killed) processes of the same run paid (:mod:`rsi.rrsi.spend`).
-
-:func:`run` is the package's uniform entry point returning :class:`rsi.core.ImprovementResult`.
-"""
+"""Resumable driver (:func:`drive`) and the public entry point :func:`run`."""
 from __future__ import annotations
 
 import tempfile
@@ -77,7 +64,7 @@ def _drive(r: RRSIRun, T: Optional[int], start: int, budget: Optional[Budget], r
             r.round(t)
             infra = 0
             t += 1
-        except Exception as e:  # noqa: BLE001 - counted as an infrastructure failure
+        except Exception as e:  # noqa: BLE001 - retried; the same round is resume-safe
             infra += 1
             r.log(f"round {t} did not settle ({infra}/{MAX_CONSECUTIVE_INFRA}): {e!r}")
             (r.out / "logs").mkdir(exist_ok=True)
@@ -86,10 +73,6 @@ def _drive(r: RRSIRun, T: Optional[int], start: int, budget: Optional[Budget], r
             if infra >= MAX_CONSECUTIVE_INFRA:
                 return "infra_failures"
     return "max_rounds"
-
-
-def _llms(r: RRSIRun) -> list[LLM]:
-    return r.llms()
 
 
 def merged_usage(llms: Sequence[LLM]) -> dict:
@@ -107,7 +90,7 @@ def merged_usage(llms: Sequence[LLM]) -> dict:
 
 
 def result(r: RRSIRun, stop_reason: str = "") -> ImprovementResult:
-    """Assemble the :class:`rsi.core.ImprovementResult` of a (possibly resumed) run."""
+    """The :class:`rsi.core.ImprovementResult` of a (possibly resumed) run."""
     fr = r.frontier.load()
     best = r.store.get(fr["incumbent"]["artifact_id"])
     rows = [{"t": 0, "S": fr["trajectory"][0]["S"], "C": fr["trajectory"][0]["C"], "event": "baseline"}]
@@ -120,16 +103,17 @@ def result(r: RRSIRun, stop_reason: str = "") -> ImprovementResult:
                                                            "novelty", "reason")}
                                    for d in summ.get("decisions", [])]})
     critic = r.critic
-    meta = {"frontier": {k: fr[k] for k in ("incumbent", "S_star")}, "calibration": read_json(r.out / "calibration.json"),
-            "delta": r.delta() if (r.cfg.delta is not None or (r.out / "calibration.json").exists()) else None,
+    has_delta = r.cfg.delta is not None or (r.out / "calibration.json").exists()
+    meta = {"frontier": {k: fr[k] for k in ("incumbent", "S_star")},
+            "calibration": read_json(r.out / "calibration.json"), "delta": r.delta() if has_delta else None,
             "switches": r.sw.to_json(), "config": r.cfg.dump(), "n_rollouts": r.measurer.n_rollouts,
-            "spend": r.spend.summary(), "analyst_mode": r.analyst.mode,
-            "K": r.tax.K, "K_str": r.tax.K_str,
-            "critic": None if critic is None else {"reviews": critic.n_reviews, "precheck_rejects": critic.n_precheck_rejects,
+            "spend": r.spend.summary(), "analyst_mode": r.analyst.mode, "K": r.tax.K, "K_str": r.tax.K_str,
+            "critic": None if critic is None else {"reviews": critic.n_reviews,
+                                                   "precheck_rejects": critic.n_precheck_rejects,
                                                    "llm_rejects": critic.n_llm_rejects}}
     method = "rrsi" if r.sw.name == "full" else f"rrsi[{r.sw.name}]"
     return ImprovementResult(method=method, baseline=r.seed_artifact, best=best, ledger=r.ledger, trajectory=rows,
-                             usage=merged_usage(_llms(r)), stop_reason=stop_reason, out_dir=str(r.out), meta=meta)
+                             usage=merged_usage(r.llms()), stop_reason=stop_reason, out_dir=str(r.out), meta=meta)
 
 
 def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None, llm_propose: Optional[LLM] = None,
@@ -138,45 +122,12 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         switches: Optional[RegularizerSwitches] = None, guards: Sequence[Gate] = (), budget: Optional[Budget] = None,
         constitution: Optional[tuple[str, str]] = None, critic_patterns: Sequence[tuple[str, str]] = (),
         hooks: Optional[dict[str, Callable]] = None, verbose: bool = False) -> ImprovementResult:
-    """Run RRSI on any :class:`rsi.core.Domain` from a seed :class:`rsi.core.Artifact`.
-
-    Parameters
-    ----------
-    domain, seed_artifact:
-        the problem (tasks + locked grader, optional ``components`` taxonomy) and H_0.
-    llm_task:
-        the frozen model the artifact runs with (``None`` for simulated domains).
-    llm_propose:
-        the proposer backend (role ``proposer``); also the critic unless ``llm_critic`` is
-        given, and the analyst when ``config.analyst == "llm"``.
-    config:
-        :class:`~rsi.rrsi.config.Config` (defaults = the paper's; ``Config.preset(...)``).
-    out_dir:
-        run directory (resumable: calling ``run`` again on the same ``out_dir`` continues it). When
-        given, the run also writes a per-iteration ``trace.jsonl`` (``Config.trace``; render it with
-        :func:`rsi.trace.inspect`) and, for domains with sealed holdout / ood splits, a write-only
-        shadow monitor scores every new incumbent there (``Config.shadow_monitor``); see
-        :mod:`rsi.rrsi.tracing`. Without ``out_dir`` a temporary directory is used and tracing is off.
-    editor:
-        any :class:`rsi.core.Editor` (default :class:`~rsi.rrsi.propose.RRSIRewriteEditor`).
-    switches:
-        :class:`~rsi.rrsi.switches.RegularizerSwitches` for ablations (default: full RRSI).
-    guards:
-        extra non-compensatory gates (e.g. ``rsi.core.MetricGuard("valid_rate", 0.03)``).
-    budget:
-        optional :class:`rsi.core.Budget` (usd / rollouts / wall / STOP dir).
-
-    Returns
-    -------
-    ImprovementResult with ``best`` = the final incumbent H_T, ``trajectory`` = one row per
-    settled round, per-role LLM usage, and ``meta`` (delta, calibration, switches, ...).
-    """
+    """Run RRSI on any :class:`rsi.core.Domain` from H_0; ``out_dir`` makes the run resumable and traced."""
     cfg = config or Config()
     if out_dir is None and cfg.trace:
-        cfg = cfg.replace(trace=False)          # the trace is on by default only for a caller-chosen out_dir
+        cfg = cfg.replace(trace=False)          # without a caller-chosen out_dir the trace is off
     out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="rrsi_"))
     r = RRSIRun(domain, seed_artifact, out_dir=out, llm_task=llm_task, llm_propose=llm_propose, llm_critic=llm_critic,
                 llm_analyst=llm_analyst, editor=editor, config=cfg, switches=switches, guards=guards,
                 constitution=constitution, critic_patterns=critic_patterns, hooks=hooks, verbose=verbose)
-    stop = drive(r, cfg.T, budget=budget)
-    return result(r, stop)
+    return result(r, drive(r, cfg.T, budget=budget))

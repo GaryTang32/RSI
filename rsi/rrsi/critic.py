@@ -1,30 +1,4 @@
-"""Critic(H_t, H') -> {accept, reject}: the leakage screen (mirrors ``rrsi/critic.py``).
-
-Reads the candidate diff BEFORE any evaluation is spent and rejects edits that encode
-task names, entity names, task-specific values, answers or other suite-specific logic,
-as well as degenerate, grader-gaming, undeclared-bundling, runtime-leaking or unbounded
-edits. Two layers:
-
-1. deterministic prechecks, as in the code: the decision split's TASK IDS (the coding
-   adapter's task-name denylist), the domain's ``critic_patterns`` (id patterns, grader and
-   reference-solution artefacts, ...), the generic credential pattern, and the generic
-   grader-artefact patterns of this in-process framework (harness code importing ``rsi``,
-   touching ``sys.modules`` or walking the call stack to the grader: the analogue of the
-   code's per-domain "verifier / reward file" patterns). Literal ANSWERS and entity names are
-   NOT in the precheck by default: as in the code, they are left to the LLM review (REJECT
-   rule 1). ``precheck_answers=True`` (``Config.precheck_answers``, an extension) adds
-   :meth:`rsi.core.Domain.leakage_terms` (ids + answers + entities): a deterministic answer
-   key the paper's critic does not have.
-   The scan covers the diff's ADDED lines (``scope="added"``, deviation 4: a removal or an
-   unchanged context line never encodes anything, while the code's whole-diff grep also
-   rejects an edit that DELETES flagged content); ``scope="diff"`` is the code's grep;
-2. an LLM review of intent and content (the code's six REJECT rules), up to 3 parse
-   attempts; unparseable output fails closed.
-
-A rejection is sent back to the proposer for a bounded number of repair rounds
-(``Config.repair_rounds``) by :mod:`rsi.rrsi.loop`; a candidate that cannot be repaired
-is dropped and recorded in the history without a measurement.
-"""
+"""Leakage critic: a deterministic precheck (task ids, domain and generic patterns), then an LLM review."""
 from __future__ import annotations
 
 import hashlib
@@ -32,17 +6,15 @@ import json
 import re
 from typing import Optional, Sequence
 
-from ..core.critic import LeakageCritic, added_lines
+from ..core.critic import LeakageCritic
 from ..core.llm import LLM, extract_json
 
 GENERIC_PATTERNS: list[tuple[str, str]] = [
     (r"AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{20,}|api_key\s*=\s*[\"\'][^\"\']{8,}", "credential in diff"),
-    # Extension (not in the released code): harness code runs in the evaluator's process, so reaching into the
-    # evaluation framework or the loaded modules could rewrite the grader ("never let the loop grade itself").
+    # extension: harness code runs in the evaluator's process, so it could reach the grader
     (r"(?m)^\s*(?:import|from)\s+rsi\b|__import__\(\s*[\"']rsi\b|import_module\(\s*[\"']rsi\b",
      "harness imports the evaluation framework (grader tampering)"),
     (r"\bsys\.modules\b", "harness reaches into loaded modules (possible grader tampering)"),
-    # ... or walk the caller's stack / the object graph to the Domain and patch grade() in place
     (r"\bsys\._getframe\b|\binspect\.(?:currentframe|stack|getouterframes)\b|\.f_back\b|\.f_globals\b"
      r"|\bgc\.get_(?:objects|referrers)\b|\b__globals__\b",
      "harness walks the call stack / object graph (possible grader tampering)"),
@@ -102,25 +74,9 @@ DIFF_CAP = 120_000
 EDITS_CAP = 20_000
 
 
-class RRSICritic:
-    """Regex/denylist precheck (core :class:`LeakageCritic`) followed by an LLM review.
 
-    Parameters
-    ----------
-    domain:
-        supplies the decision split's task ids, ``describe()`` and optional ``critic_patterns``
-        (list of ``(regex, why)``) and ``critic_brief``.
-    llm:
-        reviewer backend (role ``"critic"``); ``None`` = deterministic precheck only.
-    terms, patterns:
-        extra denylist terms / ``(regex, why)`` patterns. ``terms`` given explicitly replaces the
-        domain's terms.
-    precheck_answers:
-        extension (default off, as in the code): also deny :meth:`Domain.leakage_terms` (the decision
-        split's literal answers and entities, besides its ids).
-    scope:
-        ``"added"`` (default; added diff lines) or ``"diff"`` (the whole diff, as the code greps it).
-    """
+class RRSICritic:
+    """Denylist/regex precheck, then an optional LLM review that fails closed on unparseable output."""
 
     def __init__(self, domain=None, llm: Optional[LLM] = None, *, terms: Optional[Sequence[str]] = None,
                  patterns: Sequence[tuple[str, str]] = (), domain_brief: Optional[str] = None,
@@ -150,35 +106,25 @@ class RRSICritic:
         self.n_reviews = 0
         self.n_precheck_rejects = 0
         self.n_llm_rejects = 0
-        #: the latest review's LLM exchange (payload + every raw reply) - for the run trace
-        self.last_exchange: dict = {}
+        self.last_exchange: dict = {}          # latest LLM payload and replies, for the run trace
 
     def _hits(self, diff: str) -> list[str]:
         if self.scope == "added":
             return self.denylist.denylist_hits(diff)
-        # the code's grep over the WHOLE diff (headers, context and removed lines included)
         hay = diff or ""
-        low = hay if self.denylist.case_sensitive else hay.lower()
-        hits = []
-        for t in self.denylist.terms:
-            needle = t if self.denylist.case_sensitive else t.lower()
-            if re.search(r"(?<![\w.])" + re.escape(needle) + r"(?!\w)(?!\.\d)", low):
-                hits.append(t)
-        hits += [f"/{p.pattern}/" for p in self.denylist.patterns if p.search(hay)]
-        return hits
+        cs = self.denylist.case_sensitive
+        low = hay if cs else hay.lower()
+        hits = [t for t in self.denylist.terms
+                if re.search(r"(?<![\w.])" + re.escape(t if cs else t.lower()) + r"(?!\w)(?!\.\d)", low)]
+        return hits + [f"/{p.pattern}/" for p in self.denylist.patterns if p.search(hay)]
 
     def precheck(self, diff: str) -> list[str]:
-        hits = []
-        for h in self._hits(diff):
-            if h.startswith("/") and h.endswith("/") and h[1:-1] in self._why:
-                hits.append(self._why[h[1:-1]])
-            else:
-                hits.append(f"hard-coded evaluation data {h!r}")
-        return hits
+        return [self._why[h[1:-1]] if h.startswith("/") and h.endswith("/") and h[1:-1] in self._why
+                else f"hard-coded evaluation data {h!r}" for h in self._hits(diff)]
 
     def review(self, diff: str, summary: str = "", targets_mode: str = "", edits: Optional[list] = None,
                state_files: str = "", seed: int = 0) -> dict:
-        """Return ``{"verdict": "accept"|"reject", "reasons": [...], "risk_notes": [...], "stage": ...}``."""
+        """``{"verdict": "accept"|"reject", "reasons", "risk_notes", "stage"}``."""
         self.n_reviews += 1
         self.last_exchange = {}
         hard = self.precheck(diff)
@@ -221,14 +167,3 @@ class RRSICritic:
         self.n_llm_rejects += 1
         return {"verdict": "reject", "reasons": [f"critic output unparseable after {self.parse_attempts} attempts: "
                                                  f"{last[:200]}"], "risk_notes": [], "stage": "llm"}
-
-
-def added_text(diff: str) -> str:
-    """Added lines of a diff (what the denylist scans)."""
-    return added_lines(diff)
-
-
-def leak_hits(diff: str, terms: Sequence[str]) -> list[str]:
-    """Convenience: denylist hits of ``terms`` in the added lines of ``diff``."""
-    return LeakageCritic(terms=terms).denylist_hits(diff)
-

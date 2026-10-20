@@ -1,25 +1,4 @@
-"""Offline mock LLMs for HarnessWorld: a parametric proposer and a leakage critic.
-
-:class:`HarnessWorldMockLLM` is one :class:`rsi.core.MockLLM` that serves every RRSI
-search role, routed by the system prompt:
-
-* **proposer** - reads the RRSI prompt (b_t, reserved slot / untried components, prune
-  set, edit history, analysis report, current harness), draws up to b_t mechanisms from
-  the world's catalog with configurable shares per kind (generic-helpful, structural,
-  narrow, leaky, obfuscated-leaky, null, costly, harmful hitchhikers, decaying), biased
-  toward the analyst's top failure families and optionally toward ``prompt``
-  ("prompt collapse"); it honours the reserved slot, adds prune edits for listed
-  machinery, avoids redrawing mechanisms whose history record was rejected (when that
-  negative evidence is visible), and in REPAIR mode removes the content the critic
-  objected to. It never sees true effects.
-* **critic** - accepts unless the diff adds a mechanism whose leak payload is present:
-  an obfuscated (hash-keyed) leak is caught with probability ``catch_rate``; literal
-  leaks are normally already stopped by the regex precheck.
-* **digester / analyst** - small deterministic JSON responders so the LLM-analyst path
-  can run offline.
-
-Replies depend only on (prompt, seed), so killed-and-resumed runs replay identically.
-"""
+"""Offline HarnessWorld mock LLM serving every RRSI search role; replies depend only on (prompt, seed)."""
 from __future__ import annotations
 
 import hashlib
@@ -85,7 +64,6 @@ class HarnessWorldMockLLM(MockLLM):
         self.cp = critic or CriticProfile()
         super().__init__(self._respond, name=name)
 
-    # ---------------------------------------------------------------- routing --
     def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
         s = system or ""
         if s.startswith("You are a harness engineer agent"):
@@ -98,7 +76,6 @@ class HarnessWorldMockLLM(MockLLM):
             return self._analyze(prompt)
         return "OK"
 
-    # --------------------------------------------------------------- proposer --
     def _present(self, files: dict) -> dict[str, str]:
         mechs, _, _ = self.world.active(files)
         return {m.id: m.path for m in mechs}
@@ -141,7 +118,7 @@ class HarnessWorldMockLLM(MockLLM):
         for r in history:
             if r.get("outcome") in ("REJECTED", "critic_reject", "smoke_fail"):
                 rejected.update(MID.findall(str(r.get("hypothesis", ""))))
-        # iterate in sorted order: a set's order depends on PYTHONHASHSEED, and every element consumes a draw
+        # sorted: set order depends on PYTHONHASHSEED and every element consumes a draw
         avoid = {x for x in sorted(rejected) if self.pp.respect_history and rng.random() < self.pp.history_compliance}
 
         if "REPAIR ROUND" in P["task"]:
@@ -149,7 +126,6 @@ class HarnessWorldMockLLM(MockLLM):
 
         n = budget if rng.random() < self.pp.fill_budget_p else rng.randint(1, budget)
         chosen: list[tuple[Mechanism, bool]] = []
-        # prune directive: remove listed machinery that is still in the harness
         prunable = []
         for p in prune_set or []:
             for e in p.get("accepted_edits_in_incumbent") or []:
@@ -204,9 +180,7 @@ class HarnessWorldMockLLM(MockLLM):
         return "```json\n" + json.dumps(header) + "\n```\n" + body
 
     def _objected(self, m: Optional[Mechanism], e: dict, reasons: str) -> bool:
-        """Did the reviewer's objections name this edit? Only what the critic actually objected to is removed
-        in a repair (a leak the critic MISSED stays in the candidate): the objection must cite the mechanism id,
-        or one of the evolve task ids / answers its leak payload hard-codes."""
+        """The objections cite this edit's mechanism id or a task id / answer its payload hard-codes."""
         if m is None or e.get("prune"):
             return False
         if m.id in reasons:
@@ -227,7 +201,7 @@ class HarnessWorldMockLLM(MockLLM):
             m = self.world.catalog.get(mid) if mid else None
             flagged = self._objected(m, e, reasons)
             if flagged and rng.random() < self.pp.repair_compliance:
-                files[m.path] = "<<DELETE>>"                             # remove the offending part
+                files[m.path] = "<<DELETE>>"
                 avoid.add(mid)
             else:
                 keep.append(e)
@@ -247,7 +221,6 @@ class HarnessWorldMockLLM(MockLLM):
                 chosen.append((m, False))
         return self._reply(chosen, targets_mode, predicted, keep_edits=keep, extra_files=files)
 
-    # ----------------------------------------------------------------- critic --
     def _critic(self, prompt: str, seed) -> str:
         diff = prompt.split("=== DIFF ===", 1)[-1].split("=== STATE FILES", 1)[0]
         added = "\n".join(l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
@@ -267,7 +240,6 @@ class HarnessWorldMockLLM(MockLLM):
         verdict = {"verdict": "reject" if reasons else "accept", "reasons": reasons, "risk_notes": []}
         return json.dumps(verdict)
 
-    # ------------------------------------------------------- digester / analyst --
     def _digest(self, prompt: str) -> str:
         m = re.search(r"=== TASK (\S+) \(family=([^,)]+)", prompt)
         fb = re.search(r"feedback: (.*)", prompt)
