@@ -1,19 +1,4 @@
-"""Experiment ledger: every attempt as a node in a tree.
-
-"Log experiments as a tree. Record each attempt's parent, change, score and cost.
-That history becomes a simulator for testing better strategies later."
-
-One :class:`Ledger` serves all methods:
-
-* autoresearch - a single chain; ``to_results_tsv`` writes the 5-column table
-  (commit, score, memory, status, description);
-* RRSI - per-edit records (component, hypothesis, dS, dC, verdict) read back as
-  the proposer's memory of what failed;
-* Meta-Harness - the full-history filesystem (``ArtifactStore`` + traces);
-* Dream-RSI - :meth:`Ledger.nodes` exported as a replay world.
-
-Storage is append-only JSONL, safe to resume after a crash.
-"""
+"""Experiment ledger (every attempt as a node in a tree, append-only JSONL) and a content-addressed artifact store."""
 from __future__ import annotations
 
 import csv
@@ -37,21 +22,20 @@ class Node:
     status: str = "pending"          # keep | discard | crash | rejected | accepted | lost | ...
     score: Optional[float] = None
     cost: Optional[float] = None
-    change: str = ""                 # one-line description / hypothesis
+    change: str = ""
     artifact_id: Optional[str] = None
     diff: str = ""
     metrics: dict = field(default_factory=dict)
     meta: dict = field(default_factory=dict)
     t: float = field(default_factory=time.time)
-    seq: int = 0                     # creation order (Dream-RSI replay uses it)
+    seq: int = 0                     # creation order
 
     def to_json(self) -> dict:
         return asdict(self)
 
     @classmethod
     def from_json(cls, d: dict) -> "Node":
-        known = {k: d[k] for k in cls.__dataclass_fields__ if k in d}
-        return cls(**known)
+        return cls(**{k: d[k] for k in cls.__dataclass_fields__ if k in d})
 
 
 def new_id(prefix: str = "n") -> str:
@@ -66,24 +50,22 @@ class Ledger:
         self._lock = threading.Lock()
         self.n_corrupt_lines = 0
         self._tail_checked = False
-        if self.path and self.path.exists():
-            text = self.path.read_text()
-            for line in text.splitlines():
-                if line.strip():
-                    try:
-                        n = Node.from_json(json.loads(line))
-                    except (ValueError, TypeError, KeyError):
-                        # a line torn by a crash mid-write: skip it (the append-only log stays usable)
-                        self.n_corrupt_lines += 1
-                        continue
-                    if n.id not in self._nodes:
-                        self._order.append(n.id)
-                    self._nodes[n.id] = n  # later lines update earlier ones
+        if not (self.path and self.path.exists()):
+            return
+        for line in self.path.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                n = Node.from_json(json.loads(line))
+            except (ValueError, TypeError, KeyError):   # a line torn by a crash mid-write
+                self.n_corrupt_lines += 1
+                continue
+            if n.id not in self._nodes:
+                self._order.append(n.id)
+            self._nodes[n.id] = n  # later lines update earlier ones
 
-    # ---- writing
     def add(self, node: Node) -> Node:
-        """Append a node. Re-adding an existing id replaces it but keeps its
-        creation order (``seq``)."""
+        """Append a node; re-adding an existing id replaces it but keeps its ``seq``."""
         with self._lock:
             if node.id not in self._nodes:
                 node.seq = len(self._order)
@@ -95,9 +77,7 @@ class Ledger:
         return node
 
     def update(self, node_id: str, **fields: Any) -> Node:
-        """Change fields of a node and append the new version. ``metrics`` and
-        ``meta`` dicts are merged; keyword names that are not :class:`Node`
-        fields are stored in ``meta`` so they survive a resume."""
+        """Change fields and append the new version; ``metrics``/``meta`` merge, unknown names go to ``meta``."""
         with self._lock:
             n = self._nodes[node_id]
             for k, v in fields.items():
@@ -111,23 +91,22 @@ class Ledger:
             return n
 
     def _write(self, node: Node) -> None:
-        if self.path:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            line = json.dumps(node.to_json(), default=str) + "\n"
-            if not self._tail_checked:
-                self._tail_checked = True
-                if self.path.exists() and self.path.stat().st_size:
-                    with self.path.open("rb") as f:
-                        f.seek(-1, 2)
-                        if f.read(1) != b"\n":  # a torn last line from a crash: start on a fresh line
-                            line = "\n" + line
-            with self.path.open("a") as f:
-                f.write(line)
+        if not self.path:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(node.to_json(), default=str) + "\n"
+        if not self._tail_checked:
+            self._tail_checked = True
+            if self.path.exists() and self.path.stat().st_size:
+                with self.path.open("rb") as f:
+                    f.seek(-1, 2)
+                    if f.read(1) != b"\n":  # a torn last line from a crash: start on a fresh line
+                        line = "\n" + line
+        with self.path.open("a") as f:
+            f.write(line)
 
-    # ---- reading
     def __bool__(self) -> bool:
-        # A ledger is an object, not a container test: `ledger or Ledger()` must keep an empty one.
-        return True
+        return True   # `ledger or Ledger()` must keep an empty ledger
 
     def __len__(self) -> int:
         return len(self._order)
@@ -136,19 +115,14 @@ class Ledger:
         return self._nodes[node_id]
 
     def nodes(self, kind: Optional[str] = None, status: Optional[str] = None) -> list[Node]:
-        out = [self._nodes[i] for i in self._order]
-        if kind:
-            out = [n for n in out if n.kind == kind]
-        if status:
-            out = [n for n in out if n.status == status]
-        return out
+        return [n for n in (self._nodes[i] for i in self._order)
+                if (not kind or n.kind == kind) and (not status or n.status == status)]
 
     def children(self, node_id: Optional[str]) -> list[Node]:
         return [n for n in self.nodes() if n.parent == node_id]
 
     def lineage(self, node_id: str) -> list[Node]:
-        """Root-first chain of ancestors ending at ``node_id``. Stops at a parent
-        id that is not in this ledger (and at cycles)."""
+        """Root-first ancestors ending at ``node_id``; stops at an unknown parent or a cycle."""
         out = []
         seen = set()
         cur: Optional[str] = node_id
@@ -161,35 +135,29 @@ class Ledger:
             seen.add(cur)
             out.append(n)
             cur = n.parent
-        return list(reversed(out))
+        return out[::-1]
 
     def best(self, lower_is_better: bool = False, status: Optional[str] = None) -> Optional[Node]:
         cands = [n for n in self.nodes(status=status) if n.score is not None]
-        if not cands:
-            return None
-        return (min if lower_is_better else max)(cands, key=lambda n: n.score)
+        return (min if lower_is_better else max)(cands, key=lambda n: n.score) if cands else None
 
     def render(self, last: int = 40, fields: Iterable[str] = ("round", "status", "score", "cost", "change")) -> str:
         """Compact text table of recent attempts (fed back to proposers)."""
-        rows = []
-        for n in self.nodes()[-last:]:
-            vals = []
-            for f in fields:
-                v = getattr(n, f, None)
-                if isinstance(v, float):
-                    v = f"{v:.4f}"
-                vals.append(str(v)[:160] if v is not None else "-")
-            rows.append(" | ".join(vals))
+        def cell(v: Any) -> str:
+            if isinstance(v, float):
+                v = f"{v:.4f}"
+            return str(v)[:160] if v is not None else "-"
+
+        rows = [" | ".join(cell(getattr(n, f, None)) for f in fields) for n in self.nodes()[-last:]]
         return " | ".join(fields) + "\n" + "\n".join(rows)
 
-    # ---- exports
     def to_results_tsv(self, path: str | Path, score_fmt: str = "{:.6f}") -> None:
         """autoresearch-style results table: commit, score, memory_gb, status, description."""
         with Path(path).open("w", newline="") as f:
             w = csv.writer(f, delimiter="\t")
             w.writerow(["commit", "score", "memory_gb", "status", "description"])
             for n in self.nodes():
-                sc = score_fmt.format(n.score) if n.score is not None else score_fmt.format(0.0)
+                sc = score_fmt.format(n.score if n.score is not None else 0.0)
                 mem = n.metrics.get("memory_gb") or 0.0
                 desc = " ".join(str(n.change or "").split())  # one line: no tabs or newlines
                 w.writerow([(n.artifact_id or n.id)[:7], sc, f"{float(mem):.1f}", n.status, desc[:200]])
@@ -199,16 +167,17 @@ class Ledger:
 
 
 class ArtifactStore:
-    """Content-addressed artifact storage on disk (``<root>/<id[:2]>/<id>.json``),
-    optionally also materialized as directories for agent inspection
-    (Meta-Harness's "filesystem holding every earlier candidate")."""
+    """Content-addressed artifacts on disk at ``<root>/<id[:2]>/<id>.json``."""
 
     def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
+    def _path(self, artifact_id: str) -> Path:
+        return self.root / artifact_id[:2] / f"{artifact_id}.json"
+
     def put(self, artifact: Artifact) -> str:
-        p = self.root / artifact.id[:2] / f"{artifact.id}.json"
+        p = self._path(artifact.id)
         if not p.exists():
             p.parent.mkdir(parents=True, exist_ok=True)
             tmp = p.with_name(f"{p.name}.{uuid.uuid4().hex[:8]}.tmp")
@@ -217,8 +186,7 @@ class ArtifactStore:
         return artifact.id
 
     def get(self, artifact_id: str) -> Artifact:
-        p = self.root / artifact_id[:2] / f"{artifact_id}.json"
-        return Artifact.from_json(json.loads(p.read_text()))
+        return Artifact.from_json(json.loads(self._path(artifact_id).read_text()))
 
     def has(self, artifact_id: str) -> bool:
-        return (self.root / artifact_id[:2] / f"{artifact_id}.json").exists()
+        return self._path(artifact_id).exists()

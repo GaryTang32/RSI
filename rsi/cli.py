@@ -1,17 +1,4 @@
-"""Command line: ``rsi <command>``.
-
-    rsi methods                               what each technique improves, keeps, and when to use it
-    rsi recommend --prompts-only              rank techniques for your problem
-    rsi improve --method rrsi --problem agentqa --llm claude:haiku --out runs/x [--set T=6]
-    rsi improve --method gepa --problem my_problem.py:make --llm claude:haiku --out runs/y
-    rsi inspect runs/x                         render the per-iteration trace (TRACE.md)
-    rsi experiments [method]                   list reproduction experiments
-    rsi experiment rrsi e0_overfitting_trap [-- --quick]   run one of them
-
-``--problem`` accepts a built-in name (``agentqa``) or ``path/to/file.py:factory``
-where ``factory()`` returns ``(domain, seed_artifact)`` or a Domain with
-``seed_artifact()``.
-"""
+"""Command line: ``rsi methods | recommend | improve | inspect | experiments | experiment``."""
 from __future__ import annotations
 
 import argparse
@@ -36,32 +23,29 @@ def _parse_value(v: str) -> Any:
 
 
 def load_problem(spec: str, *, seed: int = 0):
-    """Return ``(domain, seed_artifact, offline_task_llm)`` for a problem spec."""
+    """``(domain, seed_artifact, offline_task_llm)`` for ``agentqa`` or ``path/to/file.py:factory``."""
     if spec == "agentqa":
         from .domains.agentqa import AgentQADomain, SimModel, make_suite
 
         suite = make_suite(seed=seed)
         dom = AgentQADomain(suite)
         return dom, dom.seed_artifact(), SimModel(suite)
-    if ":" in spec:
-        path, _, fn = spec.rpartition(":")
-        mod_spec = importlib.util.spec_from_file_location("rsi_user_problem", path)
-        if mod_spec is None or mod_spec.loader is None:
-            raise SystemExit(f"cannot import {path}")
-        mod = importlib.util.module_from_spec(mod_spec)
-        sys.modules["rsi_user_problem"] = mod
-        mod_spec.loader.exec_module(mod)
-        made = getattr(mod, fn)()
-        if isinstance(made, tuple):
-            dom, art = made[0], made[1]
-        else:
-            dom, art = made, made.seed_artifact()
-        return dom, art, getattr(mod, "OFFLINE_TASK_LLM", None)
-    raise SystemExit(f"unknown problem {spec!r}: use 'agentqa' or 'path/to/file.py:factory'")
+    if ":" not in spec:
+        raise SystemExit(f"unknown problem {spec!r}: use 'agentqa' or 'path/to/file.py:factory'")
+    path, _, fn = spec.rpartition(":")
+    mod_spec = importlib.util.spec_from_file_location("rsi_user_problem", path)
+    if mod_spec is None or mod_spec.loader is None:
+        raise SystemExit(f"cannot import {path}")
+    mod = importlib.util.module_from_spec(mod_spec)
+    sys.modules["rsi_user_problem"] = mod
+    mod_spec.loader.exec_module(mod)
+    made = getattr(mod, fn)()
+    dom, art = (made[0], made[1]) if isinstance(made, tuple) else (made, made.seed_artifact())
+    return dom, art, getattr(mod, "OFFLINE_TASK_LLM", None)
 
 
 def offline_proposer(method: str, problem: str):
-    """Scripted offline proposer for (method, built-in problem), or None to use the method's own default."""
+    """Scripted offline proposer for a built-in problem, or None for the method's own default."""
     if problem != "agentqa":
         return None
     if method == "rrsi":
@@ -72,7 +56,7 @@ def offline_proposer(method: str, problem: str):
         from .gepa.mocks import AgentQAReflectionLM
 
         return AgentQAReflectionLM()
-    return None  # metaharness / solpi ship offline proposers; others need a real LLM
+    return None
 
 
 def cmd_methods(a) -> int:
@@ -131,8 +115,7 @@ def cmd_inspect(a) -> int:
 
 
 def cmd_experiments(a) -> int:
-    keys = [a.method] if a.method else sorted(set(EXP_DIRS.values()))
-    for k in keys:
+    for k in [a.method] if a.method else sorted(set(EXP_DIRS.values())):
         d = EXPERIMENTS / EXP_DIRS.get(k, k)
         names = sorted(p.stem for p in d.glob("*.py") if not p.stem.startswith("_"))
         print(f"{d.name}: {' '.join(names)}")
@@ -140,8 +123,7 @@ def cmd_experiments(a) -> int:
 
 
 def cmd_experiment(a) -> int:
-    d = EXPERIMENTS / EXP_DIRS.get(a.method, a.method)
-    script = d / f"{a.name}.py"
+    script = EXPERIMENTS / EXP_DIRS.get(a.method, a.method) / f"{a.name}.py"
     if not script.exists():
         raise SystemExit(f"no such experiment {script}")
     return subprocess.call([sys.executable, str(script), *a.rest], cwd=str(REPO))

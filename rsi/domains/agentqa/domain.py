@@ -1,30 +1,4 @@
-"""AgentQA: a harness-evolution domain with exact graders.
-
-The artifact is an *agent harness* around a frozen model:
-
-* ``harness.py`` defines ``solve(question, llm, tools, files) -> str``
-  (control flow: when to call the model, when to use tools, how to verify);
-* ``prompts/*.md`` hold the system/task prompts;
-* optional ``skills/*.md``, ``memory/*.md``, ``tools/*.py`` - whatever a proposer adds.
-
-``llm(prompt, system=None) -> str`` is the frozen task model (metered: every
-call is a step and its tokens are the harness's inference cost).
-``tools.python(code) -> str`` runs code in a sandboxed subprocess.
-
-Grading is exact and lives outside the artifact.
-
-The harness runs in-process (in its own thread, so the evaluator is never blocked):
-
-* a watchdog stops a harness that spends more than ``harness_timeout_s`` seconds
-  (default 60) of *its own* time - time inside model and tool calls does not
-  count - so an infinite loop is a graded failure instead of a hung evaluation;
-* the grading path (``is_correct`` & co., ``AgentQADomain.grade``, ``Domain.run``,
-  the Evaluator's aggregation, and the ``re``/builtin functions the grader uses)
-  is snapshotted at import. A harness that replaces any of them is graded as a
-  failure (``tamper: ...``) and the originals are restored, so it cannot corrupt
-  the grading of later trials. This is a tripwire against reward hacking, not a
-  security boundary: in-process code can still read the caller's objects.
-"""
+"""AgentQA: evolve an agent harness (``harness.py`` + prompts) around a frozen model; answers are graded exactly."""
 from __future__ import annotations
 
 import builtins
@@ -36,7 +10,7 @@ import sys
 import threading
 import time
 import types
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Optional
 
@@ -53,7 +27,7 @@ SEED_HARNESS_DIR = Path(__file__).parent / "seed_harness"
 
 MAX_LLM_CALLS = 12
 MAX_TOOL_CALLS = 8
-#: Seconds a harness may spend in its own code (outside model and tool calls) before it is stopped.
+#: seconds a harness may spend in its own code (outside model and tool calls) before it is stopped
 HARNESS_TIMEOUT_S = 60.0
 
 
@@ -62,8 +36,7 @@ class HarnessBudgetExceeded(RuntimeError):
 
 
 class HarnessTimeout(BaseException):
-    """Raised inside a harness that exceeded its own-time budget. A BaseException,
-    so an ``except Exception`` in harness code cannot swallow it."""
+    """Raised in a harness over its own-time budget; a BaseException, so ``except Exception`` cannot swallow it."""
 
 
 class _CallClock:
@@ -122,10 +95,7 @@ class Tools:
         self.calls += 1
         if self.calls > MAX_TOOL_CALLS:
             raise HarnessBudgetExceeded("too many tool calls")
-        if self._clock is not None:
-            with self._clock.call():
-                rr = run_python(code, timeout_s=self.timeout_s, mem_mb=1024)
-        else:
+        with self._clock.call() if self._clock is not None else nullcontext():
             rr = run_python(code, timeout_s=self.timeout_s, mem_mb=1024)
         out = rr.stdout.strip()
         if not rr.ok:
@@ -138,9 +108,7 @@ _NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
 def extract_answer(output: str) -> str:
-    """The text after the last ``ANSWER:`` (or ``ANSWER =``, any case, markdown
-    bold allowed around the label: ``**ANSWER**: x``, ``**ANSWER:** x``); else the
-    last non-empty line."""
+    """Text after the last ``ANSWER:`` / ``ANSWER =`` (any case, bold allowed), else the last non-empty line."""
     text = str(output or "").strip()
     m = re.findall(r"ANSWER\s*\**\s*[:=]\s*\**\s*(.+)", text, flags=re.I)
     if m:
@@ -150,10 +118,7 @@ def extract_answer(output: str) -> str:
 
 
 def normalize(s: str) -> str:
-    """Canonical answer text: unwraps ``\\boxed{x}``, markdown bold and inline
-    code, strips surrounding quotes/asterisks/backticks and trailing periods
-    (repeatedly), drops ``$``, maps the unicode minus to ``-``, collapses
-    whitespace and lower-cases."""
+    """Canonical answer text: unwrap ``\\boxed{}``, bold and code, strip quotes and trailing periods, lower-case."""
     s = str(s)
     s = re.sub(r"\\boxed\{([^{}]*)\}", r"\1", s)
     s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
@@ -181,17 +146,17 @@ def is_correct(target: str, output: str) -> bool:
 
 
 class AgentQADomain(Domain):
+    """``harness.py`` defines ``solve(question, llm, tools, files) -> str`` and runs in-process in its own thread.
+
+    A watchdog stops a harness that spends over ``harness_timeout_s`` of its own time (model and tool calls excluded).
+    The grading path is snapshotted at import: a harness that replaces part of it is graded ``tamper: ...`` and the
+    originals are restored. This is a tripwire against reward hacking, not a security boundary.
+    """
+
     name = "agentqa"
-    components = {
-        "prompt": ["prompts/*"],
-        "control_flow": ["harness.py"],
-        "tool": ["tools/*"],
-        "skill": ["skills/*"],
-        "memory": ["memory/*"],
-        "subagent": ["agents/*"],
-    }
+    components = {"prompt": ["prompts/*"], "control_flow": ["harness.py"], "tool": ["tools/*"], "skill": ["skills/*"],
+                  "memory": ["memory/*"], "subagent": ["agents/*"]}
     structural_components = ("tool", "skill", "memory", "subagent")
-    #: own-time budget of one harness run in seconds (model and tool calls excluded); see the module docstring
     harness_timeout_s: float = HARNESS_TIMEOUT_S
 
     def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0,
@@ -200,7 +165,6 @@ class AgentQADomain(Domain):
         self.tool_timeout_s = tool_timeout_s
         self.ood_hint = ood_hint            # replaces the default sentence about unseen question kinds
 
-    # ---- artifact
     @staticmethod
     def seed_artifact() -> Artifact:
         return Artifact.from_dir(SEED_HARNESS_DIR)
@@ -219,7 +183,6 @@ class AgentQADomain(Domain):
                "number theory), so improvements must be general.")
         )
 
-    # ---- execution
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
         if llm is None:
             raise ValueError("AgentQA needs a task LLM")
@@ -257,7 +220,7 @@ class AgentQADomain(Domain):
             return resp.text
 
         box: dict = {}
-        # The harness thread gets only what the harness may see (no Task object: its target is the answer).
+        # the harness thread gets only what the harness may see (no Task object: its target is the answer)
         th = threading.Thread(target=_run_harness, args=(src, task.input, call_llm, tools, artifact.files, box),
                               name="agentqa-harness", daemon=True)
         t0 = time.monotonic()
@@ -292,7 +255,6 @@ class AgentQADomain(Domain):
             return Execution(error="harness.py defines no solve()")
         if "exc" in box:
             e = box["exc"]
-            # Backend failures are tagged "infra:" so the evaluator counts them as missing trials.
             err = str(e) if str(e).startswith("infra:") else f"{type(e).__name__}: {e}"
             return done(error=state.get("infra", err))
         if "infra" in state:  # the harness caught a backend failure: still a missing trial, not a wrong answer
@@ -325,7 +287,6 @@ def _run_harness(src: str, question, call_llm, tools: Tools, files: dict, box: d
         box["exc"] = e
 
 
-# ------------------------------------------------------------ grading-path integrity
 def _integrity_targets() -> list:
     mod = sys.modules[__name__]
     return ([(mod, n) for n in ("is_correct", "extract_answer", "normalize", "_NUM", "_restore_integrity")]
@@ -351,7 +312,6 @@ def _restore_integrity() -> list[str]:
     return changed
 
 
-# ------------------------------------------------------------------ simulated model
 BASE_ACC = {"numeric": 0.4, "dates": 0.15, "numbertheory": 0.05, "strings": 0.8, "lists": 0.8, "arith": 0.9,
             "units": 0.95}
 #: simulated reasoning tokens when answering directly (strings/lists need long reasoning)
@@ -372,16 +332,11 @@ def _wrong(ans: str, rng: random.Random) -> str:
 
 
 class SimModel(MockLLM):
-    """A simulated frozen model for AgentQA that rewards *generic* harness skills.
+    """Simulated frozen model that rewards generic harness skills.
 
-    * asked to write Python for a known question -> emits correct code with p=0.93;
-    * shown tool output ("OUTPUT" / "Tool output" / "Result:") -> reports it as the answer;
-    * otherwise answers directly with family accuracy, +0.12 when asked to reason
-      step by step, +0.05 when asked to verify; formats "ANSWER: x" only if the
-      prompt asks for that format. Verbose reasoning costs extra tokens.
-
-    ``skill`` scales all accuracies (weaker/stronger model families for
-    cross-model transfer tests).
+    Asked for Python on a known question it emits correct code with p=0.93; shown tool output it reports it;
+    otherwise it answers with family accuracy (+0.12 for step-by-step, +0.05 for verify) and formats
+    ``ANSWER: x`` only when asked. ``skill`` scales every accuracy.
     """
 
     def __init__(self, suite: TaskSuite, skill: float = 1.0, name: Optional[str] = None) -> None:
@@ -394,15 +349,13 @@ class SimModel(MockLLM):
         for q, v in self.questions.items():
             if q in prompt:
                 return q, v
-        # fall back to fuzzy: the first question (suite order) whose first 60 chars appear in the prompt
-        for q, v in self.questions.items():
+        for q, v in self.questions.items():   # fuzzy: the first question whose first 60 chars appear
             if q[:60] in prompt:
                 return q, v
         return None, None
 
     def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
-        full = (system or "") + "\n" + prompt
-        low = full.lower()
+        low = ((system or "") + "\n" + prompt).lower()
         rng = _h(prompt, system, seed)
         q, info = self._find(prompt)
         tool_out = re.split(r"(?:tool output|python output|\boutput\b|result)\s*[:=]\s*", prompt, flags=re.I)
@@ -412,9 +365,7 @@ class SimModel(MockLLM):
         if info is None:
             return "I am not sure what you are asking.\nANSWER: unknown"
         ans, fam = info
-        wants_code = ("```python" in low) or ("python code" in low) or ("write python" in low) or \
-                     ("python program" in low)
-        if wants_code:
+        if any(k in low for k in ("```python", "python code", "write python", "python program")):
             p = 0.93 * min(1.0, self.skill + 0.1)
             val = ans if rng.random() < p else _wrong(ans, rng)
             return f"Here is code that computes it.\n```python\nprint({val!r})\n```"
@@ -435,5 +386,5 @@ class SimModel(MockLLM):
         return f"{body}The answer is {val}." if rng.random() < 0.7 else f"{body}{val}"
 
 
-# snapshot taken last, so every definition above is included
+# taken last, so every definition above is included
 _INTEGRITY = tuple((owner, name, getattr(owner, name)) for owner, name in _integrity_targets())

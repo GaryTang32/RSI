@@ -1,19 +1,4 @@
-"""Editors: how an LLM turns "here is the artifact and what went wrong" into a
-changed artifact.
-
-Two interchangeable implementations of :class:`Editor`:
-
-* :class:`RewriteEditor` - one completion; the model returns whole changed files
-  in ``=== FILE: name ===`` blocks plus a JSON header. Works with any
-  :class:`~rsi.core.llm.LLM` including :class:`~rsi.core.llm.MockLLM`.
-* :class:`AgentEditor` - a headless coding agent (``claude -p`` with Read/Edit/
-  Write tools) working in a scratch copy of the artifact; context files (history,
-  traces, scores) are placed read-only beside it. This is the Meta-Harness /
-  autoresearch style "coding agent edits files" proposer.
-
-Both apply a scope guard: edits to files outside ``editable`` are discarded and
-reported (autoresearch's "the agent can't change how it is graded").
-"""
+"""Editors turn instructions and an artifact into a scope-guarded :class:`Proposal` (rewrite call or coding agent)."""
 from __future__ import annotations
 
 import fnmatch
@@ -62,9 +47,7 @@ def _allowed(name: str, editable: Optional[Sequence[str]]) -> bool:
 
 
 def apply_scope(base: Artifact, updates: Mapping[str, Optional[str]], editable: Optional[Sequence[str]]):
-    """Apply ``updates`` that match ``editable`` (glob patterns; None = all).
-    Returns ``(new_artifact, blocked_names)``. Names that are absolute or escape
-    the artifact root (``..``) are always blocked."""
+    """``(new_artifact, blocked_names)``: apply only updates matching ``editable`` globs with safe relative names."""
     allowed, blocked = {}, []
     for name, text in updates.items():
         if is_safe_relpath(name) and _allowed(name, editable):
@@ -75,28 +58,17 @@ def apply_scope(base: Artifact, updates: Mapping[str, Optional[str]], editable: 
 
 
 def _header_fields(header: object) -> tuple[str, str, list[str]]:
-    """(change, hypothesis, components) from a proposal's JSON header."""
     h = header if isinstance(header, dict) else {}
     comps = h.get("components") or []
-    if isinstance(comps, str):
-        comps = [comps]
-    elif not isinstance(comps, (list, tuple)):
+    if not isinstance(comps, (list, tuple)):
         comps = [comps]
     return str(h.get("change", ""))[:500], str(h.get("hypothesis", ""))[:2000], [str(c) for c in comps]
 
 
 class Editor:
-    def edit(
-        self,
-        artifact: Artifact,
-        instructions: str,
-        *,
-        context: Optional[Mapping[str, str]] = None,
-        editable: Optional[Sequence[str]] = None,
-        system: Optional[str] = None,
-        seed: Optional[int] = None,
-        role: str = "proposer",
-    ) -> Proposal:  # pragma: no cover
+    def edit(self, artifact: Artifact, instructions: str, *, context: Optional[Mapping[str, str]] = None,
+             editable: Optional[Sequence[str]] = None, system: Optional[str] = None, seed: Optional[int] = None,
+             role: str = "proposer") -> Proposal:  # pragma: no cover
         raise NotImplementedError
 
 
@@ -107,14 +79,12 @@ class RewriteEditor(Editor):
 
     def build_prompt(self, artifact, instructions, context, editable) -> str:
         parts = [instructions.strip(), ""]
-        if context:
-            budget = self.max_context_chars
-            for name, text in context.items():
-                chunk = text if len(text) <= budget else text[: max(0, budget)] + "\n...[truncated]"
-                budget -= len(chunk)
-                parts.append(f"--- CONTEXT: {name} ---\n{chunk}\n")
-        parts.append("--- CURRENT ARTIFACT ---")
-        parts.append(artifact.render())
+        budget = self.max_context_chars
+        for name, text in (context or {}).items():
+            chunk = text if len(text) <= budget else text[: max(0, budget)] + "\n...[truncated]"
+            budget -= len(chunk)
+            parts.append(f"--- CONTEXT: {name} ---\n{chunk}\n")
+        parts += ["--- CURRENT ARTIFACT ---", artifact.render()]
         if editable is not None:
             parts.append(f"\nEditable files (glob patterns): {list(editable)}. Other files are locked.")
         parts.append("\n" + EDIT_FORMAT)
@@ -129,21 +99,15 @@ class RewriteEditor(Editor):
 
 
 def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Optional[Usage] = None) -> Proposal:
-    """Turn a reply in :data:`EDIT_FORMAT` into a :class:`Proposal`: the JSON header
-    before the first ``=== FILE:`` block gives change/hypothesis/components; file
-    blocks replace whole files (``<<DELETE>>`` deletes); edits outside
-    ``editable`` are dropped into ``blocked_files``. ``error`` is set when there
-    are no file blocks or the result equals ``artifact``."""
+    """Parse an :data:`EDIT_FORMAT` reply; ``error`` is set when there are no file blocks or no effective change."""
     text = text or ""
-    header: dict = {}
     try:
-        h = extract_json(text.split("=== FILE:")[0]) if "=== FILE:" in text else extract_json(text)
-        if isinstance(h, dict):
-            header = h
+        header = extract_json(text.split("=== FILE:")[0])
     except ValueError:
-        pass
-    files = parse_file_blocks(text)
-    updates = {k: (None if v.strip() == "<<DELETE>>" else v) for k, v in files.items()}
+        header = {}
+    if not isinstance(header, dict):
+        header = {}
+    updates = {k: (None if v.strip() == "<<DELETE>>" else v) for k, v in parse_file_blocks(text).items()}
     if not updates:
         return Proposal(None, raw=text, usage=usage or Usage(), error="no file blocks in reply",
                         change=str(header.get("change", "")))
@@ -164,11 +128,7 @@ Read-only context (history, traces, scores) is in the `_context/` directory; do 
 
 
 class AgentEditor(Editor):
-    """Headless coding agent in a scratch directory.
-
-    ``context`` files go under ``_context/`` (removed before the result is read
-    back); a context name that is absolute or escapes that directory is skipped
-    and listed in ``Proposal.meta["skipped_context"]``."""
+    """Headless coding agent in a scratch copy; ``context`` files go read-only under ``_context/``."""
 
     def __init__(self, cli: ClaudeCLI, tools: Sequence[str] = ("Read", "Edit", "Write", "Glob", "Grep"),
                  timeout_s: float = 900.0, keep_dirs: bool = False) -> None:
@@ -190,23 +150,21 @@ class AgentEditor(Editor):
                 p = ctx_dir / name
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(text)
-            prompt = instructions.strip() + "\n" + (
-                f"\nYou may only edit files matching {list(editable)}.\n" if editable is not None else "") + AGENT_SUFFIX
-            resp = self.cli.run_agent(prompt, cwd=str(work), system=system, tools=self.tools,
-                                      timeout_s=self.timeout_s, role=role)
+            scope = f"\nYou may only edit files matching {list(editable)}.\n" if editable is not None else ""
+            resp = self.cli.run_agent(instructions.strip() + "\n" + scope + AGENT_SUFFIX, cwd=str(work), system=system,
+                                      tools=self.tools, timeout_s=self.timeout_s, role=role)
             header: object = {}
             hp = work / "_proposal.json"
             if hp.exists():
                 try:
                     header = json.loads(hp.read_text())
                 except (json.JSONDecodeError, UnicodeDecodeError):
-                    header = {}
+                    pass
                 hp.unlink()
             if ctx_dir.exists():
                 shutil.rmtree(ctx_dir)
             after = Artifact.from_dir(work)
-            updates = {n: after.get(n) for n in artifact.changed_files(after)}
-            new, blocked = apply_scope(artifact, updates, editable)
+            new, blocked = apply_scope(artifact, {n: after.get(n) for n in artifact.changed_files(after)}, editable)
             change, hypothesis, comps = _header_fields(header)
             prop = Proposal(new, change=change, hypothesis=hypothesis, components=comps, raw=resp.text,
                             usage=resp.usage, blocked_files=blocked,
