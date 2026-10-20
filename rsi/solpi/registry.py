@@ -1,19 +1,4 @@
-"""Mechanism registry: harness config -> ordered list of extensions.
-
-A SoL-Pi *harness artifact* is an :class:`rsi.core.Artifact` with
-
-* ``harness.json`` - ``{"extensions": {name: params, ...}, "auto_compact": bool}``;
-* optional ``extensions/<name>.py`` - code mechanisms (e.g. written by an LLM
-  implementer) defining ``MECHANISM`` (an :class:`Extension` subclass or instance)
-  or ``register(rt, config)``;
-* optional ``system_prompt.md``.
-
-Built-ins register in SoL-Pi's order (Action Fusion, ObservationPack, EPR, Online
-Context Compact - so OCC observes the context after the others), then any other
-mechanism by name. :func:`parse_solpi_config` validates the release's
-``sol-pi.json`` schema (unknown keys, wrong version, non-boolean flags, invalid
-ratio or empty model strings are fatal) and maps it to a harness config.
-"""
+"""Mechanism registry: a harness artifact (``harness.json``, ``extensions/<name>.py``) -> ordered extensions."""
 from __future__ import annotations
 
 import json
@@ -29,6 +14,7 @@ from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, To
 from .tricks import CostAttribution, FailBeforePassAfter, HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, \
     TurnCap
 
+# SoL-Pi's registration order: OCC observes the context after the other mechanisms
 ORDER = ("action_fusion", "observation_pack", "evidence_preserving_reducer", "online_context_compact")
 GENERAL = ORDER
 TRICKS = ("tail_trim", "head_trim", "pytest_quiet")
@@ -52,7 +38,7 @@ def _reducer(cfg: dict, ctx: dict):
 def _obspack(c: dict) -> ObservationPack:
     op = ObservationPack(full_sends=int(c.get("full_sends", 2)), excerpt_bytes=int(c.get("excerpt_bytes", 1024)),
                          head_frac=float(c.get("head_frac", 0.5)))
-    op.fail_store = bool(c.get("fail_store", False))       # fault injection (experiments/tests)
+    op.fail_store = bool(c.get("fail_store", False))
     return op
 
 
@@ -83,7 +69,7 @@ class FunctionExtension(Extension):
 
 
 def load_code_extension(name: str, source: str, config: dict) -> Extension:
-    """Exec an ``extensions/<name>.py`` mechanism with the runtime API pre-imported."""
+    """Exec an ``extensions/<name>.py`` defining ``MECHANISM`` or ``register(rt, config)``, runtime API pre-imported."""
     ns: dict[str, Any] = {"Extension": Extension, "ToolSpec": ToolSpec, "ToolResult": ToolResult,
                           "ToolError": ToolError, "Message": Message, "AgentRuntime": AgentRuntime,
                           "__name__": f"solpi_ext_{name}"}
@@ -116,11 +102,9 @@ def harness_config(files: dict[str, str]) -> dict:
 
 def build_extensions(files: dict[str, str], ctx: Optional[dict] = None) -> list[Extension]:
     ctx = ctx or {}
-    cfg = harness_config(files)
-    exts = cfg.get("extensions", {}) or {}
-    names = [n for n in ORDER if n in exts] + sorted(n for n in exts if n not in ORDER)
+    exts = harness_config(files).get("extensions", {}) or {}
     out = []
-    for n in names:
+    for n in [n for n in ORDER if n in exts] + sorted(n for n in exts if n not in ORDER):
         params = exts[n] or {}
         if n in MECHANISMS:
             out.append(MECHANISMS[n](params, ctx))
@@ -143,7 +127,6 @@ def with_mechanism(files: dict[str, str], name: str, params: Optional[dict] = No
     return out
 
 
-# ------------------------------------------------------------------ sol-pi.json (config.ts)
 SOLPI_KEYS = {"version", "actionFusion", "observationPack", "evidencePreservingReducer",
               "evidencePreservingReducerProvider", "evidencePreservingReducerModel", "onlineContextCompact",
               "cacheWriteReadRatio"}
@@ -153,7 +136,7 @@ SOLPI_DEFAULTS = {"version": 1, "actionFusion": False, "observationPack": False,
 
 
 def parse_solpi_config(d: dict) -> dict:
-    """Validate a ``sol-pi.json`` document and return a harness config."""
+    """Validate a release ``sol-pi.json`` (``config.ts``) and return a harness config."""
     unknown = set(d) - SOLPI_KEYS
     if unknown:
         raise ValueError(f"unknown sol-pi config keys: {sorted(unknown)}")

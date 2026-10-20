@@ -1,14 +1,10 @@
-"""What the simulated agent "knows" about each family's tools and output formats.
-
-Each skill parses evidence ONLY from text the agent can see (tool results, receipts, placeholder
-excerpts, recall pages, its own NOTE lines) and proposes the corresponding fix / check commands.
-"""
+"""Per-family agent skills: parse evidence only from visible text and propose fix / check commands."""
 from __future__ import annotations
 
 import json
 import re
 
-# ------------------------------------------------------------------ family skills (what the model knows)
+
 class Skill:
     style = "per_subtask"
 
@@ -31,14 +27,10 @@ class RepoFixSkill(Skill):
         r = re.search(rf"src/{m}\.py:(\d+):? (?:AssertionError: )?used (\w+)=(-?\d+), expected \2=(-?\d+)", text)
         if r:
             return {"key": r.group(2), "bad": r.group(3), "good": r.group(4)}
-        r = re.search(rf"AssertionError: used (\w+)=(-?\d+), expected \1=(-?\d+)\n(?:[^\n]*\n){{0,3}}?src/{m}\.py:\d+: "
-                      rf"AssertionError", text)
-        if r:
-            return {"key": r.group(1), "bad": r.group(2), "good": r.group(3)}
-        r = re.search(rf"NOTE: evidence {m}: (\w+) (-?\d+)->(-?\d+)", text)
-        if r:
-            return {"key": r.group(1), "bad": r.group(2), "good": r.group(3)}
-        return None
+        r = (re.search(rf"AssertionError: used (\w+)=(-?\d+), expected \1=(-?\d+)\n(?:[^\n]*\n){{0,3}}?"
+                       rf"src/{m}\.py:\d+: AssertionError", text)
+             or re.search(rf"NOTE: evidence {m}: (\w+) (-?\d+)->(-?\d+)", text))
+        return {"key": r.group(1), "bad": r.group(2), "good": r.group(3)} if r else None
 
     def note(self, st, ev):
         return f"NOTE: evidence {st['key']}: {ev['key']} {ev['bad']}->{ev['good']}"
@@ -49,7 +41,8 @@ class RepoFixSkill(Skill):
     def fix(self, st, ev, wrong):
         g = int(ev["good"])
         good = str(g + (1 if g + 1 != int(ev["bad"]) else 2)) if wrong else ev["good"]
-        return "edit", {"path": f"src/{st['key']}.py", "old": f"{ev['key']} = {ev['bad']}", "new": f"{ev['key']} = {good}"}
+        return "edit", {"path": f"src/{st['key']}.py", "old": f"{ev['key']} = {ev['bad']}",
+                        "new": f"{ev['key']} = {good}"}
 
     def file(self, st):
         return f"src/{st['key']}.py"
@@ -58,11 +51,8 @@ class RepoFixSkill(Skill):
         return f"pytest tests/test_{st['key']}.py"
 
     def verdict(self, st, text):
-        if self.find(st, text) and "NOTE:" not in text:
-            return False
-        if "status=failure" in text:
-            return False
-        if re.search(r"\b\d+ failed", text):
+        if (self.find(st, text) and "NOTE:" not in text) or "status=failure" in text or \
+                re.search(r"\b\d+ failed", text):
             return False
         if re.search(r"\b\d+ passed", text) or "status=success" in text:
             return True
@@ -86,9 +76,7 @@ class BuildFixSkill(RepoFixSkill):
         if r:
             return {"bad": r.group(2), "good": r.group(3), "line": r.group(1)}
         r = re.search(rf"NOTE: evidence {f}: (\w+)->(\w+)", text)
-        if r:
-            return {"bad": r.group(1), "good": r.group(2)}
-        return None
+        return {"bad": r.group(1), "good": r.group(2)} if r else None
 
     def note(self, st, ev):
         return f"NOTE: evidence {st['key']}: {ev['bad']}->{ev['good']}"
@@ -107,9 +95,8 @@ class BuildFixSkill(RepoFixSkill):
         return f"make build/{st['key']}.o"
 
     def verdict(self, st, text):
-        if re.search(rf"src/{st['key']}\.c:\d+:\d+: error", text) or "status=failure" in text:
-            return False
-        if "Error 1" in text or "Error 2" in text:
+        if re.search(rf"src/{st['key']}\.c:\d+:\d+: error", text) or "status=failure" in text or \
+                "Error 1" in text or "Error 2" in text:
             return False
         if f"build/{st['key']}.o" in text or "Build succeeded" in text or "status=success" in text:
             return True
@@ -129,13 +116,9 @@ class ConfigFixSkill(RepoFixSkill):
         return "make validate | head -n 5" if (smart and not first) else "make validate"
 
     def find(self, st, text):
-        r = re.search(rf"services\.{st['svc']}\.{st['k']}: got (-?\d+), expected (-?\d+)", text)
-        if r:
-            return {"bad": r.group(1), "good": r.group(2)}
-        r = re.search(rf"NOTE: evidence {re.escape(st['key'])}: (-?\d+)->(-?\d+)", text)
-        if r:
-            return {"bad": r.group(1), "good": r.group(2)}
-        return None
+        r = (re.search(rf"services\.{st['svc']}\.{st['k']}: got (-?\d+), expected (-?\d+)", text)
+             or re.search(rf"NOTE: evidence {re.escape(st['key'])}: (-?\d+)->(-?\d+)", text))
+        return {"bad": r.group(1), "good": r.group(2)} if r else None
 
     def note(self, st, ev):
         return f"NOTE: evidence {st['key']}: {ev['bad']}->{ev['good']}"
@@ -160,8 +143,6 @@ class ConfigFixSkill(RepoFixSkill):
         if "config OK" in text or re.search(r"ERROR config/services\.yaml:\d+: services\.", text) or \
                 "status=success" in text:
             return True
-        if "status=failure" in text:
-            return None
         return None
 
     def full_cmd(self):
@@ -175,10 +156,8 @@ class LogTriageSkill(Skill):
     out_file = "report.txt"
 
     def parse(self, statement):
-        out = []
-        for i, m in enumerate(re.finditer(r"^\d+\. ((\w+)(?:\[(\w+)\])?)=<", statement, re.M)):
-            out.append({"id": f"s{i + 1}", "key": m.group(1), "kind": m.group(2), "comp": m.group(3), "n": i + 1})
-        return out
+        return [{"id": f"s{i + 1}", "key": m.group(1), "kind": m.group(2), "comp": m.group(3), "n": i + 1}
+                for i, m in enumerate(re.finditer(r"^\d+\. ((\w+)(?:\[(\w+)\])?)=<", statement, re.M))]
 
     def is_data(self, text):
         return len(re.findall(r"^\d{4}-\d\d-\d\dT[\d:]+Z ", text, re.M)) >= 5
@@ -189,8 +168,7 @@ class LogTriageSkill(Skill):
             return None
         k, c = st["kind"], st["comp"]
         if k == "first_fatal":
-            v = next((l.split()[0] for l in lines if " FATAL " in l), None)
-            return v
+            return next((l.split()[0] for l in lines if " FATAL " in l), None)
         lvl = {"errors": "ERROR", "warns": "WARN"}.get(k)
         if lvl:
             return str(sum(1 for l in lines if re.search(rf"\s{lvl}\s+\[{c}\]", l)))
@@ -236,18 +214,16 @@ class DataLookupSkill(LogTriageSkill):
     read_cmd = "cat data/records.jsonl"
     check_cmd = "pytest tests/test_answers.py"
     out_file = "answers.txt"
+    QUESTIONS = (("status", r"status of order (ORD-\d+)"), ("qty_sum", r"qty over all orders of customer (C-\d+)"),
+                 ("region_count", r"region (\w+) have status (\w+)"))
 
     def parse(self, statement):
         out = []
         for i, m in enumerate(re.finditer(r"^(\d+)\. (.+\?)$", statement, re.M)):
-            q = m.group(2)
-            if (r := re.search(r"status of order (ORD-\d+)", q)):
-                out.append({"id": f"s{i + 1}", "kind": "status", "key": r.group(1), "n": int(m.group(1))})
-            elif (r := re.search(r"qty over all orders of customer (C-\d+)", q)):
-                out.append({"id": f"s{i + 1}", "kind": "qty_sum", "key": r.group(1), "n": int(m.group(1))})
-            elif (r := re.search(r"region (\w+) have status (\w+)", q)):
-                out.append({"id": f"s{i + 1}", "kind": "region_count", "key": f"{r.group(1)}/{r.group(2)}",
-                            "n": int(m.group(1))})
+            for kind, rx in self.QUESTIONS:
+                if r := re.search(rx, m.group(2)):
+                    out.append({"id": f"s{i + 1}", "kind": kind, "key": "/".join(r.groups()), "n": int(m.group(1))})
+                    break
         return out
 
     def is_data(self, text):
@@ -305,14 +281,8 @@ SKILLS = {"repofix": RepoFixSkill(), "buildfix": BuildFixSkill(), "logtriage": L
 
 
 def skill_for(statement: str) -> Skill:
-    if "failing test" in statement:
-        return SKILLS["repofix"]
-    if "compile error" in statement:
-        return SKILLS["buildfix"]
-    if "logs/app.log" in statement:
-        return SKILLS["logtriage"]
-    if "invalid settings" in statement:
-        return SKILLS["configfix"]
+    for marker, family in (("failing test", "repofix"), ("compile error", "buildfix"), ("logs/app.log", "logtriage"),
+                           ("invalid settings", "configfix")):
+        if marker in statement:
+            return SKILLS[family]
     return SKILLS["datalookup"]
-
-

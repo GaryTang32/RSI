@@ -1,30 +1,9 @@
-"""AgentWorld: harness-efficiency domain (SoL-Pi's MiniAgentWorld, spec B9.2).
-
-The artifact is a *harness config* for the Pi-like :class:`rsi.solpi.AgentRuntime`
-(``harness.json`` listing mechanisms, optional ``extensions/*.py`` code
-mechanisms, ``system_prompt.md``). ``execute`` builds a fresh environment and
-runtime for the task, installs the base tools and the configured extensions,
-runs the agent backend and scores the final environment state with the family's
-verifier. It reports:
-
-* ``Execution.tokens``  = token traffic (cache read + cache write + output, all roles),
-* ``Execution.cost_usd`` = API-equivalent cost under the backend's price table
-  (cache writes priced ``rho = 12.5`` x reads),
-* ``Execution.steps``   = provider requests of the main agent,
-* ``meta``: per-kind token breakdown, turns, compactions, window overflows and
-  each mechanism's trigger counters (activation rates, S7).
-
-Splits: ``evolve`` = training environments (families ``repofix``, ``buildfix``,
-``logtriage``); ``holdout`` = acceptance tasks of the held-out families
-(``configfix`` and ``datalookup``, :data:`HELDOUT_FAMILIES`; used only by the
-HoldoutFirewall); ``ood`` = final-evaluation tasks of the same held-out families
-(never touched by the protocol); ``test`` = fresh tasks of the training families.
-Backends: ``MockAgentLLM("A")`` (search backend) and ``MockAgentLLM("B")``
-(second backend, other habits); any :class:`rsi.core.LLM` via :class:`LLMAgent`.
-"""
+"""AgentWorld domain: Pi-like harness configs scored on training families and held-out configfix / datalookup."""
 from __future__ import annotations
 
+import hashlib
 import json
+import random
 from typing import Any, Optional
 
 from ...core.artifact import Artifact
@@ -32,6 +11,8 @@ from ...core.domain import Domain, Execution
 from ...core.llm import LLM
 from ...core.tasks import Task, TaskSuite
 from ...solpi.meter import PRICES, TokenMeter
+from ...solpi.occ import OnlineContextCompact
+from ...solpi.reducer import DIAGNOSTIC_COMMAND, FAILURE_SIGNAL, EvidencePreservingReducer
 from ...solpi.registry import build_extensions, harness_config
 from ...solpi.runtime import AgentRuntime, builtin_tools
 from .envs import FAMILIES
@@ -46,6 +27,8 @@ HELDOUT_FAMILIES = ("configfix", "datalookup")
 
 
 class AgentWorldDomain(Domain):
+    """Splits: ``evolve`` / ``test`` = training families; ``holdout`` (firewall only) / ``ood`` = held-out families."""
+
     name = "agentworld"
     components = {"mechanism": ["harness.json", "extensions/*"], "prompt": ["system_prompt.md"]}
     structural_components = ("mechanism",)
@@ -58,14 +41,13 @@ class AgentWorldDomain(Domain):
         self.context_window = context_window
         self.max_turns = max_turns
         self.reducer_llm = reducer_llm
-        import random
         rng = random.Random(f"agentworld-suite|{seed}")
         tasks, splits = [], {"evolve": [], "holdout": [], "ood": [], "test": []}
 
-        def add(split, fam, i):
+        def add(split: str, fam: str, i: int) -> None:
             if fam != "buildfix":
                 n = rng.randint(*subtasks)
-            else:                           # 3..5 files by default; small live/smoke configs cap it (>= 1)
+            else:                           # 3..5 files; small configs cap it (>= 1)
                 hi = min(5, subtasks[1])
                 n = rng.randint(3, hi) if hi >= 3 else max(1, hi)
             tid = f"{split}-{fam}-{i:02d}"
@@ -85,7 +67,6 @@ class AgentWorldDomain(Domain):
         splits["smoke"] = splits["evolve"][:1]
         super().__init__(TaskSuite(tasks, splits, name=f"agentworld-s{seed}"))
 
-    # ---- artifacts
     @staticmethod
     def seed_artifact(extensions: Optional[dict] = None) -> Artifact:
         return Artifact({"harness.json": json.dumps({"extensions": extensions or {}}, indent=1, sort_keys=True),
@@ -93,7 +74,7 @@ class AgentWorldDomain(Domain):
 
     @staticmethod
     def harness(*names: str, **params: dict) -> Artifact:
-        """Convenience: the base harness plus built-in mechanisms ``names`` (params via kwargs)."""
+        """The base harness plus built-in mechanisms ``names`` (params via kwargs)."""
         return AgentWorldDomain.seed_artifact({n: params.get(n, {}) for n in names})
 
     def describe(self) -> str:
@@ -105,12 +86,10 @@ class AgentWorldDomain(Domain):
                 "scores the final state. Objective: lower token traffic and API cost (prefix-cached; cache writes "
                 "12.5x reads) at unchanged task success, on unseen environment families and other backends.")
 
-    # ---- execution
     def make_backend(self, llm: Optional[LLM], seed: int, task: Task):
         if llm is None:
             llm = MockAgentLLM("A")
         if hasattr(llm, "new_agent"):
-            import hashlib
             h = int(hashlib.sha256(f"{seed}|{task.id}".encode()).hexdigest()[:8], 16)
             return llm.new_agent(h), PRICES[getattr(llm, "prices", "sim-a")]
         return LLMAgent(llm), PRICES["haiku"]
@@ -130,23 +109,23 @@ class AgentWorldDomain(Domain):
             rt.add_extension(ext)
         res = rt.run(env.statement())
         if res.status == "error" and "infra:" in (res.error or ""):
-            # backend outage: a missing trial (not cached, retried), never a graded failure of the harness
+            # a backend outage is a missing trial (retried), never a graded failure of the harness
+            tot = meter.total()
             return Execution(error="infra:" + res.error.split("infra:", 1)[1], steps=rt.provider_requests,
-                             tokens=meter.total().total_tokens, cost_usd=meter.total().cost)
+                             tokens=tot.total_tokens, cost_usd=tot.cost)
         tamper = meter_tampering(rt, meter)
         if tamper:
-            # the efficiency metrics are graded by this meter: a harness that swaps or patches it is a failed run
             return Execution(error=f"harness tampered with the token meter: {tamper}", steps=rt.provider_requests)
         score = env.verify() if res.status != "context_overflow" else 0.0
         tot = meter.total()
         main = meter.by_role.get("main")
-        triggers = {e.name: dict(e.stats) for e in rt.extensions}
         meta: dict[str, Any] = {
             "family": fam, "status": res.status, "turns": res.turns, "requests": rt.provider_requests,
             "compactions": rt.compactions, "auto_compactions": rt.auto_compactions, "overflow": res.overflow,
             "cache_read": tot.cache_read, "cache_write": tot.cache_write, "output": tot.output, "input": tot.input,
-            "main_cost": main.cost if main else 0.0, "reducer_cost": meter.by_role.get("reducer").cost
-            if "reducer" in meter.by_role else 0.0, "triggers": triggers,
+            "main_cost": main.cost if main else 0.0,
+            "reducer_cost": meter.by_role["reducer"].cost if "reducer" in meter.by_role else 0.0,
+            "triggers": {e.name: dict(e.stats) for e in rt.extensions},
             "subtasks_ok": [env.subtask_ok(s) for s in env.subtasks], "n_subtasks": len(env.subtasks),
             "tool_calls": sum(len(m.tool_calls) for m in rt.history if m.role == "assistant"),
             "max_context": max((u.input for u in meter.requests if u.role == "main"), default=0),
@@ -161,9 +140,7 @@ class AgentWorldDomain(Domain):
 
 
 def meter_tampering(rt: AgentRuntime, meter: TokenMeter) -> str:
-    """Integrity check of the grader-side token meter after a run (code mechanisms run in-process):
-    the runtime must still bill through the domain's meter, its methods must be the class's, and
-    every main-agent provider request must be billed. Returns a reason or ''."""
+    """Why the grader-side meter cannot be trusted after a run (replaced, patched, or requests unbilled), else ''."""
     if rt.meter is not meter:
         return "runtime meter replaced"
     patched = [k for k in ("request", "add_output", "simple", "uncached", "total", "reset_cache") if k in vars(meter)]
@@ -176,22 +153,19 @@ def meter_tampering(rt: AgentRuntime, meter: TokenMeter) -> str:
 
 
 def mechanism_audit(rt: AgentRuntime) -> dict:
-    """Post-hoc audits: every accepted EPR receipt re-checked against its archived log;
-    OCC decisions (saving S, compact)."""
-    from ...solpi.occ import OnlineContextCompact
-    from ...solpi.reducer import EvidencePreservingReducer, FAILURE_SIGNAL
+    """Post-hoc audits: EPR receipts re-checked against their archived logs; OCC decisions."""
     out: dict = {}
     for e in rt.extensions:
         if isinstance(e, EvidencePreservingReducer):
-            n = nonverb = fail = fail_ev = 0
+            nonverb = fail = fail_ev = 0
             for rec in e.receipts:
                 body = rt.store.get(rec["archive_path"], "")
-                n += 1
                 nonverb += any(ev["quote"] not in body for ev in rec["evidence"])
                 if rec["is_error"] and FAILURE_SIGNAL.search(body):
                     fail += 1
                     fail_ev += any(ev["kind"] in ("fatal", "failure") for ev in rec["evidence"])
-            out["epr"] = {"receipts": n, "nonverbatim": nonverb, "failure_logs": fail, "failure_with_evidence": fail_ev,
+            out["epr"] = {"receipts": len(e.receipts), "nonverbatim": nonverb, "failure_logs": fail,
+                          "failure_with_evidence": fail_ev,
                           "fallbacks": {k.split(":", 1)[1]: v for k, v in e.stats.items() if k.startswith("fallback:")},
                           "eligible": e.stats.get("eligible", 0), "bytes_saved": e.stats.get("bytes_saved", 0)}
         if isinstance(e, OnlineContextCompact):
@@ -203,21 +177,17 @@ LATE_TURN_ORACLE = 10
 
 
 def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000) -> dict:
-    """Opportunity statistics of one trajectory (SoL-Pi "Oracle Analysis"): how much
-    work each kind of mechanism could avoid, measured on this (usually base) run."""
-    from ...solpi.reducer import DIAGNOSTIC_COMMAND
+    """SoL-Pi "Oracle Analysis": how much work each kind of mechanism could avoid on this trajectory."""
     hist = rt.history
     acts = [m for m in hist if m.role == "assistant"]
     calls = {c.id: c for m in acts for c in m.tool_calls}
     adj = sum(1 for a, b in zip(acts, acts[1:]) if any(c.name in ("edit", "write") for c in a.tool_calls)
               and any(c.name == "bash" for c in b.tool_calls))
-    later, n = [0] * len(hist), 0
+    later, n = [0] * len(hist), 0          # later[i] = assistant replies after message i
     for i in range(len(hist) - 1, -1, -1):
         later[i] = n
-        if hist[i].role == "assistant":
-            n += 1
-    replay = diag = tail = 0
-    n_large = n_diag = 0
+        n += hist[i].role == "assistant"
+    replay = diag = tail = n_large = n_diag = 0
     cmds: dict[str, int] = {}
     for i, m in enumerate(hist):
         if m.role != "tool":
@@ -239,12 +209,11 @@ def oracle_stats(rt: AgentRuntime, meter: TokenMeter, keep_recent: int = 20_000)
             tail += max(0, tok - kept) * later[i]
     sys_tok = (len(rt.system_prompt) + 3) // 4
     main = [u for u in meter.requests if u.role == "main"]
-    archivable = sum(max(0, u.input - sys_tok - keep_recent) for u in main)
     return {"transitions": max(0, len(acts) - 1), "adjacent_edit_command": adj, "replayed_large_outputs": replay,
-            "diagnostic_log_tokens": diag, "tail_of_outputs": tail, "archivable_context": archivable,
+            "diagnostic_log_tokens": diag, "tail_of_outputs": tail,
+            "archivable_context": sum(max(0, u.input - sys_tok - keep_recent) for u in main),
             "prompt_tokens": sys_tok * len(main), "input_tokens": sum(u.input for u in main),
-            # what a turn cap could avoid: input tokens of main requests after the 10th (the most aggressive cap)
-            "late_turn_tokens": sum(u.input for u in main[LATE_TURN_ORACLE:]),
+            "late_turn_tokens": sum(u.input for u in main[LATE_TURN_ORACLE:]),   # what the tightest turn cap avoids
             "repeated_commands": sum(v - 1 for v in cmds.values() if v > 1), "n_large_outputs": n_large,
             "n_diag_outputs": n_diag}
 

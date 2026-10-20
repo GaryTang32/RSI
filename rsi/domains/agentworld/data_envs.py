@@ -4,22 +4,18 @@ from __future__ import annotations
 import json
 import random
 import re
-from typing import Optional
 
-from .base import BASE_STATEMENT, Env, Subtask, _h
+from .base import BASE_STATEMENT, Env, Subtask, _h, _pytest_argv
 
-
-# ================================================================== logtriage
 COMPONENTS = ["db", "api", "cache", "auth", "queue", "search", "billing", "mailer"]
 
 
 class LogTriageEnv(Env):
+    """Write report.txt with counts / timestamps from a log, checked by ``make check``."""
+
     family = "logtriage"
     style = "batch"
-
-    #: the item pool is first_fatal + {errors, timeouts, warns} x 5 components; items are sampled without
-    #: replacement, so a task has at most 15 of them (retry round 2: n_subtasks >= 16 used to raise ValueError)
-    MAX_ITEMS = 15
+    MAX_ITEMS = 15        # first_fatal + {errors, timeouts, warns} x 5 components, sampled without replacement
 
     def __init__(self, task_id: str, seed: int = 0, n_subtasks: int = 3) -> None:
         n_subtasks = min(n_subtasks, self.MAX_ITEMS)
@@ -29,7 +25,7 @@ class LogTriageEnv(Env):
         n = r.randint(380, 470)
         lines = []
         t = r.randint(0, 3000)
-        for k in range(n):
+        for _ in range(n):
             t += r.randint(1, 9)
             lvl = r.choices(["INFO", "DEBUG", "WARN", "ERROR", "FATAL"], [50, 25, 12, 11, 1.2])[0]
             c = r.choice(comps)
@@ -67,10 +63,9 @@ class LogTriageEnv(Env):
         self.files["report.txt"] = "\n".join(f"{s.key}={s.data['answer']}" for s in self.subtasks) + "\n"
 
     def statement(self) -> str:
-        items = "\n".join(f"{i + 1}. {s.goal}" for i, s in enumerate(self.subtasks))
         return (BASE_STATEMENT + "Analyse logs/app.log and write report.txt containing exactly these lines "
-                "(key=value):\n" + items + "\nThen run `make check` to validate the report. When the check passes, "
-                "reply with a short summary.")
+                "(key=value):\n" + self._numbered_goals() + "\nThen run `make check` to validate the report. When the "
+                "check passes, reply with a short summary.")
 
     def _reported(self) -> dict[str, str]:
         out = {}
@@ -83,19 +78,15 @@ class LogTriageEnv(Env):
     def subtask_ok(self, st: Subtask) -> bool:
         return self._reported().get(st.key) == st.data["answer"]
 
-    def verify(self) -> float:
-        return sum(self.subtask_ok(s) for s in self.subtasks) / len(self.subtasks)
-
     def family_command(self, argv, rt=None):
         if argv[0] != "make" or "check" not in argv:
             return super().family_command(argv, rt)
         r = random.Random(_h(self.task_id, "check", self.n_bash))
         out = ["python3 tools/check_report.py --report report.txt --log logs/app.log --rules tools/rules.yaml"]
-        for k in range(r.randint(50, 80)):
+        for _ in range(r.randint(50, 80)):
             out.append(f"[check] {r.choice(['loading', 'compiling', 'indexing', 'validating'])} rule "
                        f"{r.randint(1, 400):03d} ({r.choice(COMPONENTS)}) ... ok  t={r.uniform(0, 2):.3f}s")
         rep = self._reported()
-        fails = 0
         if "report.txt" not in self.files:
             out.append("FAILED: report.txt not found")
             fails = len(self.subtasks)
@@ -103,24 +94,24 @@ class LogTriageEnv(Env):
             for s in self.subtasks:
                 if s.key not in rep:
                     out.append(f"FAILED check {s.key}: missing from report")
-                    fails += 1
                 elif rep[s.key] != s.data["answer"]:
                     out.append(f"FAILED check {s.key}: reported {rep[s.key]} does not match the log")
-                    fails += 1
                 else:
                     out.append(f"check {s.key} ... ok")
+            fails = sum(rep.get(s.key) != s.data["answer"] for s in self.subtasks)
         out.append(f"{len(self.subtasks) - fails}/{len(self.subtasks)} report checks passed")
         if fails:
             out.append("make: *** [Makefile:9: check] Error 1")
         return "\n".join(out), 2 if fails else 0
 
 
-# ================================================================== datalookup (held-out)
 STATUSES = ["shipped", "pending", "cancelled", "returned", "delivered"]
 REGIONS = ["eu", "us", "apac", "latam"]
 
 
 class DataLookupEnv(Env):
+    """Held-out family: answer questions about JSONL records; the checker's verdict sits atop a long dump."""
+
     family = "datalookup"
     style = "batch"
 
@@ -128,12 +119,10 @@ class DataLookupEnv(Env):
         super().__init__(task_id, seed, n_subtasks)
         r = self.rng
         n = r.randint(300, 380)
-        self.records = []
-        ids = r.sample(range(1000, 9999), n)
-        for k in range(n):
-            self.records.append({"id": f"ORD-{ids[k]}", "customer": f"C-{r.randint(1, 60)}",
-                                 "status": r.choice(STATUSES), "qty": r.randint(1, 20), "region": r.choice(REGIONS),
-                                 "note": r.choice(["gift", "bulk", "expedite", "standard", "fragile"])})
+        self.records = [{"id": f"ORD-{i}", "customer": f"C-{r.randint(1, 60)}", "status": r.choice(STATUSES),
+                         "qty": r.randint(1, 20), "region": r.choice(REGIONS),
+                         "note": r.choice(["gift", "bulk", "expedite", "standard", "fragile"])}
+                        for i in r.sample(range(1000, 9999), n)]
         self.files["data/records.jsonl"] = "\n".join(json.dumps(x) for x in self.records) + "\n"
         kinds = ["status", "qty_sum", "region_count", "status"]
         for j in range(n_subtasks):
@@ -155,10 +144,9 @@ class DataLookupEnv(Env):
         self.files["answers.txt"] = "\n".join(f"{s.data['line']}: {s.data['answer']}" for s in self.subtasks) + "\n"
 
     def statement(self) -> str:
-        items = "\n".join(f"{i + 1}. {s.goal}" for i, s in enumerate(self.subtasks))
         return (BASE_STATEMENT + "Answer these questions about data/records.jsonl. Write answers.txt with one line "
-                "per question in the form '<n>: <answer>':\n" + items + "\nThen run `pytest tests/test_answers.py` to "
-                "check the answers. When it passes, reply with a short summary.")
+                "per question in the form '<n>: <answer>':\n" + self._numbered_goals() + "\nThen run `pytest "
+                "tests/test_answers.py` to check the answers. When it passes, reply with a short summary.")
 
     def _answers(self) -> dict[int, str]:
         out = {}
@@ -171,12 +159,8 @@ class DataLookupEnv(Env):
     def subtask_ok(self, st: Subtask) -> bool:
         return self._answers().get(st.data["line"]) == st.data["answer"]
 
-    def verify(self) -> float:
-        return sum(self.subtask_ok(s) for s in self.subtasks) / len(self.subtasks)
-
     def family_command(self, argv, rt=None):
-        if argv[0] == "python" and argv[1:3] == ["-m", "pytest"]:
-            argv = ["pytest"] + argv[3:]
+        argv = _pytest_argv(argv)
         if argv[0] != "pytest":
             return super().family_command(argv, rt)
         r = random.Random(_h(self.task_id, "pytest", self.n_bash))
@@ -193,11 +177,9 @@ class DataLookupEnv(Env):
                "collected 1 item", "", "tests/test_answers.py F  [100%]", "", "=" * 35 + " FAILURES " + "=" * 35,
                "_" * 33 + " test_answers " + "_" * 33, f"E   AssertionError: {msg}",
                "E   (the checker's view of the data follows)", "-" * 29 + " Captured stdout call " + "-" * 29]
-        for rec in r.sample(self.records, min(len(self.records), r.randint(120, 200))):
-            out.append("loaded " + json.dumps(rec))
+        dump = r.sample(self.records, min(len(self.records), r.randint(120, 200)))
+        out += ["loaded " + json.dumps(rec) for rec in dump]
         out += ["=" * 27 + " short test summary info " + "=" * 28,
                 "FAILED tests/test_answers.py::test_answers - AssertionError", "=" * 30 + " 1 failed in 0.41s " +
                 "=" * 30]
         return "\n".join(out), 1
-
-

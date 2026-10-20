@@ -1,42 +1,10 @@
-"""Online Context Compact (OCC): compact at subtask boundaries only when it pays.
-
-Port of ``src/sol-pi/extensions/online-context-compact/{economics,state,plan,tools,extension}.ts``
-(spec B3.4 / B4.4). The agent maintains a plan with ``update_plan``; a newly
-completed step is a *boundary*. At ``turn_end`` after a clean boundary call,
-:func:`decide_compaction` prices the compaction:
-
-* ``W`` = context tokens, ``F`` = system tokens, ``K`` = keep-recent tokens (20,000),
-  ``A = max(0, W - F - K)`` archived, ``m`` = 1,000 summary tokens, ``S = A - m``;
-* horizon: ``mu`` = mean requests per completed boundary, ``R_unb = 1 + floor(L * B_rem * scale)``,
-  ``R_win = max(0, floor((W_win - C) / mean_delta))``, ``R = min(R_unb, R_win)``;
-* break-even ``b = W * max(0, rho - 1) / S``, with carried debt ``b_c = (D + W*rho')/S``;
-* first compaction: economic iff ``R_eff = min(2R, R_win) > 0 and b <= R_eff``; later:
-  ``R > 0 and b <= R and 1.5 b <= R and b_c <= R``; window protection iff
-  ``C >= W_win - 16,384``; compact iff ``S > 0 and (window_protection or economic)``.
-
-If it compacts, the run is aborted, native compaction runs with
-:data:`BOUNDARY_COMPACTION_INSTRUCTIONS` at ``agent_settled``, and the hidden
-:data:`POST_COMPACTION_PLAN_REMINDER` restarts the agent. The debt
-``D = W * rho'`` is repaid ``A - m`` tokens per later request.
-
-``W`` (``extension.ts:contextTokens``) is ``max(getContextUsage().tokens, estimate)``,
-where the runtime's :meth:`~rsi.solpi.runtime.AgentRuntime.context_usage` follows Pi
-0.85: the last reply's reported usage (prompt + output) plus the estimated tokens of
-the messages after it - at ``turn_end`` that includes the boundary reply and its tool
-results. ``update_plan`` arguments are validated against the release's TypeBox schema
-(``tools.ts``: 1..128 steps of exactly ``{id, goal, status}`` with non-empty strings,
-optional ``progress`` of exactly ``files_changed`` (<= 128), ``verification`` and
-``decisions`` (<= 64 each) with items of <= 1,000 characters, no extra keys); the tool
-result is ``<sol-pi-plan task_status="active">{"steps":[...]}</sol-pi-plan>`` plus the
-release's three advice lines (changed goal, more than one ``in_progress``, nothing
-``in_progress`` while steps are pending).
-"""
+"""Online Context Compact (OCC): at a plan boundary, compact only when the saving repays the cache rewrite."""
 from __future__ import annotations
 
 import json
 import math
 import unicodedata
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, replace
 from typing import Any, Optional
 
 from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, ToolSpec
@@ -68,6 +36,7 @@ DEFAULT_COMPACTION_ECONOMICS = CompactionEconomics()
 
 def estimate_remaining_requests(*, completed_boundary_request_counts, remaining_boundaries, scale, standard_deviation_k,
                                 context_tokens, context_window_tokens, average_context_token_increment) -> dict:
+    """``economics.ts``: R = min(1 + floor(mu_lower * B_rem * scale), floor((W_win - C) / mean_delta))."""
     c = list(completed_boundary_request_counts)
     mean = sum(c) / max(1, len(c))
     lower = mean
@@ -75,13 +44,11 @@ def estimate_remaining_requests(*, completed_boundary_request_counts, remaining_
         if len(c) < MINIMUM_VARIANCE_SAMPLES:
             lower *= SMALL_SAMPLE_SCALE
         else:
-            var = sum((x - mean) ** 2 for x in c)
-            dev = math.sqrt(var / (len(c) - 1))
+            dev = math.sqrt(sum((x - mean) ** 2 for x in c) / (len(c) - 1))
             lower = max(0.0, mean - standard_deviation_k * dev)
     unbounded = 1 + math.floor(lower * max(0, remaining_boundaries) * scale)
     win = None
-    if context_window_tokens is not None and average_context_token_increment is not None and \
-            average_context_token_increment > 0:
+    if context_window_tokens is not None and (average_context_token_increment or 0) > 0:
         win = max(0, math.floor((context_window_tokens - context_tokens) / average_context_token_increment))
     return {"completedBoundaryRequestCounts": c, "requestsPerBoundaryMean": mean,
             "requestsPerBoundaryLowerBound": lower, "unboundedExpectedRemainingRequests": unbounded,
@@ -93,7 +60,7 @@ def decide_compaction(*, write_tokens, archive_tokens, memo_tokens, context_toke
                       remaining_boundaries, average_context_token_increment, context_window_tokens,
                       prior_compaction_count, carried_debt_tokens, cache_debt_repayment_tokens, cache_write_read_ratio,
                       economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS) -> dict:
-    """Exact port of ``economics.ts:decideCompaction`` (returns every intermediate)."""
+    """``economics.ts:decideCompaction`` with every intermediate: break-even b = W * (rho - 1) / S against R."""
     horizon = None
     if completed_boundary_request_counts is not None:
         horizon = estimate_remaining_requests(
@@ -154,7 +121,6 @@ def decide_compaction(*, write_tokens, archive_tokens, memo_tokens, context_toke
             "cacheDebtRepaymentTokens": cache_debt_repayment_tokens, "compact": compact, "reason": reason}
 
 
-# ------------------------------------------------------------------ state (state.ts)
 @dataclass(frozen=True)
 class OnlineState:
     version: int = 1
@@ -178,7 +144,8 @@ def record_provider_request(s: OnlineState, context_tokens: int) -> OnlineState:
     return replace(s, request_count=s.request_count + 1, last_context_tokens=context_tokens,
                    positive_context_delta_total=s.positive_context_delta_total + max(0, delta),
                    positive_context_delta_count=s.positive_context_delta_count + (1 if delta > 0 else 0),
-                   cache_debt_tokens=debt, cache_debt_repayment_tokens=0 if debt == 0 else s.cache_debt_repayment_tokens)
+                   cache_debt_tokens=debt,
+                   cache_debt_repayment_tokens=0 if debt == 0 else s.cache_debt_repayment_tokens)
 
 
 def record_boundary(s: OnlineState, plan, progress: Optional[dict]) -> OnlineState:
@@ -201,7 +168,6 @@ def record_correction(s: OnlineState) -> OnlineState:
                    positive_context_delta_count=0, cache_debt_tokens=0.0, cache_debt_repayment_tokens=0.0)
 
 
-# ------------------------------------------------------------------ plan (plan.ts / tools.ts)
 PLAN_STATUSES = ("pending", "in_progress", "completed")
 PLAN_STEP_KEYS = frozenset(("id", "goal", "status"))
 PROGRESS_LIMITS = (("files_changed", 128), ("verification", 64), ("decisions", 64))
@@ -209,13 +175,12 @@ PROGRESS_ITEM_MAX_LENGTH = 1000
 
 
 def _is_bounded_string(v: Any) -> bool:
-    """``plan.ts:isBoundedString``: a non-empty string of at most 16,384 UTF-8 bytes."""
+    """``plan.ts:isBoundedString``: a non-empty string of at most ``MAX_STRING_BYTES`` UTF-8 bytes."""
     return isinstance(v, str) and len(v) > 0 and len(v.encode("utf-8", "surrogatepass")) <= MAX_STRING_BYTES
 
 
 def parse_plan_steps(value: Any) -> Optional[tuple]:
-    """``plan.ts:parsePlanSteps``: every item a record with exactly the three keys ``id``, ``goal``, ``status``,
-    non-empty bounded strings, a known status, unique ids; otherwise ``None``."""
+    """``plan.ts:parsePlanSteps``: exactly ``{id, goal, status}`` per step with unique ids, else ``None``."""
     if not isinstance(value, list) or len(value) > MAX_PLAN_STEPS:
         return None
     out = []
@@ -224,28 +189,20 @@ def parse_plan_steps(value: Any) -> Optional[tuple]:
                 or not _is_bounded_string(s.get("goal")) or s.get("status") not in PLAN_STATUSES):
             return None
         out.append({"id": s["id"], "goal": s["goal"], "status": s["status"]})
-    if len({st["id"] for st in out}) != len(out):
-        return None
-    return tuple(out)
+    return tuple(out) if len({st["id"] for st in out}) == len(out) else None
 
 
 def js_grapheme_length(text: str) -> int:
-    """Approximate grapheme-cluster count (TypeBox 1.x checks ``minLength``/``maxLength`` in graphemes):
-    combining marks, ZWJ sequences, variation selectors, emoji modifiers, tags and regional-indicator pairs
-    extend the previous cluster; CR LF is one cluster."""
+    """Approximate grapheme-cluster count, the unit of TypeBox's ``minLength`` / ``maxLength``."""
     n, prev, joiner, ri_open = 0, "", False, False
     for ch in text:
         cp = ord(ch)
         extend = (unicodedata.combining(ch) != 0 or unicodedata.category(ch) in ("Mn", "Me", "Mc")
                   or 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF or 0x1F3FB <= cp <= 0x1F3FF
                   or 0xE0020 <= cp <= 0xE007F or cp == 0x200D or joiner or (prev == "\r" and ch == "\n"))
-        is_ri = 0x1F1E6 <= cp <= 0x1F1FF
-        if is_ri and ri_open:
-            extend, ri_open = True, False
-        elif is_ri:
-            ri_open = True
-        else:
-            ri_open = False
+        is_ri = 0x1F1E6 <= cp <= 0x1F1FF          # regional indicators pair up
+        extend = extend or (is_ri and ri_open)
+        ri_open = is_ri and not ri_open
         joiner = cp == 0x200D
         if not extend:
             n += 1
@@ -254,7 +211,7 @@ def js_grapheme_length(text: str) -> int:
 
 
 def validate_update_plan_args(args: Any) -> list[str]:
-    """The ``update_plan`` parameter schema (``tools.ts``) that Pi checks before ``execute``; returns the errors."""
+    """Errors of the ``update_plan`` schema (``tools.ts``) that Pi checks before ``execute``."""
     errs: list[str] = []
     if not isinstance(args, dict):
         return ["  - (root): must be object"]
@@ -281,7 +238,7 @@ def validate_update_plan_args(args: Any) -> list[str]:
                     errs.append(f"  - steps/{k}/{key}: must have between 1 and {MAX_STRING_BYTES} characters")
             if st.get("status") not in PLAN_STATUSES:
                 errs.append(f"  - steps/{k}/status: must be one of {list(PLAN_STATUSES)}")
-    if "progress" in args:                     # Type.Optional(object): absent is fine, null is not
+    if "progress" in args:                     # optional: absent is fine, null is not
         p = args["progress"]
         if not isinstance(p, dict):
             errs.append("  - progress: must be object")
@@ -304,11 +261,6 @@ def validate_update_plan_args(args: Any) -> list[str]:
     return errs
 
 
-def _js_string(value: str) -> str:
-    """``JSON.stringify`` of a string (no ASCII escaping of non-ASCII characters)."""
-    return json.dumps(value, ensure_ascii=False)
-
-
 def analyze_plan_transition(prev, steps) -> tuple[list[dict], list[str]]:
     """``plan.ts:analyzePlanTransition``: newly completed steps plus the release's advice lines."""
     before = {s["id"]: s for s in prev}
@@ -318,7 +270,8 @@ def analyze_plan_transition(prev, steps) -> tuple[list[dict], list[str]]:
         if (prior is None or prior["status"] != "completed") and st["status"] == "completed":
             completed.append(st)
         if prior is not None and prior["goal"] != st["goal"]:
-            advice.append(f"Plan step {_js_string(st['id'])} changed goal; reuse an id only for the same goal.")
+            advice.append(f"Plan step {json.dumps(st['id'], ensure_ascii=False)} changed goal; reuse an id only for "
+                          f"the same goal.")
     in_progress = sum(st["status"] == "in_progress" for st in steps)
     if in_progress > 1:
         advice.append("Keep at most one plan step in_progress.")
@@ -328,13 +281,13 @@ def analyze_plan_transition(prev, steps) -> tuple[list[dict], list[str]]:
 
 
 def format_plan_snapshot(steps) -> str:
-    """``plan.ts:formatPlanSnapshot``: ``JSON.stringify({steps})`` (compact separators, key order kept)."""
+    """``plan.ts:formatPlanSnapshot``: ``JSON.stringify({steps})``."""
     body = json.dumps({"steps": [dict(st) for st in steps]}, separators=(",", ":"), ensure_ascii=False)
     return f'<sol-pi-plan task_status="active">{body}</sol-pi-plan>'
 
 
 def _progress(args: dict, step_id: str) -> Optional[dict]:
-    """``extension.ts:progressSummary`` (the arguments were validated against the schema first)."""
+    """``extension.ts:progressSummary`` of validated arguments."""
     p = args.get("progress")
     step = next((s for s in args.get("steps", []) if isinstance(s, dict) and s.get("id") == step_id), None)
     if not isinstance(p, dict) or step is None:
@@ -345,13 +298,14 @@ def _progress(args: dict, step_id: str) -> Optional[dict]:
 
 
 class OnlineContextCompact(Extension):
+    """``policy="economic"`` is SoL-Pi; ``"always"`` compacts at every clean boundary (a comparison arm)."""
+
     name = "online_context_compact"
 
-    def __init__(self, cache_write_read_ratio: Optional[float] = 12.5, keep_recent_tokens: int =
-                 DEFAULT_KEEP_RECENT_TOKENS, economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS,
+    def __init__(self, cache_write_read_ratio: Optional[float] = 12.5,
+                 keep_recent_tokens: int = DEFAULT_KEEP_RECENT_TOKENS,
+                 economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS,
                  memo_tokens: int = DEFAULT_NATIVE_SUMMARY_TOKEN_ESTIMATE, policy: str = "economic") -> None:
-        """``policy="economic"`` is SoL-Pi; ``"always"`` compacts at every clean boundary
-        where native compaction has something to summarise (the S4 comparison arm)."""
         super().__init__()
         self.policy = policy
         if cache_write_read_ratio is not None and (not math.isfinite(cache_write_read_ratio) or
@@ -396,13 +350,9 @@ class OnlineContextCompact(Extension):
 
     def _context(self, msgs: list[Message], rt: AgentRuntime) -> None:
         self.observed = list(msgs)
-        return None
 
     def context_tokens(self, rt: AgentRuntime) -> int:
-        """``extension.ts:contextTokens``: ``max(getContextUsage().tokens, sum of the last projected (visible)
-        messages' estimates + ceil(bytes(system prompt) / 4))``; ``getContextUsage()`` is the runtime's
-        :meth:`~rsi.solpi.runtime.AgentRuntime.context_usage` (last reply's usage + estimates of the messages
-        after it, Pi 0.85 semantics); a missing or non-positive value is ignored (``validPositiveInteger``)."""
+        """``extension.ts:contextTokens``: max(reported usage, visible-message estimates + system-prompt tokens)."""
         sys_tokens = math.ceil(len(rt.system_prompt.encode()) / 4)
         visible = sum(m.tokens() for m in self.observed if m.role != "system")
         estimated = int(visible + sys_tokens)
@@ -468,8 +418,8 @@ class OnlineContextCompact(Extension):
                               cache_debt_repayment_tokens=s.cache_debt_repayment_tokens,
                               cache_write_read_ratio=self.rho, economics=self.economics)
         if self.policy == "always":
-            d = {**d, "compact": A - self.memo > 0, "reason": "always" if A - self.memo > 0 else
-                 "non_positive_saving"}
+            saving = A - self.memo > 0
+            d = {**d, "compact": saving, "reason": "always" if saving else "non_positive_saving"}
         if d["compact"] and not rt.compactable():
             d = {**d, "compact": False, "reason": "native_not_compactable"}
         self.decisions.append({**d, "turn": rt.turns})
@@ -484,11 +434,10 @@ class OnlineContextCompact(Extension):
             return
         self.active_debt = (pending["writeTokens"] * (pending["incrementalCacheCostRatio"] or 0),
                             max(0, pending["archiveTokens"] - pending["memoTokens"]))
-        summary = rt.compact(BOUNDARY_COMPACTION_INSTRUCTIONS)
-        if summary is not None:
+        if rt.compact(BOUNDARY_COMPACTION_INSTRUCTIONS) is not None:      # repays via _session_compact
             self.stats["compactions"] += 1
             rt.send_hidden(POST_COMPACTION_PLAN_REMINDER, trigger_turn=True)
-        self.active_debt = None if summary is None else self.active_debt
+        self.active_debt = None
 
     def _session_compact(self, event: dict, rt: AgentRuntime) -> None:
         debt = (0.0, 0.0) if event.get("from_extension") or self.active_debt is None else self.active_debt
