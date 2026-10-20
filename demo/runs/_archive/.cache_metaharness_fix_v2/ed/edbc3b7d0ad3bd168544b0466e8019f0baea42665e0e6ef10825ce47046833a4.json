@@ -1,0 +1,1 @@
+{"text": "```python\nimport math\n\n# Calculate C(53,13)\nvalue = math.comb(53, 13)\n\n# Sum the decimal digits\ndigit_sum = sum(int(d) for d in str(value))\n\nprint(digit_sum)\n```", "usage": {"calls": 1, "input_tokens": 925, "output_tokens": 265, "cost_usd": 0.0022500000000000003, "latency_s": 4.590351819992065}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

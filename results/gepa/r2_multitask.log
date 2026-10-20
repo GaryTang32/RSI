@@ -1,0 +1,2 @@
+[saved] /home/user/RSI/results/gepa/r2_multitask.json
+k=10: multi 0.542 vs single 0.870, diff -0.328 [-0.372, -0.285]; k=20: multi 0.725 vs single 0.928, diff -0.204 [-0.247, -0.161]; k=50: multi 0.896 vs single 0.938, diff -0.041 [-0.060, -0.023]. T11a=False, T11b=True

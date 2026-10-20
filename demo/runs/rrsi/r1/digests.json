@@ -1,0 +1,74 @@
+[
+ {
+  "task_id": "evolve-numeric-002",
+  "lens": "failure",
+  "blocker": "Agent computed the correct numeric answer (-183764) but failed to format it in an extractable form; grader expected ANSWER: line or numeric-only last line, received narrative text instead.",
+  "narrative": "Python code executed correctly and computed -183764 as the final ledger balance through all transactions. The agent recognized this correct value in LLM call 2 and stated it clearly. However, the final output was a narrative explanation ('The ledger shows a negative balance, meaning Morgan owes money overall...') rather than a formatted answer line, so the grader's extraction failed despite computational accuracy.",
+  "evidence": [
+   {
+    "where": "Python output",
+    "quote": "Final Balance: -183764"
+   },
+   {
+    "where": "LLM call 2 reply",
+    "quote": "Morgan's final balance is -183764"
+   },
+   {
+    "where": "OUTPUT section (last line)",
+    "quote": "The ledger shows a negative balance, meaning Morgan owes money overall after all transactions are accounted for."
+   },
+   {
+    "where": "Grader feedback",
+    "quote": "Extracted answer 'The ledger shows a negative balance...'; expected '-183764'"
+   }
+  ],
+  "verifier_evidence": "Score 0.0. Grader extracted narrative text from final output instead of numeric value. Expected exact match of '-183764'.",
+  "capability_note": "Agent successfully performed multi-step arithmetic calculations but did not enforce output formatting requirements.",
+  "needed_instead": "Final output must include either an explicit 'ANSWER: -183764' line or make the last line the bare numeric answer '-183764', not narrative interpretation.",
+  "family": "numeric"
+ },
+ {
+  "task_id": "evolve-numeric-005",
+  "lens": "failure",
+  "blocker": "Agent computed or reported digit sum as 414 instead of the correct value 351 for 66!",
+  "narrative": "The agent wrote Python code using math.factorial(66) and summed the digits via `sum(int(digit) for digit in str(factorial_66))`, which is correct in principle. The agent then reported a final answer of 414. However, the verifier confirms the correct answer is 351—a difference of 63 points. The actual stdout from the Python execution is not shown in the trajectory, so it is unclear whether the Python code produced the wrong value, or the agent misread/misreported correct output (351) as 414.",
+  "evidence": [
+   {
+    "where": "llm call 1, bash invocation",
+    "quote": "import math; factorial_66 = math.factorial(66); ... digits_sum = sum(int(digit) for digit in str(factorial_66))"
+   },
+   {
+    "where": "agent output",
+    "quote": "The sum of the decimal digits of 66! is **414**."
+   },
+   {
+    "where": "verifier feedback",
+    "quote": "Incorrect. ... expected '351'."
+   }
+  ],
+  "verifier_evidence": "Expected '351'; extracted answer was '414'.",
+  "capability_note": "The agent correctly identified the need to use Python for computation and wrote syntactically correct code. However, either the computation failed (unlikely given Python's reliability), or the agent failed to correctly read and report the actual result from code execution.",
+  "needed_instead": "The agent needed to ensure the final reported answer matched the actual output from the Python computation. The digit sum of 66! is 351, not 414. Either the Python execution did not run or produce output shown in the harness, or the agent misread/misreported the correct result.",
+  "family": "numeric"
+ },
+ {
+  "task_id": "evolve-numeric-009",
+  "lens": "success",
+  "habits": [
+   {
+    "habit": "Immediate code-based computation with Python math.factorial",
+    "where_shown": "Step 1: Model generates Python using math.factorial(25), executed via bash; Step 3: code re-executed showing same approach"
+   },
+   {
+    "habit": "Accepting computation results as authoritative ground truth",
+    "where_shown": "Step 2: Model opens with 'Based on the computation results provided' and updates answer from 54→72 without resistance, following system prompt directive to use 'only the actual results from executed code'"
+   },
+   {
+    "habit": "Transparent digit-level calculation display",
+    "where_shown": "Step 2 output: Model displays all 26 digits [1,5,5,1,1,2,1,0,0,4,3,3,3,0,9,8,5,9,8,4,0,0,0,0,0,0] and shows sum as explicit formula, enabling verification"
+   }
+  ],
+  "risk_if_removed": "System prompt directive to use 'only the actual results from executed code' is load-bearing. Without this anchor to computation results over prior reasoning, model would likely rationalize away the corrected value and persist with its initial answer (54). The override mechanism in Step 2 prevents error propagation to final answer.",
+  "family": "numeric"
+ }
+]

@@ -1,0 +1,236 @@
+{
+ "run": "mh_agentqa_live",
+ "method": "metaharness",
+ "counts": {
+  "correct": 27,
+  "questionable": 4,
+  "wrong": 2,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 0,
+   "step": "baseline eval seed",
+   "verdict": "correct",
+   "evidence": "S=0.5000 from 10 raw per-task records (trace trials mean 0.5000); context cost 2378.2 (mean of non-zero per-unit tokens); units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 1 prior systems = ['seed']; view exposes 27 files / 19426 chars of 1 systems (by kind {'code': 3, 'traces': 10, 'per_task': 10, 'scores': 1, 'summaries': 0, 'run_files': 2, 'other': 1})"
+  },
+  {
+   "round": 1,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "correct",
+   "evidence": "read 27 of 27 files (traces 10/10); prompt 23312 chars contains 0 of 10 sealed task inputs"
+  },
+  {
+   "round": 1,
+   "step": "proposal extract_formatted: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py', 'prompts/system.md'] (+36 lines); no task ids / question text / literal answers in added lines | claim: Models emphasize final answers with **bold** formatting or isolated numbers on clear lines. Priority-based extraction (formatted \u2192 standalon"
+  },
+  {
+   "round": 1,
+   "step": "proposal code_first: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base seed (visible); actual diff touches ['harness.py', 'prompts/system.md'] (+44 lines); no task ids / question text / literal answers in added lines | claim: Mandating Python code generation and extracting from execution output, rather than parsing model text reasoning, ensures numeric accuracy. C"
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) extract_formatted",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "gate (admissibility) code_first",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 1,
+   "step": "eval extract_formatted",
+   "verdict": "correct",
+   "evidence": "S=0.6000 (raw trials; ledger 0.6), cost 2332.5 (ledger 2332.5); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "eval code_first",
+   "verdict": "correct",
+   "evidence": "S=1.0000 (raw trials; ledger 1.0), cost 1295.7 (ledger 1295.7); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 1,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 1: ['code_first']; incumbent seed -> code_first (recomputed code_first, S 0.5000 -> 1.0000)"
+  },
+  {
+   "round": 1,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "code_first: holdout 1.000, ood 1.000"
+  },
+  {
+   "round": 2,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 3 prior systems = ['code_first']; view exposes 78 files / 55544 chars of 3 systems (by kind {'code': 9, 'traces': 30, 'per_task': 30, 'scores': 3, 'summaries': 0, 'run_files': 3, 'other': 3})"
+  },
+  {
+   "round": 2,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 76 of 78 files (traces 28/30); prompt 61425 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 2 of 30 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
+  },
+  {
+   "round": 2,
+   "step": "proposal code_answer_marked: claim vs actual diff",
+   "verdict": "wrong",
+   "evidence": "only NEW files ['src/harness.py', 'src/prompts/system.md', 'src/prompts/task.md']: the harness that runs is the base unchanged (dead code) | claim: Requiring the Python code to output a strict 'ANSWER=<value>' format and extracting using pattern matching (not regex on arbitrary text) eli"
+  },
+  {
+   "round": 2,
+   "step": "proposal harness_generated_solver: claim vs actual diff",
+   "verdict": "wrong",
+   "evidence": "only NEW files ['src/harness.py', 'src/prompts/system.md', 'src/prompts/task.md']: the harness that runs is the base unchanged (dead code) | claim: Letting the model explain the approach (without writing code), then auto-generating and executing Python to implement that approach, separat"
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) code_answer_marked",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "gate (admissibility) harness_generated_solver",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 2,
+   "step": "eval code_answer_marked",
+   "verdict": "correct",
+   "evidence": "S=1.0000 (raw trials; ledger 1.0), cost 1295.7 (ledger 1295.7); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "eval harness_generated_solver",
+   "verdict": "correct",
+   "evidence": "S=0.5000 (raw trials; ledger 0.5), cost 2378.2 (ledger 2378.2); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 2,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "questionable",
+   "evidence": "frontier after it 2: ['code_answer_marked', 'code_first']; incumbent code_first -> code_answer_marked (recomputed code_answer_marked, S 1.0000 -> 1.0000); the new incumbent TIES ['code_first'] exactly on (score, cost) and wins only by the name tie-break (no improvement)"
+  },
+  {
+   "round": 2,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "code_answer_marked: holdout 1.000, ood 1.000"
+  },
+  {
+   "round": 3,
+   "step": "round_start state (frontier, visible systems, budget)",
+   "verdict": "correct",
+   "evidence": "frontier recomputed from 5 prior systems = ['code_answer_marked', 'code_first']; view exposes 135 files / 102621 chars of 5 systems (by kind {'code': 21, 'traces': 50, 'per_task': 50, 'scores': 5, 'summaries': 0, 'run_files': 4, 'other': 5})"
+  },
+  {
+   "round": 3,
+   "step": "proposer input (history read, no sealed data)",
+   "verdict": "questionable",
+   "evidence": "read 77 of 135 files (traces 20/50); prompt 61767 chars contains 0 of 10 sealed task inputs the renderer's budget dropped 30 of 50 raw-trace files (the paper's proposer decides itself what to read; here a priority renderer does)"
+  },
+  {
+   "round": 3,
+   "step": "proposal code_generalized_extract: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base code_first (visible); actual diff touches ['harness.py', 'prompts/system.md'] (+51 lines); no task ids / question text / literal answers in added lines | claim: Removing math-specific language from system prompt and implementing flexible output extraction that handles strings, dates, lists (not just "
+  },
+  {
+   "round": 3,
+   "step": "proposal code_with_classification: claim vs actual diff",
+   "verdict": "correct",
+   "evidence": "base code_first (visible); actual diff touches ['harness.py', 'prompts/system.md'] (+69 lines); no task ids / question text / literal answers in added lines | claim: Asking the model to classify problem type and computational approach before code generation produces better-quality code on first attempt by"
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) code_generalized_extract",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "gate (admissibility) code_with_classification",
+   "verdict": "correct",
+   "evidence": "validated=True -> evaluated; store status evaluated"
+  },
+  {
+   "round": 3,
+   "step": "eval code_generalized_extract",
+   "verdict": "correct",
+   "evidence": "S=1.0000 (raw trials; ledger 1.0), cost 1216.2 (ledger 1216.2); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "eval code_with_classification",
+   "verdict": "correct",
+   "evidence": "S=1.0000 (raw trials; ledger 1.0), cost 3161.8 (ledger 3161.8); split evolve, 10 units all in evolve"
+  },
+  {
+   "round": 3,
+   "step": "decision (frontier, deltas, incumbent)",
+   "verdict": "correct",
+   "evidence": "frontier after it 3: ['code_generalized_extract']; incumbent code_answer_marked -> code_generalized_extract (recomputed code_generalized_extract, S 1.0000 -> 1.0000)"
+  },
+  {
+   "round": 3,
+   "step": "shadow monitor on new incumbent",
+   "verdict": "correct",
+   "evidence": "code_generalized_extract: holdout 1.000, ood 1.000"
+  },
+  {
+   "round": null,
+   "step": "finalize (test once, on baselines + Pareto + per-unit best)",
+   "verdict": "correct",
+   "evidence": "systems ['code_first', 'code_generalized_extract', 'extract_formatted', 'seed'] (recomputed ['code_first', 'code_generalized_extract', 'extract_formatted', 'seed']); results/ holds exactly these; one finalize event after the last iteration; status complete"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "questionable",
+   "evidence": "proposer $0.2499 + evals $0.4053 (trace) vs loop meter $0.6156; monitor $0.1452; cache ground truth $0.7815; unmetered gap $0.0207 (forked smokes)"
+  }
+ ],
+ "incumbents": {
+  "1": {
+   "incumbent": "code_first",
+   "search": 1.0,
+   "sealed": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  },
+  "2": {
+   "incumbent": "code_answer_marked",
+   "search": 1.0,
+   "sealed": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  },
+  "3": {
+   "incumbent": "code_generalized_extract",
+   "search": 1.0,
+   "sealed": {
+    "holdout": 1.0,
+    "ood": 1.0
+   }
+  }
+ }
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'SyntaxError: unterminated string literal (detected at line 1)'; expected '144'.",
+  "output": "SyntaxError: unterminated string literal (detected at line 1)",
+  "tokens": 1297,
+  "cost_usd": 0.003045,
+  "steps": 2,
+  "latency_s": 0.029834747314453125,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

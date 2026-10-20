@@ -1,0 +1,591 @@
+{
+ "systems": [
+  "seed",
+  "code_execution",
+  "code_fallback",
+  "code_terse_explicit",
+  "code_compact",
+  "python_answer",
+  "code_approach_first",
+  "code_json_answer",
+  "code_decompose"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.25,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1726.0,
+      "holdout-numeric-001": 1757.0,
+      "holdout-numeric-002": 1368.0,
+      "holdout-numeric-003": 1370.0,
+      "holdout-numeric-004": 1201.0,
+      "holdout-numeric-005": 4890.0,
+      "holdout-numeric-006": 1438.0,
+      "holdout-numeric-007": 2396.0
+     },
+     "context_cost": 2018.25,
+     "tokens": 2018.25,
+     "families": {
+      "numeric": 0.25
+     }
+    },
+    "code_execution": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1424.0,
+      "holdout-numeric-001": 1450.0,
+      "holdout-numeric-002": 1228.0,
+      "holdout-numeric-003": 1580.0,
+      "holdout-numeric-004": 1659.0,
+      "holdout-numeric-005": 2154.0,
+      "holdout-numeric-006": 1380.0,
+      "holdout-numeric-007": 2302.0
+     },
+     "context_cost": 1647.125,
+     "tokens": 1647.125,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "code_fallback": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1424.0,
+      "holdout-numeric-001": 1450.0,
+      "holdout-numeric-002": 1228.0,
+      "holdout-numeric-003": 1580.0,
+      "holdout-numeric-004": 1659.0,
+      "holdout-numeric-005": 2154.0,
+      "holdout-numeric-006": 1380.0,
+      "holdout-numeric-007": 2302.0
+     },
+     "context_cost": 1647.125,
+     "tokens": 1647.125,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "code_terse_explicit": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1590.0,
+      "holdout-numeric-001": 1346.0,
+      "holdout-numeric-002": 1337.0,
+      "holdout-numeric-003": 1243.0,
+      "holdout-numeric-004": 1313.0,
+      "holdout-numeric-005": 1624.0,
+      "holdout-numeric-006": 1269.0,
+      "holdout-numeric-007": 1278.0
+     },
+     "context_cost": 1375.0,
+     "tokens": 1375.0,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "code_compact": {
+     "split": "holdout",
+     "score": 0.25,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1568.0,
+      "holdout-numeric-001": 1774.0,
+      "holdout-numeric-002": 1311.0,
+      "holdout-numeric-003": 1350.0,
+      "holdout-numeric-004": 1455.0,
+      "holdout-numeric-005": 1926.0,
+      "holdout-numeric-006": 1258.0,
+      "holdout-numeric-007": 1199.0
+     },
+     "context_cost": 1480.125,
+     "tokens": 1480.125,
+     "families": {
+      "numeric": 0.25
+     }
+    },
+    "python_answer": {
+     "split": "holdout",
+     "score": 0.25,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1271.0,
+      "holdout-numeric-001": 1888.0,
+      "holdout-numeric-002": 1182.0,
+      "holdout-numeric-003": 1278.0,
+      "holdout-numeric-004": 1362.0,
+      "holdout-numeric-005": 1260.0,
+      "holdout-numeric-006": 1218.0,
+      "holdout-numeric-007": 1207.0
+     },
+     "context_cost": 1333.25,
+     "tokens": 1333.25,
+     "families": {
+      "numeric": 0.25
+     }
+    },
+    "code_approach_first": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1639.0,
+      "holdout-numeric-001": 1776.0,
+      "holdout-numeric-002": 1252.0,
+      "holdout-numeric-003": 1227.0,
+      "holdout-numeric-004": 1257.0,
+      "holdout-numeric-005": 1690.0,
+      "holdout-numeric-006": 1202.0,
+      "holdout-numeric-007": 1347.0
+     },
+     "context_cost": 1423.75,
+     "tokens": 1423.75,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "code_json_answer": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1593.0,
+      "holdout-numeric-001": 1937.0,
+      "holdout-numeric-002": 1352.0,
+      "holdout-numeric-003": 1843.0,
+      "holdout-numeric-004": 1450.0,
+      "holdout-numeric-005": 2363.0,
+      "holdout-numeric-006": 1566.0,
+      "holdout-numeric-007": 2195.0
+     },
+     "context_cost": 1787.375,
+     "tokens": 1787.375,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "code_decompose": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1658.0,
+      "holdout-numeric-001": 1746.0,
+      "holdout-numeric-002": 1828.0,
+      "holdout-numeric-003": 1402.0,
+      "holdout-numeric-004": 1372.0,
+      "holdout-numeric-005": 1672.0,
+      "holdout-numeric-006": 1468.0,
+      "holdout-numeric-007": 1473.0
+     },
+     "context_cost": 1577.375,
+     "tokens": 1577.375,
+     "families": {
+      "numeric": 1.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "code_terse_explicit",
+     "test_accuracy": 1.0,
+     "context_cost": 1375.0
+    },
+    {
+     "system": "python_answer",
+     "test_accuracy": 0.25,
+     "context_cost": 1333.25
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.5,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1699.0,
+      "ood-dates-001": 1260.0,
+      "ood-numbertheory-000": 1271.0,
+      "ood-numbertheory-001": 1238.0,
+      "ood-strings-000": 1473.0,
+      "ood-strings-001": 1074.0,
+      "ood-lists-000": 4292.0,
+      "ood-lists-001": 4189.0
+     },
+     "context_cost": 2062.0,
+     "tokens": 2062.0,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 0.0,
+      "strings": 0.5,
+      "lists": 1.0
+     }
+    },
+    "code_execution": {
+     "split": "ood",
+     "score": 0.875,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1640.0,
+      "ood-dates-001": 1760.0,
+      "ood-numbertheory-000": 1407.0,
+      "ood-numbertheory-001": 1633.0,
+      "ood-strings-000": 1249.0,
+      "ood-strings-001": 1312.0,
+      "ood-lists-000": 2892.0,
+      "ood-lists-001": 2913.0
+     },
+     "context_cost": 1850.75,
+     "tokens": 1850.75,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_fallback": {
+     "split": "ood",
+     "score": 0.875,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1640.0,
+      "ood-dates-001": 1760.0,
+      "ood-numbertheory-000": 1407.0,
+      "ood-numbertheory-001": 1633.0,
+      "ood-strings-000": 1249.0,
+      "ood-strings-001": 1312.0,
+      "ood-lists-000": 2892.0,
+      "ood-lists-001": 2913.0
+     },
+     "context_cost": 1850.75,
+     "tokens": 1850.75,
+     "families": {
+      "dates": 0.5,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_terse_explicit": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1185.0,
+      "ood-dates-001": 1253.0,
+      "ood-numbertheory-000": 1652.0,
+      "ood-numbertheory-001": 1580.0,
+      "ood-strings-000": 1213.0,
+      "ood-strings-001": 1276.0,
+      "ood-lists-000": 2268.0,
+      "ood-lists-001": 2867.0
+     },
+     "context_cost": 1661.75,
+     "tokens": 1661.75,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_compact": {
+     "split": "ood",
+     "score": 0.75,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1184.0,
+      "ood-dates-001": 1509.0,
+      "ood-numbertheory-000": 1564.0,
+      "ood-numbertheory-001": 1348.0,
+      "ood-strings-000": 1572.0,
+      "ood-strings-001": 1335.0,
+      "ood-lists-000": 3347.0,
+      "ood-lists-001": 2673.0
+     },
+     "context_cost": 1816.5,
+     "tokens": 1816.5,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 0.5,
+      "strings": 1.0,
+      "lists": 0.5
+     }
+    },
+    "python_answer": {
+     "split": "ood",
+     "score": 0.25,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-dates-001": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 0.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1198.0,
+      "ood-dates-001": 1297.0,
+      "ood-numbertheory-000": 1330.0,
+      "ood-numbertheory-001": 1365.0,
+      "ood-strings-000": 1538.0,
+      "ood-strings-001": 1339.0,
+      "ood-lists-000": 2118.0,
+      "ood-lists-001": 4217.0
+     },
+     "context_cost": 1800.25,
+     "tokens": 1800.25,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 0.5,
+      "lists": 0.5
+     }
+    },
+    "code_approach_first": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1220.0,
+      "ood-dates-001": 1403.0,
+      "ood-numbertheory-000": 1495.0,
+      "ood-numbertheory-001": 1553.0,
+      "ood-strings-000": 2238.0,
+      "ood-strings-001": 1278.0,
+      "ood-lists-000": 1807.0,
+      "ood-lists-001": 3065.0
+     },
+     "context_cost": 1757.375,
+     "tokens": 1757.375,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_json_answer": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1373.0,
+      "ood-dates-001": 1837.0,
+      "ood-numbertheory-000": 1521.0,
+      "ood-numbertheory-001": 1586.0,
+      "ood-strings-000": 1420.0,
+      "ood-strings-001": 1414.0,
+      "ood-lists-000": 2568.0,
+      "ood-lists-001": 3124.0
+     },
+     "context_cost": 1855.375,
+     "tokens": 1855.375,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_decompose": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1634.0,
+      "ood-dates-001": 1558.0,
+      "ood-numbertheory-000": 1513.0,
+      "ood-numbertheory-001": 1602.0,
+      "ood-strings-000": 1313.0,
+      "ood-strings-001": 1414.0,
+      "ood-lists-000": 2967.0,
+      "ood-lists-001": 3288.0
+     },
+     "context_cost": 1911.125,
+     "tokens": 1911.125,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "code_terse_explicit",
+     "test_accuracy": 1.0,
+     "context_cost": 1661.75
+    }
+   ]
+  }
+ }
+}

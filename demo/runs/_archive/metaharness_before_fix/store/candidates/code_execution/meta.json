@@ -1,0 +1,17 @@
+{
+ "name": "code_execution",
+ "artifact_id": "8975431ef8d11fa5054c19157aec4f890b63eb8ba90345a82ccd6959898e5b74",
+ "created_at": 1790756618.5068913,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 5,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

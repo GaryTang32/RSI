@@ -1,0 +1,5 @@
+[python]
+n = 62**10
+print(bin(n).count('1'))
+[output]
+24

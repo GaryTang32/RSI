@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '{digit_sum}\")'; expected '351'.",
+  "output": "print(f\"CORRECT ANSWER: {digit_sum}\")",
+  "tokens": 8657,
+  "cost_usd": 0.024072999999999997,
+  "steps": 3,
+  "latency_s": 38.50398898124695,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 3,
+   "tool_calls": 0
+  }
+ }
+]

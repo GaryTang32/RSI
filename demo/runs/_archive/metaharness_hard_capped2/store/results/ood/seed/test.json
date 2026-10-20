@@ -1,0 +1,26 @@
+{
+ "split": "ood",
+ "score": 0.16666666666666666,
+ "per_unit": {
+  "ood-schedule-000": 0.0,
+  "ood-schedule-001": 0.0,
+  "ood-schedule-002": 0.0,
+  "ood-cipher-000": 0.0,
+  "ood-cipher-001": 1.0,
+  "ood-cipher-002": 0.0
+ },
+ "per_unit_cost": {
+  "ood-schedule-000": 3045.0,
+  "ood-schedule-001": 14267.0,
+  "ood-schedule-002": 3509.0,
+  "ood-cipher-000": 7860.0,
+  "ood-cipher-001": 6359.0,
+  "ood-cipher-002": 16741.0
+ },
+ "context_cost": 8630.166666666666,
+ "tokens": 8630.166666666666,
+ "families": {
+  "schedule": 0.0,
+  "cipher": 0.3333333333333333
+ }
+}

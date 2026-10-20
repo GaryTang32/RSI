@@ -1,0 +1,16 @@
+--- a/config/nul_08.py
++++ b/config/nul_08.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_08
++# component: config
++# title: Lower sampling temperature for final answers
++"""Lower sampling temperature for final answers (rewording of existing guidance)."""
++enable("nul_08")
+--- a/tools/str_02.py
++++ b/tools/str_02.py
+@@ -0,0 +1,5 @@
++# mechanism: str_02
++# component: client_tool
++# title: Code runner tool
++"""Code runner tool; aimed at arith, plan, format tasks."""
++enable("str_02")

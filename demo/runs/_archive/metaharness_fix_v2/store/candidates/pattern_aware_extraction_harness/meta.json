@@ -1,0 +1,17 @@
+{
+ "name": "pattern_aware_extraction_harness",
+ "artifact_id": "9de63f633ca29c9b14bcb391c978bca0f926f090232aeb82b3406d2146fb7e13",
+ "created_at": 1790762486.3011284,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 8,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

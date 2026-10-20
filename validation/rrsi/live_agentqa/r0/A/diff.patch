@@ -1,0 +1,44 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,9 +1,23 @@
+-"""Seed harness: one direct model call, return the last line of the reply."""
++"""Harness: extract ANSWER: marker or return last line."""
++import re
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    lines = [line for line in reply.strip().splitlines() if line.strip()]
++    
++    # Strategy 1: Look for ANSWER: pattern on any line
++    for line in reply.split('\n'):
++        if 'ANSWER:' in line:
++            match = re.search(r'ANSWER:\s*([^\n]+)', line)
++            if match:
++                value = match.group(1).strip()
++                # Remove any markdown formatting
++                value = re.sub(r'\*\*([^*]*)\*\*', r'\1', value)
++                value = re.sub(r'[*_]', '', value).strip()
++                return value
++    
++    # Strategy 2: Fallback to last non-empty line
++    lines = [line.strip() for line in reply.strip().split('\n') if line.strip()]
+     return lines[-1] if lines else ""
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,12 @@
+-You are a helpful assistant.
++You are a helpful assistant skilled in mathematics and logical reasoning.
++
++When solving numeric problems:
++- Show all work step-by-step, breaking down complex operations into individual calculations
++- For calculations involving large numbers or modular arithmetic, verify your result by reconsidering the approach or checking intermediate values make sense
++- Be explicit about your reasoning so errors can be traced
++
++CRITICAL OUTPUT FORMAT:
++Always end your response with a dedicated final line in this exact format:
++ANSWER: <numeric value>
++
++where <numeric value> is only the final numeric answer with no surrounding symbols or equations.

@@ -1,0 +1,170 @@
+{
+ "run": "agentqa_live",
+ "truth": "none (live model: no ground truth; see the shadow monitor and the transfer report)",
+ "checks": {
+  "gate_arithmetic": {
+   "passed": 4,
+   "of": 4
+  },
+  "diff_matches_store": {
+   "passed": 4,
+   "of": 4
+  },
+  "decision_matches_ledger": {
+   "passed": 4,
+   "of": 4
+  },
+  "val_eval_matches_ledger": {
+   "passed": 2,
+   "of": 2
+  },
+  "pareto_weights_recomputed": {
+   "passed": 5,
+   "of": 5
+  },
+  "round_robin_recomputed": {
+   "passed": 4,
+   "of": 4
+  },
+  "minibatch_epoch_disjoint": {
+   "passed": 5,
+   "of": 5
+  },
+  "val_eval_covers_D_pareto": {
+   "passed": 3,
+   "of": 3
+  },
+  "returned_best_is_argmax_val": {
+   "passed": 1,
+   "of": 1
+  },
+  "child_minibatch_same_ids_as_parent": {
+   "passed": 4,
+   "of": 4
+  }
+ },
+ "problems": [],
+ "rollouts_charged_in_trace": 51,
+ "rollouts_counted": 51,
+ "rows": [
+  {
+   "round": 0,
+   "rollouts_at_start": 8,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-009",
+    "evolve-numeric-001"
+   ],
+   "event": "rejected",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null,
+   "proposal": "x0",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 32,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 2.0,
+   "gate": false
+  },
+  {
+   "round": 1,
+   "rollouts_at_start": 14,
+   "parent": "c0",
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "event": "accepted",
+   "kept": "c1",
+   "incumbent": "c0->c0",
+   "new_val": 0.25,
+   "proposal": "x1",
+   "kind": "reflective",
+   "components": [
+    "prompts/solver.md"
+   ],
+   "diff_lines": 16,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 0.0,
+   "mb_after": 1.0,
+   "gate": true
+  },
+  {
+   "round": 2,
+   "rollouts_at_start": 28,
+   "parent": "c1",
+   "p_parent": 0.4166666666666667,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-004",
+    "evolve-numeric-000"
+   ],
+   "event": "accepted",
+   "kept": "c2",
+   "incumbent": "c0->c0",
+   "new_val": 0.25,
+   "proposal": "x2",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 28,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 2.0,
+   "mb_after": 3.0,
+   "gate": true
+  },
+  {
+   "round": 3,
+   "rollouts_at_start": 42,
+   "parent": "c0",
+   "p_parent": 0.5833333333333334,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-006",
+    "evolve-numeric-000"
+   ],
+   "event": "rejected",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null,
+   "proposal": "x3",
+   "kind": "reflective",
+   "components": [
+    "prompts/reporter.md"
+   ],
+   "diff_lines": 28,
+   "unchanged_rewrite": false,
+   "error": null,
+   "mb_before": 1.0,
+   "mb_after": 1.0,
+   "gate": false
+  },
+  {
+   "round": 4,
+   "rollouts_at_start": 48,
+   "parent": "c0",
+   "p_parent": 0.5833333333333334,
+   "minibatch": [
+    "evolve-numeric-009",
+    "evolve-numeric-000",
+    "evolve-numeric-003"
+   ],
+   "event": "skip_perfect",
+   "kept": null,
+   "incumbent": "c0->c0",
+   "new_val": null
+  }
+ ]
+}

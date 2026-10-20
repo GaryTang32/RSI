@@ -1,0 +1,10 @@
+{
+ "run": "metaharness",
+ "proposals": 8,
+ "prompts_identical": true,
+ "scores_identical": true,
+ "cache_misses": 0,
+ "cache_hits": 208,
+ "usd_spent": 0.0
+}
+EXIT 0

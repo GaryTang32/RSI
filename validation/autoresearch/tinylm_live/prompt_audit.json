@@ -1,0 +1,165 @@
+{
+ "calls": [
+  {
+   "round": 1,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30369,
+   "tsv_rows_in_prompt": 1,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 1,
+   "call": "fix1",
+   "cache_hit": true,
+   "prompt_chars": 30292,
+   "sealed_numbers_in_prompt": [],
+   "reply_diff_equals_trace": true,
+   "reply_tail": "     {prepare.peak_mem_mb():.1f}\")\nprint(f\"num_steps:        {step}\")\nprint(f\"num_params_M:     {num_params / 1e6:.3f}\")\nprint(f\"depth:            {DEPTH}\")\n```"
+  },
+  {
+   "round": 1,
+   "call": "fix2",
+   "cache_hit": true,
+   "prompt_chars": 30085,
+   "sealed_numbers_in_prompt": [],
+   "reply_diff_equals_trace": true,
+   "reply_tail": null
+  },
+  {
+   "round": 2,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30434,
+   "tsv_rows_in_prompt": 2,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 3,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30522,
+   "tsv_rows_in_prompt": 3,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 4,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30690,
+   "tsv_rows_in_prompt": 4,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 5,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30826,
+   "tsv_rows_in_prompt": 5,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 6,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 30962,
+   "tsv_rows_in_prompt": 6,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 7,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 31098,
+   "tsv_rows_in_prompt": 7,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 8,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 31232,
+   "tsv_rows_in_prompt": 8,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 9,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 31364,
+   "tsv_rows_in_prompt": 9,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  },
+  {
+   "round": 10,
+   "call": "propose",
+   "cache_hit": true,
+   "prompt_chars": 31443,
+   "tsv_rows_in_prompt": 10,
+   "tsv_in_prompt": true,
+   "sealed_numbers_in_prompt": [],
+   "sealed_words_in_prompt": [
+    "test_iid",
+    "test_shift"
+   ],
+   "reply_diff_equals_trace": true
+  }
+ ],
+ "all_hit": true,
+ "hits": 12,
+ "misses": 0
+}

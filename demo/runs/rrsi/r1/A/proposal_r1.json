@@ -1,0 +1,96 @@
+{
+ "status": "done",
+ "summary": "Removed task-specific numeric predictions and made followup conditional on tool execution to reduce cost on non-computational tasks",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "Add explicit 'ANSWER: <value>' format requirement to followup prompt, establishing structured output that prevents answers from being embedded in explanatory narrative.",
+   "targets_mode": "output_format_mismatch: numeric results should be reported in structured extractable format rather than embedded in prose",
+   "why_not_lower_lever": "Output format specification is inherently a prose-level contract; system prompt is the appropriate place for such format requirements",
+   "trigger_condition": "Whenever followup prompt is constructed after tool execution, it includes explicit format requirement",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-009",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks that output numeric results embedded in narrative text would benefit from explicit format guidance to create extractable structured output. (preservative) Success habit of tool-based computation is preserved; format guidance is complementary. (transfer) Format enforcement applies generally to all computation-heavy problem families requiring answer extraction",
+   "regression_risk": "Explicit format guidance is a standard best practice; minimal regression risk",
+   "mechanism": "Add explicit 'ANSWER: <value>' format requirement to followup prompt, establishing structured output that prevents answers from being embedded in explanatory narrative."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "Make followup LLM call conditional on successful tool execution: invoke followup only when parse_and_execute_tools returns non-empty output. This prevents unnecessary followup overhead on tasks where tool use is not applicable.",
+   "targets_mode": "cost efficiency: avoid adding followup call cost on non-computational task domains where tool execution is not expected",
+   "why_not_lower_lever": "Conditional dispatch logic for multi-step LLM calls is a harness control-flow concern requiring code modification",
+   "trigger_condition": "After parse_and_execute_tools() returns: if tool_output is non-empty, invoke followup with grounding; else return initial response directly",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-009",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Computational tasks with tool execution benefit from grounding followup; non-computational tasks avoid spurious cost. (preservative) When tools execute, followup behavior unchanged: response still grounded in actual computation results. (transfer) Conditional followup reduces cost across all task domains by avoiding unnecessary calls on non-computational problems",
+   "regression_risk": "Straightforward conditional: only affects flow when tool_output is empty, which should be exceptional in computational task contexts",
+   "mechanism": "Make followup LLM call conditional on successful tool execution: invoke followup only when parse_and_execute_tools returns non-empty output. This prevents unnecessary followup overhead on tasks where tool use is not applicable."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "Add extract_answer() function: search for lines matching '^ANSWER:' pattern first, then fall back to last non-empty line. This prioritizes structured answer format when present.",
+   "targets_mode": "output extraction robustness: extraction logic must prioritize structured format over explanatory text when both exist in response",
+   "why_not_lower_lever": "Answer extraction is output plumbing requiring explicit pattern matching and conditional logic; cannot be addressed through instruction alone",
+   "trigger_condition": "During final extraction phase: function first searches for ANSWER: pattern match, only falling back to last line if pattern absent",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-009",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks producing both structured answer lines and explanatory tail text would correctly extract the ANSWER: line instead of narrative. (preservative) Tasks already using last-line extraction continue working; fallback mechanism preserved. (transfer) Extraction robustness generalizes across all answer types using standard formatted output",
+   "regression_risk": "Extraction function is more permissive (pattern match + fallback); strictly improves on blind last-line extraction",
+   "mechanism": "Add extract_answer() function: search for lines matching '^ANSWER:' pattern first, then fall back to last non-empty line. This prioritizes structured answer format when present."
+  },
+  {
+   "id": "C4",
+   "component": "control_flow",
+   "hypothesis": "Relax markdown code block detection regex to tolerate whitespace: change from r'```python\\n' to r'```\\s*python\\s*\\n'. This handles spacing variations in LLM-generated markdown formatting.",
+   "targets_mode": "tool_invocation_robustness: code block detection should be resilient to whitespace variations naturally produced by LLMs",
+   "why_not_lower_lever": "Regex pattern matching for code extraction is parsing logic in parse_and_execute_tools(); pattern flexibility is the control-flow lever",
+   "trigger_condition": "When parse_and_execute_tools scans response for markdown code blocks, relaxed pattern matches blocks with spacing around 'python' keyword",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-005",
+    "evolve-numeric-009",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Code blocks with varied spacing (e.g., '``` python\\n' or '```\\n python') would now be detected where strict pattern failed. (preservative) Tightly-spaced blocks continue matching exactly as before. (transfer) Whitespace flexibility generalizes across all markdown-code scenarios",
+   "regression_risk": "Pattern remains restrictive (still requires 'python' keyword); false positive risk is minimal",
+   "mechanism": "Relax markdown code block detection regex to tolerate whitespace: change from r'```python\\n' to r'```\\s*python\\s*\\n'. This handles spacing variations in LLM-generated markdown formatting."
+  }
+ ],
+ "mechanism": "Removed task-specific numeric predictions and made followup conditional on tool execution to reduce cost on non-computational tasks",
+ "targets_mode": "output_format_mismatch: numeric results should be reported in structured extractable format rather than embedded in prose, cost efficiency: avoid adding followup call cost on non-computational task do",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

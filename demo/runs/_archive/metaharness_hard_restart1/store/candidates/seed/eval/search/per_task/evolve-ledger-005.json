@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-ledger-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- 1 transaction in EUR (T1037: 3,877.58 EUR = $4,439.83 USD at the 1.145 conversion rate)'; expected '2805.10'.",
+  "output": "- 1 transaction in EUR (T1037: 3,877.58 EUR = $4,439.83 USD at the 1.145 conversion rate)",
+  "tokens": 21003,
+  "cost_usd": 0.09287899999999999,
+  "steps": 1,
+  "latency_s": 0.004902362823486328,
+  "error": null,
+  "family": "ledger",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

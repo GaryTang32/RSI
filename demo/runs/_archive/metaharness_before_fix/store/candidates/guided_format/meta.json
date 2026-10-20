@@ -1,0 +1,17 @@
+{
+ "name": "guided_format",
+ "artifact_id": "d9f1646bf5094bd5174074df250414644abe92eb9eaf9dba4bd1527bd25ae1c7",
+ "created_at": 1790755508.0459979,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 2,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

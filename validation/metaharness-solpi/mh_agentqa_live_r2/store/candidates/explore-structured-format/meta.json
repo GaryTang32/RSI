@@ -1,0 +1,19 @@
+{
+ "name": "explore-structured-format",
+ "artifact_id": "62e8522aad39055d403883420f038b6ac5b64c06709ce659bfd14e4dc55da26f",
+ "created_at": 1790338884.91932,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Constraining output format with an explicit 'ANSWER: <value>' requirement will reduce extraction ambiguity, encourage cleaner thinking, and improve both parsing reliability and potentially reduce computational errors through explicit finalization.",
+ "axis": "exploration",
+ "components": [
+  "prompt_engineering",
+  "structured_output_constraint",
+  "format_enforcement"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}

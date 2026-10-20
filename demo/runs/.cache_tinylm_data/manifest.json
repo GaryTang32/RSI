@@ -1,0 +1,21 @@
+{
+ "python": "3.11.15",
+ "splits": {
+  "train": {
+   "bytes": 1328492,
+   "sha256": "31b684de868873b05f10fe99eb239d76185434d58425620544302c7499cfbbad"
+  },
+  "val": {
+   "bytes": 85526,
+   "sha256": "13398f379798f88672b6f7c7acd8cd1acf67dba1b8bb8b18d59a338cc9cc289d"
+  },
+  "test_iid": {
+   "bytes": 73853,
+   "sha256": "7e2a518932b6f42a2d0d00f5c6d210105e25822a5da64c15655f6dbfb12d1e02"
+  },
+  "test_shift": {
+   "bytes": 480803,
+   "sha256": "aa9ccac95ca6588c1096d09574aa2daeb6bfa10dc15d0c6e28df674924ce2df7"
+  }
+ }
+}

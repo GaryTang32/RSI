@@ -1,0 +1,19 @@
+{
+ "iteration": 4,
+ "candidates": [
+  {
+   "name": "pattern_aware_extraction_harness",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "lean_prompt_code_harness",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

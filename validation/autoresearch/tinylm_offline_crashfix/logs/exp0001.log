@@ -1,0 +1,5 @@
+
+  File "/tmp/rsi_ar_tinylm_ajyse6w2/train.py", line 148
+    loss = loss +
+                 ^
+SyntaxError: invalid syntax

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- The sum of all these digits: 2+6+1 = **261**'; expected '351'.",
+  "output": "- The sum of all these digits: 2+6+1 = **261**",
+  "tokens": 1238,
+  "cost_usd": 0.002846,
+  "steps": 1,
+  "latency_s": 0.005959033966064453,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

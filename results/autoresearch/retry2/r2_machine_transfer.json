@@ -1,0 +1,1004 @@
+{
+ "experiment": "r2_machine_transfer",
+ "written_at": "2026-09-30 00:17:10",
+ "config": {
+  "slow_budget_s": 2.0,
+  "fast_budget_s": 8.0,
+  "experiments_per_night": 30,
+  "agent_seeds": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "run_seeds": [
+   30000,
+   30001,
+   30002,
+   30003,
+   30004
+  ],
+  "agent": "MockResearchAgent greedy",
+  "keep_rule": "upstream",
+  "mode": "hardened"
+ },
+ "pairs": [
+  {
+   "seed": 0,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.560823104816861,
+    "best": 2.857348130814,
+    "n_keep": 10,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "LR 0.012 -> 0.024",
+     "HIDDEN 128 -> 64",
+     "WEIGHT_DECAY 0.0 -> 0.0001",
+     "CONTEXT 6 -> 4",
+     "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "LR 0.024 -> 0.048"
+    ],
+    "final_constants": {
+     "CONTEXT": "4",
+     "EMBED_DIM": "16",
+     "HIDDEN": "64",
+     "DEPTH": "1",
+     "ACTIVATION": "\"tanh\"",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.048",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0001",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.8715844244500897,
+    "best": 2.4489201696782668,
+    "n_keep": 13,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "HIDDEN 128 -> 256",
+     "INIT_SCALE 1.4 -> 0.98",
+     "LR 0.012 -> 0.024",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "INIT_SCALE 1.0 -> 1.4",
+     "ACTIVATION 'relu' -> 'tanh'",
+     "CONTEXT 6 -> 4",
+     "BATCH_SIZE 32 -> 16"
+    ],
+    "final_constants": {
+     "CONTEXT": "4",
+     "EMBED_DIM": "16",
+     "HIDDEN": "256",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "16",
+     "TRAIN_SEQ_LEN": "32",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.024",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "0.98",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.865332002315675,
+     2.8839965945762374,
+     2.86560005459258,
+     2.884493611143949,
+     2.846157020558953
+    ],
+    "slow_final": [
+     2.724257529156057,
+     2.7124702448987157,
+     2.7105664699784495,
+     2.6969754757607576,
+     2.7252487998203785
+    ],
+    "fast_final": [
+     2.477424137812637,
+     2.443974314025309,
+     2.4562996018233725,
+     2.4586782179605318,
+     2.448871868899365
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.481088887873046,
+     3.5500932986674107,
+     3.5443825108841915,
+     3.510515148770813,
+     3.484513250867711
+    ],
+    "slow_final": [
+     2.8851651261737254,
+     2.892874852490828,
+     2.857108156755485,
+     2.902936839961426,
+     2.8888409334549388
+    ],
+    "fast_final": [
+     2.7350342182438636,
+     2.824858551128252,
+     2.8304765531288165,
+     2.7733168625002413,
+     2.82178632034959
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  },
+  {
+   "seed": 1,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.502577848033658,
+    "best": 2.8861596527926845,
+    "n_keep": 6,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "LR 0.012 -> 0.024",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "INIT_SCALE 1.0 -> 0.7"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "16",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "\"tanh\"",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.024",
+     "ADAM_BETAS": "(0.8, 0.95)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "0.7",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.8620164196362485,
+    "best": 2.4643215633603615,
+    "n_keep": 9,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "DEPTH 1 -> 2",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "TRAIN_SEQ_LEN 16 -> 32",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "WARMDOWN_RATIO 0.5 -> 0.3",
+     "WARMDOWN_RATIO 0.3 -> 0.5"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "16",
+     "HIDDEN": "128",
+     "DEPTH": "2",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "32",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.012",
+     "ADAM_BETAS": "(0.8, 0.95)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.8450279985122613,
+     2.8547883399504523,
+     2.8817837927441228,
+     2.8830263823225666,
+     2.889837946072779
+    ],
+    "slow_final": [
+     2.598313428561114,
+     2.5940155741585125,
+     2.597175767027189,
+     2.604427663426487,
+     2.6214333579501234
+    ],
+    "fast_final": [
+     2.49660405214558,
+     2.489685163502408,
+     2.4895573595050533,
+     2.4759204714857086,
+     2.480288806776932
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.602962512558852,
+     3.654834272749576,
+     3.5187081628067722,
+     3.551165536909389,
+     3.516861785975246
+    ],
+    "slow_final": [
+     2.906686239394317,
+     2.92565466694357,
+     2.9094798322635222,
+     2.9040731990527866,
+     2.905541100620787
+    ],
+    "fast_final": [
+     2.990441744627227,
+     2.9675112868242044,
+     2.9944905013730625,
+     2.9778888808598603,
+     2.9550208318714652
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  },
+  {
+   "seed": 2,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.5264477255933153,
+    "best": 2.824266573227407,
+    "n_keep": 6,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "EMBED_DIM 16 -> 32",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "SEED 42 -> 397"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "32",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.012",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "397",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.8657253121472266,
+    "best": 2.5615114550064444,
+    "n_keep": 11,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "TRAIN_SEQ_LEN 16 -> 8",
+     "DEPTH 1 -> 2",
+     "WARMUP_RATIO 0.0 -> 0.05",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "SEED 42 -> 397",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "WARMDOWN_RATIO 0.5 -> 0.3",
+     "EMBED_DIM 16 -> 32",
+     "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "32",
+     "HIDDEN": "128",
+     "DEPTH": "2",
+     "ACTIVATION": "\"tanh\"",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "8",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.006",
+     "ADAM_BETAS": "(0.8, 0.95)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.05",
+     "WARMDOWN_RATIO": "0.3",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "397",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.8818277079439607,
+     2.8783943281613955,
+     2.88339980724345,
+     2.8790966097841575,
+     2.8571676751491237
+    ],
+    "slow_final": [
+     2.5233565548422026,
+     2.5355830347518937,
+     2.5297558221330347,
+     2.5265087503595796,
+     2.5194933592711766
+    ],
+    "fast_final": [
+     2.6116465104117847,
+     2.6055795464110076,
+     2.5952052048861773,
+     2.597950659574836,
+     2.6022590497014737
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.522856434856825,
+     3.568496314043924,
+     3.4335602946693737,
+     3.484384251084769,
+     3.494588993318499
+    ],
+    "slow_final": [
+     2.8950714396866153,
+     2.881440023458688,
+     2.890706102267469,
+     2.905652012679699,
+     2.899501421039662
+    ],
+    "fast_final": [
+     3.1638548163168103,
+     3.1402580213575915,
+     3.1474015530293675,
+     3.1965310323824445,
+     3.1083743532415853
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  },
+  {
+   "seed": 3,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.5339338644998204,
+    "best": 2.8051502389693486,
+    "n_keep": 9,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "LR 0.006 -> 0.012",
+     "CONTEXT 6 -> 4",
+     "EMBED_DIM 16 -> 32",
+     "EMBED_DIM 32 -> 64",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "WARMDOWN_RATIO 0.5 -> 0.3"
+    ],
+    "final_constants": {
+     "CONTEXT": "4",
+     "EMBED_DIM": "64",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "32",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.012",
+     "ADAM_BETAS": "(0.8, 0.95)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.3",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.8608461605233986,
+    "best": 2.5980518119097646,
+    "n_keep": 11,
+    "keeps": [
+     "CONTEXT 6 -> 4",
+     "EMBED_DIM 16 -> 32",
+     "EMBED_DIM 32 -> 64",
+     "BATCH_SIZE 32 -> 16",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)",
+     "WARMDOWN_RATIO 0.5 -> 0.3",
+     "ADAM_BETAS (0.8, 0.95) -> (0.9, 0.99)",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "SEED 42 -> 397",
+     "SEED 397 -> 402"
+    ],
+    "final_constants": {
+     "CONTEXT": "4",
+     "EMBED_DIM": "64",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "16",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.003",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.3",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "402",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.8598097477334385,
+     2.883244106435418,
+     2.880203582017866,
+     2.875965758112774,
+     2.875700422863223
+    ],
+    "slow_final": [
+     2.5864600947973666,
+     2.6040838631393166,
+     2.588858399680554,
+     2.5946200657698566,
+     2.610136345329849
+    ],
+    "fast_final": [
+     2.6041108151637835,
+     2.5877685730671907,
+     2.597033706226194,
+     2.6078102527395237,
+     2.588776659001044
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.531276360055812,
+     3.5756369496812987,
+     3.493078127288835,
+     3.545636111731873,
+     3.4926565633094495
+    ],
+    "slow_final": [
+     2.823173399443367,
+     2.7994187391371446,
+     2.8149031346563786,
+     2.812963271846093,
+     2.801230814111347
+    ],
+    "fast_final": [
+     2.996234699828424,
+     2.9424508017876683,
+     3.022473847212672,
+     2.9826569698820373,
+     2.998094231978316
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  },
+  {
+   "seed": 4,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.5331315346021026,
+    "best": 2.8428485193863233,
+    "n_keep": 8,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "BATCH_SIZE 32 -> 16",
+     "BATCH_SIZE 16 -> 8",
+     "LR 0.006 -> 0.012",
+     "ACTIVATION 'tanh' -> 'relu'",
+     "SEED 42 -> 397",
+     "CONTEXT 6 -> 4"
+    ],
+    "final_constants": {
+     "CONTEXT": "4",
+     "EMBED_DIM": "16",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "8",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.012",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "397",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.8609003709339054,
+    "best": 2.574587657787755,
+    "n_keep": 6,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "BATCH_SIZE 32 -> 16",
+     "HIDDEN 128 -> 256",
+     "BATCH_SIZE 16 -> 8",
+     "ACTIVATION 'tanh' -> 'relu'"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "16",
+     "HIDDEN": "256",
+     "DEPTH": "1",
+     "ACTIVATION": "'relu'",
+     "BATCH_SIZE": "8",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.006",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.0",
+     "WARMDOWN_RATIO": "0.5",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.8709430516538643,
+     2.876239556583842,
+     2.8977502136502764,
+     2.8966561446131847,
+     2.8864422284625
+    ],
+    "slow_final": [
+     2.6379987440260098,
+     2.6337503276970997,
+     2.6357875941631566,
+     2.641104128618539,
+     2.6599804472353696
+    ],
+    "fast_final": [
+     2.6101299806238383,
+     2.6159876038055176,
+     2.5914849317911477,
+     2.5986865335239107,
+     2.5931858858982277
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.5355592979414943,
+     3.5420079134550844,
+     3.4898805449177086,
+     3.568033756546366,
+     3.4901263705570624
+    ],
+    "slow_final": [
+     2.8878818047136185,
+     2.8488988419930084,
+     2.851945681176735,
+     2.8398957396479743,
+     2.8674463687276224
+    ],
+    "fast_final": [
+     3.0294498548975444,
+     3.064877773502524,
+     3.058693972561867,
+     3.0442057881968183,
+     3.0165294142565995
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  },
+  {
+   "seed": 5,
+   "slow": {
+    "budget_s": 2.0,
+    "baseline": 3.5434368373863268,
+    "best": 3.0022630118726537,
+    "n_keep": 8,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "BATCH_SIZE 32 -> 16",
+     "BATCH_SIZE 16 -> 8",
+     "WARMDOWN_RATIO 0.5 -> 0.3",
+     "EMBED_DIM 16 -> 32",
+     "WARMUP_RATIO 0.0 -> 0.05",
+     "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "32",
+     "HIDDEN": "128",
+     "DEPTH": "1",
+     "ACTIVATION": "\"tanh\"",
+     "BATCH_SIZE": "8",
+     "TRAIN_SEQ_LEN": "16",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.006",
+     "ADAM_BETAS": "(0.8, 0.95)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.05",
+     "WARMDOWN_RATIO": "0.3",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "fast": {
+    "budget_s": 8.0,
+    "baseline": 2.903451215017742,
+    "best": 2.595945080982366,
+    "n_keep": 11,
+    "keeps": [
+     "LR 0.003 -> 0.006",
+     "BATCH_SIZE 32 -> 16",
+     "BATCH_SIZE 16 -> 8",
+     "EMBED_DIM 16 -> 32",
+     "WARMUP_RATIO 0.0 -> 0.05",
+     "HIDDEN 128 -> 256",
+     "EMBED_DIM 32 -> 16",
+     "LR 0.006 -> 0.012",
+     "TRAIN_SEQ_LEN 16 -> 32",
+     "WARMDOWN_RATIO 0.5 -> 0.7"
+    ],
+    "final_constants": {
+     "CONTEXT": "6",
+     "EMBED_DIM": "16",
+     "HIDDEN": "256",
+     "DEPTH": "1",
+     "ACTIVATION": "\"tanh\"",
+     "BATCH_SIZE": "8",
+     "TRAIN_SEQ_LEN": "32",
+     "OPTIMIZER": "\"adam\"",
+     "LR": "0.012",
+     "ADAM_BETAS": "(0.9, 0.99)",
+     "WEIGHT_DECAY": "0.0",
+     "WARMUP_RATIO": "0.05",
+     "WARMDOWN_RATIO": "0.7",
+     "FINAL_LR_FRAC": "0.0",
+     "INIT_SCALE": "1.0",
+     "EVAL_BATCH_SIZE": "64",
+     "SEED": "42",
+     "CPU_PEAK_FLOPS": "1e11"
+    }
+   },
+   "on_fast": {
+    "base": [
+     2.8770196374076145,
+     2.8883513609066744,
+     2.8856745524427097,
+     2.896603257886976,
+     2.8930460308661368
+    ],
+    "slow_final": [
+     2.6423029450213575,
+     2.6519661550358675,
+     2.643703992740577,
+     2.656078172977023,
+     2.6505851085854637
+    ],
+    "fast_final": [
+     2.58074241380515,
+     2.605085371098084,
+     2.6077316415057803,
+     2.617665873560304,
+     2.6153419886305724
+    ]
+   },
+   "on_slow": {
+    "base": [
+     3.530296123771327,
+     3.538584768279388,
+     3.5095905819195754,
+     3.568383008835789,
+     3.491770578875328
+    ],
+    "slow_final": [
+     3.046863579152878,
+     3.030191416766608,
+     3.038963711987938,
+     3.0016760015393684,
+     2.9939739801673775
+    ],
+    "fast_final": [
+     3.105774429981168,
+     3.1251804974214448,
+     3.139120191213923,
+     3.1305427703917794,
+     3.1556867307541023
+    ]
+   },
+   "base_constants": {
+    "CONTEXT": "6",
+    "EMBED_DIM": "16",
+    "HIDDEN": "128",
+    "DEPTH": "1",
+    "ACTIVATION": "\"tanh\"",
+    "BATCH_SIZE": "32",
+    "TRAIN_SEQ_LEN": "16",
+    "OPTIMIZER": "\"adam\"",
+    "LR": "0.003",
+    "ADAM_BETAS": "(0.9, 0.99)",
+    "WEIGHT_DECAY": "0.0",
+    "WARMUP_RATIO": "0.0",
+    "WARMDOWN_RATIO": "0.5",
+    "FINAL_LR_FRAC": "0.0",
+    "INIT_SCALE": "1.0",
+    "EVAL_BATCH_SIZE": "64",
+    "SEED": "42",
+    "CPU_PEAK_FLOPS": "1e11"
+   }
+  }
+ ],
+ "verdict": {
+  "per_seed": [
+   {
+    "seed": 0,
+    "D": 0.2568540758186284,
+    "rho": 0.37666797705575256,
+    "gain_transferred": 0.1552121527146073,
+    "gain_own": 0.4120662285332357,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": -0.08829068069712775,
+     "rho": 1.1404262528612792,
+     "failed_runs": 0
+    }
+   },
+   {
+    "seed": 1,
+    "D": 0.11666198754154866,
+    "rho": 0.6965733841231285,
+    "gain_transferred": 0.2678197336957515,
+    "gain_own": 0.3844817212373002,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": 0.06678364145616733,
+     "rho": 0.8986005624241656,
+     "failed_runs": 0
+    }
+   },
+   {
+    "seed": 2,
+    "D": -0.07558868992547785,
+    "rho": 1.276426979909458,
+    "gain_transferred": 0.3490377213848399,
+    "gain_own": 0.27344903145936206,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": 0.25680975543913265,
+     "rho": 0.5764333493807092,
+     "failed_runs": 0
+    }
+   },
+   {
+    "seed": 3,
+    "D": -0.0002682474961588355,
+    "rho": 1.000965319338328,
+    "gain_transferred": 0.27815296968915515,
+    "gain_own": 0.2778847221929963,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": 0.17804423829895688,
+     "rho": 0.7517920889217554,
+     "failed_runs": 0
+    }
+   },
+   {
+    "seed": 4,
+    "D": 0.03982926121950614,
+    "rho": 0.8596133887612961,
+    "gain_transferred": 0.24388199064469873,
+    "gain_own": 0.28371125186420487,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": 0.18353767343127902,
+     "rho": 0.7243797883399463,
+     "failed_runs": 0
+    }
+   },
+   {
+    "seed": 5,
+    "D": 0.0436138171520799,
+    "rho": 0.8457924919007226,
+    "gain_transferred": 0.2392116930299646,
+    "gain_own": 0.2828255101820445,
+    "failed_runs_transferred": 0,
+    "failed_runs_own": 0,
+    "transferred_loses_to_base": false,
+    "reverse": {
+     "D": 0.10892718602964946,
+     "rho": 0.7844695950556935,
+     "failed_runs": 0
+    }
+   }
+  ],
+  "primary_D": {
+   "n": 6,
+   "mean": 0.06351703405168774,
+   "sd": 0.1136484148685608,
+   "t_ci95": [
+    -0.055749662929064664,
+    0.18278373103244014
+   ],
+   "p_one_sided": 0.1146476942652455,
+   "mde_80pct_power": 0.13615560037432078,
+   "pass": false
+  },
+  "rho": {
+   "n": 6,
+   "mean": 0.8426732568481143,
+   "sd": 0.300666413361435,
+   "t_ci95": [
+    0.5271432069469262,
+    1.1582033067493025
+   ],
+   "p_one_sided": 0.0005012302696976705,
+   "mde_80pct_power": 0.36021106032112943
+  },
+  "reverse_D": {
+   "n": 6,
+   "mean": 0.11763530232634294,
+   "sd": 0.1203570717895006,
+   "t_ci95": [
+    -0.008671698323078555,
+    0.2439423029757644
+   ],
+   "p_one_sided": 0.031036141498838547,
+   "mde_80pct_power": 0.1441928546715524
+  },
+  "failed_runs_transferred": 0,
+  "failed_runs_own": 0,
+  "seeds_transferred_loses_to_base": 0
+ }
+}

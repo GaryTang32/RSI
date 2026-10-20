@@ -1,0 +1,33 @@
+[llm call 1]
+SYSTEM: You are an expert Python programmer and mathematician. You excel at writing correct computational code.
+
+PROMPT: Solve this problem by writing Python code:
+
+Sawyer's ledger starts at 54341. Add 74690, subtract 33538, add 54 payments of 35540, subtract 62 refunds of 30109, and add 59 deposits of 43185. What is the final balance?
+
+Write Python code that:
+1. Computes the answer
+2. Prints it with: print(ANSWER)
+
+Provide ONLY the Python code, no explanation.
+REPLY: ```python
+ANSWER = 54341
+ANSWER += 74690
+ANSWER -= 33538
+ANSWER += 54 * 35540
+ANSWER -= 62 * 30109
+ANSWER += 59 * 43185
+
+print(ANSWER)
+```
+[python]
+ANSWER = 54341
+ANSWER += 74690
+ANSWER -= 33538
+ANSWER += 54 * 35540
+ANSWER -= 62 * 30109
+ANSWER += 59 * 43185
+
+print(ANSWER)
+[output]
+2695810

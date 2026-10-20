@@ -1,0 +1,9 @@
+{
+ "name": "no_memory",
+ "artifact_id": "72ed6e6ad83f02354f74709f5b20f9b197a7a1aedefcd9f78c86d86ef9fee08a",
+ "created_at": 1790343349.5327203,
+ "status": "evaluated",
+ "iteration": 0,
+ "kind": "baseline",
+ "order": 1
+}

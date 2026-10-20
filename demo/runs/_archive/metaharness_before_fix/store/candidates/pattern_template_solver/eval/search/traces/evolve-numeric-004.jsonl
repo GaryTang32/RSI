@@ -1,0 +1,8 @@
+[python]
+
+result = 52**12
+answer = sum(int(d) for d in str(result))
+print(f"ANSWER: {answer}")
+
+[output]
+ANSWER: 100

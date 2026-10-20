@@ -1,0 +1,177 @@
+{
+ "run": "tinylm_offline",
+ "out_dir": "validation/autoresearch/tinylm_offline",
+ "trace_md": "validation/autoresearch/tinylm_offline/TRACE.md",
+ "stop_reason": "max_rounds",
+ "wall_s": 358.3,
+ "baseline_val_bpb": 2.8383331236272045,
+ "final_val_bpb": [
+  2.5172112370405184
+ ],
+ "analysis": {
+  "n_rows": 26,
+  "n_experiments": 25,
+  "n_keep": 9,
+  "n_discard": 14,
+  "n_crash": 3,
+  "keep_rate": 0.391304347826087,
+  "baseline": 2.8383331236272045,
+  "best": 2.5172112370405184,
+  "improvement": 0.32112188658668606,
+  "total_keep_delta": 0.32112188658668606,
+  "top_hits": [
+   {
+    "exp": 16,
+    "commit": "42d39be",
+    "description": "LR 0.003 -> 0.006",
+    "delta": 0.1333399664371151,
+    "metric": 2.5836099536523762
+   },
+   {
+    "exp": 17,
+    "commit": "40d7955",
+    "description": "LR 0.006 -> 0.012",
+    "delta": 0.06516590316693449,
+    "metric": 2.5184440504854417
+   },
+   {
+    "exp": 10,
+    "commit": "63a7f63",
+    "description": "HIDDEN 128 -> 256",
+    "delta": 0.03938217367919439,
+    "metric": 2.7575423379795714
+   },
+   {
+    "exp": 5,
+    "commit": "abaac1d",
+    "description": "ACTIVATION 'tanh' -> 'relu'",
+    "delta": 0.0337051708884486,
+    "metric": 2.804627952738756
+   },
+   {
+    "exp": 11,
+    "commit": "3e8f0ff",
+    "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+    "delta": 0.022646440651557853,
+    "metric": 2.7348958973280135
+   },
+   {
+    "exp": 12,
+    "commit": "518197b",
+    "description": "WARMDOWN_RATIO 0.3 -> 0.1",
+    "delta": 0.017945977238522204,
+    "metric": 2.7169499200894913
+   },
+   {
+    "exp": 9,
+    "commit": "0137708",
+    "description": "SEED 42 -> 397",
+    "delta": 0.007703441079990103,
+    "metric": 2.7969245116587658
+   },
+   {
+    "exp": 24,
+    "commit": "7a38ff1",
+    "description": "CONTEXT 6 -> 4",
+    "delta": 0.0012328134449233197,
+    "metric": 2.5172112370405184
+   }
+  ],
+  "improvement_pct": 11.313749042124881,
+  "experiments_per_hour": 295.5993416764221
+ },
+ "counters": {
+  "rejected": 1,
+  "duplicate": 0,
+  "invalid": 0,
+  "fix_attempts": 0,
+  "fixed": 0
+ },
+ "crash_kinds": {
+  "violation": 1,
+  "oom": 1,
+  "nan": 1
+ },
+ "noise": {
+  "delta": 0.03454203915020159,
+  "sd_null": 0.017271019575100795,
+  "z": 2.0,
+  "mode": "repeat",
+  "n": 4
+ },
+ "reeval": {
+  "final": {
+   "mean": 2.5245236659825117,
+   "lo": 2.513358716287401,
+   "hi": 2.5392009699566964,
+   "n": 3,
+   "values": [
+    2.5392009699566964,
+    2.521011311703437,
+    2.513358716287401
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "baseline": {
+   "mean": 2.8196128876077715,
+   "lo": 2.8051793717436078,
+   "hi": 2.829086057453312,
+   "n": 3,
+   "values": [
+    2.8245732336263942,
+    2.829086057453312,
+    2.8051793717436078
+   ],
+   "n_crash": 0,
+   "seeds": [
+    10000,
+    10001,
+    10002
+   ]
+  },
+  "mode": "hardened",
+  "recorded_best": 2.5172112370405184,
+  "optimism_gap": 0.007312428941993243
+ },
+ "n_kept_after_baseline": 8,
+ "shadow_baseline": {
+  "test_iid": {
+   "S": 2.8882360074139326
+  },
+  "test_shift": {
+   "S": 2.956870583293836
+  }
+ },
+ "shadow_final": {
+  "test_iid": {
+   "S": 2.6074416814994055
+  },
+  "test_shift": {
+   "S": 2.663245496938551
+  }
+ },
+ "usage_total": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ },
+ "n_trace_events": 210,
+ "consistency": {
+  "ok": true,
+  "problems": [],
+  "checked": {
+   "rounds": 25,
+   "decisions": 25,
+   "gates": 21,
+   "monitors": 8,
+   "tsv_rows": 26
+  }
+ },
+ "agent": "MockResearchAgent (greedy, crash 12%, exploit 12%)"
+}

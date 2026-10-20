@@ -1,0 +1,197 @@
+```json
+{
+  "change": "Improve frontier ranking by recent failure signals and fix recovery slot allocation; deprioritize repeatedly-failing branches while maintaining parallelism and avoiding hard closures",
+  "hypothesis": "The current policy doesn't adequately rank frontiers by recent failure patterns, leading to wasted probes on branches that fail consistently (e.g., compile_other every attempt). Ranking by both anchor *and* recent failure rate will defer such branches in favor of promising ones, while using rounding (not int-floor) for recovery slots ensures recovery attempts are actually allocated. This preserves parallelism, prevents premature closure of repairable branches, and focuses probes on higher-signal decisions.",
+  "components": ["batch_rule", "frontier_ranking", "recovery_allocation"]
+}
+```
+
+=== FILE: method.py ===
+"""Adaptive exploration with trajectory-guided batching, recent-failure signals, and beta-controlled thresholds.
+
+Prefix signals: branch trajectories (successful anchors, failure patterns, recovery patterns, recent failure rate),
+relative improvement vs baseline and parent. Batch rule: cold start opens all roots in parallel; warm start ranks
+frontiers by promise (anchor strength, recent success trend, recent failure rate) and recovery potential (repairable
+failures on branches with prior success); assemble portfolio balancing exploitation (strong frontiers with low recent
+failure), exploration (new roots), recovery (fixable failures); respect max_parallelism. Beta schedule: high beta
+(0.8-1.0) favors wide exploration, deep patience, generous recovery slots; low beta (0.0-0.2) favors exploitation,
+aggressive deprioritization, minimal recovery slots; default beta=0.6 balances exploitation and recovery. Recovery
+slots use rounding to ensure allocation at W=3. Grid planning: widen when roots improve early (many branches show
+early success), deepen when refinements improve late (better scores at depth >1), shrink when hard failures dominate.
+Safeguards: (1) recent_failure_rate ranks frontiers so branches with repeated repairable failures are deprioritized
+but not closed without depth evidence; (2) recovery slots are rounded, not truncated, ensuring recovery attempts are
+allocated; (3) branches resume after successful re-attempt; (4) parallel batching with fallback fill prevents serial
+probes and premature stops; (5) soft-closure only after sufficient depth and consistent non-improvement.
+"""
+
+from policy_api import (
+    GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, is_repairable, branch_promising, branch_failed_hard,
+    probe_improved_vs_parent
+)
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+
+    def _schedule(self, beta):
+        """Adapt exploration and pruning thresholds by beta [0, 1].
+        
+        High beta (0.8-1.0): wide/patient (more recovery, deeper soft-close)
+        Low beta (0.0-0.2): narrow/eager (less recovery, earlier soft-close)
+        Default beta=0.6: moderate balance
+        """
+        return {
+            "recovery_frac": 0.15 + 0.25 * beta,  # 0.15-0.4: recovery slots per batch
+            "hard_prune_depth": max(1, int(1 + 2 * beta)),  # 1-3 attempts before hard-close
+            "soft_prune_depth": max(2, int(2 + 3 * beta)),  # 2-5 attempts before soft-close
+        }
+
+    def plan_grid(self, context):
+        """Adapt grid size (branches and depth) from history of gain timing and failures.
+        
+        Widen when roots show early gains → opportunity for more parallelism.
+        Deepen when refinements show late gains → refinement is productive.
+        Shrink when hard failures dominate → avoid wasting probes on broken paths.
+        """
+        if not context.history:
+            return GridPlan(int(context.fallback_branch_count),
+                          int(context.fallback_refine_count), "bootstrap")
+        
+        recent = context.history[-min(5, len(context.history)):]
+        early_gain_avg = sum(m.get("gain_early", 0.0) for m in recent) / len(recent)
+        late_gain_avg = sum(m.get("gain_late", 0.0) for m in recent) / len(recent)
+        hard_fail_avg = sum(m.get("hard_fail_frac", 0.0) for m in recent) / len(recent)
+        
+        branch_count = int(context.fallback_branch_count)
+        refine_count = int(context.fallback_refine_count)
+        reason = []
+        
+        # Widen if roots improve early (suggests more branches would help)
+        if early_gain_avg > 0.5:
+            branch_count = min(int(context.hard_max_branch_count), int(branch_count * 1.2))
+            reason.append("widen: early gains")
+        
+        # Deepen if refinements improve late (suggests depth is productive)
+        if late_gain_avg > 0.3:
+            refine_count = min(int(context.hard_max_refine_count), int(refine_count * 1.2))
+            reason.append("deepen: late gains")
+        
+        # Shrink if hard failures dominate (environment issues, not agent)
+        if hard_fail_avg > 0.4:
+            branch_count = max(1, int(branch_count * 0.8))
+            reason.append("shrink: hard failures")
+        
+        return GridPlan(
+            min(int(context.hard_max_branch_count), max(1, branch_count)),
+            min(int(context.hard_max_refine_count), max(0, refine_count)),
+            "; ".join(reason) if reason else "stable"
+        )
+
+    def solve(self, question, budget=None):
+        """Adaptive exploration loop with trajectory-guided frontier ranking."""
+        question.reset()
+        res = SimResult()
+        sch = self._schedule(self.beta)
+        W = question.max_parallelism
+        
+        while not _budget_done(question, budget):
+            legal = question.legal_actions()
+            if not legal:
+                break
+            
+            prefix = question.observed()
+            
+            if not prefix:
+                # Cold start: open all roots in parallel
+                roots = question.legal_roots()
+                batch = roots[:W]
+            else:
+                # Warm start: trajectory-guided adaptive selection with failure signals
+                trajs = branch_trajectories(prefix)
+                baseline = question.baseline_score
+                
+                # Identify clearly hard-failed branches (environment/dependency issues)
+                closed_branches = set()
+                for bid, traj in trajs.items():
+                    if branch_failed_hard(traj, window=int(sch["hard_prune_depth"])):
+                        closed_branches.add(bid)
+                    # Soft closure: sufficient depth, not promising, and all recent failures repairable
+                    elif len(traj) >= int(sch["soft_prune_depth"]):
+                        if not branch_promising(traj, baseline):
+                            tail = traj[-max(1, int(sch["hard_prune_depth"])):]
+                            if tail and all(is_repairable(o) for o in tail):
+                                closed_branches.add(bid)
+                
+                # Categorize legal actions by potential and recent failure signal
+                roots_available = [c for c in legal if question.meta(c).attempt == 0]
+                exploit_candidates = []  # (cell, recent_failure_rate, anchor_score_negated)
+                repair_candidates = []   # (cell, anchor_score_negated)
+                
+                for cell in legal:
+                    m = question.meta(cell)
+                    # Skip roots and closed branches
+                    if m.attempt == 0 or m.branch in closed_branches:
+                        continue
+                    
+                    traj = trajs.get(m.branch)
+                    if not traj:
+                        continue
+                    
+                    anchor = successful_anchor(traj)
+                    
+                    # Calculate recent failure rate (last few attempts)
+                    recent_window = min(3, len(traj))
+                    recent_obs = traj[-recent_window:]
+                    recent_failure_rate = sum(1 for o in recent_obs if not o.success) / len(recent_obs)
+                    
+                    # Exploitation: branch is promising (anchor + improvement trend)
+                    if branch_promising(traj, baseline):
+                        exploit_candidates.append((
+                            cell,
+                            recent_failure_rate,  # Rank higher when low (ascending sort)
+                            -(anchor if anchor is not None else 0.0)  # Rank higher when high anchor (descending)
+                        ))
+                    # Recovery: repairable failure on a branch with prior success
+                    elif is_repairable(traj[-1]) and anchor is not None:
+                        repair_candidates.append((cell, -(anchor or 0.0)))
+                
+                # Sort: low recent failure rate (stable branches first), then by high anchor
+                exploit_candidates.sort(key=lambda x: (x[1], x[2]))
+                repair_candidates.sort(key=lambda x: x[1])
+                
+                # Build batch with slot allocation
+                batch = []
+                recovery_slots = max(0, round(W * sch["recovery_frac"]))
+                exploitation_slots = W - recovery_slots
+                
+                # Priority 1: Exploit (best branches by recent stability and anchor)
+                for cell, _, _ in exploit_candidates[:exploitation_slots]:
+                    batch.append(cell)
+                
+                # Priority 2: Explore (open new roots to fill exploitation slots)
+                for cell in roots_available[:exploitation_slots - len(batch)]:
+                    batch.append(cell)
+                
+                # Priority 3: Repair (attempt recovery on repairable failures)
+                for cell, _ in repair_candidates[:recovery_slots]:
+                    batch.append(cell)
+                
+                # Priority 4: Fallback (fill remaining slots with any legal cell if needed)
+                if len(batch) < W:
+                    remaining = [c for c in legal if c not in batch]
+                    for cell in remaining[:W - len(batch)]:
+                        batch.append(cell)
+            
+            if not batch:
+                break
+            
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        res.stopped = "no legal cell" if not question.legal_actions() else "done"
+        return finalize_result(question, res)
+```

@@ -1,0 +1,138 @@
+{
+ "run": "agentqa_live",
+ "setup": "AgentQA two-module harness (rsi.gepa.two_module_harness: solver prompt -> optional Python tool -> reporter prompt; harness.py frozen, components prompts/solver.md + prompts/reporter.md). Suite seed 0: |D_train| = 10 evolve + |D_pareto| = 8 val (numeric family), sealed holdout 6 (numeric) + ood 4 (dates / numbertheory / strings / lists, 1 each). GEPA defaults (b = 3, Pareto, round-robin, strict acceptance, no merge), seed 0. Task model AND reflection LM = claude haiku (ClaudeCLI('haiku') behind a fresh CachedLLM). max_metric_calls = 100 (not 120: haiku's long computations cost ~$0.007 per task call, so 120 would not fit the $3 / 40 min stage limits), workers 4, safety Budget(max_usd=1.2 loop spend, max_wall_s=1800).",
+ "stop_reason": "max_usd",
+ "iterations": 5,
+ "rollouts": 51,
+ "rollouts_by_phase": {
+  "seed_val": 8,
+  "minibatch_parent": 15,
+  "minibatch_child": 12,
+  "val_reflective": 16,
+  "merge_subsample": 0,
+  "val_merge": 0
+ },
+ "n_candidates": 3,
+ "n_proposals": 4,
+ "n_accepted": 2,
+ "seed_val": 0.5,
+ "best_val": 0.5,
+ "best_idx": 0,
+ "transfer_report": {
+  "val": {
+   "seed": {
+    "S": 0.5,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.5,
+    "vs_seed": {
+     "mean_diff": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 8,
+     "p_better": 0.0
+    }
+   }
+  },
+  "holdout": {
+   "seed": {
+    "S": 0.6666666666666666,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.6666666666666666,
+    "vs_seed": {
+     "mean_diff": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 6,
+     "p_better": 0.0
+    }
+   }
+  },
+  "ood": {
+   "seed": {
+    "S": 0.0,
+    "vs_seed": null
+   },
+   "best": {
+    "S": 0.0,
+    "vs_seed": {
+     "mean_diff": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n": 4,
+     "p_better": 0.0
+    }
+   }
+  }
+ },
+ "spend_usd": {
+  "loop": 1.2167530000000002,
+  "shadow_monitor": 0.164102,
+  "report": 0.0,
+  "total_from_meters": 1.3808550000000002
+ },
+ "loop_usage": {
+  "task": {
+   "calls": 94,
+   "input_tokens": 89732,
+   "output_tokens": 205265,
+   "cost_usd": 1.1160570000000003,
+   "latency_s": 1832.458086490631,
+   "total_tokens": 294997
+  },
+  "reflection": {
+   "calls": 4,
+   "input_tokens": 20823,
+   "output_tokens": 11818,
+   "cost_usd": 0.100696,
+   "latency_s": 137.75352430343628,
+   "total_tokens": 32641
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 8206,
+   "output_tokens": 61021,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 69227
+  },
+  "_total": {
+   "calls": 98,
+   "input_tokens": 118761,
+   "output_tokens": 278104,
+   "cost_usd": 1.2167530000000002,
+   "latency_s": 1970.2116107940674,
+   "total_tokens": 396865
+  }
+ },
+ "shadow_usage": {
+  "shadow:task": {
+   "calls": 20,
+   "input_tokens": 17427,
+   "output_tokens": 29335,
+   "cost_usd": 0.164102,
+   "latency_s": 280.3145444393158,
+   "total_tokens": 46762
+  },
+  "_total": {
+   "calls": 20,
+   "input_tokens": 17427,
+   "output_tokens": 29335,
+   "cost_usd": 0.164102,
+   "latency_s": 280.3145444393158,
+   "total_tokens": 46762
+  }
+ },
+ "wall_s": {
+  "loop_incl_monitor": 989.9691646099091,
+  "report": 0.09648346900939941
+ },
+ "cache": "/home/user/RSI/validation/gepa/.cache_agentqa_live",
+ "exec_errors": 0,
+ "reflection_failed": 0,
+ "reflection_unparsed": 0,
+ "infra_errors": 0
+}

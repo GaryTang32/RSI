@@ -1,0 +1,88 @@
+{
+ "evolve-numeric-000": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1224.0
+ },
+ "evolve-numeric-001": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 3975.0
+ },
+ "evolve-numeric-002": {
+  "best_system": "answer_format_smart_extraction",
+  "score": 1.0,
+  "cost": 1748.0
+ },
+ "evolve-numeric-003": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 5898.0
+ },
+ "evolve-numeric-004": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1521.0
+ },
+ "evolve-numeric-005": {
+  "best_system": "result_variable_extraction",
+  "score": 1.0,
+  "cost": 5530.0
+ },
+ "evolve-numeric-006": {
+  "best_system": "answer_format_smart_extraction",
+  "score": 1.0,
+  "cost": 3758.0
+ },
+ "evolve-numeric-007": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 1419.0
+ },
+ "evolve-numeric-008": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 2042.0
+ },
+ "evolve-numeric-009": {
+  "best_system": "python_enforced_arithmetic",
+  "score": 1.0,
+  "cost": 1691.0
+ },
+ "evolve-numeric-010": {
+  "best_system": "answer_format_smart_extraction",
+  "score": 1.0,
+  "cost": 7611.0
+ },
+ "evolve-numeric-011": {
+  "best_system": "python_enforced_arithmetic",
+  "score": 1.0,
+  "cost": 1480.0
+ },
+ "_pareto": [
+  {
+   "system": "answer_format_smart_extraction",
+   "score": 0.5,
+   "val_accuracy": 50.0,
+   "context_cost": 3429.0
+  },
+  {
+   "system": "seed",
+   "score": 0.3333333333333333,
+   "val_accuracy": 33.3,
+   "context_cost": 2201.4166666666665
+  },
+  {
+   "system": "python_enforced_arithmetic",
+   "score": 0.25,
+   "val_accuracy": 25.0,
+   "context_cost": 1696.6666666666667
+  }
+ ],
+ "_best": {
+  "system": "answer_format_smart_extraction",
+  "score": 0.5
+ },
+ "_hypervolume": 1109.9777777777776,
+ "_hv_ref_cost": 4578.191666666667
+}

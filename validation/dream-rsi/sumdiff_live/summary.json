@@ -1,0 +1,321 @@
+{
+ "method": "dream-rsi",
+ "rounds": 3,
+ "stop_reason": "rounds",
+ "baseline": "ed8962e6b1",
+ "best": "5d08d33d5d",
+ "first": {
+  "iteration": 1,
+  "calls": 12,
+  "cum_calls": 12,
+  "round_best": 1.023749252415818,
+  "best": 1.023749252415818,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 3,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 12,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.895,
+    0.895,
+    0.895,
+    0.895
+   ],
+   "selected": 0,
+   "selected_label": "initial",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.895
+   },
+   "changes": [
+    "Implement adaptive trajectory-guided policy with smart batching, beta-controlled thresholds, and adaptive grid planning",
+    "Fix indentation error on line 170: `batch.append(cell)` under Priority 3 repair loop was not indented, causing syntax error.",
+    "Prioritize recovery over exploration and fix soft-closure to spare branches with successful anchors"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 12.0,
+    "k": 4.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.0,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 874.286
+ },
+ "last": {
+  "iteration": 3,
+  "calls": 12,
+  "cum_calls": 36,
+  "round_best": 1.0304168748055738,
+  "best": 1.0304168748055738,
+  "root": 1.0304168748055738,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 3,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 12,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 2352.725
+ },
+ "usage": {
+  "agent": {
+   "calls": 36,
+   "input_tokens": 233339,
+   "output_tokens": 316696,
+   "cost_usd": 2.0303549999999997,
+   "latency_s": 3299.547876358032,
+   "total_tokens": 550035
+  },
+  "developer": {
+   "calls": 9,
+   "input_tokens": 169724,
+   "output_tokens": 107254,
+   "cost_usd": 0.8756369999999999,
+   "latency_s": 1080.8141112327576,
+   "total_tokens": 276978
+  },
+  "_cost": {
+   "agent_calls": 36,
+   "agent_tokens": 550035,
+   "agent_usd": 2.0303549999999997,
+   "eval_s": 3.033918619155884,
+   "online_rounds": 12,
+   "online_wall_s": 1270.9240176677704,
+   "replay_episodes": 30,
+   "replay_cpu_s": 0.09645925372412123,
+   "replay_wall_s": 0.6465530395507812,
+   "developer_calls": 9,
+   "developer_tokens": 276978,
+   "developer_usd": 0.875637,
+   "replay_ms_per_episode": 3.2153084574707074
+  },
+  "_total": {
+   "agent_calls": 36,
+   "developer_calls": 9,
+   "usd": 2.9059919999999995
+  }
+ },
+ "meta": {
+  "policy": "\"\"\"Parallel refine (pi_1, the paper's initial policy and the Recursive Fixed Exploration baseline).\n\n\"launches multiple independent exploration workspaces in parallel, with each workspace\nmaintaining its own local discovery trajectory and repeatedly refining its current\ncandidate\" [paper:\u00a74 p.7].\n\nPrefix signals: none (a fixed wave schedule). Batch rule: every legal cell ordered by\n(attempt, branch) - all roots first, then deepen every open branch - up to\nmax_parallelism. Beta: read but unused (the fixed baseline has no dial). Grid planning:\nalways the context's fallback grid. Stops when no legal cell remains.\n\"\"\"\nfrom policy_api import GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result\n\nNAME = \"OptimalPolicy\"\n\n\nclass OptimalPolicy(LLMDesignedMethod):\n    def __init__(self, config=None):\n        super().__init__(config)\n        self.beta = float(self.config.get(\"beta\", 0.6))\n\n    def plan_grid(self, context):\n        return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),\n                        \"parallel refine: fixed fallback grid (width x depth never adapts)\")\n\n    def solve(self, question, budget=None):\n        question.reset()\n        res = SimResult()\n        while not _budget_done(question, budget):\n            legal = question.legal_actions()\n            if not legal:\n                break\n            order = sorted(legal, key=lambda c: (question.meta(c).attempt, question.meta(c).branch))\n            batch = order[: question.max_parallelism]\n            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))\n        res.stopped = \"no legal cell left\"\n        return finalize_result(question, res)\n",
+  "policy_id": "2f081731b8159ae62b90840cfa1a902b6ae867c22f34101935d878c63175ad3f",
+  "policy_ledger": "<rsi.core.ledger.Ledger object at 0x7fa081db8150>",
+  "worlds": [
+   "<rsi.dream.tree.DiscoveryTree object at 0x7fa081c31e90>",
+   "<rsi.dream.tree.DiscoveryTree object at 0x7fa081cae8d0>",
+   "<rsi.dream.tree.DiscoveryTree object at 0x7fa081c6e2d0>"
+  ],
+  "manifests": [
+   {
+    "iteration": 1,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 3,
+    "probe_work": 12,
+    "decision_rounds": 4,
+    "batch_sizes": [
+     3,
+     3,
+     3,
+     3
+    ],
+    "root_score": 0.9104910395109694,
+    "round_best": 1.023749252415818,
+    "final_best": 1.023749252415818,
+    "beta": 0.6,
+    "gain_early": 0.9645639784000751,
+    "gain_late": 0.03543602159992487,
+    "fail_frac": 0.5,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 12,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null
+   },
+   {
+    "iteration": 2,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 3,
+    "probe_work": 12,
+    "decision_rounds": 4,
+    "batch_sizes": [
+     3,
+     3,
+     3,
+     3
+    ],
+    "root_score": 1.023749252415818,
+    "round_best": 1.0304168748055738,
+    "final_best": 1.0304168748055738,
+    "beta": 0.6,
+    "gain_early": 0.9945209819917495,
+    "gain_late": 0.005479018008250458,
+    "fail_frac": 0.4166666666666667,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 12,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null
+   },
+   {
+    "iteration": 3,
+    "planned_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "effective_grid": {
+     "branch_count": 3,
+     "refine_count": 3,
+     "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+    },
+    "opened_width": 3,
+    "max_depth": 3,
+    "probe_work": 12,
+    "decision_rounds": 4,
+    "batch_sizes": [
+     3,
+     3,
+     3,
+     3
+    ],
+    "root_score": 1.0304168748055738,
+    "round_best": 1.0304168748055738,
+    "final_best": 1.0304168748055738,
+    "beta": 0.6,
+    "gain_early": 0.0,
+    "gain_late": 0.0,
+    "fail_frac": 0.08333333333333333,
+    "hard_fail_frac": 0.0,
+    "policy": "2f081731b815",
+    "agent_calls": 12,
+    "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)",
+    "plan_error": null
+   }
+  ],
+  "best_score": 1.0304168748055738,
+  "seed_score": 0.9104910395109694,
+  "cost": {
+   "agent_calls": 36,
+   "agent_tokens": 550035,
+   "agent_usd": 2.0303549999999997,
+   "eval_s": 3.033918619155884,
+   "online_rounds": 12,
+   "online_wall_s": 1270.9240176677704,
+   "replay_episodes": 30,
+   "replay_cpu_s": 0.09645925372412123,
+   "replay_wall_s": 0.6465530395507812,
+   "developer_calls": 9,
+   "developer_tokens": 276978,
+   "developer_usd": 0.875637,
+   "replay_ms_per_episode": 3.2153084574707074
+  },
+  "config": {
+   "rounds": 3,
+   "W": 3,
+   "branch_count": 3,
+   "refine_count": 3,
+   "hard_max_branch": 4,
+   "hard_max_refine": 3,
+   "K1": null,
+   "K2": null,
+   "M": 3,
+   "m_semantics": "revisions",
+   "objective": "eq1",
+   "beta1": 0.01,
+   "beta2": 0.005,
+   "normalize": true,
+   "support": "clip",
+   "lam": 0.1,
+   "beta_grid": [
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+   ],
+   "sweep": true,
+   "root_mode": "earliest",
+   "hide_missing": false,
+   "selector": "argmax",
+   "include_incumbent": true,
+   "holdout_frac": 0.34,
+   "noise_z": 2.0,
+   "margin_floor": 0.01,
+   "sandbox": "subprocess",
+   "policy_timeout_s": 60.0,
+   "root": "best",
+   "dream": true,
+   "dream_last": false,
+   "guidance": false,
+   "guidance_strength": 0.8,
+   "max_calls": 40,
+   "agent_workers": null,
+   "leakage_check": true,
+   "seed": 0,
+   "trace": true,
+   "shadow_monitor": true,
+   "shadow_k": 1,
+   "shadow_workers": 2
+  }
+ }
+}

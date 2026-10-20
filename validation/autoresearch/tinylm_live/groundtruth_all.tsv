@@ -1,0 +1,10 @@
+commit	status	description	val_bpb	loop_metric_rerun	test_iid	test_shift
+906744c	keep	baseline	2.829327	2.836271	2.893636	2.962335
+568c10b	keep	Reduce BATCH_SIZE 32 -> 24	2.795149	2.801356	2.854778	2.916575
+a14417d	keep	Reduce BATCH_SIZE 24 -> 20 for more training steps in fixed budget	2.776319	2.773311	2.820386	2.904768
+cf01a07	keep	Reduce BATCH_SIZE 20 -> 16 for more training steps	2.750892	2.742342	2.791725	2.861285
+82fcdc2	keep	Reduce BATCH_SIZE 16 -> 12 for more training steps	2.732962	2.735740	2.789125	2.868185
+151c532	keep	Reduce BATCH_SIZE 12 -> 10 for more training steps	2.719324	2.718427	2.779701	2.852962
+20f4498	keep	Reduce BATCH_SIZE 10 -> 8 for more training steps	2.712675	2.712961	2.781315	2.869012
+518082c	keep	Reduce BATCH_SIZE 8 -> 6 for more training steps	2.708936	2.707661	2.772499	2.853951
+6448d3e	keep	Increase HIDDEN 128 -> 160 to better utilize the extra training steps from smaller batch size	2.687827	2.697972	2.783434	2.844305

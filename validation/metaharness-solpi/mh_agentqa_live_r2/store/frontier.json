@@ -1,0 +1,243 @@
+{
+ "systems": [
+  "seed",
+  "exploit-expression-evaluation",
+  "explore-tool-driven-computation",
+  "explore-direct-pattern-computation"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.5,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1482.0,
+      "holdout-numeric-001": 2567.0,
+      "holdout-numeric-002": 2461.0,
+      "holdout-numeric-003": 1423.0,
+      "holdout-numeric-004": 1305.0,
+      "holdout-numeric-005": 1116.0
+     },
+     "context_cost": 1725.6666666666667,
+     "tokens": 1725.6666666666667,
+     "families": {
+      "numeric": 0.5
+     }
+    },
+    "exploit-expression-evaluation": {
+     "split": "holdout",
+     "score": 0.6666666666666666,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1482.0,
+      "holdout-numeric-001": 2567.0,
+      "holdout-numeric-002": 2461.0,
+      "holdout-numeric-003": 1423.0,
+      "holdout-numeric-004": 1305.0,
+      "holdout-numeric-005": 1116.0
+     },
+     "context_cost": 1725.6666666666667,
+     "tokens": 1725.6666666666667,
+     "families": {
+      "numeric": 0.6666666666666666
+     }
+    },
+    "explore-tool-driven-computation": {
+     "split": "holdout",
+     "score": 0.8333333333333334,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1616.0,
+      "holdout-numeric-001": 1367.0,
+      "holdout-numeric-002": 1340.0,
+      "holdout-numeric-003": 1548.0,
+      "holdout-numeric-004": 1420.0,
+      "holdout-numeric-005": 1328.0
+     },
+     "context_cost": 1436.5,
+     "tokens": 1436.5,
+     "families": {
+      "numeric": 0.8333333333333334
+     }
+    },
+    "explore-direct-pattern-computation": {
+     "split": "holdout",
+     "score": 0.6666666666666666,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 2461.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 1116.0
+     },
+     "context_cost": 1788.5,
+     "tokens": 1788.5,
+     "families": {
+      "numeric": 0.6666666666666666
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "explore-tool-driven-computation",
+     "test_accuracy": 0.8333333333333334,
+     "context_cost": 1436.5
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.25,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1879.0,
+      "ood-numbertheory-000": 1285.0,
+      "ood-strings-000": 1080.0,
+      "ood-lists-000": 4609.0
+     },
+     "context_cost": 2213.25,
+     "tokens": 2213.25,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     }
+    },
+    "exploit-expression-evaluation": {
+     "split": "ood",
+     "score": 0.25,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1879.0,
+      "ood-numbertheory-000": 1285.0,
+      "ood-strings-000": 1080.0,
+      "ood-lists-000": 4609.0
+     },
+     "context_cost": 2213.25,
+     "tokens": 2213.25,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     }
+    },
+    "explore-tool-driven-computation": {
+     "split": "ood",
+     "score": 0.0,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 0.0,
+      "ood-lists-000": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1555.0,
+      "ood-numbertheory-000": 1725.0,
+      "ood-strings-000": 1487.0,
+      "ood-lists-000": 1943.0
+     },
+     "context_cost": 1677.5,
+     "tokens": 1677.5,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 0.0,
+      "lists": 0.0
+     }
+    },
+    "explore-direct-pattern-computation": {
+     "split": "ood",
+     "score": 0.25,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1879.0,
+      "ood-numbertheory-000": 1285.0,
+      "ood-strings-000": 1080.0,
+      "ood-lists-000": 4609.0
+     },
+     "context_cost": 2213.25,
+     "tokens": 2213.25,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "exploit-expression-evaluation",
+     "test_accuracy": 0.25,
+     "context_cost": 2213.25
+    },
+    {
+     "system": "explore-direct-pattern-computation",
+     "test_accuracy": 0.25,
+     "context_cost": 2213.25
+    },
+    {
+     "system": "seed",
+     "test_accuracy": 0.25,
+     "context_cost": 2213.25
+    },
+    {
+     "system": "explore-tool-driven-computation",
+     "test_accuracy": 0.0,
+     "context_cost": 1677.5
+    }
+   ]
+  }
+ }
+}

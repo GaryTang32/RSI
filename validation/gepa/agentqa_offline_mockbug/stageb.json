@@ -1,0 +1,1030 @@
+{
+ "run": "agentqa_offline_mockbug",
+ "have_reference_code": true,
+ "checks": {
+  "state_rollouts": "20/20",
+  "state_incumbent": "20/20",
+  "state_weights": "20/20",
+  "state_frontier_members": "20/20",
+  "state_pool": "20/20",
+  "parent_replay": "20/20",
+  "minibatch_replay_ref_sampler": "20/20",
+  "parent_eval_ids": "20/20",
+  "not_all_perfect": "7/7",
+  "round_robin": "7/7",
+  "proposal_parent_artifact": "7/7",
+  "prompt_template_verbatim": "7/7",
+  "prompt_has_b_examples": "7/7",
+  "prompt_no_val_or_sealed_inputs": "7/7",
+  "prompt_contains_minibatch_inputs": "7/7",
+  "reexec_parent_scores": "7/7",
+  "prompt_equals_reference_render": "7/7",
+  "child_equals_reference_parse": "7/7",
+  "other_files_unchanged": "7/7",
+  "diff_equals_store": "7/7",
+  "child_same_ids": "7/7",
+  "child_fresh_seeds": "7/7",
+  "gate_uses_eval_scores": "7/7",
+  "gate_recomputed": "7/7",
+  "decision": "7/7",
+  "ledger_rejected": "3/3",
+  "no_val_eval_for_rejected": "3/3",
+  "incumbent_after": "7/7",
+  "monitor_iff_incumbent_change": "7/7",
+  "val_charge": "4/4",
+  "val_covers_pareto": "4/4",
+  "val_seed_fixed": "4/4",
+  "ledger_node": "4/4",
+  "skip_perfect_rule": "13/13"
+ },
+ "final": {
+  "rollouts": true,
+  "by_phase": true,
+  "returned_argmax": true,
+  "seed_artifact_untouched": true,
+  "budget_identity": true,
+  "budget_identity_value": 121,
+  "stop_timing": true,
+  "stop_reason": "max_metric_calls"
+ },
+ "steps": [
+  {
+   "round": 0,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-009",
+    "evolve-numeric-001"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "sum_before": 1.0,
+   "sum_after": 0.0,
+   "gate": false,
+   "delta": -1.0,
+   "float_tie": false,
+   "child_artifact": "e301cbc89570a6cb9e96e8c9370ef62870ac5ac576854d366809d244df095741",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": -0.3889
+  },
+  {
+   "round": 1,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    1.0,
+    0.0
+   ],
+   "sum_before": 1.0,
+   "sum_after": 1.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "bb2deaab7dc19ae3919ebf5606dab5e741e3f0e0b8051fc8539b1562c1a435da",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": -0.1111
+  },
+  {
+   "round": 2,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-004",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    0.0,
+    1.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 2.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "864a0930f018daad52a25f15f6af480f0977caf71d78876f2c4c0a6a796036d2",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": 0.0556
+  },
+  {
+   "round": 3,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-006",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 3.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 1.0,
+   "child_artifact": "27daec3be8c6626b6fcaa348e887d2e485b2384135e1eab21d99772418b8c82a",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": 0.4722
+  },
+  {
+   "round": 4,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 1,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-003",
+    "evolve-numeric-008",
+    "evolve-numeric-009"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 5,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 1,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-005",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 6,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 1,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    0.0,
+    1.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 3.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 1.0,
+   "child_artifact": "bf811d715f411f311b911581d786e6e6c5a6c1fbfb4ecd83690f724fa67b6520",
+   "parent_artifact": "27daec3be8c6626b6fcaa348e887d2e485b2384135e1eab21d99772418b8c82a",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": 0.0
+  },
+  {
+   "round": 7,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 2,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-001",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    0.0,
+    1.0,
+    1.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 3.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 0.875,
+   "child_artifact": "2e477cd626a979c153296ee68c36e0387a8ab9b6d54130c710558044c395b9a2",
+   "parent_artifact": "bf811d715f411f311b911581d786e6e6c5a6c1fbfb4ecd83690f724fa67b6520",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": 0.1111
+  },
+  {
+   "round": 8,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 2,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-001",
+    "evolve-numeric-003",
+    "evolve-numeric-005"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 9,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 2,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-000",
+    "evolve-numeric-002",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 10,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 2,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-009",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 11,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "reexec_parent_scores": true,
+    "prompt_equals_reference_render": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 2,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-008",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    1.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 3.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 1.0,
+   "child_artifact": "01f5cea7907f37a94260b11a5ea06ad596cca2464c40cd1d0a5a1232dca5c227",
+   "parent_artifact": "bf811d715f411f311b911581d786e6e6c5a6c1fbfb4ecd83690f724fa67b6520",
+   "literal_answers_added": [],
+   "task_ids_added": [],
+   "true_gain_holdout_stageA": 0.0
+  },
+  {
+   "round": 12,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-002",
+    "evolve-numeric-006"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 13,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-004",
+    "evolve-numeric-001",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 14,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-009",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 15,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-005",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 16,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-003",
+    "evolve-numeric-009",
+    "evolve-numeric-005"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 17,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-000",
+    "evolve-numeric-006",
+    "evolve-numeric-004"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 18,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-001",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "round": 19,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 4,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-008",
+    "evolve-numeric-007"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  }
+ ],
+ "verdicts": [
+  {
+   "round": 0,
+   "verdict": "correct",
+   "why": ""
+  },
+  {
+   "round": 1,
+   "verdict": "correct",
+   "why": ""
+  },
+  {
+   "round": 2,
+   "verdict": "questionable",
+   "why": "false reject vs truth (+0.056)"
+  },
+  {
+   "round": 3,
+   "verdict": "correct",
+   "why": ""
+  },
+  {
+   "round": 4,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 5,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 6,
+   "verdict": "questionable",
+   "why": "false accept vs truth (+0.000)"
+  },
+  {
+   "round": 7,
+   "verdict": "correct",
+   "why": ""
+  },
+  {
+   "round": 8,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 9,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 10,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 11,
+   "verdict": "questionable",
+   "why": "false accept vs truth (+0.000)"
+  },
+  {
+   "round": 12,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 13,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 14,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 15,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 16,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 17,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 18,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  },
+  {
+   "round": 19,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  }
+ ],
+ "verdict_counts": {
+  "correct": 17,
+  "questionable": 3
+ }
+}

@@ -1,0 +1,9 @@
+[gepa] seed val=0.5000 |V|=8 |T|=10 components=['prompts/reporter.md', 'prompts/solver.md']
+[gepa] it=   0 rejected           rollouts=    14 cands=  1 best=0.5000
+[gepa] it=   1 accepted           rollouts=    28 cands=  2 best=0.5000
+[gepa] it=   2 accepted           rollouts=    42 cands=  3 best=0.5000
+[gepa] it=   3 rejected           rollouts=    48 cands=  3 best=0.5000
+[gepa] it=   4 skip_perfect       rollouts=    51 cands=  3 best=0.5000
+{"stop_reason": "max_usd", "rollouts": 51, "seed_val": 0.5, "best_val": 0.5, "spend_usd": {"loop": 1.2167530000000002, "shadow_monitor": 0.164102, "report": 0.0, "total_from_meters": 1.3808550000000002}}
+{"val": {"seed": {"S": 0.5, "vs_seed": null}, "best": {"S": 0.5, "vs_seed": {"mean_diff": 0.0, "lo": 0.0, "hi": 0.0, "n": 8, "p_better": 0.0}}}, "holdout": {"seed": {"S": 0.6666666666666666, "vs_seed": null}, "best": {"S": 0.6666666666666666, "vs_seed": {"mean_diff": 0.0, "lo": 0.0, "hi": 0.0, "n": 6, "p_better": 0.0}}}, "ood": {"seed": {"S": 0.0, "vs_seed": null}, "best": {"S": 0.0, "vs_seed": {"mean_diff": 0.0, "lo": 0.0, "hi": 0.0, "n": 4, "p_better": 0.0}}}}
+{"gate_arithmetic": {"passed": 4, "of": 4}, "diff_matches_store": {"passed": 4, "of": 4}, "decision_matches_ledger": {"passed": 4, "of": 4}, "val_eval_matches_ledger": {"passed": 2, "of": 2}, "pareto_weights_recomputed": {"passed": 5, "of": 5}, "round_robin_recomputed": {"passed": 4, "of": 4}, "minibatch_epoch_disjoint": {"passed": 5, "of": 5}, "val_eval_covers_D_pareto": {"passed": 3, "of": 3}, "returned_best_is_argmax_val": {"passed": 1, "of": 1}, "child_minibatch_same_ids_as_parent": {"passed": 4, "of": 4}} None

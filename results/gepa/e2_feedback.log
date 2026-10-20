@@ -1,0 +1,3 @@
+[saved] /home/user/RSI/results/gepa/e2_feedback.json
+[saved] /home/user/RSI/results/gepa/e2_feedback.png
+Final true test at B=3000: rich 0.900 [0.887, 0.912], rich_first_error 0.916 [0.904, 0.927], symptom 0.753 [0.725, 0.781], score_only 0.721 [0.690, 0.752], ScoreOnlyReflection(rich domain) 0.721 [0.690, 0.752]. Paired differences: rich - symptom +0.148 [+0.117, +0.179]; symptom - score_only +0.031 [-0.014, +0.075]; rich - ScoreOnlyReflection +0.179 [+0.146, +0.211]. At 800 rollouts: rich 0.758, symptom 0.502, score_only 0.492. Claim rich > symptom > score_only: ordering of means holds; rich text beats the text-free arms significantly (REPRODUCED); symptom vs score_only NOT significant. The primary paper never ran this ablation; it is argued, not measured there.

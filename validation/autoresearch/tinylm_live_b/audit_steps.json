@@ -1,0 +1,724 @@
+{
+ "run": "tinylm_live_b",
+ "steps": [
+  {
+   "round": 0,
+   "step": "baseline first (unmodified seed, status keep, row 1)",
+   "verdict": "correct",
+   "evidence": "seed c3640d1810, val_bpb 2.828834, row ['906744c', '2.828834', '0.1', 'keep', 'baseline']"
+  },
+  {
+   "round": 0,
+   "step": "fixed budget, warm-up excluded (locked clock)",
+   "verdict": "correct",
+   "evidence": "training_seconds 8.005 for budget 8.0; wall 8.589 s; steps 1389"
+  },
+  {
+   "round": 0,
+   "step": "noise band delta = z*sqrt(2)*sd",
+   "verdict": "correct",
+   "evidence": "values [2.848, 2.8387, 2.8293, 2.8288] -> delta 0.02573 (trace 0.02573)"
+  },
+  {
+   "round": 0,
+   "step": "shadow audit of baseline (write-only)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.879619476269963}, \"test_shift\": {\"S\": 2.9514861549111173}}"
+  },
+  {
+   "round": 1,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 906744c [2.8288339009396535]; expected 906744c [2.8288339009396535]"
+  },
+  {
+   "round": 1,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "1 tsv rows shown (expected 1); sealed numbers in context: []"
+  },
+  {
+   "round": 1,
+   "step": "claimed change == actual diff (exp0001 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Increase CONTEXT to 8 and HIDDEN to 160 for better representational capacity'; changed consts {'CONTEXT': ('6', '8'), 'HIDDEN': ('128', '160')}; unclaimed consts []; non-constant lines +0/-0; 2 knobs in one experiment"
+  },
+  {
+   "round": 1,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Increase CONTEXT to 8 and HIDDEN to 160 for better representational ca' not previously discarded/crashed; hypothesis: Byte-level text has short-range statistical patterns (punctuation, indentation, common word endings). Increasing context"
+  },
+  {
+   "round": 1,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 1,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0001 (experiment): metric 2.898957980534493, wall 8.682 s, ok"
+  },
+  {
+   "round": 1,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.828834 - cand 2.898958 = -0.070124 -> discard; loop: gate False, status discard"
+  },
+  {
+   "round": 1,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "5ec68a8\t2.898958\t0.1\tdiscard\tIncrease CONTEXT to 8 and HIDDEN to 160 for better representational capacity"
+  },
+  {
+   "round": 1,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "906744c -> 906744c (discard)"
+  },
+  {
+   "round": 1,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 906744c, best 2.828834, keeps 1"
+  },
+  {
+   "round": 2,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 906744c [2.8288339009396535]; expected 906744c [2.8288339009396535]"
+  },
+  {
+   "round": 2,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "2 tsv rows shown (expected 2); sealed numbers in context: []"
+  },
+  {
+   "round": 2,
+   "step": "claimed change == actual diff (exp0002 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Add L2 regularization (weight_decay=0.0001) to prevent overfitting after model size increa'; changed consts {'WEIGHT_DECAY': ('0.0', '0.0001')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 2,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Add L2 regularization (weight_decay=0.0001) to prevent overfitting aft' not previously discarded/crashed; hypothesis: The previous experiment failed when increasing model capacity (HIDDEN 128\u2192160, CONTEXT 6\u21928), suggesting overfitting or p"
+  },
+  {
+   "round": 2,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 2,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0002 (experiment): metric 2.876920116657834, wall 8.575 s, ok"
+  },
+  {
+   "round": 2,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.828834 - cand 2.876920 = -0.048086 -> discard; loop: gate False, status discard"
+  },
+  {
+   "round": 2,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "3c5b1c4\t2.876920\t0.1\tdiscard\tAdd L2 regularization (weight_decay=0.0001) to prevent overfitting after model size increase failed"
+  },
+  {
+   "round": 2,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "906744c -> 906744c (discard)"
+  },
+  {
+   "round": 2,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 906744c, best 2.828834, keeps 1"
+  },
+  {
+   "round": 3,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 906744c [2.8288339009396535]; expected 906744c [2.8288339009396535]"
+  },
+  {
+   "round": 3,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "3 tsv rows shown (expected 3); sealed numbers in context: []"
+  },
+  {
+   "round": 3,
+   "step": "claimed change == actual diff (exp0003 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget'; changed consts {'LR': ('0.003', '0.004')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 3,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Increase learning rate from 0.003 to 0.004 for faster convergence with' not previously discarded/crashed; hypothesis: With a fixed 8-second training budget, increasing the learning rate should enable faster optimization convergence. Previ"
+  },
+  {
+   "round": 3,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 3,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0003 (experiment): metric 2.7399703598292153, wall 8.549 s, ok"
+  },
+  {
+   "round": 3,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "correct",
+   "evidence": "gain +0.0889 vs noise band 0.0257"
+  },
+  {
+   "round": 3,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.828834 - cand 2.739970 = +0.088864 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 3,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "a285d1a\t2.739970\t0.1\tkeep\tIncrease learning rate from 0.003 to 0.004 for faster convergence within fixed budget"
+  },
+  {
+   "round": 3,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "906744c -> a285d1a (keep)"
+  },
+  {
+   "round": 3,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent a285d1a, best 2.739970, keeps 2"
+  },
+  {
+   "round": 3,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.8125654710869408}, \"test_shift\": {\"S\": 2.8757209619703863}}"
+  },
+  {
+   "round": 4,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent a285d1a [2.7399703598292153]; expected a285d1a [2.7399703598292153]"
+  },
+  {
+   "round": 4,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "4 tsv rows shown (expected 4); sealed numbers in context: []"
+  },
+  {
+   "round": 4,
+   "step": "claimed change == actual diff (exp0004 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Increase learning rate from 0.004 to 0.005 to further accelerate convergence'; changed consts {'LR': ('0.004', '0.005')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 4,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Increase learning rate from 0.004 to 0.005 to further accelerate conve' not previously discarded/crashed; hypothesis: The previous LR increase from 0.003\u21920.004 improved val_bpb by ~0.09, suggesting we remain in the regime where higher lea"
+  },
+  {
+   "round": 4,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 4,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0004 (experiment): metric 2.6973124314861963, wall 8.585 s, ok"
+  },
+  {
+   "round": 4,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "correct",
+   "evidence": "gain +0.0427 vs noise band 0.0257"
+  },
+  {
+   "round": 4,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.739970 - cand 2.697312 = +0.042658 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 4,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "533edda\t2.697312\t0.1\tkeep\tIncrease learning rate from 0.004 to 0.005 to further accelerate convergence"
+  },
+  {
+   "round": 4,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "a285d1a -> 533edda (keep)"
+  },
+  {
+   "round": 4,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 533edda, best 2.697312, keeps 3"
+  },
+  {
+   "round": 4,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.7554745538620558}, \"test_shift\": {\"S\": 2.815005873859263}}"
+  },
+  {
+   "round": 5,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 533edda [2.6973124314861963]; expected 533edda [2.6973124314861963]"
+  },
+  {
+   "round": 5,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "5 tsv rows shown (expected 5); sealed numbers in context: []"
+  },
+  {
+   "round": 5,
+   "step": "claimed change == actual diff (exp0005 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Disable learning rate warmdown (WARMDOWN_RATIO: 0.5 \u2192 0.0) to keep LR constant throughout '; changed consts {'WARMDOWN_RATIO': ('0.5', '0.0')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 5,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Disable learning rate warmdown (WARMDOWN_RATIO: 0.5 \u2192 0.0) to keep LR ' not previously discarded/crashed; hypothesis: With a fixed wall-clock budget and no validation-based early stopping, reducing LR in the later training phases wastes t"
+  },
+  {
+   "round": 5,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 5,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0005 (experiment): metric 2.725566733628821, wall 8.543 s, ok"
+  },
+  {
+   "round": 5,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.697312 - cand 2.725567 = -0.028254 -> discard; loop: gate False, status discard"
+  },
+  {
+   "round": 5,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "82bf089\t2.725567\t0.1\tdiscard\tDisable learning rate warmdown (WARMDOWN_RATIO: 0.5 \u2192 0.0) to keep LR constant throughout fixed budget"
+  },
+  {
+   "round": 5,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "533edda -> 533edda (discard)"
+  },
+  {
+   "round": 5,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 533edda, best 2.697312, keeps 3"
+  },
+  {
+   "round": 6,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 533edda [2.6973124314861963]; expected 533edda [2.6973124314861963]"
+  },
+  {
+   "round": 6,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "6 tsv rows shown (expected 6); sealed numbers in context: []"
+  },
+  {
+   "round": 6,
+   "step": "claimed change == actual diff (exp0006 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed bu'; changed consts {'BATCH_SIZE': ('32', '16')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 6,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Reduce BATCH_SIZE from 32 to 16 to double training steps and data cove' not previously discarded/crashed; hypothesis: With a fixed 8-second budget and small, fixed training corpus, increasing the number of gradient updates (by halving bat"
+  },
+  {
+   "round": 6,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 6,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0006 (experiment): metric 2.666246678023838, wall 8.581 s, ok"
+  },
+  {
+   "round": 6,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "correct",
+   "evidence": "gain +0.0311 vs noise band 0.0257"
+  },
+  {
+   "round": 6,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.697312 - cand 2.666247 = +0.031066 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 6,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "83d320f\t2.666247\t0.1\tkeep\tReduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget"
+  },
+  {
+   "round": 6,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "533edda -> 83d320f (keep)"
+  },
+  {
+   "round": 6,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 83d320f, best 2.666247, keeps 4"
+  },
+  {
+   "round": 6,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.723226297149213}, \"test_shift\": {\"S\": 2.778373564904901}}"
+  },
+  {
+   "round": 7,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 83d320f [2.666246678023838]; expected 83d320f [2.666246678023838]"
+  },
+  {
+   "round": 7,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "7 tsv rows shown (expected 7); sealed numbers in context: []"
+  },
+  {
+   "round": 7,
+   "step": "claimed change == actual diff (exp0007 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget'; changed consts {'BATCH_SIZE': ('16', '8')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 7,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fi' not previously discarded/crashed; hypothesis: Smaller batches provide more frequent parameter updates (2x more steps) and implicit regularization. The previous reduct"
+  },
+  {
+   "round": 7,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 7,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0007 (experiment): metric 2.6561396570905105, wall 8.726 s, ok"
+  },
+  {
+   "round": 7,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "unverifiable",
+   "evidence": "gain +0.0101 vs noise band 0.0257 -> single run cannot tell a real gain from luck"
+  },
+  {
+   "round": 7,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.666247 - cand 2.656140 = +0.010107 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 7,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "197ab6b\t2.656140\t0.1\tkeep\tReduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget"
+  },
+  {
+   "round": 7,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "83d320f -> 197ab6b (keep)"
+  },
+  {
+   "round": 7,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 197ab6b, best 2.656140, keeps 5"
+  },
+  {
+   "round": 7,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.7193235906110775}, \"test_shift\": {\"S\": 2.7901903389793743}}"
+  },
+  {
+   "round": 8,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 197ab6b [2.6561396570905105]; expected 197ab6b [2.6561396570905105]"
+  },
+  {
+   "round": 8,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "8 tsv rows shown (expected 8); sealed numbers in context: []"
+  },
+  {
+   "round": 8,
+   "step": "claimed change == actual diff (exp0008 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Reduce BATCH_SIZE from 8 to 4 to double gradient steps within fixed budget'; changed consts {'BATCH_SIZE': ('8', '4')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 8,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Reduce BATCH_SIZE from 8 to 4 to double gradient steps within fixed bu' not previously discarded/crashed; hypothesis: The pattern of BATCH_SIZE reductions (32\u219216\u21928) has consistently improved val_bpb by enabling more optimizer steps within"
+  },
+  {
+   "round": 8,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 8,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0008 (experiment): metric 2.6906631919217388, wall 8.71 s, ok"
+  },
+  {
+   "round": 8,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.656140 - cand 2.690663 = -0.034524 -> discard; loop: gate False, status discard"
+  },
+  {
+   "round": 8,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "bb1d08e\t2.690663\t0.1\tdiscard\tReduce BATCH_SIZE from 8 to 4 to double gradient steps within fixed budget"
+  },
+  {
+   "round": 8,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "197ab6b -> 197ab6b (discard)"
+  },
+  {
+   "round": 8,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 197ab6b, best 2.656140, keeps 5"
+  },
+  {
+   "round": 9,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 197ab6b [2.6561396570905105]; expected 197ab6b [2.6561396570905105]"
+  },
+  {
+   "round": 9,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "9 tsv rows shown (expected 9); sealed numbers in context: []"
+  },
+  {
+   "round": 9,
+   "step": "claimed change == actual diff (exp0009 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Increase learning rate from 0.005 to 0.006 to further accelerate convergence'; changed consts {'LR': ('0.005', '0.006')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 9,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Increase learning rate from 0.005 to 0.006 to further accelerate conve' not previously discarded/crashed; hypothesis: The sequence of LR increases (0.003 \u2192 0.004 \u2192 0.005) has consistently improved val_bpb with diminishing but still positi"
+  },
+  {
+   "round": 9,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 9,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0009 (experiment): metric 2.6308254050878395, wall 8.729 s, ok"
+  },
+  {
+   "round": 9,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "unverifiable",
+   "evidence": "gain +0.0253 vs noise band 0.0257 -> single run cannot tell a real gain from luck"
+  },
+  {
+   "round": 9,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.656140 - cand 2.630825 = +0.025314 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 9,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "020a551\t2.630825\t0.1\tkeep\tIncrease learning rate from 0.005 to 0.006 to further accelerate convergence"
+  },
+  {
+   "round": 9,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "197ab6b -> 020a551 (keep)"
+  },
+  {
+   "round": 9,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 020a551, best 2.630825, keeps 6"
+  },
+  {
+   "round": 9,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.7130467432067693}, \"test_shift\": {\"S\": 2.7738509142833383}}"
+  },
+  {
+   "round": 10,
+   "step": "round_start state (incumbent carried from previous decision)",
+   "verdict": "correct",
+   "evidence": "incumbent 020a551 [2.6308254050878395]; expected 020a551 [2.6308254050878395]"
+  },
+  {
+   "round": 10,
+   "step": "proposer context (results.tsv history, kept log, no sealed numbers)",
+   "verdict": "correct",
+   "evidence": "10 tsv rows shown (expected 10); sealed numbers in context: []"
+  },
+  {
+   "round": 10,
+   "step": "claimed change == actual diff (exp0010 attempt 0)",
+   "verdict": "correct",
+   "evidence": "claim 'Increase learning rate from 0.006 to 0.007 to further accelerate convergence'; changed consts {'LR': ('0.006', '0.007')}; unclaimed consts []; non-constant lines +0/-0"
+  },
+  {
+   "round": 10,
+   "step": "proposal grounded in history (no re-proposal of a falsified idea)",
+   "verdict": "correct",
+   "evidence": "'Increase learning rate from 0.006 to 0.007 to further accelerate conve' not previously discarded/crashed; hypothesis: The learning rate trend shows consistent improvement: 0.003\u21920.004 (+0.088), 0.004\u21920.005 (+0.043), 0.005\u21920.006 (+0.066). "
+  },
+  {
+   "round": 10,
+   "step": "scope guard (hardened ScopeGuard (pre-run))",
+   "verdict": "correct",
+   "evidence": "accept=True objections=[]"
+  },
+  {
+   "round": 10,
+   "step": "training run (fixed budget, locked record)",
+   "verdict": "correct",
+   "evidence": "exp0010 (experiment): metric 2.622188131367283, wall 8.653 s, ok"
+  },
+  {
+   "round": 10,
+   "step": "kept change is a real improvement (gain vs noise band)",
+   "verdict": "unverifiable",
+   "evidence": "gain +0.0086 vs noise band 0.0257 -> single run cannot tell a real gain from luck"
+  },
+  {
+   "round": 10,
+   "step": "keep rule (strict, recomputed from raw evals)",
+   "verdict": "correct",
+   "evidence": "ref 2.630825 - cand 2.622188 = +0.008637 -> keep; loop: gate True, status keep"
+  },
+  {
+   "round": 10,
+   "step": "results.tsv row (5 columns, 6 dp)",
+   "verdict": "correct",
+   "evidence": "363363c\t2.622188\t0.1\tkeep\tIncrease learning rate from 0.006 to 0.007 to further accelerate convergence"
+  },
+  {
+   "round": 10,
+   "step": "branch: keep advances, else reset",
+   "verdict": "correct",
+   "evidence": "020a551 -> 363363c (keep)"
+  },
+  {
+   "round": 10,
+   "step": "state after decision",
+   "verdict": "correct",
+   "evidence": "incumbent 363363c, best 2.622188, keeps 7"
+  },
+  {
+   "round": 10,
+   "step": "shadow audit of the new incumbent (1x, same artifact)",
+   "verdict": "correct",
+   "evidence": "{\"test_iid\": {\"S\": 2.689511852574486}, \"test_shift\": {\"S\": 2.7864708230022615}}"
+  },
+  {
+   "round": null,
+   "step": "usage accounting (sum of proposals == run_end meter)",
+   "verdict": "correct",
+   "evidence": "proposals {'calls': 10, 'input_tokens': 110734, 'output_tokens': 82520, 'cost_usd': 0.633978} vs run_end {'calls': 10, 'input_tokens': 110734, 'output_tokens': 82520, 'cost_usd': 0.633978}"
+  },
+  {
+   "round": null,
+   "step": "results.tsv fully accounted",
+   "verdict": "correct",
+   "evidence": "11 rows derived vs 11 in file"
+  }
+ ],
+ "counts": {
+  "correct": 115,
+  "unverifiable": 3
+ },
+ "issues": [],
+ "usage_from_proposals": {
+  "calls": 10,
+  "input_tokens": 110734,
+  "output_tokens": 82520,
+  "cost_usd": 0.633978
+ }
+}

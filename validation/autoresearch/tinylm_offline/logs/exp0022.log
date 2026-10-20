@@ -1,0 +1,11 @@
+
+Traceback (most recent call last):
+  File "/tmp/rsi_ar_tinylm_noamt6el/train.py", line 133, in <module>
+    model = MLPLM(rng)
+            ^^^^^^^^^^
+  File "/tmp/rsi_ar_tinylm_noamt6el/train.py", line 52, in __init__
+    p[f"w{i}"] = rng.normal(0.0, 1.0, (fan_in, H)) * INIT_SCALE / math.sqrt(fan_in)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "numpy/random/_generator.pyx", line 1286, in numpy.random._generator.Generator.normal
+  File "numpy/random/_common.pyx", line 654, in numpy.random._common.cont
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 3.00 GiB for an array with shape (96, 4194304) and data type float64

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'This gives x = **421**').",
+  "output": "   This gives x = **421**",
+  "tokens": 3609,
+  "cost_usd": 0.014724999999999999,
+  "steps": 1,
+  "latency_s": 23.230402946472168,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

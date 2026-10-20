@@ -1,0 +1,174 @@
+[
+ {
+  "label": "Run 1",
+  "dir": "_archive/metaharness_before_fix",
+  "note": "before the replay fix",
+  "usd": 2.7789,
+  "k": 2,
+  "seed_offset": 100,
+  "scores": {
+   "evolve": {
+    "seed": 0.16666666666666666,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.8333333333333334,
+     "lo": 0.625,
+     "hi": 1.0,
+     "n": 12,
+     "p_better": 0.9166666666666666
+    }
+   },
+   "holdout": {
+    "seed": 0.375,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.625,
+     "lo": 0.25,
+     "hi": 1.0,
+     "n": 8,
+     "p_better": 0.625
+    }
+   },
+   "ood": {
+    "seed": 0.6875,
+    "final": 0.875,
+    "vs": {
+     "mean_diff": 0.1875,
+     "lo": -0.25,
+     "hi": 0.625,
+     "n": 8,
+     "p_better": 0.375
+    }
+   }
+  }
+ },
+ {
+  "label": "Run 2",
+  "dir": "_archive/metaharness_fix_v1",
+  "note": "after part 1 of the fix",
+  "usd": 1.3858,
+  "k": 2,
+  "seed_offset": 100,
+  "scores": {
+   "evolve": {
+    "seed": 0.20833333333333334,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.7916666666666666,
+     "lo": 0.5833333333333334,
+     "hi": 0.9583333333333334,
+     "n": 12,
+     "p_better": 0.9166666666666666
+    }
+   },
+   "holdout": {
+    "seed": 0.375,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.625,
+     "lo": 0.3125,
+     "hi": 0.875,
+     "n": 8,
+     "p_better": 0.75
+    }
+   },
+   "ood": {
+    "seed": 0.625,
+    "final": 0.875,
+    "vs": {
+     "mean_diff": 0.25,
+     "lo": -0.125,
+     "hi": 0.6875,
+     "n": 8,
+     "p_better": 0.375
+    }
+   }
+  }
+ },
+ {
+  "label": "Run 3",
+  "dir": "_archive/metaharness_fix_v2",
+  "note": "after part 2 of the fix",
+  "usd": 2.2954,
+  "k": 2,
+  "seed_offset": 100,
+  "scores": {
+   "evolve": {
+    "seed": 0.20833333333333334,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.7916666666666666,
+     "lo": 0.5416666666666666,
+     "hi": 1.0,
+     "n": 12,
+     "p_better": 0.8333333333333334
+    }
+   },
+   "holdout": {
+    "seed": 0.375,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.625,
+     "lo": 0.3125,
+     "hi": 0.875,
+     "n": 8,
+     "p_better": 0.75
+    }
+   },
+   "ood": {
+    "seed": 0.5625,
+    "final": 1.0,
+    "vs": {
+     "mean_diff": 0.4375,
+     "lo": 0.125,
+     "hi": 0.75,
+     "n": 8,
+     "p_better": 0.5
+    }
+   }
+  }
+ },
+ {
+  "label": "Run 4",
+  "dir": "metaharness",
+  "note": "final code; cut off by the usage cap after iteration 3, then resumed from its cache",
+  "usd": 1.706,
+  "k": 2,
+  "seed_offset": 100,
+  "scores": {
+   "evolve": {
+    "seed": 0.16666666666666666,
+    "final": 0.4583333333333333,
+    "vs": {
+     "mean_diff": 0.2916666666666667,
+     "lo": 0.08333333333333333,
+     "hi": 0.5416666666666666,
+     "n": 12,
+     "p_better": 0.4166666666666667
+    }
+   },
+   "holdout": {
+    "seed": 0.3125,
+    "final": 0.75,
+    "vs": {
+     "mean_diff": 0.4375,
+     "lo": 0.25,
+     "hi": 0.625,
+     "n": 8,
+     "p_better": 0.75
+    }
+   },
+   "ood": {
+    "seed": 0.5625,
+    "final": 0.5625,
+    "vs": {
+     "mean_diff": 0.0,
+     "lo": -0.375,
+     "hi": 0.375,
+     "n": 8,
+     "p_better": 0.125
+    }
+   }
+  }
+ }
+]

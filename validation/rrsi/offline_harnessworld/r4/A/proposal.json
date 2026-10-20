@@ -1,0 +1,72 @@
+{
+ "status": "done",
+ "summary": "[nar_03] Collapse repeated log lines: Collapse repeated log ; [gen_02] Drop stale observations: Drop stale observations; a; [har_18] Procedure card: parsing: Procedure card: parsing; a",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "output_plumbing",
+   "hypothesis": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-056",
+    "hw-e-011"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nar_03",
+   "prune": false,
+   "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log lines; aimed at extract, arith, plan, format tasks."
+  },
+  {
+   "id": "C2",
+   "component": "context_mgmt",
+   "hypothesis": "[gen_02] Drop stale observations: Drop stale observations; aimed at plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-011",
+    "hw-e-019",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "gen_02",
+   "prune": false,
+   "mechanism": "[gen_02] Drop stale observations: Drop stale observations; aimed at plan, format tasks."
+  },
+  {
+   "id": "C3",
+   "component": "skill",
+   "hypothesis": "[har_18] Procedure card: parsing: Procedure card: parsing; aimed at extract, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-008",
+    "hw-e-056",
+    "hw-e-011"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "har_18",
+   "prune": false,
+   "mechanism": "[har_18] Procedure card: parsing: Procedure card: parsing; aimed at extract, plan, format tasks."
+  }
+ ],
+ "mechanism": "[nar_03] Collapse repeated log lines: Collapse repeated log ; [gen_02] Drop stale observations: Drop stale observations; a; [har_18] Procedure card: parsing: Procedure card: parsing; a",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te, extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

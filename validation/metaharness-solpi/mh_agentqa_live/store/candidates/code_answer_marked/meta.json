@@ -1,0 +1,19 @@
+{
+ "name": "code_answer_marked",
+ "artifact_id": "a94da1a27fd37f76a29b1d7718ed7f4f677a90a1426c9ec57aba44376b1e32d8",
+ "created_at": 1790338083.8555326,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "code_first",
+ "hypothesis": "Requiring the Python code to output a strict 'ANSWER=<value>' format and extracting using pattern matching (not regex on arbitrary text) eliminates ambiguity when intermediate numbers appear in output.",
+ "axis": "exploitation",
+ "components": [
+  "code-generation",
+  "execution-extraction",
+  "explicit-format-marking"
+ ],
+ "parents_read": [],
+ "order": 4,
+ "reason": ""
+}

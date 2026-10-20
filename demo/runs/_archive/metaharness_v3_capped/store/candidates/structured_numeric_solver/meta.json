@@ -1,0 +1,17 @@
+{
+ "name": "structured_numeric_solver",
+ "artifact_id": "42e8bc4321993c8cd8006101c069a8dcbcd0769b9be48fbe64712d7d4f96a173",
+ "created_at": 1790763831.0412414,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 5,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

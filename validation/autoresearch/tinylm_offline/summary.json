@@ -1,0 +1,290 @@
+{
+ "method": "autoresearch",
+ "rounds": 26,
+ "stop_reason": "max_rounds",
+ "baseline": "c3640d1810",
+ "best": "ee41425a1a",
+ "first": {
+  "exp": 0,
+  "status": "keep",
+  "metric": 2.8383331236272045,
+  "best": 2.8383331236272045,
+  "description": "baseline",
+  "commit": "906744c",
+  "wall_s": 8.559,
+  "t": 8.564,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.8383331236272045
+  ]
+ },
+ "last": {
+  "exp": 25,
+  "status": "rejected",
+  "metric": null,
+  "best": 2.5172112370405184,
+  "description": "REJECTED (tamper:train.py (reaches into the grader or hidden data: 'test_iid', 'load_split')) | add the extra in-distribution shard (test_iid) to training",
+  "commit": "4ebfbc7",
+  "wall_s": 0.0,
+  "t": 304.465,
+  "kind": "exploit",
+  "truth": null,
+  "samples": []
+ },
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0
+ },
+ "meta": {
+  "results_tsv": "/home/user/RSI/validation/autoresearch/tinylm_offline/results.tsv",
+  "counters": {
+   "rejected": 1,
+   "duplicate": 0,
+   "invalid": 0,
+   "fix_attempts": 0,
+   "fixed": 0
+  },
+  "crash_kinds": {
+   "violation": 1,
+   "oom": 1,
+   "nan": 1
+  },
+  "scope": {
+   "checked": 25,
+   "rejected": 1
+  },
+  "budget_events": {
+   "killed": 0,
+   "over_budget": 0
+  },
+  "programs": {
+   "67a030e": "upstream"
+  },
+  "n_experiments": 25,
+  "n_runs": 28,
+  "wall_s": 304.4661719799042,
+  "noise": {
+   "delta": 0.03454203915020159,
+   "sd_null": 0.017271019575100795,
+   "z": 2.0,
+   "mode": "repeat",
+   "n": 4
+  },
+  "workspace": {
+   "branch": "autoresearch/validate-offline",
+   "head": "7a38ff1",
+   "resets": 16,
+   "rewinds": 0
+  },
+  "final_samples": [
+   2.5172112370405184
+  ],
+  "val_epochs": 0,
+  "analysis": {
+   "n_rows": 26,
+   "n_experiments": 25,
+   "n_keep": 9,
+   "n_discard": 14,
+   "n_crash": 3,
+   "keep_rate": 0.391304347826087,
+   "baseline": 2.8383331236272045,
+   "best": 2.5172112370405184,
+   "improvement": 0.32112188658668606,
+   "total_keep_delta": 0.32112188658668606,
+   "top_hits": [
+    {
+     "exp": 16,
+     "commit": "42d39be",
+     "description": "LR 0.003 -> 0.006",
+     "delta": 0.1333399664371151,
+     "metric": 2.5836099536523762
+    },
+    {
+     "exp": 17,
+     "commit": "40d7955",
+     "description": "LR 0.006 -> 0.012",
+     "delta": 0.06516590316693449,
+     "metric": 2.5184440504854417
+    },
+    {
+     "exp": 10,
+     "commit": "63a7f63",
+     "description": "HIDDEN 128 -> 256",
+     "delta": 0.03938217367919439,
+     "metric": 2.7575423379795714
+    },
+    {
+     "exp": 5,
+     "commit": "abaac1d",
+     "description": "ACTIVATION 'tanh' -> 'relu'",
+     "delta": 0.0337051708884486,
+     "metric": 2.804627952738756
+    },
+    {
+     "exp": 11,
+     "commit": "3e8f0ff",
+     "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+     "delta": 0.022646440651557853,
+     "metric": 2.7348958973280135
+    },
+    {
+     "exp": 12,
+     "commit": "518197b",
+     "description": "WARMDOWN_RATIO 0.3 -> 0.1",
+     "delta": 0.017945977238522204,
+     "metric": 2.7169499200894913
+    },
+    {
+     "exp": 9,
+     "commit": "0137708",
+     "description": "SEED 42 -> 397",
+     "delta": 0.007703441079990103,
+     "metric": 2.7969245116587658
+    },
+    {
+     "exp": 24,
+     "commit": "7a38ff1",
+     "description": "CONTEXT 6 -> 4",
+     "delta": 0.0012328134449233197,
+     "metric": 2.5172112370405184
+    }
+   ],
+   "improvement_pct": 11.313749042124881,
+   "experiments_per_hour": 295.5993416764221
+  },
+  "audit": [
+   {
+    "exp": 0,
+    "commit": "906744c",
+    "status": "keep",
+    "description": "baseline",
+    "metric": 2.8383331236272045,
+    "test_iid": 2.8882360074139326,
+    "test_shift": 2.956870583293836,
+    "loop_metric_rerun": 2.830276788843789
+   },
+   {
+    "exp": 5,
+    "commit": "abaac1d",
+    "status": "keep",
+    "description": "ACTIVATION 'tanh' -> 'relu'",
+    "metric": 2.804627952738756,
+    "test_iid": 2.8734071781241064,
+    "test_shift": 2.9315365454689135,
+    "loop_metric_rerun": 2.8089714677439432
+   },
+   {
+    "exp": 9,
+    "commit": "0137708",
+    "status": "keep",
+    "description": "SEED 42 -> 397",
+    "metric": 2.7969245116587658,
+    "test_iid": 2.8797614709503527,
+    "test_shift": 2.9308998391727523,
+    "loop_metric_rerun": 2.79499544556145
+   },
+   {
+    "exp": 10,
+    "commit": "63a7f63",
+    "status": "keep",
+    "description": "HIDDEN 128 -> 256",
+    "metric": 2.7575423379795714,
+    "test_iid": 2.859788228493054,
+    "test_shift": 2.90976178107819,
+    "loop_metric_rerun": 2.766631833078357
+   },
+   {
+    "exp": 11,
+    "commit": "3e8f0ff",
+    "status": "keep",
+    "description": "WARMDOWN_RATIO 0.5 -> 0.3",
+    "metric": 2.7348958973280135,
+    "test_iid": 2.8298018827623372,
+    "test_shift": 2.8819762346533238,
+    "loop_metric_rerun": 2.736583203209604
+   },
+   {
+    "exp": 12,
+    "commit": "518197b",
+    "status": "keep",
+    "description": "WARMDOWN_RATIO 0.3 -> 0.1",
+    "metric": 2.7169499200894913,
+    "test_iid": 2.814154411302345,
+    "test_shift": 2.855156489890857,
+    "loop_metric_rerun": 2.7179862666240155
+   },
+   {
+    "exp": 16,
+    "commit": "42d39be",
+    "status": "keep",
+    "description": "LR 0.003 -> 0.006",
+    "metric": 2.5836099536523762,
+    "test_iid": 2.6715823386524593,
+    "test_shift": 2.7216923245604394,
+    "loop_metric_rerun": 2.576778073870382
+   },
+   {
+    "exp": 17,
+    "commit": "40d7955",
+    "status": "keep",
+    "description": "LR 0.006 -> 0.012",
+    "metric": 2.5184440504854417,
+    "test_iid": 2.630675907827316,
+    "test_shift": 2.6736324405752425,
+    "loop_metric_rerun": 2.5317790713590225
+   },
+   {
+    "exp": 24,
+    "commit": "7a38ff1",
+    "status": "keep",
+    "description": "CONTEXT 6 -> 4",
+    "metric": 2.5172112370405184,
+    "test_iid": 2.6074416814994055,
+    "test_shift": 2.663245496938551,
+    "loop_metric_rerun": 2.518054170289731
+   }
+  ],
+  "reeval": {
+   "final": {
+    "mean": 2.5245236659825117,
+    "lo": 2.513358716287401,
+    "hi": 2.5392009699566964,
+    "n": 3,
+    "values": [
+     2.5392009699566964,
+     2.521011311703437,
+     2.513358716287401
+    ],
+    "n_crash": 0,
+    "seeds": [
+     10000,
+     10001,
+     10002
+    ]
+   },
+   "baseline": {
+    "mean": 2.8196128876077715,
+    "lo": 2.8051793717436078,
+    "hi": 2.829086057453312,
+    "n": 3,
+    "values": [
+     2.8245732336263942,
+     2.829086057453312,
+     2.8051793717436078
+    ],
+    "n_crash": 0,
+    "seeds": [
+     10000,
+     10001,
+     10002
+    ]
+   },
+   "mode": "hardened",
+   "recorded_best": 2.5172112370405184,
+   "optimism_gap": 0.007312428941993243
+  }
+ }
+}

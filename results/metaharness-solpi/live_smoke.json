@@ -1,0 +1,299 @@
+{
+ "llm": "claude:haiku",
+ "parts": {
+  "metaharness": {
+   "candidates": [
+    {
+     "name": "no_memory",
+     "status": "evaluated",
+     "reason": null,
+     "base_system": null,
+     "hypothesis": null,
+     "search": 0.14035087719298245,
+     "context": 191.0
+    },
+    {
+     "name": "fewshot_all",
+     "status": "evaluated",
+     "reason": null,
+     "base_system": null,
+     "hypothesis": null,
+     "search": 0.47368421052631576,
+     "context": 8667.666666666666
+    },
+    {
+     "name": "selective_relevance",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.42105263157894735,
+     "context": 950.6315789473683
+    },
+    {
+     "name": "category_aware_selection",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.2631578947368421,
+     "context": 963.6315789473683
+    },
+    {
+     "name": "recency_weighted_relevance",
+     "status": "invalid",
+     "reason": "syntax error in memory.py: invalid syntax (memory.py, line 107)",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": null,
+     "context": null
+    },
+    {
+     "name": "stratified_relevance_selection",
+     "status": "evaluated",
+     "reason": "",
+     "base_system": "no_memory",
+     "hypothesis": "",
+     "search": 0.2982456140350877,
+     "context": 2018.0
+    }
+   ],
+   "best": "fewshot_all",
+   "frontier": [
+    {
+     "system": "fewshot_all",
+     "score": 0.47368421052631576,
+     "val_accuracy": 47.4,
+     "context_cost": 8667.666666666666
+    },
+    {
+     "system": "selective_relevance",
+     "score": 0.42105263157894735,
+     "val_accuracy": 42.1,
+     "context_cost": 950.6315789473683
+    },
+    {
+     "system": "no_memory",
+     "score": 0.14035087719298245,
+     "val_accuracy": 14.0,
+     "context_cost": 191.0
+    }
+   ],
+   "test": {
+    "no_memory": 0.14285714285714285,
+    "fewshot_all": 0.5595238095238095,
+    "selective_relevance": 0.4761904761904762
+   },
+   "proposer_usage": {
+    "proposer": {
+     "calls": 2,
+     "input_tokens": 52328,
+     "output_tokens": 21865,
+     "cost_usd": 0.21396300000000001,
+     "latency_s": 233.02010583877563,
+     "total_tokens": 74193
+    },
+    "_total": {
+     "calls": 2,
+     "input_tokens": 52328,
+     "output_tokens": 21865,
+     "cost_usd": 0.21396300000000001,
+     "latency_s": 233.02010583877563,
+     "total_tokens": 74193
+    }
+   },
+   "iterations": [
+    {
+     "iteration": 1,
+     "best_score": 0.47368421052631576,
+     "n_candidates": 2,
+     "n_valid": 2,
+     "n_evaluated": 2,
+     "frontier_size": 3,
+     "hypervolume": 3766.94025854109,
+     "files_read": 20,
+     "files_scanned": 0,
+     "reports_written": 1,
+     "n_reevaluations": 0,
+     "view_chars": 1703283,
+     "read_chars": 1703283,
+     "proposer_tokens": 37160,
+     "proposer_usd": 0.10654000000000001,
+     "error": null
+    },
+    {
+     "iteration": 2,
+     "best_score": 0.47368421052631576,
+     "n_candidates": 2,
+     "n_valid": 1,
+     "n_evaluated": 3,
+     "frontier_size": 3,
+     "hypervolume": 3766.94025854109,
+     "files_read": 35,
+     "files_scanned": 0,
+     "reports_written": 1,
+     "n_reevaluations": 0,
+     "view_chars": 2554524,
+     "read_chars": 2140874,
+     "proposer_tokens": 37033,
+     "proposer_usd": 0.107423,
+     "error": null
+    }
+   ],
+   "sessions": [
+    {
+     "iteration": 1,
+     "files_read_by_kind": {
+      "code": 2,
+      "traces": 12,
+      "scores": 4,
+      "other": 2
+     },
+     "view_files": 20,
+     "view_chars": 1703283,
+     "read_chars": 1703283,
+     "trace_files_rendered": 6,
+     "reports_written": [
+      "reports/iter0.md"
+     ],
+     "usage": {
+      "calls": 1,
+      "input_tokens": 26417,
+      "output_tokens": 10743,
+      "cost_usd": 0.10654000000000001,
+      "latency_s": 109.51742839813232,
+      "total_tokens": 37160
+     },
+     "error": null
+    },
+    {
+     "iteration": 2,
+     "files_read_by_kind": {
+      "code": 4,
+      "traces": 19,
+      "scores": 6,
+      "other": 6
+     },
+     "view_files": 40,
+     "view_chars": 2554524,
+     "read_chars": 2140874,
+     "trace_files_rendered": 8,
+     "reports_written": [
+      "reports/iter1.md"
+     ],
+     "usage": {
+      "calls": 1,
+      "input_tokens": 25911,
+      "output_tokens": 11122,
+      "cost_usd": 0.107423,
+      "latency_s": 123.50267744064331,
+      "total_tokens": 37033
+     },
+     "error": null
+    }
+   ],
+   "reports": [
+    "iter0.md",
+    "iter1.md"
+   ],
+   "generated_with": "post-audit code (renderer with traces, full traces, all-calls context, skill Step 0/2, objective statement), fresh cache"
+  },
+  "epr": {
+   "n_logs": 4,
+   "outcomes": {
+    "accepted": 4
+   },
+   "accepted": 4,
+   "nonverbatim": 0,
+   "failure_logs": 4,
+   "failure_with_evidence": 4,
+   "bytes_in": 91825,
+   "bytes_out": 6028,
+   "usage": {
+    "reducer": {
+     "calls": 4,
+     "input_tokens": 40361,
+     "output_tokens": 19736,
+     "cost_usd": 0.179362,
+     "latency_s": 188.97555947303772,
+     "total_tokens": 60097
+    },
+    "_total": {
+     "calls": 4,
+     "input_tokens": 40361,
+     "output_tokens": 19736,
+     "cost_usd": 0.179362,
+     "latency_s": 188.97555947303772,
+     "total_tokens": 60097
+    }
+   }
+  },
+  "lineage": {
+   "frozen": false,
+   "iterations": [
+    {
+     "iteration": 0,
+     "change": "output_caching_family_c",
+     "variant": 0,
+     "ralph_errors": [
+      "TypeError: extensions/output_caching_family_c.py defines neither MECHANISM nor register(rt, config)",
+      "SyntaxError: unterminated string literal (detected at line 74) (output_caching_family_c.py, line 74)"
+     ],
+     "stage": "implementation",
+     "outcome": "abandoned",
+     "error": "exit check failed: SyntaxError: unterminated string literal (detected at line 74) (output_caching_family_c.py, line 74)"
+    },
+    {
+     "iteration": 1,
+     "change": "output_caching_family_c",
+     "variant": 1,
+     "ralph_errors": [
+      "TypeError: Extension.__init__() got an unexpected keyword argument 'size_threshold'",
+      "SyntaxError: invalid syntax (output_caching_family_c.py, line 1)"
+     ],
+     "stage": "implementation",
+     "outcome": "abandoned",
+     "error": "exit check failed: SyntaxError: invalid syntax (output_caching_family_c.py, line 1)"
+    }
+   ],
+   "code": null,
+   "usage": {
+    "proposer": {
+     "calls": 2,
+     "input_tokens": 3088,
+     "output_tokens": 15501,
+     "cost_usd": 0.080593,
+     "latency_s": 148.02330541610718,
+     "total_tokens": 18589
+    },
+    "implementer": {
+     "calls": 4,
+     "input_tokens": 7583,
+     "output_tokens": 9052,
+     "cost_usd": 0.052843,
+     "latency_s": 93.05618715286255,
+     "total_tokens": 16635
+    },
+    "_total": {
+     "calls": 6,
+     "input_tokens": 10671,
+     "output_tokens": 24553,
+     "cost_usd": 0.133436,
+     "latency_s": 241.07949256896973,
+     "total_tokens": 35224
+    }
+   }
+  }
+ },
+ "spend_this_run_usd": {
+  "metaharness": 0.21396300000000001
+ },
+ "parts_regenerated": [
+  "metaharness"
+ ],
+ "parts_kept_from": "2026-09-25 02:00:20",
+ "total_usd": 0.526761,
+ "seconds": 234.71072554588318,
+ "verdict": "live end-to-end OK: Meta-Harness evaluated 3 haiku-written candidates (best fewshot_all; best candidate search 0.421 vs fewshot_all 0.474; trace files rendered per iteration [6, 8]; reports ['iter0.md', 'iter1.md']); EPR accepted 4/4 haiku receipts with 0 non-verbatim quotes; LLM lineage did not pass the gate; cost of all parts $0.527 (this run $0.214)",
+ "generated_at": "2026-09-25 18:18:09"
+}

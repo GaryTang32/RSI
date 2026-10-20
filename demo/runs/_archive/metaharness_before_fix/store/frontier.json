@@ -1,0 +1,219 @@
+{
+ "systems": [
+  "seed",
+  "pattern_template_solver",
+  "pattern_solver_enhanced"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.375,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 0.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1359.0,
+      "holdout-numeric-001": 1604.0,
+      "holdout-numeric-002": 1733.0,
+      "holdout-numeric-003": 1383.0,
+      "holdout-numeric-004": 1308.0,
+      "holdout-numeric-005": 2876.0,
+      "holdout-numeric-006": 1153.0,
+      "holdout-numeric-007": 2815.0
+     },
+     "context_cost": 1778.875,
+     "tokens": 1778.875,
+     "families": {
+      "numeric": 0.375
+     }
+    },
+    "pattern_template_solver": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 1762.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 1334.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 1266.0
+     },
+     "context_cost": 1454.0,
+     "tokens": 1454.0,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "pattern_solver_enhanced": {
+     "split": "holdout",
+     "score": 0.875,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0,
+      "holdout-numeric-006": 1.0,
+      "holdout-numeric-007": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 0.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 1314.0,
+      "holdout-numeric-006": 0.0,
+      "holdout-numeric-007": 1271.0
+     },
+     "context_cost": 1292.5,
+     "tokens": 1292.5,
+     "families": {
+      "numeric": 0.875
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "pattern_template_solver",
+     "test_accuracy": 1.0,
+     "context_cost": 1454.0
+    },
+    {
+     "system": "pattern_solver_enhanced",
+     "test_accuracy": 0.875,
+     "context_cost": 1292.5
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.75,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-numbertheory-001": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 1.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1848.0,
+      "ood-dates-001": 1273.0,
+      "ood-numbertheory-000": 1379.0,
+      "ood-numbertheory-001": 1346.0,
+      "ood-strings-000": 4128.0,
+      "ood-strings-001": 1073.0,
+      "ood-lists-000": 5684.0,
+      "ood-lists-001": 6622.0
+     },
+     "context_cost": 2919.125,
+     "tokens": 2919.125,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "pattern_template_solver": {
+     "split": "ood",
+     "score": 0.875,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 7317.0,
+      "ood-dates-001": 1585.0,
+      "ood-numbertheory-000": 1582.0,
+      "ood-numbertheory-001": 1425.0,
+      "ood-strings-000": 1511.0,
+      "ood-strings-001": 1466.0,
+      "ood-lists-000": 4896.0,
+      "ood-lists-001": 2967.0
+     },
+     "context_cost": 2843.625,
+     "tokens": 2843.625,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 0.5,
+      "lists": 1.0
+     }
+    },
+    "pattern_solver_enhanced": {
+     "split": "ood",
+     "score": 0.875,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-dates-001": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-numbertheory-001": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-strings-001": 0.0,
+      "ood-lists-000": 1.0,
+      "ood-lists-001": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1912.0,
+      "ood-dates-001": 2077.0,
+      "ood-numbertheory-000": 1461.0,
+      "ood-numbertheory-001": 1805.0,
+      "ood-strings-000": 1371.0,
+      "ood-strings-001": 1443.0,
+      "ood-lists-000": 3268.0,
+      "ood-lists-001": 3511.0
+     },
+     "context_cost": 2106.0,
+     "tokens": 2106.0,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 0.5,
+      "lists": 1.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "pattern_solver_enhanced",
+     "test_accuracy": 0.875,
+     "context_cost": 2106.0
+    }
+   ]
+  }
+ }
+}

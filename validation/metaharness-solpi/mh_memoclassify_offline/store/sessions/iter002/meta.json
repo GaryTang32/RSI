@@ -1,0 +1,63 @@
+{
+ "iteration": 2,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/i01_0_retrieve_topk/eval/search/scores.json",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i01_0_retrieve_topk/src/memory.py",
+  "candidates/i01_1_label_list/eval/search/scores.json",
+  "candidates/i01_1_label_list/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/no_memory/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 15,
+ "files_read_by_kind": {
+  "code": 4,
+  "traces": 6,
+  "scores": 5,
+  "other": 0
+ },
+ "view_files": 39,
+ "view_chars": 1065064,
+ "read_chars": 457977,
+ "error": null,
+ "seconds": 0.012,
+ "candidates": [
+  {
+   "name": "i02_0_contrastive",
+   "base_system": "i01_0_retrieve_topk",
+   "hypothesis": "Adding demonstrations of the labels most often confused with the top retrieved labels (learned from online errors) helps the model separate near-duplicates.",
+   "axis": "exploitation",
+   "components": [
+    "contrastive",
+    "axis:C"
+   ]
+  },
+  {
+   "name": "i02_1_coverage",
+   "base_system": "no_memory",
+   "hypothesis": "Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed.",
+   "axis": "exploration",
+   "components": [
+    "coverage",
+    "axis:C"
+   ]
+  }
+ ]
+}

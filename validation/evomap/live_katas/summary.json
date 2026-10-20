@@ -1,0 +1,387 @@
+{
+ "run": "live_katas",
+ "wall_s": 242.1,
+ "loop_wall_s": 242.0,
+ "hub": [],
+ "agent0": {
+  "stop_reason": "max_rounds",
+  "trajectory": [
+   {
+    "cycle": 1,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 2896,
+    "proposer_calls": 0,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 2,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_casefold_normalize",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.83,
+    "tokens": 11760,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000001",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 2,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 3,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 2922,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000003",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 4,
+    "task_id": "backoff_delays",
+    "family": "retry",
+    "signals": [
+     "task:retry",
+     "retry",
+     "backoff",
+     "schedule"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 3258,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000004",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 5,
+    "task_id": "round_half_up",
+    "family": "rounding",
+    "signals": [
+     "task:rounding",
+     "rounding",
+     "money",
+     "precision"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 5954,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000005",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 6,
+    "task_id": "count_in_range",
+    "family": "boundaries",
+    "signals": [
+     "task:boundaries",
+     "boundaries",
+     "ranges",
+     "counting"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 2854,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000006",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 7,
+    "task_id": "days_between",
+    "family": "dates",
+    "signals": [
+     "task:dates",
+     "dates",
+     "calendar",
+     "duration"
+    ],
+    "gene_id": null,
+    "source": "none",
+    "reused_asset_id": null,
+    "task_score": 1.0,
+    "task_success": true,
+    "solidified": false,
+    "composite": 0.0,
+    "tokens": 2862,
+    "proposer_calls": 1,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "skip_agent0_000007",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": false,
+    "n_validation_run": 0,
+    "n_genes": 0,
+    "rolling_solve_rate": 1.0
+   },
+   {
+    "cycle": 8,
+    "task_id": "same_text",
+    "family": "unicode",
+    "signals": [
+     "task:unicode",
+     "unicode",
+     "text-equality",
+     "comparison"
+    ],
+    "gene_id": "gene_unicode_normalize_case_compare",
+    "source": "generated",
+    "reused_asset_id": null,
+    "task_score": 0.0,
+    "task_success": false,
+    "solidified": false,
+    "composite": 0.95,
+    "tokens": 10392,
+    "proposer_calls": 2,
+    "hub_hit": false,
+    "quarantine": null,
+    "published": null,
+    "event_id": "evt_agent0_000003",
+    "selection_mode": "none",
+    "banned": [],
+    "distilled": null,
+    "validation_ok": true,
+    "n_validation_run": 1,
+    "n_genes": 0,
+    "rolling_solve_rate": 0.875
+   }
+  ],
+  "genes": {},
+  "gene_validation": {},
+  "audit_ok": true,
+  "rollouts": 10,
+  "proposer_calls": 2,
+  "quarantined": 0,
+  "quarantine_rejected": 0,
+  "trace_overhead_usd": 0.148869,
+  "usage": {
+   "task": {
+    "calls": 30,
+    "input_tokens": 28693,
+    "output_tokens": 33843,
+    "cost_usd": 0.19790800000000003,
+    "latency_s": 349.53752851486206,
+    "total_tokens": 62536
+   },
+   "proposer": {
+    "calls": 2,
+    "input_tokens": 3135,
+    "output_tokens": 4453,
+    "cost_usd": 0.0254,
+    "latency_s": 49.14795660972595,
+    "total_tokens": 7588
+   },
+   "_total": {
+    "calls": 32,
+    "input_tokens": 31828,
+    "output_tokens": 38296,
+    "cost_usd": 0.22330800000000003,
+    "latency_s": 398.685485124588,
+    "total_tokens": 70124
+   }
+  },
+  "transfer": {
+   "evolve": {
+    "no_genes": {
+     "S": 0.9,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 0.9,
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 5,
+      "p_better": 0.0
+     }
+    }
+   },
+   "holdout": {
+    "no_genes": {
+     "S": 1.0,
+     "vs_reference": null
+    },
+    "gene_library": {
+     "S": 1.0,
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 5,
+      "p_better": 0.0
+     }
+    }
+   }
+  }
+ },
+ "monitor": [
+  {
+   "round": 0,
+   "version": "seed(no genes)",
+   "artifact": "4ce5cbccd4",
+   "decision_score": null,
+   "sealed": {
+    "holdout": {
+     "S": 1.0,
+     "C": 2570.2,
+     "families": {
+      "boundaries": 1.0,
+      "unicode": 1.0,
+      "dates": 1.0,
+      "rounding": 1.0,
+      "retry": 1.0
+     }
+    }
+   },
+   "note": "shadow evaluation - never shown to the loop"
+  }
+ ],
+ "llm_usage_all": {
+  "task": {
+   "calls": 30,
+   "input_tokens": 28693,
+   "output_tokens": 33843,
+   "cost_usd": 0.19790800000000003,
+   "latency_s": 349.53752851486206,
+   "total_tokens": 62536
+  },
+  "proposer": {
+   "calls": 2,
+   "input_tokens": 3135,
+   "output_tokens": 4453,
+   "cost_usd": 0.0254,
+   "latency_s": 49.14795660972595,
+   "total_tokens": 7588
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 37768,
+   "output_tokens": 51994,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 89762
+  },
+  "_total": {
+   "calls": 32,
+   "input_tokens": 69596,
+   "output_tokens": 90290,
+   "cost_usd": 0.22330800000000003,
+   "latency_s": 398.685485124588,
+   "total_tokens": 159886
+  }
+ },
+ "cache": {
+  "hits": 40,
+  "misses": 32
+ }
+}

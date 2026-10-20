@@ -1,0 +1,21 @@
+[note] live reflection LM: small budgets, results cached under .rsi_cache/gepa
+[gepa] seed val=0.0000 |V|=30 |T|=30 components=['prompts/triage.md', 'prompts/reply.md']
+[gepa] it=   0 accepted           rollouts=    66 cands=  2 best=0.2444
+[gepa] it=   1 accepted           rollouts=   102 cands=  3 best=0.3339
+[gepa] it=   2 accepted           rollouts=   138 cands=  4 best=0.4644
+[gepa] it=   3 accepted           rollouts=   174 cands=  5 best=0.5994
+[gepa] it=   4 accepted           rollouts=   210 cands=  6 best=0.5994
+[gepa] it=   5 accepted           rollouts=   246 cands=  7 best=0.5994
+[gepa] it=   6 accepted           rollouts=   282 cands=  8 best=0.7406
+[gepa] it=   7 accepted           rollouts=   318 cands=  9 best=0.7406
+[gepa] seed val=0.3750 |V|=8 |T|=8 components=['prompts/reporter.md', 'prompts/solver.md']
+[gepa] it=   0 rejected           rollouts=    14 cands=  1 best=0.3750
+[gepa] it=   1 accepted           rollouts=    28 cands=  2 best=0.5000
+[gepa] it=   2 accepted           rollouts=    42 cands=  3 best=0.5000
+[gepa] it=   3 accepted           rollouts=    56 cands=  4 best=0.5000
+[gepa] it=   4 rejected           rollouts=    62 cands=  4 best=0.5000
+[gepa] it=   5 rejected           rollouts=    68 cands=  4 best=0.5000
+[gepa] it=   6 rejected           rollouts=    74 cands=  4 best=0.5000
+[gepa] it=   7 rejected           rollouts=    80 cands=  4 best=0.5000
+[saved] /home/user/RSI/results/gepa/live_smoke.json
+RuleWorld: true test 0.000 -> 0.727 (oracle 0.950) with 8 accepted of 8 proposals in 318 rollouts; AgentQA holdout {'seed': 0.7, 'best': 0.6} / OOD {'seed': 0.5833333333333334, 'best': 0.5}; cost $0.203, 374 s.

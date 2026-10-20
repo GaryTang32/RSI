@@ -1,0 +1,36 @@
+{
+ "status": "done",
+ "summary": "[str_08] Procedure card: verification: Procedure card: verif",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "skill",
+   "hypothesis": "[str_08] Procedure card: verification: Procedure card: verification; aimed at arith, plan, format tasks.",
+   "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019",
+    "hw-e-022",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "str_08",
+   "prune": false,
+   "mechanism": "[str_08] Procedure card: verification: Procedure card: verification; aimed at arith, plan, format tasks."
+  }
+ ],
+ "mechanism": "[str_08] Procedure card: verification: Procedure card: verif",
+ "targets_mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

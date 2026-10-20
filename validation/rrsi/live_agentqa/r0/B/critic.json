@@ -1,0 +1,16 @@
+{
+ "verdict": "accept",
+ "reasons": [
+  "No task-specific leakage: The system and task prompts add generic guidance for structured problem-solving (verification, step-by-step work, explicit answer formatting) that would generalize to any task with definite answers. The 'ANSWER: <value>' format is explicitly mentioned in the problem description (not secret grader knowledge) and generalizes beyond numeric tasks.",
+  "Not degenerate: The extraction function implements three substantive strategies with proper fallback logic; all code paths are used and meaningful.",
+  "No undeclared bundling: All changes (import, extraction function, solve() modification, system.md, task.md) align with the three declared edits (E1, E2, E3).",
+  "No runtime memory/skill leakage: The extraction function is stateless; the prompts contain entity-free general procedures, not task-specific solutions or captured outputs.",
+  "All work is bounded: Extraction iterates over lines and applies regex—no unbounded loops or confirmation waits."
+ ],
+ "risk_notes": [
+  "GRADER CONTRACT ASSUMPTION (medium): The extraction logic returns only the extracted numeric value (e.g., '234') rather than the full last line. This assumes the grader either (a) receives and re-extracts from the value, or (b) falls back to 'use last line' as described in the problem. The declared edit claims 'without breaking the grader contract,' but we cannot verify the actual grader implementation. If the grader is rigidly looking for 'ANSWER: <value>' in the output it receives and finds only '234', it may not behave as intended.",
+  "NUMERIC-SCOPED GUIDANCE FOR MULTI-DOMAIN (low): The task prompt says 'Provide your final numeric answer' and example 'ANSWER: 1234', which explicitly scopes to numeric values. When the harness later runs on non-numeric tasks (dates, text manipulation), this guidance may cause confusion. However, the format 'ANSWER: <value>' is generic enough that non-numeric tasks can trivially adapt (e.g., 'ANSWER: 2024-01-15', 'ANSWER: hello'), so regression risk is low. The system prompt explicitly scopes with 'When solving numeric problems:' so non-numeric tasks can safely ignore it.",
+  "BOLD FORMAT FALLBACK RATIONALE (low): Strategy 2 in the extraction function specifically handles `**<number>**` format, motivated by observed patterns in task outputs (retroactive_check mentions Task 008). This is defensive and pattern-driven rather than task-hardcoded, so it's general enough to help on any task where LLMs naturally produce bold formatting for emphasis."
+ ],
+ "stage": "llm"
+}

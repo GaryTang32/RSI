@@ -1,0 +1,44 @@
+{
+ "t": 6,
+ "b_t": 3,
+ "sigma_t": 0,
+ "delta": 0.01594,
+ "S_star": 0.5890625,
+ "S": 0.5890625,
+ "C": 4284.55,
+ "incumbent": "7439af9bbf83354f633bc38bff04341459b5eb982d130c727f980ff9a98e2b5e",
+ "winner": "A",
+ "n_candidates": 2,
+ "n_screened": 2,
+ "n_untried": 0,
+ "prune_set": [
+  "memory",
+  "output_plumbing",
+  "subagent"
+ ],
+ "decisions": [
+  {
+   "variant": "A",
+   "admissible": true,
+   "reason": "admissible: S'=0.5891 >= S*-delta=0.5441; dC=+0.071 <= beta0+beta1*dS=1.262",
+   "S": 0.5890625,
+   "C": 4284.55,
+   "delta_S": 0.02906249999999999,
+   "delta_C": 0.07093536095062059,
+   "novelty": 1,
+   "guards": []
+  },
+  {
+   "variant": "B",
+   "admissible": false,
+   "reason": "cost rule failed: within band: shaped=-6.279 (<= 0)",
+   "S": 0.5684375,
+   "C": 5900.44,
+   "delta_S": 0.008437499999999987,
+   "delta_C": 0.4748316255306809,
+   "novelty": 0,
+   "guards": []
+  }
+ ],
+ "gate_failures": {}
+}

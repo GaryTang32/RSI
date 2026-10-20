@@ -1,0 +1,66 @@
+{
+ "status": "done",
+ "summary": "[aq:answer_lookup] Remember answers seen during practice; [aq:answer_format] State the final-answer format; [aq:python_skill] Skill card: write Python for computations",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "memory",
+   "hypothesis": "[aq:answer_lookup] Remember answers seen during practice",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:answer_lookup] Remember answers seen during practice"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "[aq:answer_format] State the final-answer format",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:answer_format] State the final-answer format"
+  },
+  {
+   "id": "C3",
+   "component": "skill",
+   "hypothesis": "[aq:python_skill] Skill card: write Python for computations",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-005",
+    "evolve-numeric-016",
+    "evolve-numeric-000"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:python_skill] Skill card: write Python for computations"
+  }
+ ],
+ "mechanism": "[aq:answer_lookup] Remember answers seen during practice; [aq:answer_format] State the final-answer format; [aq:python_skill] Skill card: write Python for computations",
+ "targets_mode": "wrong final answers, wrong final answers, wrong final answers",
+ "n_changes": 5,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 5,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,167 @@
+[
+ {
+  "exp": 0,
+  "status": "keep",
+  "metric": 2.829327388617751,
+  "best": 2.829327388617751,
+  "description": "baseline",
+  "commit": "906744c",
+  "wall_s": 8.461,
+  "t": 8.465,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.829327388617751
+  ]
+ },
+ {
+  "exp": 1,
+  "status": "discard",
+  "metric": 2.895547906220567,
+  "best": 2.829327388617751,
+  "description": "Increase CONTEXT 6\u219210 and DEPTH 1\u21922",
+  "commit": "0abce28",
+  "wall_s": 8.667,
+  "t": 200.831,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.895547906220567
+  ]
+ },
+ {
+  "exp": 2,
+  "status": "keep",
+  "metric": 2.7951487190905753,
+  "best": 2.829327388617751,
+  "description": "Reduce BATCH_SIZE 32 -> 24",
+  "commit": "568c10b",
+  "wall_s": 8.539,
+  "t": 285.615,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7951487190905753
+  ]
+ },
+ {
+  "exp": 3,
+  "status": "keep",
+  "metric": 2.776318710359747,
+  "best": 2.7951487190905753,
+  "description": "Reduce BATCH_SIZE 24 -> 20 for more training steps in fixed budget",
+  "commit": "a14417d",
+  "wall_s": 8.554,
+  "t": 391.584,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.776318710359747
+  ]
+ },
+ {
+  "exp": 4,
+  "status": "keep",
+  "metric": 2.7508922653056973,
+  "best": 2.776318710359747,
+  "description": "Reduce BATCH_SIZE 20 -> 16 for more training steps",
+  "commit": "cf01a07",
+  "wall_s": 8.592,
+  "t": 486.522,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7508922653056973
+  ]
+ },
+ {
+  "exp": 5,
+  "status": "keep",
+  "metric": 2.7329621617331674,
+  "best": 2.7508922653056973,
+  "description": "Reduce BATCH_SIZE 16 -> 12 for more training steps",
+  "commit": "82fcdc2",
+  "wall_s": 8.571,
+  "t": 588.897,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7329621617331674
+  ]
+ },
+ {
+  "exp": 6,
+  "status": "keep",
+  "metric": 2.7193235432340574,
+  "best": 2.7329621617331674,
+  "description": "Reduce BATCH_SIZE 12 -> 10 for more training steps",
+  "commit": "151c532",
+  "wall_s": 8.611,
+  "t": 670.715,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7193235432340574
+  ]
+ },
+ {
+  "exp": 7,
+  "status": "keep",
+  "metric": 2.7126748215076586,
+  "best": 2.7193235432340574,
+  "description": "Reduce BATCH_SIZE 10 -> 8 for more training steps",
+  "commit": "20f4498",
+  "wall_s": 8.642,
+  "t": 768.611,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7126748215076586
+  ]
+ },
+ {
+  "exp": 8,
+  "status": "keep",
+  "metric": 2.70893629209648,
+  "best": 2.7126748215076586,
+  "description": "Reduce BATCH_SIZE 8 -> 6 for more training steps",
+  "commit": "518082c",
+  "wall_s": 8.623,
+  "t": 878.455,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.70893629209648
+  ]
+ },
+ {
+  "exp": 9,
+  "status": "discard",
+  "metric": 2.7272621709809135,
+  "best": 2.70893629209648,
+  "description": "Reduce BATCH_SIZE 6 -> 5 for more training steps",
+  "commit": "927a904",
+  "wall_s": 8.66,
+  "t": 972.759,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7272621709809135
+  ]
+ },
+ {
+  "exp": 10,
+  "status": "keep",
+  "metric": 2.6878274079011892,
+  "best": 2.70893629209648,
+  "description": "Increase HIDDEN 128 -> 160 to better utilize the extra training steps from smaller batch size",
+  "commit": "6448d3e",
+  "wall_s": 8.679,
+  "t": 1069.172,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.6878274079011892
+  ]
+ }
+]

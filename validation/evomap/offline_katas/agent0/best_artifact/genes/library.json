@@ -1,0 +1,339 @@
+{
+ "genes": [
+  {
+   "asset_id": "sha256:3bf4c902e594731d5b66505ea8a3f2f6f8775e1b5218242a220b56cb410ef7fe",
+   "avoid": [
+    "Assuming 365-day years or 30-day months.",
+    "Reading US dates as day/month: US order is month/day/year."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.15,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T21:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780003600.0
+    }
+   ],
+   "id": "gene_datetime_not_manual_math",
+   "learning_history": [
+    {
+     "at": "2026-05-28T21:26:40Z",
+     "learning_signals": [
+      "task:dates",
+      "dates",
+      "calendar",
+      "duration"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T03:26:40Z",
+     "learning_signals": [
+      "task:dates",
+      "dates",
+      "calendar",
+      "duration"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 1,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "dates",
+    "calendar"
+   ],
+   "strategy": [
+    "Parse with date.fromisoformat or datetime.strptime and an explicit format such as '%m/%d/%Y'.",
+    "Do date arithmetic with datetime.date and timedelta, never with hand-rolled day counts.",
+    "Gregorian leap year: divisible by 4 and (not by 100, or by 400).",
+    "Index weekday names with date.weekday() where Monday == 0."
+   ],
+   "summary": "Date bugs: parse with explicit formats and do arithmetic with datetime, never by hand.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  },
+  {
+   "anti_patterns": [
+    {
+     "at": "2026-05-29T04:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "soft",
+     "reason_class": "task_check"
+    }
+   ],
+   "asset_id": "sha256:66b7f22449769ba6fb6a837cfbbbab97cf0a08d1f2e48d9356554f21fde49824",
+   "avoid": [
+    "encode('ascii', 'ignore'): it deletes letters, not just accents.",
+    "Comparing raw strings: an accented letter can be one or two code points."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.05,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T22:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780007200.0
+    }
+   ],
+   "id": "gene_unicode_normalize_casefold",
+   "learning_history": [
+    {
+     "at": "2026-05-28T22:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T04:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "soft",
+     "outcome": "failed",
+     "reason_class": "task_check",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T07:26:40Z",
+     "learning_signals": [
+      "task:unicode",
+      "unicode",
+      "text-equality",
+      "comparison"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 2,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "unicode",
+    "text-equality"
+   ],
+   "strategy": [
+    "Normalize every string with unicodedata.normalize('NFC', s) before comparing, counting or measuring.",
+    "Use str.casefold(), not lower(), for case-insensitive comparison (German sharp s).",
+    "To strip accents: normalize('NFD'), drop unicodedata.combining(c) marks, re-normalize NFC.",
+    "Count visible characters by skipping combining marks after NFC."
+   ],
+   "summary": "Compare, count and measure text only after Unicode normalization and casefolding.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  },
+  {
+   "asset_id": "sha256:fe55182bb82b98aa83958d35973d0d2d77da0858ac31a5b5553259ca5b8262b8",
+   "avoid": [
+    "lst[-n:] when n can be 0 (it returns the whole list).",
+    "Floor division when a partial group still counts."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.2,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-28T23:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780010800.0
+    }
+   ],
+   "id": "gene_inclusive_boundaries",
+   "learning_history": [
+    {
+     "at": "2026-05-28T23:26:40Z",
+     "learning_signals": [
+      "task:boundaries",
+      "boundaries",
+      "ranges",
+      "counting"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T02:26:40Z",
+     "learning_signals": [
+      "task:boundaries",
+      "boundaries",
+      "ranges",
+      "counting"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T08:26:40Z",
+     "learning_signals": [
+      "task:boundaries",
+      "boundaries",
+      "ranges",
+      "counting"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 3,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "boundaries",
+    "ranges"
+   ],
+   "strategy": [
+    "Restate every bound from the spec as inclusive or exclusive before coding.",
+    "For an inclusive upper bound use <= and range(a, b + 1).",
+    "Count partial groups (pages, chunks) with ceiling division -(-a // b).",
+    "Test the edges: empty input, n == 0, one element, exact multiples, one past the end."
+   ],
+   "summary": "Boundary / off-by-one bugs: decide inclusivity explicitly and test the edges.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  },
+  {
+   "asset_id": "sha256:f14b202bba277439e737a63d4a744edad091b86be0bd922599e0e1575b6b3350",
+   "avoid": [
+    "Uncapped exponential growth of delays.",
+    "Retrying on every status >= 400."
+   ],
+   "category": "repair",
+   "constraints": {
+    "forbidden_paths": [
+     ".git",
+     "node_modules"
+    ],
+    "max_files": 12
+   },
+   "epigenetic_marks": [
+    {
+     "boost": 0.15,
+     "context": "sim/py3.11",
+     "created_at": "2026-05-29T00:26:40Z",
+     "reason": "success_in_environment",
+     "t": 1780014400.0
+    }
+   ],
+   "id": "gene_capped_backoff",
+   "learning_history": [
+    {
+     "at": "2026-05-29T00:26:40Z",
+     "learning_signals": [
+      "task:retry",
+      "retry",
+      "backoff",
+      "schedule"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    },
+    {
+     "at": "2026-05-29T06:26:40Z",
+     "learning_signals": [
+      "task:retry",
+      "retry",
+      "backoff",
+      "schedule"
+     ],
+     "mode": "none",
+     "outcome": "success",
+     "reason_class": "ok",
+     "retryable": true
+    }
+   ],
+   "provenance": {
+    "author": "agent0",
+    "cycle": 4,
+    "kind": "evolved"
+   },
+   "schema_version": "1.14.0",
+   "signals_match": [
+    "retry",
+    "backoff"
+   ],
+   "strategy": [
+    "Cap every computed delay: min(cap, base * factor ** i).",
+    "Count attempts as min(success_at, max_tries); None means all max_tries attempts.",
+    "Retry only on 429 and 5xx server errors, and never on 501.",
+    "Clamp lower jitter bounds at zero with max(0.0, ...)."
+   ],
+   "summary": "Retry logic: cap every delay, count attempts exactly, retry only transient errors.",
+   "type": "Gene",
+   "validation": [
+    "python smoke_test.py"
+   ]
+  }
+ ]
+}

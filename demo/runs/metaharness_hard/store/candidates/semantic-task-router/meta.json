@@ -1,0 +1,17 @@
+{
+ "name": "semantic-task-router",
+ "artifact_id": "09d7b9c81181254b93473dc3b08c4bf1e61c44a34029e1f9e5bdc9b1e7654a1a",
+ "created_at": 1791965775.3374293,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 8,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

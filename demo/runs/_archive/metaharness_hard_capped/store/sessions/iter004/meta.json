@@ -1,0 +1,60 @@
+{
+ "iteration": 4,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 11204,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 11204
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "sessions/iter001/meta.json",
+  "sessions/iter002/meta.json",
+  "sessions/iter003/meta.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-ledger-001.json",
+  "candidates/seed/eval/search/per_task/evolve-ledger-003.json",
+  "candidates/seed/eval/search/per_task/evolve-ledger-005.json",
+  "candidates/seed/eval/search/per_task/evolve-ledger-007.json",
+  "candidates/seed/eval/search/per_task/evolve-logic-000.json",
+  "candidates/seed/eval/search/per_task/evolve-logic-002.json",
+  "candidates/seed/eval/search/per_task/evolve-logic-004.json",
+  "candidates/seed/eval/search/per_task/evolve-logic-006.json",
+  "candidates/seed/eval/search/traces/evolve-ledger-001.jsonl",
+  "candidates/seed/eval/search/traces/evolve-ledger-003.jsonl",
+  "candidates/seed/eval/search/traces/evolve-ledger-005.jsonl",
+  "candidates/seed/eval/search/traces/evolve-ledger-007.jsonl",
+  "candidates/seed/eval/search/traces/evolve-logic-000.jsonl",
+  "candidates/seed/eval/search/traces/evolve-logic-002.jsonl",
+  "candidates/seed/eval/search/traces/evolve-logic-004.jsonl",
+  "candidates/seed/eval/search/traces/evolve-logic-006.jsonl"
+ ],
+ "n_files_read": 26,
+ "files_read_by_kind": {
+  "code": 3,
+  "traces": 16,
+  "scores": 3,
+  "other": 4
+ },
+ "files_scanned": [],
+ "n_files_scanned": 0,
+ "scanned_chars": 0,
+ "view_files": 26,
+ "view_chars": 40433,
+ "read_chars": 40433,
+ "error": "llm error: You've hit your session limit \u00b7 resets 1:20pm (UTC)",
+ "seconds": 11.565,
+ "reports_written": [],
+ "proposer_meta": {
+  "rendered_chars": 42269
+ },
+ "candidates": []
+}

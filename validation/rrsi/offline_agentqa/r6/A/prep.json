@@ -1,0 +1,24 @@
+{
+ "artifact_id": "8b65367d5493c4404e3127cb2464c3a37752119706d840d4574c81c540a75d0e",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-011",
+    "evolve-numeric-000",
+    "evolve-numeric-001"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering",
+   "declared_component": "prompt"
+  }
+ ],
+ "diff_path": "r6/A/diff.patch",
+ "mechanism": "[aq:verify] Ask to double-check before answering"
+}

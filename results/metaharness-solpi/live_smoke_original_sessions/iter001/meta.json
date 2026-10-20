@@ -1,0 +1,67 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 22195,
+  "output_tokens": 8032,
+  "cost_usd": 0.084541,
+  "latency_s": 84.21950030326843,
+  "total_tokens": 30227
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/no_memory/src/memory.py",
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/meta.json",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/meta.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_alpha__val.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_beta__val.json",
+  "candidates/fewshot_all/eval/search/per_task/ds_gamma__val.json",
+  "candidates/fewshot_all/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/fewshot_all/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/fewshot_all/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/no_memory/eval/search/per_task/ds_alpha__val.json",
+  "candidates/no_memory/eval/search/per_task/ds_beta__val.json",
+  "candidates/no_memory/eval/search/per_task/ds_gamma__val.json"
+ ],
+ "n_files_read": 17,
+ "files_read_by_kind": {
+  "code": 2,
+  "traces": 9,
+  "scores": 4,
+  "other": 2
+ },
+ "view_files": 20,
+ "view_chars": 311476,
+ "read_chars": 235411,
+ "error": null,
+ "seconds": 84.222,
+ "candidates": [
+  {
+   "name": "correct_first_fewshot",
+   "base_system": "fewshot_all",
+   "hypothesis": "Examples correctly predicted during training provide clearer learning signals; prioritizing them (ordered by recency) improves in-context learning accuracy while maintaining context budget.",
+   "axis": "exploitation",
+   "components": [
+    "correctness-tracking",
+    "example-reordering",
+    "correct-first-placement"
+   ]
+  },
+  {
+   "name": "similarity_retrieval",
+   "base_system": "fewshot_all",
+   "hypothesis": "Selecting only the K most similar training examples (via token overlap) to each input removes irrelevant noise, reduces prompt bloat, and improves signal-to-noise ratio without sacrificing accuracy.",
+   "axis": "exploration",
+   "components": [
+    "input-similarity",
+    "content-based-selection",
+    "diversity-pruning"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "split": "holdout",
+ "score": 1.0,
+ "per_unit": {
+  "holdout-logic-000": 1.0,
+  "holdout-ledger-001": 1.0,
+  "holdout-logic-002": 1.0,
+  "holdout-ledger-003": 1.0,
+  "holdout-logic-004": 1.0,
+  "holdout-ledger-005": 1.0
+ },
+ "per_unit_cost": {
+  "holdout-logic-000": 17256.0,
+  "holdout-ledger-001": 24244.0,
+  "holdout-logic-002": 9858.0,
+  "holdout-ledger-003": 18753.0,
+  "holdout-logic-004": 19240.0,
+  "holdout-ledger-005": 21267.0
+ },
+ "context_cost": 18436.333333333332,
+ "tokens": 18436.333333333332,
+ "families": {
+  "logic": 1.0,
+  "ledger": 1.0
+ }
+}

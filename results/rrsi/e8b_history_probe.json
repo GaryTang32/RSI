@@ -1,0 +1,665 @@
+{
+ "experiment": "E8b history probe (retry round 2: P11)",
+ "model": "haiku",
+ "worlds": 9,
+ "redraws_full": {
+  "mean": 0.0,
+  "total": 0
+ },
+ "redraws_accepted_only": {
+  "mean": 0.0,
+  "total": 0
+ },
+ "added_full": 11,
+ "added_accepted_only": 12,
+ "paired_accepted_only_minus_full": {
+  "mean_diff": 0.0,
+  "lo": 0.0,
+  "hi": 0.0,
+  "n": 9,
+  "p_better": 0.0
+ },
+ "verdict": "NOT TESTABLE HERE (no redraws in either condition)",
+ "live_usd": 1.5565,
+ "cache_hits_misses": [
+  0,
+  18
+ ],
+ "wall_s": 1716.9,
+ "rows": [
+  {
+   "world": 0,
+   "rejected": [
+    "cos_02",
+    "cos_06",
+    "cos_08",
+    "dec_04",
+    "dec_05",
+    "gen_06",
+    "gen_12",
+    "gen_18",
+    "har_00",
+    "har_01",
+    "har_06",
+    "har_09",
+    "har_11",
+    "nul_01",
+    "nul_04",
+    "nul_08",
+    "nul_13",
+    "str_06"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_02",
+     "cos_06",
+     "cos_08",
+     "dec_04",
+     "dec_05",
+     "gen_06",
+     "gen_12",
+     "gen_18",
+     "har_00",
+     "har_01",
+     "har_06",
+     "har_09",
+     "har_11",
+     "nul_01",
+     "nul_04",
+     "nul_08",
+     "nul_13",
+     "str_06"
+    ],
+    "accepted_only": []
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "str_01",
+     "gen_07"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "Looking at this round 6 situation, I need to address the highest-impact failure modes within my 2-edit budget. The analysis shows:\n\n**Key observations:**\n1. **Largest failure mode**: Plan tasks (8 failures, loss 5.78) missing rubric criteria\n2. **Secondary failure**: Extract tasks (4 failures, loss 3.09) also missing criteria\n3. **Current harness**: 14 mechanisms, mostly prompt/guidance focused, b"
+   },
+   "accepted_only": {
+    "added": [
+     "har_04"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Remove step limit ceiling; add critic verification to catch solution errors\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"config\",\n      \"hypothesis\": \"Prune nul_14 (Tighter step limit): all 20+ failing tasks consistently hit the 15-step ceiling without solving, suggesting the constraint is too tight for complex task decomposition\",\n      \"t"
+   },
+   "usd_so_far": 0.1804
+  },
+  {
+   "world": 1,
+   "rejected": [
+    "cos_00",
+    "cos_02",
+    "cos_05",
+    "cos_08",
+    "dec_01",
+    "dec_05",
+    "gen_02",
+    "gen_11",
+    "gen_15",
+    "gen_18",
+    "har_01",
+    "har_02",
+    "har_03",
+    "har_09",
+    "har_13",
+    "nar_03",
+    "nul_03",
+    "nul_08",
+    "str_05"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_02",
+     "cos_05",
+     "cos_08",
+     "dec_01",
+     "dec_05",
+     "gen_02",
+     "gen_11",
+     "gen_15",
+     "gen_18",
+     "har_01",
+     "har_02",
+     "har_03",
+     "har_09",
+     "har_13",
+     "nar_03",
+     "nul_03",
+     "nul_08",
+     "str_05"
+    ],
+    "accepted_only": []
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "str_04"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune underperforming har_10 skill (caused arith regressions); add str_04 memory scratchpad to improve multi-step reasoning and rubric criterion tracking\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"skill\",\n      \"hypothesis\": \"[har_10] Procedure card: verification: remove verification mechanism that caused unpredicted regressions on arith "
+   },
+   "accepted_only": {
+    "added": [
+     "str_04"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "Looking at this round, I need to:\n\n1. **Address the stall** (sigma_t=1): The incumbent hasn't moved significantly. The pruning directive clearly shows `skill` component has negative recent gain (-0.00156) despite 2 accepted edits, and `config` never worked.\n\n2. **Exploit the exploration slot**: Must add a mechanism on untried component (client_tool or memory).\n\n3. **Understand the regression patte"
+   },
+   "usd_so_far": 0.3444
+  },
+  {
+   "world": 2,
+   "rejected": [
+    "cos_00",
+    "cos_05",
+    "cos_06",
+    "cos_08",
+    "gen_08",
+    "gen_10",
+    "gen_16",
+    "gen_17",
+    "har_00",
+    "har_01",
+    "har_04",
+    "har_05",
+    "har_07",
+    "har_08",
+    "har_11",
+    "har_16",
+    "har_19",
+    "nul_00",
+    "nul_08"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_05",
+     "cos_06",
+     "cos_08",
+     "gen_08",
+     "gen_10",
+     "gen_16",
+     "gen_17",
+     "har_00",
+     "har_01",
+     "har_04",
+     "har_05",
+     "har_07",
+     "har_08",
+     "har_11",
+     "har_16",
+     "har_19",
+     "nul_00",
+     "nul_08"
+    ],
+    "accepted_only": []
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "har_02"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune stale output_plumbing mechanism (nar_07 with recent_best_gain -0.01063); add verification skill (har_02) to systematically improve rubric criterion coverage in extract/plan tasks\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"output_plumbing\",\n      \"hypothesis\": \"prune: [nar_07] Collapse repeated log lines \u2014 mechanism had +0.049687 gai"
+   },
+   "accepted_only": {
+    "added": [
+     "har_14"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune regressing output_plumbing mechanism (nar_07); explore skill component with general estimation procedure (har_14)\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"output_plumbing\",\n      \"hypothesis\": \"Prune [nar_07] Collapse repeated log lines: mechanism showed negative recent gain (-0.01063) after initial gain, regressing performance; r"
+   },
+   "usd_so_far": 0.515
+  },
+  {
+   "world": 3,
+   "rejected": [
+    "cos_00",
+    "cos_03",
+    "dec_01",
+    "dec_02",
+    "har_07",
+    "har_08",
+    "har_10",
+    "har_13",
+    "har_14",
+    "nul_02",
+    "nul_04"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_03",
+     "dec_01",
+     "dec_02",
+     "har_07",
+     "har_08",
+     "har_10",
+     "har_13",
+     "har_14",
+     "nul_02",
+     "nul_04"
+    ],
+    "accepted_only": [
+     "dec_02"
+    ]
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "gen_05"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune underperforming code runner tool; add temperature control for final answer determinism\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"client_tool\",\n      \"hypothesis\": \"Prune [har_04] Code runner tool: accepted at t=1 with +0.033 gain in a 3-mechanism bundle, but no subsequent client_tool edits have improved, and scoreboard shows 0.33 h"
+   },
+   "accepted_only": {
+    "added": [
+     "gen_05",
+     "gen_16"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "Looking at this carefully:\n\n## Analysis\n\nThe incumbent (H_6) has 14 mechanisms active with a score of 0.6756. The consistent failure pattern across ALL families is \"Missed #/# rubric criteria\" - indicating incomplete/low-quality answers, not parsing failures.\n\n**Key observations:**\n1. **Core failure mode**: 23 failing tasks all show insufficient answer quality, not errors or malformations\n2. **Pru"
+   },
+   "usd_so_far": 0.7029
+  },
+  {
+   "world": 4,
+   "rejected": [
+    "cos_01",
+    "cos_03",
+    "cos_06",
+    "gen_02",
+    "gen_18",
+    "har_04",
+    "har_10",
+    "har_11",
+    "nar_01",
+    "nar_06",
+    "nul_02"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_01",
+     "cos_03",
+     "cos_06",
+     "gen_02",
+     "gen_18",
+     "har_04",
+     "har_10",
+     "har_11",
+     "nar_01",
+     "nar_06",
+     "nul_02"
+    ],
+    "accepted_only": [
+     "gen_02"
+    ]
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "har_09",
+     "har_12"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Add parsing skill and bounded self-verification pass to address missed rubric criteria in extract/arith failures\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"skill\",\n      \"hypothesis\": \"[har_09] Procedure card: parsing - Entity-free general parsing procedures help extract and arithmetic tasks decompose information extraction into systemati"
+   },
+   "accepted_only": {
+    "added": [
+     "str_10",
+     "str_06"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Add parsing skill and structured search tool to address extract/arith formatting and plan/extract information-finding failure modes\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"skill\",\n      \"hypothesis\": \"Parsing procedure skill: provide a formal general procedure card for structured information parsing and result formatting to address rub"
+   },
+   "usd_so_far": 0.8872
+  },
+  {
+   "world": 5,
+   "rejected": [
+    "cos_00",
+    "cos_01",
+    "cos_04",
+    "cos_05",
+    "cos_06",
+    "cos_09",
+    "gen_04",
+    "gen_15",
+    "har_02",
+    "har_03",
+    "har_04",
+    "har_06",
+    "har_10",
+    "har_11",
+    "har_12",
+    "nul_02",
+    "str_07"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_01",
+     "cos_04",
+     "cos_05",
+     "cos_06",
+     "cos_09",
+     "gen_04",
+     "gen_15",
+     "har_02",
+     "har_03",
+     "har_04",
+     "har_06",
+     "har_10",
+     "har_11",
+     "har_12",
+     "nul_02",
+     "str_07"
+    ],
+    "accepted_only": []
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 0,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Remove task-specific shortcut tables and non-improving skill mechanisms: prune obf_03/04/05 (hash-based memorization) and har_07/str_10 (skill component with negative recent gain) to eliminate overfitting and interference\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"control_flow\",\n      \"hypothesis\": \"Prune obf_03, obf_04, obf_05 shortcut t"
+   },
+   "accepted_only": {
+    "added": [
+     "nar_02"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune low-value skill mechanisms (har_07, str_10 with negative recent gain -0.08906) and add nar_02 worked example prompt to improve plan task performance by clarifying problem-solving structure and rubric requirements\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"skill\",\n      \"hypothesis\": \"Prune har_07 (decomposition) and str_10 (estimati"
+   },
+   "usd_so_far": 1.0771
+  },
+  {
+   "world": 6,
+   "rejected": [
+    "cos_00",
+    "cos_01",
+    "cos_02",
+    "cos_04",
+    "cos_09",
+    "dec_00",
+    "dec_04",
+    "dec_05",
+    "gen_07",
+    "har_00",
+    "har_01",
+    "har_05",
+    "har_12",
+    "har_17",
+    "har_19",
+    "nul_09",
+    "nul_10",
+    "nul_12",
+    "nul_13",
+    "nul_15",
+    "str_11"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_01",
+     "cos_02",
+     "cos_04",
+     "cos_09",
+     "dec_00",
+     "dec_04",
+     "dec_05",
+     "gen_07",
+     "har_00",
+     "har_01",
+     "har_05",
+     "har_12",
+     "har_17",
+     "har_19",
+     "nul_09",
+     "nul_10",
+     "nul_12",
+     "nul_13",
+     "nul_15",
+     "str_11"
+    ],
+    "accepted_only": [
+     "har_17"
+    ]
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "har_08"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune obf_04 (hardcoded shortcut table with constitutional risk) and add har_08 (memory scratchpad for organizing multi-step reasoning across all families).\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"prompt\",\n      \"hypothesis\": \"Prune [obf_04] Shortcut table: Remove hardcoded shortcut mechanism that carries constitutional risk (data look"
+   },
+   "accepted_only": {
+    "added": [
+     "har_08"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Remove task-specific shortcut table (constitution violation) and add untried memory mechanism to enable organized reasoning across failing tasks\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"prompt\",\n      \"hypothesis\": \"prune: [obf_04] Shortcut table contains hardcoded task-specific hash values (e.g., 'bcaa3f2b': 57); violates constitution "
+   },
+   "usd_so_far": 1.2478
+  },
+  {
+   "world": 7,
+   "rejected": [
+    "cos_00",
+    "cos_08",
+    "cos_09",
+    "gen_02",
+    "gen_08",
+    "har_01",
+    "har_04",
+    "har_07",
+    "har_10",
+    "har_11",
+    "har_12",
+    "har_13",
+    "har_18",
+    "nar_00",
+    "nar_05",
+    "nul_00",
+    "nul_04",
+    "nul_06",
+    "nul_09"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_00",
+     "cos_08",
+     "cos_09",
+     "gen_02",
+     "gen_08",
+     "har_01",
+     "har_04",
+     "har_07",
+     "har_10",
+     "har_11",
+     "har_12",
+     "har_13",
+     "har_18",
+     "nar_00",
+     "nar_05",
+     "nul_00",
+     "nul_04",
+     "nul_06",
+     "nul_09"
+    ],
+    "accepted_only": [
+     "har_11",
+     "nar_00",
+     "nul_09"
+    ]
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "gen_18"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Remove redundant plan-then-act mechanism (cos_01) to reduce token cost and interference; add explicit constraint checklist prompt (gen_18) to address core 'missed rubric criteria' failures in format and extract tasks\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"control_flow\",\n      \"hypothesis\": \"Prune cos_01 (Plan-then-act split): redundan"
+   },
+   "accepted_only": {
+    "added": [
+     "str_04"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 1,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Prune dec_00 (answer-line extractor) due to recent negative performance; add str_04 (decomposition procedure skill) to help format and plan tasks break down complex requirements\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"output_plumbing\",\n      \"hypothesis\": \"Prune dec_00 (answer-line extractor): recent evaluation shows negative performan"
+   },
+   "usd_so_far": 1.4059
+  },
+  {
+   "world": 8,
+   "rejected": [
+    "cos_01",
+    "cos_04",
+    "cos_05",
+    "cos_07",
+    "cos_08",
+    "cos_09",
+    "dec_00",
+    "dec_03",
+    "dec_04",
+    "gen_03",
+    "gen_07",
+    "gen_16",
+    "har_03",
+    "har_07",
+    "har_09",
+    "har_10",
+    "har_14",
+    "har_15",
+    "har_18",
+    "nul_09",
+    "nul_11",
+    "str_00"
+   ],
+   "shown_rejected": {
+    "full": [
+     "cos_01",
+     "cos_04",
+     "cos_05",
+     "cos_07",
+     "cos_08",
+     "cos_09",
+     "dec_00",
+     "dec_03",
+     "dec_04",
+     "gen_03",
+     "gen_07",
+     "gen_16",
+     "har_03",
+     "har_07",
+     "har_09",
+     "har_10",
+     "har_14",
+     "har_15",
+     "har_18",
+     "nul_09",
+     "nul_11",
+     "str_00"
+    ],
+    "accepted_only": []
+   },
+   "same_outside_history": true,
+   "full": {
+    "added": [
+     "str_05",
+     "str_04"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Add deterministic calculator tool and intermediate scratchpad mechanisms from untried components to address arith/extract failures\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"client_tool\",\n      \"hypothesis\": \"[str_05] Deterministic calculator tool: Provides exact arithmetic computation for arith problems instead of relying on model halluc"
+   },
+   "accepted_only": {
+    "added": [
+     "str_04",
+     "str_05"
+    ],
+    "redraws": [],
+    "n_redraws": 0,
+    "n_added": 2,
+    "n_declared_edits": 2,
+    "error": null,
+    "reply_head": "```json\n{\n  \"action\": \"done\",\n  \"summary\": \"Explore untried components (memory + client_tool) to address universal rubric-criteria failures across all task families with precision-critical operations and structured reasoning.\",\n  \"edits\": [\n    {\n      \"id\": \"C1\",\n      \"component\": \"memory\",\n      \"hypothesis\": \"Scratchpad for intermediate results enables the policy to track reasoning steps and r"
+   },
+   "usd_so_far": 1.5565
+  }
+ ]
+}

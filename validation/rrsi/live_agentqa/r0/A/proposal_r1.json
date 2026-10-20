@@ -1,0 +1,66 @@
+{
+ "status": "done",
+ "summary": "Remove task-specific answer values from system prompt examples to comply with no-hardcoded-data rule; keep extraction and verification guidance.",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "prompt",
+   "hypothesis": "Explicit instruction to format final answer as 'ANSWER: <value>' on its own line will cause LLM to structure output for reliable extraction, removing surrounding explanatory text that confuses the grader",
+   "targets_mode": "answer_output_lacks_extraction_marker",
+   "why_not_lower_lever": "The output format requirement is a communication intent that belongs in prose instructions; it guides the model's output structure at the generation stage",
+   "trigger_condition": "Always applied; system prompt is included in every LLM call",
+   "predicted_affected": [
+    "evolve-numeric-004",
+    "evolve-numeric-007",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) All three extraction-failure tasks compute correct values but embed them in sentence context; explicitly requiring 'ANSWER: <value>' format would have prevented this. (preservative) This does not affect step-by-step arithmetic structure in tasks 008/011; it only adds a final-line requirement, complementing the structured work shown. (transfer) Extraction-friendly formatting is general: any numeric or short-answer problem benefits from this pattern.",
+   "regression_risk": "Low; adds a format requirement without removing any capability. Tasks that already end with a formatted value (like 008/009) may add 'ANSWER:' but should still extract correctly.",
+   "mechanism": "Explicit instruction to format final answer as 'ANSWER: <value>' on its own line will cause LLM to structure output for reliable extraction, removing surrounding explanatory text that confuses the grader"
+  },
+  {
+   "id": "E2",
+   "component": "control_flow",
+   "hypothesis": "Parsing the LLM output for 'ANSWER: ' pattern and extracting only the value after it will remove surrounding explanation from the return value, ensuring grader comparison matches bare numeric values against expectations",
+   "targets_mode": "answer_output_lacks_extraction_marker",
+   "why_not_lower_lever": "Extraction logic is a harness-level plumbing issue that belongs in control flow, not in prompting; it ensures robust parsing independent of LLM compliance",
+   "trigger_condition": "Triggers whenever LLM output contains 'ANSWER: '; falls back to last-line extraction if pattern not found",
+   "predicted_affected": [
+    "evolve-numeric-004",
+    "evolve-numeric-007",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) If this extraction logic had existed, tasks 004/007/010 would have parsed 'ANSWER: 234', 'ANSWER: 435', 'ANSWER: 112' respectively and returned bare values, matching grader expectations exactly. (preservative) Tasks 008/009 already use minimal formatting without 'ANSWER:' prefix; fallback to last-line extraction ensures they continue to work. (transfer) Pattern-based answer extraction is general across numeric and short-answer domains.",
+   "regression_risk": "Low if fallback path is correct; worst case returns last line as before. Risk of over-extraction if ANSWER: appears mid-response, mitigated by regex anchoring to line boundaries.",
+   "mechanism": "Parsing the LLM output for 'ANSWER: ' pattern and extracting only the value after it will remove surrounding explanation from the return value, ensuring grader comparison matches bare numeric values against expectations"
+  },
+  {
+   "id": "E3",
+   "component": "prompt",
+   "hypothesis": "Adding explicit instruction to verify/double-check numeric results before responding will encourage the LLM to detect hallucinated or incorrect computations and correct them, improving accuracy",
+   "targets_mode": "numeric_computation_returns_incorrect_value",
+   "why_not_lower_lever": "Verification is a behavioral intent requiring prose guidance; the harness cannot itself verify results without tool execution, so prompting is the available lever",
+   "trigger_condition": "Always applied in system prompt; LLM will apply verification guidance to all numeric tasks",
+   "predicted_affected": [
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006"
+   ],
+   "retroactive_check": "(corrective) Tasks 001/005/006 show incorrect results (627 vs 781, digit sum 189 vs 99, bit count 26 vs 24); explicit verification instruction might have prompted recomputation or error detection, though without tool execution may have limited effect. (preservative) Verification instruction does not remove step-by-step structure; it adds a safety check that complements existing arithmetic breakdown patterns. (transfer) Encouraging verification is general: applies to any computational domain where self-checking can catch errors.",
+   "regression_risk": "Low; adds guidance without removing capability. Might increase token use slightly if LLM shows verification work, but no correctness risk.",
+   "mechanism": "Adding explicit instruction to verify/double-check numeric results before responding will encourage the LLM to detect hallucinated or incorrect computations and correct them, improving accuracy"
+  }
+ ],
+ "mechanism": "Remove task-specific answer values from system prompt examples to comply with no-hardcoded-data rule; keep extraction and verification guidance.",
+ "targets_mode": "answer_output_lacks_extraction_marker, answer_output_lacks_extraction_marker, numeric_computation_returns_incorrect_value",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

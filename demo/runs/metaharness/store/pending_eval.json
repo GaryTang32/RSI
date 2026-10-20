@@ -1,0 +1,19 @@
+{
+ "iteration": 4,
+ "candidates": [
+  {
+   "name": "gentle_python_trust",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "python_priority_extraction",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

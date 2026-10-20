@@ -1,0 +1,144 @@
+{
+ "run": "solpi_agentworld_live",
+ "method": "solpi",
+ "counts": {
+  "correct": 21,
+  "questionable": 1,
+  "wrong": 0,
+  "unverifiable": 0
+ },
+ "steps": [
+  {
+   "round": 1,
+   "step": "baseline on the training screen",
+   "verdict": "correct",
+   "evidence": "S=1.0000 from 9 raw trials, tokens 545286, cost 0.2722; tasks = the whole evolve split (9)"
+  },
+  {
+   "round": 1,
+   "step": "oracle ranking + selection",
+   "verdict": "correct",
+   "evidence": "top-2 by (-estimate, id) = ['L2:0.720', 'L1:0.106']"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "no admissible candidate: exit check failed: ImportError: cannot import name 'ToolResult' from 'anthropic.types' (/usr/local/lib/python3.11/dist-packages/anthropic/types/__init__.py) (Ralph repairs 2); the loop correctly refused to review/evaluate it (the defect is in the proposer's output)"
+  },
+  {
+   "round": 2,
+   "step": "L2.0 decision",
+   "verdict": "correct",
+   "evidence": "abandoned (expected abandoned); implementation: abandoned (exit check failed: ImportError: cannot import name 'ToolResult' from 'anthropic.types' (/usr/local/lib/python3.11/dist-packages/anthr"
+  },
+  {
+   "round": 3,
+   "step": "L2.1 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 3,
+   "step": "L2.1 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'condense_failing_logs', variant 1; actual diff touches ['extensions/condense_failing_logs.py', 'harness.json']; Ralph repairs 1; held-out references [], task ids []"
+  },
+  {
+   "round": 3,
+   "step": "L2.1 05 review (REJECT)",
+   "verdict": "correct",
+   "evidence": "right: the log is stored under rt.store['bash_log_<id>'] (no /.solpi/ prefix) and the agent is given no path - unrecallable (agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/') | reviewer: Criterion 3 violation: Full logs are stored in rt.store with an opaque key (bash_log_{id(event)}), but the agent has no discoverable way to retrieve them. The agent sees only a condensed string and '[... X lines omitted "
+  },
+  {
+   "round": 3,
+   "step": "L2.1 decision",
+   "verdict": "correct",
+   "evidence": "rejected (expected rejected); review: rejected (Criterion 3 violation: Full logs are stored in rt.store with an opaque key (bash_log_{id(event)}), but the agent has no discoverable way to re"
+  },
+  {
+   "round": 4,
+   "step": "L1.0 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of eb0223ae5a (expected eb0223ae5a: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 4,
+   "step": "L1.0 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'large_output_cache', variant 0; actual diff touches ['extensions/large_output_cache.py', 'harness.json']; Ralph repairs 1; held-out references [], task ids []"
+  },
+  {
+   "round": 4,
+   "step": "L1.0 05 review (pass)",
+   "verdict": "questionable",
+   "evidence": "passed a SILENT NO-OP: the hook reads event.call_id (AttributeError, swallowed by the runtime's fail-open), which the review missed; the gate then measured a saving of exactly 0 | reviewer: Criterion 1 (harness only): Extension modifies only hook registration and context projection mechanisms; no task-specific logic, evaluation data, or hardcoded environment references; Criterion 2 (fails open): Both `cache"
+  },
+  {
+   "round": 4,
+   "step": "L1.0 06 screen + dual gate",
+   "verdict": "correct",
+   "evidence": "base S 1.0000 vs cand S 1.0000 (raw trials 1.0000, floor 0.9800); savings tokens +0.0%, cost +0.0% (need > 2%) -> no efficiency gain (loop: no efficiency gain)"
+  },
+  {
+   "round": 4,
+   "step": "L1.0 decision",
+   "verdict": "correct",
+   "evidence": "gate_failed (expected gate_failed); validation: gate_failed; next: route back to 01 with this candidate's rollouts"
+  },
+  {
+   "round": 5,
+   "step": "L1.1 01 rollouts + 02 map-reduce",
+   "verdict": "correct",
+   "evidence": "rollouts of b2f98bcd8f (expected b2f98bcd8f: base, or the last gate-failed candidate after a route-back); 6 tasks, all evolve"
+  },
+  {
+   "round": 5,
+   "step": "L1.1 03/04 proposal + Ralph loop",
+   "verdict": "correct",
+   "evidence": "change 'Cache large tool outputs separately and project summaries in context to eliminat', variant 1; actual diff touches ['extensions/output_reference_deduplication.py', 'harness.json']; Ralph repairs 0; held-out references [], task ids []"
+  },
+  {
+   "round": 5,
+   "step": "L1.1 05 review (REJECT)",
+   "verdict": "correct",
+   "evidence": "right: rt.store['output_<id>'] is not readable by the agent (agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/') | reviewer: Requirement 3 violation: No retrieval mechanism demonstrated. The mechanism stores outputs with reference keys (e.g., 'output_call_id') in rt.store and mentions these keys in summaries, but no tool, API, or capability is"
+  },
+  {
+   "round": 5,
+   "step": "L1.1 decision",
+   "verdict": "correct",
+   "evidence": "rejected (expected rejected); review: rejected (Requirement 3 violation: No retrieval mechanism demonstrated. The mechanism stores outputs with reference keys (e.g., 'output_call_id') in rt."
+  },
+  {
+   "round": 6,
+   "step": "composition",
+   "verdict": "correct",
+   "evidence": "no survivor: incumbent stays the base"
+  },
+  {
+   "round": null,
+   "step": "shadow monitor (base + composed only, sealed splits, trace only)",
+   "verdict": "correct",
+   "evidence": "base_r1: holdout S=1.000, ood S=1.000"
+  },
+  {
+   "round": null,
+   "step": "no sealed evaluation inside lineages",
+   "verdict": "correct",
+   "evidence": "9 distinct tasks evaluated by lineages, all in evolve"
+  },
+  {
+   "round": null,
+   "step": "cost accounting",
+   "verdict": "correct",
+   "evidence": "proposer+implementer (trace) $0.0971; reviewer = loop - proposer = $0.1871; loop meter $0.2842 = cache ground truth $0.2842"
+  }
+ ]
+}

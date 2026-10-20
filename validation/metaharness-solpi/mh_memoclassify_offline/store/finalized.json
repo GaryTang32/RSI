@@ -1,0 +1,14 @@
+{
+ "status": "complete",
+ "systems": [
+  "no_memory",
+  "fewshot_all",
+  "i06_0_param_char_budget_4500",
+  "i05_1_crossover",
+  "i01_1_label_list",
+  "i03_1_notes"
+ ],
+ "started_at": 1790343361.5773225,
+ "failures": [],
+ "completed_at": 1790343364.3713574
+}

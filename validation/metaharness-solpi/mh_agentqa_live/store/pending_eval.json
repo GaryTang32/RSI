@@ -1,0 +1,27 @@
+{
+ "iteration": 3,
+ "candidates": [
+  {
+   "name": "code_generalized_extract",
+   "base_system": "code_first",
+   "hypothesis": "Removing math-specific language from system prompt and implementing flexible output extraction that handles strings, dates, lists (not just numbers) improves robustness across diverse problem types without sacrificing numeric accuracy.",
+   "axis": "exploitation",
+   "components": [
+    "code-generation",
+    "generalized-system-prompt",
+    "multi-type-extraction"
+   ]
+  },
+  {
+   "name": "code_with_classification",
+   "base_system": "code_first",
+   "hypothesis": "Asking the model to classify problem type and computational approach before code generation produces better-quality code on first attempt by forcing explicit reasoning about solution strategy, improving generalization to new task types.",
+   "axis": "exploration",
+   "components": [
+    "code-generation",
+    "problem-classification",
+    "strategy-guided-coding"
+   ]
+  }
+ ]
+}

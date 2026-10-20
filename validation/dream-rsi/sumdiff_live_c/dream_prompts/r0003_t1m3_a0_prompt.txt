@@ -1,0 +1,1703 @@
+You are improving one **prefix-only exploration policy**. Edit only
+``method.py`` and implement ``OptimalPolicy.solve(self, question, budget=None)``.
+Do not solve the scientific task and do not edit any other program.
+
+## Objective: quality, work, and parallelism
+
+The environment is a frozen, irregular branch×attempt grid. A policy opens a root
+or refines the next cell of an already-open branch. Each revealed cell costs one
+probe. The policy sees only the cells it has revealed so far; unrevealed scores are
+unknown.
+
+The evaluator replays your policy at its baked-in default ``beta`` on every frozen trace and ranks it by
+the mean replay score (the paper's Eq. 1):
+
+V = best - 0.01 * N + 0.005 * N / max(1, k)
+
+``best`` is the best revealed successful score normalized per trace (0 = the trace's root, 1 = the best
+score recorded in that trace), ``N`` the number of revealed cells (probes) and ``k`` the number of decision
+rounds (non-empty batches). It also sweeps your single ``beta`` knob for feedback (``beta_sweep.json``):
+pareto.reward = pareto.auc - lambda * parallel_penalty (lambda = 0.1); ``pareto.auc`` rewards reaching
+high per-trace attainment with few **total probes**; ``parallel_penalty`` is the mean of
+``effective_sequential_rounds / total_probes`` over the sweep, where a batch of size ``k`` with
+``W = question.max_parallelism`` workers costs one decision round and ``ceil(k / W)`` effective sequential
+rounds (a serial policy has penalty near 1; useful full batches approach ``1/W``). Therefore choose only
+promising probes, but batch independent promising probes whenever possible.
+
+A local implementation failure does not by itself prove that its parent direction
+is poor. Weigh recovery value against new roots and ordinary refinements while
+keeping batches parallel.
+
+## API
+
+question.reset()
+question.observed() -> dict[str, Observation] # revealed prefix only
+question.legal_actions() -> list[str] # roots + opened-branch frontiers
+question.legal_roots() -> list[str] # unopened roots only
+question.opened_branches() -> list[int]
+question.meta(cell_id) -> CellMeta # .branch .attempt .parent_id .seq .tags
+question.probe_batch(cells, on_reveal=...) -> list[Observation]
+question.baseline_score
+question.max_parallelism
+
+``Observation`` supplies ``branch``, ``attempt``, ``score``, ``evaluated``, ``valid``,
+``fail_class``, ``error``, ``delta_vs_baseline``, ``delta_vs_parent``, ``n_valid``, and
+``n_total``.
+Use the helpers in ``policy_api`` (the paper's ``see.policy.observation_signal``) when useful:
+``branch_promising``, ``branch_failed_hard``, ``probe_improved_vs_parent``, and
+``probe_improved_vs_baseline``.
+
+**Success semantics:** an evaluated observation with ``error is None`` and
+``fail_class == "ok"`` is a successful evaluation, even when ``valid == False`` or
+``n_valid``/``n_total`` are unavailable. Never label it repairable solely because
+``valid`` is false. A *successful anchor* below means the best historical score
+from such a successful evaluation.
+
+Do **not** use ``question.best_so_far`` or ``question.budget_spent`` to decide what
+to explore; they are bookkeeping only. Derive any decision statistic from
+``question.observed()`` instead.
+
+## Required branch trajectory and failure interpretation
+
+For each opened branch, reconstruct its ordered prefix trajectory, not only its
+latest observation or best score: successful anchor, score trend, regressions,
+failure/repair sequence, and explored versus remaining depth.
+
+Before closing or deprioritizing a failed frontier, classify it as
+hard-unrecoverable, repairable implementation failure, weak-but-underexplored, or
+repeatedly unpromising after sufficient valid evidence. Output/correctness mismatch,
+shared-memory/resource limits, and variable/code, mask/layout/shape errors are
+normally repairable. Do not infer algorithmic failure from one such error.
+``n_valid == 0`` and ``branch_failed_hard(obs)`` are signals, not unconditional
+closure: use ``fail_class`` and ``error`` to distinguish a repairable zero-valid
+failure from an environment/dependency failure. ``compile_other`` alone is not
+permanently hard. Classify the current failure episode: a later successful result
+reopens the branch and cancels closure based only on an earlier failure.
+
+## Required batch decision loop
+
+At each decision round:
+
+1. Read the prefix, reconstruct trajectories, and close only branches with
+cumulative evidence of being hard-unrecoverable or repeatedly unpromising.
+2. Rank legal roots and legal branch frontiers using only prefix-derived signals:
+successful anchor, parent→child gain, complete branch trajectory, actual success
+versus failure evidence,
+failure recoverability, prior repair outcomes, remaining depth, and cross-branch
+comparison.
+3. Rank actual repairable failures and underexplored frontiers in deterministic
+queues using trajectory, recoverability, remaining depth, repeated failures, and
+beta. A repairable failure retains eligibility unless cumulative evidence lowers
+its relative priority.
+4. Build one **dynamic portfolio** batch of independent candidates, up to
+``question.max_parallelism``: exploitation (strong normal refinements),
+exploration (new roots or underexplored branches), and at most one recovery
+(an actual repairable failure). When multiple roles are eligible, give
+exploration and justified recovery representation before filling remaining slots
+by priority; adapt this to prefix evidence rather than fixed quotas. Recovery
+must not displace normal successful refinements or leave workers idle. Never
+sample randomly, and do not default to a singleton merely because its top
+candidate is clear.
+5. Stop only after considering the whole revealed portfolio: active, underexplored,
+recoverable, unopened, and remaining legal candidates. Do not stop while an
+eligible high-priority recovery or underexplored candidate remains; every
+remaining action needs an evidence-based decision to continue, reserve, or close.
+
+A batch must contain distinct cells that are all legal *before* the call. It may
+contain several roots and/or one frontier from each opened branch. It must never
+contain a parent and its child together. Do not use a fixed widen-all / deepen-all
+wave schedule: adapt batch composition after every revealed prefix.
+
+Minimal structure:
+
+from policy_api import (
+    LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result,
+)
+
+def solve(self, question, budget=None):
+    question.reset()
+    res, closed = SimResult(), set()
+    while not _budget_done(question, budget):
+        prefix = question.observed()
+        update_closed(closed, prefix, question)
+        batch = select_batch(prefix, question, closed)
+        if not batch:
+            break
+        question.probe_batch(
+            batch,
+            on_reveal=lambda _: _record_curve(res, question),
+        )
+    return finalize_result(question, res)
+
+## Hard constraints
+
+- Keep ``NAME = "OptimalPolicy"`` and implement
+``class OptimalPolicy(LLMDesignedMethod)`` in ``method.py`` only.
+- **Prefix-only:** decisions may use revealed observations, ``baseline_score``, legal
+sets, structural ``meta``, and helper signals. Never use unrevealed scores, a true
+optimum, hardcoded winning cell ids, absolute score targets, or internal trace data.
+- Every prune, widen, deepen, batch, and stop decision must be explainable from the
+current prefix. Shallow weak scores are not enough to discard a branch: deeper
+attempts can recover. A repairable latest failure must not erase its historical
+successful anchor or by itself cause permanent starvation.
+- Replay calls with ``budget=None``. Always terminate when no batch is selected; do
+not assume a budget cap exists.
+- A selected batch must be legal, have no duplicate ids, and contain at most
+``question.max_parallelism`` cells.
+
+## Beta: fixed per run, adaptive across cycles
+
+Read exactly one scalar in ``__init__``:
+
+beta = float(self.config.get("beta", <sensible_default>))
+
+Beta has three distinct roles. Do not conflate them:
+
+1. **Within one replay or live episode:** beta is fixed. Route every behavioral
+threshold through one ``_schedule(beta) -> dict``. High beta means more width,
+deeper patience, and weaker pruning. Low beta means fewer probes, earlier
+stagnation stops, and stronger pruning. Never change beta from observations inside
+``solve()``. Route recovery eligibility, reserve threshold, and waiting through
+the same schedule: high beta is more patient; low beta remains selective without
+treating one repairable failure as automatic closure.
+2. **During offline evaluation:** eval sweeps a fixed beta grid. This measures whether
+the policy exposes a real attainment/work/parallelism trade-off; it is not online
+beta adaptation.
+3. **When proposing the next policy version:** choose the baked-in default beta once,
+using evidence from earlier *live* cycles and their beta sweeps. That default will
+remain fixed throughout the next live exploration episode.
+
+Keep all thresholds relative to the prefix; never use absolute score cutoffs.
+
+Use the following cross-cycle default-beta rule. Read the most recent 2–3
+**live** ``trace_pool/iter*/live_cycle_manifest.json`` sidecars (and ``_current``
+when present) for each iteration's final best score and actual baked-in beta. Read
+the matching archived ``beta_sweep.json`` values (``pareto.reward``, AUC, parallel
+penalty, and the per-beta frontier). Scores alone do not establish that beta caused a
+change, so always use both sources:
+
+- live best is still improving: keep the prior default beta unless its sweep clearly
+shows a better nearby beta;
+- live best has plateaued, and higher beta reaches higher attainment for a reasonable
+work/parallelism cost in the sweep: raise the default by a small step (about
+0.1–0.2, clamped to [0, 1]);
+- a high default beta has already been tried through a plateau, and high-beta sweep
+points add work without higher attainment: lower it by a small step;
+- history is insufficient or evidence conflicts: use a moderately exploratory default
+(about 0.6), rather than pretending the replay ceiling is a live stopping signal.
+
+The beta sweep is non-degenerate only if beta changes the attainment/work trade-off.
+It also reveals whether the policy batches. Do not select the default simply as the
+smallest beta that reaches a frozen trace's known ceiling.
+
+## Required next-cycle grid planning
+
+Every proposed policy **must** implement this deterministic method:
+
+from policy_api import GridPlan, GridPlanningContext
+
+def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+    ...
+
+This method runs **before** a new live grid is created. It does not make a
+within-episode decision and must never inspect a current episode's outcomes.
+It must always return a non-``None`` ``GridPlan``: do not inherit the template
+stub and do not delegate grid choice to the runner's fallback. When history is
+empty or insufficient, still return an explicit conservative bootstrap plan
+derived from the context's fallback/hard-cap fields, with a factual reason.
+
+``GridPlan(branch_count=W, refine_count=R)`` accepts arbitrary integers, not a
+fixed set of presets. It creates branches ``0..W-1`` and attempts ``0..R``; ``R`` is
+the number of refinements allowed after each root. The runner validates
+``1 <= W <= context.hard_max_branch_count`` and
+``0 <= R <= context.hard_max_refine_count``. In replay, a requested plan beyond the
+frozen trace's ``context.trace_branch_count`` or ``context.trace_refine_count`` is
+out of support and cannot earn replay reward.
+
+Use only the prefix-safe facts in ``context``:
+
+- ``history``: completed earlier live manifests, including prior planned/effective
+grids, actual opened width/depth, probe work, decision rounds, scores, and beta;
+- fallback/hard caps and worker cap;
+- replay structural support fields. Do not read raw trace outcomes or a current
+cycle result inside ``plan_grid``.
+
+Choose width versus depth from evidence, not a default preference:
+
+- many semantically distinct roots improve early while deeper refinements stall:
+increase width and reduce/hold depth;
+- high gains arrive late on a small, repeatable set of directions: reduce/hold width
+and increase depth;
+- all explored directions plateau after sufficient depth while meaningful direction
+classes remain uncovered: increase width;
+- repeated hard, unrecoverable failures or strongly redundant directions: reduce
+width and depth conservatively;
+- conflicting or insufficient history: return an explicit conservative bootstrap
+plan derived from the context, and state that evidence is insufficient.
+
+Include a short, factual ``reason`` in every plan. ``plan_grid`` answers
+how many directions to make available; the direction provider assigns those new
+roots their directions, and ``solve`` still decides which legal roots/frontiers to
+open, refine, prune, or stop. Do not choose roots merely because their branch id is
+small. The runtime grid is the hard bound: controller thresholds may use less, but
+can never create branches or attempts beyond the effective plan. Before finishing,
+verify that the edited ``method.py`` contains an override of ``plan_grid`` that
+returns ``GridPlan(branch_count=..., refine_count=..., reason=...)`` on every path.
+
+## Learn from history without leaking outcomes
+
+Earlier rounds are in ``history/r####_*/``. Read their policy code and
+``proposal_results/beta_sweep.json``. Start from a strong recent policy, retain
+mechanisms that raised ``pareto.reward``, and make a concrete change when progress
+stalls. A legacy AUC-only sweep is useful code history but is not numerically
+comparable to the current reward. The baseline under ``history/baseline/`` is
+a parallel-refine floor to beat.
+
+Each current-objective round also archives
+``proposal_results/policy_execution_traces.jsonl``: one replay episode per
+``(frozen trace, beta)``. Use it to diagnose general behavior -- serial batches,
+premature stops, over-pruning, or wasted probes -- from the prefix state, selected
+batch, and revealed outcomes at each decision round. It is **between-round feedback
+only**: never read it inside ``solve()``, and never copy a trace-specific branch,
+cell id, score, or target into policy logic.
+
+``trace_pool``, if present, may be read only outside ``solve()``. Prefer the
+``live_cycle_manifest.json`` sidecars over raw replay outcomes for the per-iteration
+live trend. Never copy trace scores, targets, or cell ids into policy logic.
+
+## Deliverable
+
+Write a complete adaptive policy in ``method.py``. Include a short module
+docstring describing its prefix signals, batch rule, beta schedule, default-beta
+rationale, grid-planning rule (if implemented), and safeguards against
+over-pruning, over-stopping, permanent starvation after repairable failures, and
+serial probes. Before finishing, verify trajectory-based ranking, the stated
+success semantics, non-automatic zero-valid closure, deterministic recovery
+competition, and portfolio-level stop.
+
+---
+# Framework notes (this reimplementation's runner; not part of the paper's prompt)
+
+- Context files: ``history/r####_<label>/`` holds each earlier version's ``method.py``, ``report.json`` and
+  ``proposal_results/beta_sweep.json``; the version shown as the current artifact (the strongest so far) also has
+  ``proposal_results/policy_execution_traces.jsonl`` (first all episodes). ``history/baseline/method.py`` is
+  parallel refine. Live manifests are ``trace_pool/iter<t>/live_cycle_manifest.json``. The API source is
+  ``api/policy_api.py``: import it as ``from policy_api import ...`` (it also offers ``branch_trajectories``,
+  ``is_repairable``, ``lerp`` and ``clamp``). There is no ``_current`` manifest.
+- Workers: W = question.max_parallelism = 3.
+- Allowed imports: bisect, collections, dataclasses, enum, functools, heapq, itertools, math, numbers, operator, policy_api, random, statistics, typing. No file access, no ``getattr``/``eval``/``exec``/``compile``, no introspection
+  (``__class__``, ``__dict__``, ``globals()`` ...). Any other attribute of ``question`` is a guard violation.
+- Call ``question.reset()`` once, at the start of ``solve()``, before the first probe: a reset after probing is a
+  guard violation (it would let a policy explore, remember and replay the best path).
+- Every episode (one frozen trace at one beta, or one live search) runs in a fresh policy process: module-level and
+  class-level state does not survive between episodes. The static check therefore rejects ``global``/``nonlocal``,
+  mutating module-level objects or shared class attributes from inside a method, and ``lru_cache``/``cache``.
+- Live searches call ``solve(question, budget)`` with the round's agent-call budget; replay calls with
+  ``budget=None``. A disqualified episode (violation, illegal batch, crash) scores below every honest one.
+
+--- CONTEXT: api/policy_api.py ---
+"""Policy scaffolding: the API every exploration policy is written against.
+
+This is the framework's version of the paper's ``see.policy.api`` /
+``see.policy.observation_signal`` [paper:App.B.2 L2:28-45, L2:110-127]. Policy
+code imports it as ``from policy_api import ...``.
+
+The module is **standalone** (standard library only): the policy sandbox copies
+this file verbatim next to the policy's ``method.py`` in a scratch directory, so
+a policy running in a subprocess sees exactly the same classes as one running
+in-process. Nothing in here can reach a hidden tree: the :class:`QuestionProxy`
+only holds the revealed prefix it was sent by the parent process.
+
+Contents
+--------
+* :class:`Observation`, :class:`CellMeta` - what a revealed cell / a legal cell looks like;
+* :class:`GridPlan`, :class:`GridPlanningContext` - the pre-episode width x depth plan;
+* :class:`LLMDesignedMethod` - base class (``self.config``; ``plan_grid`` stub returns None,
+  which the runner rejects: policies must override it);
+* :class:`SimResult`, :func:`_budget_done`, :func:`_record_curve`, :func:`finalize_result`;
+* helper signals ``branch_promising``, ``branch_failed_hard``, ``probe_improved_vs_parent``,
+  ``probe_improved_vs_baseline`` plus ``branch_trajectories``, ``is_success``, ``is_repairable``;
+* :class:`QuestionProxy` - the policy-facing Question (same object online and in replay).
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import asdict, dataclass, field
+from typing import Any, Callable, Dict, List, Optional
+
+#: evaluation outcome classes. "ok" = successful evaluation (paper success semantics).
+FAIL_CLASSES = ("ok", "compile_other", "correctness", "constraint", "timeout", "resource", "env_error",
+                "dependency", "rejected", "hard")
+#: failures that are normally NOT repairable by the agent (environment / dependency / declared hard).
+HARD_FAIL_CLASSES = ("env_error", "dependency", "hard")
+
+
+class GuardViolation(RuntimeError):
+    """Raised when a policy touches something outside the revealed prefix
+    (hidden tree, ``best_so_far``, ``budget_spent``, unknown attributes)."""
+
+
+class BatchError(ValueError):
+    """Raised when a selected batch is illegal (duplicates, > W cells, illegal cell,
+    parent together with its child)."""
+
+
+# --------------------------------------------------------------------------- data
+@dataclass
+class Observation:
+    cell_id: str
+    branch: int
+    attempt: int
+    score: Optional[float]
+    evaluated: bool = True
+    valid: bool = True
+    fail_class: str = "ok"
+    error: Optional[str] = None
+    delta_vs_baseline: Optional[float] = None
+    delta_vs_parent: Optional[float] = None
+    n_valid: Optional[int] = None
+    n_total: Optional[int] = None
+    parent_id: Optional[str] = None
+
+    @property
+    def success(self) -> bool:
+        """Paper success semantics: evaluated, ``error is None`` and ``fail_class == "ok"``,
+        even when ``valid`` is False [paper:App.B.2 L2:47-51]."""
+        return bool(self.evaluated) and self.error is None and self.fail_class == "ok"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Observation":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__ if k in d})
+
+
+@dataclass
+class CellMeta:
+    cell_id: str
+    branch: int
+    attempt: int
+    parent_id: Optional[str] = None
+    seq: Optional[int] = None
+    tags: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "CellMeta":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__ if k in d})
+
+
+@dataclass
+class GridPlan:
+    """``branch_count`` branches (0..W-1) and attempts 0..``refine_count`` per branch
+    [paper:App.B.2 L2:206-212]. ``branch_count`` is a number of *branches*, not workers."""
+
+    branch_count: int
+    refine_count: int
+    reason: str = ""
+
+    @property
+    def cells(self) -> int:
+        return int(self.branch_count) * (int(self.refine_count) + 1)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GridPlan":
+        return cls(int(d["branch_count"]), int(d["refine_count"]), str(d.get("reason", "")))
+
+
+@dataclass
+class GridPlanningContext:
+    """Prefix-safe facts for ``plan_grid`` [paper:App.B.2 L2:214-221]: completed earlier
+    live manifests, fallback / hard caps, the worker cap, and (replay only) the frozen
+    trace's structural support."""
+
+    history: List[dict] = field(default_factory=list)
+    fallback_branch_count: int = 4
+    fallback_refine_count: int = 4
+    hard_max_branch_count: int = 16
+    hard_max_refine_count: int = 16
+    worker_cap: int = 4
+    trace_branch_count: Optional[int] = None
+    trace_refine_count: Optional[int] = None
+    mode: str = "live"                  # "live" | "replay"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "GridPlanningContext":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__ if k in d})
+
+
+@dataclass
+class SimResult:
+    curve: List[List[float]] = field(default_factory=list)   # [probes revealed, best successful score]
+    n_probes: int = 0
+    best: Optional[float] = None
+    stopped: str = ""
+    info: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "SimResult":
+        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__ if k in d})
+
+
+class LLMDesignedMethod:
+    """Base class of every exploration policy.
+
+    Subclasses read exactly one behavioural scalar, ``beta = float(self.config.get("beta", d))``,
+    and implement ``solve(question, budget=None)`` and ``plan_grid(context)``.
+    """
+
+    NAME = "LLMDesignedMethod"
+
+    def __init__(self, config: Optional[dict] = None) -> None:
+        self.config = dict(config or {})
+
+    def plan_grid(self, context: GridPlanningContext) -> Optional[GridPlan]:  # template stub
+        return None
+
+    def solve(self, question: "QuestionProxy", budget: Optional[int] = None) -> SimResult:  # pragma: no cover
+        raise NotImplementedError
+
+
+# --------------------------------------------------------------------- scaffolding
+def _budget_done(question, budget: Optional[int] = None) -> bool:
+    """True when the episode is over (round limit / everything revealed / online budget)
+    or when an explicit probe ``budget`` is used up. Replay calls with ``budget=None``."""
+    return bool(question._scaffold_budget_done(budget))
+
+
+def _best_success(prefix: Dict[str, Observation]) -> Optional[float]:
+    vals = [o.score for o in prefix.values() if o.success and o.score is not None]
+    return max(vals) if vals else None
+
+
+def _record_curve(res: SimResult, question) -> None:
+    prefix = question.observed()
+    res.curve.append([len(prefix), _best_success(prefix)])
+
+
+def finalize_result(question, res: SimResult) -> SimResult:
+    prefix = question.observed()
+    res.n_probes = len(prefix)
+    res.best = _best_success(prefix)
+    return res
+
+
+# ------------------------------------------------------------------ helper signals
+def is_success(obs: Observation) -> bool:
+    return obs.success
+
+
+def is_repairable(obs: Observation) -> bool:
+    """A failed evaluation that is normally fixable by the agent (correctness mismatch,
+    compile/runtime error, constraint violation, timeout, resource limit). Never
+    "repairable" merely because ``valid`` is False [paper:App.B.2 L2:49-50, L2:63-71]."""
+    if obs.success:
+        return False
+    return obs.fail_class not in HARD_FAIL_CLASSES
+
+
+def branch_trajectories(prefix: Dict[str, Observation]) -> Dict[int, List[Observation]]:
+    """Ordered prefix trajectory of every opened branch (attempt order)."""
+    out: Dict[int, List[Observation]] = {}
+    for o in prefix.values():
+        out.setdefault(o.branch, []).append(o)
+    for b in out:
+        out[b].sort(key=lambda o: o.attempt)
+    return out
+
+
+def successful_anchor(traj: List[Observation]) -> Optional[float]:
+    vals = [o.score for o in traj if o.success and o.score is not None]
+    return max(vals) if vals else None
+
+
+def probe_improved_vs_parent(obs: Observation) -> bool:
+    return obs.success and obs.delta_vs_parent is not None and obs.delta_vs_parent > 0
+
+
+def probe_improved_vs_baseline(obs: Observation) -> bool:
+    return obs.success and obs.delta_vs_baseline is not None and obs.delta_vs_baseline > 0
+
+
+def branch_promising(traj: List[Observation], baseline: Optional[float] = None) -> bool:
+    """Has a successful anchor above the baseline and its latest success still improved."""
+    succ = [o for o in traj if o.success and o.score is not None]
+    if not succ:
+        return False
+    anchor = max(o.score for o in succ)
+    if baseline is not None and anchor <= baseline:
+        return False
+    return probe_improved_vs_parent(succ[-1]) or len(succ) == 1
+
+
+def branch_failed_hard(traj: List[Observation], window: int = 2) -> bool:
+    """Signal (not an unconditional closure): the latest ``window`` attempts all failed and
+    at least one of them is a hard (environment/dependency) failure, or the branch has
+    never produced a successful evaluation and its latest failure is hard."""
+    if not traj:
+        return False
+    tail = traj[-window:]
+    if all(not o.success for o in tail) and any(o.fail_class in HARD_FAIL_CLASSES for o in tail):
+        return True
+    return not any(o.success for o in traj) and traj[-1].fail_class in HARD_FAIL_CLASSES
+
+
+# ------------------------------------------------------------------- the question
+_ALLOWED = frozenset({
+    "reset", "observed", "legal_actions", "legal_roots", "opened_branches", "meta", "probe_batch",
+    "baseline_score", "max_parallelism", "is_done", "_scaffold_budget_done",
+})
+
+
+class QuestionProxy:
+    """The only Question a policy ever holds (online and in replay).
+
+    It keeps a *mirror* of the revealed prefix, filled exclusively from what the
+    parent-side guard sends back after ``reset``/``probe_batch``. Any other attribute
+    raises :class:`GuardViolation` and the violation is reported to the parent, which
+    disqualifies the episode. ``best_so_far`` / ``budget_spent`` are bookkeeping only
+    and forbidden as decision inputs [paper:App.B.2 L2:53-55].
+    """
+
+    __slots__ = ("_t", "_st", "_obs")
+
+    def __init__(self, transport: Callable[..., dict]) -> None:
+        object.__setattr__(self, "_t", transport)
+        object.__setattr__(self, "_st", {})
+        object.__setattr__(self, "_obs", {})
+
+    # -- internal
+    def _apply(self, state: dict, revealed: Optional[list] = None) -> List[Observation]:
+        if state.get("reset"):
+            self._obs.clear()
+        out = []
+        for d in revealed or state.get("revealed", []):
+            o = Observation.from_dict(d)
+            self._obs[o.cell_id] = o
+            out.append(o)
+        self._st.update({k: v for k, v in state.items() if k not in ("revealed", "reset", "reset_denied")})
+        return out
+
+    def _violation(self, what: str):
+        try:
+            self._t("violation", what=what)
+        finally:
+            raise GuardViolation(f"policy accessed {what!r}: only the revealed prefix, baseline_score, legal sets, "
+                                 "structural meta and helper signals may be used")
+
+    # -- API
+    def reset(self) -> None:
+        state = self._t("reset")
+        if state.get("reset_denied"):   # already recorded parent-side as a violation
+            raise GuardViolation("reset() after probing: an episode may only be reset before its first probe")
+        self._apply(state)
+
+    def observed(self) -> Dict[str, Observation]:
+        return dict(self._obs)
+
+    def legal_actions(self) -> List[str]:
+        return list(self._st.get("legal_actions", []))
+
+    def legal_roots(self) -> List[str]:
+        return list(self._st.get("legal_roots", []))
+
+    def opened_branches(self) -> List[int]:
+        return list(self._st.get("opened", []))
+
+    def meta(self, cell_id: str) -> CellMeta:
+        m = self._st.get("meta", {}).get(cell_id)
+        if m is None:
+            o = self._obs.get(cell_id)
+            if o is None:
+                self._violation(f"meta({cell_id}) of a cell that is neither revealed nor legal")
+            return CellMeta(o.cell_id, o.branch, o.attempt, o.parent_id, None, {})
+        return CellMeta.from_dict(m)
+
+    @property
+    def baseline_score(self) -> Optional[float]:
+        return self._st.get("baseline_score")
+
+    @property
+    def max_parallelism(self) -> int:
+        return int(self._st.get("max_parallelism", 1))
+
+    def is_done(self) -> bool:
+        return bool(self._st.get("done", False))
+
+    def _scaffold_budget_done(self, budget: Optional[int]) -> bool:
+        if self._st.get("done"):
+            return True
+        return budget is not None and len(self._obs) >= int(budget)
+
+    def probe_batch(self, cells, on_reveal: Optional[Callable[[Observation], Any]] = None) -> List[Observation]:
+        cells = [str(c) for c in cells]
+        resp = self._t("probe", cells=cells)
+        if resp.get("batch_error"):
+            raise BatchError(resp["batch_error"])
+        out = self._apply(resp)
+        if on_reveal is not None:
+            for o in out:
+                on_reveal(o)
+        return out
+
+    @property
+    def best_so_far(self):
+        self._violation("best_so_far")
+
+    @property
+    def budget_spent(self):
+        self._violation("budget_spent")
+
+    def __getattr__(self, name: str):
+        if name in _ALLOWED:  # pragma: no cover - handled by real attributes
+            return object.__getattribute__(self, name)
+        self._violation(name)
+
+    def __setattr__(self, name, value):
+        self._violation(f"set {name}")
+
+
+def clamp(x: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, x))
+
+
+def lerp(lo: float, hi: float, beta: float) -> float:
+    """Linear schedule used by ``_schedule(beta)`` templates."""
+    return lo + (hi - lo) * clamp(float(beta), 0.0, 1.0)
+
+
+def ceil_div(a: int, b: int) -> int:
+    return int(math.ceil(a / max(1, b)))
+
+
+--- CONTEXT: trace_pool/iter01/live_cycle_manifest.json ---
+{"iteration": 1, "planned_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "effective_grid": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "opened_width": 3, "max_depth": 2, "probe_work": 9, "decision_rounds": 3, "batch_sizes": [3, 3, 3], "root_score": 0.9104910395109694, "round_best": 1.0280613744592875, "final_best": 1.0280613744592875, "beta": 0.6, "gain_early": 0.7613226629691684, "gain_late": 0.2386773370308316, "fail_frac": 0.0, "hard_fail_frac": 0.0, "policy": "2f081731b815", "agent_calls": 9, "plan_reason": "parallel refine: fixed fallback grid (width x depth never adapts)", "plan_error": null, "round_budget": 9}
+
+--- CONTEXT: history/baseline/method.py ---
+"""Parallel refine (pi_1, the paper's initial policy and the Recursive Fixed Exploration baseline).
+
+"launches multiple independent exploration workspaces in parallel, with each workspace
+maintaining its own local discovery trajectory and repeatedly refining its current
+candidate" [paper:§4 p.7].
+
+Prefix signals: none (a fixed wave schedule). Batch rule: every legal cell ordered by
+(attempt, branch) - all roots first, then deepen every open branch - up to
+max_parallelism. Beta: read but unused (the fixed baseline has no dial). Grid planning:
+always the context's fallback grid. Stops when no legal cell remains.
+"""
+from policy_api import GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+
+    def plan_grid(self, context):
+        return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),
+                        "parallel refine: fixed fallback grid (width x depth never adapts)")
+
+    def solve(self, question, budget=None):
+        question.reset()
+        res = SimResult()
+        while not _budget_done(question, budget):
+            legal = question.legal_actions()
+            if not legal:
+                break
+            order = sorted(legal, key=lambda c: (question.meta(c).attempt, question.meta(c).branch))
+            batch = order[: question.max_parallelism]
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        res.stopped = "no legal cell left"
+        return finalize_result(question, res)
+
+
+--- CONTEXT: history/r0002_t1m2/method.py ---
+"""Adaptive prefix-only exploration policy with trajectory-driven batch selection and recovery.
+
+Prefix signals: successful anchor (max historical score), improvement trajectory (vs parent),
+failure classification and recoverability, branch promise, and comparison across opened branches.
+
+Batch rule: Dynamic portfolio of independent candidates up to max_parallelism:
+  - Tier 1: Exploitation (best-ranked open frontiers: high anchor, recent improvement, promising trend)
+  - Tier 2: Recovery (at most one repairable failure, ranked by fixability class and branch history)
+  - Tier 3: Exploration (new unopened roots; count scaled by beta)
+  - Tier 4: Fallback (fill remaining slots with any legal frontier/root; limits duplicates by branch)
+Ranks deterministically by trajectory data (promise, parent gain, anchor, recoverability).
+Never samples randomly. Repairable failures eligible for recovery until displaced by better frontiers.
+
+Beta schedule (fixed per episode, swept offline):
+  - Low beta (0.0–0.3): Conservative; few new roots, recovery only if very strong
+  - Mid beta (0.4–0.6): Balanced exploitation + exploration + measured recovery
+  - High beta (0.7–1.0): Patient; more new roots, more recovery attempts, later stops
+Routes reserve threshold and recovery patience through one _schedule(beta) dict.
+
+Default beta: 0.6 (moderate exploration). Rationale: iter01 baseline achieved attainment=1.0 
+with full parallelism and no failures; our adaptive policy should improve on harder tasks 
+by adding recovery logic and better frontier ranking, while maintaining parallelism on easy tasks.
+
+Grid planning: Defaults to fallback (3 branches, 2 refinements) when history is insufficient.
+When history accumulates, analyzes per-iteration attainment, probe work, and beta sweep 
+feedback to adapt width vs. depth tradeoff.
+
+Safeguards:
+  - Branches closed only with cumulative hard-unrecoverable evidence (branch_failed_hard).
+  - Repairable failures eligible for recovery; retry count capped at 2 per depth level.
+  - Zero-valid failures not automatically closed; fail_class and error classify episode.
+  - Recovery tier only added if promising frontier pool exists; doesn't displace exploitation.
+  - Unopened roots get at most one slot per batch to avoid over-wide probing.
+"""
+from policy_api import (
+    GridPlan, GridPlanningContext, LLMDesignedMethod, SimResult,
+    _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard,
+    is_repairable, probe_improved_vs_parent, probe_improved_vs_baseline,
+    clamp, lerp,
+)
+from typing import Dict, List, Set, Optional, Tuple
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    """Adaptive policy: trajectory-driven ranking, portfolio tier-based batch selection, recovery logic."""
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta: float) -> Dict[str, float]:
+        """Return beta-dependent thresholds (fixed for one episode).
+        
+        Low beta: conservative (few probes, early stops, strong pruning).
+        High beta: exploratory (many probes, patient, recovery-friendly).
+        """
+        b = clamp(float(beta), 0.0, 1.0)
+        return {
+            # Minimum recoverability score (0-1) to attempt recovery
+            'recovery_threshold': lerp(0.5, 0.2, b),
+            # How many unopened roots to explore per batch (scales with W)
+            'explore_root_fraction': lerp(0.0, 0.5, b),
+            # Max retries per depth level for repairable failures
+            'max_retries_per_depth': 2,
+        }
+    
+    def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+        """Adaptive grid planning from completed live cycles.
+        
+        Currently defaults to fallback when history is insufficient.
+        Future: Analyze history for width/depth signals.
+        """
+        if not context.history:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                "no prior history: using fallback grid (3 branches, 2 refinements)"
+            )
+        
+        return GridPlan(
+            int(context.fallback_branch_count),
+            int(context.fallback_refine_count),
+            f"adaptive: {len(context.history)} prior iters, insufficient data for grid change"
+        )
+    
+    def solve(self, question, budget=None) -> SimResult:
+        """Main loop: reset, reconstruct prefix trajectories, rank candidates, build portfolio batches."""
+        question.reset()
+        res = SimResult()
+        closed_branches: Set[int] = set()
+        
+        schedule = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            trajectories = branch_trajectories(prefix)
+            legal_actions = question.legal_actions()
+            
+            if not legal_actions:
+                res.stopped = "no legal cell left (all explored or closed)"
+                break
+            
+            # Update closed set based on cumulative hard evidence
+            self._update_closed(closed_branches, trajectories)
+            
+            # Select next batch: exploitation + recovery + exploration + fill
+            batch = self._select_batch(
+                question, legal_actions, trajectories, closed_branches, schedule
+            )
+            
+            if not batch:
+                res.stopped = "batch selection returned empty (all candidates closed)"
+                break
+            
+            # Probe batch and record curve
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _update_closed(
+        self,
+        closed: Set[int],
+        trajectories: Dict[int, List],
+    ) -> None:
+        """Mark branches as closed only with hard-unrecoverable evidence.
+        
+        Never close based on a single failure or zero-valid; use branch_failed_hard signal
+        (never succeeded AND latest is hard failure, or latest window all hard-failed).
+        """
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            if branch_failed_hard(traj):
+                closed.add(b)
+    
+    def _select_batch(
+        self,
+        question,
+        legal_actions: List[str],
+        trajectories: Dict[int, List],
+        closed: Set[int],
+        schedule: Dict[str, float],
+    ) -> List[str]:
+        """Build dynamic portfolio batch using tier-based selection.
+        
+        Tier 1: Exploitation (best open frontiers).
+        Tier 2: Recovery (at most one repairable failure).
+        Tier 3: Exploration (new unopened roots).
+        Tier 4: Fallback (fill remaining slots).
+        """
+        W = question.max_parallelism
+        baseline = question.baseline_score or 0.0
+        batch = []
+        selected_branches: Set[int] = set()
+        
+        # Partition legal actions
+        roots_set = set(question.legal_roots())
+        frontiers = [c for c in legal_actions if c not in roots_set]
+        
+        # === TIER 1: Rank frontiers for exploitation ===
+        frontier_candidates = []
+        for cell_id in frontiers:
+            meta = question.meta(cell_id)
+            b = meta.branch
+            if b in closed:
+                continue
+            
+            traj = trajectories.get(b, [])
+            if not traj:
+                continue
+            
+            anchor = successful_anchor(traj) or 0.0
+            last_obs = traj[-1]
+            improved = probe_improved_vs_parent(last_obs)
+            promising = branch_promising(traj, baseline)
+            
+            # Rank: (promising, improved, anchor) in descending importance
+            # Use tuple for stable, deterministic ordering
+            rank_key = (-int(promising), -int(improved), -anchor, -meta.attempt)
+            frontier_candidates.append((cell_id, rank_key, b))
+        
+        frontier_candidates.sort(key=lambda x: x[1])  # Sort by rank_key
+        
+        # Add top frontiers (exploitation), max 1 per branch
+        for cell_id, _, b in frontier_candidates:
+            if len(batch) >= W or b in selected_branches:
+                continue
+            batch.append(cell_id)
+            selected_branches.add(b)
+        
+        # === TIER 2: Find and rank repairable failures for recovery ===
+        if len(batch) < W:
+            recovery_options = []
+            for b, traj in trajectories.items():
+                if b in closed or b in selected_branches:
+                    continue
+                
+                last_obs = traj[-1]
+                if not last_obs.success and is_repairable(last_obs):
+                    # Count retries at this attempt level
+                    retry_count = sum(1 for o in traj if o.attempt == last_obs.attempt)
+                    if retry_count < schedule['max_retries_per_depth']:
+                        # Score by fail_class (how fixable)
+                        fixability = {
+                            'correctness': 0.9,      # Output/logic mismatch, usually fixable
+                            'constraint': 0.8,       # Constraint violation, usually fixable
+                            'compile_other': 0.7,    # Compilation error, usually fixable
+                            'timeout': 0.4,          # Timeout, harder to fix
+                            'resource': 0.3,         # Resource limit, harder to fix
+                        }.get(last_obs.fail_class, 0.2)
+                        
+                        # Weight by branch history (branch with good anchor worth more effort)
+                        anchor = successful_anchor(traj[:-1]) or 0.0  # Before this failure
+                        recovery_score = fixability + anchor * 0.2
+                        
+                        recovery_options.append((last_obs.cell_id, recovery_score, b))
+            
+            recovery_options.sort(key=lambda x: -x[1])
+            
+            # Add top recovery candidate if it beats threshold and we have room
+            if recovery_options:
+                cell_id, score, b = recovery_options[0]
+                if score >= schedule['recovery_threshold'] and cell_id in legal_actions:
+                    batch.append(cell_id)
+                    selected_branches.add(b)
+        
+        # === TIER 3: Explore new unopened roots ===
+        if len(batch) < W:
+            opened_branches = set(question.opened_branches())
+            unopened_roots = []
+            
+            for cell_id in roots_set:
+                if cell_id not in legal_actions:
+                    continue
+                b = question.meta(cell_id).branch
+                if b in closed or b in selected_branches:
+                    continue
+                if b not in opened_branches:
+                    unopened_roots.append((cell_id, b))
+            
+            # Explore only as many unopened roots as schedule permits
+            max_explore = max(1, int(W * (schedule['explore_root_fraction'] + 0.1)))
+            for cell_id, b in unopened_roots[:max_explore]:
+                if len(batch) >= W:
+                    break
+                batch.append(cell_id)
+                selected_branches.add(b)
+        
+        # === TIER 4: Fallback - fill remaining slots ===
+        if len(batch) < W:
+            remaining = [
+                c for c in legal_actions
+                if c not in batch and question.meta(c).branch not in selected_branches
+            ]
+            for cell_id in remaining[:W - len(batch)]:
+                batch.append(cell_id)
+                selected_branches.add(question.meta(cell_id).branch)
+        
+        return batch[:W]
+
+
+--- CONTEXT: history/r0002_t1m2/report.json ---
+{
+ "policy": "f9c52f25aa",
+ "label": "t1m2",
+ "objective": "eq1",
+ "value": 0.925,
+ "per_world": [
+  0.925
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 1.0,
+  "probes_frac": 1.0,
+  "N": 9.0,
+  "k": 3.0,
+  "mean_batch": 3.0,
+  "batch_fill": 1.0,
+  "missed_ceiling_rate": 0.0,
+  "wasted_probe_frac": 0.0,
+  "serial_round_frac": 0.0,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0047,
+ "wall_s": 0.093,
+ "n_episodes": 1
+}
+
+--- CONTEXT: history/r0002_t1m2/proposal_results/policy_execution_traces.jsonl ---
+{"world": "iter01", "beta": null, "plan": {"branch_count": 3, "refine_count": 2, "reason": "no prior history: using fallback grid (3 branches, 2 refinements)"}, "out_of_support": false, "N": 9, "k": 3, "attainment": 1.0, "error": null, "violations": [], "rounds": [{"round": 1, "prefix": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b1.a0", "b0.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 2, "prefix": {"n": 3, "branches": {"0": [1.0], "1": [1.0], "2": [1.0]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a1", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 3, "prefix": {"n": 6, "branches": {"0": [1.0, 1.0], "1": [1.0, 1.0], "2": [1.0, 1.0]}}, "legal_n": 3, "batch": ["b0.a2", "b1.a2", "b2.a2"], "revealed": [{"cell": "b0.a2", "score": 1.02381555418023, "fail_class": "ok"}, {"cell": "b1.a2", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a2", "score": 1.0280613744592875, "fail_class": "ok"}], "empty": []}]}
+
+
+--- CONTEXT: history/r0001_t1m1/method.py ---
+"""Adaptive prefix-only exploration policy with trajectory-driven batch selection.
+
+Prefix signals: successful anchor (max historical score), improvement trajectory (vs parent),
+failure classification and recoverability, branch promise, and comparison across opened branches.
+
+Batch rule: Portfolio of independent candidates up to max_parallelism:
+  - Exploitation: best-ranked open frontiers (high anchor, recent improvement, promising trend)
+  - Exploration: new roots (strength varies with beta)
+  - Recovery: at most one repairable failure (only if frontier quality permits)
+Ranks deterministically by trajectory data (anchor, parent gain, depth, failure evidence, beta).
+Never samples randomly. Skips stalled branches (plateau after valid depth) and hard-unrecoverable
+failures, but repairable failures remain eligible unless cumulative evidence lowers priority.
+
+Beta schedule (fixed per episode, swept offline):
+  - Low beta (0.0–0.3): Conservative; few new roots, early stagnation stops, strong closure
+  - Mid beta (0.4–0.6): Balanced exploration + exploitation
+  - High beta (0.7–1.0): Patient; more new roots, later stagnation stops, recovery-friendly
+Routes all thresholds (reserve, patience, recovery cost) through one _schedule(beta) dict.
+
+Default beta: 0.6 (moderate exploration). Rationale: iter01 baseline (parallel refine, β=0.6)
+achieved attainment=1.0 with full parallelism and no failures; conservative default allows
+improvement on diverse tasks without over-exploration on easy ones. If history shows consistent
+improvement under higher beta without loss of batching, raise toward 0.8; if plateau persists
+despite high-beta exploration, lower toward 0.4.
+
+Grid planning: Analyzes completed live manifests (planned/effective grids, probe work, attainment,
+beta, failure rates) to adapt branch count and refine depth. Increases width if gains arrive on
+many roots; increases depth if strong gains continue late on fewer branches; decreases both if
+hard unrecoverable failures dominate. Defaults to fallback (3 branches, 2 refinements) if history
+is empty or conflicting.
+
+Safeguards:
+  - Branches closed only with cumulative hard-unrecoverable evidence (never hard failure alone).
+  - Repairable failures eligible for recovery until displaced by higher-priority frontier probes.
+  - Zero-valid failures not automatically repairable; fail_class and error classify episode.
+  - Early stops only when all open frontiers plateau + no high-beta recovery + sufficient depth reached.
+  - Stalled frontier (no improvement for ≥threshold rounds) deprioritized but not closed if successful
+    anchor exists; reopens if batch slot available and no higher-priority candidate.
+"""
+from policy_api import (
+    GridPlan, GridPlanningContext, LLMDesignedMethod, SimResult,
+    _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard,
+    is_repairable, probe_improved_vs_parent, probe_improved_vs_baseline,
+)
+from typing import Dict, List, Set, Optional, Tuple
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    """Adaptive policy: prefix-driven trajectory ranking, portfolio batch selection, adaptive grid planning."""
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta: float) -> Dict[str, float]:
+        """Return beta-dependent thresholds (fixed for one episode).
+        
+        Low beta: conservative (few probes, early stops, strong pruning).
+        High beta: exploratory (many probes, patient, recovery-friendly).
+        """
+        from policy_api import clamp, lerp
+        b = clamp(float(beta), 0.0, 1.0)
+        return {
+            # Minimum improvement delta (parent gain) to keep frontier active
+            'min_frontier_delta': lerp(-0.01, 0.0, b),
+            # Rounds of plateau before deprioritizing a frontier (without closing)
+            'max_plateau_rounds': lerp(1, 4, b),
+            # Penalty for recovery attempt (cost vs best frontier)
+            'recovery_cost_threshold': lerp(0.1, 0.01, b),
+            # Probability mass for new-root exploration (0 = none, 1 = all available)
+            'root_explore_fraction': lerp(0.0, 0.8, b),
+            # Minimum anchor strength to consider a branch non-trivial
+            'min_anchor_baseline': lerp(0.0, 0.0, b),
+        }
+    
+    def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+        """Adaptive grid planning from completed live cycles.
+        
+        Analyzes history (width/depth tradeoffs, attainment curves, failure patterns)
+        and returns (branch_count, refine_count). Defaults to conservative fallback
+        if history is empty or conflicting.
+        """
+        # Placeholder: insufficient history -> use fallback
+        if not context.history:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                "no prior history: using fallback grid (3 branches, 2 refinements)"
+            )
+        
+        # TODO: analyze history for width/depth signals
+        # For now, keep fallback unless future cycles suggest change
+        return GridPlan(
+            int(context.fallback_branch_count),
+            int(context.fallback_refine_count),
+            f"adaptive: {len(context.history)} prior iters, insufficient data for grid change"
+        )
+    
+    def solve(self, question, budget=None) -> SimResult:
+        """Main loop: reset, reconstruct prefix trajectories, rank candidates, build portfolio batches."""
+        question.reset()
+        res = SimResult()
+        closed_branches: Set[int] = set()
+        stalled_rounds: Dict[int, int] = {}  # branch -> rounds since last improvement
+        
+        schedule = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            trajectories = branch_trajectories(prefix)
+            legal_actions = question.legal_actions()
+            
+            if not legal_actions:
+                res.stopped = "no legal cell left (all explored or closed)"
+                break
+            
+            # Update closed set and stall counters based on cumulative evidence
+            self._update_closed_and_stall(closed_branches, stalled_rounds, trajectories, schedule)
+            
+            # Select next batch: exploitation + exploration + optional recovery
+            batch = self._select_batch(
+                question, legal_actions, trajectories, closed_branches, stalled_rounds,
+                prefix, schedule
+            )
+            
+            if not batch:
+                res.stopped = "batch selection returned empty (all candidates reserved or closed)"
+                break
+            
+            # Probe batch and record curve
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _update_closed_and_stall(
+        self,
+        closed: Set[int],
+        stalled: Dict[int, int],
+        trajectories: Dict[int, List],
+        schedule: Dict[str, float]
+    ) -> None:
+        """Mark branches as closed only with cumulative hard-unrecoverable evidence.
+        
+        Track stall rounds (no improvement in last N attempts). Repairable failures
+        and zero-valid cells are not auto-closed; stall does not auto-close if anchor exists.
+        """
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            
+            # Close iff: never succeeded AND latest failure is hard
+            if branch_failed_hard(traj):
+                closed.add(b)
+                continue
+            
+            # Track stall: successful anchor exists but recent attempts show no improvement
+            succ_obs = [o for o in traj if o.success and o.score is not None]
+            if succ_obs:
+                anchor = max(o.score for o in succ_obs)
+                # Find how many recent attempts are at or below anchor (plateau)
+                tail = traj[-int(schedule['max_plateau_rounds']):]
+                recent_succ = [o for o in tail if o.success and o.score is not None]
+                if recent_succ and all(o.score <= anchor + 1e-6 for o in recent_succ):
+                    stalled[b] = stalled.get(b, 0) + 1
+                else:
+                    stalled[b] = 0  # reset on any improvement
+    
+    def _select_batch(
+        self,
+        question,
+        legal_actions: List[str],
+        trajectories: Dict[int, List],
+        closed: Set[int],
+        stalled: Dict[int, int],
+        prefix: Dict[str, any],
+        schedule: Dict[str, float]
+    ) -> List[str]:
+        """Build dynamic portfolio batch: exploit + explore + recover.
+        
+        Ranks open frontiers by (promise, anchor, parent gain, depth).
+        Ranks new roots by (opened root performance, beta).
+        Selects independent candidates; avoids parent+child pairs.
+        """
+        W = question.max_parallelism
+        baseline = question.baseline_score or 0.0
+        batch = []
+        
+        # Partition legal actions
+        roots_set = set(question.legal_roots())
+        frontiers = [c for c in legal_actions if c not in roots_set]
+        
+        # Build frontier candidates with ranks
+        frontier_ranks = []
+        for cell_id in frontiers:
+            meta = question.meta(cell_id)
+            b = meta.branch
+            if b in closed:
+                continue  # Skip closed branches
+            
+            traj = trajectories.get(b, [])
+            if not traj:
+                continue
+            
+            anchor = successful_anchor(traj) or 0.0
+            last_obs = traj[-1]
+            improved = probe_improved_vs_parent(last_obs)
+            promising = branch_promising(traj, baseline)
+            stall_count = stalled.get(b, 0)
+            
+            # Priority: (is_promising, improved, anchor_strength, not_stalled, depth)
+            priority = (
+                -int(promising),
+                -int(improved),
+                -anchor,
+                -stall_count,  # deprioritize stalled but keep eligible
+                -meta.attempt,
+            )
+            frontier_ranks.append((cell_id, priority, b))
+        
+        frontier_ranks.sort(key=lambda x: x[1])
+        
+        # Build root candidates
+        opened_branches = question.opened_branches()
+        opened_root_anchors = {}
+        for b in opened_branches:
+            if b not in closed:
+                traj = trajectories.get(b, [])
+                anchor = successful_anchor(traj)
+                if anchor is not None:
+                    opened_root_anchors[b] = anchor
+        
+        root_ranks = []
+        for cell_id in roots_set:
+            if cell_id in legal_actions:
+                meta = question.meta(cell_id)
+                b = meta.branch
+                if b in opened_root_anchors:
+                    # Already opened: rank by anchor (exploit strong roots)
+                    priority = (-opened_root_anchors[b], -b)
+                else:
+                    # Never opened: rank by beta (explore less at low beta)
+                    priority = (-self.beta, -b)
+                root_ranks.append((cell_id, priority))
+        
+        root_ranks.sort(key=lambda x: x[1])
+        
+        # Heuristic batch composition: exploit + explore + recover
+        # At W=3: typically [2 exploit, 1 explore] or [1 exploit, 1 explore, 1 recover]
+        n_exploit = max(1, int(W * 0.65))
+        n_explore_roots = max(0, W - n_exploit - 1) if self.beta > 0.3 else 0
+        n_recover = 0  # placeholder; implement recovery if needed
+        
+        # Add top frontiers (exploitation)
+        selected_branches = set()
+        for cell_id, _, b in frontier_ranks:
+            if len(batch) >= n_exploit or b in selected_branches:
+                continue
+            if cell_id in legal_actions:
+                batch.append(cell_id)
+                selected_branches.add(b)
+        
+        # Add new roots (exploration)
+        explore_count = 0
+        for cell_id, _ in root_ranks:
+            if len(batch) >= W or explore_count >= n_explore_roots:
+                break
+            b = question.meta(cell_id).branch
+            if b not in selected_branches and cell_id in legal_actions:
+                batch.append(cell_id)
+                selected_branches.add(b)
+                explore_count += 1
+        
+        # Fill remaining slots with any legal frontier or root not yet selected
+        remaining = [c for c in legal_actions if c not in batch]
+        for cell_id in remaining:
+            if len(batch) >= W:
+                break
+            batch.append(cell_id)
+        
+        return batch[:W]
+
+
+--- CONTEXT: history/r0001_t1m1/report.json ---
+{
+ "policy": "3664bb65bc",
+ "label": "t1m1",
+ "objective": "eq1",
+ "value": 0.925,
+ "per_world": [
+  0.925
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 1.0,
+  "probes_frac": 1.0,
+  "N": 9.0,
+  "k": 3.0,
+  "mean_batch": 3.0,
+  "batch_fill": 1.0,
+  "missed_ceiling_rate": 0.0,
+  "wasted_probe_frac": 0.0,
+  "serial_round_frac": 0.0,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0047,
+ "wall_s": 0.1151,
+ "n_episodes": 1
+}
+
+--- CONTEXT: history/r0001_t1m1/proposal_results/policy_execution_traces.jsonl ---
+{"world": "iter01", "beta": null, "plan": {"branch_count": 3, "refine_count": 2, "reason": "no prior history: using fallback grid (3 branches, 2 refinements)"}, "out_of_support": false, "N": 9, "k": 3, "attainment": 1.0, "error": null, "violations": [], "rounds": [{"round": 1, "prefix": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b2.a0", "b0.a0", "b1.a0"], "revealed": [{"cell": "b0.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 2, "prefix": {"n": 3, "branches": {"0": [1.0], "1": [1.0], "2": [1.0]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a1", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 3, "prefix": {"n": 6, "branches": {"0": [1.0, 1.0], "1": [1.0, 1.0], "2": [1.0, 1.0]}}, "legal_n": 3, "batch": ["b0.a2", "b1.a2", "b2.a2"], "revealed": [{"cell": "b0.a2", "score": 1.02381555418023, "fail_class": "ok"}, {"cell": "b1.a2", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a2", "score": 1.0280613744592875, "fail_class": "ok"}], "empty": []}]}
+
+
+--- CONTEXT: history/r0000_initial/method.py ---
+"""Parallel refine (pi_1, the paper's initial policy and the Recursive Fixed Exploration baseline).
+
+"launches multiple independent exploration workspaces in parallel, with each workspace
+maintaining its own local discovery trajectory and repeatedly refining its current
+candidate" [paper:§4 p.7].
+
+Prefix signals: none (a fixed wave schedule). Batch rule: every legal cell ordered by
+(attempt, branch) - all roots first, then deepen every open branch - up to
+max_parallelism. Beta: read but unused (the fixed baseline has no dial). Grid planning:
+always the context's fallback grid. Stops when no legal cell remains.
+"""
+from policy_api import GridPlan, LLMDesignedMethod, SimResult, _budget_done, _record_curve, finalize_result
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+
+    def plan_grid(self, context):
+        return GridPlan(int(context.fallback_branch_count), int(context.fallback_refine_count),
+                        "parallel refine: fixed fallback grid (width x depth never adapts)")
+
+    def solve(self, question, budget=None):
+        question.reset()
+        res = SimResult()
+        while not _budget_done(question, budget):
+            legal = question.legal_actions()
+            if not legal:
+                break
+            order = sorted(legal, key=lambda c: (question.meta(c).attempt, question.meta(c).branch))
+            batch = order[: question.max_parallelism]
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        res.stopped = "no legal cell left"
+        return finalize_result(question, res)
+
+
+--- CONTEXT: history/r0000_initial/report.json ---
+{
+ "policy": "2f081731b8",
+ "label": "incumbent",
+ "objective": "eq1",
+ "value": 0.925,
+ "per_world": [
+  0.925
+ ],
+ "sweep_reward": null,
+ "diagnostics": {
+  "attainment": 1.0,
+  "probes_frac": 1.0,
+  "N": 9.0,
+  "k": 3.0,
+  "mean_batch": 3.0,
+  "batch_fill": 1.0,
+  "missed_ceiling_rate": 0.0,
+  "wasted_probe_frac": 0.0,
+  "serial_round_frac": 0.0,
+  "out_of_support_rate": 0.0,
+  "plan_errors": [],
+  "disqualified": 0,
+  "violations": [],
+  "errors": [],
+  "batch_errors": []
+ },
+ "cpu_s": 0.0047,
+ "wall_s": 0.0972,
+ "n_episodes": 1
+}
+
+--- CONTEXT: history/r0000_initial/proposal_results/policy_execution_traces.jsonl ---
+{"world": "iter01", "beta": null, "plan": {"branch_count": 3, "refine_count": 2, "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"}, "out_of_support": false, "N": 9, "k": 3, "attainment": 1.0, "error": null, "violations": [], "rounds": [{"round": 1, "prefix": {"n": 0, "branches": {}}, "legal_n": 3, "batch": ["b0.a0", "b1.a0", "b2.a0"], "revealed": [{"cell": "b0.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a0", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a0", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 2, "prefix": {"n": 3, "branches": {"0": [1.0], "1": [1.0], "2": [1.0]}}, "legal_n": 3, "batch": ["b0.a1", "b1.a1", "b2.a1"], "revealed": [{"cell": "b0.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b1.a1", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a1", "score": 1.0, "fail_class": "ok"}], "empty": []}, {"round": 3, "prefix": {"n": 6, "branches": {"0": [1.0, 1.0], "1": [1.0, 1.0], "2": [1.0, 1.0]}}, "legal_n": 3, "batch": ["b0.a2", "b1.a2", "b2.a2"], "revealed": [{"cell": "b0.a2", "score": 1.02381555418023, "fail_class": "ok"}, {"cell": "b1.a2", "score": 1.0, "fail_class": "ok"}, {"cell": "b2.a2", "score": 1.0280613744592875, "fail_class": "ok"}], "empty": []}]}
+
+
+--- CURRENT ARTIFACT ---
+=== FILE: method.py ===
+"""Adaptive prefix-only exploration policy with trajectory-driven batch selection and recovery.
+
+Prefix signals: successful anchor (max historical score), improvement trajectory (vs parent),
+failure classification and recoverability, branch promise, and comparison across opened branches.
+
+Batch rule: Dynamic portfolio of independent candidates up to max_parallelism:
+  - Tier 1: Exploitation (best-ranked open frontiers: high anchor, recent improvement, promising trend)
+  - Tier 2: Recovery (at most one repairable failure, ranked by fixability class and branch history)
+  - Tier 3: Exploration (new unopened roots; count scaled by beta)
+  - Tier 4: Fallback (fill remaining slots with any legal frontier/root; limits duplicates by branch)
+Ranks deterministically by trajectory data (promise, parent gain, anchor, recoverability).
+Never samples randomly. Repairable failures eligible for recovery until displaced by better frontiers.
+
+Beta schedule (fixed per episode, swept offline):
+  - Low beta (0.0–0.3): Conservative; few new roots, recovery only if very strong
+  - Mid beta (0.4–0.6): Balanced exploitation + exploration + measured recovery
+  - High beta (0.7–1.0): Patient; more new roots, more recovery attempts, later stops
+Routes reserve threshold and recovery patience through one _schedule(beta) dict.
+
+Default beta: 0.6 (moderate exploration). Rationale: iter01 baseline achieved attainment=1.0 
+with full parallelism and no failures; our adaptive policy should improve on harder tasks 
+by adding recovery logic and better frontier ranking, while maintaining parallelism on easy tasks.
+
+Grid planning: Defaults to fallback (3 branches, 2 refinements) when history is insufficient.
+When history accumulates, analyzes per-iteration attainment, probe work, and beta sweep 
+feedback to adapt width vs. depth tradeoff.
+
+Safeguards:
+  - Branches closed only with cumulative hard-unrecoverable evidence (branch_failed_hard).
+  - Repairable failures eligible for recovery; retry count capped at 2 per depth level.
+  - Zero-valid failures not automatically closed; fail_class and error classify episode.
+  - Recovery tier only added if promising frontier pool exists; doesn't displace exploitation.
+  - Unopened roots get at most one slot per batch to avoid over-wide probing.
+"""
+from policy_api import (
+    GridPlan, GridPlanningContext, LLMDesignedMethod, SimResult,
+    _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard,
+    is_repairable, probe_improved_vs_parent, probe_improved_vs_baseline,
+    clamp, lerp,
+)
+from typing import Dict, List, Set, Optional, Tuple
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    """Adaptive policy: trajectory-driven ranking, portfolio tier-based batch selection, recovery logic."""
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta: float) -> Dict[str, float]:
+        """Return beta-dependent thresholds (fixed for one episode).
+        
+        Low beta: conservative (few probes, early stops, strong pruning).
+        High beta: exploratory (many probes, patient, recovery-friendly).
+        """
+        b = clamp(float(beta), 0.0, 1.0)
+        return {
+            # Minimum recoverability score (0-1) to attempt recovery
+            'recovery_threshold': lerp(0.5, 0.2, b),
+            # How many unopened roots to explore per batch (scales with W)
+            'explore_root_fraction': lerp(0.0, 0.5, b),
+            # Max retries per depth level for repairable failures
+            'max_retries_per_depth': 2,
+        }
+    
+    def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+        """Adaptive grid planning from completed live cycles.
+        
+        Currently defaults to fallback when history is insufficient.
+        Future: Analyze history for width/depth signals.
+        """
+        if not context.history:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                "no prior history: using fallback grid (3 branches, 2 refinements)"
+            )
+        
+        return GridPlan(
+            int(context.fallback_branch_count),
+            int(context.fallback_refine_count),
+            f"adaptive: {len(context.history)} prior iters, insufficient data for grid change"
+        )
+    
+    def solve(self, question, budget=None) -> SimResult:
+        """Main loop: reset, reconstruct prefix trajectories, rank candidates, build portfolio batches."""
+        question.reset()
+        res = SimResult()
+        closed_branches: Set[int] = set()
+        
+        schedule = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            trajectories = branch_trajectories(prefix)
+            legal_actions = question.legal_actions()
+            
+            if not legal_actions:
+                res.stopped = "no legal cell left (all explored or closed)"
+                break
+            
+            # Update closed set based on cumulative hard evidence
+            self._update_closed(closed_branches, trajectories)
+            
+            # Select next batch: exploitation + recovery + exploration + fill
+            batch = self._select_batch(
+                question, legal_actions, trajectories, closed_branches, schedule
+            )
+            
+            if not batch:
+                res.stopped = "batch selection returned empty (all candidates closed)"
+                break
+            
+            # Probe batch and record curve
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _update_closed(
+        self,
+        closed: Set[int],
+        trajectories: Dict[int, List],
+    ) -> None:
+        """Mark branches as closed only with hard-unrecoverable evidence.
+        
+        Never close based on a single failure or zero-valid; use branch_failed_hard signal
+        (never succeeded AND latest is hard failure, or latest window all hard-failed).
+        """
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            if branch_failed_hard(traj):
+                closed.add(b)
+    
+    def _select_batch(
+        self,
+        question,
+        legal_actions: List[str],
+        trajectories: Dict[int, List],
+        closed: Set[int],
+        schedule: Dict[str, float],
+    ) -> List[str]:
+        """Build dynamic portfolio batch using tier-based selection.
+        
+        Tier 1: Exploitation (best open frontiers).
+        Tier 2: Recovery (at most one repairable failure).
+        Tier 3: Exploration (new unopened roots).
+        Tier 4: Fallback (fill remaining slots).
+        """
+        W = question.max_parallelism
+        baseline = question.baseline_score or 0.0
+        batch = []
+        selected_branches: Set[int] = set()
+        
+        # Partition legal actions
+        roots_set = set(question.legal_roots())
+        frontiers = [c for c in legal_actions if c not in roots_set]
+        
+        # === TIER 1: Rank frontiers for exploitation ===
+        frontier_candidates = []
+        for cell_id in frontiers:
+            meta = question.meta(cell_id)
+            b = meta.branch
+            if b in closed:
+                continue
+            
+            traj = trajectories.get(b, [])
+            if not traj:
+                continue
+            
+            anchor = successful_anchor(traj) or 0.0
+            last_obs = traj[-1]
+            improved = probe_improved_vs_parent(last_obs)
+            promising = branch_promising(traj, baseline)
+            
+            # Rank: (promising, improved, anchor) in descending importance
+            # Use tuple for stable, deterministic ordering
+            rank_key = (-int(promising), -int(improved), -anchor, -meta.attempt)
+            frontier_candidates.append((cell_id, rank_key, b))
+        
+        frontier_candidates.sort(key=lambda x: x[1])  # Sort by rank_key
+        
+        # Add top frontiers (exploitation), max 1 per branch
+        for cell_id, _, b in frontier_candidates:
+            if len(batch) >= W or b in selected_branches:
+                continue
+            batch.append(cell_id)
+            selected_branches.add(b)
+        
+        # === TIER 2: Find and rank repairable failures for recovery ===
+        if len(batch) < W:
+            recovery_options = []
+            for b, traj in trajectories.items():
+                if b in closed or b in selected_branches:
+                    continue
+                
+                last_obs = traj[-1]
+                if not last_obs.success and is_repairable(last_obs):
+                    # Count retries at this attempt level
+                    retry_count = sum(1 for o in traj if o.attempt == last_obs.attempt)
+                    if retry_count < schedule['max_retries_per_depth']:
+                        # Score by fail_class (how fixable)
+                        fixability = {
+                            'correctness': 0.9,      # Output/logic mismatch, usually fixable
+                            'constraint': 0.8,       # Constraint violation, usually fixable
+                            'compile_other': 0.7,    # Compilation error, usually fixable
+                            'timeout': 0.4,          # Timeout, harder to fix
+                            'resource': 0.3,         # Resource limit, harder to fix
+                        }.get(last_obs.fail_class, 0.2)
+                        
+                        # Weight by branch history (branch with good anchor worth more effort)
+                        anchor = successful_anchor(traj[:-1]) or 0.0  # Before this failure
+                        recovery_score = fixability + anchor * 0.2
+                        
+                        recovery_options.append((last_obs.cell_id, recovery_score, b))
+            
+            recovery_options.sort(key=lambda x: -x[1])
+            
+            # Add top recovery candidate if it beats threshold and we have room
+            if recovery_options:
+                cell_id, score, b = recovery_options[0]
+                if score >= schedule['recovery_threshold'] and cell_id in legal_actions:
+                    batch.append(cell_id)
+                    selected_branches.add(b)
+        
+        # === TIER 3: Explore new unopened roots ===
+        if len(batch) < W:
+            opened_branches = set(question.opened_branches())
+            unopened_roots = []
+            
+            for cell_id in roots_set:
+                if cell_id not in legal_actions:
+                    continue
+                b = question.meta(cell_id).branch
+                if b in closed or b in selected_branches:
+                    continue
+                if b not in opened_branches:
+                    unopened_roots.append((cell_id, b))
+            
+            # Explore only as many unopened roots as schedule permits
+            max_explore = max(1, int(W * (schedule['explore_root_fraction'] + 0.1)))
+            for cell_id, b in unopened_roots[:max_explore]:
+                if len(batch) >= W:
+                    break
+                batch.append(cell_id)
+                selected_branches.add(b)
+        
+        # === TIER 4: Fallback - fill remaining slots ===
+        if len(batch) < W:
+            remaining = [
+                c for c in legal_actions
+                if c not in batch and question.meta(c).branch not in selected_branches
+            ]
+            for cell_id in remaining[:W - len(batch)]:
+                batch.append(cell_id)
+                selected_branches.add(question.meta(cell_id).branch)
+        
+        return batch[:W]
+
+
+Editable files (glob patterns): ['method.py']. Other files are locked.
+
+Respond in exactly this format:
+1. A JSON object in a ```json fence with keys:
+   "change": one-line description of the edit,
+   "hypothesis": why it should improve the score on UNSEEN tasks of the same kind,
+   "components": list of component names you touched (e.g. ["prompt", "control_flow", "tool"]).
+2. Then, for every file you change or create, the COMPLETE new file content:
+=== FILE: <path> ===
+<entire file content>
+Files you do not list stay unchanged. To delete a file, emit `=== FILE: <path> ===` followed by the single line `<<DELETE>>`.

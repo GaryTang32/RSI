@@ -1,0 +1,18 @@
+{
+ "name": "solve_verify_answer",
+ "artifact_id": "48a4da1dab11d2b4a2fc9ce3671fb956a16b1094c1ab7dd45acdb90e8a500714",
+ "created_at": 1790753869.1068337,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Structured prompting requiring explicit verification step and clear ANSWER format will catch computational errors and improve extraction reliability",
+ "axis": "exploitation",
+ "components": [
+  "axis:A",
+  "axis:F"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": ""
+}

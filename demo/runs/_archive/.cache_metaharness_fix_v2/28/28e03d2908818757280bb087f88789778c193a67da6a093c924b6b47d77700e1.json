@@ -1,0 +1,1 @@
+{"text": "```python\nn = 48 ** 14\ncount_ones = bin(n).count('1')\nprint(count_ones)\n```", "usage": {"calls": 1, "input_tokens": 915, "output_tokens": 343, "cost_usd": 0.00263, "latency_s": 5.525215148925781}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

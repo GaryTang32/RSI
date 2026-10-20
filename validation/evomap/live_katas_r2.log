@@ -1,0 +1,54 @@
+{
+ "wall_s": 480.6,
+ "hub": [
+  {
+   "asset_id": "sha256:8acd774556a0bfdbd",
+   "gene": "gene_unicode_text_comparison",
+   "author": "agent0",
+   "status": "verified",
+   "reasons": [],
+   "U": 0.0,
+   "U_LCB": 0.0,
+   "delta": 0.0,
+   "R": 0.0,
+   "n": 2,
+   "n_off": 2,
+   "adoptions": []
+  }
+ ],
+ "llm_usage_all": {
+  "task": {
+   "calls": 49,
+   "input_tokens": 48983,
+   "output_tokens": 63701,
+   "cost_usd": 0.3674880000000001,
+   "latency_s": 645.7809226512909,
+   "total_tokens": 112684
+  },
+  "proposer": {
+   "calls": 1,
+   "input_tokens": 1556,
+   "output_tokens": 3253,
+   "cost_usd": 0.017820999999999997,
+   "latency_s": 34.31847167015076,
+   "total_tokens": 4809
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 43958,
+   "output_tokens": 76598,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 120556
+  },
+  "_total": {
+   "calls": 50,
+   "input_tokens": 94497,
+   "output_tokens": 143552,
+   "cost_usd": 0.38530900000000007,
+   "latency_s": 680.0993943214417,
+   "total_tokens": 238049
+  }
+ }
+}
+transfer {'evolve': {'no_genes': {'S': 0.8, 'vs_reference': None}, 'gene_library': {'S': 1.0, 'vs_reference': {'mean_diff': 0.2, 'lo': 0.0, 'hi': 0.6, 'n': 5, 'p_better': 0.2}}}, 'holdout': {'no_genes': {'S': 1.0, 'vs_reference': None}, 'gene_library': {'S': 1.0, 'vs_reference': {'mean_diff': 0.0, 'lo': 0.0, 'hi': 0.0, 'n': 5, 'p_better': 0.0}}}}

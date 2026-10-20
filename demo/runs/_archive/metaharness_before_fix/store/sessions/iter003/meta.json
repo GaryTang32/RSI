@@ -1,0 +1,112 @@
+{
+ "iteration": 3,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 22535,
+  "output_tokens": 12240,
+  "cost_usd": 0.106261,
+  "latency_s": 119.5153214931488,
+  "total_tokens": 34775
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "reports/iter0.md",
+  "reports/iter1.md",
+  "sessions/iter001/meta.json",
+  "sessions/iter002/meta.json",
+  "candidates/code_execution/src/harness.py",
+  "candidates/code_execution/src/prompts/generate_code.md",
+  "candidates/code_execution/src/prompts/system.md",
+  "candidates/code_execution/src/prompts/task.md",
+  "candidates/code_execution/src/prompts/verify_code.md",
+  "candidates/code_execution/eval/search/scores.json",
+  "candidates/code_execution/meta.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-010.json",
+  "candidates/code_execution/eval/search/per_task/evolve-numeric-011.json",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-005.jsonl",
+  "candidates/code_execution/eval/search/traces/evolve-numeric-010.jsonl",
+  "candidates/clean_extraction/src/harness.py",
+  "candidates/clean_extraction/src/prompts/compare.md",
+  "candidates/clean_extraction/src/prompts/method.md",
+  "candidates/clean_extraction/src/prompts/system.md",
+  "candidates/clean_extraction/src/prompts/task.md",
+  "candidates/clean_extraction/eval/search/scores.json",
+  "candidates/clean_extraction/meta.json",
+  "candidates/multi_method/src/harness.py",
+  "candidates/multi_method/src/prompts/compare.md",
+  "candidates/multi_method/src/prompts/method.md",
+  "candidates/multi_method/src/prompts/system.md",
+  "candidates/multi_method/src/prompts/task.md",
+  "candidates/multi_method/eval/search/scores.json",
+  "candidates/multi_method/meta.json",
+  "candidates/guided_format/src/harness.py",
+  "candidates/guided_format/src/prompts/calculate.md",
+  "candidates/guided_format/src/prompts/system.md",
+  "candidates/guided_format/src/prompts/task.md",
+  "candidates/guided_format/src/prompts/verify.md",
+  "candidates/guided_format/eval/search/scores.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md"
+ ],
+ "n_files_read": 55,
+ "files_read_by_kind": {
+  "code": 23,
+  "traces": 19,
+  "scores": 6,
+  "other": 7
+ },
+ "files_scanned": [],
+ "n_files_scanned": 0,
+ "scanned_chars": 0,
+ "view_files": 159,
+ "view_chars": 390912,
+ "read_chars": 55845,
+ "error": null,
+ "seconds": 119.526,
+ "reports_written": [
+  "reports/iter2.md"
+ ],
+ "proposer_meta": {
+  "rendered_chars": 59891
+ },
+ "candidates": [
+  {
+   "name": "self_checking_code",
+   "base_system": "code_execution",
+   "hypothesis": "A single LLM call with inline self-verification instructions can achieve 100% accuracy while reducing token cost by eliminating the second verification turn.",
+   "axis": "exploitation",
+   "components": [
+    "axis:E (update trigger: single-pass + inline verification instead of two-pass)"
+   ]
+  },
+  {
+   "name": "pattern_template_solver",
+   "base_system": "code_execution",
+   "hypothesis": "Recognizing common problem patterns (digit sum, modulo, bit count) and substituting into hardcoded templates eliminates LLM code generation overhead, reducing cost while maintaining 100% accuracy.",
+   "axis": "exploration",
+   "components": [
+    "axis:C (retrieval: pattern-based template selection)",
+    "axis:B (state: template database)",
+    "axis:D (sizing: minimal code, no LLM generation)"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,39 @@
+{
+ "status": "done",
+ "summary": "Extend markdown code block regex to handle python3 language specifier variant, increasing parser coverage for LLM-generated code blocks that use '```python3' in addition to '```python'.",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "control_flow",
+   "hypothesis": "Markdown code block detection should recognize both 'python' and 'python3' language specifiers. Some LLMs may generate '```python3' blocks which the current regex (only matching 'python') would silently miss, causing tool invocation to fail and fall back to mental arithmetic.",
+   "targets_mode": "tool_invocation_avoidance: code block pattern matching fails on python3 variant, preventing tool execution",
+   "why_not_lower_lever": "This is a regex pattern fix in the parser logic, not addressable by prompt rewording—the LLM's language specifier choice is beyond prompt control and requires parser robustness.",
+   "trigger_condition": "LLM outputs markdown code blocks with '```python3' or '``` python3' language specifier instead of '```python'",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-005",
+    "evolve-numeric-009",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) If any traced task had LLM generate python3 blocks and failed due to parse mismatch, this fix enables tool execution; current traces all pass so this targets future unseen tasks where LLM may vary language specifier choice. (preservative) Current patterns matching '```python' remain unaffected—the new alternation r'(?:python|python3)' is backward compatible and preserves existing success on python-only blocks. (transfer) Generalizes to any task where the policy LLM uses python3 syntax, including numeric, date, text, and number-theory domains; robustness in parsing is task-agnostic.",
+   "regression_risk": "None—the change is more permissive (accepts superset of inputs), strictly backward compatible with existing behavior on 'python' blocks.",
+   "mechanism": "Markdown code block detection should recognize both 'python' and 'python3' language specifiers. Some LLMs may generate '```python3' blocks which the current regex (only matching 'python') would silently miss, causing tool invocation to fail and fall back to mental arithmetic."
+  }
+ ],
+ "mechanism": "Extend markdown code block regex to handle python3 language specifier variant, increasing parser coverage for LLM-generated code blocks that use '```python3' in addition to '```python'.",
+ "targets_mode": "tool_invocation_avoidance: code block pattern matching fails on python3 variant, preventing tool execution",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

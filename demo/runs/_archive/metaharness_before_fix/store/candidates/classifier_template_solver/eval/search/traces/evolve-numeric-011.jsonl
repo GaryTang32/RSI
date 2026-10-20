@@ -1,0 +1,31 @@
+[llm call 1]
+SYSTEM: You are a Python expert. Solve problems by writing clean, executable Python code.
+Always:
+1. Write code that prints exactly: ANSWER: <value>
+2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
+3. Your code must be runnable and produce no errors.
+4. Use standard libraries only (math, itertools, etc.)
+
+PROMPT: Analyze this problem and classify its TYPE. Respond with ONLY the type name (one word or underscore-separated).
+
+Question: What is the sum of the decimal digits of 13^10?
+
+Problem types:
+- digit_sum_factorial: Sum of digits of N!
+- power_digit_sum: Sum of digits of base^exponent
+- modulo: N mod M operation
+- bit_count: Count of 1-bits in binary representation
+- ledger_arithmetic: Multi-operation arithmetic (add, subtract, deposits, payments)
+- unknown: Doesn't fit above categories
+
+Type:
+
+REPLY: power_digit_sum
+[python]
+
+result = 13**10
+answer = sum(int(d) for d in str(result))
+print(f"ANSWER: {answer}")
+
+[output]
+ANSWER: 67

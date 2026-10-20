@@ -1,0 +1,71 @@
+{
+ "reward": -0.03333333333333333,
+ "auc": 0.0,
+ "parallel_penalty": 0.3333333333333333,
+ "lambda": 0.1,
+ "points": [
+  {
+   "beta": 0.2,
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "N": 12.0,
+   "k": 4.0,
+   "mean_batch": 3.0,
+   "parallel_penalty": 0.3333333333333333,
+   "disqualified": 0,
+   "V_eq1": 0.895
+  },
+  {
+   "beta": 0.4,
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "N": 12.0,
+   "k": 4.0,
+   "mean_batch": 3.0,
+   "parallel_penalty": 0.3333333333333333,
+   "disqualified": 0,
+   "V_eq1": 0.895
+  },
+  {
+   "beta": 0.6,
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "N": 12.0,
+   "k": 4.0,
+   "mean_batch": 3.0,
+   "parallel_penalty": 0.3333333333333333,
+   "disqualified": 0,
+   "V_eq1": 0.895
+  },
+  {
+   "beta": 0.8,
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "N": 12.0,
+   "k": 4.0,
+   "mean_batch": 3.0,
+   "parallel_penalty": 0.3333333333333333,
+   "disqualified": 0,
+   "V_eq1": 0.895
+  },
+  {
+   "beta": 1.0,
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "N": 12.0,
+   "k": 4.0,
+   "mean_batch": 3.0,
+   "parallel_penalty": 0.3333333333333333,
+   "disqualified": 0,
+   "V_eq1": 0.895
+  }
+ ],
+ "frontier": [
+  {
+   "probes_frac": 1.0,
+   "attainment": 1.0,
+   "beta": 0.2
+  }
+ ],
+ "degenerate": true
+}

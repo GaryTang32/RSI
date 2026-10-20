@@ -1,0 +1,53 @@
+[
+ {
+  "task_id": "evolve-logic-002",
+  "lens": "failure",
+  "blocker": "Agent ignored explicit 'Answer with the name only' instruction; output full sentence with markdown formatting instead of plain name.",
+  "narrative": "The agent correctly solved the logic puzzle through constraint satisfaction, deducing that Sawyer owns the rabbit. However, the prompt explicitly instructed 'Answer with the name only', and the final output was '**Sawyer** owns the rabbit.' instead of the plain 'Sawyer'. The grader performs exact string matching and rejected the formatted output despite correct puzzle reasoning.",
+  "evidence": [
+   {
+    "where": "PROMPT instruction",
+    "quote": "Who owns the rabbit? Answer with the name only."
+   },
+   {
+    "where": "OUTPUT section",
+    "quote": "**Sawyer** owns the rabbit."
+   },
+   {
+    "where": "GRADING feedback",
+    "quote": "Extracted answer '**Sawyer** owns the rabbit.'; expected 'Sawyer'."
+   }
+  ],
+  "verifier_evidence": "score=0.0; exact string mismatch: extracted '**Sawyer** owns the rabbit.' vs. expected 'Sawyer'",
+  "capability_note": "Agent demonstrated strong logical reasoning and constraint satisfaction across 17 interrelated clues to identify the correct puzzle solution; failure was purely in output format compliance.",
+  "needed_instead": "Respond with just the plain name 'Sawyer' or 'ANSWER: Sawyer' format, adhering to the explicit instruction to provide the name only without markdown or additional text.",
+  "family": "logic"
+ },
+ {
+  "where": "AGENT OUTPUT",
+  "quote": "**Average:** 30,786.20 ÷ 13 = **$2,368.15**",
+  "task_id": "evolve-ledger-003",
+  "lens": "failure",
+  "family": "ledger"
+ },
+ {
+  "task_id": "evolve-logic-006",
+  "lens": "success",
+  "habits": [
+   {
+    "habit": "Extract immutable positional constraints first (clues 1, 5, 6 establish Quinn→Casey→Juice drinker chain) to anchor search space",
+    "where_shown": "llm call 1, opening: 'From clues 6, 1, and 5, I can establish positions' with enumeration of 3 possible ranges (1-2-3, 2-3-4, 3-4-5)"
+   },
+   {
+    "habit": "Test discrete scenarios against full constraint set before attribute deduction",
+    "where_shown": "llm call 1, '**Testing the third scenario (which works):**' validates positions satisfy clues 15 (horse owner), 8 (Parker/rabbit), 14 (juice≠Taylor), 12 (Taylor next to red)"
+   },
+   {
+    "habit": "Propagate remaining constraints iteratively with explicit clue citations (clues 2, 7, 10, 13) to derive colors, drinks, hobbies, pets",
+    "where_shown": "llm call 1, 'Working out drinks and hobbies' section: applies milk/red adjacency (clue 2), water/Blake adjacency (clue 7), coffee/painting/orange (clues 10, 13) to conclude Casey owns cat"
+   }
+  ],
+  "risk_if_removed": "Without positional anchor from clues 1, 5, 6, search space is 5!=120 assignments; without scenario testing, invalid states propagate unchecked; without constraint propagation, attributes assigned arbitrarily. The positional chain is load-bearing: it collapses combinatorial space to 3 testable configurations, enabling systematic deduction rather than trial-and-error.",
+  "family": "logic"
+ }
+]

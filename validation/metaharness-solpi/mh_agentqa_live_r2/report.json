@@ -1,0 +1,520 @@
+{
+ "run": "mh_agentqa_live_r2",
+ "setup": "AgentQA suite seed 0: evolve 10 (numeric), sealed holdout 6 (numeric), sealed ood 4 (dates / numbertheory / strings / lists, 1 each). Seed = AgentQADomain.seed_artifact() (one direct model call, 'You are a helpful assistant.'), H0 = {seed}. Task model AND proposer = claude haiku (ClaudeCLI('haiku') behind a fresh CachedLLM). Proposer = RewriteProposer (one completion over the rendered full history, 60k-char budget) - NOT the paper's coding agent. Config: N = 3, k = 2, history full, objectives (score, context_cost) with cost = tokens per trial, validation smoke timeout 240 s (it calls the model), finalize on holdout + ood. Shadow monitor on holdout + ood.",
+ "wall_s": 583.4,
+ "best_system": "exploit-expression-evaluation",
+ "frontier": [
+  {
+   "system": "exploit-expression-evaluation",
+   "score": 0.9,
+   "val_accuracy": 90.0,
+   "context_cost": 2228.8
+  },
+  {
+   "system": "explore-tool-driven-computation",
+   "score": 0.8,
+   "val_accuracy": 80.0,
+   "context_cost": 1516.3
+  },
+  {
+   "system": "explore-direct-pattern-computation",
+   "score": 0.7,
+   "val_accuracy": 70.0,
+   "context_cost": 0.0
+  }
+ ],
+ "final": {
+  "systems": [
+   "seed",
+   "exploit-expression-evaluation",
+   "explore-tool-driven-computation",
+   "explore-direct-pattern-computation"
+  ],
+  "splits": {
+   "holdout": {
+    "results": {
+     "seed": {
+      "split": "holdout",
+      "score": 0.5,
+      "per_unit": {
+       "holdout-numeric-000": 1.0,
+       "holdout-numeric-001": 1.0,
+       "holdout-numeric-002": 1.0,
+       "holdout-numeric-003": 0.0,
+       "holdout-numeric-004": 0.0,
+       "holdout-numeric-005": 0.0
+      },
+      "per_unit_cost": {
+       "holdout-numeric-000": 1482.0,
+       "holdout-numeric-001": 2567.0,
+       "holdout-numeric-002": 2461.0,
+       "holdout-numeric-003": 1423.0,
+       "holdout-numeric-004": 1305.0,
+       "holdout-numeric-005": 1116.0
+      },
+      "context_cost": 1725.6666666666667,
+      "tokens": 1725.6666666666667,
+      "families": {
+       "numeric": 0.5
+      }
+     },
+     "exploit-expression-evaluation": {
+      "split": "holdout",
+      "score": 0.6666666666666666,
+      "per_unit": {
+       "holdout-numeric-000": 1.0,
+       "holdout-numeric-001": 1.0,
+       "holdout-numeric-002": 1.0,
+       "holdout-numeric-003": 1.0,
+       "holdout-numeric-004": 0.0,
+       "holdout-numeric-005": 0.0
+      },
+      "per_unit_cost": {
+       "holdout-numeric-000": 1482.0,
+       "holdout-numeric-001": 2567.0,
+       "holdout-numeric-002": 2461.0,
+       "holdout-numeric-003": 1423.0,
+       "holdout-numeric-004": 1305.0,
+       "holdout-numeric-005": 1116.0
+      },
+      "context_cost": 1725.6666666666667,
+      "tokens": 1725.6666666666667,
+      "families": {
+       "numeric": 0.6666666666666666
+      }
+     },
+     "explore-tool-driven-computation": {
+      "split": "holdout",
+      "score": 0.8333333333333334,
+      "per_unit": {
+       "holdout-numeric-000": 0.0,
+       "holdout-numeric-001": 1.0,
+       "holdout-numeric-002": 1.0,
+       "holdout-numeric-003": 1.0,
+       "holdout-numeric-004": 1.0,
+       "holdout-numeric-005": 1.0
+      },
+      "per_unit_cost": {
+       "holdout-numeric-000": 1616.0,
+       "holdout-numeric-001": 1367.0,
+       "holdout-numeric-002": 1340.0,
+       "holdout-numeric-003": 1548.0,
+       "holdout-numeric-004": 1420.0,
+       "holdout-numeric-005": 1328.0
+      },
+      "context_cost": 1436.5,
+      "tokens": 1436.5,
+      "families": {
+       "numeric": 0.8333333333333334
+      }
+     },
+     "explore-direct-pattern-computation": {
+      "split": "holdout",
+      "score": 0.6666666666666666,
+      "per_unit": {
+       "holdout-numeric-000": 0.0,
+       "holdout-numeric-001": 1.0,
+       "holdout-numeric-002": 1.0,
+       "holdout-numeric-003": 1.0,
+       "holdout-numeric-004": 1.0,
+       "holdout-numeric-005": 0.0
+      },
+      "per_unit_cost": {
+       "holdout-numeric-000": 0.0,
+       "holdout-numeric-001": 0.0,
+       "holdout-numeric-002": 2461.0,
+       "holdout-numeric-003": 0.0,
+       "holdout-numeric-004": 0.0,
+       "holdout-numeric-005": 1116.0
+      },
+      "context_cost": 1788.5,
+      "tokens": 1788.5,
+      "families": {
+       "numeric": 0.6666666666666666
+      }
+     }
+    },
+    "_pareto": [
+     {
+      "system": "explore-tool-driven-computation",
+      "test_accuracy": 0.8333333333333334,
+      "context_cost": 1436.5
+     }
+    ]
+   },
+   "ood": {
+    "results": {
+     "seed": {
+      "split": "ood",
+      "score": 0.25,
+      "per_unit": {
+       "ood-dates-000": 0.0,
+       "ood-numbertheory-000": 0.0,
+       "ood-strings-000": 1.0,
+       "ood-lists-000": 0.0
+      },
+      "per_unit_cost": {
+       "ood-dates-000": 1879.0,
+       "ood-numbertheory-000": 1285.0,
+       "ood-strings-000": 1080.0,
+       "ood-lists-000": 4609.0
+      },
+      "context_cost": 2213.25,
+      "tokens": 2213.25,
+      "families": {
+       "dates": 0.0,
+       "numbertheory": 0.0,
+       "strings": 1.0,
+       "lists": 0.0
+      }
+     },
+     "exploit-expression-evaluation": {
+      "split": "ood",
+      "score": 0.25,
+      "per_unit": {
+       "ood-dates-000": 0.0,
+       "ood-numbertheory-000": 0.0,
+       "ood-strings-000": 1.0,
+       "ood-lists-000": 0.0
+      },
+      "per_unit_cost": {
+       "ood-dates-000": 1879.0,
+       "ood-numbertheory-000": 1285.0,
+       "ood-strings-000": 1080.0,
+       "ood-lists-000": 4609.0
+      },
+      "context_cost": 2213.25,
+      "tokens": 2213.25,
+      "families": {
+       "dates": 0.0,
+       "numbertheory": 0.0,
+       "strings": 1.0,
+       "lists": 0.0
+      }
+     },
+     "explore-tool-driven-computation": {
+      "split": "ood",
+      "score": 0.0,
+      "per_unit": {
+       "ood-dates-000": 0.0,
+       "ood-numbertheory-000": 0.0,
+       "ood-strings-000": 0.0,
+       "ood-lists-000": 0.0
+      },
+      "per_unit_cost": {
+       "ood-dates-000": 1555.0,
+       "ood-numbertheory-000": 1725.0,
+       "ood-strings-000": 1487.0,
+       "ood-lists-000": 1943.0
+      },
+      "context_cost": 1677.5,
+      "tokens": 1677.5,
+      "families": {
+       "dates": 0.0,
+       "numbertheory": 0.0,
+       "strings": 0.0,
+       "lists": 0.0
+      }
+     },
+     "explore-direct-pattern-computation": {
+      "split": "ood",
+      "score": 0.25,
+      "per_unit": {
+       "ood-dates-000": 0.0,
+       "ood-numbertheory-000": 0.0,
+       "ood-strings-000": 1.0,
+       "ood-lists-000": 0.0
+      },
+      "per_unit_cost": {
+       "ood-dates-000": 1879.0,
+       "ood-numbertheory-000": 1285.0,
+       "ood-strings-000": 1080.0,
+       "ood-lists-000": 4609.0
+      },
+      "context_cost": 2213.25,
+      "tokens": 2213.25,
+      "families": {
+       "dates": 0.0,
+       "numbertheory": 0.0,
+       "strings": 1.0,
+       "lists": 0.0
+      }
+     }
+    },
+    "_pareto": [
+     {
+      "system": "exploit-expression-evaluation",
+      "test_accuracy": 0.25,
+      "context_cost": 2213.25
+     },
+     {
+      "system": "explore-direct-pattern-computation",
+      "test_accuracy": 0.25,
+      "context_cost": 2213.25
+     },
+     {
+      "system": "seed",
+      "test_accuracy": 0.25,
+      "context_cost": 2213.25
+     },
+     {
+      "system": "explore-tool-driven-computation",
+      "test_accuracy": 0.0,
+      "context_cost": 1677.5
+     }
+    ]
+   }
+  },
+  "status": "complete",
+  "failures": []
+ },
+ "transfer": {
+  "splits": {
+   "evolve": {
+    "seed": {
+     "S": 0.5,
+     "C": 2228.8,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.5
+     },
+     "vs_reference": null
+    },
+    "best=exploit-expression-evaluation": {
+     "S": 0.9,
+     "C": 2228.8,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.9
+     },
+     "vs_reference": {
+      "mean_diff": 0.4,
+      "lo": 0.1,
+      "hi": 0.7,
+      "n": 10,
+      "p_better": 0.4
+     }
+    }
+   },
+   "holdout": {
+    "seed": {
+     "S": 0.5,
+     "C": 1725.6666666666667,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.5
+     },
+     "vs_reference": null
+    },
+    "best=exploit-expression-evaluation": {
+     "S": 0.6666666666666666,
+     "C": 1725.6666666666667,
+     "steps": 1.0,
+     "families": {
+      "numeric": 0.6666666666666666
+     },
+     "vs_reference": {
+      "mean_diff": 0.16666666666666666,
+      "lo": 0.0,
+      "hi": 0.5,
+      "n": 6,
+      "p_better": 0.16666666666666666
+     }
+    }
+   },
+   "ood": {
+    "seed": {
+     "S": 0.25,
+     "C": 2213.25,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     },
+     "vs_reference": null
+    },
+    "best=exploit-expression-evaluation": {
+     "S": 0.25,
+     "C": 2213.25,
+     "steps": 1.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     },
+     "vs_reference": {
+      "mean_diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "n": 4,
+      "p_better": 0.0
+     }
+    }
+   }
+  },
+  "reference": "seed",
+  "unseen_mean": {
+   "seed": 0.375,
+   "best=exploit-expression-evaluation": 0.4583333333333333
+  }
+ },
+ "n_evaluated": 6,
+ "n_proposed": 6,
+ "usage": {
+  "proposer": {
+   "calls": 3,
+   "input_tokens": 60879,
+   "output_tokens": 32306,
+   "cost_usd": 0.283261,
+   "latency_s": 334.08426427841187,
+   "total_tokens": 93185
+  },
+  "task": {
+   "task": {
+    "calls": 38,
+    "input_tokens": 37112,
+    "output_tokens": 48515,
+    "cost_usd": 0.279687,
+    "latency_s": 470.18226289749146,
+    "total_tokens": 85627
+   },
+   "shadow:task": {
+    "calls": 10,
+    "input_tokens": 8525,
+    "output_tokens": 10682,
+    "cost_usd": 0.06193499999999999,
+    "latency_s": 107.1208176612854,
+    "total_tokens": 19207
+   },
+   "proposer": {
+    "calls": 3,
+    "input_tokens": 60879,
+    "output_tokens": 32306,
+    "cost_usd": 0.283261,
+    "latency_s": 334.08426427841187,
+    "total_tokens": 93185
+   },
+   "task:cached": {
+    "calls": 0,
+    "input_tokens": 49450,
+    "output_tokens": 75603,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 125053
+   },
+   "shadow:task:cached": {
+    "calls": 0,
+    "input_tokens": 17050,
+    "output_tokens": 21364,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 38414
+   },
+   "_total": {
+    "calls": 51,
+    "input_tokens": 173016,
+    "output_tokens": 188470,
+    "cost_usd": 0.624883,
+    "latency_s": 911.3873448371887,
+    "total_tokens": 361486
+   }
+  },
+  "propose_llm": {
+   "task": {
+    "calls": 38,
+    "input_tokens": 37112,
+    "output_tokens": 48515,
+    "cost_usd": 0.279687,
+    "latency_s": 470.18226289749146,
+    "total_tokens": 85627
+   },
+   "shadow:task": {
+    "calls": 10,
+    "input_tokens": 8525,
+    "output_tokens": 10682,
+    "cost_usd": 0.06193499999999999,
+    "latency_s": 107.1208176612854,
+    "total_tokens": 19207
+   },
+   "proposer": {
+    "calls": 3,
+    "input_tokens": 60879,
+    "output_tokens": 32306,
+    "cost_usd": 0.283261,
+    "latency_s": 334.08426427841187,
+    "total_tokens": 93185
+   },
+   "task:cached": {
+    "calls": 0,
+    "input_tokens": 49450,
+    "output_tokens": 75603,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 125053
+   },
+   "shadow:task:cached": {
+    "calls": 0,
+    "input_tokens": 17050,
+    "output_tokens": 21364,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 38414
+   },
+   "_total": {
+    "calls": 51,
+    "input_tokens": 173016,
+    "output_tokens": 188470,
+    "cost_usd": 0.624883,
+    "latency_s": 911.3873448371887,
+    "total_tokens": 361486
+   }
+  },
+  "_total": {
+   "calls": 3,
+   "input_tokens": 60879,
+   "output_tokens": 32306,
+   "cost_usd": 0.283261,
+   "latency_s": 334.08426427841187,
+   "total_tokens": 93185
+  },
+  "shadow_monitor": {
+   "task": {
+    "calls": 10,
+    "input_tokens": 25575,
+    "output_tokens": 32046,
+    "cost_usd": 0.06193499999999999,
+    "latency_s": 107.1208176612854,
+    "total_tokens": 57621
+   },
+   "_total": {
+    "calls": 10,
+    "input_tokens": 25575,
+    "output_tokens": 32046,
+    "cost_usd": 0.06193499999999999,
+    "latency_s": 107.1208176612854,
+    "total_tokens": 57621
+   }
+  }
+ },
+ "report_usd": 0.0,
+ "spend": {
+  "loop": {
+   "usd": 0.5629,
+   "calls": 41
+  },
+  "shadow_monitor": {
+   "usd": 0.0619,
+   "calls": 10
+  },
+  "report": 0.0,
+  "cache_ground_truth": {
+   "entries": 53,
+   "usd": 0.6538,
+   "input_tokens": 108470,
+   "output_tokens": 96894
+  }
+ }
+}

@@ -1,0 +1,8 @@
+commit	status	description	val_bpb	loop_metric_rerun	test_iid	test_shift
+906744c	keep	baseline	2.828834	2.820127	2.879619	2.951486
+a285d1a	keep	Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget	2.739970	2.753486	2.812565	2.875721
+533edda	keep	Increase learning rate from 0.004 to 0.005 to further accelerate convergence	2.697312	2.694679	2.755475	2.815006
+83d320f	keep	Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget	2.666247	2.662539	2.723226	2.778374
+197ab6b	keep	Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget	2.656140	2.653539	2.719324	2.790190
+020a551	keep	Increase learning rate from 0.005 to 0.006 to further accelerate convergence	2.630825	2.638215	2.713047	2.773851
+363363c	keep	Increase learning rate from 0.006 to 0.007 to further accelerate convergence	2.622188	2.624578	2.689512	2.786471

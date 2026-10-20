@@ -1,0 +1,411 @@
+{
+ "run": "agentqa_live",
+ "have_reference_code": true,
+ "checks": {
+  "state_rollouts": "5/5",
+  "state_incumbent": "5/5",
+  "state_weights": "5/5",
+  "state_frontier_members": "5/5",
+  "state_pool": "5/5",
+  "parent_replay": "5/5",
+  "minibatch_replay_ref_sampler": "5/5",
+  "parent_eval_ids": "5/5",
+  "not_all_perfect": "4/4",
+  "round_robin": "4/4",
+  "proposal_parent_artifact": "4/4",
+  "prompt_template_verbatim": "4/4",
+  "prompt_has_b_examples": "4/4",
+  "prompt_no_val_or_sealed_inputs": "4/4",
+  "prompt_contains_minibatch_inputs": "4/4",
+  "child_equals_reference_parse": "4/4",
+  "other_files_unchanged": "4/4",
+  "diff_equals_store": "4/4",
+  "child_same_ids": "4/4",
+  "child_fresh_seeds": "4/4",
+  "gate_uses_eval_scores": "4/4",
+  "gate_recomputed": "4/4",
+  "decision": "4/4",
+  "ledger_rejected": "2/2",
+  "no_val_eval_for_rejected": "2/2",
+  "incumbent_after": "4/4",
+  "monitor_iff_incumbent_change": "4/4",
+  "val_charge": "2/2",
+  "val_covers_pareto": "2/2",
+  "val_seed_fixed": "2/2",
+  "ledger_node": "2/2",
+  "skip_perfect_rule": "1/1"
+ },
+ "final": {
+  "rollouts": true,
+  "by_phase": true,
+  "returned_argmax": true,
+  "seed_artifact_untouched": true,
+  "budget_identity": true,
+  "budget_identity_value": 51,
+  "stop_timing_usd": {
+   "last_round_start_usd": 1.164919,
+   "final_loop_usd": 1.2167530000000002
+  },
+  "stop_reason": "max_usd"
+ },
+ "steps": [
+  {
+   "round": 0,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-008",
+    "evolve-numeric-009",
+    "evolve-numeric-001"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    0.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 2.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "3411743d5d61b097e97098ce274b609ab39f8b1b590d1bbd73ba116342c6e165",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [
+    [
+     "364",
+     "evolve"
+    ]
+   ],
+   "task_ids_added": []
+  },
+  {
+   "round": 1,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 1.0,
+   "minibatch": [
+    "evolve-numeric-002",
+    "evolve-numeric-005",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "component": "prompts/solver.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "sum_before": 0.0,
+   "sum_after": 1.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 0.25,
+   "child_artifact": "21864b2a2c217d0673335dd7297b2cd4994467aa524e050cc9fb56062801af9a",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [
+    [
+     "2695810",
+     "evolve"
+    ],
+    [
+     "465110",
+     "evolve"
+    ]
+   ],
+   "task_ids_added": []
+  },
+  {
+   "round": 2,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "val_charge": true,
+    "val_covers_pareto": true,
+    "val_seed_fixed": true,
+    "ledger_node": true,
+    "decision": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "accepted",
+   "ref_set_order_same_parent": true,
+   "parent": 1,
+   "p_parent": 0.4166666666666667,
+   "minibatch": [
+    "evolve-numeric-007",
+    "evolve-numeric-004",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    1.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sum_before": 2.0,
+   "sum_after": 3.0,
+   "gate": true,
+   "delta": 1.0,
+   "float_tie": false,
+   "new_val": 0.25,
+   "child_artifact": "826221ab9df1bd3130f8b0445b6797c5553362e7b7eefc498156ce1ae7d21f59",
+   "parent_artifact": "21864b2a2c217d0673335dd7297b2cd4994467aa524e050cc9fb56062801af9a",
+   "literal_answers_added": [
+    [
+     "234",
+     "evolve"
+    ]
+   ],
+   "task_ids_added": []
+  },
+  {
+   "round": 3,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "not_all_perfect": true,
+    "round_robin": true,
+    "proposal_parent_artifact": true,
+    "prompt_template_verbatim": true,
+    "prompt_has_b_examples": true,
+    "prompt_no_val_or_sealed_inputs": true,
+    "prompt_contains_minibatch_inputs": true,
+    "child_equals_reference_parse": true,
+    "other_files_unchanged": true,
+    "diff_equals_store": true,
+    "child_same_ids": true,
+    "child_fresh_seeds": true,
+    "gate_uses_eval_scores": true,
+    "gate_recomputed": true,
+    "decision": true,
+    "ledger_rejected": true,
+    "no_val_eval_for_rejected": true,
+    "incumbent_after": true,
+    "monitor_iff_incumbent_change": true
+   },
+   "notes": [],
+   "event": "rejected",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 0.5833333333333334,
+   "minibatch": [
+    "evolve-numeric-006",
+    "evolve-numeric-006",
+    "evolve-numeric-000"
+   ],
+   "mb_before": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "component": "prompts/reporter.md",
+   "unchanged_rewrite": false,
+   "repeat_of_rejected": null,
+   "repeat_of_any": null,
+   "kind": "reflective",
+   "mb_after": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "sum_before": 1.0,
+   "sum_after": 1.0,
+   "gate": false,
+   "delta": 0.0,
+   "float_tie": false,
+   "child_artifact": "341021414daaa5a5a85f126301e6f0acb416f76c76af11791a0324b713e7bf54",
+   "parent_artifact": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+   "literal_answers_added": [
+    [
+     "421",
+     "evolve"
+    ],
+    [
+     "421",
+     "smoke"
+    ]
+   ],
+   "task_ids_added": []
+  },
+  {
+   "round": 4,
+   "checks": {
+    "state_rollouts": true,
+    "state_incumbent": true,
+    "state_weights": true,
+    "state_frontier_members": true,
+    "state_pool": true,
+    "parent_replay": true,
+    "minibatch_replay_ref_sampler": true,
+    "parent_eval_ids": true,
+    "skip_perfect_rule": true
+   },
+   "notes": [],
+   "event": "skip_perfect",
+   "ref_set_order_same_parent": true,
+   "parent": 0,
+   "p_parent": 0.5833333333333334,
+   "minibatch": [
+    "evolve-numeric-009",
+    "evolve-numeric-000",
+    "evolve-numeric-003"
+   ],
+   "mb_before": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  }
+ ],
+ "verdicts": [
+  {
+   "round": 0,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live); task-specific content added (facts 0, answers [('364', 'evolve')], ids [])"
+  },
+  {
+   "round": 1,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live); task-specific content added (facts 0, answers [('2695810', 'evolve'), ('465110', 'evolve')], ids [])"
+  },
+  {
+   "round": 2,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live); task-specific content added (facts 0, answers [('234', 'evolve')], ids [])"
+  },
+  {
+   "round": 3,
+   "verdict": "unverifiable",
+   "why": "no ground truth (live); task-specific content added (facts 0, answers [('421', 'evolve'), ('421', 'smoke')], ids [])"
+  },
+  {
+   "round": 4,
+   "verdict": "correct",
+   "why": "skip_perfect: parent perfect on the minibatch (reference rule)"
+  }
+ ],
+ "verdict_counts": {
+  "unverifiable": 4,
+  "correct": 1
+ }
+}

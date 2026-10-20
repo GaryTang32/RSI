@@ -1,0 +1,17 @@
+{
+ "name": "constrained_multi_verify",
+ "artifact_id": "9065f8014d1f83ace4d628703d23a0685478aab4bf99b0f704b50b850dfd1af2",
+ "created_at": 1790755099.7229643,
+ "status": "evaluated",
+ "iteration": 4,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 8,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

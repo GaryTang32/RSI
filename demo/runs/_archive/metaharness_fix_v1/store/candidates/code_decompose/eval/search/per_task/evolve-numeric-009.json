@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Sum of digits: 72').",
+  "output": "Sum of digits: 72",
+  "tokens": 1733,
+  "cost_usd": 0.004680999999999999,
+  "steps": 2,
+  "latency_s": 8.003973960876465,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

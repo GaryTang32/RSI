@@ -1,0 +1,276 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 423.'; expected '421'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 423.'; expected '421'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-004",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 233.'; expected '234'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 233.'; expected '234'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-009",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 374.'; expected '364'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 374.'; expected '364'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-010",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 101.'; expected '100'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 101.'; expected '100'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-012",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 1264.'; expected '264'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 1264.'; expected '264'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-013",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 33.'; expected '38'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 33.'; expected '38'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-015",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is -721.'; expected '279'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is -721.'; expected '279'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-016",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 70.'; expected '81'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 70.'; expected '81'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-002",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 2695811.'; expected '2695810'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 2695811.'; expected '2695810'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-003",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '465111'; expected '465110'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '465111'; expected '465110'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-005",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 1099.'; expected '99'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 1099.'; expected '99'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-006",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 25.'; expected '24'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 25.'; expected '24'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-007",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 535.'; expected '435'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 535.'; expected '435'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-008",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 570184.'; expected '570186'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 570184.'; expected '570186'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-014",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 2119980.'; expected '2119981'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 2119980.'; expected '2119981'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-017",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 226.'; expected '216'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 226.'; expected '216'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-019",
+  "lens": "failure",
+  "family": "numeric",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'The answer is 1553.'; expected '553'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'The answer is 1553.'; expected '553'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-numeric-001",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-011",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-numeric-018",
+  "lens": "success",
+  "family": "numeric",
+  "habits": [
+   {
+    "habit": "clean_numeric",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ }
+]

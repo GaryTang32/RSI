@@ -1,0 +1,16 @@
+--- a/agents/str_06.py
++++ b/agents/str_06.py
+@@ -0,0 +1,5 @@
++# mechanism: str_06
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, plan, format tasks."""
++enable("str_06")
+--- a/config/nul_14.py
++++ b/config/nul_14.py
+@@ -0,0 +1,5 @@
++# mechanism: nul_14
++# component: config
++# title: Tighter step limit
++"""Tighter step limit (rewording of existing guidance)."""
++enable("nul_14")

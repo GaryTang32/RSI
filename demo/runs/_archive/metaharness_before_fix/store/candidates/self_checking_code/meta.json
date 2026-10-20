@@ -1,0 +1,17 @@
+{
+ "name": "self_checking_code",
+ "artifact_id": "9804ae342de2d26a6fb7997b5e44ee505b0aed69cd5ce07cc09c6d8b6873826e",
+ "created_at": 1790757029.3063538,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "code_execution",
+ "hypothesis": "A single LLM call with inline self-verification instructions can achieve 100% accuracy while reducing token cost by eliminating the second verification turn.",
+ "axis": "exploitation",
+ "components": [
+  "axis:E (update trigger: single-pass + inline verification instead of two-pass)"
+ ],
+ "parents_read": [],
+ "order": 6,
+ "reason": ""
+}

@@ -1,0 +1,81 @@
+[llm call 1]
+SYSTEM: You are a Python expert. Solve problems by writing clean, executable Python code.
+Always:
+1. Write code that includes an inline verification or alternative check step
+2. The answer MUST be printed to stdout exactly as: ANSWER: <value>
+3. Your code must be runnable with no errors
+4. Use standard libraries only (math, itertools, etc.)
+5. Do not add explanatory text after printing the answer
+
+PROMPT: Solve this problem by writing Python code with an inline verification step.
+
+Question: Morgan's ledger starts at 49249. Add 84718, subtract 10095, add 77 payments of 50354, subtract 80 refunds of 96898, and add 38 deposits of 93867. What is the final balance?
+
+Write Python code that:
+1. Solves the problem correctly
+2. Includes an inline alternative verification or independent check (same code block)
+3. Prints exactly: ANSWER: <value>
+   where <value> is ONLY the numeric/text answer
+
+Provide ONLY the Python code, inside ```python and ``` markers.
+Do not explain or add text outside the code block.
+
+```python
+# Write your solution with inline verification here
+```
+
+REPLY: ```python
+# Starting balance
+balance = 49249
+
+# Add 84718
+balance += 84718
+
+# Subtract 10095
+balance -= 10095
+
+# Add 77 payments of 50354
+balance += 77 * 50354
+
+# Subtract 80 refunds of 96898
+balance -= 80 * 96898
+
+# Add 38 deposits of 93867
+balance += 38 * 93867
+
+# Verification: calculate using direct formula
+verification = 49249 + 84718 - 10095 + 77*50354 - 80*96898 + 38*93867
+
+# Check that both methods give the same result
+assert balance == verification, f"Mismatch: {balance} != {verification}"
+
+print(f"ANSWER: {balance}")
+```
+[python]
+# Starting balance
+balance = 49249
+
+# Add 84718
+balance += 84718
+
+# Subtract 10095
+balance -= 10095
+
+# Add 77 payments of 50354
+balance += 77 * 50354
+
+# Subtract 80 refunds of 96898
+balance -= 80 * 96898
+
+# Add 38 deposits of 93867
+balance += 38 * 93867
+
+# Verification: calculate using direct formula
+verification = 49249 + 84718 - 10095 + 77*50354 - 80*96898 + 38*93867
+
+# Check that both methods give the same result
+assert balance == verification, f"Mismatch: {balance} != {verification}"
+
+print(f"ANSWER: {balance}")
+[output]
+ANSWER: -183764

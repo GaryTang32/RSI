@@ -1,0 +1,19 @@
+{
+ "iteration": 4,
+ "candidates": [
+  {
+   "name": "pattern_solver_enhanced",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "classifier_template_solver",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

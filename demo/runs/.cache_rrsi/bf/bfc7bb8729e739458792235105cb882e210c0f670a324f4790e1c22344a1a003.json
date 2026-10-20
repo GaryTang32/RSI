@@ -1,0 +1,1 @@
+{"text": "Based on the computation results provided, the sum of the decimal digits of C(53,13) = 841392966470 is:\n\nANSWER: 59", "usage": {"calls": 1, "input_tokens": 987, "output_tokens": 262, "cost_usd": 0.0022970000000000004, "latency_s": 4.740000009536743}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

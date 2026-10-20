@@ -1,0 +1,228 @@
+{
+ "systems": [
+  "seed",
+  "code_generalized_extract",
+  "extract_formatted",
+  "code_first"
+ ],
+ "splits": {
+  "holdout": {
+   "results": {
+    "seed": {
+     "split": "holdout",
+     "score": 0.5,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 0.0,
+      "holdout-numeric-005": 0.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1554.0,
+      "holdout-numeric-001": 2697.0,
+      "holdout-numeric-002": 3758.0,
+      "holdout-numeric-003": 1321.0,
+      "holdout-numeric-004": 1157.0,
+      "holdout-numeric-005": 2983.0
+     },
+     "context_cost": 2245.0,
+     "tokens": 2245.0,
+     "families": {
+      "numeric": 0.5
+     }
+    },
+    "code_generalized_extract": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1515.0,
+      "holdout-numeric-001": 1093.0,
+      "holdout-numeric-002": 1088.0,
+      "holdout-numeric-003": 1166.0,
+      "holdout-numeric-004": 1196.0,
+      "holdout-numeric-005": 1044.0
+     },
+     "context_cost": 1183.6666666666667,
+     "tokens": 1183.6666666666667,
+     "families": {
+      "numeric": 1.0
+     }
+    },
+    "extract_formatted": {
+     "split": "holdout",
+     "score": 0.5,
+     "per_unit": {
+      "holdout-numeric-000": 0.0,
+      "holdout-numeric-001": 0.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 0.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1488.0,
+      "holdout-numeric-001": 3038.0,
+      "holdout-numeric-002": 6283.0,
+      "holdout-numeric-003": 1411.0,
+      "holdout-numeric-004": 1691.0,
+      "holdout-numeric-005": 3739.0
+     },
+     "context_cost": 2941.6666666666665,
+     "tokens": 2941.6666666666665,
+     "families": {
+      "numeric": 0.5
+     }
+    },
+    "code_first": {
+     "split": "holdout",
+     "score": 1.0,
+     "per_unit": {
+      "holdout-numeric-000": 1.0,
+      "holdout-numeric-001": 1.0,
+      "holdout-numeric-002": 1.0,
+      "holdout-numeric-003": 1.0,
+      "holdout-numeric-004": 1.0,
+      "holdout-numeric-005": 1.0
+     },
+     "per_unit_cost": {
+      "holdout-numeric-000": 1434.0,
+      "holdout-numeric-001": 1114.0,
+      "holdout-numeric-002": 1260.0,
+      "holdout-numeric-003": 1116.0,
+      "holdout-numeric-004": 1259.0,
+      "holdout-numeric-005": 1103.0
+     },
+     "context_cost": 1214.3333333333333,
+     "tokens": 1214.3333333333333,
+     "families": {
+      "numeric": 1.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "code_generalized_extract",
+     "test_accuracy": 1.0,
+     "context_cost": 1183.6666666666667
+    }
+   ]
+  },
+  "ood": {
+   "results": {
+    "seed": {
+     "split": "ood",
+     "score": 0.25,
+     "per_unit": {
+      "ood-dates-000": 0.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 0.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 2071.0,
+      "ood-numbertheory-000": 1336.0,
+      "ood-strings-000": 1077.0,
+      "ood-lists-000": 5340.0
+     },
+     "context_cost": 2456.0,
+     "tokens": 2456.0,
+     "families": {
+      "dates": 0.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 0.0
+     }
+    },
+    "code_generalized_extract": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1962.0,
+      "ood-numbertheory-000": 1203.0,
+      "ood-strings-000": 1211.0,
+      "ood-lists-000": 1605.0
+     },
+     "context_cost": 1495.25,
+     "tokens": 1495.25,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "extract_formatted": {
+     "split": "ood",
+     "score": 0.75,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-numbertheory-000": 0.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 2477.0,
+      "ood-numbertheory-000": 1342.0,
+      "ood-strings-000": 1104.0,
+      "ood-lists-000": 3454.0
+     },
+     "context_cost": 2094.25,
+     "tokens": 2094.25,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 0.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    },
+    "code_first": {
+     "split": "ood",
+     "score": 1.0,
+     "per_unit": {
+      "ood-dates-000": 1.0,
+      "ood-numbertheory-000": 1.0,
+      "ood-strings-000": 1.0,
+      "ood-lists-000": 1.0
+     },
+     "per_unit_cost": {
+      "ood-dates-000": 1739.0,
+      "ood-numbertheory-000": 1279.0,
+      "ood-strings-000": 2640.0,
+      "ood-lists-000": 2089.0
+     },
+     "context_cost": 1936.75,
+     "tokens": 1936.75,
+     "families": {
+      "dates": 1.0,
+      "numbertheory": 1.0,
+      "strings": 1.0,
+      "lists": 1.0
+     }
+    }
+   },
+   "_pareto": [
+    {
+     "system": "code_generalized_extract",
+     "test_accuracy": 1.0,
+     "context_cost": 1495.25
+    }
+   ]
+  }
+ }
+}

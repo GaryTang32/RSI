@@ -1,0 +1,79 @@
+{
+ "failure_modes": [
+  {
+   "mode": "extract__missed_rubric_criteria_family_extract_surface_te",
+   "n_tasks": 3,
+   "affected_tasks": [
+    "hw-e-008",
+    "hw-e-056",
+    "hw-e-036"
+   ],
+   "loss": 3.0,
+   "description": "tasks of kind 'extract' end with: Missed #/# rubric criteria (family=extract, surface=text).",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "hw-e-008",
+     "where": "grader",
+     "quote": "Missed 15/16 rubric criteria (family=extract, surface=text)."
+    },
+    {
+     "task_id": "hw-e-056",
+     "where": "grader",
+     "quote": "Missed 14/16 rubric criteria (family=extract, surface=text)."
+    },
+    {
+     "task_id": "hw-e-036",
+     "where": "grader",
+     "quote": "Missed 13/16 rubric criteria (family=extract, surface=text)."
+    }
+   ]
+  },
+  {
+   "mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "n_tasks": 3,
+   "affected_tasks": [
+    "hw-e-022",
+    "hw-e-078",
+    "hw-e-042"
+   ],
+   "loss": 3.0,
+   "description": "tasks of kind 'plan' end with: Missed #/# rubric criteria (family=plan, surface=text).",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "hw-e-022",
+     "where": "grader",
+     "quote": "Missed 14/16 rubric criteria (family=plan, surface=text)."
+    },
+    {
+     "task_id": "hw-e-078",
+     "where": "grader",
+     "quote": "Missed 15/16 rubric criteria (family=plan, surface=text)."
+    },
+    {
+     "task_id": "hw-e-042",
+     "where": "grader",
+     "quote": "Missed 13/16 rubric criteria (family=plan, surface=text)."
+    }
+   ]
+  }
+ ],
+ "capability_gaps": [],
+ "success_habits": [
+  {
+   "habit": "clean_arith",
+   "n_tasks": 1,
+   "description": "passing tasks of kind 'arith' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  },
+  {
+   "habit": "clean_extract",
+   "n_tasks": 1,
+   "description": "passing tasks of kind 'extract' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  }
+ ],
+ "n_digests": 8,
+ "analyst": "llm"
+}

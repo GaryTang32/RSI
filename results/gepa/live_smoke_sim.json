@@ -1,0 +1,116 @@
+{
+ "experiment": "live smoke",
+ "llm": "sim",
+ "ruleworld": {
+  "budget": 300,
+  "stop_reason": "max_metric_calls",
+  "rollouts": 318,
+  "iterations": 8,
+  "events": {
+   "accepted": 8
+  },
+  "seed_val": 0.0,
+  "best_val": 0.32222222222222213,
+  "seed_test_true": 0.0,
+  "best_test_true": 0.3141333333333328,
+  "oracle_test_true": 0.9499999999999947,
+  "rejected_outputs": [],
+  "rules_detected": {
+   "triage": {
+    "perishable": [
+     "hematite"
+    ],
+    "customized": [
+     "obsidian"
+    ],
+    "oversized": [
+     "mahogany"
+    ],
+    "fragile": [
+     "periwinkle"
+    ]
+   },
+   "reply": {
+    "luxury": [
+     "saffron"
+    ],
+    "returned": [
+     "basalt"
+    ]
+   }
+  },
+  "ticket_facts_in_best": 6,
+  "best_prompts": {
+   "prompts/reply.md": "You are the reply module of an order-fulfilment assistant. For each order property you handle, output '<property>: <protocol>'.\nUse the standard protocol when no rule applies.\nTicket T-3389: rural: zinnia; luxury: saffron\nWhen an order is luxury, use the saffron protocol.\nTicket T-1618: express: osmium; luxury: saffron\nTicket T-9372: rural: zinnia; bulk: gneiss; luxury: saffron\nTicket T-7235: frozen: gallium; bulk: gneiss\nWhen an order is returned, use the basalt protocol.\n",
+   "prompts/triage.md": "You are the triage module of an order-fulfilment assistant. For each order property you handle, output '<property>: <protocol>'.\nUse the standard protocol when no rule applies.\nTicket T-3164: oversized: mahogany; hazardous: hemlock; fragile: periwinkle\nWhen an order is perishable, use the hematite protocol.\nWhen an order is customized, use the obsidian protocol.\nTicket T-5840: oversized: mahogany; hazardous: hemlock; perishable: hematite\nWhen an order is oversized, use the mahogany protocol.\nWhen an order is fragile, use the periwinkle protocol.\n"
+  },
+  "usage": {
+   "reflection": {
+    "calls": 8,
+    "input_tokens": 5927,
+    "output_tokens": 821,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 6748
+   },
+   "_total": {
+    "calls": 8,
+    "input_tokens": 5927,
+    "output_tokens": 821,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 6748
+   }
+  },
+  "ledger_nodes": 9
+ },
+ "agentqa": {
+  "budget": 80,
+  "stop_reason": "max_metric_calls",
+  "rollouts": 80,
+  "seed_val": 0.375,
+  "best_val": 1.0,
+  "holdout": {
+   "seed": 0.7,
+   "best": 0.9
+  },
+  "ood": {
+   "seed": 0.5833333333333334,
+   "best": 1.0
+  },
+  "best_prompts": {
+   "prompts/reporter.md": "Give the final answer to the question.\nEnd your reply with a final line of the form 'ANSWER: <value>'.\n",
+   "prompts/solver.md": "You are a helpful assistant. Solve the question.\nWrite a short Python program that prints the exact answer, in a fenced python code block.\n"
+  },
+  "usage": {
+   "reflection": {
+    "calls": 4,
+    "input_tokens": 13810,
+    "output_tokens": 145,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 13955
+   },
+   "task": {
+    "calls": 160,
+    "input_tokens": 8285,
+    "output_tokens": 44969,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 53254
+   },
+   "_total": {
+    "calls": 164,
+    "input_tokens": 22095,
+    "output_tokens": 45114,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 67209
+   }
+  }
+ },
+ "total_cost_usd": 0.0,
+ "wall_s": 0.9298486709594727,
+ "verdict": "RuleWorld: true test 0.000 -> 0.314 (oracle 0.950) with 8 accepted of 8 proposals in 318 rollouts; AgentQA holdout {'seed': 0.7, 'best': 0.9} / OOD {'seed': 0.5833333333333334, 'best': 1.0}; cost $0.000, 1 s.",
+ "generated_at": "2026-09-25 00:16:54"
+}

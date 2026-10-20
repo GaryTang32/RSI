@@ -1,0 +1,8 @@
+---
+val_bpb:          3.018820
+training_seconds: 8.1
+total_seconds:    8.4
+peak_mem_mb:      78.8
+num_steps:        1464
+num_params_M:     0.041
+depth:            1

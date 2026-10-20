@@ -1,0 +1,33 @@
+[llm call 1]
+SYSTEM: You are a Python expert. Solve problems by writing clean, executable Python code.
+Always:
+1. Write code that prints exactly: ANSWER: <value>
+2. The answer MUST be printed to stdout in the format "ANSWER: <numeric_value>"
+3. Your code must be runnable and produce no errors.
+4. Use standard libraries only (math, itertools, etc.)
+
+PROMPT: Solve this problem by writing Python code.
+
+Question: What is the remainder when 19^385 is divided by 785?
+
+Write Python code that:
+1. Solves the problem correctly
+2. Prints exactly: ANSWER: <value>
+   where <value> is ONLY the numeric/text answer
+
+Provide ONLY the Python code, inside ```python and ``` markers.
+Do not explain or add text outside the code block.
+
+```python
+# Write your solution here
+```
+
+REPLY: ```python
+result = pow(19, 385, 785)
+print(f"ANSWER: {result}")
+```
+[python]
+result = pow(19, 385, 785)
+print(f"ANSWER: {result}")
+[output]
+ANSWER: 154

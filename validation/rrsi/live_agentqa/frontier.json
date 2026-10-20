@@ -1,0 +1,139 @@
+{
+ "domain": "agentqa",
+ "incumbent": {
+  "t": 2,
+  "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+  "job": "r0A",
+  "S": 0.6666666666666666,
+  "C": 3835.0,
+  "extra": {
+   "steps": 1.0,
+   "error_rate": 0.0,
+   "families": {
+    "numeric": 0.6666666666666666
+   },
+   "llm_calls": 1.0,
+   "tool_calls": 0.0
+  },
+  "variant": "A",
+  "node": "r0A"
+ },
+ "S_star": 0.6666666666666666,
+ "trajectory": [
+  {
+   "t": 0,
+   "S": 0.5,
+   "C": 2075.1666666666665,
+   "artifact_id": "498c3a88345f324905b855bf5ad656846e5e9259408f4f3ee9496f95499fa69a",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 0.5
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 1,
+   "S": 0.6666666666666666,
+   "C": 3835.0,
+   "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 0.6666666666666666
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 2,
+   "S": 0.6666666666666666,
+   "C": 3835.0,
+   "artifact_id": "ecfa83261febbaa8653569d543409b222b1590d0a10d2b5c22b97d4d8ac15e98",
+   "job": "r0A",
+   "node": "r0A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "numeric": 0.6666666666666666
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  }
+ ],
+ "config": {
+  "T": 4,
+  "k": 1,
+  "m": 2,
+  "b_min": 1,
+  "b_max": 4,
+  "budget_rounding": "ceil",
+  "w": 3,
+  "m_draft": 1,
+  "delta": null,
+  "delta_z": 2.0,
+  "beta0": 0.1,
+  "beta1": 40.0,
+  "w_s": 100.0,
+  "w_c": 15.0,
+  "w_n": 0.5,
+  "n_prune": 4,
+  "repair_rounds": 2,
+  "invalid_missing_frac": 0.15,
+  "n_fail_traces": 6,
+  "n_success_traces": 3,
+  "eval_parallel": 1,
+  "calibration_repeats": 3,
+  "calibration_reps": 2000,
+  "calibration_seed": 7,
+  "bootstrap_small_k_correction": false,
+  "max_done_bounces": 2,
+  "max_abort_bounces": 3,
+  "history_render_n": 40,
+  "scoreboard_n": 20,
+  "trace_chars": 3000,
+  "max_digests": 4,
+  "analyst": "llm",
+  "workers": 4,
+  "trial_cache": false,
+  "smoke": true,
+  "heldout_monitor": false,
+  "trace": true,
+  "shadow_monitor": true,
+  "shadow_monitor_k": 1,
+  "trace_max_text": 100000,
+  "record_timestamps": true,
+  "editable": null,
+  "seed": 0,
+  "notes": {}
+ },
+ "switches": {
+  "name": "full",
+  "budget_anneal": true,
+  "constant_budget": null,
+  "history_conditioning": "full",
+  "stall_exploration": true,
+  "critic": true,
+  "floor": "S_star",
+  "cost_rule": true,
+  "within_band": "shaped",
+  "prune_directives": true,
+  "domain_guards": true,
+  "selection": "rrsi",
+  "smoke": true
+ }
+}

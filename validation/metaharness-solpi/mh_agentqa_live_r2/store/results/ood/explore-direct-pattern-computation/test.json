@@ -1,0 +1,24 @@
+{
+ "split": "ood",
+ "score": 0.25,
+ "per_unit": {
+  "ood-dates-000": 0.0,
+  "ood-numbertheory-000": 0.0,
+  "ood-strings-000": 1.0,
+  "ood-lists-000": 0.0
+ },
+ "per_unit_cost": {
+  "ood-dates-000": 1879.0,
+  "ood-numbertheory-000": 1285.0,
+  "ood-strings-000": 1080.0,
+  "ood-lists-000": 4609.0
+ },
+ "context_cost": 2213.25,
+ "tokens": 2213.25,
+ "families": {
+  "dates": 0.0,
+  "numbertheory": 0.0,
+  "strings": 1.0,
+  "lists": 0.0
+ }
+}

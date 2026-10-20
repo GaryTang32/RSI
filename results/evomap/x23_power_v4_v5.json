@@ -1,0 +1,76 @@
+{
+ "experiment": "x23_power_v4_v5",
+ "generated_at": "2026-09-30 00:50:42",
+ "config": {
+  "alpha": 0.05,
+  "power": 0.8,
+  "usd_per_trial_estimate_even_split": 0.00487,
+  "usd_per_trial_estimate_90_10_split": 0.00227,
+  "tokens_per_trial": 1623,
+  "haiku_prices_per_mtok": [
+   1.0,
+   5.0
+  ],
+  "cap_usd": 4.0,
+  "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"
+ },
+ "tests": {
+  "V4 complementary (44.9) < conflicting (53.2)": {
+   "p1": 0.449,
+   "p2": 0.532,
+   "n_per_arm": 566,
+   "trials": 1132,
+   "usd_estimate_even_split": 5.51,
+   "usd_estimate_90_10_split": 2.57,
+   "fits_cap_even_split": false,
+   "fits_cap_90_10_split": true
+  },
+  "V4 single (54.0) > conflicting (53.2)": {
+   "p1": 0.54,
+   "p2": 0.532,
+   "n_per_arm": 60998,
+   "trials": 121996,
+   "usd_estimate_even_split": 594.0,
+   "usd_estimate_90_10_split": 277.2,
+   "fits_cap_even_split": false,
+   "fits_cap_90_10_split": false
+  },
+  "V5 warnings only (54.4) > strategy only (52.3)": {
+   "p1": 0.544,
+   "p2": 0.523,
+   "n_per_arm": 8856,
+   "trials": 17712,
+   "usd_estimate_even_split": 86.24,
+   "usd_estimate_90_10_split": 40.25,
+   "fits_cap_even_split": false,
+   "fits_cap_90_10_split": false
+  },
+  "V5 warnings only (54.4) > failure first (50.5)": {
+   "p1": 0.544,
+   "p2": 0.505,
+   "n_per_arm": 2571,
+   "trials": 5142,
+   "usd_estimate_even_split": 25.04,
+   "usd_estimate_90_10_split": 11.68,
+   "fits_cap_even_split": false,
+   "fits_cap_90_10_split": false
+  }
+ },
+ "total": {
+  "V4_trials": 182994,
+  "V5_trials": 26568,
+  "usd_estimate_even_split": 1020.36,
+  "usd_estimate_90_10_split": 476.17
+ },
+ "paper_resolution": {
+  "trials": 4590,
+  "note": "if spread over >= 17 conditions (progressive 4, perturbation 4, failure 4, composition 4, main 3 minus overlaps), about 270 trials per condition: SE of a difference ~ 4.3 pp",
+  "se_diff_pp_at_270": 4.3
+ },
+ "verdict": {
+  "primary_reason_not_testable": "no task set with headroom (Haiku 1.0 on katas without genes; the paper's 45 scenarios are unreleased)",
+  "any_test_fits_cap_90_10_split": true,
+  "any_test_fits_cap_even_split": false,
+  "full_v4_v5_fits_cap": false
+ }
+}

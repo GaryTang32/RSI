@@ -1,0 +1,19 @@
+{
+ "iteration": 1,
+ "candidates": [
+  {
+   "name": "clear-format-answers",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "code-generation-execution",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

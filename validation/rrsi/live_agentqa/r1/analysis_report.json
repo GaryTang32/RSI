@@ -1,0 +1,114 @@
+{
+ "failure_modes": [
+  {
+   "mode": "numeric_computation_returns_incorrect_value",
+   "n_tasks": 4,
+   "affected_tasks": [
+    "evolve-numeric-001",
+    "evolve-numeric-006",
+    "evolve-numeric-005",
+    "evolve-numeric-010"
+   ],
+   "description": "Agent produces incorrect numeric result for final answer or critical intermediate values. Root causes vary: unverified manual arithmetic chains with cascading errors, failed tool output integration despite attempted tool use, or unvalidated intermediate results that propagate to incorrect final answer.",
+   "needed_instead": "Systematic tool-based verification for all intermediate numeric values; magnitude sanity checking to validate results are plausible before proceeding; explicit verification steps that catch arithmetic errors before final answer is formulated and submitted.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-001",
+     "where": "Modular exponentiation intermediate calculations",
+     "quote": "19^64 ≡ 508 (incorrect; should be 588), 19^128 ≡ 665 (incorrect; should be 84), 19^512 ≡ 538 (incorrect; should be 183). Agent does not invoke available Python tool for verification despite system prompt explicitly directing verification for modular arithmetic problems."
+    },
+    {
+     "task_id": "evolve-numeric-006",
+     "where": "Binary one-bit counting for large power",
+     "quote": "Extracted answer '38'; expected '24' (14-bit discrepancy indicating systematic error). Tool output shown in code but not properly integrated or validated before extracting final answer."
+    },
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "Large power computation and digit summation",
+     "quote": "81^15 computed as 1,350,851,717,672,992,089 (19 digits) when approximately 29 digits expected per log₁₀(81^15)≈28.6. Magnitude sanity check would have immediately flagged implausibility before using value for subsequent operations."
+    }
+   ]
+  }
+ ],
+ "capability_gaps": [
+  {
+   "gap": "tool_output_verification_and_integration",
+   "n_tasks": 3,
+   "affected_tasks": [
+    "evolve-numeric-001",
+    "evolve-numeric-005",
+    "evolve-numeric-006"
+   ],
+   "description": "Agent cannot reliably capture, validate, and incorporate computational tool output into reasoning. When tools are available or invoked, systematic failures occur: tool invocations are skipped despite availability, output is not captured or displayed, or output is shown but not properly integrated into the solution chain for subsequent steps.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-001",
+     "where": "Verification strategy decision",
+     "quote": "Agent correctly identifies binary exponentiation method but performs all arithmetic inline without invoking Python tool, despite system prompt explicitly directing verification for modular arithmetic problems."
+    },
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "Tool invocation and output handling",
+     "quote": "Bash function calls shown in response but no visible output line; agent proceeds without seeing or trusting tool output, instead proceeding to manual verification of the allegedly computed value."
+    },
+    {
+     "task_id": "evolve-numeric-006",
+     "where": "Tool output integration",
+     "quote": "Python code blocks displayed with verification intent, but final answer differs by 14 bits from correct value; output was not properly validated or integrated into reasoning before extraction."
+    }
+   ]
+  },
+  {
+   "gap": "intermediate_result_magnitude_validation",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-005"
+   ],
+   "description": "Agent cannot estimate expected magnitude or plausible range for intermediate computed values, allowing drastically implausible results to pass as correct. No sanity checks exist to catch when a computed value deviates far outside bounds expected from problem parameters.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "Plausibility assessment of intermediate result",
+     "quote": "Computed 81^15 = 3^60 should have approximately 29 digits (log₁₀≈28.6) but reported as 19-digit number. Logarithmic magnitude check would have caught this 10-digit magnitude error before proceeding."
+    }
+   ]
+  },
+  {
+   "gap": "arithmetic_error_detection_in_calculation_chains",
+   "n_tasks": 2,
+   "affected_tasks": [
+    "evolve-numeric-001",
+    "evolve-numeric-006"
+   ],
+   "description": "Agent cannot reliably verify complex arithmetic computations or detect errors in multi-step calculation chains. Small errors in intermediate steps propagate uncaught through subsequent calculations; verification steps fail to catch inconsistencies between successive intermediate results.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-001",
+     "where": "Modular arithmetic calculation chain",
+     "quote": "Four cascading arithmetic errors in binary-exponentiation intermediate powers: 19^64 ≡ 508 (error in base squaring), 19^128 ≡ 665 (compounded error), 19^512 ≡ 538 (final propagated error). None detected despite availability of Python tool for verification."
+    },
+    {
+     "task_id": "evolve-numeric-006",
+     "where": "Verification of binary representation analysis",
+     "quote": "Extracted answer '38'; expected '24' represents 14-bit counting discrepancy. Verification step shown in code did not catch the systematic counting error or flag inconsistency with expected range."
+    }
+   ]
+  }
+ ],
+ "success_habits": [
+  {
+   "habit": "structured_step_by_step_arithmetic_decomposition",
+   "n_tasks": 1,
+   "description": "Agent decomposes complex multi-step operations into isolated atomic calculations, explicitly presents intermediate result of each step, and incorporates values into a running balance or accumulator before proceeding to the next operation. Each calculation step is independently auditable.",
+   "risk_if_broken": "Removing step-by-step decomposition eliminates the opportunity for catching errors before propagation through subsequent steps. System prompt explicitly requires 'breaking down complex operations into individual calculations' for verification purposes. Without this structure, small arithmetic errors accumulate uncaught through the calculation chain into the final answer."
+  },
+  {
+   "habit": "final_answer_as_minimal_labeled_summary",
+   "n_tasks": 1,
+   "description": "Agent formats the final numeric answer as a dedicated standalone line using exact extraction format 'ANSWER: <numeric_value>' with no extraneous text, explanation, or surrounding context appearing on that line.",
+   "risk_if_broken": "Grader uses regex-based line extraction to locate and validate final answers; removing the exact 'ANSWER:' format causes extraction to fail or extract surrounding explanatory text instead of bare numeric value. System prompt explicitly specifies this format requirement; deviations cause parsing failure and automatic incorrect grading."
+  }
+ ],
+ "n_digests": 4,
+ "analyst": "llm"
+}

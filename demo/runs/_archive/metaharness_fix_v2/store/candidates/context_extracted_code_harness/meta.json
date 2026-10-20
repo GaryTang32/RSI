@@ -1,0 +1,17 @@
+{
+ "name": "context_extracted_code_harness",
+ "artifact_id": "39bffe017714a861143cc4620ed50738ba6825a4455637f5533ae04cdbd64b60",
+ "created_at": 1790762213.645386,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 6,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

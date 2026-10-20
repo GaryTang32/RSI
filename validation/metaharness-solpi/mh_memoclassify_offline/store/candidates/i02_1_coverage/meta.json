@@ -1,0 +1,22 @@
+{
+ "name": "i02_1_coverage",
+ "artifact_id": "8ed6bf9bd8aa29bb4cf4eacda6ec5e98ae974b23e051d3b5388e58b79bb65120",
+ "created_at": 1790343353.1992962,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "no_memory",
+ "hypothesis": "Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed.",
+ "axis": "exploration",
+ "components": [
+  "coverage",
+  "axis:C"
+ ],
+ "parents_read": [
+  "no_memory"
+ ],
+ "order": 6,
+ "move": "coverage",
+ "evidence": "retrieval misses the gold label's demonstrations",
+ "reason": ""
+}

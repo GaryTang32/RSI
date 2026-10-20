@@ -1,0 +1,13 @@
+[python]
+balance = 88599
+balance += 75810
+balance -= 81729
+balance += 20
+balance += 882540
+balance -= 94
+balance -= 1654118
+balance += 67
+balance += 1154008
+print(balance)
+[output]
+465103

@@ -1,0 +1,134 @@
+[llm call 1]
+SYSTEM: You are a helpful assistant who solves problems by writing Python code.
+
+For all problems—whether they involve calculations, data processing, or logical reasoning—write Python code to:
+1. Parse and organize the input information
+2. Apply all rules and constraints
+3. Compute or determine the correct answer
+4. Print the final answer on the last line
+
+## Code Templates for Logic Puzzles
+
+For constraint satisfaction (e.g., "Five people live in houses with different attributes"):
+
+```python
+from itertools import permutations
+
+# Define entities
+people = [...]
+values_for_attr = [...]
+
+# Try all possi
+PROMPT: Five houses stand in a row, numbered 1 to 5 from left to right. Each house has one person, and the five people are Blake, Casey, Harper, Morgan, Sawyer. Each person has a different house color (blue, green, orange, red, yellow), a different pet (bird, dog, fish, horse, rabbit), a different drink (cocoa, coffee, juice, milk, tea) and a different hobby (baking, fencing, hiking, painting, rowing).
+Clues:
+1. The person in the orange house is not the person who does painting.
+2. The horse owner is not Blake.
+3. The person in the blue house lives immediately to the left of Sawyer.
+4. Casey lives next to the person who does hiking.
+5. The person who does baking lives immediately to the left of the person who drinks tea.
+6. The person who does baking lives immediately to the left of the dog owner.
+7. The rabbit owner lives next to the person who does fencing.
+8. The person who drinks tea lives next to the horse owner.
+9. Casey lives next to the bird owner.
+10. The person in the red house lives next to the rabbit owner.
+11. The person who drinks cocoa lives next to the person in the orange house.
+12. The person in the yellow house is the person who does rowing.
+13. The bird owner is Harper.
+14. Sawyer is the person who drinks juice.
+15. The person in the blue house lives immediately to the left of the person who does painting.
+16. The bird owner is the person who drinks milk.
+Who owns the bird? Answer with the name only.
+
+**Write Python code to solve this problem.** Include all necessary data parsing, filtering, and computation. Print your final answer on the last line.
+
+Use the templates provided in your system prompt as a guide for structure.
+
+---
+
+REPLY: Looking at this constraint satisfaction problem, I need to find an assignment of people to houses with their attributes (color, pet, drink, hobby) that satisfies all 16 clues.
+
+Let me code a brute-force solver that checks all possible permutations:
+
+```python
+from itertools import permutations
+
+people = ['Blake', 'Casey', 'Harper', 'Morgan', 'Sawyer']
+colors = ['blue', 'green', 'orange', 'red', 'yellow']
+pets = ['bird', 'dog', 'fish', 'horse', 'rabbit']
+drinks = ['cocoa', 'coffee', 'juice', 'milk', 'tea']
+hobbies = ['baking', 'fencing', 'hiking', 'painting', 'rowing']
+
+def check_constraints(houses):
+    """Check if an assignment satisfies all constraints"""
+    
+    # Create position mappings for each attribute
+    person_pos = {houses[i]['person']: i for i in range(5)}
+    color_pos = {houses[i]['color']: i for i in range(5)}
+    pet_pos = {houses[i]['pet']: i for i in range(5)}
+    drink_pos = {houses[i]['drink']: i for i in range(5)}
+    hobby_pos = {houses[i]['hobby']: i for i in range(5)}
+    
+    def adjacent(h1, h2):
+        return abs(h1 - h2) == 1
+    
+    def immediately_left(h1, h2):
+        return h2 - h1 == 1
+    
+    # Check all 16 clues
+    if color_pos['orange'] == hobby_pos['painting']:  # Clue 1: orange house NOT painter
+        return False
+    if person_pos['Blake'] == pet_pos['horse']:  # Clue 2: Blake NOT horse owner
+        return False
+    if not immediately_left(color_pos['blue'], person_pos['Sawyer']):  # Clue 3
+        return False
+    if not adjacent(person_pos['Casey'], hobby_pos['hiking']):  # Clue 4
+        return False
+    if not immediately_left(hobby_pos['baking'], drink_pos['tea']):  # Clue 5
+        return False
+    if not immediately_left(hobby_pos['baking'], pet_pos['dog']):  # Clue 6
+        return False
+    if not adjacent(pet_pos['rabbit'], hobby_pos['fencing']):  # Clue 7
+        return False
+    if not adjacent(drink_pos['tea'], pet_pos['horse']):  # Clue 8
+        return False
+    if not adjacent(person_pos['Casey'], pet_p
+[python]
+from itertools import permutations
+
+people = ['Blake', 'Casey', 'Harper', 'Morgan', 'Sawyer']
+colors = ['blue', 'green', 'orange', 'red', 'yellow']
+pets = ['bird', 'dog', 'fish', 'horse', 'rabbit']
+drinks = ['cocoa', 'coffee', 'juice', 'milk', 'tea']
+hobbies = ['baking', 'fencing', 'hiking', 'painting', 'rowing']
+
+def check_constraints(houses):
+    """Check if an assignment satisfies all constraints"""
+    
+    # Create position mappings for each attribute
+    person_pos = {houses[i]['person']: i for i in range(5)}
+    color_pos = {houses[i]['color']: i for i in range(5)}
+    pet_pos = {houses[i]['pet']: i for i in range(5)}
+    drink_pos = {houses[i]['drink']: i for i in range(5)}
+    hobby_pos = {houses[i]['hobby']: i for i in range(5)}
+    
+    def adjacent(h1, h2):
+        return abs(h1 - h2) == 1
+    
+    def immediately_left(h1, h2):
+        return h2 - h1 == 1
+    
+    # Check all 16 clues
+    if color_pos['orange'] == hobby_pos['painting']:  # Clue 1: orange house NOT painter
+        return False
+    if person_pos['Blake'] == pet_pos['horse']:  # Clue 2: Blake NOT horse owner
+        return False
+    if not immediately_left(color_pos['blue'], person_pos['Sawyer']):  # Clue 3
+        return False
+    if not adjacent(person_pos['Casey'], hobby_pos['hiking']):  # Clue 4
+        return False
+    if not immediately_left(hobby_pos['baking'], drink_pos['tea']):  # Clue 5
+        return False
+    if not immediately_left(hobby_pos['baking'], pet_pos['dog']):  # Clue 6
+        
+[output]
+[killed: timeout]

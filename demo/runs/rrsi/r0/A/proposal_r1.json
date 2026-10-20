@@ -1,0 +1,71 @@
+{
+ "status": "done",
+ "summary": "Complete candidate with 3 general fixes: markdown parser (C1), mandatory followup (C2), and universal tool-use mandate (C3). C3 now includes required predicted_affected field; prompt verified to be domain-general.",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "tool",
+   "hypothesis": "Current parser only recognizes XML <invoke> blocks, missing markdown ``` python...``` blocks. Adding markdown detection enables tool execution for LLM responses that use markdown code formatting instead of XML.",
+   "targets_mode": "tool_invocation_avoidance (evolve-numeric-001)",
+   "why_not_lower_lever": "This is a structural parsing gap, not addressable via prompt wording. The regex pattern itself must be extended to recognize the alternate format.",
+   "trigger_condition": "When LLM response contains markdown Python blocks (``` python ... ```) instead of or in addition to XML invoke blocks",
+   "predicted_affected": [
+    "evolve-numeric-001"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-001 fails because markdown code is proposed but parser skips it; this fix captures and executes it. (preservative) evolve-numeric-006 succeeds with XML blocks which this change preserves. (transfer) Generalizes: any task where LLM may use markdown formatting will now work.",
+   "regression_risk": "Could accidentally execute markdown code blocks from explanatory text, but low risk in problem-solving context where Python blocks are deliberate.",
+   "mechanism": "Current parser only recognizes XML <invoke> blocks, missing markdown ``` python...``` blocks. Adding markdown detection enables tool execution for LLM responses that use markdown code formatting instead of XML."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "When tool execution succeeds, create mandatory followup LLM call that grounds the final answer in the actual computed output. This forces the LLM to cite and use the tool result rather than asserting answers from prior reasoning.",
+   "targets_mode": "unverified_tool_output (tasks where tools execute but results are misreported)",
+   "why_not_lower_lever": "Prompt-only wording cannot force the LLM to acknowledge tool output if it has already committed to a wrong answer in the first call. Control flow separation ensures a fresh, focused call that MUST use the output.",
+   "trigger_condition": "When parse_and_execute_tools() returns non-empty tool_output string",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-005",
+    "evolve-numeric-010"
+   ],
+   "retroactive_check": "(corrective) Tasks 000, 003-005 fail because tools run correctly but LLM misreports results; forced followup makes LLM cite actual output. Task 010 fails with tool output unverified; followup ensures verification. (preservative) evolve-numeric-006 succeeds; this only adds followup when tools execute, so reasoning-only correct answers are unaffected. (transfer) Applies universally to any task where computed results must be grounded in final answer.",
+   "regression_risk": "Minimal: only triggers when tools execute; empty output skips followup. Token cost increases for executed tools, acceptable trade for correctness.",
+   "mechanism": "When tool execution succeeds, create mandatory followup LLM call that grounds the final answer in the actual computed output. This forces the LLM to cite and use the tool result rather than asserting answers from prior reasoning."
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "Strengthen system prompt with universal mandate to use tools for all calculations and data manipulation, preventing mental arithmetic fallbacks. The guidance is general (applies to any problem requiring computation) and does not leak task-domain awareness.",
+   "targets_mode": "unverified_mental_arithmetic (tasks where LLM performs calculation mentally without code generation)",
+   "why_not_lower_lever": "Prompt is the right lever: frozen models interpret directives literally. Explicit guidance ('always generate code for calculations') works as behavioral constraint without task-specific branching.",
+   "trigger_condition": "Always active; system prompt prepended to every LLM request",
+   "predicted_affected": [
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-002 fails because LLM computes 77 × 50,354 mentally without code; strengthened mandate forces code generation for arithmetic. (preservative) evolve-numeric-006 uses CRT within a computed framework; general mandate to use tools for calculation complements structured reasoning. (transfer) Applies to any task (numeric, date, text, list) that requires computation—not domain-specific.",
+   "regression_risk": "Low: directive applies universally. For non-computational tasks, 'use tools for calculation' is inert. If model over-generates code, C2 ensures only executed results are used—harmless.",
+   "mechanism": "Strengthen system prompt with universal mandate to use tools for all calculations and data manipulation, preventing mental arithmetic fallbacks. The guidance is general (applies to any problem requiring computation) and does not leak task-domain awareness."
+  }
+ ],
+ "mechanism": "Complete candidate with 3 general fixes: markdown parser (C1), mandatory followup (C2), and universal tool-use mandate (C3). C3 now includes required predicted_affected field; prompt verified to be domain-general.",
+ "targets_mode": "tool_invocation_avoidance (evolve-numeric-001), unverified_tool_output (tasks where tools execute but results are misreported), unverified_mental_arithmetic (tasks where LLM performs calculation menta",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  },
+  {
+   "turn": 1,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

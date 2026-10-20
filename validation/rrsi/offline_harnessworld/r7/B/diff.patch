@@ -1,0 +1,16 @@
+--- a/agents/har_17.py
++++ b/agents/har_17.py
+@@ -0,0 +1,5 @@
++# mechanism: har_17
++# component: subagent
++# title: Planner sub-call
++"""Planner sub-call; aimed at extract, arith, plan, format tasks."""
++enable("har_17")
+--- a/prompts/har_03.md
++++ b/prompts/har_03.md
+@@ -0,0 +1,5 @@
++# mechanism: har_03
++# component: prompt
++# title: Short worked example of the procedure
++"""Short worked example of the procedure; aimed at extract, arith tasks."""
++enable("har_03")

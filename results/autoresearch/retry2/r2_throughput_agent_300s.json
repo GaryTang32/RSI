@@ -1,0 +1,78 @@
+{
+ "experiment": "r2_throughput_agent_300s",
+ "written_at": "2026-09-29 18:59:26",
+ "config": {
+  "arm": "agent",
+  "budget_s": 300.0,
+  "experiments": 3,
+  "seed": 0,
+  "task": "tinylm",
+  "mode": "hardened",
+  "keep_rule": "upstream",
+  "shadow_monitor": false,
+  "hidden_audit": false,
+  "editor": "AgentEditor",
+  "llm": "claude-haiku-4-5 (claude -p)"
+ },
+ "decisions": [
+  {
+   "exp": 0,
+   "status": "keep",
+   "metric": 2.353287570087019,
+   "description": "baseline",
+   "wall_s": 300.621,
+   "t": 300.734
+  },
+  {
+   "exp": 1,
+   "status": "keep",
+   "metric": 2.11485312072738,
+   "description": "Increase context 6\u21928, embed_dim 16\u219224, depth 1\u21922",
+   "wall_s": 300.687,
+   "t": 646.016
+  },
+  {
+   "exp": 2,
+   "status": "discard",
+   "metric": 2.213040472131429,
+   "description": "Remove warmdown schedule, keep constant LR (WARMDOWN_RATIO 0.5\u21920, FINAL_LR_FRAC 0\u21921)",
+   "wall_s": 300.814,
+   "t": 1040.25
+  },
+  {
+   "exp": 3,
+   "status": "keep",
+   "metric": 2.029703639358928,
+   "description": "Increase HIDDEN 128\u2192192",
+   "wall_s": 300.785,
+   "t": 1426.486
+  }
+ ],
+ "per_experiment_loop_s": [
+  345.282,
+  394.23400000000004,
+  386.2360000000001
+ ],
+ "mean_loop_s": 375.25066666666675,
+ "experiments_per_hour": 9.593587219920549,
+ "run_wall_s": [
+  300.621,
+  300.687,
+  300.814,
+  300.785
+ ],
+ "llm_latency_s": [],
+ "total_wall_s": 1426.4914214611053,
+ "usage": {
+  "calls": 3,
+  "input_tokens": 304795,
+  "output_tokens": 21680,
+  "cost_usd": 0.2762989
+ },
+ "results_tsv": "commit\tval_bpb\tmemory_gb\tstatus\tdescription\nfa8b780\t2.353288\t0.078\tkeep\tbaseline\n1cb04e9\t2.114853\t0.091\tkeep\tIncrease context 6\u21928, embed_dim 16\u219224, depth 1\u21922\n18ea672\t2.213040\t0.091\tdiscard\tRemove warmdown schedule, keep constant LR (WARMDOWN_RATIO 0.5\u21920, FINAL_LR_FRAC 0\u21921)\n0179fdd\t2.029704\t0.101\tkeep\tIncrease HIDDEN 128\u2192192\n",
+ "verdict": {
+  "experiments_per_hour": 9.593587219920549,
+  "within_pm15pct_of_12": false,
+  "projected_per_8h_night": 76.74869775936439
+ }
+}

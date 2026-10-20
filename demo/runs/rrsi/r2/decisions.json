@@ -1,0 +1,24 @@
+[
+ {
+  "variant": "A",
+  "admissible": false,
+  "reason": "cost rule failed: within band: shaped=-7.943 (<= 0)",
+  "S": 0.9166666666666666,
+  "C": 2476.5,
+  "delta_S": -0.08333333333333337,
+  "delta_C": -0.02605446858715957,
+  "novelty": 0,
+  "guards": []
+ },
+ {
+  "variant": "B",
+  "admissible": false,
+  "reason": "cost rule failed: within band: shaped=-7.868 (<= 0)",
+  "S": 0.9166666666666666,
+  "C": 2548.5833333333335,
+  "delta_S": -0.08333333333333337,
+  "delta_C": 0.0022941041523285755,
+  "novelty": 1,
+  "guards": []
+ }
+]

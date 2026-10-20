@@ -1,0 +1,463 @@
+{
+ "experiment": "e7_program_md",
+ "written_at": "2026-09-28 10:34:06",
+ "config": {
+  "task": "landscape",
+  "presets": [
+   "upstream",
+   "xgboost",
+   "simplify"
+  ],
+  "experiments": 20,
+  "seeds": [
+   0,
+   1
+  ],
+  "llm": "sim",
+  "program_versions": {
+   "upstream": "67fe238",
+   "xgboost": "b903cf5",
+   "simplify": "39c62e6"
+  }
+ },
+ "presets": {
+  "upstream": {
+   "improvement": {
+    "mean": 0.05265837409069607,
+    "lo": 0.04531609654428004,
+    "hi": 0.0600006516371121,
+    "n": 2
+   },
+   "true_best": {
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
+    "hi": 0.9861587815885258,
+    "n": 2
+   },
+   "n_knobs_touched": {
+    "mean": 7.5,
+    "lo": 7.0,
+    "hi": 8.0,
+    "n": 2
+   },
+   "removal_share": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "keep_rate": {
+    "mean": 0.21785714285714286,
+    "lo": 0.15,
+    "hi": 0.2857142857142857,
+    "n": 2
+   },
+   "runs": [
+    {
+     "preset": "upstream",
+     "seed": 0,
+     "best": 0.9669116104412008,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
+     "n_crash": 0,
+     "true_best": 0.9658782862305668,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "SEED",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 8,
+     "removal_share": 0.0,
+     "program_versions": [
+      "67fe238"
+     ],
+     "descriptions": [
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 6",
+      "BATCH 256 -> 512",
+      "SEED 42 -> 397",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WEIGHT_DECAY 0.15 -> 0.2",
+      "BATCH 256 -> 128",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WARMDOWN 0.5 -> 0.4",
+      "LR 0.04 -> 0.06",
+      "SEED 42 -> 397",
+      "WIDTH 512 -> 576",
+      "BATCH 128 -> 64",
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 256",
+      "BATCH 128 -> 256",
+      "WIDTH 256 -> 320",
+      "BATCH 128 -> 64",
+      "WIDTH 256 -> 128"
+     ],
+     "usage": {
+      "calls": 20,
+      "input_tokens": 68857,
+      "output_tokens": 3572,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "preset": "upstream",
+     "seed": 1,
+     "best": 0.9815961655340328,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.04531609654428004,
+     "keep_rate": 0.15,
+     "n_crash": 1,
+     "true_best": 0.9861587815885258,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 7,
+     "removal_share": 0.0,
+     "program_versions": [
+      "67fe238"
+     ],
+     "descriptions": [
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 1024",
+      "BATCH 256 -> 512",
+      "WIDTH 512 -> 256",
+      "INIT_SCALE 1.0 -> 1.15",
+      "INIT_SCALE 1.0 -> 0.85",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "LR 0.04 -> 0.06",
+      "WIDTH 256 -> 128",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "DEPTH 8 -> 10",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 10",
+      "INIT_SCALE 0.85 -> 0.7225",
+      "BATCH 256 -> 512",
+      "LR 0.04 -> 0.0267",
+      "WIDTH 256 -> 128",
+      "WARMDOWN 0.5 -> 0.6"
+     ],
+     "usage": {
+      "calls": 21,
+      "input_tokens": 72011,
+      "output_tokens": 3590,
+      "cost_usd": 0.0
+     }
+    }
+   ]
+  },
+  "xgboost": {
+   "improvement": {
+    "mean": 0.05265837409069607,
+    "lo": 0.04531609654428004,
+    "hi": 0.0600006516371121,
+    "n": 2
+   },
+   "true_best": {
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
+    "hi": 0.9861587815885258,
+    "n": 2
+   },
+   "n_knobs_touched": {
+    "mean": 7.5,
+    "lo": 7.0,
+    "hi": 8.0,
+    "n": 2
+   },
+   "removal_share": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "keep_rate": {
+    "mean": 0.21785714285714286,
+    "lo": 0.15,
+    "hi": 0.2857142857142857,
+    "n": 2
+   },
+   "runs": [
+    {
+     "preset": "xgboost",
+     "seed": 0,
+     "best": 0.9669116104412008,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
+     "n_crash": 0,
+     "true_best": 0.9658782862305668,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "SEED",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 8,
+     "removal_share": 0.0,
+     "program_versions": [
+      "b903cf5"
+     ],
+     "descriptions": [
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 6",
+      "BATCH 256 -> 512",
+      "SEED 42 -> 397",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WEIGHT_DECAY 0.15 -> 0.2",
+      "BATCH 256 -> 128",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WARMDOWN 0.5 -> 0.4",
+      "LR 0.04 -> 0.06",
+      "SEED 42 -> 397",
+      "WIDTH 512 -> 576",
+      "BATCH 128 -> 64",
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 256",
+      "BATCH 128 -> 256",
+      "WIDTH 256 -> 320",
+      "BATCH 128 -> 64",
+      "WIDTH 256 -> 128"
+     ],
+     "usage": {
+      "calls": 20,
+      "input_tokens": 71848,
+      "output_tokens": 3572,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "preset": "xgboost",
+     "seed": 1,
+     "best": 0.9815961655340328,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.04531609654428004,
+     "keep_rate": 0.15,
+     "n_crash": 1,
+     "true_best": 0.9861587815885258,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 7,
+     "removal_share": 0.0,
+     "program_versions": [
+      "b903cf5"
+     ],
+     "descriptions": [
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 1024",
+      "BATCH 256 -> 512",
+      "WIDTH 512 -> 256",
+      "INIT_SCALE 1.0 -> 1.15",
+      "INIT_SCALE 1.0 -> 0.85",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "LR 0.04 -> 0.06",
+      "WIDTH 256 -> 128",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "DEPTH 8 -> 10",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 10",
+      "INIT_SCALE 0.85 -> 0.7225",
+      "BATCH 256 -> 512",
+      "LR 0.04 -> 0.0267",
+      "WIDTH 256 -> 128",
+      "WARMDOWN 0.5 -> 0.6"
+     ],
+     "usage": {
+      "calls": 21,
+      "input_tokens": 75155,
+      "output_tokens": 3590,
+      "cost_usd": 0.0
+     }
+    }
+   ]
+  },
+  "simplify": {
+   "improvement": {
+    "mean": 0.05265837409069607,
+    "lo": 0.04531609654428004,
+    "hi": 0.0600006516371121,
+    "n": 2
+   },
+   "true_best": {
+    "mean": 0.9760185339095463,
+    "lo": 0.9658782862305668,
+    "hi": 0.9861587815885258,
+    "n": 2
+   },
+   "n_knobs_touched": {
+    "mean": 7.5,
+    "lo": 7.0,
+    "hi": 8.0,
+    "n": 2
+   },
+   "removal_share": {
+    "mean": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2
+   },
+   "keep_rate": {
+    "mean": 0.21785714285714286,
+    "lo": 0.15,
+    "hi": 0.2857142857142857,
+    "n": 2
+   },
+   "runs": [
+    {
+     "preset": "simplify",
+     "seed": 0,
+     "best": 0.9669116104412008,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.0600006516371121,
+     "keep_rate": 0.2857142857142857,
+     "n_crash": 0,
+     "true_best": 0.9658782862305668,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "SEED",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 8,
+     "removal_share": 0.0,
+     "program_versions": [
+      "39c62e6"
+     ],
+     "descriptions": [
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 6",
+      "BATCH 256 -> 512",
+      "SEED 42 -> 397",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WEIGHT_DECAY 0.15 -> 0.2",
+      "BATCH 256 -> 128",
+      "INIT_SCALE 1.0 -> 1.15",
+      "WARMDOWN 0.5 -> 0.4",
+      "LR 0.04 -> 0.06",
+      "SEED 42 -> 397",
+      "WIDTH 512 -> 576",
+      "BATCH 128 -> 64",
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 256",
+      "BATCH 128 -> 256",
+      "WIDTH 256 -> 320",
+      "BATCH 128 -> 64",
+      "WIDTH 256 -> 128"
+     ],
+     "usage": {
+      "calls": 20,
+      "input_tokens": 69401,
+      "output_tokens": 3572,
+      "cost_usd": 0.0
+     }
+    },
+    {
+     "preset": "simplify",
+     "seed": 1,
+     "best": 0.9815961655340328,
+     "baseline": 1.0269122620783129,
+     "improvement": 0.04531609654428004,
+     "keep_rate": 0.15,
+     "n_crash": 1,
+     "true_best": 0.9861587815885258,
+     "knobs_touched": [
+      "BATCH",
+      "DEPTH",
+      "INIT_SCALE",
+      "LR",
+      "WARMDOWN",
+      "WEIGHT_DECAY",
+      "WIDTH"
+     ],
+     "n_knobs_touched": 7,
+     "removal_share": 0.0,
+     "program_versions": [
+      "39c62e6"
+     ],
+     "descriptions": [
+      "WIDTH 512 -> 576",
+      "WIDTH 512 -> 1024",
+      "BATCH 256 -> 512",
+      "WIDTH 512 -> 256",
+      "INIT_SCALE 1.0 -> 1.15",
+      "INIT_SCALE 1.0 -> 0.85",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "LR 0.04 -> 0.06",
+      "WIDTH 256 -> 128",
+      "INIT_SCALE 0.85 -> 0.9775",
+      "DEPTH 8 -> 10",
+      "WEIGHT_DECAY 0.2 -> 0.25",
+      "WEIGHT_DECAY 0.2 -> 0.15",
+      "DEPTH 8 -> 10",
+      "INIT_SCALE 0.85 -> 0.7225",
+      "BATCH 256 -> 512",
+      "LR 0.04 -> 0.0267",
+      "WIDTH 256 -> 128",
+      "WARMDOWN 0.5 -> 0.6"
+     ],
+     "usage": {
+      "calls": 21,
+      "input_tokens": 72584,
+      "output_tokens": 3590,
+      "cost_usd": 0.0
+     }
+    }
+   ]
+  }
+ },
+ "verdict": {
+  "improvement": {
+   "upstream": 0.05265837409069607,
+   "xgboost": 0.05265837409069607,
+   "simplify": 0.05265837409069607
+  },
+  "n_knobs_touched": {
+   "upstream": 7.5,
+   "xgboost": 7.5,
+   "simplify": 7.5
+  },
+  "removal_share": {
+   "upstream": 0.0,
+   "xgboost": 0.0,
+   "simplify": 0.0
+  },
+  "one_program_version_per_night": true,
+  "program_blind_control_identical_across_presets": true,
+  "claim_reproduced": "control only: a program-blind agent gives identical nights under every program.md (confirmed), and the loop never changes program.md within a night; the comparison itself needs --llm claude:haiku"
+ },
+ "figure": "/home/user/RSI/results/autoresearch/e7_program_md.png"
+}

@@ -1,0 +1,17 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "precheck: hard-coded evaluation data 'hw-e-012'",
+  "precheck: hard-coded evaluation data 'hw-e-013'",
+  "precheck: hard-coded evaluation data 'hw-e-026'",
+  "precheck: hard-coded evaluation data 'hw-e-031'",
+  "precheck: hard-coded evaluation data 'hw-e-034'",
+  "precheck: hard-coded evaluation data 'hw-e-044'",
+  "precheck: hard-coded evaluation data 'hw-e-055'",
+  "precheck: hard-coded evaluation data 'hw-e-064'",
+  "precheck: hard-coded evaluation data 'hw-e-065'",
+  "precheck: hard-coded evaluation data 'hw-e-073'"
+ ],
+ "risk_notes": [],
+ "stage": "precheck"
+}

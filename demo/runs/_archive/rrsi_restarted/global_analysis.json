@@ -1,0 +1,74 @@
+{
+ "failure_modes": [
+  {
+   "mode": "unverified_mental_arithmetic",
+   "n_tasks": 5,
+   "affected_tasks": [
+    "evolve-numeric-000",
+    "evolve-numeric-002",
+    "evolve-numeric-003",
+    "evolve-numeric-004",
+    "evolve-numeric-005"
+   ],
+   "description": "Agent performs arithmetic operations mentally and asserts results as correct without computational verification. Covers digit summation, large-number multiplication, and modular reduction computed through reasoning alone.",
+   "needed_instead": "Delegate arithmetic operations to computational tools. For digit sums, multiplications, and modular reductions, compute values via tools.python() before asserting results.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-000",
+     "where": "REPLY: digit sum assertion",
+     "quote": "The sum of the decimal digits of 41! is **198**"
+    },
+    {
+     "task_id": "evolve-numeric-002",
+     "where": "Multi-step calculation intermediate step",
+     "quote": "77 × 50,354 = 3,887,258"
+    },
+    {
+     "task_id": "evolve-numeric-005",
+     "where": "REPLY: digit aggregation",
+     "quote": "Sum of all digits: 2+9+7 = **297**"
+    }
+   ]
+  },
+  {
+   "mode": "tool_invocation_avoidance",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-001"
+   ],
+   "description": "Agent generates computational code to solve a problem but does not execute it via tools.python(). Code is displayed as text while agent asserts an answer based on reasoning alone.",
+   "needed_instead": "Execute all proposed computational code. When code is generated to solve a problem, invoke tools.python() with that code rather than defaulting to reasoning-only response.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-001",
+     "where": "TRAJECTORY and REPLY",
+     "quote": "steps=1 (no tool invocation). Agent proposed code for modular arithmetic but asserted answer as: **40627866717431 mod 148 = 27**"
+    }
+   ]
+  },
+  {
+   "mode": "unverified_tool_output",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-010"
+   ],
+   "description": "Computational tool is invoked and produces output, but result is not verified or validated before being reported to the user. Error escapes unchecked.",
+   "needed_instead": "Verify or cross-check computational results before reporting. After tool execution, validate output through re-computation, alternate methods, or sanity checks before asserting the result.",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-010",
+     "where": "REPLY: popcount result",
+     "quote": "It contains exactly **38 one-bits** (expected: 14)"
+    }
+   ]
+  }
+ ],
+ "success_habits": [
+  {
+   "habit": "multi_step_algorithmic_decomposition",
+   "n_tasks": 1,
+   "description": "Agent successfully decomposes complex mathematical problems into explicit algorithmic steps, applies structured domain-specific algorithms (e.g., Chinese Remainder Theorem), and reports reasoning at each step. Multi-step algorithmic problem decomposition produces correct results.",
+   "risk_if_broken": "Loss of structured problem-solving capability for complex mathematical problems. Agent would regress to pattern-matching or unverified reasoning, losing the ability to leverage algorithmic knowledge for problems requiring multi-step structured solutions."
+  }
+ ]
+}

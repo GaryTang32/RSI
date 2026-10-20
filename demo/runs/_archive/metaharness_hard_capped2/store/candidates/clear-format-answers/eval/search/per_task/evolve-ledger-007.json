@@ -1,0 +1,16 @@
+[
+ {
+  "task_id": "evolve-ledger-007",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "",
+  "output": null,
+  "tokens": 0,
+  "cost_usd": 0.0,
+  "steps": 0,
+  "latency_s": 0.0,
+  "error": "infra: llm backend error: You've hit your session limit \u00b7 resets 11am (UTC)",
+  "family": "ledger",
+  "meta": {}
+ }
+]

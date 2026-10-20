@@ -1,0 +1,60 @@
+{
+ "status": "done",
+ "summary": "Three targeted control-flow edits to enforce and extract ANSWER: format (fixing evolve-numeric-002 output format mismatch) and improve markdown code detection (addressing potential parsing gaps in evolve-numeric-005).",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "control_flow",
+   "hypothesis": "Strengthen the followup LLM prompt to explicitly request ANSWER: format output, forcing the LLM to structure its final answer in an extractable form even when computation results are available and should be used.",
+   "targets_mode": "output_format_mismatch (evolve-numeric-002): LLM has tool output but returns narrative explanation instead of structured answer",
+   "why_not_lower_lever": "Prose instruction in followup prompt is the direct mechanism by which harness can shape LLM's output format; reordering control flow to make format enforcement happen at the point where tool output is being grounded is more reliable than a distant system prompt guideline",
+   "trigger_condition": "Fires whenever tool_output exists (code was successfully executed) and followup LLM call is made; enforces ANSWER: format in that critical moment when LLM should be synthesizing tool results",
+   "predicted_affected": [
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-002 failed because final output was 'The ledger shows a negative balance...' instead of '-183764'; explicit ANSWER: format request would force LLM to restructure its synthesis; (preservative) passing tasks (000, 001, 003, 004, 009, 010) all successfully use tool output and would benefit from or remain unharmed by stricter format guidance; (transfer) any numeric task where LLM correctly computes but formats narratively will benefit; generalizes to other answer-extraction domains",
+   "regression_risk": "LLM might output 'ANSWER: -183764' exactly as requested but risk remains minimal since extraction logic (C2) handles both ANSWER: and narrative formats as fallback",
+   "mechanism": "Strengthen the followup LLM prompt to explicitly request ANSWER: format output, forcing the LLM to structure its final answer in an extractable form even when computation results are available and should be used."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "Add robust answer extraction that looks for ANSWER: format line before falling back to last line, ensuring numeric answers embedded in structured format are correctly isolated even if narrative text follows.",
+   "targets_mode": "output_extraction robustness: current harness blindly returns last line; if LLM outputs 'ANSWER: -183764' followed by any narrative, harness must extract the ANSWER: line, not the narrative",
+   "why_not_lower_lever": "Extraction logic is harness-level plumbing that cannot be influenced by prompts; must be implemented in code to guarantee correct answer is returned to grader",
+   "trigger_condition": "Activates on every solve() call for any LLM response; preferentially extracts ANSWER: format if present (enabled by C1), falls back to last line (preserving current behavior when ANSWER: absent)",
+   "predicted_affected": [
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-002 failed because grader received narrative; if LLM outputs ANSWER: -183764 followed by explanatory text, this extraction ensures -183764 is returned; (preservative) all passing tasks continue to work because fallback to last line is preserved; ANSWER: extraction is purely additive; (transfer) generalizes to any task where LLM correctly identifies answer but embeds it in ANSWER: format with surrounding narrative",
+   "regression_risk": "None—this is a pure enhancement that adds ANSWER: detection as first priority and preserves original last-line fallback behavior",
+   "mechanism": "Add robust answer extraction that looks for ANSWER: format line before falling back to last line, ensuring numeric answers embedded in structured format are correctly isolated even if narrative text follows."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "Relax markdown code block regex from requiring explicit newline after 'python' to allowing flexible whitespace (````\\s*python\\s*...```), capturing code blocks that may be formatted with spaces or slight variations in markdown syntax.",
+   "targets_mode": "tool_invocation_avoidance or unverified_tool_output (evolve-numeric-005): if LLM generates markdown code with atypical spacing (e.g., ```` ``` python ```  or leading spaces), current regex fails silently and tool_output remains empty, forcing LLM to rely on mental arithmetic (resulting in reported sum 414 vs correct 351)",
+   "why_not_lower_lever": "Regex matching is a harness-level parsing mechanism; cannot be influenced by prompts; must be fixed in code to ensure tool invocations are actually captured when LLM generates them",
+   "trigger_condition": "Fires only when LLM response contains markdown code blocks; triggers whenever markdown block exists with flexible spacing around 'python' keyword; existing rigid regex would miss these, causing tool_output to be empty and no followup call to occur",
+   "predicted_affected": [
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) evolve-numeric-005 reported 414 instead of 351 for digit sum; if Python code was generated in markdown but not parsed due to spacing, harness never captured output, LLM never received 'ANSWER: 351' in followup, and mental arithmetic (414) propagated to final answer; relaxing regex ensures code is found and executed; (preservative) existing passing tasks use both XML invoke blocks and markdown code; relaxed regex matches superset of old patterns, so no regression; (transfer) any task where LLM uses nonstandard markdown formatting benefits; improves robustness across code-generation approaches",
+   "regression_risk": "Regex is strictly more permissive; will match all previously matched patterns plus additional variations, so no valid code blocks are missed; no risk of false positives since pattern still requires opening ``` and closing ```, just allows flexible spacing around 'python' keyword",
+   "mechanism": "Relax markdown code block regex from requiring explicit newline after 'python' to allowing flexible whitespace (````\\s*python\\s*...```), capturing code blocks that may be formatted with spaces or slight variations in markdown syntax."
+  }
+ ],
+ "mechanism": "Three targeted control-flow edits to enforce and extract ANSWER: format (fixing evolve-numeric-002 output format mismatch) and improve markdown code detection (addressing potential parsing gaps in evolve-numeric-005).",
+ "targets_mode": "output_format_mismatch (evolve-numeric-002): LLM has tool output but returns narrative explanation instead of structured answer, output_extraction robustness: current harness blindly returns last line",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "name": "multi_check_verify",
+ "artifact_id": "5c42100f2ebd3209ecbc2c943211790ddad28061c7bad4a8e74d946fdb635da8",
+ "created_at": 1790754248.6546273,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 5,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

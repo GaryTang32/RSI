@@ -1,0 +1,6 @@
+
+Traceback (most recent call last):
+  File "/tmp/rsi_ar_tinylm_xdcyn7wi/train.py", line 40, in <module>
+    WARMUP_RATIO = float(Fraction(1, 20))
+                         ^^^^^^^^
+NameError: name 'Fraction' is not defined

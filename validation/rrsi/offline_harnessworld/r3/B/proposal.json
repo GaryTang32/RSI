@@ -1,0 +1,52 @@
+{
+ "status": "done",
+ "summary": "[nul_08] Lower sampling temperature for final answers: Lower; [str_02] Code runner tool: Code runner tool; aimed at arith,",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "config",
+   "hypothesis": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance).",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-019"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "nul_08",
+   "prune": false,
+   "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower sampling temperature for final answers (rewording of existing guidance)."
+  },
+  {
+   "id": "C2",
+   "component": "client_tool",
+   "hypothesis": "[str_02] Code runner tool: Code runner tool; aimed at arith, plan, format tasks.",
+   "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text",
+   "why_not_lower_lever": "a mechanism changes behaviour where prose alone does not",
+   "trigger_condition": "tasks of the targeted families",
+   "predicted_affected": [
+    "hw-e-078",
+    "hw-e-022",
+    "hw-e-046"
+   ],
+   "retroactive_check": "(corrective) would have moved the cited failing tasks; (preservative) leaves passing paths untouched; (transfer) the mechanism is task-agnostic",
+   "regression_risk": "extra tokens",
+   "mechanism_id": "str_02",
+   "prune": false,
+   "mechanism": "[str_02] Code runner tool: Code runner tool; aimed at arith, plan, format tasks."
+  }
+ ],
+ "mechanism": "[nul_08] Lower sampling temperature for final answers: Lower; [str_02] Code runner tool: Code runner tool; aimed at arith,",
+ "targets_mode": "plan__missed_rubric_criteria_family_plan_surface_text, plan__missed_rubric_criteria_family_plan_surface_text",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

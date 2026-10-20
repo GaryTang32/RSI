@@ -1,0 +1,42 @@
+{
+ "experiment": "e15_power",
+ "created": "2026-09-29 23:11:24",
+ "config": {
+  "sims": 1000,
+  "nperm": 999,
+  "alpha": 0.05,
+  "seed": 0,
+  "fractions": [
+   0.05,
+   0.1,
+   0.15,
+   0.2
+  ],
+  "source": "results/dream-rsi/e15_guidance_live.json",
+  "statistic": "meanpair_Jaccard(U) - meanpair_Jaccard(G), one-sided"
+ },
+ "results": {
+  "observed": {
+   "jaccard_U_minus_G": -0.008531917999279659,
+   "permutation_p": 0.5996
+  },
+  "relabel": {
+   "0.05": 0.247,
+   "0.1": 0.656,
+   "0.15": 0.952,
+   "0.2": 1.0
+  },
+  "bootstrap": {
+   "0.05": 0.208,
+   "0.1": 0.452,
+   "0.15": 0.704,
+   "0.2": 0.857
+  },
+  "shrink_observed": {
+   "0.05": 0.2183,
+   "0.1": 0.0355,
+   "0.15": 0.0019,
+   "0.2": 0.0003
+  }
+ }
+}

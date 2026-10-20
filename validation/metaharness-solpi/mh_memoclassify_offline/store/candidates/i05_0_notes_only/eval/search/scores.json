@@ -1,0 +1,27 @@
+{
+ "split": "search",
+ "score": 0.5486111111111112,
+ "avg_val": 54.9,
+ "per_unit": {
+  "ds_alpha/val": 0.4791666666666667,
+  "ds_beta/val": 0.5833333333333334,
+  "ds_gamma/val": 0.5833333333333334
+ },
+ "per_unit_cost": {
+  "ds_alpha/val": 2065.9166666666665,
+  "ds_beta/val": 2028.2083333333333,
+  "ds_gamma/val": 1752.8125
+ },
+ "context_cost": 1948.9791666666667,
+ "tokens": 92090.0,
+ "steps": 186.0,
+ "n_units": 3,
+ "k": 1,
+ "error_rate": 0.0,
+ "n_missing": 0,
+ "families": {
+  "ds_alpha": 0.4791666666666667,
+  "ds_beta": 0.5833333333333334,
+  "ds_gamma": 0.5833333333333334
+ }
+}

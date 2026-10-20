@@ -1,0 +1,26 @@
+{
+ "failure_modes": [],
+ "capability_gaps": [],
+ "success_habits": [
+  {
+   "habit": "computed_result_deference",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-009"
+   ],
+   "description": "Agent commits to tool-based computation for all calculations, avoiding manual arithmetic; when given context about prior computational results, re-executes the same computation to verify consistency and detect transient errors or formatting artifacts in intermediate output",
+   "risk_if_broken": "Arithmetic errors escape detection without computational tool verification; transient errors or display artifacts in intermediate output can persist in final answer; computational accuracy degrades especially on multi-step problems"
+  },
+  {
+   "habit": "answer_format_compliance",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-009"
+   ],
+   "description": "Agent produces final answer in machine-extractable format using the required structure (line containing 'ANSWER: <value>' prefix); ensures correctly computed results are properly formatted for grader extraction",
+   "risk_if_broken": "Correctly computed results fail grader extraction when embedded in narrative explanation or formatted without the required structure; computational accuracy does not translate to score despite correct underlying work"
+  }
+ ],
+ "n_digests": 1,
+ "analyst": "llm"
+}

@@ -1,0 +1,71 @@
+{
+ "iteration": 4,
+ "history_mode": "full",
+ "usage": {
+  "calls": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "cost_usd": 0.0,
+  "latency_s": 0.0,
+  "total_tokens": 0
+ },
+ "files_read": [
+  "candidates/fewshot_all/eval/search/scores.json",
+  "candidates/fewshot_all/src/memory.py",
+  "candidates/i01_0_retrieve_topk/eval/search/scores.json",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i01_0_retrieve_topk/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i01_0_retrieve_topk/src/memory.py",
+  "candidates/i01_1_label_list/eval/search/scores.json",
+  "candidates/i01_1_label_list/src/memory.py",
+  "candidates/i02_0_contrastive/eval/search/scores.json",
+  "candidates/i02_0_contrastive/src/memory.py",
+  "candidates/i02_1_coverage/eval/search/scores.json",
+  "candidates/i02_1_coverage/src/memory.py",
+  "candidates/i03_0_notes/eval/search/scores.json",
+  "candidates/i03_0_notes/src/memory.py",
+  "candidates/i03_1_notes/eval/search/scores.json",
+  "candidates/i03_1_notes/eval/search/traces/ds_alpha__val.jsonl",
+  "candidates/i03_1_notes/eval/search/traces/ds_beta__val.jsonl",
+  "candidates/i03_1_notes/eval/search/traces/ds_gamma__val.jsonl",
+  "candidates/i03_1_notes/src/memory.py",
+  "candidates/no_memory/eval/search/scores.json",
+  "candidates/no_memory/src/memory.py",
+  "frontier_val.json"
+ ],
+ "n_files_read": 23,
+ "files_read_by_kind": {
+  "code": 8,
+  "traces": 6,
+  "scores": 9,
+  "other": 0
+ },
+ "view_files": 77,
+ "view_chars": 2305378,
+ "read_chars": 620121,
+ "error": null,
+ "seconds": 0.016,
+ "candidates": [
+  {
+   "name": "i04_0_coverage",
+   "base_system": "i03_1_notes",
+   "hypothesis": "Adding one demonstration of every label not yet retrieved lets the model answer labels that similarity search missed.",
+   "axis": "exploitation",
+   "components": [
+    "coverage",
+    "axis:C"
+   ]
+  },
+  {
+   "name": "i04_1_param_char_budget_14000",
+   "base_system": "i01_0_retrieve_topk",
+   "hypothesis": "Tuning char_budget to 14000 should balance recall and prompt length.",
+   "axis": "exploration",
+   "components": [
+    "param_char_budget_14000",
+    "axis:D"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-009",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '3. **Combined using CRT** to get x \u2261 1 (mod 11) and x \u2261 9 (mod 71), which gives **364**.').",
+  "output": "3. **Combined using CRT** to get x \u2261 1 (mod 11) and x \u2261 9 (mod 71), which gives **364**.",
+  "tokens": 2579,
+  "cost_usd": 0.009575,
+  "steps": 1,
+  "latency_s": 0.002197265625,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -1,0 +1,102 @@
+{
+ "iteration": 3,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 23664,
+  "output_tokens": 10481,
+  "cost_usd": 0.09972400000000001,
+  "latency_s": 114.09298777580261,
+  "total_tokens": 34145
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "reports/iter001.md",
+  "sessions/iter001/meta.json",
+  "sessions/iter002/meta.json",
+  "candidates/multi_check_verify/src/harness.py",
+  "candidates/multi_check_verify/src/prompts/system.md",
+  "candidates/multi_check_verify/src/prompts/task.md",
+  "candidates/multi_check_verify/src/prompts/verify.md",
+  "candidates/multi_check_verify/eval/search/scores.json",
+  "candidates/multi_check_verify/meta.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-010.json",
+  "candidates/multi_check_verify/eval/search/per_task/evolve-numeric-011.json",
+  "candidates/multi_check_verify/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/multi_check_verify/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/multi_check_verify/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/multi_check_verify/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/multi_check_verify/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/smart_extraction/src/harness.py",
+  "candidates/smart_extraction/src/prompts/system.md",
+  "candidates/smart_extraction/src/prompts/task.md",
+  "candidates/smart_extraction/eval/search/scores.json",
+  "candidates/smart_extraction/meta.json",
+  "candidates/smart_extraction/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/smart_extraction/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/solve_verify_answer/src/harness.py",
+  "candidates/solve_verify_answer/src/prompts/system.md",
+  "candidates/solve_verify_answer/src/prompts/task.md",
+  "candidates/solve_verify_answer/eval/search/scores.json",
+  "candidates/solve_verify_answer/meta.json",
+  "candidates/solve_verify_answer/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/compute_then_extract/src/harness.py",
+  "candidates/compute_then_extract/src/prompts/system.md",
+  "candidates/compute_then_extract/src/prompts/task.md",
+  "candidates/compute_then_extract/meta.json"
+ ],
+ "n_files_read": 51,
+ "files_read_by_kind": {
+  "code": 16,
+  "traces": 21,
+  "scores": 6,
+  "other": 8
+ },
+ "files_scanned": [],
+ "n_files_scanned": 0,
+ "scanned_chars": 0,
+ "view_files": 151,
+ "view_chars": 201288,
+ "read_chars": 62412,
+ "error": null,
+ "seconds": 114.098,
+ "reports_written": [
+  "reports/iter002.md"
+ ],
+ "proposer_meta": {
+  "rendered_chars": 59958
+ },
+ "candidates": [
+  {
+   "name": "python_constrained_multi_check",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  },
+  {
+   "name": "ensemble_voting_simple",
+   "base_system": "seed",
+   "hypothesis": "",
+   "axis": "",
+   "components": []
+  }
+ ]
+}

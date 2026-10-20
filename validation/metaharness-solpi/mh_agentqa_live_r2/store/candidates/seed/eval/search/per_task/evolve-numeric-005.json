@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- Their sum: 3+9+0+4+3+0+5+9+1+2+3+1+3+7+1+1+2+0+6+9+6+9+0+4+1+2+8+7+6+8+1 = **153**'; expected '99'.",
+  "output": "- Their sum: 3+9+0+4+3+0+5+9+1+2+3+1+3+7+1+1+2+0+6+9+6+9+0+4+1+2+8+7+6+8+1 = **153**",
+  "tokens": 1361,
+  "cost_usd": 0.0034930000000000004,
+  "steps": 1,
+  "latency_s": 6.433059215545654,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

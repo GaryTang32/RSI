@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-003",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '73427123466896 mod 440 = {result_direct}\")'; expected '56'.",
+  "output": "print(f\"FINAL ANSWER: 73427123466896 mod 440 = {result_direct}\")",
+  "tokens": 4058,
+  "cost_usd": 0.010742,
+  "steps": 2,
+  "latency_s": 18.345799684524536,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 2,
+   "tool_calls": 0
+  }
+ }
+]

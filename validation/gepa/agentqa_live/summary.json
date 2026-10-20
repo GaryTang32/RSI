@@ -1,0 +1,287 @@
+{
+ "method": "gepa",
+ "rounds": 5,
+ "stop_reason": "max_usd",
+ "baseline": "3d77b3d3bb",
+ "best": "3d77b3d3bb",
+ "first": {
+  "i": 0,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/reporter.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "rollouts": 14,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 1
+ },
+ "last": {
+  "i": 4,
+  "event": "skip_perfect",
+  "selected_program_candidate": 0,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 51,
+  "n_candidates": 3,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "frontier_size": 3
+ },
+ "usage": {
+  "task": {
+   "calls": 94,
+   "input_tokens": 89732,
+   "output_tokens": 205265,
+   "cost_usd": 1.1160570000000003,
+   "latency_s": 1832.458086490631,
+   "total_tokens": 294997
+  },
+  "reflection": {
+   "calls": 4,
+   "input_tokens": 20823,
+   "output_tokens": 11818,
+   "cost_usd": 0.100696,
+   "latency_s": 137.75352430343628,
+   "total_tokens": 32641
+  },
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 8206,
+   "output_tokens": 61021,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 69227
+  },
+  "_total": {
+   "calls": 98,
+   "input_tokens": 118761,
+   "output_tokens": 278104,
+   "cost_usd": 1.2167530000000002,
+   "latency_s": 1970.2116107940674,
+   "total_tokens": 396865
+  }
+ },
+ "meta": {
+  "config": {
+   "max_metric_calls": 100,
+   "budget_mode": "reference_soft",
+   "train_split": "evolve",
+   "val_split": "val",
+   "components": null,
+   "minibatch_size": 3,
+   "candidate_selection": "pareto",
+   "frontier_type": "instance",
+   "module_selector": "round_robin",
+   "acceptance": "strict_improvement",
+   "noise_margin": 0.0,
+   "epsilon": 0.1,
+   "top_k": 5,
+   "beam_n": 4,
+   "skip_perfect_score": true,
+   "perfect_score": null,
+   "use_merge": false,
+   "max_merge_invocations": 5,
+   "merge_val_overlap_floor": 5,
+   "merge_subsample_size": 5,
+   "merge_cap_mode": "reference_soft",
+   "merge_zero_weight": "uniform",
+   "reflection_template": null,
+   "reflection_system": null,
+   "feedback": "full",
+   "val_seed": 0,
+   "cache_evaluation": false,
+   "workers": 4,
+   "seed": 0,
+   "max_iterations": null,
+   "stop_at_score": null,
+   "no_improvement_patience": null,
+   "max_candidate_proposals": null,
+   "max_reflection_cost": null,
+   "timeout_s": null,
+   "save_every": 1,
+   "diff_chars": 4000,
+   "extra": {},
+   "trace": true,
+   "trace_max_text": 20000,
+   "shadow_monitor": true,
+   "shadow_splits": null,
+   "shadow_k": 1,
+   "shadow_workers": 4
+  },
+  "components": [
+   "prompts/reporter.md",
+   "prompts/solver.md"
+  ],
+  "splits": {
+   "train": "evolve",
+   "val": "val"
+  },
+  "n_train": 10,
+  "n_val": 8,
+  "rollouts": 51,
+  "rollouts_by_phase": {
+   "seed_val": 8,
+   "minibatch_parent": 15,
+   "minibatch_child": 12,
+   "val_reflective": 16,
+   "merge_subsample": 0,
+   "val_merge": 0
+  },
+  "iterations": 5,
+  "n_candidates": 3,
+  "n_proposals": 4,
+  "n_accepted": 2,
+  "n_merges_accepted": 0,
+  "n_reflection_calls": 4,
+  "best_idx": 0,
+  "best_val": 0.5,
+  "seed_val": 0.5,
+  "candidates": [
+   {
+    "idx": 0,
+    "artifact_id": "3d77b3d3bbe049ccb02f580a9e807330b07824e93dca56aae6696fe25957dc9c",
+    "parents": [
+     null
+    ],
+    "kind": "baseline",
+    "val_mean": 0.5,
+    "frontier_wins": 7,
+    "rollouts_at_discovery": 0,
+    "iteration": -1,
+    "depth": 0
+   },
+   {
+    "idx": 1,
+    "artifact_id": "21864b2a2c217d0673335dd7297b2cd4994467aa524e050cc9fb56062801af9a",
+    "parents": [
+     0
+    ],
+    "kind": "reflective",
+    "val_mean": 0.25,
+    "frontier_wins": 5,
+    "rollouts_at_discovery": 20,
+    "iteration": 1,
+    "depth": 1
+   },
+   {
+    "idx": 2,
+    "artifact_id": "826221ab9df1bd3130f8b0445b6797c5553362e7b7eefc498156ce1ae7d21f59",
+    "parents": [
+     1
+    ],
+    "kind": "reflective",
+    "val_mean": 0.25,
+    "frontier_wins": 5,
+    "rollouts_at_discovery": 34,
+    "iteration": 2,
+    "depth": 2
+   }
+  ],
+  "frontier": {
+   "frontier_type": "instance",
+   "best": {
+    "i:val-numeric-000": 0.0,
+    "i:val-numeric-001": 0.0,
+    "i:val-numeric-002": 1.0,
+    "i:val-numeric-003": 1.0,
+    "i:val-numeric-004": 0.0,
+    "i:val-numeric-005": 1.0,
+    "i:val-numeric-006": 1.0,
+    "i:val-numeric-007": 1.0
+   },
+   "progs": {
+    "i:val-numeric-000": [
+     0,
+     1,
+     2
+    ],
+    "i:val-numeric-001": [
+     0,
+     1,
+     2
+    ],
+    "i:val-numeric-002": [
+     0
+    ],
+    "i:val-numeric-003": [
+     0,
+     2
+    ],
+    "i:val-numeric-004": [
+     0,
+     1,
+     2
+    ],
+    "i:val-numeric-005": [
+     0,
+     1,
+     2
+    ],
+    "i:val-numeric-006": [
+     1
+    ],
+    "i:val-numeric-007": [
+     0
+    ]
+   }
+  },
+  "best_history": [
+   [
+    8,
+    0
+   ],
+   [
+    28,
+    0
+   ],
+   [
+    42,
+    0
+   ]
+  ],
+  "resumed_at": null,
+  "merge": null,
+  "perfect_score": 1.0,
+  "n_infra_errors": 0,
+  "n_infra_retries": 0,
+  "selector": "pareto",
+  "n_exec_errors": 0,
+  "seed_val_error_rate": 0.0,
+  "n_reflection_failed": 0,
+  "n_reflection_unparsed": 0,
+  "trace": "/home/user/RSI/validation/gepa/agentqa_live/trace.jsonl",
+  "shadow_usage": {
+   "shadow:task": {
+    "calls": 20,
+    "input_tokens": 17427,
+    "output_tokens": 29335,
+    "cost_usd": 0.164102,
+    "latency_s": 280.3145444393158,
+    "total_tokens": 46762
+   },
+   "_total": {
+    "calls": 20,
+    "input_tokens": 17427,
+    "output_tokens": 29335,
+    "cost_usd": 0.164102,
+    "latency_s": 280.3145444393158,
+    "total_tokens": 46762
+   }
+  }
+ }
+}

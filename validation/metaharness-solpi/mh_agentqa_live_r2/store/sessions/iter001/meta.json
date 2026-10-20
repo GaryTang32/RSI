@@ -1,0 +1,77 @@
+{
+ "iteration": 1,
+ "history_mode": "full",
+ "usage": {
+  "calls": 1,
+  "input_tokens": 10590,
+  "output_tokens": 8260,
+  "cost_usd": 0.062471000000000006,
+  "latency_s": 86.57417845726013,
+  "total_tokens": 18850
+ },
+ "files_read": [
+  "evolution_summary.jsonl",
+  "frontier_val.json",
+  "candidates/seed/src/harness.py",
+  "candidates/seed/src/prompts/system.md",
+  "candidates/seed/src/prompts/task.md",
+  "candidates/seed/eval/search/scores.json",
+  "candidates/seed/meta.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-000.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-001.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-002.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-003.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-004.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-005.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-006.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-007.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-008.json",
+  "candidates/seed/eval/search/per_task/evolve-numeric-009.json",
+  "candidates/seed/eval/search/traces/evolve-numeric-000.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-001.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-002.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-003.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-004.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-005.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-006.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-007.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-008.jsonl",
+  "candidates/seed/eval/search/traces/evolve-numeric-009.jsonl"
+ ],
+ "n_files_read": 27,
+ "files_read_by_kind": {
+  "code": 3,
+  "traces": 20,
+  "scores": 3,
+  "other": 1
+ },
+ "view_files": 27,
+ "view_chars": 18559,
+ "read_chars": 18559,
+ "error": null,
+ "seconds": 86.576,
+ "candidates": [
+  {
+   "name": "exploit-robust-extraction",
+   "base_system": "seed",
+   "hypothesis": "Failures on tasks 007 and 009 are extraction errors\u2014the LLM computed correctly but embedded answers in text. Robust extraction using regex, bold markers, and positional heuristics will recover these answers and improve accuracy from 50% to 70%.",
+   "axis": "exploitation",
+   "components": [
+    "extraction",
+    "regex_parsing",
+    "heuristic_ranking"
+   ]
+  },
+  {
+   "name": "explore-structured-format",
+   "base_system": "seed",
+   "hypothesis": "Constraining output format with an explicit 'ANSWER: <value>' requirement will reduce extraction ambiguity, encourage cleaner thinking, and improve both parsing reliability and potentially reduce computational errors through explicit finalization.",
+   "axis": "exploration",
+   "components": [
+    "prompt_engineering",
+    "structured_output_constraint",
+    "format_enforcement"
+   ]
+  }
+ ]
+}

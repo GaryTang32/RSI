@@ -1,0 +1,19 @@
+{
+ "name": "code_with_classification",
+ "artifact_id": "006ca0ba095687c9a72b1e0f388f703e3b39e2e71218b880fed41471a5770fee",
+ "created_at": 1790338201.1024892,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "code_first",
+ "hypothesis": "Asking the model to classify problem type and computational approach before code generation produces better-quality code on first attempt by forcing explicit reasoning about solution strategy, improving generalization to new task types.",
+ "axis": "exploration",
+ "components": [
+  "code-generation",
+  "problem-classification",
+  "strategy-guided-coding"
+ ],
+ "parents_read": [],
+ "order": 7,
+ "reason": ""
+}

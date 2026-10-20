@@ -1,0 +1,37 @@
+{
+ "run": "tinylm_live",
+ "stop_reason": "max_rounds",
+ "wall_s": 1130.5,
+ "final_val_bpb": [
+  2.6878274079011892
+ ],
+ "counters": {
+  "rejected": 0,
+  "duplicate": 0,
+  "invalid": 0,
+  "fix_attempts": 2,
+  "fixed": 1
+ },
+ "usage_total": {
+  "calls": 12,
+  "input_tokens": 132121,
+  "output_tokens": 84982,
+  "cost_usd": 0.689044
+ },
+ "shadow_baseline": {
+  "test_iid": {
+   "S": 2.8936357541786193
+  },
+  "test_shift": {
+   "S": 2.96233469768545
+  }
+ },
+ "shadow_final": {
+  "test_iid": {
+   "S": 2.7834343687434084
+  },
+  "test_shift": {
+   "S": 2.84430536515971
+  }
+ }
+}

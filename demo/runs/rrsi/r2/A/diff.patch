@@ -1,0 +1,17 @@
+--- a/harness.py
++++ b/harness.py
+@@ -77,10 +77,10 @@
+                 # Skip execution errors to maintain robustness
+                 pass
+     
+-    # Pattern 2: markdown code blocks with python
+-    # Flexible: allows optional whitespace around 'python' keyword and newline
+-    # Matches: ```python\n...\n``` or ``` python \n...``` etc.
+-    markdown_pattern = r'```\s*python\s*\n(.*?)```'
++    # Pattern 2: markdown code blocks with python or python3
++    # Flexible: allows optional whitespace around language specifier
++    # Matches: ```python, ```python3, ``` python, ``` python3, etc.
++    markdown_pattern = r'```\s*(?:python|python3)\s*\n(.*?)```'
+     
+     for match in re.finditer(markdown_pattern, text, re.DOTALL):
+         code = match.group(1).strip()

@@ -1,0 +1,488 @@
+{
+ "experiment": "e17_fig3b_axis",
+ "created": "2026-09-29 16:43:22",
+ "config": {
+  "axis": "cumulative discovery-agent calls (Fig. 3 caption)",
+  "source": "arXiv 2609.14858v1 source, Main_Text/Figures/scaling_lasso.tex",
+  "readings": {
+   "A": "same round",
+   "B": "same cumulative calls, Fixed linearly interpolated"
+  }
+ },
+ "source_comments": {
+  "flash_fixed": "Iter 1--2 have no downstream evaluation",
+  "flash_dream": "Iter 1 has no downstream evaluation",
+  "pro_dream": "Iter 1 shares the same initialization",
+  "metric": "arithmetic mean runtime over six real downstream tasks; Lower is better."
+ },
+ "paper": {
+  "pro": {
+   "points": [
+    {
+     "round": 2,
+     "dream_calls": 119,
+     "fixed_calls_same_round": 220,
+     "dream_ms": 5349.15,
+     "A_fixed_ms": 5365.4,
+     "A_dream_better": true,
+     "A_diff_ms": -16.25,
+     "B_fixed_ms_interp": 5275.096818181818,
+     "B_dream_better": false,
+     "B_diff_ms": 74.05318181818166,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 3,
+     "dream_calls": 147,
+     "fixed_calls_same_round": 330,
+     "dream_ms": 5368.9,
+     "A_fixed_ms": 5295.2333,
+     "A_dream_better": false,
+     "A_diff_ms": 73.66669999999976,
+     "B_fixed_ms_interp": 5300.131363636364,
+     "B_dream_better": false,
+     "B_diff_ms": 68.76863636363578,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 4,
+     "dream_calls": 234,
+     "fixed_calls_same_round": 440,
+     "dream_ms": 5705.4333,
+     "A_fixed_ms": 4691.0833,
+     "A_dream_better": false,
+     "A_diff_ms": 1014.3499999999995,
+     "B_fixed_ms_interp": 5356.469692727273,
+     "B_dream_better": false,
+     "B_diff_ms": 348.96360727272713,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 5,
+     "dream_calls": 317,
+     "fixed_calls_same_round": 550,
+     "dream_ms": 2931.0,
+     "A_fixed_ms": 3587.0667,
+     "A_dream_better": true,
+     "A_diff_ms": -656.0666999999999,
+     "B_fixed_ms_interp": 5303.525728181818,
+     "B_dream_better": true,
+     "B_diff_ms": -2372.5257281818176,
+     "cheaper_same_round": true
+    }
+   ],
+   "A_consistently_superior": false,
+   "B_consistently_superior": false,
+   "always_cheaper": true,
+   "A_worse_rounds": [
+    3,
+    4
+   ],
+   "B_worse_rounds": [
+    2,
+    3,
+    4
+   ]
+  },
+  "flash": {
+   "points": [
+    {
+     "round": 2,
+     "dream_calls": 976,
+     "fixed_calls_same_round": 1280,
+     "dream_ms": 2394.9167,
+     "A_fixed_ms": 2988.3,
+     "A_dream_better": true,
+     "A_diff_ms": -593.3833,
+     "B_fixed_ms_interp": 2868.2675,
+     "B_dream_better": true,
+     "B_diff_ms": -473.3507999999997,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 3,
+     "dream_calls": 1230,
+     "fixed_calls_same_round": 1920,
+     "dream_ms": 2378.05,
+     "A_fixed_ms": 3011.1333,
+     "A_dream_better": true,
+     "A_diff_ms": -633.0832999999998,
+     "B_fixed_ms_interp": 2968.5578125,
+     "B_dream_better": true,
+     "B_diff_ms": -590.5078125,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 4,
+     "dream_calls": 1529,
+     "fixed_calls_same_round": 2560,
+     "dream_ms": 2327.7,
+     "A_fixed_ms": 2909.1833,
+     "A_dream_better": true,
+     "A_diff_ms": -581.4833000000003,
+     "B_fixed_ms_interp": 2997.18358078125,
+     "B_dream_better": true,
+     "B_diff_ms": -669.4835807812501,
+     "cheaper_same_round": true
+    },
+    {
+     "round": 5,
+     "dream_calls": 1879,
+     "fixed_calls_same_round": 3200,
+     "dream_ms": 2350.5833,
+     "A_fixed_ms": 2516.6833,
+     "A_dream_better": true,
+     "A_diff_ms": -166.10000000000036,
+     "B_fixed_ms_interp": 3009.67054171875,
+     "B_dream_better": true,
+     "B_diff_ms": -659.0872417187502,
+     "cheaper_same_round": true
+    }
+   ],
+   "A_consistently_superior": true,
+   "B_consistently_superior": true,
+   "always_cheaper": true,
+   "A_worse_rounds": [],
+   "B_worse_rounds": []
+  }
+ },
+ "e3_reading_b": {
+  "synthetic": {
+   "points": [
+    {
+     "dream_round": 2,
+     "mean_diff": 0.0504641179355879,
+     "lo": 0.03786652169219171,
+     "hi": 0.062275440420806676,
+     "n": 20,
+     "p_better": 0.9
+    },
+    {
+     "dream_round": 3,
+     "mean_diff": 0.07369365183248101,
+     "lo": 0.05271872942685642,
+     "hi": 0.0979953607152629,
+     "n": 20,
+     "p_better": 0.95
+    },
+    {
+     "dream_round": 4,
+     "mean_diff": 0.08291857970829172,
+     "lo": 0.06218001126698264,
+     "hi": 0.10494124556453034,
+     "n": 20,
+     "p_better": 0.95
+    },
+    {
+     "dream_round": 5,
+     "mean_diff": 0.09577477806426637,
+     "lo": 0.07395972933984402,
+     "hi": 0.11938399224881369,
+     "n": 20,
+     "p_better": 0.95
+    },
+    {
+     "dream_round": 6,
+     "mean_diff": 0.09506153033398992,
+     "lo": 0.07288956275898674,
+     "hi": 0.11803665213204013,
+     "n": 20,
+     "p_better": 0.95
+    },
+    {
+     "dream_round": 7,
+     "mean_diff": 0.10036669650154,
+     "lo": 0.07659971320583106,
+     "hi": 0.12445280286296176,
+     "n": 20,
+     "p_better": 0.95
+    },
+    {
+     "dream_round": 8,
+     "mean_diff": 0.09392600377167626,
+     "lo": 0.0692522079479651,
+     "hi": 0.11911864048524298,
+     "n": 20,
+     "p_better": 0.95
+    }
+   ],
+   "consistently_superior": true,
+   "n_points": 7,
+   "n_seeds": 20,
+   "share_points_ci_above_0": 1.0,
+   "share_points_ci_below_0": 0.0
+  },
+  "sumdiff": {
+   "points": [
+    {
+     "dream_round": 2,
+     "mean_diff": 0.0027616604490456665,
+     "lo": 0.0009191327435938978,
+     "hi": 0.004658238946753731,
+     "n": 10,
+     "p_better": 0.5
+    },
+    {
+     "dream_round": 3,
+     "mean_diff": 0.0019220347821672812,
+     "lo": 0.0004737564759092372,
+     "hi": 0.0036434708098996406,
+     "n": 10,
+     "p_better": 0.5
+    },
+    {
+     "dream_round": 4,
+     "mean_diff": 0.0013636227024371062,
+     "lo": 0.0004968707351088348,
+     "hi": 0.002321861433200485,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 5,
+     "mean_diff": 0.0023097012921839523,
+     "lo": -1.359255035360274e-05,
+     "hi": 0.005272773661769791,
+     "n": 10,
+     "p_better": 0.5
+    }
+   ],
+   "consistently_superior": false,
+   "n_points": 4,
+   "n_seeds": 10,
+   "share_points_ci_above_0": 0.75,
+   "share_points_ci_below_0": 0.0
+  },
+  "circlepack": {
+   "points": [
+    {
+     "dream_round": 2,
+     "mean_diff": 0.0009842632960630482,
+     "lo": -7.795785552460188e-05,
+     "hi": 0.002046484447650698,
+     "n": 5,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 3,
+     "mean_diff": 0.0003011928243240369,
+     "lo": -0.0004643381965272475,
+     "hi": 0.0013679166609213312,
+     "n": 5,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 4,
+     "mean_diff": 0.0004056869615877368,
+     "lo": 2.144240340840042e-12,
+     "hi": 0.0009075019781330518,
+     "n": 5,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 5,
+     "mean_diff": 0.0004909401278053949,
+     "lo": -2.042810365310288e-15,
+     "hi": 0.0014728202627072307,
+     "n": 5,
+     "p_better": 0.4
+    },
+    {
+     "dream_round": 6,
+     "mean_diff": 0.00020004578333425725,
+     "lo": -0.00035248451835458996,
+     "hi": 0.000952621854940805,
+     "n": 5,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 7,
+     "mean_diff": -9.564390891556585e-05,
+     "lo": -0.0007549094189222671,
+     "hi": 0.00046797769217112874,
+     "n": 5,
+     "p_better": 0.8
+    },
+    {
+     "dream_round": 8,
+     "mean_diff": -0.0004358922365853779,
+     "lo": -0.0011888670265268963,
+     "hi": 7.194245199571014e-15,
+     "n": 5,
+     "p_better": 0.6
+    }
+   ],
+   "consistently_superior": false,
+   "n_points": 7,
+   "n_seeds": 5,
+   "share_points_ci_above_0": 0.14285714285714285,
+   "share_points_ci_below_0": 0.0
+  },
+  "lasso": {
+   "points": [
+    {
+     "dream_round": 2,
+     "mean_diff": 0.49768883267345654,
+     "lo": -6.843608750504194,
+     "hi": 8.216583764251993,
+     "n": 4,
+     "p_better": 0.5
+    },
+    {
+     "dream_round": 3,
+     "mean_diff": -1.0719904324613818,
+     "lo": -13.48584939100226,
+     "hi": 8.89564579102004,
+     "n": 4,
+     "p_better": 0.5
+    },
+    {
+     "dream_round": 4,
+     "mean_diff": 2.4813794580518866,
+     "lo": -8.836071586575802,
+     "hi": 13.118028321890126,
+     "n": 4,
+     "p_better": 0.5
+    },
+    {
+     "dream_round": 5,
+     "mean_diff": 7.374780164335098,
+     "lo": -10.96177395433382,
+     "hi": 25.79106617792983,
+     "n": 4,
+     "p_better": 0.75
+    },
+    {
+     "dream_round": 6,
+     "mean_diff": 17.92064466719544,
+     "lo": 7.245596461249566,
+     "hi": 27.447225120527975,
+     "n": 4,
+     "p_better": 1.0
+    },
+    {
+     "dream_round": 7,
+     "mean_diff": 16.55881693426522,
+     "lo": 0.32334644321309014,
+     "hi": 39.68753136893973,
+     "n": 4,
+     "p_better": 0.75
+    }
+   ],
+   "consistently_superior": false,
+   "n_points": 6,
+   "n_seeds": 4,
+   "share_points_ci_above_0": 0.3333333333333333,
+   "share_points_ci_below_0": 0.0
+  },
+  "autocorr": {
+   "points": [
+    {
+     "dream_round": 2,
+     "mean_diff": 0.0033206881241330866,
+     "lo": -0.0005881066977023263,
+     "hi": 0.007585235631420494,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 3,
+     "mean_diff": 0.0009682996790383758,
+     "lo": -0.0030313249300138903,
+     "hi": 0.004626668915197992,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 4,
+     "mean_diff": 0.003179440445784776,
+     "lo": -0.003124203680518818,
+     "hi": 0.008815130899189142,
+     "n": 10,
+     "p_better": 0.8
+    },
+    {
+     "dream_round": 5,
+     "mean_diff": 0.0027216817627978783,
+     "lo": -0.006006173956015307,
+     "hi": 0.010081532726390688,
+     "n": 10,
+     "p_better": 0.8
+    },
+    {
+     "dream_round": 6,
+     "mean_diff": 0.001833421286487602,
+     "lo": -0.005063970217257017,
+     "hi": 0.009329273913203805,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 7,
+     "mean_diff": 0.0020417956710478747,
+     "lo": -0.006236621866777427,
+     "hi": 0.011168741442210027,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 8,
+     "mean_diff": 0.0024680978721733694,
+     "lo": -0.006931744080622421,
+     "hi": 0.012109514752171455,
+     "n": 10,
+     "p_better": 0.7
+    },
+    {
+     "dream_round": 9,
+     "mean_diff": 0.0011683434659538027,
+     "lo": -0.00922276931704214,
+     "hi": 0.010773237727215265,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 10,
+     "mean_diff": -0.00015967944573327397,
+     "lo": -0.010719022289441908,
+     "hi": 0.009273892685826018,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 11,
+     "mean_diff": -0.0011337874684056227,
+     "lo": -0.011761692595100237,
+     "hi": 0.008121819188355217,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 12,
+     "mean_diff": -0.0011627653398010862,
+     "lo": -0.01031092734265013,
+     "hi": 0.0070563980854858625,
+     "n": 10,
+     "p_better": 0.6
+    },
+    {
+     "dream_round": 13,
+     "mean_diff": -0.001929610213547406,
+     "lo": -0.011038167715228272,
+     "hi": 0.006534139430233257,
+     "n": 10,
+     "p_better": 0.5
+    }
+   ],
+   "consistently_superior": false,
+   "n_points": 12,
+   "n_seeds": 10,
+   "share_points_ci_above_0": 0.0,
+   "share_points_ci_below_0": 0.0
+  }
+ },
+ "decision": {
+  "paper_contradicts_itself": true,
+  "rule": "Q15 stays CONTRADICTED (root cause e) iff the paper's own exact data show Dream worse than Fixed at >= 1 post-round-1 point under both readings for either model"
+ }
+}

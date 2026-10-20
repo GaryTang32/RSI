@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-003",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'remainder'; expected '56'.",
+  "output": "remainder",
+  "tokens": 8693,
+  "cost_usd": 0.024669000000000003,
+  "steps": 3,
+  "latency_s": 40.22031021118164,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 3,
+   "tool_calls": 0
+  }
+ }
+]

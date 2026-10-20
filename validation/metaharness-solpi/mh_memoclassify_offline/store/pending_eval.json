@@ -1,0 +1,25 @@
+{
+ "iteration": 6,
+ "candidates": [
+  {
+   "name": "i06_0_param_char_budget_4500",
+   "base_system": "i05_1_crossover",
+   "hypothesis": "Tuning char_budget to 4500 should balance recall and prompt length.",
+   "axis": "exploitation",
+   "components": [
+    "param_char_budget_4500",
+    "axis:D"
+   ]
+  },
+  {
+   "name": "i06_1_label_list",
+   "base_system": "i04_0_coverage",
+   "hypothesis": "Listing every label seen so far lets the model name labels without a retrieved example.",
+   "axis": "exploration",
+   "components": [
+    "label_list",
+    "axis:A"
+   ]
+  }
+ ]
+}

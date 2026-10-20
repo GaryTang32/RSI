@@ -1,0 +1,1275 @@
+[
+ {
+  "i": 0,
+  "event": "accepted",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   0.75,
+   0.0,
+   0.0
+  ],
+  "new_program_idx": 1,
+  "rollouts": 66,
+  "n_candidates": 2,
+  "best_idx": 1,
+  "best_val": 0.07666666666666667,
+  "frontier_size": 2
+ },
+ {
+  "i": 1,
+  "event": "accepted",
+  "selected_program_candidate": 1,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.0,
+   0.0
+  ],
+  "new_program_idx": 2,
+  "rollouts": 102,
+  "n_candidates": 3,
+  "best_idx": 2,
+  "best_val": 0.09166666666666669,
+  "frontier_size": 3
+ },
+ {
+  "i": 2,
+  "event": "accepted",
+  "selected_program_candidate": 1,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   0.0,
+   0.25,
+   0.25
+  ],
+  "new_program_idx": 3,
+  "rollouts": 138,
+  "n_candidates": 4,
+  "best_idx": 3,
+  "best_val": 0.10555555555555558,
+  "frontier_size": 4
+ },
+ {
+  "i": 3,
+  "event": "merge_rejected",
+  "merged_entities": [
+   2,
+   3,
+   1
+  ],
+  "rollouts": 143,
+  "n_candidates": 4,
+  "best_idx": 3,
+  "best_val": 0.10555555555555558,
+  "frontier_size": 4
+ },
+ {
+  "i": 4,
+  "event": "accepted",
+  "selected_program_candidate": 3,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.3333333333333333,
+   0.25
+  ],
+  "new_subsample_scores": [
+   0.25,
+   0.3333333333333333,
+   0.25
+  ],
+  "new_program_idx": 4,
+  "rollouts": 179,
+  "n_candidates": 5,
+  "best_idx": 4,
+  "best_val": 0.15111111111111114,
+  "frontier_size": 5
+ },
+ {
+  "i": 5,
+  "event": "merge_rejected",
+  "merged_entities": [
+   2,
+   4,
+   1
+  ],
+  "rollouts": 184,
+  "n_candidates": 5,
+  "best_idx": 4,
+  "best_val": 0.15111111111111114,
+  "frontier_size": 5
+ },
+ {
+  "i": 6,
+  "event": "accepted",
+  "selected_program_candidate": 2,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.4,
+   0.16666666666666666,
+   0.25
+  ],
+  "new_subsample_scores": [
+   0.8,
+   0.16666666666666666,
+   0.25
+  ],
+  "new_program_idx": 5,
+  "rollouts": 220,
+  "n_candidates": 6,
+  "best_idx": 5,
+  "best_val": 0.16333333333333336,
+  "frontier_size": 6
+ },
+ {
+  "i": 7,
+  "event": "accepted",
+  "selected_program_candidate": 4,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   0.25,
+   0.25
+  ],
+  "new_subsample_scores": [
+   0.0,
+   0.75,
+   0.0
+  ],
+  "new_program_idx": 6,
+  "rollouts": 256,
+  "n_candidates": 7,
+  "best_idx": 6,
+  "best_val": 0.2594444444444445,
+  "frontier_size": 7
+ },
+ {
+  "i": 8,
+  "event": "accepted",
+  "selected_program_candidate": 5,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.3333333333333333,
+   0.3333333333333333,
+   0.0
+  ],
+  "new_subsample_scores": [
+   0.3333333333333333,
+   0.6666666666666666,
+   0.2
+  ],
+  "new_program_idx": 7,
+  "rollouts": 292,
+  "n_candidates": 8,
+  "best_idx": 6,
+  "best_val": 0.2594444444444445,
+  "frontier_size": 8
+ },
+ {
+  "i": 9,
+  "event": "accepted",
+  "selected_program_candidate": 6,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.8333333333333334,
+   0.4,
+   0.6
+  ],
+  "new_subsample_scores": [
+   0.8333333333333334,
+   0.6,
+   0.8
+  ],
+  "new_program_idx": 8,
+  "rollouts": 328,
+  "n_candidates": 9,
+  "best_idx": 8,
+  "best_val": 0.26388888888888895,
+  "frontier_size": 9
+ },
+ {
+  "i": 10,
+  "event": "accepted",
+  "selected_program_candidate": 8,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.5,
+   0.0,
+   0.3333333333333333
+  ],
+  "new_subsample_scores": [
+   0.5,
+   0.0,
+   1.0
+  ],
+  "new_program_idx": 9,
+  "rollouts": 364,
+  "n_candidates": 10,
+  "best_idx": 9,
+  "best_val": 0.3477777777777777,
+  "frontier_size": 10
+ },
+ {
+  "i": 11,
+  "event": "rejected",
+  "selected_program_candidate": 9,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.6,
+   0.3333333333333333,
+   0.6666666666666666
+  ],
+  "new_subsample_scores": [
+   0.6,
+   0.16666666666666666,
+   0.6666666666666666
+  ],
+  "rollouts": 370,
+  "n_candidates": 10,
+  "best_idx": 9,
+  "best_val": 0.3477777777777777,
+  "frontier_size": 10
+ },
+ {
+  "i": 12,
+  "event": "accepted",
+  "selected_program_candidate": 8,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.3333333333333333,
+   0.2,
+   0.5
+  ],
+  "new_subsample_scores": [
+   0.3333333333333333,
+   0.6,
+   0.5
+  ],
+  "new_program_idx": 10,
+  "rollouts": 406,
+  "n_candidates": 11,
+  "best_idx": 10,
+  "best_val": 0.37722222222222224,
+  "frontier_size": 11
+ },
+ {
+  "i": 13,
+  "event": "merge_accepted",
+  "new_program_idx": 11,
+  "merged_entities": [
+   9,
+   10,
+   8
+  ],
+  "rollouts": 441,
+  "n_candidates": 12,
+  "best_idx": 11,
+  "best_val": 0.44277777777777777,
+  "frontier_size": 12
+ },
+ {
+  "i": 14,
+  "event": "rejected",
+  "selected_program_candidate": 7,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.75,
+   1.0,
+   0.4
+  ],
+  "new_subsample_scores": [
+   0.75,
+   1.0,
+   0.4
+  ],
+  "rollouts": 447,
+  "n_candidates": 12,
+  "best_idx": 11,
+  "best_val": 0.44277777777777777,
+  "frontier_size": 12
+ },
+ {
+  "i": 15,
+  "event": "accepted",
+  "selected_program_candidate": 11,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.75,
+   0.5,
+   0.2
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.5,
+   0.2
+  ],
+  "new_program_idx": 12,
+  "rollouts": 483,
+  "n_candidates": 13,
+  "best_idx": 12,
+  "best_val": 0.456111111111111,
+  "frontier_size": 13
+ },
+ {
+  "i": 16,
+  "event": "accepted",
+  "selected_program_candidate": 12,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.5,
+   0.3333333333333333,
+   1.0
+  ],
+  "new_subsample_scores": [
+   0.75,
+   0.6666666666666666,
+   1.0
+  ],
+  "new_program_idx": 13,
+  "rollouts": 519,
+  "n_candidates": 14,
+  "best_idx": 13,
+  "best_val": 0.5027777777777778,
+  "frontier_size": 14
+ },
+ {
+  "i": 17,
+  "event": "accepted",
+  "selected_program_candidate": 12,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.4,
+   0.5,
+   0.6666666666666666
+  ],
+  "new_subsample_scores": [
+   0.6,
+   0.25,
+   1.0
+  ],
+  "new_program_idx": 14,
+  "rollouts": 555,
+  "n_candidates": 15,
+  "best_idx": 14,
+  "best_val": 0.5316666666666666,
+  "frontier_size": 15
+ },
+ {
+  "i": 18,
+  "event": "merge_accepted",
+  "new_program_idx": 15,
+  "merged_entities": [
+   13,
+   14,
+   11
+  ],
+  "rollouts": 590,
+  "n_candidates": 16,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 14
+ },
+ {
+  "i": 19,
+  "event": "rejected",
+  "selected_program_candidate": 13,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.75
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.75
+  ],
+  "rollouts": 596,
+  "n_candidates": 16,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 14
+ },
+ {
+  "i": 20,
+  "event": "accepted",
+  "selected_program_candidate": 14,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.5,
+   0.3333333333333333,
+   0.25
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.5
+  ],
+  "new_program_idx": 16,
+  "rollouts": 632,
+  "n_candidates": 17,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 15
+ },
+ {
+  "i": 21,
+  "event": "merge_rejected",
+  "merged_entities": [
+   13,
+   16,
+   12
+  ],
+  "rollouts": 637,
+  "n_candidates": 17,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 15
+ },
+ {
+  "i": 22,
+  "event": "rejected",
+  "selected_program_candidate": 15,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.5,
+   0.5
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.0,
+   0.75
+  ],
+  "rollouts": 643,
+  "n_candidates": 17,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 15
+ },
+ {
+  "i": 23,
+  "event": "accepted",
+  "selected_program_candidate": 15,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.3333333333333333,
+   1.0,
+   0.3333333333333333
+  ],
+  "new_subsample_scores": [
+   0.6666666666666666,
+   1.0,
+   0.3333333333333333
+  ],
+  "new_program_idx": 17,
+  "rollouts": 679,
+  "n_candidates": 18,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 16
+ },
+ {
+  "i": 24,
+  "event": "merge_accepted",
+  "new_program_idx": 18,
+  "merged_entities": [
+   16,
+   17,
+   14
+  ],
+  "rollouts": 714,
+  "n_candidates": 19,
+  "best_idx": 15,
+  "best_val": 0.5755555555555554,
+  "frontier_size": 17
+ },
+ {
+  "i": 25,
+  "event": "accepted",
+  "selected_program_candidate": 15,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.8333333333333334,
+   0.5
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.8333333333333334,
+   0.75
+  ],
+  "new_program_idx": 19,
+  "rollouts": 750,
+  "n_candidates": 20,
+  "best_idx": 19,
+  "best_val": 0.6333333333333332,
+  "frontier_size": 17
+ },
+ {
+  "i": 26,
+  "event": "merge_accepted",
+  "new_program_idx": 20,
+  "merged_entities": [
+   18,
+   19,
+   14
+  ],
+  "rollouts": 785,
+  "n_candidates": 21,
+  "best_idx": 20,
+  "best_val": 0.6627777777777779,
+  "frontier_size": 18
+ },
+ {
+  "i": 27,
+  "event": "skip_perfect",
+  "selected_program_candidate": 20,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 788,
+  "n_candidates": 21,
+  "best_idx": 20,
+  "best_val": 0.6627777777777779,
+  "frontier_size": 18
+ },
+ {
+  "i": 28,
+  "event": "accepted",
+  "selected_program_candidate": 19,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.3333333333333333,
+   0.5,
+   0.75
+  ],
+  "new_subsample_scores": [
+   0.3333333333333333,
+   0.5,
+   1.0
+  ],
+  "new_program_idx": 21,
+  "rollouts": 824,
+  "n_candidates": 22,
+  "best_idx": 20,
+  "best_val": 0.6627777777777779,
+  "frontier_size": 19
+ },
+ {
+  "i": 29,
+  "event": "rejected",
+  "selected_program_candidate": 20,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.6666666666666666,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.6666666666666666,
+   1.0
+  ],
+  "rollouts": 830,
+  "n_candidates": 22,
+  "best_idx": 20,
+  "best_val": 0.6627777777777779,
+  "frontier_size": 19
+ },
+ {
+  "i": 30,
+  "event": "accepted",
+  "selected_program_candidate": 19,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.8,
+   0.4,
+   0.6666666666666666
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.6,
+   0.6666666666666666
+  ],
+  "new_program_idx": 22,
+  "rollouts": 866,
+  "n_candidates": 23,
+  "best_idx": 22,
+  "best_val": 0.6994444444444444,
+  "frontier_size": 20
+ },
+ {
+  "i": 31,
+  "event": "merge_accepted",
+  "new_program_idx": 23,
+  "merged_entities": [
+   20,
+   22,
+   15
+  ],
+  "rollouts": 901,
+  "n_candidates": 24,
+  "best_idx": 23,
+  "best_val": 0.7227777777777776,
+  "frontier_size": 21
+ },
+ {
+  "i": 32,
+  "event": "accepted",
+  "selected_program_candidate": 23,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.4,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.6,
+   1.0
+  ],
+  "new_program_idx": 24,
+  "rollouts": 937,
+  "n_candidates": 25,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 22
+ },
+ {
+  "i": 33,
+  "event": "rejected",
+  "selected_program_candidate": 22,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.6666666666666666,
+   0.8
+  ],
+  "new_subsample_scores": [
+   0.5,
+   0.0,
+   0.8
+  ],
+  "rollouts": 943,
+  "n_candidates": 25,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 22
+ },
+ {
+  "i": 34,
+  "event": "accepted",
+  "selected_program_candidate": 22,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.6666666666666666,
+   0.75,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.75,
+   1.0
+  ],
+  "new_program_idx": 25,
+  "rollouts": 979,
+  "n_candidates": 26,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 23
+ },
+ {
+  "i": 35,
+  "event": "accepted",
+  "selected_program_candidate": 22,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.75,
+   1.0,
+   0.6666666666666666
+  ],
+  "new_subsample_scores": [
+   0.75,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 26,
+  "rollouts": 1015,
+  "n_candidates": 27,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 24
+ },
+ {
+  "i": 36,
+  "event": "accepted",
+  "selected_program_candidate": 26,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.6666666666666666,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 27,
+  "rollouts": 1051,
+  "n_candidates": 28,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 25
+ },
+ {
+  "i": 37,
+  "event": "merge_rejected",
+  "merged_entities": [
+   24,
+   27,
+   22
+  ],
+  "rollouts": 1056,
+  "n_candidates": 28,
+  "best_idx": 24,
+  "best_val": 0.7483333333333335,
+  "frontier_size": 25
+ },
+ {
+  "i": 38,
+  "event": "accepted",
+  "selected_program_candidate": 26,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.5,
+   0.6666666666666666
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.5,
+   1.0
+  ],
+  "new_program_idx": 28,
+  "rollouts": 1092,
+  "n_candidates": 29,
+  "best_idx": 28,
+  "best_val": 0.8050000000000002,
+  "frontier_size": 21
+ },
+ {
+  "i": 39,
+  "event": "merge_accepted",
+  "new_program_idx": 29,
+  "merged_entities": [
+   27,
+   28,
+   22
+  ],
+  "rollouts": 1127,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 40,
+  "event": "rejected",
+  "selected_program_candidate": 24,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.8
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.8
+  ],
+  "rollouts": 1133,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 41,
+  "event": "rejected",
+  "selected_program_candidate": 29,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.6,
+   0.5,
+   0.75
+  ],
+  "new_subsample_scores": [
+   0.8,
+   0.0,
+   0.75
+  ],
+  "rollouts": 1139,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 42,
+  "event": "skip_perfect",
+  "selected_program_candidate": 24,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 1142,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 43,
+  "event": "rejected",
+  "selected_program_candidate": 29,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.6666666666666666,
+   0.8333333333333334,
+   0.75
+  ],
+  "new_subsample_scores": [
+   0.6666666666666666,
+   0.8333333333333334,
+   0.75
+  ],
+  "rollouts": 1148,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 44,
+  "event": "skip_perfect",
+  "selected_program_candidate": 29,
+  "subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "rollouts": 1151,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 45,
+  "event": "rejected",
+  "selected_program_candidate": 24,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.25,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.75,
+   0.5
+  ],
+  "rollouts": 1157,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 46,
+  "event": "rejected",
+  "selected_program_candidate": 29,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.75
+  ],
+  "new_subsample_scores": [
+   0.8333333333333334,
+   1.0,
+   0.75
+  ],
+  "rollouts": 1163,
+  "n_candidates": 30,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 22
+ },
+ {
+  "i": 47,
+  "event": "accepted",
+  "selected_program_candidate": 29,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.2,
+   0.5,
+   1.0
+  ],
+  "new_subsample_scores": [
+   0.8,
+   0.5,
+   1.0
+  ],
+  "new_program_idx": 30,
+  "rollouts": 1199,
+  "n_candidates": 31,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 23
+ },
+ {
+  "i": 48,
+  "event": "merge_accepted",
+  "new_program_idx": 31,
+  "merged_entities": [
+   24,
+   30,
+   22
+  ],
+  "rollouts": 1234,
+  "n_candidates": 32,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 24
+ },
+ {
+  "i": 49,
+  "event": "accepted",
+  "selected_program_candidate": 24,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.5
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 32,
+  "rollouts": 1270,
+  "n_candidates": 33,
+  "best_idx": 29,
+  "best_val": 0.8488888888888889,
+  "frontier_size": 25
+ },
+ {
+  "i": 50,
+  "event": "accepted",
+  "selected_program_candidate": 31,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.6,
+   0.75,
+   0.2
+  ],
+  "new_subsample_scores": [
+   0.8,
+   0.0,
+   0.8
+  ],
+  "new_program_idx": 33,
+  "rollouts": 1306,
+  "n_candidates": 34,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 26
+ },
+ {
+  "i": 51,
+  "event": "rejected",
+  "selected_program_candidate": 24,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.6666666666666666,
+   1.0,
+   0.3333333333333333
+  ],
+  "new_subsample_scores": [
+   0.6666666666666666,
+   1.0,
+   0.3333333333333333
+  ],
+  "rollouts": 1312,
+  "n_candidates": 34,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 26
+ },
+ {
+  "i": 52,
+  "event": "accepted",
+  "selected_program_candidate": 31,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.6666666666666666,
+   0.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 34,
+  "rollouts": 1348,
+  "n_candidates": 35,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 27
+ },
+ {
+  "i": 53,
+  "event": "accepted",
+  "selected_program_candidate": 34,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.0,
+   1.0,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 35,
+  "rollouts": 1384,
+  "n_candidates": 36,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 28
+ },
+ {
+  "i": 54,
+  "event": "accepted",
+  "selected_program_candidate": 32,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.8
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 36,
+  "rollouts": 1420,
+  "n_candidates": 37,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 29
+ },
+ {
+  "i": 55,
+  "event": "accepted",
+  "selected_program_candidate": 36,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.8333333333333334,
+   0.3333333333333333
+  ],
+  "new_subsample_scores": [
+   1.0,
+   1.0,
+   0.6666666666666666
+  ],
+  "new_program_idx": 37,
+  "rollouts": 1456,
+  "n_candidates": 38,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 30
+ },
+ {
+  "i": 56,
+  "event": "rejected",
+  "selected_program_candidate": 37,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.75,
+   1.0
+  ],
+  "new_subsample_scores": [
+   1.0,
+   0.75,
+   1.0
+  ],
+  "rollouts": 1462,
+  "n_candidates": 38,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 30
+ },
+ {
+  "i": 57,
+  "event": "accepted",
+  "selected_program_candidate": 37,
+  "components": [
+   "prompts/reply.md"
+  ],
+  "subsample_scores": [
+   0.8,
+   0.75,
+   0.8333333333333334
+  ],
+  "new_subsample_scores": [
+   0.8,
+   1.0,
+   1.0
+  ],
+  "new_program_idx": 38,
+  "rollouts": 1498,
+  "n_candidates": 39,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 31
+ },
+ {
+  "i": 58,
+  "event": "accepted",
+  "selected_program_candidate": 33,
+  "components": [
+   "prompts/triage.md"
+  ],
+  "subsample_scores": [
+   0.25,
+   0.8,
+   0.75
+  ],
+  "new_subsample_scores": [
+   0.25,
+   0.8,
+   1.0
+  ],
+  "new_program_idx": 39,
+  "rollouts": 1534,
+  "n_candidates": 40,
+  "best_idx": 33,
+  "best_val": 0.8977777777777779,
+  "frontier_size": 32
+ }
+]

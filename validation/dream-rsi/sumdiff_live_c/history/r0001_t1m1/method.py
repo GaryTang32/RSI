@@ -1,0 +1,283 @@
+"""Adaptive prefix-only exploration policy with trajectory-driven batch selection.
+
+Prefix signals: successful anchor (max historical score), improvement trajectory (vs parent),
+failure classification and recoverability, branch promise, and comparison across opened branches.
+
+Batch rule: Portfolio of independent candidates up to max_parallelism:
+  - Exploitation: best-ranked open frontiers (high anchor, recent improvement, promising trend)
+  - Exploration: new roots (strength varies with beta)
+  - Recovery: at most one repairable failure (only if frontier quality permits)
+Ranks deterministically by trajectory data (anchor, parent gain, depth, failure evidence, beta).
+Never samples randomly. Skips stalled branches (plateau after valid depth) and hard-unrecoverable
+failures, but repairable failures remain eligible unless cumulative evidence lowers priority.
+
+Beta schedule (fixed per episode, swept offline):
+  - Low beta (0.0–0.3): Conservative; few new roots, early stagnation stops, strong closure
+  - Mid beta (0.4–0.6): Balanced exploration + exploitation
+  - High beta (0.7–1.0): Patient; more new roots, later stagnation stops, recovery-friendly
+Routes all thresholds (reserve, patience, recovery cost) through one _schedule(beta) dict.
+
+Default beta: 0.6 (moderate exploration). Rationale: iter01 baseline (parallel refine, β=0.6)
+achieved attainment=1.0 with full parallelism and no failures; conservative default allows
+improvement on diverse tasks without over-exploration on easy ones. If history shows consistent
+improvement under higher beta without loss of batching, raise toward 0.8; if plateau persists
+despite high-beta exploration, lower toward 0.4.
+
+Grid planning: Analyzes completed live manifests (planned/effective grids, probe work, attainment,
+beta, failure rates) to adapt branch count and refine depth. Increases width if gains arrive on
+many roots; increases depth if strong gains continue late on fewer branches; decreases both if
+hard unrecoverable failures dominate. Defaults to fallback (3 branches, 2 refinements) if history
+is empty or conflicting.
+
+Safeguards:
+  - Branches closed only with cumulative hard-unrecoverable evidence (never hard failure alone).
+  - Repairable failures eligible for recovery until displaced by higher-priority frontier probes.
+  - Zero-valid failures not automatically repairable; fail_class and error classify episode.
+  - Early stops only when all open frontiers plateau + no high-beta recovery + sufficient depth reached.
+  - Stalled frontier (no improvement for ≥threshold rounds) deprioritized but not closed if successful
+    anchor exists; reopens if batch slot available and no higher-priority candidate.
+"""
+from policy_api import (
+    GridPlan, GridPlanningContext, LLMDesignedMethod, SimResult,
+    _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard,
+    is_repairable, probe_improved_vs_parent, probe_improved_vs_baseline,
+)
+from typing import Dict, List, Set, Optional, Tuple
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    """Adaptive policy: prefix-driven trajectory ranking, portfolio batch selection, adaptive grid planning."""
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta: float) -> Dict[str, float]:
+        """Return beta-dependent thresholds (fixed for one episode).
+        
+        Low beta: conservative (few probes, early stops, strong pruning).
+        High beta: exploratory (many probes, patient, recovery-friendly).
+        """
+        from policy_api import clamp, lerp
+        b = clamp(float(beta), 0.0, 1.0)
+        return {
+            # Minimum improvement delta (parent gain) to keep frontier active
+            'min_frontier_delta': lerp(-0.01, 0.0, b),
+            # Rounds of plateau before deprioritizing a frontier (without closing)
+            'max_plateau_rounds': lerp(1, 4, b),
+            # Penalty for recovery attempt (cost vs best frontier)
+            'recovery_cost_threshold': lerp(0.1, 0.01, b),
+            # Probability mass for new-root exploration (0 = none, 1 = all available)
+            'root_explore_fraction': lerp(0.0, 0.8, b),
+            # Minimum anchor strength to consider a branch non-trivial
+            'min_anchor_baseline': lerp(0.0, 0.0, b),
+        }
+    
+    def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+        """Adaptive grid planning from completed live cycles.
+        
+        Analyzes history (width/depth tradeoffs, attainment curves, failure patterns)
+        and returns (branch_count, refine_count). Defaults to conservative fallback
+        if history is empty or conflicting.
+        """
+        # Placeholder: insufficient history -> use fallback
+        if not context.history:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                "no prior history: using fallback grid (3 branches, 2 refinements)"
+            )
+        
+        # TODO: analyze history for width/depth signals
+        # For now, keep fallback unless future cycles suggest change
+        return GridPlan(
+            int(context.fallback_branch_count),
+            int(context.fallback_refine_count),
+            f"adaptive: {len(context.history)} prior iters, insufficient data for grid change"
+        )
+    
+    def solve(self, question, budget=None) -> SimResult:
+        """Main loop: reset, reconstruct prefix trajectories, rank candidates, build portfolio batches."""
+        question.reset()
+        res = SimResult()
+        closed_branches: Set[int] = set()
+        stalled_rounds: Dict[int, int] = {}  # branch -> rounds since last improvement
+        
+        schedule = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            trajectories = branch_trajectories(prefix)
+            legal_actions = question.legal_actions()
+            
+            if not legal_actions:
+                res.stopped = "no legal cell left (all explored or closed)"
+                break
+            
+            # Update closed set and stall counters based on cumulative evidence
+            self._update_closed_and_stall(closed_branches, stalled_rounds, trajectories, schedule)
+            
+            # Select next batch: exploitation + exploration + optional recovery
+            batch = self._select_batch(
+                question, legal_actions, trajectories, closed_branches, stalled_rounds,
+                prefix, schedule
+            )
+            
+            if not batch:
+                res.stopped = "batch selection returned empty (all candidates reserved or closed)"
+                break
+            
+            # Probe batch and record curve
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _update_closed_and_stall(
+        self,
+        closed: Set[int],
+        stalled: Dict[int, int],
+        trajectories: Dict[int, List],
+        schedule: Dict[str, float]
+    ) -> None:
+        """Mark branches as closed only with cumulative hard-unrecoverable evidence.
+        
+        Track stall rounds (no improvement in last N attempts). Repairable failures
+        and zero-valid cells are not auto-closed; stall does not auto-close if anchor exists.
+        """
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            
+            # Close iff: never succeeded AND latest failure is hard
+            if branch_failed_hard(traj):
+                closed.add(b)
+                continue
+            
+            # Track stall: successful anchor exists but recent attempts show no improvement
+            succ_obs = [o for o in traj if o.success and o.score is not None]
+            if succ_obs:
+                anchor = max(o.score for o in succ_obs)
+                # Find how many recent attempts are at or below anchor (plateau)
+                tail = traj[-int(schedule['max_plateau_rounds']):]
+                recent_succ = [o for o in tail if o.success and o.score is not None]
+                if recent_succ and all(o.score <= anchor + 1e-6 for o in recent_succ):
+                    stalled[b] = stalled.get(b, 0) + 1
+                else:
+                    stalled[b] = 0  # reset on any improvement
+    
+    def _select_batch(
+        self,
+        question,
+        legal_actions: List[str],
+        trajectories: Dict[int, List],
+        closed: Set[int],
+        stalled: Dict[int, int],
+        prefix: Dict[str, any],
+        schedule: Dict[str, float]
+    ) -> List[str]:
+        """Build dynamic portfolio batch: exploit + explore + recover.
+        
+        Ranks open frontiers by (promise, anchor, parent gain, depth).
+        Ranks new roots by (opened root performance, beta).
+        Selects independent candidates; avoids parent+child pairs.
+        """
+        W = question.max_parallelism
+        baseline = question.baseline_score or 0.0
+        batch = []
+        
+        # Partition legal actions
+        roots_set = set(question.legal_roots())
+        frontiers = [c for c in legal_actions if c not in roots_set]
+        
+        # Build frontier candidates with ranks
+        frontier_ranks = []
+        for cell_id in frontiers:
+            meta = question.meta(cell_id)
+            b = meta.branch
+            if b in closed:
+                continue  # Skip closed branches
+            
+            traj = trajectories.get(b, [])
+            if not traj:
+                continue
+            
+            anchor = successful_anchor(traj) or 0.0
+            last_obs = traj[-1]
+            improved = probe_improved_vs_parent(last_obs)
+            promising = branch_promising(traj, baseline)
+            stall_count = stalled.get(b, 0)
+            
+            # Priority: (is_promising, improved, anchor_strength, not_stalled, depth)
+            priority = (
+                -int(promising),
+                -int(improved),
+                -anchor,
+                -stall_count,  # deprioritize stalled but keep eligible
+                -meta.attempt,
+            )
+            frontier_ranks.append((cell_id, priority, b))
+        
+        frontier_ranks.sort(key=lambda x: x[1])
+        
+        # Build root candidates
+        opened_branches = question.opened_branches()
+        opened_root_anchors = {}
+        for b in opened_branches:
+            if b not in closed:
+                traj = trajectories.get(b, [])
+                anchor = successful_anchor(traj)
+                if anchor is not None:
+                    opened_root_anchors[b] = anchor
+        
+        root_ranks = []
+        for cell_id in roots_set:
+            if cell_id in legal_actions:
+                meta = question.meta(cell_id)
+                b = meta.branch
+                if b in opened_root_anchors:
+                    # Already opened: rank by anchor (exploit strong roots)
+                    priority = (-opened_root_anchors[b], -b)
+                else:
+                    # Never opened: rank by beta (explore less at low beta)
+                    priority = (-self.beta, -b)
+                root_ranks.append((cell_id, priority))
+        
+        root_ranks.sort(key=lambda x: x[1])
+        
+        # Heuristic batch composition: exploit + explore + recover
+        # At W=3: typically [2 exploit, 1 explore] or [1 exploit, 1 explore, 1 recover]
+        n_exploit = max(1, int(W * 0.65))
+        n_explore_roots = max(0, W - n_exploit - 1) if self.beta > 0.3 else 0
+        n_recover = 0  # placeholder; implement recovery if needed
+        
+        # Add top frontiers (exploitation)
+        selected_branches = set()
+        for cell_id, _, b in frontier_ranks:
+            if len(batch) >= n_exploit or b in selected_branches:
+                continue
+            if cell_id in legal_actions:
+                batch.append(cell_id)
+                selected_branches.add(b)
+        
+        # Add new roots (exploration)
+        explore_count = 0
+        for cell_id, _ in root_ranks:
+            if len(batch) >= W or explore_count >= n_explore_roots:
+                break
+            b = question.meta(cell_id).branch
+            if b not in selected_branches and cell_id in legal_actions:
+                batch.append(cell_id)
+                selected_branches.add(b)
+                explore_count += 1
+        
+        # Fill remaining slots with any legal frontier or root not yet selected
+        remaining = [c for c in legal_actions if c not in batch]
+        for cell_id in remaining:
+            if len(batch) >= W:
+                break
+            batch.append(cell_id)
+        
+        return batch[:W]

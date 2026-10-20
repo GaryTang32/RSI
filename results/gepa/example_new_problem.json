@@ -1,0 +1,33 @@
+{
+ "experiment": "example: new problem via optimize()",
+ "llm": "sim",
+ "task_llm": "sim",
+ "seed_val": 0.0,
+ "best_val": 1.0,
+ "test": {
+  "seed": 0.0,
+  "best": 1.0
+ },
+ "rollouts": 301,
+ "best_prompt": "Format the customer record as three lines: name, date, money.\nLesson: Names must be written in Title Case.\nLesson: Dates must be written as YYYY-MM-DD.\nLesson: Put the uppercase currency code before the amount and Amounts must use a thousands separator and two decimals.",
+ "usage": {
+  "reflection": {
+   "calls": 3,
+   "input_tokens": 1812,
+   "output_tokens": 139,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 1951
+  },
+  "_total": {
+   "calls": 3,
+   "input_tokens": 1812,
+   "output_tokens": 139,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 1951
+  }
+ },
+ "verdict": "sealed test: seed 0.00 -> best 1.00",
+ "generated_at": "2026-09-25 00:17:51"
+}

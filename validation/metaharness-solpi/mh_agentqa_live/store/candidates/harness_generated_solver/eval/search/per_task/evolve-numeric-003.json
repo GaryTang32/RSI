@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-003",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '**Final Balance: 465,110**').",
+  "output": "**Final Balance: 465,110**",
+  "tokens": 1670,
+  "cost_usd": 0.004862,
+  "steps": 1,
+  "latency_s": 0.001748800277709961,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

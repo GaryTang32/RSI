@@ -1,0 +1,58 @@
+{
+ "artifact_id": "f4d2979abceef36e18579e64f7e7b19c484dd52c5cb9f987dd6c4e6ebd32810f",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "[aq:verify] Ask to double-check before answering",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:verify] Ask to double-check before answering",
+   "declared_component": "prompt"
+  },
+  {
+   "id": "C2",
+   "component": "subagent",
+   "hypothesis": "[aq:checker] Bounded checker sub-call",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:checker] Bounded checker sub-call",
+   "declared_component": "subagent"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "[aq:null_reword] Reword the system prompt",
+   "targets_mode": "wrong final answers",
+   "why_not_lower_lever": "n/a",
+   "trigger_condition": "every question",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002"
+   ],
+   "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing paths; (transfer) task-agnostic",
+   "regression_risk": "tokens",
+   "mechanism": "[aq:null_reword] Reword the system prompt",
+   "declared_component": "prompt"
+  }
+ ],
+ "diff_path": "r1/B/diff.patch",
+ "mechanism": "[aq:verify] Ask to double-check before answering; [aq:checker] Bounded checker sub-call; [aq:null_reword] Reword the system prompt"
+}

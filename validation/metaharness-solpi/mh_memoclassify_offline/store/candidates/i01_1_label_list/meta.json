@@ -1,0 +1,22 @@
+{
+ "name": "i01_1_label_list",
+ "artifact_id": "e6ef28e8c455cedde6e520dcad167a0a3fc02d3baaa2d3798e2eba0708316188",
+ "created_at": 1790343352.000473,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "no_memory",
+ "hypothesis": "Listing every label seen so far lets the model name labels without a retrieved example.",
+ "axis": "exploration",
+ "components": [
+  "label_list",
+  "axis:A"
+ ],
+ "parents_read": [
+  "no_memory"
+ ],
+ "order": 4,
+ "move": "label_list",
+ "evidence": "target label absent from the prompt in 24/36 inspected errors",
+ "reason": ""
+}

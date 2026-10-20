@@ -1,0 +1,2 @@
+i01_0_retrieve_topk: retrieve_topk on fewshot_all (96/144 prompts longer than 11000 chars (acc 0.48 vs 0.42 on short prompts))
+i01_1_label_list: label_list on no_memory (target label absent from the prompt in 24/36 inspected errors)

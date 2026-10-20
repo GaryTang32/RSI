@@ -1,0 +1,124 @@
+[rrsi:agentqa] 16:34:42 baseline S=0.3750 C=736.5 missing=0/40
+[rrsi:agentqa] 16:34:42 calibrated delta=0.14720 (sd_null 0.07360, bootstrap over trials of one base evaluation)
+[rrsi:agentqa] 16:34:42 === round 0/8 S=0.3750 C=736.5 S*=0.3750 delta=0.1472
+[rrsi:agentqa] 16:34:42 A: 2 edit(s) on ['prompt', 'control_flow'] -> 2910b29942
+[rrsi:agentqa] 16:34:42 B: 1 edit(s) on ['prompt'] -> 4e2235b403
+[rrsi:agentqa] 16:34:43 A: S=0.9500 dS=+0.5750 dC=+0.677 nu=0 -> ACCEPTED: admissible: S'=0.9500 >= S*-delta=0.2278; dC=+0.677 <= beta0+beta1*dS=23.100
+[rrsi:agentqa] 16:34:43 B: S=0.5750 dS=+0.2000 dC=+0.004 nu=0 -> LOST: admissible: S'=0.5750 >= S*-delta=0.2278; dC=+0.004 <= beta0+beta1*dS=8.100
+[rrsi:agentqa] 16:34:43 ACCEPTED r0A S=0.9500 S*=0.9500
+[rrsi:agentqa] 16:34:44 === round 1/8 S=0.9500 C=1235.025 S*=0.9500 delta=0.1472
+[rrsi:agentqa] 16:34:44 A: 3 edit(s) on ['prompt', 'prompt', 'prompt'] -> b839241b5a
+[rrsi:agentqa] 16:34:44 B: 2 edit(s) on ['subagent', 'prompt'] -> f9766c69d2
+[rrsi:agentqa] 16:34:45 A: S=0.9500 dS=+0.0000 dC=+0.045 nu=0 -> REJECTED: cost rule failed: within band: shaped=-0.680 (<= 0)
+[rrsi:agentqa] 16:34:45 B: S=0.6250 dS=-0.3250 dC=+0.645 nu=1 -> REJECTED: below noise-adjusted floor: S'=0.6250 < S*-delta=0.8028 (S* 0.9500 - delta 0.1472)
+[rrsi:agentqa] 16:34:45 no admissible candidate; H_2 = H_1
+[rrsi:agentqa] 16:34:45 === round 2/8 S=0.9500 C=1235.025 S*=0.9500 delta=0.1472
+[rrsi:agentqa] 16:34:45 A: 2 edit(s) on ['skill', 'prompt'] -> 3a6492c84e
+[rrsi:agentqa] 16:34:45 B: 2 edit(s) on ['prompt', 'skill'] -> 3a6492c84e
+[rrsi:agentqa] 16:34:46 A: S=0.9750 dS=+0.0250 dC=+0.047 nu=1 -> ACCEPTED: admissible: S'=0.9750 >= S*-delta=0.8028; within band: shaped=+2.301 (> 0)
+[rrsi:agentqa] 16:34:46 B: S=0.9750 dS=+0.0250 dC=+0.047 nu=1 -> LOST: admissible: S'=0.9750 >= S*-delta=0.8028; within band: shaped=+2.301 (> 0)
+[rrsi:agentqa] 16:34:46 ACCEPTED r2A S=0.9750 S*=0.9750
+[rrsi:agentqa] 16:34:47 === round 3/8 S=0.9750 C=1292.6 S*=0.9750 delta=0.1472
+[rrsi:agentqa] 16:34:47 A: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 B: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 no admissible candidate; H_4 = H_3
+[rrsi:agentqa] 16:34:47 === round 4/8 S=0.9750 C=1292.6 S*=0.9750 delta=0.1472
+[rrsi:agentqa] 16:34:47 A: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 B: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 no admissible candidate; H_5 = H_4
+[rrsi:agentqa] 16:34:47 === round 5/8 S=0.9750 C=1292.6 S*=0.9750 delta=0.1472
+[rrsi:agentqa] 16:34:47 A: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 B: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 no admissible candidate; H_6 = H_5
+[rrsi:agentqa] 16:34:47 === round 6/8 S=0.9750 C=1292.6 S*=0.9750 delta=0.1472
+[rrsi:agentqa] 16:34:47 A: 1 edit(s) on ['prompt'] -> 8b65367d54
+[rrsi:agentqa] 16:34:47 B: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:47 A: S=0.9250 dS=-0.0500 dC=+0.024 nu=0 -> REJECTED: cost rule failed: within band: shaped=-5.355 (<= 0)
+[rrsi:agentqa] 16:34:47 no admissible candidate; H_7 = H_6
+[rrsi:agentqa] 16:34:47 === round 7/8 S=0.9750 C=1292.6 S*=0.9750 delta=0.1472
+[rrsi:agentqa] 16:34:47 A: 1 edit(s) on ['prompt'] -> 84981d92d2
+[rrsi:agentqa] 16:34:47 B: critic_reject ['[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions']
+[rrsi:agentqa] 16:34:48 A: S=0.9500 dS=-0.0250 dC=+0.005 nu=0 -> REJECTED: cost rule failed: within band: shaped=-2.570 (<= 0)
+[rrsi:agentqa] 16:34:48 no admissible candidate; H_8 = H_7
+{
+ "run": "offline_agentqa",
+ "stop_reason": "max_rounds",
+ "rounds": 8,
+ "seed_vs_final": {
+  "evolve": {
+   "H0": {
+    "S": 0.35,
+    "C": 736.1
+   },
+   "final": {
+    "S": 0.925,
+    "C": 1292.65
+   }
+  },
+  "holdout": {
+   "H0": {
+    "S": 0.39473684210526316,
+    "C": 732.421052631579
+   },
+   "final": {
+    "S": 0.9736842105263158,
+    "C": 1286.157894736842
+   }
+  },
+  "ood": {
+   "H0": {
+    "S": 0.375,
+    "C": 1760.9375
+   },
+   "final": {
+    "S": 0.9791666666666666,
+    "C": 1350.5833333333333
+   }
+  }
+ },
+ "audit_summary": {
+  "pass": 230,
+  "fail": 0,
+  "unverifiable": 0,
+  "info": 12
+ },
+ "usage": {
+  "loop_usage": {
+   "task": {
+    "calls": 712,
+    "input_tokens": 422270,
+    "output_tokens": 48109,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 470379
+   },
+   "proposer": {
+    "calls": 31,
+    "input_tokens": 293207,
+    "output_tokens": 16010,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 309217
+   },
+   "critic": {
+    "calls": 19,
+    "input_tokens": 33532,
+    "output_tokens": 464,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 33996
+   },
+   "_total": {
+    "calls": 762,
+    "input_tokens": 749009,
+    "output_tokens": 64583,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 813592
+   }
+  },
+  "loop_usd": 0.0,
+  "loop_calls": 762
+ },
+ "wall_s": 7.2
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-001",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '19^763 \u2261 {result} ('; expected '781'.",
+  "output": "19^763 \u2261 {result} (",
+  "tokens": 10878,
+  "cost_usd": 0.050822,
+  "steps": 1,
+  "latency_s": 78.39613819122314,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

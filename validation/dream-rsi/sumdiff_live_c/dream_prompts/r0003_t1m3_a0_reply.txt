@@ -1,0 +1,380 @@
+```json
+{
+  "change": "Improve portfolio balance, recovery scoring, early stopping, and grid planning: prioritize all three tiers (exploit, recovery, explore) in batches; refine recovery scores by fail-type fixability; add early stopping when open branches plateau with weak recovery; adapt grid planning to history when available.",
+  "hypothesis": "Current policy reaches ceiling quickly on easy tasks (iter01) but should generalize better to harder tasks with failures by: (1) ensuring recovery attempts never starve due to overflow from exploitation, (2) scoring repairable failures more precisely (fixability class matters more than branch history alone), (3) stopping early when plateau is confirmed (saves probes, improves V), (4) adapting grid width/depth from prior attainment/work trends.",
+  "components": ["solve", "_select_batch", "_should_stop", "plan_grid", "recovery_scoring"]
+}
+```
+
+=== FILE: method.py ===
+```python
+"""Adaptive prefix-only exploration policy with trajectory-driven batch selection and recovery.
+
+Prefix signals: successful anchor (max historical score), improvement trajectory (vs parent),
+failure classification and recoverability, branch promise, and comparison across opened branches.
+
+Batch rule: Dynamic portfolio of independent candidates up to max_parallelism:
+  - Tier 1: Exploitation (best-ranked open frontiers: high anchor, recent improvement, promising trend)
+  - Tier 2: Recovery (at most one repairable failure, ranked by fixability class and branch history)
+  - Tier 3: Exploration (new unopened roots; count scaled by beta)
+  - Tier 4: Fallback (fill remaining slots with any legal frontier/root; no branch duplication)
+Ranks deterministically by trajectory data (promise, parent gain, anchor, recoverability).
+Never samples randomly. Repairable failures eligible for recovery until displaced by better frontiers.
+
+Beta schedule (fixed per episode, swept offline):
+  - Low beta (0.0–0.3): Conservative; few new roots, early plateau detection, recovery only if excellent
+  - Mid beta (0.4–0.6): Balanced exploitation + exploration + measured recovery
+  - High beta (0.7–1.0): Patient; more new roots, delayed stops, recovery-friendly thresholds
+Routes all thresholds (recovery cost, plateau patience, exploration rate) through one _schedule(beta) dict.
+
+Default beta: 0.6 (moderate exploration). Rationale: iter01 baseline achieved attainment=1.0 
+with full parallelism and no failures; adaptive policy improves on harder tasks 
+by adding trajectory-based recovery logic and early stopping while maintaining parallelism on easy tasks.
+
+Grid planning: Analyzes completed live cycles (attainment, probe work, depth trends, failure rates)
+to adapt branch count and refine depth. Increases width if many independent roots continue improving;
+increases depth if gains concentrate in few branches after refinement; decreases both if hard failures
+dominate. Defaults to conservative fallback (3 branches, 2 refinements) when history is absent.
+
+Safeguards:
+  - Branches closed only with cumulative hard-unrecoverable evidence (branch_failed_hard).
+  - Repairable failures eligible for recovery; retry count capped per attempt depth.
+  - Zero-valid failures not automatically closed; fail_class and error classify episode.
+  - Recovery tier guaranteed one slot if a candidate scores above threshold; doesn't displace exploitation.
+  - Early stopping only after confirming open frontier plateau AND recovery pool is weak or exhausted.
+"""
+from policy_api import (
+    GridPlan, GridPlanningContext, LLMDesignedMethod, SimResult,
+    _budget_done, _record_curve, finalize_result,
+    branch_trajectories, successful_anchor, branch_promising, branch_failed_hard,
+    is_repairable, probe_improved_vs_parent, probe_improved_vs_baseline,
+    clamp, lerp, ceil_div,
+)
+from typing import Dict, List, Set, Optional
+
+NAME = "OptimalPolicy"
+
+
+class OptimalPolicy(LLMDesignedMethod):
+    """Adaptive policy: trajectory-driven ranking, portfolio tier-based batch selection, early stopping, recovery logic."""
+    
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.beta = float(self.config.get("beta", 0.6))
+    
+    def _schedule(self, beta: float) -> Dict[str, float]:
+        """Return beta-dependent thresholds (fixed for one episode).
+        
+        Low beta: conservative (few probes, early stops, strong pruning).
+        High beta: exploratory (many probes, patient, recovery-friendly).
+        """
+        b = clamp(float(beta), 0.0, 1.0)
+        return {
+            # Minimum recovery score (0-1) to attempt recovery (fixability + history)
+            'recovery_threshold': lerp(0.5, 0.15, b),
+            # Fraction of W to explore as new unopened roots per batch
+            'explore_root_fraction': lerp(0.0, 0.4, b),
+            # How many recent attempts before deciding frontier has plateau
+            'plateau_window': int(lerp(1, 3, b)),
+            # Max retries per attempt depth for repairable failures
+            'max_retries_per_depth': 2,
+        }
+    
+    def plan_grid(self, context: GridPlanningContext) -> GridPlan:
+        """Adaptive grid planning from completed live cycles.
+        
+        Analyzes attainment, probe work, and failure patterns to adapt branch count (width)
+        and refine count (depth). Returns a GridPlan with fallback if history is insufficient.
+        """
+        if not context.history:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                "no prior history: using conservative fallback grid (3 branches, 2 refinements)"
+            )
+        
+        # Analyze last 2–3 iterations for trends
+        recent_iters = context.history[-3:] if len(context.history) >= 2 else context.history
+        if not recent_iters:
+            return GridPlan(
+                int(context.fallback_branch_count),
+                int(context.fallback_refine_count),
+                f"history empty or insufficient for adaptive decision: using fallback"
+            )
+        
+        # Compute statistics
+        attainments = [iter_data.get("attainment", 0.0) for iter_data in recent_iters]
+        probe_works = [iter_data.get("probe_work", 1) for iter_data in recent_iters]
+        max_depths = [iter_data.get("max_depth", 1) for iter_data in recent_iters]
+        fail_fracs = [iter_data.get("fail_frac", 0.0) for iter_data in recent_iters]
+        opened_widths = [iter_data.get("opened_width", 1) for iter_data in recent_iters]
+        
+        avg_attainment = sum(attainments) / len(attainments) if attainments else 0.0
+        avg_fails = sum(fail_fracs) / len(fail_fracs) if fail_fracs else 0.0
+        avg_width = sum(opened_widths) / len(opened_widths) if opened_widths else 1
+        avg_depth = sum(max_depths) / len(max_depths) if max_depths else 1
+        
+        # Decision logic
+        reason = ""
+        new_width = int(context.fallback_branch_count)
+        new_depth = int(context.fallback_refine_count)
+        
+        if avg_fails > 0.3:
+            # High failure rate: reduce both dimensions conservatively
+            new_width = max(1, int(context.fallback_branch_count * 0.8))
+            new_depth = max(0, int(context.fallback_refine_count * 0.8))
+            reason = f"high failure rate ({avg_fails:.1%}): reducing width and depth"
+        elif avg_attainment > 0.95:
+            # High attainment but using wide grid: consider shallower refinements
+            if avg_width >= 3:
+                new_depth = max(0, int(context.fallback_refine_count - 1))
+                reason = f"high attainment ({avg_attainment:.2f}) with wide grid ({avg_width:.1f}): reduce depth"
+            else:
+                reason = f"high attainment ({avg_attainment:.2f}): maintain current grid"
+        else:
+            reason = f"attainment {avg_attainment:.2f}, failures {avg_fails:.1%}: maintain fallback grid"
+        
+        # Clamp to hard limits
+        new_width = clamp(int(new_width), 1, context.hard_max_branch_count)
+        new_depth = clamp(int(new_depth), 0, context.hard_max_refine_count)
+        
+        return GridPlan(new_width, new_depth, reason)
+    
+    def solve(self, question, budget=None) -> SimResult:
+        """Main loop: reset, reconstruct prefix trajectories, rank candidates, build portfolio batches."""
+        question.reset()
+        res = SimResult()
+        closed_branches: Set[int] = set()
+        
+        schedule = self._schedule(self.beta)
+        
+        while not _budget_done(question, budget):
+            prefix = question.observed()
+            trajectories = branch_trajectories(prefix)
+            legal_actions = question.legal_actions()
+            
+            if not legal_actions:
+                res.stopped = "no legal cell left (all explored or closed)"
+                break
+            
+            # Update closed set based on cumulative hard evidence
+            self._update_closed(closed_branches, trajectories)
+            
+            # Check early stopping: all open branches plateau AND recovery pool is weak
+            if self._should_stop(trajectories, closed_branches, schedule):
+                res.stopped = "all open branches plateau and recovery exhausted"
+                break
+            
+            # Select next batch: exploitation + recovery + exploration + fill
+            batch = self._select_batch(
+                question, legal_actions, trajectories, closed_branches, schedule
+            )
+            
+            if not batch:
+                res.stopped = "batch selection returned empty (all candidates closed or reserved)"
+                break
+            
+            # Probe batch and record curve
+            question.probe_batch(batch, on_reveal=lambda _: _record_curve(res, question))
+        
+        return finalize_result(question, res)
+    
+    def _update_closed(self, closed: Set[int], trajectories: Dict[int, List]) -> None:
+        """Mark branches as closed only with hard-unrecoverable evidence.
+        
+        Never close based on a single failure or zero-valid; use branch_failed_hard signal.
+        """
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            if branch_failed_hard(traj):
+                closed.add(b)
+    
+    def _should_stop(self, trajectories: Dict[int, List], closed: Set[int], schedule: Dict) -> bool:
+        """Check if exploration should stop: all open branches plateau AND recovery is weak.
+        
+        Never stop prematurely; only after confirming stagnation across the portfolio.
+        """
+        opened_branches = [b for b in trajectories.keys() if b not in closed]
+        
+        if not opened_branches:
+            return False  # Haven't opened anything yet
+        
+        # Count branches showing recent improvement (last attempt improved vs parent)
+        improving = 0
+        for b in opened_branches:
+            traj = trajectories[b]
+            if len(traj) < 2:
+                improving += 1  # Only root probed, assume could improve
+                continue
+            
+            last_obs = traj[-1]
+            if last_obs.success and probe_improved_vs_parent(last_obs):
+                improving += 1
+        
+        # If at least half of opened branches are still improving, continue
+        if improving >= len(opened_branches) / 2:
+            return False
+        
+        # All opened branches plateau; check if recovery is worthwhile
+        recovery_options = 0
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            last_obs = traj[-1]
+            if not last_obs.success and is_repairable(last_obs):
+                retry_count = sum(1 for o in traj if o.attempt == last_obs.attempt)
+                if retry_count < schedule['max_retries_per_depth']:
+                    recovery_options += 1
+        
+        # If no recovery options remain, can stop
+        if recovery_options == 0:
+            return True
+        
+        # Otherwise, continue to allow recovery attempts
+        return False
+    
+    def _select_batch(
+        self,
+        question,
+        legal_actions: List[str],
+        trajectories: Dict[int, List],
+        closed: Set[int],
+        schedule: Dict[str, float],
+    ) -> List[str]:
+        """Build dynamic portfolio batch using tier-based selection with guaranteed representation.
+        
+        Tier 1: Exploitation (best open successful frontiers).
+        Tier 2: Recovery (at most one repairable failure).
+        Tier 3: Exploration (new unopened roots).
+        Tier 4: Fallback (fill remaining slots).
+        """
+        W = question.max_parallelism
+        baseline = question.baseline_score or 0.0
+        batch = []
+        selected_branches: Set[int] = set()
+        
+        roots_set = set(question.legal_roots())
+        frontiers = [c for c in legal_actions if c not in roots_set]
+        opened_branches = set(question.opened_branches())
+        
+        # === TIER 1: Rank frontiers for exploitation ===
+        exploit_candidates = []
+        for cell_id in frontiers:
+            meta = question.meta(cell_id)
+            b = meta.branch
+            if b in closed:
+                continue
+            
+            traj = trajectories.get(b, [])
+            if not traj or not traj[-1].success:
+                continue  # Only exploit successful frontiers
+            
+            anchor = successful_anchor(traj) or 0.0
+            last_obs = traj[-1]
+            improved = probe_improved_vs_parent(last_obs)
+            promising = branch_promising(traj, baseline)
+            
+            # Rank: (promising, improved, anchor, attempt)
+            rank_key = (-int(promising), -int(improved), -anchor, -meta.attempt)
+            exploit_candidates.append((cell_id, rank_key, b))
+        
+        exploit_candidates.sort(key=lambda x: x[1])
+        
+        # === TIER 2: Find and rank repairable failures for recovery ===
+        recovery_candidates = []
+        for b, traj in trajectories.items():
+            if b in closed:
+                continue
+            
+            last_obs = traj[-1]
+            if last_obs.success or not is_repairable(last_obs):
+                continue
+            
+            # Count retries at this attempt level
+            retry_count = sum(1 for o in traj if o.attempt == last_obs.attempt)
+            if retry_count >= schedule['max_retries_per_depth']:
+                continue
+            
+            # Score by fail_class fixability (primary) and branch history (secondary)
+            fixability = {
+                'correctness': 1.0,      # Output/logic mismatch
+                'constraint': 0.9,       # Constraint violation
+                'compile_other': 0.8,    # Compilation error
+                'timeout': 0.4,          # Timeout
+                'resource': 0.3,         # Resource limit
+            }.get(last_obs.fail_class, 0.2)
+            
+            # Branch anchor (previous best on this branch) as secondary signal
+            anchor = successful_anchor(traj[:-1]) or 0.0
+            recovery_score = fixability * 0.75 + anchor * 0.25
+            
+            rank_key = (-recovery_score, -len(traj))
+            recovery_candidates.append((last_obs.cell_id, rank_key, b, recovery_score))
+        
+        recovery_candidates.sort(key=lambda x: x[1])
+        
+        # === TIER 3: Rank unopened roots for exploration ===
+        explore_candidates = []
+        for cell_id in roots_set:
+            if cell_id not in legal_actions:
+                continue
+            b = question.meta(cell_id).branch
+            if b in closed or b in opened_branches:
+                continue
+            
+            # Unopened root
+            rank_key = (-self.beta, -b)  # Prioritize by beta, then branch id
+            explore_candidates.append((cell_id, rank_key, b))
+        
+        explore_candidates.sort(key=lambda x: x[1])
+        
+        # === Build batch: reserve slots for each tier ===
+        
+        # Reserve 1 slot for recovery (if available and promising)
+        recovery_reserved = False
+        if recovery_candidates and len(batch) < W:
+            cell_id, _, b, score = recovery_candidates[0]
+            if score >= schedule['recovery_threshold'] and cell_id in legal_actions:
+                batch.append(cell_id)
+                selected_branches.add(b)
+                recovery_reserved = True
+        
+        # Reserve slot for exploration (if beta supports it)
+        explore_reserved = False
+        if explore_candidates and self.beta > 0.15 and len(batch) < W:
+            cell_id, _, b = explore_candidates[0]
+            batch.append(cell_id)
+            selected_branches.add(b)
+            explore_reserved = True
+        
+        # Fill remaining slots with exploitation (best frontiers)
+        for cell_id, _, b in exploit_candidates:
+            if len(batch) >= W or b in selected_branches:
+                continue
+            batch.append(cell_id)
+            selected_branches.add(b)
+        
+        # If still have room and not yet added exploration, add more exploration candidates
+        if len(batch) < W and explore_candidates and self.beta > 0.15:
+            start_idx = 1 if explore_reserved else 0
+            for cell_id, _, b in explore_candidates[start_idx:]:
+                if len(batch) >= W or b in selected_branches:
+                    continue
+                batch.append(cell_id)
+                selected_branches.add(b)
+        
+        # === TIER 4: Fallback - fill remaining slots with any legal action ===
+        if len(batch) < W:
+            remaining = [
+                c for c in legal_actions
+                if c not in batch and question.meta(c).branch not in selected_branches
+            ]
+            for cell_id in remaining:
+                if len(batch) >= W:
+                    break
+                batch.append(cell_id)
+                selected_branches.add(question.meta(cell_id).branch)
+        
+        return batch[:W]
+```

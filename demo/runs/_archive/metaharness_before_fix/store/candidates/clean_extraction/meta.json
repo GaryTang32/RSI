@@ -1,0 +1,17 @@
+{
+ "name": "clean_extraction",
+ "artifact_id": "3aa4482ecb95e830c5df5dc93be3fb5c6301635781c79f345bf26cd6e43f1d4d",
+ "created_at": 1790756317.362199,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "",
+ "axis": "",
+ "components": [],
+ "parents_read": [],
+ "order": 4,
+ "base_fallback": true,
+ "claimed_base_system": "(none)",
+ "reason": ""
+}

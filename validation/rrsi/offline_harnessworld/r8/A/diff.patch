@@ -1,0 +1,8 @@
+--- a/skills/str_08/SKILL.md
++++ b/skills/str_08/SKILL.md
+@@ -0,0 +1,5 @@
++# mechanism: str_08
++# component: skill
++# title: Procedure card: verification
++"""Procedure card: verification; aimed at arith, plan, format tasks."""
++enable("str_08")

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-logic-006",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Cat owner: Casey').",
+  "output": "Cat owner: Casey",
+  "tokens": 11881,
+  "cost_usd": 0.052513000000000004,
+  "steps": 2,
+  "latency_s": 0.017302989959716797,
+  "error": null,
+  "family": "logic",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

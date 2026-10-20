@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-006",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '5. **Combine using CRT**: The unique solution modulo 785 is **154**').",
+  "output": "5. **Combine using CRT**: The unique solution modulo 785 is **154**",
+  "tokens": 3675,
+  "cost_usd": 0.015035000000000001,
+  "steps": 1,
+  "latency_s": 0.006325483322143555,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

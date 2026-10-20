@@ -1,0 +1,9 @@
+{
+ "run": "metaharness",
+ "proposals": 8,
+ "prompts_identical": false,
+ "scores_identical": false,
+ "cache_misses": 3,
+ "cache_hits": 117,
+ "usd_spent": 0.0
+}

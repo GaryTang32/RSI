@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/home/user/RSI/experiments/autoresearch/validate_autoresearch.py", line 189, in <module>
+    if a.which == "check":
+          ^^^^^^^^^^^^^^^^^
+  File "/home/user/RSI/experiments/autoresearch/validate_autoresearch.py", line 166, in crashfix
+    cfg = Config(max_experiments=len(sched), mode="hardened", keep_rule="strict", tag="validate-crashfix", seed=0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/RSI/experiments/autoresearch/validate_autoresearch.py", line 139, in _summarise
+    "analysis": res.meta["analysis"], "counters": res.meta["counters"], "crash_kinds": res.meta["crash_kinds"],
+                                              ^^^^^^^^^^^^^^
+  File "/home/user/RSI/experiments/autoresearch/validate_autoresearch.py", line 93, in check_run
+    and (e["data"]["role"] == "experiment" or e["data"]["role"].startswith("fix"))]
+                                                               ^^^^^^^
+IndexError: list index out of range
+# NOTE (validator): the traceback above came from an early version of check_run (IndexError on a fixed-crash round), after the loop had finished; the run itself completed. TRACE.md and validation_summary.json were regenerated with 'validate_autoresearch.py summarise --run tinylm_offline_crashfix' (consistency ok).

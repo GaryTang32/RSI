@@ -1,0 +1,94 @@
+[
+ {
+  "iteration": 1,
+  "calls": 9,
+  "cum_calls": 9,
+  "round_best": 1.0183243143690768,
+  "best": 1.0183243143690768,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 2,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 9,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.925,
+    0.933333,
+    0.925,
+    0.92125
+   ],
+   "selected": 1,
+   "selected_label": "t1m1",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.008333333333333304,
+   "details": {
+    "best": 0.9333333333333333
+   },
+   "changes": [
+    "Replace fixed parallel refine with adaptive trajectory-based exploration: rank branches by successful anchors and improvement trends, prioritize roots and first",
+    "Relax Priority 3 batching to include all non-hard-failed branches, not just promising ones, ensuring full parallelism utilization and thorough exploration while",
+    "Add parallelism-aware inclusion of weak-but-underexplored branches in Priority 3 (deeper refinements) when sufficient capacity remains (>= 2 slots), improving b"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 9.0,
+    "k": 3.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.3333333333333333,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 810.331
+ },
+ {
+  "iteration": 2,
+  "calls": 8,
+  "cum_calls": 17,
+  "round_best": 1.0361377782299992,
+  "best": 1.0361377782299992,
+  "root": 1.0183243143690768,
+  "plan": {
+   "branch_count": 4,
+   "refine_count": 1,
+   "reason": "early gains strong, late plateau -> widen and reduce depth"
+  },
+  "N": 8,
+  "k": 3,
+  "batch_sizes": [
+   3,
+   3,
+   2
+  ],
+  "policy": "e8ed3dc237",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 1172.997
+ }
+]

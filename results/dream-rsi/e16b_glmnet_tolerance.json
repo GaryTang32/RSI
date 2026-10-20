@@ -1,0 +1,154 @@
+{
+ "experiment": "e16b_glmnet_tolerance",
+ "created": "2026-09-29 18:12:40",
+ "results": {
+  "dna": {
+   "settings": [
+    {
+     "thresh": 1e-07,
+     "ms": 25.000000000000135,
+     "gap": 4.804619935239174e-06,
+     "passes_gate": false
+    },
+    {
+     "thresh": 1e-09,
+     "ms": 68.00000000000006,
+     "gap": 1.856899256580391e-08,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-11,
+     "ms": 150.9999999999998,
+     "gap": 2.220446049250313e-15,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-13,
+     "ms": 271.0000000000001,
+     "gap": 2.220446049250313e-15,
+     "passes_gate": true
+    }
+   ],
+   "fastest_passing": {
+    "thresh": 1e-09,
+    "ms": 68.00000000000006,
+    "gap": 1.856899256580391e-08,
+    "passes_gate": true
+   },
+   "appC_ms_pass1": 37.925786999949196,
+   "appC_faster_than_fastest_passing_glmnet": true
+  },
+  "leukemia": {
+   "settings": [
+    {
+     "thresh": 1e-07,
+     "ms": 18.000000000000014,
+     "gap": 5.231975477165696e-06,
+     "passes_gate": false
+    },
+    {
+     "thresh": 1e-09,
+     "ms": 21.000000000000128,
+     "gap": 2.194470976463192e-08,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-11,
+     "ms": 26.00000000000002,
+     "gap": -5.551115123125783e-17,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-13,
+     "ms": 44.99999999999993,
+     "gap": -5.551115123125783e-17,
+     "passes_gate": true
+    }
+   ],
+   "fastest_passing": {
+    "thresh": 1e-09,
+    "ms": 21.000000000000128,
+    "gap": 2.194470976463192e-08,
+    "passes_gate": true
+   },
+   "appC_ms_pass1": 23.327568999775394,
+   "appC_faster_than_fastest_passing_glmnet": false
+  },
+  "colon": {
+   "settings": [
+    {
+     "thresh": 1e-07,
+     "ms": 8.000000000000007,
+     "gap": 2.4071230985453496e-05,
+     "passes_gate": false
+    },
+    {
+     "thresh": 1e-09,
+     "ms": 18.000000000000014,
+     "gap": 1.347022606512649e-07,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-11,
+     "ms": 47.99999999999982,
+     "gap": 0.0,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-13,
+     "ms": 112.99999999999999,
+     "gap": 0.0,
+     "passes_gate": true
+    }
+   ],
+   "fastest_passing": {
+    "thresh": 1e-09,
+    "ms": 18.000000000000014,
+    "gap": 1.347022606512649e-07,
+    "passes_gate": true
+   },
+   "appC_ms_pass1": 12.898126999971282,
+   "appC_faster_than_fastest_passing_glmnet": true
+  },
+  "duke": {
+   "settings": [
+    {
+     "thresh": 1e-07,
+     "ms": 18.000000000000014,
+     "gap": 9.008784922263924e-06,
+     "passes_gate": false
+    },
+    {
+     "thresh": 1e-09,
+     "ms": 22.999999999999908,
+     "gap": 5.551115123125783e-17,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-11,
+     "ms": 42.99999999999993,
+     "gap": 5.551115123125783e-17,
+     "passes_gate": true
+    },
+    {
+     "thresh": 1e-13,
+     "ms": 80.00000000000007,
+     "gap": 5.551115123125783e-17,
+     "passes_gate": true
+    }
+   ],
+   "fastest_passing": {
+    "thresh": 1e-09,
+    "ms": 22.999999999999908,
+    "gap": 5.551115123125783e-17,
+    "passes_gate": true
+   },
+   "appC_ms_pass1": 26.953466000122717,
+   "appC_faster_than_fastest_passing_glmnet": false
+  }
+ },
+ "appC_faster_on": [
+  "dna",
+  "colon"
+ ]
+}

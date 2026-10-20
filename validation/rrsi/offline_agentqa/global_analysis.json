@@ -1,0 +1,29 @@
+{
+ "failure_modes": [
+  {
+   "mode": "numeric__incorrect_extracted_answer_v_expected_v",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-numeric-011"
+   ],
+   "loss": 0.5,
+   "description": "tasks of kind 'numeric' end with: Incorrect. Extracted answer <v>; expected <v>.",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-numeric-011",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '3887010'; expected '3886910'."
+    }
+   ]
+  }
+ ],
+ "success_habits": [
+  {
+   "habit": "clean_numeric",
+   "n_tasks": 19,
+   "description": "passing tasks of kind 'numeric' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  }
+ ]
+}

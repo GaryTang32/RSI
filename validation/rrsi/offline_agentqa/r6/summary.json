@@ -1,0 +1,45 @@
+{
+ "t": 6,
+ "b_t": 2,
+ "sigma_t": 1,
+ "delta": 0.147196,
+ "S_star": 0.975,
+ "S": 0.975,
+ "C": 1292.6,
+ "incumbent": "3a6492c84ecbb736ad5cc18736f60b5fe0300977ea77b78e685a901ade7f81d8",
+ "winner": null,
+ "n_candidates": 2,
+ "n_screened": 1,
+ "n_untried": 2,
+ "prune_set": [
+  "control_flow",
+  "subagent"
+ ],
+ "decisions": [
+  {
+   "variant": "A",
+   "admissible": false,
+   "reason": "cost rule failed: within band: shaped=-5.355 (<= 0)",
+   "S": 0.925,
+   "C": 1323.15,
+   "delta_S": -0.04999999999999993,
+   "delta_C": 0.02363453504564458,
+   "novelty": 0,
+   "guards": []
+  },
+  {
+   "variant": "B",
+   "admissible": false,
+   "reason": "critic_reject",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
+   "novelty": 0,
+   "guards": []
+  }
+ ],
+ "gate_failures": {
+  "B": "critic_reject"
+ }
+}

@@ -1,0 +1,22 @@
+{
+ "name": "i02_0_contrastive",
+ "artifact_id": "433f0bf10a527c953187bd103b0e6961ae5ebb2d8a7f4fc0567bc5746d41342d",
+ "created_at": 1790343352.732668,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "i01_0_retrieve_topk",
+ "hypothesis": "Adding demonstrations of the labels most often confused with the top retrieved labels (learned from online errors) helps the model separate near-duplicates.",
+ "axis": "exploitation",
+ "components": [
+  "contrastive",
+  "axis:C"
+ ],
+ "parents_read": [
+  "i01_0_retrieve_topk"
+ ],
+ "order": 5,
+ "move": "contrastive",
+ "evidence": "30/67 errors are recurring label confusions (e.g. ('ledor-vinpi', 'nurim-torji'))",
+ "reason": ""
+}

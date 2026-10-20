@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "/home/user/RSI/experiments/demo/live_demo.py", line 159, in <module>
+    {"metaharness": metaharness, "rrsi": rrsi_run, "autoresearch": autoresearch}[a.which](a)
+  File "/home/user/RSI/experiments/demo/live_demo.py", line 125, in rrsi_run
+    res = rsi.improve(dom, method="rrsi", llm_task=llm, llm_propose=llm, config=cfg, out_dir=out,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/RSI/rsi/api.py", line 152, in improve
+    return mod.run(
+           ^^^^^^^^
+  File "/home/user/RSI/rsi/rrsi/driver.py", line 181, in run
+    stop = drive(r, cfg.T, budget=budget)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/RSI/rsi/rrsi/driver.py", line 47, in drive
+    stop = _drive(r, T, start, budget, resumed)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/RSI/rsi/rrsi/driver.py", line 59, in _drive
+    r.calibrate()
+  File "/home/user/RSI/rsi/rrsi/loop.py", line 249, in calibrate
+    raise RuntimeError(f"calibration evaluation {j} invalid: {why}")
+RuntimeError: calibration evaluation base_r1 invalid: 4/8 trials missing (infrastructure) after a retry
+EXIT 1

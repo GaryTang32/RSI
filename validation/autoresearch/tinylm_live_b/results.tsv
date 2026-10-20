@@ -1,0 +1,12 @@
+commit	val_bpb	memory_gb	status	description
+906744c	2.828834	0.1	keep	baseline
+5ec68a8	2.898958	0.1	discard	Increase CONTEXT to 8 and HIDDEN to 160 for better representational capacity
+3c5b1c4	2.876920	0.1	discard	Add L2 regularization (weight_decay=0.0001) to prevent overfitting after model size increase failed
+a285d1a	2.739970	0.1	keep	Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget
+533edda	2.697312	0.1	keep	Increase learning rate from 0.004 to 0.005 to further accelerate convergence
+82bf089	2.725567	0.1	discard	Disable learning rate warmdown (WARMDOWN_RATIO: 0.5 → 0.0) to keep LR constant throughout fixed budget
+83d320f	2.666247	0.1	keep	Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget
+197ab6b	2.656140	0.1	keep	Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget
+bb1d08e	2.690663	0.1	discard	Reduce BATCH_SIZE from 8 to 4 to double gradient steps within fixed budget
+020a551	2.630825	0.1	keep	Increase learning rate from 0.005 to 0.006 to further accelerate convergence
+363363c	2.622188	0.1	keep	Increase learning rate from 0.006 to 0.007 to further accelerate convergence

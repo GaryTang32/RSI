@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- The sum of all these digits equals **315**'; expected '351'.",
+  "output": "- The sum of all these digits equals **315**",
+  "tokens": 1183,
+  "cost_usd": 0.002571,
+  "steps": 1,
+  "latency_s": 0.010202169418334961,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

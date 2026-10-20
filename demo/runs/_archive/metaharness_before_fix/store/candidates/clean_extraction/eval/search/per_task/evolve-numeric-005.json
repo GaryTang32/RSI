@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-005",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'sum_method1'; expected '351'.",
+  "output": "sum_method1",
+  "tokens": 11015,
+  "cost_usd": 0.034759,
+  "steps": 3,
+  "latency_s": 65.53256273269653,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 3,
+   "tool_calls": 0
+  }
+ }
+]

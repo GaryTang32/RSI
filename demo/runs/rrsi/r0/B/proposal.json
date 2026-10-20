@@ -1,0 +1,72 @@
+{
+ "status": "done",
+ "summary": "Enforce computational discipline: mandate Python tool use in system prompt, require ANSWER: format and tool execution in task prompt, extract structured answers in harness",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "Explicit system-level mandate that ALL numeric calculations must use Python tools (never mental arithmetic or reasoning-based claims) will reduce unverified arithmetic errors by establishing tool use as the primary operational requirement.",
+   "targets_mode": "unverified_mental_arithmetic (tasks 000, 002, 004, 005) and tool_invocation_avoidance (task 001): model currently attempts or allows non-computational assertions",
+   "why_not_lower_lever": "The model's default behavior (whether to even consider tool use) is set at the system level. Task-prompt guidance alone cannot override built-in reasoning patterns. System instructions establish the operative constraints for the entire interaction.",
+   "trigger_condition": "Applies to every numeric task; the rule is unconditional and universal",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) All five failing tasks involve mental arithmetic or un-executed code. Mandatory Python delegation with explicit 'never attempt arithmetic manually' eliminates the choice to reason through computation. (preservative) Task 006 already followed correct pattern (direct Python pow, CRT reasoning, clear result); stronger mandate reinforces this—no regression. (transfer) Applies to any future numeric task type (modular arithmetic, digit sums, balance sheets, bit counts, factorials, etc.) and will generalize wherever computation avoids mental error.",
+   "regression_risk": "Very low. The rule does not disable reasoning or explanation—only computation delegation. Model can still reason about problem structure while computing answers via tools.",
+   "mechanism": "Explicit system-level mandate that ALL numeric calculations must use Python tools (never mental arithmetic or reasoning-based claims) will reduce unverified arithmetic errors by establishing tool use as the primary operational requirement."
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "Task-level instruction requiring immediate code execution (not code-display-only) and structured ANSWER: format creates explicit contract: code must run, tool output must be trusted, final answer must follow format. This bridges code-generation-without-execution gap and ensures consistent extraction.",
+   "targets_mode": "tool_invocation_avoidance (task 001: code shown but not invoked) and output format standardization; currently model may output answer anywhere, making extraction fragile",
+   "why_not_lower_lever": "The harness cannot know whether to execute code the model generates—only the model controls that decision. Making it a task requirement moves execution from optional best-practice to contractual obligation. Format standardization must be specified where the model sees it (task prompt), not inferred by harness logic.",
+   "trigger_condition": "Applies to all tasks; ANSWER: format and execution mandate are unconditional requirements",
+   "predicted_affected": [
+    "evolve-numeric-001",
+    "evolve-numeric-000",
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) Task 001 shows code proposal without execution—explicit 'execute immediately' requirement removes ambiguity. Tasks 000, 002, 004, 005 will output answer in standardized format, making extraction reliable. (preservative) Task 006 already outputs structured result with CRT reasoning; format requirement does not disrupt this pattern. (transfer) ANSWER: format is task-agnostic and generalizes to any single-value final answer across all domains (numeric, text, dates, etc.).",
+   "regression_risk": "Minimal. The requirement is directive, not prohibitive. Format is simple (ANSWER: value) and well within LLM capability; no safe behavior is removed.",
+   "mechanism": "Task-level instruction requiring immediate code execution (not code-display-only) and structured ANSWER: format creates explicit contract: code must run, tool output must be trusted, final answer must follow format. This bridges code-generation-without-execution gap and ensures consistent extraction."
+  },
+  {
+   "id": "C3",
+   "component": "control_flow",
+   "hypothesis": "Harness extraction that explicitly searches for ANSWER: format before falling back to last line will reliably isolate the intended answer, preventing explanatory or intermediate text from being returned to grader.",
+   "targets_mode": "output extraction robustness: currently harness blindly returns last line, which may be explanatory text following the actual answer",
+   "why_not_lower_lever": "Prompt specifies format; harness must recognize and extract it. This is control-flow plumbing (routing information correctly), not a wording issue. Harness is the boundary between model output and grader input—extraction accuracy belongs here.",
+   "trigger_condition": "Activates when response contains ANSWER: format (guaranteed by C2 requirement); falls back gracefully if format is absent or regex fails",
+   "predicted_affected": [
+    "evolve-numeric-000",
+    "evolve-numeric-001",
+    "evolve-numeric-002",
+    "evolve-numeric-004",
+    "evolve-numeric-005"
+   ],
+   "retroactive_check": "(corrective) Current harness may return text lines following or misaligned with actual answer. Explicit extraction of ANSWER: line ensures grader receives intended answer. (preservative) Fallback to last line preserves original behavior if format is missing; task 006 (which lacks ANSWER: format in traces) will still work. (transfer) Extraction mechanism works for any task type as long as ANSWER: format is used; generalizes beyond numeric tasks.",
+   "regression_risk": "Very low. Extraction is additive with graceful fallback; if regex fails, code reverts to original last-line logic. No existing correct behavior is removed.",
+   "mechanism": "Harness extraction that explicitly searches for ANSWER: format before falling back to last line will reliably isolate the intended answer, preventing explanatory or intermediate text from being returned to grader."
+  }
+ ],
+ "mechanism": "Enforce computational discipline: mandate Python tool use in system prompt, require ANSWER: format and tool execution in task prompt, extract structured answers in harness",
+ "targets_mode": "unverified_mental_arithmetic (tasks 000, 002, 004, 005) and tool_invocation_avoidance (task 001): model currently attempts or allows non-computational assertions, tool_invocation_avoidance (task 001: ",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

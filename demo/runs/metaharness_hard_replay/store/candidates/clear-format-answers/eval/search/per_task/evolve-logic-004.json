@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-logic-004",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'Harper').",
+  "output": "ANSWER: Harper",
+  "tokens": 11382,
+  "cost_usd": 0.050038,
+  "steps": 1,
+  "latency_s": 0.002069711685180664,
+  "error": null,
+  "family": "logic",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

@@ -1,0 +1,165 @@
+[
+ {
+  "iteration": 1,
+  "calls": 12,
+  "cum_calls": 12,
+  "round_best": 1.023749252415818,
+  "best": 1.023749252415818,
+  "root": 0.9104910395109694,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 3,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 12,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 1,
+   "values": [
+    0.895,
+    0.895,
+    0.895,
+    0.895
+   ],
+   "selected": 0,
+   "selected_label": "initial",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.895
+   },
+   "changes": [
+    "Implement adaptive trajectory-guided policy with smart batching, beta-controlled thresholds, and adaptive grid planning",
+    "Fix indentation error on line 170: `batch.append(cell)` under Priority 3 repair loop was not indented, causing syntax error.",
+    "Prioritize recovery over exploration and fix soft-closure to spare branches with successful anchors"
+   ],
+   "replay_episodes": 10,
+   "dev_worlds": [
+    0
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 12.0,
+    "k": 4.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.0,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 874.286
+ },
+ {
+  "iteration": 2,
+  "calls": 12,
+  "cum_calls": 24,
+  "round_best": 1.0304168748055738,
+  "best": 1.0304168748055738,
+  "root": 1.023749252415818,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 3,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 12,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "dream": {
+   "t": 2,
+   "values": [
+    0.895,
+    0.895,
+    0.895,
+    0.895
+   ],
+   "selected": 0,
+   "selected_label": "initial",
+   "reason": "argmax replay value (incumbent included)",
+   "delta_vs_incumbent": 0.0,
+   "details": {
+    "best": 0.895
+   },
+   "changes": [
+    "Implement success-rate-prioritized portfolio exploration with adaptive beta schedule and history-responsive grid planning",
+    "Fix syntax error at line 230 by ensuring proper indentation and file structure throughout solve() method",
+    "Fix syntax error in solve() method: correct recovery_candidates sorting to use proper key function indexing"
+   ],
+   "replay_episodes": 30,
+   "dev_worlds": [
+    0,
+    1
+   ],
+   "incumbent_diag": {
+    "attainment": 1.0,
+    "probes_frac": 1.0,
+    "N": 12.0,
+    "k": 4.0,
+    "mean_batch": 3.0,
+    "batch_fill": 1.0,
+    "missed_ceiling_rate": 0.0,
+    "wasted_probe_frac": 0.125,
+    "serial_round_frac": 0.0,
+    "out_of_support_rate": 0.0,
+    "plan_errors": [],
+    "disqualified": 0,
+    "violations": [],
+    "errors": [],
+    "batch_errors": []
+   }
+  },
+  "wall_s": 1882.2
+ },
+ {
+  "iteration": 3,
+  "calls": 12,
+  "cum_calls": 36,
+  "round_best": 1.0304168748055738,
+  "best": 1.0304168748055738,
+  "root": 1.0304168748055738,
+  "plan": {
+   "branch_count": 3,
+   "refine_count": 3,
+   "reason": "parallel refine: fixed fallback grid (width x depth never adapts)"
+  },
+  "N": 12,
+  "k": 4,
+  "batch_sizes": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "policy": "2f081731b8",
+  "beta": 0.6,
+  "online_error": null,
+  "violations": [],
+  "wall_s": 2352.725
+ }
+]

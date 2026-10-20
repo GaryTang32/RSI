@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-000",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- The sum of all its decimal digits = **193**'; expected '144'.",
+  "output": "- The sum of all its decimal digits = **193**",
+  "tokens": 1160,
+  "cost_usd": 0.0024560000000000003,
+  "steps": 1,
+  "latency_s": 0.008537054061889648,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

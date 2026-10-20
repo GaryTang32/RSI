@@ -1,0 +1,167 @@
+[
+ {
+  "exp": 0,
+  "status": "keep",
+  "metric": 2.8288339009396535,
+  "best": 2.8288339009396535,
+  "description": "baseline",
+  "commit": "906744c",
+  "wall_s": 8.589,
+  "t": 8.594,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.8288339009396535
+  ]
+ },
+ {
+  "exp": 1,
+  "status": "discard",
+  "metric": 2.898957980534493,
+  "best": 2.8288339009396535,
+  "description": "Increase CONTEXT to 8 and HIDDEN to 160 for better representational capacity",
+  "commit": "5ec68a8",
+  "wall_s": 8.682,
+  "t": 126.675,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.898957980534493
+  ]
+ },
+ {
+  "exp": 2,
+  "status": "discard",
+  "metric": 2.876920116657834,
+  "best": 2.8288339009396535,
+  "description": "Add L2 regularization (weight_decay=0.0001) to prevent overfitting after model size increase failed",
+  "commit": "3c5b1c4",
+  "wall_s": 8.575,
+  "t": 227.594,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.876920116657834
+  ]
+ },
+ {
+  "exp": 3,
+  "status": "keep",
+  "metric": 2.7399703598292153,
+  "best": 2.8288339009396535,
+  "description": "Increase learning rate from 0.003 to 0.004 for faster convergence within fixed budget",
+  "commit": "a285d1a",
+  "wall_s": 8.549,
+  "t": 328.68,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.7399703598292153
+  ]
+ },
+ {
+  "exp": 4,
+  "status": "keep",
+  "metric": 2.6973124314861963,
+  "best": 2.7399703598292153,
+  "description": "Increase learning rate from 0.004 to 0.005 to further accelerate convergence",
+  "commit": "533edda",
+  "wall_s": 8.585,
+  "t": 446.456,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.6973124314861963
+  ]
+ },
+ {
+  "exp": 5,
+  "status": "discard",
+  "metric": 2.725566733628821,
+  "best": 2.6973124314861963,
+  "description": "Disable learning rate warmdown (WARMDOWN_RATIO: 0.5 \u2192 0.0) to keep LR constant throughout fixed budget",
+  "commit": "82bf089",
+  "wall_s": 8.543,
+  "t": 551.575,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.725566733628821
+  ]
+ },
+ {
+  "exp": 6,
+  "status": "keep",
+  "metric": 2.666246678023838,
+  "best": 2.6973124314861963,
+  "description": "Reduce BATCH_SIZE from 32 to 16 to double training steps and data coverage within fixed budget",
+  "commit": "83d320f",
+  "wall_s": 8.581,
+  "t": 664.826,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.666246678023838
+  ]
+ },
+ {
+  "exp": 7,
+  "status": "keep",
+  "metric": 2.6561396570905105,
+  "best": 2.666246678023838,
+  "description": "Reduce BATCH_SIZE from 16 to 8 to enable more gradient steps within fixed budget",
+  "commit": "197ab6b",
+  "wall_s": 8.726,
+  "t": 754.978,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.6561396570905105
+  ]
+ },
+ {
+  "exp": 8,
+  "status": "discard",
+  "metric": 2.6906631919217388,
+  "best": 2.6561396570905105,
+  "description": "Reduce BATCH_SIZE from 8 to 4 to double gradient steps within fixed budget",
+  "commit": "bb1d08e",
+  "wall_s": 8.71,
+  "t": 846.338,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.6906631919217388
+  ]
+ },
+ {
+  "exp": 9,
+  "status": "keep",
+  "metric": 2.6308254050878395,
+  "best": 2.6561396570905105,
+  "description": "Increase learning rate from 0.005 to 0.006 to further accelerate convergence",
+  "commit": "020a551",
+  "wall_s": 8.729,
+  "t": 960.907,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.6308254050878395
+  ]
+ },
+ {
+  "exp": 10,
+  "status": "keep",
+  "metric": 2.622188131367283,
+  "best": 2.6308254050878395,
+  "description": "Increase learning rate from 0.006 to 0.007 to further accelerate convergence",
+  "commit": "363363c",
+  "wall_s": 8.653,
+  "t": 1055.54,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   2.622188131367283
+  ]
+ }
+]

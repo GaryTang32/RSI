@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-numeric-007",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '- 435 \u00f7 73 = 5 remainder **70** \u2713'; expected '435'.",
+  "output": "- 435 \u00f7 73 = 5 remainder **70** \u2713",
+  "tokens": 3037,
+  "cost_usd": 0.011865,
+  "steps": 1,
+  "latency_s": 19.052600622177124,
+  "error": null,
+  "family": "numeric",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

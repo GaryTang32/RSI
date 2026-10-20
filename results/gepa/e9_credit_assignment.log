@@ -1,0 +1,7 @@
+[saved] /home/user/RSI/results/gepa/e9_credit_assignment.json
+[saved] /home/user/RSI/results/gepa/e9_credit_assignment.png
+B=1500, 30 seeds. Final true test: module/round_robin 0.863 [0.844, 0.882], system/round_robin 0.816 [0.798, 0.834], module/all 0.919 [0.910, 0.928], system/all 0.750 [0.732, 0.768]. Module-specific - system-level: +0.047 [+0.025, +0.068] (round-robin), +0.169 [+0.148, +0.190] (all); at 400 rollouts +0.161 [+0.117, +0.204], at 800 +0.145 [+0.101, +0.188]. Misplaced rule lines in the returned prompts: module 0.0 vs system 5.3 (round-robin). All - RoundRobin: +0.056 [+0.040, +0.072] (module-specific), -0.065 [-0.092, -0.038] (system-level). Rollouts to 90% of the oracle: module/round_robin 989 (reached 50%) vs system/round_robin 1260 (reached 30%).
+
+real	0m15.411s
+user	0m28.891s
+sys	0m0.303s
