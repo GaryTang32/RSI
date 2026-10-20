@@ -1,20 +1,4 @@
-"""Offline reflection LMs for GEPA on domains other than RuleWorld, and a two-module
-AgentQA harness.
-
-* :class:`GenericReflectionLM` - domain-agnostic: appends the first sentence of each
-  failing example's feedback as a "Lesson:" line (at most ``max_new`` per call).
-  Enough to exercise the full loop on any :class:`rsi.core.Domain` whose grader
-  explains failures.
-* :class:`AgentQAReflectionLM` - for ``rsi.domains.agentqa`` harness prompts with the
-  offline :class:`~rsi.domains.agentqa.SimModel`: adds one generic skill per call
-  (exact answer format, step-by-step reasoning, verification, "write Python"),
-  chosen from the evidence in the side_info when feedback text is present and at
-  random under score-only feedback; it keeps the ``{question}`` placeholder. It also
-  answers the RL baseline's brainstorm prompt and the few-shot grounded prompt.
-* :func:`two_module_harness` - AgentQA seed artifact with two prompt components
-  (``prompts/solver.md`` -> optional Python tool run -> ``prompts/reporter.md``), so
-  module-wise merge is meaningful on AgentQA.
-"""
+"""Offline reflection LMs for domains other than RuleWorld, and a two-module AgentQA harness."""
 from __future__ import annotations
 
 import hashlib
@@ -24,24 +8,20 @@ from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.llm import MockLLM
+from .reflection import parse_side_info
 
 
 def _rng(*parts) -> random.Random:
     return random.Random(int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:16], 16))
 
 
-#: where the fenced <curr_param> / <side_info> blocks of GEPA's templates end (DEFAULT, optimize_anything, few-shot)
+# template text right after the <curr_param> / <side_info> blocks (DEFAULT, optimize_anything, few-shot)
 _CUR_END = ("```\n\nThe following are examples", "```\n\nBelow is evaluation data", "```\n\nExamples (input")
 _SIDE_END = ("```\n\nYour task is to",)
 
 
 def _split(prompt: str) -> tuple[str, str]:
-    """(current instruction, side_info) of a GEPA reflection prompt.
-
-    Both blocks may themselves contain ``` fences (code in execution traces, code examples in an
-    evolved instruction), so each block ends at the template text that follows it, not at the next
-    fence. (A plain split on ``` truncated the side_info at the first code block of a trace, so the
-    mock saw no feedback and fell back to random skills.) Unknown templates: the old split."""
+    """(current instruction, side_info); a block ends at the template text after it, as both may hold fences."""
     a = prompt.find("```")
     if a == -1:
         return "", ""
@@ -58,24 +38,13 @@ def _split(prompt: str) -> tuple[str, str]:
     return cur, (prompt[c + 3:d] if d != -1 else prompt[c + 3:])
 
 
-def _records(side: str) -> list[dict]:
-    recs = []
-    for block in re.split(r"^# Example \d+\s*$", side, flags=re.M)[1:]:
-        rec = {}
-        for sec in re.split(r"^## ", block, flags=re.M)[1:]:
-            head, _, body = sec.partition("\n")
-            rec[head.strip()] = body.strip()
-        recs.append(rec)
-    return recs
-
-
 def _score(fb: str) -> Optional[float]:
     m = re.search(r"Score:\s*(\d+(?:\.\d+)?)", fb or "")
     return float(m.group(1)) if m else None
 
 
 class GenericReflectionLM(MockLLM):
-    """Appends feedback sentences of failing examples as lessons (any domain)."""
+    """Appends the first feedback sentence of failing examples as ``Lesson:`` lines (any domain)."""
 
     def __init__(self, max_new: int = 1, name: str = "generic-reflect") -> None:
         self.max_new = max_new
@@ -85,16 +54,13 @@ class GenericReflectionLM(MockLLM):
         cur, side = _split(prompt)
         lines = cur.splitlines()
         added = 0
-        for rec in _records(side):
+        for rec in parse_side_info(side):
             fb = rec.get("Feedback", "")
             s = _score(fb)
-            if s is not None and s >= 1.0:
-                continue
             text = re.sub(r"^Score:\s*[0-9.]+\.?\s*", "", fb).strip()
-            if not text:
+            if (s is not None and s >= 1.0) or not text:
                 continue
-            first = re.split(r"(?<=[.!?])\s", text)[0].strip()
-            lesson = f"Lesson: {first}"
+            lesson = "Lesson: " + re.split(r"(?<=[.!?])\s", text)[0].strip()
             if lesson not in lines and added < self.max_new:
                 lines.append(lesson)
                 added += 1
@@ -114,7 +80,7 @@ _SKILL_KEYS = {"format": "answer:", "step": "step by step", "verify": "verify", 
 
 
 class AgentQAReflectionLM(MockLLM):
-    """Mock reflection LM for AgentQA harness prompts (see module docstring)."""
+    """Adds one generic skill per call (from the feedback, else at random); also answers brainstorm/grounded prompts."""
 
     def __init__(self, name: str = "agentqa-reflect") -> None:
         super().__init__(self._respond, name=name)
@@ -126,17 +92,14 @@ class AgentQAReflectionLM(MockLLM):
             rng.shuffle(lines)
             return "```\n" + "\n".join(lines) + "\n```"
         cur, side = _split(prompt)
-        low = cur.lower()
-        missing = [k for k, key in _SKILL_KEYS.items() if key not in low]
+        missing = [k for k, key in _SKILL_KEYS.items() if key not in cur.lower()]
         if "correct outputs for several example inputs" in prompt:                # few-shot grounded proposal
             order = [k for k in ("format", "step", "verify") if k in missing]
         else:
-            recs = _records(side)
-            fails = [r for r in recs if (_score(r.get("Feedback", "")) or 0.0) < 1.0]
-            text_fb = any("expected" in r.get("Feedback", "").lower() for r in fails)
+            fails = [r for r in parse_side_info(side) if (_score(r.get("Feedback", "")) or 0.0) < 1.0]
             if not fails:
                 order = []
-            elif text_fb:
+            elif any("expected" in r.get("Feedback", "").lower() for r in fails):
                 garbled = any(re.search(r"extracted answer '([^0-9'-][^']*)'", r.get("Feedback", ""), re.I)
                               for r in fails)
                 pref = ["format", "python", "step", "verify"] if garbled else ["python", "step", "verify", "format"]
@@ -148,8 +111,7 @@ class AgentQAReflectionLM(MockLLM):
                     order.insert(0, "distractor")
         new = cur.rstrip("\n")
         if order:
-            k = order[0]
-            line = rng.choice(DISTRACTORS) if k == "distractor" else SKILLS[k]
+            line = rng.choice(DISTRACTORS) if order[0] == "distractor" else SKILLS[order[0]]
             new = (new + "\n" + line).strip("\n")
         return "```\n" + new + "\n```"
 

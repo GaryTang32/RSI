@@ -1,4 +1,4 @@
-"""GEPA hyperparameters with the paper / ``gepa.optimize`` defaults (spec 4.6)."""
+"""GEPA hyperparameters, defaulting to the paper / ``gepa.optimize`` values."""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -7,24 +7,12 @@ from typing import Optional
 
 @dataclass
 class Config:
-    """All knobs of :func:`rsi.gepa.run`.
-
-    Defaults follow ``gepa.optimize`` / the paper: minibatch b = 3, Pareto candidate
-    selection over per-instance frontier keys, round-robin module selection, strict
-    minibatch improvement, merge off (``use_merge=True`` = "GEPA+Merge" with
-    ``max_merge_invocations=5`` as the reference's soft cap; ``merge_cap_mode="hard"`` gives
-    the paper's "invoked a maximum of 5 times"; 5-id subsample, overlap floor 5),
-    perfect-score skip on (perfect = the domain's maximum score, i.e. 1.0 for [0, 1]
-    metrics), seed 0.
-    """
-
     # budget / splits
     max_metric_calls: Optional[int] = 500        # B (rollouts); None -> other stoppers only
-    budget_mode: str = "reference_soft"          # "reference_soft": checked between iterations (overshoot <= 2b+|V|)
-    #                                              "hard": optimize_anything eval-server cap, stops mid-iteration
-    train_split: str = "evolve"                  # D_feedback (minibatches); falls back to "train"
-    val_split: Optional[str] = "val"             # D_pareto; None or missing -> D_train (multi-task mode)
-    components: Optional[list[str]] = None       # evolvable files; None -> auto (text files, not *.py)
+    budget_mode: str = "reference_soft"          # reference_soft: checked between iterations | hard: mid-iteration
+    train_split: str = "evolve"                  # D_feedback; falls back to "train"
+    val_split: Optional[str] = "val"             # D_pareto; None or missing -> D_train
+    components: Optional[list[str]] = None       # None -> text files, not *.py
 
     # the loop
     minibatch_size: int = 3
@@ -32,39 +20,32 @@ class Config:
     frontier_type: str = "instance"              # instance | objective | hybrid | cartesian
     module_selector: str = "round_robin"         # round_robin | all
     acceptance: str = "strict_improvement"       # strict_improvement | improvement_or_equal | noise_margin
-    noise_margin: float = 0.0                    # delta for acceptance="noise_margin"
+    noise_margin: float = 0.0
     epsilon: float = 0.1
     top_k: int = 5
     beam_n: int = 4
     skip_perfect_score: bool = True
-    perfect_score: Optional[float] = None        # None -> domain.score_range[1] (1.0 for [0, 1] scores, the
-    #                                              gepa.optimize default)
+    perfect_score: Optional[float] = None        # None -> domain.score_range[1]
 
     # merge (GEPA+Merge)
     use_merge: bool = False
     max_merge_invocations: int = 5
     merge_val_overlap_floor: int = 5
     merge_subsample_size: int = 5
-    merge_cap_mode: str = "reference_soft"       # reference_soft (gepa code: the cap gates scheduling only; accepted
-    #                                              and rejected merges can exceed it) | hard (paper App. G.4: at most
-    #                                              max_merge_invocations merges built and scored, accepted or not) |
-    #                                              accepted (pre-audit "hard": caps accepted merges only)
-    merge_zero_weight: str = "uniform"           # uniform (fix) | raise (reference crash)
-    merge_start_frac: float = 0.0                # extension (retry round 2, L13): no merge is *scheduled* before
-    #                                              this fraction of max_metric_calls is spent (paper Obs. 5: invoke
-    #                                              merge "once the optimization tree has evolved sufficiently
-    #                                              different lineages"). 0.0 = the reference schedule (default)
+    merge_cap_mode: str = "reference_soft"       # reference_soft | hard (paper App. G.4) | accepted
+    merge_zero_weight: str = "uniform"           # uniform | raise (the reference's crash)
+    merge_start_frac: float = 0.0                # no merge scheduled before this budget fraction (paper Obs. 5)
 
     # reflection
-    reflection_template: Optional[str] = None    # None/"default" = paper meta-prompt | "optimize_anything" | custom
+    reflection_template: Optional[str] = None    # None/"default" | "optimize_anything" | custom text
     reflection_system: Optional[str] = None
-    feedback: str = "full"                       # full | score_only (ScoreOnlyReflection) | none
+    feedback: str = "full"                       # full | score_only | none
 
     # evaluation
-    val_seed: int = 0                            # rollout seed of every D_pareto evaluation (one draw per candidate)
-    cache_evaluation: bool = False               # count D_pareto re-evaluations of the same candidate only once
-    workers: int = 1                             # parallel rollouts inside one evaluation
-    seed: int = 0                                # the shared random.Random (selector, sampler, merge)
+    val_seed: int = 0
+    cache_evaluation: bool = False               # charge D_pareto re-evaluations of a candidate once
+    workers: int = 1
+    seed: int = 0
 
     # extra stoppers
     max_iterations: Optional[int] = None
@@ -73,21 +54,18 @@ class Config:
     max_candidate_proposals: Optional[int] = None
     max_reflection_cost: Optional[float] = None
     timeout_s: Optional[float] = None
-    # stop after this many consecutive iterations lost to a backend outage (``skip_infra_error``, or a reflection
-    # call that failed with an LLM error); None = never. Extension (stage-B audit fix): without it a sustained
-    # outage keeps charging b rollouts per iteration until the rollout budget is gone.
-    max_consecutive_infra_failures: Optional[int] = 3
+    max_consecutive_infra_failures: Optional[int] = 3   # a sustained outage would otherwise drain the budget
 
     # bookkeeping
-    save_every: int = 1                          # write state.json every N iterations (resume granularity)
-    diff_chars: int = 4000                       # ledger diff truncation
+    save_every: int = 1
+    diff_chars: int = 4000
     extra: dict = field(default_factory=dict)
 
-    # audit trace (rsi.trace format, <out_dir>/trace.jsonl; write-only: never read by the loop)
-    trace: bool = True                           # on whenever out_dir is given
-    trace_max_text: int = 20000                  # per-string clip in trace.jsonl (prompts, replies, diffs)
+    # audit trace (<out_dir>/trace.jsonl, never read by the loop)
+    trace: bool = True
+    trace_max_text: int = 20000
     shadow_monitor: bool = True                  # score each new incumbent on sealed splits, into the trace only
-    shadow_splits: Optional[list[str]] = None    # None -> sealed holdout/ood of the domain, else its sealed test
+    shadow_splits: Optional[list[str]] = None    # None -> sealed holdout/ood, else sealed test
     shadow_k: int = 1
     shadow_workers: int = 4
 
@@ -96,8 +74,7 @@ class Config:
 
     @classmethod
     def from_json(cls, d: dict) -> "Config":
-        known = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
-        return cls(**known)
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
     def validate(self) -> None:
         if self.minibatch_size < 1:

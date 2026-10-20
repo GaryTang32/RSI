@@ -1,43 +1,15 @@
-"""Pluggable GEPA strategies (``gepa/strategies/*``), all driven by one seeded
-``random.Random`` shared with the merge proposer, as in ``gepa.optimize``.
-
-Candidate selectors (``select(state) -> index``):
-
-* :class:`ParetoSelector` - Algorithm 2 (set-cover pruning + frequency sampling);
-* :class:`CurrentBestSelector` - argmax aggregate (the paper's SelectBestCandidate);
-* :class:`EpsilonGreedySelector` - epsilon = 0.1, uniform over all candidates;
-* :class:`TopKParetoSelector` - Pareto rule restricted to the top k = 5 by aggregate;
-* :class:`BeamSearchSelector` - BeamSearch(N = 4) from the paper's Table 3 (absent from
-  the reference code): parents cycle round-robin through the current top-N by
-  aggregate, so every beam member is expanded in turn (APO-style) [inferred].
-
-Component selectors: :class:`RoundRobinComponents` (per-candidate pointer, children
-inherit the parent's already-advanced pointer), :class:`AllComponents`.
-
-Batch sampler: :class:`EpochShuffledBatchSampler` (b = 3; shuffle each epoch, pad to a
-multiple of b with the least-frequent ids, slot ``(i*b) mod L``).
-
-Acceptance: :class:`StrictImprovement` (sum after > sum before, GEPA default),
-:class:`ImprovementOrEqual`, :class:`NoiseMargin` (RRSI-style guard, extension).
-"""
+"""GEPA strategies (``gepa/strategies/*``), all drawing from the one shared seeded RNG."""
 from __future__ import annotations
 
 import random
 from collections import Counter
-from typing import Protocol, Sequence
+from typing import Sequence
 
 from .frontier import select_from_pareto_front
 
 
 def idxmax(values: Sequence[float]) -> int:
     return list(values).index(max(values))
-
-
-# ------------------------------------------------------------ candidate selection --
-class CandidateSelector(Protocol):
-    name: str
-
-    def select(self, state) -> int: ...
 
 
 class _Stateless:
@@ -49,6 +21,8 @@ class _Stateless:
 
 
 class ParetoSelector(_Stateless):
+    """Algorithm 2: set-cover pruning, then frequency-weighted sampling."""
+
     name = "pareto"
 
     def __init__(self, rng: random.Random) -> None:
@@ -82,6 +56,8 @@ class EpsilonGreedySelector(_Stateless):
 
 
 class TopKParetoSelector(_Stateless):
+    """The Pareto rule restricted to the top k candidates by aggregate score."""
+
     name = "top_k_pareto"
 
     def __init__(self, rng: random.Random, k: int = 5) -> None:
@@ -91,18 +67,12 @@ class TopKParetoSelector(_Stateless):
     def select(self, state) -> int:
         scores = state.agg_scores()
         top = set(sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[: self.k])
-        filtered = {}
-        for key, progs in state.frontier.mapping().items():
-            f = progs & top
-            if f:
-                filtered[key] = f
-        if not filtered:
-            return idxmax(scores)
-        return select_from_pareto_front(filtered, scores, self.rng)
+        filtered = {key: progs & top for key, progs in state.frontier.mapping().items() if progs & top}
+        return select_from_pareto_front(filtered, scores, self.rng) if filtered else idxmax(scores)
 
 
 class BeamSearchSelector:
-    """BeamSearch(N): keep the top-N candidates by aggregate and expand them in turn."""
+    """BeamSearch(N) of the paper's Table 3: expand the current top-N candidates in turn."""
 
     name = "beam_search"
 
@@ -129,21 +99,15 @@ SELECTORS = {"pareto": ParetoSelector, "current_best": CurrentBestSelector, "eps
 
 
 def make_selector(name: str, rng: random.Random, *, epsilon: float = 0.1, top_k: int = 5, beam_n: int = 4):
-    if name == "pareto":
-        return ParetoSelector(rng)
-    if name == "current_best":
-        return CurrentBestSelector(rng)
-    if name == "epsilon_greedy":
-        return EpsilonGreedySelector(rng, epsilon)
-    if name == "top_k_pareto":
-        return TopKParetoSelector(rng, top_k)
-    if name == "beam_search":
-        return BeamSearchSelector(rng, beam_n)
-    raise ValueError(f"unknown candidate selector {name!r}; choose from {sorted(SELECTORS)}")
+    if name not in SELECTORS:
+        raise ValueError(f"unknown candidate selector {name!r}; choose from {sorted(SELECTORS)}")
+    args = {"epsilon_greedy": (epsilon,), "top_k_pareto": (top_k,), "beam_search": (beam_n,)}.get(name, ())
+    return SELECTORS[name](rng, *args)
 
 
-# ------------------------------------------------------------ component selection --
 class RoundRobinComponents:
+    """One component per iteration; children inherit the parent's already-advanced pointer."""
+
     name = "round_robin"
 
     def __call__(self, state, idx: int) -> list[str]:
@@ -167,9 +131,8 @@ def make_component_selector(name: str):
     raise ValueError(f"unknown module selector {name!r}")
 
 
-# ------------------------------------------------------------------ batch sampler --
 class EpochShuffledBatchSampler:
-    """Port of ``gepa/strategies/batch_sampler.py:EpochShuffledBatchSampler``."""
+    """Port of ``gepa/strategies/batch_sampler.py``: shuffle each epoch, pad with the least-frequent ids."""
 
     def __init__(self, minibatch_size: int, rng: random.Random) -> None:
         self.minibatch_size = minibatch_size
@@ -184,9 +147,7 @@ class EpochShuffledBatchSampler:
         self.shuffled_ids = list(ids)
         self.rng.shuffle(self.shuffled_ids)
         self.id_freqs = Counter(self.shuffled_ids)
-        mod = len(ids) % self.minibatch_size
-        num_to_pad = (self.minibatch_size - mod) if mod != 0 else 0
-        for _ in range(num_to_pad):
+        for _ in range(-len(ids) % self.minibatch_size):
             selected = self.id_freqs.most_common()[::-1][0][0]
             self.shuffled_ids.append(selected)
             self.id_freqs[selected] += 1
@@ -209,13 +170,10 @@ class EpochShuffledBatchSampler:
     def set_state(self, d: dict) -> None:
         self.shuffled_ids = list(d["shuffled_ids"])
         self.epoch = int(d["epoch"])
-        self.id_freqs = Counter()
-        for k, v in d["id_freqs"]:
-            self.id_freqs[k] = v
+        self.id_freqs = Counter({k: v for k, v in d["id_freqs"]})
         self.last_trainset_size = int(d["last_trainset_size"])
 
 
-# ---------------------------------------------------------------------- acceptance --
 class StrictImprovement:
     name = "strict_improvement"
 
@@ -231,8 +189,7 @@ class ImprovementOrEqual:
 
 
 class NoiseMargin:
-    """Accept iff mean(after) > mean(before) + delta (an RRSI-style noise floor on the
-    minibatch; extension, off by default)."""
+    """Accept iff mean(after) > mean(before) + delta (an RRSI-style noise floor; extension)."""
 
     name = "noise_margin"
 
@@ -240,8 +197,7 @@ class NoiseMargin:
         self.delta = delta
 
     def accept(self, before: Sequence[float], after: Sequence[float]) -> bool:
-        n = max(len(after), 1)
-        return sum(after) / n > sum(before) / max(len(before), 1) + self.delta
+        return sum(after) / max(len(after), 1) > sum(before) / max(len(before), 1) + self.delta
 
 
 def make_acceptance(name: str, delta: float = 0.0):

@@ -1,14 +1,4 @@
-"""GEPA search state (``gepa/core/state.py:GEPAState``) with full, deterministic resume.
-
-Candidates are :class:`rsi.core.Artifact` objects (content-addressed, stored in an
-:class:`rsi.core.ArtifactStore`); the lineage DAG, per-instance validation scores,
-frontier, round-robin pointers, rollout counters (by phase) and the per-iteration
-trace are kept here and written as ``state.json``. Unlike the reference (weakness 15:
-unseeded iteration ids, RNG and sampler state not persisted) the RNG state, the batch
-sampler, the merge scheduler and the selector state are persisted too, and iteration
-ids are seed-derived, so a killed run resumes onto exactly the uninterrupted
-trajectory.
-"""
+"""GEPA search state (``gepa/core/state.py:GEPAState``) with exact, deterministic resume."""
 from __future__ import annotations
 
 import json
@@ -26,7 +16,7 @@ PHASES = ("seed_val", "minibatch_parent", "minibatch_child", "val_reflective", "
 
 @dataclass
 class RolloutCounter:
-    """Metric calls (one (candidate, example) evaluation = one rollout), by phase."""
+    """Metric calls by phase; one (candidate, example) evaluation is one rollout."""
 
     by_phase: dict = field(default_factory=lambda: {p: 0 for p in PHASES})
 
@@ -59,12 +49,11 @@ class SearchState:
         self.counter = RolloutCounter()
         self.i = -1
         self.trace: list[dict] = []
-        self.n_proposals = 0            # reflective children proposed (evaluated on the minibatch)
+        self.n_proposals = 0
         self.n_reflection_calls = 0
         self.best_history: list[tuple[int, int]] = []   # (rollouts, best idx) after every change
-        self.extra: dict = {}           # rng / sampler / merge / selector / usage snapshots
+        self.extra: dict = {}                           # rng / sampler / merge / selector / usage snapshots
 
-    # --------------------------------------------------------------- pool ops --
     def agg_scores(self) -> list[float]:
         return [sum(v.values()) / len(v) if v else float("-inf") for v in self.val_scores]
 
@@ -73,8 +62,7 @@ class SearchState:
         idx = len(self.candidates)
         self.candidates.append(cand)
         self.parents.append(list(parents))
-        rr = max((self.rr[p] for p in parents if p is not None), default=0)
-        self.rr.append(rr)
+        self.rr.append(max((self.rr[p] for p in parents if p is not None), default=0))
         self.val_scores.append(dict(val_scores))
         self.obj_scores.append(obj_scores)
         self.kinds.append(kind)
@@ -85,8 +73,7 @@ class SearchState:
         return idx, delta
 
     def best_idx(self) -> int:
-        """argmax mean validation score; ties -> higher coverage, then lowest index
-        (``FullEvaluationPolicy.get_best_program``)."""
+        """Argmax mean validation score; ties -> higher coverage, then lowest index."""
         best, best_s, best_cov = -1, float("-inf"), -1
         for k, sc in enumerate(self.val_scores):
             cov = len(sc)
@@ -96,21 +83,19 @@ class SearchState:
         return best
 
     def depth(self, idx: int) -> int:
-        d, cur = 0, idx
-        while self.parents[cur] and self.parents[cur][0] is not None:
-            cur = self.parents[cur][0]
+        d = 0
+        while self.parents[idx] and self.parents[idx][0] is not None:
+            idx = self.parents[idx][0]
             d += 1
         return d
 
-    # ------------------------------------------------------------ persistence --
     def to_json(self, store: Optional[ArtifactStore] = None) -> dict:
         if store is not None:
             for c in self.candidates:
                 store.put(c)
         return {
             "version": 1, "components": self.components, "i": self.i,
-            "candidates": [c.id for c in self.candidates] if store is not None else [c.to_json() for c in
-                                                                                     self.candidates],
+            "candidates": [c.id if store is not None else c.to_json() for c in self.candidates],
             "parents": self.parents, "val_scores": self.val_scores, "obj_scores": self.obj_scores, "rr": self.rr,
             "kinds": self.kinds, "discovery_evals": self.discovery_evals, "discovery_iter": self.discovery_iter,
             "frontier": self.frontier.to_json(), "rollouts_by_phase": self.counter.by_phase, "trace": self.trace,
@@ -125,14 +110,10 @@ class SearchState:
         st.candidates = [store.get(x) if isinstance(x, str) else Artifact.from_json(x) for x in d["candidates"]]
         st.parents = [list(p) for p in d["parents"]]
         st.val_scores = [dict(v) for v in d["val_scores"]]
-        st.obj_scores = list(d["obj_scores"])
-        st.rr = list(d["rr"])
-        st.kinds = list(d["kinds"])
-        st.discovery_evals = list(d["discovery_evals"])
-        st.discovery_iter = list(d["discovery_iter"])
+        for k in ("obj_scores", "rr", "kinds", "discovery_evals", "discovery_iter", "trace"):
+            setattr(st, k, list(d[k]))
         st.frontier = FrontierTracker.from_json(d["frontier"])
         st.counter = RolloutCounter(dict(d["rollouts_by_phase"]))
-        st.trace = list(d["trace"])
         st.n_proposals = int(d["n_proposals"])
         st.n_reflection_calls = int(d["n_reflection_calls"])
         st.best_history = [tuple(x) for x in d["best_history"]]
@@ -148,18 +129,15 @@ class SearchState:
     @classmethod
     def load(cls, run_dir: Path, store: ArtifactStore) -> Optional["SearchState"]:
         p = Path(run_dir) / "state.json"
-        if not p.exists():
-            return None
-        return cls.from_json(json.loads(p.read_text()), store)
+        return cls.from_json(json.loads(p.read_text()), store) if p.exists() else None
 
-    # --------------------------------------------------------------- exports --
     def candidates_table(self) -> list[dict]:
         agg = self.agg_scores()
         front = self.frontier.mapping()
-        wins = {k: sum(1 for v in front.values() if k in v) for k in range(len(self.candidates))}
         return [{"idx": k, "artifact_id": c.id, "parents": self.parents[k], "kind": self.kinds[k],
-                 "val_mean": agg[k], "frontier_wins": wins[k], "rollouts_at_discovery": self.discovery_evals[k],
-                 "iteration": self.discovery_iter[k], "depth": self.depth(k)} for k, c in enumerate(self.candidates)]
+                 "val_mean": agg[k], "frontier_wins": sum(1 for v in front.values() if k in v),
+                 "rollouts_at_discovery": self.discovery_evals[k], "iteration": self.discovery_iter[k],
+                 "depth": self.depth(k)} for k, c in enumerate(self.candidates)]
 
 
 def _jsonable(x):
