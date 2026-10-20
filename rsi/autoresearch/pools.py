@@ -1,13 +1,4 @@
-"""Scripted edit pools for artifacts that are not autoresearch-native.
-
-:func:`harness_edit_pool` targets the AgentQA-style harness layout
-(``harness.py`` with ``solve(question, llm, tools, files)``, ``prompts/system.md``,
-``prompts/task.md``) so the offline :class:`~rsi.autoresearch.MockResearchAgent`
-can drive the loop on :mod:`rsi.domains.agentqa` through
-:class:`~rsi.autoresearch.DomainResearchTask`. The edits are generic harness
-ideas (reason step by step, state the answer format, verify, use the Python
-tool), one neutral rewording and one trivially broken edit with its fix.
-"""
+"""Scripted edit pool for the AgentQA-style harness layout (``harness.py`` + ``prompts/``)."""
 from __future__ import annotations
 
 from .agent import ScriptedEdit, text_edit
@@ -46,7 +37,8 @@ def harness_edit_pool() -> list[ScriptedEdit]:
                   "task prompt: state the ANSWER: format"),
         text_edit("verify", "helpful", "prompts/system.md", "", "\nVerify and double-check your result.\n",
                   "system prompt: verify the result"),
-        _replace_file("python_tool", "helpful", "harness.py", TOOL_HARNESS, "harness: compute answers with the Python tool"),
+        _replace_file("python_tool", "helpful", "harness.py", TOOL_HARNESS,
+                      "harness: compute answers with the Python tool"),
         text_edit("polite", "neutral", "prompts/system.md", "You are a helpful assistant.",
                   "You are a friendly and helpful assistant.", "system prompt: friendlier wording"),
         text_edit("broken_return", "crash", "harness.py", "    return lines[-1] if lines else \"\"\n",

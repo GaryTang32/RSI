@@ -1,35 +1,4 @@
-"""Per-experiment tracing for the autoresearch loop (``rsi.trace`` event schema).
-
-Autoresearch has no reflective analysis step and no critic LLM, so the uniform
-event kinds map onto one experiment (= one ``round``) as follows:
-
-=============  =====================================================================
-run_start      config, task/metric/direction/budget, keep rule, agent, seed artifact
-baseline       the unmodified files run as-is (status keep), raw run values
-noise          NoiseCalibrator band from baseline re-runs (only if ``noise_runs``)
-round_start    loop state before the agent turn: incumbent, best, keeps, budgets,
-               counters, invalid streak, val epoch, program version
-analysis       what the agent reads before proposing (results.tsv tail, kept-commit
-               log); autoresearch has no separate analysis step
-proposal       one agent turn (per attempt): prompt + reply (LLM agent) or the
-               scripted edit (mock agent), claimed change, ACTUAL diff vs parent;
-               crash fixes are proposals too (``stage="fix"``)
-critic         hardened ScopeGuard verdict (locked-file / out-of-scope / tamper scan)
-eval           every training run (experiment, repeats, fixes): metric, memory,
-               wall, crash/kill/over-budget, parsed summary, per-task (Domain tasks)
-gate           keep-rule verdict with the numbers used (candidate / reference
-               values and means, gain, min_gain, running best, noise delta)
-decision       keep / discard / crash / rejected / duplicate / invalid, incumbent
-               commit before and after, the results.tsv row written
-state          loop state after the experiment
-monitor        sealed-split scores of every new incumbent (never shown to the loop)
-run_end        stop reason, counts, final vs baseline, spend
-=============  =====================================================================
-
-:class:`TaskAuditMonitor` is the :class:`rsi.trace.ShadowMonitor` analogue for
-script tasks (tinylm / tabular / landscape): it calls ``task.audit`` (hidden
-test_iid / test_shift) for each new incumbent and writes only to the trace.
-"""
+"""Write-only tracing helpers: shadow audits of new incumbents and the per-run ``eval`` payload."""
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -38,12 +7,7 @@ from ..core.artifact import Artifact
 
 
 class TaskAuditMonitor:
-    """Write-only shadow audit of kept versions via ``task.audit`` (hidden splits).
-
-    ``observe`` returns None; results go to the trace and to ``self.cache`` (so
-    the post-hoc HiddenAudit can reuse identical-seed audits instead of paying
-    for a second training run). Nothing is returned to the loop or the agent.
-    """
+    """Shadow audit of each new incumbent via ``task.audit``; results go to the trace and ``cache`` only."""
 
     def __init__(self, task, seed: int = 0) -> None:
         self.task = task
@@ -63,10 +27,8 @@ class TaskAuditMonitor:
         aud = dict(self.task.audit(artifact, seed=self.seed) or {})
         self.cache[artifact.id] = dict(aud)
         truth = self.task.truth(artifact)
-        sealed: dict[str, Any] = {}
-        for s in self.splits:
-            if s in aud and isinstance(aud[s], (int, float)):
-                sealed[s] = {"S": float(aud[s])}
+        sealed: dict[str, Any] = {s: {"S": float(aud[s])} for s in self.splits
+                                  if s in aud and isinstance(aud[s], (int, float))}
         if truth is not None:
             sealed["truth"] = {"S": float(truth)}
         extra = {k: v for k, v in aud.items() if k not in sealed}
@@ -76,7 +38,7 @@ class TaskAuditMonitor:
 
 
 class CachedAuditTask:
-    """Proxy task whose ``audit`` returns cached shadow-audit results when present."""
+    """Task proxy whose ``audit`` returns cached shadow-audit results when present."""
 
     def __init__(self, task, cache: dict[str, dict]) -> None:
         self._task = task
@@ -91,8 +53,7 @@ class CachedAuditTask:
 
 
 def make_monitor(task, *, seed: int = 0):
-    """ShadowMonitor for Domain tasks with sealed splits, TaskAuditMonitor for
-    script/in-process tasks with hidden audit splits, else None."""
+    """ShadowMonitor for Domain tasks with sealed splits, TaskAuditMonitor for tasks with audit splits, else None."""
     from .task import DomainResearchTask
 
     if isinstance(task, DomainResearchTask):
@@ -111,7 +72,6 @@ def make_monitor(task, *, seed: int = 0):
 
 
 def outcome_json(outcome, max_log: int = 1500) -> dict:
-    """What one training run produced, for an ``eval`` event."""
     if outcome is None:
         return {}
     d = {"metric": outcome.metric, "memory_gb": outcome.memory_gb, "wall_s": round(outcome.wall_s, 3),

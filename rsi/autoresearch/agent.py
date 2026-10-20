@@ -1,22 +1,4 @@
-"""The single LLM role: a research agent that edits the editable files.
-
-* :class:`LLMResearchAgent` - wraps an :class:`rsi.core.editors.Editor`:
-  :class:`~rsi.core.RewriteEditor` (one completion returns the whole new
-  ``train.py``; works with any backend incl. MockLLM) or
-  :class:`~rsi.core.AgentEditor` (headless ``claude -p`` coding agent editing a
-  scratch copy). Its prompt is the rendered ``program.md`` plus the context
-  upstream's agent has: the in-scope files, ``results.tsv`` and the kept-commit
-  log. It never runs anything itself; the framework does (hardened semantics).
-* :class:`MockResearchAgent` - deterministic scripted mutator for offline runs:
-  a pool of :class:`ScriptedEdit` (helpful / neutral / harmful / crash / exploit),
-  a policy (``greedy`` coordinate search, ``random``, or a fixed ``schedule``),
-  injection rates for crash and exploit edits, and ``p_fix`` for trivial crashes.
-* :func:`scripted_llm` - a :class:`~rsi.core.MockLLM` that answers
-  RewriteEditor prompts with pool edits, to exercise the LLM path offline.
-
-Neither agent changes itself between experiments: "the agent stays the same; it
-improves the training code of a separate small model".
-"""
+"""Research agents: the LLM agent (an Editor over program.md + results.tsv) and scripted offline agents."""
 from __future__ import annotations
 
 import ast
@@ -52,7 +34,6 @@ class AgentContext:
     notes: str = ""                     # framework notes (e.g. the NEVER STOP nudge after empty turns)
 
     def files(self) -> dict[str, str]:
-        """Context files beside the artifact (program.md itself goes into the instructions)."""
         out = {"results.tsv": self.results_tsv, "git_log.txt": self.git_log}
         if self.notes:
             out["notes.txt"] = self.notes
@@ -60,7 +41,7 @@ class AgentContext:
 
 
 class ResearchAgent:
-    """Interface: propose one experiment; optionally fix a trivial crash."""
+    """Proposes one experiment per turn and may fix a crash."""
 
     name = "agent"
 
@@ -74,7 +55,6 @@ class ResearchAgent:
         return {}
 
 
-# --------------------------------------------------------------------------- LLM agent
 PROPOSE = """{program}
 
 ---
@@ -104,12 +84,7 @@ _COMMIT_TRAILER = re.compile(r"^(Co-Authored-By:.*|Claude-Session:.*|Signed-off-
 
 
 def sanitize_reply_files(prop: Proposal, parent: Artifact) -> Proposal:
-    """Strip reply debris that is not code from the END of each changed file: a lone
-    closing markdown fence (a half-fenced file block that ``parse_file_blocks`` does not
-    unwrap) and commit-trailer lines (``Co-Authored-By:`` / ``Claude-Session:``) that a
-    host-configured ``claude -p`` may append to its reply. Seen in the live validation run
-    (validation/autoresearch/RUNS.md): both made train.py a SyntaxError and cost two fix
-    calls. What was stripped is recorded in ``prop.meta["sanitized"]`` (and so in the trace)."""
+    """Strip a trailing lone code fence and commit trailers from changed files (kept in ``meta["sanitized"]``)."""
     if not prop.ok:
         return prop
     ups, removed = {}, {}
@@ -133,12 +108,7 @@ def sanitize_reply_files(prop: Proposal, parent: Artifact) -> Proposal:
 
 
 class LLMResearchAgent(ResearchAgent):
-    """Research agent driven by an :class:`rsi.core.editors.Editor`.
-
-    ``editable=None`` is passed to the editor on purpose: out-of-scope edits must
-    reach the loop so faithful mode can run them (upstream: protected by
-    instruction only) and hardened mode can count and reject them.
-    """
+    """Agent over an Editor; ``editable=None`` lets out-of-scope edits reach the loop to run or reject."""
 
     last_fix: Optional[Proposal] = None                        # last fix reply (trace only)
 
@@ -156,14 +126,14 @@ class LLMResearchAgent(ResearchAgent):
         prop.meta.setdefault("prompt", self._prompt_text(ctx.artifact, instr, ctx.files()))
         if not prop.ok:
             m = _REWIND.search(prop.raw or "")
-            if m:                                   # program.md: "you can rewind ... very very sparingly"
+            if m:
                 prop.meta["rewind"] = m.group(1)
                 prop.change = prop.change or f"REWIND {m.group(1)}"
             return prop
         return sanitize_reply_files(prop, ctx.artifact) if self.sanitize else prop
 
     def _prompt_text(self, artifact, instr, context) -> str:
-        """The exact prompt the editor sent (RewriteEditor), else the instructions (for the trace)."""
+        """The exact prompt the editor sent (RewriteEditor), else the instructions."""
         build = getattr(self.editor, "build_prompt", None)
         try:
             return build(artifact, instr, context, None) if build is not None else instr
@@ -177,29 +147,26 @@ class LLMResearchAgent(ResearchAgent):
         prop.meta.setdefault("prompt", self._prompt_text(candidate, instr, None))
         if self.sanitize:
             prop = sanitize_reply_files(prop, candidate)
-        self.last_fix = prop                                   # kept for the trace (also a GIVE_UP reply)
+        self.last_fix = prop
         if not prop.ok or "GIVE_UP" in (prop.raw or "")[:200]:
             return None
         prop.change = prop.change or description
         return prop
 
     def usage(self) -> dict:
-        llm = getattr(self.editor, "llm", None) or getattr(self.editor, "cli", None)
+        llm: Optional[LLM] = getattr(self.editor, "llm", None) or getattr(self.editor, "cli", None)
         return llm.meter.snapshot() if llm is not None else {}
 
 
-# --------------------------------------------------------------------------- scripted edits
 @dataclass
 class ScriptedEdit:
-    """One scripted mutation. ``apply(files) -> (updates, description)`` or None
-    when not applicable to the current files. ``kind`` is the label used in
-    analyses: helpful | neutral | harmful | crash | exploit | unknown."""
+    """``apply(files) -> (updates, description)`` or None; ``kind``: helpful|neutral|harmful|crash|exploit|unknown."""
 
     name: str
     kind: str
     apply: Callable[[dict], Optional[tuple[dict, str]]]
-    fix: Optional[Callable[[dict], Optional[dict]]] = None    # trivial-crash repair (keeps the idea)
-    group: str = ""                                           # knob / family (greedy coordinate search)
+    fix: Optional[Callable[[dict], Optional[dict]]] = None    # crash repair that keeps the idea
+    group: str = ""                                           # knob / family
     weight: float = 1.0
     meta: dict = field(default_factory=dict)
 
@@ -234,19 +201,16 @@ def fmt_value(v: Any) -> str:
 
 def knob_edit(knob: str, op: Callable[[Any], Any], *, kind: str = "unknown", file: str = "train.py",
               lo: Any = None, hi: Any = None, name: Optional[str] = None, weight: float = 1.0) -> ScriptedEdit:
-    """An edit ``KNOB = f(KNOB)`` on a constants line, described upstream-style as
-    ``KNOB old -> new``; not applicable when the result leaves ``[lo, hi]``."""
+    """``KNOB = op(KNOB)`` described as ``KNOB old -> new``; not applicable when the result leaves ``[lo, hi]``."""
 
     def apply(files: dict):
         text = files.get(file)
-        if text is None:
-            return None
-        old = get_knob(text, knob)
+        old = get_knob(text, knob) if text is not None else None
         if old is None:
             return None
         new = op(old)
         if isinstance(old, int) and not isinstance(old, bool) and isinstance(new, float):
-            new = int(round(new))                     # integer knobs stay integers (31 * 0.5 -> 16)
+            new = int(round(new))                     # integer knobs stay integers
         if isinstance(new, float):
             new = float(f"{new:.6g}")
         if new == old or (lo is not None and new < lo) or (hi is not None and new > hi):
@@ -260,8 +224,7 @@ def knob_edit(knob: str, op: Callable[[Any], Any], *, kind: str = "unknown", fil
 def text_edit(name: str, kind: str, file: str, old: str, new: str, description: str, *,
               fix: Optional[Callable[[dict], Optional[dict]]] = None, group: str = "", weight: float = 1.0,
               extra_files: Optional[dict] = None) -> ScriptedEdit:
-    """Replace the first occurrence of ``old`` with ``new`` in ``file`` (``old=""``
-    appends). ``extra_files`` adds/overwrites other files (e.g. a locked one)."""
+    """Replace the first ``old`` with ``new`` in ``file`` (``old=""`` appends); ``extra_files`` overwrite others."""
 
     def apply(files: dict):
         text = files.get(file)
@@ -279,22 +242,7 @@ def text_edit(name: str, kind: str, file: str, old: str, new: str, description: 
 
 
 class MockResearchAgent(ResearchAgent):
-    """Deterministic scripted research agent.
-
-    Parameters
-    ----------
-    pool:
-        the task's :class:`ScriptedEdit` list (``task.mock_edit_pool()``).
-    policy:
-        ``"greedy"`` - after a keep, push the same knob the same way again with
-        probability ``p_repeat`` (e.g. RoPE 10k -> 50k -> 100k -> 200k); otherwise pick an
-        edit not yet tried on the current incumbent; ``"random"`` - uniform over
-        applicable edits; ``"schedule"`` - apply ``schedule`` names in order.
-    crash_rate, exploit_rate:
-        probability of drawing from the crash / exploit sub-pools (injection).
-    p_fix:
-        probability that a trivial crash is fixed on each retry.
-    """
+    """Scripted agent; ``greedy`` repeats a kept edit w.p. ``p_repeat``, else tries an untried one."""
 
     def __init__(self, pool: Sequence[ScriptedEdit], *, policy: str = "greedy", seed: int = 0,
                  crash_rate: float = 0.0, exploit_rate: float = 0.0, p_fix: float = 1.0, p_repeat: float = 0.7,
@@ -355,7 +303,7 @@ class MockResearchAgent(ResearchAgent):
                 fresh = [e for e in normal if e.name not in tried] if self.policy == "greedy" else normal
                 if fresh:
                     choice = self._pick(fresh, files)
-                if choice is None:       # out of ideas: "try combining previous near-misses"
+                if choice is None:       # out of ideas: combine two edits
                     choice = self._combine(normal, files)
         if choice is None:
             return Proposal(None, error="no applicable edit in the pool")
@@ -391,10 +339,7 @@ class MockResearchAgent(ResearchAgent):
 
 
 class RandomSearchAgent(ResearchAgent):
-    """Random-search baseline: every proposal is the *starting* artifact with
-    1..``max_edits`` random applicable pool edits (independent draws, not a
-    chain). Under a strict keep rule the loop then reports best-of-N, which is
-    what "the agent is >= random search at equal experiment count" compares with."""
+    """Baseline: each proposal is ``base`` plus 1..``max_edits`` random applicable edits (independent draws)."""
 
     def __init__(self, pool: Sequence[ScriptedEdit], base: Artifact, *, seed: int = 0, max_edits: int = 3,
                  name: str = "random-search") -> None:
@@ -422,10 +367,8 @@ class RandomSearchAgent(ResearchAgent):
         return Proposal(new, change="random: " + "; ".join(descs), meta={"edit": "random", "kind": "random"})
 
 
-# --------------------------------------------------------------------------- offline LLM
 def scripted_llm(pool: Sequence[ScriptedEdit], seed: int = 0, name: str = "scripted-researcher") -> MockLLM:
-    """A MockLLM that answers :class:`LLMResearchAgent` prompts in RewriteEditor
-    format by applying a random applicable pool edit to the artifact in the prompt."""
+    """MockLLM answering RewriteEditor prompts with a random applicable pool edit of the artifact in the prompt."""
     rng = random.Random(seed)
     normal = [e for e in pool if e.kind not in ("crash", "exploit")]
 

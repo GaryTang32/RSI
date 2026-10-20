@@ -1,32 +1,23 @@
-"""Morning report and honest measurement.
-
-* :class:`Analyzer` - the quantities of upstream's ``analysis.ipynb``: keep rate
-  n_keep / (n_keep + n_discard) (crashes excluded), running best over KEEP rows,
-  per-keep contribution Delta_i = metric(previous keep) - metric(keep i) (sign
-  adjusted so positive = better; the TOTAL telescopes to first keep - last keep),
-  total improvement %, top hits, experiments/hour, and the ``progress.png`` plot.
-* :class:`HiddenAudit` - xgboost-port ``run_groundtruth_all.sh`` analogue: every
-  kept version is re-scored post hoc on splits the agent never saw (iid and
-  shifted test), reported separately so overfitting and distribution shift are
-  not conflated. A version whose audit run crashes gets a row with ``audit_error``
-  (``CRASH`` in the TSV), as in the port's script, instead of disappearing. Results
-  go to ``groundtruth_all.tsv`` and the ledger, never into the agent's context.
-* :class:`Reeval` - honest re-evaluation with fresh run seeds (the MLX
-  maintainers: "the recorded curve is an optimistic running-minimum that
-  regresses on honest re-eval").
-"""
+"""Morning report (keep rate, running best, top hits, progress.png), hidden audits and fresh-seed re-evaluation."""
 from __future__ import annotations
 
 import csv
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 import numpy as np
 
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore, Ledger
 from ..core.stats import summarize_runs
+
+
+def _map(fn: Callable, items: Sequence, workers: int) -> list:
+    if workers > 1:
+        with ThreadPoolExecutor(workers) as ex:
+            return list(ex.map(fn, items))
+    return [fn(x) for x in items]
 
 
 class Analyzer:
@@ -39,13 +30,10 @@ class Analyzer:
 
     @classmethod
     def from_ledger(cls, ledger: Ledger, direction: str = "min", metric: str = "val_bpb") -> "Analyzer":
-        rows = []
-        for n in ledger.nodes():
-            if n.status not in ("keep", "discard", "crash", "rejected"):
-                continue
-            rows.append({"exp": n.round, "status": "discard" if n.status == "rejected" else n.status,
-                         "metric": n.score, "description": n.change, "commit": n.meta.get("commit", ""),
-                         "t": n.t, "truth": n.metrics.get("truth")})
+        rows = [{"exp": n.round, "status": "discard" if n.status == "rejected" else n.status, "metric": n.score,
+                 "description": n.change, "commit": n.meta.get("commit", ""), "t": n.t,
+                 "truth": n.metrics.get("truth")}
+                for n in ledger.nodes() if n.status in ("keep", "discard", "crash", "rejected")]
         return cls(rows, direction, metric)
 
     @classmethod
@@ -102,15 +90,6 @@ class Analyzer:
             out["experiments_per_hour"] = out["n_experiments"] / (wall_s / 3600.0)
         return out
 
-    def report(self, wall_s: Optional[float] = None) -> str:
-        s = self.summary(wall_s)
-        lines = [f"experiments: {s['n_experiments']}  keep {s['n_keep']}  discard {s['n_discard']}  crash {s['n_crash']}"
-                 f"  keep rate {s['keep_rate']:.2f}",
-                 f"{self.metric}: baseline {s['baseline']}  best {s['best']}  improvement {s['improvement']}"]
-        for d in s["top_hits"]:
-            lines.append(f"  {d['delta']:+.6f}  {d['commit']}  {d['description']}")
-        return "\n".join(lines)
-
     def plot(self, path: str | Path, title: str = "autoresearch progress", margin: Optional[float] = None) -> Path:
         import matplotlib
 
@@ -122,7 +101,7 @@ class Analyzer:
         fig, ax = plt.subplots(figsize=(11, 5))
         xs = [r["exp"] for r in rows if r["status"] == "discard"]
         ys = [r["metric"] for r in rows if r["status"] == "discard"]
-        if base is not None and ys:
+        if base is not None and ys:      # hide far-off discards so the kept curve stays readable
             span = np.ptp([r["metric"] for r in rows if r["status"] == "keep"] + [base]) or abs(base) * 0.05 or 1.0
             lim = margin if margin is not None else 1.5 * span
             keep = [(x, y) for x, y in zip(xs, ys) if abs(self._gain(base, y)) <= lim or self._gain(base, y) > 0]
@@ -131,17 +110,15 @@ class Analyzer:
         kx = [r["exp"] for r in rows if r["status"] == "keep"]
         ky = [r["metric"] for r in rows if r["status"] == "keep"]
         ax.scatter(kx, ky, s=36, color="#1e8e3e", label="kept", zorder=3)
-        rb = self.running_best()
-        ax.step([r["exp"] for r in self.rows], [b if b is not None else np.nan for b in rb], where="post",
-                color="#1e8e3e", lw=1.5, label="running best", zorder=1)
+        ax.step([r["exp"] for r in self.rows], [b if b is not None else np.nan for b in self.running_best()],
+                where="post", color="#1e8e3e", lw=1.5, label="running best", zorder=1)
         for r in rows:
             if r["status"] == "keep" and r["exp"] > 0:
                 ax.annotate(str(r["description"])[:38], (r["exp"], r["metric"]), fontsize=7, rotation=30,
                             xytext=(3, 4), textcoords="offset points", color="#1e5e2e")
         ax.set_xlabel("experiment #")
         ax.set_ylabel(f"{self.metric} ({'lower' if self.direction == 'min' else 'higher'} is better)")
-        n_keep = len(kx)
-        ax.set_title(f"{title}: {len(self.rows) - 1} experiments, {max(n_keep - 1, 0)} kept improvements")
+        ax.set_title(f"{title}: {len(self.rows) - 1} experiments, {max(len(kx) - 1, 0)} kept improvements")
         ax.legend(loc="best", fontsize=8)
         ax.grid(alpha=0.3)
         fig.tight_layout()
@@ -153,7 +130,7 @@ class Analyzer:
 
 
 class HiddenAudit:
-    """Post-hoc scoring of versions on hidden splits (the agent never sees these)."""
+    """Post-hoc scoring of versions on hidden splits the agent never sees."""
 
     def __init__(self, task, workers: int = 1) -> None:
         self.task = task
@@ -169,15 +146,7 @@ class HiddenAudit:
     def audit_ledger(self, ledger: Ledger, store: ArtifactStore, statuses: Sequence[str] = ("keep",),
                      seed: int = 0) -> list[dict]:
         nodes = [n for n in ledger.nodes() if n.status in statuses and n.artifact_id]
-
-        def one(n):
-            return n, self.audit(store.get(n.artifact_id), seed=seed)
-
-        if self.workers > 1:
-            with ThreadPoolExecutor(self.workers) as ex:
-                pairs = list(ex.map(one, nodes))
-        else:
-            pairs = [one(n) for n in nodes]
+        pairs = _map(lambda n: (n, self.audit(store.get(n.artifact_id), seed=seed)), nodes, self.workers)
         rows = []
         for n, aud in pairs:
             if not aud:
@@ -204,7 +173,7 @@ class HiddenAudit:
 
 
 class Reeval:
-    """Re-run a version with fresh run seeds and summarise (mean, 95% bootstrap CI)."""
+    """Re-run a version with fresh run seeds; mean and 95% bootstrap CI."""
 
     def __init__(self, task, mode: str = "hardened", workers: int = 1) -> None:
         self.task = task
@@ -212,14 +181,7 @@ class Reeval:
         self.workers = workers
 
     def values(self, artifact: Artifact, seeds: Sequence[int]) -> tuple[list[float], int]:
-        def one(s):
-            return self.task.run(artifact, seed=s, mode=self.mode).metric
-
-        if self.workers > 1:
-            with ThreadPoolExecutor(self.workers) as ex:
-                vals = list(ex.map(one, seeds))
-        else:
-            vals = [one(s) for s in seeds]
+        vals = _map(lambda s: self.task.run(artifact, seed=s, mode=self.mode).metric, seeds, self.workers)
         ok = [float(v) for v in vals if v is not None]
         return ok, len(vals) - len(ok)
 
