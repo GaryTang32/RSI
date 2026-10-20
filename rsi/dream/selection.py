@@ -1,16 +1,4 @@
-"""Selecting the next deployed policy.
-
-* :class:`Selector` - the paper's rule: ``m* = argmax_m V^m`` over all evaluated
-  versions *including the incumbent* ``pi_t^0``, so ``V^{m*} >= V^0`` on replay
-  [paper:§3 p.6]. ``include_incumbent=False`` is the E4 ablation.
-* :class:`GuardedSelector` - the RRSI-guarded extension the overview asks for
-  ("keep some past searches aside for checking, and ignore wins smaller than the
-  noise" [doc]): worlds are split into development worlds (the developer's feedback
-  and the ranking) and held-out worlds; the best development candidate replaces the
-  incumbent only if its mean held-out gain over the incumbent exceeds a noise
-  margin ``delta = max(margin_floor, z * se(paired held-out differences))``. The gate
-  is :class:`rsi.core.gates.MinGain`, applied through :func:`rsi.core.gates.select`.
-"""
+"""Selecting the next deployed policy: the paper's argmax with incumbent, or a held-out, noise-margin guard."""
 from __future__ import annotations
 
 import math
@@ -35,7 +23,7 @@ def _mean(xs: Sequence[float], idx: Sequence[int]) -> float:
 
 
 class Selector:
-    """argmax of the replay value over versions, incumbent (index 0) included."""
+    """``m* = argmax_m V^m`` over all versions, incumbent (index 0) included, so ``V^{m*} >= V^0`` [paper:§3]."""
 
     name = "argmax"
 
@@ -50,20 +38,19 @@ class Selector:
 
     def select(self, reports: Sequence) -> SelectionResult:
         vals = [float(r.value) for r in reports]
-        cands = list(range(len(reports))) if self.include_incumbent else list(range(1, len(reports)))
-        cands = [i for i in cands if np.isfinite(vals[i])]
+        cands = [i for i in range(0 if self.include_incumbent else 1, len(reports)) if np.isfinite(vals[i])]
         if not cands:
             return SelectionResult(0, "no admissible candidate: keep incumbent", vals)
         best = max(vals[i] for i in cands)
         winners = [i for i in cands if vals[i] >= best - 1e-12]
-        idx = 0 if 0 in winners else winners[0]
         why = "argmax replay value (incumbent included)" if self.include_incumbent else \
             "argmax replay value over revisions only (incumbent excluded)"
-        return SelectionResult(idx, why, vals, {"best": best})
+        return SelectionResult(0 if 0 in winners else winners[0], why, vals, {"best": best})
 
 
 class GuardedSelector(Selector):
-    """Held-out worlds + noise margin (RRSI-style guard on Dream-RSI selection)."""
+    """Deploy the best development-world candidate only if its held-out gain exceeds
+    ``delta = max(margin_floor, z * se(paired held-out differences))`` (:class:`rsi.core.gates.MinGain`)."""
 
     name = "guarded"
 
@@ -73,15 +60,11 @@ class GuardedSelector(Selector):
         self.holdout_frac, self.min_dev, self.z, self.margin_floor = holdout_frac, min_dev, z, margin_floor
 
     def holdout_worlds(self, n_worlds: int) -> list[int]:
-        """Every k-th world (k ~ 1/holdout_frac), counted from the oldest, is held out,
-        so held-out worlds come from all phases of the run; at least ``min_dev`` worlds
-        stay for development."""
+        """Every k-th world (k ~ 1/holdout_frac) from the oldest, keeping at least ``min_dev`` for development."""
         if n_worlds <= self.min_dev:
             return []
         k = max(2, int(round(1.0 / max(1e-9, self.holdout_frac))))
-        hold = [i for i in range(n_worlds) if i % k == k - 1]
-        if not hold:
-            hold = [n_worlds - 1]
+        hold = [i for i in range(n_worlds) if i % k == k - 1] or [n_worlds - 1]
         while n_worlds - len(hold) < self.min_dev and hold:
             hold.pop(0)
         return hold
@@ -99,17 +82,15 @@ class GuardedSelector(Selector):
             return SelectionResult(0, "no candidate: keep incumbent", dev_vals)
         top = max(cands, key=lambda i: (dev_vals[i], -i))
         inc = reports[0]
-        if not hold:
-            delta = self.margin_floor
-            gain_vals = (dev_vals[top], dev_vals[0])
-            diffs = []
-        else:
+        if hold:
             diffs = [reports[top].per_world[i] - inc.per_world[i] for i in hold]
             se = float(np.std(diffs, ddof=1) / math.sqrt(len(diffs))) if len(diffs) >= 2 else 0.0
             delta = max(self.margin_floor, self.z * se)
             gain_vals = (_mean(reports[top].per_world, hold), _mean(inc.per_world, hold))
-        cand_s, inc_s = Scored(score=gain_vals[0]), Scored(score=gain_vals[1])
-        winner, verdicts = select([(top, cand_s)], inc_s, MinGain(), GateContext(delta=delta))
+        else:
+            delta, gain_vals, diffs = self.margin_floor, (dev_vals[top], dev_vals[0]), []
+        winner, verdicts = select([(top, Scored(score=gain_vals[0]))], Scored(score=gain_vals[1]), MinGain(),
+                                  GateContext(delta=delta))
         if not self.include_incumbent and winner is None:
             winner = top
         idx = 0 if winner is None else int(winner)

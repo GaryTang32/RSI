@@ -1,24 +1,8 @@
-"""Discovery trees: the recorded searches that become replay worlds.
-
-A discovery tree is "every attempt, the attempt it started from, and its
-evaluated score" [paper:§3 p.5]. Only the root ``r`` and leaves are selectable
-and every non-root node has one recorded child, so a tree is a **root with a
-set of chains (branches)**; branch ``b`` attempt ``a`` has cell id ``b{b}.a{a}``
-(the Listing-2 "branch x attempt grid").
-
-* :class:`DiscoveryNode` - one attempt: parent, branch/attempt, creation ``seq``,
-  evaluation (score, validity, ``fail_class``, error, n_valid/n_total), workspace
-  snapshot reference, proposal text, cost, tags.
-* :class:`DiscoveryTree` - JSON-serializable world; ``branches()``, ``observation()``,
-  support fields (``trace_branch_count``, ``trace_refine_count``), ``render_grid()``;
-  :meth:`DiscoveryTree.from_ledger` converts ANY :class:`rsi.core.Ledger` (RRSI,
-  autoresearch, GEPA ...) into a replay world, forks becoming extra branches.
-* :class:`SnapshotStore` - content-addressed workspace snapshots (an
-  :class:`rsi.core.ArtifactStore`, or memory when no directory is given).
-"""
+"""Discovery trees: a root plus chains (branches) of recorded attempts, cell ``b{b}.a{a}`` [paper:§3]."""
 from __future__ import annotations
 
 import json
+from collections import deque
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Optional
@@ -53,9 +37,9 @@ class DiscoveryNode:
     error: Optional[str] = None
     n_valid: Optional[int] = None
     n_total: Optional[int] = None
-    round: int = 0                         # online decision round that created it (1-based; root 0)
-    artifact_id: Optional[str] = None      # workspace snapshot reference
-    proposal: str = ""                     # proposal.md of the attempt
+    round: int = 0  # online decision round that created it (1-based; root 0)
+    artifact_id: Optional[str] = None
+    proposal: str = ""
     diagnostics: dict = field(default_factory=dict)
     cost: dict = field(default_factory=dict)
     tags: dict = field(default_factory=dict)
@@ -77,40 +61,28 @@ class DiscoveryTree:
 
     def __init__(self, root: DiscoveryNode, nodes: Iterable[DiscoveryNode] = (), *,
                  branch_tags: Optional[dict] = None, world_id: str = "world", meta: Optional[dict] = None) -> None:
-        if root.id != ROOT_ID:
-            root.id = ROOT_ID
+        root.id = ROOT_ID
         self.root = root
         self.world_id = world_id
         self.meta = dict(meta or {})
         self.branch_tags: dict[int, dict] = {int(k): dict(v) for k, v in (branch_tags or {}).items()}
         self._nodes: dict[str, DiscoveryNode] = {ROOT_ID: root}
-        self._children: dict[str, list[str]] = {}
         for n in nodes:
             self.add(n)
 
-    # ------------------------------------------------------------------ building
     def add(self, node: DiscoveryNode) -> DiscoveryNode:
         if node.id in self._nodes:
             raise ValueError(f"duplicate node {node.id}")
         if node.parent_id not in self._nodes:
             raise KeyError(f"parent {node.parent_id} of {node.id} not in tree")
         self._nodes[node.id] = node
-        self._children.setdefault(node.parent_id, []).append(node.id)
-        self._children[node.parent_id].sort(key=lambda i: self._nodes[i].seq)
         return node
 
-    # ------------------------------------------------------------------- reading
     def __len__(self) -> int:
         return len(self._nodes)
 
-    def __contains__(self, node_id: str) -> bool:
-        return node_id in self._nodes
-
     def node(self, node_id: str) -> DiscoveryNode:
         return self._nodes[node_id]
-
-    def get(self, node_id: str) -> Optional[DiscoveryNode]:
-        return self._nodes.get(node_id)
 
     def nodes(self) -> list[DiscoveryNode]:
         return sorted(self._nodes.values(), key=lambda n: n.seq)
@@ -123,16 +95,11 @@ class DiscoveryTree:
         """Number of recorded attempts (non-root nodes)."""
         return len(self._nodes) - 1
 
-    def children(self, node_id: str) -> list[DiscoveryNode]:
-        return [self._nodes[i] for i in self._children.get(node_id, [])]
-
     def branches(self) -> dict[int, list[DiscoveryNode]]:
         out: dict[int, list[DiscoveryNode]] = {}
         for n in self.non_root():
             out.setdefault(n.branch, []).append(n)
-        for b in out:
-            out[b].sort(key=lambda n: n.attempt)
-        return dict(sorted(out.items()))
+        return {b: sorted(cells, key=lambda n: n.attempt) for b, cells in sorted(out.items())}
 
     def branch_order(self) -> list[int]:
         """Branches in creation order of their first cell (the paper's 'earliest-created child of r')."""
@@ -143,9 +110,7 @@ class DiscoveryTree:
 
     @property
     def trace_branch_count(self) -> int:
-        """Support width: the recorded plan's branch count (live recordings keep their plan in
-        ``meta["plan"]``, including roots the recording policy never opened), else the number
-        of branch slots spanned by recorded cells."""
+        """Support width: the recorded plan's branch count (incl. unopened roots), else the branch slots used."""
         bc = max((n.branch for n in self.non_root()), default=-1) + 1
         p = self.meta.get("plan")
         return max(bc, int(p["branch_count"])) if p else bc
@@ -166,15 +131,15 @@ class DiscoveryTree:
 
     @property
     def ceiling(self) -> float:
-        """Best recorded score (incl. the root) - the replay quality ceiling."""
-        return float(self.best_node().score if self.best_node().score is not None else self.root_score)
+        """Best recorded score (incl. the root): the replay quality ceiling."""
+        s = self.best_node().score
+        return float(s if s is not None else self.root_score)
 
     def observation(self, node: DiscoveryNode) -> Observation:
         parent = self._nodes.get(node.parent_id) if node.parent_id else None
         base = self.root.score
-        dp = None
-        if node.score is not None and parent is not None and parent.score is not None:
-            dp = float(node.score) - float(parent.score)
+        dp = float(node.score) - float(parent.score) \
+            if node.score is not None and parent is not None and parent.score is not None else None
         db = float(node.score) - float(base) if node.score is not None and base is not None else None
         return Observation(node.id, node.branch, node.attempt, node.score, node.evaluated, node.valid,
                            node.fail_class, node.error, db, dp, node.n_valid, node.n_total, node.parent_id)
@@ -185,16 +150,12 @@ class DiscoveryTree:
         return CellMeta(cell_id(branch, attempt), branch, attempt, parent, seq,
                         dict(self.branch_tags.get(branch, {})) if with_tags else {})
 
-    # ------------------------------------------------------------------ rendering
     def render_grid(self, reveal_round: Optional[dict[str, int]] = None, labels: Optional[dict[int, str]] = None,
                     fmt: str = "{:.2f}") -> str:
-        """Text grid: rows = branches, columns = attempts; each cell shows its score
-        and, when ``reveal_round`` is given, the round it was revealed (``R3``) or ``--``."""
-        br = self.branches()
+        """Rows = branches, columns = attempts; each cell shows its score and the round it was revealed (or --)."""
         width = self.trace_refine_count + 1
-        head = "branch   " + " ".join(f"{('attempt ' + str(a + 1)):>11}" for a in range(width))
-        lines = [head]
-        for b, cells in br.items():
+        lines = ["branch   " + " ".join(f"{('attempt ' + str(a + 1)):>11}" for a in range(width))]
+        for b, cells in self.branches().items():
             name = (labels or {}).get(b, f"{b}")
             row = [f"{name:<8}"]
             by_a = {c.attempt: c for c in cells}
@@ -211,7 +172,6 @@ class DiscoveryTree:
             lines.append(" ".join(row))
         return "\n".join(lines)
 
-    # --------------------------------------------------------------- persistence
     def to_json(self) -> dict:
         return {"world_id": self.world_id, "meta": self.meta,
                 "branch_tags": {str(k): v for k, v in self.branch_tags.items()},
@@ -234,45 +194,32 @@ class DiscoveryTree:
     def load(cls, path: str | Path) -> "DiscoveryTree":
         return cls.from_json(json.loads(Path(path).read_text()))
 
-    # ------------------------------------------------------------- ledger bridge
     def to_ledger(self, ledger: Optional[Ledger] = None, *, prefix: str = "", round_offset: int = 0) -> Ledger:
-        """Write every node as an :class:`rsi.core.ledger.Node` (kind ``attempt``;
-        root kind ``baseline``) so dream runs are inspectable like any other method."""
+        """Every node as a ledger ``Node`` (kind ``attempt``; root ``baseline``)."""
         led = ledger if ledger is not None else Ledger()
         for n in self.nodes():
-            nid = f"{prefix}{n.id}"
-            parent = f"{prefix}{n.parent_id}" if n.parent_id else None
-            led.add(Node(id=nid, parent=parent, round=n.round + round_offset,
-                         kind="baseline" if n.id == ROOT_ID else "attempt",
+            is_root = n.id == ROOT_ID
+            led.add(Node(id=f"{prefix}{n.id}", parent=f"{prefix}{n.parent_id}" if n.parent_id else None,
+                         round=n.round + round_offset, kind="baseline" if is_root else "attempt",
                          status="ok" if n.success else (n.fail_class or "crash"), score=n.score,
-                         cost=float(n.cost.get("calls", 1.0 if n.id != ROOT_ID else 0.0)),
+                         cost=float(n.cost.get("calls", 0.0 if is_root else 1.0)),
                          change=(n.proposal or "").splitlines()[0][:200] if n.proposal else "",
                          artifact_id=n.artifact_id,
                          metrics={"branch": n.branch, "attempt": n.attempt, "seq": n.seq},
                          meta={"world": self.world_id, "fail_class": n.fail_class, "error": n.error,
                                "evaluated": n.evaluated, "valid": n.valid, "tags": n.tags,
                                "n_valid": n.n_valid, "n_total": n.n_total,
-                               **({"tree_meta": _plain(self.meta), "branch_tags": {str(k): v for k, v in
-                                                                                   self.branch_tags.items()}}
-                                  if n.id == ROOT_ID else {})}))
+                               **({"tree_meta": _plain(self.meta),
+                                   "branch_tags": {str(k): v for k, v in self.branch_tags.items()}}
+                                  if is_root else {})}))
         return led
 
     @classmethod
     def from_ledger(cls, ledger: Ledger, *, lower_is_better: bool = False,
                     score_fn: Optional[Callable[[Node], Optional[float]]] = None,
                     world_id: str = "ledger", include: Optional[Callable[[Node], bool]] = None) -> "DiscoveryTree":
-        """Convert any method's ledger tree into a replay world.
-
-        * the earliest parentless node becomes the root (several parentless nodes ->
-          a synthetic root with the lowest of their scores, each one opening a branch);
-        * every chain of first-children becomes a branch in creation order;
-        * a node with several children forks: its later children start new branches
-          tagged ``fork_of=<cell>``, whose first cell becomes legal only after the fork
-          point is revealed (see :class:`rsi.dream.question.ReplayQuestion`);
-        * a missing score / non-ok status is an unsuccessful evaluation
-          (``fail_class = "rejected"`` for never-evaluated nodes, ``"compile_other"`` else);
-        * ``lower_is_better`` negates scores (e.g. autoresearch val_bpb).
-        """
+        """Any method's ledger as a replay world: first-child chains become branches, later children fork new
+        branches tagged ``fork_of``, unscored or non-ok nodes are failed evaluations."""
         nodes = [n for n in ledger.nodes() if include is None or include(n)]
         ids = {n.id for n in nodes}
         sign = -1.0 if lower_is_better else 1.0
@@ -286,8 +233,7 @@ class DiscoveryTree:
 
         kids: dict[Optional[str], list[Node]] = {}
         for n in nodes:
-            p = n.parent if n.parent in ids else None
-            kids.setdefault(p, []).append(n)
+            kids.setdefault(n.parent if n.parent in ids else None, []).append(n)
         for v in kids.values():
             v.sort(key=lambda n: n.seq)
         tops = kids.get(None, [])
@@ -299,31 +245,25 @@ class DiscoveryTree:
                                  proposal=r.change, tags={"ledger_id": r.id})
             starts = [(ROOT_ID, c) for c in kids.get(r.id, [])]
             ledger_to_cell = {r.id: ROOT_ID}
-        else:
+        else:  # several parentless nodes: a synthetic root with the lowest of their scores
             vals = [sc(t) for t in tops if sc(t) is not None]
             root = DiscoveryNode(ROOT_ID, None, score=min(vals) if vals else 0.0, tags={"synthetic": True})
             starts = [(ROOT_ID, t) for t in tops]
             ledger_to_cell = {}
         tree = cls(root, world_id=world_id, meta={"source": "ledger", "lower_is_better": lower_is_better})
-        seq = 1
-        branch = 0
-        queue = list(starts)
+        seq, b, queue = 1, -1, deque(starts)
         while queue:
-            parent_cell, first = queue.pop(0)
-            b = branch
-            branch += 1
+            parent_cell, first = queue.popleft()
+            b += 1
             if parent_cell != ROOT_ID:
                 tree.branch_tags[b] = {"fork_of": parent_cell}
             cur: Optional[Node] = first
-            prev_cell = parent_cell
-            a = 0
+            prev_cell, a = parent_cell, 0
             while cur is not None:
                 s = sc(cur)
                 ok_status = cur.status not in ("crash", "rejected", "error", "timeout") and s is not None
-                evaluated = s is not None
-                node = DiscoveryNode(cell_id(b, a), prev_cell, b, a, seq, s if s is not None else None,
-                                     evaluated=evaluated, valid=ok_status,
-                                     fail_class="ok" if ok_status else ("rejected" if not evaluated else "compile_other"),
+                node = DiscoveryNode(cell_id(b, a), prev_cell, b, a, seq, s, evaluated=s is not None, valid=ok_status,
+                                     fail_class="ok" if ok_status else ("rejected" if s is None else "compile_other"),
                                      error=None if ok_status else f"status={cur.status}", round=cur.round,
                                      artifact_id=cur.artifact_id, proposal=cur.change or "",
                                      diagnostics={"ledger_id": cur.id, "status": cur.status},
@@ -332,19 +272,14 @@ class DiscoveryTree:
                 ledger_to_cell[cur.id] = node.id
                 seq += 1
                 ch = kids.get(cur.id, [])
-                for extra in ch[1:]:
-                    queue.append((node.id, extra))
-                prev_cell = node.id
-                cur = ch[0] if ch else None
-                a += 1
+                queue.extend((node.id, extra) for extra in ch[1:])
+                prev_cell, cur, a = node.id, ch[0] if ch else None, a + 1
         tree.meta["ledger_map"] = ledger_to_cell
         return tree
 
-
     @classmethod
     def _from_native(cls, nodes: list, world_id: str) -> Optional["DiscoveryTree"]:
-        """Exact inverse of :meth:`to_ledger` (nodes carry branch/attempt/seq and the root
-        carries the tree meta); None when the ledger was written by another method."""
+        """Exact inverse of :meth:`to_ledger`; None when the ledger was written by another method."""
         roots = [n for n in nodes if n.kind == "baseline" and "tree_meta" in (n.meta or {})]
         if len(roots) != 1:
             return None
@@ -382,12 +317,7 @@ def _plain(d: dict) -> dict:
 
 
 class SnapshotStore:
-    """Workspace snapshots, content-addressed by artifact id.
-
-    Every attempt "resumes the parent's saved workspace" [paper:§3 p.5]; the store
-    keeps the full :class:`rsi.core.Artifact` (program files + ``proposal.md`` +
-    ``eval/score.json``) for each node so any node can be restored later.
-    """
+    """Content-addressed workspace snapshots (in memory, plus an ``ArtifactStore`` when ``root`` is given)."""
 
     def __init__(self, root: Optional[str | Path] = None) -> None:
         self.store = ArtifactStore(root) if root else None
@@ -404,8 +334,7 @@ class SnapshotStore:
             return self._mem[artifact_id]
         if self.store is None:
             raise KeyError(artifact_id)
-        a = self.store.get(artifact_id)
-        self._mem[artifact_id] = a
+        self._mem[artifact_id] = a = self.store.get(artifact_id)
         return a
 
     def has(self, artifact_id: str) -> bool:

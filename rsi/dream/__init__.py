@@ -1,36 +1,4 @@
-"""Dream-RSI - improving the *search strategy* by replaying past searches (Zheng et al., 2026).
-
-A finished discovery run is already a simulator: every attempt, the attempt it
-started from and its score form a tree, and a different exploration policy can be
-tested by walking that tree differently - revealing recorded outcomes instead of
-running the agent. Dream-RSI keeps the models, the discovery agent and the evaluator
-frozen and improves only the exploration policy, written as code: after every live
-search the tree joins a pool of replay worlds, a policy developer rewrites the policy
-M-1 times ("dreaming"), every version is replayed over all worlds, and the best one
-(the incumbent included) runs the next live search.
-
-Quick start (any :class:`rsi.core.Domain` + seed :class:`rsi.core.Artifact`, or a
-discovery domain from :mod:`rsi.domains.discovery`)::
-
-    from rsi.dream import Config, run
-    from rsi.domains.discovery import CirclePackingDomain
-    res = run(CirclePackingDomain(sandboxed=False), config=Config(rounds=5, W=4), out_dir="runs/cp")
-    res.best                 # best discovered program
-    res.meta["policy"]       # the final exploration-policy code (method.py)
-    res.trajectory           # per live search: agent calls, best, plan, N, k, dreaming phase
-
-Module map: ``policy_api`` (the policy-facing API, shipped into the sandbox),
-``tree`` (DiscoveryNode / DiscoveryTree / ledger conversion / SnapshotStore),
-``question`` (GridQuestion, ReplayQuestion, OnlineQuestion), ``guard`` (PrefixGuard,
-static check, in-process and subprocess runners), ``policy`` + ``policy_templates/``
-(policies as code), ``objectives`` (Eq. 1, Pareto beta sweep), ``evaluator``
-(ReplayEvaluator, PolicyReport), ``developer`` (LLM developer with the Listing-2 prompt,
-ParametricMutator, default-beta rule), ``selection`` (argmax incl. incumbent,
-GuardedSelector), ``agent`` (EvalOutcome, DiscoveryTask, DomainTask, EditorAgent with
-the Listing-1 prompt, ParametricAgent, DirectionProvider), ``baselines`` (fixed
-exploration, guidance summarizers), ``cost`` (CostMeter), ``loop`` (Config,
-DreamRSILoop, run), ``demo`` (the overview's interactive replay demo).
-"""
+"""Dream-RSI: improve the exploration policy of a discovery loop by replaying past searches (Zheng et al., 2026)."""
 from .agent import (EXPLORATION_PROMPT, AgentAttempt, AttemptContext, AttemptRecord, DirectionProvider, DiscoveryAgent,
                     DiscoveryTask, DomainTask, EditorAgent, EvalOutcome, ParametricAgent)
 from .baselines import (Guidance, GuidanceSummarizer, LLMGuidanceSummarizer, MockGuidanceSummarizer, direction_gains,

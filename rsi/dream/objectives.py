@@ -1,27 +1,4 @@
-"""Replay objectives: how one replay episode (and a beta sweep) is scored.
-
-* :class:`EpisodeResult` - what one replay episode produced (authoritative stats
-  from the question, never from the policy).
-* :class:`Eq1Objective` - paper Eq. 1 [paper:§3 p.6]::
-
-      V_i = max_{v in revealed} s_v  -  beta1 * N  +  beta2 * N / max(1, k)
-
-  with the max including the root. ``normalize=True`` (framework default, spec §9.3)
-  first maps scores to ``(s - s_r) / (ceiling_i - s_r)`` so worlds of different
-  scales average fairly; ``normalize=False`` uses raw scores (the paper's raw mean,
-  and the overview demo, whose root counts as 0). ``support="no_reward"`` gives an
-  out-of-support plan no quality credit (Listing 2's "cannot earn replay reward");
-  ``"clip"`` (default) just clips the plan to the trace.
-* :class:`ParetoSweepObjective` - the Listing-2 objective [paper:App.B.2 L2:12-22]::
-
-      pareto.reward = pareto.auc - lambda * parallel_penalty
-
-  ``auc``: area under the attainment-vs-probe-fraction frontier traced by the beta
-  sweep (attainment = normalized best per trace; probes normalized by the trace size);
-  ``parallel_penalty``: mean over the sweep of effective_sequential_rounds / probes,
-  where a batch of k cells costs ceil(k / W) sequential rounds. The exact AUC
-  definition and lambda are not reported in the paper - this is [inferred].
-"""
+"""Replay objectives: paper Eq. 1 per episode and the Listing-2 Pareto beta-sweep reward."""
 from __future__ import annotations
 
 import math
@@ -63,18 +40,14 @@ class EpisodeResult:
     @property
     def attainment(self) -> float:
         """Normalized best in [0, 1]: (best - root) / (ceiling - root)."""
-        if self.disqualified or self.best is None:
-            return 0.0
         den = self.ceiling - self.root
-        if den <= 0:
+        if self.disqualified or self.best is None or den <= 0:
             return 0.0
         return float(min(1.0, max(0.0, (self.best - self.root) / den)))
 
     @property
     def probe_frac(self) -> float:
-        if self.disqualified:
-            return 1.0
-        return self.N / max(1, self.world_size)
+        return 1.0 if self.disqualified else self.N / max(1, self.world_size)
 
     @property
     def eff_rounds(self) -> int:
@@ -94,35 +67,23 @@ class EpisodeResult:
 
 @dataclass
 class Eq1Objective:
-    """Paper Eq. 1. A disqualified episode (guard violation, illegal batch, policy crash)
-    scores strictly below every honest episode on the same world: the quality floor (0
-    normalized, ``s_r`` raw) minus the cost of revealing the whole world minus
-    ``disqualified_margin``. A fixed constant such as -1 is not enough: on a paper-scale
-    world (32 x 20 = 640 cells, beta1 = 0.01) an honest full-grid policy scores about -5.2,
-    so a crashing or cheating policy would outrank it; with raw negative scores (e.g. a
-    negated loss) the same happens on small worlds."""
+    """``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper:§3 Eq. 1]; ``normalize`` maps scores to
+    ``(s - s_r) / (ceiling - s_r)``. A disqualified episode scores below every honest one on its world."""
 
     beta1: float = 0.01
     beta2: float = 0.005
     normalize: bool = True
-    # out-of-support plans (beyond the frozen trace's width/depth): "no_reward" (default) = Listing 2's
-    # "cannot earn replay reward" (quality at the floor, probes still cost); "clip" = the plan is
-    # intersected with the support and scored as if it had asked for less (non-default: E2 shows it
-    # over-estimates such plans by +0.14)
-    support: str = "no_reward"
+    support: str = "no_reward"  # out-of-support plans "cannot earn replay reward" (L2) | "clip" to the support
     disqualified_margin: float = 1.0
     name: str = "eq1"
 
     def floor(self, ep: EpisodeResult) -> float:
-        """Lowest quality term an honest episode can get (the root: nothing revealed)."""
         return 0.0 if self.normalize else float(ep.root)
 
     def quality(self, ep: EpisodeResult) -> float:
         if self.support == "no_reward" and ep.out_of_support:
             return self.floor(ep)
-        if self.normalize:
-            return ep.attainment
-        return float(ep.best if ep.best is not None else ep.root)
+        return ep.attainment if self.normalize else float(ep.best if ep.best is not None else ep.root)
 
     def disqualified_value(self, ep: EpisodeResult) -> float:
         return self.floor(ep) - abs(self.beta1) * max(ep.world_size, ep.N) - self.disqualified_margin
@@ -143,16 +104,13 @@ class Eq1Objective:
 
 @dataclass
 class ParetoSweepObjective:
+    """``pareto.reward = pareto.auc - lambda * parallel_penalty`` over a beta sweep [paper:App.B.2 L2:12-22]."""
+
     beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
     lam: float = 0.1
     name: str = "pareto"
-    #: "no_reward" (default, Listing 2): an out-of-support episode attains 0; "clip": plan ∩ support
     support: str = "no_reward"
-    #: per-trace attainment. "shift" (default, [inferred]): (best - root) / (ceiling - root), so the root
-    #: attains 0 on every trace. "ratio": clip(best / ceiling, 0, 1), the definition in the paper's
-    #: UNPUBLISHED method draft (arXiv source ``Main_Text/method.tex``, commented out of ``main.tex``):
-    #: a_{i,beta} = clip(S_{i,beta} / G_i, 0, 1). It needs positive scores (G_i > 0) and gives the root
-    #: root/ceiling for free, which compresses the quality range (claims audit M18, retry round 2).
+    # "shift": (best - root) / (ceiling - root) [inferred]; "ratio": clip(S / G, 0, 1), the unpublished method draft
     attainment_mode: str = "shift"
 
     def attainment(self, e: EpisodeResult) -> float:

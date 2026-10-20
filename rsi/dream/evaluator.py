@@ -1,20 +1,4 @@
-"""ReplayEvaluator: score a policy version by replaying it over every past world.
-
-"Each version is scored on every past search" [doc]; ``V^m = (1/t) sum_i V_i^m``
-[paper:§3 p.6]. For every world the policy first plans its grid (``plan_grid``
-with the live manifests recorded *before* that world and the trace's support
-fields), then ``solve`` runs against a :class:`ReplayQuestion` behind the
-:class:`PrefixGuard`. The report carries
-
-* ``value`` (the selection objective: Eq. 1 mean, or the Pareto sweep reward),
-* per-world values, episode statistics (N, k, batch sizes, attainment ...),
-* the beta sweep (``beta_sweep.json``: pareto.reward, AUC, parallel penalty,
-  per-beta frontier) when requested,
-* the execution traces (``policy_execution_traces.jsonl``: one replay episode per
-  (frozen trace, beta), with prefix state, batch and revealed outcomes per round),
-* diagnostics for the developer (premature stops, wasted probes, serial batches,
-  plan errors, guard violations) and the replay CPU cost.
-"""
+"""ReplayEvaluator: score a policy version by replaying it over every past world, ``V^m = mean_i V_i^m`` [paper:§3]."""
 from __future__ import annotations
 
 import json
@@ -60,35 +44,25 @@ class PolicyReport:
     def to_json(self) -> dict:
         return {**self.summary(), "episodes": [e.to_json() for e in self.episodes], "sweep": self.sweep}
 
-    def beta_sweep_json(self) -> dict:
-        return self.sweep or {}
-
     def traces_jsonl(self, max_rows: Optional[int] = None) -> str:
-        rows = []
-        for e in list(self.episodes) + list(self.sweep_episodes):
-            rows.append(json.dumps({"world": e.world_id, "beta": e.beta, "plan": e.plan,
-                                    "out_of_support": e.out_of_support, "N": e.N, "k": e.k,
-                                    "attainment": round(e.attainment, 4), "error": e.error,
-                                    "violations": e.violations, "rounds": e.trace}, default=float))
-        if max_rows is not None:
-            rows = rows[:max_rows]
+        """``policy_execution_traces.jsonl``: one row per replay episode (world, beta)."""
+        rows = [json.dumps({"world": e.world_id, "beta": e.beta, "plan": e.plan, "out_of_support": e.out_of_support,
+                            "N": e.N, "k": e.k, "attainment": round(e.attainment, 4), "error": e.error,
+                            "violations": e.violations, "rounds": e.trace}, default=float)
+                for e in list(self.episodes) + list(self.sweep_episodes)][:max_rows]
         return "\n".join(rows) + ("\n" if rows else "")
 
 
 def diagnostics(episodes: Sequence[EpisodeResult]) -> dict:
-    """Between-round feedback. May use hindsight about the frozen traces (e.g. whether
-    the ceiling was reached) because it is read *outside* ``solve()``."""
-    ok = [e for e in episodes if not e.disqualified]
+    """Between-round feedback for the developer (may use hindsight: it is read outside ``solve()``)."""
     if not episodes:
         return {}
-    wasted, serial, late = [], [], []
-    for e in ok:
-        # probes after the final best was first revealed are "wasted" work
-        final_n = next((n for n, b in e.curve if b is not None and e.best is not None and b >= e.best), e.N)
-        wasted.append((e.N - final_n) / max(1, e.N))
-        serial.append(sum(1 for b in e.batch_sizes if b == 1) / max(1, len(e.batch_sizes)))
-    for e in ok:
-        late.append(1.0 if e.attainment < 0.999 else 0.0)
+    ok = [e for e in episodes if not e.disqualified]
+    # probes after the final best was first revealed are wasted work
+    wasted = [(e.N - next((n for n, b in e.curve if b is not None and e.best is not None and b >= e.best), e.N))
+              / max(1, e.N) for e in ok]
+    serial = [sum(1 for b in e.batch_sizes if b == 1) / max(1, len(e.batch_sizes)) for e in ok]
+    late = [1.0 if e.attainment < 0.999 else 0.0 for e in ok]
     return {
         "attainment": float(np.mean([e.attainment for e in episodes])),
         "probes_frac": float(np.mean([e.probe_frac for e in episodes])),
@@ -109,24 +83,10 @@ def diagnostics(episodes: Sequence[EpisodeResult]) -> dict:
 
 
 class ReplayEvaluator:
-    """Replays a policy (code) over replay worlds.
+    """Replays policy code over replay worlds; with the Pareto objective every evaluation runs the beta sweep.
 
-    Parameters
-    ----------
-    objective: :class:`Eq1Objective` (default) or :class:`ParetoSweepObjective` - the
-        selection objective. With Eq. 1, ``sweep_grid`` optionally adds a beta sweep
-        for feedback (``beta_sweep.json``) without changing the selection value; with
-        the Pareto objective every evaluation runs the sweep (it is the value).
-    W: workers (max batch size). K2: replay round limit (None = unlimited).
-    root_mode / hide_missing: see :class:`ReplayQuestion`.
-    runner: ``"subprocess"`` (sandbox, default) / ``"inprocess"`` or a runner object.
-    fallback / hard caps: the :class:`GridPlanningContext` fields.
-    unguarded: pass the raw question to the policy (E8 ablation only; in-process only).
-    fresh_episodes: every (world, beta) episode starts from a fresh policy namespace ("replay
-        resets the policy's per-rollout state" [paper:§3 p.5]; default). ``False`` reuses one
-        namespace for all episodes of an evaluation - the pre-fix behaviour, kept only as the
-        E8 ablation that shows the cross-episode memo attack (claims audit N1).
-    """
+    ``fresh_episodes=False`` (E8 ablation only) reuses one policy namespace across episodes, and ``unguarded``
+    (E8, in-process only) hands the policy the raw question."""
 
     def __init__(self, objective=None, *, W: int = 4, K2: Optional[int] = None, root_mode: str = "earliest",
                  hide_missing: bool = False, runner="subprocess", fallback: tuple[int, int] = (4, 4),
@@ -145,11 +105,11 @@ class ReplayEvaluator:
         self.episodes_run = 0
         self.cpu_s = 0.0
 
-    # -------------------------------------------------------------------- context
     def context(self, world: DiscoveryTree, manifests: Sequence[dict] = ()) -> GridPlanningContext:
+        """Planning context of ``world``: only the live manifests recorded before it."""
         rnd = world.meta.get("round")
         hist = [m for m in manifests if rnd is None or int(m.get("iteration", 0)) < int(rnd)]
-        return GridPlanningContext(history=list(hist), fallback_branch_count=self.fallback[0],
+        return GridPlanningContext(history=hist, fallback_branch_count=self.fallback[0],
                                    fallback_refine_count=self.fallback[1], hard_max_branch_count=self.hard_max[0],
                                    hard_max_refine_count=self.hard_max[1], worker_cap=self.W,
                                    trace_branch_count=world.trace_branch_count,
@@ -164,24 +124,22 @@ class ReplayEvaluator:
             f"plan {plan.branch_count}x{plan.refine_count} outside hard caps; clamped"
         return GridPlan(b, r, plan.reason), note
 
-    # ------------------------------------------------------------------- episodes
     def _episode(self, session, code: str, world: DiscoveryTree, config: dict, context: GridPlanningContext,
                  beta: Optional[float]) -> EpisodeResult:
         """One replay episode in a fresh policy namespace (unless ``fresh_episodes=False``)."""
         if not self.fresh_episodes:
             return self.run_episode(session, world, config, context, beta)
         begin = getattr(session, "begin_episode", None)
-        if begin is not None:
-            begin()
-            return self.run_episode(session, world, config, context, beta)
-        with self.runner.session(code) as fresh:      # a custom runner without episodes: one session each
-            return self.run_episode(fresh, world, config, context, beta)
+        if begin is None:  # a custom runner without episodes: one session each
+            with self.runner.session(code) as fresh:
+                return self.run_episode(fresh, world, config, context, beta)
+        begin()
+        return self.run_episode(session, world, config, context, beta)
 
     def run_episode(self, session, world: DiscoveryTree, config: dict, context: GridPlanningContext,
                     beta: Optional[float]) -> EpisodeResult:
         t0 = time.process_time()
-        plan, perr = session.plan_grid(config, context)
-        plan, perr = self.validate_plan(plan, perr)
+        plan, perr = self.validate_plan(*session.plan_grid(config, context))
         q = ReplayQuestion(world, self.W, plan, K=self.K2, root_mode=self.root_mode, hide_missing=self.hide_missing)
         out = session.solve(config, q, unguarded=self.unguarded)
         st = q.stats()
@@ -199,38 +157,33 @@ class ReplayEvaluator:
     def evaluate(self, code: str, worlds: Sequence[DiscoveryTree], *, config: Optional[dict] = None,
                  manifests: Sequence[dict] = (), sweep: Optional[bool] = None, label: str = "",
                  policy_id: str = "") -> PolicyReport:
-        """Replay ``code`` over ``worlds``. ``config`` is the policy config (``{"beta": ...}``;
-        empty = the policy's baked-in default). ``sweep`` adds the beta sweep (default:
-        only when the objective is the Pareto sweep or ``sweep_grid`` was given)."""
+        """Replay ``code`` over ``worlds``; ``sweep`` adds the beta sweep (always on for the Pareto objective)."""
         t_wall = time.time()
         cpu0 = self.cpu_s
         config = dict(config or {})
-        if isinstance(self.objective, ParetoSweepObjective):
-            do_sweep = True            # the sweep IS the selection objective: never skip it
-        else:
-            do_sweep = bool(self.sweep_grid) if sweep is None else (sweep and bool(self.sweep_grid))
+        pareto = isinstance(self.objective, ParetoSweepObjective)
+        do_sweep = pareto or bool(self.sweep_grid and (sweep is None or sweep))
+        by_beta: dict[float, list[EpisodeResult]] = {}
+        sweep_eps: list[EpisodeResult] = []
         with self.runner.session(code) as sess:
             ctxs = [self.context(w, manifests) for w in worlds]
             eps = [self._episode(sess, code, w, config, c, config.get("beta")) for w, c in zip(worlds, ctxs)]
-            by_beta: dict[float, list[EpisodeResult]] = {}
-            sweep_eps: list[EpisodeResult] = []
             if do_sweep:
-                for b in self.sweep_grid:
-                    cfg = {**config, "beta": float(b)}
-                    by_beta[float(b)] = [self._episode(sess, code, w, cfg, c, float(b)) for w, c in zip(worlds, ctxs)]
-                    sweep_eps.extend(by_beta[float(b)])
+                for b in map(float, self.sweep_grid):
+                    cfg = {**config, "beta": b}
+                    by_beta[b] = [self._episode(sess, code, w, cfg, c, b) for w, c in zip(worlds, ctxs)]
+                    sweep_eps.extend(by_beta[b])
         sweep_res = None
         if do_sweep:
-            obj = self.objective if isinstance(self.objective, ParetoSweepObjective) else \
+            obj = self.objective if pareto else \
                 ParetoSweepObjective(beta_grid=self.sweep_grid, support=getattr(self.objective, "support", "no_reward"))
             sweep_res = obj.sweep(by_beta)
             eq1 = self.objective if isinstance(self.objective, Eq1Objective) else Eq1Objective()
             for p in sweep_res["points"]:
                 p["V_eq1"] = eq1.score(by_beta[p["beta"]])
-        if isinstance(self.objective, ParetoSweepObjective):
+        if pareto:
             value = sweep_res["reward"] if sweep_res else float("-inf")
-            # per-world values in the SAME objective (each world's own beta sweep), so that a selector
-            # working on a subset of worlds (GuardedSelector: dev / held-out) ranks by the Pareto reward
+            # per-world values in the same objective, so a selector on a subset of worlds ranks by the Pareto reward
             per_world = [self.objective.sweep({b: [by_beta[b][i]] for b in by_beta})["reward"]
                          for i in range(len(eps))]
         else:

@@ -1,19 +1,4 @@
-"""Sum-difference sets: maximize Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) [paper:App.A].
-
-The artifact is ``construct.py`` defining ``construct() -> list[int]``. The locked
-evaluator runs it, checks the output (distinct integers, 2 <= |A| <= ``max_size``,
-span <= ``max_span``, non-degenerate |A-A| > |A|) and scores Gamma(A) computed with
-FFT-free exact convolutions of indicator vectors. Gamma > 1 means "more sums than
-differences" (MSTD); the paper's best-known values are ~1.14 for very large sets.
-
-Mock discovery agent: the seed program is a *staged construction recipe*
-(``INIT`` + ``STAGES``); each attempt appends one mechanism stage to its parent's
-recipe (so a child resumes exactly where its parent's workspace ended):
-``hill`` (add/remove/shift hill climb), ``anneal`` (simulated annealing),
-``window`` (exhaustive re-optimisation of a small fringe window), ``fringe``
-(re-sample the fringes around a dense middle), ``grow`` (extend the span with
-accepted additions). Direction tags pick the mechanism of a branch.
-"""
+"""Sum-difference sets: maximize Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) [paper:App.A]."""
 from __future__ import annotations
 
 import json
@@ -149,7 +134,7 @@ def construct():
     return sorted(A)
 '''
 
-SEED_SET = [0, 6, 10, 18, 19, 21, 22, 33, 36, 37, 43, 44]   # Gamma = 0.9105; progress spans several rounds
+SEED_SET = [0, 6, 10, 18, 19, 21, 22, 33, 36, 37, 43, 44]  # Gamma = 0.9105; progress spans several rounds
 
 
 def program(init: list[int], stages: list) -> str:
@@ -184,7 +169,8 @@ class SumDiffDomain(ProgramDomain):
     def describe(self) -> str:
         return ("Sum-difference problem: write construct.py whose construct() returns a finite set A of distinct "
                 "integers maximizing Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) (higher is better; > 1 means more "
-                f"sums than differences). Constraints: 2 <= |A| <= {self.max_size}, max(A) - min(A) <= {self.max_span}, "
+                f"sums than differences). Constraints: 2 <= |A| <= {self.max_size}, "
+                f"max(A) - min(A) <= {self.max_span}, "
                 "runtime <= 30 s. Invalid output scores 0.")
 
     def seed_artifact(self) -> Artifact:
@@ -208,7 +194,6 @@ class SumDiffDomain(ProgramDomain):
             return EvalOutcome(0.0, True, False, "constraint", "degenerate set (|A-A| <= |A|)", 0, 1)
         return EvalOutcome(g, True, True, "ok", None, 1, 1, {"size": n, "sums": s, "diffs": d, "mstd": s > d})
 
-    # ---- mock discovery agent
     def mock_agent(self, **kw) -> ParametricAgent:
         return ParametricAgent(_mutate, name="sumdiff-mock", **kw)
 
@@ -223,8 +208,8 @@ def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext])
     init, stages = _parse(parent[PROGRAM])
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
     if ctx and ctx.attempt > 0 and rng.random() < 0.25:
-        mech = rng.choice(MECHANISMS)       # the agent sometimes switches mechanism within a branch
-    # one attempt = a modest amount of search (calibrated so progress spans several rounds)
+        mech = rng.choice(MECHANISMS)  # the agent sometimes switches mechanism within a branch
+    # a modest amount of search per attempt, so progress spans several rounds
     params = {"hill": {"iters": rng.choice([15, 30, 45])}, "anneal": {"iters": rng.choice([20, 40]),
                                                                        "t0": rng.choice([0.01, 0.02, 0.05])},
               "window": {"width": rng.choice([3, 4, 5])}, "fringe": {"tries": rng.choice([5, 10]),

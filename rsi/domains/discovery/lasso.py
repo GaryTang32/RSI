@@ -1,33 +1,13 @@
-"""Lasso regularization path: make a correct path solver fast [paper:App.A Problem 1].
-
-The artifact is ``solver.py`` defining ``lasso_path(X, y, lambdas) -> list of coefficient
-vectors`` for ``F_k(w) = 1/(2n) ||y - Xw||^2 + lambda_k ||w||_1`` on a decreasing
-lambda sequence. The locked evaluator
-
-1. times the solver on the *search* instances (CPU time, best of ``repeats`` runs each -
-   CPU time is far less sensitive to other load on a shared machine than wall time);
-2. checks correctness on *fresh* instances distinct from the timing ones:
-   ``F_k(w~_k) <= F_k(w_ref_k) + 1e-6`` for every k, with ``w_ref`` from a tightly
-   converged scikit-learn coordinate-descent reference (numpy fallback when sklearn
-   is missing). Any failure scores 0 (``fail_class="correctness"``);
-3. scores ``R = (prod_i t_i)^(-1/|I|)``, the inverse geometric-mean runtime in 1/s.
-
-A ``holdout`` task (larger, differently shaped instances) plays the role of the paper's
-held-out datasets: ``transfer_report`` / ``evaluate_split`` score a program there.
-
-Mock discovery agent: the seed is a plain cyclic coordinate-descent path solver whose
-module constants select mechanisms - FISTA vs coordinate descent, warm starts, strong-
-rule screening (with or without the KKT re-check), active-set cycling, a precomputed
-Gram matrix, the convergence tolerance. Each attempt edits one mechanism group (the
-branch's direction); loose tolerances or screening without KKT checks can fail the
-correctness gate (repairable failures).
-"""
+"""Lasso regularization path: make a correct numpy path solver fast [paper:App.A Problem 1]; score = 1/geomean CPU s."""
 from __future__ import annotations
 
 import json
 import math
 import random
 import re
+import secrets
+import shutil
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -36,6 +16,7 @@ from typing import Optional
 import numpy as np
 
 from ...core.artifact import Artifact
+from ...core.domain import Execution
 from ...core.sandbox import run_cmd
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import AttemptContext, EvalOutcome, ParametricAgent
@@ -160,8 +141,7 @@ def lasso_path(X, y, lambdas):
     return out
 '''
 
-#: reference row of the paper's Lasso table ("sklearn"): scikit-learn's compiled coordinate-descent
-#: ``lasso_path`` at its default tolerance (it passes the 1e-6 objective gate on these instances)
+# the paper's "sklearn" reference row: scikit-learn's lasso_path at its default tolerance
 SKLEARN_SOLVER = '''"""Reference: scikit-learn's coordinate-descent lasso_path (the paper's "sklearn" row)."""
 import numpy as np
 from sklearn.linear_model import lasso_path as _lasso_path
@@ -196,7 +176,6 @@ def read_knobs(code: str) -> dict:
     return out
 
 
-# ------------------------------------------------------------------------ instances
 def make_instance(n: int, p: int, k: int, rho: float, seed: int, n_lambdas: int = 10, ratio: float = 0.05) -> dict:
     rng = np.random.default_rng(seed)
     C = rho ** np.abs(np.subtract.outer(np.arange(p), np.arange(p)))
@@ -248,14 +227,8 @@ SEARCH_SHAPES = [(120, 250, 10, 0.3), (200, 120, 15, 0.6)]
 CHECK_SHAPES = [(60, 90, 6, 0.4), (90, 60, 8, 0.7)]
 HOLDOUT_SHAPES = [(300, 400, 20, 0.5), (100, 600, 8, 0.2)]
 
-#: The timing harness runs in the sandbox next to the candidate. Hardening (the candidate must
-#: not be able to influence its own grade): the clock is bound and the result nonce is read from
-#: stdin BEFORE any candidate code runs; every timing repeat loads a fresh copy of the module and
-#: times a freshly perturbed copy of the data (so memoising results across repeats does not pay);
-#: the harness returns the raw coefficient paths of the check instances and the PARENT computes the
-#: objectives for the correctness gate; the process exits with os._exit right after writing the
-#: nonce-tagged result (no atexit hook of the candidate can append a forged one). This is
-#: accident-level isolation (rlimits, scratch dir), not a boundary against a determined adversary.
+# Sandboxed timing harness: clock and nonce are bound before candidate code runs, each repeat times a fresh module
+# on perturbed data, the parent computes the objectives, and os._exit follows the nonce-tagged result.
 _HARNESS = r'''
 import importlib.util, os, sys
 from json import dumps as _dumps, loads as _loads
@@ -338,9 +311,9 @@ class LassoPathDomain(ProgramDomain):
     def describe(self) -> str:
         return ("Lasso regularization path: write solver.py with lasso_path(X, y, lambdas) returning one coefficient "
                 "vector per lambda (decreasing sequence) minimizing F_k(w) = 1/(2n)||y - Xw||^2 + lambda_k ||w||_1. "
-                f"Correctness gate on fresh instances: F_k(w_k) <= F_k(reference) + {TOL_GATE:g} for every k, else score "
-                "0. Score = 1 / geometric-mean runtime (seconds) over the timing instances (higher is better). numpy "
-                "is available.")
+                f"Correctness gate on fresh instances: F_k(w_k) <= F_k(reference) + {TOL_GATE:g} for every k, "
+                "else score 0. Score = 1 / geometric-mean runtime (seconds) over the timing instances (higher is "
+                "better). numpy is available.")
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: solver_code(SEED_KNOBS)})
@@ -353,7 +326,6 @@ class LassoPathDomain(ProgramDomain):
     def directions(self) -> list[str]:
         return list(MECHANISMS)
 
-    # ---- locked evaluator
     def _instance_dir(self, which: str) -> str:
         if which not in self._dirs:
             d = Path(tempfile.mkdtemp(prefix=f"lasso_{which}_"))
@@ -372,13 +344,9 @@ class LassoPathDomain(ProgramDomain):
         return self._dirs[which]
 
     def _measure(self, code: str, which: str) -> tuple[Optional[dict], Optional[str], str]:
-        """Run the candidate: ``{"times": [...], "paths": [...]}`` (CPU seconds per timing instance,
-        coefficient paths of the check instances). Objectives are computed by the caller."""
+        """``{"times": CPU s per timing instance, "paths": coefficient paths of the check instances}``."""
         s = self.sets[which]
         if self.sandboxed:
-            import secrets
-            import shutil
-
             src = Path(self._instance_dir(which))
             d = Path(tempfile.mkdtemp(prefix="lasso_run_"))
             nonce = secrets.token_hex(16)
@@ -386,7 +354,7 @@ class LassoPathDomain(ProgramDomain):
                 for f in ("instances.npz", "meta.json", "_lasso_eval.py"):
                     shutil.copy(src / f, d / f)
                 (d / "candidate.py").write_text(code)
-                rr = run_cmd([__import__("sys").executable, "_lasso_eval.py"], cwd=d, timeout_s=self.timeout_s,
+                rr = run_cmd([sys.executable, "_lasso_eval.py"], cwd=d, timeout_s=self.timeout_s,
                              mem_mb=2048, stdin=nonce + "\n")
             finally:
                 shutil.rmtree(d, ignore_errors=True)
@@ -419,7 +387,7 @@ class LassoPathDomain(ProgramDomain):
         return {"times": times, "paths": paths}, None, "ok"
 
     def _objectives(self, which: str, paths) -> list[list[float]]:
-        """Parent-side objectives F_k(w_k) of the returned paths (the locked correctness gate)."""
+        """Parent-side objectives F_k(w_k) of the returned paths."""
         out = []
         for inst, W in zip(self.sets[which]["check"], paths):
             p = inst["X"].shape[1]
@@ -468,8 +436,6 @@ class LassoPathDomain(ProgramDomain):
 
     def execute(self, artifact, task, *, seed, llm=None):
         ev = self.evaluate_split(artifact, task.input or "search")
-        from ...core.domain import Execution
-
         return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
                                  "diagnostics": ev.diagnostics})
 

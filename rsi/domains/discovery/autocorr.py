@@ -1,30 +1,4 @@
-"""Autocorrelation inequalities [paper:App.A Problem 4]: step functions on [-1/4, 1/4].
-
-For an integrable f supported on [-1/4, 1/4] with integral 1, (f*f)(t) = int f(t-x) f(x) dx:
-
-* ``phi1`` (first inequality): f >= 0, minimise Phi1(f) = max_t (f*f)(t);
-* ``phi2`` (second inequality): f >= 0, maximise Phi2(f) = ||f*f||_2^2 / (||f*f||_1 ||f*f||_inf);
-* ``phi3`` (third inequality): f may be signed, minimise Phi3(f) = max_t |(f*f)(t)|.
-
-Table 1's "Auto Correlation (lower is better)" column (Dream 1.456375, Fixed 1.456001, SimpleTES
-1.453675, AlphaEvolve 1.455700) matches AlphaEvolve's published bound for the THIRD inequality
-(C3 <= 1.4557; its first-inequality bound is 1.5053), so ``phi3`` is the default [inferred: the paper
-does not say which of the three it reports].
-
-The artifact is ``construct.py`` defining ``construct() -> list[float]``: the heights h_0..h_{n-1} of
-a step function with n equal steps of width w = 1/(2n) on [-1/4, 1/4]. f*f of such a function is
-piecewise linear with knots at multiples of w, so the evaluator computes every objective EXACTLY
-from the discrete autoconvolution c = h (*) h: with f normalised to integral 1, the knot values are
-(f*f)(t_k) = 2n c_k / (sum h)^2, and Phi1 = max_k, Phi3 = max_k |.|, and Phi2 from the exact L1/L2
-norms of the piecewise-linear f*f. Scores follow the framework convention "larger is better":
-``-Phi1``, ``Phi2``, ``-Phi3``. The constant function scores Phi1 = Phi3 = 2 and Phi2 = 2/3.
-
-Mock discovery agent (every attempt resumes the parent's measured function, stored in its
-``eval/score.json``, and applies one mechanism): ``coord`` (coordinate hill climbing), ``gradient``
-(descent on a soft-max of the objective), ``smooth`` (smoothing, then descent), ``upsample`` (double
-the resolution, then descent) and ``shake`` (perturb a window strongly, then descent). Each stage is a
-modest amount of search, so progress spans several rounds.
-"""
+"""Autocorrelation inequalities on step functions [paper:App.A Problem 4]; default ``phi3`` = Table 1 [inferred]."""
 from __future__ import annotations
 
 import ast
@@ -41,7 +15,6 @@ from .base import ProgramDomain
 PROGRAM = "construct.py"
 VARIANTS = ("phi1", "phi2", "phi3")
 MECHANISMS = ("coord", "gradient", "smooth", "upsample", "shake")
-#: best published values (AlphaEvolve 2025): Phi1 <= 1.5053, Phi2 >= 0.8962, Phi3 <= 1.4557
 BEST_KNOWN = {"phi1": 1.5053, "phi2": 0.8962, "phi3": 1.4557}
 SEED_N = 40
 
@@ -191,7 +164,7 @@ def program(variant: str, init: list, stage) -> str:
 
 
 def objectives(h) -> dict:
-    """Exact Phi1 / Phi2 / Phi3 of the step function with heights ``h`` (normalised to integral 1)."""
+    """Exact Phi1 / Phi2 / Phi3 from the knots of the piecewise-linear autoconvolution (f normalised to 1)."""
     h = np.asarray(h, dtype=float)
     n = len(h)
     s = float(h.sum())
@@ -199,13 +172,13 @@ def objectives(h) -> dict:
     w = 1.0 / (2.0 * n)
     gg = np.concatenate([[0.0], g, [0.0]])
     l2 = float(np.sum(w / 3.0 * (gg[:-1] ** 2 + gg[:-1] * gg[1:] + gg[1:] ** 2)))
-    l1 = float(np.sum(w / 2.0 * (gg[:-1] + gg[1:])))      # phi2 needs f >= 0, so f*f >= 0 (trapezoids exact)
+    l1 = float(np.sum(w / 2.0 * (gg[:-1] + gg[1:])))  # phi2 needs f >= 0, so f*f >= 0 (trapezoids exact)
     linf = float(np.max(np.abs(g)))
     return {"phi1": float(np.max(g)), "phi2": l2 / (l1 * linf) if l1 > 0 and linf > 0 else 0.0, "phi3": linf}
 
 
 class AutocorrelationDomain(ProgramDomain):
-    """Problem 4 of App. A; ``variant`` in ``phi1`` / ``phi2`` / ``phi3`` (default, Table 1's column)."""
+    """``variant``: ``phi1`` / ``phi3`` (minimised, score = -Phi) or ``phi2`` (maximised, score = Phi)."""
 
     name = "autocorr"
     program_file = PROGRAM
@@ -272,7 +245,7 @@ def _parse_init(code: str) -> list:
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext], variant: str):
     init = _parse_init(parent[PROGRAM])
-    if ctx is not None:  # resume from the parent's measured function (its workspace's eval/score.json)
+    if ctx is not None:  # resume from the parent's measured function (its eval/score.json)
         try:
             sj = json.loads(ctx.parent_workspace.get("eval/score.json") or "{}")
             init = (sj.get("diagnostics") or {}).get("heights") or init
@@ -280,7 +253,7 @@ def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext],
             pass
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
     if ctx and ctx.attempt > 0 and rng.random() < 0.25:
-        mech = rng.choice(MECHANISMS)          # the agent sometimes switches mechanism within a branch
+        mech = rng.choice(MECHANISMS)  # the agent sometimes switches mechanism within a branch
     params = {"coord": {"iters": rng.choice([40, 80]), "scale": rng.choice([0.2, 0.4])},
               "gradient": {"steps": rng.choice([8, 15]), "lr": rng.choice([0.02, 0.05]),
                            "tau": rng.choice([30.0, 80.0])},
@@ -293,12 +266,4 @@ def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext],
     return Artifact({PROGRAM: program(variant, init, stage)}), text
 
 
-def phi_of_program(art: Artifact, variant: str = "phi3") -> float:
-    """Convenience for tests: run a construct.py in-process and return its objective."""
-    ns: dict = {"__name__": "candidate"}
-    exec(compile(art[PROGRAM], PROGRAM, "exec"), ns)  # noqa: S102 - trusted mock programs
-    return objectives(ns["construct"]())[variant]
-
-
-__all__ = ["AutocorrelationDomain", "objectives", "program", "BEST_KNOWN", "MECHANISMS", "VARIANTS",
-           "phi_of_program"]
+__all__ = ["AutocorrelationDomain", "objectives", "program", "BEST_KNOWN", "MECHANISMS", "VARIANTS"]

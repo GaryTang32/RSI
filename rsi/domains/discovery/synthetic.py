@@ -1,32 +1,4 @@
-"""Synthetic discovery worlds with ground truth (spec §9.2 Track A).
-
-A cheap, deterministic stand-in for "coding agent + evaluator" whose true dynamics
-are known, so the *true online* value of any exploration policy can be measured -
-something the paper cannot do - and replay estimates can be validated off-policy.
-
-Model (all [inferred]; the paper gives no generative model):
-
-* A program's quality ``q`` lies in [0, 1] (1 = ceiling). The "program" is a JSON
-  state; the locked evaluator reads its quality (0 for failed attempts).
-* ``n_directions`` direction classes ("mechanisms"), each with a hidden richness
-  ``r_d`` drawn per world seed. A mechanism already in the root program's lineage is
-  depleted: ``r_eff = r_d * depletion ** (times d is in the lineage)`` (applying the
-  same idea again yields less - the local optimum Listing 1 warns about).
-* Each new branch (round t, branch b) gets the direction tag assigned by the
-  direction provider, a latent type drawn with richness-dependent weights -
-  ``steady``, ``late`` (late bloomer), ``plateau``, ``flat``, ``hardfail``
-  (environment failures), ``repairable`` (frequent repairable failures) - and a
-  potential ``G = gain_scale * (1 - q_root) * r_eff * u``.
-* Attempt ``a`` of that branch scores ``q_root + G * phi_type(a) + noise`` or fails
-  with a typed ``fail_class``. All randomness is keyed by (world seed, round, branch,
-  attempt) - common random numbers - so every policy faces the same potential
-  outcomes, and replaying the recording policy reproduces its rollout exactly.
-* ``context_coupling`` (default 0) makes outcomes depend on how many sibling
-  attempts the agent had read, which biases replay (critique §8.3).
-
-``ground_truth(state)`` gives a branch's expected best quality within a depth,
-used for off-policy validation (E2) and support analysis (E10).
-"""
+"""Synthetic discovery worlds with known dynamics, for ground-truth checks of replay (spec §9.2 Track A)."""
 from __future__ import annotations
 
 import hashlib
@@ -37,9 +9,9 @@ from typing import Optional
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
+from ...core.llm import Usage
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import AgentAttempt, AttemptContext, DiscoveryAgent, DiscoveryTask, EvalOutcome
-from ...core.llm import Usage
 
 STATE = "state.json"
 TYPES = ("steady", "late", "plateau", "flat", "hardfail", "repairable")
@@ -75,14 +47,15 @@ class SyntheticConfig:
     p_fail_repairable: float = 0.45
     p_fail_hard: float = 0.85
     p_fail_other: float = 0.04
-    context_coupling: float = 0.0
+    context_coupling: float = 0.0  # > 0 makes outcomes depend on sibling attempts read (biases replay)
 
     def to_json(self) -> dict:
         return asdict(self)
 
 
 class SyntheticWorld:
-    """The generator: richness per direction, branch draws, attempt outcomes."""
+    """Hidden richness per direction (depleted by reuse in the lineage), a latent type and potential per branch,
+    and attempt outcomes keyed by (seed, round, branch, attempt) so every policy faces the same draws."""
 
     def __init__(self, cfg: SyntheticConfig) -> None:
         self.cfg = cfg
@@ -132,7 +105,6 @@ class SyntheticWorld:
         return br["G"] * max(phi(kind, a) for a in range(depth + 1))
 
 
-# --------------------------------------------------------------------------- agent
 class SyntheticAgent(DiscoveryAgent):
     """The frozen 'coding agent' of a synthetic world (one call = one attempt)."""
 
@@ -165,7 +137,6 @@ class SyntheticAgent(DiscoveryAgent):
                             Usage(1, self.tokens_per_call, 0, 0.0, 0.0))
 
 
-# -------------------------------------------------------------------------- domain
 class SyntheticDomain(Domain):
     """rsi.core Domain view of a synthetic world (artifact = one ``state.json``)."""
 
@@ -230,25 +201,18 @@ class SyntheticDomain(Domain):
 
         return _Task()
 
-    # ---- ground truth
     def branch_params(self, round_index: int, branch: int, direction: str, q_root: float,
                       lineage: Optional[dict] = None) -> dict:
         return self.world.branch(round_index, branch, direction, q_root, lineage or {})
 
     def truth_for_tree(self, tree, depth: Optional[int] = None, lineage: Optional[dict] = None) -> dict[int, float]:
-        """Ground-truth branch quality (expected best score within ``depth``) for every branch of
-        a tree recorded in this world, recomputed from the generator (the record does not
-        contain the latent types)."""
+        """Expected best score within ``depth`` of every branch of a tree recorded in this world."""
         rnd = int(tree.meta.get("round", 1))
         d = tree.trace_refine_count if depth is None else depth
         out = {}
         for b in tree.branches():
-            direction = tree.branch_tags.get(b, {}).get("direction") or self.world.directions[b % len(self.world.directions)]
+            direction = (tree.branch_tags.get(b, {}).get("direction")
+                         or self.world.directions[b % len(self.world.directions)])
             br = self.branch_params(rnd, b, direction, tree.root_score, lineage)
             out[b] = tree.root_score + self.world.ground_truth(br, d)
         return out
-
-
-def expected_phi_best(kind: str, depth: int) -> float:
-    return 0.0 if kind == "hardfail" else max(phi(kind, a) for a in range(depth + 1))
-

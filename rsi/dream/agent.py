@@ -1,25 +1,4 @@
-"""Object level (frozen during a run): the discovery task, its locked evaluator,
-the discovery agent and the direction provider.
-
-"Only the exploration-policy code changes; the underlying models, evaluator, and
-execution interfaces remain fixed" [paper:§3 p.4].
-
-* :class:`EvalOutcome` - what the locked evaluator reports (score, validity,
-  ``fail_class``, error, n_valid/n_total, diagnostics, seconds).
-* :class:`DiscoveryTask` - problem statement + seed program + locked ``evaluate``;
-  :class:`DomainTask` turns ANY :class:`rsi.core.Domain` into one (score = mean
-  score S on the ``evolve`` split via :class:`rsi.core.Evaluator`).
-* :class:`AttemptContext` - what one attempt reads: the parent's workspace, its
-  branch lineage, sibling attempts of this rollout, history ``H_{t-1}``, the
-  baseline, and the ``$direction_guidance`` text [paper:App.B.1].
-* :class:`EditorAgent` - an LLM discovery agent (any :class:`rsi.core.Editor`:
-  ``RewriteEditor`` over any LLM or ``AgentEditor`` = ``claude -p`` with file tools)
-  driven by the Listing-1 exploration prompt.
-* :class:`ParametricAgent` - a deterministic mock agent built from a domain's
-  ``mutate(parent, rng, ctx)`` function.
-* :class:`DirectionProvider` - assigns each planned root a direction tag
-  ("the direction provider assigns those new roots their directions").
-"""
+"""Object level, frozen during a run [paper:§3]: discovery task, locked evaluator, discovery agent, directions."""
 from __future__ import annotations
 
 import fnmatch
@@ -65,18 +44,15 @@ class AttemptRecord:
     direction: Optional[str] = None
 
     def render(self, max_chars: Optional[int] = 600) -> str:
-        """Compact one-record view (proposal clipped to ``max_chars``; the error's informative end)."""
+        """Compact one-record view: proposal clipped to ``max_chars``, the error's informative end."""
         head = f"[round {self.round} {self.cell}{' dir=' + self.direction if self.direction else ''}] "
         res = f"score={self.score:.6g}" if self.score is not None and self.fail_class == "ok" else \
             f"FAILED ({self.fail_class}): {_error_gist(self.error)}"
-        prop = (self.proposal or "").strip().replace("\n", " ")
-        prop = prop[:max_chars] if max_chars is not None else prop
+        prop = (self.proposal or "").strip().replace("\n", " ")[:max_chars]
         return f"{head}{res}\n  proposal: {prop}"
 
     def render_dir(self, max_chars: Optional[int] = None) -> str:
-        """The attempt directory as Listing 1 has the agent read it: ``proposal.md`` in full,
-        ``eval/score.json`` and ``error.txt`` when it failed [paper:App.B.1 L1:9]. With
-        ``max_chars`` (a non-default history cap) the proposal is clipped and says so."""
+        """The attempt directory as Listing 1 reads it [paper:App.B.1 L1:9]; ``max_chars`` clips visibly."""
         ok = self.score is not None and self.fail_class == "ok" and not self.error
         name = f"attempt_{self.cell.replace('/', '_').replace('.', '_')}/"
         tag = f" (branch direction: {self.direction})" if self.direction else ""
@@ -102,13 +78,9 @@ def _indent(text: str, n: int) -> str:
 
 
 def _error_gist(error, n: int = 240) -> str:
-    """The informative end of an error: a Python traceback states the cause (and the offending
-    line) at its END, so a head-only clip hid e.g. ``SyntaxError`` at a stray ``===`` line from
-    the agent (live validation run, 2026-09-25) and it blamed the idea instead of the slip."""
+    """The end of an error, where a traceback states its cause."""
     e = str(error or "").strip()
-    if len(e) <= n:
-        return e
-    return "..." + e[-n:]
+    return e if len(e) <= n else "..." + e[-n:]
 
 
 @dataclass
@@ -127,12 +99,9 @@ class AttemptContext:
     direction: dict = field(default_factory=dict)
     direction_guidance: str = ""
     editable: Optional[Sequence[str]] = None
-    #: ``$baseline_dir`` of Listing 1: the baseline's proposal.md (None: the initial program has none)
-    #: and its evaluation (fail_class / error.txt)
     baseline_proposal: Optional[str] = None
     baseline_fail_class: str = "ok"
     baseline_error: Optional[str] = None
-    #: history caps actually applied by the calling system (disclosed in the prompt; None = none)
     history_note: str = ""
 
 
@@ -145,7 +114,6 @@ class AgentAttempt:
     meta: dict = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------- tasks
 class DiscoveryTask:
     """A discovery problem with a locked evaluator. Larger scores are better."""
 
@@ -169,14 +137,8 @@ class DiscoveryTask:
 
 
 class DomainTask(DiscoveryTask):
-    """Any :class:`rsi.core.Domain` as a discovery task.
-
-    The score of a program is the mean task score ``S`` of the domain's ``evolve``
-    split (or ``train`` / ``val`` when it has no ``evolve``; never a sealed split;
-    ``k`` trials) with the frozen task LLM - graded only inside ``Domain.grade``. ``fail_class`` is ``"ok"`` when at least one trial ran without
-    an execution error, ``"compile_other"`` when all crashed (repairable), and
-    ``"env_error"`` when every trial hit an ``infra:`` backend error.
-    """
+    """Any :class:`rsi.core.Domain` as a discovery task: score = mean task score on the first non-empty decision
+    split; ``compile_other`` when every trial crashed, ``env_error`` when every trial hit an ``infra:`` error."""
 
     def __init__(self, domain: Domain, seed: Artifact, llm_task: Optional[LLM] = None, *, split: Optional[str] = None,
                  k: int = 1, workers: int = 4, directions: Sequence[str] = (), editable: Optional[list[str]] = None,
@@ -188,15 +150,11 @@ class DomainTask(DiscoveryTask):
         self.evaluator = Evaluator(domain, llm_task, workers=workers, cache_dir=cache_dir)
         self._directions = list(directions)
         self._editable = editable
-        #: audit only (rsi.trace): the last EvalResult per artifact id (per-task + raw trial scores)
         self.last_results: dict = {}
 
     @staticmethod
     def _decision_split(domain: Domain, split: Optional[str]) -> str:
-        """The split the discovery score is computed on: ``split`` if given, else the first
-        non-empty decision split (``evolve``, then ``train``, then ``val``). Sealed splits
-        (holdout/ood/test) can never be chosen, and an empty split raises instead of
-        silently scoring every program 0 as a "successful" evaluation."""
+        """``split`` or the first non-empty of evolve/train/val; sealed or empty splits raise."""
         splits = domain.tasks.splits
         if split is None:
             split = next((s for s in ("evolve", "train", "val") if splits.get(s)), None)
@@ -243,7 +201,6 @@ class DomainTask(DiscoveryTask):
                            n_valid, n_total, diag, time.time() - t0)
 
 
-# ---------------------------------------------------------------------------- agents
 class DiscoveryAgent:
     """Frozen discovery agent: one call = one new candidate from a parent workspace."""
 
@@ -251,10 +208,7 @@ class DiscoveryAgent:
         raise NotImplementedError
 
 
-#: Listing 1 [paper:App.B.1], verbatim. The ``$variables`` are "filled in by the calling system"
-#: (L1:5): :meth:`EditorAgent.build_instructions` substitutes them and - because a single-completion
-#: editor has no file tools - renders the directories they name (the sibling ``attempt_*/`` dirs,
-#: ``$history_dir``, ``$baseline_dir`` and ``$problem_file``) inline after the listing.
+# Listing 1 [paper:App.B.1], verbatim; build_instructions fills the $variables and renders the named dirs inline
 EXPLORATION_PROMPT = """\
 You must read every historical proposal before proposing or implementing a new solution.
 
@@ -286,8 +240,7 @@ Write only `$node_dir/proposal.md` (mechanism, evidence from history, why it's n
 Never execute pkill, kill, killall, or terminate unrelated processes.
 """
 
-#: what the calling system appends to Listing 1 for a single-completion editor (no file tools):
-#: the directories the listing names, rendered inline, and where proposal.md goes in the reply
+# appended to Listing 1 for a single-completion editor (no file tools)
 WORKSPACE_VIEW = """\
 
 ---
@@ -317,8 +270,7 @@ Your reply's JSON header is `$node_dir/proposal.md`: "change" is a one-line mech
 
 def _render_records(recs: Sequence[AttemptRecord], limit: Optional[int] = None, empty: str = "(none)",
                     max_chars: Optional[int] = None) -> str:
-    """Every record (Listing 1: "not a sample"); with ``limit`` (a non-default cap) only the most
-    recent ``limit``, and the omission is stated."""
+    """Every record (Listing 1: "not a sample"); a non-default ``limit`` keeps the newest and says so."""
     if not recs:
         return empty
     recs = list(recs)
@@ -329,13 +281,7 @@ def _render_records(recs: Sequence[AttemptRecord], limit: Optional[int] = None, 
 
 
 class EditorAgent(DiscoveryAgent):
-    """LLM discovery agent over any :class:`rsi.core.Editor` (Listing-1 prompt).
-
-    ``editor`` may be a :class:`rsi.core.RewriteEditor` (one completion returns
-    whole files) or an :class:`rsi.core.AgentEditor` (``claude -p`` coding agent in
-    a scratch copy of the workspace). ``editable`` restricts writes to the program
-    files (default: every file except the workspace meta files).
-    """
+    """LLM discovery agent over any :class:`rsi.core.Editor` with the Listing-1 prompt."""
 
     def __init__(self, editor: Editor | LLM, *, editable: Optional[Sequence[str]] = None, role: str = "agent",
                  max_history: Optional[int] = None, max_proposal_chars: Optional[int] = None,
@@ -343,9 +289,7 @@ class EditorAgent(DiscoveryAgent):
         self.editor = RewriteEditor(editor) if isinstance(editor, LLM) else editor
         self.editable = list(editable) if editable is not None else None
         self.role = role
-        # Listing 1: "read every proposal.md ... in full -- not a sample". Both caps are OFF by default;
-        # set them only to bound prompt length (a documented, non-default deviation that the prompt
-        # then states: omitted records and clipped proposals are announced, never silent)
+        # Listing 1 reads every proposal in full: both caps are off by default and announced when set
         self.max_history = max_history
         self.max_proposal_chars = max_proposal_chars
         self.system = system or ("You are an expert research engineer running one attempt of an automated "
@@ -357,7 +301,7 @@ class EditorAgent(DiscoveryAgent):
         mc = self.max_proposal_chars
         base = AttemptRecord("baseline", -1, -1, 0, ctx.baseline_proposal or "(the initial program: it has no "
                              "proposal.md)", ctx.baseline_score, ctx.baseline_fail_class, ctx.baseline_error)
-        baseline = "\n".join(base.render_dir(mc).splitlines()[1:])          # no attempt_*/ header for baseline/
+        baseline = "\n".join(base.render_dir(mc).splitlines()[1:])  # no attempt_*/ header for baseline/
         notes = [ctx.history_note] if ctx.history_note else []
         if self.max_history is not None or mc is not None:
             notes.append("NOTE: this calling system caps what it shows"
@@ -384,7 +328,6 @@ class EditorAgent(DiscoveryAgent):
         instructions = self.build_instructions(ctx)
         prop = self.editor.edit(ws, instructions, editable=editable, system=self.system,
                                 seed=seed, role=self.role)
-        # audit record (rsi.trace): the exact prompt the model saw and its raw reply
         try:
             shown = self.editor.build_prompt(ws, instructions, None, editable) \
                 if hasattr(self.editor, "build_prompt") else instructions
@@ -405,12 +348,8 @@ _OPEN_FENCE = re.compile(r"^\s*```[\w+-]*\s*$")
 
 
 def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Artifact, list[str]]:
-    """Drop reply-format lines that ``parse_file_blocks`` leaves in a file block: trailing ones (a
-    closing fence or a bare ``===`` / ``=== END ===`` terminator, when the model fences only the end
-    of a file) and a leading opening fence (```` ```python ````, when the closing fence is not the
-    block's last line or is missing). Such a line is never valid code, and keeping it turned a
-    sound candidate into a SyntaxError (the live validation run of 2026-09-25: 6 of 12
-    round-1 attempts). Only such boundary lines of the editable ``.py`` files are touched."""
+    """Drop reply-format lines (trailing fences or ``===`` terminators, a leading opening fence) that
+    ``parse_file_blocks`` leaves at the edges of editable ``.py`` files; they are never valid code."""
     fixed: dict[str, str] = {}
     for name in art:
         if not name.endswith(".py") or not any(fnmatch.fnmatch(name, pat) for pat in editable):
@@ -423,9 +362,6 @@ def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Art
         changed = len(lines) < n0 and any(_TERMINATOR.match(l) for l in orig[len(lines):])
         if not changed:
             lines = list(orig)
-        # a LEADING opening fence (```python) is left in place by parse_file_blocks whenever the
-        # block's closing fence is not the very last line (e.g. "```\n===" or no closing fence at
-        # all); it is never valid Python either (stage-B audit, 2026-09-25)
         head = 0
         while head < len(lines) and not lines[head].strip():
             head += 1
@@ -438,11 +374,8 @@ def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Art
 
 
 class ParametricAgent(DiscoveryAgent):
-    """Deterministic mock agent: ``mutate(parent_program, rng, ctx) -> (program, proposal)``.
-
-    ``calls_usage`` is the simulated usage of one call (so the cost meter counts calls
-    exactly like a real agent). Exceptions inside ``mutate`` become agent errors.
-    """
+    """Deterministic mock agent: ``mutate(parent_program, rng, ctx) -> (program, proposal)``; errors are failed
+    attempts."""
 
     def __init__(self, mutate: Callable[[Artifact, random.Random, AttemptContext], tuple[Artifact, str]],
                  *, name: str = "mock-agent", tokens_per_call: int = 0) -> None:
@@ -462,14 +395,9 @@ class ParametricAgent(DiscoveryAgent):
         return AgentAttempt(prog, proposal, usage)
 
 
-# ------------------------------------------------------------------------ directions
 class DirectionProvider:
-    """Assigns direction tags to the roots of a new live grid.
-
-    Default: cycle through the task's direction classes in a per-round rotated order
-    (diverse coverage). With ``guidance`` set (the E5 "written advice" ablation), each
-    root adopts one of the advised directions with probability ``strength``.
-    """
+    """Cycles new roots through the direction classes in a per-round shuffled order; with ``guidance`` (E5) a root
+    adopts an advised direction with probability ``strength``."""
 
     def __init__(self, classes: Sequence[str] = (), seed: int = 0) -> None:
         self.classes = list(classes)
@@ -483,14 +411,10 @@ class DirectionProvider:
         rng.shuffle(order)
         out = {}
         for b in range(n_branches):
-            d = order[b % len(order)]
-            tags = {"direction": d}
-            if guidance and guidance.get("focus"):
-                if rng.random() < float(guidance.get("strength", 0.8)):
-                    focus = list(guidance["focus"])
-                    d = focus[b % len(focus)]
-                    tags = {"direction": d, "advised": True}
-            out[b] = tags
+            out[b] = {"direction": order[b % len(order)]}
+            if guidance and guidance.get("focus") and rng.random() < float(guidance.get("strength", 0.8)):
+                focus = list(guidance["focus"])
+                out[b] = {"direction": focus[b % len(focus)], "advised": True}
         return out
 
 
@@ -501,8 +425,7 @@ def record_of(node, direction: Optional[str] = None) -> AttemptRecord:
 
 
 def history_records(worlds: Sequence, max_records: Optional[int] = None) -> list[AttemptRecord]:
-    """``H_{t-1}`` as attempt records (newest last), each tagged with its live round. Every record by
-    default (Listing 1: "not just recent cycles"); ``max_records`` keeps only the newest ones."""
+    """``H_{t-1}`` as attempt records (newest last) tagged with their live round; ``max_records`` keeps the newest."""
     out: list[AttemptRecord] = []
     for w in worlds:
         rnd = int(w.meta.get("round", 0))
@@ -512,11 +435,3 @@ def history_records(worlds: Sequence, max_records: Optional[int] = None) -> list
             r.cell = f"t{rnd}/{n.id}"
             out.append(r)
     return out[-max_records:] if max_records is not None else out
-
-
-def score_json(ws: Artifact) -> dict:
-    try:
-        return json.loads(ws.get("eval/score.json") or "{}")
-    except json.JSONDecodeError:
-        return {}
-

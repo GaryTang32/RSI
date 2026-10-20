@@ -1,20 +1,4 @@
-"""Shared base for CPU discovery domains.
-
-Each domain is an :class:`rsi.core.Domain` whose artifact is a *program* written by a
-discovery agent and whose single task is the problem instance. The locked evaluator
-is :meth:`ProgramDomain.evaluate_program`, which runs the program (optionally in a
-subprocess sandbox via :func:`rsi.core.sandbox.call_function`), checks it, and
-returns an :class:`rsi.dream.agent.EvalOutcome` with a typed ``fail_class``:
-
-* ``ok`` - evaluated successfully (score = task score, larger is better);
-* ``compile_other`` - the program raised / did not produce output (repairable);
-* ``constraint`` / ``correctness`` - infeasible or wrong output (repairable, score 0);
-* ``timeout`` - exceeded the time limit (repairable);
-* ``env_error`` - the evaluation infrastructure failed (hard).
-
-``execute``/``grade`` wrap the same evaluator so the domain also works with
-:class:`rsi.core.Evaluator`, ``transfer_report`` and every other method.
-"""
+"""ProgramDomain: a discovery problem whose artifact is a program, graded by a locked ``evaluate_program``."""
 from __future__ import annotations
 
 import json
@@ -46,16 +30,14 @@ class ProgramDomain(Domain):
         self.sandboxed = sandboxed
         self.timeout_s = timeout_s
 
-    # ---- to implement
     def check(self, output: Any, *, seed: int = 0) -> EvalOutcome:
         raise NotImplementedError
 
     def entry_payload(self, *, seed: int = 0) -> dict:
         return {}
 
-    # ---- running the program
     def run_program(self, artifact: Artifact, *, seed: int = 0) -> tuple[Any, Optional[str], str, float]:
-        """Returns (output, error, fail_class, seconds)."""
+        """``(output, error, fail_class, seconds)``; sandboxed via :func:`rsi.core.sandbox.call_function`."""
         code = artifact.get(self.program_file)
         if code is None:
             return None, f"{self.program_file} missing", "compile_other", 0.0
@@ -92,7 +74,6 @@ class ProgramDomain(Domain):
         ev.diagnostics.setdefault("program_s", round(dt, 4))
         return ev
 
-    # ---- rsi.core Domain API
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm=None) -> Execution:
         ev = self.evaluate_program(artifact, seed=seed)
         return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
@@ -114,7 +95,7 @@ class ProgramDomain(Domain):
 
         class _Task(DiscoveryTask):
             name = dom.name
-            domain = dom          # the underlying rsi.core Domain (sealed splits -> shadow monitor)
+            domain = dom  # the underlying rsi.core Domain (sealed splits -> shadow monitor)
 
             def describe(self):
                 return dom.describe()

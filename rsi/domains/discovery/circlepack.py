@@ -1,20 +1,4 @@
-"""Circle packing in the unit square, n = 26: maximize the sum of radii [paper:App.A].
-
-The artifact is ``pack.py`` defining ``pack() -> [[x, y, r], ...]``. The locked
-evaluator checks exactly n circles, containment ``r <= x <= 1 - r`` (same for y) and
-non-overlap ``|c_i - c_j| >= r_i + r_j`` with tolerance ``tol`` (violations ->
-``fail_class="constraint"``, score 0) and scores ``sum(r)``. Best known for n = 26:
-2.635983 (AlphaEvolve / SimpleTES / Dream-RSI all report it).
-
-Mock discovery agent: every attempt resumes from the parent's measured packing (the
-centers in the parent workspace's ``eval/score.json``), applies one mechanism, and finishes with an SLSQP optimisation of (x, y, r)
-and an exact LP for the radii given the centers (``scipy.optimize.linprog``), so
-every output is feasible up to 1e-12. Each stage runs SLSQP on (x, y, r) and then the
-exact LP for the radii. Mechanisms: ``rows`` (re-initialise from a row pattern),
-``jitter``, ``polish`` (tiny perturbation, longer SLSQP), ``relocate``
-(move the smallest circles into the largest gaps), ``shake`` (strong perturbation
-of a subset).
-"""
+"""Circle packing, n = 26 in the unit square: maximize the sum of radii [paper:App.A]; best known 2.635983."""
 from __future__ import annotations
 
 import ast
@@ -227,7 +211,7 @@ def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext])
             pass
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
     if ctx and ctx.attempt > 0 and mech == "rows":
-        mech = rng.choice(("jitter", "polish", "shake"))   # a branch re-initialises only once
+        mech = rng.choice(("jitter", "polish", "shake"))  # a branch re-initialises only once
     elif ctx and ctx.attempt > 0 and rng.random() < 0.2:
         mech = rng.choice(MECHANISMS[1:])
     params = {"rows": {"rows": list(rng.choice(PATTERNS)), "jitter": rng.choice([0.005, 0.01, 0.02])},

@@ -1,36 +1,4 @@
-"""Per-iteration audit trace of a Dream-RSI run (``rsi.trace`` format) and a write-only shadow monitor.
-
-:class:`DreamTracer` maps what the loop does onto the uniform :mod:`rsi.trace` event kinds,
-written to ``<out_dir>/trace.jsonl`` (render with ``rsi.trace.inspect(out_dir)``). One trace
-"round" is one live cycle ``t`` (online search + dreaming phase):
-
-``run_start``   config, seed artifact id, task, initial policy, agent / developer / LLMs, objective
-``baseline``    the seed program's locked evaluation (per task + raw trial scores)
-``noise``       argmax selection has no noise band (paper §3); the guarded selector's margin is per selection
-``round_start`` loop state before the live search: deployed policy (id, label, baked-in beta), the plan
-                it asked for and the validated plan, directions per root, the live root program, best
-                so far, world pool / manifests / version history sizes, calls used and left, spend
-``note``        ``online_round``: every online decision round (prefix summary the policy saw, legal-set
-                size, the selected batch, revealed outcomes); ``online_summary``; ``live_cycle_manifest``;
-                ``beta_sweep`` of the deployed version
-``proposal``    object level: every discovery-agent attempt (prompt, raw reply, claimed change /
-                hypothesis, the ACTUAL program diff vs the parent workspace); policy level: every
-                developer revision (prompt + reply or the mutator's feedback-directed moves, the actual
-                ``method.py`` diff vs the version it started from)
-``critic``      the policy screen: static check + leakage screen (LLM path, incl. repair rounds)
-``eval``        each attempt's locked evaluation; each policy version's replay report (V, per-world
-                V_i, and per world: plan, N, k, batch sizes, best, the Eq.-1 terms, the reveal batches)
-``gate``        object level: the round's best attempt vs the best so far (strict >); policy level:
-                each version's admissibility and V^m vs V^0 with the selection arithmetic
-``decision``    object level: best program before/after; policy level: deployed policy before/after
-``monitor``     :class:`rsi.trace.ShadowMonitor` sealed-split scores of every new best program
-``state``       loop state after the cycle (the trajectory row, meters)
-``run_end``     stop reason, seed / best, totals, spend (loop and monitor)
-
-Everything here only *reads* loop state; no RNG is drawn and nothing is returned to the loop.
-The shadow monitor's model calls go through :class:`ShadowLLM` (roles ``shadow:*``), so the loop's
-usage never includes them.
-"""
+"""Write-only audit trace of a Dream-RSI run (``rsi.trace`` format) and the shadow monitor's metered LLM."""
 from __future__ import annotations
 
 import json
@@ -41,13 +9,15 @@ from typing import Any, Optional, Sequence
 from ..core.artifact import Artifact
 from ..core.llm import LLM, LLMResponse
 from ..trace import RunTracer
+from .agent import EvalOutcome
+from .developer import default_beta_of
 from .policy import POLICY_FILE
 
 SHADOW_PREFIX = "shadow:"
 
 
 class ShadowLLM(LLM):
-    """The frozen task LLM as seen by the shadow monitor: same model, spend metered separately."""
+    """The frozen task LLM as the shadow monitor sees it: same model, spend metered separately."""
 
     def __init__(self, inner: LLM) -> None:
         super().__init__()
@@ -68,9 +38,7 @@ def sealed_splits(domain) -> list[str]:
 
 
 def _r(x: Any, n: int = 6) -> Any:
-    if isinstance(x, float):
-        return x if not math.isfinite(x) else round(x, n)
-    return x
+    return round(x, n) if isinstance(x, float) and math.isfinite(x) else x
 
 
 def _code_diff(old: str, new: str) -> str:
@@ -78,13 +46,11 @@ def _code_diff(old: str, new: str) -> str:
 
 
 def _name(obj) -> Optional[str]:
-    if obj is None:
-        return None
-    return getattr(obj, "name", None) or type(obj).__name__
+    return None if obj is None else getattr(obj, "name", None) or type(obj).__name__
 
 
 class DreamTracer:
-    """Writes the audit trace of one :class:`~rsi.dream.loop.DreamRSILoop` run."""
+    """Maps one :class:`~rsi.dream.loop.DreamRSILoop` run onto ``rsi.trace`` events; it only reads loop state."""
 
     def __init__(self, loop, tracer: RunTracer) -> None:
         self.loop = loop
@@ -94,7 +60,6 @@ class DreamTracer:
     def enabled(self) -> bool:
         return self.tr.enabled
 
-    # ---------------------------------------------------------------- helpers
     def _task_ids(self) -> list[str]:
         dom = getattr(self.loop.task, "domain", None)
         split = getattr(self.loop.task, "split", "evolve")
@@ -104,7 +69,7 @@ class DreamTracer:
             return []
 
     def eval_payload(self, outcome, artifact: Optional[Artifact]) -> dict:
-        """summary + per_task + raw trial scores of one locked evaluation (object level)."""
+        """Summary, per-task and raw trial scores of one locked evaluation."""
         task = self.loop.task
         split = getattr(task, "split", "evolve")
         summary = {"split": split, "S": outcome.score, "fail_class": outcome.fail_class, "valid": outcome.valid,
@@ -125,12 +90,9 @@ class DreamTracer:
                 "diagnostics": diag}
 
     def _policy_desc(self, rec) -> dict:
-        from .developer import default_beta_of
-
         return {"label": rec.label, "rev": f"r{rec.index:04d}", "id": Artifact({POLICY_FILE: rec.code}).short_id,
                 "default_beta": default_beta_of(rec.code)}
 
-    # ----------------------------------------------------------------- events
     def run_start(self, seed_prog: Artifact) -> None:
         lp, c = self.loop, self.loop.cfg
         mon = self.tr.monitor
@@ -176,7 +138,7 @@ class DreamTracer:
                       guidance=(lp.guidance.text[:600] if (lp.cfg.guidance and lp.guidance) else None))
 
     def online(self, t: int, q, out) -> None:
-        """Every online decision round, then every attempt (proposal + eval), in creation order."""
+        """Every online decision round, then every attempt (proposal + eval) in creation order."""
         tree = q.tree
         for row in q.round_log:
             self.tr.event("note", t, what="online_round", online_round=row["round"], prefix_seen=row["prefix"],
@@ -187,7 +149,8 @@ class DreamTracer:
         for n in tree.non_root():
             rec = log.get(n.id, {})
             parent_prog, prog = rec.get("parent_program"), rec.get("program")
-            diff = parent_prog.diff(prog) if (parent_prog is not None and prog is not None) else ""
+            both = parent_prog is not None and prog is not None
+            diff = parent_prog.diff(prog) if both else ""
             parent = tree.node(n.parent_id)
             self.tr.proposal(t, f"t{t}/{n.id}", parent=f"t{t}/{n.parent_id}", prompt=rec.get("prompt", ""),
                              reply=rec.get("reply", ""), change=rec.get("change") or
@@ -196,9 +159,7 @@ class DreamTracer:
                              branch=n.branch, attempt=n.attempt, online_round=n.round,
                              direction=(n.tags or {}).get("direction"), context=rec.get("context"),
                              blocked_files=rec.get("blocked", []), usage=rec.get("usage"),
-                             diff_empty=bool(prog is not None and parent_prog is not None and prog.id == parent_prog.id))
-            from .agent import EvalOutcome
-
+                             diff_empty=bool(both and prog.id == parent_prog.id))
             ev = EvalOutcome(n.score, n.evaluated, n.valid, n.fail_class, n.error, n.n_valid, n.n_total,
                              dict(n.diagnostics or {}), float(rec.get("eval_s") or 0.0))
             pay = self.eval_payload(ev, prog)
@@ -233,7 +194,6 @@ class DreamTracer:
     def manifest(self, t: int, man: dict) -> None:
         self.tr.event("note", t, what="live_cycle_manifest", manifest=man)
 
-    # ------------------------------------------------------------- dreaming
     def replay_eval(self, t: int, rec, rep, *, role: str) -> None:
         obj = self.loop.replay.objective
         worlds = []
