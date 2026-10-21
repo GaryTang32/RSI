@@ -354,7 +354,7 @@ def cli_frontier(store: ExperienceStore) -> str:
 
 
 def cli_top(store: ExperienceStore, k: int = 5) -> list[tuple[str, float]]:
-    scored = [(n, store.scores(n)["score"]) for n in store.names() if store.scores(n)]
+    scored = [(n, s["score"]) for n in store.names() if (s := store.scores(n))]
     return sorted(scored, key=lambda x: -x[1])[:k]
 
 

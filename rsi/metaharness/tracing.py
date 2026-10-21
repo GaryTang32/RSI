@@ -5,6 +5,7 @@ from typing import Any, Optional, Sequence
 
 from ..core.llm import LLM, LLMResponse
 from ..trace import RunTracer, ShadowMonitor
+from .frontier import dominates
 
 SHADOW_PREFIX = "shadow:"
 
@@ -200,8 +201,7 @@ class MHTracer:
             n = r["system"]
             if n in allpts:
                 sc, cc = allpts[n]
-                dom = sorted(o for o, (s2, c2) in allpts.items()
-                             if o != n and s2 >= sc and c2 <= cc and (s2 > sc or c2 < cc))
+                dom = sorted(o for o, p in allpts.items() if o != n and dominates(p, (sc, cc)))
                 per[n] = {"score": sc, "context_cost": cc, "on_frontier": n in pts, "dominated_by": dom[:6],
                           "delta_vs_pre_best_pts": round(100 * (sc - pre_best), 2),
                           "delta_logged_release": r.get("delta")}

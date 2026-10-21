@@ -46,10 +46,8 @@ class MemoClassifyLibrary:
         src = files.get(self.main_file)
         if src is None:
             return None
-        g = self.P.parse(src)
-        if g is None:
-            g = self.P.seed_genome("no_memory" if "NoMemory" in src or "no learning" in src else "fewshot_all")
-        return g
+        return self.P.parse(src) or self.P.seed_genome("no_memory" if "NoMemory" in src or "no learning" in src
+                                                        else "fewshot_all")
 
     def render(self, genome, base=None):
         return Artifact({self.main_file: self.P.render(genome)})

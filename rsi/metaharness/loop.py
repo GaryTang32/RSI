@@ -63,10 +63,8 @@ class MetaHarnessLoop:
         self.proposer_usage = Usage()
         self.n_reevaluations = 0
         self.order = len(self.store.names())
-        if tracer is None:
-            tracer = MHTracer(self, RunTracer(None, "metaharness"))
-        tracer.loop = self
-        self.tr = tracer                     # write-only audit trace
+        self.tr = tracer or MHTracer(self, RunTracer(None, "metaharness"))   # write-only audit trace
+        self.tr.loop = self
 
     def _cost(self, ev: EvalResult) -> dict[str, float]:
         metric, out = self.cfg.cost_metric, {}
@@ -210,6 +208,7 @@ class MetaHarnessLoop:
         view_chars = sum(len(v) for v in view.values())
         read_chars = sum(len(view.get(p, "")) for p in batch.files_read)
         scanned = list(getattr(batch, "files_scanned", []) or [])
+        pending = [c.pending_row() for c in batch.candidates]
         reports_written = self.store.write_reports(getattr(batch, "reports", {}) or {})
         self.store.log_session(t, prompt=batch.prompt, response=batch.transcript, meta={
             "iteration": t, "history_mode": self.cfg.history_mode, "usage": batch.usage.to_dict(),
@@ -219,9 +218,8 @@ class MetaHarnessLoop:
             "view_files": len(view), "view_chars": view_chars,
             "read_chars": read_chars, "error": batch.error, "seconds": round(t_prop, 3),
             "reports_written": reports_written,
-            "proposer_meta": _jsonable(batch.meta),
-            "candidates": [c.pending_row() for c in batch.candidates]})
-        self.store.write_pending(t, [c.pending_row() for c in batch.candidates])
+            "proposer_meta": _jsonable(batch.meta), "candidates": pending})
+        self.store.write_pending(t, pending)
         self.tr.proposals(t, batch)
         t1 = time.time()
         rows = [self._handle(t, c, pre_best) for c in batch.candidates]
