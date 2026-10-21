@@ -1,5 +1,4 @@
-"""End-to-end RRSI loop: determinism, resume after a kill, STOP file, infrastructure failures, readjudication,
-the proposer's done() contract, critic + repair, and a second domain."""
+"""End-to-end RRSI loop: kill/resume, STOP file, infra failures, readjudication, done() contract, critic, repair."""
 import json
 
 import pytest
@@ -8,9 +7,9 @@ from rsi.core import Artifact, Editor, MockLLM, Proposal
 from rsi.domains.agentqa import AgentQADomain
 from rsi.domains.harnessworld import CriticProfile, HarnessWorldMockLLM, ProposerProfile
 from rsi.rrsi import (Config, Killed, Proposer, RegularizerSwitches, RRSIRun, RRSICritic, RRSIRewriteEditor, Taxonomy,
-                      drive, result, run)
+                      drive, run)
 
-from rrsi_helpers import aq_run, edit, hw_domain, hw_loop, mechanism, read_json, read_jsonl, reply, snapshot
+from rrsi_helpers import aq_run, edit, hw_domain, hw_loop, hw_run, mechanism, read_json, read_jsonl, reply, snapshot
 
 KILL_POINTS = (("evaluated", (2, "A")), ("drafted", (3, "B")), ("recorded", (1, "A")), ("recorded", (3, "A")),
                ("settled", (3, None)))
@@ -19,10 +18,8 @@ TAX = Taxonomy(["prompt", "memory"], ["memory"], {"prompt": ["prompts/*"], "memo
 
 def test_end_to_end_result_and_ledger(tmp_path):
     out = tmp_path / "a"
-    dom, r = hw_loop(out)
-    stop = drive(r)
-    res = result(r, stop)
-    assert stop == "max_rounds" and len(res.trajectory) == 6
+    dom, res = hw_run(out)
+    assert res.stop_reason == "max_rounds" and len(res.trajectory) == 6
     assert res.meta["delta"] > 0 and res.meta["calibration"]["method"].startswith("bootstrap")
     assert "proposer" in res.usage and "critic" in res.usage and res.usage["_total"]["calls"] > 0
     nodes = res.ledger.nodes()
@@ -58,7 +55,6 @@ def test_deterministic_and_kill_resume_identical(tmp_path):
 
 def test_stop_file_and_infra_limit(tmp_path):
     _, r = hw_loop(tmp_path / "s")
-    (tmp_path / "s").mkdir(exist_ok=True)
     (tmp_path / "s" / "STOP").write_text("")
     assert drive(r) == "stop_file"
     assert r.frontier.settled_rounds() == 0
@@ -70,7 +66,7 @@ def test_stop_file_and_infra_limit(tmp_path):
     r = RRSIRun(dom, dom.seed_artifact(), out_dir=tmp_path / "i", editor=Broken(MockLLM()),
                 config=Config(T=5, workers=1))
     assert drive(r) == "infra_failures"
-    assert len(list((tmp_path / "i" / "logs").glob("r0.err"))) == 1
+    assert (tmp_path / "i" / "logs" / "r0.err").exists()
 
 
 def test_readjudicate_changes_only_algorithm2(tmp_path):

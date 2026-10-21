@@ -1,10 +1,11 @@
 """Shared builders for the RRSI tests."""
 import json
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
-from rsi.core import LLM, Ledger, LLMResponse, Usage
+from rsi.core import LLM, FunctionDomain, Ledger, LLMResponse, TaskSuite, Usage
 from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
-from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain
+from rsi.domains.harnessworld import HarnessWorldDomain, HarnessWorldMockLLM, Mechanism, make_domain
 from rsi.rrsi import Config, RRSIRun, drive, result, run
 from rsi.rrsi.mocks import AgentQAMockLLM
 
@@ -12,39 +13,52 @@ SMALL = dict(n_evolve=24, n_holdout=24, n_ood_per_family=6)
 ACCEPT = json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
 
 
-def hw_domain(seed: int = 0, **sizes):
+def hw_domain(seed: int = 0, **sizes) -> HarnessWorldDomain:
     return make_domain(seed=seed, **(sizes or SMALL))
 
 
-def mechanism(dom, kind: str):
+def mechanism(dom: HarnessWorldDomain, kind: str) -> Mechanism:
     """The first catalog mechanism of `kind` that the seed harness does not hold."""
     return next(m for m in dom.world.catalog.values() if m.kind == kind and m.id not in dom.world.seed_ids)
 
 
-def hw_loop(out, *, seed: int = 0, T: int = 5, switches=None, hooks=None, **cfg) -> tuple:
+def hw_loop(out: Path, *, seed: int = 0, T: int = 5, hooks: dict | None = None, **cfg) -> tuple:
     dom = hw_domain(seed)
     config = Config(T=T, workers=1, seed=seed, record_timestamps=False, **cfg)
     return dom, RRSIRun(dom, dom.seed_artifact(), out_dir=out, llm_propose=HarnessWorldMockLLM(dom.world),
-                        config=config, switches=switches, hooks=hooks)
+                        config=config, hooks=hooks)
 
 
-def hw_run(out, **kw) -> tuple:
+def hw_run(out: Path, **kw) -> tuple:
     dom, r = hw_loop(out, **kw)
     return dom, result(r, drive(r))
 
 
-def aq_suite():
+def aq_suite() -> TaskSuite:
     return make_suite(n_evolve=8, n_holdout=6, n_ood_per_family=2, seed=0)
 
 
-def aq_run(out, *, T: int = 3, k: int = 2, workers: int = 2, task=None, propose=None, budget=None, hooks=None,
-           **cfg) -> tuple:
+def aq_run(out: Path, *, T: int = 3, k: int = 2, workers: int = 2, task: LLM | None = None,
+           propose: LLM | None = None, budget=None, hooks: dict | None = None, **cfg) -> tuple:
     suite = aq_suite()
     dom = AgentQADomain(suite)
     config = Config(T=T, k=k, workers=workers, seed=0, record_timestamps=False, **cfg)
     res = run(dom, AgentQADomain.seed_artifact(), llm_task=task or SimModel(suite),
               llm_propose=propose or AgentQAMockLLM(), config=config, out_dir=out, budget=budget, hooks=hooks)
     return dom, res
+
+
+def fn_domain(tasks: list, execute: Callable, grade: Callable | None = None, **kw) -> FunctionDomain:
+    """A FunctionDomain whose only split is evolve, graded by exact match unless `grade` is given."""
+    grade = grade or (lambda task, out: float(out == task.target))
+    return FunctionDomain(TaskSuite(tasks, {"evolve": [t.id for t in tasks]}), execute, grade, **kw)
+
+
+def accepting(responder: Callable) -> Callable:
+    """The MockLLM responder `responder` behind a critic that accepts every change."""
+    def respond(prompt, system, seed, i):
+        return ACCEPT if "strict reviewer" in (system or "") else responder(prompt, system, seed, i)
+    return respond
 
 
 def edit(component: str = "prompt", hypothesis: str = "h", **fields) -> dict:
@@ -64,11 +78,11 @@ def reply(files: dict, edits: list, **head) -> str:
     return "```json\n" + json.dumps({"action": "done", **head, "edits": edits}) + "\n```\n" + body
 
 
-def read_json(path):
+def read_json(path: Path):
     return json.loads(Path(path).read_text())
 
 
-def read_jsonl(path) -> list:
+def read_jsonl(path: Path) -> list:
     return [json.loads(line) for line in Path(path).read_text().splitlines()]
 
 
@@ -80,6 +94,14 @@ def snapshot(d: Path) -> dict:
             "attribution": (d / "attribution.jsonl").read_text(),
             "decisions": {p.parent.name: p.read_text() for p in sorted(d.glob("r*/decisions.json"))},
             "trajectory": fr["trajectory"], "S_star": fr["S_star"]}
+
+
+def reserved_rounds(out: Path, T: int) -> Iterator[tuple[int, dict, dict]]:
+    """(t, directives, variant B prep) of every round that opened a reserved exploration slot."""
+    for t in range(T):
+        dirs = read_json(out / f"r{t}" / "directives.json")
+        if dirs["sigma_t"] and dirs["explore"]["untried"]:
+            yield t, dirs, read_json(out / f"r{t}" / "B" / "prep.json")
 
 
 def spy_splits(dom) -> list:

@@ -1,5 +1,4 @@
-"""Second adversarial review: a taxonomy-less FunctionDomain whose harness is code, ablation-arm fidelity,
-grader tampering by stack walking, a degenerate noise band, domain guards and analyst robustness."""
+"""RRSI on a taxonomy-less code-harness domain: ablation arms, grader tampering, zero band, guards, analyst."""
 import json
 import random
 import warnings
@@ -7,12 +6,11 @@ import warnings
 import pytest
 
 from rsi.core import Artifact, Evaluator, Execution, FunctionDomain, MetricGuard, MockLLM, Task, TaskSuite
-from rsi.rrsi import Config, RegularizerSwitches, RRSICritic, RRSIRun, Taxonomy, drive, parse_sections, run
-from rsi.rrsi.analyst import Analyst
-from rsi.rrsi.constitution import default_constitution
-from rsi.rrsi.evaluate import TaskResult, aggregate
+from rsi.rrsi import (Analyst, Config, RegularizerSwitches, RRSICritic, RRSIRun, Taxonomy, aggregate,
+                      default_constitution, drive, parse_sections, run)
+from rsi.rrsi.evaluate import TaskResult
 
-from rrsi_helpers import ACCEPT, edit, read_json, reply
+from rrsi_helpers import accepting, edit, fn_domain, read_json, reply, reserved_rounds
 
 SEED = Artifact({"convert.py": "def convert(km):\n    f = 0.621371 if km < 30 else 0.6\n"
                                "    return f'{km * f:.1f} mi'\n"})
@@ -51,10 +49,9 @@ def _done(files: dict, comp: str, hyp: str) -> str:
     return reply(files, [e], summary=hyp)
 
 
+@accepting
 def code_tweaker(prompt, system, seed, i):
     """Fixes convert() once, then ships neutral code edits; a reserved slot declares an untried non-structural tag."""
-    if "strict reviewer" in (system or ""):
-        return ACCEPT
     P = parse_sections(prompt)
     d, src = P["directives"], P["files"]["convert.py"]
     untried = [c for c in (d.get("untried") or []) if c in ("config", "output_plumbing", "context_mgmt")]
@@ -78,11 +75,7 @@ def test_taxonomy_less_domain_keeps_code_tags_and_reserved_slots_work(tmp_path):
     out = tmp_path / "u"
     res = run(dom, SEED, llm_propose=MockLLM(code_tweaker), config=Config(T=7, workers=1), out_dir=out)
     assert res.stop_reason == "max_rounds" and "km < 30" not in res.best["convert.py"] and res.meta["delta"] > 0
-    reserved = []
-    for t in range(7):
-        dirs = read_json(out / f"r{t}" / "directives.json")
-        if dirs["sigma_t"] and dirs["explore"]["untried"]:
-            reserved.append(read_json(out / f"r{t}" / "B" / "prep.json").get("gate_failure"))
+    reserved = [prep.get("gate_failure") for _, _, prep in reserved_rounds(out, 7)]
     assert reserved, "the flaky executor never stalled - the test lost its point"
     assert "critic_reject" not in reserved                      # the code edit kept its declared tag
     assert {"control_flow", "config"} <= set(read_json(out / "r6" / "directives.json")["tried"])
@@ -161,10 +154,9 @@ def test_k1_calibration_warns_about_a_zero_band(tmp_path):
         assert loop(tmp_path / "k2", 2).calibrate()["delta"] > 0
 
 
-def test_m_is_validated():
+def test_m_is_validated(tmp_path):
     with pytest.raises(ValueError):
-        RRSIRun(units_domain(), SEED, out_dir="/tmp/rrsi_never", llm_propose=MockLLM(code_tweaker),
-                config=Config(m=9))
+        RRSIRun(units_domain(), SEED, out_dir=tmp_path, config=Config(m=9))
 
 
 def test_domain_guard_rejects_a_score_gain_that_breaks_validity(tmp_path):
@@ -177,15 +169,10 @@ def test_domain_guard_rejects_a_score_gain_that_breaks_validity(tmp_path):
         return Execution(output=valid and rng.random() < (0.95 if aggressive else 0.4), meta={"valid": int(valid)},
                          tokens=100)
 
-    def proposer(prompt, system, seed, i):
-        if "strict reviewer" in (system or ""):
-            return ACCEPT
-        return _done({"design.py": "AGGRESSIVE = True\n"}, "config", "push the design to the limit")
-
-    dom = FunctionDomain(TaskSuite(tasks, {"evolve": [t.id for t in tasks]}), execute, lambda t, o: float(bool(o)),
-                         name="design")
+    dom = fn_domain(tasks, execute, lambda t, o: float(bool(o)), name="design")
     seed = Artifact({"design.py": "AGGRESSIVE = False\n"})
-    kw = dict(llm_propose=MockLLM(proposer), config=Config(T=1, m=1, workers=1, delta=0.02),
+    push = accepting(lambda *a: _done({"design.py": "AGGRESSIVE = True\n"}, "config", "push the design to the limit"))
+    kw = dict(llm_propose=MockLLM(push), config=Config(T=1, m=1, workers=1, delta=0.02),
               guards=(MetricGuard("valid", 0.03),))
     on = run(dom, seed, out_dir=tmp_path / "on", **kw)
     off = run(dom, seed, out_dir=tmp_path / "off", switches=RegularizerSwitches.full().but(domain_guards=False), **kw)

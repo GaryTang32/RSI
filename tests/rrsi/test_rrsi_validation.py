@@ -1,13 +1,12 @@
-"""Per-iteration tracing: the trace covers every step, the shadow monitor is write-only, tracing errors never
-change a run, and the independent audit re-derives every step of an offline run."""
+"""Per-iteration trace, write-only shadow monitor, harmless tracing errors, and the step-by-step audit."""
 import json
+from functools import partial
 
 import pytest
 
 from rsi.core import Budget
 from rsi.domains.agentqa import AgentQADomain, SimModel
-from rsi.rrsi import Config, run
-from rsi.rrsi.analyst import Analyst
+from rsi.rrsi import Analyst, Config, run
 from rsi.rrsi.audit import audit_events, audit_run
 from rsi.rrsi.mocks import AgentQAMockLLM, AgentQAMockProfile
 from rsi.trace import RunTracer, inspect, load_trace
@@ -19,8 +18,7 @@ KINDS = {"run_start", "baseline", "noise", "round_start", "analysis", "proposal"
 MARKS = {"aq:self_consistency": "[rrsi:sc3]", "aq:python_tool": "[rrsi:tool]", "aq:checker": "[rrsi:checker]"}
 
 
-def _hw(out, T=4, **cfg):
-    return hw_run(out, seed=1, T=T, **cfg)
+_hw = partial(hw_run, seed=1, T=4)
 
 
 def _outcome(d, res) -> dict:

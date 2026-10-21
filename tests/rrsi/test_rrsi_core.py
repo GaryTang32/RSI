@@ -1,5 +1,4 @@
-"""RRSI pure components against the released code's test vectors (google-research/rrsi tests/test_core.py)
-plus this implementation's extensions."""
+"""RRSI pure components against google-research/rrsi tests/test_core.py vectors, plus this package's extensions."""
 import json
 import math
 
@@ -7,9 +6,9 @@ import numpy as np
 import pytest
 
 from rsi.core import Artifact, MetricGuard
-from rsi.rrsi import (Candidate, Config, History, K, Measurement, RegularizerSwitches, Taxonomy, aggregate,
-                      budget_table, build_gates, cost_rule, edit_budget, exploration, select_round, stall_flag)
-from rsi.rrsi.calibrate import calibrate
+from rsi.rrsi import (K, Candidate, Config, History, Measurement, RegularizerSwitches, Taxonomy, aggregate,
+                      budget_table, build_gates, calibrate, cost_rule, edit_budget, exploration, select_round,
+                      stall_flag)
 from rsi.rrsi.components import normalize, novelty
 from rsi.rrsi.evaluate import TaskResult, job_seeds, relative_cost_change
 
@@ -160,10 +159,7 @@ def test_history_summaries_prune_and_explore(tmp_path):
     assert len(h.render(mode="accepted_only")) == 1 and h.render(mode="none") == []
     assert [r["outcome"] for r in h.render()][-1] == "critic_reject"
     traj = [0.50, 0.53, 0.53, 0.535, 0.60]
-    assert stall_flag(traj, 3, 3, 0.02) == 0
-    assert stall_flag(traj, 3, 2, 0.02) == 1
-    assert stall_flag(traj, 4, 2, 0.02) == 0
-    assert stall_flag(traj, 1, 3, 0.02) == 0
+    assert [stall_flag(traj, t, w, 0.02) for t, w in ((3, 3), (3, 2), (4, 2), (1, 3))] == [0, 1, 0, 0]
     e = exploration(3, 1, {"prompt"}, 1)
     assert e["sigma"] == 1 and "prompt" not in e["untried"] and "RESERVED" in e["text"]
     h.truncate_after(0)

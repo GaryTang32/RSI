@@ -1,5 +1,4 @@
-"""RRSI on a new FunctionDomain (text normalization), sealed-split discipline, cross-process determinism, and
-review regressions (held-out monitor, reserved slot without a critic, repair, torn JSONL)."""
+"""RRSI on a new text-normalization FunctionDomain, cross-process determinism, and review regressions."""
 import json
 import os
 import random
@@ -9,10 +8,11 @@ from pathlib import Path
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, Task, TaskSuite
 from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain
-from rsi.rrsi import Config, RegularizerSwitches, RRSICritic, RRSIRun, drive, paired_transfer, parse_sections, run
-from rsi.rrsi.history import History
+from rsi.rrsi import (Config, History, RegularizerSwitches, RRSICritic, RRSIRun, drive, paired_transfer,
+                      parse_sections, run)
 
-from rrsi_helpers import ACCEPT, edit, edit_rows, hw_domain, mechanism, read_json, read_jsonl, reply, spy_splits
+from rrsi_helpers import (ACCEPT, accepting, edit, edit_rows, hw_domain, mechanism, read_json, read_jsonl, reply,
+                          reserved_rounds, spy_splits)
 
 ROOT = Path(__file__).resolve().parents[2]
 WORDS = ["Alpha", "  beta", "GAMMA  ", "Delta", " epsilon ", "ZETA", "eta ", " Theta", "IOTA", "kappa  "]
@@ -21,14 +21,13 @@ GENERIC = "def solve(text):\n    return text.strip().lower()\n"
 LOWER = "def solve(text):\n    return text.lower()\n"
 
 
+def _raw(i: int) -> str:
+    raw = WORDS[i % len(WORDS)] + ("  " if i % 3 == 0 else "") + str(i)
+    return raw if i < 40 else "  CODE-" + raw.strip().upper()
+
+
 def _suite() -> TaskSuite:
-    tasks = []
-    for i in range(60):
-        raw = WORDS[i % len(WORDS)] + ("  " if i % 3 == 0 else "") + str(i)
-        fam = "names" if i < 40 else "codes"
-        if fam == "codes":
-            raw = "  CODE-" + raw.strip().upper()
-        tasks.append(Task(f"q{i:02d}", raw, raw.strip().lower(), fam))
+    tasks = [Task(f"q{i:02d}", _raw(i), _raw(i).strip().lower(), "names" if i < 40 else "codes") for i in range(60)]
     ids = [t.id for t in tasks]
     return TaskSuite(tasks, {"evolve": ids[:20], "holdout": ids[20:40], "ood": ids[40:]}, name="normalize")
 
@@ -64,8 +63,7 @@ def proposer(prompt, system, seed, i):
         return _done(GENERIC, "control_flow", "strip and lowercase every output")
     if d.get("t") == 0 and d.get("variant") == "A":                  # a leaky lookup table of evolve answers
         table = {t.input: t.target for t in _suite().split("evolve")[:6]}
-        leak = f"ANSWERS = {json.dumps(table)}\n\n" + LOWER.replace("return text.lower()",
-                                                                   "return ANSWERS.get(text, text.lower())")
+        leak = f"ANSWERS = {json.dumps(table)}\n\ndef solve(text):\n    return ANSWERS.get(text, text.lower())\n"
         return _done(leak, "memory", "remember practice answers")
     if ".lower()" not in src:
         return _done(LOWER, "control_flow", "lowercase outputs")
@@ -139,9 +137,8 @@ def test_offline_run_is_identical_across_processes_and_hash_seeds():
 def test_heldout_monitor_logs_every_accepted_round(tmp_path):
     seq = [LOWER, GENERIC, GENERIC + "\n# a\n", GENERIC + "\n# b\n"]
 
+    @accepting
     def always_better(prompt, system, seed, i):
-        if "strict reviewer" in (system or ""):
-            return ACCEPT
         t = parse_sections(prompt)["directives"].get("t")
         return _done(seq[min(t or 0, 3)], "control_flow", f"step {t}")
     r = RRSIRun(normalize_domain(), SEED, out_dir=tmp_path / "m", llm_propose=MockLLM(always_better),
@@ -158,13 +155,10 @@ def test_reserved_slot_checked_on_the_diff_even_without_critic(tmp_path):
                 config=Config(T=8, workers=1, delta=0.5), switches=sw)        # huge band -> stall from t = w
     drive(r)
     reserved = []
-    for t in range(8):
-        dirs = read_json(out / f"r{t}" / "directives.json")
-        if dirs["sigma_t"] and dirs["explore"]["untried"]:
-            assert (out / f"r{t}" / "B" / "critic_a0.json").exists()  # the slot check ran without a critic
-            prep = read_json(out / f"r{t}" / "B" / "prep.json")
-            if not prep.get("gate_failure"):
-                reserved.append(any(e["component"] in dirs["explore"]["untried"] for e in prep["edits"]))
+    for t, dirs, prep in reserved_rounds(out, 8):
+        assert (out / f"r{t}" / "B" / "critic_a0.json").exists()      # the slot check ran without a critic
+        if not prep.get("gate_failure"):
+            reserved.append(any(e["component"] in dirs["explore"]["untried"] for e in prep["edits"]))
     assert reserved and all(reserved)
 
 

@@ -1,5 +1,4 @@
-"""The released code's agentic protocols (``rsi.rrsi.agentic``): JSON action proposer, agentic analyst, and
-differential tests against google-research/rrsi@be50316 from ``$RRSI_REF_SRC`` (skipped when absent)."""
+"""JSON-action proposer and agentic analyst, differential against google-research/rrsi@be50316 ($RRSI_REF_SRC)."""
 import importlib
 import json
 import os
@@ -9,14 +8,13 @@ from pathlib import Path
 import pytest
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, Task, TaskSuite
-from rsi.rrsi import Config, run
+from rsi.rrsi import Config, Taxonomy, aggregate, run
 from rsi.rrsi.agentic import (ANALYST_SYSTEM_TMPL, JSON_SUFFIX, AgenticAnalyst, JsonActionProposer, MemWorkspace,
                               digest_task, ref_extract_json)
 from rsi.rrsi.analyst import render_trace, task_row
-from rsi.rrsi.components import Taxonomy
-from rsi.rrsi.evaluate import TaskResult, aggregate
+from rsi.rrsi.evaluate import TaskResult
 
-from rrsi_helpers import ACCEPT
+from rrsi_helpers import accepting
 
 REF = os.environ.get("RRSI_REF_SRC", "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/"
                                      "src/google-research__rrsi")
@@ -146,28 +144,23 @@ def test_agentic_analyst_digests_with_read_only_tools_and_reports(tmp_path):
 
 def _toy_domain():
     tasks = [Task(f"t{i}", {"x": i}, str(i * 2), "dbl") for i in range(12)]
-    suite = TaskSuite(tasks, {"evolve": [f"t{i}" for i in range(8)], "holdout": [f"t{i}" for i in range(8, 12)]})
-
-    def execute(art, task, seed, llm):
-        return str(task.input["x"] * int(art["factor.txt"].strip()))
-
-    dom = FunctionDomain(suite, execute, lambda task, out: float(out == task.target), name="toy-double")
+    ids = [t.id for t in tasks]
+    dom = FunctionDomain(TaskSuite(tasks, {"evolve": ids[:8], "holdout": ids[8:]}),
+                         lambda art, task, seed, llm: str(task.input["x"] * int(art["factor.txt"].strip())),
+                         lambda task, out: float(out == task.target), name="toy-double")
     dom.components = {"prompt": ["*.txt"], "control_flow": ["*.py"]}
     return dom
 
 
+@accepting
 def _loop_responder(prompt, system, seed, i):
-    s = system or ""
-    if s.startswith("You are a harness engineer agent"):
-        n = prompt.count("\n[you] ")
-        if "REPAIR ROUND" in prompt or n >= 1:
-            return json.dumps({"action": "done", "summary": "double", "edits": [
-                {"id": "C1", "component": "prompt", "hypothesis": "multiply by two", "targets_mode": "wrong value",
-                 "predicted_affected": ["t1"], "retroactive_check": "(corrective) t1 moves"}]})
-        return json.dumps({"action": "edit_file", "path": "factor.txt", "old": "1", "new": "2"})
-    if "strict reviewer of harness" in s:
-        return ACCEPT
-    return _analyst_responder(prompt, system, seed, i).replace('"t1"', '"t0"').replace('"t2"', '"t1"')
+    if not (system or "").startswith("You are a harness engineer agent"):
+        return _analyst_responder(prompt, system, seed, i).replace('"t1"', '"t0"').replace('"t2"', '"t1"')
+    if "REPAIR ROUND" in prompt or "\n[you] " in prompt:
+        return json.dumps({"action": "done", "summary": "double", "edits": [
+            {"id": "C1", "component": "prompt", "hypothesis": "multiply by two", "targets_mode": "wrong value",
+             "predicted_affected": ["t1"], "retroactive_check": "(corrective) t1 moves"}]})
+    return json.dumps({"action": "edit_file", "path": "factor.txt", "old": "1", "new": "2"})
 
 
 def test_loop_runs_with_json_actions_proposer_and_agentic_analyst(tmp_path):

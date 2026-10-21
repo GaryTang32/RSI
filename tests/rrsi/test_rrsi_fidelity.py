@@ -1,20 +1,16 @@
-"""Regression tests for the claims-audit findings N1-N9 (docs/methods/rrsi/claims-audit.md): each pins the
-reference-faithful default, with the old behaviour only behind its documented Config option."""
+"""Defaults that follow the released code; each older behaviour sits only behind its own Config option."""
 import collections
 
 import pytest
 
-from rsi.core import (Artifact, Budget, CachedLLM, Execution, FunctionDomain, GateContext, MockLLM, Scored, Task,
-                      TaskSuite)
+from rsi.core import Artifact, Budget, CachedLLM, Execution, GateContext, MockLLM, Scored, Task
 from rsi.domains.harnessworld import HarnessWorldMockLLM
-from rsi.rrsi import (Config, Killed, Measurer, Proposer, RRSICritic, RRSIRewriteEditor, RRSIRun, Taxonomy,
-                      build_gates, default_constitution, parse_sections, run, select_round)
-from rsi.rrsi.evaluate import TaskResult, aggregate
-from rsi.rrsi.history import History
+from rsi.rrsi import (Candidate, Config, History, Killed, Measurer, Proposer, RRSICritic, RRSIRewriteEditor, RRSIRun,
+                      Taxonomy, aggregate, build_gates, default_constitution, parse_sections, run, select_round)
+from rsi.rrsi.evaluate import TaskResult
 from rsi.rrsi.mocks import AgentQAMockLLM
-from rsi.rrsi.selection import Candidate
 
-from rrsi_helpers import Paid, aq_run, edit, edit_rows, hw_domain, mechanism, read_json, reply
+from rrsi_helpers import Paid, aq_run, edit, edit_rows, fn_domain, hw_domain, mechanism, read_json, reply
 
 
 def _meas(job, S_tasks, tokens=1000):
@@ -22,10 +18,8 @@ def _meas(job, S_tasks, tokens=1000):
     return aggregate(job, 2, per)
 
 
-def _evolve_domain(execute, n: int) -> FunctionDomain:
-    tasks = [Task(f"q{i:02d}", i, "x", "f") for i in range(n)]
-    return FunctionDomain(TaskSuite(tasks, {"evolve": [t.id for t in tasks]}), execute,
-                          lambda t, o: float(o == t.target))
+def _evolve_domain(execute, n: int):
+    return fn_domain([Task(f"q{i:02d}", i, "x", "f") for i in range(n)], execute)
 
 
 def test_band_edge_follows_the_code_raw_float_comparison():
@@ -103,8 +97,8 @@ def test_missing_trial_carries_the_task_weight():
         if task.id == "big" and seed == 1:
             raise RuntimeError("infra: judge timed out")
         return Execution(output=0.2 if task.id == "big" else 1.0, meta={"weight": task.meta["weight"]})
-    tasks = [Task("big", 0, None, "f", {"weight": 50.0}), Task("small", 0, None, "f", {"weight": 1.0})]
-    dom = FunctionDomain(TaskSuite(tasks, {"evolve": ["big", "small"]}), execute, lambda t, o: float(o))
+    dom = fn_domain([Task("big", 0, None, "f", {"weight": 50.0}), Task("small", 0, None, "f", {"weight": 1.0})],
+                    execute, lambda t, o: float(o))
     m = Measurer(dom, None, workers=1).measure(Artifact({"a": "a"}), "job", 2, seeds=[0, 1])
     assert m.per_task["big"].weights == [50.0, 50.0] and m.missing == 1
     assert m.S == pytest.approx((0.2 * 50 + 1 + 1) / 102)

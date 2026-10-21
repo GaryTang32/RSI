@@ -3,8 +3,7 @@ import pytest
 
 from rsi.core import Evaluator, SealedSplitError
 from rsi.domains.harnessworld import KINDS, STRUCTURAL, WEAK, HarnessWorldMockLLM, ProposerProfile, make_domain
-from rsi.rrsi import Config, Taxonomy
-from rsi.rrsi.propose import Proposer, RRSIRewriteEditor
+from rsi.rrsi import Config, Proposer, RRSIRewriteEditor, Taxonomy
 
 from rrsi_helpers import mechanism
 
