@@ -5,6 +5,7 @@ import copy
 import functools
 import hashlib
 import math
+from collections import Counter
 from typing import Any, Optional, Sequence
 
 from ..core.gates import GateContext
@@ -259,9 +260,7 @@ class RRSITrace:
                 stall = {"rule": f"sigma_t = 0 while t < w = {cfg.w}"}
         g = r.history.yield_g(t, cfg.n_prune) if sw.prune_directives else {}
         recs = r.history.records()
-        outcomes: dict = {}
-        for x in recs:
-            outcomes[x.get("outcome")] = outcomes.get(x.get("outcome"), 0) + 1
+        outcomes = dict(Counter(x.get("outcome") for x in recs))
         untried = explore.get("untried") or []
         reserved = [chr(65 + v) for v in range(cfg.m) if sigma and untried and v >= cfg.m - cfg.m_draft]
         inc = fr["incumbent"]

@@ -12,7 +12,7 @@ from typing import Callable, Optional
 
 from ..core.artifact import Artifact
 from ..core.llm import LLM, Usage
-from .analyst import render_trace, task_row
+from .analyst import DIGEST_MAX_CHARS, DIGEST_PARALLELISM, render_trace, task_row
 from .components import Taxonomy
 
 JSON_SUFFIX = ("\n\nOutput ONLY a single valid JSON object. No prose before or "
@@ -29,14 +29,9 @@ def ref_extract_json(text: str) -> str:
         start = min([i for i in (t.find("{"), t.find("[")) if i != -1], default=-1)
         if start != -1:
             t = t[start:]
-    if t and t[0] == "{" and not t.endswith("}"):
-        end = t.rfind("}")
-        if end != -1:
-            t = t[:end + 1]
-    if t and t[0] == "[" and not t.endswith("]"):
-        end = t.rfind("]")
-        if end != -1:
-            t = t[:end + 1]
+    for open_, close in ("{}", "[]"):
+        if t and t[0] == open_ and not t.endswith(close) and close in t:
+            t = t[:t.rfind(close) + 1]
     return t
 
 
@@ -58,19 +53,17 @@ def generate(llm: LLM, prompt: str, *, system: Optional[str] = None, json_only: 
     return ref_extract_json(resp.text) if json_only else resp.text
 
 
-def _sum(us: list) -> Usage:
-    tot = Usage()
-    for u in us:
-        tot = tot + u
-    return tot
-
-
-def _action(raw: str) -> Optional[dict]:
-    """The reply's action object (first dict of a list), None for a non-object; raises on invalid JSON."""
-    act = json.loads(raw)
+def _action(raw: str, cut: int, bad_json: str, non_object: str) -> tuple[Optional[dict], str]:
+    """The reply's action object (first dict of a list), else None and the transcript's error line."""
+    try:
+        act = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, f"\n[you] {raw[:cut]}\n[result] ERROR: {bad_json}"
     if isinstance(act, list):
         act = next((x for x in act if isinstance(x, dict)), None)
-    return act if isinstance(act, dict) else None
+    if not isinstance(act, dict):
+        return None, "\n[you] (non-object)\n[result] ERROR: reply with EXACTLY ONE JSON action object" + non_object
+    return act, ""
 
 
 MAX_TURNS = 40
@@ -159,11 +152,6 @@ unchanged; model name, step budget and timeouts are injected externally so
 editing them has no effect. All code and comments in English."""
 
 
-def _path_key(rel: str) -> tuple:
-    """Sort key matching ``sorted(Path.rglob("*"))`` (by path parts)."""
-    return tuple(rel.split("/"))
-
-
 class MemWorkspace:
     """The code's path-jailed ``Workspace`` over an in-memory file map."""
 
@@ -181,9 +169,12 @@ class MemWorkspace:
             raise ValueError(f"path escapes harness dir: {rel}")
         return norm
 
+    def _visible(self) -> list[str]:
+        """Paths sorted like ``sorted(Path.rglob("*"))`` (by path parts), without ``__pycache__``."""
+        return [p for p in sorted(self.files, key=lambda p: p.split("/")) if "__pycache__" not in p.split("/")]
+
     def list_files(self) -> str:
-        return "\n".join(f"{p} ({len(self.files[p].encode())}B)" for p in sorted(self.files, key=_path_key)
-                         if "__pycache__" not in p.split("/"))
+        return "\n".join(f"{p} ({len(self.files[p].encode())}B)" for p in self._visible())
 
     def read(self, rel: str) -> str:
         p = self._safe(rel)
@@ -212,11 +203,8 @@ class MemWorkspace:
         return f"OK: created {rel}"
 
     def dump(self) -> str:
-        parts = []
-        for p in sorted(self.files, key=_path_key):
-            if posixpath.splitext(p)[1] in self.exts and "__pycache__" not in p.split("/"):
-                parts.append(f"===== FILE: {p} =====\n{self.files[p]}")
-        return "\n\n".join(parts)
+        return "\n\n".join(f"===== FILE: {p} =====\n{self.files[p]}" for p in self._visible()
+                           if posixpath.splitext(p)[1] in self.exts)
 
 
 def list_traces_text(traces: dict, task_means: dict, findings: list,
@@ -316,6 +304,25 @@ def build_proposer_context(*, ws: MemWorkspace, report: dict, history_rows: list
     ])
 
 
+def _done_problems(edits: list, budget: int, K: list, reserved: bool, untried: Optional[list]) -> list[str]:
+    """The code's done() checks; they bounce the reply only once a file was changed."""
+    problems = [] if edits else ["edits array is empty"]
+    if len(edits) > budget:
+        problems.append(f"{len(edits)} edits exceed the budget b_t = {budget}")
+    for e in edits:
+        miss = [f for f in ("id", "component", "hypothesis", "targets_mode",
+                            "predicted_affected", "retroactive_check") if not e.get(f)]
+        if miss:
+            problems.append(f"edit {e.get('id', '?')} missing {miss}")
+        if e.get("component") and str(e["component"]).lower() not in K:
+            problems.append(f"edit {e.get('id')} component {e['component']!r} not in {K}")
+    if reserved and untried and edits and not any(str(e.get("component", "")).lower() in untried for e in edits):
+        problems.append("this variant holds a RESERVED EXPLORATION SLOT: at "
+                        "least one edit must be on a never-exercised "
+                        f"component from {untried}")
+    return problems
+
+
 def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, context: str, budget: int,
                      reserved: bool, explore: dict, K: list, traces: dict, task_means: dict, findings: list,
                      render: Callable, seed: int = 0, role: str = "proposer", usage: Optional[list] = None,
@@ -331,42 +338,21 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
                        seed=seed * 1000 + turn, role=role, usage=usage)
         if turns is not None:
             turns.append({"turn": turn, "prompt": prompt, "reply": raw})
-        try:
-            act = _action(raw)
-        except json.JSONDecodeError:
-            transcript += f"\n[you] {raw[:500]}\n[result] ERROR: not valid JSON"
-            continue
+        act, err = _action(raw, 500, "not valid JSON", "")
         if act is None:
-            transcript += ("\n[you] (non-object)\n[result] ERROR: reply with "
-                           "EXACTLY ONE JSON action object")
+            transcript += err
             continue
         a = act.get("action")
         log.append(act if a in ("done", "abort") else
                    {k: (v if len(str(v)) < 200 else str(v)[:200] + "...") for k, v in act.items()})
         if a == "done":
             edits = act.get("edits") or act.get("candidates") or []
-            problems = []
             if n_edits == 0 and edits:
                 transcript += ("\n[you] done\n[result] ERROR: you declared edits but "
                                "made ZERO file changes. Implement them with "
                                "edit_file/write_file, then call done.")
                 continue
-            if n_edits > 0 and not edits:
-                problems.append("edits array is empty")
-            if len(edits) > budget:
-                problems.append(f"{len(edits)} edits exceed the budget b_t = {budget}")
-            for e in edits:
-                miss = [f for f in ("id", "component", "hypothesis", "targets_mode",
-                                    "predicted_affected", "retroactive_check") if not e.get(f)]
-                if miss:
-                    problems.append(f"edit {e.get('id', '?')} missing {miss}")
-                if e.get("component") and str(e["component"]).lower() not in K:
-                    problems.append(f"edit {e.get('id')} component {e['component']!r} not in {K}")
-            if reserved and explore.get("untried") and edits and not any(
-                    str(e.get("component", "")).lower() in explore["untried"] for e in edits):
-                problems.append("this variant holds a RESERVED EXPLORATION SLOT: at "
-                                "least one edit must be on a never-exercised "
-                                f"component from {explore['untried']}")
+            problems = _done_problems(edits, budget, K, reserved, explore.get("untried"))
             if problems and n_edits > 0:
                 transcript += (f"\n[you] done\n[result] ERROR: {problems}. Call done "
                                f"again fixed (drop or merge edits if over budget; "
@@ -457,11 +443,11 @@ class JsonActionProposer:
                                    render=render, seed=seed, usage=usage, turns=turns)
         except GenerateError as e:
             return {"status": "error", "reason": f"llm error: {e}", "edits": [], "n_changes": 0, "artifact": None,
-                    "log": [], "usage": _sum(usage), **({"turns": turns} if capture else {})}
+                    "log": [], "usage": sum(usage, Usage()), **({"turns": turns} if capture else {})}
         new_art = working.with_files({p: ws.files.get(p) for p in set(working.files) | set(ws.files)})
         n_changes = len(base.changed_files(new_art))
         res.update(n_changes=n_changes, artifact=new_art if (res["status"] == "done" and n_changes) else None,
-                   usage=_sum(usage), protocol="json_actions")
+                   usage=sum(usage, Usage()), protocol="json_actions")
         if res["status"] == "done":
             for e in res["edits"]:
                 e["component"] = self.tax.canonical(e.get("component", ""), strip=False)
@@ -476,9 +462,7 @@ class JsonActionProposer:
 
 
 ANALYST_MAX_TURNS = 30
-DIGEST_PARALLELISM = 6
 DIGESTER_MAX_TURNS = 15
-DIGEST_MAX_CHARS = 6000
 TOOL_OUT_CAP = 25_000
 BASH_TIMEOUT = 30
 # rrsi/digester.py::SCHEMAS, verbatim (analyst.py's copy differs in whitespace only, so recorded caches replay)
@@ -597,13 +581,8 @@ Aggregation rules:
 
 
 def _bash_ok(cmd: str) -> bool:
-    if DENY_BASH.search(cmd):
-        return False
-    for seg in re.split(r"[|;&]+", cmd):
-        seg = seg.strip()
-        if seg and seg.split()[0] not in ALLOWED_BASH:
-            return False
-    return True
+    programs = [seg.split()[0] for seg in re.split(r"[|;&]+", cmd) if seg.strip()]
+    return not DENY_BASH.search(cmd) and all(p in ALLOWED_BASH for p in programs)
 
 
 def _safe(root: Path, rel: str) -> Path:
@@ -659,14 +638,9 @@ def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brie
         if calls is not None:
             calls.append({"role": "digester", "task_id": task_id, "lens": lens, "turn": turn, "prompt": transcript,
                           "reply": raw})
-        try:
-            act = _action(raw)
-        except json.JSONDecodeError:
-            transcript += f"\n[you] {raw[:300]}\n[result] ERROR: invalid JSON"
-            continue
+        act, err = _action(raw, 300, "invalid JSON", ", not a list or value")
         if act is None:
-            transcript += ("\n[you] (non-object)\n[result] ERROR: reply with "
-                           "EXACTLY ONE JSON action object, not a list or value")
+            transcript += err
             continue
         a = act.get("action")
         if a == "return":
@@ -761,13 +735,9 @@ class AgenticAnalyst:
                            usage=usage)
             self.last_calls.append({"role": "analyst", "turn": turn, "system": system, "prompt": prompt,
                                     "reply": raw})
-            try:
-                act = _action(raw)
-            except json.JSONDecodeError:
-                transcript += f"\n[you] {raw[:300]}\n[result] ERROR: invalid JSON"
-                continue
+            act, err = _action(raw, 300, "invalid JSON", "")
             if act is None:
-                transcript += "\n[you] (non-object)\n[result] ERROR: reply with EXACTLY ONE JSON action object"
+                transcript += err
                 continue
             a = act.get("action")
             if a == "report":
@@ -810,7 +780,7 @@ class AgenticAnalyst:
                       "error": "analyst hit max turns", "n_digests": n_digests}
         report["analyst"] = "agentic"
         all_digests = [json.loads(p.read_text()) for p in sorted(digests_dir.glob("*.json"))]
-        self.last_usage = _sum(usage)
+        self.last_usage = sum(usage, Usage())
         if tmp is not None:
             tmp.cleanup()
         return report, all_digests

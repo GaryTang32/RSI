@@ -74,7 +74,6 @@ DIFF_CAP = 120_000
 EDITS_CAP = 20_000
 
 
-
 class RRSICritic:
     """Denylist/regex precheck, then an optional LLM review that fails closed on unparseable output."""
 

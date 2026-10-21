@@ -82,10 +82,7 @@ def merged_usage(llms: Sequence[LLM]) -> dict:
         for role, u in l.meter.by_role.items():
             by[role] = by.get(role, Usage()) + u
     out = {k: v.to_dict() for k, v in by.items()}
-    tot = Usage()
-    for v in by.values():
-        tot = tot + v
-    out["_total"] = tot.to_dict()
+    out["_total"] = sum(by.values(), Usage()).to_dict()
     return out
 
 

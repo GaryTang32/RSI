@@ -138,7 +138,6 @@ def _task_weight(trs, declared: Optional[float]) -> float:
 
 def from_core(ev: CoreEvalResult, job: str, *, seeds: Sequence[int], trace_chars: int = 3000,
               keep_trials: bool = True, task_weights: Optional[dict] = None) -> Measurement:
-    """Convert an :class:`rsi.core.EvalResult` to a stored :class:`Measurement`."""
     per: dict[str, TaskResult] = {}
     trials: dict[str, list[dict]] = {}
     fam: dict[str, list[float]] = {}

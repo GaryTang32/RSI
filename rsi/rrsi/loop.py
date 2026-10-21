@@ -38,6 +38,7 @@ from .tracing import RRSITrace
 VARIANT_LABELS = "ABCDEFGH"
 _PROP_SKIP = ("artifact", "usage", "turns")
 _TRAJ_KEYS = ("t", "S", "C", "artifact_id", "job", "node", "variant", "extra")
+_INC_KEYS = ("t", "artifact_id", "job", "S", "C", "extra", "variant", "node")
 
 
 def _no_critic(diff: str, *args, **kwargs) -> dict:
@@ -52,7 +53,15 @@ def _seed(*parts) -> int:
 
 
 def _outcome(c: Candidate, dec, winner: Optional[Candidate]) -> str:
+    if c.ev is None:
+        return c.gate_failure or "not_evaluated"
     return "ACCEPTED" if c is winner else ("LOST" if dec.admissible else "REJECTED")
+
+
+def _from_prep(vid: str, prep: dict) -> Candidate:
+    return Candidate(vid, prep.get("edits") or [], diff_path=prep.get("diff_path"), artifact_id=prep.get("artifact_id"),
+                     gate_failure=prep.get("gate_failure"), detail=prep.get("detail", ""),
+                     mechanism=prep.get("mechanism", ""))
 
 
 def _winner_entry(t: int, w: Candidate) -> dict:
@@ -341,18 +350,19 @@ class RRSIRun:
             self.trace.kept(t, f"r{t}{winner.variant}", self.store.get(winner.artifact_id), winner.ev.S)
         self._hook("settled", t=t)
 
+    def _append_history(self, t: int, c: Candidate, dec, winner: Optional[Candidate], note: str = "") -> str:
+        """Candidate c's per-edit records (a gate failure's Decision carries no numbers); returns the outcome."""
+        outcome = _outcome(c, dec, winner)
+        self.history.append_candidate(t, c.variant, c.edits, outcome, dec.delta_S, dec.delta_C, c is winner, dec.S,
+                                      dec.C, c.diff_path, c.detail if c.ev is None else note + dec.reason)
+        return outcome
+
     def _record(self, t, cands, decisions, winner, inc_ev, parent_node) -> None:
         for c, dec in zip(cands, decisions):
-            if c.ev is None:
-                outcome = c.gate_failure or "not_evaluated"
-                if not self.history.has(t, c.variant):
-                    self.history.append_candidate(t, c.variant, c.edits, outcome, None, None, False, None, None,
-                                                  c.diff_path, c.detail)
-            else:
-                outcome = _outcome(c, dec, winner)
-                if not self.history.has(t, c.variant):
-                    self.history.append_candidate(t, c.variant, c.edits, outcome, dec.delta_S, dec.delta_C,
-                                                  c is winner, dec.S, dec.C, c.diff_path, dec.reason)
+            outcome = _outcome(c, dec, winner)
+            if not self.history.has(t, c.variant):
+                self._append_history(t, c, dec, winner)
+            if c.ev is not None:
                 if not self.scoreboard.has(t, c.variant):
                     self.scoreboard.attribute(t, c.variant, c.edits, inc_ev, c.ev)
                 self.log(f"{c.variant}: S={dec.S:.4f} dS={dec.delta_S:+.4f} dC={dec.delta_C:+.3f} "
@@ -416,12 +426,7 @@ class RRSIRun:
         if prep is not None:
             self.trace.note(t, stage="draft reused from prep.json (resume)", candidate=f"r{t}{vid}",
                             gate_failure=prep.get("gate_failure"))
-            if prep.get("gate_failure"):
-                return Candidate(vid, prep.get("edits") or [], gate_failure=prep["gate_failure"],
-                                 detail=prep.get("detail", ""), diff_path=prep.get("diff_path"),
-                                 artifact_id=prep.get("artifact_id"), mechanism=prep.get("mechanism", ""))
-            return Candidate(vid, prep["edits"], diff_path=prep["diff_path"], artifact_id=prep["artifact_id"],
-                             mechanism=prep.get("mechanism", ""))
+            return _from_prep(vid, prep)
         variant_brief = (f"You are variant {vid} of round {t}. {cfg.m} variants are drafted independently from the "
                          f"same incumbent this round and each is evaluated on the full evolve set; the best "
                          f"admissible one becomes H_{t + 1}.")
@@ -587,10 +592,7 @@ class RRSIRun:
     def _load_round_candidates(self, t: int) -> list[Candidate]:
         cands = []
         for vdir in self._variant_dirs(t):
-            prep = read_json(vdir / "prep.json", {})
-            c = Candidate(vdir.name, prep.get("edits") or [], diff_path=prep.get("diff_path"),
-                          artifact_id=prep.get("artifact_id"), gate_failure=prep.get("gate_failure"),
-                          detail=prep.get("detail", ""), mechanism=prep.get("mechanism", ""))
+            c = _from_prep(vdir.name, read_json(vdir / "prep.json", {}))
             if (vdir / "eval.json").exists():
                 c.ev = Measurement.load(vdir / "eval.json")
             elif not c.gate_failure:
@@ -603,10 +605,7 @@ class RRSIRun:
         fr = self.frontier.load()
         traj = [x for x in fr["trajectory"] if x["t"] <= t + 1]
         fr["trajectory"] = traj
-        last = traj[-1]
-        fr["incumbent"] = {"t": last["t"], "artifact_id": last["artifact_id"], "job": last["job"], "S": last["S"],
-                           "C": last["C"], "extra": last.get("extra"), "variant": last.get("variant"),
-                           "node": last.get("node")}
+        fr["incumbent"] = {k: traj[-1].get(k) for k in _INC_KEYS}
         fr["S_star"] = max(x["S"] for x in traj)
         self.frontier.save(fr)
         self.history.truncate_after(t)
@@ -638,14 +637,10 @@ class RRSIRun:
         write_json(rdir / "decisions.json", [d.to_json() for d in decisions])
         self.history.replace_round(t)
         for c, dec in zip(cands, decisions):
-            if c.ev is None:
-                self.history.append_candidate(t, c.variant, c.edits, c.gate_failure or "not_evaluated", None, None,
-                                              False, None, None, c.diff_path, c.detail)
-                continue
-            outcome = _outcome(c, dec, winner)
-            self.history.append_candidate(t, c.variant, c.edits, outcome, dec.delta_S, dec.delta_C, c is winner,
-                                          dec.S, dec.C, c.diff_path, f"[re-adjudicated delta={delta:.5f}] {dec.reason}")
-            self.ledger.update(f"r{t}{c.variant}", status=outcome, meta={"reason": dec.reason, "readjudicated": True})
+            outcome = self._append_history(t, c, dec, winner, f"[re-adjudicated delta={delta:.5f}] ")
+            if c.ev is not None:
+                self.ledger.update(f"r{t}{c.variant}", status=outcome,
+                                   meta={"reason": dec.reason, "readjudicated": True})
         if winner is not None:
             new = _winner_entry(t, winner)
         else:

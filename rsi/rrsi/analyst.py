@@ -134,6 +134,13 @@ def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:48] or "unknown"
 
 
+def _count(group: dict, d: dict) -> None:
+    group["n_tasks"] += 1
+    group["affected_tasks"].append(d["task_id"])
+    if len(group["representative_evidence"]) < 3:
+        group["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+
+
 class Analyst:
     """Builds F_t from the incumbent's traces (``mode="llm"`` digesters + aggregator, or ``"heuristic"``)."""
 
@@ -180,20 +187,13 @@ class Analyst:
                                            "description": f"tasks of kind '{fam}' end with: {d['blocker']}",
                                            "needed_instead": "a general mechanism that fixes this outcome",
                                            "representative_evidence": []})
-                m["n_tasks"] += 1
-                m["affected_tasks"].append(d["task_id"])
                 m["loss"] += 1.0 - scores.get(d["task_id"], 0.0)
-                if len(m["representative_evidence"]) < 3:
-                    m["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+                _count(m, d)
             elif d["lens"] == "capability_gap":
                 key = _slug(d["why_couldnt"])
-                g = gaps.setdefault(key, {"gap": key, "n_tasks": 0, "affected_tasks": [],
-                                          "description": f"execution failed: {d['why_couldnt']}",
-                                          "representative_evidence": []})
-                g["n_tasks"] += 1
-                g["affected_tasks"].append(d["task_id"])
-                if len(g["representative_evidence"]) < 3:
-                    g["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+                _count(gaps.setdefault(key, {"gap": key, "n_tasks": 0, "affected_tasks": [],
+                                             "description": f"execution failed: {d['why_couldnt']}",
+                                             "representative_evidence": []}), d)
             else:
                 key = f"clean_{_slug(str(fam))}"
                 h = habits.setdefault(key, {"habit": key, "n_tasks": 0,

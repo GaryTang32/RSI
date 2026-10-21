@@ -46,26 +46,29 @@ class RRSINoiseFloor(Gate):
     """Eq. (floor): S' >= S* - delta."""
 
     name = "noise_floor"
+    symbol = "S*"
 
     def __init__(self, tie_eps: float = 0.0) -> None:
         self.tie_eps = float(tie_eps)
 
+    def _reference(self, inc, ctx) -> float:
+        return ctx.best_score if ctx.best_score is not None else inc.score
+
     def check(self, cand, inc, ctx):
-        ref = ctx.best_score if ctx.best_score is not None else inc.score
-        floor = ref - ctx.delta
+        floor = self._reference(inc, ctx) - ctx.delta
         ok = cand.score >= floor - self.tie_eps
-        return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} S*-delta={floor:.4f}", {"floor": floor})
+        return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} {self.symbol}-delta={floor:.4f}",
+                       {"floor": floor})
 
 
 class IncumbentFloor(RRSINoiseFloor):
     """Ablation: S' >= S_t - delta."""
 
     name = "incumbent_floor"
+    symbol = "S_t"
 
-    def check(self, cand, inc, ctx):
-        floor = inc.score - ctx.delta
-        ok = cand.score >= floor - self.tie_eps
-        return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} S_t-delta={floor:.4f}", {"floor": floor})
+    def _reference(self, inc, ctx) -> float:
+        return inc.score
 
 
 class RRSICostRule(CostRule):

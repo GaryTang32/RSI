@@ -174,6 +174,7 @@ class World:
         self._make_tasks()
         self.catalog: dict[str, Mechanism] = {}
         self._make_catalog()
+        self._vec_cache: dict[str, tuple] = {}
 
     def _make_tasks(self) -> None:
         c, rng = self.cfg, self.rng
@@ -192,6 +193,10 @@ class World:
                         f"(instance {hashlib.md5(tid.encode()).hexdigest()[:5]}).")
                 self.tasks.append(HWTask(tid, split, fam, surface, d, target, text))
         self.by_id = {t.id: t for t in self.tasks}
+        self._ids = [t.id for t in self.tasks]
+        self._neg_d = np.array([-t.difficulty for t in self.tasks])
+        self._split_idx = {s: np.array([i for i, t in enumerate(self.tasks) if t.split == s], dtype=int)
+                           for s in ("evolve", "holdout", "ood")}
 
     def split_ids(self, split: str) -> list[str]:
         return [t.id for t in self.tasks if t.split == split]
@@ -312,14 +317,12 @@ class World:
 
     def _vectors(self, m: Mechanism) -> tuple:
         """Cached (generic effect, trick) vectors of ``m`` over all tasks."""
-        cache = self.__dict__.setdefault("_vec_cache", {})
-        v = cache.get(m.id)
-        if v is None:
+        if m.id not in self._vec_cache:
             eff = np.array([m.effect.get(t.family, 0.0) * (m.tool_boost if t.surface == "tool" else 1.0)
                             for t in self.tasks])
             trick = np.array([m.trick if t.id in m.leak_keys else 0.0 for t in self.tasks])
-            v = cache[m.id] = (eff, trick)
-        return v
+            self._vec_cache[m.id] = (eff, trick)
+        return self._vec_cache[m.id]
 
     def logits(self, files: dict, policy: Policy = STRONG) -> tuple[dict, float, list[Mechanism]]:
         """Per-task logit and the harness cost factor."""
@@ -328,11 +331,6 @@ class World:
 
     def logit_array(self, files: dict, policy: Policy = STRONG):
         mechs, payload, extra = self.active(files)
-        if not hasattr(self, "_ids"):
-            self._ids = [t.id for t in self.tasks]
-            self._neg_d = np.array([-t.difficulty for t in self.tasks])
-            self._split_idx = {s: np.array([i for i, t in enumerate(self.tasks) if t.split == s], dtype=int)
-                               for s in ("evolve", "holdout", "ood")}
         ids = {m.id for m in mechs}
         cost = math.prod(m.cost for m in mechs) * (1.0 + extra)
         dilution = self.cfg.context_penalty * math.log(cost) if cost > 0 else 0.0

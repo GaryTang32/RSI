@@ -228,11 +228,9 @@ class AgentQAMockLLM(MockLLM):
                 rejected.update(IDEA.findall(str(r.get("hypothesis", ""))))
         avoid = rejected if self.profile.respect_history else set()
         trace_ids = list(d.get("trace_task_ids") or [])[:3] or ["(none)"]
-        repair = "REPAIR ROUND" in P["task"]
-        chosen: list[tuple[Idea, bool]] = []
-        if repair:
+        if "REPAIR ROUND" in P["task"]:
             brief = P["task"].split("=== REVIEWER OBJECTIONS ===", 1)[-1]
-            declared = re.findall(r"\[(aq:[a-z_]+)\]", brief)
+            declared = IDEA.findall(brief)
             flagged = [x for x in dict.fromkeys(declared) if self.ideas.get(x) and self.ideas[x].kind == "leak"]
             files_upd: dict = {}
             for x in flagged:
@@ -247,6 +245,7 @@ class AgentQAMockLLM(MockLLM):
                     files_upd.update(keep[0].apply({**files, **{k: v for k, v in files_upd.items() if v}}, ctx) or {})
             return self._reply([(i, False) for i in keep], files_upd, trace_ids)
         n = budget if rng.random() < self.profile.fill_budget_p else rng.randint(1, budget)
+        chosen: list[tuple[Idea, bool]] = []
         prune_text = sec.get("components_to_prune", "")
         prunable = [x for x in dict.fromkeys(IDEA.findall(prune_text)) if x in self.ideas
                     and self.ideas[x].revert and self.ideas[x].revert(files)]
@@ -264,24 +263,25 @@ class AgentQAMockLLM(MockLLM):
             a, b = harness_state(before.get("harness.py", "")), harness_state(upd["harness.py"])
             return {k for k in a if a[k] != b[k]}
 
-        for idea, pr in chosen:
+        def _pool(skip):
+            out = []
+            for i in self.ideas.values():
+                if i.id in skip or any(i.id == c.id for c, _ in chosen):
+                    continue
+                if want_reserved and i.component not in untried and not any(c.component in untried
+                                                                            for c, _ in chosen):
+                    continue
+                u = i.apply(cur, ctx)
+                if u is not None and not (_fields(cur, u) & claimed):
+                    out.append(i)
+            return out
+
+        for idea, _ in chosen:
             u = idea.revert(cur) or {}
             claimed |= _fields(cur, u)
             updates.update(u)
             cur = {k: v for k, v in {**cur, **u}.items() if v is not None}
         while len(chosen) < n:
-            def _pool(skip):
-                out = []
-                for i in self.ideas.values():
-                    if i.id in skip or any(i.id == c.id for c, _ in chosen):
-                        continue
-                    if want_reserved and i.component not in untried and not any(c.component in untried
-                                                                                for c, _ in chosen):
-                        continue
-                    u = i.apply(cur, ctx)
-                    if u is not None and not (_fields(cur, u) & claimed):
-                        out.append(i)
-                return out
             pool = _pool(avoid) or (_pool(set()) if not chosen else [])   # nothing new: revisit refuted ideas
             if not pool:
                 break

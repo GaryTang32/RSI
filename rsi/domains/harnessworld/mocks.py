@@ -5,6 +5,7 @@ import hashlib
 import json
 import random
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -154,9 +155,7 @@ class HarnessWorldMockLLM(MockLLM):
                 and (comps is None or m.component in comps) and self.pp.shares.get(m.kind, 0) > 0]
         if not pool:
             return None
-        n_kind: dict[str, int] = {}
-        for m in pool:
-            n_kind[m.kind] = n_kind.get(m.kind, 0) + 1
+        n_kind = Counter(m.kind for m in pool)
         w = []
         for m in pool:
             x = self.pp.shares[m.kind] / n_kind[m.kind] * self.pp.component_bias.get(m.component, 1.0)

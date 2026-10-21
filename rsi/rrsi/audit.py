@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from pathlib import Path
 from typing import Any, Optional
 
@@ -319,10 +320,7 @@ def audit_events(events: list[dict], domain=None) -> dict:
 
 
 def _summ(rows: list[dict]) -> dict:
-    out = {"pass": 0, "fail": 0, "unverifiable": 0, "info": 0}
-    for r in rows:
-        out[r["status"]] = out.get(r["status"], 0) + 1
-    return out
+    return {"pass": 0, "fail": 0, "unverifiable": 0, "info": 0, **Counter(r["status"] for r in rows)}
 
 
 def audit_run(run_dir: str | Path, domain=None, write: bool = True) -> dict:
