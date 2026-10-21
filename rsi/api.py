@@ -69,15 +69,14 @@ def method_module(name: str):
 
 def make_config(method: str, config: Union[None, Mapping[str, Any], Any] = None):
     """Build the method's ``Config`` from a dict of overrides (a Config passes through)."""
-    cfg_cls = getattr(method_module(method), "Config")
+    cfg_cls = method_module(method).Config
     if config is None:
         return cfg_cls()
     if not isinstance(config, Mapping):
         return config
     if dataclasses.is_dataclass(cfg_cls):
         fields = {f.name for f in dataclasses.fields(cfg_cls)}
-        unknown = [k for k in config if k not in fields]
-        if unknown:
+        if unknown := [k for k in config if k not in fields]:
             raise TypeError(f"{method} Config has no fields {unknown}; valid: {sorted(fields)}")
     return cfg_cls(**dict(config))
 

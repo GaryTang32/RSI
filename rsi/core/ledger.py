@@ -34,7 +34,7 @@ class Node:
         return asdict(self)
 
     @classmethod
-    def from_json(cls, d: dict) -> "Node":
+    def from_json(cls, d: dict) -> Node:
         return cls(**{k: d[k] for k in cls.__dataclass_fields__ if k in d})
 
 
@@ -123,8 +123,7 @@ class Ledger:
 
     def lineage(self, node_id: str) -> list[Node]:
         """Root-first ancestors ending at ``node_id``; stops at an unknown parent or a cycle."""
-        out = []
-        seen = set()
+        out, seen = [], set()
         cur: Optional[str] = node_id
         while cur is not None and cur not in seen:
             n = self._nodes.get(cur)

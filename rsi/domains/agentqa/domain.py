@@ -45,14 +45,12 @@ class _CallClock:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._done = 0.0
-        self._open: dict[int, float] = {}
-        self._n = 0
+        self._open: dict[object, float] = {}
 
     @contextmanager
     def call(self):
+        key = object()
         with self._lock:
-            self._n += 1
-            key = self._n
             self._open[key] = time.monotonic()
         try:
             yield
@@ -146,12 +144,7 @@ def is_correct(target: str, output: str) -> bool:
 
 
 class AgentQADomain(Domain):
-    """``harness.py`` defines ``solve(question, llm, tools, files) -> str`` and runs in-process in its own thread.
-
-    A watchdog stops a harness that spends over ``harness_timeout_s`` of its own time (model and tool calls excluded).
-    The grading path is snapshotted at import: a harness that replaces part of it is graded ``tamper: ...`` and the
-    originals are restored. This is a tripwire against reward hacking, not a security boundary.
-    """
+    """Runs ``solve(question, llm, tools, files) -> str`` from ``harness.py`` in-process, under an own-time watchdog."""
 
     name = "agentqa"
     components = {"prompt": ["prompts/*"], "control_flow": ["harness.py"], "tool": ["tools/*"], "skill": ["skills/*"],
@@ -237,7 +230,7 @@ class AgentQADomain(Domain):
                 tools._dead = True
                 threading.Thread(target=_reap, args=(th,), daemon=True, name="agentqa-reaper").start()
                 break
-        tampered = _restore_integrity()
+        tampered = _restore_integrity()   # a tripwire against reward hacking, not a security boundary
 
         def done(**kw) -> Execution:
             with lock:
@@ -332,12 +325,7 @@ def _wrong(ans: str, rng: random.Random) -> str:
 
 
 class SimModel(MockLLM):
-    """Simulated frozen model that rewards generic harness skills.
-
-    Asked for Python on a known question it emits correct code with p=0.93; shown tool output it reports it;
-    otherwise it answers with family accuracy (+0.12 for step-by-step, +0.05 for verify) and formats
-    ``ANSWER: x`` only when asked. ``skill`` scales every accuracy.
-    """
+    """Simulated frozen model that rewards generic harness skills: tool code, step-by-step, verifying, ANSWER lines."""
 
     def __init__(self, suite: TaskSuite, skill: float = 1.0, name: Optional[str] = None) -> None:
         self.questions = {t.input: (str(t.target), t.family) for t in suite.tasks.values()}

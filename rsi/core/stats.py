@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Optional, Sequence  # noqa: F401
+from typing import Sequence
 
 import numpy as np
 
@@ -31,11 +31,7 @@ def noise_from_repeats(scores: Sequence[float], z: float = 2.0) -> NoiseEstimate
 
 def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed: int = 0,
                       small_k_correction: bool = False) -> NoiseEstimate:
-    """delta from one tasks x k (k >= 2) evaluation by RRSI's within-task bootstrap: sd(null dS) = sqrt(2) * se.
-
-    The plug-in bootstrap underestimates variance by (k-1)/k; ``small_k_correction`` scales delta by sqrt(k/(k-1)).
-    The default (False) matches the released RRSI code.
-    """
+    """delta from one tasks x k (k >= 2) evaluation by RRSI's within-task bootstrap: sd(null dS) = sqrt(2) * se."""
     m = np.asarray(matrix, float)
     if m.ndim != 2 or m.shape[1] < 2:
         raise ValueError("need a tasks x k matrix with k >= 2")
@@ -44,7 +40,7 @@ def noise_from_trials(matrix: np.ndarray, z: float = 2.0, reps: int = 2000, seed
     idx = rng.integers(0, k, size=(reps, n_tasks, k))
     boot = np.take_along_axis(np.broadcast_to(m, (reps, n_tasks, k)), idx, axis=2).mean(axis=(1, 2))
     sd = math.sqrt(2) * float(np.std(boot, ddof=1))
-    if small_k_correction:
+    if small_k_correction:   # the plug-in bootstrap underestimates variance by (k-1)/k; off in RRSI's code
         sd *= math.sqrt(k / (k - 1))
     return NoiseEstimate(z * sd, sd, z, "bootstrap" + ("+small_k" if small_k_correction else ""), n_tasks * k)
 

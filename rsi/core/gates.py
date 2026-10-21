@@ -24,11 +24,11 @@ class Scored:
     novelty: int = 0                            # RRSI nu: new structural components touched
 
     @classmethod
-    def from_eval(cls, ev: EvalResult, **extra) -> "Scored":
+    def from_eval(cls, ev: EvalResult, **extra) -> Scored:
         m = ev.trial_matrix()
         samples = list(m.mean(axis=0)) if m.size else [ev.score]
-        metrics = {"score": ev.score, "cost": ev.cost, "steps": ev.steps, "error_rate": ev.error_rate}
-        metrics.update(extra.pop("metrics", {}))
+        metrics = {"score": ev.score, "cost": ev.cost, "steps": ev.steps, "error_rate": ev.error_rate,
+                   **extra.pop("metrics", {})}
         return cls(score=ev.score, cost=ev.cost, samples=samples, per_task=ev.task_scores(), metrics=metrics, **extra)
 
 
@@ -59,7 +59,7 @@ class Gate:
     def check(self, cand: Scored, inc: Scored, ctx: GateContext) -> Verdict:  # pragma: no cover
         raise NotImplementedError
 
-    def __and__(self, other: "Gate") -> "AllOf":
+    def __and__(self, other: Gate) -> AllOf:
         return AllOf([self, other])
 
 
@@ -205,8 +205,7 @@ class BootstrapRigor(Gate):
 
 
 class DualGate(Gate):
-    """SoL-Pi: every ``capability`` metric within tol (higher is better) AND some ``efficiency`` metric (lower is
-    better) improves by more than its minimum relative saving."""
+    """SoL-Pi: every ``capability`` metric within its tol AND some ``efficiency`` metric saves more than its minimum."""
 
     name = "dual_gate"
 
@@ -222,7 +221,7 @@ class DualGate(Gate):
             if c is None or b is None:
                 return Verdict(False, f"capability metric {m} missing")
             det[m] = c - b
-            if not c >= b - tol - TIE_EPS:   # written so that a NaN capability fails too
+            if not c >= b - tol - TIE_EPS:   # a NaN capability fails too
                 return Verdict(False, f"capability {m} dropped {c - b:+.4f} beyond tol {tol}", det)
         improved = []
         for m, min_rel in self.efficiency.items():
@@ -247,14 +246,11 @@ def _is_nan(x) -> bool:
 def select(candidates: Sequence[tuple[object, Scored]], incumbent: Scored, gate: Gate, ctx: GateContext,
            key: Callable[[Scored], float] = lambda s: s.score,
            ) -> tuple[Optional[object], list[tuple[object, Verdict]]]:
-    """``(winner or None, verdicts)``: argmax ``key`` over admissible candidates, ties to the earliest.
-
-    A NaN key is never admissible, since ``max`` would return it whenever it comes first.
-    """
+    """``(winner or None, verdicts)``: argmax ``key`` over admissible candidates, ties to the earliest, NaN never."""
     verdicts = []
     for c, s in candidates:
         v = gate.check(s, incumbent, ctx)
-        if v.accept and _is_nan(key(s)):
+        if v.accept and _is_nan(key(s)):   # max() would return a NaN that comes first
             v = Verdict(False, f"invalid: selection key is NaN ({v.reason})", v.details)
         verdicts.append((c, v))
     admissible = [(c, s) for (c, s), (_, v) in zip(candidates, verdicts) if v.accept]

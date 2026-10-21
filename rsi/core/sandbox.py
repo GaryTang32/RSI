@@ -38,27 +38,25 @@ class RunResult:
 
 def _apply_limits(pid: int, cpu_s: Optional[int], mem_mb: Optional[int]) -> None:
     """Set CPU / address-space rlimits on a just-started child (``preexec_fn`` can deadlock with threads)."""
-    # each limit on its own: one that cannot be set never drops the other
+    limits = []
     if cpu_s:
         hard = resource.getrlimit(resource.RLIMIT_CPU)[1]   # never above a hard limit this process may not raise
         hard = cpu_s + 5 if hard == resource.RLIM_INFINITY else min(cpu_s + 5, hard)
-        try:
-            resource.prlimit(pid, resource.RLIMIT_CPU, (min(cpu_s, hard), hard))
-        except (ProcessLookupError, PermissionError, ValueError):
-            pass
+        limits.append((resource.RLIMIT_CPU, (min(cpu_s, hard), hard)))
     if mem_mb:
-        b = mem_mb * 1024 * 1024
+        limits.append((resource.RLIMIT_AS, (mem_mb * 1024 * 1024,) * 2))
+    for which, limit in limits:   # one at a time: a limit that cannot be set never drops the other
         try:
-            resource.prlimit(pid, resource.RLIMIT_AS, (b, b))
+            resource.prlimit(pid, which, limit)
         except (ProcessLookupError, PermissionError, ValueError):
             pass
 
 
-#: (pid of the process that started it, process group) for every sandboxed child still running
+#: (owner pid, process group) of every sandboxed child still running
 _LIVE_GROUPS: set[tuple[int, int]] = set()
-#: (pid of the process that made it, path) for every scratch directory still in use
+#: (owner pid, path) of every scratch directory still in use
 _LIVE_DIRS: set[tuple[int, str]] = set()
-#: processes that called close_sandboxes(): they start no new sandbox
+#: pids that called close_sandboxes(): they start no new sandbox
 _CLOSED: set[int] = set()
 _LIVE_LOCK = threading.Lock()
 
@@ -74,22 +72,18 @@ if hasattr(os, "register_at_fork"):
 
 
 def close_sandboxes() -> int:
-    """For a process about to exit: refuse new sandboxes, kill its live sandbox groups, remove its scratch dirs.
-
-    Groups and directories a parent made before a fork are left alone. Returns how many groups it killed.
-    """
+    """On exit: refuse new sandboxes, kill this process's sandbox groups, delete its scratch dirs; return #killed."""
     me = os.getpid()
     with _LIVE_LOCK:
         _CLOSED.add(me)
-        # copies (one C call each): an unlocked discard (see _mkscratch) may change the sets meanwhile
+        # .copy() is one C call: an unlocked discard (see _mkscratch) may change the sets meanwhile
         groups = {g for owner, g in _LIVE_GROUPS.copy() if owner == me}
         dirs = [d for owner, d in _LIVE_DIRS.copy() if owner == me]
     for g in groups:
         _killpg(g)
     for d in dirs:
         shutil.rmtree(d, ignore_errors=True)
-    # also catch a session leader an interrupted run_cmd never registered; after the registered ones, so a failing
-    # scan can never stop those
+    # then any session leader an interrupted run_cmd never registered (last, so a failing scan stops nothing)
     extra = kill_child_sessions(me) - groups
     return len(groups) + len(extra)
 
@@ -170,10 +164,7 @@ def _rmscratch(d: str) -> None:
 
 
 def _cpu_backstop(timeout_s: float) -> Optional[int]:
-    """RLIMIT_CPU for a child given only a wall timeout, so a CPU-bound orphan still stops.
-
-    It allows every core (at least 4) for the whole wall budget plus 5 s, and never exceeds the inherited soft limit.
-    """
+    """RLIMIT_CPU backstop for a wall timeout: all cores (at least 4) for the budget + 5 s, within the soft limit."""
     cores = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 1)
     cpu = math.ceil(timeout_s) * max(4, cores) + 5
     soft = resource.getrlimit(resource.RLIMIT_CPU)[0]
@@ -267,14 +258,10 @@ def _stable_paths(rr: RunResult, scratch: str) -> RunResult:
 def call_function(module_code: str, func: str, payload: dict, *, timeout_s: float = 30.0,
                   mem_mb: Optional[int] = 2048, extra_files: Optional[Mapping[str, str]] = None,
                   ) -> tuple[Optional[object], RunResult]:
-    """Import ``module_code`` in a subprocess and return ``(func(**payload), run_result)``; JSON results only.
-
-    ``func`` may be dotted (``"Solver.solve"``); an invalid ``func`` or unsafe ``extra_files`` name raises ValueError.
-    """
+    """``(func(**payload), run_result)`` with ``module_code`` imported in a subprocess; ``func`` may be dotted."""
     if not func or not all(part.isidentifier() for part in func.split(".")):
         raise ValueError(f"func must be a (dotted) Python identifier, got {func!r}")
-    bad = [n for n in (extra_files or {}) if not is_safe_relpath(n)]
-    if bad:  # extra files often come from an artifact: they must stay inside the scratch dir
+    if bad := [n for n in (extra_files or {}) if not is_safe_relpath(n)]:  # often artifact files: keep them inside
         raise ValueError(f"unsafe extra_files names (absolute or escaping the directory): {bad[:5]}")
     d = _mkscratch("rsi_fn_")
     try:

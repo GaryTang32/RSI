@@ -54,10 +54,10 @@ class Artifact(Mapping[str, str]):
         return dict(self._files)
 
     def size_chars(self) -> int:
-        return sum(len(v) for v in self._files.values())
+        return sum(map(len, self._files.values()))
 
     def size_tokens(self) -> int:
-        return sum(estimate_tokens(v) for v in self._files.values())
+        return sum(map(estimate_tokens, self._files.values()))
 
     def with_files(self, updates: Mapping[str, Optional[str]], **meta) -> "Artifact":
         """New artifact with ``updates`` applied; a ``None`` value deletes a file."""
@@ -70,11 +70,13 @@ class Artifact(Mapping[str, str]):
         return Artifact(files, {**self.meta, **meta})
 
     def changed_files(self, other: "Artifact") -> list[str]:
-        names = set(self._files) | set(other._files)
-        return sorted(n for n in names if self._files.get(n) != other._files.get(n))
+        return sorted(n for n in set(self._files) | set(other._files) if self._files.get(n) != other._files.get(n))
 
     def _diff_lines(self, other: "Artifact", name: str, context: int):
-        return _file_diff(name, self._files.get(name, ""), other._files.get(name, ""), context)
+        old, new = self._files.get(name, ""), other._files.get(name, "")
+        for line in difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True),
+                                         f"a/{name}", f"b/{name}", n=context):
+            yield line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
 
     def diff(self, other: "Artifact", context: int = 3) -> str:
         """Unified diff from ``self`` (old) to ``other`` (new), with git's no-newline-at-end markers."""
@@ -82,8 +84,8 @@ class Artifact(Mapping[str, str]):
 
     def diff_size(self, other: "Artifact") -> int:
         """Number of added+removed lines between two versions."""
-        # skip the two file headers: a body line whose content starts with '--' / '++' still counts
-        return sum(sum(1 for line in list(self._diff_lines(other, name, 0))[2:] if line[:1] in "+-")
+        # [2:] skips the file headers, so a body line starting with "--" or "++" still counts
+        return sum(sum(line[:1] in "+-" for line in list(self._diff_lines(other, name, 0))[2:])
                    for name in self.changed_files(other))
 
     @classmethod
@@ -109,8 +111,7 @@ class Artifact(Mapping[str, str]):
     def to_dir(self, path: str | Path, clean: bool = False) -> Path:
         """Write every file under ``path``; ValueError, before any write, for an unsafe file name."""
         root = Path(path)
-        bad = [n for n in self._files if not is_safe_relpath(n)]
-        if bad:
+        if bad := [n for n in self._files if not is_safe_relpath(n)]:
             raise ValueError(f"unsafe artifact file names (absolute or escaping the directory): {bad[:5]}")
         if clean and root.exists():
             shutil.rmtree(root)
@@ -142,12 +143,6 @@ def is_safe_relpath(name: str) -> bool:
     if not name or name.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:[\\/]", name):
         return False
     return ".." not in PurePosixPath(name.replace("\\", "/")).parts and "\x00" not in name
-
-
-def _file_diff(name: str, old: str, new: str, context: int):
-    a, b = old.splitlines(keepends=True), new.splitlines(keepends=True)
-    for line in difflib.unified_diff(a, b, f"a/{name}", f"b/{name}", n=context):
-        yield line if line.endswith("\n") else line + "\n\\ No newline at end of file\n"
 
 
 def parse_file_blocks(text: str) -> dict[str, str]:

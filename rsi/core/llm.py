@@ -9,7 +9,7 @@ import re
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, astuple, dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -39,9 +39,7 @@ class Usage:
         return self.input_tokens + self.output_tokens
 
     def __add__(self, other: "Usage") -> "Usage":
-        return Usage(self.calls + other.calls, self.input_tokens + other.input_tokens,
-                     self.output_tokens + other.output_tokens, self.cost_usd + other.cost_usd,
-                     self.latency_s + other.latency_s)
+        return Usage(*(a + b for a, b in zip(astuple(self), astuple(other))))
 
     def to_dict(self) -> dict:
         return {**asdict(self), "total_tokens": self.total_tokens}
@@ -74,11 +72,7 @@ class UsageMeter:
     def total(self) -> Usage:
         """Spend over all roles except ``*:cached`` (replayed cache hits are shown per role, not billed)."""
         with self._lock:
-            out = Usage()
-            for role, u in self.by_role.items():
-                if not role.endswith(":cached"):
-                    out = out + u
-            return out
+            return sum((u for role, u in self.by_role.items() if not role.endswith(":cached")), Usage())
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -251,19 +245,14 @@ class AnthropicAPI(LLM):
 
 
 class CachedLLM(LLM):
-    """Disk cache in front of another backend, keyed by (model, system, prompt, max_tokens, seed).
-
-    Hits are metered with zero calls and dollars under ``role + ':cached'``; their original usage goes to ``saved``
-    and into ``raw = {"cached": True, "usage": ...}`` (see :func:`artifact_usage`). ``offline=True`` turns a miss
-    into an ``infra:`` error; ``journal`` lists every entry this object writes as ``<cache dir name>/<key>``.
-    """
+    """Disk cache in front of ``inner``, keyed by (model, system, prompt, max_tokens, seed); ``offline`` never calls."""
 
     def __init__(self, inner: LLM, cache_dir: str | Path, *, offline: bool = False,
                  journal: str | Path | None = None) -> None:
         super().__init__()
         self.inner = inner
         self.offline = offline
-        self.journal = Path(journal) if journal is not None else None
+        self.journal = Path(journal) if journal is not None else None   # lists each entry written: "<dir name>/<key>"
         self.name = f"cached:{inner.name}"
         self.dir = Path(cache_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -287,17 +276,17 @@ class CachedLLM(LLM):
     def complete(self, prompt, *, system=None, max_tokens=None, seed=None, role="default") -> LLMResponse:
         path = self._key(prompt, system, max_tokens, seed)
         d = self._read(path) if path.exists() else None
-        if d is not None:
+        if d is not None:   # metered free under "<role>:cached"; the original usage goes to saved and raw["usage"]
             u = Usage(**d["usage"])
-            self.meter.add(role + ":cached", Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0))
+            replay = Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0)
+            self.meter.add(role + ":cached", replay)
             self.saved.add(role, u)
             with self._count_lock:
                 self.hits += 1
             raw = {"cached": True, "usage": asdict(u)}
             if d.get("stop_reason") is not None:     # e.g. "max_tokens": lets callers detect truncated replies
                 raw["stop_reason"] = d["stop_reason"]
-            return LLMResponse(text=d["text"], usage=Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0),
-                               model=d.get("model", self.inner.name), raw=raw)
+            return LLMResponse(text=d["text"], usage=replay, model=d.get("model", self.inner.name), raw=raw)
         with self._count_lock:
             self.misses += 1
         if self.offline:
@@ -361,37 +350,8 @@ def extract_code(text: str, lang: Optional[str] = "python") -> Optional[str]:
     return max(blocks, key=len) if blocks else None
 
 
-def _balanced_spans(s: str, opener: str, closer: str):
-    """For each ``opener`` position, the string-aware balanced span starting there (if it closes)."""
-    start = s.find(opener)
-    while start != -1:
-        depth, in_str, esc = 0, False, False
-        for i in range(start, len(s)):
-            ch = s[i]
-            if in_str:
-                if esc:
-                    esc = False
-                elif ch == "\\":
-                    esc = True
-                elif ch == '"':
-                    in_str = False
-            elif ch == '"':
-                in_str = True
-            elif ch == opener:
-                depth += 1
-            elif ch == closer:
-                depth -= 1
-                if depth == 0:
-                    yield s[start:i + 1]
-                    break
-        start = s.find(opener, start + 1)
-
-
 def extract_json(text: str) -> Any:
-    """First JSON object/array: ```json fences, any fence, then the first balanced ``{...}``, then ``[...]``.
-
-    A fenced bare scalar is returned only when no object or array is found. Raises ValueError.
-    """
+    """First JSON object/array in ```json fences, any fence, then the text; a fenced scalar only if none. ValueError."""
     scalar_found, scalar = False, None
     for block in extract_code_blocks(text, "json") + extract_code_blocks(text):
         try:
@@ -402,12 +362,14 @@ def extract_json(text: str) -> Any:
             return v
         if not scalar_found:
             scalar_found, scalar = True, v
-    for opener, closer in (("{", "}"), ("[", "]")):
-        for span in _balanced_spans(text or "", opener, closer):
+    text, decoder = text or "", json.JSONDecoder()
+    for opener in "{[":   # every object before any array
+        start = text.find(opener)
+        while start != -1:
             try:
-                return json.loads(span)
+                return decoder.raw_decode(text, start)[0]
             except json.JSONDecodeError:
-                pass
+                start = text.find(opener, start + 1)
     if scalar_found:
         return scalar
     raise ValueError("no JSON found in text")

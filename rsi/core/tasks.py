@@ -23,7 +23,7 @@ class Task:
         return {"id": self.id, "input": self.input, "target": self.target, "family": self.family, "meta": self.meta}
 
     @classmethod
-    def from_json(cls, d: dict) -> "Task":
+    def from_json(cls, d: dict) -> Task:
         return cls(d["id"], d.get("input"), d.get("target"), d.get("family", "default"), d.get("meta", {}))
 
 
@@ -37,8 +37,7 @@ class TaskSuite:
         self.tasks: dict[str, Task] = {t.id: t for t in tasks}
         self.splits = {k: list(v) for k, v in splits.items()}
         for k, ids in self.splits.items():
-            missing = [i for i in ids if i not in self.tasks]
-            if missing:
+            if missing := [i for i in ids if i not in self.tasks]:
                 raise KeyError(f"split {k!r} references unknown tasks {missing[:5]}")
         self._sealed = {s for s in SEALED_SPLITS if s in self.splits}
 
@@ -82,7 +81,7 @@ class TaskSuite:
                 f.write(json.dumps(t.to_json()) + "\n")
 
     @classmethod
-    def from_jsonl(cls, path: str | Path) -> "TaskSuite":
+    def from_jsonl(cls, path: str | Path) -> TaskSuite:
         lines = Path(path).read_text().splitlines()
         head = json.loads(lines[0])
         tasks = [Task.from_json(json.loads(line)) for line in lines[1:] if line.strip()]
@@ -90,7 +89,7 @@ class TaskSuite:
 
     @classmethod
     def from_tasks(cls, tasks: list[Task], *, fractions: dict[str, float], seed: int = 0,
-                   by_family: Optional[dict[str, list[str]]] = None, name: str = "suite") -> "TaskSuite":
+                   by_family: Optional[dict[str, list[str]]] = None, name: str = "suite") -> TaskSuite:
         """Put whole families in splits (``by_family={"ood": ["dates"]}``), then divide the rest by ``fractions``."""
         rng = random.Random(seed)
         splits: dict[str, list[str]] = {}

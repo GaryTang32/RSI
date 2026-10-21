@@ -6,7 +6,7 @@ import json
 import math
 import time
 import traceback
-from dataclasses import dataclass, field, asdict  # noqa: F401
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .artifact import Artifact
@@ -34,7 +34,7 @@ class Trial:
     task_id: str
     seed: int
     score: float              # in the domain's score_range; larger is better
-    feedback: str = ""        # the grader's textual feedback
+    feedback: str = ""
     output: Any = None
     trace: str = ""
     tokens: int = 0

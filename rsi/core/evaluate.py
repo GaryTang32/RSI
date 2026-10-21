@@ -118,11 +118,7 @@ def _stable_repr(o) -> str:
 
 
 class Evaluator:
-    """Runs a :class:`Domain` over tasks in a thread pool, caching trials by (artifact, task, seed).
-
-    A ``cache_dir`` entry records the task model, domain and task content it was made for; an entry made for another
-    is re-run. Sealed splits raise unless ``allow_sealed``.
-    """
+    """Thread-pool evaluation of a Domain with trials cached by (artifact, task, seed); sealed splits need opt-in."""
 
     def __init__(self, domain: Domain, llm: Optional[LLM] = None, *, workers: int = 8,
                  cache_dir: Optional[Union[str, Path]] = None, allow_sealed: bool = False,
@@ -202,10 +198,7 @@ class Evaluator:
 
     def evaluate(self, artifact: Artifact, split: Union[str, Sequence[Task]] = "evolve", k: int = 1, *,
                  seeds: Optional[Sequence[int]] = None, label: Optional[str] = None) -> EvalResult:
-        """Run each task of ``split`` (a name or a task list reported as ``label``) once per seed and aggregate.
-
-        Seeds are ``seeds`` or ``range(k)``; duplicate seeds and task ids are dropped so every slot is filled once.
-        """
+        """Run each task of ``split`` (a name, or tasks reported as ``label``) once per seed and aggregate."""
         if isinstance(split, str):
             tasks, split_name = self.domain.tasks.split(split, allow_sealed=self.allow_sealed), split
         else:
@@ -213,8 +206,6 @@ class Evaluator:
         tasks = list({t.id: t for t in tasks}.values())
         seeds = list(dict.fromkeys(seeds)) if seeds is not None else list(range(k))
         jobs = [(t, s) for t in tasks for s in seeds]
-        results: dict[str, list[Optional[Trial]]] = {t.id: [None] * len(seeds) for t in tasks}
-        idx = {s: j for j, s in enumerate(seeds)}
 
         def work(job):
             t, s = job
@@ -225,14 +216,14 @@ class Evaluator:
         else:
             with ThreadPoolExecutor(max_workers=self.workers) as ex:
                 outs = list(ex.map(work, jobs))
+        trials: dict[str, list[Trial]] = {t.id: [] for t in tasks}
         n_missing = 0
-        for tid, s, tr in outs:
+        for tid, s, tr in outs:   # in job order, so each task's trials come in seed order
             if tr.error and tr.error.startswith("infra:"):   # missing: the failure score over the full denominator
                 n_missing += 1
                 tr = Trial(task_id=tid, seed=s, score=float(getattr(self.domain, "failure_score", 0.0)),
                            error=tr.error, family=tr.family)
-            results[tid][idx[s]] = tr
-        trials = {tid: [t for t in trs if t is not None] for tid, trs in results.items()}
+            trials[tid].append(tr)
         return EvalResult(artifact.id, split_name, trials, k=len(seeds), n_missing=n_missing)
 
     def evaluate_many(self, artifacts: Iterable[Artifact], split="evolve", k: int = 1) -> list[EvalResult]:

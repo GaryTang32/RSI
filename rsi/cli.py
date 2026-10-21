@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .api import describe_methods, improve, recommend
+from .core import get_llm, transfer_report
+from .trace import inspect
+
 REPO = Path(__file__).resolve().parent.parent
 EXPERIMENTS = REPO / "experiments"
 EXP_DIRS = {"autoresearch": "autoresearch", "rrsi": "rrsi", "dream": "dream-rsi", "evomap": "evomap",
@@ -60,15 +64,11 @@ def offline_proposer(method: str, problem: str):
 
 
 def cmd_methods(a) -> int:
-    from .api import describe_methods
-
     print(describe_methods())
     return 0
 
 
 def cmd_recommend(a) -> int:
-    from .api import recommend
-
     for m, why in recommend(what_changes=a.what, must_transfer=not a.no_transfer, cost_is_bottleneck=a.cost,
                             many_agents=a.many_agents, search_heavy=a.search, single_metric_script=a.script,
                             prompts_only=a.prompts_only):
@@ -77,10 +77,6 @@ def cmd_recommend(a) -> int:
 
 
 def cmd_improve(a) -> int:
-    from .api import improve
-    from .core import get_llm, transfer_report
-    from .trace import inspect
-
     dom, art, offline = load_problem(a.problem, seed=a.seed)
     llm_task = offline if a.llm == "sim" else get_llm(a.llm, cache_dir=a.cache)
     prop_spec = a.propose_llm or a.llm
@@ -108,8 +104,6 @@ def cmd_improve(a) -> int:
 
 
 def cmd_inspect(a) -> int:
-    from .trace import inspect
-
     print(inspect(a.run_dir, a.out, show_prompts=not a.no_prompts))
     return 0
 

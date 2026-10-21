@@ -96,12 +96,8 @@ def transfer_report(domain: Domain, llm: Optional[LLM], arms: dict[str, Artifact
                     splits: Sequence[str] = ("evolve", "holdout", "ood"), k: int = 1, workers: int = 8,
                     reference: Optional[str] = None, cache_dir: Optional[str] = None,
                     seed_offset: int = 0) -> dict[str, Any]:
-    """Final report-only step: score each arm unchanged on every split (unsealed), paired against ``reference``.
-
-    Trials use seeds ``seed_offset .. seed_offset + k - 1``. Loops score with seeds from 0, so the default offset
-    repeats (and with a cached LLM replays) samples the run drew; an unused offset (e.g. 100) gives an independent
-    re-score. ``missing`` counts trials lost to infrastructure errors, which score 0 over the full denominator.
-    """
+    """Report-only step: score each arm unchanged on every split, paired against ``reference``."""
+    # loops use seeds from 0: offset 0 repeats (with a cached LLM, replays) their samples, e.g. 100 re-scores afresh
     ev = Evaluator(domain, llm, workers=workers, allow_sealed=True, cache_dir=cache_dir, seed_offset=seed_offset)
     reference = reference or next(iter(arms))
     out: dict[str, Any] = {"splits": {}, "reference": reference, "k": k, "seed_offset": seed_offset}

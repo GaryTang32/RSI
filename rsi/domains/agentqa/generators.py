@@ -179,10 +179,7 @@ def make_suite(n_evolve: int = 20, n_holdout: int = 20, n_ood_per_family: int = 
                practice_families: tuple[str, ...] = ("numeric",),
                ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"), n_val: int = 0,
                seed: int = 0, dedupe: bool = True) -> TaskSuite:
-    """Evolve/holdout from the practice families, ood from the unseen ones, one RNG stream per split.
-
-    ``dedupe`` drops repeated questions (:func:`decontaminate`); ``dedupe=False`` reproduces older recorded suites.
-    """
+    """Evolve/val/holdout from the practice families and ood from the unseen ones, one RNG stream per split."""
     tasks: list[Task] = []
     splits: dict[str, list[str]] = {"evolve": [], "holdout": [], "ood": []}
     if n_val:
@@ -206,15 +203,12 @@ def make_suite(n_evolve: int = 20, n_holdout: int = 20, n_ood_per_family: int = 
             add("ood", fam, rng, i)
     splits["smoke"] = splits["evolve"][:2]
     suite = TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
-    return decontaminate(suite) if dedupe else suite
+    return decontaminate(suite) if dedupe else suite   # dedupe=False reproduces older recorded suites
 
 
 def decontaminate(suite: TaskSuite) -> TaskSuite:
-    """Copy of ``suite`` without a question already seen in a decision split or earlier in the same split.
-
-    Small question spaces (e.g. 46 factorial digit sums) let independent splits share a question. ``smoke`` keeps
-    its surviving evolve tasks and seals are preserved.
-    """
+    """Copy of ``suite`` without questions already in a decision split or earlier in the same split; seals kept."""
+    # small question spaces (e.g. 46 factorial digit sums) let independent splits share a question
     decision = [s for s in ("evolve", "train", "val") if s in suite.splits]
     order = decision + [s for s in suite.splits if s not in decision and s != "smoke"]
     seen_decision: set = set()
