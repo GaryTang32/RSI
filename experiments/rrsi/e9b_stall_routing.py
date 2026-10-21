@@ -1,41 +1,31 @@
-"""E9b (retry round 2, preregistered P9 in docs/methods/rrsi/claims-audit.md section 6): claim L20.
+"""E9b (preregistered P9, claim L20): does a stall inside the band route budget to untouched components?
 
-"Forced variety when stuck: a stall inside the band sends budget to untouched components."
-Measured directly: in every round with sigma_t = 1 and U_t non-empty (sigma_t recomputed with the
-loop's own formula for the exploration-off arm, whose directives never set it), did at least one
-EVALUATED candidate carry an edit on a component of U_t? Per run: the share of such stalled rounds.
-Worlds and proposers are E9's two setups (strict collapse = the spec's premise; mild collapse),
-exploration on vs off, worlds 0-59, T = 20. Also coverage and the true evolve gain (plateau escape).
+Run: python experiments/rrsi/e9b_stall_routing.py [--seeds 60] [--workers 2] [--T 20]
 """
-from __future__ import annotations
-
-import argparse
 import json
 import shutil
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import paired, pairs, pmap, retry_args, run_hw, save, summarize
+from e9_exploration import SETUPS
 
-from _common import paired, pmap, run_hw, save, summarize  # noqa: E402
-from e9_exploration import SETUPS  # noqa: E402
-
-from rsi.domains.harnessworld.world import K  # noqa: E402
-from rsi.rrsi import RegularizerSwitches  # noqa: E402
-from rsi.rrsi.history import stall_flag  # noqa: E402
+from rsi.domains.harnessworld.world import K
+from rsi.rrsi import RegularizerSwitches
+from rsi.rrsi.history import stall_flag
 
 ARMS = {"on": RegularizerSwitches.full(),
         "off": RegularizerSwitches.full().but(stall_exploration=False, name="no_explore")}
 
 
 def stall_routing(out: Path, w: int = 3) -> dict:
-    fr = json.loads((out / "frontier.json").read_text())
-    traj = [x["S"] for x in fr["trajectory"]]
-    recs = [json.loads(l) for l in (out / "history.jsonl").read_text().splitlines() if l.strip()]
+    """Rounds with sigma_t = 1 and U_t non-empty, and how many evaluated a candidate editing a component of U_t."""
+    traj = [x["S"] for x in json.loads((out / "frontier.json").read_text())["trajectory"]]
+    recs = [json.loads(line) for line in (out / "history.jsonl").read_text().splitlines() if line.strip()]
     n_stall = n_routed = 0
     for rdir in sorted(out.glob("r*/directives.json"), key=lambda p: int(p.parent.name[1:])):
         d = json.loads(rdir.read_text())
         t = d["t"]
+        # recomputed with the loop's formula: the exploration-off arm's directives never set sigma_t
         sigma = stall_flag(traj[: t + 1], t, w, d["delta"])
         untried = [c for c in K if c not in set(d["tried"])]
         if not (sigma and untried):
@@ -50,20 +40,15 @@ def stall_routing(out: Path, w: int = 3) -> dict:
 
 def one(job: dict) -> dict:
     m = run_hw({**job, "keep": True})
-    out = Path(m["out_dir"])
+    out = Path(m.pop("out_dir"))
     m.update(stall_routing(out))
     shutil.rmtree(out, ignore_errors=True)
     m.pop("curve", None)
-    m.pop("out_dir", None)
     return m
 
 
 def main():
-    ap = argparse.ArgumentParser(description="E9b: where does budget go when the run stalls?")
-    ap.add_argument("--seeds", type=int, default=60)
-    ap.add_argument("--workers", type=int, default=2)
-    ap.add_argument("--T", type=int, default=20)
-    a = ap.parse_args()
+    a = retry_args("E9b: where does budget go when the run stalls?", seeds=60)
     jobs = [{"seed": s, "arm": sw, "label": f"{setup}|{lab}", "cfg": {"T": a.T}, "world": world, "proposer": prop}
             for setup, (world, prop) in SETUPS.items() for s in range(a.seeds) for lab, sw in ARMS.items()]
     rows = pmap(one, jobs, a.workers)
@@ -77,14 +62,14 @@ def main():
         both = [s for s in on if on[s]["routed_share"] is not None and off[s]["routed_share"] is not None]
         sub = [dict(on[s], label="on") for s in both] + [dict(off[s], label="off") for s in both]
         pd[setup] = {"routed_share": {**paired(sub, "off", "on", "routed_share"), "n_paired_seeds": len(both)},
-                     **{m: paired(rows, f"{setup}|off", f"{setup}|on", m)
-                        for m in ("coverage", "evolve_gain", "ood_gain", "accepted_structural")}}
+                     **pairs(rows, f"{setup}|off", f"{setup}|on",
+                             ("coverage", "evolve_gain", "ood_gain", "accepted_structural"))}
         checks[f"{setup}: on-arm routed share >= 80%"] = summ[f"{setup}|on"]["routed_share"]["mean"] >= 0.80
         checks[f"{setup}: routed share on - off CI > 0"] = pd[setup]["routed_share"]["lo"] > 0
-    checks["strict (the spec's premise): true evolve on - off CI > 0"] = pd["strict"]["evolve_gain"]["lo"] > 0
+    strict = "strict (the spec's premise): true evolve on - off CI > 0"
+    checks[strict] = pd["strict"]["evolve_gain"]["lo"] > 0
     routing = all(v for k, v in checks.items() if "routed" in k)
-    verdict = ("REPRODUCED" if routing and checks["strict (the spec's premise): true evolve on - off CI > 0"]
-               else "PARTIAL" if routing else "NOT REPRODUCED")
+    verdict = "REPRODUCED" if routing and checks[strict] else "PARTIAL" if routing else "NOT REPRODUCED"
     out = {"experiment": "E9b stall routing (retry round 2: P9)", "config": {"seeds": a.seeds, "T": a.T,
                                                                           "setups": SETUPS},
            "summary": summ, "paired_on_minus_off": pd, "checks": checks, "verdict": verdict, "rows": rows}

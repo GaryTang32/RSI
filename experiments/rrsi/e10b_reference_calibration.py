@@ -1,45 +1,21 @@
-"""E10b (retry round 2, preregistered P1 + P2 in docs/methods/rrsi/claims-audit.md section 6).
+"""E10b (preregistered P1 + P2, claims M37, C19): the reference's own ``rrsi.calibrate`` on our trials, loop-faithful.
 
-P1 (claim M37). The reference docstring says delta = z * sd(null dS) at z = 2 means "an unchanged
-harness clears the floor S* - delta about 97.5% of the time". E10 tested this with OUR port of the
-estimator; here the REFERENCE's own ``rrsi.calibrate.calibrate`` (google-research/rrsi@be50316,
-Python ``random``, seed 7, 2,000 resamples) is imported and fed with the reference's
-``EvalResult`` / ``TaskResult`` built from our trials. Paths:
-
-* (i)   the driver's default ``calibrate --jobs base``: one base evaluation -> within-task bootstrap;
-* (ii)  ``--jobs base,base2``: R = 2 repeated evaluations (sd_null = stdev * sqrt 2); also R = 3, 5.
-
-Loop-faithful clearance: delta is calibrated from the base evaluation b itself, S* = S_b (round 0),
-and S_new is another independent evaluation n of the same harness: clearance = P(S_n >= S_b - delta_b),
-over 4,000 random ordered pairs (b among the calibrated evaluations). Also: the E10-style number
-(delta and pairs drawn independently), two-sided coverage P(|dS| <= delta), and the analytic
-prediction Phi(z * sqrt((k-1)/k)) for the plug-in bootstrap.
-
-P2 (claim C19). (a) the R = 2 estimate's noisiness (CV of delta, clearance). (b) exchangeability: a
-Monte-Carlo in which every evaluation carries a shared per-(evaluation, task) logit shock u ~ N(0, tau^2)
-applied to all k trials of the task; delta = reference bootstrap of one evaluation WITH the
-sqrt(k/(k-1)) small-k correction (isolating exchangeability from the plug-in bias).
-
-Usage: python experiments/rrsi/e10b_reference_calibration.py [--ref-src PATH] [--workers 2] [--quick]
+Run: python experiments/rrsi/e10b_reference_calibration.py [--ref-src PATH] [--workers 2] [--quick]
 """
-from __future__ import annotations
-
 import argparse
 import importlib
 import math
 import os
 import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np
+from _common import pmap, save
+from e10_calibration import make
+from scipy.stats import norm
 
-import numpy as np  # noqa: E402
-from _common import pmap, save  # noqa: E402
-from scipy.stats import norm  # noqa: E402
-
-from rsi.core import summarize_runs  # noqa: E402
-from rsi.rrsi import Measurer  # noqa: E402
+from rsi.core import summarize_runs
+from rsi.rrsi import Measurer
 
 DEFAULT_REF = os.environ.get(
     "RRSI_REF_SRC",
@@ -48,12 +24,11 @@ TARGET = float(norm.cdf(2.0))
 Z = 2.0
 
 
-def _ref(ref_src: str):
+def _ref(ref_src: str) -> tuple:
+    """The reference's (rrsi.calibrate, rrsi.evaluate) modules (google-research/rrsi@be50316)."""
     if ref_src not in sys.path:
         sys.path.insert(0, ref_src)
-    RC = importlib.import_module("rrsi.calibrate")
-    RE = importlib.import_module("rrsi.evaluate")
-    return RC, RE
+    return importlib.import_module("rrsi.calibrate"), importlib.import_module("rrsi.evaluate")
 
 
 def to_ref(RE, ev, job: str):
@@ -64,8 +39,7 @@ def to_ref(RE, ev, job: str):
 
 
 def ref_delta(RC, evals: list, reps: int = 2000) -> dict:
-    """The reference's calibrate(). For R >= 2 the bootstrap result is used only when sd_null == 0, so it is
-    first run with 2 resamples and re-run with the full 2,000 only in that (degenerate) case: identical output."""
+    """The reference's calibrate(); for R >= 2 its 2,000 resamples only matter (and run) when sd_null == 0."""
     if len(evals) >= 2:
         cal = RC.calibrate(evals, z=Z, reps=2)
         if cal["sd_null"] == 0 or len({e.S for e in evals}) == 1:
@@ -74,23 +48,27 @@ def ref_delta(RC, evals: list, reps: int = 2000) -> dict:
     return RC.calibrate(evals, z=Z, reps=reps)
 
 
-def make(kind: str, seed: int):
-    if kind == "harnessworld":
-        from rsi.domains.harnessworld import make_domain
-        dom = make_domain(seed=seed)
-        return dom, dom.seed_artifact(), None
-    from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
-    suite = make_suite(seed=seed)
-    return AgentQADomain(suite), AgentQADomain.seed_artifact(), SimModel(suite)
-
-
 def clearance_stats(S: np.ndarray, base_idx: np.ndarray, new_idx: np.ndarray, delta_of_base: np.ndarray) -> dict:
     d = S[new_idx] - S[base_idx]
     return {"one_sided": float(np.mean(d >= -delta_of_base)), "two_sided": float(np.mean(np.abs(d) <= delta_of_base))}
 
 
-# ------------------------------------------------------------------------------------------------ P1 / P2a
+def _base_new_pairs(rng, n_base: int, n_new: int) -> tuple:
+    """4,000 (base, new) index draws, the pairs with base == new dropped."""
+    b = rng.integers(0, n_base, 4000)
+    nn = rng.integers(0, n_new, 4000)
+    keep = b != nn
+    return b[keep], nn[keep]
+
+
+def _indep_pairs(rng, n: int) -> tuple:
+    p = rng.integers(0, n, size=(4000, 2))
+    p = p[p[:, 0] != p[:, 1]]
+    return p[:, 0], p[:, 1]
+
+
 def p1_job(job: dict) -> dict:
+    """P1 / P2a: the E10 pools, delta from the reference's bootstrap of one evaluation and from R repeats."""
     RC, RE = _ref(job["ref"])
     kind, seed, pool_n, cal_n = job["kind"], job["seed"], job["pool"], job["cal"]
     dom, art, llm = make(kind, seed)
@@ -105,30 +83,25 @@ def p1_job(job: dict) -> dict:
         sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
         rng = np.random.default_rng(seed)
         res = {"sd_true": sd_true, "n_pool": n, "S_mean": float(S.mean()), "procedures": {}}
-        # (i) code default: one base evaluation, reference bootstrap
         t0 = time.time()
         boot = np.array([ref_delta(RC, [refs[i]])["delta"] for i in range(cal_n)])
-        b = rng.integers(0, cal_n, 4000)
-        nn = rng.integers(0, n, 4000)
-        keep = b != nn
-        b, nn = b[keep], nn[keep]
+        b, nn = _base_new_pairs(rng, cal_n, n)
         pb, pn = _indep_pairs(rng, n)
-        row = {"delta_over_2sd_true": summarize_runs(list(boot / (Z * sd_true))),
-               "loop_faithful": clearance_stats(S, b, nn, boot[b]),
-               "e10_style": clearance_stats(S, pb, pn, rng.choice(boot, len(pb))),
-               "analytic_plugin": float(norm.cdf(Z * math.sqrt((k - 1) / k))), "seconds": round(time.time() - t0, 1)}
+        res["procedures"]["(i) reference bootstrap, 1 eval (code default)"] = {
+            "delta_over_2sd_true": summarize_runs(list(boot / (Z * sd_true))),
+            "loop_faithful": clearance_stats(S, b, nn, boot[b]),
+            "e10_style": clearance_stats(S, pb, pn, rng.choice(boot, len(pb))),
+            "analytic_plugin": float(norm.cdf(Z * math.sqrt((k - 1) / k))), "seconds": round(time.time() - t0, 1)}
         corr = boot * math.sqrt(k / (k - 1))
-        row_c = {"delta_over_2sd_true": summarize_runs(list(corr / (Z * sd_true))),
-                 "loop_faithful": clearance_stats(S, b, nn, corr[b])}
-        res["procedures"]["(i) reference bootstrap, 1 eval (code default)"] = row
-        res["procedures"]["(i') same + sqrt(k/(k-1)) correction (our opt-in)"] = row_c
+        res["procedures"]["(i') same + sqrt(k/(k-1)) correction (our opt-in)"] = {
+            "delta_over_2sd_true": summarize_runs(list(corr / (Z * sd_true))),
+            "loop_faithful": clearance_stats(S, b, nn, corr[b])}
         # (ii) R repeated evaluations: base = the first of the R evaluations (the run's baseline job)
         for R in (2, 3, 5):
             deltas, clear1, clear2 = [], [], []
             for _ in range(cal_n):
                 idx = rng.choice(n, size=R + 1, replace=False)          # R calibration evals + 1 fresh eval
-                cal = ref_delta(RC, [refs[i] for i in idx[:R]])
-                dlt = cal["delta"]
+                dlt = ref_delta(RC, [refs[i] for i in idx[:R]])["delta"]
                 deltas.append(dlt)
                 d = S[idx[R]] - S[idx[0]]
                 clear1.append(float(d >= -dlt))
@@ -142,14 +115,8 @@ def p1_job(job: dict) -> dict:
     return out
 
 
-def _indep_pairs(rng, n):
-    p = rng.integers(0, n, size=(4000, 2))
-    p = p[p[:, 0] != p[:, 1]]
-    return p[:, 0], p[:, 1]
-
-
-# ------------------------------------------------------------------------------------------------ P2b
 def _sim_eval(RE, logit_p: np.ndarray, tau: float, k: int, n_crit: int, rng: np.random.Generator, job: str):
+    """One evaluation with a shared per-(evaluation, task) logit shock u ~ N(0, tau^2) on all k trials."""
     u = rng.normal(0.0, tau, size=len(logit_p)) if tau > 0 else np.zeros(len(logit_p))
     p = 1.0 / (1.0 + np.exp(-(logit_p + u)))
     passed = rng.binomial(n_crit, np.repeat(p[:, None], k, axis=1))
@@ -158,13 +125,13 @@ def _sim_eval(RE, logit_p: np.ndarray, tau: float, k: int, n_crit: int, rng: np.
 
 
 def p2b_job(job: dict) -> dict:
+    """P2b: exchangeability; delta = reference bootstrap of one evaluation, with and without the small-k fix."""
     RC, RE = _ref(job["ref"])
     from rsi.domains.harnessworld import make_domain
     seed, tau, n_cal, n_pool = job["seed"], job["tau"], job["cal"], job["pool"]
     dom = make_domain(seed=seed)
     p_map = dom._state(dom.seed_artifact())[0]
-    ids = dom.tasks.splits["evolve"]
-    pv = np.clip(np.array([p_map[i] for i in ids]), 1e-6, 1 - 1e-6)
+    pv = np.clip(np.array([p_map[i] for i in dom.tasks.splits["evolve"]]), 1e-6, 1 - 1e-6)
     logit_p = np.log(pv / (1 - pv))
     k, n_crit = 2, dom.world.cfg.n_criteria
     rng = np.random.default_rng(10_000 + seed * 10 + int(tau * 100))
@@ -173,15 +140,24 @@ def p2b_job(job: dict) -> dict:
     sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
     raw = np.array([RC.calibrate([pool[i]], z=Z)["delta"] for i in range(n_cal)])
     corr = raw * math.sqrt(k / (k - 1))
-    b = rng.integers(0, n_cal, 4000)
-    nn = rng.integers(0, n_pool, 4000)
-    keep = b != nn
-    b, nn = b[keep], nn[keep]
+    b, nn = _base_new_pairs(rng, n_cal, n_pool)
     return {"seed": seed, "tau": tau, "sd_true": sd_true,
             "corrected": {"delta_over_2sd_true": float(np.mean(corr) / (Z * sd_true)),
                           **clearance_stats(S, b, nn, corr[b])},
             "uncorrected": {"delta_over_2sd_true": float(np.mean(raw) / (Z * sd_true)),
                             **clearance_stats(S, b, nn, raw[b])}}
+
+
+def aggregate(v: list) -> dict:
+    """Mean over runs of one procedure's loop-faithful numbers (plus the optional per-procedure extras)."""
+    def mean(get) -> float:
+        return float(np.mean([get(x) for x in v]))
+    return {"clearance_one_sided": mean(lambda x: x["loop_faithful"]["one_sided"]),
+            "coverage_two_sided": mean(lambda x: x["loop_faithful"]["two_sided"]),
+            "delta_over_2sd_true": mean(lambda x: x["delta_over_2sd_true"]["mean"]),
+            **({"clearance_e10_style": mean(lambda x: x["e10_style"]["one_sided"])} if "e10_style" in v[0] else {}),
+            **({"delta_cv": mean(lambda x: x["delta_cv"])} if "delta_cv" in v[0] else {}),
+            **({"analytic_plugin": v[0]["analytic_plugin"]} if "analytic_plugin" in v[0] else {})}
 
 
 def main():
@@ -200,28 +176,14 @@ def main():
              for s in range(5) for t in taus]
     rows = pmap(p1_job, jobs, a.workers)
     rows2 = pmap(p2b_job, jobs2, a.workers)
-    agg: dict = {}
+    agg = {}
     for kind in ("harnessworld", "agentqa"):
         rs = [r for r in rows if r["kind"] == kind]
-        agg[kind] = {}
-        for k in ("k=2", "k=4"):
-            agg[kind][k] = {}
-            for proc in rs[0][k]["procedures"]:
-                v = [r[k]["procedures"][proc] for r in rs]
-                agg[kind][k][proc] = {
-                    "clearance_one_sided": float(np.mean([x["loop_faithful"]["one_sided"] for x in v])),
-                    "coverage_two_sided": float(np.mean([x["loop_faithful"]["two_sided"] for x in v])),
-                    "delta_over_2sd_true": float(np.mean([x["delta_over_2sd_true"]["mean"] for x in v])),
-                    **({"clearance_e10_style": float(np.mean([x["e10_style"]["one_sided"] for x in v]))}
-                       if "e10_style" in v[0] else {}),
-                    **({"delta_cv": float(np.mean([x["delta_cv"] for x in v]))} if "delta_cv" in v[0] else {}),
-                    **({"analytic_plugin": v[0]["analytic_plugin"]} if "analytic_plugin" in v[0] else {})}
-    exch = {}
-    for t in taus:
-        rs = [r for r in rows2 if r["tau"] == t]
-        exch[f"tau={t:g}"] = {c: {m: float(np.mean([r[c][m] for r in rs]))
-                                  for m in ("one_sided", "two_sided", "delta_over_2sd_true")}
-                              for c in ("corrected", "uncorrected")}
+        agg[kind] = {k: {proc: aggregate([r[k]["procedures"][proc] for r in rs]) for proc in rs[0][k]["procedures"]}
+                     for k in ("k=2", "k=4")}
+    exch = {f"tau={t:g}": {c: {m: float(np.mean([r[c][m] for r in rows2 if r["tau"] == t]))
+                               for m in ("one_sided", "two_sided", "delta_over_2sd_true")}
+                           for c in ("corrected", "uncorrected")} for t in taus}
     code_default = {kind: agg[kind]["k=2"]["(i) reference bootstrap, 1 eval (code default)"]["clearance_one_sided"]
                     for kind in agg}
     r2 = {kind: agg[kind]["k=2"]["(ii) reference repeats R=2"] for kind in agg}

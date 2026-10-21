@@ -1,40 +1,22 @@
-"""E8b (retry round 2, preregistered P11 in docs/methods/rrsi/claims-audit.md section 6): claim L19, live.
+"""E8b (preregistered P11, claim L19, live): does a live proposer redraw rejected mechanisms without full history?
 
-"Memory of what failed: rejected ideas stay rejected instead of being retried." E8 (a live proposer over
-many rounds) was never run. This probe tests the claim at one decision point with a real LLM proposer:
-
-1. HarnessWorld world w (0-15): the offline loop (full RRSI, default mock proposer, T = 7) runs rounds 0-5
-   and is stopped after round 5 settles;
-2. the run directory is copied twice and resumed at round 6 with (a) full RRSI and (b) full RRSI with
-   ``history_conditioning="accepted_only"``; a capturing backend records variant A's round-6 proposer prompt
-   (and system prompt) from the real loop and answers with an empty done() so nothing else happens;
-3. each captured prompt is sent once to Claude Haiku (fresh cache, seed 0; the default single-shot protocol);
-4. redraws = mechanisms whose file the reply adds and that were measured and REJECTED in rounds 0-5.
-
-Test: paired (accepted-only - full) redraws per prompt, bootstrap 95% CI over the 16 worlds.
-
-    python experiments/rrsi/e8b_history_probe.py --cache-dir DIR [--capture-only] [--max-usd 1.5]
+Run: python experiments/rrsi/e8b_history_probe.py --cache-dir DIR [--capture-only] [--max-usd 1.5]
 """
-from __future__ import annotations
-
 import argparse
 import json
 import re
 import shutil
-import sys
 import tempfile
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np
+from _common import save
 
-import numpy as np  # noqa: E402
-from _common import save  # noqa: E402
-
-from rsi.core import CachedLLM, ClaudeCLI, MockLLM, paired_diff_ci, parse_file_blocks  # noqa: E402
-from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain  # noqa: E402
-from rsi.rrsi import Config, Killed, RegularizerSwitches, run  # noqa: E402
-from rsi.rrsi.propose import parse_done, parse_sections  # noqa: E402
+from rsi.core import CachedLLM, ClaudeCLI, MockLLM, paired_diff_ci, parse_file_blocks
+from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain
+from rsi.rrsi import Config, Killed, RegularizerSwitches, run
+from rsi.rrsi.propose import parse_done, parse_sections
 
 MID = re.compile(r"\[([a-z]{3}_\d{2})\]")
 EMPTY_DONE = '```json\n{"action": "done", "summary": "no change", "edits": []}\n```\n'
@@ -48,6 +30,7 @@ def _cfg(seed: int) -> Config:
 
 
 def capture(world: int, scratch: Path) -> dict:
+    """Run rounds 0-5 offline, then resume round 6 per condition and capture variant A's proposer prompt."""
     dom = make_domain(seed=world)
     base = scratch / f"w{world}_base"
     shutil.rmtree(base, ignore_errors=True)
@@ -60,8 +43,9 @@ def capture(world: int, scratch: Path) -> dict:
             hooks={"settled": stop_after_5})
     except Killed:
         pass
-    recs = [json.loads(l) for l in (base / "history.jsonl").read_text().splitlines() if l.strip()]
-    rejected = sorted({m for r in recs if r.get("outcome") == "REJECTED" for m in MID.findall(str(r.get("hypothesis")))})
+    recs = [json.loads(line) for line in (base / "history.jsonl").read_text().splitlines() if line.strip()]
+    rejected = sorted({m for r in recs if r.get("outcome") == "REJECTED"
+                       for m in MID.findall(str(r.get("hypothesis")))})
     out = {"world": world, "rejected": rejected, "prompts": {}}
     for cond, sw in CONDITIONS.items():
         d = scratch / f"w{world}_{cond}"
@@ -86,14 +70,14 @@ def capture(world: int, scratch: Path) -> dict:
 
 
 def added_mechanisms(reply: str, base_prompt: str) -> list[str]:
-    files = parse_file_blocks(reply or "")
-    present = set(re.findall(r"^# mechanism: (\S+)", base_prompt.split("--- CURRENT HARNESS SOURCE H_t ---")[-1],
-                             re.M))
+    """Mechanism ids the reply's file blocks add that the prompt's current harness does not have."""
+    head = re.compile(r"^# mechanism: (\S+)", re.M)
+    present = set(head.findall(base_prompt.split("--- CURRENT HARNESS SOURCE H_t ---")[-1]))
     ids = []
-    for path, text in files.items():
+    for text in parse_file_blocks(reply or "").values():
         if text is None or text.strip() == "<<DELETE>>":
             continue
-        for mid in re.findall(r"^# mechanism: (\S+)", text, re.M):
+        for mid in head.findall(text):
             if mid not in present and mid not in ids:
                 ids.append(mid)
     return ids
@@ -111,12 +95,11 @@ def main():
     t0 = time.time()
     caps = [capture(w, scratch) for w in range(a.worlds)]
     for c in caps:
-        p_full, p_acc = c["prompts"]["full"]["prompt"], c["prompts"]["accepted_only"]["prompt"]
+        pf, pa = (parse_sections(c["prompts"][k]["prompt"]) for k in CONDITIONS)
         c["shown_rejected"] = {k: sorted(m for m in c["rejected"] if f"[{m}]" in c["prompts"][k]["prompt"])
                                for k in CONDITIONS}
-        c["same_outside_history"] = (parse_sections(p_full)["files"] == parse_sections(p_acc)["files"]
-                                     and parse_sections(p_full)["sections"].get("analysis_report")
-                                     == parse_sections(p_acc)["sections"].get("analysis_report"))
+        c["same_outside_history"] = (pf["files"] == pa["files"]
+                                     and pf["sections"].get("analysis_report") == pa["sections"].get("analysis_report"))
     if a.capture_only:
         print(json.dumps([{k: c[k] for k in ("world", "rejected", "shown_rejected", "same_outside_history")}
                           for c in caps], indent=1))
@@ -124,17 +107,15 @@ def main():
     llm = CachedLLM(ClaudeCLI(a.model, timeout_s=300), a.cache_dir)
     rows = []
     for c in caps:
-        row = {"world": c["world"], "rejected": c["rejected"], "shown_rejected": c["shown_rejected"],
-               "same_outside_history": c["same_outside_history"]}
+        row = {k: c[k] for k in ("world", "rejected", "shown_rejected", "same_outside_history")}
         for cond in CONDITIONS:
             p = c["prompts"][cond]
             resp = llm.complete(p["prompt"], system=p["system"], seed=0, role="proposer")
             added = added_mechanisms(resp.text, p["prompt"])
-            done = parse_done(resp.text) or {}
-            row[cond] = {"added": added, "redraws": sorted(set(added) & set(c["rejected"])),
-                         "n_redraws": len(set(added) & set(c["rejected"])), "n_added": len(added),
-                         "n_declared_edits": len(done.get("edits") or []), "error": resp.error,
-                         "reply_head": (resp.text or "")[:400]}
+            redraws = set(added) & set(c["rejected"])
+            row[cond] = {"added": added, "redraws": sorted(redraws), "n_redraws": len(redraws), "n_added": len(added),
+                         "n_declared_edits": len((parse_done(resp.text) or {}).get("edits") or []),
+                         "error": resp.error, "reply_head": (resp.text or "")[:400]}
         spent = llm.meter.total().cost_usd
         row["usd_so_far"] = round(spent, 4)
         rows.append(row)

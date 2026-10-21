@@ -1,48 +1,39 @@
-"""E10 - delta calibration is sound (about 97.5% clearance at z = 2).
+"""E10: delta calibration is sound (~97.5% clearance at z = 2): bootstrap and repeated-evaluation estimates vs truth.
 
-For the unchanged base harness we draw a large pool of independent evaluations (k = 2, the
-paper's default; plus a k = 4 pool). The TRUE null sd of S_hat is estimated from the whole
-pool. Each calibration procedure is then applied to fresh subsets:
-
-* within-task bootstrap of ONE evaluation (the code's default, reps = 2000, seed = 7);
-* the same with the small-k correction sqrt(k/(k-1)) (extension, off by default);
-* R = 2, 3, 5 repeated base evaluations (sd_null = stdev(S_r) * sqrt(2)).
-
-Clearance = P(S_new >= S_base - delta) for two independent evaluations of the SAME
-harness, measured empirically on 4000 random pairs of pool evaluations and analytically as
-Phi(delta / sd_true); z in {1, 2, 3}. Domains: HarnessWorld (5 worlds) and AgentQA with
-SimModel (2 suites).
-
-Confirming outcome (spec E10): about 97.5% clearance at z = 2; bootstrap and repeated
-estimates agree within their spread.
+Run: python experiments/rrsi/e10_calibration.py [--quick] [--seeds N]
 """
-from __future__ import annotations
-
 import math
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np
+from _common import figure, parse_args, pmap, save, verdict
+from scipy.stats import norm
 
-import numpy as np  # noqa: E402
-from _common import RESULTS, parse_args, pmap, save  # noqa: E402
-from scipy.stats import norm  # noqa: E402
-
-from rsi.core import summarize_runs  # noqa: E402
-from rsi.rrsi import Measurer  # noqa: E402
-from rsi.rrsi.calibrate import calibrate  # noqa: E402
+from rsi.core import summarize_runs
+from rsi.rrsi import Measurer
+from rsi.rrsi.calibrate import calibrate
 
 ZS = (1.0, 2.0, 3.0)
 
 
-def make(domain_kind: str, seed: int):
-    if domain_kind == "harnessworld":
+def make(kind: str, seed: int) -> tuple:
+    """(domain, seed artifact, task LLM) of a HarnessWorld world or an AgentQA suite."""
+    if kind == "harnessworld":
         from rsi.domains.harnessworld import make_domain
         dom = make_domain(seed=seed)
         return dom, dom.seed_artifact(), None
     from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
     suite = make_suite(seed=seed)
     return AgentQADomain(suite), AgentQADomain.seed_artifact(), SimModel(suite)
+
+
+def procedure_row(sds: np.ndarray, sd_true: float, diffs: np.ndarray) -> dict:
+    row = {"sd_est_over_true": summarize_runs(list(sds / sd_true))}
+    for z in ZS:
+        deltas = z * sds
+        row[f"z={z:g}"] = {"clearance_analytic": summarize_runs(list(norm.cdf(deltas / sd_true))),
+                           "clearance_empirical": summarize_runs([float(np.mean(diffs >= -d)) for d in deltas]),
+                           "delta": summarize_runs(list(deltas))}
+    return row
 
 
 def one(job: dict) -> dict:
@@ -56,35 +47,28 @@ def one(job: dict) -> dict:
         S = np.array([p.S for p in pool])
         sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
         rng = np.random.default_rng(seed)
-        procs = {}
-        # bootstrap of one evaluation (first cal_n evaluations), with and without the small-k correction
         boot = [calibrate([pool[i]], z=1.0, reps=2000, seed=7)["sd_null"] for i in range(cal_n)]
-        procs["bootstrap (1 eval)"] = boot
-        procs["bootstrap + small-k correction"] = [b * math.sqrt(k / (k - 1)) for b in boot]
+        procs = {"bootstrap (1 eval)": boot,
+                 "bootstrap + small-k correction": [b * math.sqrt(k / (k - 1)) for b in boot]}
         for R in (2, 3, 5):
-            sds = []
-            for _ in range(cal_n):
-                idx = rng.choice(n, size=R, replace=False)
-                sds.append(float(np.std(S[idx], ddof=1) * math.sqrt(2)))
-            procs[f"repeats R={R}"] = sds
-        # empirical clearance on pairs of pool evaluations
+            procs[f"repeats R={R}"] = [float(np.std(S[rng.choice(n, size=R, replace=False)], ddof=1) * math.sqrt(2))
+                                       for _ in range(cal_n)]
         pairs = rng.choice(n, size=(4000, 2))
         pairs = pairs[pairs[:, 0] != pairs[:, 1]]
         diffs = S[pairs[:, 1]] - S[pairs[:, 0]]            # S_new - S_base
-        out = {"sd_true": sd_true, "S_mean": float(S.mean()), "n_pool": n, "procedures": {}}
-        for name, sds in procs.items():
-            sds = np.array(sds)
-            row = {"sd_est_over_true": summarize_runs(list(sds / sd_true))}
-            for z in ZS:
-                deltas = z * sds
-                analytic = norm.cdf(deltas / sd_true)
-                empirical = [float(np.mean(diffs >= -d)) for d in deltas]
-                row[f"z={z:g}"] = {"clearance_analytic": summarize_runs(list(analytic)),
-                                   "clearance_empirical": summarize_runs(empirical),
-                                   "delta": summarize_runs(list(deltas))}
-            out["procedures"][name] = row
-        res[f"k={k}"] = out
+        res[f"k={k}"] = {"sd_true": sd_true, "S_mean": float(S.mean()), "n_pool": n,
+                         "procedures": {name: procedure_row(np.array(sds), sd_true, diffs)
+                                        for name, sds in procs.items()}}
     return res
+
+
+def aggregate(rs: list, k: str, proc: str) -> dict:
+    def mean(get) -> float:
+        return float(np.mean([get(r[k]["procedures"][proc]) for r in rs]))
+    return {"sd_est_over_true": mean(lambda p: p["sd_est_over_true"]["mean"]),
+            **{f"z={z:g}": {"clearance_analytic": mean(lambda p: p[f"z={z:g}"]["clearance_analytic"]["mean"]),
+                            "clearance_empirical": mean(lambda p: p[f"z={z:g}"]["clearance_empirical"]["mean"])}
+               for z in ZS}}
 
 
 def main():
@@ -96,60 +80,45 @@ def main():
     agg = {}
     for kind in ("harnessworld", "agentqa"):
         rs = [r for r in rows if r["kind"] == kind]
-        if not rs:
-            continue
-        agg[kind] = {}
-        for k in ("k=2", "k=4"):
-            agg[kind][k] = {}
-            for proc in rs[0][k]["procedures"]:
-                agg[kind][k][proc] = {
-                    "sd_est_over_true": float(np.mean([r[k]["procedures"][proc]["sd_est_over_true"]["mean"] for r in rs])),
-                    **{f"z={z:g}": {"clearance_analytic": float(np.mean([r[k]["procedures"][proc][f"z={z:g}"]["clearance_analytic"]["mean"] for r in rs])),
-                                    "clearance_empirical": float(np.mean([r[k]["procedures"][proc][f"z={z:g}"]["clearance_empirical"]["mean"] for r in rs]))}
-                       for z in ZS}}
+        if rs:
+            agg[kind] = {k: {proc: aggregate(rs, k, proc) for proc in rs[0][k]["procedures"]} for k in ("k=2", "k=4")}
     target = norm.cdf(2.0)
     checks = {}
     for kind in agg:
-        rep = agg[kind]["k=2"]["repeats R=5"]["z=2"]["clearance_empirical"]
-        boot = agg[kind]["k=2"]["bootstrap (1 eval)"]["z=2"]["clearance_empirical"]
-        corr = agg[kind]["k=2"]["bootstrap + small-k correction"]["z=2"]["clearance_empirical"]
-        checks[f"{kind}: repeated evaluations (R=5) give ~97.5% at z=2"] = abs(rep - target) < 0.03
-        checks[f"{kind}: code-default bootstrap (k=2) gives ~97.5% at z=2"] = abs(boot - target) < 0.03
-        checks[f"{kind}: corrected bootstrap gives ~97.5% at z=2"] = abs(corr - target) < 0.03
+        z2 = {p: v["z=2"]["clearance_empirical"] for p, v in agg[kind]["k=2"].items()}
+        checks[f"{kind}: repeated evaluations (R=5) give ~97.5% at z=2"] = abs(z2["repeats R=5"] - target) < 0.03
+        checks[f"{kind}: code-default bootstrap (k=2) gives ~97.5% at z=2"] = \
+            abs(z2["bootstrap (1 eval)"] - target) < 0.03
+        checks[f"{kind}: corrected bootstrap gives ~97.5% at z=2"] = \
+            abs(z2["bootstrap + small-k correction"] - target) < 0.03
     out = {"experiment": "E10 calibration", "config": {"pool_evals": pool, "calibrations": cal, "z": ZS,
                                                        "worlds": a.seeds, "agentqa_suites": min(2, a.seeds),
                                                        "llm": "none (SimModel / simulated policy)"},
-           "target_clearance_z2": target, "aggregate": agg, "checks": checks,
-           "verdict": "REPRODUCED" if all(checks.values()) else
-           "PARTIAL - not met: " + "; ".join(k for k, v in checks.items() if not v),
+           "target_clearance_z2": target, "aggregate": agg, "checks": checks, "verdict": verdict(checks),
            "rows": rows}
     save("e10_calibration", out)
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(1, len(agg), figsize=(7 * len(agg), 4.2), squeeze=False)
+
+    def draw(ax):
         for j, kind in enumerate(agg):
             procs = list(agg[kind]["k=2"])
+            x = ax[0][j]
             for i, z in enumerate(ZS):
-                ax[0][j].bar([p + 0.25 * i for p in range(len(procs))],
-                             [agg[kind]["k=2"][p][f"z={z:g}"]["clearance_empirical"] * 100 for p in procs], width=0.25,
-                             label=f"z={z:g} (target {norm.cdf(z) * 100:.1f}%)")
-            ax[0][j].axhline(target * 100, color="k", ls=":")
-            ax[0][j].set_ylim(60, 100)
-            ax[0][j].set_xticks([p + 0.25 for p in range(len(procs))])
-            ax[0][j].set_xticklabels(procs, fontsize=7, rotation=15)
-            ax[0][j].set_ylabel("% unchanged-harness re-evaluations clearing S - delta")
-            ax[0][j].set_title(f"{kind} (k = 2)")
-            ax[0][j].legend(fontsize=7)
-        fig.tight_layout()
-        fig.savefig(RESULTS / "e10_calibration.png", dpi=110)
-    except Exception as e:  # noqa: BLE001
-        print("figure skipped:", e)
+                x.bar([p + 0.25 * i for p in range(len(procs))],
+                      [agg[kind]["k=2"][p][f"z={z:g}"]["clearance_empirical"] * 100 for p in procs], width=0.25,
+                      label=f"z={z:g} (target {norm.cdf(z) * 100:.1f}%)")
+            x.axhline(target * 100, color="k", ls=":")
+            x.set_ylim(60, 100)
+            x.set_xticks([p + 0.25 for p in range(len(procs))])
+            x.set_xticklabels(procs, fontsize=7, rotation=15)
+            x.set_ylabel("% unchanged-harness re-evaluations clearing S - delta")
+            x.set_title(f"{kind} (k = 2)")
+            x.legend(fontsize=7)
+    figure("e10_calibration", draw, len(agg), figsize=(7 * len(agg), 4.2), squeeze=False)
     for kind in agg:
         for k in agg[kind]:
             for p, v in agg[kind][k].items():
-                print(kind, k, p, round(v["sd_est_over_true"], 3), {z: round(v[z]["clearance_empirical"], 4) for z in v if z.startswith("z")})
+                print(kind, k, p, round(v["sd_est_over_true"], 3),
+                      {z: round(v[z]["clearance_empirical"], 4) for z in v if z.startswith("z")})
     print(out["verdict"])
 
 

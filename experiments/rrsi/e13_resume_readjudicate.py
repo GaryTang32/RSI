@@ -1,22 +1,7 @@
-"""E13 - Evidence is auditable and resumable.
+"""E13: evidence is auditable and resumable: hard kills resumed in a fresh process, readjudication at a new delta.
 
-(a) Kill / resume. For each seed an uninterrupted reference run is compared with runs that
-    are hard-killed (an exception raised from a hook) at different points - after the
-    baseline, after drafting a variant, after evaluating it, between history records, after a
-    round settled - and then resumed by a FRESH OS PROCESS (a subprocess with a different
-    PYTHONHASHSEED, so set-ordering or other per-process state cannot hide). The
-    ledgers must be identical: history.jsonl and attribution.jsonl byte-for-byte (timestamps
-    off), frontier.json, every round's decisions.json, and the final state of every node of
-    the rsi.core Ledger tree.
-(b) Readjudicate. Rounds after t are truncated and Algorithm 2 is re-run on round t's STORED
-    measurements with a different delta (x0.5 and x2): no evaluation may be spent, the
-    candidates' (S, C, dS, dC) must be unchanged, and only verdicts / outcomes / H_{t+1} may
-    change. A counterfactual replay reports how many of the run's decisions would flip.
-
-Domains: HarnessWorld (mock proposer) and AgentQA (SimModel + scripted proposer).
+Run: python experiments/rrsi/e13_resume_readjudicate.py [--quick] [--seeds N]
 """
-from __future__ import annotations
-
 import json
 import os
 import shutil
@@ -25,17 +10,16 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import parse_args, pmap, save, search_llm, verdict
 
-from _common import parse_args, pmap, save, search_llm  # noqa: E402
-
-from rsi.core import Ledger  # noqa: E402
-from rsi.rrsi import Config, Killed, RRSIRun, build_gates, drive, select_round  # noqa: E402
-from rsi.rrsi.evaluate import Measurement  # noqa: E402
+from rsi.core import Ledger
+from rsi.rrsi import Config, Killed, RRSIRun, build_gates, drive, select_round
+from rsi.rrsi.evaluate import Measurement
 
 # (event, first round at/after which to kill, variant or None): the kill fires at the first matching event
 KILLS = [("baseline", None, None), ("drafted", 3, "B"), ("evaluated", 2, None), ("recorded", 4, "A"),
          ("settled", 5, None)]
+FACTORS = (0.5, 2.0)
 
 
 def make_run(kind: str, seed: int, out: Path, llm_spec: str, T: int, hooks=None) -> RRSIRun:
@@ -71,13 +55,8 @@ def snapshot(d: Path) -> dict:
             "ledger_nodes": nodes}
 
 
-def one(job: dict) -> dict:
-    kind, seed, T, llm = job["kind"], job["seed"], job["T"], job["llm"]
-    root = Path(tempfile.mkdtemp(prefix=f"e13_{kind}_{seed}_"))
-    ref_dir = root / "ref"
-    r = make_run(kind, seed, ref_dir, llm, T)
-    drive(r)
-    ref = snapshot(ref_dir)
+def kill_and_resume(kind: str, seed: int, T: int, llm: str, root: Path, ref: dict) -> dict:
+    """Kill a fresh run at each KILLS point, resume it in a subprocess, compare the ledgers with the reference."""
     kills = {}
     for ev, t, v in KILLS:
         d = root / f"kill_{ev}"
@@ -95,10 +74,14 @@ def one(job: dict) -> dict:
         snap = snapshot(d)
         kills[f"{ev}@{t}{v or ''}"] = {"killed": killed, "stop": stop, "resumed_in": "subprocess",
                                        "identical": {k: snap[k] == ref[k] for k in ref}}
-    # readjudicate on a copy of the reference run
-    re = {}
+    return kills
+
+
+def readjudicate(kind: str, seed: int, T: int, llm: str, root: Path, ref_dir: Path) -> dict:
+    """Truncate a copy after round T // 2 and re-run Algorithm 2 on its stored measurements at delta x factor."""
+    out = {}
     t_mid = T // 2
-    for factor in (0.5, 2.0):
+    for factor in FACTORS:
         d = root / f"readj_{factor}"
         shutil.copytree(ref_dir, d)
         rr = make_run(kind, seed, d, llm, T)
@@ -107,32 +90,49 @@ def one(job: dict) -> dict:
         rr.truncate(t_mid)
         roll = rr.measurer.n_rollouts
         after = [x.to_json() for x in rr.readjudicate(t_mid, rr.cfg.replace(delta=delta * factor))]
-        same_meas = all((b["S"], b["C"], b["delta_S"], b["delta_C"]) == (a_["S"], a_["C"], a_["delta_S"], a_["delta_C"])
-                        for b, a_ in zip(before, after))
-        re[f"delta x{factor}"] = {"delta_old": delta, "delta_new": delta * factor, "rollouts_spent": rr.measurer.n_rollouts - roll,
-                                 "measurements_unchanged": same_meas,
-                                 "verdicts_changed": sum(b["admissible"] != a_["admissible"] for b, a_ in zip(before, after)),
-                                 "before": [(b["variant"], b["admissible"], b["reason"][:80]) for b in before],
-                                 "after": [(a_["variant"], a_["admissible"], a_["reason"][:80]) for a_ in after]}
-    # counterfactual replay of every stored round under x0.5 / x2 delta (verdicts only)
+        keys = ("S", "C", "delta_S", "delta_C")
+        out[f"delta x{factor}"] = {
+            "delta_old": delta, "delta_new": delta * factor, "rollouts_spent": rr.measurer.n_rollouts - roll,
+            "measurements_unchanged": all(tuple(old[k] for k in keys) == tuple(new[k] for k in keys)
+                                          for old, new in zip(before, after)),
+            "verdicts_changed": sum(old["admissible"] != new["admissible"] for old, new in zip(before, after)),
+            "before": [(x["variant"], x["admissible"], x["reason"][:80]) for x in before],
+            "after": [(x["variant"], x["admissible"], x["reason"][:80]) for x in after]}
+    return out
+
+
+def counterfactual_flips(kind: str, seed: int, T: int, llm: str, ref_dir: Path) -> tuple[dict, int]:
+    """Verdicts of every stored round replayed at delta x factor: (flips per factor, decisions in total)."""
     rr = make_run(kind, seed, ref_dir, llm, T)
-    fr = json.loads((ref_dir / "frontier.json").read_text())
-    flips = {0.5: 0, 2.0: 0}
+    traj = json.loads((ref_dir / "frontier.json").read_text())["trajectory"]
+    flips = dict.fromkeys(FACTORS, 0)
     total = 0
     for t in range(T):
-        inc = Measurement.load(ref_dir / "evals" / f"{fr['trajectory'][t]['job']}.json")
-        S_star = max(x["S"] for x in fr["trajectory"][: t + 1])
+        inc = Measurement.load(ref_dir / "evals" / f"{traj[t]['job']}.json")
+        S_star = max(x["S"] for x in traj[: t + 1])
         cands = rr._load_round_candidates(t)
         counts = rr.history.incumbent_component_counts(before_t=t)
-        base = [d.admissible for d in select_round(cands, inc, S_star, rr.delta(), rr.cfg, counts,
-                                                   build_gates(rr.cfg, rr.sw), taxonomy=rr.tax, t=t)[1]]
+
+        def verdicts(delta: float) -> list:
+            return [d.admissible for d in select_round(cands, inc, S_star, delta, rr.cfg, counts,
+                                                       build_gates(rr.cfg, rr.sw), taxonomy=rr.tax, t=t)[1]]
+        base = verdicts(rr.delta())
         total += len(base)
         for f in flips:
-            alt = [d.admissible for d in select_round(cands, inc, S_star, rr.delta() * f, rr.cfg, counts,
-                                                      build_gates(rr.cfg, rr.sw), taxonomy=rr.tax, t=t)[1]]
-            flips[f] += sum(x != y for x, y in zip(base, alt))
+            flips[f] += sum(x != y for x, y in zip(base, verdicts(rr.delta() * f)))
+    return flips, total
+
+
+def one(job: dict) -> dict:
+    kind, seed, T, llm = job["kind"], job["seed"], job["T"], job["llm"]
+    root = Path(tempfile.mkdtemp(prefix=f"e13_{kind}_{seed}_"))
+    ref_dir = root / "ref"
+    drive(make_run(kind, seed, ref_dir, llm, T))
+    kills = kill_and_resume(kind, seed, T, llm, root, snapshot(ref_dir))
+    readj = readjudicate(kind, seed, T, llm, root, ref_dir)
+    flips, total = counterfactual_flips(kind, seed, T, llm, ref_dir)
     shutil.rmtree(root, ignore_errors=True)
-    return {"kind": kind, "seed": seed, "T": T, "kills": kills, "readjudicate": re,
+    return {"kind": kind, "seed": seed, "T": T, "kills": kills, "readjudicate": readj,
             "counterfactual_flips": {f"delta x{f}": n for f, n in flips.items()}, "decisions_total": total}
 
 
@@ -145,24 +145,23 @@ def main():
     T_hw, T_aq = (6, 4) if a.quick else (10, 6)
     jobs = [{"kind": "harnessworld", "seed": s, "T": T_hw, "llm": a.llm} for s in range(a.seeds)]
     jobs += [{"kind": "agentqa", "seed": s, "T": T_aq, "llm": a.llm} for s in range(min(2, a.seeds))]
-    rows = pmap(one, jobs, a.workers if a.llm == "sim" else 1)
-    all_identical = all(all(v["identical"].values()) for r in rows for v in r["kills"].values())
-    all_killed = all(v["killed"] for r in rows for v in r["kills"].values())
-    no_rollouts = all(v["rollouts_spent"] == 0 for r in rows for v in r["readjudicate"].values())
-    same_meas = all(v["measurements_unchanged"] for r in rows for v in r["readjudicate"].values())
-    checks = {"every kill actually interrupted the run": all_killed,
-              "resumed ledgers identical to uninterrupted runs": all_identical,
-              "readjudicate spends no evaluation": no_rollouts,
-              "readjudicate leaves measurements unchanged (only Algorithm 2 outcomes change)": same_meas}
+    rows = pmap(one, jobs, a.procs)
+    kills = [v for r in rows for v in r["kills"].values()]
+    readj = [v for r in rows for v in r["readjudicate"].values()]
+    checks = {"every kill actually interrupted the run": all(v["killed"] for v in kills),
+              "resumed ledgers identical to uninterrupted runs": all(all(v["identical"].values()) for v in kills),
+              "readjudicate spends no evaluation": all(v["rollouts_spent"] == 0 for v in readj),
+              "readjudicate leaves measurements unchanged (only Algorithm 2 outcomes change)":
+                  all(v["measurements_unchanged"] for v in readj)}
     out = {"experiment": "E13 kill/resume + readjudicate", "config": {"T_harnessworld": T_hw, "T_agentqa": T_aq,
                                                                       "kills": KILLS, "llm": a.llm},
-           "checks": checks, "verdict": "REPRODUCED" if all(checks.values()) else
-           "NOT MET: " + "; ".join(k for k, v in checks.items() if not v), "rows": rows}
+           "checks": checks, "verdict": verdict(checks, "NOT MET: "), "rows": rows}
     save("e13_resume_readjudicate", out)
     print(json.dumps(checks, indent=1))
     for r in rows:
         print(r["kind"], r["seed"], {k: all(v["identical"].values()) for k, v in r["kills"].items()},
-              {k: v["verdicts_changed"] for k, v in r["readjudicate"].items()}, r["counterfactual_flips"], r["decisions_total"])
+              {k: v["verdicts_changed"] for k, v in r["readjudicate"].items()}, r["counterfactual_flips"],
+              r["decisions_total"])
 
 
 if __name__ == "__main__":
