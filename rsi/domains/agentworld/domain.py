@@ -228,9 +228,8 @@ def render_trace(rt: AgentRuntime, meter: TokenMeter, max_chars: int = 400) -> s
             u = reqs[k] if k < len(reqs) else None
             k += 1
             calls = "; ".join(f"{c.name}({json.dumps(c.args)[:160]})" for c in m.tool_calls) or "<final>"
-            lines.append(f"[turn {k}] in={u.input if u else '?'} read={u.cache_read if u else '?'} "
-                         f"write={u.cache_write if u else '?'} out={u.output if u else '?'} :: {m.content[:200]!r} -> "
-                         f"{calls}")
+            inp, read, write, out = (u.input, u.cache_read, u.cache_write, u.output) if u else ("?",) * 4
+            lines.append(f"[turn {k}] in={inp} read={read} write={write} out={out} :: {m.content[:200]!r} -> {calls}")
         elif m.role == "tool":
             lines.append(f"    <- {m.tool_name}{' ERROR' if m.is_error else ''} {len(m.content)} chars: "
                          f"{m.content[:max_chars]!r}")

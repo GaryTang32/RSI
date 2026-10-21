@@ -5,6 +5,12 @@ import json
 import re
 
 
+def _count_line(text: str) -> str | None:
+    """The first line of ``text`` if it is a bare count."""
+    first = text.strip().split("\n")[0].strip()
+    return first if re.fullmatch(r"\d+", first) else None
+
+
 class Skill:
     style = "per_subtask"
 
@@ -36,7 +42,7 @@ class RepoFixSkill(Skill):
         return f"NOTE: evidence {st['key']}: {ev['key']} {ev['bad']}->{ev['good']}"
 
     def pattern(self, st):
-        return f"src/{st['key']}.py"
+        return self.file(st)
 
     def fix(self, st, ev, wrong):
         g = int(ev["good"])
@@ -80,9 +86,6 @@ class BuildFixSkill(RepoFixSkill):
 
     def note(self, st, ev):
         return f"NOTE: evidence {st['key']}: {ev['bad']}->{ev['good']}"
-
-    def pattern(self, st):
-        return f"src/{st['key']}.c"
 
     def fix(self, st, ev, wrong):
         good = ev["good"][:-1] if wrong else ev["good"]
@@ -184,11 +187,10 @@ class LogTriageSkill(Skill):
         return f"grep -c '{lvl}\\s+\\[{c}\\]' logs/app.log"
 
     def parse_smart(self, st, text):
-        text = text.strip().split("\n")[0].strip() if text.strip() else ""
         if st["kind"] == "first_fatal":
-            m = re.match(r"(\d{4}-\d\d-\d\dT[\d:]+Z)", text)
+            m = re.match(r"(\d{4}-\d\d-\d\dT[\d:]+Z)", text.strip().split("\n")[0].strip())
             return m.group(1) if m else None
-        return text if re.fullmatch(r"\d+", text) else None
+        return _count_line(text)
 
     def perturb(self, st, v, rng):
         if re.fullmatch(r"\d+", v or ""):
@@ -258,8 +260,7 @@ class DataLookupSkill(LogTriageSkill):
 
     def parse_smart(self, st, text):
         if st["kind"] == "region_count":
-            t = text.strip().split("\n")[0].strip() if text.strip() else ""
-            return t if re.fullmatch(r"\d+", t) else None
+            return _count_line(text)
         return self.compute(st, text) if text.strip() else None
 
     def render(self, items, values):

@@ -264,10 +264,7 @@ class ConfigFixEnv(Env):
         super().__init__(task_id, seed, n_subtasks)
         r = self.rng
         self.services = r.sample(SERVICES, min(len(SERVICES), max(r.randint(10, 16), n_subtasks + 2)))
-        self.values: dict[tuple[str, str], int] = {}
-        for sv in self.services:
-            for k, (lo, hi) in CFG_KEYS.items():
-                self.values[(sv, k)] = r.randint(lo, hi)
+        self.values = {(sv, k): r.randint(lo, hi) for sv in self.services for k, (lo, hi) in CFG_KEYS.items()}
         self.bad = r.sample(sorted(self.values), n_subtasks)
         lines = ["# service configuration", "services:"]
         for sv in self.services:

@@ -68,12 +68,8 @@ class LogTriageEnv(Env):
                 "check passes, reply with a short summary.")
 
     def _reported(self) -> dict[str, str]:
-        out = {}
-        for ln in self.files.get("report.txt", "").splitlines():
-            if "=" in ln:
-                k, v = ln.split("=", 1)
-                out[k.strip()] = v.strip()
-        return out
+        lines = self.files.get("report.txt", "").splitlines()
+        return {k.strip(): v.strip() for k, v in (ln.split("=", 1) for ln in lines if "=" in ln)}
 
     def subtask_ok(self, st: Subtask) -> bool:
         return self._reported().get(st.key) == st.data["answer"]
@@ -149,12 +145,8 @@ class DataLookupEnv(Env):
                 "tests/test_answers.py` to check the answers. When it passes, reply with a short summary.")
 
     def _answers(self) -> dict[int, str]:
-        out = {}
-        for ln in self.files.get("answers.txt", "").splitlines():
-            m = re.match(r"\s*(\d+)\s*:\s*(.*)$", ln)
-            if m:
-                out[int(m.group(1))] = m.group(2).strip()
-        return out
+        found = (re.match(r"\s*(\d+)\s*:\s*(.*)$", ln) for ln in self.files.get("answers.txt", "").splitlines())
+        return {int(m.group(1)): m.group(2).strip() for m in found if m}
 
     def subtask_ok(self, st: Subtask) -> bool:
         return self._answers().get(st.data["line"]) == st.data["answer"]

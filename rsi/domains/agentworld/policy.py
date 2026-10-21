@@ -4,7 +4,9 @@ from __future__ import annotations
 import json
 import random
 import re
+from collections import Counter
 from dataclasses import dataclass
+from itertools import takewhile
 from typing import Optional
 
 from ...core.llm import LLM, LLMResponse, Usage, extract_json
@@ -52,24 +54,20 @@ class MockAgent:
         self.p = profile
         self.name = name
         self.rng = random.Random(f"mockagent|{profile.name}|{seed}")
-        self.started = False
-        self.explored = False
-        self.fuse_ok = self.no_verify = False
-        self.items: list[dict] = []
+        self.started = self.explored = self.fuse_ok = self.no_verify = self.use_plan = self.final_checked = False
         self.skill: Optional[Skill] = None
         self.phase = "start"
-        self.attempts: dict = {}
-        self.diag_runs: dict[str, int] = {}
-        self.done: set[str] = set()
-        self.failed: set[str] = set()
+        self.items: list[dict] = []
         self.calls: dict[str, dict] = {}          # call id -> {name, args}
         self.values: dict[str, str] = {}
+        self.attempts: Counter = Counter()
+        self.diag_runs: Counter = Counter()
+        self.done: set[str] = set()
+        self.failed: set[str] = set()
         self.todo: set[str] = set()
-        self.use_plan = False
-        self.final_checked = False
+        self.begun: set[str] = set()
         self.recall_state: Optional[dict] = None
         self.last_read_file: Optional[str] = None
-        self.begun: set[str] = set()
         self.focus: Optional[str] = None
 
     def _tc(self, rt: AgentRuntime, name: str, args: dict) -> ToolCall:
@@ -94,22 +92,13 @@ class MockAgent:
     @staticmethod
     def _since_reply(msgs: list[Message], role: str) -> list[Message]:
         """Messages of ``role`` after the last assistant reply, oldest first."""
-        out = []
-        for m in reversed(msgs):
-            if m.role == "assistant":
-                break
-            if m.role == role:
-                out.append(m)
-        return out[::-1]
+        return [m for m in takewhile(lambda m: m.role != "assistant", reversed(msgs)) if m.role == role][::-1]
 
     def _fresh_text(self, last: list[Message]) -> str:
         """Output of diagnostics/checks just run (plain bash or a fused then_run)."""
-        out = []
-        for m in last:
-            c = self.calls.get(m.tool_call_id, {})
-            if c.get("name") == "bash" or (c.get("name") in ("edit", "write") and "then_run" in c.get("args", {})):
-                out.append(m.content)
-        return "\n".join(out)
+        def ran_command(c: dict) -> bool:
+            return c.get("name") == "bash" or (c.get("name") in ("edit", "write") and "then_run" in c.get("args", {}))
+        return "\n".join(m.content for m in last if ran_command(self.calls.get(m.tool_call_id, {})))
 
     def _plan_call(self, rt, progress: Optional[dict] = None) -> Optional[ToolCall]:
         if not self.use_plan or "update_plan" not in rt.tools:
@@ -160,9 +149,8 @@ class MockAgent:
         (self.done if ok else self.failed).add(st["id"])
         text.append(("DONE: " if ok else "DONE (gave up): ") + st.get("goal", st["id"]))
         if ok:
-            pc = self._plan_call(rt, progress={
-                "files_changed": [self.skill.file(st)] if hasattr(self.skill, "file") else [],
-                "verification": ["check passed"], "decisions": []})
+            pc = self._plan_call(rt, progress={"files_changed": [self.skill.file(st)], "verification": ["check passed"],
+                                               "decisions": []})
             if pc:
                 calls.append(pc)
 
@@ -174,9 +162,13 @@ class MockAgent:
         calls.append(self._tc(rt, "bash", {"command": self.skill.full_cmd()}))
         return "\n".join(text + [note]), calls
 
+    def _finish(self, text: list[str]):
+        self.phase = "end"
+        return "\n".join(text + ["All done."]), []
+
     def _rediagnose(self, st, rt) -> ToolCall:
         self.phase = "diag_wait"
-        self.diag_runs[st["id"]] = self.diag_runs.get(st["id"], 0) + 1
+        self.diag_runs[st["id"]] += 1
         return self._tc(rt, "bash", {"command": self.skill.full_cmd()})
 
     def _per_subtask(self, msgs, rt):
@@ -191,7 +183,7 @@ class MockAgent:
             if (sk.verdict(st, last_text) if st else None) is True:
                 self._complete(st, rt, calls, True, text)
             else:
-                self.attempts[st["id"]] = self.attempts.get(st["id"], 0) + 1
+                self.attempts[st["id"]] += 1
                 if self.attempts[st["id"]] >= self.p.max_attempts:
                     self._complete(st, rt, calls, False, text)
             self.phase = "diagnose"
@@ -202,7 +194,7 @@ class MockAgent:
                 for st in bad:
                     self.done.discard(st["id"])
                     self.failed.discard(st["id"])
-                    self.attempts[st["id"]] = self.attempts.get(st["id"], 0) + 1
+                    self.attempts[st["id"]] += 1
                     if self.attempts[st["id"]] > self.p.max_attempts:
                         self.failed.add(st["id"])
                 self.phase = "diagnose"
@@ -224,15 +216,12 @@ class MockAgent:
             calls.append(self._tc(rt, "bash", {"command": sk.full_cmd()}))
             text.append(f"PLAN: {len(self.items)} subtasks; start by running the checks.")
             return "\n".join(text), calls
-        if self.phase in ("diagnose", "diag_wait", "read_wait", "recall_wait"):
+        if self.phase in ("diagnose", "diag_wait", "read_wait"):
             st = self._cur()
-            if st is None:
-                done = self._final_check(rt, text, calls, "All subtasks addressed; running the full check.")
-                if done:
-                    return done
-                self.phase = "end"
-            else:
+            if st is not None:
                 return self._work_on(st, msgs, rt, last, last_text, text, calls)
+            return self._final_check(rt, text, calls, "All subtasks addressed; running the full check.") or \
+                self._finish(text)
         if self.phase == "verify":
             self.phase = "verify_wait"
             calls.append(self._tc(rt, "bash", {"command": sk.verify_cmd(self._cur())}))
@@ -241,9 +230,7 @@ class MockAgent:
             self._complete(self._cur(), rt, calls, True, text)
             self.phase = "diagnose"
             return self._per_subtask_next(msgs, rt, text, calls)
-        if self.phase == "end":
-            return "\n".join(text + ["All done."]), []
-        return self._per_subtask_next(msgs, rt, text, calls)
+        return self._finish(text)
 
     def _work_on(self, st, msgs, rt, last, last_text, text, calls):
         sk = self.skill
@@ -298,11 +285,7 @@ class MockAgent:
     def _per_subtask_next(self, msgs, rt, text, calls):
         st = self._cur()
         if st is None:
-            done = self._final_check(rt, text, calls, "Running the full check.")
-            if done:
-                return done
-            self.phase = "end"
-            return "\n".join(text + ["All done."]), []
+            return self._final_check(rt, text, calls, "Running the full check.") or self._finish(text)
         ev = self._search(msgs, lambda t: self.skill.find(st, t))
         if ev is not None and self.rng.random() >= self.p.p_rerun_full:
             # act on the visible evidence next turn (one mutation per message)
@@ -331,10 +314,10 @@ class MockAgent:
                     return self._tc(rt, "obs_recall", {"id": rs["id"], "offset": rs["offset"]})
         rc = self._search(msgs, lambda t: {"path": re.search(r"^source_artifact=(\S+)$", t, re.M).group(1)}
                           if t.startswith("sol_pi_evidence_receipt_v1") else None)
-        if rc and self.rng.random() < self.p.p_readback and not self.attempts.get(("rb", rc["path"])):
-            self.attempts[("rb", rc["path"])] = 1
+        if rc and self.rng.random() < self.p.p_readback and not self.attempts["rb", rc["path"]]:
+            self.attempts["rb", rc["path"]] = 1
             return self._tc(rt, "bash", {"command": f"grep -n -m 20 {sk.pattern(st)} {rc['path']}"})
-        n = self.diag_runs.get(st["id"], 0)
+        n = self.diag_runs[st["id"]]
         if n < self.p.max_attempts:
             self.diag_runs[st["id"]] = n + 1
             return self._tc(rt, "bash", {"command": sk.diag(st, n == 0, self.rng.random() < self.p.p_smart)})
@@ -381,7 +364,7 @@ class MockAgent:
             if passed:
                 self.phase = "end"
                 return "DONE: all items verified. All done.", []
-            self.attempts["check"] = self.attempts.get("check", 0) + 1
+            self.attempts["check"] += 1
             if self.attempts["check"] >= self.p.max_attempts:
                 self.phase = "end"
                 return "DONE (gave up): checks still failing.", []
@@ -409,8 +392,8 @@ class MockAgent:
             if data is not None and sk.is_data(data):
                 self._derive(data, misfix=True)
             missing = [st for st in self.items if st["id"] not in self.values]
-            if missing and self.rng.random() < self.p.p_smart and self.attempts.get("smart", 0) < 2:
-                self.attempts["smart"] = self.attempts.get("smart", 0) + 1
+            if missing and self.rng.random() < self.p.p_smart and self.attempts["smart"] < 2:
+                self.attempts["smart"] += 1
                 self.phase = "smart_wait"
                 return "Some items are not visible; querying them directly.", \
                     [self._tc(rt, "bash", {"command": sk.smart(st)}) for st in missing]
