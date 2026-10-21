@@ -1,12 +1,4 @@
-"""Live smoke tests against the real headless ``claude`` CLI (Claude Haiku).
-
-Deselected by default (``-m 'not live'`` in pyproject); run with::
-
-    pytest tests/core/test_core_live.py -m live -v
-
-Cost: a few cents per run (one plain completion, one cached pair, one short
-coding-agent edit). Cached replies live in ``.rsi_cache/core-qa``.
-"""
+"""Live smoke tests against the real headless ``claude`` CLI (Haiku); run with ``pytest -m live``, a few cents each."""
 from __future__ import annotations
 
 import json
@@ -28,7 +20,7 @@ RECORD: dict = {}
 
 @pytest.fixture(scope="module", autouse=True)
 def _record_outcome():
-    """Write what the live smoke did (and cost) to results/core-qa/live_smoke.json."""
+    """Write what the live smoke did and cost to results/core-qa/live_smoke.json."""
     t0 = time.time()
     yield
     out = ROOT / "results" / "core-qa" / "live_smoke.json"
@@ -54,8 +46,7 @@ def test_claude_cli_complete_live():
 def test_cached_claude_cli_live():
     c = CachedLLM(ClaudeCLI("haiku", timeout_s=120, retries=2), CACHE)
     prompt = "What is 17 * 3? Reply with just the number."
-    first = c.complete(prompt, seed=0, role="smoke")
-    second = c.complete(prompt, seed=0, role="smoke")
+    first, second = (c.complete(prompt, seed=0, role="smoke") for _ in range(2))
     RECORD["cached_claude_cli"] = {"first": first.text[:50], "second_calls": second.usage.calls,
                                    "hits": c.hits, "misses": c.misses, "cost_usd": c.meter.total().cost_usd}
     assert first.ok and second.ok, (first.error, second.error)
