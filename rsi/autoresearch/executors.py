@@ -61,9 +61,6 @@ class Executor:
     def cancel(self, job_id: str) -> None:
         pass
 
-    def fetch_log(self, job_id: str) -> str:
-        return ""
-
     def done(self) -> list[str]:
         return []
 
@@ -110,9 +107,6 @@ class LocalProcessExecutor(Executor):
         f = self.futures.get(job_id)
         if f is not None and f.cancel():
             self.jobs[job_id].state = "CANCELLED"
-
-    def fetch_log(self, job_id):
-        return self.jobs[job_id].log
 
     def done(self):
         return [j for j, f in self.futures.items() if f.done()]
@@ -283,10 +277,6 @@ class FakeSlurmExecutor(Executor):
 
     def cancel(self, job_id):
         self.scancel(job_id)
-
-    def fetch_log(self, job_id):
-        p = self.spool / f"ret-{job_id}.out"
-        return p.read_text() if p.exists() else ""
 
     def done(self):
         return [j for j, job in self.jobs.items() if job.state in TERMINAL and job.outcome is not None]

@@ -1,6 +1,8 @@
 """Research tasks: editable/locked files, a fixed per-experiment budget, and how one run yields one metric."""
 from __future__ import annotations
 
+import fcntl
+import importlib.util
 import json
 import math
 import re
@@ -116,7 +118,18 @@ def untampered(rec: dict) -> Optional[str]:
     return f"locked evaluator tampered in-process: {', '.join(map(str, bad[:6]))}" if bad else None
 
 
-def _write_log(log_path: Optional[str], log: str) -> None:
+def build_once(prepare_py: Path, module: str, builder: str, root: Path) -> dict:
+    """``builder(root)`` of the locked ``prepare_py``, run under a file lock in ``root`` (safe across processes)."""
+    root.mkdir(parents=True, exist_ok=True)
+    with open(root / ".lock", "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        spec = importlib.util.spec_from_file_location(module, prepare_py)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return getattr(mod, builder)(str(root))
+
+
+def write_log(log_path: Optional[str], log: str) -> None:
     if log_path:
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         Path(log_path).write_text(log)
@@ -251,7 +264,7 @@ class ScriptResearchTask(ResearchTask):
             rr = run_cmd(cmd, cwd=work, timeout_s=self.budget.hard_timeout(), mem_mb=self.budget.mem_mb,
                          env=self._env(mode, seed, result_file, val_epoch))
             log = rr.stdout + (("\n" + rr.stderr) if rr.stderr.strip() else "")
-            _write_log(log_path, log)
+            write_log(log_path, log)
             out = RunOutcome(None, log=log, wall_s=rr.wall_s, returncode=rr.returncode, killed=rr.timed_out,
                              log_path=log_path, seed=seed)
             out.summary = parse_summary(log)
@@ -397,7 +410,7 @@ class DomainResearchTask(ResearchTask):
             else:
                 out.metric = float(res.score)
         if log_path:
-            _write_log(log_path, out.log)
+            write_log(log_path, out.log)
             out.log_path = log_path
         return out
 

@@ -14,7 +14,7 @@ from typing import Optional
 
 from ..core.artifact import Artifact
 from .agent import ScriptedEdit, knob_edit, text_edit
-from .task import ResearchTask, RunBudget, RunOutcome, ScriptResearchTask, parse_summary
+from .task import ResearchTask, RunBudget, RunOutcome, ScriptResearchTask, parse_summary, write_log
 
 PREPARE_PATH = Path(__file__).with_name("landscape_prepare.py")
 
@@ -195,8 +195,7 @@ class LandscapeTask(ResearchTask):
             return self._script.run(artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch)
         out = self._measure(artifact, mode, "val", seed, val_epoch)
         if log_path:
-            Path(log_path).parent.mkdir(parents=True, exist_ok=True)
-            Path(log_path).write_text(out.log)
+            write_log(log_path, out.log)
             out.log_path = log_path
         return out
 

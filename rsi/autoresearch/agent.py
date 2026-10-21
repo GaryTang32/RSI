@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional, Sequence
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.editors import EDIT_FORMAT, Editor, Proposal
-from ..core.llm import LLM, MockLLM, Usage
+from ..core.llm import LLM, MockLLM
 
 SYSTEM = ("You are an autonomous ML researcher running experiments in a loop. You edit code to improve one "
           "metric under a fixed budget. You never ask the human questions.")
@@ -174,8 +174,12 @@ class ScriptedEdit:
 _KNOB = r"^(?P<name>{name})(?P<eq>\s*=\s*)(?P<val>[^#\n]+?)(?P<rest>\s*(#.*)?)$"
 
 
+def _knob(text: str, name: str) -> Optional[re.Match]:
+    return re.search(_KNOB.format(name=re.escape(name)), text, re.M)
+
+
 def get_knob(text: str, name: str) -> Any:
-    m = re.search(_KNOB.format(name=re.escape(name)), text, re.M)
+    m = _knob(text, name)
     if not m:
         return None
     try:
@@ -185,11 +189,8 @@ def get_knob(text: str, name: str) -> Any:
 
 
 def set_knob(text: str, name: str, value: Any) -> Optional[str]:
-    rx = re.compile(_KNOB.format(name=re.escape(name)), re.M)
-    m = rx.search(text)
-    if not m:
-        return None
-    return text[:m.start("val")] + fmt_value(value) + text[m.end("val"):]
+    m = _knob(text, name)
+    return text[:m.start("val")] + fmt_value(value) + text[m.end("val"):] if m else None
 
 
 def fmt_value(v: Any) -> str:
@@ -391,7 +392,3 @@ def scripted_llm(pool: Sequence[ScriptedEdit], seed: int = 0, name: str = "scrip
         return "no idea"
 
     return MockLLM(respond, name=name)
-
-
-def proposal_usage(p: Proposal) -> Usage:
-    return p.usage or Usage()

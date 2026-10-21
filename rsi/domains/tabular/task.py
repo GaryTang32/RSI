@@ -1,14 +1,12 @@
 """tabular: gradient-boosted trees scored by locked 5-fold CV ROC AUC (the xgboost port) and its edit pool."""
 from __future__ import annotations
 
-import fcntl
-import importlib.util
 import os
 from pathlib import Path
 from typing import Optional
 
 from ...autoresearch.agent import ScriptedEdit, knob_edit, text_edit
-from ...autoresearch.task import RunBudget, ScriptResearchTask, untampered
+from ...autoresearch.task import RunBudget, ScriptResearchTask, build_once, untampered
 
 DOMAIN_DIR = Path(__file__).parent
 
@@ -20,13 +18,7 @@ def default_data_root() -> Path:
 def build_data(root: Optional[str | Path] = None) -> dict:
     """Build the data under ``root`` once, under a file lock (safe across processes)."""
     root = Path(root or default_data_root())
-    root.mkdir(parents=True, exist_ok=True)
-    with open(root / ".lock", "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
-        spec = importlib.util.spec_from_file_location("rsi_tabular_prepare", DOMAIN_DIR / "prepare.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.build_data(str(root))
+    return build_once(DOMAIN_DIR / "prepare.py", "rsi_tabular_prepare", "build_data", root)
 
 
 def _per_row(rec: dict) -> Optional[str]:

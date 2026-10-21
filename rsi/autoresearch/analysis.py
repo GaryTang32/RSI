@@ -11,6 +11,7 @@ import numpy as np
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore, Ledger
 from ..core.stats import summarize_runs
+from .results import ResultsLog
 
 
 def _map(fn: Callable, items: Sequence, workers: int) -> list:
@@ -38,8 +39,6 @@ class Analyzer:
 
     @classmethod
     def from_results(cls, path: str | Path, direction: str = "min") -> "Analyzer":
-        from .results import ResultsLog
-
         log = ResultsLog.read(path)
         rows = [{"exp": i, "status": r.status, "metric": r.metric if r.status != "crash" else None,
                  "description": r.description, "commit": r.commit, "t": None} for i, r in enumerate(log.rows())]

@@ -1,14 +1,12 @@
 """tinylm: a CPU byte-level language-model task (karpathy/autoresearch analogue) and its scripted edit pool."""
 from __future__ import annotations
 
-import fcntl
-import importlib.util
 import os
 from pathlib import Path
 from typing import Optional
 
 from ...autoresearch.agent import ScriptedEdit, fmt_value, get_knob, knob_edit, set_knob, text_edit
-from ...autoresearch.task import RunBudget, ScriptResearchTask, untampered
+from ...autoresearch.task import RunBudget, ScriptResearchTask, build_once, untampered
 
 DOMAIN_DIR = Path(__file__).parent
 
@@ -20,13 +18,7 @@ def default_data_root() -> Path:
 def build_corpus(root: Optional[str | Path] = None) -> dict:
     """Build the corpus under ``root`` once, under a file lock (safe across processes)."""
     root = Path(root or default_data_root())
-    root.mkdir(parents=True, exist_ok=True)
-    with open(root / ".lock", "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
-        spec = importlib.util.spec_from_file_location("rsi_tinylm_prepare", DOMAIN_DIR / "prepare.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.build_corpus(str(root))
+    return build_once(DOMAIN_DIR / "prepare.py", "rsi_tinylm_prepare", "build_corpus", root)
 
 
 def _causal(rec: dict) -> Optional[str]:

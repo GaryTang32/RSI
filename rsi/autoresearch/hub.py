@@ -55,12 +55,6 @@ class NgramCosine:
         return dot / (na * nb) if na and nb else 0.0
 
 
-class TokenJaccard:
-    def __call__(self, a: str, b: str) -> float:
-        ta, tb = set(str(a).lower().split()), set(str(b).lower().split())
-        return len(ta & tb) / len(ta | tb) if ta | tb else 1.0
-
-
 @dataclass
 class SanityRule:
     """Plausibility filters for a claimed best (at-home: reject v <= 0, v < 0.5, a jump > 0.1)."""
