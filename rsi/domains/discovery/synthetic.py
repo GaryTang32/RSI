@@ -12,6 +12,7 @@ from ...core.domain import Domain, Execution
 from ...core.llm import Usage
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import AgentAttempt, AttemptContext, DiscoveryAgent, DiscoveryTask, EvalOutcome
+from .base import ProgramTask, failure
 
 STATE = "state.json"
 TYPES = ("steady", "late", "plateau", "flat", "hardfail", "repairable")
@@ -54,8 +55,7 @@ class SyntheticConfig:
 
 
 class SyntheticWorld:
-    """Hidden richness per direction (depleted by reuse in the lineage), a latent type and potential per branch,
-    and attempt outcomes keyed by (seed, round, branch, attempt) so every policy faces the same draws."""
+    """Hidden direction richness and branch types; outcomes keyed by (seed, round, branch, attempt)."""
 
     def __init__(self, cfg: SyntheticConfig) -> None:
         self.cfg = cfg
@@ -163,10 +163,10 @@ class SyntheticDomain(Domain):
         try:
             st = json.loads(artifact[STATE])
         except (KeyError, json.JSONDecodeError) as e:
-            return EvalOutcome(0.0, True, False, "compile_other", f"bad state: {e}", 0, 1)
+            return failure("compile_other", f"bad state: {e}")
         fc = st.get("fail_class", "ok")
         if fc != "ok":
-            return EvalOutcome(0.0, True, False, fc, f"simulated {fc} failure", 0, 1)
+            return failure(fc, f"simulated {fc} failure")
         return EvalOutcome(float(st["quality"]), True, True, "ok", None, 1, 1)
 
     def mock_agent(self, **kw) -> SyntheticAgent:
@@ -182,24 +182,7 @@ class SyntheticDomain(Domain):
             (0.0, str(o.get("error")))
 
     def as_task(self) -> DiscoveryTask:
-        dom = self
-
-        class _Task(DiscoveryTask):
-            name = "synthetic"
-
-            def describe(self):
-                return dom.describe()
-
-            def seed_artifact(self):
-                return dom.seed_artifact()
-
-            def evaluate(self, artifact, *, seed=0):
-                return dom.evaluate_program(artifact, seed=seed)
-
-            def directions(self):
-                return dom.directions()
-
-        return _Task()
+        return ProgramTask(self, "synthetic")
 
     def branch_params(self, round_index: int, branch: int, direction: str, q_root: float,
                       lineage: Optional[dict] = None) -> dict:

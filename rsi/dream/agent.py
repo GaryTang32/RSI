@@ -62,8 +62,7 @@ class AttemptRecord:
                                       "more characters not shown]"
         score = json.dumps({"score": self.score, "fail_class": self.fail_class}, default=float)
         when = f"live search {self.round}" if "/" in self.cell else f"decision round {self.round}"
-        out = [f"{name}  [{when}]{tag}", "  proposal.md:", _indent(prop, 4),
-               f"  eval/score.json: {score}"]
+        out = [f"{name}  [{when}]{tag}", "  proposal.md:", _indent(prop, 4), f"  eval/score.json: {score}"]
         if not ok:
             err = str(self.error or "(no error text)")
             if max_chars is not None:
@@ -137,8 +136,7 @@ class DiscoveryTask:
 
 
 class DomainTask(DiscoveryTask):
-    """Any :class:`rsi.core.Domain` as a discovery task: score = mean task score on the first non-empty decision
-    split; ``compile_other`` when every trial crashed, ``env_error`` when every trial hit an ``infra:`` error."""
+    """A :class:`rsi.core.Domain` as a discovery task: score = mean task score on its decision split."""
 
     def __init__(self, domain: Domain, seed: Artifact, llm_task: Optional[LLM] = None, *, split: Optional[str] = None,
                  k: int = 1, workers: int = 4, directions: Sequence[str] = (), editable: Optional[list[str]] = None,
@@ -326,8 +324,7 @@ class EditorAgent(DiscoveryAgent):
         ws = ctx.parent_workspace
         editable = self.editable or ctx.editable or [n for n in ws if n not in WORKSPACE_META]
         instructions = self.build_instructions(ctx)
-        prop = self.editor.edit(ws, instructions, editable=editable, system=self.system,
-                                seed=seed, role=self.role)
+        prop = self.editor.edit(ws, instructions, editable=editable, system=self.system, seed=seed, role=self.role)
         try:
             shown = self.editor.build_prompt(ws, instructions, None, editable) \
                 if hasattr(self.editor, "build_prompt") else instructions
@@ -348,8 +345,7 @@ _OPEN_FENCE = re.compile(r"^\s*```[\w+-]*\s*$")
 
 
 def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Artifact, list[str]]:
-    """Drop reply-format lines (trailing fences or ``===`` terminators, a leading opening fence) that
-    ``parse_file_blocks`` leaves at the edges of editable ``.py`` files; they are never valid code."""
+    """Drop reply-format lines (fences, ``===`` terminators) left at the edges of editable ``.py`` files."""
     fixed: dict[str, str] = {}
     for name in art:
         if not name.endswith(".py") or not any(fnmatch.fnmatch(name, pat) for pat in editable):
@@ -374,8 +370,7 @@ def strip_reply_terminators(art: Artifact, editable: Sequence[str]) -> tuple[Art
 
 
 class ParametricAgent(DiscoveryAgent):
-    """Deterministic mock agent: ``mutate(parent_program, rng, ctx) -> (program, proposal)``; errors are failed
-    attempts."""
+    """Deterministic mock agent: ``mutate(parent_program, rng, ctx) -> (program, proposal)``."""
 
     def __init__(self, mutate: Callable[[Artifact, random.Random, AttemptContext], tuple[Artifact, str]],
                  *, name: str = "mock-agent", tokens_per_call: int = 0) -> None:
@@ -396,8 +391,7 @@ class ParametricAgent(DiscoveryAgent):
 
 
 class DirectionProvider:
-    """Cycles new roots through the direction classes in a per-round shuffled order; with ``guidance`` (E5) a root
-    adopts an advised direction with probability ``strength``."""
+    """Gives new roots the direction classes in a per-round shuffled cycle, or advised ones (E5 guidance)."""
 
     def __init__(self, classes: Sequence[str] = (), seed: int = 0) -> None:
         self.classes = list(classes)
@@ -419,9 +413,8 @@ class DirectionProvider:
 
 
 def record_of(node, direction: Optional[str] = None) -> AttemptRecord:
-    return AttemptRecord(node.id, node.branch, node.attempt, node.round, node.proposal, node.score,
-                         node.fail_class, node.error,
-                         direction or (node.tags or {}).get("direction"))
+    return AttemptRecord(node.id, node.branch, node.attempt, node.round, node.proposal, node.score, node.fail_class,
+                         node.error, direction or (node.tags or {}).get("direction"))
 
 
 def history_records(worlds: Sequence, max_records: Optional[int] = None) -> list[AttemptRecord]:

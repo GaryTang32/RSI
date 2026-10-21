@@ -7,6 +7,7 @@ from typing import Optional
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, ParametricAgent
+from .base import pick_mechanism
 
 MECHANISMS = ("format", "reason", "verify", "tool", "simplify")
 
@@ -72,9 +73,7 @@ def read_knobs(art: Artifact) -> dict:
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
     knobs = read_knobs(parent)
-    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
-    if ctx and ctx.attempt > 0 and rng.random() < 0.3:
-        mech = rng.choice(MECHANISMS)
+    mech = pick_mechanism(ctx, rng, MECHANISMS, 0.3)
     if mech == "simplify":
         on = sorted(k for k, v in knobs.items() if v)
         if on:

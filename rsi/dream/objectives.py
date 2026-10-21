@@ -67,8 +67,7 @@ class EpisodeResult:
 
 @dataclass
 class Eq1Objective:
-    """``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper:§3 Eq. 1]; ``normalize`` maps scores to
-    ``(s - s_r) / (ceiling - s_r)``. A disqualified episode scores below every honest one on its world."""
+    """``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper:§3 Eq. 1]; ``normalize``: per world."""
 
     beta1: float = 0.01
     beta2: float = 0.005
@@ -138,8 +137,7 @@ class ParetoSweepObjective:
                         "attainment": float(np.mean([self.attainment(e) for e in eps])),
                         "N": float(np.mean([e.N for e in eps])), "k": float(np.mean([e.k for e in eps])),
                         "mean_batch": float(np.mean([e.mean_batch for e in eps])),
-                        "parallel_penalty": float(np.mean(pen)),
-                        "disqualified": int(sum(e.disqualified for e in eps))})
+                        "parallel_penalty": float(np.mean(pen)), "disqualified": int(sum(e.disqualified for e in eps))})
         auc, frontier = self.frontier_auc(pts)
         penalty = float(np.mean([p["parallel_penalty"] for p in pts])) if pts else 1.0
         att = [p["attainment"] for p in pts]

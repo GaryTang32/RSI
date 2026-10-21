@@ -49,8 +49,7 @@ class Selector:
 
 
 class GuardedSelector(Selector):
-    """Deploy the best development-world candidate only if its held-out gain exceeds
-    ``delta = max(margin_floor, z * se(paired held-out differences))`` (:class:`rsi.core.gates.MinGain`)."""
+    """Deploy the best dev-world candidate only if its held-out gain beats ``max(margin_floor, z * se(diffs))``."""
 
     name = "guarded"
 

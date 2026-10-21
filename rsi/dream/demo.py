@@ -28,8 +28,7 @@ def demo_tree() -> DiscoveryTree:
     """Root (score 0) + three chains, created in round-robin order."""
     names = list(DEMO_BRANCHES)
     nodes = [DiscoveryNode(cell_id(b, a), ROOT_ID if a == 0 else cell_id(b, a - 1), b, a, a * len(names) + b + 1,
-                           DEMO_BRANCHES[name][a], round=a + 1)
-             for a in range(5) for b, name in enumerate(names)]
+                           DEMO_BRANCHES[name][a], round=a + 1) for a in range(5) for b, name in enumerate(names)]
     return DiscoveryTree(DiscoveryNode(ROOT_ID, None, score=0.0), nodes,
                          branch_tags={b: {"name": n} for b, n in enumerate(names)}, world_id="demo")
 

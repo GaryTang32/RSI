@@ -10,17 +10,17 @@ import shutil
 import sys
 import tempfile
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 
 from ...core.artifact import Artifact
-from ...core.domain import Execution
 from ...core.sandbox import run_cmd
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import AttemptContext, EvalOutcome, ParametricAgent
-from .base import ProgramDomain
+from .base import ProgramDomain, execution, failure, pick_mechanism
 
 PROGRAM = "solver.py"
 MECHANISMS = ("algorithm", "warm-start", "screening", "active-set", "gram", "tolerance")
@@ -169,10 +169,8 @@ def read_knobs(code: str) -> dict:
     for k in SEED_KNOBS:
         m = re.search(rf"^{k} = (.+?)(\s+#.*)?$", code, re.M)
         if m:
-            try:
+            with suppress(Exception):
                 out[k] = eval(m.group(1), {})  # noqa: S307 - literal constants of our own template
-            except Exception:  # noqa: BLE001
-                pass
     return out
 
 
@@ -403,41 +401,37 @@ class LassoPathDomain(ProgramDomain):
     def evaluate_split(self, artifact: Artifact, which: str = "search") -> EvalOutcome:
         code = artifact.get(PROGRAM)
         if code is None:
-            return EvalOutcome(0.0, True, False, "compile_other", f"{PROGRAM} missing", 0, 1)
+            return failure("compile_other", f"{PROGRAM} missing")
         t0 = time.time()
         res, err, fc = self._measure(code, which)
         dt = time.time() - t0
         if err is not None:
-            return EvalOutcome(0.0, True, False, fc, err, 0, 1, {}, dt)
+            return failure(fc, err, seconds=dt)
         refs = self.sets[which]["ref"]
         worst = -math.inf
         try:
             paths = res.get("paths") or []
             if len(paths) != len(refs):
-                return EvalOutcome(0.0, True, False, "correctness", "missing coefficient paths", 0, 1, {}, dt)
-            for W, ref in zip(paths, refs):
-                if len(W) != len(ref):
-                    return EvalOutcome(0.0, True, False, "correctness", "wrong number of path points", 0, 1, {}, dt)
+                return failure("correctness", "missing coefficient paths", seconds=dt)
+            if any(len(W) != len(ref) for W, ref in zip(paths, refs)):
+                return failure("correctness", "wrong number of path points", seconds=dt)
             for objs, ref in zip(self._objectives(which, paths), refs):
                 worst = max(worst, max(o - r for o, r in zip(objs, ref)))
         except (TypeError, ValueError) as e:
-            return EvalOutcome(0.0, True, False, "correctness", f"bad output: {e}", 0, 1, {}, dt)
+            return failure("correctness", f"bad output: {e}", seconds=dt)
         times = [max(1e-6, float(t)) for t in res["times"]]
         gm = float(np.exp(np.mean(np.log(times))))
         diag = {"runtime_ms": [round(1000 * t, 3) for t in times], "geomean_ms": round(1000 * gm, 3),
                 "max_objective_excess": worst}
         if not worst <= TOL_GATE:
-            return EvalOutcome(0.0, True, False, "correctness",
-                               f"objective exceeds reference by {worst:.3g} > {TOL_GATE:g}", 0, 1, diag, dt)
+            return failure("correctness", f"objective exceeds reference by {worst:.3g} > {TOL_GATE:g}", diag, dt)
         return EvalOutcome(1.0 / gm, True, True, "ok", None, 1, 1, diag, dt)
 
     def evaluate_program(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
         return self.evaluate_split(artifact, "search")
 
     def execute(self, artifact, task, *, seed, llm=None):
-        ev = self.evaluate_split(artifact, task.input or "search")
-        return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
-                                 "diagnostics": ev.diagnostics})
+        return execution(self.evaluate_split(artifact, task.input or "search"))
 
     def mock_agent(self, **kw) -> ParametricAgent:
         return ParametricAgent(_mutate, name="lasso-mock", **kw)
@@ -445,9 +439,7 @@ class LassoPathDomain(ProgramDomain):
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
     knobs = {**SEED_KNOBS, **read_knobs(parent[PROGRAM])}
-    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
-    if ctx and ctx.attempt > 0 and rng.random() < 0.3:
-        mech = rng.choice(MECHANISMS)
+    mech = pick_mechanism(ctx, rng, MECHANISMS, 0.3)
     before = dict(knobs)
     if mech == "algorithm":
         knobs["ALGO"] = "fista" if knobs["ALGO"] == "cd" else "cd"

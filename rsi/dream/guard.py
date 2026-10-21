@@ -11,6 +11,7 @@ import sys
 import tempfile
 import time
 import types
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -102,9 +103,19 @@ def _load_class(code: str):
     return cls
 
 
-class InProcessSession:
-    """Runs a trusted policy in this process, still only through the PrefixGuard proxy; each episode re-executes
-    the module (state kept in other modules is caught only by :func:`static_check`)."""
+class _Session:
+    def close(self) -> None:
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+class InProcessSession(_Session):
+    """Runs a trusted policy in-process behind the PrefixGuard proxy, re-executing the module per episode."""
 
     def __init__(self, code: str) -> None:
         self.code = code
@@ -166,15 +177,6 @@ class InProcessSession:
         if res is not None and not isinstance(res, SimResult):
             res = SimResult.from_dict(res.to_dict()) if hasattr(res, "to_dict") else SimResult()
         return SolveOutcome(res, err, list(guard.violations), list(guard.batch_errors), cpu)
-
-    def close(self) -> None:
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        self.close()
 
 
 _CHILD = r'''
@@ -257,7 +259,6 @@ while True:
 '''
 
 
-
 def _preexec(cpu_s: int, mem_mb: int):
     def apply():
         os.setsid()
@@ -267,9 +268,8 @@ def _preexec(cpu_s: int, mem_mb: int):
     return apply
 
 
-class SubprocessSession:
-    """One sandboxed child process per policy version (scratch dir, scrubbed env, rlimits, no new files after
-    import); the hidden world stays in the parent, and every episode runs in a fresh ``fork()`` of the child."""
+class SubprocessSession(_Session):
+    """A sandboxed child process per policy version; every episode runs in a fresh ``fork()`` of it."""
 
     def __init__(self, code: str, *, timeout_s: float = 30.0, cpu_s: int = 900, mem_mb: int = 1024) -> None:
         self.code = code
@@ -311,14 +311,10 @@ class SubprocessSession:
 
     def _kill(self) -> None:
         if self.proc is not None:
-            try:
+            with suppress(ProcessLookupError, PermissionError):
                 os.killpg(self.proc.pid, 9)
-            except (ProcessLookupError, PermissionError):
-                pass
-            try:
+            with suppress(subprocess.TimeoutExpired):
                 self.proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
             self.proc = None
         self._episode = False
 
@@ -358,13 +354,12 @@ class SubprocessSession:
             return None
 
     def _end_episode(self) -> None:
-        if not self._episode or self.proc is None:
+        if self._episode and self.proc is not None:
             self._episode = False
-            return
+            msg = self._request("end")
+            if msg is None or "closed" not in msg:
+                self._kill()
         self._episode = False
-        msg = self._request("end")
-        if msg is None or "closed" not in msg:
-            self._kill()
 
     def begin_episode(self) -> Optional[str]:
         """End the current episode (its forked process exits) and fork a fresh one."""
@@ -445,34 +440,20 @@ class SubprocessSession:
 
     def close(self) -> None:
         if self.proc is not None:
-            try:
+            with suppress(Exception):
                 self._end_episode()
-            except Exception:  # noqa: BLE001
-                pass
         if self.proc is not None:
-            try:
+            with suppress(Exception):
                 self._send({"cmd": "exit"})
                 self.proc.wait(timeout=2)
-            except Exception:  # noqa: BLE001
-                pass
             self._kill()
-        try:
+        with suppress(Exception):
             self._err.close()
-        except Exception:  # noqa: BLE001
-            pass
         shutil.rmtree(self.dir, ignore_errors=True)
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        self.close()
-
     def __del__(self):  # pragma: no cover - best effort cleanup
-        try:
+        with suppress(Exception):
             self.close()
-        except Exception:  # noqa: BLE001
-            pass
 
 
 class InProcessRunner:

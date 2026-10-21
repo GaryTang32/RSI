@@ -49,8 +49,7 @@ def _bound_names(fn) -> set:
 
 
 class _EpisodeStateLint(ast.NodeVisitor):
-    """Flags routes for state to outlive an episode: ``global``/``nonlocal``, stores into or mutation of non-local
-    objects from a function, stores into imported objects, and memoising decorators."""
+    """Flags routes for state to outlive an episode: globals, non-local stores or mutations, memoising decorators."""
 
     def __init__(self) -> None:
         self.scopes: list[set] = []

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import ast
-import json
 import random
 from typing import Optional
 
@@ -10,7 +9,7 @@ import numpy as np
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, EvalOutcome, ParametricAgent
-from .base import ProgramDomain
+from .base import ProgramDomain, failure, parent_measured
 
 PROGRAM = "pack.py"
 N_CIRCLES = 26
@@ -141,8 +140,7 @@ SEED_ROWS = [5, 5, 6, 5, 5]
 
 
 def program(rows, init=None, stage=None) -> str:
-    return (TEMPLATE.replace("__ROWS__", repr(rows)).replace("__INIT__", repr(init))
-            .replace("__STAGE__", repr(stage)))
+    return TEMPLATE.replace("__ROWS__", repr(rows)).replace("__INIT__", repr(init)).replace("__STAGE__", repr(stage))
 
 
 class CirclePackingDomain(ProgramDomain):
@@ -169,20 +167,19 @@ class CirclePackingDomain(ProgramDomain):
     def check(self, output, *, seed: int = 0) -> EvalOutcome:
         C = np.asarray(output, dtype=float)
         if C.shape != (self.n, 3) or not np.all(np.isfinite(C)):
-            return EvalOutcome(0.0, True, False, "correctness", f"expected {self.n} x 3 finite values, got {C.shape}",
-                               0, 1)
+            return failure("correctness", f"expected {self.n} x 3 finite values, got {C.shape}")
         x, y, r = C[:, 0], C[:, 1], C[:, 2]
         tol = self.tol
         if np.any(r < 0):
-            return EvalOutcome(0.0, True, False, "constraint", "negative radius", 0, 1)
+            return failure("constraint", "negative radius")
         cont = np.minimum.reduce([x - r, 1 - r - x, y - r, 1 - r - y])
         if cont.min() < -tol:
-            return EvalOutcome(0.0, True, False, "constraint", f"circle outside the square by {-cont.min():.2e}", 0, 1)
+            return failure("constraint", f"circle outside the square by {-cont.min():.2e}")
         d = np.hypot(x[:, None] - x[None, :], y[:, None] - y[None, :])
         gap = d - (r[:, None] + r[None, :])
         np.fill_diagonal(gap, np.inf)
         if gap.min() < -tol:
-            return EvalOutcome(0.0, True, False, "constraint", f"overlap of {-gap.min():.2e}", 0, 1)
+            return failure("constraint", f"overlap of {-gap.min():.2e}")
         s = float(r.sum())
         return EvalOutcome(s, True, True, "ok", None, 1, 1, {"sum_r": s, "gap_to_best_known": BEST_KNOWN - s,
                                                             "centers": [[float(a), float(b)] for a, b in zip(x, y)]})
@@ -203,12 +200,7 @@ PATTERNS = ([5, 5, 6, 5, 5], [6, 5, 5, 5, 5], [5, 6, 5, 6, 4], [4, 5, 4, 5, 4, 4
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
     rows, init = _parse(parent[PROGRAM])
-    if ctx is not None:  # resume from the parent's measured packing (its workspace's eval/score.json)
-        try:
-            sj = json.loads(ctx.parent_workspace.get("eval/score.json") or "{}")
-            init = (sj.get("diagnostics") or {}).get("centers") or init
-        except json.JSONDecodeError:
-            pass
+    init = parent_measured(ctx, "centers", init)  # resume from the parent's measured packing
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
     if ctx and ctx.attempt > 0 and mech == "rows":
         mech = rng.choice(("jitter", "polish", "shake"))  # a branch re-initialises only once

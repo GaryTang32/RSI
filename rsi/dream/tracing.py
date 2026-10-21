@@ -86,8 +86,7 @@ class DreamTracer:
             trials = {tid: [outcome.score] for tid in ids}
             summary.update(n_tasks=len(ids))
         diag = {k: v for k, v in (outcome.diagnostics or {}).items() if k != "feedback"}
-        return {"summary": summary, "per_task": per_task, "trials": trials, "error": outcome.error,
-                "diagnostics": diag}
+        return {"summary": summary, "per_task": per_task, "trials": trials, "error": outcome.error, "diagnostics": diag}
 
     def _policy_desc(self, rec) -> dict:
         return {"label": rec.label, "rev": f"r{rec.index:04d}", "id": Artifact({POLICY_FILE: rec.code}).short_id,

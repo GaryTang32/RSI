@@ -218,8 +218,7 @@ class DiscoveryTree:
     def from_ledger(cls, ledger: Ledger, *, lower_is_better: bool = False,
                     score_fn: Optional[Callable[[Node], Optional[float]]] = None,
                     world_id: str = "ledger", include: Optional[Callable[[Node], bool]] = None) -> "DiscoveryTree":
-        """Any method's ledger as a replay world: first-child chains become branches, later children fork new
-        branches tagged ``fork_of``, unscored or non-ok nodes are failed evaluations."""
+        """Any method's ledger as a replay world: first-child chains are branches, later children fork new ones."""
         nodes = [n for n in ledger.nodes() if include is None or include(n)]
         ids = {n.id for n in nodes}
         sign = -1.0 if lower_is_better else 1.0

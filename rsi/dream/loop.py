@@ -145,8 +145,7 @@ class DreamRSILoop:
             objective = Eq1Objective(c.beta1, c.beta2, c.normalize, c.support)
         self.replay = ReplayEvaluator(objective, W=c.W, K2=c.K2, root_mode=c.root_mode, hide_missing=c.hide_missing,
                                       runner=self.runner, fallback=(c.branch_count, c.refine_count),
-                                      hard_max=(c.hard_max_branch, c.hard_max_refine),
-                                      sweep_grid=tuple(c.beta_grid))
+                                      hard_max=(c.hard_max_branch, c.hard_max_refine), sweep_grid=tuple(c.beta_grid))
         self.selector = GuardedSelector(c.holdout_frac, 1, c.noise_z, c.margin_floor, c.include_incumbent) \
             if c.selector == "guarded" else Selector(c.include_incumbent)
         self.provider = DirectionProvider(task.directions(), seed=c.seed)
@@ -320,11 +319,10 @@ class DreamRSILoop:
             self._save(f"trace_pool/iter{t:02d}/live_cycle_manifest.json", json.dumps(man, indent=1, default=float))
             tree.to_ledger(self.discovery_ledger, prefix=f"t{t}/")
             row = {"iteration": t, "calls": q.calls, "cum_calls": self.meter.agent_calls,
-                   "round_best": man["round_best"], "best": best_score, "root": tree.root_score,
-                   "plan": plan.to_dict(), "N": q.N, "k": q.k, "batch_sizes": list(q.batch_sizes),
-                   "round_budget": c.round_cap,
-                   "policy": tree.meta["policy"][:10], "beta": beta_live,
-                   "online_error": out.error, "violations": out.violations}
+                   "round_best": man["round_best"], "best": best_score, "root": tree.root_score, "plan": plan.to_dict(),
+                   "N": q.N, "k": q.k, "batch_sizes": list(q.batch_sizes), "round_budget": c.round_cap,
+                   "policy": tree.meta["policy"][:10], "beta": beta_live, "online_error": out.error,
+                   "violations": out.violations}
             # stage 3: dreaming (cheap, offline)
             if c.dream and (t < c.rounds or c.dream_last) and (self._calls_left() is None or self._calls_left() > 0):
                 policy, phase = self._dream(t, policy, policy_node)

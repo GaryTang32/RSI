@@ -10,7 +10,7 @@ import numpy as np
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, EvalOutcome, ParametricAgent
-from .base import ProgramDomain
+from .base import ProgramDomain, failure, parent_measured, pick_mechanism
 
 PROGRAM = "construct.py"
 VARIANTS = ("phi1", "phi2", "phi3")
@@ -213,16 +213,15 @@ class AutocorrelationDomain(ProgramDomain):
 
     def check(self, output, *, seed: int = 0) -> EvalOutcome:
         if not isinstance(output, list) or not all(isinstance(v, (int, float)) for v in output):
-            return EvalOutcome(0.0, True, False, "correctness", "construct() must return a list of numbers", 0, 1)
+            return failure("correctness", "construct() must return a list of numbers")
         h = np.asarray(output, dtype=float)
         if not 2 <= h.size <= self.max_n or not np.all(np.isfinite(h)):
-            return EvalOutcome(0.0, True, False, "constraint", f"need 2..{self.max_n} finite heights, got {h.size}",
-                               0, 1)
+            return failure("constraint", f"need 2..{self.max_n} finite heights, got {h.size}")
         if self.variant != "phi3" and np.any(h < 0):
-            return EvalOutcome(0.0, True, False, "constraint", "f must be non-negative for this inequality", 0, 1)
+            return failure("constraint", "f must be non-negative for this inequality")
         s = float(h.sum())
         if (self.variant != "phi3" and s <= 0) or abs(s) < 1e-12:
-            return EvalOutcome(0.0, True, False, "constraint", "f cannot be normalised to integral 1", 0, 1)
+            return failure("constraint", "f cannot be normalised to integral 1")
         obj = objectives(h)
         val = obj[self.variant]
         score = val if self.variant == "phi2" else -val
@@ -239,21 +238,10 @@ class AutocorrelationDomain(ProgramDomain):
         return ParametricAgent(mutate, name=f"autocorr-{variant}-mock", **kw)
 
 
-def _parse_init(code: str) -> list:
-    return ast.literal_eval(code.split("INIT = ", 1)[1].split("\n", 1)[0])
-
-
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext], variant: str):
-    init = _parse_init(parent[PROGRAM])
-    if ctx is not None:  # resume from the parent's measured function (its eval/score.json)
-        try:
-            sj = json.loads(ctx.parent_workspace.get("eval/score.json") or "{}")
-            init = (sj.get("diagnostics") or {}).get("heights") or init
-        except json.JSONDecodeError:
-            pass
-    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
-    if ctx and ctx.attempt > 0 and rng.random() < 0.25:
-        mech = rng.choice(MECHANISMS)  # the agent sometimes switches mechanism within a branch
+    init = ast.literal_eval(parent[PROGRAM].split("INIT = ", 1)[1].split("\n", 1)[0])
+    init = parent_measured(ctx, "heights", init)  # resume from the parent's measured function
+    mech = pick_mechanism(ctx, rng, MECHANISMS, 0.25)
     params = {"coord": {"iters": rng.choice([40, 80]), "scale": rng.choice([0.2, 0.4])},
               "gradient": {"steps": rng.choice([8, 15]), "lr": rng.choice([0.02, 0.05]),
                            "tau": rng.choice([30.0, 80.0])},

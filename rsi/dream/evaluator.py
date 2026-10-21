@@ -83,10 +83,7 @@ def diagnostics(episodes: Sequence[EpisodeResult]) -> dict:
 
 
 class ReplayEvaluator:
-    """Replays policy code over replay worlds; with the Pareto objective every evaluation runs the beta sweep.
-
-    ``fresh_episodes=False`` (E8 ablation only) reuses one policy namespace across episodes, and ``unguarded``
-    (E8, in-process only) hands the policy the raw question."""
+    """Replays policy code over worlds; ``fresh_episodes=False`` and ``unguarded`` serve the E8 ablation only."""
 
     def __init__(self, objective=None, *, W: int = 4, K2: Optional[int] = None, root_mode: str = "earliest",
                  hide_missing: bool = False, runner="subprocess", fallback: tuple[int, int] = (4, 4),
@@ -184,8 +181,7 @@ class ReplayEvaluator:
         if pareto:
             value = sweep_res["reward"] if sweep_res else float("-inf")
             # per-world values in the same objective, so a selector on a subset of worlds ranks by the Pareto reward
-            per_world = [self.objective.sweep({b: [by_beta[b][i]] for b in by_beta})["reward"]
-                         for i in range(len(eps))]
+            per_world = [self.objective.sweep({b: [by_beta[b][i]] for b in by_beta})["reward"] for i in range(len(eps))]
         else:
             per_world = [self.objective.score_episode(e) for e in eps]
             value = float(np.mean(per_world)) if per_world else float("-inf")

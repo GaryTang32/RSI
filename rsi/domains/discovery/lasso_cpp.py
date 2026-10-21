@@ -15,10 +15,9 @@ from typing import Optional, Sequence
 import numpy as np
 
 from ...core.artifact import Artifact
-from ...core.domain import Execution
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import EvalOutcome
-from .base import ProgramDomain
+from .base import ProgramDomain, execution, failure
 
 PROGRAM = "solver.py"
 N_LAMBDA = 50
@@ -224,8 +223,7 @@ def load_heldout(heldout_dir: Optional[str]) -> tuple[dict, list[str]]:
 
 
 class SimpleTESLassoDomain(ProgramDomain):
-    """Search split: the 17 shapes, fresh data per timing call; holdout: the real datasets found in
-    ``heldout_dir``. Single-threaded by default."""
+    """Search: the 17 shapes, fresh data per timing call; holdout: the real datasets in ``heldout_dir``."""
 
     name = "lasso_cpp"
     program_file = PROGRAM
@@ -276,7 +274,7 @@ class SimpleTESLassoDomain(ProgramDomain):
         t0 = time.time()
         binary, err = self.binary_of(artifact)
         if err is not None:
-            return EvalOutcome(0.0, True, False, "compile_other", err[:1500], 0, 1, {}, time.time() - t0)
+            return failure("compile_other", err[:1500], seconds=time.time() - t0)
         solve = (lambda X, y, lam: run_binary(binary, X, y, lam, timeout_s=self.timeout_s, threads=self.threads))
         return self.evaluate_solver(solve, which, eval_seed=eval_seed, t0=t0)
 
@@ -303,8 +301,7 @@ class SimpleTESLassoDomain(ProgramDomain):
             elif which == "holdout":
                 data, missing = load_heldout(self.heldout_dir)
                 if not data:
-                    return EvalOutcome(0.0, True, False, "env_error", "no held-out dataset available", 0, 1,
-                                       {"missing": missing}, time.time() - t0)
+                    return failure("env_error", "no held-out dataset available", {"missing": missing}, time.time() - t0)
                 for name, (X, y) in data.items():
                     alphas, ref = sklearn_path(X, y)
                     ms, coef = timed(lambda: solve(X, y, alphas), self.heldout_reps, warmup=1)
@@ -313,29 +310,24 @@ class SimpleTESLassoDomain(ProgramDomain):
             else:
                 raise ValueError(f"unknown split {which!r}")
         except subprocess.TimeoutExpired:
-            return EvalOutcome(0.0, True, False, "timeout", f"solver timed out after {self.timeout_s}s", 0, 1,
-                               {"problems": rows}, time.time() - t0)
+            return failure("timeout", f"solver timed out after {self.timeout_s}s", {"problems": rows}, time.time() - t0)
         except RuntimeError as e:
-            return EvalOutcome(0.0, True, False, "compile_other", str(e)[:800], 0, 1, {"problems": rows},
-                               time.time() - t0)
+            return failure("compile_other", str(e)[:800], {"problems": rows}, time.time() - t0)
         gm = float(np.exp(np.mean(np.log([max(1e-6, r["ms"]) for r in rows]))))
         worst = max(r["gap"] for r in rows)
         diag = {"problems": rows, "geomean_ms": gm, "max_gap": worst, "missing": missing, "threads": self.threads}
         dt = time.time() - t0
         if not worst <= TOL_OBJECTIVE:
             bad = [r["problem"] for r in rows if not r["gap"] <= TOL_OBJECTIVE]
-            return EvalOutcome(0.0, True, False, "correctness",
-                               f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}", 0, 1, diag,
-                               dt)
+            return failure("correctness", f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}",
+                           diag, dt)
         return EvalOutcome(1.0 / gm, True, True, "ok", None, len(rows), len(rows), diag, dt)
 
     def evaluate_program(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
         return self.evaluate_split(artifact, "search", eval_seed=seed)
 
     def execute(self, artifact, task, *, seed, llm=None):
-        ev = self.evaluate_split(artifact, task.input or "search", eval_seed=seed)
-        return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
-                                 "diagnostics": ev.diagnostics})
+        return execution(self.evaluate_split(artifact, task.input or "search", eval_seed=seed))
 
     def mock_agent(self, **kw):
         raise NotImplementedError("lasso_cpp needs an agent that writes C++ (e.g. rsi.dream.EditorAgent over an "

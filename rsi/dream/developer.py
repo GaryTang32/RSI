@@ -6,15 +6,15 @@ import difflib
 import json
 import random
 import re
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
 from ..core.critic import LeakageCritic
 from ..core.editors import Editor, RewriteEditor
 from ..core.llm import LLM, MockLLM, Usage
-from . import policy_api
 from .agent import strip_reply_terminators
-from .guard import CheckResult, static_check
+from .guard import API_PATH, CheckResult, static_check
 from .policy import POLICY_FILE, get_params, policy_artifact, set_params, template_code
 from .policy_api import clamp
 from .prompts import DEVELOPER_PROMPT, FRAMEWORK_NOTES, developer_prompt  # noqa: F401 (re-exported)
@@ -84,19 +84,16 @@ def base_version(ctx: DevContext) -> VersionRecord:
 
 
 def default_beta_of(code: str, fallback: float = 0.6) -> float:
-    """``PARAMS["default_beta"]``, else the literal default of ``self.config.get("beta", <literal>)``, else
-    ``fallback``."""
+    """``PARAMS["default_beta"]``, else the literal in ``config.get("beta", <literal>)``, else ``fallback``."""
     p = get_params(code)
     if "default_beta" in p:
         return float(p["default_beta"])
-    try:
+    with suppress(SyntaxError):
         for node in ast.walk(ast.parse(code)):
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
                     and len(node.args) == 2 and isinstance(node.args[0], ast.Constant) and node.args[0].value == "beta"
                     and isinstance(node.args[1], ast.Constant) and isinstance(node.args[1].value, (int, float))):
                 return float(node.args[1].value)
-    except SyntaxError:
-        pass
     return float(fallback)
 
 
@@ -232,8 +229,7 @@ DEVELOPER_SYSTEM = ("You are a careful controller-development engineer. You writ
 
 
 class LLMPolicyDeveloper(PolicyDeveloper):
-    """Listing-2 developer over an LLM or any :class:`rsi.core.Editor`; every revision passes :func:`static_check`
-    and a leakage screen, with ``repair_rounds`` retries. ``max_history``/``max_trace_rows`` cap the context."""
+    """Listing-2 developer: a revision must pass :func:`static_check` and a leakage screen, with retries."""
 
     name = "llm"
 
@@ -241,18 +237,15 @@ class LLMPolicyDeveloper(PolicyDeveloper):
                  max_history: Optional[int] = None, max_trace_rows: Optional[int] = None, repair_rounds: int = 1,
                  role: str = "developer", leakage_check: bool = True, max_context_chars: int = 400_000) -> None:
         # a single-completion editor gets every context file inline (the core default would cut old history)
-        self.editor = RewriteEditor(editor, max_context_chars=max_context_chars) if isinstance(editor, LLM) \
-            else editor
+        self.editor = RewriteEditor(editor, max_context_chars=max_context_chars) if isinstance(editor, LLM) else editor
         self.beta1, self.beta2, self.lam = beta1, beta2, lam
         self.max_history, self.max_trace_rows = max_history, max_trace_rows
         self.repair_rounds, self.role = repair_rounds, role
         self.leakage_check = leakage_check
 
     def context_files(self, ctx: DevContext, base: VersionRecord) -> dict[str, str]:
-        """The paper's context layout, in the order that survives an editor's budget: API, manifests, baseline,
-        then the version history newest first."""
-        with open(policy_api.__file__) as f:
-            files = {"api/policy_api.py": f.read()}
+        """Context files in the order that survives an editor's budget: API, manifests, baseline, newest versions."""
+        files = {"api/policy_api.py": API_PATH.read_text()}
         for m in ctx.manifests:
             it = int(m.get("iteration", 0))
             files[f"trace_pool/iter{it:02d}/live_cycle_manifest.json"] = json.dumps(m, default=float)

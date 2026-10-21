@@ -10,7 +10,7 @@ import numpy as np
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, EvalOutcome, ParametricAgent
-from .base import ProgramDomain
+from .base import ProgramDomain, failure, pick_mechanism
 
 PROGRAM = "construct.py"
 MECHANISMS = ("hill", "anneal", "window", "fringe", "grow")
@@ -182,16 +182,15 @@ class SumDiffDomain(ProgramDomain):
     def check(self, output, *, seed: int = 0) -> EvalOutcome:
         if not isinstance(output, list) or not all(isinstance(v, (int, float)) and float(v).is_integer()
                                                     for v in output):
-            return EvalOutcome(0.0, True, False, "correctness", "construct() must return a list of integers", 0, 1)
+            return failure("correctness", "construct() must return a list of integers")
         A = sorted({int(v) for v in output})
         if len(A) != len(output):
-            return EvalOutcome(0.0, True, False, "constraint", "elements must be distinct", 0, 1)
+            return failure("constraint", "elements must be distinct")
         if not 2 <= len(A) <= self.max_size or A[-1] - A[0] > self.max_span:
-            return EvalOutcome(0.0, True, False, "constraint",
-                               f"|A|={len(A)} or span={A[-1] - A[0] if A else 0} out of bounds", 0, 1)
+            return failure("constraint", f"|A|={len(A)} or span={A[-1] - A[0] if A else 0} out of bounds")
         g, n, s, d = gamma(A)
         if g <= 0:
-            return EvalOutcome(0.0, True, False, "constraint", "degenerate set (|A-A| <= |A|)", 0, 1)
+            return failure("constraint", "degenerate set (|A-A| <= |A|)")
         return EvalOutcome(g, True, True, "ok", None, 1, 1, {"size": n, "sums": s, "diffs": d, "mstd": s > d})
 
     def mock_agent(self, **kw) -> ParametricAgent:
@@ -206,9 +205,7 @@ def _parse(code: str) -> tuple[list, list]:
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
     init, stages = _parse(parent[PROGRAM])
-    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
-    if ctx and ctx.attempt > 0 and rng.random() < 0.25:
-        mech = rng.choice(MECHANISMS)  # the agent sometimes switches mechanism within a branch
+    mech = pick_mechanism(ctx, rng, MECHANISMS, 0.25)
     # a modest amount of search per attempt, so progress spans several rounds
     params = {"hill": {"iters": rng.choice([15, 30, 45])}, "anneal": {"iters": rng.choice([20, 40]),
                                                                        "t0": rng.choice([0.01, 0.02, 0.05])},

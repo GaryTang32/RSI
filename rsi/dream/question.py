@@ -132,8 +132,7 @@ class GridQuestion:
     def _prefix_summary(self, max_per_branch: int = 4) -> dict:
         br: dict[int, list] = {}
         for o in sorted(self._revealed.values(), key=lambda o: (o.branch, o.attempt)):
-            br.setdefault(o.branch, []).append(round(o.score, 6) if o.success and o.score is not None
-                                               else o.fail_class)
+            br.setdefault(o.branch, []).append(round(o.score, 6) if o.success and o.score is not None else o.fail_class)
         return {"n": len(self._revealed), "branches": {str(b): v[-max_per_branch:] for b, v in br.items()}}
 
     def probe_batch(self, cells: Sequence[str], on_reveal: Optional[Callable[[Observation], object]] = None
@@ -173,9 +172,7 @@ class GridQuestion:
 
     def stats(self) -> dict:
         """Authoritative episode statistics, computed parent-side."""
-        succ = [o.score for o in self._revealed.values() if o.success and o.score is not None]
         base = self.baseline_score
-        best = max(succ + ([base] if base is not None else [])) if (succ or base is not None) else None
         curve, n, cur = [], 0, base
         for row in self.round_log:
             n += len(row["revealed"])
@@ -183,7 +180,7 @@ class GridQuestion:
                 if r["fail_class"] == "ok" and r["score"] is not None:
                     cur = r["score"] if cur is None else max(cur, r["score"])
             curve.append([n, cur])
-        return {"N": len(self._revealed), "k": self.k, "batch_sizes": list(self.batch_sizes), "best": best,
+        return {"N": len(self._revealed), "k": self.k, "batch_sizes": list(self.batch_sizes), "best": self.best_so_far,
                 "baseline": base, "curve": curve,
                 "revealed": sorted(self._revealed, key=lambda c: self.reveal_round[c]),
                 "reveal_round": dict(self.reveal_round), "plan": self.plan.to_dict(),
@@ -191,11 +188,7 @@ class GridQuestion:
 
 
 class ReplayQuestion(GridQuestion):
-    """Deterministic reveal over a frozen tree, restricted to ``plan ∩ support`` [paper:§3; App.B.2].
-
-    ``root_mode="earliest"``: picking a root opens the earliest-created unrevealed branch (paper formalism);
-    ``"addressable"``: a specific root cell (Listing-2 API). ``hide_missing`` makes cells the trace lacks illegal
-    instead of revealing nothing and exhausting the branch."""
+    """Deterministic reveal over a frozen tree, restricted to ``plan ∩ support`` [paper:§3; App.B.2]."""
 
     def __init__(self, tree: DiscoveryTree, W: int, plan: Optional[GridPlan] = None, *, K: Optional[int] = None,
                  root_mode: str = "earliest", hide_missing: bool = False) -> None:
@@ -267,9 +260,7 @@ def _seed_of(*parts) -> int:
 
 
 class OnlineQuestion(GridQuestion):
-    """The live transition [paper:§3.3]: each selected cell runs the frozen agent from its parent's saved workspace
-    and the locked evaluator (one thread per request); node ``seq`` follows batch order, so replaying the recording
-    policy reproduces the rollout. ``call_budget`` truncates the batch that exceeds it and ends the episode."""
+    """The live transition [paper:§3.3]: each probed cell runs the frozen agent, then the locked evaluator."""
 
     def __init__(self, *, task, agent, root_artifact: Artifact, root_eval, W: int, plan: GridPlan,
                  K: Optional[int] = None, workers: Optional[int] = None, store=None, meter=None,
