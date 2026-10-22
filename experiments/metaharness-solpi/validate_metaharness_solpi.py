@@ -1,23 +1,6 @@
-"""From-scratch validation runs of Meta-Harness and SoL-Pi with the per-iteration audit trace.
+"""From-scratch validation runs of Meta-Harness and SoL-Pi, each with an independent per-iteration audit.
 
-Each run starts from the untouched seed artifact(s) of its domain, in a fresh run directory
-``validation/metaharness-solpi/<run>/`` (deleted first) and - for live runs - a fresh LLM cache
-``validation/metaharness-solpi/.cache_<run>/`` (deleted first; nothing from ``.rsi_cache``). The loop
-writes ``trace.jsonl`` (rsi.trace format) and the shadow monitor scores every new incumbent on the
-sealed splits (never shown to the loop). This script then writes, per run:
-
-* ``TRACE.md``      - :func:`rsi.trace.inspect`;
-* ``report.json``   - seed vs final on every split via :func:`rsi.core.transfer_report` (report-only
-                      unsealing), spend from the meters and from the fresh cache's entries;
-* ``audit.json`` / ``audit.md`` - one row per iteration re-derived from trace + ledger + store, with
-                      independent checks (see ``audit_mh`` / ``audit_sp``).
-
-Runs::
-
-    python experiments/metaharness-solpi/validate_metaharness_solpi.py mh_memoclassify_offline
-    python experiments/metaharness-solpi/validate_metaharness_solpi.py solpi_agentworld_offline
-    python experiments/metaharness-solpi/validate_metaharness_solpi.py mh_agentqa_live
-    python experiments/metaharness-solpi/validate_metaharness_solpi.py solpi_agentworld_live
+Usage: python experiments/metaharness-solpi/validate_metaharness_solpi.py [<run> ... | reaudit <run> ...]
 """
 from __future__ import annotations
 
@@ -36,6 +19,16 @@ from rsi.core.ledger import Ledger  # noqa: E402
 from rsi.trace import inspect, load_trace  # noqa: E402
 
 OUT = ROOT / "validation" / "metaharness-solpi"
+MH_LIVE = ("mh_agentqa_live", "mh_agentqa_live_r2")
+SP_LIVE = ("solpi_agentworld_live", "solpi_agentworld_live_r2", "solpi_agentworld_live_r3", "solpi_agentworld_live_r4")
+MH_CHECKS = ("diff_matches_ledger_and_store", "eval_only_on_search_split", "frontier_recomputed_independently",
+             "incumbent_is_top_pareto_point", "delta_arithmetic", "evaluated_iff_admissible", "proposal_changes_code",
+             "changes_a_file_the_base_harness_has", "claimed_base_exists_and_visible",
+             "test_results_only_after_finalize", "view_never_exposes_results", "monitor_only_new_incumbents")
+SP_CHECKS = ("gate_arithmetic_recomputed", "gate_used_base_metrics_of_round", "no_sealed_eval_in_lineages",
+             "oracle_selection_recomputed", "variant_walk_rule", "firewall_trace_eq_sink_eq_driver",
+             "firewall_verdict_recomputed", "only_firewall_survivors_composed", "composition_is_union",
+             "diff_is_actual")
 
 
 def fresh(name: str) -> Path:
@@ -53,9 +46,7 @@ def fresh_llm(name: str, timeout_s: float = 240.0) -> tuple[CachedLLM, Path]:
 
 
 def cache_spend(cache: Path) -> dict:
-    """Ground truth of money spent: every cache miss wrote one entry with its real usage (this also
-    covers calls made in forked children - e.g. the interface validator's smoke - which the parent's
-    meters cannot see)."""
+    """Money actually spent: one cache entry per miss, including calls made in forked children."""
     n, usd, tin, tout = 0, 0.0, 0, 0
     for p in cache.rglob("*.json"):
         try:
@@ -79,11 +70,44 @@ def split_meter(meter_snapshot: dict) -> dict:
         tgt = shadow if role.startswith("shadow:") else loop
         tgt["usd"] += u.get("cost_usd", 0.0)
         tgt["calls"] += u.get("calls", 0)
-    return {"loop": {k: round(v, 4) if isinstance(v, float) else v for k, v in loop.items()},
-            "shadow_monitor": {k: round(v, 4) if isinstance(v, float) else v for k, v in shadow.items()}}
+
+    def rounded(x: dict) -> dict:
+        return {k: round(v, 4) if isinstance(v, float) else v for k, v in x.items()}
+    return {"loop": rounded(loop), "shadow_monitor": rounded(shadow)}
 
 
-# ============================================================================ Meta-Harness
+def write_json(path: Path, obj) -> None:
+    path.write_text(json.dumps(obj, indent=1, default=str))
+
+
+def write_audit(out: Path, name: str, audit: dict) -> None:
+    write_json(out / "audit.json", audit)
+    (out / "audit.md").write_text(render_audit(name, audit))
+
+
+class Checks:
+    """Pass/total counters per named check, plus the failure messages."""
+
+    def __init__(self, names):
+        self.counts = {k: [0, 0] for k in names}
+        self.problems: list[str] = []
+
+    def __call__(self, k: str, c, msg: str = "") -> None:
+        self.counts[k][0] += int(bool(c))
+        self.counts[k][1] += 1
+        if not c and msg:
+            self.problems.append(f"{k}: {msg}")
+
+    def result(self, rows: list, **extra) -> dict:
+        return {"checks": {k: f"{a}/{b}" for k, (a, b) in self.counts.items()},
+                "all_passed": all(a == b for a, b in self.counts.values()), "problems": self.problems,
+                "rows": rows, **extra}
+
+
+def _usd(llm) -> float:
+    return llm.meter.total().cost_usd if hasattr(llm, "meter") else 0.0
+
+
 def run_mh(name: str) -> dict:
     from rsi.metaharness import Config, run
     out = fresh(name)
@@ -97,13 +121,14 @@ def run_mh(name: str) -> dict:
         cfg = Config(iterations=6, k=2, history_mode="full", seed=0)
         res = run(dom, seed, llm_task=llm_task, llm_propose=None, config=cfg, out_dir=out, baselines=baselines)
         rep_llm, report_splits, cache = llm_task, ("evolve", "test", "ood"), None
+        seed_arms = {"seed(fewshot_all)": seed, "no_memory": baselines["no_memory"]}
         setup = ("MemoClassify seed 0 (scale 1.0): 3 search datasets (evolve = their val parts), sealed test = "
                  "their test parts, sealed ood = 4 unseen datasets. Frozen model MemoLM-A (deterministic). "
                  "H0 = the two untouched release baselines no_memory + fewshot_all (seed = fewshot_all). "
                  "Proposer = MockProposer (offline, reads only what the view exposes). Config: N = 6 iterations, "
                  "k = 2, history_mode = full, objectives (score, context_cost), validate on, no leakage screen "
                  "(faithful), test evaluated once by finalize(). Shadow monitor on the sealed ood split.")
-    elif name in ("mh_agentqa_live", "mh_agentqa_live_r2"):
+    elif name in MH_LIVE:
         from rsi.domains.agentqa import AgentQADomain, make_suite
         dom = AgentQADomain(make_suite(n_evolve=10, n_holdout=6, n_ood_per_family=1, seed=0))
         seed = AgentQADomain.seed_artifact()
@@ -113,6 +138,7 @@ def run_mh(name: str) -> dict:
                      cost_metric="tokens", workers=4, validate_timeout_s=240.0, shadow_workers=4)
         res = run(dom, seed, llm_task=llm, llm_propose=llm, config=cfg, out_dir=out, proposer_kind="rewrite")
         rep_llm, report_splits = llm, ("evolve", "holdout", "ood")
+        seed_arms = {"seed": seed}
         setup = ("AgentQA suite seed 0: evolve 10 (numeric), sealed holdout 6 (numeric), sealed ood 4 (dates / "
                  "numbertheory / strings / lists, 1 each). Seed = AgentQADomain.seed_artifact() (one direct model "
                  "call, 'You are a helpful assistant.'), H0 = {seed}. Task model AND proposer = claude haiku "
@@ -125,12 +151,9 @@ def run_mh(name: str) -> dict:
     wall = time.time() - t0
     loop = res.loop
     best = res.meta["best_system"]
-    arms = {"seed": seed, f"best={best}": res.best}
-    if name == "mh_memoclassify_offline":
-        arms = {"seed(fewshot_all)": seed, "no_memory": baselines["no_memory"], f"best={best}": res.best}
-    before = rep_llm.meter.total().cost_usd if hasattr(rep_llm, "meter") else 0.0
-    tr = transfer_report(dom, rep_llm, arms, splits=report_splits, k=1, workers=4)
-    report_usd = (rep_llm.meter.total().cost_usd if hasattr(rep_llm, "meter") else 0.0) - before
+    before = _usd(rep_llm)
+    tr = transfer_report(dom, rep_llm, {**seed_arms, f"best={best}": res.best}, splits=report_splits, k=1, workers=4)
+    report_usd = _usd(rep_llm) - before
     report = {"run": name, "setup": setup, "wall_s": round(wall, 1), "best_system": best,
               "frontier": res.meta["frontier"]["_pareto"], "final": res.meta["final"], "transfer": tr,
               "n_evaluated": res.meta["n_evaluated"], "n_proposed": res.meta["n_proposed"],
@@ -138,32 +161,18 @@ def run_mh(name: str) -> dict:
     if cache is not None:
         report["spend"] = {**split_meter(rep_llm.meter.snapshot()), "report": round(report_usd, 4),
                            "cache_ground_truth": cache_spend(cache)}
-    (out / "report.json").write_text(json.dumps(report, indent=1, default=str))
+    write_json(out / "report.json", report)
     inspect(out)
-    audit = audit_mh(out, loop)
-    (out / "audit.json").write_text(json.dumps(audit, indent=1, default=str))
-    (out / "audit.md").write_text(render_audit(name, audit))
+    write_audit(out, name, audit_mh(out, loop))
     return report
 
 
 def audit_mh(out: Path, loop) -> dict:
     """Independent re-derivation of every Meta-Harness iteration from trace + ledger + store."""
-    from rsi.metaharness.store import safe_name
     ev = load_trace(out)
     store = loop.store
     nodes = {n.meta.get("system"): n for n in Ledger(out / "ledger.jsonl").nodes()}
-    checks: dict[str, list[int]] = {k: [0, 0] for k in (
-        "diff_matches_ledger_and_store", "eval_only_on_search_split", "frontier_recomputed_independently",
-        "incumbent_is_top_pareto_point", "delta_arithmetic", "evaluated_iff_admissible",
-        "proposal_changes_code", "changes_a_file_the_base_harness_has", "claimed_base_exists_and_visible", "test_results_only_after_finalize",
-        "view_never_exposes_results", "monitor_only_new_incumbents")}
-    problems: list[str] = []
-
-    def ok(k, c, msg=""):
-        checks[k][0] += int(bool(c))
-        checks[k][1] += 1
-        if not c and msg:
-            problems.append(f"{k}: {msg}")
+    ok = Checks(MH_CHECKS)
 
     def indep_front(pts):
         return {n for n, s, c in pts if not any(s2 >= s and c2 <= c and (s2 > s or c2 < c) for _, s2, c2 in pts)}
@@ -188,12 +197,10 @@ def audit_mh(out: Path, loop) -> dict:
             cur["proposer_error"] = d.get("error")
         elif k_ == "proposal" and cur is not None:
             c = d["candidate"]
-            p = {"name": c, "base": d.get("parent"), "claim": (d.get("hypothesis") or "")[:160],
-                 "files_changed": d.get("files_changed"), "error": d.get("error")}
-            cur["proposals"].append(p)
+            cur["proposals"].append({"name": c, "base": d.get("parent"), "claim": (d.get("hypothesis") or "")[:160],
+                                     "files_changed": d.get("files_changed"), "error": d.get("error")})
             if c in nodes:
-                n = nodes[c]
-                ok("diff_matches_ledger_and_store", d["diff"][:5000] == (n.diff or "")[:5000] and (
+                ok("diff_matches_ledger_and_store", d["diff"][:5000] == (nodes[c].diff or "")[:5000] and (
                     not d.get("base_known") or
                     store.artifact(d["parent"]).diff(store.artifact(c))[:5000] == d["diff"][:5000]), c)
                 ok("proposal_changes_code", not d.get("identical_to_base"), f"{c} identical to its base")
@@ -218,9 +225,9 @@ def audit_mh(out: Path, loop) -> dict:
                    if (s := store.scores(n)) and (store.meta(n).get("iteration") or 0) <= r]
             front = indep_front(pts)
             best = sorted([p for p in pts if p[0] in front], key=lambda x: (-x[1], x[2], x[0]))[0][0]
-            ok("incumbent_is_top_pareto_point", d["incumbent_after"] == best, f"it {r}: {d['incumbent_after']} vs {best}")
-            pre = d["pre_best_score"]
-            post = d["post_best_score"]
+            ok("incumbent_is_top_pareto_point", d["incumbent_after"] == best,
+               f"it {r}: {d['incumbent_after']} vs {best}")
+            pre, post = d["pre_best_score"], d["post_best_score"]
             for n, row in d["per_candidate"].items():
                 if "on_frontier" not in row:
                     continue
@@ -237,33 +244,50 @@ def audit_mh(out: Path, loop) -> dict:
         elif k_ == "monitor":
             ok("monitor_only_new_incumbents", d["version"] != last_best, d["version"])
             last_best = d["version"]
-            tgt = cur if cur is not None and r == cur["iteration"] else None
-            if tgt is not None:
-                tgt["monitor"] = {s: round(v["S"], 4) for s, v in d["sealed"].items()}
+            monitor = {s: round(v["S"], 4) for s, v in d["sealed"].items()}
+            if cur is not None and r == cur["iteration"]:
+                cur["monitor"] = monitor
             else:
-                rows.insert(0, {"iteration": 0, "baseline_incumbent": d["version"],
-                                "monitor": {s: round(v["S"], 4) for s, v in d["sealed"].items()}})
+                rows.insert(0, {"iteration": 0, "baseline_incumbent": d["version"], "monitor": monitor})
         elif k_ == "note" and "finalize" in d.get("what", ""):
             finalize_seen = True
     for c, a in admissible.items():
         ok("evaluated_iff_admissible", a == (c in evaluated), c)
     # the one-time test evaluation: exactly one result per (split, finalized system), written by finalize()
-    fin = json.loads((store.root / "finalized.json").read_text()) if (store.root / "finalized.json").exists() else {}
+    fin_p = store.root / "finalized.json"
+    fin = json.loads(fin_p.read_text()) if fin_p.exists() else {}
     for split in loop.cfg.test_splits:
         for s in fin.get("systems", []):
             ok("test_results_only_after_finalize", store.test_result(split, s) is not None, f"{split}/{s}")
-    view = store.view("full")
     ok("view_never_exposes_results", not any(p.startswith("results/") or "finalized" in p or p == "frontier.json"
-                                             for p in view))
-    _ = safe_name
-    return {"checks": {k: f"{a}/{b}" for k, (a, b) in checks.items()},
-            "all_passed": all(a == b for a, b in checks.values()), "problems": problems, "rows": rows}
+                                             for p in store.view("full")))
+    return ok.result(rows)
 
 
-# ============================================================================ SoL-Pi
+def live_ideas() -> list:
+    """The two free-form ideas of the live SoL-Pi runs (no registry mechanism: the LLM implements them)."""
+    from rsi.solpi import Idea
+    return [Idea("L1", "C", "Stop replaying large successful tool outputs in every later request; keep them "
+                            "recallable", oracle="replayed_large_outputs"),
+            Idea("L2", "D", "Condense long failing command logs to the lines that carry the failure, keeping "
+                            "the full log recallable", oracle="diagnostic_log_tokens")]
+
+
+def sp_report(name: str, setup: str, wall: float, dom, agent, res, llm=None, cache=None, **extra) -> dict:
+    """Seed vs composed on every split (report-only unsealing), rounds, usage and, live, the spend."""
+    tr = transfer_report(dom, agent, {"base": dom.seed_artifact(), "composed": res.best},
+                         splits=("evolve", "holdout", "ood"), k=1, workers=2)
+    report = {"run": name, "setup": setup, "wall_s": round(wall, 1), "transfer": tr,
+              "rounds": [{k: v for k, v in r.items() if k != "heldout"} for r in res.meta["rounds"]],
+              "usage": res.usage, **extra}
+    if llm is not None:
+        report["spend"] = {**split_meter(llm.meter.snapshot()), "cache_ground_truth": cache_spend(cache)}
+    return report
+
+
 def run_sp(name: str) -> dict:
     from rsi.domains.agentworld import MockAgentLLM, make_domain
-    from rsi.solpi import Config, GateSpec, Idea, run
+    from rsi.solpi import Config, GateSpec, LLMReviewer, run
     out = fresh(name)
     t0 = time.time()
     agent = MockAgentLLM("A")
@@ -280,19 +304,13 @@ def run_sp(name: str) -> dict:
                  "1 dud). Proposer = LibraryProposer, reviewer = SmokeReviewer. Predeclared aggregate dual gate: "
                  "score within 2% (relative) AND tokens or cost saving > 2%; firewall on holdout; compose survivors. "
                  "n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.")
-    elif name in ("solpi_agentworld_live", "solpi_agentworld_live_r2",
-                  "solpi_agentworld_live_r3", "solpi_agentworld_live_r4"):
-        from rsi.solpi import LLMReviewer
+    elif name in SP_LIVE:
         dom = make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0)
         llm, cache = fresh_llm(name)
-        ideas = [Idea("L1", "C", "Stop replaying large successful tool outputs in every later request; keep them "
-                                 "recallable", oracle="replayed_large_outputs"),
-                 Idea("L2", "D", "Condense long failing command logs to the lines that carry the failure, keeping "
-                                 "the full log recallable", oracle="diagnostic_log_tokens")]
         cfg = Config(gate=GateSpec(mode="aggregate"), n_lineages=2, max_iters=2, ralph_max=2, workers=2,
                      shadow_monitor=True)
-        res = run(dom, dom.seed_artifact(), llm_task=agent, llm_propose=llm, config=cfg, out_dir=out, ideas=ideas,
-                  reviewer=LLMReviewer(llm, dom, agent))
+        res = run(dom, dom.seed_artifact(), llm_task=agent, llm_propose=llm, config=cfg, out_dir=out,
+                  ideas=live_ideas(), reviewer=LLMReviewer(llm, dom, agent))
         setup = ("AgentWorld seed 0, small: evolve 3 x 3 training families, holdout 3 x 2, ood 3 x 2 held-out "
                  "families. Base = untouched harness. Agent backend = MockAgentLLM('A') (offline). Two free-form "
                  "ideas (no registry mechanism): the mechanism proposer/implementer (LLMMechanismProposer) AND the "
@@ -301,21 +319,10 @@ def run_sp(name: str) -> dict:
                  "Aggregate dual gate (2% / 2%), firewall on holdout. n_lineages 2, max_iters 2, ralph_max 2.")
     else:
         raise SystemExit(name)
-    wall = time.time() - t0
-    rnd = res.meta["rounds"][0]
-    tr = transfer_report(dom, agent, {"base": dom.seed_artifact(), "composed": res.best},
-                         splits=("evolve", "holdout", "ood"), k=1, workers=2)
-    report = {"run": name, "setup": setup, "wall_s": round(wall, 1), "transfer": tr,
-              "rounds": [{k: v for k, v in r.items() if k not in ("heldout",)} for r in res.meta["rounds"]],
-              "usage": res.usage}
-    if llm is not None:
-        report["spend"] = {**split_meter(llm.meter.snapshot()), "cache_ground_truth": cache_spend(cache)}
-    (out / "report.json").write_text(json.dumps(report, indent=1, default=str))
+    report = sp_report(name, setup, time.time() - t0, dom, agent, res, llm, cache)
+    write_json(out / "report.json", report)
     inspect(out)
-    audit = audit_sp(out, res, name)
-    (out / "audit.json").write_text(json.dumps(audit, indent=1, default=str))
-    (out / "audit.md").write_text(render_audit(name, audit))
-    _ = rnd
+    write_audit(out, name, audit_sp(out, res, name))
     return report
 
 
@@ -327,23 +334,12 @@ def indep_gate(spec: dict, base: dict, cand: dict) -> bool:
 
 
 def audit_sp(out: Path, res, name: str) -> dict:
+    """Independent re-derivation of every SoL-Pi lineage iteration, the firewall and the composition."""
     from rsi.solpi.registry import harness_config
     ev = load_trace(out)
     start = next(e["data"] for e in ev if e["kind"] == "run_start")
     spec = start["config"]["gate"]
-    checks: dict[str, list[int]] = {k: [0, 0] for k in (
-        "gate_arithmetic_recomputed", "gate_used_base_metrics_of_round", "no_sealed_eval_in_lineages",
-        "oracle_selection_recomputed", "variant_walk_rule", "firewall_trace_eq_sink_eq_driver",
-        "firewall_verdict_recomputed", "only_firewall_survivors_composed", "composition_is_union",
-        "diff_is_actual")}
-    problems: list[str] = []
-
-    def ok(k, c, msg=""):
-        checks[k][0] += int(bool(c))
-        checks[k][1] += 1
-        if not c and msg:
-            problems.append(f"{k}: {msg}")
-
+    ok = Checks(SP_CHECKS)
     rows = []
     base_metrics = None
     cur = None
@@ -353,9 +349,8 @@ def audit_sp(out: Path, res, name: str) -> dict:
         if k_ == "baseline":
             base_metrics = d["metrics"]["agg"]
         elif k_ == "analysis" and "oracle" in d:
-            est = d["oracle"]
             n = start["config"]["n_lineages"]
-            want = [i for i, _ in sorted(est.items(), key=lambda kv: (-kv[1], kv[0]))][:n]
+            want = [i for i, _ in sorted(d["oracle"].items(), key=lambda kv: (-kv[1], kv[0]))][:n]
             ok("oracle_selection_recomputed", want == d["chosen"], f"{want} vs {d['chosen']}")
         elif k_ == "round_start" and d.get("phase") == "lineage iteration":
             cur = {"trace_round": r, "idea": d["idea"]["id"], "kind_truth": d["idea_kind_ground_truth"],
@@ -365,8 +360,8 @@ def audit_sp(out: Path, res, name: str) -> dict:
         elif k_ == "proposal" and cur is not None:
             cur.update(change=d.get("change"), variant=d.get("variant"), error=d.get("error"),
                        ralph_repairs=d.get("ralph_repairs"), files_changed=d.get("files_changed"))
-            # variant walk (LibraryProposer): first = 0; after a capability failure / rejection -> +1
-            # (more conservative); after "no efficiency gain" -> -1 (more aggressive)
+            # LibraryProposer walk: first variant 0; +1 after a capability failure or rejection, -1 after
+            # "no efficiency gain"
             if name == "solpi_agentworld_offline":
                 prev = last_by_idea.get(cur["idea"])
                 if prev is None:
@@ -382,8 +377,9 @@ def audit_sp(out: Path, res, name: str) -> dict:
             ok("no_sealed_eval_in_lineages", d["summary"]["split"] not in ("holdout", "ood", "test"), d["candidate"])
         elif k_ == "gate" and "capability" in d.get("math", {}) and cur is not None:
             m = d["math"]
-            b = {k: v["base"] for k, v in {**m["capability"], **m["efficiency"]}.items()}
-            c = {k: v["cand"] for k, v in {**m["capability"], **m["efficiency"]}.items()}
+            both = {**m["capability"], **m["efficiency"]}
+            b = {k: v["base"] for k, v in both.items()}
+            c = {k: v["cand"] for k, v in both.items()}
             ok("gate_arithmetic_recomputed", indep_gate(spec, b, c) == d["accept"], d["candidate"])
             cur.update(gate=d["accept"], reason=d["reason"], score=round(c["score"], 4),
                        saving_tokens=round(m["efficiency"]["tokens"]["saving"], 4),
@@ -404,18 +400,14 @@ def audit_sp(out: Path, res, name: str) -> dict:
         ok("firewall_trace_eq_sink_eq_driver", trace_fw == rnd["heldout_passed"] ==
            {s["candidate"]: s["passed"] for s in sink})
         for s in sink:
-            ok("firewall_verdict_recomputed", indep_gate(spec, s["base_metrics"]["agg"], s["metrics"]["agg"]) ==
-               s["passed"], s["candidate"])
+            cand, base = s["metrics"]["agg"], s["base_metrics"]["agg"]
+            ok("firewall_verdict_recomputed", indep_gate(spec, base, cand) == s["passed"], s["candidate"])
             fw_rows.append({"candidate": s["candidate"], "passed": s["passed"], "reason": s["reason"],
-                            "heldout_score": round(s["metrics"]["agg"]["score"], 4),
-                            "base_heldout_score": round(s["base_metrics"]["agg"]["score"], 4),
-                            "tokens_saving": round(1 - s["metrics"]["agg"]["tokens"] /
-                                                   s["base_metrics"]["agg"]["tokens"], 4),
-                            "cost_saving": round(1 - s["metrics"]["agg"]["cost"] / s["base_metrics"]["agg"]["cost"],
-                                                 4)})
+                            "heldout_score": round(cand["score"], 4), "base_heldout_score": round(base["score"], 4),
+                            "tokens_saving": round(1 - cand["tokens"] / base["tokens"], 4),
+                            "cost_saving": round(1 - cand["cost"] / base["cost"], 4)})
         ok("only_firewall_survivors_composed", set(rnd["survivors"]) ==
            {n for n, p in rnd["heldout_passed"].items() if p})
-    # composition = union of the survivors' harness.json extension entries (+ their extension files)
     exts = set(harness_config(res.best.files).get("extensions", {}))
     if name == "solpi_agentworld_offline":        # registry mechanisms: frozen name = "<idea>:<mechanism>{params}"
         want = {n.change.split(":", 1)[1].split("{")[0] for n in Ledger(out / "ledger.jsonl").nodes(kind="frozen")
@@ -426,12 +418,9 @@ def audit_sp(out: Path, res, name: str) -> dict:
         for lin in rnd["lineages"]:
             kinds[lin["idea"]] = {"kind_truth": lin["kind"], "frozen": lin["frozen"],
                                   "survived": lin["idea"] in rnd["survivor_ideas"]}
-    return {"checks": {k: f"{a}/{b}" for k, (a, b) in checks.items()},
-            "all_passed": all(a == b for a, b in checks.values()), "problems": problems, "rows": rows,
-            "firewall": fw_rows, "ideas": kinds, "composed_extensions": sorted(exts)}
+    return ok.result(rows, firewall=fw_rows, ideas=kinds, composed_extensions=sorted(exts))
 
 
-# ============================================================================ rendering
 def render_audit(name: str, audit: dict) -> str:
     out = [f"# Audit: {name}", "", f"All independent checks passed: **{audit['all_passed']}**", "",
            "| check | passed / total |", "|---|---|"]
@@ -439,8 +428,7 @@ def render_audit(name: str, audit: dict) -> str:
     if audit["problems"]:
         out += ["", "## Problems", ""] + [f"- {p}" for p in audit["problems"]]
     out += ["", "## Rows", ""]
-    for r in audit["rows"]:
-        out.append("- `" + json.dumps(r, default=str)[:1500] + "`")
+    out += ["- `" + json.dumps(r, default=str)[:1500] + "`" for r in audit["rows"]]
     for key in ("firewall", "ideas", "composed_extensions"):
         if key in audit:
             out += ["", f"## {key}", "", "```json", json.dumps(audit[key], indent=1, default=str), "```"]
@@ -451,20 +439,17 @@ def reaudit(name: str) -> dict:
     """Re-run the audit of a finished Meta-Harness run from its files (no model calls)."""
     from types import SimpleNamespace
     from rsi.metaharness.store import ExperienceStore
-    cfg = SimpleNamespace(**json.loads(next(l for l in (OUT / name / "trace.jsonl").read_text().splitlines()
-                                             if '"run_start"' in l))["data"]["config"])
+    start = next(line for line in (OUT / name / "trace.jsonl").read_text().splitlines() if '"run_start"' in line)
+    cfg = SimpleNamespace(**json.loads(start)["data"]["config"])
     loop = SimpleNamespace(store=ExperienceStore(OUT / name / "store"), cfg=cfg,
                            _cost_value=lambda s: float(s["context_cost"]) if "context_cost" in cfg.objectives else 0.0)
     audit = audit_mh(OUT / name, loop)
-    (OUT / name / "audit.json").write_text(json.dumps(audit, indent=1, default=str))
-    (OUT / name / "audit.md").write_text(render_audit(name, audit))
+    write_audit(OUT / name, name, audit)
     return audit
 
 
-RUNS = {"mh_memoclassify_offline": run_mh, "mh_agentqa_live": run_mh, "mh_agentqa_live_r2": run_mh, "solpi_agentworld_offline": run_sp,
-        "solpi_agentworld_live": run_sp, "solpi_agentworld_live_r2": run_sp,
-        "solpi_agentworld_live_r3": run_sp,
-        "solpi_agentworld_live_r4": run_sp}   # stage B: after fix 15 (reviewer sees the API) + fix 16 (review -> 04)
+RUNS = {"mh_memoclassify_offline": run_mh, **dict.fromkeys(MH_LIVE, run_mh),
+        "solpi_agentworld_offline": run_sp, **dict.fromkeys(SP_LIVE, run_sp)}
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["reaudit"]:
