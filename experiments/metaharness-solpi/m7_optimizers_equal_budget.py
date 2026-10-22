@@ -1,16 +1,6 @@
 """M7 - Meta-Harness vs structured text optimisers at an equal budget of 40 candidate evaluations (retry round 2).
 
-Claims [paper:MH §4.1, Table 4, Figs. 1 and 4]: with the same proposer, selection on the search set only and the
-same budget of harness evaluations, Meta-Harness beats Best-of-N, OpenEvolve, TTT-Discover and GEPA; it "matches
-the next-best method's final accuracy after just 4 evaluations" and ends "more than 10 points" above.
-
-Unlike M2 (view projections only), the comparison arms here apply their optimiser's own parent-selection rule
-and context (``rsi.metaharness.baselines.StructuredOptimizerProposer``); Best-of-N is the ``seed_only`` view.
-Every arm uses the same offline MockProposer. Preregistered in the claims audit (P1).
-
-    python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 --batch 0/2 --workers 2
-    python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 --batch 1/2 --workers 2
-    python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 --merge
+    python experiments/metaharness-solpi/m7_optimizers_equal_budget.py --seeds 20 [--batch i/n | --merge] [--workers 2]
 """
 from __future__ import annotations
 
@@ -28,26 +18,27 @@ import numpy as np  # noqa: E402
 from rsi.domains.memoclassify import make_domain  # noqa: E402
 from rsi.metaharness import Config, MemoClassifyLibrary, MockProposer, StructuredOptimizerProposer, run  # noqa: E402
 
+NAME = "m7_optimizers_equal_budget"
 ARMS = ("metaharness", "best_of_n", "openevolve", "ttt_discover", "gepa")
+OTHERS = [a for a in ARMS if a != "metaharness"]
 N_ITER, K = 20, 2
 BUDGET = N_ITER * K
-ARGS = None
+METRICS = ("final_best", "median_candidate", "selected_test")
 
 
-def job(spec):
+def job(spec: tuple[str, int], group: str = "m7") -> dict:
+    """One run: the MockProposer under the arm's selection rule and context (MH: full history, Best-of-N: seed)."""
     arm, seed = spec
     dom = make_domain(seed=seed)
-    mode = {"metaharness": "full", "best_of_n": "seed_only"}.get(arm, "full")
     prop = MockProposer(MemoClassifyLibrary(), seed=seed)
-    if arm in ("openevolve", "ttt_discover", "gepa"):
+    if arm not in ("metaharness", "best_of_n"):
         prop = StructuredOptimizerProposer(prop, arm, seed=seed)
     res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), proposer=prop,
-              config=Config(iterations=N_ITER, k=K, history_mode=mode, eval_budget=BUDGET, seed=seed,
-                            shadow_monitor=False),
-              out_dir=fresh_dir("m7", f"{arm}_s{seed}"), baselines=dom.baselines())
+              config=Config(iterations=N_ITER, k=K, history_mode="seed_only" if arm == "best_of_n" else "full",
+                            eval_budget=BUDGET, seed=seed, shadow_monitor=False),
+              out_dir=fresh_dir(group, f"{arm}_s{seed}"), baselines=dom.baselines())
     store = res.loop.store
-    base_best = max(store.scores(n)["score"] for n in dom.baselines())
-    curve = [base_best] + [c["best_so_far"] for c in res.meta["curve"]]
+    curve = [max(store.scores(n)["score"] for n in dom.baselines())] + [c["best_so_far"] for c in res.meta["curve"]]
     curve += [curve[-1]] * (BUDGET + 1 - len(curve))
     cands = [store.scores(n)["score"] for n in store.names() if n not in dom.baselines() and store.scores(n)]
     best = res.meta["best_system"]
@@ -61,67 +52,66 @@ def job(spec):
             "fewshot_all_test": test["fewshot_all"]["score"], "dedup_retries": dedup}
 
 
-def evals_to_reach(curve, target):
-    for i, v in enumerate(curve):
-        if v >= target - 1e-12:
-            return i
-    return None
+def evals_to_reach(curve: list[float], target: float) -> int | None:
+    return next((i for i, v in enumerate(curve) if v >= target - 1e-12), None)
 
 
-def analyse(rows):
+def summary_vs_mh(by: dict, seeds: list[int], arms) -> tuple[dict, dict]:
+    """Per-arm summaries of METRICS and paired MH - arm differences."""
+    summ = {a: {k: summarize([by[a][s][k] for s in seeds]) for k in METRICS} for a in arms}
+    cmp = {a: {k: paired([by[a][s][k] for s in seeds], [by["metaharness"][s][k] for s in seeds]) for k in METRICS}
+           for a in arms if a != "metaharness"}
+    return summ, cmp
+
+
+def match_next_best(by: dict, seeds: list[int], pool: list[str], tol: float = 0.0) -> dict:
+    """Q5: evaluations MH needs to reach the next-best arm's final best (never: BUDGET + 1) and its final lead."""
+    evals, lead, which = [], [], []
+    for s in seeds:
+        nb = max(pool, key=lambda a: by[a][s]["final_best"])
+        target = by[nb][s]["final_best"]
+        x = evals_to_reach(by["metaharness"][s]["curve"], target)
+        evals.append(BUDGET + 1 if x is None else x)
+        lead.append(by["metaharness"][s]["final_best"] - target)
+        which.append(nb)
+    return {"evals_to_match_per_seed": evals, "median_evals_to_match": float(np.median(evals)),
+            "n_never": sum(x == BUDGET + 1 for x in evals), "lead": summarize(lead), "next_best_arm_per_seed": which,
+            "speed_ok": float(np.median(evals)) <= BUDGET / 10, "lead_ok": float(np.mean(lead)) >= 0.10 - tol}
+
+
+def analyse(rows: list[dict]) -> tuple:
     by = {a: {r["seed"]: r for r in rows if r["arm"] == a} for a in ARMS}
     seeds = sorted(set.intersection(*[set(by[a]) for a in ARMS]))
-    others = [a for a in ARMS if a != "metaharness"]
-    summ = {a: {k: summarize([by[a][s][k] for s in seeds]) for k in ("final_best", "median_candidate",
-                                                                         "selected_test")} for a in ARMS}
-    cmp = {a: {k: paired([by[a][s][k] for s in seeds], [by["metaharness"][s][k] for s in seeds])
-               for k in ("final_best", "median_candidate", "selected_test")} for a in others}
-    q5 = {}
-    for name, pool in (("next_best_any", others), ("next_best_openevolve_ttt", ["openevolve", "ttt_discover"])):
-        e, lead, which = [], [], []
-        for s in seeds:
-            nb = max(pool, key=lambda a: by[a][s]["final_best"])
-            tgt = by[nb][s]["final_best"]
-            x = evals_to_reach(by["metaharness"][s]["curve"], tgt)
-            e.append(BUDGET + 1 if x is None else x)
-            lead.append(by["metaharness"][s]["final_best"] - tgt)
-            which.append(nb)
-        q5[name] = {"evals_to_match_per_seed": e, "median_evals_to_match": float(np.median(e)),
-                    "n_never": sum(x == BUDGET + 1 for x in e), "lead": summarize(lead),
-                    "next_best_arm_per_seed": which,
-                    "speed_ok": float(np.median(e)) <= BUDGET / 10, "lead_ok": float(np.mean(lead)) >= 0.10}
+    summ, cmp = summary_vs_mh(by, seeds, ARMS)
+    q5 = {"next_best_any": match_next_best(by, seeds, OTHERS),
+          "next_best_openevolve_ttt": match_next_best(by, seeds, ["openevolve", "ttt_discover"])}
     p = q5["next_best_any"]
     q5_verdict = ("REPRODUCED" if p["speed_ok"] and p["lead_ok"] else
                   "PARTIAL" if p["speed_ok"] or p["lead_ok"] else "NOT REPRODUCED")
-    all_ci = all(cmp[a][k].get("lo", -1) > 0 for a in others for k in ("final_best", "median_candidate"))
-    means = all(cmp[a]["final_best"].get("mean_diff", 0) > 0 for a in others)
+    all_ci = all(cmp[a][k].get("lo", -1) > 0 for a in OTHERS for k in ("final_best", "median_candidate"))
+    means = all(cmp[a]["final_best"].get("mean_diff", 0) > 0 for a in OTHERS)
     q4_verdict = "REPRODUCED" if all_ci else "PARTIAL" if means else "NOT REPRODUCED"
     return by, seeds, summ, cmp, q5, q5_verdict, q4_verdict
 
 
 def main():
-    global ARGS
-
     def extra(ap):
         ap.add_argument("--batch", default=None, help="i/n: run the i-th of n seed batches")
         ap.add_argument("--merge", action="store_true", help="merge the batch files and analyse")
-    ARGS = parse_args(__doc__.splitlines()[0], default_seeds=20, extra=extra)
-    part = lambda i: RESULTS / f"m7_optimizers_equal_budget.part{i}.json"   # noqa: E731
-    if not ARGS.merge:
-        seeds = list(range(ARGS.seeds))
-        tag = "all"
-        if ARGS.batch:
-            i, n = map(int, ARGS.batch.split("/"))
-            seeds = [s for s in seeds if s % n == i]
-            tag = str(i)
-        rows = pool_map(job, [(a, s) for s in seeds for a in ARMS], min(ARGS.workers, 2))
-        part(tag).write_text(json.dumps(rows))
-        print(f"[saved] {part(tag)} ({len(rows)} runs)")
-        if ARGS.batch:
+
+    args = parse_args(__doc__.splitlines()[0], default_seeds=20, extra=extra)
+    if not args.merge:
+        tag, seeds = "all", list(range(args.seeds))
+        if args.batch:
+            i, n = map(int, args.batch.split("/"))
+            tag, seeds = i, [s for s in seeds if s % n == i]
+        rows = pool_map(job, [(a, s) for s in seeds for a in ARMS], min(args.workers, 2))
+        part = RESULTS / f"{NAME}.part{tag}.json"
+        part.write_text(json.dumps(rows))
+        print(f"[saved] {part} ({len(rows)} runs)")
+        if args.batch:
             return
-    rows = []
-    for p in sorted(RESULTS.glob("m7_optimizers_equal_budget.part*.json")):
-        rows += json.loads(p.read_text())
+    rows = [r for p in sorted(RESULTS.glob(f"{NAME}.part*.json")) for r in json.loads(p.read_text())]
     by, seeds, summ, cmp, q5, q5v, q4v = analyse(rows)
     print(table([[a, fmt(summ[a]["final_best"]), fmt(summ[a]["median_candidate"]), fmt(summ[a]["selected_test"])]
                  for a in ARMS], ["arm", "final best (search)", "median candidate", "selected (test)"]))
@@ -130,8 +120,8 @@ def main():
     print("Q5:", json.dumps({k: {kk: vv for kk, vv in v.items() if kk != 'evals_to_match_per_seed'}
                              for k, v in q5.items()}, default=str))
     print("verdicts: Q4", q4v, "| Q5", q5v)
-    fig = plt()
-    f, ax = fig.subplots(figsize=(6.5, 4))
+    png = RESULTS / f"{NAME}.png"
+    f, ax = plt().subplots(figsize=(6.5, 4))
     for a in ARMS:
         m = np.mean([by[a][s]["curve"] for s in seeds], axis=0)
         ax.plot(range(len(m)), m, label=a, lw=2 if a == "metaharness" else 1.2)
@@ -140,9 +130,8 @@ def main():
     ax.set_title(f"M7 equal budget, structured optimisers ({len(seeds)} seeds)")
     ax.legend(fontsize=8)
     f.tight_layout()
-    png = RESULTS / "m7_optimizers_equal_budget.png"
     f.savefig(png, dpi=120)
-    save("m7_optimizers_equal_budget", {
+    save(NAME, {
         "claim": "Q4/Q5: at an equal budget MH beats Best-of-N, OpenEvolve, TTT-Discover and GEPA; it matches the "
                  "next-best method's final accuracy within 4 evaluations and ends >10 points above [MH §4.1, Table 4, "
                  "Figs. 1, 4]",
