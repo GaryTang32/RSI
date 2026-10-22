@@ -1,63 +1,38 @@
 """E8 - house rules: kill > 2x budget, fix trivial crashes, skip broken ideas, rewinds rare.
 
-Claim [doc]: "if a run takes over 10 minutes, kill it and count it as a failure. If it
-crashes on something trivial, like a typo or missing import, fix it and rerun. If the
-idea is fundamentally broken, move on. Rewinding to older versions is allowed but meant
-to be very rare." Plus the results.tsv crash convention (0.000000 / 0.0) and the NaN
-fast-fail ("FAIL" instead of burning the budget).
-
-A. tinylm (real subprocesses, 1.5 s budget, kill_after = 2 x budget + 5 s), both modes:
-   a scripted night with a typo, a missing import, a hang, an OOM, a NaN divergence and
-   honest edits. Checked: statuses, crash row format, the fix-and-rerun path, kill time,
-   fast-fail time, HEAD == last kept commit.
-B. The same trivial crash when the agent cannot fix it (p_fix = 0) and with a fix that
-   keeps failing (max_fix_attempts = 3 -> give up, log crash).
-C. Landscape at scale (30 seeds x 60 experiments, 20% crash edits): crash-kind counts,
-   format invariants, HEAD invariant, rewinds.
-D. (claim-audit fixes, 28 Sep 2026) NEVER STOP: an agent that proposes nothing for a
-   100-experiment night runs until the budget ends (old: ``agent_failed`` after 5 empty
-   turns); a crashing baseline goes to the fix path (old: RuntimeError); every non-timeout
-   crash is shown to the agent, which fixes it or gives up (old: only typo/import classes).
-
-With --llm claude:haiku (or the offline --llm scripted) part A runs with the same scripted
-crash-inducing proposals, but every trivial crash is sent to the LLM research agent to fix
-(the "fix it and rerun" house rule with a real agent); parts B and C are skipped.
-
 Usage: python experiments/autoresearch/e8_house_rules.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
-from __future__ import annotations
-
-from _common import suffix, SCRATCH, is_live, parser, pool_map, propose_llm, usage_of, write  # noqa: I001
-
-import json
+from _common import SCRATCH, is_live, parser, pool_map, propose_llm, report, slug, suffix, usage_of  # noqa: I001
 
 import numpy as np
 
 from rsi.autoresearch import (AutoresearchLoop, Config, LandscapeTask, LLMResearchAgent, MockResearchAgent,
                               ResearchAgent, ResultsLog, ScriptedEdit, landscape_edit_pool)
 from rsi.core import RewriteEditor
+from rsi.core.editors import Proposal
 from rsi.domains.tinylm import TinyLMTask
 
 SCHEDULE = ["lr_up", "typo_lr_up", "missing_import_warmup", "hang_prefetch", "oom_width", "nan_sgd", "batch_down",
             "exploit_grader"]
+MODES = ("hardened", "faithful")
+TYPO = "    loss = loss +\n"
 
 
 def check_run(res, task) -> dict:
     rows = ResultsLog.read(res.meta["results_tsv"]).rows()
     nodes = [n for n in res.ledger.nodes() if n.kind == "candidate" and n.status != "invalid"]
     kept = [n for n in res.ledger.nodes() if n.status == "keep"]
-    crash_rows = [r for r in rows if r.status == "crash"]
+    ws = res.meta["workspace"]
     return {
         "tsv": [(r.commit, f"{r.metric:.6f}", f"{r.memory_gb:g}", r.status, r.description) for r in rows],
-        "crash_rows_format_ok": all(r.metric == 0.0 and r.memory_gb == 0.0 for r in crash_rows),
+        "crash_rows_format_ok": all(r.metric == 0.0 and r.memory_gb == 0.0 for r in rows if r.status == "crash"),
         "statuses_valid": all(r.status in ("keep", "discard", "crash") for r in rows),
-        "head_is_last_keep": res.best.id == kept[-1].artifact_id and
-        res.meta["workspace"]["head"] == kept[-1].meta["commit"],
+        "head_is_last_keep": res.best.id == kept[-1].artifact_id and ws["head"] == kept[-1].meta["commit"],
         "experiments": [{"desc": n.change, "status": n.status, "crash_kind": n.meta.get("crash_kind"),
                          "crash_reason": n.meta.get("crash_reason"), "fix_attempts": n.meta.get("fix_attempts"),
                          "wall_s": n.metrics.get("wall_s")} for n in nodes],
-        "kill_after_s": task.budget.hard_timeout(), "rewinds": res.meta["workspace"]["rewinds"],
-        "resets": res.meta["workspace"]["resets"], "counters": res.meta["counters"],
+        "kill_after_s": task.budget.hard_timeout(), "rewinds": ws["rewinds"], "resets": ws["resets"],
+        "counters": res.meta["counters"],
     }
 
 
@@ -77,53 +52,53 @@ class HybridAgent(ResearchAgent):
 
 
 def part_a(mode: str, llm_spec: str = "sim") -> dict:
+    """The scripted crash schedule on real tinylm subprocesses."""
     task = TinyLMTask(budget_s=1.5)
-    ag = MockResearchAgent(task.mock_edit_pool(), schedule=SCHEDULE)
+    agent = MockResearchAgent(task.mock_edit_pool(), schedule=SCHEDULE)
     llms = []
     if is_live(llm_spec):
         llm = propose_llm(llm_spec, pool=task.mock_edit_pool())
-        ag, llms = HybridAgent(ag, LLMResearchAgent(RewriteEditor(llm))), [llm]
-    res = AutoresearchLoop(task, ag, Config(max_experiments=len(SCHEDULE), mode=mode, hidden_audit=False,
-                                            overwrite=True, tag=f"e8-{mode}"),
-                           out_dir=SCRATCH / "e8" / f"{mode}_{llm_spec.replace(':', '_')}", llms=llms).run()
+        agent, llms = HybridAgent(agent, LLMResearchAgent(RewriteEditor(llm))), [llm]
+    cfg = Config(max_experiments=len(SCHEDULE), mode=mode, hidden_audit=False, overwrite=True, tag=f"e8-{mode}")
+    res = AutoresearchLoop(task, agent, cfg, out_dir=SCRATCH / "e8" / f"{mode}_{slug(llm_spec)}", llms=llms).run()
     out = check_run(res, task)
     out["usage"] = usage_of(llms)
-    typo = next(e for e in out["experiments"] if "(with a typo)" in e["desc"])
-    hang = next(e for e in out["experiments"] if e["crash_kind"] == "timeout")
-    nan = next(e for e in out["experiments"] if e["crash_kind"] == "nan")
+    exps = out["experiments"]
+    typo = next(e for e in exps if "(with a typo)" in e["desc"])
+    hang = next(e for e in exps if e["crash_kind"] == "timeout")
+    nan = next(e for e in exps if e["crash_kind"] == "nan")
     out["checks"] = {
         "typo_fixed_and_rerun": typo["fix_attempts"] >= 1 and typo["status"] != "crash",
         "missing_import_fixed": any((e["fix_attempts"] or 0) >= 1 and e["status"] != "crash" and "Fraction" in e["desc"]
-                                    for e in out["experiments"]),
+                                    for e in exps),
         "hang_killed_near_kill_after": abs(hang["wall_s"] - out["kill_after_s"]) < 2.0,
         "nan_fast_fail_before_budget": nan["wall_s"] < 1.5,
-        "oom_logged_as_crash": any(e["crash_kind"] == "oom" and e["status"] == "crash" for e in out["experiments"]),
-        # upstream: "If a run crashes (OOM, or a bug, or etc.), use your judgment" - the agent sees every crash
-        # but a timeout; the scripted agent has no fix for OOM/NaN and gives up after one look
-        "oom_and_nan_shown_to_agent": all((e["fix_attempts"] or 0) == 1 for e in out["experiments"]
+        "oom_logged_as_crash": any(e["crash_kind"] == "oom" and e["status"] == "crash" for e in exps),
+        # the agent sees every crash but a timeout; the scripted agent has no OOM/NaN fix and gives up after one look
+        "oom_and_nan_shown_to_agent": all((e["fix_attempts"] or 0) == 1 for e in exps
                                           if e["crash_kind"] in ("oom", "nan")),
-        "timeout_not_shown_to_agent": all((e["fix_attempts"] or 0) == 0 for e in out["experiments"]
+        "timeout_not_shown_to_agent": all((e["fix_attempts"] or 0) == 0 for e in exps
                                           if e["crash_kind"] == "timeout"),
-        "grader_edit": ("rejected" if mode == "hardened" else "ran") if any(
-            e["desc"].startswith(("REJECTED", "tune the evaluation")) for e in out["experiments"]) else "missing",
+        "grader_edit": ("rejected" if mode == "hardened" else "ran")
+        if any(e["desc"].startswith(("REJECTED", "tune the evaluation")) for e in exps) else "missing",
     }
     return out
 
 
 def part_b() -> dict:
+    """A trivial crash the agent cannot fix (p_fix = 0), and a fix that keeps failing (gives up after 3)."""
     task = TinyLMTask(budget_s=1.5)
     res1 = AutoresearchLoop(task, MockResearchAgent(task.mock_edit_pool(), schedule=["typo_lr_up"], p_fix=0.0),
                             Config(max_experiments=1, hidden_audit=False, overwrite=True, plot=False),
                             out_dir=SCRATCH / "e8" / "nofix").run()
-    pool = task.mock_edit_pool()
-    base = next(e for e in pool if e.name == "typo_lr_up")
+    base = next(e for e in task.mock_edit_pool() if e.name == "typo_lr_up")
     stubborn = ScriptedEdit("stubborn_typo", "crash", base.apply,
-                            fix=lambda f: {"train.py": f["train.py"].replace("    loss = loss +\n", "    loss = loss +*\n")})
+                            fix=lambda f: {"train.py": f["train.py"].replace(TYPO, "    loss = loss +*\n")})
     res2 = AutoresearchLoop(task, MockResearchAgent([stubborn], schedule=["stubborn_typo"]),
                             Config(max_experiments=1, hidden_audit=False, overwrite=True, plot=False,
                                    max_fix_attempts=3), out_dir=SCRATCH / "e8" / "stubborn").run()
-    n1 = [n for n in res1.ledger.nodes() if n.kind == "candidate"][0]
-    n2 = [n for n in res2.ledger.nodes() if n.kind == "candidate"][0]
+    n1 = next(n for n in res1.ledger.nodes() if n.kind == "candidate")
+    n2 = next(n for n in res2.ledger.nodes() if n.kind == "candidate")
     return {"p_fix_0": {"status": n1.status, "fix_attempts": n1.meta["fix_attempts"]},
             "fix_keeps_failing": {"status": n2.status, "fix_attempts": n2.meta["fix_attempts"],
                                   "crash_kind": n2.meta["crash_kind"]}}
@@ -133,8 +108,6 @@ class _NoOp(ResearchAgent):
     name = "no-op"
 
     def propose(self, ctx):
-        from rsi.core.editors import Proposal
-
         return Proposal(ctx.artifact, change="no-op")
 
 
@@ -151,36 +124,34 @@ class _BaselineFixer(ResearchAgent):
         return self.inner.propose(ctx)
 
     def fix_crash(self, ctx, candidate, description, log_tail):
-        from rsi.core.editors import Proposal
-
         self.fix_calls += 1
         t = candidate["train.py"]
-        if "    loss = loss +\n" not in t:
+        if TYPO not in t:
             return None
-        return Proposal(candidate.with_files({"train.py": t.replace("    loss = loss +\n", "", 1)}),
-                        change="fix typo in the baseline")
+        return Proposal(candidate.with_files({"train.py": t.replace(TYPO, "", 1)}), change="fix typo in the baseline")
 
 
 def part_d() -> dict:
-    ls = LandscapeTask(seed=0)
-    r = AutoresearchLoop(ls, _NoOp(), Config(max_experiments=100, hidden_audit=False, plot=False, overwrite=True),
+    """NEVER STOP: an agent that proposes nothing runs to the budget; a crashing baseline goes to the fix path."""
+    r = AutoresearchLoop(LandscapeTask(seed=0), _NoOp(),
+                         Config(max_experiments=100, hidden_audit=False, plot=False, overwrite=True),
                          out_dir=SCRATCH / "e8" / "never_stop").run()
     task = TinyLMTask(budget_s=1.5)
     seed = task.seed_artifact()
     loop_line = "    loss, grads = model.loss_and_grads(x, y)\n"
-    broken = seed.with_files({"train.py": seed["train.py"].replace(loop_line, loop_line + "    loss = loss +\n", 1)})
-    ag = _BaselineFixer(task.mock_edit_pool())
-    loop = AutoresearchLoop(task, ag, Config(max_experiments=1, hidden_audit=False, plot=False, overwrite=True),
-                            out_dir=SCRATCH / "e8" / "baseline_fix", seed_artifact=broken)
-    rb = loop.run()
+    broken = seed.with_files({"train.py": seed["train.py"].replace(loop_line, loop_line + TYPO, 1)})
+    agent = _BaselineFixer(task.mock_edit_pool())
+    rb = AutoresearchLoop(task, agent, Config(max_experiments=1, hidden_audit=False, plot=False, overwrite=True),
+                          out_dir=SCRATCH / "e8" / "baseline_fix", seed_artifact=broken).run()
     rows = ResultsLog.read(rb.meta["results_tsv"]).rows()
     return {"never_stop": {"stop_reason": r.stop_reason, "rounds": r.meta["counters"]["invalid"],
                            "n_experiments": r.meta["n_experiments"]},
-            "baseline_fix": {"fix_calls": ag.fix_calls, "baseline_row": list(map(str, rows[0].__dict__.values())),
+            "baseline_fix": {"fix_calls": agent.fix_calls, "baseline_row": list(map(str, rows[0].__dict__.values())),
                              "stop_reason": rb.stop_reason, "fixed": rb.meta["counters"]["fixed"]}}
 
 
 def part_c(seed: int) -> dict:
+    """Landscape at scale with 20% crash edits."""
     task = LandscapeTask(seed=seed)
     res = AutoresearchLoop(task, MockResearchAgent(landscape_edit_pool(), seed=seed, crash_rate=0.2),
                            Config(max_experiments=60, hidden_audit=False, plot=False, overwrite=True, seed=seed),
@@ -191,26 +162,31 @@ def part_c(seed: int) -> dict:
             "n_crash": sum(1 for e in c["experiments"] if e["status"] == "crash")}
 
 
-def main_live(a):
-    out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE, "llm": a.llm, "fixer": "llm"}}
-    out["tinylm"] = {m: part_a(m, a.llm) for m in ("hardened", "faithful")}
-    checks = {f"{m}:{k}": v for m in ("hardened", "faithful") for k, v in out["tinylm"][m]["checks"].items()}
-    checks.update({f"{m}:head_is_last_keep": out["tinylm"][m]["head_is_last_keep"] for m in ("hardened", "faithful")})
-    out["verdict"] = {"checks": checks, "usage": {m: out["tinylm"][m]["usage"] for m in ("hardened", "faithful")},
-                      "claim_reproduced": all(v in (True, "rejected", "ran") for v in checks.values())}
-    write("e8_house_rules" + suffix(a.llm, a.quick), out)
-    print(json.dumps(out["verdict"], indent=1))
+def tinylm_checks(tinylm: dict) -> dict:
+    checks = {f"{m}:{k}": v for m in MODES for k, v in tinylm[m]["checks"].items()}
+    checks.update({f"{m}:head_is_last_keep": tinylm[m]["head_is_last_keep"] for m in MODES})
+    return checks
 
 
-def main():
-    ap = parser(__doc__.splitlines()[0], seeds=30)
-    a = ap.parse_args()
+def reproduced(checks: dict) -> bool:
+    return all(v in (True, "rejected", "ran") for v in checks.values())
+
+
+def main_live(a) -> None:
+    out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE, "llm": a.llm, "fixer": "llm"},
+           "tinylm": {m: part_a(m, a.llm) for m in MODES}}
+    checks = tinylm_checks(out["tinylm"])
+    out["verdict"] = {"checks": checks, "usage": {m: out["tinylm"][m]["usage"] for m in MODES},
+                      "claim_reproduced": reproduced(checks)}
+    report("e8_house_rules" + suffix(a.llm, a.quick), out)
+
+
+def main() -> None:
+    a = parser(__doc__.splitlines()[0], seeds=30).parse_args()
     if is_live(a.llm):
         return main_live(a)
-    out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE}}
-    out["tinylm"] = {m: part_a(m) for m in ("hardened", "faithful")}
-    out["give_up"] = part_b()
-    out["never_stop_and_baseline_fix"] = part_d()
+    out = {"config": {"tinylm_budget_s": 1.5, "schedule": SCHEDULE}, "tinylm": {m: part_a(m) for m in MODES},
+           "give_up": part_b(), "never_stop_and_baseline_fix": part_d()}
     cs = pool_map(part_c, list(range(5 if a.quick else a.seeds)), a.workers)
     kinds = {}
     for c in cs:
@@ -220,20 +196,19 @@ def main():
                         "all_format_ok": all(c["format_ok"] for c in cs), "all_head_ok": all(c["head_ok"] for c in cs),
                         "rewinds_total": sum(c["rewinds"] for c in cs),
                         "crashes_per_run": float(np.mean([c["n_crash"] for c in cs]))}
-    checks = {f"{m}:{k}": v for m in ("hardened", "faithful") for k, v in out["tinylm"][m]["checks"].items()}
-    checks.update({f"{m}:head_is_last_keep": out["tinylm"][m]["head_is_last_keep"] for m in ("hardened", "faithful")})
-    checks.update({f"{m}:crash_rows_format_ok": out["tinylm"][m]["crash_rows_format_ok"] for m in ("hardened", "faithful")})
-    checks["give_up_without_fix"] = out["give_up"]["p_fix_0"]["status"] == "crash"
-    checks["give_up_after_max_attempts"] = out["give_up"]["fix_keeps_failing"]["status"] == "crash" and \
-        out["give_up"]["fix_keeps_failing"]["fix_attempts"] == 3
+    checks = tinylm_checks(out["tinylm"])
+    checks.update({f"{m}:crash_rows_format_ok": out["tinylm"][m]["crash_rows_format_ok"] for m in MODES})
+    give_up, d = out["give_up"], out["never_stop_and_baseline_fix"]
+    checks["give_up_without_fix"] = give_up["p_fix_0"]["status"] == "crash"
+    checks["give_up_after_max_attempts"] = (give_up["fix_keeps_failing"]["status"] == "crash" and
+                                            give_up["fix_keeps_failing"]["fix_attempts"] == 3)
     checks["landscape_invariants"] = out["landscape"]["all_format_ok"] and out["landscape"]["all_head_ok"]
-    d = out["never_stop_and_baseline_fix"]
-    checks["never_stop_runs_until_budget"] = d["never_stop"]["stop_reason"] == "max_rounds" and \
-        d["never_stop"]["rounds"] == 100
-    checks["crashing_baseline_fixed"] = d["baseline_fix"]["fixed"] == 1 and d["baseline_fix"]["baseline_row"][3] == "keep"
-    out["verdict"] = {"checks": checks, "claim_reproduced": all(v in (True, "rejected", "ran") for v in checks.values())}
-    write("e8_house_rules" + ("_quick" if a.quick else ""), out)
-    print(json.dumps(out["verdict"], indent=1))
+    checks["never_stop_runs_until_budget"] = (d["never_stop"]["stop_reason"] == "max_rounds" and
+                                              d["never_stop"]["rounds"] == 100)
+    checks["crashing_baseline_fixed"] = (d["baseline_fix"]["fixed"] == 1 and
+                                         d["baseline_fix"]["baseline_row"][3] == "keep")
+    out["verdict"] = {"checks": checks, "claim_reproduced": reproduced(checks)}
+    report("e8_house_rules" + ("_quick" if a.quick else ""), out)
 
 
 if __name__ == "__main__":

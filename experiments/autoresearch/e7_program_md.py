@@ -1,72 +1,41 @@
 """E7 - one chain, one idea at a time; the strategy improves only when a person rewrites program.md.
 
-Claim [doc]: "The strategy is improved by a person, by editing the instructions (program.md, a
-lightweight 'skill')"; "one chain, one idea at a time; the strategy only improves when a person
-rewrites the instructions". The lever is program.md alone: same task, same budget, same seeds,
-same agent - only the ProgramSpec differs:
-
-  upstream   karpathy/autoresearch program.md (adapted to the framework-run loop)
-  xgboost    + the xgboost port's research discipline (hypothesis + classification, no
-             near-duplicates, synthesis every 10 experiments, switch family on a plateau)
-  simplify   + "prefer simplifications and removals"
-
-Measured per night: best metric after N experiments (and its true quality on the landscape),
-diversity of the edited knobs, share of edits that remove lines, keep rate; plus the check that
-the loop itself never changes program.md (the version recorded on every ledger node is constant).
-
---llm claude:haiku  the real comparison: an LLM research agent reads the rendered program.md.
---llm sim (default) the program-blind control: the offline scripted MockLLM answers through the same
-                    LLM-agent code path but ignores the prompt, so all presets must give identical
-                    nights (any live difference is then attributable to program.md alone).
-
-Usage: python experiments/autoresearch/e7_program_md.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--task landscape|tinylm]
+Usage: python experiments/autoresearch/e7_program_md.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--task tinylm]
 """
-from __future__ import annotations
-
-from _common import SCRATCH, ci, is_live, parser, plt, propose_llm, suffix, usage_of, write  # noqa: I001
+from _common import (SCRATCH, ci, is_live, parser, plt, propose_llm, report, save_fig, slug, suffix,  # noqa: I001
+                     usage_of)
 
 import json
-
-import numpy as np
+import re
 
 from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask, LLMResearchAgent, ProgramSpec
 from rsi.core import RewriteEditor
+from rsi.domains.tinylm import TinyLMTask
 
 PRESETS = ("upstream", "xgboost", "simplify")
 KNOB_RE = r"^([A-Z_][A-Z0-9_]*)\s*="
 
 
 def make_task(name: str):
-    if name == "tinylm":
-        from rsi.domains.tinylm import TinyLMTask
-
-        return TinyLMTask(budget_s=2.0)
-    return LandscapeTask()
+    return TinyLMTask(budget_s=2.0) if name == "tinylm" else LandscapeTask()
 
 
 def night(preset: str, seed: int, n: int, llm_spec: str, task_name: str) -> dict:
-    import re
-
     task = make_task(task_name)
-    # the offline control uses the scripted MockLLM (same seed for every preset); live uses the cached CLI
+    # the offline control is the scripted MockLLM (same seed for every preset); live is the cached CLI
     llm = propose_llm(llm_spec if is_live(llm_spec) else "scripted", pool=task.mock_edit_pool(), seed=seed)
-    agent = LLMResearchAgent(RewriteEditor(llm))
-    res = AutoresearchLoop(task, agent, Config(max_experiments=n, seed=seed, overwrite=True, hidden_audit=False,
-                                               plot=False, tag=f"e7-{preset}-{seed}"),
-                           program=ProgramSpec.preset(preset),
-                           out_dir=SCRATCH / "e7" / f"{task_name}_{preset}_{seed}_{llm_spec.replace(':', '_')}",
-                           llms=[llm]).run()
+    cfg = Config(max_experiments=n, seed=seed, overwrite=True, hidden_audit=False, plot=False,
+                 tag=f"e7-{preset}-{seed}")
+    res = AutoresearchLoop(task, LLMResearchAgent(RewriteEditor(llm)), cfg, program=ProgramSpec.preset(preset),
+                           out_dir=SCRATCH / "e7" / f"{task_name}_{preset}_{seed}_{slug(llm_spec)}", llms=[llm]).run()
     nodes = [nd for nd in res.ledger.nodes() if nd.kind == "candidate" and nd.status not in ("invalid", "duplicate")]
     knobs, removals = set(), 0
     for nd in nodes:
-        for line in (nd.diff or "").splitlines():
-            if line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
-                m = re.match(KNOB_RE, line[1:].strip())
-                if m:
-                    knobs.add(m.group(1))
-        add = sum(1 for l in (nd.diff or "").splitlines() if l.startswith("+") and not l.startswith("+++"))
-        rem = sum(1 for l in (nd.diff or "").splitlines() if l.startswith("-") and not l.startswith("---"))
-        removals += int(rem > add)
+        lines = (nd.diff or "").splitlines()
+        added = [line for line in lines if line.startswith("+") and not line.startswith("+++")]
+        removed = [line for line in lines if line.startswith("-") and not line.startswith("---")]
+        knobs |= {m.group(1) for line in added + removed if (m := re.match(KNOB_RE, line[1:].strip()))}
+        removals += int(len(removed) > len(added))
     versions = {nd.meta.get("program_version") for nd in res.ledger.nodes()}
     a = res.meta["analysis"]
     return {"preset": preset, "seed": seed, "best": a["best"], "baseline": a["baseline"],
@@ -77,7 +46,7 @@ def night(preset: str, seed: int, n: int, llm_spec: str, task_name: str) -> dict
             "descriptions": [nd.change for nd in nodes], "usage": usage_of([llm])}
 
 
-def main():
+def main() -> None:
     ap = parser(__doc__.splitlines()[0], seeds=2)
     ap.add_argument("--task", default="landscape", choices=("landscape", "tinylm"))
     a = ap.parse_args()
@@ -113,31 +82,23 @@ def main():
     out["verdict"] = verdict
     name = "e7_program_md" + ("" if a.task == "landscape" else f"_{a.task}") + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, name))
-    write(name, out)
-    print(json.dumps(verdict, indent=1))
+    report(name, out)
 
 
-def figure(out, name):
-    from _common import RESULTS
-
+def figure(out: dict, name: str):
     p = plt()
     fig, axes = p.subplots(1, 2, figsize=(10, 4))
     P = out["presets"]
     for ax, key, lab in ((axes[0], "improvement", "improvement over baseline"),
                          (axes[1], "n_knobs_touched", "distinct knobs edited")):
-        m = [P[q][key]["mean"] for q in PRESETS]
-        ax.bar(range(len(PRESETS)), m, color=["#5f6368", "#1a73e8", "#1e8e3e"])
+        ax.bar(range(len(PRESETS)), [P[q][key]["mean"] for q in PRESETS], color=["#5f6368", "#1a73e8", "#1e8e3e"])
         for i, q in enumerate(PRESETS):
             ax.scatter([i] * len(P[q]["runs"]), [r[key] for r in P[q]["runs"]], color="k", s=10, zorder=3)
         ax.set_xticks(range(len(PRESETS)))
         ax.set_xticklabels(PRESETS)
         ax.set_ylabel(lab)
     fig.suptitle(f"E7: only program.md differs ({out['config']['llm']} agent, {out['config']['task']})", fontsize=10)
-    fig.tight_layout()
-    path = RESULTS / f"{name}.png"
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=110)
-    return path
+    return save_fig(fig, name)
 
 
 if __name__ == "__main__":
