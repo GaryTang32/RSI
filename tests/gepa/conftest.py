@@ -1,5 +1,6 @@
 """Shared fixtures for the GEPA tests."""
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,7 +10,8 @@ from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
 from rsi.domains.ruleworld import RuleWorldReflectionLM, make_domain
 from rsi.gepa import AgentQAReflectionLM, Config, FrontierTracker, run, two_module_harness
 
-RESULTS = Path(__file__).resolve().parents[2] / "results" / "gepa"
+ROOT = Path(__file__).resolve().parents[2]
+RESULTS = ROOT / "results" / "gepa"
 
 
 def _split(kw: dict) -> tuple[dict, dict]:
@@ -48,12 +50,16 @@ def agentqa_run():
 
 @pytest.fixture
 def result():
-    """Load a stored ``results/gepa`` file, skipping when it was not generated."""
+    """Load a recorded ``results/gepa`` file: the local copy, else the ``data`` branch, else skip."""
     def load(name: str) -> dict:
         p = RESULTS / name
-        if not p.exists():
-            pytest.skip(f"{p} not generated")
-        return json.loads(p.read_text())
+        if p.exists():
+            return json.loads(p.read_text())
+        for ref in ("data", "origin/data"):
+            r = subprocess.run(["git", "-C", str(ROOT), "show", f"{ref}:results/gepa/{name}"], capture_output=True, text=True)
+            if r.returncode == 0:
+                return json.loads(r.stdout)
+        pytest.skip(f"{p} not generated and no data branch")
     return load
 
 
