@@ -1,12 +1,4 @@
-"""X21 (retry round 2, P6): ban latency of the spec memory rule when the signal set does not change.
-
-X4(a) measured 5.0 failures before the spec rule (n >= 2, Laplace value (s+1)/(n+2) * age weight < 0.18) excluded a
-harmful gene, where the arithmetic gives 4 (1/6 = 0.167 < 0.18 after four failures, 1/5 = 0.2 after three). X4
-cycles through the class's tasks, whose signal sets differ, so an edge can miss the Jaccard >= 0.34 key match.
-This run repeats X4(a)'s spec arm exactly, except that every cycle uses the SAME task (identical signals).
-
-Preregistered pass: 12 / 12 seeds give exactly 4.
-
+"""X21 (retry round 2, P6): X4(a)'s spec-rule ban latency with the same task (identical signals) every cycle.
 Run: python experiments/evomap/x21_ban_latency_fixed.py [--seeds 12]
 """
 from __future__ import annotations
@@ -18,6 +10,7 @@ from rsi.evomap import Config
 
 
 def ban_latency_fixed(seed: int) -> float:
+    """Failures before the spec memory rule excludes a lone harmful gene; NaN if never within 30 cycles."""
     dom = gw(seed)
     w = dom.world
     cl = w.classes[seed % len(w.classes)]

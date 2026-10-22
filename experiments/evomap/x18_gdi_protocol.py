@@ -1,44 +1,24 @@
 """X18 (retry round 2, P1 / P1f / P2 / P4): the Behind-EvoMap GDI analyses, replicated with the study's own method.
-
-Claims [snip:BE]: B9 the four-dimensional GDI "collapses into a one-dimensional metric dominated by the Intrinsic
-component" (99 % of assets have zero votes, 73 % were created within 30 days of the crawl); B7 blast radius is the
-single most influential signal: "degrading only s_blast reduces the optimal score sharply from 40.2 to 36.0",
-confidence and streak have minimal effect ("the top rows present the baseline configurations (Median, Worst, and
-Optimal), while the bottom ablation rows degrade one metadata field from its optimal to worst value at a time";
-"inflating metadata to the Optimal setup raises the GDI from the Median 38.6 to 40.2").
-
-Setup (preregistered in docs/methods/evomap/claims-audit.md, "Retry round 2: preregistration"): X7's base
-population (40 agents, 15 % farmers publishing 8 assets per epoch) on the naive hub with the study's intrinsic formula
-(``GDIRanker(variant="be2026")``, the default), for 40 epochs (1 epoch = 1 simulated day: about 75 % of assets are
-younger than 30 days at the crawl, the paper's 73 %). At the end ("the crawl"), over promoted assets:
-
-* P1 (B9): each component's share of the cross-asset GDI variance, var(w_k * c_k) / var(GDI), with the freshness
-  half-life recomputed at h in {10, 30, 90} epochs;
-* P1f: population fidelity numbers next to the paper's (zero-review share, never-reused share, age < 30 share,
-  non-author fetch counts);
-* P2 (B7): the paper's configuration table. For each controllable field (confidence, streak, blast F*L, trigger
-  count, summary length) its normalized value at Median / Worst (min) / Optimal (max) over the promoted capsules;
-  a probe asset gets U, S, F at the population medians (h = 10) and R = 50; drop_f = GDI(Optimal) - GDI(Optimal
-  with f at Worst);
-* P4: never-reused share, top-10 % earned-credit share, trivial-command share of promoted (B1, B3, B4 magnitudes).
-
 Run: python experiments/evomap/x18_gdi_protocol.py [--seeds 12] [--workers 2] [--quick]
 """
 from __future__ import annotations
 
-from _common import (DEFAULT_MIX, agent_config, fmt, make_hub, make_world, paired, parse_args, pmap,
-                     population_specs, save, summarize)
+import json
+
+from _common import (DEFAULT_MIX, agent_config, make_hub, make_world, paired, parse_args, pmap, population_specs,
+                     print_stats, save, simulator, summarize_columns)
 
 import numpy as np
 
-from rsi.evomap import PopulationSimulator
+from rsi.core.stats import spearman
 
 FIELDS = ("confidence", "streak", "blast", "trigger", "summary")
-HALF_LIVES = (10, 30, 90)
+HALF_LIVES = (10, 30, 90)      # read at call time: X24 overrides it
 FARM_RATE = 8
 
 
-def decomposition(hub, served, h):
+def decomposition(hub, served, h) -> dict:
+    """P1 (B9): each component's share of the cross-asset GDI variance and mean level at freshness half-life h."""
     r = hub.ranker
     comp = [r.components(x, hub.epoch, half_life=h) for x in served]
     tot = np.array([sum(w * c[k] for k, w in zip("IUSF", r.w)) for c in comp])
@@ -52,24 +32,16 @@ def decomposition(hub, served, h):
     return out
 
 
-def _spearman(a, b):
-    from rsi.core.stats import spearman
+def _spearman(a, b) -> float:
     return spearman(list(a), list(b)) if len(set(a)) > 1 and len(set(b)) > 1 else float("nan")
 
 
-def config_table(hub, served):
-    """P2: the study's Median / Worst / Optimal table and one-field-at-a-time ablations (GDI on the 0-100 scale)."""
+def config_table(hub, served) -> dict:
+    """P2 (B7): the study's Median / Worst / Optimal table and one-field-at-a-time ablations (GDI on 0-100)."""
     r = hub.ranker
-    per = {f: [] for f in FIELDS}
-    rest = {"I_rep": [], "U": [], "S": [], "F": []}
-    for x in served:
-        c = r.components(x, hub.epoch)
-        for f in FIELDS:
-            per[f].append(c[f])
-        rest["I_rep"].append(c["reputation"])
-        for k in "USF":
-            rest[k].append(c[k])
-    U, S, F = (float(np.median(rest[k])) for k in "USF")
+    comps = [r.components(x, hub.epoch) for x in served]
+    per = {f: [c[f] for c in comps] for f in FIELDS}
+    U, S, F = (float(np.median([c[k] for c in comps])) for k in "USF")
     rep = 0.5                                              # R = 50 for every node
 
     def gdi(vals: dict) -> float:
@@ -88,26 +60,19 @@ def config_table(hub, served):
     return out
 
 
-def one(job):
+def one(job) -> dict:
     seed, args = job
     world = make_world(args, seed)
     n, epochs = (24, 12) if args.quick else (40, 40)
     specs = population_specs(n, DEFAULT_MIX, seed, classes=world.domain.tasks.families("evolve"), farm_rate=FARM_RATE)
     hub = make_hub("naive", world)
-    sim = PopulationSimulator(world.domain, world.harness, hub, specs, config=agent_config("naive", seed),
-                              model_factory=world.model_factory, proposer_factory=world.proposer_factory,
-                              forge=world.forge, truth=world.truth, seed=seed)
-    s = sim.run(epochs)
-    h = s["hub"]
+    h = simulator(world, hub, specs, agent_config("naive", seed), seed).run(epochs)["hub"]
     served = [x for x in hub.published() if x.status == "promoted"]
-    row = {"seed": seed, "n_published": h["n_published"], "n_promoted": len(served)}
     quiet = [x for x in served if not x.reviews and not any(c != x.author for c, _ in x.fetches)]
-    row["n_quiet"] = len(quiet)
+    row = {"seed": seed, "n_published": h["n_published"], "n_promoted": len(served), "n_quiet": len(quiet)}
     for hl in HALF_LIVES:
-        for k, v in decomposition(hub, served, hl).items():
-            row[f"h{hl}_{k}"] = v
-        for k, v in decomposition(hub, quiet, hl).items():          # P1b: zero reviews and zero fetches
-            row[f"quiet_h{hl}_{k}"] = v
+        row.update({f"h{hl}_{k}": v for k, v in decomposition(hub, served, hl).items()})
+        row.update({f"quiet_h{hl}_{k}": v for k, v in decomposition(hub, quiet, hl).items()})   # P1b
     row.update(config_table(hub, served))
     fetch_counts = [len({c for c, _ in x.fetches if c != x.author}) for x in served]
     row.update({
@@ -124,40 +89,44 @@ def one(job):
     return row
 
 
+def b9_verdict(v: dict, label: str) -> str:
+    n = sum(v[f"{label}{hl}"]["pass"] for hl in HALF_LIVES)
+    return "REPRODUCED" if n == len(HALF_LIVES) else ("PARTIAL" if n else "NOT REPRODUCED")
+
+
 def main():
     args = parse_args(__doc__.split("\n")[0], default_seeds=12)
     rows = pmap(one, [(s, args) for s in range(args.seeds)], args.workers)
-    keys = [k for k in rows[0] if k not in ("seed",) and not k.endswith("_largest")]
-    summ = {k: summarize([r[k] for r in rows]) for k in keys}
+    summ = summarize_columns(rows)
+
+    def largest(prefix):
+        return max("IUSF", key=lambda k: summ[f"{prefix}_var_share_{k}"]["mean"])
+
+    def passes(prefix):
+        return bool(summ[f"{prefix}_var_share_I"]["lo"] > 0.5 and largest(prefix) == "I")
     v = {}
     for hl in HALF_LIVES:
-        largest = [r[f"h{hl}_largest"] for r in rows]
+        by_seed = [r[f"h{hl}_largest"] for r in rows]
         v[f"B9_h{hl}"] = {"intrinsic_var_share": summ[f"h{hl}_var_share_I"],
-                          "largest_component_by_seed": {k: largest.count(k) for k in "IUSF"},
-                          "largest_by_mean": max("IUSF", key=lambda k: summ[f"h{hl}_var_share_{k}"]["mean"]),
-                          "pass": bool(summ[f"h{hl}_var_share_I"]["lo"] > 0.5 and
-                                       max("IUSF", key=lambda k: summ[f"h{hl}_var_share_{k}"]["mean"]) == "I")}
-    npass = sum(v[f"B9_h{hl}"]["pass"] for hl in HALF_LIVES)
-    v["B9_verdict"] = "REPRODUCED" if npass == len(HALF_LIVES) else ("PARTIAL" if npass else "NOT REPRODUCED")
-    for hl in HALF_LIVES:                                             # P1b (follow-up, reported next to P1)
-        big = max("IUSF", key=lambda k: summ[f"quiet_h{hl}_var_share_{k}"]["mean"])
-        v[f"B9b_quiet_h{hl}"] = {"intrinsic_var_share": summ[f"quiet_h{hl}_var_share_I"], "largest_by_mean": big,
-                                 "pass": bool(summ[f"quiet_h{hl}_var_share_I"]["lo"] > 0.5 and big == "I")}
-    nq = sum(v[f"B9b_quiet_h{hl}"]["pass"] for hl in HALF_LIVES)
-    v["B9b_verdict"] = "REPRODUCED" if nq == len(HALF_LIVES) else ("PARTIAL" if nq else "NOT REPRODUCED")
+                          "largest_component_by_seed": {k: by_seed.count(k) for k in "IUSF"},
+                          "largest_by_mean": largest(f"h{hl}"), "pass": passes(f"h{hl}")}
+    v["B9_verdict"] = b9_verdict(v, "B9_h")
+    for hl in HALF_LIVES:                                  # P1b: the zero-review, zero-fetch bulk
+        v[f"B9b_quiet_h{hl}"] = {"intrinsic_var_share": summ[f"quiet_h{hl}_var_share_I"],
+                                 "largest_by_mean": largest(f"quiet_h{hl}"), "pass": passes(f"quiet_h{hl}")}
+    v["B9b_verdict"] = b9_verdict(v, "B9b_quiet_h")
     drops = {f: summ[f"drop_{f}"]["mean"] for f in FIELDS}
     order = sorted(FIELDS, key=lambda f: -drops[f])
     second = order[1] if order[0] == "blast" else order[0]
     pd = paired([r[f"drop_{second}"] for r in rows], [r["drop_blast"] for r in rows])
-    v["B7"] = {"drops_mean": drops, "order": order, "blast_minus_next": pd,
-               "blast_largest": order[0] == "blast",
-               "conf_le_half_blast": drops["confidence"] <= 0.5 * drops["blast"],
-               "streak_le_half_blast": drops["streak"] <= 0.5 * drops["blast"],
-               "gdi_median_worst_optimal": [summ[k]["mean"] for k in ("gdi_median", "gdi_worst", "gdi_optimal")],
-               "paper": {"gdi_median": 38.6, "gdi_optimal": 40.2, "gdi_optimal_blast_degraded": 36.0}}
-    v["B7"]["pass"] = bool(v["B7"]["blast_largest"] and pd["lo"] > 0 and v["B7"]["conf_le_half_blast"]
-                           and v["B7"]["streak_le_half_blast"])
-    v["B7_verdict"] = "REPRODUCED" if v["B7"]["pass"] else "NOT REPRODUCED"
+    b7 = v["B7"] = {"drops_mean": drops, "order": order, "blast_minus_next": pd,
+                    "blast_largest": order[0] == "blast",
+                    "conf_le_half_blast": drops["confidence"] <= 0.5 * drops["blast"],
+                    "streak_le_half_blast": drops["streak"] <= 0.5 * drops["blast"],
+                    "gdi_median_worst_optimal": [summ[k]["mean"] for k in ("gdi_median", "gdi_worst", "gdi_optimal")],
+                    "paper": {"gdi_median": 38.6, "gdi_optimal": 40.2, "gdi_optimal_blast_degraded": 36.0}}
+    b7["pass"] = bool(b7["blast_largest"] and pd["lo"] > 0 and b7["conf_le_half_blast"] and b7["streak_le_half_blast"])
+    v["B7_verdict"] = "REPRODUCED" if b7["pass"] else "NOT REPRODUCED"
     v["P1f_fidelity"] = {"zero_review_share": (summ["fid_zero_review_share"]["mean"], 0.99),
                          "never_reused": (summ["fid_never_reused_published"]["mean"], 0.98),
                          "age_lt30_share": (summ["fid_age_lt30_share"]["mean"], 0.73),
@@ -171,9 +140,7 @@ def main():
                       "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"},
            "raw": rows, "summary": summ, "verdict": v}
     save("x18_gdi_protocol", out, args.out)
-    for k in keys:
-        print(f"  {k:40s} {fmt(summ[k])}")
-    import json
+    print_stats(summ, 40)
     print(json.dumps(v, indent=1, default=str))
 
 

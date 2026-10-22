@@ -1,17 +1,9 @@
 """X22 (retry round 2, P10): Gene vs Skill token length, measured on the vendor's own artifacts.
-
-Claim [snip:SG] (V3): a Gene is about 230 tokens, a Skill package about 2,500. X1 measured OUR renderers on OUR
-katas (143 vs 1,252). Here the lists are fixed in the preregistration: (a) the 17 seed genes shipped with Evolver
-v1.94.0 (``assets/gep/genes.seed.json``) plus the skill2gep example gene, rendered with the paper card template
-(keywords, summary, strategy, AVOID; ``render_gene``), and (b) the ``SKILL.md`` of every EvoMap-org repository we
-can read (evolver, skill2gep, pdf2gep). Token counter: ``rsi.core.llm.estimate_tokens`` (the one X1 uses).
-
-Preregistered pass: gene median in [115, 345] and skill median in [1,250, 3,750].
-
 Run: python experiments/evomap/x22_token_lengths.py --src <scratchpad>/src --retry <scratchpad>/retry2/evomap
 """
 from __future__ import annotations
 
+import argparse
 import json
 import statistics
 from pathlib import Path
@@ -32,7 +24,6 @@ def to_gene(d: dict) -> Gene:
 
 
 def main():
-    import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=str(SCRATCH / "src"))
     ap.add_argument("--retry", default=str(SCRATCH / "retry2" / "evomap"))
