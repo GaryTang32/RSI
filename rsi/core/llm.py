@@ -1,17 +1,4 @@
-"""LLM backends shared by every method.
-
-Every self-improvement loop in this package talks to language models through the
-small :class:`LLM` interface below, so the same loop can run against
-
-* :class:`MockLLM`   - a deterministic Python function (unit tests, CPU demos, CI),
-* :class:`ClaudeCLI` - the headless ``claude -p`` command (no API key needed where
-  Claude Code is logged in),
-* :class:`AnthropicAPI` - the Messages API when ``ANTHROPIC_API_KEY`` is set.
-
-All backends meter usage (calls, input/output tokens, dollars) per *role*
-("proposer", "critic", "task", ...), which is what the cost rules of RRSI,
-SoL-Pi and Dream-RSI consume.
-"""
+"""LLM backends (mock, headless ``claude -p``, Anthropic API, disk cache) metered per role, plus reply parsing."""
 from __future__ import annotations
 
 import hashlib
@@ -22,16 +9,12 @@ import re
 import subprocess
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, astuple, dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-MODEL_ALIASES = {
-    "haiku": "claude-haiku-4-5-20251001",
-    "sonnet": "claude-sonnet-5",
-    "opus": "claude-opus-5-5",
-    "fable": "claude-fable-5-1",
-}
+MODEL_ALIASES = {"haiku": "claude-haiku-4-5-20251001", "sonnet": "claude-sonnet-5", "opus": "claude-opus-5-5",
+                 "fable": "claude-fable-5-1"}
 
 
 def resolve_model(name: str) -> str:
@@ -56,18 +39,10 @@ class Usage:
         return self.input_tokens + self.output_tokens
 
     def __add__(self, other: "Usage") -> "Usage":
-        return Usage(
-            self.calls + other.calls,
-            self.input_tokens + other.input_tokens,
-            self.output_tokens + other.output_tokens,
-            self.cost_usd + other.cost_usd,
-            self.latency_s + other.latency_s,
-        )
+        return Usage(*(a + b for a, b in zip(astuple(self), astuple(other))))
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        d["total_tokens"] = self.total_tokens
-        return d
+        return {**asdict(self), "total_tokens": self.total_tokens}
 
 
 @dataclass
@@ -95,13 +70,9 @@ class UsageMeter:
             self.by_role[role] = self.by_role.get(role, Usage()) + usage
 
     def total(self) -> Usage:
+        """Spend over all roles except ``*:cached`` (replayed cache hits are shown per role, not billed)."""
         with self._lock:
-            out = Usage()
-            for role, u in self.by_role.items():
-                if role.endswith(":cached"):   # replayed cache hits: shown per role, not billed
-                    continue
-                out = out + u
-            return out
+            return sum((u for role, u in self.by_role.items() if not role.endswith(":cached")), Usage())
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -122,18 +93,9 @@ class LLM:
     def __init__(self) -> None:
         self.meter = UsageMeter()
 
-    def complete(
-        self,
-        prompt: str,
-        *,
-        system: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        seed: Optional[int] = None,
-        role: str = "default",
-    ) -> LLMResponse:
-        """Return one completion. ``seed`` distinguishes repeated samples of the
-        same prompt (used by caches and by the mock); real backends are
-        stochastic regardless."""
+    def complete(self, prompt: str, *, system: Optional[str] = None, max_tokens: Optional[int] = None,
+                 seed: Optional[int] = None, role: str = "default") -> LLMResponse:
+        """One completion; ``seed`` tells repeated samples of a prompt apart for caches and mocks."""
         resp = self._complete(prompt, system=system, max_tokens=max_tokens, seed=seed)
         self.meter.add(role, resp.usage)
         return resp
@@ -145,14 +107,8 @@ class LLM:
         return f"{type(self).__name__}({self.name})"
 
 
-# --------------------------------------------------------------------------- mock
 class MockLLM(LLM):
-    """Deterministic LLM for tests and CPU demos.
-
-    ``responder(prompt, system, seed, call_index) -> str`` decides the reply.
-    With no responder, it echoes a fixed string. Token usage is estimated from
-    text length so cost-aware rules still see realistic numbers.
-    """
+    """Deterministic LLM: ``responder(prompt, system, seed, call_index) -> str``; tokens estimated from text."""
 
     def __init__(self, responder: Optional[Callable[..., str]] = None, name: str = "mock") -> None:
         super().__init__()
@@ -173,40 +129,25 @@ class MockLLM(LLM):
         return LLMResponse(text=text, usage=usage, model=self.name)
 
 
-# --------------------------------------------------------------------- claude CLI
 DEFAULT_SYSTEM = "You are a careful, concise assistant."
 
-_PRICES_PER_MTOK = {  # (input, output) USD per million tokens; only used when a backend reports no cost
-    "claude-haiku-4-5-20251001": (1.0, 5.0),
-}
-
+#: (input, output) USD per million tokens; only used when a backend reports no cost
+_PRICES_PER_MTOK = {"claude-haiku-4-5-20251001": (1.0, 5.0)}
 
 _ATTRIBUTION = re.compile(r"^[ \t#/*-]*(Co-Authored-By: Claude[^\n]*|Claude-Session: https://claude\.ai/\S*)[ \t]*\n?",
                           re.M | re.I)
 
 
 def strip_attribution(text: str) -> str:
-    """Remove commit-attribution lines a headless ``claude -p`` child can inherit from
-    the host session and append to replies (they break generated code)."""
+    """Remove commit-attribution lines a headless ``claude -p`` may inherit from its host session."""
     return _ATTRIBUTION.sub("", text)
 
 
 class ClaudeCLI(LLM):
-    """Headless ``claude -p`` backend.
+    """Headless ``claude -p`` backend, run lean: no tools, MCP, settings or session persistence."""
 
-    Runs lean: custom system prompt, no tools, no MCP, no settings, no session
-    persistence, so each call costs roughly prompt + reply tokens.
-    """
-
-    def __init__(
-        self,
-        model: str = "haiku",
-        *,
-        timeout_s: float = 300.0,
-        retries: int = 3,
-        effort: Optional[str] = None,
-        executable: str = "claude",
-    ) -> None:
+    def __init__(self, model: str = "haiku", *, timeout_s: float = 300.0, retries: int = 3,
+                 effort: Optional[str] = None, executable: str = "claude") -> None:
         super().__init__()
         self.model = resolve_model(model)
         self.name = f"claude-cli:{self.model}"
@@ -216,28 +157,18 @@ class ClaudeCLI(LLM):
         self.executable = executable
 
     def base_cmd(self, system: Optional[str]) -> list[str]:
-        cmd = [
-            self.executable, "-p",
-            "--model", self.model,
-            "--output-format", "json",
-            "--system-prompt", system or DEFAULT_SYSTEM,
-            "--no-session-persistence",
-            "--strict-mcp-config",
-            "--setting-sources", "",
-        ]
-        if self.effort:
-            cmd += ["--effort", self.effort]
-        return cmd
+        cmd = [self.executable, "-p", "--model", self.model, "--output-format", "json", "--system-prompt",
+               system or DEFAULT_SYSTEM, "--no-session-persistence", "--strict-mcp-config", "--setting-sources", ""]
+        return cmd + ["--effort", self.effort] if self.effort else cmd
 
-    def _run(self, cmd: list[str], prompt: str, cwd: Optional[str] = None, timeout: Optional[float] = None) -> LLMResponse:
+    def _run(self, cmd: list[str], prompt: str, cwd: Optional[str] = None,
+             timeout: Optional[float] = None) -> LLMResponse:
         last_err = "unknown"
         for attempt in range(self.retries):
             t0 = time.time()
             try:
-                proc = subprocess.run(
-                    cmd, input=prompt, capture_output=True, text=True,
-                    timeout=timeout or self.timeout_s, cwd=cwd,
-                )
+                proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
+                                      timeout=timeout or self.timeout_s, cwd=cwd)
             except subprocess.TimeoutExpired:
                 last_err = "timeout"
                 continue
@@ -248,7 +179,7 @@ class ClaudeCLI(LLM):
                 last_err = (proc.stderr or proc.stdout or "no output")[-500:]
                 time.sleep(2 ** attempt)
                 continue
-            if isinstance(data, list):  # verbose/stream-style output: a list of messages ending in the result
+            if isinstance(data, list):  # verbose output: a list of messages ending in the result
                 data = next((m for m in reversed(data) if isinstance(m, dict) and m.get("type") == "result"), None)
             if not isinstance(data, dict):
                 last_err = f"unexpected CLI output: {proc.stdout[-300:]}"
@@ -261,28 +192,18 @@ class ClaudeCLI(LLM):
             u = data.get("usage") or {}
             in_tok = int(u.get("input_tokens", 0)) + int(u.get("cache_read_input_tokens", 0)) + int(
                 u.get("cache_creation_input_tokens", 0))
-            out_tok = int(u.get("output_tokens", 0))
-            cost = float(data.get("total_cost_usd") or 0.0)
-            usage = Usage(1, in_tok, out_tok, cost, dt)
+            usage = Usage(1, in_tok, int(u.get("output_tokens", 0)), float(data.get("total_cost_usd") or 0.0), dt)
             return LLMResponse(text=strip_attribution(data.get("result") or ""), usage=usage, model=self.model,
                                raw=data)
         return LLMResponse(text="", usage=Usage(1, estimate_tokens(prompt), 0, 0.0, 0.0), model=self.model,
                            error=last_err)
 
     def _complete(self, prompt, *, system, max_tokens, seed) -> LLMResponse:
-        cmd = self.base_cmd(system) + ["--tools", ""]
-        return self._run(cmd, prompt)
+        return self._run(self.base_cmd(system) + ["--tools", ""], prompt)
 
-    def run_agent(
-        self,
-        prompt: str,
-        *,
-        cwd: str,
-        system: Optional[str] = None,
-        tools: tuple[str, ...] = ("Read", "Edit", "Write", "Glob", "Grep"),
-        timeout_s: Optional[float] = None,
-        role: str = "agent",
-    ) -> LLMResponse:
+    def run_agent(self, prompt: str, *, cwd: str, system: Optional[str] = None,
+                  tools: tuple[str, ...] = ("Read", "Edit", "Write", "Glob", "Grep"),
+                  timeout_s: Optional[float] = None, role: str = "agent") -> LLMResponse:
         """Run ``claude -p`` as a coding agent confined to ``cwd`` with file tools."""
         cmd = self.base_cmd(system) + ["--tools", ",".join(tools), "--permission-mode", "acceptEdits",
                                        "--add-dir", cwd]
@@ -291,13 +212,12 @@ class ClaudeCLI(LLM):
         return resp
 
 
-# -------------------------------------------------------------------- Anthropic API
 class AnthropicAPI(LLM):
     """Messages API backend (needs ``pip install anthropic`` and ANTHROPIC_API_KEY)."""
 
     def __init__(self, model: str = "haiku", *, max_tokens: int = 4096, retries: int = 4) -> None:
         super().__init__()
-        import anthropic  # local import: optional dependency
+        import anthropic  # optional dependency
 
         self.client = anthropic.Anthropic()
         self.model = resolve_model(model)
@@ -310,12 +230,9 @@ class AnthropicAPI(LLM):
         last = "unknown"
         for attempt in range(self.retries):
             try:
-                msg = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=max_tokens or self.max_tokens,
-                    system=system or DEFAULT_SYSTEM,
-                    messages=[{"role": "user", "content": prompt}],
-                )
+                msg = self.client.messages.create(model=self.model, max_tokens=max_tokens or self.max_tokens,
+                                                  system=system or DEFAULT_SYSTEM,
+                                                  messages=[{"role": "user", "content": prompt}])
                 text = "".join(getattr(b, "text", "") for b in msg.content)
                 pin, pout = _PRICES_PER_MTOK.get(self.model, (0.0, 0.0))
                 cost = (msg.usage.input_tokens * pin + msg.usage.output_tokens * pout) / 1e6
@@ -327,34 +244,15 @@ class AnthropicAPI(LLM):
         return LLMResponse(text="", usage=Usage(1, 0, 0, 0.0, time.time() - t0), model=self.model, error=last)
 
 
-# ------------------------------------------------------------------------- cache
 class CachedLLM(LLM):
-    """Disk cache in front of another backend.
-
-    The key includes ``seed``, so repeated trials of the same prompt (seed=0,1,2..)
-    stay distinct while a re-run of a whole experiment replays for free.
-    Cached hits are metered with zero calls/cost but their original token counts
-    are kept under ``role + ':cached'`` for honest reporting, so ``meter.total()``
-    (and anything summing roles) reports real spend only. The original usage of
-    cached hits (including the dollars they saved) is kept in ``saved``;
-    ``hits`` / ``misses`` count lookups. A hit's response carries
-    ``raw = {"cached": True, "usage": <original usage dict>}``, so a domain that
-    records the *artifact's* inference cost (not the spend) can report the same
-    dollars on a replay as on the original run (see :func:`artifact_usage`).
-    With ``journal`` set, every entry this object writes is also appended to that file as a
-    ``<cache dir name>/<key>`` line, so the calls a run paid for can be told apart in a cache that
-    several runs share, without relying on file times.
-    """
+    """Disk cache in front of ``inner``, keyed by (model, system, prompt, max_tokens, seed); ``offline`` never calls."""
 
     def __init__(self, inner: LLM, cache_dir: str | Path, *, offline: bool = False,
                  journal: str | Path | None = None) -> None:
         super().__init__()
         self.inner = inner
-        #: offline=True replays recorded runs for $0: a cache miss returns an error response
-        #: instead of calling the backend.
         self.offline = offline
-        #: file that lists every entry this object writes (None: no journal); may be reassigned
-        self.journal = Path(journal) if journal is not None else None
+        self.journal = Path(journal) if journal is not None else None   # lists each entry written: "<dir name>/<key>"
         self.name = f"cached:{inner.name}"
         self.dir = Path(cache_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -373,22 +271,22 @@ class CachedLLM(LLM):
             Usage(**d["usage"])  # validate
             return d if isinstance(d.get("text"), str) else None
         except (OSError, ValueError, KeyError, TypeError):
-            return None  # missing or corrupt entry -> treat as a miss (it is rewritten below)
+            return None  # missing or corrupt entry: a miss (it is rewritten)
 
     def complete(self, prompt, *, system=None, max_tokens=None, seed=None, role="default") -> LLMResponse:
         path = self._key(prompt, system, max_tokens, seed)
         d = self._read(path) if path.exists() else None
-        if d is not None:
+        if d is not None:   # metered free under "<role>:cached"; the original usage goes to saved and raw["usage"]
             u = Usage(**d["usage"])
-            self.meter.add(role + ":cached", Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0))
+            replay = Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0)
+            self.meter.add(role + ":cached", replay)
             self.saved.add(role, u)
             with self._count_lock:
                 self.hits += 1
             raw = {"cached": True, "usage": asdict(u)}
             if d.get("stop_reason") is not None:     # e.g. "max_tokens": lets callers detect truncated replies
                 raw["stop_reason"] = d["stop_reason"]
-            return LLMResponse(text=d["text"], usage=Usage(0, u.input_tokens, u.output_tokens, 0.0, 0.0),
-                               model=d.get("model", self.inner.name), raw=raw)
+            return LLMResponse(text=d["text"], usage=replay, model=d.get("model", self.inner.name), raw=raw)
         with self._count_lock:
             self.misses += 1
         if self.offline:
@@ -398,8 +296,7 @@ class CachedLLM(LLM):
         self.meter.add(role, resp.usage)
         if resp.ok:
             path.parent.mkdir(parents=True, exist_ok=True)
-            # unique temp name: concurrent writers of the same key must not race on one temp file
-            tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+            tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")   # one per writer
             stop = resp.raw.get("stop_reason") if isinstance(resp.raw, dict) else None
             tmp.write_text(json.dumps({"text": resp.text, "usage": asdict(resp.usage), "model": resp.model,
                                        "stop_reason": stop}))
@@ -412,10 +309,7 @@ class CachedLLM(LLM):
 
 
 def artifact_usage(resp: LLMResponse) -> Usage:
-    """The usage a response *represents* - for :class:`CachedLLM` hits the original
-    call's tokens and dollars, otherwise ``resp.usage``. Use it for an artifact's
-    inference-cost metrics (so replays match fresh runs); use ``resp.usage`` /
-    meters for money actually spent."""
+    """The usage a response represents: a cache hit's original tokens and dollars, else ``resp.usage``."""
     raw = resp.raw if isinstance(resp.raw, dict) else {}
     if raw.get("cached") and isinstance(raw.get("usage"), dict):
         try:
@@ -426,11 +320,7 @@ def artifact_usage(resp: LLMResponse) -> Usage:
 
 
 def get_llm(spec: str = "mock", *, cache_dir: Optional[str] = None, **kw: Any) -> LLM:
-    """Build a backend from a short spec string.
-
-    ``mock`` | ``claude:<model>`` (headless CLI) | ``api:<model>`` | ``auto:<model>``
-    (API if ANTHROPIC_API_KEY is set, else CLI).
-    """
+    """Backend from ``mock`` | ``claude:<model>`` | ``api:<model>`` | ``auto:<model>`` (API if a key is set)."""
     kind, _, model = spec.partition(":")
     model = model or "haiku"
     if kind == "mock":
@@ -446,17 +336,12 @@ def get_llm(spec: str = "mock", *, cache_dir: Optional[str] = None, **kw: Any) -
     return CachedLLM(llm, cache_dir) if cache_dir else llm
 
 
-# ------------------------------------------------------------------ text parsing
 _FENCE = re.compile(r"```([A-Za-z0-9_+\-.]*)[^\n]*\n(.*?)```", re.S)
 
 
 def extract_code_blocks(text: str, lang: Optional[str] = None) -> list[str]:
     """All fenced code blocks, optionally filtered by language tag."""
-    out = []
-    for tag, body in _FENCE.findall(text or ""):
-        if lang is None or tag.lower() == lang.lower():
-            out.append(body)
-    return out
+    return [body for tag, body in _FENCE.findall(text or "") if lang is None or tag.lower() == lang.lower()]
 
 
 def extract_code(text: str, lang: Optional[str] = "python") -> Optional[str]:
@@ -466,11 +351,7 @@ def extract_code(text: str, lang: Optional[str] = "python") -> Optional[str]:
 
 
 def extract_json(text: str) -> Any:
-    """Parse the first JSON object/array in ``text`` (fenced or bare). Raises ValueError.
-
-    Order: ```json fences, then any fence, then the first balanced ``{...}`` in
-    the text, then the first balanced ``[...]``. A fence holding a bare scalar
-    (e.g. a fenced number) is returned only when no object/array is found."""
+    """First JSON object/array in ```json fences, any fence, then the text; a fenced scalar only if none. ValueError."""
     scalar_found, scalar = False, None
     for block in extract_code_blocks(text, "json") + extract_code_blocks(text):
         try:
@@ -481,38 +362,20 @@ def extract_json(text: str) -> Any:
             return v
         if not scalar_found:
             scalar_found, scalar = True, v
-    s = text or ""
-    for opener, closer in (("{", "}"), ("[", "]")):
-        start = s.find(opener)
+    text, decoder = text or "", json.JSONDecoder()
+    for opener in "{[":   # every object before any array
+        start = text.find(opener)
         while start != -1:
-            depth, in_str, esc = 0, False, False
-            for i in range(start, len(s)):
-                ch = s[i]
-                if in_str:
-                    if esc:
-                        esc = False
-                    elif ch == "\\":
-                        esc = True
-                    elif ch == '"':
-                        in_str = False
-                elif ch == '"':
-                    in_str = True
-                elif ch == opener:
-                    depth += 1
-                elif ch == closer:
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            return json.loads(s[start:i + 1])
-                        except json.JSONDecodeError:
-                            break
-            start = s.find(opener, start + 1)
+            try:
+                return decoder.raw_decode(text, start)[0]
+            except json.JSONDecodeError:
+                start = text.find(opener, start + 1)
     if scalar_found:
         return scalar
     raise ValueError("no JSON found in text")
 
 
 def extract_tag(text: str, tag: str) -> Optional[str]:
-    """Content of ``<tag>...</tag>`` (last occurrence), or None."""
+    """Content of the last ``<tag>...</tag>``, or None."""
     m = re.findall(rf"<{tag}>(.*?)</{tag}>", text or "", re.S)
     return m[-1].strip() if m else None

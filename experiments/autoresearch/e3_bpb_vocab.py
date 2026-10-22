@@ -1,51 +1,26 @@
 """E3 - bits per byte does not depend on the vocabulary, so tokenizer changes are compared fairly.
 
-Claim [doc/upstream README]: "val_bpb ... is vocab-size-independent, so architectural changes
-[and tokenizer changes] are fairly compared". Per-token loss is not: a bigger vocabulary packs
-more bytes into each token, so every token is harder to predict even when the model assigns
-the text a higher probability.
-
-Setup (CPU, deterministic, the tinylm corpus: Python stdlib docstrings, 1.3 MB train / 85 KB val):
-tokenizers = bytes (vocab 256) or byte-pair encodings with 256 / 768 / 1792 merges fitted on
-train (vocab 512 / 1024 / 2048); models = n-gram LMs of order 1-3 with additive smoothing toward
-the next-lower order (Dirichlet concentration ALPHA * VOCAB), all properly normalised.
-Both metrics are computed from the same per-token log-probabilities:
-  per-token loss = mean nats per token;  bpb = sum of nats / (ln 2 * sum of TOKEN_BYTES[token]),
-  with TOKEN_BYTES the locked byte-length table (the sum equals the val byte count exactly).
-
-A. Metric battery: 4 vocabularies x 3 orders. Pairwise ranking disagreements between per-token
-   loss and bpb; within each order, how the two metrics move with the vocabulary.
-B. The loop: an autoresearch night on this problem, written as a new in-process ResearchTask
-   (train.py = VOCAB, ORDER, ALPHA constants; the locked grader tokenizes, trains and scores),
-   strict keep rule, 30 experiments x 5 agent seeds, judged either by val bpb or by val
-   per-token loss. Measured: final vocabulary and the final version's bpb on val and on the
-   hidden test_iid split.
-Confirming outcome: per-token loss mis-ranks models across vocabularies (and steers the loop
-away from larger vocabularies), bpb ranks them by how well they predict the byte stream.
-
-With --llm claude:haiku (or the offline --llm scripted) only part B runs, with an LLM research
-agent editing train.py (part A involves no agent).
-
 Usage: python experiments/autoresearch/e3_bpb_vocab.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
-from __future__ import annotations
+from _common import (SCRATCH, ci, is_live, parser, plt, pool_map, report, research_agent, save_fig,  # noqa: I001
+                     slug, suffix, usage_of)
 
-from _common import SCRATCH, ci, is_live, parser, plt, pool_map, research_agent, suffix, usage_of, write  # noqa: I001
-
-import json
 import math
+from functools import cache
 from itertools import combinations
-from typing import Optional
+from pathlib import Path
 
 import numpy as np
 
 from rsi.autoresearch import AutoresearchLoop, Config, ResearchTask, RunBudget, RunOutcome, knob_edit, parse_summary
 from rsi.autoresearch.landscape import parse_knobs
 from rsi.core import Artifact
+from rsi.domains.tinylm import build_corpus, default_data_root
 
 VOCABS = (256, 512, 1024, 2048)
 ORDERS = (1, 2, 3)
-BPE_SAMPLE_BYTES = 400_000                 # merges are learnt on this prefix of train, applied to every split
+BPE_SAMPLE_BYTES = 400_000  # merges are learnt on this prefix of train, applied to every split
+METRICS = ("val_bpb", "val_nats_per_token")
 
 TRAIN_PY = """\
 \"\"\"train.py - the file the research agent edits (tokenizer + n-gram language model).
@@ -68,29 +43,26 @@ tokens) and val_nats_per_token = mean token nats. (Executed by the framework in-
 """
 
 
-# --------------------------------------------------------------------------- tokenizer + model
 class Corpus:
-    """Byte splits and BPE merges (learnt once, lazily, up to the largest vocabulary)."""
+    """Byte splits of the tinylm corpus and BPE merges, learnt lazily up to the largest vocabulary."""
 
     def __init__(self) -> None:
-        from rsi.domains.tinylm import build_corpus, default_data_root
-
         root = default_data_root()
         build_corpus(root)
         self.raw = {s: np.fromfile(root / "all" / f"{s}.bin", dtype=np.uint8).astype(np.int32)
                     for s in ("train", "val", "test_iid")}
         self.merges: list[tuple[int, int]] = []
-        self.token_bytes = [1] * 256                       # locked byte-length table (bytes per token id)
+        self.token_bytes = [1] * 256  # locked byte-length table (bytes per token id)
         self._tok: dict[tuple[str, int], np.ndarray] = {}
         self._counts: dict[tuple[int, int], tuple] = {}
-        self._fit_seq: Optional[np.ndarray] = None
+        self._fit_seq: np.ndarray | None = None
 
     @staticmethod
     def _merge(seq: np.ndarray, a: int, b: int, new: int) -> np.ndarray:
         idx = np.flatnonzero((seq[:-1] == a) & (seq[1:] == b))
         if len(idx) == 0:
             return seq
-        if a == b:                                         # "aaa" -> merge left to right without overlaps
+        if a == b:  # "aaa": merge left to right without overlaps
             keep, last = np.ones(len(idx), bool), -2
             for j, i in enumerate(idx.tolist()):
                 if i == last + 1:
@@ -103,7 +75,7 @@ class Corpus:
         return np.delete(out, idx + 1)
 
     def fit(self, vocab: int) -> None:
-        """Learn merges on the train prefix until the vocabulary has ``vocab`` tokens (incremental)."""
+        """Learn merges on the train prefix until there are ``vocab`` tokens (incremental)."""
         if 256 + len(self.merges) >= vocab:
             return
         seq = self._fit_seq if self._fit_seq is not None else self.raw["train"][:BPE_SAMPLE_BYTES]
@@ -130,13 +102,12 @@ class Corpus:
         return self._tok[key]
 
     def _ngram_counts(self, vocab: int, k: int):
-        """Sorted (context+token) codes/counts and context codes/counts for order k on train."""
+        """Sorted (context, token) codes with counts, and context codes with counts, for order k on train."""
         key = (vocab, k)
         if key not in self._counts:
             seq = self.tokens("train", vocab)
-            B = vocab + 1                                   # + a padding symbol for the first positions
             ctx = self._contexts(seq, k, vocab)
-            full = ctx * B + seq
+            full = ctx * (vocab + 1) + seq
             self._counts[key] = (np.unique(full, return_counts=True), np.unique(ctx, return_counts=True))
         return self._counts[key]
 
@@ -156,9 +127,9 @@ class Corpus:
         return np.where(keys[i] == q, counts[i], 0).astype(np.float64)
 
     def score(self, split: str, vocab: int, order: int, alpha: float) -> dict:
-        """Per-token nats of ``split`` under the n-gram model, and both metrics."""
+        """Both metrics of ``split`` under the smoothed n-gram model, from the same per-token nats."""
         seq = self.tokens(split, vocab)
-        p = np.full(len(seq), 1.0 / vocab)                  # order 0: uniform over the vocabulary
+        p = np.full(len(seq), 1.0 / vocab)  # order 0: uniform
         for k in range(1, order + 1):
             (fk, fc), (ck, cc) = self._ngram_counts(vocab, k)
             ctx = self._contexts(seq, k, vocab)
@@ -167,29 +138,20 @@ class Corpus:
             conc = alpha * vocab
             p = (c_hw + conc * p) / (c_h + conc)
         nats = -np.log(p)
-        tb = np.asarray(self.token_bytes[:vocab])
-        nbytes = tb[seq]
-        assert int(nbytes.sum()) == len(self.raw[split])    # the locked table covers every byte exactly once
+        nbytes = np.asarray(self.token_bytes[:vocab])[seq]
+        assert int(nbytes.sum()) == len(self.raw[split])  # the locked table covers every byte exactly once
         return {"val_bpb": float(nats.sum() / (math.log(2) * nbytes.sum())),
                 "val_nats_per_token": float(nats.mean()), "n_tokens": int(len(seq)),
                 "bytes_per_token": float(nbytes.mean()), "nats_total": float(nats.sum())}
 
 
-_CORPUS: Optional[Corpus] = None
-
-
+@cache
 def corpus() -> Corpus:
-    global _CORPUS
-    if _CORPUS is None:
-        _CORPUS = Corpus()
-    return _CORPUS
+    return Corpus()
 
 
-# --------------------------------------------------------------------------- the research task
 class TokenizerTask(ResearchTask):
-    """A new in-process ResearchTask: train.py picks VOCAB / ORDER / ALPHA, the locked grader
-    tokenizes, counts and scores (deterministic, no seed noise). ``metric`` selects what the
-    loop is judged by: ``val_bpb`` or ``val_nats_per_token`` (both lower is better)."""
+    """train.py picks VOCAB / ORDER / ALPHA; the locked grader tokenizes, counts and scores (no seed noise)."""
 
     def __init__(self, metric: str = "val_bpb") -> None:
         self.name = f"tokenizer-ngram[{metric}]"
@@ -213,7 +175,8 @@ class TokenizerTask(ResearchTask):
                 "(lower is better).")
 
     def contract(self, mode: str) -> str:
-        return "- train.py must stay a block of `NAME = value` constants: VOCAB in {256, 512, 1024, 2048}, ORDER in {1, 2, 3}, ALPHA > 0.\n"
+        return ("- train.py must stay a block of `NAME = value` constants: VOCAB in {256, 512, 1024, 2048}, "
+                "ORDER in {1, 2, 3}, ALPHA > 0.\n")
 
     def _config(self, art: Artifact) -> tuple[int, int, float]:
         k = parse_knobs(art["train.py"])
@@ -234,8 +197,6 @@ class TokenizerTask(ResearchTask):
     def run(self, artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0) -> RunOutcome:
         out = self._run(artifact, "val")
         if log_path:
-            from pathlib import Path
-
             Path(log_path).parent.mkdir(parents=True, exist_ok=True)
             Path(log_path).write_text(out.log)
             out.log_path = log_path
@@ -243,8 +204,9 @@ class TokenizerTask(ResearchTask):
 
     def audit(self, artifact, *, seed=0) -> dict:
         o = self._run(artifact, "test_iid")
-        return {"test_iid_bpb": o.meta["val_bpb"], "test_iid_nats_per_token": o.meta["val_nats_per_token"]} \
-            if o.metric is not None else {"audit_error": o.crash_reason}
+        if o.metric is None:
+            return {"audit_error": o.crash_reason}
+        return {"test_iid_bpb": o.meta["val_bpb"], "test_iid_nats_per_token": o.meta["val_nats_per_token"]}
 
     def mock_edit_pool(self):
         return [knob_edit("VOCAB", lambda v: v * 2, lo=256, hi=2048, name="vocab_up"),
@@ -255,12 +217,10 @@ class TokenizerTask(ResearchTask):
                 knob_edit("ALPHA", lambda v: round(v / 3, 6), lo=1e-4, hi=10.0, name="alpha_down")]
 
 
-# --------------------------------------------------------------------------- A: battery
 def battery(alpha: float = 0.1) -> dict:
-    rows = {}
-    for v in VOCABS:
-        for o in ORDERS:
-            rows[f"V{v}/n{o}"] = {"vocab": v, "order": o, **corpus().score("val", v, o, alpha)}
+    """Part A: every vocabulary x order on val; where per-token loss and bpb rank model pairs differently."""
+    rows = {f"V{v}/n{o}": {"vocab": v, "order": o, **corpus().score("val", v, o, alpha)}
+            for v in VOCABS for o in ORDERS}
     names = list(rows)
     pairs = list(combinations(names, 2))
     disagree = [(a, b) for a, b in pairs if (rows[a]["val_nats_per_token"] < rows[b]["val_nats_per_token"])
@@ -269,46 +229,46 @@ def battery(alpha: float = 0.1) -> dict:
     same = [(a, b) for a, b in pairs if rows[a]["vocab"] == rows[b]["vocab"]]
     by_order = {o: {"vocab": list(VOCABS), "bpb": [rows[f"V{v}/n{o}"]["val_bpb"] for v in VOCABS],
                     "nats_per_token": [rows[f"V{v}/n{o}"]["val_nats_per_token"] for v in VOCABS]} for o in ORDERS}
-    best_bpb = min(names, key=lambda n: rows[n]["val_bpb"])
-    best_tok = min(names, key=lambda n: rows[n]["val_nats_per_token"])
     return {"alpha": alpha, "rows": rows, "by_order": by_order,
             "pairwise_disagreement": len(disagree) / len(pairs),
             "pairwise_disagreement_across_vocabularies": sum(p in disagree for p in cross) / len(cross),
             "pairwise_disagreement_same_vocabulary": sum(p in disagree for p in same) / len(same),
-            "best_by_bpb": best_bpb, "best_by_nats_per_token": best_tok,
+            "best_by_bpb": min(names, key=lambda n: rows[n]["val_bpb"]),
+            "best_by_nats_per_token": min(names, key=lambda n: rows[n]["val_nats_per_token"]),
             "bpb_equals_byte_stream_likelihood_rank": bool(
                 sorted(names, key=lambda n: rows[n]["val_bpb"]) == sorted(names, key=lambda n: rows[n]["nats_total"]))}
 
 
-# --------------------------------------------------------------------------- B: the loop
 def night(args) -> dict:
+    """Part B: one loop night on TokenizerTask, judged by ``metric``."""
     metric, seed, n, llm_spec = args
     task = TokenizerTask(metric)
     agent, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed)
-    res = AutoresearchLoop(task, agent, Config(max_experiments=n, seed=seed, plot=False, overwrite=True,
-                                               persist=is_live(llm_spec), tag=f"e3-{metric}-{seed}"),
-                           out_dir=SCRATCH / "e3" / f"{metric}_{seed}_{llm_spec.replace(':', '_')}", llms=llms).run()
+    cfg = Config(max_experiments=n, seed=seed, plot=False, overwrite=True, persist=is_live(llm_spec),
+                 tag=f"e3-{metric}-{seed}")
+    res = AutoresearchLoop(task, agent, cfg, out_dir=SCRATCH / "e3" / f"{metric}_{seed}_{slug(llm_spec)}",
+                           llms=llms).run()
     vocab, order, alpha = task._config(res.best)
     final = corpus().score("val", vocab, order, alpha)
-    aud = res.meta["audit"][-1]
+    nodes = res.ledger.nodes()
     return {"metric": metric, "seed": seed, "final_vocab": vocab, "final_order": order, "final_alpha": alpha,
             "final_val_bpb": final["val_bpb"], "final_val_nats_per_token": final["val_nats_per_token"],
-            "final_test_iid_bpb": aud.get("test_iid_bpb"), "n_keep": res.meta["analysis"]["n_keep"] - 1,
-            "kept": [n_.change for n_ in res.ledger.nodes() if n_.status == "keep"][1:],
-            "vocab_keeps": sum(1 for n_ in res.ledger.nodes() if n_.status == "keep" and "VOCAB" in n_.change),
-            "vocab_tried": sum(1 for n_ in res.ledger.nodes() if n_.kind == "candidate" and "VOCAB" in (n_.change or "")),
+            "final_test_iid_bpb": res.meta["audit"][-1].get("test_iid_bpb"),
+            "n_keep": res.meta["analysis"]["n_keep"] - 1,
+            "kept": [nd.change for nd in nodes if nd.status == "keep"][1:],
+            "vocab_keeps": sum(1 for nd in nodes if nd.status == "keep" and "VOCAB" in nd.change),
+            "vocab_tried": sum(1 for nd in nodes if nd.kind == "candidate" and "VOCAB" in (nd.change or "")),
             "usage": usage_of(llms)}
 
 
-def loop_part(seeds, n, llm_spec, workers) -> dict:
-    corpus().fit(max(VOCABS))                             # learn the merges once before forking workers
+def loop_part(seeds, n: int, llm_spec: str, workers: int) -> dict:
+    corpus().fit(max(VOCABS))  # learn the merges once before forking workers
     for v in VOCABS:
         for s in ("train", "val", "test_iid"):
             corpus().tokens(s, v)
-    runs = pool_map(night, [(m, s, n, llm_spec) for m in ("val_bpb", "val_nats_per_token") for s in seeds],
-                    1 if is_live(llm_spec) else workers)
+    runs = pool_map(night, [(m, s, n, llm_spec) for m in METRICS for s in seeds], 1 if is_live(llm_spec) else workers)
     out = {}
-    for m in ("val_bpb", "val_nats_per_token"):
+    for m in METRICS:
         rs = [r for r in runs if r["metric"] == m]
         out[m] = {"final_val_bpb": ci([r["final_val_bpb"] for r in rs]),
                   "final_test_iid_bpb": ci([r["final_test_iid_bpb"] for r in rs]),
@@ -318,9 +278,8 @@ def loop_part(seeds, n, llm_spec, workers) -> dict:
     return out
 
 
-def main():
-    ap = parser(__doc__.splitlines()[0], seeds=5)
-    a = ap.parse_args()
+def main() -> None:
+    a = parser(__doc__.splitlines()[0], seeds=5).parse_args()
     live = is_live(a.llm)
     n = (4 if a.quick else 10) if live else (12 if a.quick else 30)
     seeds = list(range(min(a.seeds, 1) if (live and a.quick) else 2 if a.quick else a.seeds))
@@ -328,45 +287,39 @@ def main():
                       "loop_experiments": n, "seeds": seeds, "llm": a.llm, "keep_rule": Config().keep_rule}}
     if not live:
         out["battery"] = battery()
-    out["loop"] = loop_part(seeds, n, a.llm, a.workers)
-    L = out["loop"]
-    verdict = {"loop_final_val_bpb_judged_by_bpb_vs_per_token": [L["val_bpb"]["final_val_bpb"]["mean"],
-                                                                 L["val_nats_per_token"]["final_val_bpb"]["mean"]],
-               "loop_final_vocab_judged_by_bpb_vs_per_token": [L["val_bpb"]["final_vocab"]["mean"],
-                                                               L["val_nats_per_token"]["final_vocab"]["mean"]],
-               "loop_hidden_test_bpb_judged_by_bpb_vs_per_token": [L["val_bpb"]["final_test_iid_bpb"]["mean"],
-                                                                   L["val_nats_per_token"]["final_test_iid_bpb"]["mean"]]}
+    L = out["loop"] = loop_part(seeds, n, a.llm, a.workers)
+    both = {s: [L[m][s]["mean"] for m in METRICS] for s in ("final_val_bpb", "final_vocab", "final_test_iid_bpb")}
+    verdict = {"loop_final_val_bpb_judged_by_bpb_vs_per_token": both["final_val_bpb"],
+               "loop_final_vocab_judged_by_bpb_vs_per_token": both["final_vocab"],
+               "loop_hidden_test_bpb_judged_by_bpb_vs_per_token": both["final_test_iid_bpb"]}
     if live:
         verdict["usage"] = [r["usage"] for m in L for r in L[m]["runs"]]
     else:
         B = out["battery"]
-        verdict.update({"pairwise_disagreement_across_vocabularies": B["pairwise_disagreement_across_vocabularies"],
-                        "pairwise_disagreement_same_vocabulary": B["pairwise_disagreement_same_vocabulary"],
-                        "best_by_bpb": B["best_by_bpb"], "best_by_nats_per_token": B["best_by_nats_per_token"],
-                        "bpb_rank_equals_byte_stream_likelihood_rank": B["bpb_equals_byte_stream_likelihood_rank"],
-                        "nats_per_token_rises_with_vocab_every_order": all(
-                            all(x < y for x, y in zip(B["by_order"][o]["nats_per_token"],
-                                                      B["by_order"][o]["nats_per_token"][1:])) for o in ORDERS)})
-        bpb_loop, tok_loop = L["val_bpb"], L["val_nats_per_token"]
+        verdict.update({
+            "pairwise_disagreement_across_vocabularies": B["pairwise_disagreement_across_vocabularies"],
+            "pairwise_disagreement_same_vocabulary": B["pairwise_disagreement_same_vocabulary"],
+            "best_by_bpb": B["best_by_bpb"], "best_by_nats_per_token": B["best_by_nats_per_token"],
+            "bpb_rank_equals_byte_stream_likelihood_rank": B["bpb_equals_byte_stream_likelihood_rank"],
+            "nats_per_token_rises_with_vocab_every_order": all(
+                all(x < y for x, y in zip(B["by_order"][o]["nats_per_token"], B["by_order"][o]["nats_per_token"][1:]))
+                for o in ORDERS)})
         verdict["claim_reproduced"] = bool(
             B["pairwise_disagreement_across_vocabularies"] > 0 and B["pairwise_disagreement_same_vocabulary"] == 0
             and B["bpb_equals_byte_stream_likelihood_rank"]
-            and bpb_loop["final_val_bpb"]["mean"] < tok_loop["final_val_bpb"]["mean"])
+            and L["val_bpb"]["final_val_bpb"]["mean"] < L["val_nats_per_token"]["final_val_bpb"]["mean"])
     out["verdict"] = verdict
     name = "e3_bpb_vocab" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, name))
-    write(name, out)
-    print(json.dumps(verdict, indent=1))
+    report(name, out)
 
 
-def figure(out, name):
-    from _common import RESULTS
-
+def figure(out: dict, name: str):
     p = plt()
-    fig, axes = p.subplots(1, 3 if "battery" in out else 1, figsize=(16 if "battery" in out else 6, 4.3))
+    has_battery = "battery" in out
+    fig, axes = p.subplots(1, 3 if has_battery else 1, figsize=(16 if has_battery else 6, 4.3))
     axes = np.atleast_1d(axes)
-    k = 0
-    if "battery" in out:
+    if has_battery:
         B = out["battery"]
         for key, ax, lab in (("nats_per_token", axes[0], "val loss per token (nats)"),
                              ("bpb", axes[1], "val bits per byte")):
@@ -380,24 +333,18 @@ def figure(out, name):
             ax.legend(fontsize=8)
         axes[0].set_title("per-token loss rises with the vocabulary", fontsize=9)
         axes[1].set_title("bits per byte: comparable across vocabularies", fontsize=9)
-        k = 2
-    ax = axes[k]
+    ax = axes[-1]
     L = out["loop"]
-    for i, m in enumerate(("val_bpb", "val_nats_per_token")):
+    for i, (m, color) in enumerate(zip(METRICS, ("#1e8e3e", "#d93025"))):
         vals = [r["final_val_bpb"] for r in L[m]["runs"]]
-        ax.scatter([i] * len(vals), vals, color=["#1e8e3e", "#d93025"][i], zorder=3)
-        ax.bar(i, float(np.mean(vals)), color=["#1e8e3e", "#d93025"][i], alpha=0.3)
+        ax.scatter([i] * len(vals), vals, color=color, zorder=3)
+        ax.bar(i, float(np.mean(vals)), color=color, alpha=0.3)
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["loop judged by bpb", "loop judged by\nper-token loss"])
-    lo = min(r["final_val_bpb"] for m in L for r in L[m]["runs"])
-    ax.set_ylim(lo - 0.1, None)
+    ax.set_ylim(min(r["final_val_bpb"] for m in L for r in L[m]["runs"]) - 0.1, None)
     ax.set_ylabel("val bpb of the final kept version")
     ax.set_title("autoresearch night on the tokenizer task", fontsize=9)
-    fig.tight_layout()
-    path = RESULTS / f"{name}.png"
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=110)
-    return path
+    return save_fig(fig, name)
 
 
 if __name__ == "__main__":

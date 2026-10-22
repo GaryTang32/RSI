@@ -1,28 +1,4 @@
-"""Keep-or-discard rules ("gates").
-
-Every technique ends its loop with a keep rule, and most of what separates them is
-this rule:
-
-=====================  =========================================================
-autoresearch           :class:`StrictImprovement` (strictly better on one number)
-autoresearch-mlx port  :class:`BootstrapRigor` (P(better) >= 0.95 over seeds)
-RRSI                   :class:`RRSIGate` = noise floor + cost rule + within-band
-                       rule + domain guards, then argmax (:func:`select`)
-GEPA                   :class:`StrictImprovement` on a minibatch
-SoL-Pi                 :class:`DualGate` (capability within tolerance AND some
-                       efficiency metric improves)
-EvoMap (naive)         self-reported validation - see ``rsi.evomap``
-=====================  =========================================================
-
-Gates are composable (:class:`AllOf`) and are pure functions of the scores, so
-they can be re-adjudicated later with different parameters (RRSI's
-``readjudicate``).
-
-All threshold comparisons treat differences smaller than :data:`TIE_EPS` as
-ties. Scores are float means, and two candidates with the same per-task scores
-can differ in the last bit depending on summation order; without the tolerance a
-mathematically tied candidate would pass a "strictly better" rule at random.
-"""
+"""Keep-or-discard rules ("gates"): composable, pure functions of the scores, so runs can be re-adjudicated."""
 from __future__ import annotations
 
 import math
@@ -32,7 +8,7 @@ from typing import Callable, Optional, Sequence
 from .evaluate import EvalResult
 from .stats import prob_better_bootstrap
 
-#: Differences below this are float noise, not gains or losses.
+#: Differences below this are float noise: equal per-task scores can differ in the last bit by summation order.
 TIE_EPS = 1e-9
 
 
@@ -42,23 +18,23 @@ class Scored:
 
     score: float
     cost: float = 0.0                           # e.g. mean tokens per trial
-    samples: Optional[list[float]] = None       # per-seed / per-run scores (for bootstrap rules)
+    samples: Optional[list[float]] = None       # per-seed scores (for bootstrap rules)
     per_task: Optional[dict[str, float]] = None
-    metrics: dict[str, float] = field(default_factory=dict)  # extra metrics (valid_rate, tokens, steps ...)
+    metrics: dict[str, float] = field(default_factory=dict)
     novelty: int = 0                            # RRSI nu: new structural components touched
 
     @classmethod
-    def from_eval(cls, ev: EvalResult, **extra) -> "Scored":
+    def from_eval(cls, ev: EvalResult, **extra) -> Scored:
         m = ev.trial_matrix()
         samples = list(m.mean(axis=0)) if m.size else [ev.score]
-        metrics = {"score": ev.score, "cost": ev.cost, "steps": ev.steps, "error_rate": ev.error_rate}
-        metrics.update(extra.pop("metrics", {}))
+        metrics = {"score": ev.score, "cost": ev.cost, "steps": ev.steps, "error_rate": ev.error_rate,
+                   **extra.pop("metrics", {})}
         return cls(score=ev.score, cost=ev.cost, samples=samples, per_task=ev.task_scores(), metrics=metrics, **extra)
 
 
 @dataclass
 class GateContext:
-    best_score: Optional[float] = None       # S*: best incumbent score so far (running max)
+    best_score: Optional[float] = None       # S*: best incumbent score so far
     delta: float = 0.0                       # noise band
     round: int = 0
     info: dict = field(default_factory=dict)
@@ -71,7 +47,7 @@ class Verdict:
     details: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.accept = bool(self.accept)   # numpy scores give numpy.bool_, which __bool__ may not return
+        self.accept = bool(self.accept)   # numpy comparisons give numpy.bool_, which __bool__ may not return
 
     def __bool__(self) -> bool:
         return self.accept
@@ -83,7 +59,7 @@ class Gate:
     def check(self, cand: Scored, inc: Scored, ctx: GateContext) -> Verdict:  # pragma: no cover
         raise NotImplementedError
 
-    def __and__(self, other: "Gate") -> "AllOf":
+    def __and__(self, other: Gate) -> AllOf:
         return AllOf([self, other])
 
 
@@ -91,9 +67,7 @@ class AllOf(Gate):
     name = "all_of"
 
     def __init__(self, gates: Sequence[Gate]) -> None:
-        self.gates = []
-        for g in gates:
-            self.gates.extend(g.gates if isinstance(g, AllOf) else [g])
+        self.gates = [x for g in gates for x in (g.gates if isinstance(g, AllOf) else [g])]
 
     def check(self, cand, inc, ctx):
         details = {}
@@ -129,7 +103,7 @@ class ImprovementOrEqual(Gate):
 
 
 class MinGain(Gate):
-    """Keep iff the gain exceeds the noise band ("ignore wins smaller than the noise")."""
+    """Keep iff the gain exceeds the noise band."""
 
     name = "min_gain"
 
@@ -140,8 +114,7 @@ class MinGain(Gate):
 
 
 class NoiseFloor(Gate):
-    """RRSI floor: S' >= S* - delta, with S* the best incumbent score so far.
-    Blocks a slow slide made of many small, individually-within-noise losses."""
+    """RRSI floor S' >= S* - delta (S* = best so far): blocks a slow slide of small within-noise losses."""
 
     name = "noise_floor"
 
@@ -153,14 +126,7 @@ class NoiseFloor(Gate):
 
 
 class CostRule(Gate):
-    """RRSI cost rule on relative cost dC = (C' - C) / C.
-
-    * gain above noise (dS > delta):  dC <= beta0 + beta1 * dS
-    * gain within the band (dS <= delta): shaped rule w_s*dS - w_c*dC + w_n*nu > 0
-      (a within-noise candidate must pay its way by being cheaper or by
-      exploring a new structural component).
-    Defaults follow ``rrsi/config.py``.
-    """
+    """RRSI cost rule, dC = (C' - C) / C: above noise dC <= beta0 + beta1*dS, within it w_s*dS - w_c*dC + w_n*nu > 0."""
 
     name = "cost_rule"
 
@@ -186,8 +152,7 @@ class CostRule(Gate):
 
 
 class MetricGuard(Gate):
-    """Non-compensatory guard: metric must not drop (or rise) by more than ``tol``
-    relative to the incumbent (RRSI Domain.guards, e.g. valid-rate)."""
+    """Non-compensatory guard: ``metric`` may not get worse than the incumbent's by more than ``tol``."""
 
     def __init__(self, metric: str, tol: float, higher_is_better: bool = True) -> None:
         self.metric, self.tol, self.hib = metric, tol, higher_is_better
@@ -209,19 +174,13 @@ class RRSIGate(AllOf):
 
     def __init__(self, cost_rule: Optional[CostRule] = None, guards: Sequence[Gate] = (), floor: bool = True,
                  cost: bool = True) -> None:
-        gates: list[Gate] = []
-        if floor:
-            gates.append(NoiseFloor())
-        if cost:
-            gates.append(cost_rule or CostRule())
-        else:
-            gates.append(MinGainOrEqualWithinBand())
-        gates.extend(guards)
-        super().__init__(gates)
+        gates: list[Gate] = [NoiseFloor()] if floor else []
+        gates.append((cost_rule or CostRule()) if cost else MinGainOrEqualWithinBand())
+        super().__init__([*gates, *guards])
 
 
 class MinGainOrEqualWithinBand(Gate):
-    """Used when the cost rule is ablated: any candidate is admissible on cost."""
+    """Stands in for an ablated cost rule: every candidate passes."""
 
     name = "no_cost_rule"
 
@@ -230,8 +189,7 @@ class MinGainOrEqualWithinBand(Gate):
 
 
 class BootstrapRigor(Gate):
-    """Keep iff P_boot(candidate beats best) >= p over per-seed samples
-    (autoresearch-mlx ``rigor.py``: 3 seeds, 20000 resamples, p = 0.95)."""
+    """Keep iff P_boot(candidate beats best) >= p over per-seed samples (autoresearch-mlx ``rigor.py``)."""
 
     name = "bootstrap_rigor"
 
@@ -247,12 +205,7 @@ class BootstrapRigor(Gate):
 
 
 class DualGate(Gate):
-    """SoL-Pi acceptance: every capability metric within tolerance of the base AND
-    at least one efficiency metric strictly improves.
-
-    ``capability``: {metric: tolerance} (higher is better; within tol means
-    ``cand >= base - tol``). ``efficiency``: {metric: min relative improvement}
-    (lower is better, e.g. tokens, dollars, steps)."""
+    """SoL-Pi: every ``capability`` metric within its tol AND some ``efficiency`` metric saves more than its minimum."""
 
     name = "dual_gate"
 
@@ -263,11 +216,12 @@ class DualGate(Gate):
     def check(self, cand, inc, ctx):
         det = {}
         for m, tol in self.capability.items():
-            c, b = cand.metrics.get(m, cand.score if m == "score" else None), inc.metrics.get(m, inc.score if m == "score" else None)
+            c = cand.metrics.get(m, cand.score if m == "score" else None)
+            b = inc.metrics.get(m, inc.score if m == "score" else None)
             if c is None or b is None:
                 return Verdict(False, f"capability metric {m} missing")
             det[m] = c - b
-            if not c >= b - tol - TIE_EPS:   # written so that a NaN capability fails too
+            if not c >= b - tol - TIE_EPS:   # a NaN capability fails too
                 return Verdict(False, f"capability {m} dropped {c - b:+.4f} beyond tol {tol}", det)
         improved = []
         for m, min_rel in self.efficiency.items():
@@ -289,26 +243,17 @@ def _is_nan(x) -> bool:
         return False
 
 
-def select(
-    candidates: Sequence[tuple[object, Scored]],
-    incumbent: Scored,
-    gate: Gate,
-    ctx: GateContext,
-    key: Callable[[Scored], float] = lambda s: s.score,
-) -> tuple[Optional[object], list[tuple[object, Verdict]]]:
-    """Return (winner or None, verdicts). Winner = argmax ``key`` over admissible
-    candidates (RRSI: H_{t+1} = argmax S over admissible, else keep H_t); ties go
-    to the earliest candidate. A candidate whose ``key`` is NaN is never admissible
-    (its verdict is replaced), since ``max`` would otherwise return it whenever it
-    comes first."""
+def select(candidates: Sequence[tuple[object, Scored]], incumbent: Scored, gate: Gate, ctx: GateContext,
+           key: Callable[[Scored], float] = lambda s: s.score,
+           ) -> tuple[Optional[object], list[tuple[object, Verdict]]]:
+    """``(winner or None, verdicts)``: argmax ``key`` over admissible candidates, ties to the earliest, NaN never."""
     verdicts = []
     for c, s in candidates:
         v = gate.check(s, incumbent, ctx)
-        if v.accept and _is_nan(key(s)):
+        if v.accept and _is_nan(key(s)):   # max() would return a NaN that comes first
             v = Verdict(False, f"invalid: selection key is NaN ({v.reason})", v.details)
         verdicts.append((c, v))
     admissible = [(c, s) for (c, s), (_, v) in zip(candidates, verdicts) if v.accept]
     if not admissible:
         return None, verdicts
-    winner = max(admissible, key=lambda cs: key(cs[1]))[0]
-    return winner, verdicts
+    return max(admissible, key=lambda cs: key(cs[1]))[0], verdicts

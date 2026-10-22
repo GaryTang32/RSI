@@ -28,5 +28,5 @@ Each method folder has a README hub, a paper spec, implementation notes and a cl
 ## Reports
 
 - [reports/claims-summary.md](reports/claims-summary.md): all 475 paper claims across the seven methods, with verdicts after the fix round.
-- [../validation/README.md](../validation/README.md): step-by-step validation of fresh runs from the seed.
+- [../validation/README.md](https://github.com/GaryTang32/RSI/blob/data/validation/README.md): step-by-step validation of fresh runs from the seed.
 - [reports/report.html](reports/report.html): the illustrated report (validation, claims, cost per method).

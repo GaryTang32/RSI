@@ -1,26 +1,10 @@
-"""Gene / Capsule / EvolutionEvent / Mutation / ValidationReport (spec §5, §9.1).
-
-The dataclasses mirror the GEP 1.14.0 objects plus the extra fields the engine
-really writes (``avoid``, ``provenance`` (= engine ``_source``), ``parent``,
-object-valued ``epigenetic_marks``, string ``diff`` / ``content``). Unknown keys
-read from JSON are kept in ``extra`` so a round trip preserves the asset id.
-
-* ``to_dict()`` - the engine form (``None`` values and empty optional
-  collections are *omitted*, never serialized as ``null``, because ``null``
-  changes the hash);
-* ``stamp()``   - set ``asset_id`` from the canonical form;
-* ``verify()``  - recompute and compare (tamper check);
-* ``to_gep()``  - only the fields the strict schema allows (for export to other
-  GEP-compatible runtimes).
-
-A :class:`Clock` makes ids and timestamps deterministic in simulations
-(``evt_<node>_<n>`` rather than wall-clock milliseconds).
-"""
+"""GEP 1.14.0 asset dataclasses plus the extra fields the engine writes; unknown keys round-trip via ``extra``."""
 from __future__ import annotations
 
 import copy
 import dataclasses
 import datetime as _dt
+import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -32,8 +16,7 @@ DEFAULT_FORBIDDEN = [".git", "node_modules"]
 
 
 class Clock:
-    """Logical clock: ``now()`` in seconds since an epoch, advanced explicitly
-    (``tick``) in simulations or following wall time (``real=True``)."""
+    """Logical clock advanced by ``tick`` (deterministic simulations) or wall time (``real=True``)."""
 
     def __init__(self, start_s: float = 1_780_000_000.0, step_s: float = 3600.0, real: bool = False) -> None:
         self.t = float(start_s)
@@ -41,10 +24,7 @@ class Clock:
         self.real = real
 
     def now(self) -> float:
-        if self.real:
-            import time
-            return time.time()
-        return self.t
+        return time.time() if self.real else self.t
 
     def tick(self, n: float = 1.0) -> float:
         self.t += n * self.step_s
@@ -64,21 +44,17 @@ def _clean(v: Any) -> Any:
 
 
 class _Asset:
-    """Shared plumbing for the asset dataclasses."""
-
     TYPE = "Asset"
-    #: optional collection fields omitted from the dict when empty
-    _OMIT_EMPTY: tuple[str, ...] = ()
+    _OMIT_EMPTY: tuple[str, ...] = ()  # optional collections dropped when empty
 
     def to_dict(self) -> dict:
+        """Engine form: ``None`` and empty optional fields are omitted, since ``null`` changes the hash."""
         out: dict[str, Any] = {"type": self.TYPE}
         for f in dataclasses.fields(self):  # type: ignore[arg-type]
             if f.name == "extra":
                 continue
             v = getattr(self, f.name)
-            if v is None:
-                continue
-            if f.name in self._OMIT_EMPTY and v in ([], {}, ""):
+            if v is None or (f.name in self._OMIT_EMPTY and v in ([], {}, "")):
                 continue
             out[f.name] = _clean(copy.deepcopy(v))
         for k, v in (getattr(self, "extra", None) or {}).items():
@@ -106,10 +82,9 @@ class _Asset:
         return verify_asset_id(self.to_dict())
 
     def to_gep(self) -> dict:
-        """Strict-schema projection (drops engine-only fields; re-stamps asset_id)."""
+        """Strict-schema projection for other GEP runtimes (engine-only fields dropped, re-stamped)."""
         kind = self.TYPE
-        schema = load_schema(kind)
-        allowed = set(schema["properties"])
+        allowed = set(load_schema(kind)["properties"])
         d = {k: v for k, v in self.to_dict().items() if k in allowed}
         if kind == "Gene" and "epigenetic_marks" in d:
             d["epigenetic_marks"] = [f"{m.get('context')}:{m.get('boost')}" if isinstance(m, dict) else str(m)
@@ -128,8 +103,7 @@ class _Asset:
 
 @dataclass
 class Gene(_Asset):
-    """A compact strategy card: trigger signals, a few steps, AVOID warnings,
-    constraints and validation commands (paper form g = (m, u, pi, alpha, c, v, eta))."""
+    """Compact strategy card: trigger signals, steps, AVOID warnings, constraints and validation commands."""
 
     id: str
     category: str = "repair"
@@ -163,17 +137,17 @@ class Gene(_Asset):
         return list((self.constraints or {}).get("forbidden_paths") or [])
 
     def text(self) -> str:
-        """All human-readable content (for token counts, lints and world parsers)."""
+        """All human-readable content (token counts, lints, world parsers)."""
         return "\n".join([self.summary, *self.signals_match, *self.strategy, *self.avoid, *self.preconditions])
 
     def content_key(self) -> tuple:
-        """Identity of the *content* (not metadata): used for dedup and lineage."""
+        """Identity of the content, not the metadata (dedup and lineage)."""
         return (tuple(sorted(s.lower() for s in self.signals_match)), tuple(self.strategy), tuple(self.avoid))
 
 
 @dataclass
 class Capsule(_Asset):
-    """Record of one successful application of a gene (worked case trace)."""
+    """Record of one successful application of a gene."""
 
     id: str
     gene: str
@@ -205,7 +179,7 @@ class Capsule(_Asset):
 
 @dataclass
 class EvolutionEvent(_Asset):
-    """Append-only audit record of one cycle (success or failure)."""
+    """Append-only audit record of one cycle."""
 
     id: str
     intent: str = "repair"
@@ -231,7 +205,7 @@ class EvolutionEvent(_Asset):
 
 @dataclass
 class Mutation(_Asset):
-    """Transient description of the intended change (not persisted as an asset)."""
+    """Transient description of the intended change (not persisted)."""
 
     id: str
     category: str = "repair"
@@ -249,8 +223,7 @@ class Mutation(_Asset):
 
 @dataclass
 class ValidationReport(_Asset):
-    """Result of running a gene's validation specs; ``signer`` says who ran them
-    (``local`` = the publisher, i.e. self-reported; ``hub`` = hub-run)."""
+    """Result of a gene's validation commands; ``signer`` is ``local`` (self-reported) or ``hub``."""
 
     id: str
     gene_id: str = ""
@@ -307,7 +280,7 @@ ASSET_CLASSES = {"Gene": Gene, "Capsule": Capsule, "EvolutionEvent": EvolutionEv
 
 
 def from_dict(d: dict):
-    """Build the right asset class from a dict with a ``type`` key."""
+    """Build the asset class named by ``d["type"]``."""
     cls = ASSET_CLASSES.get(d.get("type", ""))
     if cls is None:
         raise ValueError(f"unknown asset type {d.get('type')!r}")

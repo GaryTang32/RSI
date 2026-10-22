@@ -1,34 +1,21 @@
-"""Retry round 2 - independent replication of E1's matched-ratio comparison (L2) and the
-paper's own rollout-ratio metric (Q7), original E1 regime.
+"""Retry round 2: E1's GEPA@6000 vs RL@24000 comparison (L2) and the paper's rollout ratio (Q7) on fresh seeds.
 
-Same setup as ``e1_sample_efficiency.py`` (RuleWorld default world, rich feedback, GEPA at
-B = 6000, ScalarRL at B = 24000 with lr in {0.5, 2, 8}, the RL arm = the lr with the best
-mean *validation* score), on 40 NEW seeds (20-59; E1 used 0-19). Per GEPA run it also
-records ``best_discovery_rollouts``: the rollouts spent when the returned candidate was
-found (its full D_pareto evaluation included). The paper's "reaches optimal test performance
-with 4-35x fewer rollouts" is GRPO's 24000 divided by that number (e.g. IFBench:
-24000 / 678 = 35.4). Thresholds: ``docs/methods/gepa/claims-audit.md``, retry round 2.
-
-    python experiments/gepa/r2_e1_replication.py [--seeds 40] [--workers 2]
+Run: python experiments/gepa/r2_e1_replication.py [--seeds 40] [--workers 2]   (env R2_SEED0: first seed, default 20)
 """
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
+import os
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np
 
-from _common import RESULTS, paired, parse_args, pool_map, reflection_llm, save, summarize  # noqa: E402
-
-import numpy as np  # noqa: E402
-
-from rsi.domains.ruleworld import make_domain  # noqa: E402
-from rsi.gepa import Config, RLConfig, run, run_scalar_rl  # noqa: E402
+from _common import RESULTS, paired, parse_args, pool_map, reflection_llm, save, summarize
+from rsi.domains.ruleworld import make_domain
+from rsi.gepa import Config, RLConfig, run, run_scalar_rl
 
 LRS = [0.5, 2.0, 8.0]
 B_GEPA, B_RL = 6000, 24000
-SEED0 = int(__import__("os").environ.get("R2_SEED0", 20))
+SEED0 = int(os.environ.get("R2_SEED0", 20))
 
 
 def job(spec):
@@ -61,11 +48,10 @@ def main():
     sd = float(d.std(ddof=1))
     mde = (1.959964 + 0.841621) * sd / np.sqrt(len(d))
     oracle_hit = lambda r: r["final_test"] >= r["oracle"] - 1e-9
-    # secondary: pooled with E1's 20 seeds (0-19), same arms and settings
+    # secondary: pooled with E1's seeds 0-19 (same arms and settings)
     e1 = json.loads((RESULTS / "e1_sample_efficiency.json").read_text())
-    old_rl = e1["selected_rl_arm"]
     og = {r["seed"]: r["final_test"] for r in e1["raw"] if r["arm"] == "gepa"}
-    orl = {r["seed"]: r["final_test"] for r in e1["raw"] if r["arm"] == old_rl}
+    orl = {r["seed"]: r["final_test"] for r in e1["raw"] if r["arm"] == e1["selected_rl_arm"]}
     pool_g = [og[s] for s in sorted(og)] + [g[s]["final_test"] for s in seeds]
     pool_r = [orl[s] for s in sorted(og)] + [rl[s]["final_test"] for s in seeds]
     ratio = [B_RL / max(g[s]["best_discovery_rollouts"], 1) for s in seeds]

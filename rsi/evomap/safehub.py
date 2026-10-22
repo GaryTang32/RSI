@@ -1,36 +1,6 @@
-"""SafeHub: verifiable execution, adoption-based ranking, adoption-only credits (spec §9.2).
+"""SafeHub: static gate, verified execution on a hidden task bank, adoption-based ranking and credits (spec §9.2).
 
-Asset states::
-
-    submitted -> gate -> quarantined -> verified -> promoted
-                                     \\-> rejected
-    promoted -> deprecated (no verified adoption for a while) | revoked (failed spot-check / author)
-
-1. **Static gate** (§9.2.2): schema + asset_id; bundle rule and forgery guard
-   (non-empty execution trace with integer exit codes, a diff); command policy;
-   **vacuity lint**; leakage screen against the hub's own task bank; prompt-
-   injection / escalation lint; size ceiling (<= 500 tokens); near-duplicate
-   merge into an existing lineage. Self-reported ``confidence``,
-   ``success_streak``, ``outcome.score`` are ignored; ``blast_radius`` is
-   recomputed from the proof material.
-2. **Verified execution** (§9.2.3), run by the hub: (a) discriminative
-   validation ``V(W1)=pass and V(W0)=fail`` (+ mutation kill rate); (b)
-   task-level uplift on a hidden :class:`TaskBank`: a frozen reference executor
-   with and without the gene on n in-scope and n' off-scope tasks, paired seeds,
-   k repeats. Accept iff ``U_LCB >= delta`` (:class:`UpliftLCB`, a
-   :class:`rsi.core.Gate`) and ``R >= -delta`` (:class:`rsi.core.NoiseFloor`),
-   delta from :func:`rsi.core.noise_from_trials` on the baseline runs. Output:
-   a hub-signed ValidationReport.
-3. **Ranking** (§9.2.4): rank(a) = q_a * (1 - exp(-n_a/nu)) * (0.5 + 0.5 u_a) *
-   0.5^(age/h), q_a = 5% quantile of Beta(1+s, 1+f) over counted adoption
-   reports; exploration slots (share eps) filled by Thompson sampling among
-   verified-but-unadopted assets.
-4. **Credits** (§9.2.5): publish stake (refunded at verified, slashed at
-   rejected), zero for promotion, credits only per verified adoption by a
-   distinct consumer (first success per consumer, per-epoch cap); adoption
-   reports count only from non-author, non-cluster consumers with reputation,
-   <= 1 per (consumer, asset, epoch); a fraction rho is re-run by the hub and a
-   disagreeing reporter is slashed.
+States: submitted -> gate -> quarantined -> verified -> promoted (or rejected); promoted -> deprecated | revoked.
 """
 from __future__ import annotations
 
@@ -58,13 +28,16 @@ from .validation import CommandPolicy, InProcessExecutor, ValidationRunner, Vacu
 INJECTION_PATTERNS = [
     r"ignore (all )?(previous|prior|above) (instructions|rules)", r"disregard (the )?(system|previous)",
     r"(disable|skip|bypass|delete|remove) (the )?(tests?|validation|checks?|safety|guard)",
-    r"exfiltrat", r"rm -rf", r"curl .*\|\s*(sh|bash)", r"(print|reveal|send) (the )?(api[_ ]?key|secret|token|password)",
+    r"exfiltrat", r"rm -rf", r"curl .*\|\s*(sh|bash)",
+    r"(print|reveal|send) (the )?(api[_ ]?key|secret|token|password)",
     r"allow_only", r"you are now", r"system prompt",
 ]
+# agent-internal task-level checks: a gene validated only by these is verified by the bank uplift test alone
+TASK_CHECKS = ("rsi-taskcheck",)
 
 
 def injection_lint(g: Gene) -> list[str]:
-    """Prompt-injection / escalation findings in strategy, avoid, summary and tool policy."""
+    """Prompt-injection / escalation findings in the gene text and its tool policy."""
     text = "\n".join([g.summary, *g.strategy, *g.avoid, *g.preconditions]).lower()
     out = [p for p in INJECTION_PATTERNS if re.search(p, text)]
     tp = g.extra.get("tool_policy") if g.extra else None
@@ -73,23 +46,25 @@ def injection_lint(g: Gene) -> list[str]:
     return out
 
 
-#: agent-internal task-level checks; at the hub a gene validated only by these is a *strategy gene* whose
-#: verification is the task-bank uplift test (b), not the workspace before/after run (a)
-TASK_CHECKS = ("rsi-taskcheck",)
-
-
 def is_strategy_gene(g: Gene) -> bool:
     return bool(g.validation) and all(str(v).split()[0] in TASK_CHECKS for v in g.validation if str(v).split())
 
 
+def _counted(rec: AssetRecord, outcome: int) -> int:
+    return sum(1 for a in rec.adoptions if a.get("counted") and a["outcome"] == outcome)
+
+
+def _last_success(rec: AssetRecord) -> int:
+    return max([a["epoch"] for a in rec.adoptions if a.get("counted") and a["outcome"] == 1], default=rec.epoch)
+
+
 class UpliftLCB(Gate):
-    """Accept iff the paired lower confidence bound of (candidate - incumbent)
-    over per-task scores is at least ``ctx.delta`` (one-sided level alpha/2... see ``alpha``)."""
+    """Accept iff the paired lower confidence bound of per-task (candidate - incumbent) is >= delta and > 0."""
 
     name = "uplift_lcb"
 
     def __init__(self, alpha: float = 0.10, reps: int = 2000) -> None:
-        self.alpha = alpha           # 0.10 two-sided -> the 5% one-sided lower bound
+        self.alpha = alpha           # two-sided 0.10 -> one-sided 5% lower bound
         self.reps = reps
 
     def check(self, cand: Scored, inc: Scored, ctx: GateContext) -> Verdict:
@@ -98,8 +73,7 @@ class UpliftLCB(Gate):
             return Verdict(False, "too few paired tasks", {"n": len(ids)})
         d = paired_diff_ci([inc.per_task[i] for i in ids], [cand.per_task[i] for i in ids], alpha=self.alpha,
                            reps=self.reps, seed=ctx.round)
-        # U_LCB >= delta AND U_LCB > 0: with a bank at ceiling (every baseline trial solved) the calibrated delta is
-        # 0 and `U_LCB >= delta` alone verified a gene with U = U_LCB = 0 (live validation run, RUNS.md)
+        # LCB > 0 too: a bank at ceiling calibrates delta = 0, which alone would accept U = 0
         ok = d["lo"] >= ctx.delta and d["lo"] > 0
         why = (f"{'>=' if d['lo'] >= ctx.delta else '<'} delta={ctx.delta:.3f}"
                + ("" if d["lo"] > 0 or d["lo"] < ctx.delta else " but LCB <= 0 (no established uplift)"))
@@ -109,8 +83,7 @@ class UpliftLCB(Gate):
 
 @dataclass
 class TaskBank:
-    """Hub-owned tasks with hidden graders (a sealed split agents never see) and a
-    frozen reference executor (harness + model)."""
+    """Hub-owned sealed tasks and a frozen reference executor (harness + model) for uplift tests."""
 
     domain: Domain
     harness: Artifact
@@ -122,7 +95,7 @@ class TaskBank:
     n_off: int = 12
     k: int = 2
     z: float = 2.0
-    delta: Optional[float] = None          # fixed delta; None = calibrated from the baseline trials
+    delta: Optional[float] = None          # None = calibrated from the baseline trials
     delta_scale: float = 1.0
     workers: int = 1
 
@@ -130,7 +103,7 @@ class TaskBank:
         self.ev = Evaluator(self.domain, self.llm, workers=self.workers, allow_sealed=True)
         self.tasks = self.domain.tasks.split(self.split, allow_sealed=True)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
-        self.last: dict = {}           # the last measure()'s EvalResults (for run traces only; never read back)
+        self.last: dict = {}           # the last measure()'s EvalResults, for traces only
 
     def scope(self, g: Gene) -> tuple[list, list]:
         ins = [t for t in self.tasks if pattern_hits(g.signals_match, self._sig[t.id]) > 0]
@@ -138,9 +111,9 @@ class TaskBank:
         return ins, off
 
     def measure(self, g: Gene, rng: random.Random, *, n: Optional[int] = None) -> dict:
+        """Accept iff U_LCB >= delta on in-scope tasks and off-scope regression R >= -delta (noise floor)."""
         ins, off = self.scope(g)
-        n = n or self.n
-        ins = rng.sample(ins, min(n, len(ins)))
+        ins = rng.sample(ins, min(n or self.n, len(ins)))
         off = rng.sample(off, min(self.n_off, len(off)))
         out = {"n": len(ins), "n_off": len(off), "k": self.k, "seeds": list(range(self.k)),
                "task_ids_hash": sha256_text("|".join(sorted(t.id for t in ins + off)))[:16]}
@@ -155,24 +128,27 @@ class TaskBank:
         else:
             delta = noise_from_trials(base_in.trial_matrix(), z=self.z).delta if self.k >= 2 else 0.05
         delta *= self.delta_scale
-        cand, inc = Scored.from_eval(gene_in), Scored.from_eval(base_in)
-        v = UpliftLCB().check(cand, inc, GateContext(delta=delta, round=rng.randrange(10 ** 6)))
+        v = UpliftLCB().check(Scored.from_eval(gene_in), Scored.from_eval(base_in),
+                              GateContext(delta=delta, round=rng.randrange(10 ** 6)))
         R, floor_ok = 0.0, True
         if off:
             base_off = self.ev.evaluate(self.harness, off, self.k, label="bank")
             gene_off = self.ev.evaluate(art, off, self.k, label="bank")
             self.last.update(base_off=base_off, gene_off=gene_off)
             R = gene_off.score - base_off.score
-            fv = NoiseFloor().check(Scored(gene_off.score), Scored(base_off.score),
-                                    GateContext(best_score=base_off.score, delta=delta))
-            floor_ok = fv.accept
+            floor_ok = NoiseFloor().check(Scored(gene_off.score), Scored(base_off.score),
+                                          GateContext(best_score=base_off.score, delta=delta)).accept
         return {**out, "U": v.details.get("U", 0.0), "U_LCB": v.details.get("U_LCB", -1.0), "R": R,
                 "delta": delta, "uplift_ok": v.accept, "floor_ok": floor_ok, "accept": v.accept and floor_ok,
                 "verdict": v.reason, "base_in": base_in.score, "gene_in": gene_in.score}
 
 
 class SafeHub(_HubBase):
+    """Self-reported metadata is ignored: the hub verifies, ranks by counted adoptions (Beta LCB, Thompson-sampled
+    exploration slots) and pays only per verified adoption by a distinct, reputable, non-cluster consumer."""
+
     name = "safe"
+    admitted = ("verified", "promoted")
 
     def __init__(self, bank: TaskBank, *, eps: float = 0.2, n_min: int = 2, nu: float = 3.0, h: float = 15.0,
                  stake: float = 20.0, adoption_credit: float = 30.0, adoption_cap: int = 3, rho: float = 0.2,
@@ -198,20 +174,17 @@ class SafeHub(_HubBase):
         self.cluster: dict[str, str] = {}
         self._reports_epoch: dict = {}
         self._paid: dict = {}
-        self.n_spot_checks = 0
-        self.n_slashed = 0
+        self.n_spot_checks = self.n_slashed = 0
         self.counted_policy = CountedFilePolicy()
 
-    # ------------------------------------------------------------------ registry
     def register(self, agent: str, cluster: Optional[str] = None, reputation: float = 50.0) -> None:
         self.credits.register(agent)
         self.reputation.setdefault(agent, reputation)
         self.cluster.setdefault(agent, cluster or agent)
 
-    # ------------------------------------------------------------------ gate
     def static_gate(self, b: Bundle) -> tuple[list[str], Optional[AssetRecord]]:
-        r: list[str] = []
-        r += self._integrity(b)
+        """Reasons to reject the bundle before execution, and a near-duplicate record to merge into."""
+        r = self._integrity(b)
         for name, a in (("gene", b.gene), ("capsule", b.capsule), ("event", b.event)):
             if a is not None:
                 r += [f"{name} schema: {e}" for e in self.schema.validate(a)[:3]]
@@ -224,7 +197,8 @@ class SafeHub(_HubBase):
                 r.append("forgery guard: empty trace or missing integer exit codes")
             if not (c.get("diff") or c.get("proof_of_work")):
                 r.append("bundle rule: no diff / proof_of_work")
-        strategy_gene = is_strategy_gene(Gene.from_dict(b.gene))
+        g = Gene.from_dict(b.gene)
+        strategy_gene = is_strategy_gene(g)
         if b.pre_state is None or b.post_state is None:
             if not strategy_gene:
                 r.append("no proof material (pre/post workspace) for verified execution")
@@ -232,7 +206,6 @@ class SafeHub(_HubBase):
             br = blast_radius(b.pre_state, b.post_state, self.counted_policy)
             if br["files"] == 0 and br["lines"] == 0:
                 r.append("forgery guard: zero recomputed blast radius")
-        g = Gene.from_dict(b.gene)
         for cmd in g.validation:
             pc = self.runner.policy.check(cmd)
             if not pc.ok:
@@ -250,18 +223,17 @@ class SafeHub(_HubBase):
             r.append(f"size ceiling: {estimate_tokens(g.text())} > {self.max_tokens} tokens")
         dup = None
         if not r:
+            strategy = tokens(" ".join(g.strategy))
             for aid in self.order:
                 rec = self.records[aid]
-                if rec.status not in ("verified", "promoted", "quarantined"):
-                    continue
                 og = rec.bundle.gene
-                if jaccard(og.get("signals_match", []), g.signals_match) >= self.dup_jaccard and cosine(
-                        tokens(" ".join(og.get("strategy", []))), tokens(" ".join(g.strategy))) >= self.dup_cos:
+                if rec.status in ("verified", "promoted", "quarantined") \
+                        and jaccard(og.get("signals_match", []), g.signals_match) >= self.dup_jaccard \
+                        and cosine(tokens(" ".join(og.get("strategy", []))), strategy) >= self.dup_cos:
                     dup = rec
                     break
         return r, dup
 
-    # ------------------------------------------------------------------ publish
     def publish(self, bundle: Bundle, author: str) -> Decision:
         self.register(author)
         self.credits.credit(author, -self.stake, "stake", self.epoch)
@@ -271,8 +243,8 @@ class SafeHub(_HubBase):
             reasons.append("duplicate asset_id")
         if reasons:
             if aid not in self.records and aid != "none":
-                rec = AssetRecord(aid, copy.deepcopy(bundle), author, "rejected", self.epoch, reasons=reasons[:5])
-                self.records[aid] = rec
+                self.records[aid] = AssetRecord(aid, copy.deepcopy(bundle), author, "rejected", self.epoch,
+                                                reasons=reasons[:5])
                 self.order.append(aid)
             self._node("publish", "rejected", aid, author, stage="gate", reasons=reasons[:5])
             return Decision(False, "rejected", aid, reasons)
@@ -300,14 +272,15 @@ class SafeHub(_HubBase):
         return Decision(ok, rec.status, aid, [] if ok else [report.get("reason", "verification failed")], report)
 
     def verify(self, rec: AssetRecord) -> tuple[bool, dict]:
+        """Hub-run discriminative validation (workspace genes), then the task-bank uplift test."""
         b, g = rec.bundle, rec.gene
         rep: dict = {"type": "ValidationReport", "signer": "hub", "hub_run_id": f"hub_{len(self.ledger):07d}",
                      "executor_id": getattr(self.bank.llm, "name", "reference"), "gene_id": g.id}
         br = blast_radius(b.pre_state or {}, b.post_state or {}, self.counted_policy)
         rep["recomputed_blast"] = {"files": br["files"], "lines": br["lines"]}
+        disc = None
         if is_strategy_gene(g):
             rep["discriminative"] = {"skipped": "strategy gene: verified by task-level uplift only"}
-            disc = None
         else:
             ws_specs = [v for v in g.validation if str(v).split()[:1] and str(v).split()[0] not in TASK_CHECKS]
             disc = self.vacuity.discriminate(ws_specs, b.pre_state or {}, b.post_state or {})
@@ -320,59 +293,48 @@ class SafeHub(_HubBase):
             return False, rep
         m = self.bank.measure(g, self.rng)
         rep.update({k: m[k] for k in ("n", "n_off", "k", "seeds", "task_ids_hash", "U", "U_LCB", "R", "delta",
-                                       "uplift_ok", "floor_ok", "verdict", "base_in", "gene_in")
-                    if k in m})
+                                       "uplift_ok", "floor_ok", "verdict", "base_in", "gene_in") if k in m})
         if not m.get("accept"):
             rep["reason"] = m.get("reason") or f"uplift not established: {m.get('verdict', '')}; R={m.get('R', 0):+.3f}"
             return False, rep
         rep["reason"] = "verified"
         return True, rep
 
-    # ------------------------------------------------------------------ search / ranking
     def u_of(self, rec: AssetRecord) -> float:
         return float(min(1.0, max(0.0, (rec.hub_report or {}).get("U_LCB", 0.0))))
 
     def rank_score(self, rec: AssetRecord) -> float:
-        s = sum(1 for a in rec.adoptions if a.get("counted") and a["outcome"] == 1)
-        f = sum(1 for a in rec.adoptions if a.get("counted") and a["outcome"] == 0)
+        """q * (1 - exp(-n_a/nu)) * (0.5 + 0.5 u) * 0.5^(age/h), q = 5% quantile of Beta(1+s, 1+f) (§9.2.4)."""
+        q = beta_lcb(_counted(rec, 1), _counted(rec, 0), q=0.05)
         n_a = len(rec.adopters(counted_only=True))
-        q = beta_lcb(s, f, q=0.05)
-        last = max([a["epoch"] for a in rec.adoptions if a.get("counted") and a["outcome"] == 1],
-                   default=rec.epoch)
-        return q * (1 - math.exp(-n_a / self.nu)) * (0.5 + 0.5 * self.u_of(rec)) * 0.5 ** ((self.epoch - last) / self.h)
+        return (q * (1 - math.exp(-n_a / self.nu)) * (0.5 + 0.5 * self.u_of(rec))
+                * 0.5 ** ((self.epoch - _last_success(rec)) / self.h))
+
+    def _score(self, rec: AssetRecord) -> float:
+        return self.rank_score(rec)
 
     def search(self, signals: Sequence[str], k: int = 5, consumer: Optional[str] = None) -> list[AssetView]:
-        cands = self._matching(signals, ("verified", "promoted"))
-        cands = [(r, sim) for r, sim in cands if r.author != consumer]
+        cands = [(r, sim) for r, sim in self._matching(signals, ("verified", "promoted")) if r.author != consumer]
         adopted = [(r, sim) for r, sim in cands if r.adopters(True)]
         fresh = [(r, sim) for r, sim in cands if not r.adopters(True)]
         exploit = sorted(((self.rank_score(r), r, sim) for r, sim in adopted), key=lambda x: (-x[0], x[1].asset_id))
-        views = [AssetView(r.asset_id, copy.deepcopy(r.bundle.gene), copy.deepcopy(r.bundle.capsule), sc, r.status,
-                           r.author, sim) for sc, r, sim in exploit[:k]]
+        views = [self._view(r, sc, sim) for sc, r, sim in exploit[:k]]
         explore: list[AssetView] = []
         if fresh:
-            def ts(rs):
-                s = sum(1 for a in rs[0].adoptions if a["outcome"] == 1 and a.get("counted"))
-                f = sum(1 for a in rs[0].adoptions if a["outcome"] == 0 and a.get("counted"))
-                return self.rng.betavariate(1 + s, 1 + f)
-            order = sorted(fresh, key=lambda rs: -ts(rs)) if self.eps > 0 else sorted(
-                fresh, key=lambda rs: (-self.u_of(rs[0]), rs[0].asset_id))
-            explore = [AssetView(r.asset_id, copy.deepcopy(r.bundle.gene), copy.deepcopy(r.bundle.capsule), 0.0,
-                                 r.status, r.author, sim, exploration=True) for r, sim in order[:k]]
+            if self.eps > 0:  # Thompson sampling among verified-but-unadopted assets
+                order = sorted(fresh, key=lambda rs: -self.rng.betavariate(1 + _counted(rs[0], 1),
+                                                                           1 + _counted(rs[0], 0)))
+            else:
+                order = sorted(fresh, key=lambda rs: (-self.u_of(rs[0]), rs[0].asset_id))
+            explore = [self._view(r, 0.0, sim, exploration=True) for r, sim in order[:k]]
         if self.eps > 0 and explore and (not views or self.rng.random() < self.eps):
             out = [explore[0]] + views[: k - 1] + explore[1:]
         else:
             out = views + explore       # without exploration, fresh assets only fill empty slots
         return out[:k]
 
-    def rank(self, signal_class: Optional[str] = None) -> list[tuple[str, float]]:
-        recs = [self.records[a] for a in self.order if self.records[a].status in ("verified", "promoted")]
-        if signal_class:
-            recs = [r for r in recs if pattern_hits(r.bundle.gene.get("signals_match", []), [signal_class]) > 0]
-        return sorted(((r.asset_id, self.rank_score(r)) for r in recs), key=lambda x: -x[1])
-
-    # ------------------------------------------------------------------ adoption reports
     def report_outcome(self, asset_id: str, consumer: str, outcome: int, proof: Optional[dict] = None) -> dict:
+        """Count an adoption report only from an eligible reporter with proof; spot-check a fraction ``rho``."""
         self.register(consumer)
         rec = self.records.get(asset_id)
         if rec is None or rec.status not in ("verified", "promoted"):
@@ -390,15 +352,13 @@ class SafeHub(_HubBase):
         elif not proof or "tasks_hash" not in proof:
             row["reason"] = "no verifiable proof"
         elif int(outcome) == 0 and float(proof.get("S_base", 0.0)) >= 1.0 - 1e-9:
-            # the consumer's own A/B had no headroom (baseline already solved every trial): "no gain" is
-            # uninformative about the asset, so it is neither counted as a failure nor spot-checked / slashed.
-            # (Validation audit: an honest ceiling report was slashed because the hub measured U_LCB >= delta
-            # on ITS tasks - disagreement with the hub's uplift is not evidence of a false report.)
+            # no headroom on the consumer's tasks: "no gain" says nothing about the asset, so neither counted
+            # nor spot-checked (disagreeing with the hub's uplift is not evidence of a false report)
             row["reason"] = "uninformative: no headroom on the consumer's tasks (baseline at ceiling)"
         else:
             self._reports_epoch[(consumer, asset_id, self.epoch)] = 1
             row["counted"] = True
-            if self.rng.random() < self.rho:            # hub re-runs a random fraction of reports
+            if self.rng.random() < self.rho:
                 self.n_spot_checks += 1
                 m = self.bank.measure(rec.gene, self.rng)
                 disagree = (outcome == 1 and m["U"] <= 0) or (outcome == 0 and m["U_LCB"] >= m["delta"] > 0)
@@ -435,12 +395,5 @@ class SafeHub(_HubBase):
         super().advance_epoch()
         for aid in self.order:
             rec = self.records[aid]
-            if rec.status == "promoted":
-                last = max([a["epoch"] for a in rec.adoptions if a.get("counted") and a["outcome"] == 1],
-                           default=rec.epoch)
-                if self.epoch - last > self.deprecate_after:
-                    rec.status = "deprecated"
-
-    def metrics(self) -> dict:
-        from .metrics import ReuseMetrics
-        return ReuseMetrics().compute(self)
+            if rec.status == "promoted" and self.epoch - _last_success(rec) > self.deprecate_after:
+                rec.status = "deprecated"

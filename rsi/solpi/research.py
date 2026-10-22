@@ -1,26 +1,9 @@
-"""The SoL-Pi auto-research protocol pieces (spec B3.1 / B9.1).
-
-* :class:`Idea` / :class:`IdeaPool` - breadth: a pool of harness directions from
-  six proposal families (Context, Progress, Tools, Delegation, pRompt & policy,
-  iMprovement & evaluation), ranked by :func:`oracle_estimate` - "estimates
-  opportunity from existing trajectories before rollout budget";
-* :func:`analyze` (map) / :func:`reduce_findings` (reduce) - per-trajectory analysis
-  of repeated actions, context growth, large observations and sparse diagnostics;
-* :class:`Lineage` - depth: one disposable Karpathy-style loop per idea::
-
-      rollouts -> map-reduce analysis -> propose ONE mechanism -> implement (Ralph loop
-      until the exit check passes) -> independent review -> in-trajectory validation on
-      the training screen -> dual gate -> freeze | route back (fix / new rollouts) | abandon
-
-  A lineage only ever sees training-split results; it never holds the firewall.
-* :func:`compose` - merge surviving mechanisms into one harness (JSON-config union
-  for SoL-Pi harnesses, per-file 3-way merge for other artifacts).
-"""
+"""SoL-Pi research protocol: idea pool and oracle, map-reduce analysis, disposable lineages, composition."""
 from __future__ import annotations
 
 import difflib
 import json
-import math
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, Sequence
@@ -32,10 +15,13 @@ from ..core.domain import Trial
 from ..core.evaluate import Evaluator
 from ..core.ledger import Ledger, Node
 from ..core.llm import Usage
-from .gate import DualGate, GateResult, Metrics, metrics_from_eval
+from ..core.tasks import DECISION_SPLITS, SEALED_SPLITS
+from .gate import DualGate, GateResult, Metrics, metrics_from_eval, nondominated
 
 FAMILY_CODES = {"C": "Context", "P": "Progress", "T": "Tools", "D": "Delegation", "R": "Prompt & policy",
                 "M": "Improvement & evaluation"}
+SHARE_ORACLES = ("replayed_large_outputs", "diagnostic_log_tokens", "archivable_context", "tail_of_outputs",
+                 "prompt_tokens", "verification_tokens", "late_turn_tokens")
 
 
 @dataclass
@@ -55,29 +41,21 @@ class IdeaPool:
         self.ideas = list(ideas)
 
     def select(self, n: int, estimates: dict[str, float]) -> list[Idea]:
-        ranked = sorted(self.ideas, key=lambda i: (-estimates.get(i.id, 0.0), i.id))
-        return ranked[:n]
+        return sorted(self.ideas, key=lambda i: (-estimates.get(i.id, 0.0), i.id))[:n]
 
     def by_family(self) -> dict[str, int]:
-        out: dict[str, int] = {}
-        for i in self.ideas:
-            out[i.family] = out.get(i.family, 0) + 1
-        return out
+        return dict(Counter(i.family for i in self.ideas))
 
 
-# ------------------------------------------------------------------ oracle + map-reduce
 def oracle_estimate(idea: Idea, trials: Sequence[Trial]) -> float:
     """Share of avoidable work the idea targets, from base trajectories (``Trial.meta['oracle']``)."""
     rows = [t.meta.get("oracle") for t in trials if isinstance(t.meta.get("oracle"), dict)]
     if not rows or idea.oracle == "none":
         return 0.05
-    tot = sum(r.get("input_tokens", 0) for r in rows) or 1
     if idea.oracle == "adjacent_edit_command":
-        tr = sum(r.get("transitions", 0) for r in rows) or 1
-        return sum(r.get("adjacent_edit_command", 0) for r in rows) / tr
-    if idea.oracle in ("replayed_large_outputs", "diagnostic_log_tokens", "archivable_context", "tail_of_outputs",
-                       "prompt_tokens", "verification_tokens", "late_turn_tokens"):
-        return sum(r.get(idea.oracle, 0) for r in rows) / tot
+        return sum(r.get("adjacent_edit_command", 0) for r in rows) / (sum(r.get("transitions", 0) for r in rows) or 1)
+    if idea.oracle in SHARE_ORACLES:
+        return sum(r.get(idea.oracle, 0) for r in rows) / (sum(r.get("input_tokens", 0) for r in rows) or 1)
     return 0.05
 
 
@@ -103,7 +81,6 @@ def reduce_findings(findings: Sequence[dict]) -> dict:
     return out
 
 
-# ------------------------------------------------------------------ roles
 @dataclass
 class MechanismProposal:
     artifact: Optional[Artifact]
@@ -125,7 +102,6 @@ class Reviewer(Protocol):
 
 def heldout_only_families(domain) -> list[str]:
     """Family names that occur only in sealed splits (metadata only; no task content is read)."""
-    from ..core.tasks import DECISION_SPLITS, SEALED_SPLITS
     suite = domain.tasks
     decision = {f for s in DECISION_SPLITS if s in suite.splits for f in suite.families(s)}
     sealed = {f for s in SEALED_SPLITS if s in suite.splits for f in suite.families(s)}
@@ -133,10 +109,7 @@ def heldout_only_families(domain) -> list[str]:
 
 
 class SmokeReviewer:
-    """Behavioural-contract review without an LLM: the candidate must run a smoke task
-    without crashing and its added lines must contain no references to held-out material
-    (a denylist of generic split words plus the names of task families that occur only in
-    the domain's sealed splits, e.g. AgentWorld's held-out ``configfix`` / ``datalookup``)."""
+    """Contract review without an LLM: a clean smoke run and no held-out names in the added lines."""
 
     GENERIC_FORBIDDEN = ("holdout", "heldout", "ood/", "test.json")
 
@@ -157,11 +130,7 @@ class SmokeReviewer:
 
 def implement(proposer: MechanismProposer, idea: Idea, prop: MechanismProposal, exit_check: Callable[[Artifact],
               Optional[str]], max_iters: int = 3) -> tuple[MechanismProposal, list[str]]:
-    """Ralph loop: keep implementing until the explicit exit check passes (or give up).
-
-    The returned proposal's ``usage`` is the TOTAL of the initial proposal and every repair call (each
-    ``fix`` returns only its own usage). A proposer that reports ``meta["exhausted"]`` (no artifact and
-    nothing left to try) ends the loop at once instead of being asked to repair nothing."""
+    """Ralph loop: repair until the exit check passes; the returned ``usage`` totals every call."""
     errors = []
     total = prop.usage
     for _ in range(max_iters):
@@ -182,7 +151,6 @@ def implement(proposer: MechanismProposer, idea: Idea, prop: MechanismProposal, 
     return prop, errors
 
 
-# ------------------------------------------------------------------ lineage
 @dataclass
 class FrozenCandidate:
     name: str
@@ -203,7 +171,7 @@ class LineageResult:
 
 
 class Lineage:
-    """One disposable auto-research loop for one idea (training split only)."""
+    """One disposable loop for one idea on the training split: propose, implement, review, validate, gate."""
 
     def __init__(self, idea: Idea, *, evaluator: Evaluator, gate: DualGate, proposer: MechanismProposer,
                  reviewer: Reviewer, base: Artifact, base_metrics: Metrics, screen_split: str = "evolve",
@@ -213,54 +181,45 @@ class Lineage:
         self.idea, self.ev, self.gate, self.proposer, self.reviewer = idea, evaluator, gate, proposer, reviewer
         self.base, self.base_metrics = base, base_metrics
         self.split, self.k, self.max_iters, self.ralph_max = screen_split, k, max_iters, ralph_max
-        #: review -> implementation repairs per iteration (spec B3.1 ``repeat: implement; review until rv.pass``;
-        #: blog figure "Reviewer -> Implementation"); 0 = a rejection ends the iteration at once
-        self.review_max = review_max
+        self.review_max = review_max    # review -> re-implementation rounds per iteration (0: a rejection ends it)
         self.rollout_n = rollout_tasks_per_family
-        self.workdir = workdir
         self.ledger = ledger
         self.sweep = sweep
-        self.tracer = tracer            # write-only audit trace (rsi.solpi.tracing.SolpiTracer) or None
+        self.tracer = tracer            # write-only audit trace (SolpiTracer) or None
         fams = gate.spec.families
-        tasks = evaluator.domain.tasks.split(screen_split)
-        self.screen = [t for t in tasks if fams is None or t.family in fams]
+        self.screen = [t for t in evaluator.domain.tasks.split(screen_split) if fams is None or t.family in fams]
 
     def _rollout_tasks(self) -> list:
-        out, per = [], {}
+        out, per = [], Counter()
         for t in self.screen:
-            if per.get(t.family, 0) < self.rollout_n:
+            if per[t.family] < self.rollout_n:
                 out.append(t)
-                per[t.family] = per.get(t.family, 0) + 1
+                per[t.family] += 1
         return out
+
+    def _t(self, event: str, *args: Any, **kw: Any) -> Any:
+        return getattr(self.tracer, event)(*args, **kw) if self.tracer is not None else None
 
     def run(self) -> LineageResult:
         res = self._run()
-        if self.tracer is not None:
-            self.tracer.lineage_end(self, res)
+        self._t("lineage_end", self, res)
         return res
 
     def _run(self) -> LineageResult:
-        idea = self.idea
-        history: list[dict] = []
-        current = self.base
-        usage = Usage()
-        parent = None
-        passing: list[FrozenCandidate] = []
-        tr = self.tracer
+        idea, history, current, usage, parent, passing = self.idea, [], self.base, Usage(), None, []
+        exit_check = lambda a: self.ev.domain.smoke(a, self.ev.llm)  # noqa: E731
         for it in range(self.max_iters):
-            if tr is not None:
-                tr.lineage_iter_start(self, it, history)
+            last = it + 1 >= self.max_iters
+            self._t("lineage_iter_start", self, it, history)
             # 01 rollouts + 02 map-reduce analysis
             ro = self.ev.evaluate(current, self._rollout_tasks(), k=1, label="rollouts")
             evidence = reduce_findings([analyze(t) for trs in ro.trials.values() for t in trs])
-            if tr is not None:
-                tr.rollouts(current, ro, evidence)
+            self._t("rollouts", current, ro, evidence)
             # 03 proposal (one mechanism) + 04 implementation (Ralph loop)
-            exit_check = lambda a: self.ev.domain.smoke(a, self.ev.llm)  # noqa: E731
             prop = self.proposer.propose(idea, self.base, evidence, history)
             prop, ralph_errors = implement(self.proposer, idea, prop, exit_check, self.ralph_max)
             usage = usage + prop.usage
-            name = tr.proposal(self, it, prop, ralph_errors, self.base) if tr is not None else ""
+            name = self._t("proposal", self, it, prop, ralph_errors, self.base) or ""
             row: dict[str, Any] = {"iteration": it, "change": prop.change, "variant": prop.variant,
                                    "ralph_errors": ralph_errors}
             if prop.artifact is None or prop.error:
@@ -268,52 +227,42 @@ class Lineage:
                 history.append(row)
                 self._log(row, None, parent)
                 stop = bool(prop.meta.get("exhausted"))
-                if tr is not None:
-                    tr.decision(self, name, row, False, "lineage ends (proposer exhausted)" if stop else
-                                ("next iteration (01 new rollouts)" if it + 1 < self.max_iters else
-                                 "lineage ends (max_iters)"))
+                self._t("decision", self, name, row, False, "lineage ends (proposer exhausted)" if stop else
+                        "lineage ends (max_iters)" if last else "next iteration (01 new rollouts)")
                 if stop:
                     break
                 continue
-            # 05 independent review; a rejection routes back to 04 implementation with the reviewer's objections
-            # (spec B3.1: ``repeat: impl = implement(p) until exit; rv = reviewer(impl) until rv.pass``), at most
-            # review_max times; only then does the rejection end this lineage iteration
+            # 05 independent review; a rejection routes back to 04 with the objections, at most review_max times
             ok, why = self.reviewer.review(idea, self.base, prop.artifact)
-            if tr is not None:
-                tr.review(name, ok, why, self.reviewer)
-            n_rev = 0
-            while not ok and n_rev < self.review_max:
-                n_rev += 1
+            self._t("review", name, ok, why, self.reviewer)
+            for n_rev in range(1, self.review_max + 1):
+                if ok:
+                    break
                 fixed = self.proposer.fix(idea, prop, f"The independent reviewer rejected this implementation: {why}")
                 fixed, errs = implement(self.proposer, idea, fixed, exit_check, self.ralph_max)
                 usage = usage + fixed.usage
                 row.setdefault("review_repairs", []).append({"objection": why[:500], "ralph_errors": errs,
                                                              "error": fixed.error})
                 if fixed.artifact is None or fixed.error:
-                    if tr is not None:
-                        tr.proposal(self, it, fixed, errs, self.base, repair=n_rev)
+                    self._t("proposal", self, it, fixed, errs, self.base, repair=n_rev)
                     break
                 prop = fixed
                 row.update(change=prop.change, variant=prop.variant)
-                if tr is not None:
-                    name = tr.proposal(self, it, prop, errs, self.base, repair=n_rev)
+                name = self._t("proposal", self, it, prop, errs, self.base, repair=n_rev) or name
                 ok, why = self.reviewer.review(idea, self.base, prop.artifact)
-                if tr is not None:
-                    tr.review(name, ok, why, self.reviewer)
+                self._t("review", name, ok, why, self.reviewer)
             if not ok:
                 row.update(stage="review", outcome="rejected", error=why)
                 history.append(row)
                 self._log(row, prop.artifact, parent)
-                if tr is not None:
-                    tr.decision(self, name, row, False, "route back: next iteration" if it + 1 < self.max_iters
-                                else "lineage ends (max_iters)")
+                self._t("decision", self, name, row, False,
+                        "lineage ends (max_iters)" if last else "route back: next iteration")
                 continue
             # 06 in-trajectory validation on the training screen + dual gate
             vr = self.ev.evaluate(prop.artifact, self.screen, k=self.k, label="screen")
             m = metrics_from_eval(vr)
             g = self.gate.accept(self.base_metrics, m)
-            if tr is not None:
-                tr.validation(name, vr, m, g)
+            self._t("validation", name, vr, m, g)
             row.update(stage="validation", outcome="frozen" if g.accept else "gate_failed", gate=g.to_json(),
                        metrics=m.to_json())
             history.append(row)
@@ -321,26 +270,22 @@ class Lineage:
             parent = node.id if node else parent
             if g.accept:
                 fc = FrozenCandidate(f"{idea.id}:{prop.change}", idea, prop.artifact, m, g, evidence, it + 1)
-                if tr is not None:
-                    tr.decision(self, name, row, True, "freeze; lineage ends" if not self.sweep else
-                                "passing variant recorded; sweep continues")
+                self._t("decision", self, name, row, True, "passing variant recorded; sweep continues" if self.sweep
+                        else "freeze; lineage ends")
                 if not self.sweep:
                     return LineageResult(idea, fc, history, usage)
                 passing.append(fc)
-            elif tr is not None:
-                tr.decision(self, name, row, False, "route back to 01 with this candidate's rollouts"
-                            if it + 1 < self.max_iters else "lineage ends (max_iters)")
+            else:
+                self._t("decision", self, name, row, False, "lineage ends (max_iters)" if last else
+                        "route back to 01 with this candidate's rollouts")
             current = prop.artifact
-        if passing:
-            # "among candidates that pass the capability floor, the loop retains nondominated results"; the lineage
-            # freezes the nondominated variant with the best token efficiency eta = API cost / task score (the
-            # study's objective, "API cost per unit of task score, subject to a capability floor" [ye-blog])
-            from .gate import nondominated
-            nd = nondominated([(f, f.metrics) for f in passing], self.gate.spec.efficiency)
-            best = min(nd, key=lambda f: (f.metrics.agg.get("eta", float("inf")),
-                                          f.metrics.agg[self.gate.spec.efficiency[0]], -f.metrics.agg["score"]))
-            return LineageResult(idea, best, history, usage)
-        return LineageResult(idea, None, history, usage)
+        if not passing:
+            return LineageResult(idea, None, history, usage)
+        # freeze the nondominated passing variant with the best eta = cost / score
+        eff = self.gate.spec.efficiency
+        best = min(nondominated([(f, f.metrics) for f in passing], eff), key=lambda f: (
+            f.metrics.agg.get("eta", float("inf")), f.metrics.agg[eff[0]], -f.metrics.agg["score"]))
+        return LineageResult(idea, best, history, usage)
 
     def _log(self, row: dict, art: Optional[Artifact], parent: Optional[str], m: Optional[Metrics] = None):
         if self.ledger is None:
@@ -348,12 +293,11 @@ class Lineage:
         n = Node(id=f"sp_{self.idea.id}_{row['iteration']}", parent=parent, round=row["iteration"], kind="lineage",
                  status=row["outcome"], score=m.agg["score"] if m else None, cost=m.agg["tokens"] if m else None,
                  change=f"{self.idea.id} {row.get('change', '')}"[:300], artifact_id=art.id if art else None,
-                 metrics={k: v for k, v in (m.agg.items() if m else [])},
+                 metrics=dict(m.agg) if m else {},
                  meta={"idea": self.idea.id, "stage": row.get("stage"), "error": row.get("error")})
         return self.ledger.add(n)
 
 
-# ------------------------------------------------------------------ composition
 def _merge_json(base: dict, a: dict, b: dict) -> dict:
     out = dict(a)
     for k, v in b.items():
@@ -386,13 +330,10 @@ def merge3(base: str, a: str, b: str) -> Optional[str]:
         return max(s1, s2) < min(e1, e2)
 
     ea, eb = edits(al), edits(cl)
-    for s1, e1, _ in ea:
-        for s2, e2, _ in eb:
-            if overlap(s1, e1, s2, e2):
-                return None
-    allx = sorted(ea + eb, key=lambda x: (x[0], x[1]))
+    if any(overlap(s1, e1, s2, e2) for s1, e1, _ in ea for s2, e2, _ in eb):
+        return None
     out, pos = [], 0
-    for s, e, rep in allx:
+    for s, e, rep in sorted(ea + eb, key=lambda x: (x[0], x[1])):
         out.extend(bl[pos:s])
         out.extend(rep)
         pos = e
@@ -401,14 +342,12 @@ def merge3(base: str, a: str, b: str) -> Optional[str]:
 
 
 def compose(base: Artifact, survivors: Sequence[Artifact]) -> tuple[Artifact, list[str]]:
-    """Merge survivors' changes onto ``base``. Returns (composed, conflicts)."""
+    """Merge survivors' changes onto ``base`` (JSON union for ``.json``, else 3-way merge): (composed, conflicts)."""
     files = dict(base.files)
     conflicts = []
     for k, cand in enumerate(survivors):
         for name in base.changed_files(cand):
-            new = cand.get(name)
-            cur = files.get(name)
-            old = base.get(name)
+            new, cur, old = cand.get(name), files.get(name), base.get(name)
             if name.endswith(".json") and cur is not None and new is not None and old is not None:
                 try:
                     files[name] = json.dumps(_merge_json(json.loads(old), json.loads(cur), json.loads(new)),

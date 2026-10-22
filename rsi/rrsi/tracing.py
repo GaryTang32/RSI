@@ -1,56 +1,28 @@
-"""Per-iteration trace of an RRSI run (``out_dir/trace.jsonl``, rendered by :func:`rsi.trace.inspect`).
-
-:class:`RRSITrace` maps every step of Algorithm 1 / Algorithm 2 onto the uniform
-:mod:`rsi.trace` event kinds::
-
-    run_start    config, switches, K / K_str, splits, LLM roles, b_t schedule, gates, the
-                 proposer system prompt and constitution (the stable prompt prefix, once)
-    baseline     Evaluate(H_0, D_evolve, k): per-task means and raw trial rewards
-    noise        delta (calibration method, z, sd_null, bootstrap se, warning)
-    round_start  incumbent, S*, delta, trajectory, b_t (+ formula inputs), sigma_t (+ the stall
-                 arithmetic), T_t / U_t, reserved variants, B_t with g_t, history / scoreboard sizes
-    analysis     F_t (failure modes, capability gaps, success habits), the traces it read,
-                 and every digester / analyst LLM exchange
-    proposal     every proposer call (initial, done()-contract bounces, critic repairs): the
-                 variable part of the prompt, the reply, the declared edits, the ACTUAL diff vs H_t
-    critic       every critic verdict (stage, reasons, LLM exchange), the reserved-slot check
-    note         tagging (declared vs diff-normalized components) and the liveness smoke
-    eval         Evaluate(H', D_evolve, k): per-task means, raw trials, tokens, per-task change
-    gate         Algorithm 2 per candidate with the numbers (S', S_t, S*, delta, floor, dS, dC,
-                 nu, band branch, beta0 + beta1*dS, shaped score) and every gate's verdict
-    decision     winner (argmax S' over admissible) or none; incumbent before / after; S*
-    state        loop state after the round
-    monitor      :class:`rsi.trace.ShadowMonitor` on sealed holdout / ood for each new incumbent
-    run_end      stop reason, final incumbent, trajectory, usage and spend
-
-The trace is WRITE-ONLY: nothing here is read back by the loop, every call is wrapped so
-that a tracing error can never change a decision, and the shadow monitor runs on a copy of
-the task model with its own usage meter (its spend never enters the loop's Budget).
-Domains may expose ``audit_truth(artifact) -> dict`` (e.g. HarnessWorld's analytic expected
-scores); it is recorded next to each evaluation as report-only ground truth.
-"""
+"""Write-only per-iteration trace of an RRSI run (``trace.jsonl``) and the sealed-split shadow monitor."""
 from __future__ import annotations
 
 import copy
 import functools
 import hashlib
 import math
+from collections import Counter
 from typing import Any, Optional, Sequence
 
 from ..core.gates import GateContext
 from ..core.llm import LLM, CachedLLM, LLMResponse, MockLLM
 from ..core.tasks import TaskSuite
 from ..trace import RunTracer, ShadowMonitor
+from .components import changed_paths
 from .evaluate import Measurement, relative_cost_change
+from .schedule import budget_table
 
 
 def sha(text: str) -> str:
     return hashlib.sha256((text or "").encode()).hexdigest()[:12]
 
 
-# ------------------------------------------------------------------ isolated task model --
 class _SeparateMeter(LLM):
-    """Same backend, separate usage meter (calls ``inner._complete`` so ``inner.meter`` is untouched)."""
+    """Same backend, separate usage meter (``inner.meter`` is untouched)."""
 
     def __init__(self, inner: LLM) -> None:
         super().__init__()
@@ -62,10 +34,7 @@ class _SeparateMeter(LLM):
 
 
 def isolated_llm(llm: Optional[LLM]) -> Optional[LLM]:
-    """A view of ``llm`` whose calls are metered separately, so shadow-monitor rollouts never
-    count toward the loop's usage or Budget. Cached backends share the cache directory (the
-    monitor's sealed-split prompts cannot collide with the loop's evolve prompts), mocks get a
-    fresh call counter and call log."""
+    """A view of ``llm`` metered separately, so shadow-monitor rollouts never count toward the loop's Budget."""
     if llm is None:
         return None
     if isinstance(llm, CachedLLM):
@@ -76,10 +45,7 @@ def isolated_llm(llm: Optional[LLM]) -> Optional[LLM]:
 
 
 def sealed_view(domain, splits: Sequence[str]):
-    """A shallow copy of ``domain`` whose task suite holds ONLY the given sealed splits (a fresh
-    :class:`TaskSuite`). The shadow monitor evaluates through it, so the loop's own suite object is
-    never asked for a sealed split: loop reads and monitor reads stay separable (an audit of the
-    loop's split access sees evolve only) and the monitor cannot see evolve tasks at all."""
+    """Shallow copy of ``domain`` whose fresh suite holds only ``splits``, keeping loop and monitor reads apart."""
     ids = {s: list(domain.tasks.splits[s]) for s in splits if s in domain.tasks.splits}
     tasks = [domain.tasks.tasks[i] for s in ids for i in ids[s]]
     view = copy.copy(domain)
@@ -87,9 +53,8 @@ def sealed_view(domain, splits: Sequence[str]):
     return view
 
 
-# ------------------------------------------------------------------------ payload helpers --
 def eval_payload(ev: Measurement) -> dict:
-    """Summary + per-task means + raw per-trial rewards and tokens of a stored measurement."""
+    """Summary, per-task means and raw per-trial rewards and tokens of a measurement."""
     errors = sum(1 for trs in (ev.trials or {}).values() for tr in trs if tr.get("error"))
     summary = {"split": ev.split, "job": ev.job, "S": ev.S, "C": ev.C, "n_tasks": len(ev.per_task), "k": ev.k,
                "n_expected": ev.n_expected, "missing": ev.missing, "errors": errors,
@@ -126,8 +91,7 @@ def report_text(report: dict) -> str:
 
 
 def strip_stable_prefix(prompt: str, stable: str) -> str:
-    """The proposer prompt with the constant constitution prefix replaced by a marker (its full
-    text is in the run_start event, identified by its sha)."""
+    """The prompt with the constitution prefix replaced by a marker (its text is in run_start)."""
     s = (stable or "").strip()
     if s and prompt.startswith(s):
         return f"[STABLE PREFIX: constitution SKILL.md + PATTERNS.md, {len(s)} chars, sha {sha(s)}; see run_start]" \
@@ -137,12 +101,11 @@ def strip_stable_prefix(prompt: str, stable: str) -> str:
 
 def gate_math(cand_ev: Measurement, inc_ev: Measurement, novelty: int, S_star: float, delta: float, cfg,
               gates, t: int) -> dict:
-    """The numbers Algorithm 2 uses for one candidate, plus each gate's own verdict (recomputed
-    with the same pure gate objects; checks stop at the first failure, as ``judge`` does)."""
+    """Alg. 2's numbers for one candidate plus each gate's verdict, stopping at the first failure like ``judge``."""
     S, C, S_t, C_t = cand_ev.S, cand_ev.C, inc_ev.S, inc_ev.C
     dS = S - S_t
     dC = relative_cost_change(C, C_t)
-    eps = float(getattr(cfg, "tie_eps", 0.0) or 0.0)          # 0.0: raw float comparisons, as in the code
+    eps = float(getattr(cfg, "tie_eps", 0.0) or 0.0)
     band = dS > delta + eps
     m = {"S_prime": S, "C_prime": C, "S_t": S_t, "C_t": C_t, "S_star": S_star, "delta": delta, "tie_eps": eps,
          "floor": S_star - delta, "above_floor": S >= S_star - delta - eps, "dS": dS, "dC": dC, "nu": novelty,
@@ -163,7 +126,7 @@ def gate_math(cand_ev: Measurement, inc_ev: Measurement, novelty: int, S_star: f
 
 
 def _safe(fn):
-    """Tracing must never change the run: swallow (and try to record) any tracing error."""
+    """Swallow (and try to record) any tracing error."""
     @functools.wraps(fn)
     def wrapper(self, *a, **kw):
         if not self.enabled:
@@ -181,7 +144,7 @@ def _safe(fn):
 
 
 class RRSITrace:
-    """RRSI-specific wrapper around :class:`rsi.trace.RunTracer` (no-op when disabled)."""
+    """RRSI events on :class:`rsi.trace.RunTracer` (no-op when disabled)."""
 
     def __init__(self, out_dir, *, enabled: bool = True, max_text: int = 100_000) -> None:
         self.tracer = RunTracer(out_dir if enabled else None, "rrsi", max_text=max_text)
@@ -192,7 +155,7 @@ class RRSITrace:
         return self.tracer.enabled
 
     def attach_monitor(self, domain, llm_task: Optional[LLM], *, k: int = 1, workers: int = 4) -> None:
-        """ShadowMonitor on the sealed holdout / ood splits, with a separately metered task model."""
+        """ShadowMonitor on the sealed holdout / ood splits with a separately metered task model."""
         if not self.enabled:
             return
         splits = [s for s in ("holdout", "ood") if s in domain.tasks.splits]
@@ -216,30 +179,23 @@ class RRSITrace:
 
     @_safe
     def kept(self, t: Optional[int], name: str, artifact, decision_score: Optional[float]) -> None:
-        """A new incumbent: run the shadow monitor (write-only; errors are recorded, never raised)."""
+        """A new incumbent: run the shadow monitor."""
         self.tracer.kept(t, name, artifact, decision_score)
 
     def monitor_usage(self) -> Optional[dict]:
         return None if self.monitor_llm is None else self.monitor_llm.meter.snapshot()
 
-    # ================================================================== RRSI step events ==
-    # Each method is wrapped by _safe: a tracing error is recorded as a note and never propagates.
-
-    @staticmethod
-    def _llms(r) -> list[LLM]:
-        return r.llms()
-
     def spend(self, r) -> dict:
         tot = 0.0
         by: dict = {}
-        for l in self._llms(r):
+        for l in r.llms():
             for role, u in l.meter.by_role.items():
                 by[role] = round(by.get(role, 0.0) + u.cost_usd, 6)
                 tot += u.cost_usd
         mon = self.monitor_llm.meter.total().cost_usd if self.monitor_llm is not None else 0.0
         out = {"loop_usd": round(tot, 6), "by_role_usd": by, "shadow_monitor_usd": round(mon, 6)}
         led = getattr(r, "spend", None)
-        if led is not None:          # budget view: earlier processes of this run + this one (rsi.rrsi.spend)
+        if led is not None:
             out["budget_view"] = led.summary()
         return out
 
@@ -254,7 +210,6 @@ class RRSITrace:
 
     @_safe
     def run_start(self, r, budget=None, resumed: bool = False) -> None:
-        from .schedule import budget_table
         cfg, sw = r.cfg, r.sw
         seed = r.seed_artifact
         self.tracer.event(
@@ -305,9 +260,7 @@ class RRSITrace:
                 stall = {"rule": f"sigma_t = 0 while t < w = {cfg.w}"}
         g = r.history.yield_g(t, cfg.n_prune) if sw.prune_directives else {}
         recs = r.history.records()
-        outcomes: dict = {}
-        for x in recs:
-            outcomes[x.get("outcome")] = outcomes.get(x.get("outcome"), 0) + 1
+        outcomes = dict(Counter(x.get("outcome") for x in recs))
         untried = explore.get("untried") or []
         reserved = [chr(65 + v) for v in range(cfg.m) if sigma and untried and v >= cfg.m - cfg.m_draft]
         inc = fr["incumbent"]
@@ -375,7 +328,6 @@ class RRSITrace:
 
     @_safe
     def tagging(self, r, t: int, vid: str, edits: list, diff: str) -> None:
-        from .components import changed_paths
         rows = [{"id": e.get("id"), "declared": e.get("declared_component"), "normalized": e.get("component"),
                  "retagged": e.get("declared_component") != e.get("component")} for e in edits]
         self.tracer.event("note", t, stage="tagging", candidate=f"r{t}{vid}", files_in_diff=changed_paths(diff),
@@ -446,7 +398,7 @@ class RRSITrace:
             final_incumbent={"node": inc.get("node"), "artifact": str(inc.get("artifact_id"))[:10],
                              "S": inc.get("S"), "C": inc.get("C")},
             S_star=fr.get("S_star"), trajectory_S=[x["S"] for x in fr.get("trajectory", [])],
-            usage=merged_usage(self._llms(r)), shadow_monitor_usage=self.monitor_usage(), spend=self.spend(r),
+            usage=merged_usage(r.llms()), shadow_monitor_usage=self.monitor_usage(), spend=self.spend(r),
             n_rollouts=r.measurer.n_rollouts, wall_s=round(wall_s, 1),
             critic=None if r.critic is None else {"reviews": r.critic.n_reviews,
                                                   "precheck_rejects": r.critic.n_precheck_rejects,

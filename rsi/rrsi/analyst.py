@@ -1,23 +1,4 @@
-"""Analyze(H_t, D_evolve) -> F_t (mirrors ``rrsi/analyst.py`` + ``rrsi/digester.py``).
-
-The analyst works on the incumbent's OWN stored evaluation (no re-run): the worst
-trial of the ``n_fail_traces`` lowest-scoring tasks and the best trial of the
-``n_success_traces`` highest-scoring ones (:func:`build_traces`). It produces the
-three-lens report
-
-* ``failure_modes``    what lost points, clustered across tasks (ranked by n_tasks),
-* ``capability_gaps``  what the agent tried to do but could not,
-* ``success_habits``   what let passing tasks finish cleanly (the proposer must not break them).
-
-Two implementations share the report schema:
-
-* ``mode="llm"``: read-only *digesters* (one LLM call per trace and lens, the trace
-  rendered inline, the code's lens schemas) followed by one aggregation call with the
-  code's analyst rules (merge/split, rank, entity-free, stable names, no prescriptions);
-* ``mode="heuristic"``: a deterministic, LLM-free analyst that clusters failing traces by
-  task family and a de-numbered grader-feedback signature (used offline and as the
-  fallback when the LLM output is unusable).
-"""
+"""Analyze(H_t, D_evolve) -> F_t: three-lens report from the incumbent's own traces (LLM or heuristic)."""
 from __future__ import annotations
 
 import json
@@ -97,7 +78,6 @@ Aggregation rules:
 
 
 def _solved(rec: dict) -> bool:
-    """The trial reached the maximum reward (1.0): the task is solved, not a failure."""
     try:
         return float(rec.get("score")) >= 1.0 - 1e-9 and not rec.get("error")
     except (TypeError, ValueError):
@@ -105,8 +85,7 @@ def _solved(rec: dict) -> bool:
 
 
 def build_traces(meas: Measurement, n_fail: int, n_success: int) -> dict[str, dict]:
-    """Worst trial of the lowest-scoring tasks plus the best trial of the highest-scoring
-    ones, from the incumbent's stored evaluation."""
+    """Worst trial of the ``n_fail`` lowest-scoring tasks and best trial of the ``n_success`` highest."""
     ranked = sorted(meas.per_task.items(), key=lambda kv: kv[1].mean)
     fails = [t for t, _ in ranked[:n_fail]]
     wins = [t for t, _ in ranked[-n_success:] if t not in fails] if n_success > 0 else []
@@ -115,7 +94,7 @@ def build_traces(meas: Measurement, n_fail: int, n_success: int) -> dict[str, di
         trs = meas.trials.get(tid) or []
         if not trs:
             continue
-        pick = min(trs, key=lambda d: d.get("score", 0.0)) if tid in fails else max(trs, key=lambda d: d.get("score", 0.0))
+        pick = (min if tid in fails else max)(trs, key=lambda d: d.get("score", 0.0))
         out[tid] = dict(pick, _role="fail" if tid in fails else "win")
     return out
 
@@ -155,8 +134,15 @@ def _slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")[:48] or "unknown"
 
 
+def _count(group: dict, d: dict) -> None:
+    group["n_tasks"] += 1
+    group["affected_tasks"].append(d["task_id"])
+    if len(group["representative_evidence"]) < 3:
+        group["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+
+
 class Analyst:
-    """Builds F_t from the incumbent's traces."""
+    """Builds F_t from the incumbent's traces (``mode="llm"`` digesters + aggregator, or ``"heuristic"``)."""
 
     def __init__(self, llm: Optional[LLM] = None, *, mode: str = "heuristic", domain_brief: str = "",
                  max_digests: int = 8, workers: int = DIGEST_PARALLELISM) -> None:
@@ -165,25 +151,18 @@ class Analyst:
         self.domain_brief = domain_brief
         self.max_digests = max_digests
         self.workers = workers
-        #: LLM exchanges of the latest :meth:`analyze` call (role, task, lens, prompt, reply) - for the run trace
-        self.last_calls: list[dict] = []
+        self.last_calls: list[dict] = []        # LLM exchanges of the latest analyze(), for the run trace
 
-    # ------------------------------------------------------------------ heuristic
     def heuristic_digests(self, traces: dict[str, dict]) -> list[dict]:
+        """Unsolved fail traces become failure (or capability_gap on an execution error) digests; the rest success."""
         out = []
         for tid, rec in traces.items():
-            if rec.get("_role") == "fail" and _solved(rec):
-                # a "fail" slot filled by a task the incumbent SOLVES (|D| <= n_fail_traces, or few failures):
-                # it is evidence of a success habit, not a failure mode (the code's analyst LLM picks the lens
-                # per task from the score table; a deterministic clusterer must not call it a failure)
-                out.append({"task_id": tid, "lens": "success", "family": rec.get("family"),
-                            "habits": [{"habit": f"clean_{rec.get('family')}", "where_shown": "final"}],
-                            "risk_if_removed": "a change that disrupts this path regresses passing tasks"})
-            elif rec.get("_role") == "fail" and rec.get("error") and not str(rec.get("error")).startswith("infra:"):
+            failing = rec.get("_role") == "fail" and not _solved(rec)
+            if failing and rec.get("error") and not str(rec.get("error")).startswith("infra:"):
                 out.append({"task_id": tid, "lens": "capability_gap", "family": rec.get("family"),
                             "wanted": "complete the task", "why_couldnt": signature(str(rec.get("error"))),
                             "evidence": [{"where": "execution", "quote": str(rec.get("error"))[:160]}]})
-            elif rec.get("_role") == "fail":
+            elif failing:
                 out.append({"task_id": tid, "lens": "failure", "family": rec.get("family"),
                             "blocker": signature(str(rec.get("feedback"))),
                             "narrative": str(rec.get("feedback"))[:300],
@@ -208,20 +187,13 @@ class Analyst:
                                            "description": f"tasks of kind '{fam}' end with: {d['blocker']}",
                                            "needed_instead": "a general mechanism that fixes this outcome",
                                            "representative_evidence": []})
-                m["n_tasks"] += 1
-                m["affected_tasks"].append(d["task_id"])
                 m["loss"] += 1.0 - scores.get(d["task_id"], 0.0)
-                if len(m["representative_evidence"]) < 3:
-                    m["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+                _count(m, d)
             elif d["lens"] == "capability_gap":
                 key = _slug(d["why_couldnt"])
-                g = gaps.setdefault(key, {"gap": key, "n_tasks": 0, "affected_tasks": [],
-                                          "description": f"execution failed: {d['why_couldnt']}",
-                                          "representative_evidence": []})
-                g["n_tasks"] += 1
-                g["affected_tasks"].append(d["task_id"])
-                if len(g["representative_evidence"]) < 3:
-                    g["representative_evidence"].append({"task_id": d["task_id"], **d["evidence"][0]})
+                _count(gaps.setdefault(key, {"gap": key, "n_tasks": 0, "affected_tasks": [],
+                                             "description": f"execution failed: {d['why_couldnt']}",
+                                             "representative_evidence": []}), d)
             else:
                 key = f"clean_{_slug(str(fam))}"
                 h = habits.setdefault(key, {"habit": key, "n_tasks": 0,
@@ -235,11 +207,11 @@ class Analyst:
                 "success_habits": sorted(habits.values(), key=lambda h: -h["n_tasks"]), "n_digests": len(digests),
                 "analyst": "heuristic"}
 
-    # ------------------------------------------------------------------------ LLM
     def _digest(self, tid: str, rec: dict, lens: str, task_input, seed: int) -> dict:
         system = DIGESTER_SYSTEM.format(domain_brief=self.domain_brief, lens=lens, cap=DIGEST_MAX_CHARS,
                                         schema=SCHEMAS[lens])
-        prompt = f"Digest this trajectory ({lens} lens).\n\n{render_trace(rec, task_input)}\n\nReply with the JSON digest."
+        prompt = (f"Digest this trajectory ({lens} lens).\n\n{render_trace(rec, task_input)}\n\n"
+                  "Reply with the JSON digest.")
         resp = self.llm.complete(prompt, system=system, seed=seed, role="digester")
         self.last_calls.append({"role": "digester", "task_id": tid, "lens": lens, "system": system, "prompt": prompt,
                                 "reply": resp.text, "error": resp.error})
@@ -249,7 +221,7 @@ class Analyst:
                 d["task_id"], d["lens"] = tid, lens
                 d.setdefault("family", rec.get("family"))
                 s = json.dumps(d, default=str)
-                if len(s) > DIGEST_MAX_CHARS:     # the code bounces over-long digests; we truncate
+                if len(s) > DIGEST_MAX_CHARS:     # truncated here; the code bounces it
                     d = {"task_id": tid, "lens": lens, "family": rec.get("family"),
                          "blocker": s[: DIGEST_MAX_CHARS // 2], "truncated": True}
                 return d
@@ -267,7 +239,6 @@ class Analyst:
             return self.aggregate_heuristic(heur_digests, scores), heur_digests
         task_inputs = task_inputs or {}
         fails = [t for t, r in traces.items() if r.get("_role") == "fail" and not _solved(r)]
-        # solved tasks that filled a "fail" slot go to the success lens, after the genuine wins
         wins = [t for t, r in traces.items() if r.get("_role") != "fail"] + \
                [t for t, r in traces.items() if r.get("_role") == "fail" and _solved(r)]
         n_win = min(len(wins), max(1, self.max_digests // 4))
@@ -301,7 +272,7 @@ class Analyst:
             def _n(m):
                 try:
                     return -float(m.get("n_tasks") or 0)
-                except (TypeError, ValueError):     # an LLM wrote "n_tasks": "many"
+                except (TypeError, ValueError):
                     return 0.0
             report["failure_modes"].sort(key=_n)
             report["n_digests"] = len(digests)

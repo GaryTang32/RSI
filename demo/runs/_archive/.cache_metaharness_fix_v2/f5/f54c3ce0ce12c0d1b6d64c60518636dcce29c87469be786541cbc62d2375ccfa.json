@@ -1,1 +1,0 @@
-{"text": "```python\nimport math\n\nfactorial_34 = math.factorial(34)\ndigit_sum = sum(int(digit) for digit in str(factorial_34))\nprint(digit_sum)\n```", "usage": {"calls": 1, "input_tokens": 1220, "output_tokens": 225, "cost_usd": 0.002345, "latency_s": 7.705221891403198}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

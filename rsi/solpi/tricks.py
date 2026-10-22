@@ -1,29 +1,4 @@
-"""Negative controls for the SoL-Pi protocol: environment-specific tricks and do-less shortcuts.
-
-SoL-Pi's thesis is that an efficiency objective under a capability floor, judged
-across varied environments with an isolated held-out set, finds reusable
-mechanisms rather than benchmark hacks. To test that (S5/S6) the candidate pool
-must also contain things a naive optimiser would happily keep:
-
-* **environment-specific tricks** - save tokens by assuming something about one
-  environment's output format:
-  :class:`TailTrim` (silently keep only the last N lines of long outputs - fine
-  where the verdict is at the tail, destructive where the first error is at the
-  top or the whole output matters), :class:`HeadTrim` (the mirror image),
-  :class:`PytestQuiet` (hard-coded rewrite of ``pytest`` to ``pytest -q --tb=line``);
-* **do-less shortcuts** - save tokens by doing less work:
-  :class:`NoVerify` (a harness directive to skip re-running checks),
-  :class:`TurnCap` (a lower turn limit);
-* **duds** - harmless ideas with ~no effect: :class:`PromptSlim`;
-* **improvement & evaluation (family M)** - the paper's largest proposal family (46 of 152)
-  is about measuring and judging the harness, not about sending fewer tokens:
-  :class:`CostAttribution` (M5 "Attribute cost to actions, phases, and providers": a
-  behaviour-neutral instrument that journals per-tool token attribution) and
-  :class:`FailBeforePassAfter` (M12 "Judge patches with fail-before/pass-after tests": a
-  directive to confirm each fix with a check that failed before and passes after). Neither
-  saves tokens here, so the dual gate should find no efficiency gain (none of the paper's four
-  survivors came from family M either).
-"""
+"""Negative controls for the SoL-Pi protocol: environment-specific tricks, do-less shortcuts, duds, family M."""
 from __future__ import annotations
 
 import re
@@ -32,6 +7,8 @@ from .runtime import AgentRuntime, Extension, ToolResult, ToolResultEvent, ToolS
 
 
 class TailTrim(Extension):
+    """Trick: silently keep only the last ``lines`` lines of long bash outputs."""
+
     name = "tail_trim"
 
     def __init__(self, lines: int = 40, min_bytes: int = 10 * 1024) -> None:
@@ -41,27 +18,28 @@ class TailTrim(Extension):
     def register(self, rt: AgentRuntime) -> None:
         rt.on("tool_result", self._on)
 
+    def _keep(self, lines: list[str]) -> list[str]:
+        return lines[-self.lines:]
+
     def _on(self, ev: ToolResultEvent, rt: AgentRuntime):
         if ev.call.name != "bash" or len(ev.result.content.encode()) <= self.min_bytes:
             return None
         self.stats["trimmed"] += 1
-        return ToolResult("\n".join(ev.result.content.splitlines()[-self.lines:]), ev.result.is_error,
+        return ToolResult("\n".join(self._keep(ev.result.content.splitlines())), ev.result.is_error,
                           dict(ev.result.details))
 
 
 class HeadTrim(TailTrim):
+    """Trick: the mirror image of :class:`TailTrim`."""
+
     name = "head_trim"
 
-    def _on(self, ev: ToolResultEvent, rt: AgentRuntime):
-        if ev.call.name != "bash" or len(ev.result.content.encode()) <= self.min_bytes:
-            return None
-        self.stats["trimmed"] += 1
-        return ToolResult("\n".join(ev.result.content.splitlines()[: self.lines]), ev.result.is_error,
-                          dict(ev.result.details))
+    def _keep(self, lines: list[str]) -> list[str]:
+        return lines[: self.lines]
 
 
 class PytestQuiet(Extension):
-    """Hard-coded command rewrite: every ``pytest`` invocation gets ``-q --tb=line``."""
+    """Trick: every ``pytest`` invocation gets ``-q --tb=line``."""
 
     name = "pytest_quiet"
 
@@ -79,7 +57,7 @@ class PytestQuiet(Extension):
 
 
 class NoVerify(Extension):
-    """Do-less shortcut: tells the agent not to re-run checks after edits."""
+    """Do-less shortcut: tell the agent not to re-run checks after edits."""
 
     name = "no_verify"
     DIRECTIVE = "[directive:no_verify] Efficiency rule: do not re-run tests or checks after edits; finish as soon as " \
@@ -103,7 +81,7 @@ class TurnCap(Extension):
 
 
 class PromptSlim(Extension):
-    """Dud: trims boilerplate sentences from the system prompt (tiny effect)."""
+    """Dud: trim a boilerplate sentence from the system prompt."""
 
     name = "prompt_slim"
 
@@ -112,8 +90,7 @@ class PromptSlim(Extension):
 
 
 class CostAttribution(Extension):
-    """M5 instrument: journals, per provider request, the tokens attributable to each tool's results in the
-    request (``rt.append_entry``; the context and the tools are untouched)."""
+    """M5 instrument: journal the tokens of each request by role / tool; behaviour-neutral."""
 
     name = "cost_attribution"
     ENTRY = "sol-pi-cost-attribution-v1"

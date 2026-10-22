@@ -1,11 +1,4 @@
-"""CostMeter: discovery-agent calls (the paper's cost unit) kept apart from replay CPU.
-
-"Discovery cost is quantified by the total cumulative number of discovery-agent
-calls" [paper:§4 p.7]; replay is "zero-execution-cost" [paper:Fig.2] but still
-costs policy CPU time, and dreaming costs developer-LLM calls - the paper does not
-quantify either, the meter does (``developer_calls`` / ``developer_usd`` / ``developer_revisions``,
-and ``llm_calls_total`` / ``developer_usd_share`` in the snapshot).
-"""
+"""CostMeter: discovery-agent calls (the paper's cost unit) kept apart from replay CPU and developer calls."""
 from __future__ import annotations
 
 import threading
@@ -29,9 +22,7 @@ class CostMeter:
     developer_calls: int = 0
     developer_tokens: int = 0
     developer_usd: float = 0.0
-    #: policy revisions requested from the developer (one LLM call each, plus any repair round, when the
-    #: developer is an LLM; the offline mock makes no LLM call, so this is its would-be call count)
-    developer_revisions: int = 0
+    developer_revisions: int = 0  # revisions requested; the offline mock counts them without making a call
     per_iteration: list = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -73,8 +64,7 @@ class CostMeter:
     def snapshot(self) -> dict:
         d = {k: v for k, v in asdict(self).items() if k != "per_iteration"}
         d["replay_ms_per_episode"] = 1000.0 * self.replay_cpu_s / max(1, self.replay_episodes)
-        # the whole LLM bill of a run, not only the paper's cost unit (discovery-agent calls): dreaming is
-        # free of agent calls but not of developer calls (claims audit N7)
+        # the run's whole LLM bill: dreaming makes no agent calls but does make developer calls
         d["llm_calls_total"] = self.agent_calls + max(self.developer_calls, self.developer_revisions)
         d["usd_total"] = self.agent_usd + self.developer_usd
         d["developer_usd_share"] = self.developer_usd / d["usd_total"] if d["usd_total"] > 0 else None
@@ -87,7 +77,7 @@ def llm_usage(*llms: Optional[LLM]) -> dict:
         if llm is None:
             continue
         for role, u in llm.meter.snapshot().items():
-            if role == "_total" or role.startswith("shadow:"):   # the audit monitor's spend is not the loop's
+            if role == "_total" or role.startswith("shadow:"):  # the audit monitor's spend is not the loop's
                 continue
             cur = out.get(role)
             out[role] = u if cur is None else {k: cur.get(k, 0) + u.get(k, 0) for k in u}

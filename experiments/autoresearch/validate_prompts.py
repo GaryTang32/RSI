@@ -1,18 +1,7 @@
-"""Stage-B check of WHAT THE LIVE PROPOSER SAW (tinylm_live).
+"""Stage-B check of what the live proposer saw (tinylm_live): rebuild each prompt and prove it by a cache hit.
 
-The live trace clipped prompts at 6,000 chars, and the LLM cache stores replies
-but not prompts. The cache key is sha256([backend, system, prompt, max_tokens,
-seed]), so a prompt rebuilt from the recorded state (incumbent artifact from the
-store, results.tsv / git log from the analysis event, the rendered program.md
-from run_start, the log tail from logs/*.log) that hits an existing cache file
-proves byte-for-byte what was sent. For every call we then check that the prompt
-holds the history (results.tsv rows) and no sealed-split number (monitor
-values), and that the reply's parsed file equals the traced diff.
-
-    python experiments/autoresearch/validate_prompts.py
+Usage: python experiments/autoresearch/validate_prompts.py
 """
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path
@@ -23,20 +12,20 @@ sys.path.insert(0, str(ROOT))
 from rsi.autoresearch.agent import FIX, PROPOSE, SYSTEM  # noqa: E402
 from rsi.core import ArtifactStore, CachedLLM, ClaudeCLI  # noqa: E402
 from rsi.core.editors import RewriteEditor, parse_proposal  # noqa: E402
+from rsi.domains.tinylm import TinyLMTask  # noqa: E402
 
 RUN = ROOT / "validation" / "autoresearch" / "tinylm_live"
 CACHE = ROOT / "validation" / "autoresearch" / ".cache_tinylm_live"
 
 
 def main() -> dict:
-    ev = [json.loads(l) for l in (RUN / "trace.jsonl").read_text().splitlines()]
+    """The cache key hashes the prompt, so a rebuilt prompt that hits an existing entry is the exact one sent."""
+    ev = [json.loads(line) for line in (RUN / "trace.jsonl").read_text().splitlines()]
     start = next(e["data"] for e in ev if e["kind"] == "run_start")
     program = start["program_md"]
     store = ArtifactStore(RUN / "artifacts")
     llm = CachedLLM(ClaudeCLI("haiku"), CACHE, offline=True)
     ed = RewriteEditor(llm)
-    from rsi.domains.tinylm import TinyLMTask
-
     brief = TinyLMTask(budget_s=8.0, data_root=ROOT / "validation" / "autoresearch" / ".cache_tinylm_data").describe()
     sealed = [v["S"] for e in ev if e["kind"] == "monitor" for v in e["data"]["sealed"].values()]
     out = []
@@ -63,7 +52,6 @@ def main() -> dict:
                "reply_diff_equals_trace": diff_ok}
         out.append(rec)
         print(rec, flush=True)
-        # fixes
         cur = cand
         for p in props[1:]:
             if cur is None:

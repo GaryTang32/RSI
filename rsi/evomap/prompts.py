@@ -1,19 +1,6 @@
-"""Prompts and gene rendering (spec §6).
-
-* :func:`render_gene` - the paper's shared injection template ("Domain keywords:
-  ... Summary: ... Strategy: 1. ... AVOID: ..."), with ablation switches for X1-X2
-  (keywords only, + summary, + strategy, AVOID only, appended raw failure log);
-* :func:`render_skill` - the long "Skill" form (a SKILL.md with sections) built
-  from the same experience, used as the baseline representation in X1;
-* ``GENE_WRITER_*`` - the gist of the GEP executor prompt adapted to "write one
-  strategy gene from this failure" (§6.1); ``REUSE_PROMPT`` / ``HUB_MATCHED_BLOCK``
-  (§6.2); ``DISTILL_PROMPT`` (§6.4, with its "Prefer --version" validation
-  advice in faithful mode, replaced by a discriminative requirement in safe mode);
-* :func:`parse_gene` - JSON reply -> :class:`~rsi.evomap.assets.Gene`.
-"""
+"""Gene card and Skill rendering, gene-writer and distiller prompts, and gene reply parsing (spec §6)."""
 from __future__ import annotations
 
-import json
 import re
 from typing import Optional, Sequence
 
@@ -26,6 +13,7 @@ GENE_TEMPLATE_PARTS = ("keywords", "summary", "strategy", "avoid")
 
 def render_gene(g: Gene, parts: Sequence[str] = GENE_TEMPLATE_PARTS, *, failure_log: str = "",
                 show_id: bool = True) -> str:
+    """The shared injection template; ``parts`` and ``failure_log`` are representation ablations."""
     lines = ["## Strategy gene" + (f" {g.id}" if show_id else "")]
     if "keywords" in parts and g.signals_match:
         kws = [s for s in g.signals_match if not s.startswith(("problem:", "area:"))]
@@ -69,7 +57,7 @@ SKILL_BOILERPLATE = [
 
 
 def render_skill(g: Gene, *, extra_sections: Sequence[tuple[str, str]] = SKILL_BOILERPLATE, repeat: int = 2) -> str:
-    """The long 'Skill' representation: same experience, ~10x the tokens, embedded in documentation."""
+    """The long Skill form: the same experience, ~10x the tokens, embedded in documentation."""
     title = g.summary or g.id
     out = [f"# SKILL: {title}", ""]
     for i in range(repeat):
@@ -121,26 +109,6 @@ Reply with ONE JSON object in a ```json fence:
   "strategy": [...], "avoid": [...], "validation": [...]}}
 """
 
-HUB_MATCHED_BLOCK = """
-Hub Matched Solution (STRONG REFERENCE):
-- Asset: {asset_id}
-- Gene: {gene_id}
-- Summary: {summary}
-- Payload: ```json
-{payload}
-```
-Use this as your primary approach if applicable. Adapt to local context.
-"""
-
-REUSE_PROMPT = """\
-GEP -- REUSE MODE (Search-First)
-You are applying a VERIFIED solution from the hub.
-1. Read the capsule details below. 2. Apply the fix to the local codebase, adapting paths/names.
-3. Run validation to confirm it works. 4. If passed, solidify. 5. If failed, ROLLBACK and report.
-IMPORTANT: Do NOT reinvent. Apply faithfully.
-{payload}
-"""
-
 DISTILL_SYSTEM = "You are a Gene synthesis engine."
 
 DISTILL_PROMPT = """\
@@ -170,9 +138,7 @@ HISTORY_BLOCK_HEAD = ("\nRecent evolution history for these signals (earlier gen
 
 
 def history_block(entries: Sequence[dict], max_entries: int = 3) -> str:
-    """Evolver's "Recent Evolution History (last 8 cycles -- DO NOT repeat the same intent+signal+gene)" block
-    (§6.1), restricted to earlier genes whose scope matches the current signals. Empty -> "" (the prompt is then
-    byte-identical to a run without history)."""
+    """Evolver's "Recent Evolution History ... DO NOT repeat" block (§6.1); empty history adds nothing."""
     rows = []
     for e in list(entries)[-max_entries:]:
         steps = "; ".join(str(x).rstrip(". ") for x in (e.get("strategy") or [])[:4])
@@ -217,7 +183,3 @@ def parse_gene(text: str, *, default_id: str = "gene_generated", default_signals
                 summary=str(d.get("summary") or strategy[0])[:300], validation=val[:5],
                 preconditions=[str(p) for p in (d.get("preconditions") or [])][:4])
 
-
-def gene_payload(g: Gene) -> str:
-    return json.dumps({k: v for k, v in g.to_dict().items()
-                       if k in ("id", "summary", "signals_match", "strategy", "avoid", "validation")}, indent=1)

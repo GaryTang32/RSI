@@ -1,25 +1,14 @@
-"""Population simulation: many agents, one hub (spec §9.1, §9.3 Tier 1).
+"""Population simulation: many agents of mixed kinds sharing one hub (spec §9.1, §9.3 Tier 1).
 
-Agent kinds (:class:`AgentSpec.kind`):
-
-``honest``    full :class:`AgentNode` cycles; publishes what its solidify keep rule accepted;
-``inflator``  honest content, inflated claims (blast radius 1 file / 20 lines, confidence 0.99,
-              streak 5, outcome score 0.99, report ok) - re-stamped so hashes still verify;
-``freerider`` cycles but never publishes;
-``farmer``    mass-publishes ``farm_rate`` variants per epoch with vacuous validation and
-              inflated metadata (content from a domain :class:`Forge`);
-``poisoner``  publishes harmful strategies (harmful step or injection string) with fabricated
-              but *discriminative-looking* proof material and inflated metadata.
-
-Abilities are heterogeneous (``ability`` -> the domain model, ``insight`` -> the
-proposer), so X6 can ask whether weak models inherit strong models' genes.
+Kinds: ``honest`` (full cycles), ``inflator`` (honest content, inflated claims), ``freerider`` (never publishes),
+``farmer`` (mass-publishes vacuous variants) and ``poisoner`` (harmful genes with discriminative-looking proof).
 """
 from __future__ import annotations
 
 import copy
 import random
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Optional, Protocol, Sequence
 
 import numpy as np
@@ -27,12 +16,13 @@ import numpy as np
 from rsi.core import Artifact, Domain, LLM
 
 from .agent import AgentNode, Behavior
-from .assets import Clock, Gene
+from .assets import Capsule, Clock, EvolutionEvent, Gene
 from .config import Config
 from .hashing import asset_id
-from .hub import Bundle
+from .hub import Bundle, register_agent
 from .inject import Injector
 from .metrics import ReuseMetrics
+from .solidify import diff_text
 from .store import LocalStore
 
 
@@ -62,8 +52,9 @@ class FreeriderBehavior(Behavior):
 
 
 def inflate(bundle: Bundle, *, files: int = 1, lines: int = 20, confidence: float = 0.99, streak: int = 5,
-            score: float = 0.99, fields: Sequence[str] = ("blast", "confidence", "streak", "score", "report")) -> Bundle:
-    """Rewrite the claimed metadata of a bundle (and re-stamp asset ids so they verify)."""
+            score: float = 0.99,
+            fields: Sequence[str] = ("blast", "confidence", "streak", "score", "report")) -> Bundle:
+    """Rewrite a bundle's claimed metadata and re-stamp the capsule id so it still verifies."""
     b = copy.deepcopy(bundle)
     c = b.capsule or {}
     if "blast" in fields:
@@ -81,6 +72,26 @@ def inflate(bundle: Bundle, *, files: int = 1, lines: int = 20, confidence: floa
     if "report" in fields:
         b.report = {**(b.report or {}), "overall_ok": True}
     return b
+
+
+def forged_bundle(g: Gene, author: str, n: int, summary: str, before: dict, after: dict, claims: dict, report: dict,
+                  **capsule_extra) -> Bundle:
+    """Stamp ``g`` and wrap it with a capsule and event carrying the ``claims`` metadata (adversary forges)."""
+    g.stamp()
+    blast = {"files": claims["files"], "lines": claims["lines"]}
+    outcome = {"status": "success", "score": claims["score"]}
+    cap = Capsule(id=f"capsule_{author}_{n:06d}", gene=g.id, trigger=list(g.signals_match), summary=summary,
+                  confidence=claims["confidence"], blast_radius=blast, outcome=outcome,
+                  success_streak=claims["streak"], content="\n".join(g.strategy), diff=diff_text(before, after),
+                  strategy=list(g.strategy),
+                  execution_trace=[{"step": 1, "stage": "build", "cmd": "apply", "exit": 0},
+                                   {"step": 2, "stage": "validate", "cmd": (g.validation or ["-"])[0], "exit": 0}],
+                  **capsule_extra).stamp()
+    ev = EvolutionEvent(id=f"evt_{author}_{n:06d}", intent="repair", signals=list(g.signals_match), genes_used=[g.id],
+                        mutation_id=f"mut_{n}", capsule_id=cap.id, blast_radius=dict(blast),
+                        outcome=dict(outcome)).stamp()
+    return Bundle(gene=g.to_dict(), capsule=cap.to_dict(), event=ev.to_dict(), report=report, pre_state=before,
+                  post_state=after, meta={"author": author, "forged": True})
 
 
 class Forge(Protocol):
@@ -112,8 +123,7 @@ class PopulationSimulator:
         for sp in self.specs:
             if sp.kind in ("farmer", "poisoner"):
                 if hub is not None:
-                    (hub.register(sp.name, cluster=sp.cluster) if hasattr(hub, "register")
-                     else hub.credits.register(sp.name))
+                    register_agent(hub, sp.name, sp.cluster)
                 continue
             model = model_factory(sp)
             prop = proposer_factory(sp) if proposer_factory else None
@@ -126,15 +136,28 @@ class PopulationSimulator:
                                              injector=injector, behavior=beh, cluster=sp.cluster)
         self.cycles: list[dict] = []
         self.epochs: list[dict] = []
-        self.bounties = bounties            # optional economy.BountyDriver (X19); None = no bounty board
+        self.bounties = bounties            # optional economy.BountyDriver (X19)
 
     def _bounty_solvers(self) -> tuple:
         return tuple(k for k in getattr(self.bounties, "claimant_kinds", ("honest", "inflator"))
                      if k not in ("farmer", "poisoner"))
 
     def _task(self, sp: AgentSpec, rng: random.Random):
-        pool = [t for t in self.tasks if sp.classes is None or t.family in sp.classes]
-        return rng.choice(pool)
+        return rng.choice([t for t in self.tasks if sp.classes is None or t.family in sp.classes])
+
+    def _adversary_turn(self, sp: AgentSpec, rng: random.Random, ep: int) -> None:
+        if self.hub is None or self.forge is None:
+            return
+        make = self.forge.farm_bundle if sp.kind == "farmer" else self.forge.poison_bundle
+        fresh = []
+        for _ in range(sp.farm_rate):
+            b = make(sp.name, rng, ep)
+            d = self.hub.publish(b, sp.name)
+            self.cycles.append({"epoch": ep, "agent": sp.name, "kind": sp.kind, "published": d.status})
+            if b.capsule:
+                fresh.append(b.capsule.get("asset_id") or b.capsule.get("id"))
+        if self.bounties is not None and sp.kind in getattr(self.bounties, "claimant_kinds", ()):
+            self.bounties.farmer_turn(self, sp, fresh, ep)
 
     def run(self, epochs: int, *, metrics_every: int = 0) -> dict:
         for ep in range(epochs):
@@ -145,32 +168,17 @@ class PopulationSimulator:
             for sp in order:
                 arng = random.Random(f"{self.seed}-{sp.name}-{ep}")
                 if sp.kind in ("farmer", "poisoner"):
-                    if self.hub is None or self.forge is None:
-                        continue
-                    fresh = []
-                    for _ in range(sp.farm_rate):
-                        b = (self.forge.farm_bundle if sp.kind == "farmer" else self.forge.poison_bundle)(
-                            sp.name, arng, ep)
-                        d = self.hub.publish(b, sp.name)
-                        self.cycles.append({"epoch": ep, "agent": sp.name, "kind": sp.kind, "published": d.status})
-                        if b.capsule:
-                            fresh.append(b.capsule.get("asset_id") or b.capsule.get("id"))
-                    if self.bounties is not None and sp.kind in getattr(self.bounties, "claimant_kinds", ()):
-                        self.bounties.farmer_turn(self, sp, fresh, ep)
+                    self._adversary_turn(sp, arng, ep)
                     continue
                 ag = self.agents[sp.name]
+                bounty = self.bounties is not None and sp.kind in self._bounty_solvers()
                 for _ in range(sp.tasks_per_epoch):
-                    task = None
-                    if self.bounties is not None and sp.kind in self._bounty_solvers():
-                        task = self.bounties.task_for(self, sp, ag, arng)
-                    task = task if task is not None else self._task(sp, arng)
-                    cr = ag.cycle(task)
-                    if self.bounties is not None and sp.kind in self._bounty_solvers():
+                    task = self.bounties.task_for(self, sp, ag, arng) if bounty else None
+                    cr = ag.cycle(task if task is not None else self._task(sp, arng))
+                    if bounty:
                         self.bounties.after_cycle(self, sp, ag, cr, ep)
                     row = {"epoch": ep, "agent": sp.name, "kind": sp.kind, "ability": sp.ability, **cr.to_json()}
-                    # the genes actually injected into this cycle's solve - also when solidify rejected them
-                    # (a direct-apply consumer runs a poisoned hub gene even if it never enters the store; a
-                    # reference-mode consumer runs it NEXT TO its local gene and never stores it)
+                    # every gene injected into the solve, stored or not (a reference-mode hub gene never is)
                     used = ag.last_gene
                     if self.truth is not None and used is not None:
                         row["gene_true_uplift"] = self.truth(used)
@@ -198,8 +206,7 @@ class PopulationSimulator:
                 "n_published": len(self.hub.order) if self.hub is not None else 0}
 
     def hub_metrics(self) -> dict:
-        names = [sp.name for sp in self.specs]
-        return ReuseMetrics(truth=self.truth, agents=names).compute(self.hub)
+        return ReuseMetrics(truth=self.truth, agents=[sp.name for sp in self.specs]).compute(self.hub)
 
     def credits_by_kind(self) -> dict:
         if self.hub is None:
@@ -217,9 +224,7 @@ class PopulationSimulator:
         return sum(1 for ag in self.agents.values() for g in ag.store.genes.values() if self.forge.is_poisoned(g))
 
     def _from_hub(self, g: Gene, owner: Optional[str] = None) -> bool:
-        """A stored gene that came from the hub: promoted out of quarantine (provenance ``external``), adopted by a
-        direct / replace consumer (its ``parent`` is a hub asset id), or authored by another agent (a re-fetched hub
-        gene replaces the stored copy without the parent link)."""
+        """A stored gene from the hub: promoted from quarantine, parented on a hub asset, or authored by another."""
         prov = g.provenance or {}
         if prov.get("kind") == "external":
             return True
@@ -228,8 +233,7 @@ class PopulationSimulator:
         return self.hub is not None and bool(g.parent) and g.parent in getattr(self.hub, "records", {})
 
     def poisoned_in_stores_split(self) -> dict:
-        """X10 audit item: harmful cards an honest agent WROTE ITSELF (its gene writer can produce a harmful
-        strategy key) vs harmful cards it took FROM THE HUB (poison). ``poisoned_in_stores`` is their sum."""
+        """Harmful genes an agent wrote itself (``self``) vs took from the hub (``hub``)."""
         out = {"hub": 0, "self": 0}
         if self.forge is None:
             return out
@@ -242,6 +246,7 @@ class PopulationSimulator:
     def summary(self) -> dict:
         rows = [r for r in self.cycles if "task_success" in r]
         kinds = Counter(sp.kind for sp in self.specs)
+        split = self.poisoned_in_stores_split()
         out = {"n_agents": len(self.specs), "kinds": dict(kinds), "n_cycles": len(rows),
                "solve_rate": float(np.mean([r["task_success"] for r in rows])) if rows else float("nan"),
                "solve_rate_by_kind": {k: float(np.mean([r["task_success"] for r in rows if r["kind"] == k]))
@@ -251,8 +256,7 @@ class PopulationSimulator:
                "hub_gene_cycles": int(sum(1 for r in rows if r["source"] == "hub")),
                "poisoned_cycles": int(sum(1 for r in rows if r.get("gene_poisoned"))),
                "poisoned_in_stores": self.poisoned_in_stores(),
-               "poisoned_in_stores_hub": self.poisoned_in_stores_split()["hub"],
-               "poisoned_in_stores_self": self.poisoned_in_stores_split()["self"],
+               "poisoned_in_stores_hub": split["hub"], "poisoned_in_stores_self": split["self"],
                "quarantined": int(sum(ag.n_quarantined for ag in self.agents.values())),
                "quarantine_rejected": int(sum(ag.n_quarantine_rejected for ag in self.agents.values())),
                "epochs": self.epochs}

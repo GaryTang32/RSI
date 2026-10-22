@@ -1,20 +1,4 @@
-"""An offline discovery agent for the shared AgentQA harness domain.
-
-Dream-RSI works on ANY :class:`rsi.core.Domain`: :class:`rsi.dream.DomainTask` scores a
-harness by its mean evolve-split score with the frozen task model (``SimModel``
-offline). This module supplies a deterministic *discovery agent* for that domain -
-each attempt edits the parent's harness by one mechanism (the branch direction):
-
-* ``format``  - ask for a final ``ANSWER: <value>`` line and extract it;
-* ``reason``  - ask the model to think step by step (more tokens, more accuracy);
-* ``verify``  - ask the model to double-check;
-* ``tool``    - have the model write Python, run it with ``tools.python`` and report
-  the output (the strongest generic skill under ``SimModel``);
-* ``simplify``- drop one previously added mechanism (sometimes harmful).
-
-The harness is regenerated from a small knob set, so every attempt is a real code/
-prompt edit that the locked grader scores.
-"""
+"""Offline discovery agent for the AgentQA harness domain: each attempt adds or drops one prompting mechanism."""
 from __future__ import annotations
 
 import ast
@@ -23,6 +7,7 @@ from typing import Optional
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, ParametricAgent
+from .base import pick_mechanism
 
 MECHANISMS = ("format", "reason", "verify", "tool", "simplify")
 
@@ -88,9 +73,7 @@ def read_knobs(art: Artifact) -> dict:
 
 def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
     knobs = read_knobs(parent)
-    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
-    if ctx and ctx.attempt > 0 and rng.random() < 0.3:
-        mech = rng.choice(MECHANISMS)
+    mech = pick_mechanism(ctx, rng, MECHANISMS, 0.3)
     if mech == "simplify":
         on = sorted(k for k, v in knobs.items() if v)
         if on:

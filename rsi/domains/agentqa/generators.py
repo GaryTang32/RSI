@@ -1,20 +1,4 @@
-"""Procedurally generated question families with exact answers.
-
-Families are chosen so that *generic* harness improvements (use a Python tool,
-state the answer format, verify) help on every family, while *suite-specific*
-tricks (memorising practice answers) help only on the practice split. That is
-the property needed to observe overfitting and transfer.
-
-Calibrated against Claude Haiku 4.5 (no tools): the ``numeric`` practice family
-mixes kinds the model always solves (modular exponent, ledger chains) with kinds
-it essentially never solves by mental arithmetic (bit counts of big powers,
-factorial digit sums), giving a ~40% baseline with large headroom. Never-seen
-families: ``dates`` (weak), ``numbertheory`` (0% without tools), ``strings`` and
-``lists`` (solved, but only with thousands of reasoning tokens - so a tool-using
-harness is both more accurate and cheaper).
-
-Legacy easy families ``arith`` and ``units`` remain available.
-"""
+"""Procedurally generated AgentQA question families with exact answers (generic harness skills help on all)."""
 from __future__ import annotations
 
 import datetime as _dt
@@ -24,6 +8,7 @@ import string
 from typing import Callable
 
 from ...core.tasks import Task, TaskSuite
+from .hard import HARD_FAMILIES
 
 NAMES = ["Avery", "Blake", "Casey", "Devon", "Emery", "Finley", "Harper", "Jordan", "Kendall", "Logan", "Morgan",
          "Parker", "Quinn", "Reese", "Riley", "Rowan", "Sawyer", "Taylor"]
@@ -92,7 +77,8 @@ def _numeric(rng: random.Random):
         q, ans = f"How many 1 bits are in the binary representation of {a}^{k}?", bin(a ** k).count("1")
     else:
         n = rng.randint(25, 70)
-        q, ans = f"What is the sum of the decimal digits of {n}! ({n} factorial)?", sum(map(int, str(math.factorial(n))))
+        q = f"What is the sum of the decimal digits of {n}! ({n} factorial)?"
+        ans = sum(map(int, str(math.factorial(n))))
     return q, str(ans), [name] if kind == 3 else []
 
 
@@ -110,7 +96,8 @@ def _isprime(n: int) -> bool:
 def _numbertheory(rng: random.Random):
     if rng.random() < 0.5:
         n = rng.randint(1000, 90000)
-        return f"How many prime numbers p satisfy {n} <= p <= {n + 150}?", str(sum(_isprime(x) for x in range(n, n + 151))), []
+        q = f"How many prime numbers p satisfy {n} <= p <= {n + 150}?"
+        return q, str(sum(_isprime(x) for x in range(n, n + 151))), []
     n, k = rng.randint(40, 90), rng.randint(9, 20)
     return (f"What is the sum of the decimal digits of C({n},{k}), the binomial coefficient '{n} choose {k}'?",
             str(sum(map(int, str(math.comb(n, k))))), [])
@@ -170,7 +157,7 @@ def _units(rng: random.Random):
     if kind == 0:
         ft, inch = rng.randint(3, 40), rng.randint(0, 11)
         q = f"Convert {ft} feet {inch} inches to centimeters (1 inch = 2.54 cm exactly). Round to the nearest integer."
-        ans = ((ft * 12 + inch) * 254 + 50) // 100  # exact, halves round up (float round() gave 190 for 190.5)
+        ans = ((ft * 12 + inch) * 254 + 50) // 100  # exact integer rounding, halves up
     elif kind == 1:
         h, m, s = rng.randint(1, 30), rng.randint(0, 59), rng.randint(0, 59)
         q = f"How many seconds are in {h} hours, {m} minutes and {s} seconds?"
@@ -184,35 +171,15 @@ def _units(rng: random.Random):
 
 FAMILIES: dict[str, Callable[[random.Random], tuple[str, str, list]]] = {
     "numeric": _numeric, "dates": _dates, "numbertheory": _numbertheory, "strings": _strings, "lists": _lists,
-    "arith": _arith, "units": _units,
+    "arith": _arith, "units": _units, **HARD_FAMILIES,
 }
 
 
-def _register_hard() -> None:
-    from .hard import HARD_FAMILIES                     # logic, ledger, schedule, cipher
-    FAMILIES.update(HARD_FAMILIES)
-
-
-_register_hard()
-
-
-def make_suite(
-    n_evolve: int = 20,
-    n_holdout: int = 20,
-    n_ood_per_family: int = 6,
-    practice_families: tuple[str, ...] = ("numeric",),
-    ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"),
-    n_val: int = 0,
-    seed: int = 0,
-    dedupe: bool = True,
-) -> TaskSuite:
-    """Build the standard suite: evolve/holdout drawn from the practice families,
-    ood from the never-seen families. Each split uses an independent RNG stream.
-
-    ``dedupe`` (default True) drops sealed tasks whose question also appears in a
-    decision split (see :func:`decontaminate`); with seed 0 one holdout question
-    repeated an evolve question. ``dedupe=False`` reproduces suites used by results
-    recorded before this change."""
+def make_suite(n_evolve: int = 20, n_holdout: int = 20, n_ood_per_family: int = 6,
+               practice_families: tuple[str, ...] = ("numeric",),
+               ood_families: tuple[str, ...] = ("dates", "numbertheory", "strings", "lists"), n_val: int = 0,
+               seed: int = 0, dedupe: bool = True) -> TaskSuite:
+    """Evolve/val/holdout from the practice families and ood from the unseen ones, one RNG stream per split."""
     tasks: list[Task] = []
     splits: dict[str, list[str]] = {"evolve": [], "holdout": [], "ood": []}
     if n_val:
@@ -236,20 +203,12 @@ def make_suite(
             add("ood", fam, rng, i)
     splits["smoke"] = splits["evolve"][:2]
     suite = TaskSuite(tasks, splits, name=f"agentqa-s{seed}")
-    return decontaminate(suite) if dedupe else suite
+    return decontaminate(suite) if dedupe else suite   # dedupe=False reproduces older recorded suites
 
 
 def decontaminate(suite: TaskSuite) -> TaskSuite:
-    """Copy of ``suite`` without repeated questions.
-
-    Some question kinds have a small space (e.g. factorial digit sums: 46
-    values), so independently drawn splits can share a question - with seed 0
-    one holdout task repeats an evolve task. This drops tasks whose question text
-    already appeared in a decision split (evolve, then train/val) or earlier in
-    the same split; ``smoke`` keeps its surviving evolve tasks and sealed splits
-    stay sealed. Opt-in, so the default :func:`make_suite` output (and every
-    result built on it) is unchanged.
-    """
+    """Copy of ``suite`` without questions already in a decision split or earlier in the same split; seals kept."""
+    # small question spaces (e.g. 46 factorial digit sums) let independent splits share a question
     decision = [s for s in ("evolve", "train", "val") if s in suite.splits]
     order = decision + [s for s in suite.splits if s not in decision and s != "smoke"]
     seen_decision: set = set()

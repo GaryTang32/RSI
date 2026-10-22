@@ -9,7 +9,7 @@ Agents distil what worked into small, content-hashed strategy genes and share th
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
 3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (54 claims: 28 reproduced, 10 partial, 1 not reproduced, 14 not testable here, 1 contradicted after retry round 2 and its review), with a Fix log, a preregistered "Retry round 2" and a preregistered review response.
-4. [Validation audit](../../../validation/evomap/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/evomap/RUNS.md) describes the runs.
+4. [Validation audit](https://github.com/GaryTang32/RSI/blob/data/validation/evomap/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](https://github.com/GaryTang32/RSI/blob/data/validation/evomap/RUNS.md) describes the runs.
 
 ## Where everything is
 
@@ -19,8 +19,8 @@ Agents distil what worked into small, content-hashed strategy genes and share th
 | Domains | [`rsi/domains/katas/`](../../../rsi/domains/katas), [`rsi/domains/geneworld/`](../../../rsi/domains/geneworld) |
 | Tests | [`tests/evomap/`](../../../tests/evomap) |
 | Experiments (scripts) | [`experiments/evomap/`](../../../experiments/evomap) |
-| Results (JSON, figures) | [`results/evomap/`](../../../results/evomap) |
-| Validation runs (traces, TRACE.md) | [`validation/evomap/`](../../../validation/evomap) |
+| Results (JSON, figures) | [`results/evomap/`](https://github.com/GaryTang32/RSI/tree/data/results/evomap) |
+| Validation runs (traces, TRACE.md) | [`validation/evomap/`](https://github.com/GaryTang32/RSI/tree/data/validation/evomap) |
 
 ## Run it
 

@@ -1,28 +1,16 @@
-"""Hub economy beyond promotion and fetch credits (retry round 2, I4; spec §4.18, §5.8).
+"""Hub economy beyond promotion and fetch credits: referrals, bounties, swarm splits, dormancy (spec §4.18, §5.8).
 
-Sources:
-
-* the Hub guide (spec §4.18): +50 credits to the referrer and +100 to the referred agent; swarm bounties split
-  **5 % to the proposer, 85 % to the solvers (by contribution weight), 10 % to the aggregator (reputation
-  >= 60)**; a node that reaches 0 credits and stays inactive for 30 days goes dormant;
-* the GEP Task object (sdk 1.14.0 ``task.schema.json``, spec §5.8): ``task_id``, ``status`` in
-  open | claimed | completed | expired | cancelled, ``bounty_amount``, ``result_asset_id``;
-* Evolver's solidify (spec §3.6): on a successful solidify with an active task the engine completes the task by
-  submitting the capsule's asset_id - completion is SELF-REPORTED;
-* the worker-side task ranking, ported line by line from Evolver v2 ``packages/evolver-cli/dist/taskReceiver.js``
-  (itself "ported from evolver v1 ``src/gep/taskReceiver.js``"): :func:`score_task`, :func:`rank_tasks`,
-  :func:`estimate_capability_match`, :func:`local_difficulty_estimate`, the three strategy weight sets.
-
-Not specified by any source, so chosen here and documented: escrow (the proposer's credits are debited when the
-bounty is posted), refund of an expired bounty to the proposer, and the time unit (1 epoch = 1 day).
-The marketplace side (Recipe purchases: price per execution, ``max_concurrent``) is only a schema; its purchase
-and payout flow is not described anywhere we can read, so it is not modelled.
+Task ranking is ported from Evolver ``taskReceiver.js``. Escrow on posting, refund on expiry and 1 epoch = 1 day are
+our choices (no source specifies them). Completion is self-reported, as in Evolver's solidify.
 """
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, Sequence
+
+from .signals import TaskSignalExtractor
 
 STRATEGY_WEIGHTS = {
     "greedy": {"roi": 0.1, "capability": 0.05, "completion": 0.05, "bounty": 0.8},
@@ -51,7 +39,6 @@ def parse_signals(signals) -> list[str]:
     if isinstance(signals, (list, tuple)):
         return [str(s).strip().lower() for s in signals if str(s).strip()]
     if isinstance(signals, str):
-        import re
         return [s.strip().lower() for s in re.split(r"[,|]", signals) if s.strip()]
     return []
 
@@ -65,7 +52,7 @@ def _jaccard(a: Sequence[str], b: Sequence[str]) -> float:
 
 
 def estimate_capability_match(task_signals, memory_events: Sequence[dict]) -> float:
-    """How much the node's own history looks like the task, in [0, 1] (``estimateCapabilityMatch``)."""
+    """How much the node's own history resembles the task, in [0, 1] (``estimateCapabilityMatch``)."""
     ts = parse_signals(task_signals)
     if not ts or not memory_events:
         return 0.0
@@ -76,8 +63,7 @@ def estimate_capability_match(task_signals, memory_events: Sequence[dict]) -> fl
         if not sig:
             continue
         seen.update(sig)
-        key = "|".join(sig)
-        t = totals.setdefault(key, [0, 0])
+        t = totals.setdefault("|".join(sig), [0, 0])
         t[0] += 1
         if ev.get("status") == "success":
             t[1] += 1
@@ -85,10 +71,9 @@ def estimate_capability_match(task_signals, memory_events: Sequence[dict]) -> fl
     weighted = weight = 0.0
     for key, (total, succ) in totals.items():
         sim = _jaccard(ts, key.split("|"))
-        if sim < SIGNAL_SIMILARITY_FLOOR:
-            continue
-        weighted += (succ + 1) / (total + 2) * sim            # Laplace smoothing
-        weight += sim
+        if sim >= SIGNAL_SIMILARITY_FLOOR:
+            weighted += (succ + 1) / (total + 2) * sim
+            weight += sim
     success_score = weighted / weight if weight > 0 else 0.5
     return min(1.0, overlap * 0.4 + success_score * 0.6)
 
@@ -116,9 +101,8 @@ def score_task(task: "BountyTask", capability_match: float, strategy: str = "bal
 
 def rank_tasks(tasks: Iterable["BountyTask"], node_id: str, memory_events: Sequence[dict] = (),
                strategy: str = "balanced", min_capability: float = MIN_CAPABILITY_MATCH) -> list[dict]:
-    """``rankTasks``: a task this node already holds comes first ("finishing a commitment beats starting a
-    better one"), then open tasks by composite score, filtered by the capability floor once the node has a
-    history. Greedy nodes without history sort by (has bounty id, bounty amount)."""
+    """``rankTasks``: tasks this node holds first, then open tasks by composite score above the capability floor
+    (once the node has history); greedy nodes without history sort by bounty."""
     tasks = list(tasks)
     mine = [{"task": t, "reason": "resume"} for t in tasks if t.status == "claimed" and t.claimed_by == node_id]
     open_ = [t for t in tasks if t.status == "open"]
@@ -153,7 +137,7 @@ class BountyTask:
 
 
 class BountyBoard:
-    """Hub-side bounty tasks on top of a hub's :class:`~rsi.evomap.hub.CreditLedger`."""
+    """Hub-side bounty tasks on top of a hub's ``CreditLedger``."""
 
     def __init__(self, credits, *, reputation: Optional[dict] = None) -> None:
         self.credits = credits
@@ -171,9 +155,6 @@ class BountyBoard:
         self.tasks[t.task_id] = t
         return t
 
-    def open_tasks(self) -> list[BountyTask]:
-        return [t for t in self.tasks.values() if t.status == "open"]
-
     def claim(self, task_id: str, node: str) -> bool:
         t = self.tasks.get(task_id)
         if t is None or t.status != "open":
@@ -182,7 +163,7 @@ class BountyBoard:
         return True
 
     def complete(self, task_id: str, node: str, asset_id: str, epoch: int = 0) -> bool:
-        """Self-reported completion: the claimer submits a capsule asset_id; nothing checks it solves the task."""
+        """Self-reported completion: nothing checks that the submitted asset solves the task."""
         t = self.tasks.get(task_id)
         if t is None or t.status != "claimed" or t.claimed_by != node or not asset_id:
             return False
@@ -221,32 +202,25 @@ class BountyBoard:
 
 
 def refer(credits, referrer: str, referred: str, epoch: int = 0) -> None:
-    """Referral: +50 to the referrer, +100 to the referred agent."""
     credits.credit(referrer, REFERRER_CREDIT, "referral", epoch)
     credits.credit(referred, REFERRED_CREDIT, "referred", epoch)
 
 
 def dormant_nodes(credits, last_active: dict, epoch: int, inactive_epochs: int = DORMANT_AFTER_EPOCHS) -> set:
-    """Nodes at (or below) 0 credits whose last activity is >= 30 epochs (days) ago."""
+    """Nodes at or below 0 credits inactive for >= ``inactive_epochs``."""
     return {n for n, bal in credits.balance.items()
             if bal <= 0 and epoch - last_active.get(n, -10 ** 9) >= inactive_epochs}
 
 
 class BountyDriver:
-    """Population hook (X19): an external poster puts ``per_epoch`` bounties of ``amount`` credits on the board at
-    the start of every epoch, each one built from a random task of the pool (its public signals and family);
-    before a cycle, an agent with no active task ranks the board with :func:`rank_tasks` over its own event
-    history and claims the head; its cycle then runs on a task of the bounty's family; after a SUCCESSFUL
-    solidify it completes the bounty with the new capsule's asset_id (self-reported, as ``solidify.js``).
-    Unfinished bounties expire after ``expires_in`` epochs and are refunded."""
+    """Population hook (X19): post bounties each epoch; agents rank the board, claim the head, work a task of its
+    family and self-report completion after a successful solidify; unfinished bounties expire and are refunded."""
 
     def __init__(self, board: BountyBoard, *, per_epoch: int = 4, amount: float = BOUNTY_REFERENCE,
                  poster: str = "bounty_poster", strategy: str = "balanced", expires_in: int = 3,
                  extractor=None, claimant_kinds: Sequence[str] = ("honest", "inflator")) -> None:
         self.board = board
-        #: agent kinds that pursue bounties. X19 (P5) used honest + inflator only; P5b adds "farmer": a farmer
-        #: runs no solve cycle, so once per epoch it claims the head of its ranking and self-reports completion
-        #: with the capsule asset_id of a bundle it has just published (nothing checks it, as ``complete``).
+        # "farmer" claimants run no solve cycle: they complete with an asset id they just published (P5b)
         self.claimant_kinds = tuple(claimant_kinds)
         self.per_epoch, self.amount, self.poster = per_epoch, float(amount), poster
         self.strategy, self.expires_in = strategy, expires_in
@@ -259,7 +233,6 @@ class BountyDriver:
         for a, tid in list(self.active.items()):
             if self.board.tasks[tid].status != "claimed":
                 del self.active[a]
-        from .signals import TaskSignalExtractor
         ext = self.extractor or TaskSignalExtractor()
         for _ in range(self.per_epoch):
             t = rng.choice(sim.tasks)
@@ -274,8 +247,7 @@ class BountyDriver:
     def task_for(self, sim, sp, ag, rng):
         tid = self.active.get(sp.name)
         if tid is None:
-            ranked = rank_tasks(self.board.tasks.values(), sp.name, self.memory_events(ag), self.strategy)
-            for e in ranked:
+            for e in rank_tasks(self.board.tasks.values(), sp.name, self.memory_events(ag), self.strategy):
                 if e["reason"] == "resume" or self.board.claim(e["task"].task_id, sp.name):
                     tid = e["task"].task_id
                     self.active[sp.name] = tid
@@ -287,12 +259,11 @@ class BountyDriver:
         return rng.choice(pool) if pool else None
 
     def farmer_turn(self, sim, sp, asset_ids: Sequence[str], ep: int) -> bool:
-        """P5b: a publishing-only agent claims one bounty and completes it with one of its own fresh asset ids."""
+        """P5b: a publishing-only agent claims one bounty and completes it with its newest asset id."""
         ids = [a for a in asset_ids if a]
         if not ids:
             return False
-        ranked = rank_tasks(self.board.tasks.values(), sp.name, [], self.strategy)
-        for e in ranked:
+        for e in rank_tasks(self.board.tasks.values(), sp.name, [], self.strategy):
             tid = e["task"].task_id
             if self.board.claim(tid, sp.name):
                 if self.board.complete(tid, sp.name, ids[-1], ep):

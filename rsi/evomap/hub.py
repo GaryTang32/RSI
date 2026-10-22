@@ -1,21 +1,4 @@
-"""Hubs: the shared-library side (spec §3.9, §4.16-4.18, §9.1).
-
-One :class:`Hub` interface, two implementations:
-
-* :class:`NaiveEvoMapHub` (this module) - a faithful replica of the public
-  network's incentives for the Behind-EvoMap experiments: asset_id + structure +
-  substance checks, validator nodes that run the *proposer's own* commands in an
-  **empty** directory, promotion on the **self-reported** ValidationReport,
-  +100 credits per promotion and +5 per fetch, GDI ranking
-  ``0.35*Intrinsic + 0.30*Usage + 0.20*Social + 0.15*Freshness`` computed from
-  claimed metadata;
-* :class:`~rsi.evomap.safehub.SafeHub` - verifiable execution, adoption-based
-  ranking, adoption-only credits (§9.2).
-
-Also here: :class:`Bundle` (Gene + Capsule + EvolutionEvent + proof material),
-:class:`AssetRecord`, :class:`CreditLedger` (Gini, top-10% share) and the
-client-side reuse score (§4.16).
-"""
+"""Hub interface, bundles, credits and GDI ranking, and the naive self-reported EvoMap hub (spec §3.9, §4.16-4.18)."""
 from __future__ import annotations
 
 import copy
@@ -36,13 +19,12 @@ PROMOTION_CREDIT = 100.0
 FETCH_CREDIT = 5.0
 VALIDATOR_CREDIT = 20.0
 STARTER_CREDITS = 500.0
+DEFAULT_REPUTATION = 50.0          # Evolver's default node reputation
 
 
 @dataclass
 class Bundle:
-    """What a publisher sends. ``pre_state`` / ``post_state`` are optional proof
-    material (the workspace before/after the capsule's diff) - not GEP fields;
-    only a hub that verifies execution uses them."""
+    """What a publisher sends; ``pre_state`` / ``post_state`` are proof material only a verifying hub reads."""
 
     gene: dict
     capsule: Optional[dict] = None
@@ -126,7 +108,7 @@ class Hub(Protocol):
 
 
 class CreditLedger:
-    """Credit balances + history. ``earned`` excludes starter credits."""
+    """Credit balances and history; ``earned`` excludes starter credits."""
 
     def __init__(self, starter: float = STARTER_CREDITS) -> None:
         self.starter = starter
@@ -145,8 +127,7 @@ class CreditLedger:
         return sum(a for _, ag, a, _ in self.history if ag == agent)
 
     def earned_all(self, agents: Optional[Sequence[str]] = None) -> dict[str, float]:
-        agents = list(agents) if agents is not None else sorted(self.balance)
-        out = {a: 0.0 for a in agents}
+        out = {a: 0.0 for a in (list(agents) if agents is not None else sorted(self.balance))}
         for _, ag, amt, _ in self.history:
             if ag in out:
                 out[ag] += amt
@@ -161,14 +142,20 @@ class CreditLedger:
         tot = sum(vals)
         if not vals or tot <= 0:
             return 0.0
-        k = max(1, int(math.ceil(q * len(vals))))
-        return sum(vals[:k]) / tot
+        return sum(vals[:max(1, int(math.ceil(q * len(vals))))]) / tot
 
     def by_reason(self) -> dict[str, float]:
         out: dict[str, float] = defaultdict(float)
         for _, _, a, r in self.history:
             out[r] += a
         return dict(out)
+
+
+def register_agent(hub, name: str, cluster: Optional[str] = None) -> None:
+    if hasattr(hub, "register"):
+        hub.register(name, cluster=cluster)
+    else:
+        hub.credits.register(name)
 
 
 def client_reuse_score(view: AssetView, reputation: float = 50.0) -> float:
@@ -188,36 +175,20 @@ def similarity(gene: dict, signals: Sequence[str]) -> float:
                   tokens(" ".join([*gene.get("signals_match", []), gene.get("summary", ""), gene.get("id", "")])))
 
 
-# ----------------------------------------------------------------------------- GDI
-DEFAULT_REPUTATION = 50.0          # Evolver's default node reputation (client reuse score, §4.16)
-
-
 @dataclass
 class GDIRanker:
-    """GDI = 100 * (0.35 I + 0.30 U + 0.20 S + 0.15 F)  (weights: Behind-EvoMap snippets).
+    """GDI = 100 * (0.35 I + 0.30 U + 0.20 S + 0.15 F) from claimed metadata (Behind-EvoMap weights).
 
-    ``variant="be2026"`` (default; retry round 2, I1) - the intrinsic formula quoted from the Behind-EvoMap
-    HTML (second-hand search snippet, unverified)::
-
-        I = 1/6 [clip(C,0,1) + min(S/10,1) + max(0, 1 - F*L/1000) + min(T/5,1) + min(l_sum/200,1) + clip(R/100,0,1)]
-
-    read as C = claimed capsule confidence, S = claimed success streak, F*L = claimed blast files x lines,
-    T = trigger count (capsule ``trigger``, else gene ``signals_match``), l_sum = summary length in characters
-    (capsule summary, else gene summary), R = node reputation (hub-side, not public: ``reputation`` map, default
-    50 for every node). Five of the six are self-reported, as the study says. Freshness decays exponentially from
-    the asset's LAST ACTIVITY (publish, a fetch, a review/vote), as the EvoMap wiki describes ``gdiFreshness``.
-
-    ``variant="legacy"`` - our pre-round-2 reconstruction (six metrics: blast min(1,2/files)*min(1,50/lines),
-    confidence, streak/5, outcome score, report ok, substance len/400; freshness from the publish epoch).
-
-    Usage and social are our reconstruction in both variants (no source gives their formulas)."""
+    ``be2026``: I = mean of clip(confidence), min(streak/10, 1), max(0, 1 - files*lines/1000), min(triggers/5, 1),
+    min(summary_len/200, 1), clip(reputation/100); freshness decays from the last activity. ``legacy``: our earlier
+    six-metric reconstruction with freshness from the publish epoch. Usage and social are reconstructions."""
 
     w: tuple = (0.35, 0.30, 0.20, 0.15)
     fresh_half_life: float = 10.0          # epochs
     blast_files_opt: int = 2
     blast_lines_opt: int = 50
     variant: str = "be2026"
-    reputation: Optional[dict] = None      # node -> reputation 0..100 (be2026 only); missing -> DEFAULT_REPUTATION
+    reputation: Optional[dict] = None      # node -> 0..100 (be2026); missing -> DEFAULT_REPUTATION
 
     def __post_init__(self) -> None:
         if self.variant not in ("be2026", "legacy"):
@@ -232,8 +203,7 @@ class GDIRanker:
 
     @staticmethod
     def trigger_count(rec: "AssetRecord") -> int:
-        cap = rec.bundle.capsule or {}
-        trig = cap.get("trigger")
+        trig = (rec.bundle.capsule or {}).get("trigger")
         if not trig:
             trig = rec.bundle.gene.get("signals_match", [])
         return len(list(trig or []))
@@ -254,9 +224,7 @@ class GDIRanker:
                  "summary": min(self.summary_len(rec) / 200.0, 1.0),
                  "reputation": min(1.0, max(0.0, rep / 100.0))}
             return sum(m.values()) / len(m), m
-        g = rec.bundle.gene
-        cap = rec.bundle.capsule or {}
-        text = " ".join(g.get("strategy", [])) + str(cap.get("content", ""))
+        text = " ".join(rec.bundle.gene.get("strategy", [])) + str((rec.bundle.capsule or {}).get("content", ""))
         m = {"blast": self.blast_score(cl["files"], cl["lines"]),
              "confidence": min(1.0, max(0.0, cl["confidence"])),
              "streak": min(max(cl["success_streak"], 0), 5) / 5.0,
@@ -277,7 +245,7 @@ class GDIRanker:
 
     @staticmethod
     def last_activity(rec: AssetRecord) -> int:
-        """Epoch of the asset's last activity: publish, any fetch, any review / vote."""
+        """Epoch of the last publish, fetch or review."""
         return max([rec.epoch] + [e for _, e in rec.fetches] + [e for _, _, e in rec.reviews])
 
     def freshness(self, rec: AssetRecord, epoch: int, half_life: Optional[float] = None) -> float:
@@ -295,9 +263,9 @@ class GDIRanker:
         return {"I": I, "U": self.usage(rec), "S": self.social(rec), "F": self.freshness(rec, epoch, half_life), **m}
 
 
-# ----------------------------------------------------------------------------- base hub
 class _HubBase:
     name = "hub"
+    admitted: tuple = ("promoted",)    # statuses that are searchable and ranked
 
     def __init__(self, *, ledger: Optional[Ledger] = None) -> None:
         self.records: dict[str, AssetRecord] = {}
@@ -312,7 +280,7 @@ class _HubBase:
         self.epoch += 1
 
     def _node(self, kind: str, status: str, asset_id: str, author: str, **meta) -> None:
-        """Hub ledger tree: publish nodes are roots; verify/adopt/revoke nodes hang under them."""
+        """Hub ledger tree: publish nodes are roots; verify / adopt / revoke nodes hang under them."""
         nid = f"{kind}_{len(self.ledger):07d}"
         parent = None if kind == "publish" else self._pub_node.get(asset_id)
         self.ledger.add(Node(id=nid, parent=parent, round=self.epoch, kind=kind, status=status,
@@ -322,13 +290,9 @@ class _HubBase:
             self._pub_node[asset_id] = nid
 
     def _integrity(self, bundle: Bundle) -> list[str]:
-        errs = []
-        for name, a in (("gene", bundle.gene), ("capsule", bundle.capsule), ("event", bundle.event)):
-            if a is None:
-                continue
-            if not verify_asset_id(a):
-                errs.append(f"{name}: asset_id verification failed")
-        return errs
+        return [f"{name}: asset_id verification failed"
+                for name, a in (("gene", bundle.gene), ("capsule", bundle.capsule), ("event", bundle.event))
+                if a is not None and not verify_asset_id(a)]
 
     def fetch(self, asset_id: str, consumer: str) -> Optional[Bundle]:
         rec = self.records.get(asset_id)
@@ -345,44 +309,40 @@ class _HubBase:
         out = []
         for aid in self.order:
             rec = self.records[aid]
-            if rec.status not in statuses:
-                continue
             g = rec.bundle.gene
-            hits = pattern_hits(g.get("signals_match", []), signals)
-            if hits <= 0:
-                continue
-            out.append((rec, similarity(g, signals)))
+            if rec.status in statuses and pattern_hits(g.get("signals_match", []), signals) > 0:
+                out.append((rec, similarity(g, signals)))
         return out
+
+    @staticmethod
+    def _view(r: AssetRecord, score: float, sim: float, exploration: bool = False) -> AssetView:
+        return AssetView(r.asset_id, copy.deepcopy(r.bundle.gene), copy.deepcopy(r.bundle.capsule), score, r.status,
+                         r.author, sim, exploration=exploration)
+
+    def _score(self, rec: AssetRecord) -> float:
+        raise NotImplementedError
 
     def published(self) -> list[AssetRecord]:
         return [self.records[a] for a in self.order]
 
+    def rank(self, signal_class: Optional[str] = None) -> list[tuple[str, float]]:
+        recs = [self.records[a] for a in self.order if self.records[a].status in self.admitted]
+        if signal_class:
+            recs = [r for r in recs if pattern_hits(r.bundle.gene.get("signals_match", []), [signal_class]) > 0]
+        return sorted(((r.asset_id, self._score(r)) for r in recs), key=lambda x: -x[1])
+
+    def metrics(self) -> dict:
+        from .metrics import ReuseMetrics
+        return ReuseMetrics().compute(self)
+
 
 class NaiveEvoMapHub(_HubBase):
-    """Faithful replica of the public hub's self-reported regime (see module doc).
+    """Replica of the public hub's self-reported regime: promotion on the publisher's own report (or the
+    empty-directory validator run with ``promote_rule="validator"``), +100 per promotion, +5 per fetch, GDI ranking.
 
-    ``promote_rule``: ``"self_report"`` (default: the bundle's own
-    ValidationReport says ``overall_ok`` and claimed ``outcome.score >= 0.7``) or
-    ``"validator"`` (the empty-directory validator run must pass - where only
-    info-only commands like ``python --version`` can succeed).
-
-    ``search_mode`` (N10) mirrors Evolver's ``hubSearch``:
-
-    * ``"signal+semantic"`` (default; ``HUBSEARCH_SEMANTIC`` is on by default):
-      the signal search (promoted assets with >= 1 pattern hit, GDI-ranked, top
-      ``k``) merged with a semantic search - the query is the signals with
-      ``errsig:*`` dropped and ``prefix:`` stripped, first 12, space-joined
-      (deob ``hubSearch.js``), matched against what the gene says it does
-      (``signals_match`` + summary + id), top ``semantic_limit`` by similarity.
-      As in Evolver, only a semantic result carries a ``similarity`` (a signal
-      result gets it when the semantic search also returned it), which then adds
-      ``0.3 * similarity`` to the client reuse score (§4.16);
-    * ``"signal"``: signal search only (``HUBSEARCH_SEMANTIC=false``), similarity 0;
-    * ``"legacy"``: our earlier approximation - pattern-hit assets only, each with
-      a similarity (kept to reproduce old results).
-
-    The hub's embedding model is not public; the semantic score here is the token
-    cosine of :func:`similarity`, so its magnitudes are a stand-in."""
+    ``search_mode`` mirrors Evolver's ``hubSearch``: ``signal+semantic`` (default) merges the GDI-ranked signal
+    search with a token-cosine stand-in for the hub's semantic search; ``signal`` has no similarity; ``legacy``
+    gives every pattern hit a similarity."""
 
     name = "naive"
 
@@ -400,6 +360,9 @@ class NaiveEvoMapHub(_HubBase):
         self.validator = ValidationRunner(CommandPolicy.faithful(), validator_executor or InProcessExecutor(),
                                           mode="safe", retries=0)
 
+    def _score(self, rec: AssetRecord) -> float:
+        return self.ranker.score(rec, self.epoch)
+
     def publish(self, bundle: Bundle, author: str) -> Decision:
         self.credits.register(author)
         reasons = self._integrity(bundle)
@@ -407,8 +370,7 @@ class NaiveEvoMapHub(_HubBase):
         if c is None:
             reasons.append("bundle_required")
         else:
-            body = max((len(str(c.get(k) or "")) for k in ("content", "diff", "strategy")), default=0)
-            if body < 50:
+            if max((len(str(c.get(k) or "")) for k in ("content", "diff", "strategy")), default=0) < 50:
                 reasons.append("capsule substance < 50 chars")
             if len(str(c.get("summary", ""))) < 20:
                 reasons.append("capsule summary < 20 chars")
@@ -425,16 +387,13 @@ class NaiveEvoMapHub(_HubBase):
         rec = AssetRecord(aid, bundle, author, "candidate", self.epoch)
         self.records[aid] = rec
         self.order.append(aid)
-        # validator node: the proposer's own commands in a FRESH EMPTY directory
+        # validator node: the proposer's own commands in a fresh EMPTY directory
         vres = self.validator.run(list(g.get("validation", [])), {}, gene_id=g.get("id", ""), signer="validator")
         rec.validator_reports.append(vres.report.to_dict())
         self.credits.credit("validator_pool", VALIDATOR_CREDIT, "validation", self.epoch)
         cl = rec.claimed()
         eligible = cl["score"] >= 0.7 and cl["files"] > 0 and cl["lines"] > 0
-        if self.promote_rule == "validator":
-            ok = vres.ok and eligible
-        else:
-            ok = cl["report_ok"] and eligible
+        ok = (vres.ok if self.promote_rule == "validator" else cl["report_ok"]) and eligible
         rec.status = "promoted" if ok else "quarantined"
         if ok:
             rec.promoted_epoch = self.epoch
@@ -444,8 +403,7 @@ class NaiveEvoMapHub(_HubBase):
                         vres.report.to_dict())
 
     def analyze_signals(self, payload: dict) -> dict:
-        """``POST /a2a/signal/analyze`` (Evolver layer 3). The hub's LLM prompt is not public; without a plugged-in
-        ``signal_analyzer`` the hub returns no signals."""
+        """``POST /a2a/signal/analyze`` (Evolver layer 3); no signals without a plugged-in analyzer."""
         if self.signal_analyzer is None:
             return {"signals": []}
         return self.signal_analyzer(payload)
@@ -461,22 +419,19 @@ class NaiveEvoMapHub(_HubBase):
         scored = sorted(((self.ranker.score(r, self.epoch), r, sim) for r, sim in cands),
                         key=lambda x: (-x[0], x[1].asset_id))[:k]
         if self.search_mode == "signal+semantic":
-            sem = self.semantic_search(signals)
             by_id = {r.asset_id: i for i, (_, r, _) in enumerate(scored)}
-            for r, sim in sem:
-                if r.asset_id in by_id:                   # merge: the signal result takes the semantic similarity
+            for r, sim in self.semantic_search(signals):
+                if r.asset_id in by_id:                   # a signal hit takes the semantic similarity
                     i = by_id[r.asset_id]
                     scored[i] = (scored[i][0], r, sim)
                 else:
                     by_id[r.asset_id] = len(scored)
                     scored.append((self.ranker.score(r, self.epoch), r, sim))
-        return [AssetView(r.asset_id, copy.deepcopy(r.bundle.gene), copy.deepcopy(r.bundle.capsule), sc, r.status,
-                          r.author, sim) for sc, r, sim in scored]
+        return [self._view(r, sc, sim) for sc, r, sim in scored]
 
     @staticmethod
     def semantic_query(signals: Sequence[str]) -> str:
-        """Evolver's semantic-search query: drop ``errsig:`` / ``errsig_norm:``, strip a ``prefix:`` shorter than
-        30 chars, keep the first 12, space-joined."""
+        """Evolver's query: drop ``errsig`` signals, strip a short ``prefix:``, first 12, space-joined."""
         out = []
         for s in signals:
             s = str(s)
@@ -489,8 +444,7 @@ class NaiveEvoMapHub(_HubBase):
         return " ".join(out[:12])
 
     def semantic_search(self, signals: Sequence[str]) -> list[tuple[AssetRecord, float]]:
-        """``/a2a/assets/semantic-search?q=...&type=Gene&limit=10``: promoted assets by similarity of what the gene
-        says it does to the query (no pattern hit required)."""
+        """Promoted assets by similarity to the query, no pattern hit required."""
         q = self.semantic_query(signals)
         if len(q) < 3:
             return []
@@ -498,11 +452,10 @@ class NaiveEvoMapHub(_HubBase):
         out = []
         for aid in self.order:
             rec = self.records[aid]
-            if rec.status != "promoted":
-                continue
-            sim = similarity(rec.bundle.gene, qs)
-            if sim > 0:
-                out.append((rec, sim))
+            if rec.status == "promoted":
+                sim = similarity(rec.bundle.gene, qs)
+                if sim > 0:
+                    out.append((rec, sim))
         out.sort(key=lambda x: (-x[1], x[0].asset_id))
         return out[:self.semantic_limit]
 
@@ -517,13 +470,3 @@ class NaiveEvoMapHub(_HubBase):
                               "reason": "self-reported review", "uplift": (proof or {}).get("uplift")})
         self._node("adopt", "reported", asset_id, consumer, outcome=int(outcome))
         return {"counted": True, "rating": rating}
-
-    def rank(self, signal_class: Optional[str] = None) -> list[tuple[str, float]]:
-        recs = [self.records[a] for a in self.order if self.records[a].status == "promoted"]
-        if signal_class:
-            recs = [r for r in recs if pattern_hits(r.bundle.gene.get("signals_match", []), [signal_class]) > 0]
-        return sorted(((r.asset_id, self.ranker.score(r, self.epoch)) for r in recs), key=lambda x: -x[1])
-
-    def metrics(self) -> dict:
-        from .metrics import ReuseMetrics
-        return ReuseMetrics().compute(self)

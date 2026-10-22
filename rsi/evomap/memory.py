@@ -1,30 +1,4 @@
-"""Memory graph advice and outcome inference (spec §4.4, §4.11, §5.7).
-
-:class:`MemoryGraph` is an append-only list of ``MemoryGraphEvent`` dicts
-(``kind`` in signal | hypothesis | attempt | outcome | external_candidate |
-epoch_boundary ...). :meth:`MemoryGraph.advice` turns past outcomes into a
-preferred gene and banned genes, in one of two modes:
-
-``spec`` (GEP spec §4 / sdk 1.1.0)
-    Laplace p = (s+1)/(n+2) per (signal key, gene) edge, weight w = 0.5^(age/30d),
-    value = p*w; preferred = argmax value; banned iff n >= 2 and value < 0.18.
-    Key matching is exact (sdk 1.1.0) or Jaccard >= 0.34 (spec text).
-
-``current`` (Evolver v1.94.0)
-    For every historical key k with Jaccard(current, k) >= 0.34: edge value
-    p*w*(1.15 if any outcome carried a predictive block) * sim; best(g) = max;
-    gene-level prior with half-life 45 d (inert outcomes counted as successes
-    there); score = best + 0.12*prior (or 0.4*prior); inert outcomes
-    (``stable_no_error``) count as neither success nor failure per key; bans:
-    per-key attempts (keys with sim >= 0.8) >= 4 and best < 0.15, or < 2
-    per-key attempts with >= 5 prior attempts and prior < 0.1, or >= 8
-    consecutive inert with no success; epochs multiply pre-epoch evidence by 0.1.
-
-:class:`OutcomeInferrer` reproduces how the outcome of cycle t-1 reaches the
-graph: *faithful* reads the last one-line ``EvolutionEvent`` JSON in the
-executor's transcript first (an LLM-printed self-assessment), else the §4.11
-error-delta heuristic; *safe* uses only the solidify-measured outcome.
-"""
+"""Memory graph (append-only MemoryGraphEvents), its gene advice, and outcome inference (spec §4.4, §4.11, §5.7)."""
 from __future__ import annotations
 
 import json
@@ -32,6 +6,7 @@ import re
 import zlib
 from collections import defaultdict
 from dataclasses import dataclass, field
+from itertools import takewhile
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
@@ -57,9 +32,7 @@ class MemoryGraph:
         self.events: list[dict] = []
         self._n = 0
         if self.path and self.path.exists():
-            for line in self.path.read_text().splitlines():
-                if line.strip():
-                    self.events.append(json.loads(line))
+            self.events = [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
             self._n = len(self.events)
 
     def _now(self) -> float:
@@ -89,21 +62,21 @@ class MemoryGraph:
     def outcomes(self) -> list[dict]:
         return [e for e in self.events[-self.read_limit:] if e.get("kind") == "outcome"]
 
-    # ------------------------------------------------------------------ advice
     def advice(self, signals: Sequence[str], genes: Iterable = (), *, mode: str = "current",
                key_match: str = "jaccard", half_life_days: float = 30.0, prior_half_life_days: float = 45.0,
                jaccard_min: float = 0.34, ban_value: float = 0.18, per_key_attempts: int = 4,
                ban_best: float = 0.15, inert_streak: int = 8) -> Advice:
+        """Preferred and banned genes from past outcomes: ``spec`` (GEP sdk 1.1.0) or ``current`` (Evolver)."""
         if mode == "spec":
             return self._advice_spec(signals, key_match, half_life_days, jaccard_min, ban_value)
         return self._advice_current(signals, half_life_days, prior_half_life_days, jaccard_min,
                                     per_key_attempts, ban_best, inert_streak)
 
     def _age_w(self, ts: float, hl: float) -> float:
-        age_days = max(0.0, (self._now() - ts) / DAY_S)
-        return 0.5 ** (age_days / hl)
+        return 0.5 ** (max(0.0, (self._now() - ts) / DAY_S) / hl)
 
     def _advice_spec(self, signals, key_match, hl, jmin, ban_value) -> Advice:
+        # value = Laplace (s+1)/(n+2) * 0.5^(age/hl); banned iff n >= 2 and value < ban_value
         cur = set(signals)
         key = signal_key(signals)
         edges: dict = defaultdict(lambda: [0, 0, 0.0])   # gene -> [succ, total, last_ts]
@@ -135,16 +108,17 @@ class MemoryGraph:
         return adv
 
     def _advice_current(self, signals, hl, prior_hl, jmin, per_key_attempts, ban_best, inert_streak) -> Advice:
+        # Evolver: per similar key, value = p * w * 1.15^predictive * sim; inert (stable_no_error) outcomes count
+        # for neither side per key but as successes in the gene prior; an epoch boundary scales older evidence x0.1
         cur = set(signals)
         evs = self.events[-self.read_limit:]
         epoch_ts = max((float(e.get("ts", 0.0)) for e in evs if e.get("kind") == "epoch_boundary"), default=None)
-        # per (key, gene) stats and per-gene prior
-        per: dict = defaultdict(lambda: {"s": 0, "f": 0, "ts": 0.0, "pred": False, "sim": 0.0, "pre": False})
+        per: dict = defaultdict(lambda: {"s": 0, "f": 0, "ts": 0.0, "pred": False, "sim": 0.0, "pre": False,
+                                         "post_s": 0, "post_f": 0})
         prior: dict = defaultdict(lambda: {"s": 0, "n": 0, "ts": 0.0})
-        seq: dict = defaultdict(list)       # gene -> list of 'S'/'F'/'I' in order
+        seq: dict = defaultdict(list)       # gene -> 'S' / 'F' / 'I' in order
         post_epoch_seen: set = set()
-        outs = [e for e in evs if e.get("kind") == "outcome"]
-        for o in outs:
+        for o in (e for e in evs if e.get("kind") == "outcome"):
             gid = (o.get("gene") or {}).get("id")
             if not gid:
                 continue
@@ -154,11 +128,10 @@ class MemoryGraph:
             inert = ok and "stable_no_error" in str(oc.get("note", ""))
             pr = prior[gid]
             pr["n"] += 1
-            pr["s"] += ok               # the gene-level prior still counts inert as success
+            pr["s"] += ok
             pr["ts"] = max(pr["ts"], ts)
             seq[gid].append("I" if inert else ("S" if ok else "F"))
-            sigs = (o.get("signal") or {}).get("signals", [])
-            sim = jaccard(cur, sigs)
+            sim = jaccard(cur, (o.get("signal") or {}).get("signals", []))
             if sim < jmin:
                 continue
             k = ((o.get("signal") or {}).get("key", ""), gid)
@@ -169,8 +142,6 @@ class MemoryGraph:
             st["sim"] = sim
             st["ts"] = max(st["ts"], ts)
             st["pre"] = st["pre"] or pre
-            st.setdefault("post_s", 0)
-            st.setdefault("post_f", 0)
             if inert:
                 continue
             st["s" if ok else "f"] += 1
@@ -190,8 +161,7 @@ class MemoryGraph:
                 else:
                     factor = 0.1
             n = s + f
-            p = (s + 1) / (n + 2)
-            v = p * self._age_w(st["ts"], hl) * (1.15 if st["pred"] else 1.0) * factor * st["sim"]
+            v = (s + 1) / (n + 2) * self._age_w(st["ts"], hl) * (1.15 if st["pred"] else 1.0) * factor * st["sim"]
             if n > 0:
                 best[gid] = max(best[gid], v)
             if st["sim"] >= 0.8:
@@ -208,19 +178,13 @@ class MemoryGraph:
             rs, rf = raw[gid]
             if score > top_v and (rs + rf) > 0 and rs > rf and rs > 0:
                 top, top_v = gid, score
-            # bans
             if key_attempts[gid] >= per_key_attempts and b < ban_best:
                 adv.banned_gene_ids.add(gid)
                 adv.ban_reasons[gid] = f"current: per-key attempts {key_attempts[gid]} and best {b:.3f} < {ban_best}"
             elif key_attempts[gid] < 2 and pr["n"] >= 5 and pv < 0.1:
                 adv.banned_gene_ids.add(gid)
                 adv.ban_reasons[gid] = f"current: prior {pv:.3f} < 0.1 over {pr['n']} attempts"
-            tail = 0
-            for x in reversed(seq[gid]):
-                if x == "I":
-                    tail += 1
-                else:
-                    break
+            tail = len(list(takewhile(lambda x: x == "I", reversed(seq[gid]))))
             if tail >= inert_streak and "S" not in seq[gid]:
                 adv.banned_gene_ids.add(gid)
                 adv.ban_reasons[gid] = f"current: {tail} consecutive inert outcomes"
@@ -228,7 +192,6 @@ class MemoryGraph:
         return adv
 
 
-# ----------------------------------------------------------------------------- outcome inference
 @dataclass
 class Outcome:
     status: str
@@ -242,9 +205,8 @@ _EVENT_LINE = re.compile(r"^\s*\{.*\}\s*$")
 
 
 def find_transcript_event(transcript: str, max_lines: int = 400) -> Optional[dict]:
-    """The last single-line JSON object with type == EvolutionEvent and an outcome."""
-    lines = (transcript or "").splitlines()[-max_lines:]
-    for line in reversed(lines):
+    """The last single-line JSON EvolutionEvent with an outcome in ``transcript``."""
+    for line in reversed((transcript or "").splitlines()[-max_lines:]):
         if not _EVENT_LINE.match(line):
             continue
         try:
@@ -257,8 +219,8 @@ def find_transcript_event(transcript: str, max_lines: int = 400) -> Optional[dic
 
 
 class OutcomeInferrer:
-    """§4.11. ``mode="faithful"``: transcript EvolutionEvent first, else heuristic;
-    ``mode="safe"``: the measured solidify outcome only (never an LLM-printed score)."""
+    """§4.11: ``faithful`` trusts a transcript EvolutionEvent, else the error-delta heuristic; ``safe`` uses only
+    the measured solidify outcome."""
 
     def __init__(self, mode: str = "faithful") -> None:
         self.mode = mode
@@ -272,8 +234,7 @@ class OutcomeInferrer:
         ev = find_transcript_event(transcript)
         if ev is not None:
             oc = ev["outcome"]
-            score = oc.get("score")
-            status = oc.get("status")
+            score, status = oc.get("score"), oc.get("status")
             if score is None:
                 score = 0.75 if status == "success" else 0.25
             if status is None:
@@ -292,6 +253,5 @@ class OutcomeInferrer:
         if recent_success:
             rs = list(recent_success)[-5:]
             trend = 0.06 * (2 * (sum(rs) / len(rs)) - 1)
-        pred = {"trend": trend}
         score = min(1.0, max(0.0, base + delta + max(-0.1, min(0.1, trend))))
-        return Outcome(st, round(score, 3), note, observed=False, predictive=pred)
+        return Outcome(st, round(score, 3), note, observed=False, predictive={"trend": trend})

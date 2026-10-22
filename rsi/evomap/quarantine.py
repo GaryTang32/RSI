@@ -1,21 +1,4 @@
-"""Consumer-side quarantine of untrusted assets (spec §9.2.6, §3.8, X11).
-
-A fetched asset is staged in the local store's ``external_candidates`` (asset_id
-verified, capsule confidence x0.6, provenance recorded) and is **never injected
-into production directly**. :class:`QuarantineGate` then
-
-1. lints it (command policy + prompt-injection / escalation lint);
-2. runs a local A/B on the consumer's OWN held-out tasks that are in the gene's
-   scope: the consumer's harness without vs with the gene, same tasks and seeds
-   (``rsi.core.Evaluator``);
-3. applies RRSI's keep rule from ``rsi.core.gates``: :class:`~rsi.core.RRSIGate`
-   (noise floor ``S' >= S* - delta`` + cost rule) and, as in RRSI's argmax over
-   admissible candidates *including the incumbent*, requires ``dS > 0``
-   (``gate="rrsi"``); or the stricter paired-LCB rule (``gate="lcb"``).
-
-The result carries the proof (task-id hash, dS, delta, n) that the consumer
-sends with its adoption report.
-"""
+"""Consumer-side quarantine: lint a fetched gene, then A/B it on the consumer's own held-out tasks (spec §9.2.6)."""
 from __future__ import annotations
 
 import random
@@ -46,6 +29,9 @@ class QuarantineResult:
 
 
 class QuarantineGate:
+    """Promote iff the A/B passes ``gate``: ``rrsi`` (RRSIGate noise floor and cost rule, and dS > 0) or ``lcb``
+    (paired lower confidence bound > 0). The proof (task hash, dS, delta, n) goes with the adoption report."""
+
     def __init__(self, domain: Domain, harness: Artifact, llm: Optional[LLM], tasks: Sequence, *,
                  injector: Optional[Injector] = None, extractor: Optional[TaskSignalExtractor] = None, k: int = 2,
                  n_max: int = 12, min_tasks: int = 3, gate: str = "rrsi", delta: Optional[float] = None,
@@ -62,7 +48,7 @@ class QuarantineGate:
         self.ev = Evaluator(domain, llm, workers=1, allow_sealed=True)
         self.rng = random.Random(seed)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
-        self.last: dict = {}           # the last A/B's EvalResults (for the run trace only; never read back)
+        self.last: dict = {}           # the last A/B's EvalResults, for traces only
 
     def test(self, g: Gene) -> QuarantineResult:
         self.last = {}
@@ -85,10 +71,8 @@ class QuarantineGate:
             noise = noise_from_trials(base.trial_matrix(), z=self.z)
         else:
             noise = fixed_noise(0.05)
-        inc_s, cand_s = Scored.from_eval(base), Scored.from_eval(cand)
         dS = cand.score - base.score
-        # S_base / S_gene let the hub tell an uninformative report (no headroom: baseline already at ceiling)
-        # from a real "no gain" claim before its spot-check can slash the reporter
+        # S_base lets the hub tell a no-headroom report (baseline at ceiling) from a real "no gain"
         proof = {"tasks_hash": sha256_text("|".join(sorted(t.id for t in scope)))[:16], "dS": dS,
                  "delta": noise.delta, "n": len(scope), "k": self.k, "S_base": base.score, "S_gene": cand.score}
         res = QuarantineResult(False, "", dS, noise.delta, len(scope), base.score, cand.score, proof)
@@ -98,7 +82,8 @@ class QuarantineGate:
             res.promote = d["lo"] > 0
             res.reason = f"paired LCB {d['lo']:+.3f} {'>' if res.promote else '<='} 0"
             return res
-        v = RRSIGate().check(cand_s, inc_s, GateContext(best_score=base.score, delta=noise.delta))
+        v = RRSIGate().check(Scored.from_eval(cand), Scored.from_eval(base),
+                             GateContext(best_score=base.score, delta=noise.delta))
         res.promote = bool(v.accept) and dS > 0
         res.reason = v.reason if not v.accept else (f"admissible and dS={dS:+.3f} > 0" if dS > 0 else
                                                     f"admissible but dS={dS:+.3f} <= 0 (incumbent kept)")

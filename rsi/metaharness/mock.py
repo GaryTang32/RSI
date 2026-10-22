@@ -1,46 +1,11 @@
-"""Deterministic offline proposer for Meta-Harness (spec A9.1 ``MockProposer``).
-
-It "draws from a library of candidate programs; its choice rule may use only
-what ``store_view`` exposes". The choice rule is a caricature of the skill's
-workflow, and each step is gated by what the view contains:
-
-1. parse every visible candidate: its program (from its *source code*), its
-   search score and context cost (``scores.json``), its trace summary and its raw
-   traces - whichever of these the history mode exposes;
-2. pick parents from the visible scores (best, then a low-cost frontier member);
-3. choose a *mechanism move* per candidate:
-   * raw traces visible -> :meth:`Library.diagnose` reads per-example records and
-     proposes the move that addresses the observed failure (overflow, missing
-     labels, recurring confusions, heavy context ...);
-   * only a summary visible -> :meth:`Library.diagnose_summary` (lossy);
-   * only scores -> an untried random move (still avoiding exact repeats and
-     moves whose visible history regressed), or a crossover of the two best;
-4. optionally (``leak_rate``) hard-code answers read from traces - the
-   overfitting that Meta-Harness's main loop does not guard against;
-5. write the release's Step-0 post-eval reports (``reports/iter<NNN>.md``) for past
-   iterations that have none, from ``evolution_summary.jsonl`` and the visible scores.
-
-What it reads (audit N4). The choice rule is Markovian in the traces: it diagnoses
-only the traces of the parent(s) it edits, never the rest of the history's traces,
-so the ``full`` arm is "the parents' raw traces" rather than a non-Markovian use of
-the whole history. ``files_read`` therefore lists only what the proposal is based on
-(the parents' code and scores, the traces or summaries it diagnosed, the frontier
-file); every other file it parses mechanically (other candidates' configs, to avoid
-repeats and to rank) is listed in ``files_scanned``. Neither is comparable with the
-paper's "files read per iteration" (Q12), which counts an agent's own tool calls.
-The mock never prototypes (the release's Step 2).
-
-Offline results with this proposer validate the *machinery* (views really hide
-information; frontier, finalisation, budgets); they are not evidence about how
-an LLM proposer uses traces. Use ``--llm claude:haiku`` for that.
-"""
+"""Deterministic offline proposer: library programs chosen only from what the history view exposes."""
 from __future__ import annotations
 
 import json
 import random
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol
+from typing import Optional, Protocol
 
 from ..core.artifact import Artifact
 from .proposer import CandidateSpec, ProposalBatch, Proposer
@@ -66,30 +31,23 @@ class Library(Protocol):
 PARENT_HINT = "parent.json"
 
 
-# ------------------------------------------------------------------ MemoClassify
 class MemoClassifyLibrary:
-    """Program library for :mod:`rsi.domains.memoclassify` (``memory.py`` programs).
-
-    ``budget_hint``: the prompt length the trace diagnosis treats as "too long". The default (11,000 chars) is
-    tuned to MemoLM-A's hidden 12,000-char effective context, i.e. the mock *knows* the simulator's constant
-    (audit N9; see ``programs.DEFAULT_BUDGET_HINT``). Pass another value to test the sensitivity."""
+    """Program library for :mod:`rsi.domains.memoclassify`; the default ``budget_hint`` is tuned to MemoLM-A."""
 
     main_file = "memory.py"
 
     def __init__(self, budget_hint: Optional[int] = None) -> None:
         from ..domains.memoclassify import programs
         self.P = programs
-        self.moves = programs.ALL_MOVES       # mechanism moves + parameter variants (uninformed proposals)
+        self.moves = programs.ALL_MOVES
         self.budget_hint = int(budget_hint) if budget_hint else programs.DEFAULT_BUDGET_HINT
 
     def parse(self, files, name):
         src = files.get(self.main_file)
         if src is None:
             return None
-        g = self.P.parse(src)
-        if g is None:
-            g = self.P.seed_genome("no_memory" if "NoMemory" in src or "no learning" in src else "fewshot_all")
-        return g
+        return self.P.parse(src) or self.P.seed_genome("no_memory" if "NoMemory" in src or "no learning" in src
+                                                        else "fewshot_all")
 
     def render(self, genome, base=None):
         return Artifact({self.main_file: self.P.render(genome)})
@@ -118,7 +76,6 @@ class MemoClassifyLibrary:
             ("+lookup" if genome.get("lookup") else "")
 
 
-# ------------------------------------------------------------------ AgentQA
 AGENTQA_DEFAULT = {"tool": False, "format": False, "cot": False, "fallback": False, "lookup": {}}
 AGENTQA_MOVES: dict[str, tuple[dict, str, str]] = {
     "format": ({"format": True}, "A", "Asking for an explicit 'ANSWER: <value>' line and returning only it removes "
@@ -191,10 +148,9 @@ class AgentQALibrary:
     def render(self, genome, base=None):
         g = {**AGENTQA_DEFAULT, **genome}
         doc = ", ".join(k for k in ("tool", "format", "cot", "fallback") if g[k]) or "direct answer"
-        src = _AGENTQA_TEMPLATE.format(doc=doc, config=repr(g))
         files = dict(base.files) if base is not None else {"prompts/system.md": "You are a helpful assistant.\n",
                                                              "prompts/task.md": "{question}\n"}
-        files[self.main_file] = src
+        files[self.main_file] = _AGENTQA_TEMPLATE.format(doc=doc, config=repr(g))
         return Artifact(files)
 
     def apply(self, genome, move):
@@ -229,8 +185,7 @@ class AgentQALibrary:
         table = {}
         for unit, fb in per_task.items():
             m = re.search(r"expected '([^']+)'", fb)
-            t = traces.get(unit, "")
-            q = re.search(r"PROMPT: (.{40})", t)
+            q = re.search(r"PROMPT: (.{40})", traces.get(unit, ""))
             if m and q:
                 table[q.group(1)] = m.group(1)
         return {**genome, "lookup": table} if table else None
@@ -249,7 +204,6 @@ def library_for(domain) -> Library:
     raise ValueError(f"no MockProposer library for domain {name!r}; pass proposer=... or llm_propose=...")
 
 
-# ------------------------------------------------------------------ the proposer
 @dataclass
 class _Seen:
     name: str
@@ -263,9 +217,7 @@ class _Seen:
 
 
 class MockProposer(Proposer):
-    """Deterministic proposer; see module docstring. ``leak_rate`` = probability per
-    iteration of hard-coding answers read from traces (only possible when traces or
-    per-task feedback are visible)."""
+    """Deterministic proposer; ``leak_rate`` = per-iteration probability of hard-coding answers read from traces."""
 
     def __init__(self, library: Library, *, leak_rate: float = 0.0, explore_frac: float = 0.5,
                  seed: int = 0) -> None:
@@ -274,31 +226,28 @@ class MockProposer(Proposer):
         self.explore_frac = explore_frac
         self.seed = seed
 
-    # ---- reading the view
     def _read(self, view: dict[str, str]) -> tuple[list[_Seen], list[str]]:
-        """Parse every visible candidate. Returns ``(seen, scanned)``: ``scanned`` = every file parsed here
-        (mechanical bookkeeping; what the proposal is actually based on is decided in :meth:`propose`)."""
+        """Parse every visible candidate; returns ``(seen, files parsed)``."""
         scanned: list[str] = []
-        groups: dict[str, dict[str, dict[str, str]]] = {}
+        groups: dict[str, dict[str, str]] = {}
         for path, text in view.items():
             m = re.match(r"^candidates/([^/]+)/(.+)$", path)
             if m:
                 groups.setdefault(m.group(1), {})[m.group(2)] = text
         seen = []
         for name, files in groups.items():
-            src = {p[4:]: t for p, t in files.items() if p.startswith("src/")}
-            genome = self.lib.parse(src, name)
+            genome = self.lib.parse({p[4:]: t for p, t in files.items() if p.startswith("src/")}, name)
             if genome is None:
                 continue
             scanned.extend(f"candidates/{name}/{p}" for p in files if p.startswith("src/"))
-            sc = files.get("eval/search/scores.json")
             score = cost = None
-            if sc:
+            if sc := files.get("eval/search/scores.json"):
                 d = json.loads(sc)
                 score, cost = d.get("score"), d.get("context_cost")
                 scanned.append(f"candidates/{name}/eval/search/scores.json")
-            meta = json.loads(files["meta.json"]) if "meta.json" in files else {}
+            meta = {}
             if "meta.json" in files:
+                meta = json.loads(files["meta.json"])
                 scanned.append(f"candidates/{name}/meta.json")
             traces = {p.split("/")[-1][:-6]: t for p, t in files.items() if p.startswith("eval/search/traces/")}
             per_task = {}
@@ -328,7 +277,7 @@ class MockProposer(Proposer):
         pool = scored or seen
         hint = self._parent_hint(view)
         if hint is not None:
-            # a structured optimizer (rsi.metaharness.baselines) chose the program to mutate: it goes first
+            # the parent a structured optimizer selected goes first
             first = [s for s in pool if s.name == hint] or [s for s in seen if s.name == hint]
             if first:
                 pool = first + [s for s in pool if s.name != hint]
@@ -347,13 +296,15 @@ class MockProposer(Proposer):
         out: list[CandidateSpec] = []
         leak_done = False
 
-        def used(s: _Seen, *, code: bool = True) -> None:
-            """The files of candidate ``s`` this proposal is based on: its code (it is edited or combined)
-            and its score (the reason it was picked)."""
-            if code:
-                read.extend(p for p in view if p.startswith(f"candidates/{s.name}/src/"))
+        def used(s: _Seen) -> None:
+            read.extend(p for p in view if p.startswith(f"candidates/{s.name}/src/"))
             if f"candidates/{s.name}/eval/search/scores.json" in view:
                 read.append(f"candidates/{s.name}/eval/search/scores.json")
+
+        def read_traces(s: _Seen, per_task: bool) -> None:
+            read.extend(f"candidates/{s.name}/eval/search/traces/{u}.jsonl" for u in s.traces)
+            if per_task:
+                read.extend(f"candidates/{s.name}/eval/search/per_task/{u}.json" for u in s.per_task)
 
         for slot in range(k):
             parent = self._parent(pool, slot, rng)
@@ -367,10 +318,9 @@ class MockProposer(Proposer):
                 if g is not None:
                     genome, move, evidence = g, "lookup", "hard-coded answers read from search traces"
                     leak_done = True
-                    read.extend(f"candidates/{parent.name}/eval/search/traces/{u}.jsonl" for u in parent.traces)
-                    read.extend(f"candidates/{parent.name}/eval/search/per_task/{u}.json" for u in parent.per_task)
+                    read_traces(parent, per_task=True)
             if genome is None and parent.traces:
-                read.extend(f"candidates/{parent.name}/eval/search/traces/{u}.jsonl" for u in parent.traces)
+                read_traces(parent, per_task=False)
                 genome, move, evidence = self._informed(parent, self.lib.diagnose(parent.traces, parent.per_task),
                                                         tried, regressed)
             if genome is None and parent.summary:
@@ -381,18 +331,18 @@ class MockProposer(Proposer):
                 other = scored[1] if scored[0].name == parent.name else scored[0]
                 g = self.lib.crossover(parent.genome, other.genome)
                 if self.lib.signature(g) not in tried:
-                    genome, move, evidence, parents = g, "crossover", f"combine {parent.name} + {other.name}", \
-                        [parent.name, other.name]
+                    genome, move, evidence = g, "crossover", f"combine {parent.name} + {other.name}"
+                    parents = [parent.name, other.name]
                     used(other)
             if genome is None:
                 genome, move, evidence = self._random(parent, tried, regressed, rng)
             tried.add(self.lib.signature(genome))
-            axis = self.lib.moves.get(move, ({}, "combo", ""))[1] if move in self.lib.moves else \
-                ("leak" if move == "lookup" else "combo")
-            hyp = self.lib.moves[move][2] if move in self.lib.moves else evidence
-            name = safe_name(f"i{iteration:02d}_{slot}_{move}")
-            base = artifacts.get(parent.name)
-            out.append(CandidateSpec(name, self.lib.render(genome, base), hypothesis=hyp,
+            if move in self.lib.moves:
+                axis, hyp = self.lib.moves[move][1], self.lib.moves[move][2]
+            else:
+                axis, hyp = ("leak" if move == "lookup" else "combo"), evidence
+            out.append(CandidateSpec(safe_name(f"i{iteration:02d}_{slot}_{move}"),
+                                     self.lib.render(genome, artifacts.get(parent.name)), hypothesis=hyp,
                                      axis="exploitation" if slot == 0 else "exploration",
                                      components=[move, f"axis:{axis}"], base_system=parent.name,
                                      parents_read=parents, meta={"move": move, "evidence": evidence}))
@@ -405,8 +355,6 @@ class MockProposer(Proposer):
 
     @staticmethod
     def _parent_hint(view: dict[str, str]) -> Optional[str]:
-        """``parent.json`` = ``{"parent": <name>}``, written only by the structured comparison optimizers of
-        :mod:`rsi.metaharness.baselines` (never by the store): the parent their selection rule sampled."""
         if PARENT_HINT not in view:
             return None
         try:
@@ -415,9 +363,7 @@ class MockProposer(Proposer):
             return None
 
     def _reports(self, view: dict[str, str], iteration: int, seen: list[_Seen]) -> dict[str, str]:
-        """Release Step 0: a <= 30-line post-eval report for every past iteration that has results in
-        ``evolution_summary.jsonl`` but no ``reports/iter<NNN>.md`` in the view (what changed, per-unit
-        improvements / regressions vs the base, takeaway). Built only from visible files."""
+        """Release Step 0: a short post-eval report for every past iteration without one, from visible files."""
         text = view.get("evolution_summary.jsonl")
         if not text:
             return {}
@@ -430,8 +376,7 @@ class MockProposer(Proposer):
         by = {s.name: s for s in seen}
         per_unit: dict[str, dict] = {}
         for s in seen:
-            sc = view.get(f"candidates/{s.name}/eval/search/scores.json")
-            if sc:
+            if sc := view.get(f"candidates/{s.name}/eval/search/scores.json"):
                 try:
                     per_unit[s.name] = json.loads(sc).get("per_unit") or {}
                 except ValueError:
@@ -486,7 +431,7 @@ class MockProposer(Proposer):
         by_name = {s.name: s for s in seen}
         bad = set()
         for s in seen:
-            mv = (s.meta.get("move") or (s.meta.get("components") or [None])[0])
+            mv = s.meta.get("move") or (s.meta.get("components") or [None])[0]
             base = by_name.get(s.meta.get("base_system", ""))
             if mv and base and s.score is not None and base.score is not None and s.score < base.score:
                 bad.add(mv)

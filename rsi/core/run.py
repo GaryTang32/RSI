@@ -1,9 +1,4 @@
-"""Shared run plumbing: budgets, stop conditions, results, transfer reports.
-
-Every method's ``run(...)`` returns an :class:`ImprovementResult`, so experiment
-scripts can compare methods uniformly and :func:`transfer_report` can score the
-winner on the splits the loop never saw.
-"""
+"""Shared run plumbing: budgets, the :class:`ImprovementResult` every method returns, and transfer reports."""
 from __future__ import annotations
 
 import json
@@ -24,8 +19,7 @@ from .stats import paired_diff_ci
 
 @dataclass
 class Budget:
-    """Stop conditions. Any limit left as None is ignored. A file named ``STOP``
-    in ``stop_dir`` halts the loop at the next round boundary."""
+    """Stop conditions; a None limit is ignored and a ``STOP`` file in ``stop_dir`` halts at the next round."""
 
     max_rounds: Optional[int] = None
     max_rollouts: Optional[int] = None          # fresh task rollouts (GEPA's metric calls)
@@ -35,8 +29,7 @@ class Budget:
     _t0: float = field(default_factory=time.time, repr=False)
 
     def credit(self, seconds: float) -> None:
-        """Give back wall-clock time spent on work that must not count against the
-        budget (e.g. a write-only shadow monitor auditing sealed splits)."""
+        """Give back wall-clock time spent on work that must not count against the budget (e.g. auditing)."""
         self._t0 += max(0.0, float(seconds))
 
     def exhausted(self, *, rounds: int = 0, rollouts: int = 0, usd: float = 0.0) -> Optional[str]:
@@ -66,17 +59,13 @@ class ImprovementResult:
     meta: dict = field(default_factory=dict)
 
     def summary(self) -> dict:
-        return {
-            "method": self.method, "rounds": len(self.trajectory), "stop_reason": self.stop_reason,
-            "baseline": self.baseline.short_id, "best": self.best.short_id,
-            "first": self.trajectory[0] if self.trajectory else None,
-            "last": self.trajectory[-1] if self.trajectory else None, "usage": self.usage.get("_total"),
-        }
+        return {"method": self.method, "rounds": len(self.trajectory), "stop_reason": self.stop_reason,
+                "baseline": self.baseline.short_id, "best": self.best.short_id,
+                "first": self.trajectory[0] if self.trajectory else None,
+                "last": self.trajectory[-1] if self.trajectory else None, "usage": self.usage.get("_total")}
 
     def save(self, out_dir: Optional[str | Path] = None) -> Path:
-        """Write ``best_artifact/``, ``trajectory.json`` and ``summary.json`` under
-        ``out_dir``. Values JSON cannot encode become floats when they convert
-        (numpy scalars), lists when they have ``tolist`` (numpy arrays), else text."""
+        """Write ``best_artifact/``, ``trajectory.json`` and ``summary.json`` under ``out_dir``."""
         d = Path(out_dir or self.out_dir or ".")
         d.mkdir(parents=True, exist_ok=True)
         self.best.to_dir(d / "best_artifact", clean=True)
@@ -87,6 +76,7 @@ class ImprovementResult:
 
 
 def _jsonable(o: Any) -> Any:
+    """JSON fallback: a float if it converts (numpy scalars), else ``tolist()``, else ``to_json()``, else text."""
     try:
         return float(o)
     except (TypeError, ValueError):
@@ -99,30 +89,15 @@ def _jsonable(o: Any) -> Any:
 
 
 def usd_of(*llms: Optional[LLM]) -> float:
-    return float(sum(l.meter.total().cost_usd for l in llms if l is not None))
+    return float(sum(llm.meter.total().cost_usd for llm in llms if llm is not None))
 
 
-def transfer_report(
-    domain: Domain,
-    llm: Optional[LLM],
-    arms: dict[str, Artifact],
-    *,
-    splits: Sequence[str] = ("evolve", "holdout", "ood"),
-    k: int = 1,
-    workers: int = 8,
-    reference: Optional[str] = None,
-    cache_dir: Optional[str] = None,
-    seed_offset: int = 0,
-) -> dict[str, Any]:
-    """Evaluate each arm unchanged on every split (unsealing them - this is the
-    final, report-only step) and give paired differences against ``reference``
-    (default: the first arm, usually the starting artifact).
-
-    Trials use seeds ``seed_offset .. seed_offset + k - 1``. Shadow monitors and Meta-Harness's loop score with seeds
-    from 0 (RRSI's loop uses hashed per-job seeds), so with the default offset trial 0 repeats a sample the run
-    already drew (and, with a cached LLM, replays it). Pass
-    an offset no loop used (e.g. 100) for a re-score that is independent of the run. Each row reports ``missing``:
-    trials lost to infrastructure errors, which score 0 over the full denominator."""
+def transfer_report(domain: Domain, llm: Optional[LLM], arms: dict[str, Artifact], *,
+                    splits: Sequence[str] = ("evolve", "holdout", "ood"), k: int = 1, workers: int = 8,
+                    reference: Optional[str] = None, cache_dir: Optional[str] = None,
+                    seed_offset: int = 0) -> dict[str, Any]:
+    """Report-only step: score each arm unchanged on every split, paired against ``reference``."""
+    # loops use seeds from 0: offset 0 repeats (with a cached LLM, replays) their samples, e.g. 100 re-scores afresh
     ev = Evaluator(domain, llm, workers=workers, allow_sealed=True, cache_dir=cache_dir, seed_offset=seed_offset)
     reference = reference or next(iter(arms))
     out: dict[str, Any] = {"splits": {}, "reference": reference, "k": k, "seed_offset": seed_offset}

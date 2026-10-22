@@ -1,37 +1,36 @@
-"""Turn the live demo traces into per-iteration data and graphs.
+"""Turn the live demo traces into per-iteration data (demo/data.json, demo/replicates.json) and demo/figures/*.png.
 
-Reads ``demo/runs/<method>/trace.jsonl`` (+ ``summary.json``, ``rescore.json``) written by ``live_demo.py`` and
-``rescore.py``, plus ``demo/spend.json`` from ``spend.py``, and writes
-
-- ``demo/data.json``: per-iteration rows for every run (candidates tried, what became of each, the incumbent's
-  practice score, and the sealed held-out / ood scores from the shadow monitor), the fresh post-run re-score and
-  each run's full cost;
-- ``demo/figures/*.png``: one iteration chart per method, a seed-vs-final chart and the replicates chart.
-
-Everything plotted comes straight from those files; nothing is re-computed or smoothed::
-
-    python experiments/demo/plot_demo.py
+    python experiments/demo/plot_demo.py   # reads demo/runs/<run>/ and demo/spend.json; nothing is smoothed
 """
 from __future__ import annotations
 
 import json
 import re
-import sys
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-DEMO = ROOT / "demo"
-RUNS = DEMO / "runs"
+import matplotlib.pyplot as plt
+from _demo_common import DEMO, RUNS, load_jsonl
 
 # reference categorical palette (dataviz skill), fixed order: evolve, holdout, ood
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 INK, INK2, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 DISCARD = "#9a9994"
+SUBTITLE = {"metaharness": "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)",
+            "rrsi": "in-loop practice scores: one trial per task, a hashed trial seed per evaluation\n"
+                    "shadow-monitor readings: one trial per task, trial seed 0"}
+#: every complete Meta-Harness run on the standard AgentQA suite (same settings, seed harness and model):
+#: label, run directory, note
+REPLICATES = [
+    ("Run 1", "_archive/metaharness_before_fix", "before the replay fix"),
+    ("Run 2", "_archive/metaharness_fix_v1", "after part 1 of the fix"),
+    ("Run 3", "_archive/metaharness_fix_v2", "after part 2 of the fix"),
+    ("Run 4", "metaharness", "final code; cut off by the usage cap after iteration 3, then resumed from its cache"),
+]
 
 
 def r2(v) -> str:
-    """Two decimals, exact halves rounded up: the same digits JavaScript's toFixed(2) gives the page."""
-    from decimal import ROUND_HALF_UP, Decimal
+    """Two decimals, exact halves rounded up: the digits JavaScript's toFixed(2) gives the page."""
     return str(Decimal(repr(float(v))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
 
@@ -41,7 +40,7 @@ def spend() -> dict:
 
 
 def fresh_transfer(rel: str) -> dict | None:
-    """The run's independent re-score (``rescore.json``: fresh trial seeds), as {split: {arm: {S, vs, missing}}}."""
+    """The run's independent re-score (``rescore.json``) as {split: {arm: {S, vs, missing}}} plus its settings."""
     p = RUNS / rel / "rescore.json"
     if not p.exists():
         return None
@@ -51,57 +50,60 @@ def fresh_transfer(rel: str) -> dict | None:
     return {"splits": out, "k": r["k"], "seed_offset": r["seed_offset"], "usd": r["usd"], "clean": r["clean"]}
 
 
-def load(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-
-
-def extract(name: str) -> dict:
-    """Per-iteration rows from one trace, in the order the loop produced them."""
-    ev = load(RUNS / name / "trace.jsonl")
-    base = next(e["data"] for e in ev if e["kind"] == "baseline")
-    base_name = base.get("candidate") or "seed"
-    base_S = base["summary"]["S"]
-    sealed: dict[str, dict] = {}
-    for e in ev:
-        if e["kind"] == "monitor":
-            sealed[e["data"]["version"]] = {k: v.get("S") for k, v in e["data"]["sealed"].items()}
+def _rounds(ev: list[dict], base_name: str) -> tuple[dict, list]:
+    """Each loop round's candidates (with gate verdicts), proposals and decision, and the rounds in loop order."""
     rounds: dict = {}
     order: list = []
     for e in ev:
-        r = e["round"]
-        if e["kind"] == "eval" and e["data"].get("candidate") not in (base_name, "baseline_0") and \
-                e["data"].get("role") != "baseline":
+        r, d = e["round"], e["data"]
+        if e["kind"] == "eval" and d.get("candidate") not in (base_name, "baseline_0") and d.get("role") != "baseline":
             if r not in rounds:
                 rounds[r] = {"candidates": [], "decision": None}
                 order.append(r)
-            d = e["data"]
             rounds[r]["candidates"].append({"name": d["candidate"], "S": d["summary"].get("S"),
                                             "C": d["summary"].get("C")})
         if e["kind"] == "gate" and r in rounds:
             for c in rounds[r]["candidates"]:
-                if c["name"] == e["data"]["candidate"]:
-                    c["admissible"] = e["data"].get("accept")
-                    c["reason"] = e["data"].get("reason")
+                if c["name"] == d["candidate"]:
+                    c["admissible"] = d.get("accept")
+                    c["reason"] = d.get("reason")
         if e["kind"] == "proposal" and r is not None:
-            d = e["data"]
             rounds.setdefault(r, {"candidates": [], "decision": None})
             if r not in order:
                 order.append(r)
             props = rounds[r].setdefault("proposals", {})
             text = d.get("change") or d.get("hypothesis") or d.get("description")
-            # a candidate can have several proposal events (critic repairs, failed retries): describe it by the
-            # last one that did not fail
+            # critic repairs and failed retries add proposal events: describe a candidate by its last one that worked
             if text and (not d.get("error") or d.get("candidate") not in props):
                 props[d.get("candidate")] = text
         if e["kind"] == "decision" and r in rounds:
-            rounds[r]["decision"] = e["data"]
+            rounds[r]["decision"] = d
+    return rounds, order
+
+
+def _harness_doc(run: str, candidate: str) -> str | None:
+    """The docstring a Meta-Harness proposer wrote atop the candidate's harness.py."""
+    src = RUNS / run / "store" / "candidates" / candidate / "src" / "harness.py"
+    if src.exists() and (m := re.match(r'\s*(?:"""|\'\'\')(.*?)(?:"""|\'\'\')', src.read_text(), re.S)):
+        return " ".join(m.group(1).split())
+    return None
+
+
+def extract(name: str) -> dict:
+    """Per-iteration rows from one trace, in the order the loop produced them."""
+    ev = load_jsonl(RUNS / name / "trace.jsonl")
+    base = next(e["data"] for e in ev if e["kind"] == "baseline")
+    base_name = base.get("candidate") or "seed"
+    base_S = base["summary"]["S"]
+    sealed = {e["data"]["version"]: {k: v.get("S") for k, v in e["data"]["sealed"].items()}
+              for e in ev if e["kind"] == "monitor"}
+    rounds, order = _rounds(ev, base_name)
     rows = [{"iter": 0, "incumbent": base_name, "S": base_S, "sealed": sealed.get(base_name, {}), "candidates": []}]
     inc, inc_S = base_name, base_S
     for i, r in enumerate(order, start=1):
         R = rounds[r]
         dec = R["decision"] or {}
-        # the kept candidate: named directly (Meta-Harness, RRSI), or the round's single experiment when
-        # autoresearch's status is "keep" (its decision names commits, not candidates)
+        # the kept candidate: named by Meta-Harness and RRSI, or autoresearch's single experiment with status "keep"
         kept = next((c for c in R["candidates"] if c["name"] in (dec.get("kept"), dec.get("incumbent_after"))
                      and dec.get("incumbent_after") != dec.get("incumbent_before")), None)
         if kept is None and dec.get("status") == "keep" and len(R["candidates"]) == 1:
@@ -109,18 +111,13 @@ def extract(name: str) -> dict:
         if kept is not None:
             inc, inc_S = kept["name"], kept["S"]
         props = R.get("proposals", {})
-        for c in R["candidates"]:            # Meta-Harness: fall back to the docstring the model wrote atop harness.py
-            if not props.get(c["name"]):
-                src = RUNS / name / "store" / "candidates" / c["name"] / "src" / "harness.py"
-                if src.exists():
-                    m = re.match(r'\s*(?:"""|\'\'\')(.*?)(?:"""|\'\'\')', src.read_text(), re.S)
-                    if m:
-                        props[c["name"]] = " ".join(m.group(1).split())
         per = dec.get("per_candidate") or {}
         for c in R["candidates"]:
-            c["kept"] = c is kept            # became the new incumbent
+            if not props.get(c["name"]) and (doc := _harness_doc(name, c["name"])) is not None:
+                props[c["name"]] = doc
+            c["kept"] = c is kept
             c["change"] = props.get(c["name"])
-            if per:   # Meta-Harness keeps every candidate in its population; the Pareto frontier is what it ranks
+            if per:   # Meta-Harness keeps every candidate in its population and ranks the Pareto frontier
                 c["state"] = ("incumbent" if c["kept"] else
                               "frontier" if (per.get(c["name"]) or {}).get("on_frontier") else "population")
             else:     # RRSI and autoresearch keep one version and discard the rest
@@ -143,8 +140,7 @@ def extract(name: str) -> dict:
         out["transfer_k"], out["transfer_seed_offset"], out["transfer_fresh"] = fresh["k"], fresh["seed_offset"], True
         out["usd_rescore"] = sp.get("usd_rescore") or fresh["usd"]   # the spend record survives a $0 replay
     elif "transfer" in summ:
-        # recorded by live_demo._finish: fresh when it used a seed offset (runs from now on); an older report used
-        # trial seeds from 0, so its trial 0 repeats the loop's and the monitor's own samples
+        # live_demo._finish's report: fresh with a seed offset; older ones used trial seeds from 0 (the loop's own)
         out["transfer"] = {s: {a: {"S": v["S"], "vs": v.get("vs_reference")} for a, v in row.items()}
                            for s, row in summ["transfer"]["splits"].items()}
         out["transfer_k"] = summ["transfer"].get("k") or (1 if out["suite"] == "hard" else 2)
@@ -155,9 +151,9 @@ def extract(name: str) -> dict:
     return out
 
 
-def _style(ax, title: str, ylabel: str) -> None:
+def _style(ax, title: str, ylabel: str, pad: float | None = None) -> None:
     ax.set_facecolor(SURF)
-    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold")
+    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=pad)
     ax.set_ylabel(ylabel, color=INK2, fontsize=10)
     ax.tick_params(colors=INK2, labelsize=9)
     for s in ("top", "right"):
@@ -168,26 +164,19 @@ def _style(ax, title: str, ylabel: str) -> None:
     ax.set_axisbelow(True)
 
 
-SUBTITLE = {"metaharness": "in-loop practice scores and shadow-monitor readings, one trial per task (trial seed 0)",
-            "rrsi": "in-loop practice scores: one trial per task, a hashed trial seed per evaluation\n"
-                    "shadow-monitor readings: one trial per task, trial seed 0"}
-
-
 def plot_harness(d: dict, title: str, path: Path) -> None:
-    import matplotlib.pyplot as plt
     rows = d["rows"]
     xs = [r["iter"] for r in rows]
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
-    _style(ax, title, "accuracy (exact match)")
     sub = SUBTITLE[d["method"]]
-    ax.set_title(title, loc="left", fontsize=12, color=INK, fontweight="bold", pad=20 + 11 * sub.count("\n"))
+    _style(ax, title, "accuracy (exact match)", pad=20 + 11 * sub.count("\n"))
     ax.text(0, 1.015, sub, transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
-    mh = d.get("method") == "metaharness"
-    # marker per state: filled = became the new incumbent; Meta-Harness also keeps the rest (ring = joined the
-    # Pareto frontier, hollow = in the population but dominated); RRSI discards the rest (hollow gray)
+    # filled = became the new incumbent; Meta-Harness keeps the rest (ring = joined the Pareto frontier, hollow =
+    # dominated), RRSI discards it (hollow gray)
     style = {"incumbent": dict(facecolor=BLUE, edgecolor=BLUE), "frontier": dict(facecolor="#cfe0f5", edgecolor=BLUE),
-             "population": dict(facecolor="white", edgecolor=DISCARD), "discarded": dict(facecolor="white", edgecolor=DISCARD)}
+             "population": dict(facecolor="white", edgecolor=DISCARD),
+             "discarded": dict(facecolor="white", edgecolor=DISCARD)}
     for r in rows[1:]:
         n = len(r["candidates"])
         # spread same-iteration candidates sideways; draw the new incumbent last so it stays on top
@@ -207,16 +196,15 @@ def plot_harness(d: dict, title: str, path: Path) -> None:
             ax.step([p[0] for p in pts], [p[1] for p in pts], where="post", color=col, linewidth=lw, label=label,
                     zorder=2 if col == BLUE else 2.5, linestyle=(0, (5, 3)) if col == AQUA else "-")
             ends.append([pts[-1][1], pts[-1][1], col])
-    # end labels: keep coincident values apart
     ends.sort(key=lambda e: e[0])
-    for i in range(1, len(ends)):
+    for i in range(1, len(ends)):   # keep the end labels of coincident values apart
         ends[i][1] = max(ends[i][1], ends[i - 1][1] + 0.06)
     for v, ypos, col in ends:
         ax.annotate(r2(v), (xs[-1], ypos), xytext=(14, 0), textcoords="offset points", va="center", fontsize=9,
                     color=col, annotation_clip=False)
     keep_lab = "candidate became the incumbent"
     ax.scatter([], [], s=46, facecolor=BLUE, edgecolor=BLUE, label=keep_lab)
-    if mh:
+    if d.get("method") == "metaharness":
         ax.scatter([], [], s=46, facecolor="#cfe0f5", edgecolor=BLUE, label="kept, joined the Pareto frontier")
         ax.scatter([], [], s=46, facecolor="white", edgecolor=DISCARD, label="kept in the population, dominated")
     else:
@@ -251,13 +239,10 @@ def _check_inside(fig, path: Path) -> None:
 
 
 def plot_autoresearch(d: dict, path: Path) -> None:
-    import matplotlib.pyplot as plt
     rows = d["rows"]
     fig, ax = plt.subplots(figsize=(8, 4.8), dpi=150)
     fig.patch.set_facecolor(SURF)
-    _style(ax, "autoresearch: Haiku edits train.py, one experiment at a time", "val_bpb (lower is better)")
-    ax.set_title("autoresearch: Haiku edits train.py, one experiment at a time", loc="left", fontsize=12, color=INK,
-                 fontweight="bold", pad=20)
+    _style(ax, "autoresearch: Haiku edits train.py, one experiment at a time", "val_bpb (lower is better)", pad=20)
     ax.text(0, 1.015, "values the loop selected on (one training run each); hidden test from the shadow audit "
             "(one audit run per kept version)", transform=ax.transAxes, fontsize=8.5, color=INK2, va="bottom")
     for r in rows[1:]:
@@ -284,19 +269,16 @@ def plot_autoresearch(d: dict, path: Path) -> None:
 
 
 def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
-    import matplotlib.pyplot as plt
-    have = [d for d in runs if d.get("transfer")]
-    have.sort(key=lambda d: ("hard" in d["run"], d["run"]))
+    have = sorted((d for d in runs if d.get("transfer")), key=lambda d: ("hard" in d["run"], d["run"]))
     if not have:
         return
     fig, axes = plt.subplots(1, len(have), figsize=(4.2 * len(have), 4.1), dpi=150, squeeze=False)
     fig.patch.set_facecolor(SURF)
+    titles = {"metaharness": "Meta-Harness (Run 4)", "rrsi": "RRSI", "metaharness_hard": "Meta-Harness, hard",
+              "rrsi_hard": "RRSI, hard"}
+    splits = ["evolve", "holdout", "ood"]
     for ax, d in zip(axes[0], have):
-        _style(ax, {"metaharness": "Meta-Harness (Run 4)", "rrsi": "RRSI", "metaharness_hard": "Meta-Harness, hard",
-                    "rrsi_hard": "RRSI, hard"}.get(d["run"], d["run"]),
-               "accuracy" if ax is axes[0][0] else "")
-        splits = ["evolve", "holdout", "ood"]
-        labels = ["practice", "held-out", "OOD"]
+        _style(ax, titles.get(d["run"], d["run"]), "accuracy" if ax is axes[0][0] else "")
         seed = [d["transfer"][s]["seed"]["S"] for s in splits]
         fin = [d["transfer"][s]["final"]["S"] for s in splits]
         x = range(len(splits))
@@ -307,7 +289,7 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
                         fontsize=8, color=INK2)
             ax.annotate(r2(b), (i + 0.19, b), xytext=(0, 3), textcoords="offset points", ha="center",
                         fontsize=8, color=INK)
-        ax.set_xticks(list(x), labels)
+        ax.set_xticks(list(x), ["practice", "held-out", "OOD"])
         ax.set_ylim(0, 1.15)
     fig.legend(*axes[0][0].get_legend_handles_labels(), loc="lower center", ncol=2, fontsize=8, frameon=False)
     ks = sorted({(d["transfer_k"], d["transfer_seed_offset"]) for d in have})
@@ -317,16 +299,6 @@ def plot_seed_vs_final(runs: list[dict], path: Path) -> None:
     fig.tight_layout(rect=(0, 0.07, 1, 0.93))
     fig.savefig(path, facecolor=SURF)
     plt.close(fig)
-
-
-#: every complete Meta-Harness run on the standard AgentQA suite (same settings, same seed harness, same model);
-#: label, run directory, note. Run 4 is the current code: cut off by the account usage cap, then resumed.
-REPLICATES = [
-    ("Run 1", "_archive/metaharness_before_fix", "before the replay fix"),
-    ("Run 2", "_archive/metaharness_fix_v1", "after part 1 of the fix"),
-    ("Run 3", "_archive/metaharness_fix_v2", "after part 2 of the fix"),
-    ("Run 4", "metaharness", "final code; cut off by the usage cap after iteration 3, then resumed from its cache"),
-]
 
 
 def replicates() -> list[dict]:
@@ -346,7 +318,6 @@ def replicates() -> list[dict]:
 
 def plot_replicates(reps: list[dict], path: Path) -> None:
     """Dumbbell chart: one row per run, seed (gray) to final (blue), one panel per split."""
-    import matplotlib.pyplot as plt
     if not reps:
         return
     splits = [("evolve", "practice"), ("holdout", "held-out"), ("ood", "OOD")]
@@ -381,7 +352,8 @@ def plot_replicates(reps: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    names = [n for n in ("metaharness_hard", "rrsi_hard", "metaharness", "metaharness_a", "rrsi", "autoresearch") if (RUNS / n / "trace.jsonl").exists()]
+    names = [n for n in ("metaharness_hard", "rrsi_hard", "metaharness", "metaharness_a", "rrsi", "autoresearch")
+             if (RUNS / n / "trace.jsonl").exists()]
     runs = [extract(n) for n in names]
     (DEMO / "data.json").write_text(json.dumps(runs, indent=1, default=str))
     figs = DEMO / "figures"
@@ -404,4 +376,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

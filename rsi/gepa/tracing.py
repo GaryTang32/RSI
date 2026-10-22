@@ -1,34 +1,7 @@
-"""Per-iteration audit trace of a GEPA run (``rsi.trace`` format) and a write-only shadow monitor.
-
-:class:`GEPATracer` turns what the engine does into the uniform :mod:`rsi.trace` event
-kinds, written to ``<out_dir>/trace.jsonl`` (render with ``rsi.trace.inspect(out_dir)``):
-
-``run_start``   config, seed artifact id, components, D_train / D_pareto sizes, stoppers
-``baseline``    the seed on D_pareto (per task + raw trial scores)
-``noise``       GEPA has no noise band (strict minibatch comparison, N = 1); recorded as such
-``round_start`` loop state: rollouts used / budget / by phase, pool (val mean, frontier wins,
-                round-robin pointer), best, Pareto sampling weights after set-cover pruning,
-                batch-sampler epoch, merge schedule, spend
-``note``        parent selection (selector, weights, chosen parent, minibatch ids) and merge attempts
-``eval``        every evaluation: parent / child minibatch, full D_pareto, merge subsample
-``analysis``    the parent's minibatch diagnosis the reflection LM is shown (score + feedback per record)
-``proposal``    reflection prompt + raw reply, the reflection LM's commentary, components and the ACTUAL
-                diff parent -> child (merges: sources per module, diffs vs both parents and the ancestor)
-``critic``      the optional pre-evaluation screen
-``gate``        minibatch acceptance with the numbers (before/after scores, sums, delta, rule); merge
-                acceptance (subsample sum vs the better parent's)
-``decision``    added to the pool as ``c<idx>`` or not, incumbent (argmax mean D_pareto) before/after,
-                frontier delta, why
-``monitor``     :class:`rsi.trace.ShadowMonitor` scores of every new incumbent on sealed splits
-``state``       loop state after the iteration
-``run_end``     stop reason, totals, budget identity, loop spend and monitor spend
-
-Everything here only *reads* engine state; no RNG is drawn and nothing is returned to the loop.
-The shadow monitor's model calls go through :class:`ShadowLLM`, which files them under roles
-``shadow:*`` that the engine excludes from its own spend (so a USD stopper never sees them).
-"""
+"""Write-only audit trace of a GEPA run (``rsi.trace`` events) and its shadow monitor."""
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, Optional, Sequence
 
 from ..core.artifact import Artifact
@@ -40,14 +13,12 @@ SHADOW_PREFIX = "shadow:"
 
 
 class ShadowLLM(LLM):
-    """The task LLM as seen by the shadow monitor: calls are delegated unchanged but metered
-    under ``shadow:<role>`` so the loop's usage, USD budget and reflection-cost stoppers never
-    include the monitor's spend."""
+    """The task LLM, metered under ``shadow:<role>`` so the loop's spend and stoppers never include it."""
 
     def __init__(self, inner: LLM) -> None:
         super().__init__()
         self.inner = inner
-        self.name = inner.name          # same model: same cache identities
+        self.name = inner.name          # same cache identities
 
     def complete(self, prompt, *, system=None, max_tokens=None, seed=None, role="default") -> LLMResponse:
         resp = self.inner.complete(prompt, system=system, max_tokens=max_tokens, seed=seed,
@@ -71,7 +42,7 @@ def _clip(s: Any, n: int) -> str:
 
 
 def _clip_mid(s: Any, head: int = 100, tail: int = 260) -> str:
-    """Head and tail of a long output (the final answer usually sits at the end)."""
+    """Head and tail of a long output: the final answer usually sits at the end."""
     s = str(s)
     return s if len(s) <= head + tail + 20 else s[:head] + f" ...[{len(s) - head - tail} chars]... " + s[-tail:]
 
@@ -96,7 +67,6 @@ class GEPATracer:
     def enabled(self) -> bool:
         return self.tr.enabled
 
-    # ------------------------------------------------------------------ helpers --
     def label(self, idx: Optional[int]) -> Optional[str]:
         return None if idx is None else f"c{idx}"
 
@@ -105,24 +75,20 @@ class GEPATracer:
         cfg = eng.cfg
         agg = st.agg_scores()
         front = st.frontier.mapping()
-        wins = {k: sum(1 for v in front.values() if k in v) for k in range(len(st.candidates))}
         try:
             weights = pareto_frequencies(front, agg) if front else {}
-        except AssertionError:          # never expected; the trace must not break the run
+        except AssertionError:          # the trace must never break the run
             weights = {}
         b = st.best_idx() if st.candidates else None
         used = st.counter.total
         snap = {
-            "iteration": st.i,
-            "rollouts_used": used,
-            "rollout_budget": cfg.max_metric_calls,
+            "iteration": st.i, "rollouts_used": used, "rollout_budget": cfg.max_metric_calls,
             "rollouts_remaining": (cfg.max_metric_calls - used) if cfg.max_metric_calls is not None else None,
             "rollouts_by_phase": {k: v for k, v in st.counter.by_phase.items() if v},
             "n_candidates": len(st.candidates),
             "incumbent": self.label(b), "incumbent_val": round(agg[b], 4) if b is not None else None,
             "pareto_sampling_weights": {f"c{k}": f for k, f in sorted(weights.items())},
-            "frontier_keys": len(front),
-            "frontier_members": [f"c{k}" for k in st.frontier.members()],
+            "frontier_keys": len(front), "frontier_members": [f"c{k}" for k in st.frontier.members()],
             "sampler": {"epoch": eng.sampler.epoch, "epoch_len": len(eng.sampler.shuffled_ids)},
             "n_proposals": st.n_proposals, "n_reflection_calls": st.n_reflection_calls,
             "loop_usd": round(eng.usd(), 6),
@@ -133,13 +99,13 @@ class GEPATracer:
                              "n_invocations": m.n_invocations,
                              "last_iter_found_new_program": m.last_iter_found_new_program,
                              "cap": m.max_merge_invocations, "cap_mode": m.cap_mode}
-        # pool last: long, and the rendered TRACE.md clips this event
+        # pool last: it is long and the rendered TRACE.md clips the event
         snap["pool"] = [{"c": k, "parents": st.parents[k], "kind": st.kinds[k], "val_mean": round(agg[k], 4),
-                         "frontier_wins": wins[k], "next_component": st.components[st.rr[k]],
-                         "found_at_iteration": st.discovery_iter[k]} for k in range(len(st.candidates))]
+                         "frontier_wins": sum(1 for v in front.values() if k in v),
+                         "next_component": st.components[st.rr[k]], "found_at_iteration": st.discovery_iter[k]}
+                        for k in range(len(st.candidates))]
         return snap
 
-    # ------------------------------------------------------------------- events --
     def run_start(self, resumed_at: Optional[int]) -> None:
         eng = self.eng
         mon = self.tr.monitor
@@ -148,9 +114,11 @@ class GEPATracer:
                       seed_components={c: eng.seed_artifact.get(c, "") for c in eng.components},
                       splits={"D_train": eng.split_names["train"], "n_train": len(eng.train_ids),
                               "D_pareto": eng.split_names["val"], "n_pareto": len(eng.val_ids)},
-                      perfect_score=eng.perfect_score, selector=getattr(eng.selector, "name", type(eng.selector).__name__),
+                      perfect_score=eng.perfect_score,
+                      selector=getattr(eng.selector, "name", type(eng.selector).__name__),
                       acceptance=eng.acceptance.name, stoppers=[type(s).__name__ for s in eng.stopper.stoppers],
-                      llm_task=getattr(eng.llm_task, "name", None), llm_propose=getattr(eng.llm_propose, "name", None),
+                      llm_task=getattr(eng.llm_task, "name", None),
+                      llm_propose=getattr(eng.llm_propose, "name", None),
                       critic=type(eng.critic).__name__ if eng.critic is not None else None,
                       shadow_monitor={"splits": mon.splits, "k": mon.k} if mon is not None else None,
                       resumed_at=resumed_at)
@@ -307,22 +275,19 @@ class GEPATracer:
         if best_before is None or b != best_before:
             self.tr.kept(i, f"c{b}", st.candidates[b], decision_score=st.agg_scores()[b])
             mon = self.tr.monitor
-            if mon is not None:           # the audit's wall time must not count against Timeout / max_wall_s
+            if mon is not None:           # audit time must not count against wall-clock stoppers
                 self.eng.credit_wall_time(getattr(mon, "last_elapsed_s", 0.0))
 
     def run_end(self, stop_reason: str) -> None:
         eng, st = self.eng, self.eng.state
         agg = st.agg_scores()
         b = st.best_idx()
-        acc = sum(1 for e in st.trace if e.get("event") == "accepted")
-        kinds = {}
-        for e in st.trace:
-            kinds[e.get("event", "-")] = kinds.get(e.get("event", "-"), 0) + 1
+        kinds = dict(Counter(e.get("event", "-") for e in st.trace))
         self.tr.event("run_end", None, stop_reason=stop_reason, iterations=st.i + 1,
                       rollouts=st.counter.total, rollout_budget=eng.cfg.max_metric_calls,
                       rollouts_by_phase=dict(st.counter.by_phase), n_candidates=len(st.candidates),
-                      events=kinds, n_accepted_reflective=acc, best=f"c{b}", best_val=agg[b], seed_val=agg[0],
-                      best_artifact=st.candidates[b].id, n_proposals=st.n_proposals,
+                      events=kinds, n_accepted_reflective=kinds.get("accepted", 0), best=f"c{b}", best_val=agg[b],
+                      seed_val=agg[0], best_artifact=st.candidates[b].id, n_proposals=st.n_proposals,
                       n_reflection_calls=st.n_reflection_calls, loop_usage=eng.usage_snapshot(),
                       shadow_usage=eng.shadow_usage_snapshot(),
                       monitor_wall_s_credited=round(getattr(eng, "monitor_wall_s", 0.0), 3))
@@ -330,7 +295,7 @@ class GEPATracer:
 
 def make_tracer(engine, out_dir, *, enabled: bool, max_text: int, monitor, domain, llm_task,
                 splits: Optional[Sequence[str]], k: int, workers: int) -> GEPATracer:
-    """Build the tracer; ``monitor`` is None/True (auto), False (off) or a ShadowMonitor."""
+    """``monitor`` is None/True (auto), False (off) or a ShadowMonitor."""
     tr = RunTracer(out_dir if (out_dir and enabled) else None, engine.method, max_text=max_text)
     if tr.enabled and monitor is not False:
         if isinstance(monitor, ShadowMonitor):

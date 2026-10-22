@@ -1,19 +1,4 @@
-"""Harder AgentQA families, for demonstrations where "write Python" alone is not enough.
-
-The standard families (``generators.py``) fall to one generic trick: have the model write and run code. These
-families need more from a harness - reading a structured problem carefully, turning rules into code without
-dropping one, and checking the result:
-
-* ``logic``    - 5-house x 5-attribute logic-grid puzzles (naive brute force is ~2.5e10 assignments, far past the tool timeout) with a unique solution (clues must be translated exactly; a
-                 brute-force check or a second pass catches mistranslations);
-* ``ledger``   - a transaction table with currency conversion, refunds, pending rows, a date window and a
-                 rounding rule, asked as one exact figure;
-* ``schedule`` - business-day arithmetic over weekends and a holiday list (never seen during practice);
-* ``cipher``   - a chain of string transformations applied in order (never seen during practice).
-
-Every question has one exact answer computed here, outside the artifact. :func:`make_hard_suite` builds a suite
-with ``logic`` + ``ledger`` as practice families and ``schedule`` + ``cipher`` as the sealed OOD families.
-"""
+"""Harder AgentQA families where "write Python" is not enough: logic, ledger (practice); schedule, cipher (OOD)."""
 from __future__ import annotations
 
 import datetime as _dt
@@ -33,39 +18,25 @@ ATTRS = ("name", "color", "pet", "drink", "hobby")
 N_HOUSES = 5
 
 
-# ---------------------------------------------------------------------------------------------- logic grid
 def _phrase(attr: str, v: str) -> str:
     return {"name": v, "color": f"the person in the {v} house", "pet": f"the {v} owner",
             "drink": f"the person who drinks {v}", "hobby": f"the person who does {v}"}[attr]
 
 
-def _clue_holds(clue, sol) -> bool:
-    kind = clue[0]
-    if kind == "at":                       # (at, attr, val, house)
-        return sol[clue[1]][clue[3]] == clue[2]
-    if kind in ("same", "diff"):           # (same, a1, v1, a2, v2)
-        h = sol[clue[1]].index(clue[2])
-        return (sol[clue[3]][h] == clue[4]) == (kind == "same")
-    h1, h2 = sol[clue[1]].index(clue[2]), sol[clue[3]].index(clue[4])
-    if kind == "left":                     # immediately left of
-        return h1 + 1 == h2
-    return abs(h1 - h2) == 1               # next
-
-
 def _clue_text(clue) -> str:
+    """Clues are ("at", attr, value, house) or (kind, attr1, value1, attr2, value2)."""
     kind = clue[0]
-    if kind == "at":
-        return f"{_phrase(clue[1], clue[2])[0].upper() + _phrase(clue[1], clue[2])[1:]} lives in house {clue[3] + 1}."
     a = _phrase(clue[1], clue[2])
-    b = _phrase(clue[3], clue[4])
     a = a[0].upper() + a[1:]
+    if kind == "at":
+        return f"{a} lives in house {clue[3] + 1}."
+    b = _phrase(clue[3], clue[4])
     return {"same": f"{a} is {b}.", "diff": f"{a} is not {b}.",
             "left": f"{a} lives immediately to the left of {b}.", "next": f"{a} lives next to {b}."}[kind]
 
 
 def _solutions(values: dict, clues: list, cap: int = 2) -> list:
-    """Up to ``cap`` assignments satisfying every clue: a small CSP (one variable per attribute value, domain =
-    house index, all-different within an attribute), solved by backtracking on the most constrained variable."""
+    """Up to ``cap`` solutions of the CSP (attribute value -> house), by backtracking on the most constrained one."""
     n = len(values["name"])
     variables = [(a, v) for a in ATTRS for v in values[a]]
     unary: dict = {x: set(range(n)) for x in variables}
@@ -111,10 +82,7 @@ def _logic(rng: random.Random):
     values = {"name": rng.sample(NAMES, n), "color": rng.sample(COLORS, n), "pet": rng.sample(PETS, n),
               "drink": rng.sample(DRINKS, n), "hobby": rng.sample(HOBBIES, n)}
     truth = {a: rng.sample(values[a], n) for a in ATTRS}       # truth[attr][house] = value
-    pool = []
-    for a in ATTRS:
-        for h in range(n):
-            pool.append(("at", a, truth[a][h], h))
+    pool = [("at", a, truth[a][h], h) for a in ATTRS for h in range(n)]
     for a1, a2 in itertools.permutations(ATTRS, 2):
         for h in range(n):
             pool.append(("same", a1, truth[a1][h], a2, truth[a2][h]))
@@ -149,11 +117,8 @@ def _logic(rng: random.Random):
     return "\n".join(lines), ans, []
 
 
-# ---------------------------------------------------------------------------------------------- ledger
 REGIONS = ["North", "South", "East", "West"]
 CUSTOMERS = ["Acme", "Birch", "Cobalt", "Delta", "Ember", "Fjord", "Garnet"]
-
-
 STATUS_WORDS = {"paid": ["paid", "PAID", "settled"], "refunded": ["refunded", "REFUND", "chargeback"],
                 "pending": ["pending", "on hold"]}
 
@@ -169,8 +134,7 @@ def _fmt_amount(a: float, cur: str) -> str:
 
 
 def _ledger(rng: random.Random):
-    """A messy export: three date formats, EUR amounts in European notation, status synonyms, and correction
-    rows (a repeated id replaces the earlier row with that id). All rules are stated in the question."""
+    """A messy export (mixed dates, EUR notation, status synonyms, correction rows); the rules are in the question."""
     rate = round(rng.uniform(1.04, 1.18), 3)
     start = _dt.date(2024, 1, 1) + _dt.timedelta(days=rng.randint(0, 200))
     rows = []
@@ -189,10 +153,7 @@ def _ledger(rng: random.Random):
         else:
             c["status"] = rng.choice([s for s in STATUS_WORDS if s != r["status"]])
         lines.append(c)
-    final = {}
-    for r in lines:
-        final[r["id"]] = r                             # the last row with an id wins
-    rows = list(final.values())
+    rows = list({r["id"]: r for r in lines}.values())   # the last row with an id wins
     lo = start + _dt.timedelta(days=rng.randint(10, 50))
     hi = lo + _dt.timedelta(days=rng.randint(40, 80))
     region = rng.choice(REGIONS)
@@ -229,7 +190,6 @@ def _ledger(rng: random.Random):
     return f"{rules}\nTransactions (id | date | region | customer | amount | status):\n{body}\n\n{q}", ans, []
 
 
-# ---------------------------------------------------------------------------------------------- OOD: schedule
 def _schedule(rng: random.Random):
     start = _dt.date(2025, 1, 1) + _dt.timedelta(days=rng.randint(0, 330))
     horizon = [start + _dt.timedelta(days=i) for i in range(1, 200)]
@@ -250,7 +210,6 @@ def _schedule(rng: random.Random):
     return q, d.isoformat(), []
 
 
-# ---------------------------------------------------------------------------------------------- OOD: cipher
 def _cipher(rng: random.Random):
     s = "".join(rng.choice(string.ascii_lowercase) for _ in range(rng.randint(14, 20)))
     ops, x = [], s

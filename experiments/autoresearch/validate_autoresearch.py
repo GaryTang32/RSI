@@ -1,35 +1,25 @@
-"""From-scratch validation runs of autoresearch with the per-experiment trace.
+"""From-scratch tinylm validation runs of autoresearch with the per-experiment trace, and their consistency check.
 
-Every run starts from the UNTOUCHED seed train.py of tinylm, a fresh out_dir under
-validation/autoresearch/<run>/, a freshly built corpus
-(validation/autoresearch/.cache_tinylm_data) and, for the live run, a fresh LLM
-cache (validation/autoresearch/.cache_<run>). Each run writes trace.jsonl and
-TRACE.md (rsi.trace.inspect) next to results.tsv / ledger.jsonl.
-
-    python experiments/autoresearch/validate_autoresearch.py offline   # scripted agent, 25 experiments
-    python experiments/autoresearch/validate_autoresearch.py live      # Claude Haiku (RewriteEditor), 10 experiments
+Usage: python experiments/autoresearch/validate_autoresearch.py offline|crashfix|live|check|summarise [--run NAME]
 """
-from __future__ import annotations
-
 import argparse
 import json
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from rsi.autoresearch import Config, run  # noqa: E402
-from rsi.core import CachedLLM, ClaudeCLI  # noqa: E402
+from rsi.autoresearch import Config, MockResearchAgent, ResultsLog, run  # noqa: E402
+from rsi.core import ArtifactStore, CachedLLM, ClaudeCLI, Ledger  # noqa: E402
 from rsi.domains.tinylm import TinyLMTask  # noqa: E402
 from rsi.trace import inspect, load_trace  # noqa: E402
 
 VAL = ROOT / "validation" / "autoresearch"
 DATA = VAL / ".cache_tinylm_data"
-BUDGET_S = 8.0          # wall-clock training budget per experiment (upstream: 300 s on an H100)
+BUDGET_S = 8.0  # wall-clock training budget per experiment (upstream: 300 s on an H100)
 
 
 def _task() -> TinyLMTask:
@@ -39,17 +29,7 @@ def _task() -> TinyLMTask:
 
 
 def check_run(out: Path) -> dict:
-    """Cross-check trace.jsonl against ledger.jsonl, results.tsv and the artifact store.
-
-    Returns {"ok": bool, "problems": [...], "checked": {...}}. Every agent turn must have
-    exactly one decision whose status equals the ledger node's; every run candidate's
-    eval metric must equal the ledger score and the results.tsv value; each gate verdict
-    must follow from its own arithmetic (strict: gain > 1e-9); keeps must advance the
-    incumbent and non-keeps must leave it unchanged; the proposal's diff must be the diff
-    between the parent and the stored artifact; each keep must be shadow-audited once."""
-    from rsi.core import ArtifactStore, Ledger
-    from rsi.autoresearch import ResultsLog
-
+    """Cross-check trace.jsonl against ledger.jsonl, results.tsv and the artifact store."""
     ev = load_trace(out)
     nodes = Ledger(out / "ledger.jsonl").nodes()
     store = ArtifactStore(out / "artifacts")
@@ -63,7 +43,6 @@ def check_run(out: Path) -> dict:
     if abs(rows[0].metric - base.score) > 5e-7 or rows[0].status != "keep":
         probs.append("baseline row mismatch")
     tsv_i = 1
-    art_by_short = {}
     n_gate = n_dec = n_mon = 0
     for r in sorted(k for k in by_round if k):
         evs = by_round[r]
@@ -95,14 +74,13 @@ def check_run(out: Path) -> dict:
             if not first or first[-1] is None or (node.metrics.get("samples")
                                                   and abs(node.metrics["samples"][0] - first[-1]) > 1e-12):
                 probs.append(f"round {r}: eval metric != ledger sample")
-        gates = [e for e in evs if e["kind"] == "gate"]
-        for g in gates:
+        for g in (e for e in evs if e["kind"] == "gate"):
             n_gate += 1
             m, acc = g["data"]["math"], g["data"]["accept"]
             if m["rule"] == "strict" and m.get("status_override") is None and not m.get("early_reject"):
-                want = m["gain(ref-cand, sign-adjusted)"] > 1e-9 and not m.get("over_budget")
-                if want != acc:
-                    probs.append(f"round {r}: gate verdict {acc} does not follow from gain {m['gain(ref-cand, sign-adjusted)']}")
+                gain = m["gain(ref-cand, sign-adjusted)"]
+                if (gain > 1e-9 and not m.get("over_budget")) != acc:
+                    probs.append(f"round {r}: gate verdict {acc} does not follow from gain {gain}")
             if acc != (node.status == "keep"):
                 probs.append(f"round {r}: gate accept {acc} but status {node.status}")
         inc_changed = d["incumbent_before"] != d["incumbent_after"]
@@ -127,7 +105,7 @@ def check_run(out: Path) -> dict:
                         "monitors": n_mon, "tsv_rows": len(rows)}}
 
 
-def summarise_dir(name: str, out: Path, extra: dict, wall_s: Optional[float] = None) -> dict:
+def summarise_dir(name: str, out: Path, extra: dict, wall_s: float | None = None) -> dict:
     """validation_summary.json + TRACE.md for a finished run directory (re-runnable offline)."""
     trace_md = inspect(out)
     ev = load_trace(out)
@@ -136,15 +114,14 @@ def summarise_dir(name: str, out: Path, extra: dict, wall_s: Optional[float] = N
     end = next((e["data"] for e in ev if e["kind"] == "run_end"), {})
     mons = [e for e in ev if e["kind"] == "monitor"]
     kept = [e["data"] for e in ev if e["kind"] == "decision" and e["data"]["kept"]]
-    base_mon = mons[0]["data"]["sealed"] if mons else {}
-    final_mon = mons[-1]["data"]["sealed"] if mons else None       # the last new incumbent is the final one
     rec = {"run": name, "out_dir": str(out.relative_to(ROOT)), "trace_md": str(Path(trace_md).relative_to(ROOT)),
            "stop_reason": summ.get("stop_reason"), "wall_s": wall_s if wall_s is not None else end.get("wall_s"),
            "baseline_val_bpb": meta["analysis"].get("baseline"), "final_val_bpb": meta["final_samples"],
            "analysis": meta["analysis"], "counters": meta["counters"], "crash_kinds": meta["crash_kinds"],
            "noise": meta.get("noise"), "reeval": meta.get("reeval"), "n_kept_after_baseline": len(kept),
-           "shadow_baseline": base_mon, "shadow_final": final_mon, "usage_total": end.get("usage"),
-           "n_trace_events": len(ev), "consistency": check_run(out), **extra}
+           "shadow_baseline": mons[0]["data"]["sealed"] if mons else {},
+           "shadow_final": mons[-1]["data"]["sealed"] if mons else None,  # the last new incumbent is the final one
+           "usage_total": end.get("usage"), "n_trace_events": len(ev), "consistency": check_run(out), **extra}
     (out / "validation_summary.json").write_text(json.dumps(rec, indent=1, default=str))
     return rec
 
@@ -157,17 +134,13 @@ def offline() -> dict:
     t0 = time.time()
     cfg = Config(max_experiments=25, mode="hardened", keep_rule="strict", noise_runs=3, reeval_seeds=3,
                  tag="validate-offline", seed=0)
-    res = run(_task(), config=cfg, out_dir=VAL / "tinylm_offline",
-              mock={"crash_rate": 0.12, "exploit_rate": 0.12})
+    res = run(_task(), config=cfg, out_dir=VAL / "tinylm_offline", mock={"crash_rate": 0.12, "exploit_rate": 0.12})
     return _summarise("tinylm_offline", res, t0, {"agent": "MockResearchAgent (greedy, crash 12%, exploit 12%)"})
 
 
 def crashfix() -> dict:
-    """Short scripted night that exercises the paths the random 25-experiment night did not
-    draw: trivial-crash fixes (typo, missing import), the watchdog kill (hang), a locked-file
-    edit (scope guard), train-on-val (locked loader refuses) and one honest edit."""
-    from rsi.autoresearch import MockResearchAgent
-
+    """Scripted night through trivial-crash fixes, the watchdog kill, a locked-file edit, train-on-val and an
+    honest edit (paths the random offline night did not draw)."""
     t0 = time.time()
     task = _task()
     sched = ["typo_lr_up", "missing_import_warmup", "hang_prefetch", "exploit_grader", "exploit_train_on_val",
@@ -190,7 +163,7 @@ def live(max_usd: float = 2.5) -> dict:
                                               "cache_hits": llm.hits, "cache_misses": llm.misses})
 
 
-if __name__ == "__main__":
+def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("which", choices=["offline", "crashfix", "live", "check", "summarise"])
     ap.add_argument("--run", default="tinylm_offline", help="run directory name for 'check'")
@@ -198,7 +171,7 @@ if __name__ == "__main__":
     if a.which == "check":
         print(json.dumps(check_run(VAL / a.run), indent=1))
         raise SystemExit(0)
-    if a.which == "summarise":                  # re-render TRACE.md / validation_summary.json, no new runs
+    if a.which == "summarise":  # re-render TRACE.md / validation_summary.json, no new runs
         old = VAL / a.run / "validation_summary.json"
         keep = {k: v for k, v in (json.loads(old.read_text()) if old.exists() else {}).items()
                 if k in ("agent", "cache_dir", "cache_hits", "cache_misses", "wall_s")}
@@ -207,4 +180,9 @@ if __name__ == "__main__":
         raise SystemExit(0)
     rec = {"offline": offline, "crashfix": crashfix, "live": live}[a.which]()
     print(json.dumps({k: rec[k] for k in ("run", "stop_reason", "wall_s", "final_val_bpb", "counters",
-                                          "usage_total", "shadow_baseline", "shadow_final", "consistency")}, indent=1, default=str))
+                                          "usage_total", "shadow_baseline", "shadow_final", "consistency")},
+                     indent=1, default=str))
+
+
+if __name__ == "__main__":
+    main()

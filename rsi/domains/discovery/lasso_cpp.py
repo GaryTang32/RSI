@@ -1,33 +1,4 @@
-"""Lasso regularization path under the paper's actual protocol: compiled C++ solvers [paper:§4.1, App. A
-Problem 1, App. C].
-
-The paper "follow[s] the benchmark setting of SimpleTES": the candidate is a Python file that defines
-``CPP_CODE`` (C++ source) and optionally ``COMPILE_FLAGS``; the evaluator compiles it with g++ (Eigen
-available) and runs the binary once per problem, passing the problem on stdin and reading the coefficient
-path from stdout. App. C's discovered solver is such a file. :class:`LassoPathDomain` (``lasso.py``) is the
-earlier numpy stand-in for the offline mock agent; this domain is the faithful setting for any agent that can
-write C++ (claims audit Q13/Q31/Q32, retry round 2).
-
-Protocol (re-implemented here from the benchmark's specification, not copied):
-
-* **Wire format.** stdin: ``int32 n, int32 p, int32 K``, then ``X`` (``n*p`` float64, row-major), ``y`` (``n``),
-  ``lambdas`` (``K``, decreasing). stdout: ``p*K`` float64, column-major (column k = coefficients at
-  ``lambdas[k]``).
-* **Search split** (``evaluate_split(art, "search")``): the 17 problem shapes of :data:`SIZES` (five
-  generators: ``gaussian``, ``sparse``, ``dense_sol``, ``corr_low``, ``corr_high``). For every shape,
-  ``timing_runs`` fresh instances are timed (minimum wall time of the binary call, process start and I/O
-  included) and one further fresh instance checks correctness: ``F_k(w_k) <= F_k(w_k^sklearn) + 1e-6`` for
-  every k, where ``w^sklearn`` is ``sklearn.linear_model.lasso_path(X, y, n_alphas=50, eps=1e-2)`` and its
-  alphas are the lambda path. Any failure scores 0; otherwise the score is ``1 / geomean(ms)``.
-* **Held-out split** (``"holdout"``): the paper's six real datasets (Gisette, RCV1, DNA, Leukemia, Colon,
-  Duke Breast), read as ``<name>.npz`` (arrays ``X``, ``y``) from ``heldout_dir``; datasets that are not
-  there are skipped and listed in the diagnostics. Timing: one warm-up, then the minimum of ``heldout_reps``
-  calls; correctness as above against sklearn's path on the same data.
-* All solvers run single-threaded by default (``threads=1``; the benchmark pins OpenMP/BLAS threads to 1).
-
-The seed program (:data:`SEED_CPP`) is a plain cyclic coordinate-descent path solver with warm starts, written
-for this module (no Eigen needed). There is no offline mock agent: a C++-writing agent is required.
-"""
+"""Lasso path under the paper's SimpleTES protocol: compiled C++ candidates, 17 shapes, sklearn gate [paper:§4.1]."""
 from __future__ import annotations
 
 import ast
@@ -46,14 +17,13 @@ import numpy as np
 from ...core.artifact import Artifact
 from ...core.tasks import Task, TaskSuite
 from ...dream.agent import EvalOutcome
-from .base import ProgramDomain
+from .base import ProgramDomain, execution, failure
 
 PROGRAM = "solver.py"
 N_LAMBDA = 50
 EPS = 1e-2
 TOL_OBJECTIVE = 1e-6
-#: the 17 search problems (n, p, generator) of the benchmark the paper follows [paper:§4.1 "the same 17
-#: synthetic instances as SimpleTES"]
+# the 17 search problems (n, p, generator) [paper:§4.1 "the same 17 synthetic instances as SimpleTES"]
 SIZES: tuple = (
     (200, 100, "gaussian"), (200, 500, "gaussian"), (500, 1000, "gaussian"), (200, 2000, "gaussian"),
     (50, 3000, "gaussian"), (2000, 500, "gaussian"), (100, 5000, "gaussian"), (1000, 500, "sparse"),
@@ -61,7 +31,7 @@ SIZES: tuple = (
     (2000, 3000, "sparse"), (500, 200, "corr_low"), (500, 500, "corr_high"), (200, 1000, "corr_low"),
     (1000, 1000, "corr_high"),
 )
-#: the paper's six held-out datasets, in the order of its Fig. 3a table
+# the paper's six held-out datasets, in the order of its Fig. 3a table
 HELDOUT_NAMES: tuple = ("gisette", "rcv1", "dna", "leukemia", "colon", "duke")
 
 SEED_CPP = r'''
@@ -109,18 +79,14 @@ def seed_program() -> str:
     return f"# EVOLVE-BLOCK-START\n\nCPP_CODE = r'''{SEED_CPP}'''\n\nCOMPILE_FLAGS = []\n\n# EVOLVE-BLOCK-END\n"
 
 
-# ----------------------------------------------------------------------------------- problems
 def make_problem(n: int, p: int, gen: str, seed: int) -> tuple[np.ndarray, np.ndarray]:
-    """One benchmark instance. ``gaussian``: iid N(0,1) design, p//20 nonzero N(0,1) coefficients;
-    ``dense_sol``: the same with p//5 nonzeros; ``sparse``: min(20, p) nonzeros per row, columns scaled to
-    unit std, p//100 nonzero coefficients N(0, 4); ``corr_low``/``corr_high``: Toeplitz correlation 0.5/0.9,
-    p//20 nonzeros. Noise 0.1 N(0,1) throughout (``numpy.random.RandomState(seed)`` streams)."""
+    """One benchmark instance (gaussian, dense_sol, sparse, corr_low, corr_high) with 0.1 N(0,1) noise."""
     rng = np.random.RandomState(seed)
     if gen in ("gaussian", "dense_sol"):
         s = max(1, p // (20 if gen == "gaussian" else 5))
         X = rng.randn(n, p)
         w = np.zeros(p)
-        idx = rng.choice(p, s, replace=False)      # support first, then values (the benchmark's draw order)
+        idx = rng.choice(p, s, replace=False)  # support first, then values (the benchmark's draw order)
         w[idx] = rng.randn(s)
     elif gen == "sparse":
         nnz = min(20, p)
@@ -133,7 +99,7 @@ def make_problem(n: int, p: int, gen: str, seed: int) -> tuple[np.ndarray, np.nd
         X /= np.where(sd > 1e-8, sd, 1.0)
         s = max(1, p // 100)
         w = np.zeros(p)
-        w[rng.choice(p, s, replace=False)] = rng.randn(s) * 2     # Python evaluates the values first
+        w[rng.choice(p, s, replace=False)] = rng.randn(s) * 2  # Python evaluates the values first
     elif gen in ("corr_low", "corr_high"):
         rho = 0.5 if gen == "corr_low" else 0.9
         idx = np.arange(p)
@@ -153,7 +119,7 @@ def sklearn_path(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     from sklearn.linear_model import lasso_path
 
-    with warnings.catch_warnings():       # sklearn >= 1.9 deprecates n_alphas (same path as alphas=50)
+    with warnings.catch_warnings():  # sklearn >= 1.9 deprecates n_alphas (same path as alphas=50)
         warnings.simplefilter("ignore", FutureWarning)
         alphas, coefs, _ = lasso_path(X, y, n_alphas=N_LAMBDA, eps=EPS)
     return np.asarray(alphas), np.asarray(coefs)
@@ -165,16 +131,14 @@ def objective(X, y, w, lam) -> float:
 
 
 def max_gap(X, y, coef: np.ndarray, ref: np.ndarray, alphas) -> float:
-    """max_k F_k(coef_k) - F_k(ref_k): the correctness gate passes iff this is <= 1e-6 (and coef is finite)."""
+    """max_k F_k(coef_k) - F_k(ref_k); inf for a malformed or non-finite ``coef``."""
     if coef.shape != ref.shape or not np.all(np.isfinite(coef)):
         return math.inf
     return max(objective(X, y, coef[:, k], a) - objective(X, y, ref[:, k], a) for k, a in enumerate(alphas))
 
 
-# ------------------------------------------------------------------------------ programs
 def parse_program(code: str) -> tuple[str, list[str]]:
-    """``CPP_CODE`` and ``COMPILE_FLAGS`` of a candidate file, read as literals (the file is never
-    executed: an agent's Python would otherwise run inside the grader)."""
+    """``CPP_CODE`` and ``COMPILE_FLAGS`` read as literals: the candidate's Python never runs in the grader."""
     tree = ast.parse(code)
     found: dict = {}
     for node in tree.body:
@@ -217,7 +181,7 @@ def compile_program(cpp: str, flags: Sequence[str], *, eigen_dir: Optional[str] 
 
 def run_binary(binary: str, X: np.ndarray, y: np.ndarray, lambdas, *, timeout_s: float = 300.0,
                threads: int = 1) -> np.ndarray:
-    """One solver call (wire format above); raises RuntimeError on a crash or a malformed result."""
+    """stdin: int32 n, p, K, then X (row-major), y, lambdas as float64; stdout: p*K float64, column-major."""
     X = np.ascontiguousarray(X, dtype=np.float64)
     n, p = X.shape
     lam = np.ascontiguousarray(lambdas, dtype=np.float64)
@@ -259,7 +223,7 @@ def load_heldout(heldout_dir: Optional[str]) -> tuple[dict, list[str]]:
 
 
 class SimpleTESLassoDomain(ProgramDomain):
-    """The paper's Lasso setting with compiled C++ candidates (see the module docstring)."""
+    """Search: the 17 shapes, fresh data per timing call; holdout: the real datasets in ``heldout_dir``."""
 
     name = "lasso_cpp"
     program_file = PROGRAM
@@ -310,14 +274,13 @@ class SimpleTESLassoDomain(ProgramDomain):
         t0 = time.time()
         binary, err = self.binary_of(artifact)
         if err is not None:
-            return EvalOutcome(0.0, True, False, "compile_other", err[:1500], 0, 1, {}, time.time() - t0)
+            return failure("compile_other", err[:1500], seconds=time.time() - t0)
         solve = (lambda X, y, lam: run_binary(binary, X, y, lam, timeout_s=self.timeout_s, threads=self.threads))
         return self.evaluate_solver(solve, which, eval_seed=eval_seed, t0=t0)
 
     def evaluate_solver(self, solve, which: str = "search", *, eval_seed: int = 0,
                         t0: Optional[float] = None) -> EvalOutcome:
-        """Grade any callable ``solve(X, y, lambdas) -> coef (p, K)`` under this protocol (compiled programs,
-        and references such as sklearn's own path)."""
+        """Grade any callable ``solve(X, y, lambdas) -> coef (p, K)`` under this protocol."""
         t0 = time.time() if t0 is None else t0
         rows = []
         try:
@@ -338,8 +301,7 @@ class SimpleTESLassoDomain(ProgramDomain):
             elif which == "holdout":
                 data, missing = load_heldout(self.heldout_dir)
                 if not data:
-                    return EvalOutcome(0.0, True, False, "env_error", "no held-out dataset available", 0, 1,
-                                       {"missing": missing}, time.time() - t0)
+                    return failure("env_error", "no held-out dataset available", {"missing": missing}, time.time() - t0)
                 for name, (X, y) in data.items():
                     alphas, ref = sklearn_path(X, y)
                     ms, coef = timed(lambda: solve(X, y, alphas), self.heldout_reps, warmup=1)
@@ -348,30 +310,24 @@ class SimpleTESLassoDomain(ProgramDomain):
             else:
                 raise ValueError(f"unknown split {which!r}")
         except subprocess.TimeoutExpired:
-            return EvalOutcome(0.0, True, False, "timeout", f"solver timed out after {self.timeout_s}s", 0, 1,
-                               {"problems": rows}, time.time() - t0)
+            return failure("timeout", f"solver timed out after {self.timeout_s}s", {"problems": rows}, time.time() - t0)
         except RuntimeError as e:
-            return EvalOutcome(0.0, True, False, "compile_other", str(e)[:800], 0, 1, {"problems": rows},
-                               time.time() - t0)
+            return failure("compile_other", str(e)[:800], {"problems": rows}, time.time() - t0)
         gm = float(np.exp(np.mean(np.log([max(1e-6, r["ms"]) for r in rows]))))
         worst = max(r["gap"] for r in rows)
         diag = {"problems": rows, "geomean_ms": gm, "max_gap": worst, "missing": missing, "threads": self.threads}
         dt = time.time() - t0
         if not worst <= TOL_OBJECTIVE:
             bad = [r["problem"] for r in rows if not r["gap"] <= TOL_OBJECTIVE]
-            return EvalOutcome(0.0, True, False, "correctness",
-                               f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}", 0, 1, diag, dt)
+            return failure("correctness", f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}",
+                           diag, dt)
         return EvalOutcome(1.0 / gm, True, True, "ok", None, len(rows), len(rows), diag, dt)
 
     def evaluate_program(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
         return self.evaluate_split(artifact, "search", eval_seed=seed)
 
     def execute(self, artifact, task, *, seed, llm=None):
-        from ...core.domain import Execution
-
-        ev = self.evaluate_split(artifact, task.input or "search", eval_seed=seed)
-        return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
-                                 "diagnostics": ev.diagnostics})
+        return execution(self.evaluate_split(artifact, task.input or "search", eval_seed=seed))
 
     def mock_agent(self, **kw):
         raise NotImplementedError("lasso_cpp needs an agent that writes C++ (e.g. rsi.dream.EditorAgent over an "

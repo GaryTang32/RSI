@@ -3,8 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "experiments" / "demo"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments" / "demo"))
 
 from live_demo import infra_errors  # noqa: E402
 
@@ -17,13 +16,15 @@ def _trace(tmp_path, *events):
 
 def test_rrsi_shaped_failures_are_flagged(tmp_path):
     cap = "You've hit your session limit · resets 11am (UTC)"
+    missing = "4/8 trials missing (infrastructure)"
     run = _trace(tmp_path,
                  ("critic", {"candidate": "r0A", "llm": {"replies": [{"text": "", "error": "timeout"}]}}),
                  ("critic", {"candidate": "r0B", "llm": {"replies": [{"text": "", "error": cap}]}}),
-                 ("analysis", {"llm_calls": [{"role": "digester", "error": "infra: cache miss in offline replay mode"}]}),
-                 ("note", {"stage": "eval_invalid", "candidate": "r1A", "detail": "4/8 trials missing (infrastructure)"}),
+                 ("analysis", {"llm_calls": [{"role": "digester",
+                                              "error": "infra: cache miss in offline replay mode"}]}),
+                 ("note", {"stage": "eval_invalid", "candidate": "r1A", "detail": missing}),
                  ("gate", {"candidate": "r1A", "reason": "eval_invalid",
-                           "math": {"gate_failure": "eval_invalid", "detail": "4/8 trials missing (infrastructure)"}}),
+                           "math": {"gate_failure": "eval_invalid", "detail": missing}}),
                  ("monitor", {"version": "r0A", "sealed": {"holdout": {"S": 0.5, "missing": 2}}}),
                  ("proposal", {"candidate": "r2A", "error": f"llm error: {cap}"}))
     errs = infra_errors(run, {"splits": {"ood": {"final": {"S": 0.1, "missing": 3}}}})
@@ -38,7 +39,8 @@ def test_prompts_and_replies_that_mention_errors_are_not_flagged(tmp_path):
     run = _trace(tmp_path,
                  ("proposal", {"candidate": "c1", "prompt": "handle 'session limit' and 'llm error' gracefully",
                                "reply": "infra: retry on timeout", "error": None}),
-                 ("critic", {"candidate": "c1", "llm": {"replies": [{"text": "mentions session limit", "error": None}]}}),
+                 ("critic", {"candidate": "c1",
+                             "llm": {"replies": [{"text": "mentions session limit", "error": None}]}}),
                  ("analysis", {"llm_calls": [{"role": "analyst", "error": None}],
                                "report": {"error": "analyst output unusable; heuristic fallback"}}),
                  ("eval", {"candidate": "c1", "summary": {"S": 1.0, "missing": 0}}))

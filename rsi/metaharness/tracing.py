@@ -1,45 +1,17 @@
-"""Per-iteration audit trace of a Meta-Harness run (``rsi.trace`` format) + write-only shadow monitor.
-
-:class:`MHTracer` maps what :class:`~rsi.metaharness.loop.MetaHarnessLoop` does onto the uniform
-:mod:`rsi.trace` event kinds (``<out_dir>/trace.jsonl``; render with ``rsi.trace.inspect``):
-
-``run_start``   config, seed / baseline artifact ids, proposer class, split sizes, shadow splits
-``baseline``    each baseline of the initial population H0 on the search split (per unit + raw trials)
-``noise``       none: Meta-Harness has no noise band and no keep gate (recorded as such)
-``round_start`` loop state before iteration t: evaluations used / budget, frontier (Pareto + best),
-                population, what the history view exposes (files by kind, chars, visible systems)
-``analysis``    the proposer's own diagnosis: mock = move + evidence per candidate; LLM = the reply text
-                outside the file blocks (the paper has no separate analysis step - the proposer does it)
-``proposal``    per candidate: proposer prompt + reply (first candidate of the batch), claimed hypothesis /
-                axis / components / base system, the files it claimed vs the ACTUAL diff base -> candidate
-``critic``      the optional pilot leakage screen (off in the faithful default)
-``gate``        admissibility only: interface validation (+ screen). There is no score gate in Meta-Harness
-``eval``        every search-split evaluation (per unit + raw trial scores, context cost)
-``decision``    after the frontier is recomputed: per candidate score / cost / on-frontier / dominated-by,
-                both deltas (pre-iteration best and the release's post-iteration best), incumbent
-                (frontier ``_best``) before / after
-``monitor``     :class:`rsi.trace.ShadowMonitor` on sealed splits for every new ``_best`` (never shown
-                to the loop; its model calls are metered under ``shadow:*``)
-``state``       loop state after the iteration (the release's iteration row + frontier)
-``note``        finalisation (the one-time test evaluation) and skipped iterations
-``run_end``     best system, frontier, usage (loop vs monitor), stop reason
-
-Everything here only *reads* loop state; nothing is returned to the loop.
-"""
+"""Write-only audit trace of a Meta-Harness run (``rsi.trace`` events) plus the shadow monitor on sealed splits."""
 from __future__ import annotations
 
 from typing import Any, Optional, Sequence
 
-from ..core.artifact import Artifact
 from ..core.llm import LLM, LLMResponse
 from ..trace import RunTracer, ShadowMonitor
+from .frontier import dominates
 
 SHADOW_PREFIX = "shadow:"
 
 
 class ShadowLLM(LLM):
-    """The task model as the shadow monitor sees it: calls are delegated unchanged (same cache
-    identity) but metered under ``shadow:<role>`` so they never count as loop spend."""
+    """The task model as the shadow monitor sees it: same calls and cache identity, metered as ``shadow:<role>``."""
 
     def __init__(self, inner: LLM) -> None:
         super().__init__()
@@ -59,8 +31,7 @@ class ShadowLLM(LLM):
 
 
 def default_shadow_splits(domain) -> list[str]:
-    """Sealed ``holdout`` / ``ood`` splits of the domain (Meta-Harness' own ``test`` split is left to
-    ``finalize()``, which evaluates it exactly once)."""
+    """The domain's sealed, non-empty ``holdout`` / ``ood`` splits (``test`` is left to ``finalize()``)."""
     ts = domain.tasks
     return [s for s in ("holdout", "ood") if s in ts.splits and ts.is_sealed(s) and ts.splits[s]]
 
@@ -86,7 +57,7 @@ def _kinds(paths) -> dict[str, int]:
 
 
 def reply_commentary(text: str) -> str:
-    """The proposer's text outside ``=== FILE:`` blocks (its stated diagnosis and plan)."""
+    """The proposer's text outside ``=== FILE:`` blocks."""
     return (text or "").split("=== FILE:")[0].strip()
 
 
@@ -105,7 +76,6 @@ class MHTracer:
     def enabled(self) -> bool:
         return self.tr.enabled
 
-    # ------------------------------------------------------------------ helpers
     def frontier_state(self, fr: Optional[dict] = None) -> dict:
         fr = fr if fr is not None else self.loop.store.frontier()
         return {"best": fr.get("_best"), "pareto": [{k: p[k] for k in ("system", "score", "context_cost")}
@@ -117,13 +87,11 @@ class MHTracer:
         st = self.loop.store
         out = []
         for n in st.names():
-            s = st.scores(n) or {}
-            m = st.meta(n)
+            s, m = st.scores(n) or {}, st.meta(n)
             out.append({"system": n, "status": m.get("status"), "iteration": m.get("iteration"),
                         "base": m.get("base_system"), "score": s.get("score"), "context_cost": s.get("context_cost")})
         return out
 
-    # ------------------------------------------------------------------ events
     def run_start(self, seed_names: Sequence[str], extra: Optional[dict] = None) -> None:
         if not self.enabled:
             return
@@ -148,12 +116,11 @@ class MHTracer:
                                  "the output is the Pareto frontier (score up, context cost down)")
 
     def baseline(self, name: str, ev, scores: dict) -> None:
-        if not self.enabled:
-            return
-        self.tr.event("baseline", 0, candidate=name, artifact=self.loop.baselines[name].short_id,
-                      summary=ev.summary(), per_task=ev.task_scores(),
-                      trials={t: [x.score for x in trs] for t, trs in ev.trials.items()},
-                      context_cost=scores["context_cost"], per_unit_cost=scores["per_unit_cost"])
+        if self.enabled:
+            self.tr.event("baseline", 0, candidate=name, artifact=self.loop.baselines[name].short_id,
+                          summary=ev.summary(), per_task=ev.task_scores(),
+                          trials={t: [x.score for x in trs] for t, trs in ev.trials.items()},
+                          context_cost=scores["context_cost"], per_unit_cost=scores["per_unit_cost"])
 
     def after_baselines(self) -> None:
         if not self.enabled:
@@ -178,7 +145,6 @@ class MHTracer:
         if not self.enabled:
             return
         lp = self.loop
-        # analysis: what the proposer said it saw (the paper has no separate analysis step)
         if batch.candidates and all("move" in c.meta for c in batch.candidates):
             text = "\n".join(f"- {c.name}: move `{c.meta.get('move')}` on `{c.base_system}` - evidence: "
                              f"{c.meta.get('evidence')}" for c in batch.candidates)
@@ -235,8 +201,7 @@ class MHTracer:
             n = r["system"]
             if n in allpts:
                 sc, cc = allpts[n]
-                dom = sorted(o for o, (s2, c2) in allpts.items()
-                             if o != n and s2 >= sc and c2 <= cc and (s2 > sc or c2 < cc))
+                dom = sorted(o for o, p in allpts.items() if o != n and dominates(p, (sc, cc)))
                 per[n] = {"score": sc, "context_cost": cc, "on_frontier": n in pts, "dominated_by": dom[:6],
                           "delta_vs_pre_best_pts": round(100 * (sc - pre_best), 2),
                           "delta_logged_release": r.get("delta")}
@@ -263,8 +228,6 @@ class MHTracer:
             self.tr.event("state", t, iteration_row=row, frontier=self.frontier_state())
 
     def reevaluation(self, t: int, name: str, ev, scores: dict, before: dict) -> None:
-        """``Config.reeval_incumbent``: a new ``_best`` re-scored on more seeds (pooled scores replace the
-        single-seed ones before the frontier is recomputed)."""
         if self.enabled:
             self.tr.evaluation(t, name, ev, context_cost=scores["context_cost"], per_unit_cost=scores["per_unit_cost"],
                                phase="incumbent re-evaluation (Config.reeval_incumbent)", n_seeds=ev.k,
@@ -273,10 +236,6 @@ class MHTracer:
     def note(self, t: Optional[int], what: str, **data) -> None:
         if self.enabled:
             self.tr.event("note", t, what=what, **data)
-
-    def skipped(self, t: int, why: str) -> None:
-        if self.enabled:
-            self.tr.event("note", t, what="iteration skipped", why=why)
 
     def finalize(self, rep: dict, status: str, failures: list) -> None:
         if not self.enabled:
@@ -300,11 +259,9 @@ def make_tracer(loop, out_dir, *, enabled: bool, monitor: Any, llm_task: Optiona
     if tr.enabled and monitor:
         if isinstance(monitor, ShadowMonitor):
             mon = monitor
-        else:
-            sp = list(splits) if splits else default_shadow_splits(loop.domain)
-            if sp:
-                mon = ShadowMonitor(loop.domain, ShadowLLM(llm_task) if llm_task is not None else None, splits=sp,
-                                    k=k, workers=workers)
+        elif sp := (list(splits) if splits else default_shadow_splits(loop.domain)):
+            mon = ShadowMonitor(loop.domain, ShadowLLM(llm_task) if llm_task is not None else None, splits=sp,
+                                k=k, workers=workers)
     return MHTracer(loop, tr, mon)
 
 

@@ -1,36 +1,73 @@
-"""Shared base for CPU discovery domains.
-
-Each domain is an :class:`rsi.core.Domain` whose artifact is a *program* written by a
-discovery agent and whose single task is the problem instance. The locked evaluator
-is :meth:`ProgramDomain.evaluate_program`, which runs the program (optionally in a
-subprocess sandbox via :func:`rsi.core.sandbox.call_function`), checks it, and
-returns an :class:`rsi.dream.agent.EvalOutcome` with a typed ``fail_class``:
-
-* ``ok`` - evaluated successfully (score = task score, larger is better);
-* ``compile_other`` - the program raised / did not produce output (repairable);
-* ``constraint`` / ``correctness`` - infeasible or wrong output (repairable, score 0);
-* ``timeout`` - exceeded the time limit (repairable);
-* ``env_error`` - the evaluation infrastructure failed (hard).
-
-``execute``/``grade`` wrap the same evaluator so the domain also works with
-:class:`rsi.core.Evaluator`, ``transfer_report`` and every other method.
-"""
+"""ProgramDomain: a discovery problem whose artifact is a program, graded by a locked ``evaluate_program``."""
 from __future__ import annotations
 
 import json
+import random
 import time
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
 from ...core.sandbox import call_function
 from ...core.tasks import Task, TaskSuite
-from ...dream.agent import EvalOutcome
+from ...dream.agent import AttemptContext, DiscoveryTask, EvalOutcome
+
+
+def failure(fail_class: str, error: str, diagnostics: Optional[dict] = None, seconds: float = 0.0) -> EvalOutcome:
+    """Score-0 failed evaluation (0 of 1 outputs valid)."""
+    return EvalOutcome(0.0, True, False, fail_class, error, 0, 1, {} if diagnostics is None else diagnostics, seconds)
+
+
+def execution(ev: EvalOutcome) -> Execution:
+    return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
+                             "diagnostics": ev.diagnostics})
+
+
+def pick_mechanism(ctx: Optional[AttemptContext], rng: random.Random, mechanisms: Sequence[str],
+                   p_switch: float) -> str:
+    """The branch's assigned direction (else a random one); later attempts switch with probability ``p_switch``."""
+    mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(mechanisms)
+    if ctx and ctx.attempt > 0 and rng.random() < p_switch:
+        mech = rng.choice(mechanisms)
+    return mech
+
+
+def parent_measured(ctx: Optional[AttemptContext], key: str, default):
+    """``diagnostics[key]`` of the parent's ``eval/score.json`` (its measured result), else ``default``."""
+    if ctx is None:
+        return default
+    try:
+        sj = json.loads(ctx.parent_workspace.get("eval/score.json") or "{}")
+    except json.JSONDecodeError:
+        return default
+    return (sj.get("diagnostics") or {}).get(key) or default
 
 
 def single_task_suite(name: str, payload: Any = None) -> TaskSuite:
     t = Task(f"{name}-instance", payload, None, family=name)
     return TaskSuite([t], {"evolve": [t.id]}, name=name)
+
+
+class ProgramTask(DiscoveryTask):
+    """A domain as the discovery loop's task: its ``evaluate_program`` is the locked evaluator."""
+
+    def __init__(self, dom: Domain, name: str, program_file: Optional[str] = None) -> None:
+        self._dom, self.name, self._program_file = dom, name, program_file
+
+    def describe(self) -> str:
+        return self._dom.describe()
+
+    def seed_artifact(self) -> Artifact:
+        return self._dom.seed_artifact()
+
+    def evaluate(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
+        return self._dom.evaluate_program(artifact, seed=seed)
+
+    def directions(self) -> list[str]:
+        return self._dom.directions()
+
+    def editable(self) -> Optional[list[str]]:
+        return None if self._program_file is None else [self._program_file]
 
 
 class ProgramDomain(Domain):
@@ -46,16 +83,14 @@ class ProgramDomain(Domain):
         self.sandboxed = sandboxed
         self.timeout_s = timeout_s
 
-    # ---- to implement
     def check(self, output: Any, *, seed: int = 0) -> EvalOutcome:
         raise NotImplementedError
 
     def entry_payload(self, *, seed: int = 0) -> dict:
         return {}
 
-    # ---- running the program
     def run_program(self, artifact: Artifact, *, seed: int = 0) -> tuple[Any, Optional[str], str, float]:
-        """Returns (output, error, fail_class, seconds)."""
+        """``(output, error, fail_class, seconds)``; sandboxed via :func:`rsi.core.sandbox.call_function`."""
         code = artifact.get(self.program_file)
         if code is None:
             return None, f"{self.program_file} missing", "compile_other", 0.0
@@ -82,21 +117,17 @@ class ProgramDomain(Domain):
     def evaluate_program(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
         out, err, fc, dt = self.run_program(artifact, seed=seed)
         if err is not None:
-            return EvalOutcome(0.0, True, False, fc, err, 0, 1, {}, dt)
+            return failure(fc, err, seconds=dt)
         try:
             ev = self.check(out, seed=seed)
         except Exception as e:  # noqa: BLE001 - a checker crash on bad output is the program's fault
-            ev = EvalOutcome(0.0, True, False, "correctness", f"checker rejected output: {type(e).__name__}: {e}",
-                             0, 1)
+            ev = failure("correctness", f"checker rejected output: {type(e).__name__}: {e}")
         ev.seconds += dt
         ev.diagnostics.setdefault("program_s", round(dt, 4))
         return ev
 
-    # ---- rsi.core Domain API
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm=None) -> Execution:
-        ev = self.evaluate_program(artifact, seed=seed)
-        return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
-                                 "diagnostics": ev.diagnostics})
+        return execution(self.evaluate_program(artifact, seed=seed))
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         o = execution.output or {}
@@ -107,31 +138,10 @@ class ProgramDomain(Domain):
     def directions(self) -> list[str]:
         return []
 
-    def as_task(self):
-        from ...dream.agent import DiscoveryTask
-
-        dom = self
-
-        class _Task(DiscoveryTask):
-            name = dom.name
-            domain = dom          # the underlying rsi.core Domain (sealed splits -> shadow monitor)
-
-            def describe(self):
-                return dom.describe()
-
-            def seed_artifact(self):
-                return dom.seed_artifact()
-
-            def evaluate(self, artifact, *, seed=0):
-                return dom.evaluate_program(artifact, seed=seed)
-
-            def directions(self):
-                return dom.directions()
-
-            def editable(self):
-                return [dom.program_file]
-
-        return _Task()
+    def as_task(self) -> DiscoveryTask:
+        task = ProgramTask(self, self.name, self.program_file)
+        task.domain = self  # the underlying rsi.core Domain (sealed splits -> shadow monitor)
+        return task
 
     def seed_artifact(self) -> Artifact:  # pragma: no cover - per domain
         raise NotImplementedError

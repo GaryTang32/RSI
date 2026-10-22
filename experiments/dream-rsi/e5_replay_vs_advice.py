@@ -1,31 +1,21 @@
-"""E5 - Replay beats written advice (2 x 2 ablation).
+"""E5: replay vs written advice, a 2 x 2 ablation (Fixed / Dream, with / without guidance) at equal call budgets.
 
-Claim [paper:§5.1 Fig.5; doc "Summarizing past searches into written guidance ... did
-worse than no guidance at all"]: abstracting history into directional guidance
-"over-constrains the search space and impedes diverse exploration"; the digitized
-figure shows guidance helping early and losing at equal final budget.
-
-Arms: Fixed, Fixed+Guidance, Dream, Dream+Guidance at equal agent-call budgets. The
-guidance summarizer (mock: focus on the historically best directions; ``--llm claude``:
-an LLM summary) is injected as ``$direction_guidance`` and steers new roots toward the
-advised directions (strength 0.8). Measured: best at 25/50/100% of the budget and the
-diversity of directions opened. Domains: synthetic worlds (whose directions deplete
-once exploited - an *assumption* of the generator, so this arm is a mechanism check)
-and circle packing (real optimisation; directions are mechanism classes).
-
-    python experiments/dream-rsi/e5_replay_vs_advice.py [--llm sim|claude:haiku] [--seeds N] [--quick]
+    python experiments/dream-rsi/e5_replay_vs_advice.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--domains ...]
 """
+from pathlib import Path
+
 import numpy as np
-from _common import agent_of, best_at, developer_of, domain_of, figure, fmt, llm_of, paired, parse_args, pmap, sandbox_of, save, summ
+from _common import (agent_of, best_at, developer_of, domain_of, figure, fmt, llm_of, paired, parse_args, pmap,
+                     sandbox_of, save, save_figure, summ)
 
 from rsi.dream import Config, LLMGuidanceSummarizer, MockGuidanceSummarizer, run
 
 ARMS = {"fixed": (False, False), "fixed+guidance": (False, True), "dream": (True, False),
         "dream+guidance": (True, True)}
-#: W = the grid's width, as in E3/E6: every workspace of pi_1 runs in parallel (claims audit N4; W was 4)
+# W = the grid's width, as in E3/E6; sumdiff and autocorr use E3's settings
 SET = {"synthetic": dict(grid=(6, 4), W=6, rounds=8, M=6), "circlepack": dict(grid=(5, 3), W=5, rounds=5, M=4),
-       # retry round 2 (claims audit L5): two non-saturated real tasks, E3's settings (math: 10 rounds for autocorr)
        "sumdiff": dict(grid=(5, 3), W=5, rounds=5, M=4), "autocorr": dict(grid=(5, 3), W=5, rounds=10, M=4)}
+FRACS = (0.25, 0.5, 1.0)
 
 
 def one(job):
@@ -48,11 +38,29 @@ def one(job):
     allds = [x for d in dirs for x in d if x]
     p = np.array([allds.count(x) for x in set(allds)], float)
     p = p / p.sum() if p.sum() else p
-    entropy = float(-(p * np.log(p + 1e-12)).sum())
     return {"domain": dom_name, "seed": seed, "arm": arm, "budget": rounds * per_round,
             "curve": [(0, res.meta["seed_score"])] + [(r["cum_calls"], r["best"]) for r in res.trajectory],
             "final_best": res.meta["best_score"], "distinct_dir_frac_after_r1": float(np.mean(distinct)),
-            "direction_entropy": entropy}
+            "direction_entropy": float(-(p * np.log(p + 1e-12)).sum())}
+
+
+def analyse(rows) -> tuple:
+    budget = rows[0]["budget"]
+    res = {"budget": budget}
+    by = {arm: sorted([r for r in rows if r["arm"] == arm], key=lambda r: r["seed"]) for arm in ARMS}
+    for arm, rs in by.items():
+        res[arm] = {f"best_at_{int(f * 100)}pct": summ([best_at(r["curve"], f * budget) for r in rs]) for f in FRACS}
+        res[arm]["distinct_dir_frac"] = summ([r["distinct_dir_frac_after_r1"] for r in rs])
+        res[arm]["direction_entropy"] = summ([r["direction_entropy"] for r in rs])
+    for base in ("fixed", "dream"):
+        for f in FRACS:
+            x = [best_at(r["curve"], f * budget) for r in by[base]]
+            y = [best_at(r["curve"], f * budget) for r in by[base + "+guidance"]]
+            res[f"{base}_guidance_minus_unguided_at_{int(f * 100)}pct"] = paired(x, y)
+    x = [best_at(r["curve"], budget) for r in by["fixed"]]
+    y = [best_at(r["curve"], budget) for r in by["dream"]]
+    res["dream_minus_fixed_at_budget"] = paired(x, y)
+    return res, by
 
 
 def main():
@@ -64,28 +72,13 @@ def main():
         n_seeds = {d: 1 for d in doms}
     out = {}
     plt, png = figure("e5_replay_vs_advice")
-    if a.out:                               # a variant run (e.g. --domains sumdiff,autocorr) keeps its own figure
-        from pathlib import Path
+    if a.out:  # a variant run (e.g. --domains sumdiff,autocorr) keeps its own figure
         png = Path(a.out).with_suffix(".png")
     fig, axes = plt.subplots(1, len(doms), figsize=(4.6 * len(doms), 3.5), squeeze=False)
     for i, d in enumerate(doms):
         rows = pmap(one, [(d, s, arm, a.llm, a.quick) for s in range(n_seeds[d]) for arm in ARMS], a.workers)
-        budget = rows[0]["budget"]
-        res = {"budget": budget}
-        by = {arm: sorted([r for r in rows if r["arm"] == arm], key=lambda r: r["seed"]) for arm in ARMS}
-        for arm, rs in by.items():
-            res[arm] = {f"best_at_{int(f * 100)}pct": summ([best_at(r["curve"], f * budget) for r in rs])
-                        for f in (0.25, 0.5, 1.0)}
-            res[arm]["distinct_dir_frac"] = summ([r["distinct_dir_frac_after_r1"] for r in rs])
-            res[arm]["direction_entropy"] = summ([r["direction_entropy"] for r in rs])
-        for base in ("fixed", "dream"):
-            for f in (0.25, 0.5, 1.0):
-                x = [best_at(r["curve"], f * budget) for r in by[base]]
-                y = [best_at(r["curve"], f * budget) for r in by[base + "+guidance"]]
-                res[f"{base}_guidance_minus_unguided_at_{int(f * 100)}pct"] = paired(x, y)
-        x = [best_at(r["curve"], budget) for r in by["fixed"]]
-        y = [best_at(r["curve"], budget) for r in by["dream"]]
-        res["dream_minus_fixed_at_budget"] = paired(x, y)
+        res, by = analyse(rows)
+        budget = res["budget"]
         out[d] = res
         print(f"[{d}] budget {budget}")
         for arm in ARMS:
@@ -102,11 +95,9 @@ def main():
             ys = np.array([[best_at(r["curve"], c) for c in grid] for r in by[arm]], float)
             ax.plot(grid, np.nanmean(ys, 0), color=col, ls=ls, label=arm)
         ax.set_title(d, fontsize=9)
-        ax.set_xlabel("cumulative agent calls")
-        ax.set_ylabel("best score (mean over seeds)")
+        ax.set(xlabel="cumulative agent calls", ylabel="best score (mean over seeds)")
         ax.legend(fontsize=7)
-    fig.tight_layout()
-    fig.savefig(png, dpi=130)
+    save_figure(fig, png)
     verdict = {}
     for d, r in out.items():
         parts = []

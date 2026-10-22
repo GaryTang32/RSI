@@ -1,26 +1,16 @@
-"""$0 replay of the recorded live validation run on the CURRENT code (stage-B audit).
+"""$0 replay of the recorded live validation run on the current code (offline cache; a miss is an error, not a call).
 
-Re-runs ``live_agentqa`` from scratch into a scratch directory with every LLM behind
-``CachedLLM(..., offline=True)`` on the run's own cache (``validation/rrsi/.cache_live_agentqa``):
-a cache miss becomes an ``infra:`` error instead of a paid call, so the replay cannot spend
-money. It stops after the rounds the recorded run settled, then compares the replay's
-history (outcomes, S, dS, dC), decisions, trajectory and final incumbent with the record.
-
-    python experiments/rrsi/validate_rrsi_replay.py [--out DIR]
+Run: python experiments/rrsi/validate_rrsi_replay.py [--out DIR]
 """
-from __future__ import annotations
-
 import argparse
 import json
-import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+from _common import ROOT
 
-from rsi.core import CachedLLM, ClaudeCLI  # noqa: E402
-from rsi.rrsi import Config, run  # noqa: E402
+from rsi.core import CachedLLM, ClaudeCLI
+from rsi.rrsi import Config, run
 
 REC = ROOT / "validation" / "rrsi" / "live_agentqa"
 CACHE = ROOT / "validation" / "rrsi" / ".cache_live_agentqa"
@@ -31,13 +21,17 @@ def _hist(p: Path) -> list:
              r.get("delta_C")) for r in map(json.loads, p.read_text().splitlines()) if r.get("edit_id")]
 
 
+def _json(p: Path):
+    return json.loads(p.read_text())
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     from rsi.domains.agentqa import AgentQADomain, make_suite
     out = Path(a.out or tempfile.mkdtemp(prefix="rrsi_live_replay_"))
-    rec_fr = json.loads((REC / "frontier.json").read_text())
+    rec_fr = _json(REC / "frontier.json")
     settled = len(rec_fr["trajectory"]) - 1
     suite = make_suite(n_evolve=12, n_holdout=12, n_ood_per_family=3, seed=0)
     dom = AgentQADomain(suite)
@@ -47,25 +41,24 @@ def main() -> None:
                  n_fail_traces=6, n_success_traces=3, repair_rounds=2, max_done_bounces=2)
 
     def hook(event, **info):
+        """Stop after the rounds the recorded run settled."""
         if event == "settled" and info.get("t", -1) + 1 >= settled:
             (out / "STOP").write_text("replay: recorded run settled only these rounds\n")
 
     res = run(dom, AgentQADomain.seed_artifact(), llm_task=task, llm_propose=llm, llm_analyst=llm, config=cfg,
               out_dir=out, hooks={"settled": hook})
-    fr = json.loads((out / "frontier.json").read_text())
+    fr = _json(out / "frontier.json")
     same = {
         "history": _hist(out / "history.jsonl") == _hist(REC / "history.jsonl"),
         "trajectory": [x["S"] for x in fr["trajectory"]] == [x["S"] for x in rec_fr["trajectory"]],
         "final_incumbent": fr["incumbent"]["artifact_id"] == rec_fr["incumbent"]["artifact_id"],
-        "decisions": all(json.loads((out / f"r{t}" / "decisions.json").read_text())
-                         == json.loads((REC / f"r{t}" / "decisions.json").read_text()) for t in range(settled)),
-        "calibration_delta": json.loads((out / "calibration.json").read_text())["delta"]
-        == json.loads((REC / "calibration.json").read_text())["delta"],
+        "decisions": all(_json(out / f"r{t}" / "decisions.json") == _json(REC / f"r{t}" / "decisions.json")
+                         for t in range(settled)),
+        "calibration_delta": _json(out / "calibration.json")["delta"] == _json(REC / "calibration.json")["delta"],
     }
-    usage = res.usage.get("_total", {})
     rep = {"out": str(out), "settled_rounds": len(fr["trajectory"]) - 1, "identical": same,
            "cache": {"search_hits_misses": [llm.hits, llm.misses], "task_hits_misses": [task.hits, task.misses]},
-           "metered_usd": usage.get("cost_usd", 0.0), "stop_reason": res.stop_reason}
+           "metered_usd": res.usage.get("_total", {}).get("cost_usd", 0.0), "stop_reason": res.stop_reason}
     (REC / "replay_current_code.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
 

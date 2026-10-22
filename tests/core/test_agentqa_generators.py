@@ -1,6 +1,4 @@
-"""rsi.domains.agentqa.generators: determinism, split structure, independent RNG
-streams, and an independent re-derivation of every family's exact answer from
-the question text alone (so the graders are provably exact)."""
+"""rsi.domains.agentqa.generators: splits, determinism, RNG streams, answers re-derived from the question text."""
 from __future__ import annotations
 
 import ast
@@ -8,11 +6,8 @@ import datetime as dt
 import hashlib
 import json
 import math
-import os
 import random
 import re
-import subprocess
-import sys
 from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
@@ -20,8 +15,7 @@ import pytest
 from rsi.core import SealedSplitError
 from rsi.domains.agentqa import FAMILIES, decontaminate, make_suite
 from rsi.domains.agentqa.generators import _units
-
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from rsi.domains.agentqa.hard import HARD_FAMILIES
 
 
 def _digits(n: int) -> int:
@@ -32,9 +26,23 @@ def _isprime(n: int) -> bool:
     return n >= 2 and all(n % d for d in range(2, math.isqrt(n) + 1))
 
 
+def _ints(s: str) -> list[int]:
+    return [int(x) for x in re.findall(r"-?\d+", s)]
+
+
+def _solve_list(q: str) -> str | None:
+    xs = ast.literal_eval(q[q.index("["):])
+    if "divisible by 3" in q:
+        return str(sum(x for x in xs if x % 3 == 0))
+    if "second largest distinct" in q:
+        return str(sorted(set(xs))[-2])
+    if "divisible by 7" in q:
+        return str(sum(1 for x in xs if x % 7 == 0))
+    return None
+
+
 def solve(q: str) -> str:
-    """Answer any generated question from its text, independently of the generators."""
-    ints = lambda s: [int(x) for x in re.findall(r"-?\d+", s)]  # noqa: E731
+    """Answer any standard-family question from its text, independently of the generators."""
     if m := re.match(r"What is the sum of the decimal digits of (\d+)\^(\d+)\?", q):
         return str(_digits(int(m[1]) ** int(m[2])))
     if m := re.match(r"What is (\d+) mod (\d+)\?", q):
@@ -42,7 +50,7 @@ def solve(q: str) -> str:
     if m := re.match(r"What is the remainder when (\d+)\^(\d+) is divided by (\d+)\?", q):
         return str(pow(int(m[1]), int(m[2]), int(m[3])))
     if "ledger starts at" in q:
-        x0, x1, x2, y0, x3, y1, x4, y2, x5 = ints(q.split("ledger starts at", 1)[1])
+        x0, x1, x2, y0, x3, y1, x4, y2, x5 = _ints(q.split("ledger starts at", 1)[1])
         return str(x0 + x1 - x2 + y0 * x3 - y1 * x4 + y2 * x5)
     if m := re.match(r"How many 1 bits are in the binary representation of (\d+)\^(\d+)\?", q):
         return str(bin(int(m[1]) ** int(m[2])).count("1"))
@@ -64,20 +72,13 @@ def solve(q: str) -> str:
         return " ".join(reversed(q.split("\n", 1)[1].split()))
     if m := re.match(r"Sort the letters of '(\w+)' alphabetically", q):
         return "".join(sorted(m[1]))
-    if "in this list" in q:
-        xs = ast.literal_eval(q[q.index("["):])
-        if "divisible by 3" in q:
-            return str(sum(x for x in xs if x % 3 == 0))
-        if "second largest distinct" in q:
-            return str(sorted(set(xs))[-2])
-        if "divisible by 7" in q:
-            return str(sum(1 for x in xs if x % 7 == 0))
+    if "in this list" in q and (got := _solve_list(q)) is not None:
+        return got
     if q.startswith("A warehouse run by"):
-        a, b, c, d, e = ints(q)
+        a, b, c, d, e = _ints(q)
         return str(a + b - c + d * e)
     if m := re.search(r"buys (\d+) \w+ at \$(\d+) each and pays with (\d+) bills of \$100", q):
-        n, p, bills = int(m[1]), int(m[2]), int(m[3])
-        return str(bills * 100 - n * p)
+        return str(int(m[3]) * 100 - int(m[1]) * int(m[2]))
     if m := re.match(r"Compute \((\d+) \* (\d+)\) - \((\d+) \* (\d+)\) \+ (\d+)\.", q):
         a, b, c, d, e = map(int, m.groups())
         return str(a * b - c * d + e)
@@ -96,11 +97,6 @@ def solve(q: str) -> str:
     raise AssertionError(f"unrecognised question: {q[:80]}")
 
 
-# The harder families (logic, ledger, schedule, cipher) are re-solved from their question text by their own
-# independent checkers in tests/core/test_agentqa_hard.py; ``solve`` above only parses the standard families.
-from rsi.domains.agentqa.hard import HARD_FAMILIES  # noqa: E402
-
-
 @pytest.mark.parametrize("family", sorted(f for f in FAMILIES if f not in HARD_FAMILIES))
 def test_every_family_answer_is_exact(family):
     rng = random.Random(f"answers-{family}")
@@ -114,9 +110,8 @@ def test_every_family_answer_is_exact(family):
 
 
 def test_units_rounding_is_half_up():
-    """Bug fix: float round() gave banker's rounding on exact halves (75 in = 190.5 cm -> 190)."""
-    found = 0
-    rng = random.Random(1)
+    """Exact halves round up (75 in = 190.5 cm -> 191), not to even."""
+    found, rng = 0, random.Random(1)
     for _ in range(5000):
         q, a, _ = _units(rng)
         m = re.match(r"Convert (\d+) feet (\d+) inches", q)
@@ -138,8 +133,7 @@ def test_make_suite_default_structure():
     for split in ("holdout", "ood"):
         with pytest.raises(SealedSplitError):
             s.split(split)
-    for t in s.split("evolve"):
-        assert solve(t.input) == t.target
+    assert all(solve(t.input) == t.target for t in s.split("evolve"))
     ledger = [t for t in s.tasks.values() if "ledger" in t.input]
     assert ledger and all(t.meta["entities"] and t.meta["entities"][0] in t.input for t in ledger)
 
@@ -160,25 +154,19 @@ def _fingerprint(s) -> str:
 def test_make_suite_deterministic_and_seeded():
     assert _fingerprint(make_suite(seed=0)) == _fingerprint(make_suite(seed=0))
     assert _fingerprint(make_suite(seed=0)) != _fingerprint(make_suite(seed=1))
-    a, b = make_suite(seed=0), make_suite(seed=1)
-    assert a.get("evolve-numeric-000").input != b.get("evolve-numeric-000").input
+    assert make_suite(seed=0).get("evolve-numeric-000").input != make_suite(seed=1).get("evolve-numeric-000").input
 
 
 def test_splits_use_independent_rng_streams():
     base = make_suite()
     grown = make_suite(n_evolve=30, n_holdout=5, n_ood_per_family=8, n_val=3)
-    for tid in base.splits["evolve"]:
-        assert grown.get(tid).input == base.get(tid).input          # evolve prefix unchanged
-    for tid in grown.splits["holdout"]:
-        assert grown.get(tid).input == base.get(tid).input
-    for tid in base.splits["ood"]:
+    for tid in base.splits["evolve"] + grown.splits["holdout"] + base.splits["ood"]:   # evolve: a prefix
         assert grown.get(tid).input == base.get(tid).input
 
 
 def test_default_suite_overlap_and_decontaminate():
-    """Finding: factorial digit sums have only 46 questions, so seed 0 repeats one evolve
-    question in holdout (and seed 1 repeats one inside evolve). make_suite now applies
-    decontaminate() by default; dedupe=False reproduces the raw suites."""
+    """Factorial digit sums have only 46 questions: raw seed 0 repeats an evolve question in holdout and seed 1
+    one inside evolve; make_suite decontaminates by default."""
     def overlap(s):
         ev = [s.tasks[t].input for t in s.splits["evolve"]]
         ho = {s.tasks[t].input for t in s.splits["holdout"]}
@@ -200,13 +188,11 @@ def test_default_suite_overlap_and_decontaminate():
     assert not decontaminate(unsealed).is_sealed("holdout") and decontaminate(unsealed).is_sealed("ood")
 
 
-def test_make_suite_stable_across_processes():
+def test_make_suite_stable_across_processes(checkout_python):
     """String-seeded RNGs must not depend on PYTHONHASHSEED."""
-    code = ("import sys, json, hashlib; sys.path.insert(0, %r)\n"
+    code = ("import json, hashlib\n"
             "from rsi.domains.agentqa import make_suite\n"
             "s = make_suite()\n"
             "print(hashlib.sha256(json.dumps([[t.id, t.input, t.target] for t in s.tasks.values()] + [s.splits], "
-            "sort_keys=True).encode()).hexdigest())") % ROOT
-    env = dict(os.environ, PYTHONHASHSEED="12345")
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=60)
-    assert out.stdout.strip() == _fingerprint(make_suite())
+            "sort_keys=True).encode()).hexdigest())")
+    assert checkout_python(code, env={"PYTHONHASHSEED": "12345"}).stdout.strip() == _fingerprint(make_suite())

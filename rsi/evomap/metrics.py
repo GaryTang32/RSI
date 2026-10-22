@@ -1,33 +1,8 @@
-"""ReuseMetrics: the health dashboard of a hub (spec §9.2.7).
+"""ReuseMetrics: a hub's health dashboard computed from its records (spec §9.2.7).
 
-Everything is computed from the hub's records (and, in simulations, an optional
-ground-truth function):
-
-* ``reuse_rate_published`` / ``reuse_rate_promoted`` - share of assets with >= 1
-  non-author adoption (counted adoptions only on SafeHub); ``never_reused``;
-* ``time_to_first_reuse`` (median epochs), ``adoption_success_rate``;
-* ``consumer_uplift`` - mean measured uplift of adoption reports; ``consumer_uplift_true`` - mean realized
-  true uplift per report (0 when a safe consumer's quarantine rejected the asset);
-* ``credit_gini`` / ``credit_top10_share`` over agents' *earned* credits;
-* ``vacuous_share_promoted`` - the discriminative check (+ lint) re-run on the
-  promoted assets' proof material (assets without proof material count as
-  vacuous: nothing demonstrates that their validation discriminates; strategy
-  genes validated only by ``rsi-taskcheck`` count as non-vacuous iff a hub-run
-  uplift test established them);
-* ``trivial_command_share_promoted`` (N9) - the Behind-EvoMap study's notion: the
-  share of promoted assets whose validation is *trivial as written* (an empty list,
-  or every command is info-only, a shell no-op such as ``echo``, an inline
-  ``-c``/``-e`` snippet, a missing script, or a script that only prints /
-  asserts constants - the ``console.log`` class). A static lint, no execution. It is
-  narrower than ``vacuous_share_promoted``, which also counts real-but-weak checks
-  that do not *discriminate* the change;
-* ``rank_validity`` - Spearman(rank score, ground-truth effect) over ranked assets
-  (else vs later adoption success); ``duplicate_rate``.
-
-Counts (A7): ``n_promoted`` is the number of assets whose status is literally
-``promoted``; ``n_admitted`` is the hub's admitted tier that the ``*_promoted``
-rates are computed over (naive hub: ``promoted``; SafeHub: ``verified`` or
-``promoted``).
+``n_promoted`` counts status ``promoted``; the ``*_promoted`` rates use the admitted tier ``n_admitted`` (naive hub:
+promoted; SafeHub: verified or promoted). ``vacuous_share_promoted`` re-runs lint + the discriminative check;
+``trivial_command_share_promoted`` is the study's static notion (every command trivial as written).
 """
 from __future__ import annotations
 
@@ -38,7 +13,12 @@ import numpy as np
 from rsi.core.stats import spearman
 
 from .assets import Gene
+from .safehub import is_strategy_gene
 from .validation import InProcessExecutor, ValidationRunner, VacuityDetector
+
+
+def _nan_mean(xs) -> float:
+    return float(np.mean(xs)) if xs else float("nan")
 
 
 class ReuseMetrics:
@@ -49,96 +29,71 @@ class ReuseMetrics:
         self.agents = agents
 
     def is_vacuous(self, rec) -> bool:
+        """Vacuous unless the proof material shows a discriminating validation (strategy genes: a hub uplift)."""
         b = rec.bundle
-        specs = list(b.gene.get("validation", []))
-        from .safehub import is_strategy_gene
         if is_strategy_gene(Gene.from_dict(b.gene)):
-            # a strategy gene validated only by the agent-internal task check has no workspace test to re-run;
-            # it is non-vacuous iff a hub-run task-level uplift test established it (U_LCB >= delta)
             hr = rec.hub_report or {}
             return not (hr.get("U_LCB") is not None and hr.get("delta") is not None and hr["U_LCB"] >= hr["delta"])
         if b.pre_state is None or b.post_state is None:
             return True
-        return self.vacuity.verdict(specs, b.pre_state, b.post_state, mutants=False).vacuous
+        return self.vacuity.verdict(list(b.gene.get("validation", [])), b.pre_state, b.post_state,
+                                    mutants=False).vacuous
 
     def is_trivial_command(self, rec) -> bool:
-        """Study-style vacuity (N9): every validation command is trivial as written (static lint only)."""
+        """Every validation command is trivial as written (static lint only)."""
         b = rec.bundle
         specs = list(b.gene.get("validation", []))
-        from .safehub import is_strategy_gene
         if is_strategy_gene(Gene.from_dict(b.gene)):
-            return False            # an agent-internal task-level A/B (rsi-taskcheck), not a trivial command
+            return False
         if not specs:
             return True
-        lint = self.vacuity.lint(specs, b.post_state or {})
-        return all(bool(f) for f in lint.values())
+        return all(bool(f) for f in self.vacuity.lint(specs, b.post_state or {}).values())
 
     def compute(self, hub) -> dict:
         recs = hub.published()
         promoted_states = ("promoted",) if hub.name == "naive" else ("promoted", "verified")
         promoted = [r for r in recs if r.status in promoted_states]
-        strictly_promoted = [r for r in recs if r.status == "promoted"]
         counted_only = hub.name != "naive"
 
-        def reused(r) -> bool:
-            return bool(r.adopters(counted_only=counted_only))
+        def reports(r) -> list:
+            return [a for a in r.adoptions if a["consumer"] != r.author and (a.get("counted") or not counted_only)]
 
         def rate(rs) -> float:
-            return float(np.mean([reused(r) for r in rs])) if rs else float("nan")
+            return float(np.mean([bool(r.adopters(counted_only=counted_only)) for r in rs])) if rs else float("nan")
 
-        firsts = []
-        for r in recs:
-            eps = [a["epoch"] for a in r.adoptions if a["consumer"] != r.author and (a.get("counted") or not counted_only)]
-            if eps:
-                firsts.append(min(eps) - r.epoch)
-        adopts = [a for r in recs for a in r.adoptions if a["consumer"] != r.author and
-                  (a.get("counted") or not counted_only)]
+        firsts = [min(a["epoch"] for a in reports(r)) - r.epoch for r in recs if reports(r)]
+        adopts = [a for r in recs for a in reports(r)]
         out = {
             "hub": hub.name, "epoch": hub.epoch, "n_published": len(recs),
-            "n_promoted": len(strictly_promoted), "n_admitted": len(promoted), "admitted_states": list(promoted_states),
+            "n_promoted": sum(1 for r in recs if r.status == "promoted"), "n_admitted": len(promoted),
+            "admitted_states": list(promoted_states),
             "promotion_rate": len(promoted) / len(recs) if recs else float("nan"),
             "reuse_rate_published": rate(recs), "reuse_rate_promoted": rate(promoted),
             "never_reused_published": 1 - rate(recs) if recs else float("nan"),
             "never_reused_promoted": 1 - rate(promoted) if promoted else float("nan"),
             "time_to_first_reuse": float(np.median(firsts)) if firsts else float("nan"),
-            "adoption_success_rate": float(np.mean([a["outcome"] for a in adopts])) if adopts else float("nan"),
+            "adoption_success_rate": _nan_mean([a["outcome"] for a in adopts]),
             "credit_gini": hub.credits.gini(self.agents),
             "credit_top10_share": hub.credits.top_share(0.10, self.agents),
             "credits_by_reason": hub.credits.by_reason(),
+            "vacuous_share_promoted": _nan_mean([self.is_vacuous(r) for r in promoted]),
+            "trivial_command_share_promoted": _nan_mean([self.is_trivial_command(r) for r in promoted]),
         }
-        if promoted:
-            out["vacuous_share_promoted"] = float(np.mean([self.is_vacuous(r) for r in promoted]))
-            out["trivial_command_share_promoted"] = float(np.mean([self.is_trivial_command(r) for r in promoted]))
-        else:
-            out["vacuous_share_promoted"] = float("nan")
-            out["trivial_command_share_promoted"] = float("nan")
         keys = [r.gene.content_key() for r in recs]
         out["duplicate_rate"] = 1 - len(set(keys)) / len(keys) if keys else float("nan")
         ranked = hub.rank()
         by = {r.asset_id: r for r in recs}
+        out["rank_validity"] = float("nan")
         if self.truth is not None and len(ranked) >= 3:
-            xs = [s for a, s in ranked]
-            ys = [self.truth(by[a].gene) for a, s in ranked]
-            out["rank_validity"] = spearman(xs, ys)
-            # realized true uplift per adoption report: a naive consumer reports after USING the asset; a safe
-            # consumer's negative report means its quarantine rejected the asset, so it kept its incumbent (0)
-            upl = [self.truth(r.gene) if (not counted_only or x["outcome"] == 1) else 0.0
-                   for r in recs for x in r.adoptions
-                   if x["consumer"] != r.author and (x.get("counted") or not counted_only)]
-            out["consumer_uplift_true"] = float(np.mean(upl)) if upl else float("nan")
-        else:
-            out["rank_validity"] = float("nan")
+            out["rank_validity"] = spearman([s for a, s in ranked], [self.truth(by[a].gene) for a, s in ranked])
+            # a safe consumer's negative report means its quarantine kept the incumbent: realized uplift 0
+            out["consumer_uplift_true"] = _nan_mean([self.truth(r.gene) if (not counted_only or x["outcome"] == 1)
+                                                     else 0.0 for r in recs for x in reports(r)])
+        out["surfacing_validity"] = out["served_true_effect"] = float("nan")
         if self.truth is not None and len(recs) >= 3:
-            # surfacing validity: over ALL submissions, rank 0 when the hub does not serve the asset
-            served = dict(ranked)
-            xs = [served.get(r.asset_id, 0.0) for r in recs]
-            ys = [self.truth(r.gene) for r in recs]
-            out["surfacing_validity"] = spearman(xs, ys)
-            top = [r for r in recs if r.asset_id in served]
-            out["served_true_effect"] = float(np.mean([self.truth(r.gene) for r in top])) if top else float("nan")
-        else:
-            out["surfacing_validity"] = float("nan")
-            out["served_true_effect"] = float("nan")
-        meas = [a.get("uplift") for a in adopts if a.get("uplift") is not None]
-        out["consumer_uplift_measured"] = float(np.mean(meas)) if meas else float("nan")
+            served = dict(ranked)  # an asset the hub does not serve ranks 0
+            out["surfacing_validity"] = spearman([served.get(r.asset_id, 0.0) for r in recs],
+                                                 [self.truth(r.gene) for r in recs])
+            out["served_true_effect"] = _nan_mean([self.truth(r.gene) for r in recs if r.asset_id in served])
+        out["consumer_uplift_measured"] = _nan_mean([a.get("uplift") for a in adopts if a.get("uplift") is not None])
         return out

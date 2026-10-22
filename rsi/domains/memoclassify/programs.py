@@ -1,26 +1,4 @@
-"""A library of memory-system *programs* for offline Meta-Harness runs.
-
-The offline :class:`rsi.metaharness.MockProposer` cannot write novel code, so it
-writes whole ``memory.py`` programs from a small design space that covers the
-exploitation axes named in the Meta-Harness skill (A prompt template, B memory
-content, C selection algorithm, D memory sizing, E learning trigger, F derived
-memory). A *genome* is a dict of choices; :func:`render` turns it into a complete,
-readable Python file with the genome as a ``CONFIG`` literal at the top, and
-:func:`parse` reads it back from source - so a proposer can learn what earlier
-candidates did by reading their code, exactly as a coding agent would.
-
-Also here (domain knowledge the mock needs):
-
-* :data:`MOVES` - mechanism-level edits (not parameter sweeps), each with an axis
-  and a falsifiable hypothesis;
-* :func:`diagnose` - what a careful reader of *raw* per-example traces can infer
-  (context overflow, target label missing from the prompt, recurring confusions,
-  heavy context at high accuracy);
-* :func:`summarize` - a lossy "LLM summary" of traces (the ``scores_summary``
-  view of the paper's Table 3 ablation);
-* :func:`leaky_genome` - a hard-coded lookup table built from search-set traces
-  (the overfitting failure mode M5 measures).
-"""
+"""Memory-system genomes for the offline MockProposer: rendering to ``memory.py``, mechanism moves, trace diagnosis."""
 from __future__ import annotations
 
 import ast
@@ -44,9 +22,6 @@ DEFAULT_GENOME: dict[str, Any] = {
     "demo_chars": 0,             # D: truncate each demonstration to this many characters (0 = full)
     "lookup": {},                # hard-coded answers (overfitting; never generic)
 }
-
-AXES = {"prompt": "A", "label_list": "A", "store": "B", "cap": "D", "select": "C", "k": "D", "char_budget": "D",
-        "notes": "F", "note_words": "F", "learn": "E", "demo_chars": "D", "lookup": "leak"}
 
 #: mechanism moves: name -> (changes, axis, hypothesis)
 MOVES: dict[str, tuple[dict, str, str]] = {
@@ -92,8 +67,7 @@ MOVES: dict[str, tuple[dict, str, str]] = {
                            "Remembering only recent mistakes focuses the prompt on what the model gets wrong."),
 }
 
-#: parameter variants - what an uninformed proposer tries most often ("parameter sweeps (pool sizes,
-#: retrieval counts, context budgets ...) almost always regress or tie" - release SKILL.md)
+#: parameter variants: what an uninformed proposer tries most often (and what almost always ties or regresses)
 PARAM_MOVES: dict[str, tuple[dict, str, str]] = {
     f"param_{key}_{val}": ({key: val}, "D", f"Tuning {key} to {val} should balance recall and prompt length.")
     for key, vals in (("k", (6, 10, 24, 32)), ("char_budget", (2500, 4500, 9000, 14000)),
@@ -103,7 +77,6 @@ PARAM_MOVES: dict[str, tuple[dict, str, str]] = {
 ALL_MOVES = {**MOVES, **PARAM_MOVES}
 
 
-# ------------------------------------------------------------------ rendering
 _TEMPLATE = '''"""{doc}"""
 import json
 import re
@@ -285,8 +258,7 @@ def describe_genome(g: dict) -> str:
 
 def render(genome: dict) -> str:
     g = {**DEFAULT_GENOME, **genome}
-    cfg = pprint.pformat(g, width=100, sort_dicts=True)
-    return _TEMPLATE.format(doc=describe_genome(g), config=cfg)
+    return _TEMPLATE.format(doc=describe_genome(g), config=pprint.pformat(g, width=100, sort_dicts=True))
 
 
 def read_config(source: str) -> Optional[dict]:
@@ -312,7 +284,7 @@ def parse(source: str) -> Optional[dict]:
 
 
 def seed_genome(name: str) -> dict:
-    """Genomes equivalent to the seed baselines (used when a seed's source is foreign code)."""
+    """Genome equivalent to a seed baseline whose source is foreign code."""
     if name == "no_memory":
         return {**DEFAULT_GENOME, "select": "recent", "k": 0, "char_budget": 0}
     return dict(DEFAULT_GENOME)
@@ -323,7 +295,7 @@ def apply_move(genome: dict, move: str) -> dict:
 
 
 def crossover(a: dict, b: dict) -> dict:
-    """Retrieval from ``a``, prompt/memory content from ``b`` ("combining systems is valid")."""
+    """Retrieval from ``a``, prompt and memory content from ``b``."""
     out = dict(b)
     for key in ("select", "k", "char_budget"):
         out[key] = a[key]
@@ -332,7 +304,6 @@ def crossover(a: dict, b: dict) -> dict:
     return out
 
 
-# ------------------------------------------------------------------ diagnosis
 def _records(trace_text: str) -> list[dict]:
     out = []
     for line in (trace_text or "").splitlines():
@@ -345,19 +316,17 @@ def _records(trace_text: str) -> list[dict]:
     return out
 
 
-#: The prompt length the trace diagnosis treats as "too long". NOTE (audit N9): 11,000 chars is TUNED to
-#: MemoLM-A's hidden 12,000-char effective context (``model.VARIANTS``). It stands for the prior knowledge an
-#: experienced engineer (or a frontier coding agent) has about a model's usable context; an LLM proposer
-#: would have to infer it. The per-harness accuracy-vs-length signal in the traces is too noisy at this scale
-#: to estimate it reliably (tested: the weighted gap flags ``fewshot_all`` in only about half the seeds),
-#: so the mock keeps the prior, and M1 reports the sensitivity to un-tuned values
-#: (``m1_history_ablation.py --budget-hint 6000|20000``).
+def _evals(traces: dict[str, str]) -> list[dict]:
+    return [r for t in traces.values() for r in _records(t) if r.get("type") == "eval_step"]
+
+
+#: prompt length the diagnosis treats as too long: tuned to MemoLM-A's hidden 12,000-char context, standing in for
+#: an engineer's prior about a model's usable context (M1 reports the sensitivity to other values)
 DEFAULT_BUDGET_HINT = 11000
 
 
 def _step_prompt(r: dict) -> str:
-    """The prompt text(s) of one step record: every model call's prompt in full traces (``calls``), else the
-    compact format's ``prompt`` (only some wrong eval steps carry one)."""
+    """Every model call's prompt of a step (full traces), else the compact format's ``prompt``."""
     calls = r.get("calls")
     if calls:
         return "\n".join(str(c.get("prompt") or "") for c in calls)
@@ -365,9 +334,8 @@ def _step_prompt(r: dict) -> str:
 
 
 def diagnose(traces: dict[str, str], budget_hint: int = DEFAULT_BUDGET_HINT) -> list[tuple[str, float, str]]:
-    """Read raw per-example traces (``{unit: jsonl}``) and return ranked
-    ``(move, weight, evidence)`` suggestions, as a proposer reading log.jsonl would."""
-    evals = [r for t in traces.values() for r in _records(t) if r.get("type") == "eval_step"]
+    """Ranked ``(move, weight, evidence)`` suggestions from raw per-example traces ``{unit: jsonl}``."""
+    evals = _evals(traces)
     if not evals:
         return []
     errs = [r for r in evals if not r.get("ok")]
@@ -411,9 +379,8 @@ def diagnose(traces: dict[str, str], budget_hint: int = DEFAULT_BUDGET_HINT) -> 
 
 
 def summarize(traces: dict[str, str]) -> str:
-    """Lossy summary of traces (stands in for an LLM summariser): aggregate accuracy,
-    prompt length and the most frequent wrong prediction - per-example evidence is lost."""
-    evals = [r for t in traces.values() for r in _records(t) if r.get("type") == "eval_step"]
+    """Lossy summary standing in for an LLM summariser: accuracy, prompt length, most frequent wrong answer."""
+    evals = _evals(traces)
     if not evals:
         return "No evaluation records."
     n = len(evals)
@@ -440,16 +407,12 @@ def diagnose_summary(summary: str, budget_hint: int = DEFAULT_BUDGET_HINT) -> li
 
 
 def leaky_genome(base: dict, traces: dict[str, str], max_entries: int = 200) -> dict:
-    """Hard-code (input snippet -> label) pairs read from search-set traces. Scores well
-    on the search set and not at all elsewhere - the overfitting a leakage screen must catch."""
+    """Hard-code (input snippet -> label) pairs read from search-set traces: the overfitting a screen must catch."""
     table: dict[str, str] = {}
-    for t in traces.values():
-        for r in _records(t):
-            if r.get("type") != "eval_step":
-                continue
-            prev = str(r.get("input_preview", ""))
-            m = re.match(r"\[ref (\w+)\]", prev)
-            key = m.group(0) if m else prev.split(": ", 1)[-1][:40]
-            if key and len(table) < max_entries:
-                table[key] = r["tgt"]
+    for r in _evals(traces):
+        prev = str(r.get("input_preview", ""))
+        m = re.match(r"\[ref (\w+)\]", prev)
+        key = m.group(0) if m else prev.split(": ", 1)[-1][:40]
+        if key and len(table) < max_entries:
+            table[key] = r["tgt"]
     return {**base, "lookup": table}

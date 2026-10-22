@@ -9,7 +9,7 @@ Reflects on full execution traces in plain language to rewrite prompts, keeping 
 1. [paper-spec.md](paper-spec.md): the method as the paper and reference code describe it. Every fact is tagged with its source.
 2. [implementation.md](implementation.md): how `rsi` implements it, the API, how to apply it to a new problem, experiment results and deviations.
 3. [claims-audit.md](claims-audit.md): claim-by-claim check against the paper (58 claims: 28 reproduced, 11 partial, 2 not reproduced, 17 not testable here, 0 contradicted, after retry round 2 and its review), with a Fix log and a preregistered retry round (§6).
-4. [Validation audit](../../../validation/gepa/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](../../../validation/gepa/RUNS.md) describes the runs.
+4. [Validation audit](https://github.com/GaryTang32/RSI/blob/data/validation/gepa/AUDIT.md): step-by-step audit of fresh runs from the seed; [RUNS.md](https://github.com/GaryTang32/RSI/blob/data/validation/gepa/RUNS.md) describes the runs.
 
 ## Where everything is
 
@@ -19,8 +19,8 @@ Reflects on full execution traces in plain language to rewrite prompts, keeping 
 | Domains | [`rsi/domains/ruleworld/`](../../../rsi/domains/ruleworld), [`rsi/domains/agentqa/`](../../../rsi/domains/agentqa) (shared) |
 | Tests | [`tests/gepa/`](../../../tests/gepa) |
 | Experiments (scripts) | [`experiments/gepa/`](../../../experiments/gepa) |
-| Results (JSON, figures) | [`results/gepa/`](../../../results/gepa) |
-| Validation runs (traces, TRACE.md) | [`validation/gepa/`](../../../validation/gepa) |
+| Results (JSON, figures) | [`results/gepa/`](https://github.com/GaryTang32/RSI/tree/data/results/gepa) |
+| Validation runs (traces, TRACE.md) | [`validation/gepa/`](https://github.com/GaryTang32/RSI/tree/data/validation/gepa) |
 
 ## Run it
 

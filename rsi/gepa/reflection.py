@@ -1,16 +1,4 @@
-"""Reflection: turning (inputs, outputs, feedback) into a new component text.
-
-* :data:`DEFAULT_TEMPLATE` - GEPA's reflection meta-prompt, verbatim from the paper
-  (App. C) and ``gepa/strategies/instruction_proposal.py:InstructionProposalSignature``;
-* :data:`OPTIMIZE_ANYTHING_TEMPLATE` - the ``optimize_anything`` default, verbatim;
-* :func:`render_samples` - the reference ``format_samples`` markdown (``# Example n``,
-  ``## key``, nested ``###``..``######``, ``Item k`` for list elements);
-* :func:`parse_fenced` - ``ProposalAdapter.parse``: text between the first and last
-  triple-backtick fence (language tag dropped); without a fence pair the whole
-  output is used, unless it is known to be truncated;
-* :class:`ReflectionProposer` - one reflection-LM call per selected component with
-  non-empty records (``StatelessReflectionLM``), metered under role ``reflection``.
-"""
+"""Reflection: GEPA's meta-prompts (verbatim, paper App. C), record rendering, fenced parsing and the proposer."""
 from __future__ import annotations
 
 import hashlib
@@ -72,35 +60,26 @@ def validate_template(template: str) -> None:
 
 
 def render_value(value: Any, level: int = 3) -> str:
-    if isinstance(value, dict):
-        s = ""
-        for k, v in value.items():
-            s += f"{'#' * level} {k}\n"
-            s += render_value(v, min(level + 1, 6))
-        if not value:
-            s += "\n"
-        return s
-    if isinstance(value, (list, tuple)):
-        s = ""
-        for i, item in enumerate(value):
-            s += f"{'#' * level} Item {i + 1}\n"
-            s += render_value(item, min(level + 1, 6))
-        if not value:
-            s += "\n"
-        return s
-    return f"{str(value).strip()}\n\n"
+    if not isinstance(value, (dict, list, tuple)):
+        return f"{str(value).strip()}\n\n"
+    pairs = value.items() if isinstance(value, dict) else ((f"Item {i + 1}", v) for i, v in enumerate(value))
+    s = "".join(f"{'#' * level} {k}\n" + render_value(v, min(level + 1, 6)) for k, v in pairs)
+    return s if value else s + "\n"
 
 
 def render_samples(samples: Sequence[Mapping[str, Any]]) -> str:
-    """Markdown rendering of reflective records, as ``format_samples`` in the reference."""
-    def one(sample: Mapping[str, Any], n: int) -> str:
-        s = f"# Example {n}\n"
-        for key, val in sample.items():
-            s += f"## {key}\n"
-            s += render_value(val, level=3)
-        return s
+    """Markdown rendering of reflective records (the reference ``format_samples``)."""
+    return "\n\n".join(f"# Example {n}\n" + "".join(f"## {k}\n" + render_value(v, level=3) for k, v in s.items())
+                       for n, s in enumerate(samples, 1))
 
-    return "\n\n".join(one(s, i + 1) for i, s in enumerate(samples))
+
+def parse_side_info(side: str) -> list[dict]:
+    """Records back from rendered samples (``# Example n`` / ``## key`` sections, values as text)."""
+    recs = []
+    for block in re.split(r"^# Example \d+\s*$", side, flags=re.M)[1:]:
+        secs = (sec.partition("\n") for sec in re.split(r"^## ", block, flags=re.M)[1:])
+        recs.append({head.strip(): body.strip() for head, _, body in secs})
+    return recs
 
 
 def build_prompt(template: str, current: str, records: Sequence[Mapping[str, Any]]) -> str:
@@ -122,14 +101,7 @@ def is_known_truncated(out: str, finish_reason: Optional[str] = None, tags: Sequ
 
 
 def response_finish_reason(resp) -> Optional[str]:
-    """The provider's termination reason of an :class:`rsi.core.LLMResponse`, or None.
-
-    Reads ``resp.raw["stop_reason"]`` (the ``claude -p`` JSON, Anthropic naming; kept by
-    :class:`rsi.core.CachedLLM` on cache hits since the core fix) or ``resp.raw["finish_reason"]``
-    (OpenAI / LiteLLM style), then a ``finish_reason`` attribute on the response itself (the
-    reference's ``LMOutput.finish_reason``). Like the reference ``ProposalAdapter._finish_reason``,
-    only a string counts. Cache entries written before the core fix carry no reason, so on
-    them only the ``<think>`` heuristic can detect truncation."""
+    """The provider's stop reason: ``raw["stop_reason"]``, ``raw["finish_reason"]`` or ``resp.finish_reason``."""
     raw = getattr(resp, "raw", None)
     if isinstance(raw, dict):
         for key in ("stop_reason", "finish_reason"):
@@ -141,7 +113,7 @@ def response_finish_reason(resp) -> Optional[str]:
 
 
 def parse_fenced(out: str, finish_reason: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
-    """``(text, error)``: the reference ``ProposalAdapter.parse`` semantics."""
+    """``(text, error)`` with the reference ``ProposalAdapter.parse`` semantics."""
     out = (out or "").strip()
     if is_known_truncated(out, finish_reason):
         detail = f"finish_reason={finish_reason!r}" if finish_reason else "unterminated reasoning block"
@@ -149,25 +121,26 @@ def parse_fenced(out: str, finish_reason: Optional[str] = None) -> tuple[Optiona
     if _has_fence_pair(out):
         content = out[out.find("```") + 3: out.rfind("```")]
         m = re.match(r"^\S*\n", content)
+        return (content[m.end():] if m else content).strip(), None
+    value = out
+    if value.startswith("```"):
+        m = re.match(r"^```\S*\n?", value)
         if m:
-            content = content[m.end():]
-        value = content.strip()
-    else:
-        value = out
-        if value.startswith("```"):
-            m = re.match(r"^```\S*\n?", value)
-            if m:
-                value = value[m.end():].strip()
-        elif value.endswith("```"):
-            value = value[:-3].strip()
+            value = value[m.end():].strip()
+    elif value.endswith("```"):
+        value = value[:-3].strip()
     return value, None
 
 
 def reflection_seed(run_seed: int, iteration: int, component: str, attempt: int = 0) -> int:
-    """Deterministic per-call seed: repeated calls with the same prompt in different
-    iterations are distinct samples (and distinct cache keys)."""
+    """Per-call seed, so equal prompts in different iterations are distinct samples (and cache keys)."""
     h = hashlib.sha256(f"{run_seed}|{iteration}|{component}|{attempt}".encode()).hexdigest()
     return int(h[:8], 16)
+
+
+def rollout_seed(*parts) -> int:
+    """Deterministic rollout seed in [1, 2**31 - 2] from ``"|".join(parts)``."""
+    return 1 + int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:8], 16) % (2 ** 31 - 2)
 
 
 @dataclass
@@ -175,18 +148,13 @@ class ReflectionResult:
     new_texts: dict[str, str] = field(default_factory=dict)
     prompts: dict[str, str] = field(default_factory=dict)
     raw: dict[str, str] = field(default_factory=dict)
-    rejected: dict[str, str] = field(default_factory=dict)      # component -> reason
-    finish: dict[str, Optional[str]] = field(default_factory=dict)   # component -> provider stop/finish reason
+    rejected: dict[str, str] = field(default_factory=dict)           # component -> reason
+    finish: dict[str, Optional[str]] = field(default_factory=dict)   # component -> provider stop reason
     calls: int = 0
 
 
 class ReflectionProposer:
-    """GEPA's default proposer: one reflection-LM call per selected component.
-
-    ``template`` is a string (all components) or ``{component: template}``; each must
-    contain ``<curr_param>`` and ``<side_info>``. ``keep_trailing_newline`` restores a
-    trailing newline when the current text had one (file-style components).
-    """
+    """One reflection-LM call per selected component; ``template`` is a string or ``{component: template}``."""
 
     def __init__(self, llm: LLM, template: str | Mapping[str, str] | None = None, *, role: str = "reflection",
                  system: Optional[str] = None, max_tokens: Optional[int] = None,
@@ -220,16 +188,15 @@ class ReflectionProposer:
             current = candidate.get(comp, "")
             prompt = build_prompt(self.template_for(comp), current.rstrip("\n") if self.keep_trailing_newline
                                   else current, records)
-            seed = seed_fn(comp) if seed_fn else None
-            resp = self.llm.complete(prompt, system=self.system, max_tokens=self.max_tokens, seed=seed, role=self.role)
+            resp = self.llm.complete(prompt, system=self.system, max_tokens=self.max_tokens,
+                                     seed=seed_fn(comp) if seed_fn else None, role=self.role)
             res.calls += 1
             res.prompts[comp] = prompt
             res.raw[comp] = resp.text
             if not resp.ok:
                 res.rejected[comp] = f"llm error: {resp.error}"
                 continue
-            finish = response_finish_reason(resp)
-            res.finish[comp] = finish
+            res.finish[comp] = finish = response_finish_reason(resp)
             text, err = parse_fenced(resp.text, finish)
             if text is None:
                 res.rejected[comp] = err or "unparseable"

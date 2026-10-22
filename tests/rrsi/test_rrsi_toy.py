@@ -1,7 +1,4 @@
-"""The overview's overfitting-trap toy: bit-exact port of the page's JavaScript.
-
-Reference numbers were produced by running the simulator extracted verbatim from the
-overview HTML under Node 22 (``node toy_ref.js <pTrick> <sigma> <catch>``)."""
+"""Overfitting-trap toy: a bit-exact port of the overview page's JavaScript (reference values from Node 22)."""
 import pytest
 
 from rsi.rrsi.toy import gauss, mulberry32, simulate
@@ -25,12 +22,9 @@ def test_mulberry32_is_uint32_and_deterministic():
 
 @pytest.mark.parametrize("params", list(NODE_REF))
 def test_simulate_matches_node(params):
-    r = simulate(*params)
-    ref = NODE_REF[params]
-    got = (r.plain_ev[-1], r.plain_ho[-1], r.reg_ev[-1], r.reg_ho[-1], r.acc_plain, r.acc_reg)
-    for a, b in zip(got[:4], ref[:4]):
-        assert a == pytest.approx(b, abs=1e-9)
-    assert got[4:] == ref[4:]
+    r, ref = simulate(*params), NODE_REF[params]
+    assert (r.plain_ev[-1], r.plain_ho[-1], r.reg_ev[-1], r.reg_ho[-1]) == pytest.approx(ref[:4], abs=1e-9)
+    assert (r.acc_plain, r.acc_reg) == ref[4:]
 
 
 def test_default_curve_head_and_verdict():
@@ -38,6 +32,4 @@ def test_default_curve_head_and_verdict():
     assert r.plain_ev[:5] == pytest.approx(NODE_PLAIN_EV_HEAD, abs=1e-12)
     assert r.verdict() == "The guarded loop practises worse but transfers better."
     assert len(r.finals["guarded_unseen"]) == 200
-    # RRSI's z=2 band is stricter than the demo's half-sd band
-    strict = simulate(band_z=2.0)
-    assert strict.acc_reg < r.acc_reg
+    assert simulate(band_z=2.0).acc_reg < r.acc_reg       # RRSI's z=2 band is stricter than the demo's half-sd band

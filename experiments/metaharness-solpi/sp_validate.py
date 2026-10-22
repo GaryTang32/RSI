@@ -1,33 +1,17 @@
-"""SoL-Pi from-scratch validation runs after the claims-audit fixes (docs/methods/metaharness-solpi/claims-audit-solpi.md "Fix log").
+"""SoL-Pi from-scratch validation runs under the post-claims-audit protocol defaults, with the stage-A audit.
 
-Same runs, same helpers and the same stage-A audit as ``validate_metaharness_solpi.py`` (shared with
-Meta-Harness), with the protocol defaults of the fixed code:
-
-* the predeclared gate has two capability metrics (mean score AND the fully-solved rate, 2 % each);
-* lineages sweep (``Config.sweep=True``) and freeze the nondominated best-eta passing variant, so the stage-A
-  ``variant_walk_rule`` (+-1 grid walk only) is replaced by the sweep-aware rule of ``LibraryProposer``;
-* the idea pool has 12 ideas over all six families, so the Oracle Analysis leaves two without rollouts.
-
-Runs::
-
-    python experiments/metaharness-solpi/sp_validate.py solpi_agentworld_offline      # $0, re-run from scratch
-    python experiments/metaharness-solpi/sp_validate.py solpi_agentworld_live_r5      # haiku, FRESH cache
-
-``solpi_agentworld_live_r5`` repeats r4's configuration (the r1-r4 run directories are kept as recorded).
+Usage: python experiments/metaharness-solpi/sp_validate.py [solpi_agentworld_offline | solpi_agentworld_live_r5]
 """
 from __future__ import annotations
 
 import json
 import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import validate_metaharness_solpi as V  # noqa: E402  (shared helpers: fresh, fresh_llm, audit_sp, ...)
-
-from rsi.core import transfer_report  # noqa: E402
-from rsi.trace import inspect  # noqa: E402
+import validate_metaharness_solpi as V
+from rsi.domains.agentworld import MockAgentLLM, make_domain
+from rsi.solpi import Config, GateSpec, LLMReviewer, run as sp_run
+from rsi.trace import inspect
 
 OFFLINE_SETUP = (
     "AgentWorld seed 0: training screen (evolve) = 8 tasks x 3 families (repofix, buildfix, logtriage); sealed "
@@ -76,8 +60,6 @@ def sweep_walk_check(rows: list[dict]) -> tuple[str, list[str]]:
 
 
 def run(name: str) -> dict:
-    from rsi.domains.agentworld import MockAgentLLM, make_domain
-    from rsi.solpi import Config, GateSpec, Idea, LLMReviewer, run as sp_run
     out = V.fresh(name)
     t0 = time.time()
     agent = MockAgentLLM("A")
@@ -90,27 +72,16 @@ def run(name: str) -> dict:
     elif name == "solpi_agentworld_live_r5":
         dom = make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0)
         llm, cache = V.fresh_llm(name)
-        ideas = [Idea("L1", "C", "Stop replaying large successful tool outputs in every later request; keep them "
-                                 "recallable", oracle="replayed_large_outputs"),
-                 Idea("L2", "D", "Condense long failing command logs to the lines that carry the failure, keeping "
-                                 "the full log recallable", oracle="diagnostic_log_tokens")]
         cfg = Config(gate=GateSpec(mode="aggregate"), n_lineages=2, max_iters=2, ralph_max=2, workers=2,
                      shadow_monitor=True)
         res = sp_run(dom, dom.seed_artifact(), llm_task=agent, llm_propose=llm, config=cfg, out_dir=out,
-                     ideas=ideas, reviewer=LLMReviewer(llm, dom, agent))
+                     ideas=V.live_ideas(), reviewer=LLMReviewer(llm, dom, agent))
         setup = LIVE_SETUP
     else:
         raise SystemExit(f"unknown run {name!r}")
-    wall = time.time() - t0
-    tr = transfer_report(dom, agent, {"base": dom.seed_artifact(), "composed": res.best},
-                         splits=("evolve", "holdout", "ood"), k=1, workers=2)
-    report = {"run": name, "setup": setup, "wall_s": round(wall, 1), "transfer": tr,
-              "rounds": [{k: v for k, v in r.items() if k not in ("heldout",)} for r in res.meta["rounds"]],
-              "usage": res.usage, "generated_by": "experiments/metaharness-solpi/sp_validate.py (post claims-audit "
-                                                   "fixes)"}
-    if llm is not None:
-        report["spend"] = {**V.split_meter(llm.meter.snapshot()), "cache_ground_truth": V.cache_spend(cache)}
-    (out / "report.json").write_text(json.dumps(report, indent=1, default=str))
+    report = V.sp_report(name, setup, time.time() - t0, dom, agent, res, llm, cache,
+                         generated_by="experiments/metaharness-solpi/sp_validate.py (post claims-audit fixes)")
+    V.write_json(out / "report.json", report)
     inspect(out)
     audit = V.audit_sp(out, res, name)
     if name == "solpi_agentworld_offline":          # the stage-A walk rule predates the sweep default
@@ -118,8 +89,7 @@ def run(name: str) -> dict:
         audit["problems"] = [p for p in audit["problems"] if not p.startswith("variant_walk_rule")] + walk_problems
         audit["all_passed"] = all(a == b for a, b in (c.split("/") for c in audit["checks"].values()))
         audit["notes"] = ["variant_walk_rule: sweep-aware rule (sp_validate.sweep_walk_check)"]
-    (out / "audit.json").write_text(json.dumps(audit, indent=1, default=str))
-    (out / "audit.md").write_text(V.render_audit(name, audit))
+    V.write_audit(out, name, audit)
     return report
 
 

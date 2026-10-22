@@ -1,39 +1,23 @@
-"""E13 - "Thousands of candidate policies can then be tested" (claims audit L3, retry round 2).
-
-Fig. 1-2 captions: the history "dreams up a massive pool of alternative policies"; "thousands of candidate
-policies can then be tested". Our dreaming phases use M = 4-6 versions (E9 goes to 32). This measures the
-claim directly: 2000 candidate policies (the adaptive template with PARAMS moved by the offline developer,
-``ParametricMutator`` with random moves, seeds 0-1999) are replayed on 6 worlds recorded by parallel refine on
-the paper's Pro grid (10 workspaces x 11 calls, W = 10), in one process; 100 of them also in the subprocess
-sandbox (where LLM-written policies run). Preregistered pass: all 2000 evaluated on all 6 worlds, no honest
-episode disqualified, < 20 min wall. Also reported: the best replay value among the first M candidates vs
-among all 2000 (what a massive pool buys on the dev worlds; E9 measures what it costs on fresh worlds).
+"""E13: "thousands of candidate policies can then be tested"; replay 2000 mutated policies on 6 recorded worlds.
 
     python experiments/dream-rsi/e13_thousands.py [--n 2000] [--sandboxed 100]
 """
 import time
 
 import numpy as np
+from _common import domain_of, parse_args, record_world, save, summ
 
-from _common import domain_of, parse_args, save, summ
+from rsi.dream import DevContext, Eq1Objective, ParametricMutator, ReplayEvaluator, VersionRecord, template_code
 
-from rsi.dream import (Config, DevContext, DreamRSILoop, Eq1Objective, ParametricMutator, ReplayEvaluator,
-                       VersionRecord, template_code)
-
-GRID, W = (10, 10), 10
+GRID, W = (10, 10), 10  # the paper's Pro grid: 10 workspaces x 11 calls
 
 
 def worlds(n=6):
-    out = []
-    for s in range(200, 200 + n):
-        dom = domain_of("synthetic", s)
-        cfg = Config(rounds=1, W=W, branch_count=GRID[0], refine_count=GRID[1], dream=False, sandbox="inprocess",
-                     seed=s, agent_workers=1, trace=False)
-        out.append(DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg).run().meta["worlds"][0])
-    return out
+    return [record_world(domain_of("synthetic", s), W, GRID, s, trace=False) for s in range(200, 200 + n)]
 
 
 def candidates(n):
+    """The adaptive template with PARAMS moved at random by the offline developer, seeds 0..n-1."""
     inc = VersionRecord(0, template_code("adaptive"))
     mut = ParametricMutator(sigma=0.3, n_random=8, directed=False, beta_rule=False)
     return [mut.revise(DevContext(1, [inc], [], [], "", "eq1", W, first_in_phase=False), seed=i).code for i in range(n)]
@@ -63,8 +47,8 @@ def main():
         vals_sb.append(rep.value)
         disq_sb += rep.disqualified
     wall_sb = time.time() - t2
-    distinct = len(set(codes))
-    res = {"n_candidates": a.n, "distinct_codes": distinct, "worlds": len(ws), "world_cells": [w.size for w in ws],
+    res = {"n_candidates": a.n, "distinct_codes": len(set(codes)), "worlds": len(ws),
+           "world_cells": [w.size for w in ws],
            "generation_s": round(gen_s, 2), "inprocess": {"wall_s": round(wall_in, 1), "episodes": eps,
                                                           "ms_per_episode": 1e3 * wall_in / max(1, eps),
                                                           "disqualified_episodes": disq},
@@ -75,6 +59,7 @@ def main():
            "value": summ(vals), "best_of_first_4": max(vals[:4]), "best_of_first_32": max(vals[:32]),
            "best_of_all": max(vals),
            "projected_subprocess_wall_s_for_all": round(wall_sb / max(1, a.sandboxed) * a.n, 1)}
+    # preregistered pass: every candidate on every world, no honest episode disqualified, < 20 min
     res["passes"] = bool(res["inprocess"]["episodes"] == a.n * len(ws) and disq == 0 and wall_in < 1200)
     print(res)
     save("e13_thousands", {"config": {"grid": GRID, "W": W, "objective": "Eq.1 normalized (beta1 0.01, beta2 0.005)",

@@ -1,18 +1,8 @@
-"""Token traffic and API-cost accounting with a simulated prefix cache (spec B9.1).
-
-Every provider request is a list of messages. The provider caches prompt prefixes:
-the longest run of leading messages identical to the previous request in the same
-cache *scope* is billed as ``cache_read``; everything after it is new input, billed
-as ``cache_write`` (the uncached input price). Output tokens are billed separately.
-``cacheWriteReadRatio`` (rho, 12.5 in SoL-Pi) is ``write / read``.
-
-"Token traffic includes cache traffic": ``total_tokens = cache_read + cache_write + output``.
-Token efficiency (SoL-Pi) is ``eta = API cost / aggregate task score``.
-"""
+"""Token traffic and API cost with a simulated prefix cache: ``total_tokens = cache_read + cache_write + output``."""
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Iterable, Optional, Sequence
 
 
@@ -24,9 +14,7 @@ class PriceTable:
     read: float
     write: float
     output: float
-    #: price of input sent with ``cacheRetention: "none"`` (no cache write); ``None`` = ``write`` (OpenAI-like
-    #: providers bill uncached input at the input price, which is the "write" side of the ratio). Anthropic-like
-    #: providers bill it at the base input price = cache write / 1.25.
+    #: input sent with ``cacheRetention: "none"``; ``None`` = the ``write`` price
     uncached: Optional[float] = None
 
     @property
@@ -38,7 +26,7 @@ class PriceTable:
         return self.write if self.uncached is None else self.uncached
 
 
-#: simulated backends. A ~ "GPT-5.6 Sol"-like, B ~ "Opus-5"-like (both rho = 12.5), reducer ~ "Luna"-like.
+#: simulated backends A ("Sol"-like) and B ("Opus"-like), both rho = 12.5, plus a cheap reducer
 PRICES = {
     "sim-a": PriceTable("sim-a", read=0.20, write=2.50, output=15.0),
     "sim-b": PriceTable("sim-b", read=0.50, write=6.25, output=25.0, uncached=5.0),
@@ -80,52 +68,48 @@ class RoleTotals:
         return self.input + self.output
 
     def to_dict(self) -> dict:
-        d = asdict(self)
-        d["total_tokens"] = self.total_tokens
-        return d
+        return {**asdict(self), "total_tokens": self.total_tokens}
 
 
 class TokenMeter:
-    """Prefix-cache simulator + cost accounting per role (main agent, reducer, compaction ...)."""
+    """Prefix-cache simulator and cost accounting per role (main agent, reducer, compaction ...)."""
 
     def __init__(self, prices: dict[str, PriceTable]) -> None:
         self.prices = dict(prices)
         self._last: dict[str, list[str]] = {}
         self.by_role: dict[str, RoleTotals] = {}
         self.requests: list[RequestUsage] = []
-        self._pending: Optional[RequestUsage] = None
 
     def price(self, role: str) -> PriceTable:
         return self.prices.get(role) or self.prices["main"]
 
-    def request(self, keys: Sequence[str], tokens: Sequence[int], *, role: str = "main",
-                scope: Optional[str] = None) -> RequestUsage:
-        """Bill one provider request whose prompt is the message sequence ``keys`` (content
-        hashes) with per-message token counts ``tokens``."""
-        scope = scope or role
-        prev = self._last.get(scope, [])
-        n = 0
-        for a, b in zip(prev, keys):
-            if a != b:
-                break
-            n += 1
-        read = int(sum(tokens[:n]))
-        write = int(sum(tokens[n:]))
-        p = self.price(role)
-        u = RequestUsage(role, read + write, read, write, 0, (read * p.read + write * p.write) / 1e6, len(keys))
-        self._last[scope] = list(keys)
+    def _bill(self, u: RequestUsage) -> RequestUsage:
         self.requests.append(u)
-        t = self.by_role.setdefault(role, RoleTotals())
+        t = self.by_role.setdefault(u.role, RoleTotals())
         t.requests += 1
         t.input += u.input
-        t.cache_read += read
-        t.cache_write += write
+        t.cache_read += u.cache_read
+        t.cache_write += u.cache_write
         t.cost += u.cost
         return u
 
-    def add_output(self, n: int, *, role: str = "main") -> None:
+    def request(self, keys: Sequence[str], tokens: Sequence[int], *, role: str = "main",
+                scope: Optional[str] = None) -> RequestUsage:
+        """Bill one request: the prefix of ``keys`` shared with the scope's last request is a cache read."""
+        scope = scope or role
+        n = 0
+        for a, b in zip(self._last.get(scope, []), keys):
+            if a != b:
+                break
+            n += 1
+        read, write = int(sum(tokens[:n])), int(sum(tokens[n:]))
         p = self.price(role)
-        c = n * p.output / 1e6
+        self._last[scope] = list(keys)
+        return self._bill(RequestUsage(role, read + write, read, write, 0, (read * p.read + write * p.write) / 1e6,
+                                       len(keys)))
+
+    def add_output(self, n: int, *, role: str = "main") -> None:
+        c = n * self.price(role).output / 1e6
         t = self.by_role.setdefault(role, RoleTotals())
         t.output += n
         t.cost += c
@@ -141,24 +125,13 @@ class TokenMeter:
         return u
 
     def uncached(self, tokens: Sequence[int], *, role: str) -> RequestUsage:
-        """A request sent with ``cacheRetention: "none"`` (e.g. Pi's compaction summary): no prefix is read from or
-        written to the cache; every input token is billed at the uncached input price. Its scope is not remembered,
-        so it never disturbs another scope's cached prefix."""
+        """A ``cacheRetention: "none"`` request: all input billed at the uncached price; no scope is touched."""
         n = int(sum(tokens))
-        p = self.price(role)
-        u = RequestUsage(role, n, 0, n, 0, n * p.uncached_price / 1e6, len(tokens))
-        self.requests.append(u)
-        t = self.by_role.setdefault(role, RoleTotals())
-        t.requests += 1
-        t.input += n
-        t.cache_write += n
-        t.cost += u.cost
-        return u
+        return self._bill(RequestUsage(role, n, 0, n, 0, n * self.price(role).uncached_price / 1e6, len(tokens)))
 
     def reset_cache(self, scope: str = "main") -> None:
         self._last.pop(scope, None)
 
-    # ---- totals
     def total(self, roles: Optional[Iterable[str]] = None) -> RoleTotals:
         out = RoleTotals()
         for r, t in self.by_role.items():
@@ -172,14 +145,12 @@ class TokenMeter:
         return out
 
     def snapshot(self) -> dict:
-        d = {r: t.to_dict() for r, t in self.by_role.items()}
-        d["_total"] = self.total().to_dict()
-        return d
+        return {**{r: t.to_dict() for r, t in self.by_role.items()}, "_total": self.total().to_dict()}
 
 
 @dataclass
 class CostModel:
-    """Token efficiency = cost / aggregate score (SoL-Pi's eta)."""
+    """Token efficiency eta = cost / aggregate score (SoL-Pi)."""
 
     @staticmethod
     def efficiency(cost: float, score: float) -> float:

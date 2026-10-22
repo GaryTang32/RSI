@@ -1,21 +1,4 @@
-"""``program.md``: the research strategy, owned and edited by a person.
-
-Upstream calls it a "super lightweight skill" and the "research org code": the
-agent reads it every experiment, the loop never edits it, and a person improves
-the strategy by editing it. :class:`ProgramSpec` keeps that contract:
-
-* ``text`` is rendered for a task (metric, budget, editable/locked files, the
-  interface contract) and placed in the agent's context;
-* every version is content-addressed (``version``) and remembers its parent, so
-  each ledger node records which strategy produced it;
-* only :meth:`ProgramSpec.edit` (a human action) creates a new version; a loop
-  given ``program_path`` re-reads the file between experiments, so a person can
-  change the strategy while the loop runs.
-
-Presets: ``upstream`` (karpathy/autoresearch program.md adapted to a
-framework-run loop), ``xgboost`` (+ hypothesis/classification/no-near-duplicate
-rules of the xgboost port) and ``simplify`` (prefer simplifications).
-"""
+"""``program.md``: the human-owned, versioned research strategy the agent reads every experiment."""
 from __future__ import annotations
 
 import hashlib
@@ -140,7 +123,6 @@ class ProgramSpec:
         return cls(p.read_text(), label=p.name)
 
     def edit(self, new_text: str, *, author: str = "human", label: Optional[str] = None) -> "ProgramSpec":
-        """A person rewrites the strategy (the only way the strategy changes)."""
         return ProgramSpec(new_text, label=label or self.label, parent=self.version, author=author)
 
     def save(self, path: str | Path) -> Path:
@@ -150,10 +132,10 @@ class ProgramSpec:
         return p
 
     def render(self, task, mode: str = "hardened") -> str:
-        """Fill the task-specific placeholders."""
         b = task.budget
         if b.kind == "wallclock":
-            budget = f"{b.amount:g} seconds of training wall-clock time; the first {b.warmup_excluded_steps} steps are not counted"
+            budget = (f"{b.amount:g} seconds of training wall-clock time; "
+                      f"the first {b.warmup_excluded_steps} steps are not counted")
         elif b.kind == "tokens":
             budget = f"{b.amount:g} training bytes/tokens served by the locked dataloader"
         elif b.kind == "ceiling":

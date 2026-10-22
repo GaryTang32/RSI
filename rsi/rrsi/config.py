@@ -1,28 +1,4 @@
-"""Hyperparameters of RRSI (paper Appendix "Hyperparameters") plus the engineering
-knobs a run needs that are not part of the method (mirrors ``rrsi/config.py``).
-
-Symbols follow the paper:
-
-=============  =================================================================
-``T``          number of rounds, t = 0..T-1
-``k``          trials per task inside Evaluate (Eq. estimate)
-``m``          candidate harnesses drawn per round, |C_t| before screening
-``b_min/max``  bounds of the annealed L0 edit budget b_t (Eq. anneal)
-``w``          stall window of the exploration flag sigma_t (Eq. explore)
-``m_draft``    candidate slots reserved for exploratory edits when stalled
-``delta``      empirical noise band (None -> calibrate from the base evaluation)
-``beta0/1``    cost rule for gaining candidates (Eq. tokenbudget)
-``w_s/c/n``    shaped rule for candidates inside the noise band (Alg. 2 line 5)
-``n_prune``    window of the recent-yield summary g_t (Eq. yield / prune)
-=============  =================================================================
-
-Units: scores S are fractions in [0, 1], cost C is mean policy tokens per trial,
-dC is RELATIVE, so ``beta0 = 0.10`` means "10% more tokens for free" and
-``beta1 = 40`` means "each +1pp of S buys +40%".
-
-Per-instance presets reproduce the released ``domains/*/rrsi.json`` values
-(``Config.preset("coding" | "workspace" | "eng" | "overview")``).
-"""
+"""RRSI hyperparameters (paper symbols; S in [0, 1], dC relative), engineering knobs and per-domain presets."""
 from __future__ import annotations
 
 import json
@@ -30,7 +6,6 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any, Optional
 
-#: Values from ``domains/{coding,workspace,eng}/rrsi.json`` and the overview's illustrative settings.
 PRESETS: dict[str, dict[str, Any]] = {
     "default": {},
     # Terminal-Bench 2.1: delta = 3 passes of 178; beta1 = 25% tokens per extra pass; w_s = 0.
@@ -53,81 +28,71 @@ PRESETS: dict[str, dict[str, Any]] = {
 
 @dataclass
 class Config:
-    """RRSI hyperparameters (defaults = ``RRSIConfig`` of google-research/rrsi)."""
+    """Defaults = ``RRSIConfig`` of the released code; fields marked "extension" are off by default."""
 
-    # ---- horizon and estimator -------------------------------------------
+    # horizon and estimator
     T: int = 20
     k: int = 2
     m: int = 2
-    # ---- proposal side (Algorithm 1) -------------------------------------
+    # proposal side (Alg. 1)
     b_min: int = 1
     b_max: int = 4
-    budget_rounding: str = "ceil"        # "ceil" (released code) | "floor_at_bmin_last" (reaches b_min at t=T-1)
+    budget_rounding: str = "ceil"        # "ceil" | "floor_at_bmin_last"
     w: int = 3
     m_draft: int = 1
-    # ---- selection side (Algorithm 2) ------------------------------------
-    delta: Optional[float] = None        # None -> calibrate (calibration.json)
-    delta_z: float = 2.0                 # delta = z * sd(null dS)
+    # selection side (Alg. 2)
+    delta: Optional[float] = None        # None -> calibrate
+    delta_z: float = 2.0
     beta0: float = 0.10
     beta1: float = 40.0
     w_s: float = 100.0
     w_c: float = 15.0
     w_n: float = 0.5
     n_prune: int = 4
-    # ---- engineering knobs (not part of the method) ----------------------
-    repair_rounds: int = 5               # critic -> proposer repair attempts
+    # engineering
+    repair_rounds: int = 5
     invalid_missing_frac: float = 0.15
     n_fail_traces: int = 22
     n_success_traces: int = 6
-    eval_parallel: int = 1               # candidates evaluated concurrently
-    # ---- calibration -----------------------------------------------------
-    calibration_repeats: int = 1         # R base evaluations; 1 = within-task bootstrap of one evaluation
-    calibration_reps: int = 2000         # bootstrap resamples (code: 2000)
-    calibration_seed: int = 7            # bootstrap seed (code: 7)
-    bootstrap_small_k_correction: bool = False   # extension: rescale se by sqrt(k/(k-1)) (off = faithful)
-    # ---- proposer protocol ----------------------------------------------
-    max_done_bounces: int = 3            # done() contract violations bounced back before giving up
-    max_abort_bounces: int = 3           # "there is no abort action" (code: 3)
-    history_render_n: int = 40           # History.render(n=40)
-    scoreboard_n: int = 20               # last 20 attribution rows
-    trace_chars: int = 3000              # per-trace cap in stored evaluations / proposer context
-    max_digests: int = 8                 # LLM analyst: digests per round (<= 8 per digest_many in the code)
-    analyst: str = "auto"                # "auto" | "llm" | "heuristic" | "agentic" (the code's multi-turn analyst
-    #                                      + tool-using digesters, rsi.rrsi.agentic; needs an LLM)
-    proposer_protocol: str = "rewrite"   # "rewrite" (single-shot files + done(), or AgentEditor) | "json_actions"
-    #                                      (the code's 40-turn strict-JSON action agent, rsi.rrsi.agentic)
-    # ---- fidelity options (defaults = the released code; the alternatives are documented extensions) ----
-    tie_eps: float = 0.0                 # Algorithm 2 comparisons on raw floats as in the code (0.0); 1e-9 treats
-    #                                      last-bit float differences as ties (rsi.core.TIE_EPS reading)
-    proposer_numbers: bool = False       # extension: also show delta, S*, S_t and T in the round directives and the
-    #                                      numeric beta/w in SKILL.md (the code states the rules symbolically only)
-    precheck_answers: bool = False       # extension: the precheck denylist also holds the decision split's literal
-    #                                      answers and entities (Domain.leakage_terms); code: task ids + patterns
-    precheck_scope: str = "added"        # "added": scan the diff's ADDED lines (ours, deviation 4: a removal is not
-    #                                      a leak); "diff": grep the whole diff incl. removed/context lines (code)
-    component_aliases: bool = False      # extension: accept tag aliases ("tool" -> "client_tool"); code: a declared
-    #                                      tag outside K is bounced by done() and re-tagged from the diff
-    smoke_n: int = 2                     # liveness smoke: tasks run once each (the domain's smoke split if it has
-    #                                      one, else the first smoke_n evolve tasks); code: 2 (coding, workspace), 4 (eng)
-    smoke_require_score: bool = False    # eng smoke: the smoke trials must also score above the failure score
-    # ---- plumbing ---------------------------------------------------------
-    workers: int = 4                     # rollouts in parallel inside one evaluation
-    trial_cache: bool = False            # persist every trial under out_dir/trials (resume mid-evaluation)
-    smoke: bool = True                   # liveness smoke before evaluation (not a selection rule)
-    heldout_monitor: bool = False        # extension: score each new incumbent on holdout (logged only)
-    trace: bool = True                   # out_dir/trace.jsonl per-iteration trace (run() without out_dir: off)
-    shadow_monitor: bool = True          # rsi.trace.ShadowMonitor on sealed holdout/ood for each new incumbent
-    shadow_monitor_k: int = 1            # (trace only, never read by the loop; needs trace=True)
-    trace_max_text: int = 100_000        # per-string cap inside trace.jsonl
-    record_timestamps: bool = True       # history "ts" field (off -> byte-identical resumed ledgers)
+    eval_parallel: int = 1
+    # calibration
+    calibration_repeats: int = 1         # 1 = within-task bootstrap of one evaluation
+    calibration_reps: int = 2000
+    calibration_seed: int = 7
+    bootstrap_small_k_correction: bool = False   # extension: se * sqrt(k/(k-1))
+    # proposer protocol
+    max_done_bounces: int = 3
+    max_abort_bounces: int = 3
+    history_render_n: int = 40
+    scoreboard_n: int = 20
+    trace_chars: int = 3000
+    max_digests: int = 8
+    analyst: str = "auto"                # "auto" | "llm" | "heuristic" | "agentic"
+    proposer_protocol: str = "rewrite"   # "rewrite" | "json_actions"
+    # fidelity options
+    tie_eps: float = 0.0                 # 0.0 = raw float comparisons, as in the code
+    proposer_numbers: bool = False       # extension: show delta, S*, S_t, T and numeric weights to the proposer
+    precheck_answers: bool = False       # extension: deny literal answers/entities in the precheck
+    precheck_scope: str = "added"        # "added" (added lines) | "diff" (the code's whole-diff grep)
+    component_aliases: bool = False      # extension: accept tag aliases ("tool" -> "client_tool")
+    smoke_n: int = 2
+    smoke_require_score: bool = False    # eng: smoke must also score above the failure score
+    # plumbing
+    workers: int = 4
+    trial_cache: bool = False
+    smoke: bool = True
+    heldout_monitor: bool = False        # extension: log holdout score of each new incumbent
+    trace: bool = True
+    shadow_monitor: bool = True
+    shadow_monitor_k: int = 1
+    trace_max_text: int = 100_000
+    record_timestamps: bool = True
     editable: Optional[list[str]] = None  # glob patterns the proposer may edit (None = every file)
     seed: int = 0
     notes: dict = field(default_factory=dict)
 
-    # ---- construction ---------------------------------------------------------
     @classmethod
     def preset(cls, name: str = "default", **overrides: Any) -> "Config":
-        """Config from a named preset (``default``, ``coding``, ``workspace``, ``eng``, ``overview``)."""
         if name not in PRESETS:
             raise KeyError(f"unknown preset {name!r}; choose from {sorted(PRESETS)}")
         kw = dict(PRESETS[name])
@@ -153,6 +118,4 @@ class Config:
         return asdict(self)
 
     def replace(self, **kw: Any) -> "Config":
-        d = self.dump()
-        d.update(kw)
-        return Config.from_dict(d)
+        return Config.from_dict({**self.dump(), **kw})

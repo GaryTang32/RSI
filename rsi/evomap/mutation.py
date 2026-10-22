@@ -1,22 +1,12 @@
-"""Mutation, strategy presets and personality (spec §3.4, §4.7).
-
-* :data:`STRATEGIES` - intent mixes per preset (code values, not the README's);
-* :class:`StrategyPolicy` - preset resolution (``early-stabilize`` for cycles 1-5,
-  ``steady-state`` on saturation) and the adaptive per-cycle policy (max files,
-  force-innovate, cautious);
-* :class:`MutationBuilder` - category (repair / innovate / explore / optimize) and
-  risk level with the personality safety downgrades;
-* :class:`PersonalityModel` - natural selection over personality keys, triggered
-  mutations, force_pivot on plateaus.
-"""
+"""Strategy presets and adaptive policy, mutation building, and personality evolution (spec §3.4, §4.7)."""
 from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
-from .assets import Gene, Mutation, PersonalityState, PERSONALITY_TRAITS
-from .signals import ERROR_SIGNALS, OPPORTUNITY_SIGNALS, expand_signals
+from .assets import PERSONALITY_TRAITS, Gene, Mutation, PersonalityState
+from .signals import ERROR_SIGNALS, OPPORTUNITY_SIGNALS, expand_signals, has_error, trailing
 
 STRATEGIES = {
     "balanced": {"repair": 0.20, "optimize": 0.20, "innovate": 0.50, "explore": 0.10, "repairLoopThreshold": 0.5},
@@ -27,6 +17,10 @@ STRATEGIES = {
                         "repairLoopThreshold": 0.8},
     "steady-state": {"repair": 0.55, "optimize": 0.25, "innovate": 0.05, "explore": 0.15, "repairLoopThreshold": 0.9},
 }
+EFFECTS = {"repair": "reduce runtime errors and restore stability",
+           "optimize": "improve efficiency or robustness without changing behaviour",
+           "innovate": "add a capability or new strategy",
+           "explore": "probe an unexplored approach"}
 
 
 @dataclass
@@ -40,10 +34,6 @@ class Policy:
     @property
     def blast_estimate(self) -> dict:
         return {"files": self.max_files, "lines": 80 * self.max_files}
-
-
-def _ev(e):
-    return e.to_dict() if hasattr(e, "to_dict") else e
 
 
 class StrategyPolicy:
@@ -62,27 +52,16 @@ class StrategyPolicy:
         return name if name in STRATEGIES else "balanced"
 
     def adaptive(self, recent: Sequence, gene: Optional[Gene], signals: Sequence[str], cycle: int) -> Policy:
-        ev = [_ev(e) for e in recent][-8:]
-
-        def streak(pred) -> int:
-            n = 0
-            for e in reversed(ev):
-                if pred(e):
-                    n += 1
-                else:
-                    break
-            return n
-
-        repair_streak = streak(lambda e: e.get("intent") == "repair")
-        failure_streak = streak(lambda e: (e.get("outcome") or {}).get("status") == "failed")
+        ev = [e.to_dict() if hasattr(e, "to_dict") else e for e in recent][-8:]
+        repair_streak = trailing(ev, lambda e: e.get("intent") == "repair")
+        failure_streak = trailing(ev, lambda e: (e.get("outcome") or {}).get("status") == "failed")
         high_risk_gene = False
         if gene is not None:
             ex = expand_signals(signals)
             aps = [a for a in (gene.anti_patterns or [])[-5:] if set(a.get("learning_signals", [])) & ex]
             hard = sum(1 for a in aps if a.get("mode") == "hard")
-            soft = len(aps) - hard
             succ = sum(1 for h in (gene.learning_history or [])[-6:] if h.get("outcome") == "success")
-            high_risk_gene = hard >= 1 or (soft >= 2 and succ == 0)
+            high_risk_gene = hard >= 1 or (len(aps) - hard >= 2 and succ == 0)
         plateau = any(s in signals for s in ("stable_success_plateau", "evolution_saturation",
                                                "empty_cycle_loop_detected"))
         force = (plateau or failure_streak >= 3 or repair_streak >= 3) and "log_error" not in signals
@@ -106,9 +85,9 @@ class MutationBuilder:
     def build(self, signals: Sequence[str], gene: Optional[Gene], *, innovate_mode: bool,
               personality: PersonalityState, allow_high_risk: bool = False, preset: str = "balanced",
               clock_s: float = 0.0) -> Mutation:
+        """Category and risk level, with the personality safety downgrades."""
         sig = list(signals)
-        err = any(s in ERROR_SIGNALS or s.startswith(("errsig:", "errsig_norm:")) for s in sig) and not (
-            "issue_already_resolved" in sig or "openclaw_self_healed" in sig)
+        err = has_error(sig) and not ("issue_already_resolved" in sig or "openclaw_self_healed" in sig)
         opp = any(s in OPPORTUNITY_SIGNALS or s.split(":", 1)[0] in OPPORTUNITY_SIGNALS for s in sig)
         if err:
             cat = "repair"
@@ -130,18 +109,14 @@ class MutationBuilder:
         if risk == "high" and not (personality.rigor >= 0.6 and personality.risk_tolerance <= 0.5):
             risk = "medium"
             extra.append("safety:downgrade_high_risk")
-        effect = {"repair": "reduce runtime errors and restore stability",
-                  "optimize": "improve efficiency or robustness without changing behaviour",
-                  "innovate": "add a capability or new strategy",
-                  "explore": "probe an unexplored approach"}[cat]
         return Mutation(id=f"mut_{int(clock_s)}_{next(self._n)}", category=cat,
                         trigger_signals=list(dict.fromkeys(sig + extra)),
                         target=f"gene:{gene.id}" if gene is not None else "behavior:protocol",
-                        expected_effect=effect, risk_level=risk)
+                        expected_effect=EFFECTS[cat], risk_level=risk)
 
 
 class PersonalityModel:
-    """Personality evolution: natural selection + triggered mutations (+ force_pivot)."""
+    """Personality evolution: natural selection over trait keys, triggered mutations and ``force_pivot``."""
 
     def __init__(self, state: Optional[PersonalityState] = None) -> None:
         self.state = state or PersonalityState()
@@ -161,9 +136,8 @@ class PersonalityModel:
         self.state.clamp()
 
     def select_for_run(self, drift: bool, signals: Sequence[str], recent_success: Sequence[bool]) -> PersonalityState:
-        # 1. natural selection
         cands = [(k, v) for k, v in self.stats.items() if v["n"] >= 3]
-        if cands:
+        if cands:  # natural selection: move up to two traits toward the fittest known state
             def fit(v):
                 return 0.75 * (v["s"] + 1) / (v["n"] + 2) + 0.25 * v["avg"] * min(1.0, v["n"] / 8)
             best = max(cands, key=lambda kv: fit(kv[1]))[1]["state"]
@@ -173,11 +147,8 @@ class PersonalityModel:
                 if abs(d) >= 0.05:
                     moves[t] = max(-0.1, min(0.1, d))
             self._apply(dict(sorted(moves.items(), key=lambda kv: -abs(kv[1]))[:2]))
-        # 2. triggered mutation
         rs = list(recent_success)
-        trig = drift or (len(rs) >= 4 and sum(1 for x in rs[-4:] if not x) >= 3) or (
-            len(rs) >= 3 and not any(rs[-3:]))
-        if trig:
+        if drift or (len(rs) >= 4 and sum(1 for x in rs[-4:] if not x) >= 3) or (len(rs) >= 3 and not any(rs[-3:])):
             if drift:
                 self._apply({"creativity": 0.1, "risk_tolerance": -0.05})
             elif "protocol_drift" in signals:

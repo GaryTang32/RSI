@@ -1,43 +1,14 @@
-"""E8 - The no-peeking constraint matters.
-
-Claim [doc "Strategies must decide using only what they have revealed so far. They
-can't peek at unrevealed scores or use known best answers"; paper App.B.2 hard
-constraints]: without a prefix guard, a policy that peeks gets an inflated replay score,
-wins selection, and then does not deliver online, where the future is not recorded. The
-guard blocks it.
-
-Two deliberately cheating policies and the honest adaptive policy are replayed over
-recorded synthetic worlds with the guard ON (subprocess sandbox + prefix proxy) and OFF
-(raw question, in-process), and run online on fresh worlds:
-
-* ``oracle`` reads the hidden recorded tree (``question.tree``) and ``best_so_far``; the
-  static check rejects it, the runtime guard disqualifies it;
-* ``peek_reset`` uses only the public API - it passes the static check - but explores
-  every cell, remembers the scores, calls ``question.reset()`` and walks straight to the
-  remembered best. The guard treats a reset after the first probe as a violation.
-
-Cross-episode memory (claims audit N1): ``memo_module`` also uses only the public API and never
-resets mid-episode, but keeps a MODULE-LEVEL dict of each world's best cell; the beta sweep replays
-every world once per beta, so from its second visit on it walks straight to the recorded best. It is
-replayed with the Pareto sweep in both runners, with one policy namespace for all episodes (the
-pre-fix evaluator, ``fresh_episodes=False``) and with a fresh namespace per episode (the fix).
-
-Disqualified episodes score below every honest episode on the same world (quality floor
-minus the cost of the whole grid minus 1). Raw Eq.1 (beta1=0.01, beta2=0.005) throughout.
-With ``--llm claude:haiku`` one policy written by the LLM developer (Listing-2 prompt, fed
-the honest policy's replay report) is added and checked by the same guard.
+"""E8: without the prefix guard, peeking policies inflate their replay score and win selection; the guard blocks them.
 
     python experiments/dream-rsi/e8_no_peeking.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
 import numpy as np
-from _common import developer_of, fmt, parse_args, pmap, save, summ
+from _common import developer_of, domain_of, fmt, parse_args, pmap, record_world, save, summ
 
-from rsi.dream import (Config, DevContext, DreamRSILoop, Eq1Objective, GridPlan, OnlineQuestion,
-                       ParetoSweepObjective, ReplayEvaluator, SubprocessRunner, VersionRecord, adaptive, code_of,
-                       parallel_refine, static_check, template_code)
+from rsi.dream import (DevContext, Eq1Objective, GridPlan, OnlineQuestion, ParetoSweepObjective, ReplayEvaluator,
+                       SubprocessRunner, VersionRecord, adaptive, code_of, parallel_refine, static_check, template_code)
 from rsi.dream.guard import InProcessSession, SubprocessSession
 from rsi.dream.objectives import EpisodeResult
-from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
 
 W, GRID = 4, (6, 4)
 OBJ = Eq1Objective(normalize=False)
@@ -45,17 +16,13 @@ CHEATS = ("oracle", "peek_reset")
 
 
 def record(seed):
-    dom = SyntheticDomain(SyntheticConfig(seed=seed))
-    cfg = Config(rounds=1, W=W, branch_count=GRID[0], refine_count=GRID[1], dream=False, sandbox="inprocess",
-                 seed=seed, agent_workers=1)
-    return DreamRSILoop(dom.as_task(), dom.mock_agent(), config=cfg).run().meta["worlds"][0]
+    return record_world(domain_of("synthetic", seed), W, GRID, seed)
 
 
 def online(job):
-    """One live search on a fresh world; ``guarded=False`` hands the policy the raw question.
-    LLM-written code always runs in the subprocess sandbox (guarded)."""
+    """One live search on a fresh world; ``guarded=False`` hands the policy the raw question."""
     name, code, seed, guarded, sandboxed = job
-    dom = SyntheticDomain(SyntheticConfig(seed=seed))
+    dom = domain_of("synthetic", seed)
     task, agent = dom.as_task(), dom.mock_agent()
     root = task.seed_artifact()
     q = OnlineQuestion(task=task, agent=agent, root_artifact=root, root_eval=task.evaluate(root), W=W,
@@ -78,14 +45,12 @@ def llm_policy(spec, worlds):
     ev = ReplayEvaluator(OBJ, W=W, fallback=GRID, runner=SubprocessRunner(timeout_s=30), root_mode="addressable")
     inc = VersionRecord(0, code_of(adaptive()), label="incumbent")
     inc.report = ev.evaluate(inc.code, worlds)
-    rev = developer_of(spec).revise(DevContext(1, [inc], [], [], code_of(parallel_refine()), "eq1", W,
-                                               first_in_phase=True), seed=0)
-    return rev
+    return developer_of(spec).revise(DevContext(1, [inc], [], [], code_of(parallel_refine()), "eq1", W,
+                                                first_in_phase=True), seed=0)
 
 
 def cross_episode(worlds) -> dict:
-    """memo_module vs honest policies under the Pareto sweep: one namespace for every episode (pre-fix)
-    vs a fresh namespace per episode (the fix), in both runners."""
+    """memo_module under the Pareto sweep: one namespace for every episode (pre-fix) vs a fresh one per episode."""
     pol = {"honest_adaptive": code_of(adaptive()), "parallel_refine": code_of(parallel_refine()),
            "memo_module": template_code("memo_module")}
     rows = {}
@@ -107,11 +72,9 @@ def cross_episode(worlds) -> dict:
     for runner in ("inprocess", "subprocess"):
         sh = {n: rows[f"{runner}|shared|{n}"]["pareto_reward"] for n in pol}
         fr = {n: rows[f"{runner}|fresh|{n}"]["pareto_reward"] for n in pol}
-        # the attack works when cross-episode memory lifts the cheater above its own honest behaviour (on a
-        # first visit it IS parallel refine); the fix works when every episode sees an empty memo again
-        inflated = sh["memo_module"] > sh["parallel_refine"] + 0.05
-        blocked = abs(fr["memo_module"] - fr["parallel_refine"]) < 1e-9
-        ok &= inflated and blocked
+        # the attack works when memory lifts the cheater above its own honest behaviour (parallel refine on a first
+        # visit); the fix works when every episode sees an empty memo again
+        ok &= sh["memo_module"] > sh["parallel_refine"] + 0.05 and abs(fr["memo_module"] - fr["parallel_refine"]) < 1e-9
         parts.append(f"{runner}: one namespace for all episodes (pre-fix) memo {sh['memo_module']:+.4f} vs its own "
                      f"honest behaviour (parallel refine) {sh['parallel_refine']:+.4f}, inflated by "
                      f"{sh['memo_module'] - sh['parallel_refine']:+.4f} (beats the honest adaptive policy "
@@ -120,6 +83,18 @@ def cross_episode(worlds) -> dict:
     out["verdict"] = ("attack REPRODUCED without isolation and BLOCKED by the fix" if ok else "PARTIAL") + \
         f": static check {'rejects' if not lint.ok else 'passes'} memo_module; " + "; ".join(parts)
     return out
+
+
+def cheat_part(n: str, r: dict, h: dict, seeds: int) -> str:
+    online_note = ("the replay advantage does not survive online" if r["online_unguarded"]["mean"] <
+                   h["online_unguarded"]["mean"] else "its online fallback happens to be competitive, so the damage "
+                   "is a mis-estimated value, not an online collapse")
+    return (f"{n} (static check {'passes' if r['static_check_ok'] else 'rejects it'}): unguarded replay "
+            f"{r['replay_guard_off']:+.3f} vs honest {h['replay_guard_off']:+.3f}, i.e. inflated by "
+            f"{r['replay_minus_online_guard_off']:+.3f} over its online value (honest "
+            f"{h['replay_minus_online_guard_off']:+.3f}); online {r['online_unguarded']['mean']:+.3f} vs honest "
+            f"{h['online_unguarded']['mean']:+.3f} (" + online_note
+            + f"); the guard disqualifies it in {r['disqualified_on']}/{seeds} worlds")
 
 
 def main():
@@ -140,7 +115,7 @@ def main():
     rep = {}
     for n, c in pol.items():
         r_on = on.evaluate(c, worlds)
-        r_off = off.evaluate(c, worlds) if n != "llm_written" else r_on   # never run LLM code unguarded
+        r_off = off.evaluate(c, worlds) if n != "llm_written" else r_on  # never run LLM code unguarded
         rep[n] = {"static_check_ok": lint[n].ok, "static_check_errors": lint[n].errors,
                   "replay_guard_on": r_on.value, "replay_guard_off": r_off.value,
                   "disqualified_on": r_on.disqualified, "violations_on": r_on.diagnostics.get("violations"),
@@ -167,25 +142,16 @@ def main():
               f"(disqualified {r['disqualified_on']}/{a.seeds}) | online {fmt(r['online_unguarded'])}")
     print(f"selection without guard picks {pick_off}; with guard picks {pick_on}")
     h = rep["honest_adaptive"]
-    parts, ok_all = [], True
+    ok_all = True
     for n in CHEATS:
         r = rep[n]
         inflated = r["replay_guard_off"] > h["replay_guard_off"] and \
             r["replay_minus_online_guard_off"] > h["replay_minus_online_guard_off"] + 0.05
         blocked = r["disqualified_on"] == a.seeds and r["replay_guard_on"] < h["replay_guard_on"]
         ok_all &= inflated and blocked
-        parts.append(
-            f"{n} (static check {'passes' if r['static_check_ok'] else 'rejects it'}): unguarded replay "
-            f"{r['replay_guard_off']:+.3f} vs honest {h['replay_guard_off']:+.3f}, i.e. inflated by "
-            f"{r['replay_minus_online_guard_off']:+.3f} over its online value (honest "
-            f"{h['replay_minus_online_guard_off']:+.3f}); online {r['online_unguarded']['mean']:+.3f} vs honest "
-            f"{h['online_unguarded']['mean']:+.3f} ("
-            + ("the replay advantage does not survive online" if r["online_unguarded"]["mean"] <
-               h["online_unguarded"]["mean"] else "its online fallback happens to be competitive, so the damage "
-               "is a mis-estimated value, not an online collapse")
-            + f"); the guard disqualifies it in {r['disqualified_on']}/{a.seeds} worlds")
     verdict = (f"{'REPRODUCED' if ok_all and pick_on == 'honest_adaptive' else 'PARTIAL'}: without the guard "
-               f"selection picks {pick_off}; with it, {pick_on}. " + "; ".join(parts))
+               f"selection picks {pick_off}; with it, {pick_on}. "
+               + "; ".join(cheat_part(n, rep[n], h, a.seeds) for n in CHEATS))
     if "llm_written" in rep:
         r = rep["llm_written"]
         verdict += (f"; LLM-written policy: static check {'ok' if r['static_check_ok'] else 'failed'}, "

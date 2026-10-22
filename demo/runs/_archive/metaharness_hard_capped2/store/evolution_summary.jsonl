@@ -1,3 +1,0 @@
-{"iteration": 0, "system": "seed", "avg_val": 75.0, "axis": "baseline", "hypothesis": "baseline", "delta": null, "outcome": "75.0% (baseline)", "context_cost": 18230.25}
-{"iteration": 1, "system": "clear-format-answers", "avg_val": 62.5, "axis": "", "hypothesis": "", "components": [], "delta": -12.5, "outcome": "62.5% (-12.5)", "delta_pre": -12.5, "context_cost": 17162.571428571428, "timing_s": {"propose": 0.0, "bench": 183.26, "wall": 183.27}}
-{"iteration": 1, "system": "code-generation-execution", "avg_val": 0.0, "axis": "", "hypothesis": "", "components": [], "delta": null, "outcome": "failed"}

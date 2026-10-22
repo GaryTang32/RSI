@@ -1,22 +1,9 @@
-"""results.tsv and the kept-commit chain.
-
-:class:`ResultsLog` writes upstream's table exactly: tab-separated, header
-``commit <metric> memory_gb status description``, the metric with 6 decimals
-(``0.000000`` for crashes), memory in GB with 1 decimal (``0.0`` for crashes; a task may ask for more decimals),
-status ``keep | discard | crash`` and a one-line description. Like upstream it
-is never committed: discards live only as rows.
-
-:class:`Workspace` is the branch ``autoresearch/<tag>``: a linear chain of kept
-commits. ``commit`` puts an experiment on top of HEAD, ``reset_to`` drops it
-again (the object stays in the store, as with ``git reset``), ``rewind`` moves
-HEAD to an older kept commit (allowed, "very very sparingly"). The default
-backend is in-memory (content-addressed commits); ``backend="git"`` drives a real
-git repository in a directory of its own.
-"""
+"""``results.tsv`` (upstream's 5-column table) and the kept-commit branch."""
 from __future__ import annotations
 
 import csv
 import hashlib
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass
@@ -39,13 +26,11 @@ class Row:
 
 
 class ResultsLog:
-    """The 5-column ``results.tsv``."""
+    """Tab-separated ``commit <metric> memory_gb status description``; crashes are logged as zeros."""
 
     def __init__(self, path: Optional[str | Path], metric_name: str = "val_bpb", memory_decimals: int = 1) -> None:
         self.path = Path(path) if path else None
         self.metric_name = metric_name
-        #: upstream rounds memory_gb to .1f; a task whose runs use far less than 0.1 GB (tinylm: ~0.1 GB of
-        #: interpreter + numpy) can ask for more decimals so the column carries information (audit N8)
         self.memory_decimals = int(memory_decimals)
         self._rows: list[Row] = []
 
@@ -53,13 +38,15 @@ class ResultsLog:
     def header(self) -> list[str]:
         return ["commit", self.metric_name, "memory_gb", "status", "description"]
 
+    def _write(self, mode: str, row: list[str]) -> None:
+        with self.path.open(mode, newline="") as f:
+            csv.writer(f, delimiter="\t", lineterminator="\n").writerow(row)
+
     def init(self) -> None:
-        """Create the file with just the header row (upstream setup step 5)."""
         self._rows = []
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("w", newline="") as f:
-                csv.writer(f, delimiter="\t", lineterminator="\n").writerow(self.header)
+            self._write("w", self.header)
 
     @staticmethod
     def _clean(desc: str) -> str:
@@ -74,9 +61,7 @@ class ResultsLog:
                   self._clean(description))
         self._rows.append(row)
         if self.path:
-            with self.path.open("a", newline="") as f:
-                csv.writer(f, delimiter="\t", lineterminator="\n").writerow(
-                    [row.commit, f"{row.metric:.6f}", self._mem(row.memory_gb), row.status, row.description])
+            self._write("a", [row.commit, f"{row.metric:.6f}", self._mem(row.memory_gb), row.status, row.description])
         return row
 
     def rows(self) -> list[Row]:
@@ -88,8 +73,7 @@ class ResultsLog:
         with p.open() as f:
             r = list(csv.reader(f, delimiter="\t"))
         log = cls(None, metric_name=r[0][1] if r else "score")
-        for c, m, mem, st, d in r[1:]:
-            log._rows.append(Row(c, float(m), float(mem), st, d))
+        log._rows = [Row(c, float(m), float(mem), st, d) for c, m, mem, st, d in r[1:]]
         log.path = p
         return log
 
@@ -100,26 +84,20 @@ class ResultsLog:
         return f"{r.commit}\t{r.metric:.6f}\t{self._mem(r.memory_gb)}\t{r.status}\t{r.description}"
 
     def text(self, last: Optional[int] = None) -> str:
-        """The table as the agent reads it (``cat results.tsv``). ``last=None`` (default)
-        gives the whole file, as upstream's agent can read it. With ``last=N`` and more
-        rows than that, the baseline (first) row is always kept, the elided middle is
-        replaced by one ``#`` summary line per status with every elided description
-        (so falsified ideas stay visible), and the last ``N`` rows follow."""
+        """The table as the agent reads it; ``last=N``: baseline, a summary of the middle, the last N rows."""
         rows = self._rows
         lines = ["\t".join(self.header)]
         if not last or len(rows) <= last + 1:
-            lines += [self._line(r) for r in rows]
-            return "\n".join(lines) + "\n"
-        head, mid, tail = rows[:1], rows[1:len(rows) - last], rows[len(rows) - last:]
-        lines += [self._line(r) for r in head]
-        lines.append(f"# ... {len(mid)} earlier rows summarised (full file has {len(rows)} rows):")
+            return "\n".join(lines + [self._line(r) for r in rows]) + "\n"
+        mid = rows[1:len(rows) - last]
+        lines += [self._line(rows[0]), f"# ... {len(mid)} earlier rows summarised (full file has {len(rows)} rows):"]
         for st in STATUSES:
             sel = [r for r in mid if r.status == st]
             if sel:
                 vals = [r.metric for r in sel if st != "crash"]
                 rng = f"; {self.metric_name} {min(vals):.6f}..{max(vals):.6f}" if vals else ""
                 lines.append(f"# {st} x{len(sel)}{rng}: " + " | ".join(r.description for r in sel))
-        lines += [self._line(r) for r in tail]
+        lines += [self._line(r) for r in rows[len(rows) - last:]]
         return "\n".join(lines) + "\n"
 
 
@@ -137,7 +115,7 @@ class Commit:
 
 
 class Workspace:
-    """A single-branch, kept-commits-only chain (``autoresearch/<tag>``)."""
+    """The single branch ``autoresearch/<tag>`` of kept commits, in memory or in a real git repository."""
 
     def __init__(self, store: ArtifactStore, *, backend: str = "memory", root: Optional[str | Path] = None) -> None:
         if backend not in ("memory", "git"):
@@ -154,7 +132,6 @@ class Workspace:
         self.n_rewinds = 0
         self._artifacts: dict[str, Artifact] = {}
 
-    # ---- git plumbing (optional backend)
     def _git(self, *args: str) -> str:
         r = subprocess.run(["git", *args], cwd=self.root, capture_output=True, text=True, check=True,
                            env={"GIT_AUTHOR_NAME": "autoresearch", "GIT_AUTHOR_EMAIL": "autoresearch@localhost",
@@ -163,10 +140,7 @@ class Workspace:
         return r.stdout.strip()
 
     def _git_write(self, artifact: Artifact) -> None:
-        """Make the working tree exactly ``artifact`` (nested files included), keeping
-        ``.git`` and the untracked ``results.tsv`` / ``run.log``."""
-        import shutil
-
+        """Make the working tree exactly ``artifact``, keeping ``.git`` and the untracked logs."""
         for p in self.root.iterdir():
             if p.name in (".git", ".gitignore", "results.tsv", "run.log"):
                 continue
@@ -176,9 +150,7 @@ class Workspace:
                 p.unlink()
         artifact.to_dir(self.root)
 
-    # ---- API
     def init_run(self, tag: str, base: Artifact, message: str = "baseline") -> str:
-        """Create the fresh branch ``autoresearch/<tag>`` holding ``base``."""
         if self.branch is not None:
             raise RuntimeError(f"branch {self.branch} already exists: a run tag must be fresh")
         self.branch = f"autoresearch/{tag}"
@@ -190,36 +162,28 @@ class Workspace:
             (self.root / ".gitignore").write_text("results.tsv\nrun.log\n")
         return self.commit(base, message)
 
-    def commit(self, artifact: Artifact, message: str) -> str:
+    def _commit(self, artifact: Artifact, message: str, parent: Optional[str], amend: bool = False) -> str:
         self.store.put(artifact)
         self._artifacts[artifact.id] = artifact
         if self.backend == "git":
             self._git_write(artifact)
             self._git("add", "-A")
-            self._git("commit", "-q", "--allow-empty", "-m", message or "experiment")
+            self._git("commit", "-q", *(["--amend"] if amend else []), "--allow-empty", "-m", message or "experiment")
             sha = self._git("rev-parse", "HEAD")
         else:
-            sha = hashlib.sha1(f"{self._head}|{artifact.id}|{message}|{len(self.commits)}".encode()).hexdigest()
-        self.commits[sha] = Commit(sha, self._head, artifact.id, message, time.time())
+            sha = hashlib.sha1(f"{parent}|{artifact.id}|{message}|{len(self.commits)}".encode()).hexdigest()
+        self.commits[sha] = Commit(sha, parent, artifact.id, message, time.time())
         self._head = sha
         return sha
 
+    def commit(self, artifact: Artifact, message: str) -> str:
+        return self._commit(artifact, message, self._head)
+
     def amend(self, artifact: Artifact, message: str) -> str:
-        """Replace HEAD (used by fix-and-rerun of a trivially crashed experiment)."""
+        """Replace HEAD (fix-and-rerun of a crashed experiment or baseline)."""
         parent = self.commits[self._head].parent
-        if parent is None:                       # the root commit (a baseline fixed after a crash)
-            self.store.put(artifact)
-            self._artifacts[artifact.id] = artifact
-            if self.backend == "git":
-                self._git_write(artifact)
-                self._git("add", "-A")
-                self._git("commit", "-q", "--amend", "--allow-empty", "-m", message or "experiment")
-                sha = self._git("rev-parse", "HEAD")
-            else:
-                sha = hashlib.sha1(f"None|{artifact.id}|{message}|{len(self.commits)}".encode()).hexdigest()
-            self.commits[sha] = Commit(sha, None, artifact.id, message, time.time())
-            self._head = sha
-            return sha
+        if parent is None:
+            return self._commit(artifact, message, None, amend=True)
         self.reset_to(parent, count=False)
         return self.commit(artifact, message)
 
@@ -233,7 +197,6 @@ class Workspace:
             self.n_resets += 1
 
     def rewind(self, sha: str) -> None:
-        """Move HEAD to an older kept commit (rare by design)."""
         self.reset_to(sha, count=False)
         self.n_rewinds += 1
 
@@ -245,7 +208,7 @@ class Workspace:
         return self._artifacts.get(aid) or self.store.get(aid)
 
     def log(self, n: int = 20) -> list[Commit]:
-        """Kept chain from HEAD backwards (``git log --oneline``)."""
+        """Kept chain from HEAD backwards."""
         out, cur = [], self._head
         while cur is not None and len(out) < n:
             c = self.commits[cur]

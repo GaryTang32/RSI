@@ -1,24 +1,11 @@
-"""E9 - Stall exploration escapes prompt-only collapse.
+"""E9: stall exploration escapes prompt-only collapse (mild and strict collapse setups, exploration on vs off).
 
-HarnessWorld where non-structural mechanisms carry only weak gains (effect scale 0.25) and
-the remaining real gains sit in structural components (client_tool / skill / memory /
-subagent), with a proposer strongly biased toward ``prompt`` edits (prompt collapse) and
-rarely proposing structural machinery on its own. Full RRSI with stall exploration (sigma_t
-over a w = 3 window, reserved slot for never-exercised components) on vs off.
-
-Confirming outcome (spec E9): with exploration on, broader component coverage |T_t|/|K|, more
-accepted structural mechanisms and escape from the plateau (higher final score).
+Run: python experiments/rrsi/e9_exploration.py [--quick] [--seeds N]
 """
-from __future__ import annotations
+from _common import (figure, mean_curves, pairs, parse_args, pmap, print_means, run_hw, save, strip_curves, summarize,
+                     verdict)
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _common import RESULTS, mean_curves, paired, parse_args, pmap, run_hw, save, strip_curves, summarize  # noqa: E402
-
-from rsi.rrsi import RegularizerSwitches  # noqa: E402
+from rsi.rrsi import RegularizerSwitches
 
 SETUPS = {
     # mild collapse: weak (not zero) non-structural gains; the proposer still sometimes drafts structural edits
@@ -44,12 +31,11 @@ def main():
     jobs = [{"seed": s, "arm": sw, "label": f"{setup}|{lab}", "cfg": {"T": T}, "world": world, "proposer": prop,
              "llm": a.llm} for setup, (world, prop) in SETUPS.items() for s in range(a.seeds)
             for lab, sw in arms.items()]
-    rows = pmap(run_hw, jobs, a.workers if a.llm == "sim" else 1)
+    rows = pmap(run_hw, jobs, a.procs)
     metrics = ("coverage", "accepted_structural", "structural_in_final", "evolve_gain", "holdout_gain", "ood_gain",
                "unseen_gain", "token_ratio")
     summ = summarize(rows, metrics=metrics)
-    pd = {setup: {m: paired(rows, f"{setup}|exploration off", f"{setup}|exploration on", m) for m in metrics}
-          for setup in SETUPS}
+    pd = {setup: pairs(rows, f"{setup}|exploration off", f"{setup}|exploration on", metrics) for setup in SETUPS}
     checks = {}
     for setup in SETUPS:
         checks[f"{setup}: broader coverage"] = pd[setup]["coverage"]["lo"] > 0
@@ -57,16 +43,11 @@ def main():
         checks[f"{setup}: higher final true score (plateau escape)"] = pd[setup]["evolve_gain"]["lo"] > 0
     out = {"experiment": "E9 stall exploration", "config": {"T": T, "seeds": a.seeds, "setups": SETUPS, "w": 3,
                                                             "m_draft": 1, "llm": a.llm},
-           "summary": summ, "paired_on_minus_off": pd, "checks": checks,
-           "verdict": "REPRODUCED" if all(checks.values()) else
-           "PARTIAL - not met: " + "; ".join(k for k, v in checks.items() if not v),
+           "summary": summ, "paired_on_minus_off": pd, "checks": checks, "verdict": verdict(checks),
            "curves": mean_curves(rows), "rows": strip_curves(rows)}
     save("e9_exploration", out)
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+
+    def draw(ax):
         for lab, c in out["curves"].items():
             ax[0].plot([x - c["evolve"][0] for x in c["evolve"]], "--" if "off" in lab else "-", label=lab)
         ax[0].set_xlabel("round")
@@ -74,16 +55,12 @@ def main():
         ax[0].legend(fontsize=8)
         ax[0].set_title("Escape from prompt-only collapse")
         labs = list(summ)
-        ax[1].bar(range(len(labs)), [summ[l]["coverage"]["mean"] for l in labs])
+        ax[1].bar(range(len(labs)), [summ[lab]["coverage"]["mean"] for lab in labs])
         ax[1].set_xticks(range(len(labs)))
         ax[1].set_xticklabels(labs, fontsize=7, rotation=10)
         ax[1].set_title("component coverage |T_T| / |K|")
-        fig.tight_layout()
-        fig.savefig(RESULTS / "e9_exploration.png", dpi=110)
-    except Exception as e:  # noqa: BLE001
-        print("figure skipped:", e)
-    for k, v in summ.items():
-        print(k, {m: round(v[m]["mean"], 3) for m in metrics})
+    figure("e9_exploration", draw, 2, figsize=(12, 4))
+    print_means(summ, metrics)
     print(out["verdict"])
 
 

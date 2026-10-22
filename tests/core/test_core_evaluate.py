@@ -1,7 +1,5 @@
-"""rsi.core.domain + rsi.core.evaluate: Domain.run error handling, Trial
-serialization, and Evaluator aggregation exactly as RRSI's ``aggregate``:
-S = mean over tasks of mean trial score with missing trials = 0 over the full
-denominator k; C = mean tokens over trials that reported tokens."""
+"""rsi.core.domain + rsi.core.evaluate: Domain.run error handling, Trial serialization, and Evaluator aggregation
+as RRSI's ``aggregate``: missing trials score 0 over the full denominator k, C averages trials that report tokens."""
 from __future__ import annotations
 
 import json
@@ -13,16 +11,24 @@ import pytest
 from rsi.core import (Artifact, Domain, EvalResult, Evaluator, Execution, FunctionDomain, MockLLM, SealedSplitError,
                       Task, TaskSuite, Trial)
 
+ART = Artifact({"f": "1"})
+
 
 def _suite(n=4, fams=("x", "y")):
     ts = [Task(f"t{i}", i, i, fams[i % len(fams)], {"entities": [f"Name{i}"]}) for i in range(n)]
     return TaskSuite(ts, {"evolve": [t.id for t in ts[: n // 2]], "holdout": [t.id for t in ts[n // 2:]]})
 
 
-ART = Artifact({"f": "1"})
+def _raise(exc_type: type[BaseException], *args):
+    def execute(a, t, s, l):
+        raise exc_type(*args)
+    return execute
 
 
-# ------------------------------------------------------------------ Domain.run
+def _always_one(n=2) -> FunctionDomain:
+    return FunctionDomain(_suite(n), lambda a, t, s, l: 1, lambda t, o: 1.0)
+
+
 class _Dom(Domain):
     def __init__(self, suite, execute, grade=lambda t, ex: (1.0, "ok")):
         super().__init__(suite)
@@ -45,11 +51,8 @@ def test_run_success_carries_execution_fields():
 
 
 def test_run_execute_exception_is_graded_failure():
-    def boom(a, t, s, l):
-        raise KeyError("nope")
-
     graded = []
-    d = _Dom(_suite(), boom, lambda t, ex: graded.append(1) or (1.0, ""))
+    d = _Dom(_suite(), _raise(KeyError, "nope"), lambda t, ex: graded.append(1) or (1.0, ""))
     tr = d.run(ART, d.tasks.get("t0"))
     assert tr.score == 0.0 and not tr.ok and tr.error.startswith("KeyError")
     assert "execution error" in tr.feedback and "Traceback" in tr.trace
@@ -68,17 +71,12 @@ def test_run_grader_exception_and_bad_scores():
 
     tr = _Dom(_suite(), lambda a, t, s, l: Execution(output=1), bad_grade).run(ART, _suite().get("t0"))
     assert tr.score == 0.0 and tr.feedback.startswith("grader error: ValueError") and tr.error is None
-    # a grader returning a non-number is a grader error, not a loop crash (bug fix)
     tr = _Dom(_suite(), lambda a, t, s, l: Execution(output=1), lambda t, ex: (None, "")).run(ART, _suite().get("t0"))
-    assert tr.score == 0.0 and tr.feedback.startswith("grader error")
+    assert tr.score == 0.0 and tr.feedback.startswith("grader error")     # a non-number score
 
 
 def test_run_system_exit_from_artifact_code_is_contained():
-    """Bug fix: SystemExit raised by artifact code escaped Domain.run and killed the loop."""
-    def exits(a, t, s, l):
-        raise SystemExit(2)
-
-    tr = _Dom(_suite(), exits).run(ART, _suite().get("t0"))
+    tr = _Dom(_suite(), _raise(SystemExit, 2)).run(ART, _suite().get("t0"))
     assert tr.score == 0.0 and tr.error == "SystemExit: 2"
 
 
@@ -101,8 +99,7 @@ def test_function_domain_wrappers_and_describe():
 
 def test_base_domain_abstract_methods():
     d = Domain(_suite())
-    tr = d.run(ART, d.tasks.get("t0"))
-    assert tr.error.startswith("NotImplementedError")
+    assert d.run(ART, d.tasks.get("t0")).error.startswith("NotImplementedError")
 
 
 def test_leakage_terms_and_smoke():
@@ -115,14 +112,9 @@ def test_leakage_terms_and_smoke():
     assert terms == sorted(set(terms))
     assert "t3" in fd.leakage_terms("holdout")             # reads sealed splits explicitly
     assert fd.smoke(ART) is None
-
-    def crash(a, t, st, l):
-        raise RuntimeError("dead")
-
-    assert "dead" in FunctionDomain(s, crash, lambda t, o: 1.0).smoke(ART)
+    assert "dead" in FunctionDomain(s, _raise(RuntimeError, "dead"), lambda t, o: 1.0).smoke(ART)
 
 
-# --------------------------------------------------------------- Trial.to_json
 def test_trial_to_json_roundtrip_and_truncation():
     tr = Trial("t", 1, 0.5, "fb", output={"a": [1, 2]}, trace="x" * 100, tokens=3, meta={"k": (1, 2)})
     d = tr.to_json(max_trace=10)
@@ -134,24 +126,19 @@ def test_trial_to_json_roundtrip_and_truncation():
 
 
 def test_trial_to_json_non_serializable_output_and_meta():
-    """Bug fix: a non-JSON value in Trial.meta crashed the Evaluator's disk cache."""
     obj = object()
-    tr = Trial("t", 0, 1.0, output=obj, meta={"o": obj, "ok": 1, "nested": [obj]})
-    d = tr.to_json()
+    d = Trial("t", 0, 1.0, output=obj, meta={"o": obj, "ok": 1, "nested": [obj]}).to_json()
     json.dumps(d)
     assert d["output"] == repr(obj) and d["meta"]["ok"] == 1 and d["meta"]["o"] == repr(obj)
     assert d["meta"]["nested"] == [repr(obj)]
 
 
-# ------------------------------------------------------------------- Evaluator
 class _Scripted(Domain):
-    """Scores/tokens/errors scripted per (task, seed)."""
+    """(task id, seed) -> (score, tokens, error); unlisted trials score 1.0 with 10 tokens."""
 
     def __init__(self, suite, table):
         super().__init__(suite)
-        self.table = table          # (tid, seed) -> (score, tokens, error)
-        self.calls = 0
-        self._lock = threading.Lock()
+        self.table, self.calls, self._lock = table, 0, threading.Lock()
 
     def execute(self, artifact, task, *, seed, llm):
         with self._lock:
@@ -164,17 +151,14 @@ class _Scripted(Domain):
 
 
 def test_aggregation_missing_trials_count_zero_full_denominator():
-    s = _suite(4)
     table = {("t0", 0): (1.0, 100, None), ("t0", 1): (1.0, 0, "infra: backend down"), ("t0", 2): (0.0, 50, None),
              ("t1", 0): (1.0, 0, None), ("t1", 1): (1.0, 30, None), ("t1", 2): (0.5, 20, None)}
-    ev = Evaluator(_Scripted(s, table), workers=1).evaluate(ART, "evolve", k=3)
+    ev = Evaluator(_Scripted(_suite(4), table), workers=1).evaluate(ART, "evolve", k=3)
     assert ev.k == 3 and ev.n_missing == 1 and ev.n_trials == 6
     ts = ev.task_scores()
-    assert ts["t0"] == pytest.approx(1 / 3)                # the missing trial is 0 over denominator 3
-    assert ts["t1"] == pytest.approx(2.5 / 3)
+    assert ts["t0"] == pytest.approx(1 / 3) and ts["t1"] == pytest.approx(2.5 / 3)
     assert ev.score == ev.S == pytest.approx((1 / 3 + 2.5 / 3) / 2)
-    # C: mean over trials that reported tokens (100, 50, 30, 20) - zero-token trials excluded
-    assert ev.cost == ev.C == pytest.approx(50.0)
+    assert ev.cost == ev.C == pytest.approx(50.0)          # tokens 100, 50, 30, 20: zero-token trials excluded
     assert ev.error_rate == pytest.approx(1 / 6)
     assert ev.trials["t0"][1].error.startswith("infra:") and ev.trials["t0"][1].score == 0.0
     np.testing.assert_allclose(ev.trial_matrix(), [[1, 0, 0], [1, 1, 0.5]])
@@ -186,8 +170,7 @@ def test_aggregation_missing_trials_count_zero_full_denominator():
 
 def test_missing_slots_never_shrink_the_denominator():
     ev = EvalResult("a", "evolve", {"t0": [Trial("t0", 0, 1.0)], "t1": []}, k=4)
-    assert ev.task_scores() == {"t0": 0.25, "t1": 0.0}
-    assert ev.score == pytest.approx(0.125)
+    assert ev.task_scores() == {"t0": 0.25, "t1": 0.0} and ev.score == pytest.approx(0.125)
     np.testing.assert_allclose(ev.trial_matrix(), [[1, 0, 0, 0], [0, 0, 0, 0]])
     empty = EvalResult("a", "evolve", {}, k=1)
     assert empty.score == 0.0 and empty.cost == 0.0 and empty.steps == 0.0 and empty.error_rate == 0.0
@@ -198,8 +181,7 @@ def test_worst_best_steps_and_to_json():
     s.splits["evolve"] = ["t0", "t1", "t2", "t3"]
     table = {("t0", 0): (0.0, 1, None), ("t1", 0): (0.5, 1, None), ("t2", 0): (1.0, 1, None), ("t3", 0): (0.2, 1, None)}
     ev = Evaluator(_Scripted(s, table), workers=2).evaluate(ART, "evolve")
-    assert [t.task_id for t in ev.worst(2)] == ["t0", "t3"]
-    assert [t.task_id for t in ev.best(1)] == ["t2"]
+    assert [t.task_id for t in ev.worst(2)] == ["t0", "t3"] and [t.task_id for t in ev.best(1)] == ["t2"]
     assert ev.steps == 1.0
     d = ev.to_json()
     json.dumps(d)
@@ -210,8 +192,7 @@ def test_parallel_equals_serial_and_trial_order_follows_seeds():
     s = _suite(8)
     s.splits["evolve"] = [f"t{i}" for i in range(8)]
     table = {(f"t{i}", j): ((i * 7 + j) % 3 / 2, i + j + 1, None) for i in range(8) for j in range(4)}
-    a = Evaluator(_Scripted(s, table), workers=1).evaluate(ART, "evolve", k=4)
-    b = Evaluator(_Scripted(s, table), workers=4).evaluate(ART, "evolve", k=4)
+    a, b = (Evaluator(_Scripted(s, table), workers=w).evaluate(ART, "evolve", k=4) for w in (1, 4))
     assert a.task_scores() == b.task_scores() and a.cost == b.cost
     assert [t.seed for t in b.trials["t3"]] == [0, 1, 2, 3]
     assert a.task_ids == [f"t{i}" for i in range(8)]
@@ -229,9 +210,8 @@ def test_memory_cache_and_n_rollouts():
 
 
 def test_infra_failures_are_not_cached_and_retry(tmp_path):
-    s = _suite(2)
     table = {("t0", 0): (0.0, 0, "infra: backend down")}
-    dom = _Scripted(s, table)
+    dom = _Scripted(_suite(2), table)
     ev = Evaluator(dom, workers=1, cache_dir=tmp_path)
     r1 = ev.evaluate(ART, "evolve")
     assert r1.n_missing == 1 and r1.score == 0.0
@@ -241,9 +221,8 @@ def test_infra_failures_are_not_cached_and_retry(tmp_path):
 
 
 def test_disk_cache_persists_across_evaluators(tmp_path):
-    dom = _Scripted(_suite(4), {("t1", 0): (0.25, 5, None)})
-    ev1 = Evaluator(dom, workers=2, cache_dir=tmp_path)
-    r1 = ev1.evaluate(ART, "evolve")
+    dom1 = _Scripted(_suite(4), {("t1", 0): (0.25, 5, None)})
+    r1 = Evaluator(dom1, workers=2, cache_dir=tmp_path).evaluate(ART, "evolve")
     dom2 = _Scripted(_suite(4), {})                     # would score 1.0 if actually run
     ev2 = Evaluator(dom2, workers=2, cache_dir=tmp_path)
     r2 = ev2.evaluate(ART, "evolve")
@@ -254,38 +233,33 @@ def test_disk_cache_persists_across_evaluators(tmp_path):
 
 def test_disk_cache_corrupt_or_foreign_entries_rerun(tmp_path):
     dom = _Scripted(_suite(4), {})
-    ev = Evaluator(dom, workers=1, cache_dir=tmp_path)
-    ev.evaluate(ART, "evolve")
+    Evaluator(dom, workers=1, cache_dir=tmp_path).evaluate(ART, "evolve")
     files = sorted(tmp_path.rglob("*.json"))
     assert len(files) == 2
     files[0].write_text('{"task_id": "t0", "se')                     # torn write
     d = json.loads(files[1].read_text())
     d["field_from_a_newer_version"] = 1
     files[1].write_text(json.dumps(d))
-    ev2 = Evaluator(dom, workers=1, cache_dir=tmp_path)
-    r = ev2.evaluate(ART, "evolve")
-    assert r.score == 1.0 and ev2.n_rollouts == 1       # corrupt one re-run, foreign-field one reused
+    ev = Evaluator(dom, workers=1, cache_dir=tmp_path)
+    assert ev.evaluate(ART, "evolve").score == 1.0 and ev.n_rollouts == 1   # only the corrupt one re-runs
 
 
 def test_seed_offset_and_explicit_seeds():
     seen = []
     fd = FunctionDomain(_suite(2), lambda a, t, s, l: seen.append(s) or 1, lambda t, o: 1.0)
-    ev = Evaluator(fd, workers=1, seed_offset=100)
-    r = ev.evaluate(ART, "evolve", k=2)
+    r = Evaluator(fd, workers=1, seed_offset=100).evaluate(ART, "evolve", k=2)
     assert sorted(seen) == [100, 101] and [t.seed for t in r.trials["t0"]] == [100, 101]
     r2 = Evaluator(fd, workers=1).evaluate(ART, "evolve", seeds=[7, 3])
     assert r2.k == 2 and [t.seed for t in r2.trials["t0"]] == [7, 3]
 
 
 def test_duplicate_seeds_do_not_halve_scores():
-    """Bug fix: seeds=[0, 0] left an empty slot that counted as a 0-score trial."""
-    fd = FunctionDomain(_suite(2), lambda a, t, s, l: 1, lambda t, o: 1.0)
-    r = Evaluator(fd, workers=1).evaluate(ART, "evolve", seeds=[0, 0, 1])
+    r = Evaluator(_always_one(), workers=1).evaluate(ART, "evolve", seeds=[0, 0, 1])
     assert r.k == 2 and r.score == 1.0
 
 
 def test_sealed_split_refusal_and_custom_task_lists():
-    fd = FunctionDomain(_suite(4), lambda a, t, s, l: 1, lambda t, o: 1.0)
+    fd = _always_one(4)
     with pytest.raises(SealedSplitError):
         Evaluator(fd, workers=1).evaluate(ART, "holdout")
     assert Evaluator(fd, workers=1, allow_sealed=True).evaluate(ART, "holdout").score == 1.0
@@ -296,9 +270,7 @@ def test_sealed_split_refusal_and_custom_task_lists():
 
 
 def test_on_trial_callbacks_only_for_fresh_rollouts():
-    fd = FunctionDomain(_suite(4), lambda a, t, s, l: 1, lambda t, o: 1.0)
-    ev = Evaluator(fd, workers=2)
-    got = []
+    ev, got = Evaluator(_always_one(4), workers=2), []
     ev.on_trial.append(lambda art, tr: got.append((art.id, tr.task_id)))
     ev.evaluate(ART, "evolve")
     ev.evaluate(ART, "evolve")
@@ -309,7 +281,6 @@ def test_evaluate_many_and_llm_passthrough():
     llm = MockLLM(lambda p, s, seed, i: "7")
     fd = FunctionDomain(_suite(2), lambda a, t, s, l: l.complete("q", seed=s, role="task").text,
                         lambda t, o: float(o == "7"))
-    ev = Evaluator(fd, llm, workers=1)
-    res = ev.evaluate_many([ART, Artifact({"f": "2"})], "evolve", k=1)
+    res = Evaluator(fd, llm, workers=1).evaluate_many([ART, Artifact({"f": "2"})], "evolve", k=1)
     assert [r.score for r in res] == [1.0, 1.0]
     assert llm.meter.snapshot()["task"]["calls"] == 2

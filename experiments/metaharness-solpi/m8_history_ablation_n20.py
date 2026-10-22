@@ -1,11 +1,6 @@
 """M8 - the Table 3 history ablation at the paper's scale: N = 20 iterations x k = 2, 20 seeds (retry round 2, P2).
 
-Same arms and proposer as M1 (scores_only, scores_summary, full; offline MockProposer with its deterministic
-summary), but the paper's 40 candidates per run instead of 16. Criteria are preregistered in the claims audit.
-
-    python experiments/metaharness-solpi/m8_history_ablation_n20.py --batch 0/2 --workers 2
-    python experiments/metaharness-solpi/m8_history_ablation_n20.py --batch 1/2 --workers 2
-    python experiments/metaharness-solpi/m8_history_ablation_n20.py --merge
+    python experiments/metaharness-solpi/m8_history_ablation_n20.py [--batch i/n --workers 2 | --merge]
 """
 from __future__ import annotations
 
@@ -16,18 +11,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import RESULTS, fmt, fresh_dir, paired, parse_args, pool_map, save, summarize, table  # noqa: E402
-from mh_common import drop_traces, session_stats  # noqa: E402
+from mh_common import batch_seeds, drop_traces, load_parts, session_stats  # noqa: E402
 
 import numpy as np  # noqa: E402
 
 from rsi.domains.memoclassify import make_domain  # noqa: E402
 from rsi.metaharness import Config, run  # noqa: E402
 
+NAME = "m8_history_ablation_n20"
 ARMS = ("scores_only", "scores_summary", "full")
+ABLATIONS = ("scores_only", "scores_summary")
 N_ITER, K = 20, 2
 
 
-def job(spec):
+def job(spec) -> dict:
     arm, seed = spec
     dom = make_domain(seed=seed)
     res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"),
@@ -51,31 +48,32 @@ def main():
     def extra(ap):
         ap.add_argument("--batch", default=None)
         ap.add_argument("--merge", action="store_true")
+
     args = parse_args(__doc__.splitlines()[0], default_seeds=20, extra=extra)
-    part = lambda i: RESULTS / f"m8_history_ablation_n20.part{i}.json"   # noqa: E731
     if not args.merge:
-        i, n = map(int, (args.batch or "0/1").split("/"))
-        seeds = [s for s in range(args.seeds) if s % n == i]
+        i, seeds = batch_seeds(args.batch or "0/1", args.seeds)
         rows = pool_map(job, [(a, s) for s in seeds for a in ARMS], min(args.workers, 2))
-        part(i).write_text(json.dumps(rows))
-        print(f"[saved] {part(i)}")
+        part = RESULTS / f"{NAME}.part{i}.json"
+        part.write_text(json.dumps(rows))
+        print(f"[saved] {part}")
         return
-    rows = []
-    for p in sorted(RESULTS.glob("m8_history_ablation_n20.part*.json")):
-        rows += json.loads(p.read_text())
+    rows = load_parts(NAME)
     by = {a: {r["seed"]: r for r in rows if r["arm"] == a} for a in ARMS}
     seeds = sorted(set.intersection(*[set(by[a]) for a in ARMS]))
-    summ = {a: {k: summarize([by[a][s][k] for s in seeds]) for k in ("median", "best", "selected_test",
-                                                                        "n_above_zero_shot")} for a in ARMS}
-    cmp = {f"full_minus_{a}": {k: paired([by[a][s][k] for s in seeds], [by["full"][s][k] for s in seeds])
-                               for k in ("median", "best", "selected_test")} for a in ("scores_only", "scores_summary")}
-    cmp["summary_minus_scores_only"] = {k: paired([by["scores_only"][s][k] for s in seeds],
-                                                  [by["scores_summary"][s][k] for s in seeds]) for k in ("median", "best")}
-    beats = [by["full"][s]["median"] > max(by["scores_only"][s]["best"], by["scores_summary"][s]["best"]) for s in seeds]
-    crit_i = all(cmp[f"full_minus_{a}"][k].get("lo", -1) > 0 for a in ("scores_only", "scores_summary")
-                 for k in ("median", "best"))
+
+    def vals(a: str, k: str) -> list:
+        return [by[a][s][k] for s in seeds]
+
+    summ = {a: {k: summarize(vals(a, k)) for k in ("median", "best", "selected_test", "n_above_zero_shot")}
+            for a in ARMS}
+    cmp = {f"full_minus_{a}": {k: paired(vals(a, k), vals("full", k)) for k in ("median", "best", "selected_test")}
+           for a in ABLATIONS}
+    cmp["summary_minus_scores_only"] = {k: paired(vals("scores_only", k), vals("scores_summary", k))
+                                        for k in ("median", "best")}
+    beats = [by["full"][s]["median"] > max(by[a][s]["best"] for a in ABLATIONS) for s in seeds]
+    crit_i = all(cmp[f"full_minus_{a}"][k].get("lo", -1) > 0 for a in ABLATIONS for k in ("median", "best"))
     crit_ii = sum(beats) >= 0.8 * len(seeds)
-    median_ok = all(cmp[f"full_minus_{a}"]["median"].get("lo", -1) > 0 for a in ("scores_only", "scores_summary"))
+    median_ok = all(cmp[f"full_minus_{a}"]["median"].get("lo", -1) > 0 for a in ABLATIONS)
     mock_verdict = ("(i)+(ii) hold" if crit_i and crit_ii else "(i) holds, (ii) fails" if crit_i else
                     "(i) fails" + ("" if median_ok else " on the median comparisons"))
     print(table([[a, fmt(summ[a]["median"]), fmt(summ[a]["best"]), fmt(summ[a]["selected_test"])] for a in ARMS],
@@ -83,7 +81,7 @@ def main():
     print(json.dumps({k: {kk: {x: round(y, 4) for x, y in vv.items() if isinstance(y, float)} for kk, vv in v.items()}
                       for k, v in cmp.items()}))
     print(f"median full > best of both ablations in {sum(beats)}/{len(seeds)} seeds; mock criteria: {mock_verdict}")
-    save("m8_history_ablation_n20", {
+    save(NAME, {
         "claim": "Q3 (Table 3) at the paper's scale: full traces beat scores-only and scores+summary; the median full "
                  "candidate beats the best of either ablation",
         "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P2",

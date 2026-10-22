@@ -1,11 +1,4 @@
-"""Attribution scoreboard (mirrors ``Run.attribute`` / ``Run.scoreboard``).
-
-After a candidate is measured, every declared edit's predictions are checked against
-the evaluation: ``predicted_affected`` task ids that improved are *hits*; tasks whose
-mean dropped by at least the regression threshold (default 1/k) without being
-predicted are *unpredicted regressions*. The last 20 rows are shown back to the
-proposer ("over-claiming counts against you").
-"""
+"""Attribution scoreboard: each declared edit's predicted tasks checked against the evaluation."""
 from __future__ import annotations
 
 import json
@@ -24,9 +17,7 @@ class Scoreboard:
         self._lock = threading.Lock()
 
     def rows(self) -> list[dict]:
-        if not self.path.exists():
-            return []
-        return read_jsonl(self.path)
+        return read_jsonl(self.path) if self.path.exists() else []
 
     def recent(self, n: int = 20) -> list[dict]:
         return self.rows()[-n:]
@@ -36,6 +27,7 @@ class Scoreboard:
 
     def attribute(self, t: int, variant: str, edits: list, inc: Measurement, cand: Measurement,
                   threshold: Optional[float] = None) -> list[dict]:
+        """Hits = predicted tasks that improved; unpredicted regressions = drops of at least ``threshold``."""
         thr = self.threshold if threshold is None else threshold
         im, cm = inc.task_means(), cand.task_means()
         rows = []
@@ -53,10 +45,5 @@ class Scoreboard:
 
     def truncate_after(self, t: int) -> None:
         rows = [r for r in self.rows() if int(r.get("t", -1)) <= t]
-        with self._lock:
-            self.path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
-
-    def drop_round(self, t: int) -> None:
-        rows = [r for r in self.rows() if int(r.get("t", -1)) != t]
         with self._lock:
             self.path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))

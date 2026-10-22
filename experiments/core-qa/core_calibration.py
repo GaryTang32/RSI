@@ -1,38 +1,6 @@
 """Core calibration: do rsi.core's noise band and gates behave as the specs claim?
 
-Claims checked (all on UNCHANGED artifacts, i.e. under the null of "no real change"):
-
-C1  RRSI calibrate.py: with delta = z * sd(null dS) (z = 2) estimated by the
-    within-task bootstrap of ONE k-trial evaluation (``stats.noise_from_trials``),
-    an unchanged artifact clears the floor S* - delta "about 97.5% of the time"
-    (``gates.NoiseFloor``).
-C2  The bootstrap delta agrees with the delta from repeated evaluations
-    (``stats.noise_from_repeats``: sqrt(2) * stdev(S_r)).
-C3  autoresearch-mlx rigor.py: "keep iff strictly better" chases noise - it keeps
-    about half of the re-evaluations of the SAME artifact, while a noise-aware
-    rule (``gates.MinGain`` with the same delta) keeps only a few %.
-C4  (core bug fix) float summation order makes mathematically tied scores differ
-    in the last bit; the pre-fix strict rule (gain > 0) accepted some ties, the
-    fixed rule (gain > TIE_EPS) never does.
-
-Diagnosis arm: resampling k trials within a task underestimates the per-task
-variance by (k-1)/k, so the bootstrap delta should be sqrt((k-1)/k) of the true
-one and clearance Phi(z * sqrt((k-1)/k)) instead of Phi(z). We sweep k and also
-report the delta corrected by sqrt(k/(k-1)).
-
-Domains: AgentQA (seed harness + SimModel, or a live model via --llm) and a
-Bernoulli toy FunctionDomain (tasks with latent success probabilities), both
-through ``rsi.core.Evaluator``. Each (domain, k, seed) builds a fresh suite,
-evaluates the artifact R times with disjoint trial seeds, and forms R/2
-independent pairs.
-
-Verdicts test two hypotheses against the pooled 95% bootstrap CI of each cell
-(and of both domains pooled per k): the claim (clearance 0.975, delta ratio 1)
-and the small-k prediction (Phi(z*sqrt((k-1)/k)), ratio sqrt((k-1)/k)). A claim
-is "reproduced" only when the CI contains the claim and excludes the
-prediction; "inconclusive" when it contains both.
-
-    python experiments/core-qa/core_calibration.py [--llm sim|claude:haiku] [--seeds N] [--quick]
+    python experiments/core-qa/core_calibration.py [--llm sim|claude:haiku] [--seeds N] [--quick] [--replot JSON]
 """
 from __future__ import annotations
 
@@ -50,15 +18,15 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np  # noqa: E402
 
-from rsi.core import (Artifact, CachedLLM, Evaluator, FunctionDomain, GateContext, MinGain, NoiseFloor, Scored,  # noqa: E402
-                      StrictImprovement, Task, TaskSuite, get_llm, noise_from_repeats, noise_from_trials,
-                      summarize_runs)
+from rsi.core import (Artifact, CachedLLM, Evaluator, FunctionDomain, GateContext, MinGain,  # noqa: E402
+                      NoiseFloor, Scored, StrictImprovement, Task, TaskSuite, get_llm, noise_from_repeats,
+                      noise_from_trials, summarize_runs)
 from rsi.core.stats import bootstrap_ci  # noqa: E402
 
 OUT = ROOT / "results" / "core-qa"
 CACHE = ROOT / ".rsi_cache" / "core-qa"
 Z = 2.0
-CLAIMED = 0.975
+CLAIMED = 0.975   # RRSI calibrate.py: an unchanged artifact clears S* - z * sd "about 97.5% of the time"
 
 
 def _phi(x: float) -> float:
@@ -66,10 +34,10 @@ def _phi(x: float) -> float:
 
 
 def predicted_clearance(k: int) -> float:
+    """Phi(z * sqrt((k-1)/k)): resampling k trials within a task underestimates its variance by (k-1)/k."""
     return _phi(Z * math.sqrt((k - 1) / k))
 
 
-# ------------------------------------------------------------------- domains
 def bernoulli_domain(seed: int, n_tasks: int):
     """Toy domain: task i succeeds with latent probability p_i (spread over [0.05, 0.95])."""
     rng = random.Random(f"bern-{seed}")
@@ -80,7 +48,8 @@ def bernoulli_domain(seed: int, n_tasks: int):
         r = random.Random(f"{seed}|{task.id}|{s}|{art.id}")
         return float(r.random() < task.meta["p"])
 
-    return FunctionDomain(suite, execute, lambda t, out: out, name="bernoulli"), Artifact({"policy.txt": "fixed\n"}), None
+    dom = FunctionDomain(suite, execute, lambda t, out: out, name="bernoulli")
+    return dom, Artifact({"policy.txt": "fixed\n"}), None
 
 
 def agentqa_domain(seed: int, n_tasks: int, llm_spec: str):
@@ -91,8 +60,12 @@ def agentqa_domain(seed: int, n_tasks: int, llm_spec: str):
     return AgentQADomain(suite), AgentQADomain.seed_artifact(), llm
 
 
-# ------------------------------------------------------------------ one job
+def _share(rows: list[dict], key: str) -> float:
+    return float(np.mean([r[key] for r in rows]))
+
+
 def run_job(job: dict) -> dict:
+    """Evaluate one artifact R times with disjoint trial seeds and apply the gates to R/2 independent null pairs."""
     kind, seed, R, k, n_tasks = job["kind"], job["seed"], job["R"], job["k"], job["n_tasks"]
     dom, art, llm = bernoulli_domain(seed, n_tasks) if kind == "bernoulli" else \
         agentqa_domain(seed, n_tasks, job["llm"])
@@ -104,7 +77,7 @@ def run_job(job: dict) -> dict:
     corr = math.sqrt(k / (k - 1))
     delta_rep = noise_from_repeats(S, z=Z).delta
     rows = []
-    for a, b in zip(range(0, R - 1, 2), range(1, R, 2)):      # disjoint pairs = independent null comparisons
+    for a, b in zip(range(0, R - 1, 2), range(1, R, 2)):
         inc, cand = Scored(S[a]), Scored(S[b])
         ctx = GateContext(best_score=S[a], delta=float(deltas[a]))
         ctx_c = GateContext(best_score=S[a], delta=float(deltas[a] * corr))
@@ -114,21 +87,21 @@ def run_job(job: dict) -> dict:
             "floor_clear": bool(NoiseFloor().check(cand, inc, ctx)),
             "floor_clear_corrected": bool(NoiseFloor().check(cand, inc, ctx_c)),
             "strict": bool(StrictImprovement().check(cand, inc, ctx)),
-            "strict_prefix": bool(S[b] - S[a] > 0),               # the rule before the TIE_EPS fix
+            "strict_prefix": bool(S[b] - S[a] > 0),               # the strict rule before the TIE_EPS fix
             "min_gain": bool(MinGain().check(cand, inc, ctx)),
             "min_gain_corrected": bool(MinGain().check(cand, inc, ctx_c)),
             "tie": bool(tie), "float_tie": bool(tie and S[a] != S[b]),
         })
     sd_true = float(np.std(S, ddof=1) * math.sqrt(2))
-    mean = lambda key: float(np.mean([r[key] for r in rows]))  # noqa: E731
     return {
         "kind": kind, "seed": seed, "R": R, "k": k, "n_tasks": len(dom.tasks.splits["evolve"]),
         "S_mean": float(S.mean()), "sd_null_repeat": sd_true, "delta_boot_mean": float(deltas.mean()),
-        "delta_repeat": float(delta_rep), "delta_ratio": float(deltas.mean() / delta_rep) if delta_rep else float("nan"),
-        "clearance": mean("floor_clear"), "clearance_corrected": mean("floor_clear_corrected"),
+        "delta_repeat": float(delta_rep),
+        "delta_ratio": float(deltas.mean() / delta_rep) if delta_rep else float("nan"),
+        "clearance": _share(rows, "floor_clear"), "clearance_corrected": _share(rows, "floor_clear_corrected"),
         "clearance_analytic": float(_phi(deltas.mean() / sd_true)) if sd_true else 1.0,
-        "strict_accept": mean("strict"), "strict_prefix_accept": mean("strict_prefix"),
-        "min_gain_accept": mean("min_gain"), "min_gain_corrected_accept": mean("min_gain_corrected"),
+        "strict_accept": _share(rows, "strict"), "strict_prefix_accept": _share(rows, "strict_prefix"),
+        "min_gain_accept": _share(rows, "min_gain"), "min_gain_corrected_accept": _share(rows, "min_gain_corrected"),
         "ties": int(sum(r["tie"] for r in rows)),
         "float_ties": int(sum(r["float_tie"] for r in rows)),
         "float_ties_accepted_prefix": int(sum(r["float_tie"] and r["strict_prefix"] for r in rows)),
@@ -137,7 +110,10 @@ def run_job(job: dict) -> dict:
     }
 
 
-# ------------------------------------------------------------------- report
+def _ci(values: list) -> dict:
+    return dict(zip(("mean", "lo", "hi"), bootstrap_ci(values)))
+
+
 def summarize(rs: list[dict]) -> dict:
     keys = ("clearance", "clearance_corrected", "clearance_analytic", "delta_ratio", "strict_accept",
             "strict_prefix_accept", "min_gain_accept", "min_gain_corrected_accept", "S_mean", "delta_boot_mean",
@@ -147,8 +123,7 @@ def summarize(rs: list[dict]) -> dict:
         out[key] = sum(r[key] for r in rs)
     out["n_pairs"] = sum(len(r["pairs"]) for r in rs)
     for key in ("floor_clear", "floor_clear_corrected", "strict", "min_gain", "min_gain_corrected"):
-        pooled = [p[key] for r in rs for p in r["pairs"]]
-        out[f"{key}_pooled"] = dict(zip(("mean", "lo", "hi"), bootstrap_ci(pooled)))
+        out[f"{key}_pooled"] = _ci([p[key] for r in rs for p in r["pairs"]])
     k = rs[0]["k"]
     out["k"] = k
     out["predicted_ratio"] = math.sqrt((k - 1) / k)
@@ -157,7 +132,7 @@ def summarize(rs: list[dict]) -> dict:
 
 
 def _two_way(ci: dict, claim: float, pred: float, *, enough: bool) -> str:
-    """Which of claim / small-k prediction the 95% CI is compatible with."""
+    """Reproduced only when the 95% CI contains the claim and excludes the small-k prediction."""
     if not enough:
         return "inconclusive (too few pairs)"
     has_claim, has_pred = ci["lo"] <= claim <= ci["hi"], ci["lo"] <= pred <= ci["hi"]
@@ -171,7 +146,7 @@ def _two_way(ci: dict, claim: float, pred: float, *, enough: bool) -> str:
 
 
 def verdicts(summ: dict, per_job: list[dict]) -> dict:
-    """Per cell and pooled over both domains per k (see the module docstring)."""
+    """C1-C4 per (domain, k) cell, and C1 pooled over both domains per k."""
     v = {}
     for key, s in summ.items():
         enough = s["n_pairs"] >= 100
@@ -194,11 +169,12 @@ def verdicts(summ: dict, per_job: list[dict]) -> dict:
                            f"re-evaluations, MinGain(delta) {mg['mean']:.1%} [{mg['lo']:.1%}, {mg['hi']:.1%}], "
                            f"MinGain(corrected delta) {mgc['mean']:.1%} (one-sided z=2 target: 2.3%)")
         v[f"C4[{key}]"] = (f"{s['float_ties']} of {s['ties']} exact ties differed in float; the pre-fix strict rule "
-                           f"accepted {s['float_ties_accepted_prefix']}, the fixed rule {s['float_ties_accepted_fixed']}")
+                           f"accepted {s['float_ties_accepted_prefix']}, "
+                           f"the fixed rule {s['float_ties_accepted_fixed']}")
     for k in sorted({r["k"] for r in per_job}):
         pairs = [p for r in per_job if r["k"] == k for p in r["pairs"]]
         for key, claim_name in (("floor_clear", "C1"), ("floor_clear_corrected", "C1-corrected")):
-            ci = dict(zip(("mean", "lo", "hi"), bootstrap_ci([p[key] for p in pairs])))
+            ci = _ci([p[key] for p in pairs])
             tag = _two_way(ci, CLAIMED, predicted_clearance(k), enough=len(pairs) >= 200) \
                 if key == "floor_clear" else \
                 ("inconclusive (too few pairs)" if len(pairs) < 200 else
@@ -253,8 +229,8 @@ def figure(per_job: list[dict], summ: dict, ks: list[int], path: Path) -> None:
     ax.set_title("floor clearance of an unchanged artifact vs trials per task", fontsize=9, color=ink)
     ax.legend(frameon=False, fontsize=7, loc="lower right")
     ax = axes[3]
-    rules = [("strict_prefix_accept", "strict (pre-fix)"), ("strict_accept", "strict"), ("min_gain_accept", "MinGain δ"),
-             ("min_gain_corrected_accept", "MinGain δ·√(k/(k-1))")]
+    rules = [("strict_prefix_accept", "strict (pre-fix)"), ("strict_accept", "strict"),
+             ("min_gain_accept", "MinGain δ"), ("min_gain_corrected_accept", "MinGain δ·√(k/(k-1))")]
     x = np.arange(len(rules))
     w = 0.38
     for j, kind in enumerate(kinds):

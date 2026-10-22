@@ -1,24 +1,15 @@
-"""Hand-written experience per kata class, in three representations (for X1-X3).
-
-For each class, one fail->pass experience is written up as
-
-* ``CLASS_GENES[cls]`` - a compact Gene (keywords / summary / 4 steps / 2 AVOID
-  items, ~150-230 tokens);
-* ``render_skill(CLASS_GENES[cls])`` - the long SKILL.md form (~2,000+ tokens) with
-  the same content embedded in documentation;
-* ``FAILURE_LOGS[cls]`` - the raw failure history ("naively appended"),
-* ``COMPLEMENTARY_GENES[cls]`` - a second, *different but also correct* gene;
-* ``CONFLICTING_GENES[cls]`` - a gene whose advice contradicts the correct one.
-"""
+"""Hand-written experience per kata class: the correct gene, a complementary and a conflicting gene, and the raw
+failure log (representations for X1-X3)."""
 from __future__ import annotations
 
 from rsi.evomap.assets import Gene
+
+from .katas import CLASS_KEYWORDS
 
 V = ["python smoke_test.py"]
 
 
 def G(cls, gid, summary, strategy, avoid, extra_signals=()):
-    from .katas import CLASS_KEYWORDS
     return Gene(id=gid, category="repair", signals_match=[*CLASS_KEYWORDS[cls], *extra_signals], summary=summary,
                 strategy=list(strategy), avoid=list(avoid), validation=list(V),
                 provenance={"kind": "manual", "source": "katas.genes"})
@@ -35,7 +26,8 @@ CLASS_GENES = {
                      "Floor division when a partial group still counts."]),
     "unicode": G("unicode", "gene_unicode_normalize_casefold",
                  "Compare, count and measure text only after Unicode normalization and casefolding.",
-                 ["Normalize every string with unicodedata.normalize('NFC', s) before comparing, counting or measuring.",
+                 ["Normalize every string with unicodedata.normalize('NFC', s) before comparing, counting or "
+                  "measuring.",
                   "Use str.casefold(), not lower(), for case-insensitive comparison (German sharp s).",
                   "To strip accents: normalize('NFD'), drop unicodedata.combining(c) marks, re-normalize NFC.",
                   "Count visible characters by skipping combining marks after NFC."],

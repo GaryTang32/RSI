@@ -1,15 +1,9 @@
 """Sandbox output must not carry the random scratch-directory path (it reaches model prompts via tracebacks)."""
-import os
-import subprocess
-import sys
-from pathlib import Path
-
 from rsi.core.sandbox import SCRATCH_PLACEHOLDER, call_function, run_python
 
 
 def test_traceback_names_a_stable_path():
-    a = run_python("raise ValueError('boom')", timeout_s=20)
-    b = run_python("raise ValueError('boom')", timeout_s=20)
+    a, b = (run_python("raise ValueError('boom')", timeout_s=20) for _ in range(2))
     assert not a.ok and a.stderr == b.stderr
     assert f"{SCRATCH_PLACEHOLDER}/_rsi_main.py" in a.stderr and "rsi_sbx_" not in a.stderr
 
@@ -25,28 +19,21 @@ def test_call_function_errors_are_stable():
     assert r1 is None and r2 is None and rr1.stderr == rr2.stderr and "rsi_fn_" not in rr1.stderr
 
 
-def test_symlinked_scratch_is_replaced_whatever_the_hash_seed():
-    # on macOS /tmp -> /private/tmp: the real path contains the link path, so the longer one must go first, and
-    # the order must not depend on set iteration (it changes with PYTHONHASHSEED)
+def test_symlinked_scratch_is_replaced_whatever_the_hash_seed(checkout_python):
+    # macOS /tmp -> /private/tmp: the longer real path must be replaced first, in an order independent of set iteration
     code = ("from rsi.core import sandbox\n"
             "from rsi.core.sandbox import RunResult, _stable_paths\n"
             "sandbox.os.path.realpath = lambda p: '/private' + p\n"
             "rr = _stable_paths(RunResult(1, '', 'File \"/private/tmp/rsi_sbx_k3/_rsi_main.py\"', 0.0, False), "
             "'/tmp/rsi_sbx_k3')\n"
             "print(rr.stderr)\n")
-    root = str(Path(__file__).resolve().parents[2])     # this checkout, importable and not shadowed from any cwd
-    path = os.pathsep.join(p for p in (root, os.environ.get("PYTHONPATH")) if p)
-    outs = {subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True, cwd=root,
-                           env={**os.environ, "PYTHONHASHSEED": str(seed), "PYTHONPATH": path}).stdout.strip()
-            for seed in range(8)}
+    outs = {checkout_python(code, env={"PYTHONHASHSEED": str(seed)}).stdout.strip() for seed in range(8)}
     assert outs == {f'File "{SCRATCH_PLACEHOLDER}/_rsi_main.py"'}
 
 
 def test_set_order_in_sandbox_output_is_stable():
-    # the child gets PYTHONHASHSEED=0 unless the caller sets it: string sets print in the same order every run
     code = "print({'red', 'green', 'blue', 'white', 'yellow', 'cyan', 'magenta'})"
-    outs = {run_python(code, timeout_s=20).stdout for _ in range(4)}
-    assert len(outs) == 1
-    assert run_python("import os; print(os.environ['PYTHONHASHSEED'])", timeout_s=20).stdout.strip() == "0"
-    assert run_python("import os; print(os.environ['PYTHONHASHSEED'])", timeout_s=20,
-                      env={"PYTHONHASHSEED": "7"}).stdout.strip() == "7"
+    assert len({run_python(code, timeout_s=20).stdout for _ in range(4)}) == 1
+    hash_seed = "import os; print(os.environ['PYTHONHASHSEED'])"
+    assert run_python(hash_seed, timeout_s=20).stdout.strip() == "0"      # the default unless the caller sets it
+    assert run_python(hash_seed, timeout_s=20, env={"PYTHONHASHSEED": "7"}).stdout.strip() == "7"

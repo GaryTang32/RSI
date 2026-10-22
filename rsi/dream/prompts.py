@@ -1,28 +1,12 @@
-"""The prompts of the LLM policy developer ("dreaming"): Listing 2 of the paper, verbatim.
-
-* :data:`DEVELOPER_PROMPT` - Listing 2 [paper:App.B.2 L2:1-273] word for word, with runtime
-  substitutions only (``{method_file}``, ``{history_dir}``, ``{trace_pool}``, the API module name, and
-  the objective paragraph L2:12-22 via :func:`objective_text`);
-* :data:`FRAMEWORK_NOTES` - what this reimplementation's runner adds (context-file locations, the
-  import allow-list, the reset rule, the fresh namespace per episode, the live budget), kept apart
-  from the paper's text;
-* :func:`developer_prompt` - the rendered instructions the developer receives.
-
-Claims audit N2: the first version was a condensed paraphrase that dropped about 20 of Listing 2's
-rules; ``tests/dream-rsi/test_dream-rsi_fixes.py`` checks that every one of them is present.
-"""
+"""Prompts of the LLM policy developer: Listing 2 verbatim [paper:App.B.2 L2:1-273] plus framework notes."""
 from __future__ import annotations
 
 from typing import Optional
 
+from .lint import ALLOWED_IMPORTS
 from .policy import POLICY_FILE
 
-#: Listing 2 [paper:App.B.2 L2:1-273], verbatim. Runtime substitutions: ``{method_file}``,
-#: ``{history_dir}`` and ``{trace_pool}`` (the context-file paths), ``see.policy.api`` /
-#: ``see.policy.observation_signal`` -> this framework's ``policy_api`` module, and the objective
-#: paragraph L2:12-22 (``{objective_text}``), which is L2's own text under ``objective="pareto"`` and
-#: states the Eq. 1 selection score otherwise (the paper never says which of the two produced its
-#: results, spec §8.15). Everything this reimplementation adds is in ``FRAMEWORK_NOTES`` below it.
+# Runtime substitutions only: context-file paths and the objective paragraph L2:12-22 ({objective_text}).
 DEVELOPER_PROMPT = """\
 You are improving one **prefix-only exploration policy**. Edit only
 ``{method_file}`` and implement ``OptimalPolicy.solve(self, question, budget=None)``.
@@ -289,8 +273,7 @@ success semantics, non-automatic zero-valid closure, deterministic recovery
 competition, and portfolio-level stop.
 """
 
-#: what this reimplementation adds to Listing 2 (none of it is in the paper's prompt): where the
-#: context files are, the import allow-list and the sandbox rules its runner enforces
+# what this reimplementation's runner adds; none of it is in the paper's prompt
 FRAMEWORK_NOTES = """\
 
 ---
@@ -314,7 +297,7 @@ FRAMEWORK_NOTES = """\
   ``budget=None``. A disqualified episode (violation, illegal batch, crash) scores below every honest one.
 """
 
-#: L2:12-22, verbatim (``lambda`` is reported with its value)
+# L2:12-22, verbatim (``lambda`` is reported with its value)
 PARETO_OBJECTIVE = """\
 The evaluator sweeps your single ``beta`` knob and ranks the resulting curve by:
 
@@ -328,7 +311,7 @@ pareto.reward = pareto.auc - lambda * parallel_penalty      (lambda = {lam:g})
 useful full batches approach ``1/W``. Therefore choose only promising probes, but
 batch independent promising probes whenever possible."""
 
-#: the same paragraph when versions are selected by the paper's Eq. 1 (framework default)
+# the same paragraph when versions are selected by Eq. 1 (framework default)
 EQ1_OBJECTIVE = """\
 The evaluator replays your policy at its baked-in default ``beta`` on every frozen trace and ranks it by
 the mean replay score (the paper's Eq. 1):
@@ -347,7 +330,7 @@ promising probes, but batch independent promising probes whenever possible."""
 
 
 def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1) -> str:
-    """The objective paragraph of Listing 2 (L2:12-22) for the objective actually used for selection."""
+    """The objective paragraph of Listing 2 (L2:12-22) for the objective used for selection."""
     if objective == "pareto":
         return PARETO_OBJECTIVE.format(lam=lam)
     return EQ1_OBJECTIVE.format(beta1=beta1, beta2=beta2, lam=lam)
@@ -356,9 +339,7 @@ def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, la
 def developer_prompt(objective: str, W: int, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
                      trace_rows: Optional[int] = None, method_file: str = POLICY_FILE, history_dir: str = "history",
                      trace_pool: str = "trace_pool", base: str = "strongest") -> str:
-    """Listing 2 (verbatim, runtime paths and the objective paragraph filled in) + the framework notes."""
-    from .lint import ALLOWED_IMPORTS
-
+    """Listing 2 with runtime paths and the objective paragraph filled in, plus the framework notes."""
     body = DEVELOPER_PROMPT.format(method_file=method_file, history_dir=history_dir, trace_pool=trace_pool,
                                    objective_text=objective_text(objective, beta1, beta2, lam))
     notes = FRAMEWORK_NOTES.format(history_dir=history_dir, trace_pool=trace_pool, W=W,
