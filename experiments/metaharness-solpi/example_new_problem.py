@@ -1,19 +1,11 @@
 """Applying Meta-Harness and SoL-Pi to a NEW problem (template; runs offline in seconds).
 
-Part 1 - Meta-Harness on your own Domain + seed artifact. The problem here: a date-normalisation harness
-(``normalize.py`` defines ``normalize(text) -> 'YYYY-MM-DD'``) graded by exact match. Any
-``rsi.core.Domain`` works; offline we plug in a tiny custom ``Proposer`` that reads the raw traces of the
-best candidate (the full-history view) and adds one parsing rule per failure pattern. With a real LLM use
-``llm_propose=ClaudeCLI("sonnet")`` (coding agent) or any LLM (RewriteProposer) instead.
-
-Part 2 - SoL-Pi's mechanisms in your own long-running agent: an ``AgentRuntime`` around your environment
-(any object with ``read_file/tool_read/tool_write/tool_edit/tool_bash``) and your backend (``act``), with
-the four opt-in extensions and the prefix-cache token meter.
-
     python experiments/metaharness-solpi/example_new_problem.py
 """
 from __future__ import annotations
 
+import json
+import random
 import re
 import sys
 import tempfile
@@ -21,18 +13,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from rsi.core import Artifact, FunctionDomain, Task, TaskSuite  # noqa: E402
+from rsi.core import Artifact, Execution, FunctionDomain, Task, TaskSuite  # noqa: E402
 from rsi.metaharness import CandidateSpec, Config, ProposalBatch, Proposer, run  # noqa: E402
 from rsi.solpi import (PRICES, ActionFusion, AgentRuntime, EvidencePreservingReducer, Message,  # noqa: E402
                        ObservationPack, OnlineContextCompact, TokenMeter, ToolCall, builtin_tools)
 from rsi.solpi.runtime import ToolResult  # noqa: E402
 
-# ------------------------------------------------------------------ Part 1: Meta-Harness
+# Part 1 - Meta-Harness on your own Domain: a date-normalisation harness (``normalize.py`` defines
+# ``normalize(text) -> 'YYYY-MM-DD'``) graded by exact match. With a real LLM pass ``llm_propose=`` instead.
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
 
 def make_tasks() -> TaskSuite:
-    import random
     rng = random.Random(0)
     tasks, splits = [], {"evolve": [], "test": []}
     for i in range(60):
@@ -46,15 +38,14 @@ def make_tasks() -> TaskSuite:
     return TaskSuite(tasks, splits)
 
 
-def execute(artifact, task, seed, llm):
+def execute(artifact, task, seed, llm) -> Execution:
     ns: dict = {}
     exec(artifact["normalize.py"], ns)
     out = ns["normalize"](task.input)
-    from rsi.core import Execution
     return Execution(output=out, trace=f"input={task.input!r} output={out!r}", tokens=len(artifact["normalize.py"]))
 
 
-def grade(task, output):
+def grade(task, output) -> tuple[float, str]:
     return (1.0, "ok") if output == task.target else (0.0, f"got {output!r} expected {task.target!r}")
 
 
@@ -81,11 +72,9 @@ KNOWN = {  # what a careful reader of the traces would write for each surface pa
 
 
 class TraceRuleProposer(Proposer):
-    """Toy offline proposer: reads the failing per-task records of the best visible candidate
-    (the full-history view) and adds one parsing rule per unmatched surface pattern."""
+    """Toy offline proposer: adds one parsing rule per surface pattern seen in the best candidate's failures."""
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
-        import json
         best = max((p for p in view if p.endswith("scores.json")), key=lambda p: json.loads(view[p])["score"])
         name = best.split("/")[1]
         src = view[f"candidates/{name}/src/normalize.py"]
@@ -96,14 +85,13 @@ class TraceRuleProposer(Proposer):
             if repr(rx) in src or len(out) >= k:
                 continue
             if any(re.fullmatch(rx, str(r["output"]).strip()) for r in bad):
-                rule = f"({rx!r}, {order})"
-                new = src.replace("RULES = [", f"RULES = [{rule}, ", 1)
+                new = src.replace("RULES = [", f"RULES = [({rx!r}, {order}), ", 1)
                 out.append(CandidateSpec(f"i{iteration}_{kind}", Artifact({"normalize.py": new}),
                                          f"add a {kind} rule", "exploitation", ["rule"], name))
         return ProposalBatch(candidates=out, files_read=sorted(view), transcript=f"{len(bad)} failures read")
 
 
-def part1():
+def part1() -> None:
     dom = FunctionDomain(make_tasks(), execute, grade, name="dates", description="date normalisation harness")
     res = run(dom, Artifact({"normalize.py": SEED}, meta={"name": "seed"}), proposer=TraceRuleProposer(),
               config=Config(iterations=3, k=2, objectives=("score",), cost_metric="tokens",
@@ -112,7 +100,7 @@ def part1():
           "test:", {k: round(v["score"], 3) for k, v in res.meta["final"]["splits"]["test"]["results"].items()})
 
 
-# ------------------------------------------------------------------ Part 2: SoL-Pi mechanisms in your agent
+# Part 2 - SoL-Pi's four opt-in extensions and the prefix-cache token meter in your own long-running agent.
 class MyEnv:
     """Your environment: files + a shell whose test command prints a long log."""
 
@@ -162,7 +150,7 @@ class MyAgent:
         return Message("assistant", "working", tool_calls=tuple(ToolCall(rt.next_call_id(), n, a) for n, a in calls))
 
 
-def part2():
+def part2() -> None:
     for label, exts in (("base", []), ("sol-pi", [ActionFusion(), ObservationPack(), EvidencePreservingReducer(),
                                                    OnlineContextCompact()])):
         env = MyEnv()
