@@ -1,16 +1,4 @@
-"""Parallel variants: the SkyPilot "don't wait" loop and spawn.sh's independent chains.
-
-:class:`ParallelAutoresearchLoop` keeps up to ``workers`` experiments in flight
-on an :class:`~rsi.autoresearch.executors.Executor` (local process pool or the
-fake SLURM cluster). Each proposal is made from the incumbent at submission
-time ("Don't wait - move on to the next idea"); when a run finishes it is judged
-against the incumbent *at completion time* and, if kept, its files become the
-new branch tip ("copy winning train.py back, commit"). Candidates are committed
-only when kept. This turns greedy hill-climbing into a more grid-like search.
-
-:class:`MultiChainLauncher` is the deleted upstream ``spawn.sh``: N independent
-chains, one branch ``autoresearch/<tag>-w<i>`` and working area each, no sharing.
-"""
+"""Parallel variants: several experiments in flight on one branch, and independent chains."""
 from __future__ import annotations
 
 import hashlib
@@ -25,7 +13,7 @@ from .loop import AutoresearchLoop
 
 
 class ParallelAutoresearchLoop(AutoresearchLoop):
-    """``workers`` experiments in flight; see module docstring."""
+    """Up to ``workers`` experiments in flight, each judged against the incumbent when it completes."""
 
     def __init__(self, *args, pool: Optional[Executor] = None, **kw) -> None:
         super().__init__(*args, **kw)
@@ -36,13 +24,11 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         self.pool = pool
         self.inflight: dict[str, tuple] = {}
         self.completion_order: list[int] = []
-        self._deferred: list[tuple] = []           # shadow audits postponed while runs were in flight
+        self._deferred: list[tuple] = []           # shadow audits postponed while runs are in flight
         self.n_deferred_audits = 0
 
     def _audit_competes(self) -> bool:
-        """A shadow audit of a script task re-trains the incumbent. Under a wall-clock
-        (or ceiling) budget that training would share the CPU with the in-flight runs and
-        shorten their effective budget (validation AUDIT #23), so it waits."""
+        """A shadow audit re-trains the incumbent; under a wall-clock budget it would steal CPU from in-flight runs."""
         return (self.monitor is not None and bool(self.inflight)
                 and getattr(self.task.budget, "kind", "") in ("wallclock", "ceiling"))
 
@@ -54,7 +40,6 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         super()._kept(round, name, art, score)
 
     def _flush_audits(self) -> None:
-        """Run the postponed audits (only called when nothing is in flight)."""
         while self._deferred and not self.inflight:
             super()._kept(*self._deferred.pop(0))
 
@@ -102,14 +87,10 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         stop = None
         while True:
             if stop is None:
-                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
-                if stop is None and self._agent_failed():
-                    stop = "agent_failed"
+                stop = self._stop_check()
             while stop is None and len(self.inflight) < max(1, self.cfg.workers):
                 self._submit_one()
-                stop = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
-                if stop is None and self._agent_failed():
-                    stop = "agent_failed"
+                stop = self._stop_check()
             if not self.inflight and stop is not None:
                 break
             if self._collect() == 0:
@@ -120,22 +101,17 @@ class ParallelAutoresearchLoop(AutoresearchLoop):
         self.stop_reason = stop
         self.pool.shutdown()
         res = self.finish()
-        res.meta["parallel"] = {"workers": self.cfg.workers, "executor": type(self.pool).__name__,
-                                "completion_order": self.completion_order,
-                                "deferred_audits": self.n_deferred_audits}
+        par = res.meta["parallel"] = {"workers": self.cfg.workers, "executor": type(self.pool).__name__,
+                                      "completion_order": self.completion_order,
+                                      "deferred_audits": self.n_deferred_audits}
         if isinstance(self.pool, FakeSlurmExecutor):
-            res.meta["parallel"]["slurm_states"] = sorted({j.state for j in self.pool.jobs.values()})
-            res.meta["parallel"]["slurm_warnings"] = list(self.pool.warnings)
+            par["slurm_states"] = sorted({j.state for j in self.pool.jobs.values()})
+            par["slurm_warnings"] = list(self.pool.warnings)
         return res
 
 
 class MultiChainLauncher:
-    """N independent greedy chains (upstream ``spawn.sh launch <tag> claude:0 claude:1 ...``).
-
-    ``make_loop(i, out_dir) -> AutoresearchLoop`` builds worker ``i``'s loop (its own
-    agent, keep rule and branch ``autoresearch/<tag>-w<i>``); chains run concurrently
-    and never share state. Returns one ImprovementResult per chain.
-    """
+    """N independent chains (upstream ``spawn.sh``); ``make_loop(i, out_dir)`` builds chain ``i``."""
 
     def __init__(self, make_loop: Callable[[int, Path], AutoresearchLoop], n: int, out_dir: str | Path,
                  tag: str = "run", concurrent: bool = True) -> None:

@@ -1,23 +1,4 @@
-"""Per-instance Pareto frontier and the Pareto candidate-selection rule.
-
-Faithful ports of ``gepa/gepa_utils.py`` (``is_dominated``,
-``remove_dominated_programs``, ``find_dominator_programs``,
-``select_program_candidate_from_pareto_front``) and of the frontier bookkeeping in
-``gepa/core/state.py`` (``frontier_type`` = instance | objective | hybrid | cartesian).
-
-The domination rule is GEPA's *set-cover* rule: a program ``y`` is dominated when
-every frontier key it wins is also won by some other surviving program; programs are
-examined in ascending order of aggregate score, so a low-aggregate generalist can be
-pruned in favour of higher-aggregate specialists (spec 3, [run:pareto-probe]).
-
-Only iteration order differs from the reference: members of a front are visited in
-sorted order (Python set order of ints is not part of any contract), which makes
-sampling reproducible across Python builds.
-
-The module is generic: any loop with a pool of candidates scored per instance can use
-:class:`FrontierTracker` + :func:`select_from_pareto_front` as a diversity-preserving
-parent selector.
-"""
+"""Per-instance Pareto frontier and set-cover pruning (ports of ``gepa/gepa_utils.py``, fronts visited sorted)."""
 from __future__ import annotations
 
 import random
@@ -27,40 +8,34 @@ FRONTIER_TYPES = ("instance", "objective", "hybrid", "cartesian")
 
 
 def is_dominated(y: int, programs: set[int], front_map: Mapping[Hashable, set[int]]) -> bool:
-    for front in front_map.values():
-        if y not in front:
-            continue
-        if not any(other in programs for other in sorted(front)):
-            return False
-    return True
+    """True when every front ``y`` wins is also won by some program in ``programs``."""
+    return all(any(p in programs for p in front) for front in front_map.values() if y in front)
+
+
+def _frequencies(front_map: Mapping[Hashable, set[int]], fronts: Mapping[Hashable, set[int]]) -> dict[int, int]:
+    freq: dict[int, int] = {}
+    for key in front_map:
+        for p in sorted(fronts[key]):
+            freq[p] = freq.get(p, 0) + 1
+    return freq
 
 
 def remove_dominated_programs(front_map: Mapping[Hashable, set[int]],
                               scores: Optional[Mapping[int, float] | Sequence[float]] = None) -> dict:
-    """Prune dominated programs from every front (reference semantics)."""
-    freq: dict[int, int] = {}
-    for key in front_map:
-        for p in sorted(front_map[key]):
-            freq[p] = freq.get(p, 0) + 1
-    programs = list(freq)
-    if scores is None:
-        score_of = {p: 1.0 for p in programs}
-    else:
-        score_of = {p: float(scores[p]) for p in programs}
-    programs = sorted(programs, key=lambda x: score_of[x])
+    """Prune dominated programs from every front, lowest aggregate score first."""
+    programs = list(_frequencies(front_map, front_map))
+    score_of = {p: 1.0 if scores is None else float(scores[p]) for p in programs}
+    programs.sort(key=lambda x: score_of[x])
     dominated: set[int] = set()
     found = True
     while found:
         found = False
         for y in programs:
-            if y in dominated:
-                continue
-            if is_dominated(y, set(programs) - {y} - dominated, front_map):
+            if y not in dominated and is_dominated(y, set(programs) - {y} - dominated, front_map):
                 dominated.add(y)
                 found = True
                 break
-    dominators = [p for p in programs if p not in dominated]
-    out = {k: {p for p in front if p in dominators} for k, front in front_map.items()}
+    out = {k: {p for p in front if p not in dominated} for k, front in front_map.items()}
     for k, front in front_map.items():
         if front:
             assert out[k], "pruning emptied a non-empty front"
@@ -69,36 +44,22 @@ def remove_dominated_programs(front_map: Mapping[Hashable, set[int]],
 
 def find_dominator_programs(front_map: Mapping[Hashable, set[int]], scores) -> list[int]:
     """Programs that survive pruning (merge candidates), sorted."""
-    pruned = remove_dominated_programs(front_map, scores)
-    return sorted({p for front in pruned.values() for p in front})
+    return sorted({p for front in remove_dominated_programs(front_map, scores).values() for p in front})
 
 
 def pareto_frequencies(front_map: Mapping[Hashable, set[int]], scores) -> dict[int, int]:
-    pruned = remove_dominated_programs(front_map, scores)
-    freq: dict[int, int] = {}
-    for key in front_map:
-        for p in sorted(pruned[key]):
-            freq[p] = freq.get(p, 0) + 1
-    return freq
+    return _frequencies(front_map, remove_dominated_programs(front_map, scores))
 
 
 def select_from_pareto_front(front_map: Mapping[Hashable, set[int]], scores, rng: random.Random) -> int:
     """GEPA Algorithm 2: prune, then sample proportionally to frontier frequency."""
-    freq = pareto_frequencies(front_map, scores)
-    sampling = [p for p, f in freq.items() for _ in range(f)]
+    sampling = [p for p, f in pareto_frequencies(front_map, scores).items() for _ in range(f)]
     assert sampling, "empty Pareto front"
     return rng.choice(sampling)
 
 
 class FrontierTracker:
-    """Best score and winning programs per frontier key.
-
-    Keys: ``instance`` -> one per validation id; ``objective`` -> one per objective
-    (candidate's mean over validation); ``hybrid`` -> both; ``cartesian`` -> one per
-    (validation id, objective). ``>`` replaces the winners, ``==`` joins them. Without
-    objective scores ``hybrid`` and ``cartesian`` fall back to instance keys (the
-    ``optimize_anything`` behaviour); ``objective`` raises ``ValueError``.
-    """
+    """Best score and winners per frontier key; without objective scores hybrid/cartesian use instance keys."""
 
     def __init__(self, frontier_type: str = "instance") -> None:
         if frontier_type not in FRONTIER_TYPES:
@@ -107,23 +68,18 @@ class FrontierTracker:
         self.best: dict[str, float] = {}
         self.progs: dict[str, set[int]] = {}
 
-    def _keys(self, val_scores: Mapping[str, float], obj_scores: Optional[Mapping[str, Mapping[str, float]]]):
-        out: list[tuple[str, float]] = []
+    def _keys(self, val_scores: Mapping[str, float],
+              obj_scores: Optional[Mapping[str, Mapping[str, float]]]) -> list[tuple[str, float]]:
         ft = self.frontier_type
-        if ft in ("instance", "hybrid"):
+        out = []
+        if ft in ("instance", "hybrid") or (ft == "cartesian" and not obj_scores):
             out += [(f"i:{vid}", float(s)) for vid, s in val_scores.items()]
         if ft in ("objective", "hybrid") and obj_scores:
-            names = sorted({n for d in obj_scores.values() for n in d})
-            for n in names:
+            for n in sorted({n for d in obj_scores.values() for n in d}):
                 vals = [d[n] for d in obj_scores.values() if n in d]
-                if vals:
-                    out.append((f"o:{n}", float(sum(vals) / len(vals))))
+                out.append((f"o:{n}", float(sum(vals) / len(vals))))
         if ft == "cartesian" and obj_scores:
-            for vid, d in obj_scores.items():
-                for n, v in d.items():
-                    out.append((f"c:{vid}|{n}", float(v)))
-        if ft == "cartesian" and not obj_scores:
-            out += [(f"i:{vid}", float(s)) for vid, s in val_scores.items()]
+            out += [(f"c:{vid}|{n}", float(v)) for vid, d in obj_scores.items() for n, v in d.items()]
         return out
 
     def update(self, idx: int, val_scores: Mapping[str, float],

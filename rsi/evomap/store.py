@@ -1,22 +1,4 @@
-"""LocalStore: an agent's asset store (spec §5.10, §3.8, §9.1).
-
-Layout under ``root`` (all optional - ``root=None`` keeps everything in memory
-for population simulations)::
-
-    genes.json                {version, genes[]}           (rewritten on upsert)
-    capsules.jsonl            append-only upserts (last line per id wins)
-    events.jsonl              append-only EvolutionEvents + ValidationReports, parent chain
-    memory_graph.jsonl        MemoryGraphEvents
-    external_candidates.jsonl QUARANTINE zone (fetched / ingested assets, never executed directly)
-    failed_capsules.json      failed attempts with non-empty diffs
-    distiller_log.jsonl       distillation audit log
-
-Integrity: every gene / capsule / event carries a content ``asset_id``;
-:meth:`LocalStore.audit` recomputes all ids and checks the event parent chain
-(no gaps, no forks, every capsule's gene known). :meth:`export_archive` writes a
-``.gepx``-like tar.gz with ``manifest.json`` and ``checksum.sha256``;
-:meth:`import_archive` verifies both before loading.
-"""
+"""LocalStore: an agent's content-addressed asset store with quarantine zone, audit and archive export (spec §5.10)."""
 from __future__ import annotations
 
 import copy
@@ -45,7 +27,18 @@ class AuditReport:
         return {"ok": self.ok, "problems": self.problems, "n_checked": self.n_checked}
 
 
+def _jsonl(rows, **kw) -> bytes:
+    return "".join(json.dumps(r, sort_keys=True, **kw) + "\n" for r in rows).encode()
+
+
+def _lines(text: str | bytes):
+    text = text.decode() if isinstance(text, bytes) else text
+    return (json.loads(ln) for ln in text.splitlines() if ln.strip())
+
+
 class LocalStore:
+    """Asset store under ``root`` (``None`` = in memory): genes.json, *.jsonl logs, failed_capsules.json, state.json."""
+
     def __init__(self, root: Optional[str | Path] = None, *, node_id: str = "node_local",
                  clock: Optional[Clock] = None) -> None:
         self.root = Path(root) if root else None
@@ -65,12 +58,10 @@ class LocalStore:
             self.root.mkdir(parents=True, exist_ok=True)
             self._load()
 
-    # ------------------------------------------------------------------ ids
     def new_id(self, prefix: str) -> str:
         self._counter += 1
         return f"{prefix}_{self.node_id}_{self._counter:06d}"
 
-    # ------------------------------------------------------------------ persistence
     def _append(self, name: str, obj: dict) -> None:
         if self.root:
             with (self.root / name).open("a") as f:
@@ -89,16 +80,13 @@ class LocalStore:
         for name, handler in (("capsules.jsonl", self._load_capsule), ("events.jsonl", self._load_event),
                               ("external_candidates.jsonl", self.external.append),
                               ("distiller_log.jsonl", self.distiller_log.append)):
-            p = r / name
-            if p.exists():
-                for line in p.read_text().splitlines():
-                    if line.strip():
-                        handler(json.loads(line))
+            if (r / name).exists():
+                for d in _lines((r / name).read_text()):
+                    handler(d)
         if (r / "failed_capsules.json").exists():
             self.failed_capsules = json.loads((r / "failed_capsules.json").read_text())
-        state = r / "state.json"
-        if state.exists():
-            s = json.loads(state.read_text())
+        if (r / "state.json").exists():
+            s = json.loads((r / "state.json").read_text())
             self._counter, self.solidify_count = s.get("counter", 0), s.get("solidify_count", 0)
 
     def _load_capsule(self, d: dict) -> None:
@@ -116,7 +104,6 @@ class LocalStore:
             (self.root / "state.json").write_text(json.dumps({"counter": self._counter,
                                                               "solidify_count": self.solidify_count}))
 
-    # ------------------------------------------------------------------ genes / capsules
     def has_gene(self, gid: str) -> bool:
         return gid in self.genes
 
@@ -125,10 +112,6 @@ class LocalStore:
         self.genes[g.id] = g
         self._write_genes()
         return g
-
-    def remove_gene(self, gid: str) -> None:
-        self.genes.pop(gid, None)
-        self._write_genes()
 
     def upsert_capsule(self, c: Capsule) -> Capsule:
         c.stamp()
@@ -148,13 +131,11 @@ class LocalStore:
     def gene_library_version(self) -> str:
         return "glib_" + sha256_text(self.genes_json())[:16]
 
-    # ------------------------------------------------------------------ events
     def last_event_id(self) -> Optional[str]:
         return self.events[-1].id if self.events else None
 
     def append_event(self, e: EvolutionEvent) -> EvolutionEvent:
-        """Append with the ``parent`` id chain (GEP) plus a hash chain: ``meta.parent_asset_id`` pins the
-        parent's content, so re-stamping a modified earlier event breaks its successor."""
+        """Append with the GEP ``parent`` chain; ``meta.parent_asset_id`` also pins the parent's content."""
         if e.parent is None and self.events:
             e.parent = self.events[-1].id
         if self.events:
@@ -175,8 +156,7 @@ class LocalStore:
         return self.events[-n:]
 
     def success_streak(self, capsule_id: str) -> int:
-        """Consecutive trailing successes among the events that reference ``capsule_id``
-        (failed events carry no capsule id, so they do not break the streak)."""
+        """Trailing successes among events referencing ``capsule_id`` (failed events carry no capsule id)."""
         n = 0
         for e in reversed(self.events):
             if e.capsule_id != capsule_id:
@@ -194,10 +174,8 @@ class LocalStore:
             cur = by[cur].parent
         return list(reversed(out))
 
-    # ------------------------------------------------------------------ quarantine (external candidates)
     def stage_external(self, asset: dict, source: str, *, hub_report_id: Optional[str] = None) -> dict:
-        """Stage a fetched/ingested asset. Rejects an asset_id mismatch; lowers Capsule
-        confidence by 0.6; records provenance and a memory-graph event. Never executes it."""
+        """Stage a fetched asset (never executed): verify its id, scale Capsule confidence, record provenance."""
         if "asset_id" in asset and not verify_asset_id(asset):
             raise ValueError("asset_id integrity check failed")
         staged = copy.deepcopy(asset)
@@ -221,8 +199,7 @@ class LocalStore:
                 self._append("external_candidates.jsonl", {**rec, "_update": True})
 
     def promote_external(self, original_asset_id: str, *, validated: bool) -> Optional[Gene]:
-        """a2a_promote: refuses without local validation; a Gene never overwrites a local
-        gene with the same id; stamps provenance and re-computes asset_id."""
+        """a2a_promote: requires local validation; never overwrites a local gene id; records provenance."""
         if not validated:
             raise PermissionError("Refusing to promote without --validated (local verification must be done first)")
         for rec in reversed(self.external):
@@ -239,8 +216,8 @@ class LocalStore:
                 return g
         return None
 
-    # ------------------------------------------------------------------ audit
     def audit(self) -> AuditReport:
+        """Recompute every asset id and check the event chain (no gaps, forks or edited parents)."""
         problems: list[str] = []
         n = 0
         for g in self.genes.values():
@@ -271,23 +248,17 @@ class LocalStore:
             if not vr.verify():
                 problems.append(f"validation report {vr.id}: asset_id mismatch")
         caps_in_events = {e.capsule_id for e in self.events if e.capsule_id}
-        for c in self.capsules.values():
-            if c.id not in caps_in_events:
-                problems.append(f"capsule {c.id}: no event references it")
+        problems += [f"capsule {c.id}: no event references it" for c in self.capsules.values()
+                     if c.id not in caps_in_events]
         return AuditReport(not problems, problems, n)
 
-    # ------------------------------------------------------------------ archive
     def _archive_members(self) -> dict[str, bytes]:
         mem: dict[str, bytes] = {
             "genes/genes.json": self.genes_json().encode(),
-            "capsules/capsules.jsonl": "".join(json.dumps(c.to_dict(), sort_keys=True) + "\n"
-                                               for c in self.capsules.values()).encode(),
-            "events/events.jsonl": "".join(json.dumps(e.to_dict(), sort_keys=True) + "\n"
-                                           for e in [*self.events]).encode(),
-            "events/validation_reports.jsonl": "".join(json.dumps(v.to_dict(), sort_keys=True) + "\n"
-                                                       for v in self.reports).encode(),
-            "memory/memory_graph.jsonl": "".join(json.dumps(m, sort_keys=True, default=str) + "\n"
-                                                 for m in self.memory.events).encode(),
+            "capsules/capsules.jsonl": _jsonl(c.to_dict() for c in self.capsules.values()),
+            "events/events.jsonl": _jsonl(e.to_dict() for e in self.events),
+            "events/validation_reports.jsonl": _jsonl(v.to_dict() for v in self.reports),
+            "memory/memory_graph.jsonl": _jsonl(self.memory.events, default=str),
         }
         n_ev = len(self.events)
         succ = sum(1 for e in self.events if e.outcome.get("status") == "success")
@@ -305,6 +276,7 @@ class LocalStore:
         return mem
 
     def export_archive(self, path: str | Path) -> Path:
+        """Write a ``.gepx``-like tar.gz with ``manifest.json`` and ``checksum.sha256``."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with tarfile.open(path, "w:gz") as tar:
@@ -316,37 +288,28 @@ class LocalStore:
         return path
 
     @classmethod
-    def import_archive(cls, path: str | Path, root: Optional[str | Path] = None, *, verify: bool = True) -> "LocalStore":
+    def import_archive(cls, path: str | Path, root: Optional[str | Path] = None, *,
+                       verify: bool = True) -> "LocalStore":
         with tarfile.open(path, "r:gz") as tar:
             mem = {m.name: tar.extractfile(m).read() for m in tar.getmembers() if m.isfile()}
         if verify:
-            lines = mem.get("checksum.sha256", b"").decode().splitlines()
             listed = {}
-            for ln in lines:
+            for ln in mem.get("checksum.sha256", b"").decode().splitlines():
                 h, _, name = ln.partition("  ")
                 listed[name] = h
             for name, data in mem.items():
-                if name == "checksum.sha256":
-                    continue
-                if listed.get(name) != hashlib.sha256(data).hexdigest():
+                if name != "checksum.sha256" and listed.get(name) != hashlib.sha256(data).hexdigest():
                     raise ValueError(f"archive checksum mismatch: {name}")
         manifest = json.loads(mem["manifest.json"])
         st = cls(root, node_id=manifest.get("agent_id", "imported"))
         for d in json.loads(mem["genes/genes.json"]).get("genes", []):
             g = Gene.from_dict(d)
             st.genes[g.id] = g
-        for line in mem["capsules/capsules.jsonl"].decode().splitlines():
-            if line.strip():
-                st._load_capsule(json.loads(line))
-        for line in mem["events/events.jsonl"].decode().splitlines():
-            if line.strip():
-                st.events.append(EvolutionEvent.from_dict(json.loads(line)))
-        for line in mem.get("events/validation_reports.jsonl", b"").decode().splitlines():
-            if line.strip():
-                st.reports.append(ValidationReport.from_dict(json.loads(line)))
-        for line in mem.get("memory/memory_graph.jsonl", b"").decode().splitlines():
-            if line.strip():
-                st.memory.events.append(json.loads(line))
+        for d in _lines(mem["capsules/capsules.jsonl"]):
+            st._load_capsule(d)
+        st.events += [EvolutionEvent.from_dict(d) for d in _lines(mem["events/events.jsonl"])]
+        st.reports += [ValidationReport.from_dict(d) for d in _lines(mem.get("events/validation_reports.jsonl", b""))]
+        st.memory.events += list(_lines(mem.get("memory/memory_graph.jsonl", b"")))
         if verify:
             rep = st.audit()
             if not rep.ok:

@@ -1,17 +1,11 @@
-"""Shared plumbing for the Meta-Harness (M1-M5) and SoL-Pi (S1-S7) experiments.
-
-* ``parse_args``: ``--llm sim|claude:<model>``, ``--seeds N``, ``--quick``, ``--workers``, ``--out``;
-* ``proposer_llm`` / ``live_llm``: cached headless ``claude -p`` (cache under ``.rsi_cache/metaharness-solpi``);
-* ``pool_map``: independent (seed, arm) jobs in forked worker processes (serial for live LLMs);
-* ``summarize`` / ``paired`` / ``save`` / ``fmt``: mean + 95% bootstrap CI via ``rsi.core.stats``;
-  JSON outputs under ``results/metaharness-solpi``.
-"""
+"""Shared plumbing for the Meta-Harness (M*) and SoL-Pi (S*) experiments: CLI, cached live LLM, pool, stats, I/O."""
 from __future__ import annotations
 
 import argparse
 import json
 import math
 import os
+import shutil
 import sys
 import time
 from multiprocessing import get_context
@@ -32,7 +26,7 @@ CACHE = ROOT / ".rsi_cache" / SLUG
 RUNS = Path(os.environ.get("RSI_RUNS", "/tmp")) / f"rsi_{SLUG}_runs"
 
 
-def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = None):
+def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--llm", default="sim", help="sim (offline mocks) | claude:<model> (live, cached)")
     ap.add_argument("--seeds", type=int, default=None, help=f"number of seeds (default {default_seeds}; quick: 3)")
@@ -52,15 +46,14 @@ def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = N
 
 
 def fresh_dir(*parts: str) -> Path:
-    """A clean run directory under RUNS (experiments never resume a finalised store)."""
-    import shutil
+    """An empty run directory under RUNS (experiments never resume a finalised store)."""
     d = RUNS.joinpath(*parts)
     shutil.rmtree(d, ignore_errors=True)
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
-def live_llm(spec: str, timeout_s: float = 300.0):
+def live_llm(spec: str, timeout_s: float = 300.0) -> CachedLLM:
     kind, _, model = spec.partition(":")
     if kind != "claude":
         raise SystemExit(f"unsupported --llm {spec!r} (use sim or claude:<model>)")
@@ -71,26 +64,29 @@ def live_llm(spec: str, timeout_s: float = 300.0):
 def pool_map(fn: Callable, jobs: Sequence, workers: int = 3) -> list:
     if workers <= 1 or len(jobs) <= 1:
         return [fn(j) for j in jobs]
-    ctx = get_context("fork")
-    with ctx.Pool(min(workers, len(jobs))) as p:
+    with get_context("fork").Pool(min(workers, len(jobs))) as p:
         return p.map(fn, jobs, chunksize=1)
 
 
-def clean(xs) -> list[float]:
-    return [float(x) for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))]
-
-
 def summarize(xs) -> dict:
-    v = clean(xs)
+    """Mean + 95% bootstrap CI over the values that are neither None nor NaN."""
+    v = [float(x) for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))]
     return summarize_runs(v) if v else {"mean": float("nan"), "lo": float("nan"), "hi": float("nan"), "n": 0}
 
 
 def paired(a, b) -> dict:
-    """Paired difference b - a over seeds (mean + 95% bootstrap CI)."""
+    """Paired difference b - a over the seeds where both are present."""
     pairs = [(x, y) for x, y in zip(a, b) if x is not None and y is not None]
     if not pairs:
         return {}
-    return paired_diff_ci([p[0] for p in pairs], [p[1] for p in pairs])
+    return paired_diff_ci([x for x, _ in pairs], [y for _, y in pairs])
+
+
+def candidate_rows(store, keys: tuple[str, ...]) -> list[dict]:
+    """One row per stored candidate: its name, the given meta keys, search score and context cost."""
+    return [{"name": n, **{k: store.meta(n).get(k) for k in keys},
+             "search": (store.scores(n) or {}).get("score"), "context": (store.scores(n) or {}).get("context_cost")}
+            for n in store.names()]
 
 
 def fmt(s: dict, p: int = 3) -> str:
@@ -117,8 +113,7 @@ def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
 
 
 def figure_path(name: str, args) -> Path:
-    """Where a figure goes: next to ``--out`` if given, else ``results/<slug>/<name>[_live].png`` (a live
-    showcase never overwrites the offline figure)."""
+    """Next to ``--out`` if given, else ``results/<slug>/<name>[_live].png`` (live never overwrites offline)."""
     if getattr(args, "out", None):
         return Path(args.out).with_suffix(".png")
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -133,6 +128,9 @@ def plt():
 
 
 def table(rows: list[list], header: list[str]) -> str:
-    w = [max(len(str(r[i])) for r in rows + [header]) for i in range(len(header))]
-    line = lambda r: "  ".join(str(c).ljust(w[i]) for i, c in enumerate(r))
-    return "\n".join([line(header), line(["-" * x for x in w])] + [line(r) for r in rows])
+    widths = [max(len(str(r[i])) for r in rows + [header]) for i in range(len(header))]
+
+    def line(r: list) -> str:
+        return "  ".join(str(c).ljust(widths[i]) for i, c in enumerate(r))
+
+    return "\n".join([line(header), line(["-" * w for w in widths])] + [line(r) for r in rows])

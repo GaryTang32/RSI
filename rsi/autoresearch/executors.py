@@ -1,24 +1,8 @@
-"""Executors: where experiment runs happen (SLURM / SkyPilot / multi-GPU ports).
-
-All executors share one small interface (``submit / status / wait / cancel /
-fetch_log``) plus a synchronous ``run`` used by the sequential loop.
-
-* :class:`SerialExecutor` - runs in the caller's thread (the default loop).
-* :class:`LocalProcessExecutor` - a pool of ``workers`` concurrent runs; each run
-  already gets its own working directory (no shared-root race).
-* :class:`FakeSlurmExecutor` - mimics the SLURM forks: jobs are submitted with
-  an sbatch script rendered from a template (optionally with pyxis-style
-  ``--container-image`` lines), wait ``PENDING`` for a free node (plus an optional
-  queue delay), run ``RUNNING`` under a job time limit, and end ``COMPLETED``,
-  ``FAILED``, ``TIMEOUT``, ``OUT_OF_MEMORY`` or ``CANCELLED``. ``squeue`` returns an
-  empty string once a job left the queue; ``sacct`` gives the final state; logs
-  land in ``ret-<jobid>.out/.err``. :meth:`FakeSlurmExecutor.wait` follows the
-  kcxain fork's rules: poll every ``poll_s``, report (not cancel) long PENDING,
-  cancel and treat as crash when RUNNING exceeds ``running_limit_s``.
-"""
+"""Executors for experiment runs: a local process pool and a fake SLURM cluster."""
 from __future__ import annotations
 
 import itertools
+import tempfile
 import threading
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -63,8 +47,7 @@ class Executor:
 
     def run(self, task, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path=None,
             val_epoch: int = 0) -> RunOutcome:
-        jid = self.submit(task, artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch)
-        return self.wait(jid)
+        return self.wait(self.submit(task, artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch))
 
     def submit(self, task, artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0, meta=None) -> str:
         raise NotImplementedError
@@ -78,9 +61,6 @@ class Executor:
     def cancel(self, job_id: str) -> None:
         pass
 
-    def fetch_log(self, job_id: str) -> str:
-        return ""
-
     def done(self) -> list[str]:
         return []
 
@@ -88,36 +68,8 @@ class Executor:
         pass
 
 
-class SerialExecutor(Executor):
-    name = "serial"
-
-    def __init__(self) -> None:
-        self.jobs: dict[str, Job] = {}
-        self._ids = itertools.count(1)
-
-    def submit(self, task, artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0, meta=None) -> str:
-        jid = str(next(self._ids))
-        job = Job(jid, artifact, seed, mode, dict(meta or {}), state="RUNNING", started=time.time())
-        job.outcome = task.run(artifact, seed=seed, mode=mode, log_path=log_path, val_epoch=val_epoch)
-        job.state, job.finished, job.log = state_of(job.outcome), time.time(), job.outcome.log
-        self.jobs[jid] = job
-        return jid
-
-    def status(self, job_id):
-        return self.jobs[job_id].state
-
-    def wait(self, job_id, timeout=None, poll_s=0.05):
-        return self.jobs[job_id].outcome
-
-    def fetch_log(self, job_id):
-        return self.jobs[job_id].log
-
-    def done(self):
-        return [j for j, job in self.jobs.items() if job.state in TERMINAL]
-
-
 class LocalProcessExecutor(Executor):
-    """``workers`` concurrent runs (threads driving subprocess/in-process runs)."""
+    """``workers`` concurrent runs on a thread pool."""
 
     name = "local"
 
@@ -156,9 +108,6 @@ class LocalProcessExecutor(Executor):
         if f is not None and f.cancel():
             self.jobs[job_id].state = "CANCELLED"
 
-    def fetch_log(self, job_id):
-        return self.jobs[job_id].log
-
     def done(self):
         return [j for j, f in self.futures.items() if f.done()]
 
@@ -179,7 +128,7 @@ cd {workdir} && {run_cmd}
 
 
 class FakeSlurmExecutor(Executor):
-    """A local stand-in for a SLURM cluster (see module docstring)."""
+    """Local SLURM stand-in: sbatch scripts, a node queue, SLURM job states and ``ret-<id>.out/.err`` logs."""
 
     name = "fake-slurm"
 
@@ -187,8 +136,6 @@ class FakeSlurmExecutor(Executor):
                  time_limit_s: Optional[float] = None, partition: str = "cpu", gres: str = "gpu:1",
                  container_image: Optional[str] = None, container_mounts: Optional[str] = None,
                  poll_s: float = 0.05, pending_limit_s: float = 600.0, running_limit_s: Optional[float] = None) -> None:
-        import tempfile
-
         self.nodes = nodes
         self.spool = Path(spool_dir or tempfile.mkdtemp(prefix="rsi_fakeslurm_"))
         self.spool.mkdir(parents=True, exist_ok=True)
@@ -211,7 +158,6 @@ class FakeSlurmExecutor(Executor):
         self._dispatcher = threading.Thread(target=self._dispatch, daemon=True)
         self._dispatcher.start()
 
-    # ---- the "cluster"
     def render_sbatch(self, job_id: str, task, tag: str) -> str:
         lines = ""
         if self.container_image:
@@ -232,12 +178,9 @@ class FakeSlurmExecutor(Executor):
 
     def _dispatch(self) -> None:
         while not self._stop:
-            pending = None
             with self._lock:
-                for jid, job in self.jobs.items():
-                    if job.state == "PENDING" and time.time() - job.submitted >= self.queue_delay_s:
-                        pending = jid
-                        break
+                pending = next((jid for jid, job in self.jobs.items()
+                                if job.state == "PENDING" and time.time() - job.submitted >= self.queue_delay_s), None)
             if pending is None or not self._free.acquire(timeout=self.poll_s):
                 time.sleep(self.poll_s / 2)
                 continue
@@ -266,10 +209,8 @@ class FakeSlurmExecutor(Executor):
             self._event(jid, state_of(out))
         self._free.release()
 
-    # ---- the CLI
     def sbatch(self, script: str, task, artifact: Artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0,
                meta=None, job_id: Optional[str] = None) -> str:
-        """``sbatch --parsable script`` -> job id."""
         with self._lock:
             jid = job_id or str(next(self._ids))
             self.jobs[jid] = Job(jid, artifact, seed, mode, dict(meta or {}))
@@ -280,7 +221,7 @@ class FakeSlurmExecutor(Executor):
         return jid
 
     def squeue(self, job_id: str) -> str:
-        """``squeue -j <id> -h -o %T``: PENDING / RUNNING, or '' once the job left the queue."""
+        """PENDING / RUNNING, or '' once the job left the queue."""
         st = self.jobs[job_id].state
         return st if st in ("PENDING", "RUNNING") else ""
 
@@ -288,11 +229,9 @@ class FakeSlurmExecutor(Executor):
         return self.jobs[job_id].state
 
     def scancel(self, job_id: str) -> None:
-        job = self.jobs[job_id]
-        if job.state in ("PENDING", "RUNNING"):
+        if self.jobs[job_id].state in ("PENDING", "RUNNING"):
             self._event(job_id, "CANCELLED")
 
-    # ---- Executor interface
     def submit(self, task, artifact, *, seed=0, mode="hardened", log_path=None, val_epoch=0, meta=None) -> str:
         with self._lock:
             jid = str(next(self._ids))
@@ -328,7 +267,7 @@ class FakeSlurmExecutor(Executor):
         out = self.jobs[job_id].outcome
         if state == "CANCELLED":
             return RunOutcome(None, log=out.log if out else "", crash_reason="CANCELLED")
-        while out is None:            # terminal state set just before outcome stored
+        while out is None:            # the terminal state can be set just before the outcome is stored
             time.sleep(0.001)
             out = self.jobs[job_id].outcome
         if state == "TIMEOUT" and out.metric is not None:
@@ -338,10 +277,6 @@ class FakeSlurmExecutor(Executor):
 
     def cancel(self, job_id):
         self.scancel(job_id)
-
-    def fetch_log(self, job_id):
-        p = self.spool / f"ret-{job_id}.out"
-        return p.read_text() if p.exists() else ""
 
     def done(self):
         return [j for j, job in self.jobs.items() if job.state in TERMINAL and job.outcome is not None]

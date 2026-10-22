@@ -1,16 +1,7 @@
-"""Stage-B live re-run of autoresearch from scratch with the CURRENT code.
+"""Stage-B live re-run of autoresearch from scratch with the current code, a fresh out_dir and a fresh LLM cache.
 
-The Stage-A live run (validation/autoresearch/tinylm_live) predates two changes:
-the reply-debris sanitizer in LLMResearchAgent (Stage A) and the monitor-budget
-fix (Stage B). It also clipped prompts at 6,000 chars in the trace. This re-run
-starts again from the untouched tinylm seed train.py, a fresh out_dir and a
-FRESH LLM cache, with noise calibration and fresh-seed re-evals, so the trace
-holds the full prompts and every step can be re-audited.
-
-    python experiments/autoresearch/validate_rerun.py
+Usage: python experiments/autoresearch/validate_rerun.py
 """
-from __future__ import annotations
-
 import json
 import sys
 import time
@@ -27,6 +18,7 @@ from validate_autoresearch import VAL, _task, summarise_dir  # noqa: E402
 
 
 def live_b(max_usd: float = 1.3) -> dict:
+    """tinylm, 10 experiments, strict keep, noise calibration and fresh-seed re-evals; full prompts in the trace."""
     out = VAL / "tinylm_live_b"
     cache = VAL / ".cache_tinylm_live_b"
     assert not out.exists() and not cache.exists(), "a from-scratch run needs a fresh out_dir and cache"
@@ -34,7 +26,7 @@ def live_b(max_usd: float = 1.3) -> dict:
     llm = CachedLLM(ClaudeCLI("haiku", timeout_s=300), cache)
     cfg = Config(max_experiments=10, mode="hardened", keep_rule="strict", noise_runs=3, reeval_seeds=3,
                  max_usd=max_usd, tag="validate-live-b", seed=0)
-    res = run(_task(), llm_propose=llm, config=cfg, out_dir=out)
+    run(_task(), llm_propose=llm, config=cfg, out_dir=out)
     return summarise_dir("tinylm_live_b", out, {"agent": "LLMResearchAgent(RewriteEditor(claude-cli haiku)) "
                                                          "with reply sanitizer",
                                                 "cache_dir": str(cache.relative_to(ROOT)),

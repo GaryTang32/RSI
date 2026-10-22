@@ -1,19 +1,17 @@
-"""Discovery domains: locked evaluators, typed failures, mock agents, generic rsi.core Domain support."""
+"""Discovery domains: locked evaluators, typed failures, mock agents and generic ``rsi.core`` domains."""
 import json
-import random
 
-import numpy as np
 import pytest
 
-from rsi.core import Artifact, transfer_report
+from rsi.core import Artifact, Execution, FunctionDomain, Task, TaskSuite, transfer_report
 from rsi.domains.discovery import (CirclePackingDomain, LassoPathDomain, SumDiffDomain, SyntheticConfig,
                                    SyntheticDomain, gamma, solver_code)
 from rsi.domains.discovery.lasso import SEED_KNOBS
-from rsi.dream import AttemptContext, Config, DomainTask, run
+from rsi.dream import AttemptContext, Config, DomainTask, run, workspace_of
 
 
-def ctx_for(ws, direction, attempt=0, branch=0, rnd=1):
-    return AttemptContext("p", "root", ws, None, branch, attempt, rnd, direction={"direction": direction})
+def ctx_for(ws, direction: str, branch: int = 0) -> AttemptContext:
+    return AttemptContext("p", "root", ws, None, branch, 0, 1, direction={"direction": direction})
 
 
 def test_sumdiff_evaluator():
@@ -21,14 +19,11 @@ def test_sumdiff_evaluator():
     dom = SumDiffDomain(sandboxed=False)
     ev = dom.evaluate_program(dom.seed_artifact())
     assert ev.fail_class == "ok" and 0.9 < ev.score < 1.0
-    bad = Artifact({"construct.py": "def construct():\n    return [1, 1, 2]\n"})
-    assert dom.evaluate_program(bad).fail_class == "constraint"
-    bad2 = Artifact({"construct.py": "def construct():\n    return 'abc'\n"})
-    assert dom.evaluate_program(bad2).fail_class == "correctness"
-    crash = Artifact({"construct.py": "def construct():\n    raise ValueError('x')\n"})
-    assert dom.evaluate_program(crash).fail_class == "compile_other"
-    agent = dom.mock_agent()
-    child = agent.attempt(ctx_for(dom.seed_artifact(), "window"), seed=1)
+    for body, fail_class in (("return [1, 1, 2]", "constraint"), ("return 'abc'", "correctness"),
+                             ("raise ValueError('x')", "compile_other")):
+        bad = Artifact({"construct.py": f"def construct():\n    {body}\n"})
+        assert dom.evaluate_program(bad).fail_class == fail_class
+    child = dom.mock_agent().attempt(ctx_for(dom.seed_artifact(), "window"), seed=1)
     ev2 = dom.evaluate_program(child.artifact)
     assert ev2.fail_class == "ok" and ev2.score >= ev.score and "window" in child.proposal
 
@@ -43,14 +38,11 @@ def test_circle_packing_evaluator_and_agent():
     ev = dom.evaluate_program(dom.seed_artifact())
     assert ev.fail_class == "ok" and 2.3 < ev.score < 2.64 and len(ev.diagnostics["centers"]) == 26
     overlap = [[0.5, 0.5, 0.1]] * 26
-    assert dom.check(overlap).fail_class == "constraint"
     outside = [[0.05, 0.5, 0.1]] + [[0.1 + 0.03 * i, 0.9, 0.001] for i in range(25)]
-    assert dom.check(outside).fail_class == "constraint"
+    assert dom.check(overlap).fail_class == dom.check(outside).fail_class == "constraint"
     assert dom.check([[0.5, 0.5, 0.1]]).fail_class == "correctness"
-    from rsi.dream import workspace_of
-    ws = workspace_of(dom.seed_artifact(), "", ev)
-    child = dom.mock_agent().attempt(ctx_for(ws, "polish"), seed=3)
-    assert "INIT = [[" in child.artifact["pack.py"]          # resumes the parent's measured packing
+    child = dom.mock_agent().attempt(ctx_for(workspace_of(dom.seed_artifact(), "", ev), "polish"), seed=3)
+    assert "INIT = [[" in child.artifact["pack.py"]  # resumes the parent's measured packing
     ev2 = dom.evaluate_program(child.artifact)
     assert ev2.fail_class == "ok" and ev2.score >= ev.score - 1e-9
 
@@ -72,20 +64,14 @@ def test_lasso_gate_and_holdout():
 
 def test_synthetic_world_common_random_numbers_and_truth():
     dom = SyntheticDomain(SyntheticConfig(seed=3))
-    agent = dom.mock_agent()
-    root = dom.seed_artifact()
+    agent, root = dom.mock_agent(), dom.seed_artifact()
     a1 = agent.attempt(ctx_for(root, "d1", branch=2), seed=0)
-    a2 = agent.attempt(ctx_for(root, "d1", branch=2), seed=999)      # CRN: the seed argument is irrelevant
-    assert a1.artifact == a2.artifact
-    st = json.loads(a1.artifact["state.json"])
-    truth = dom.world.ground_truth(st["branch"], 4)
-    assert truth >= 0.0
-    lin = {"d1": 2}
-    assert dom.world.r_eff("d1", lin) == pytest.approx(dom.world.richness["d1"] * dom.cfg.depletion ** 2)
+    assert a1.artifact == agent.attempt(ctx_for(root, "d1", branch=2), seed=999).artifact  # CRN: seed is irrelevant
+    assert dom.world.ground_truth(json.loads(a1.artifact["state.json"])["branch"], 4) >= 0.0
+    assert dom.world.r_eff("d1", {"d1": 2}) == pytest.approx(dom.world.richness["d1"] * dom.cfg.depletion ** 2)
     res = run(dom, config=Config(rounds=1, W=3, branch_count=3, refine_count=2, dream=False, sandbox="inprocess"))
     tree = res.meta["worlds"][0]
-    gt = dom.truth_for_tree(tree)
-    assert set(gt) == set(tree.branches())
+    assert set(dom.truth_for_tree(tree)) == set(tree.branches())
 
 
 def test_context_coupling_changes_outcomes():
@@ -98,38 +84,20 @@ def test_context_coupling_changes_outcomes():
         assert q20[0] > q0[0]
 
 
-def test_dream_on_generic_rsi_core_domain_agentqa():
-    from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
-    from rsi.domains.discovery.agentqa_agent import MECHANISMS, agentqa_mock_agent
-
-    suite = make_suite(n_evolve=6, n_holdout=6, n_ood_per_family=2, seed=1)
-    dom = AgentQADomain(suite)
-    sim = SimModel(suite)
-    task = DomainTask(dom, dom.seed_artifact(), sim, directions=MECHANISMS, workers=2)
-    res = run(task, llm_task=sim, agent=agentqa_mock_agent(),
-              config=Config(rounds=2, W=2, branch_count=3, refine_count=1, M=2, sandbox="inprocess"))
+def test_dream_on_generic_rsi_core_domain_agentqa(agentqa_run):
+    res = agentqa_run(2, rounds=2, M=2)
     assert res.meta["best_score"] > res.meta["seed_score"]
     assert "harness.py" in res.best
-    usage = res.usage
-    assert usage["task"]["calls"] > 0            # the frozen task model is metered per role
+    assert res.usage["task"]["calls"] > 0  # the frozen task model is metered per role
 
 
 def test_domain_task_failure_classes():
-    from rsi.core import FunctionDomain, Task, TaskSuite
-
-    ts = TaskSuite([Task("t0", 1, 1), Task("t1", 2, 2)], {"evolve": ["t0", "t1"]})
-
-    def ex(art, task, seed, llm):
-        mode = art["mode"]
-        if mode == "crash":
+    def execute(art, task, seed, llm):
+        if art["mode"] == "crash":
             raise ValueError("boom")
-        if mode == "infra":
-            from rsi.core import Execution
-            return Execution(error="infra: backend down")
-        return task.input
+        return Execution(error="infra: backend down") if art["mode"] == "infra" else task.input
 
-    dom = FunctionDomain(ts, ex, lambda t, o: float(o == t.target))
-    task = DomainTask(dom, Artifact({"mode": "ok"}))
-    assert task.evaluate(Artifact({"mode": "ok"})).fail_class == "ok"
-    assert task.evaluate(Artifact({"mode": "crash"})).fail_class == "compile_other"
-    assert task.evaluate(Artifact({"mode": "infra"})).fail_class == "env_error"
+    suite = TaskSuite([Task("t0", 1, 1), Task("t1", 2, 2)], {"evolve": ["t0", "t1"]})
+    task = DomainTask(FunctionDomain(suite, execute, lambda t, o: float(o == t.target)), Artifact({"mode": "ok"}))
+    for mode, fail_class in (("ok", "ok"), ("crash", "compile_other"), ("infra", "env_error")):
+        assert task.evaluate(Artifact({"mode": mode})).fail_class == fail_class

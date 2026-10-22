@@ -1,26 +1,4 @@
-"""The shared injection interface and workspace adapters.
-
-EvoMap never edits the agent's harness: a gene is *injected* into the frozen
-artifact at solve time ("genes are injected under a shared injection interface").
-An :class:`Injector` maps ``(artifact, genes) -> artifact``:
-
-* :class:`FileInjector` (default) writes each rendered gene card to
-  ``genes/active/<i>.md`` (domains read that directory; ``GeneWorld`` and ``katas`` do);
-* :class:`AppendInjector` appends the cards to an existing prompt file (e.g.
-  ``prompts/system.md`` of the ``agentqa`` harness) - works for any harness
-  that already reads that file;
-* :class:`SkillInjector` writes the long Skill form instead (X1 baseline).
-
-:func:`pre_workspace` / :func:`post_workspace` give the validation workspace of a
-cycle (W0 before, W1 after). Domains may implement ``workspace(task, execution)``
-and ``pre_workspace(task)`` hooks; otherwise W0 = ``task.json`` (public input)
-and W1 = W0 + ``output.txt``.
-
-:class:`GeneRoutedDomain` evaluates a *gene library* artifact: its artifact is
-the harness plus ``genes/library.json``; for each task it extracts signals,
-selects one gene deterministically (no drift, no memory) and injects it before
-delegating to the wrapped domain (grading stays in the wrapped domain).
-"""
+"""Gene injection into a frozen harness, validation workspaces, and routed evaluation of a gene library."""
 from __future__ import annotations
 
 import json
@@ -37,11 +15,15 @@ LIBRARY_PATH = "genes/library.json"
 
 
 class Injector:
+    """Maps ``(artifact, genes) -> artifact``; EvoMap never edits the harness itself."""
+
     def inject(self, artifact: Artifact, genes: Sequence[Gene]) -> Artifact:  # pragma: no cover
         raise NotImplementedError
 
 
 class FileInjector(Injector):
+    """Writes each rendered gene card to ``<directory>/<i>.md`` (the default; domains read that directory)."""
+
     def __init__(self, directory: str = "genes/active", parts: Sequence[str] = ("keywords", "summary", "strategy",
                                                                                 "avoid")) -> None:
         self.directory = directory.rstrip("/")
@@ -50,11 +32,13 @@ class FileInjector(Injector):
     def inject(self, artifact: Artifact, genes: Sequence[Gene]) -> Artifact:
         if not genes:
             return artifact
-        upd = {f"{self.directory}/{i}.md": render_gene(g, self.parts) for i, g in enumerate(genes)}
-        return artifact.with_files(upd)
+        return artifact.with_files({f"{self.directory}/{i}.md": render_gene(g, self.parts)
+                                    for i, g in enumerate(genes)})
 
 
 class AppendInjector(Injector):
+    """Appends the cards to an existing prompt file of the harness."""
+
     def __init__(self, target: str, header: str = "\n\n# Strategy guidance\n") -> None:
         self.target = target
         self.header = header
@@ -67,6 +51,8 @@ class AppendInjector(Injector):
 
 
 class SkillInjector(Injector):
+    """Writes the long Skill form instead of the card (X1 baseline)."""
+
     def __init__(self, directory: str = "skills") -> None:
         self.directory = directory
 
@@ -77,7 +63,7 @@ class SkillInjector(Injector):
 
 
 class TextInjector(Injector):
-    """Inject arbitrary pre-rendered texts (ablations: fragments, raw logs)."""
+    """Injects fixed pre-rendered texts (ablations: fragments, raw logs)."""
 
     def __init__(self, texts: Sequence[str], directory: str = "genes/active") -> None:
         self.texts = list(texts)
@@ -87,7 +73,6 @@ class TextInjector(Injector):
         return artifact.with_files({f"{self.directory}/{i}.md": t for i, t in enumerate(self.texts)})
 
 
-# ----------------------------------------------------------------------------- workspaces
 def public_task(task: Task) -> dict:
     """What an agent may see about a task (never the target)."""
     meta = {k: v for k, v in (task.meta or {}).items() if k in ("signals", "keywords", "public", "signature",
@@ -96,6 +81,7 @@ def public_task(task: Task) -> dict:
 
 
 def pre_workspace(domain: Domain, task: Task) -> dict:
+    """Validation workspace W0: the domain's ``pre_workspace`` hook, else ``task.json``."""
     hook = getattr(domain, "pre_workspace", None)
     if callable(hook):
         return dict(hook(task))
@@ -103,6 +89,7 @@ def pre_workspace(domain: Domain, task: Task) -> dict:
 
 
 def post_workspace(domain: Domain, task: Task, execution: Execution) -> dict:
+    """Validation workspace W1: the domain's ``workspace`` hook, else W0 plus ``output.txt``."""
     hook = getattr(domain, "workspace", None)
     if callable(hook):
         return dict(hook(task, execution))
@@ -118,7 +105,6 @@ def task_text(domain: Domain, task: Task) -> str:
     return json.dumps(public_task(task), default=str)[:3000]
 
 
-# ----------------------------------------------------------------------------- routed evaluation
 def library_artifact(harness: Artifact, genes: Sequence[Gene]) -> Artifact:
     lib = json.dumps({"genes": [g.to_dict() for g in genes]}, sort_keys=True, indent=1)
     return harness.with_files({LIBRARY_PATH: lib})
@@ -132,8 +118,7 @@ def read_library(artifact: Artifact) -> list[Gene]:
 
 
 class GeneRoutedDomain(Domain):
-    """Evaluate ``harness + genes/library.json`` on any wrapped domain: per task, pick
-    the best-matching gene (scorer only) and inject it."""
+    """Evaluates ``harness + genes/library.json``: per task, inject the best-matching gene (scorer only)."""
 
     def __init__(self, base: Domain, *, injector: Optional[Injector] = None, extractor=None,
                  scorer: Optional[GeneScorer] = None, max_genes: int = 1) -> None:
@@ -152,8 +137,7 @@ class GeneRoutedDomain(Domain):
         harness = artifact.with_files({LIBRARY_PATH: None})
         if not genes:
             return harness, []
-        sig = self.extractor.extract(RunContext(task=task))
-        dec = self.selector.select(genes, [], sig, drift_enabled=False)
+        dec = self.selector.select(genes, [], self.extractor.extract(RunContext(task=task)), drift_enabled=False)
         chosen = [dec.gene] if dec.gene is not None else []
         return self.injector.inject(harness, chosen), chosen
 

@@ -1,33 +1,18 @@
-"""Retry round 2, review addendum R2-D: is the Q10 paper-regime negative a mock artefact?
+"""Retry round 2, R2-D: GEPA vs MIPRO-lite with a live haiku proposer on both sides (ifbench/gpt cell), vs the mock.
 
-The R2-A comparison GEPA vs MIPRO-lite used RuleWorld's mock proposer on both sides. The mock
-reflection LM (GEPA) writes at most ``max_new = 2`` rule lines per call, while the same mock's
-grounded proposer (MIPRO-lite) infers a rule from every shown (aspect, protocol) pair with no
-cap. R2-D replaces the mock with a real LLM (``claude -p --model haiku`` behind a fresh
-``CachedLLM``) on BOTH sides, in the cell with the largest mock negative (ifbench analogue,
-``gpt`` task model, B = 3593), on fresh seeds 300-307. The task model stays simulated, so only
-the proposer changes. The mock arms are re-run on the same seeds ($0) for the diagnostic D2.
-Preregistration: ``docs/methods/gepa/claims-audit.md`` section 6.1, "Review addendum: R2-D".
-
-    python experiments/gepa/r2_live_q10.py [--seeds 8] [--max-usd 3.5]
+Run: python experiments/gepa/r2_live_q10.py [--seeds 8] [--max-usd 3.5] [--offline]
 """
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 import time
 from multiprocessing import get_context
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _common import RESULTS, reflection_llm, save  # noqa: E402
-
-import r2_paper_regime as R  # noqa: E402
-
-from rsi.core import CachedLLM, ClaudeCLI, paired_diff_ci  # noqa: E402
-from rsi.gepa import Config, FewShotConfig, run, run_fewshot  # noqa: E402
+from _common import RESULTS, reflection_llm, save
+import r2_paper_regime as R
+from rsi.core import CachedLLM, ClaudeCLI, paired_diff_ci
+from rsi.gepa import Config, FewShotConfig, run, run_fewshot
 
 SETTING, MODEL, SEED0 = "ifbench", "gpt", 300
 CACHE = RESULTS / "r2d_live_cache"
@@ -59,9 +44,8 @@ def job(spec):
 
 
 def diff(rows, a, b):
-    """Paired (b - a) over seeds present in both."""
-    ka, kb = {r["seed"]: r["final_test"] for r in rows if (r["arm"], r["proposer"]) == a}, \
-        {r["seed"]: r["final_test"] for r in rows if (r["arm"], r["proposer"]) == b}
+    """Paired (b - a) over the seeds present in both (arm, proposer) cells."""
+    ka, kb = ({r["seed"]: r["final_test"] for r in rows if (r["arm"], r["proposer"]) == x} for x in (a, b))
     s = sorted(set(ka) & set(kb))
     return paired_diff_ci([ka[i] for i in s], [kb[i] for i in s]) if len(s) >= 2 else {"n": len(s)}
 
@@ -81,12 +65,20 @@ def analyse(rows):
         for p in ("live", "mock"):
             v = [r["final_test"] for r in rows if (r["arm"], r["proposer"]) == (arm, p)]
             A[f"mean_{arm}_{p}"] = sum(v) / len(v) if v else None
-    A["live_spend_usd"] = sum(r["cost_usd"] for r in rows if r["proposer"] == "live")
-    A["live_calls"] = sum(r["llm_calls"] for r in rows if r["proposer"] == "live")
-    d1 = A["D1_gepa_live_minus_mipro_live"]
+    live = [r for r in rows if r["proposer"] == "live"]
+    A["live_spend_usd"] = sum(r["cost_usd"] for r in live)
+    A["live_calls"] = sum(r["llm_calls"] for r in live)
     A["decision"] = ("mock negative confirmed (MIPRO-lite significantly ahead with a live proposer): Q10 stays NOT "
-                     "REPRODUCED (d)" if d1.get("hi", 1) < 0 else
+                     "REPRODUCED (d)" if A["D1_gepa_live_minus_mipro_live"].get("hi", 1) < 0 else
                      "mock negative not confirmed with a live proposer: Q10 root cause (b), PARTIAL; L10 PARTIAL")
+    return A
+
+
+def save_rows(rows: list[dict], partial: bool) -> dict:
+    A = analyse(rows)
+    save("r2_live_q10", {"experiment": "R2-D live-proposer check of the Q10 negative", "setting": SETTING,
+                         "model": MODEL, "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
+                         "partial": partial, "analysis": A, "raw": rows})
     return A
 
 
@@ -97,10 +89,8 @@ def main():
     ap.add_argument("--offline", action="store_true", help="replay the live cache only ($0)")
     a = ap.parse_args()
     seeds = list(range(SEED0, SEED0 + a.seeds))
-    rows = []
-    ctx = get_context("fork")
-    with ctx.Pool(2) as p:
-        rows += p.map(job, [(arm, "mock", s, False) for s in seeds for arm in ("gepa", "mipro")], chunksize=1)
+    with get_context("fork").Pool(2) as p:
+        rows = p.map(job, [(arm, "mock", s, False) for s in seeds for arm in ("gepa", "mipro")], chunksize=1)
         spent = 0.0
         for s in seeds:
             if spent >= a.max_usd:
@@ -112,14 +102,8 @@ def main():
             print(f"seed {s}: " + ", ".join(f"{r['arm']} {r['final_test']:.3f} ({r['llm_calls']} calls, "
                                              f"${r['cost_usd']:.3f}, {r['wall_s']}s)" for r in out)
                   + f"; spend so far ${spent:.2f}", flush=True)
-            save("r2_live_q10", {"experiment": "R2-D live-proposer check of the Q10 negative", "setting": SETTING,
-                                 "model": MODEL, "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
-                                 "partial": True, "analysis": analyse(rows), "raw": rows})
-    A = analyse(rows)
-    save("r2_live_q10", {"experiment": "R2-D live-proposer check of the Q10 negative", "setting": SETTING,
-                         "model": MODEL, "llm": "claude-cli:haiku (CachedLLM, results/gepa/r2d_live_cache)",
-                         "partial": False, "analysis": A, "raw": rows})
-    print(json.dumps({k: v for k, v in A.items()}, indent=1, default=str))
+            save_rows(rows, partial=True)
+    print(json.dumps(save_rows(rows, partial=False), indent=1, default=str))
 
 
 if __name__ == "__main__":

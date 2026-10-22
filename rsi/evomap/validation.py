@@ -1,23 +1,4 @@
-"""Validation commands: policy, runners and the vacuity detector (spec §4.9, §9.2.2-9.2.3).
-
-Evolver validates a gene by running its declared commands (``node <script>``)
-in the host repository. The Python port keeps the same safety posture:
-
-* :class:`CommandPolicy` - no shell (``shlex`` argv, metacharacters ``| & ; > <
-  ` $`` rejected), an allowlisted executable, blocked eval-style flags
-  (``python -c`` is the analogue of ``node -e``), a script argument required
-  unless the flag is info-only (``--version`` / ``--help``);
-* executors - :class:`SubprocessExecutor` (sandbox subprocess in a scratch copy
-  of the workspace, stripped env, timeout) and :class:`InProcessExecutor`
-  (simulation worlds only: world-generated scripts run in-process, cached);
-* :class:`ValidationRunner` - ``mode="faithful"`` reproduces the local runner's
-  quirks (missing scripts are *skipped*, an empty or fully skipped list is *ok*,
-  2 retries); ``mode="safe"`` has no silent skips and an **empty list fails**;
-* :class:`VacuityDetector` - static lint (empty, info-only, shell no-ops, eval
-  flags, missing scripts, print-only or constant-assert scripts by AST) plus the
-  discriminative check ``V(W1) = pass and V(W0) = fail`` with optional
-  mutation-testing kill rate.
-"""
+"""Validation: command policy, executors, the validation runner and the vacuity detector (spec §4.9, §9.2)."""
 from __future__ import annotations
 
 import ast
@@ -27,6 +8,7 @@ import io
 import json
 import re
 import shlex
+import shutil
 import sys
 import tempfile
 import threading
@@ -47,7 +29,6 @@ def workspace_digest(files: Mapping[str, str]) -> str:
     return hashlib.sha256(json.dumps(dict(sorted(files.items()))).encode()).hexdigest()
 
 
-# ----------------------------------------------------------------------------- policy
 @dataclass
 class PolicyCheck:
     ok: bool
@@ -59,6 +40,8 @@ class PolicyCheck:
 
 @dataclass
 class CommandPolicy:
+    """No shell, an allowlisted executable, no eval-style flags, and a relative script argument unless info-only."""
+
     executables: tuple = ("python", "python3")
     blocked_flags: dict = field(default_factory=lambda: {
         "python": ("-c", "-i", "-m", "-X", "-W"), "python3": ("-c", "-i", "-m", "-X", "-W"),
@@ -67,7 +50,7 @@ class CommandPolicy:
 
     @classmethod
     def faithful(cls) -> "CommandPolicy":
-        """Port of Evolver's node-only allowlist: ``python`` only."""
+        """Port of Evolver's node-only allowlist."""
         return cls(executables=("python", "python3"))
 
     @classmethod
@@ -106,7 +89,6 @@ class CommandPolicy:
         return PolicyCheck(True, "ok", argv, script)
 
 
-# ----------------------------------------------------------------------------- executors
 @dataclass
 class ExecOutcome:
     exit: int
@@ -114,51 +96,8 @@ class ExecOutcome:
     stderr: str = ""
 
 
-class SubprocessExecutor:
-    """Run an argv in a scratch copy of the workspace (``rsi.core.sandbox.run_cmd``)."""
-
-    def __init__(self, timeout_s: float = 60.0, mem_mb: int = 1024, cache: bool = True) -> None:
-        self.timeout_s, self.mem_mb, self.cache = timeout_s, mem_mb, cache
-        self._memo: dict = {}
-        self._lock = threading.Lock()
-
-    def __call__(self, argv: Sequence[str], files: Mapping[str, str]) -> ExecOutcome:
-        from rsi.core.sandbox import run_cmd
-
-        key = (tuple(argv), workspace_digest(files))
-        if self.cache:
-            with self._lock:
-                if key in self._memo:
-                    return self._memo[key]
-        d = Path(tempfile.mkdtemp(prefix="rsi_evomap_val_"))
-        for name, text in files.items():
-            p = d / name
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(text)
-        exe = list(argv)
-        if exe[0] in ("python", "python3"):
-            exe[0] = sys.executable
-        elif exe[0] == "pytest":
-            exe = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *exe[1:]]
-        rr = run_cmd(exe, cwd=d, timeout_s=self.timeout_s, mem_mb=self.mem_mb, env={"HOME": str(d), "TMPDIR": str(d)})
-        out = ExecOutcome(rr.returncode if not rr.timed_out else 124, rr.stdout[-4000:], rr.stderr[-4000:])
-        import shutil
-        shutil.rmtree(d, ignore_errors=True)
-        if self.cache:
-            with self._lock:
-                self._memo[key] = out
-        return out
-
-
-_SAFE_IMPORTS = {"math", "re", "json", "sys", "os", "string", "collections", "itertools", "functools", "datetime",
-                 "unicodedata", "decimal", "fractions", "random", "time", "typing", "dataclasses"}
-
-
-class InProcessExecutor:
-    """Simulation-only executor: runs world-generated ``python script.py`` checks
-    in-process with an importer over the workspace's ``*.py`` files (no
-    subprocess, results cached). Not an isolation boundary - never use it for
-    code written by a real model; use :class:`SubprocessExecutor` there."""
+class _MemoExecutor:
+    cache = True
 
     def __init__(self) -> None:
         self._memo: dict = {}
@@ -166,15 +105,55 @@ class InProcessExecutor:
 
     def __call__(self, argv: Sequence[str], files: Mapping[str, str]) -> ExecOutcome:
         key = (tuple(argv), workspace_digest(files))
-        with self._lock:
-            if key in self._memo:
-                return self._memo[key]
+        if self.cache:
+            with self._lock:
+                if key in self._memo:
+                    return self._memo[key]
         out = self._run(list(argv), files)
-        with self._lock:
-            self._memo[key] = out
+        if self.cache:
+            with self._lock:
+                self._memo[key] = out
         return out
 
-    def _run(self, argv, files) -> ExecOutcome:
+    def _run(self, argv: list[str], files: Mapping[str, str]) -> ExecOutcome:
+        raise NotImplementedError
+
+
+class SubprocessExecutor(_MemoExecutor):
+    """Run an argv in a scratch copy of the workspace (``rsi.core.sandbox.run_cmd``)."""
+
+    def __init__(self, timeout_s: float = 60.0, mem_mb: int = 1024, cache: bool = True) -> None:
+        super().__init__()
+        self.timeout_s, self.mem_mb, self.cache = timeout_s, mem_mb, cache
+
+    def _run(self, argv: list[str], files: Mapping[str, str]) -> ExecOutcome:
+        from rsi.core.sandbox import run_cmd
+
+        d = Path(tempfile.mkdtemp(prefix="rsi_evomap_val_"))
+        for name, text in files.items():
+            p = d / name
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(text)
+        if argv[0] in ("python", "python3"):
+            argv[0] = sys.executable
+        elif argv[0] == "pytest":
+            argv = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *argv[1:]]
+        rr = run_cmd(argv, cwd=d, timeout_s=self.timeout_s, mem_mb=self.mem_mb, env={"HOME": str(d), "TMPDIR": str(d)})
+        out = ExecOutcome(rr.returncode if not rr.timed_out else 124, rr.stdout[-4000:], rr.stderr[-4000:])
+        shutil.rmtree(d, ignore_errors=True)
+        return out
+
+
+_SAFE_IMPORTS = {"math", "re", "json", "sys", "os", "string", "collections", "itertools", "functools", "datetime",
+                 "unicodedata", "decimal", "fractions", "random", "time", "typing", "dataclasses"}
+
+
+class InProcessExecutor(_MemoExecutor):
+    """Simulation-only executor: runs world-generated ``python script.py`` checks in-process (cached).
+
+    Not an isolation boundary: never use it for code written by a real model."""
+
+    def _run(self, argv: list[str], files: Mapping[str, str]) -> ExecOutcome:
         exe = argv[0]
         pos = [a for a in argv[1:] if not a.startswith("-")]
         if not pos:
@@ -201,10 +180,9 @@ class InProcessExecutor:
         real_import = builtins.__import__
 
         def _imp(name, globals=None, locals=None, fromlist=(), level=0):
-            top = name.split(".")[0]
             if name.replace(".", "/") + ".py" in files:
                 return load(name)
-            if top in _SAFE_IMPORTS:
+            if name.split(".")[0] in _SAFE_IMPORTS:
                 return real_import(name, globals, locals, fromlist, level)
             raise ModuleNotFoundError(f"No module named '{name}'")
 
@@ -229,7 +207,6 @@ class InProcessExecutor:
         return ExecOutcome(code, buf_o.getvalue()[-4000:], buf_e.getvalue()[-4000:])
 
 
-# ----------------------------------------------------------------------------- runner
 @dataclass
 class ValidationResult:
     ok: bool                         # the runner's verdict (faithful: empty / all skipped = ok)
@@ -241,13 +218,15 @@ class ValidationResult:
 
     @property
     def component(self) -> float:
-        """Composite-score validation component (§4.10)."""
+        """Validation component of the composite score (§4.10)."""
         if self.n_run == 0:
             return 0.5 if self.ok else 0.0
         return self.n_passed / self.n_run
 
 
 class ValidationRunner:
+    """``faithful``: missing scripts skipped, empty list ok, 2 retries; ``safe``: no skips, an empty list fails."""
+
     def __init__(self, policy: Optional[CommandPolicy] = None, executor: Optional[Callable] = None, *,
                  mode: str = "faithful", retries: Optional[int] = None,
                  internal: Optional[dict[str, Callable]] = None) -> None:
@@ -279,42 +258,41 @@ class ValidationRunner:
                 code, out = self.internal[pc.argv[0]](pc.argv, files, context)
                 res = ExecOutcome(code, out)
             else:
-                if pc.script and pc.script not in files:
-                    if self.mode == "faithful":
-                        rows.append({"command": cmd, "ok": True, "exit": None, "skipped": True, "stdout": "",
-                                     "stderr": "Skipping validation command (script not in repoRoot)"})
-                        n_skip += 1
-                        continue
+                if pc.script and pc.script not in files and self.mode == "faithful":
+                    rows.append({"command": cmd, "ok": True, "exit": None, "skipped": True, "stdout": "",
+                                 "stderr": "Skipping validation command (script not in repoRoot)"})
+                    n_skip += 1
+                    continue
                 res = self.executor(pc.argv, files)
-                attempt = 0
-                while res.exit != 0 and attempt < self.retries:
-                    attempt += 1
+                for _ in range(self.retries):
+                    if res.exit == 0:
+                        break
                     res = self.executor(pc.argv, files)
             n_run += 1
             good = res.exit == 0
             rows.append({"command": cmd, "ok": good, "exit": res.exit, "stdout": res.stdout[-4000:],
                          "stderr": res.stderr[-4000:]})
-            if good:
-                n_pass += 1
-            else:
+            if not good:
                 ok = False
                 break          # first failure stops the run
+            n_pass += 1
         overall = bool(n_run) and all(r.get("ok") for r in rows if not r.get("skipped"))
         rep = ValidationReport(id=report_id or f"vr_{gene_id or 'x'}_{self._n:06d}", gene_id=gene_id, commands=rows,
                                overall_ok=overall, signer=signer, meta={"runner_mode": self.mode, "runner_ok": ok})
         return ValidationResult(ok, rep.stamp(), n_run, n_pass, n_skip, blocked)
 
 
-# ----------------------------------------------------------------------------- vacuity
 def _script_findings(src: str) -> list[str]:
+    """Static vacuity findings for a Python check script: ``print_only`` or ``constant_assert``."""
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return ["syntax_error"]
-    asserts = [n for n in ast.walk(tree) if isinstance(n, ast.Assert)]
-    raises = [n for n in ast.walk(tree) if isinstance(n, ast.Raise)]
+    nodes = list(ast.walk(tree))
+    asserts = [n for n in nodes if isinstance(n, ast.Assert)]
+    raises = [n for n in nodes if isinstance(n, ast.Raise)]
     exits = []
-    for n in ast.walk(tree):
+    for n in nodes:
         if isinstance(n, ast.Call):
             f = n.func
             name = f.attr if isinstance(f, ast.Attribute) else (f.id if isinstance(f, ast.Name) else "")
@@ -323,15 +301,13 @@ def _script_findings(src: str) -> list[str]:
                 if arg is None or (isinstance(arg, ast.Constant) and arg.value in (0, None)):
                     continue
                 exits.append(n)
-    compares = [n for n in ast.walk(tree) if isinstance(n, ast.Compare)]
-    if not asserts and not raises and not exits and not compares:
+    if not asserts and not raises and not exits and not any(isinstance(n, ast.Compare) for n in nodes):
         return ["print_only"]
 
     def constant(node) -> bool:
         return not any(isinstance(x, (ast.Name, ast.Call, ast.Attribute, ast.Subscript)) for x in ast.walk(node))
 
-    real_asserts = [a for a in asserts if not constant(a.test)]
-    if asserts and not real_asserts and not raises and not exits:
+    if asserts and all(constant(a.test) for a in asserts) and not raises and not exits:
         return ["constant_assert"]
     return []
 
@@ -371,8 +347,7 @@ _MUT_OPS = [(r"\+", "-"), (r"(?<![<>=!])-(?!=)", "+"), (r"<=", "<"), (r">=", ">"
 
 def make_mutants(before: Mapping[str, str], after: Mapping[str, str], max_n: int = 6,
                  exclude: Sequence[str] = ()) -> list[dict[str, str]]:
-    """Mutation-testing mutants of the changed/added lines of ``after`` (Python files other than
-    ``exclude``, i.e. not the validation scripts themselves)."""
+    """Mutants of the changed lines of ``after``'s Python files, skipping ``exclude`` (the check scripts)."""
     out: list[dict[str, str]] = []
     seen = set()
     for name in sorted(after):
@@ -387,16 +362,14 @@ def make_mutants(before: Mapping[str, str], after: Mapping[str, str], max_n: int
                 new = re.sub(pat, rep, line, count=1)
                 if new != line and (name, i, new) not in seen:
                     seen.add((name, i, new))
-                    mutated = list(lines)
-                    mutated[i] = new
-                    out.append({**after, name: "\n".join(mutated) + "\n"})
+                    out.append({**after, name: "\n".join([*lines[:i], new, *lines[i + 1:]]) + "\n"})
                     if len(out) >= max_n:
                         return out
     return out
 
 
 class VacuityDetector:
-    """Static lint + discriminative before/after check (+ mutation kill rate)."""
+    """Static lint plus the discriminative check ``V(W1) = pass and V(W0) = fail`` (+ mutation kill rate)."""
 
     def __init__(self, runner: Optional[ValidationRunner] = None, *, lint_policy: str = "any",
                  min_kill_rate: float = 0.0, n_mutants: int = 6) -> None:
@@ -418,9 +391,7 @@ class VacuityDetector:
             exe = argv[0] if argv else ""
             if exe in SHELL_NOOPS:
                 f.append("shell_noop")
-            elif exe in self.runner.policy.internal:
-                pass
-            else:
+            elif exe not in self.runner.policy.internal:
                 pc = self.runner.policy.check(cmd)
                 if pc.info_only:
                     f.append("info_only")
@@ -437,12 +408,10 @@ class VacuityDetector:
     def lint_vacuous(self, specs: Sequence[str], files: Mapping[str, str]) -> tuple[bool, dict]:
         lint = self.lint(specs, files)
         flagged = [bool(v) for v in lint.values()]
-        vac = any(flagged) if self.lint_policy == "any" else all(flagged)
-        return vac, lint
+        return (any(flagged) if self.lint_policy == "any" else all(flagged)), lint
 
     def with_tests(self, specs: Sequence[str], before: Mapping[str, str], after: Mapping[str, str]) -> dict:
-        """W0 with the validation scripts of W1: the *new* tests run against the *old* code
-        (otherwise a check script introduced by the change would 'fail before' just by being absent)."""
+        """W0 with W1's check scripts, so a script added by the change does not 'fail before' by being absent."""
         w0 = dict(before)
         for cmd in specs:
             pc = self.runner.policy.check(cmd)
@@ -453,7 +422,7 @@ class VacuityDetector:
     def discriminate(self, specs: Sequence[str], before: Mapping[str, str], after: Mapping[str, str], *,
                      mutants: bool = True, context=None) -> DiscriminativeResult:
         before = self.with_tests(specs, before, after)
-        # W0 also means "without the gene": internal task checks (rsi-taskcheck) read the gene from the context
+        # W0 is also "without the gene" for internal task checks that read the gene from the context
         ctx0 = {**context, "gene": None} if isinstance(context, dict) else context
         pb = self.runner.run(specs, before, context=ctx0).ok if specs else False
         pa = self.runner.run(specs, after, context=context).ok if specs else False

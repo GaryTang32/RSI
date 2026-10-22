@@ -1,19 +1,4 @@
-"""AutoResearchDriver: SoL-Pi's outer protocol (spec B3.1) on any rsi.core Domain.
-
-::
-
-    CAP/EFF predeclared (GateSpec, digest recorded)          # outside the optimiser's control
-    base metrics on the training screen (all families)
-    oracle analysis on base trajectories -> rank the idea pool; select n_lineages (breadth)
-    select: the n_lineages ideas with the largest oracle estimates (breadth budget; the rest get no rollouts)
-    for each idea: Lineage(...).run()  -> frozen candidate or nothing   (depth, training split only)
-    for each frozen candidate: HoldoutFirewall.evaluate_frozen()       (one-way; failures reject silently)
-    compose ALL firewall survivors into one harness (independent opt-in mechanisms; "nondominated" retention
-    applies among a lineage's own gate-passing variants (sweep=True, the default: the lineage walks its variants
-    and freezes the nondominated one with the best eta = cost / score) - not across lineages, whose survivors
-    are different mechanisms; the composed stack is re-gated only with validate_composition=True)
-    optional rounds > 1: the composed harness becomes the next base  ("preliminary" in the sources)
-"""
+"""SoL-Pi outer protocol on any Domain: oracle-ranked lineages, held-out firewall, composition of survivors."""
 from __future__ import annotations
 
 import json
@@ -36,57 +21,33 @@ from .research import Idea, IdeaPool, Lineage, LineageResult, MechanismProposer,
 
 @dataclass
 class Config:
-    """SoL-Pi research-protocol configuration.
-
-    The gate (``gate``) is predeclared and frozen. ``n_lineages`` ideas are run
-    (breadth), each for at most ``max_iters`` propose/implement/review/validate
-    cycles (depth) with a Ralph loop of ``ralph_max`` repairs; a review rejection goes back to implementation
-    (the proposer's ``fix`` with the reviewer's objections) up to ``review_max`` times. Validation uses the
-    training ``screen_split`` (restricted to ``gate.families`` for single-environment
-    protocols) with ``k`` trials per task; ``holdout_split`` is used only by the
-    firewall. ``sweep=True`` (default) makes each lineage keep iterating after a pass
-    (its variant grid, or new proposals, up to ``max_iters``) and freeze the
-    nondominated passing variant with the best eta = cost / score - "among candidates
-    that pass the capability floor, the loop retains nondominated results", as in the
-    ObservationPack V0-V7 sweep; ``sweep=False`` freezes the first gate-passing
-    candidate (the spec pseudocode's ``while frozen is None``). All firewall survivors
-    of different lineages are composed (they are independent opt-in mechanisms).
-    ``n_lineages`` is the breadth budget: the Oracle Analysis ranks the pool and only
-    the top ``n_lineages`` ideas get rollouts (the default pools hold more ideas than
-    that, so the oracle filters).
-    """
+    """SoL-Pi protocol settings; ``gate`` is predeclared and frozen (its digest is recorded)."""
 
     gate: GateSpec = field(default_factory=GateSpec)
-    n_lineages: int = 10
+    n_lineages: int = 10             # breadth: only the top oracle-ranked ideas get rollouts
     max_iters: int = 4
     ralph_max: int = 3
-    review_max: int = 2              # review rejection -> re-implementation rounds per iteration (spec B3.1)
+    review_max: int = 2              # review rejection -> re-implementation rounds per iteration
     screen_split: str = "evolve"
     rollout_tasks_per_family: int = 2
     k: int = 1
     holdout_split: Optional[str] = "holdout"
     firewall: bool = True
     sweep: bool = True               # lineage keeps iterating after a pass; freezes the nondominated best-eta variant
-    validate_composition: bool = False   # [inferred extension] re-gate the composed stack; drop survivors greedily
+    validate_composition: bool = False   # re-gate the composed stack; drop survivors greedily
     compose: bool = True
     rounds: int = 1
     workers: int = 1
     seed: int = 0
-    # audit trace (rsi.trace, write-only): on whenever out_dir is given to run()
-    trace: bool = True
-    # score the base + each composed harness on sealed holdout/ood, into the trace only. Off by default:
-    # the protocol's contract is that the held-out split is touched only by the firewall (on the base and
-    # the frozen candidates) and the final split never; the audit monitor would add sealed-split runs.
-    # Validation runs switch it on explicitly (Config(shadow_monitor=True) or run(..., monitor=True)).
+    trace: bool = True               # write-only audit trace whenever run() gets an out_dir
+    # off by default: sealed splits are otherwise touched only by the firewall
     shadow_monitor: bool = False
     shadow_splits: Optional[tuple[str, ...]] = None
     shadow_k: int = 1
     shadow_workers: int = 2
 
     def to_json(self) -> dict:
-        d = asdict(self)
-        d["gate_digest"] = self.gate.digest()
-        return d
+        return {**asdict(self), "gate_digest": self.gate.digest()}
 
 
 class AutoResearchDriver:
@@ -102,10 +63,8 @@ class AutoResearchDriver:
         self.out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="solpi_"))
         self.out.mkdir(parents=True, exist_ok=True)
         self.ledger = Ledger(self.out / "ledger.jsonl")
-        # the lineages' evaluator can only see decision splits (sealed splits raise)
-        self.ev = Evaluator(domain, llm_task, workers=config.workers)
-        # write-only audit trace: only when an out_dir is given (and config.trace)
-        from .tracing import make_tracer
+        self.ev = Evaluator(domain, llm_task, workers=config.workers)     # sealed splits raise
+        from .tracing import make_tracer      # lazy: keeps ``tracing`` out of the package namespace
         self.tr = make_tracer(domain, self.out, enabled=bool(out_dir is not None and config.trace),
                               monitor=config.shadow_monitor if monitor is None else monitor, llm_task=llm_task,
                               splits=config.shadow_splits, k=config.shadow_k, workers=config.shadow_workers)
@@ -131,29 +90,26 @@ class AutoResearchDriver:
                           base=base, base_metrics=bm, screen_split=self.cfg.screen_split,
                           rollout_tasks_per_family=self.cfg.rollout_tasks_per_family, k=self.cfg.k,
                           max_iters=self.cfg.max_iters, ralph_max=self.cfg.ralph_max, ledger=self.ledger,
-                          review_max=self.cfg.review_max,
-                          sweep=self.cfg.sweep, tracer=self.tr if self.tr.enabled else None)
+                          review_max=self.cfg.review_max, sweep=self.cfg.sweep,
+                          tracer=self.tr if self.tr.enabled else None)
             results.append(lin.run())
         frozen = [r.frozen for r in results if r.frozen is not None]
-        passed = {}
-        if self.cfg.firewall and self.cfg.holdout_split and self.cfg.holdout_split in self.domain.tasks.splits:
+        firewall_on = bool(self.cfg.firewall and self.cfg.holdout_split and
+                           self.cfg.holdout_split in self.domain.tasks.splits)
+        if firewall_on:
             fw = HoldoutFirewall(self.domain, self.llm, self.gate, base, split=self.cfg.holdout_split, k=self.cfg.k,
                                  sink_dir=self.out / f"firewall_r{rnd}", workers=self.cfg.workers)
-            for f in frozen:
-                passed[f.name] = fw.evaluate_frozen(f.name, f.artifact)
+            passed = {f.name: fw.evaluate_frozen(f.name, f.artifact) for f in frozen}
             heldout = fw.final_report()
         else:
-            passed = {f.name: True for f in frozen}
-            heldout = []
+            passed, heldout = {f.name: True for f in frozen}, []
         kept = [f for f in frozen if passed.get(f.name)]
         composed, conflicts = compose(base, [f.artifact for f in kept]) if (self.cfg.compose and kept) else (base, [])
         cm = metrics_from_eval(self.ev.evaluate(composed, self.screen_tasks(), k=self.cfg.k, label="screen")) \
             if kept else bm
         dropped = []
         if self.cfg.validate_composition and kept and self.cfg.compose:
-            # small per-mechanism losses can accumulate once mechanisms combine [blog: Capability floors]:
-            # re-gate the composition on the training screen and greedily drop the survivor whose removal
-            # best restores it (leave-one-out), until the composed stack passes
+            # small losses accumulate when mechanisms combine: drop the survivor whose removal helps most
             while kept and not self.gate.accept(bm, cm).accept:
                 trials = []
                 for f in kept:
@@ -161,16 +117,13 @@ class AutoResearchDriver:
                     c2, _ = compose(base, [g.artifact for g in rest]) if rest else (base, [])
                     m2 = metrics_from_eval(self.ev.evaluate(c2, self.screen_tasks(), k=self.cfg.k, label="screen"))
                     trials.append((self.gate.accept(bm, m2).accept, m2.agg["score"], -m2.agg["cost"], f, c2, m2))
-                ok, _, _, f, c2, m2 = max(trials, key=lambda x: (x[0], x[1], x[2]))
+                *_, f, c2, m2 = max(trials, key=lambda x: (x[0], x[1], x[2]))
                 kept.remove(f)
                 dropped.append(f.idea.id)
                 composed, cm = c2, m2
         self.tr.firewall_and_compose(rnd, base, frozen, passed, heldout, kept, composed, conflicts, bm, cm, dropped,
-                                     bool(self.cfg.firewall and self.cfg.holdout_split and
-                                          self.cfg.holdout_split in self.domain.tasks.splits))
-        usage = Usage()
-        for r in results:
-            usage = usage + r.usage
+                                     firewall_on)
+        usage = sum((r.usage for r in results), Usage())
         for f in frozen:
             self.ledger.add(Node(id=f"sp_frozen_r{rnd}_{f.idea.id}", parent=None, round=rnd, kind="frozen",
                                  status="survivor" if f in kept else "heldout_rejected",
@@ -199,15 +152,11 @@ class AutoResearchDriver:
                 break
             base = r["composed"]
         traj = [{k: v for k, v in r.items() if k not in ("composed", "heldout", "lineages")} for r in rounds]
-        usage = {"research": {}, "_total": {}}
+        keys = ("calls", "input_tokens", "output_tokens", "cost_usd", "latency_s")
+        tot = sum((Usage(**{k: r["usage"][k] for k in keys}) for r in rounds), Usage())
+        usage = {"research": tot.to_dict(), "_total": tot.to_dict()}
         if self.llm is not None:
             usage["task"] = self.llm.meter.snapshot()
-        tot = Usage()
-        for r in rounds:
-            tot = tot + Usage(**{k: r["usage"][k] for k in ("calls", "input_tokens", "output_tokens", "cost_usd",
-                                                            "latency_s")})
-        usage["research"] = tot.to_dict()
-        usage["_total"] = tot.to_dict()
         res = ImprovementResult("solpi", self.seed, base, self.ledger, trajectory=traj, usage=usage,
                                 stop_reason="rounds", out_dir=str(self.out),
                                 meta={"rounds": [{k: v for k, v in r.items() if k != "composed"} for r in rounds],
@@ -224,27 +173,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
         ideas: Optional[Sequence[Idea]] = None, proposer: Optional[MechanismProposer] = None,
         reviewer: Optional[Reviewer] = None, monitor=None) -> ImprovementResult:
-    """Run the SoL-Pi research protocol on any :class:`rsi.core.Domain`.
-
-    Parameters
-    ----------
-    domain, seed_artifact:
-        the environments (task families in the ``evolve`` split; held-out tasks in
-        ``holdout``) and the base harness.
-    llm_task:
-        the agent backend / frozen model used for rollouts.
-    llm_propose:
-        LLM for the research roles (mechanism proposer/implementer); ``None`` uses
-        the offline proposer for the domain (``agentworld`` / ``agentqa``).
-    ideas:
-        the idea pool (defaults exist for ``agentworld`` and ``agentqa``).
-    config:
-        :class:`Config` - notably the predeclared ``gate`` (:class:`GateSpec`).
-
-    Returns an :class:`rsi.core.ImprovementResult` whose ``best`` is the composed
-    harness of the (nondominated) survivors; ``meta["rounds"]`` records every
-    lineage, gate result and the firewall's held-out verdicts.
-    """
+    """Run SoL-Pi on any Domain; ``llm_propose=None`` uses the offline proposer (agentworld / agentqa)."""
     from .mocks import AGENTQA_IDEAS, AGENTWORLD_IDEAS, AgentQAEditProposer, LibraryProposer, LLMMechanismProposer
     cfg = config or Config()
     name = getattr(domain, "name", "")

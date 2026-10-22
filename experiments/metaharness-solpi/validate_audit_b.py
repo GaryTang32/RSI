@@ -1,23 +1,11 @@
-"""Stage-B independent audit of the Meta-Harness / SoL-Pi validation runs.
+"""Stage-B audit of the Meta-Harness / SoL-Pi validation runs, re-derived from raw records, one verdict per step.
 
-This does NOT reuse the stage-A audit (``validate_metaharness_solpi.audit_mh / audit_sp``). Every number is
-re-derived from the raw records the loops wrote (trace.jsonl raw trial scores, the experience store's per-task
-records and sources, the ledger, the firewall sink) and - for the offline SoL-Pi run - by re-evaluating the
-frozen candidates with a fresh evaluator. One verdict per step:
-
-    correct | questionable | wrong | unverifiable
-
-Usage::
-
-    python experiments/metaharness-solpi/validate_audit_b.py            # all runs present
-    python experiments/metaharness-solpi/validate_audit_b.py <run> ...
-
-Writes ``validation/metaharness-solpi/audit_b/<run>.json`` and prints a compact table.
+Usage: python experiments/metaharness-solpi/validate_audit_b.py [<run> ...]
 """
 from __future__ import annotations
 
+import difflib
 import json
-import math
 import re
 import sys
 from pathlib import Path
@@ -28,13 +16,14 @@ if str(ROOT) not in sys.path:
 
 OUT = ROOT / "validation" / "metaharness-solpi"
 EPS = 1e-9
+VERDICTS = ("correct", "questionable", "wrong", "unverifiable")
 
 
 def load(p: Path) -> list[dict]:
-    return [json.loads(l) for l in p.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
 
 
-def mean(xs):
+def mean(xs) -> float:
     xs = list(xs)
     return sum(xs) / len(xs) if xs else 0.0
 
@@ -43,25 +32,20 @@ class Steps:
     def __init__(self):
         self.rows: list[dict] = []
 
-    def add(self, rnd, step, verdict, evidence):
-        assert verdict in ("correct", "questionable", "wrong", "unverifiable"), verdict
+    def add(self, rnd, step: str, verdict: str, evidence: str) -> None:
+        assert verdict in VERDICTS, verdict
         self.rows.append({"round": rnd, "step": step, "verdict": verdict, "evidence": evidence})
 
-    def counts(self):
-        c = {"correct": 0, "questionable": 0, "wrong": 0, "unverifiable": 0}
-        for r in self.rows:
-            c[r["verdict"]] += 1
-        return c
+    def counts(self) -> dict:
+        return {v: sum(r["verdict"] == v for r in self.rows) for v in VERDICTS}
 
 
-# ============================================================================ Meta-Harness
 def _src(store: Path, name: str) -> dict[str, str]:
     d = store / "candidates" / name / "src"
     return {str(p.relative_to(d)): p.read_text() for p in sorted(d.rglob("*")) if p.is_file()} if d.exists() else {}
 
 
 def _udiff(a: dict, b: dict) -> tuple[list[str], str]:
-    import difflib
     changed, out = [], []
     for f in sorted(set(a) | set(b)):
         if a.get(f) != b.get(f):
@@ -71,31 +55,30 @@ def _udiff(a: dict, b: dict) -> tuple[list[str], str]:
 
 
 def _added(diff: str) -> str:
-    return "\n".join(l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
+    return "\n".join(line[1:] for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
 
 
 def _pareto(pts):
     return [p for p in pts if not any(o[1] >= p[1] and o[2] <= p[2] and (o[1] > p[1] or o[2] < p[2]) for o in pts)]
 
 
-def _ctx_mean(cost: dict) -> float:
-    nz = [float(v) for v in cost.values() if v]
-    return sum(nz) / len(nz) if nz else 0.0
+def _input(task) -> str:
+    return task.input if isinstance(task.input, str) else json.dumps(task.input, default=str)
 
 
-def _agentqa_tasks():
+def _agentqa_tasks() -> dict:
     from rsi.domains.agentqa import make_suite
     s = make_suite(n_evolve=10, n_holdout=6, n_ood_per_family=1, seed=0)
     return {sp: s.split(sp, allow_sealed=True) for sp in s.splits}
 
 
-def _memo_tasks():
+def _memo_tasks() -> dict:
     from rsi.domains.memoclassify import make_domain
     d = make_domain(seed=0)
-    return d, {sp: d.tasks.split(sp, allow_sealed=True) for sp in d.tasks.splits}
+    return {sp: d.tasks.split(sp, allow_sealed=True) for sp in d.tasks.splits}
 
 
-# ---- Meta-Harness proposals checked by hand (template-level overfitting the token scan cannot see)
+# Meta-Harness proposals checked by hand (template-level overfitting the token scan cannot see)
 MH_NOTE = {
     ("mh_agentqa_live_r2", "explore-direct-pattern-computation"): (
         "questionable", "hard-codes regex solvers for the practice generator's four numeric question TEMPLATES "
@@ -116,17 +99,13 @@ def audit_mh(run: str) -> dict:
     meta = {n: json.loads((store / "candidates" / n / "meta.json").read_text())
             for n in sorted(p.name for p in (store / "candidates").iterdir())}
     is_live = "agentqa" in run
-    tasks = _agentqa_tasks() if is_live else _memo_tasks()[1]
-    sealed_text = []
-    for sp in ("holdout", "ood", "test"):
-        for t in tasks.get(sp, []):
-            inp = t.input if isinstance(t.input, str) else json.dumps(t.input, default=str)
-            if len(inp) >= 30:
-                sealed_text.append((sp, t.id, inp[:60]))
+    tasks = _agentqa_tasks() if is_live else _memo_tasks()
+    sealed_text = [(sp, t.id, inp[:60]) for sp in ("holdout", "ood", "test") for t in tasks.get(sp, [])
+                   if len(inp := _input(t)) >= 30]
     evolve_ids = {t.id for t in tasks["evolve"]}
 
-    # ---- independent per-system score/cost from the store's per-task records (raw trials)
     def recompute(name):
+        """Score and cost of one system from the store's raw per-task records."""
         d = store / "candidates" / name / "eval" / "search" / "per_task"
         if not d.exists():
             return None
@@ -139,11 +118,10 @@ def audit_mh(run: str) -> dict:
             if cost_metric == "tokens" or not vals:
                 vals = [float(t["tokens"]) for t in trs]
             cost[tid] = mean(vals)
-        return {"per": per, "score": mean(per.values()), "cost": _ctx_mean(cost)}
+        return {"per": per, "score": mean(per.values()), "cost": mean(float(v) for v in cost.values() if v)}
 
     rec = {n: recompute(n) for n in meta}
     best_by_round = {}
-    # ---- baselines
     for e in ev:
         if e["kind"] == "baseline":
             d = e["data"]
@@ -157,10 +135,6 @@ def audit_mh(run: str) -> dict:
                    f"context cost {r['cost']:.1f} (mean of non-zero per-unit {cost_metric}); units all in evolve")
     rounds = sorted({e["round"] for e in ev if e["kind"] == "round_start"})
     all_names_by_iter = {n: m.get("iteration", 0) for n, m in meta.items()}
-    last_best = None
-    for e in ev:
-        if e["kind"] == "state" and e["round"] == 0:
-            last_best = (e["data"]["frontier"]["best"] or {}).get("system")
     mon = {e["round"]: e["data"] for e in ev if e["kind"] == "monitor"}
     for t in rounds:
         rev = [e for e in ev if e["round"] == t]
@@ -192,17 +166,19 @@ def audit_mh(run: str) -> dict:
         if leaked or bad_paths:
             verdict = "wrong"
         elif n_tr < v_tr and ev[0]["data"].get("proposer") == "MockProposer":
-            note = (f" (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read "
-                    f"lists only the parents it diagnosed)")
+            note = (" (MockProposer parses the WHOLE view - every candidate's code, scores and traces; files_read "
+                    "lists only the parents it diagnosed)")
         elif n_tr < v_tr:
             verdict = "questionable"
             note = (f" the renderer's budget dropped {v_tr - n_tr} of {v_tr} raw-trace files (the paper's proposer "
                     f"decides itself what to read; here a priority renderer does)")
-        st.add(t, "proposer input (history read, no sealed data)", verdict,
-               f"read {an.get('files_read')} of {rs['view']['n_files']} files (traces {n_tr}/{v_tr}); prompt "
-               f"{len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" + note if not leaked else
-               f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + (f"; forbidden paths read {bad_paths}" if bad_paths
-                                                          else ""))
+        if leaked:
+            evidence = f"SEALED INPUTS IN PROMPT: {leaked[:5]}" + (f"; forbidden paths read {bad_paths}"
+                                                                   if bad_paths else "")
+        else:
+            evidence = (f"read {an.get('files_read')} of {rs['view']['n_files']} files (traces {n_tr}/{v_tr}); "
+                        f"prompt {len(prompt)} chars contains 0 of {len(sealed_text)} sealed task inputs" + note)
+        st.add(t, "proposer input (history read, no sealed data)", verdict, evidence)
         # (3) per proposal: claimed base visible, actual diff, harness file really changed, leakage scan
         props = [e["data"] for e in rev if e["kind"] == "proposal" and e["data"]["candidate"] != "(none)"]
         for p in props:
@@ -212,13 +188,11 @@ def audit_mh(run: str) -> dict:
             a, b = _src(store, base) if base in meta else {}, _src(store, n)
             changed, diff = _udiff(a, b)
             add = _added(diff)
-            live_files = set(a)
-            real = [f for f in changed if f in live_files]
+            real = [f for f in changed if f in a]
             leaks = []
             for sp in ("evolve", "holdout", "ood", "test"):
                 for tk in tasks.get(sp, []):
-                    inp = tk.input if isinstance(tk.input, str) else json.dumps(tk.input, default=str)
-                    frag = inp[:40]
+                    frag = _input(tk)[:40]
                     if len(frag) >= 25 and frag in add:
                         leaks.append(f"{sp}:{tk.id}: question text")
                     tgt = str(tk.target)
@@ -229,9 +203,7 @@ def audit_mh(run: str) -> dict:
             claimed = p.get("change") or p.get("hypothesis") or ""
             if (run, n) in MH_NOTE:
                 v, ev_ = MH_NOTE[(run, n)]
-                st.add(t, f"proposal {n}: claim vs actual diff", v, ev_ + f" | claim: {claimed[:140]}")
-                continue
-            if not ok_base or not changed:
+            elif not ok_base or not changed:
                 v, ev_ = "wrong", f"base {base!r} visible={ok_base}; changed files {changed}"
             elif not real:
                 v, ev_ = "wrong", f"only NEW files {changed}: the harness that runs is the base unchanged (dead code)"
@@ -292,7 +264,8 @@ def audit_mh(run: str) -> dict:
                 errs.append(f"{n}: release delta {pc['delta_logged_release']}")
         if dec["incumbent_after"] != fr2[0][0]:
             errs.append("incumbent")
-        tie = [x[0] for x in pts2 if abs(x[1] - fr2[0][1]) < EPS and abs(x[2] - fr2[0][2]) < EPS and x[0] != fr2[0][0]]
+        tie = [x[0] for x in pts2
+               if abs(x[1] - fr2[0][1]) < EPS and abs(x[2] - fr2[0][2]) < EPS and x[0] != fr2[0][0]]
         changed_inc = dec["incumbent_before"] != dec["incumbent_after"]
         v = "wrong" if errs else "correct"
         ev_ = (f"frontier after it {t}: {[x[0] for x in fr2]}; incumbent {dec['incumbent_before']} -> "
@@ -305,15 +278,14 @@ def audit_mh(run: str) -> dict:
         # (6) monitor: only on a new incumbent, sealed splits only, never read back
         m = mon.get(t)
         if changed_inc:
-            ok = m is not None and m["version"] == dec["incumbent_after"] and \
-                set(m["sealed"]) <= {"holdout", "ood"}
+            ok = m is not None and m["version"] == dec["incumbent_after"] and set(m["sealed"]) <= {"holdout", "ood"}
             st.add(t, "shadow monitor on new incumbent", "correct" if ok else "wrong",
                    (f"{m['version']}: " + ", ".join(f"{s} {v['S']:.3f}" for s, v in m['sealed'].items()))
                    if m else "missing")
         elif m is not None:
             st.add(t, "shadow monitor", "wrong", "monitor ran without an incumbent change")
         best_by_round[t] = {"incumbent": dec["incumbent_after"], "search": post,
-                            "sealed": {s: v["S"] for s, v in (m or {}).get("sealed", {}).items()} if m else None}
+                            "sealed": {s: v["S"] for s, v in m.get("sealed", {}).items()} if m else None}
     # (7) finalize: once, after the last iteration, on baselines + Pareto + per-unit best
     fin = [e for e in ev if e["kind"] == "note" and "finalize" in e["data"].get("what", "")]
     last_iter_seq = max(e["seq"] for e in ev if e["round"] in rounds)
@@ -321,12 +293,11 @@ def audit_mh(run: str) -> dict:
     pts = [(n, rec[n]["score"], rec[n]["cost"]) for n in names]
     per_unit = {}
     for n in names:
-        pu_cost = json.loads((store / "candidates" / n / "eval" / "search" / "scores.json").read_text())["per_unit_cost"]
+        scores = json.loads((store / "candidates" / n / "eval" / "search" / "scores.json").read_text())
         for u, s in rec[n]["per"].items():
-            per_unit.setdefault(u, []).append((n, s, pu_cost.get(u, 0.0)))
+            per_unit.setdefault(u, []).append((n, s, scores["per_unit_cost"].get(u, 0.0)))
     pub = {max(v, key=lambda x: (x[1], -x[2], x[0]))[0] for v in per_unit.values()}
-    base_names = [n for n in names if meta[n].get("kind") == "baseline"]
-    expect = set(base_names) | {x[0] for x in _pareto(pts)} | pub
+    expect = {n for n in names if meta[n].get("kind") == "baseline"} | {x[0] for x in _pareto(pts)} | pub
     if fin:
         d = fin[0]["data"]
         res_dirs = {p.name for sp in (store / "results").iterdir() for p in sp.iterdir()}
@@ -354,42 +325,42 @@ def audit_mh(run: str) -> dict:
     return {"run": run, "method": "metaharness", "counts": st.counts(), "steps": st.rows, "incumbents": best_by_round}
 
 
-# ============================================================================ SoL-Pi
 def _gate(spec: dict, b: dict, c: dict) -> tuple[bool, str]:
     cap = all(c[m] >= b[m] * (1 - tol) - 1e-12 for m, tol in spec["capability"])
     eff = any(((b[m] - c[m]) / b[m] if b[m] > 0 else 0.0) > spec["min_gain"] for m in spec["efficiency"])
     return cap and eff, ("accepted" if cap and eff else "capability below floor" if not cap else "no efficiency gain")
 
 
-def _apply_harness_diff(base_files: dict, diff: str) -> dict:
+def _apply_harness_diff(diff: str) -> dict | None:
     """Rebuild harness.json from a trace diff (the whole file is small, so the '+' side is the new file)."""
     lines = diff.splitlines()
-    if not any(l.startswith("+++ b/harness.json") for l in lines):
+    if not any(line.startswith("+++ b/harness.json") for line in lines):
         return None
     new, on = [], False
-    for l in lines:
-        if l.startswith("+++ b/harness.json"):
+    for line in lines:
+        if line.startswith("+++ b/harness.json"):
             on = True
             continue
-        if on and l.startswith("--- a/"):
+        if on and line.startswith("--- a/"):
             break
-        if on and l.startswith("@@"):
+        if on and line.startswith("@@"):
             continue
-        if on and (l.startswith("+") or l.startswith(" ")):
-            new.append(l[1:])
+        if on and line.startswith(("+", " ")):
+            new.append(line[1:])
     try:
         return json.loads("\n".join(new))
     except ValueError:
         return None
 
 
-# ---- LLM-reviewer verdicts checked by hand against the runtime (rsi/domains/agentworld/base.py:_read_any serves
-# exactly the rt.store keys that start with "/.solpi/" or "/tmp/"; rsi/solpi/runtime.py keeps the original tool
-# result when a tool_result handler raises and ignores a context handler that raises or returns None)
+# LLM-reviewer verdicts checked by hand against the runtime: base.py:_read_any serves rt.store keys starting
+# "/.solpi/" or "/tmp/"; runtime.py keeps the original result when a tool_result handler raises and ignores a
+# context handler that raises or returns None.
 READ_ANY = "agentworld/base.py:_read_any reads rt.store only for keys starting '/.solpi/'"
 REVIEW_CHECK = {
     ("solpi_agentworld_live", "L2.1"): ("correct", "right: the log is stored under rt.store['bash_log_<id>'] (no "
-                                        "/.solpi/ prefix) and the agent is given no path - unrecallable (" + READ_ANY + ")"),
+                                        "/.solpi/ prefix) and the agent is given no path - unrecallable ("
+                                        + READ_ANY + ")"),
     ("solpi_agentworld_live", "L1.0"): ("questionable", "passed a SILENT NO-OP: the hook reads event.call_id "
                                         "(AttributeError, swallowed by the runtime's fail-open), which the review "
                                         "missed; the gate then measured a saving of exactly 0"),
@@ -444,14 +415,13 @@ GATE_NOTE = {
 
 
 def audit_sp(run: str) -> dict:
+    from rsi.domains.agentworld import make_domain
     rd = OUT / run
     ev = load(rd / "trace.jsonl")
     st = Steps()
     rs0 = ev[0]["data"]
     spec = rs0["gate_spec"]
-    ideas = {i["id"]: i for i in rs0["idea_pool"]}
     offline = "offline" in run
-    from rsi.domains.agentworld import make_domain
     dom = (make_domain(seed=0, n_train=8, n_accept=6, n_final=8, n_test=0) if offline else
            make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0))
     evolve_ids = {t.id for t in dom.tasks.split("evolve")}
@@ -462,14 +432,12 @@ def audit_sp(run: str) -> dict:
            set(base_ev["data"]["per_task"]) == evolve_ids else "wrong",
            f"S={bm['score']:.4f} from {len(base_ev['data']['trials'])} raw trials, tokens {bm['tokens']:.0f}, "
            f"cost {bm['cost']:.4f}; tasks = the whole evolve split ({len(evolve_ids)})")
-    # oracle
     an = next(e["data"] for e in ev if e["kind"] == "analysis" and "oracle" in e["data"])
     ranked = sorted(an["oracle"].items(), key=lambda kv: (-kv[1], kv[0]))
     n_lin = rs0["config"]["n_lineages"]
     ok = [i for i, _ in ranked[:n_lin]] == an["chosen"]
     st.add(1, "oracle ranking + selection", "correct" if ok else "wrong",
            f"top-{n_lin} by (-estimate, id) = {[f'{i}:{v:.3f}' for i, v in ranked[:n_lin]]}")
-    # lineage iterations
     rounds = sorted({e["round"] for e in ev if e["kind"] == "round_start" and
                      e["data"].get("phase") == "lineage iteration"})
     last_gate_fail_art: dict[str, str] = {}
@@ -480,9 +448,9 @@ def audit_sp(run: str) -> dict:
         rs = next(e["data"] for e in rev if e["kind"] == "round_start")
         idea = rs["idea"]["id"]
         it = rs["lineage_iteration"]
-        ro = next((e["data"] for e in rev if e["kind"] == "eval" and e["data"]["candidate"].startswith("rollouts(")), None)
-        base_short = base_ev["data"]["artifact"]
-        want = last_gate_fail_art.get(idea, base_short)
+        evals = [e["data"] for e in rev if e["kind"] == "eval"]
+        ro = next((d for d in evals if d["candidate"].startswith("rollouts(")), None)
+        want = last_gate_fail_art.get(idea, base_ev["data"]["artifact"])
         got = ro["candidate"][len("rollouts("):-1] if ro else None
         ok = got == want and set(ro["per_task"]) <= evolve_ids
         st.add(r, f"{idea}.{it} 01 rollouts + 02 map-reduce", "correct" if ok else "wrong",
@@ -494,17 +462,17 @@ def audit_sp(run: str) -> dict:
             tag = f"{pr['candidate']} " + ("04 re-implementation after review" if pr.get("review_repair") else
                                            "03/04 proposal + Ralph loop")
             if pr.get("error"):
-                exhausted = pr.get("exhausted")
                 st.add(r, tag, "correct",
-                       f"no admissible candidate: {pr['error'][:160]} (Ralph repairs {len(pr.get('ralph_errors', []))}); "
-                       + ("grid exhausted -> lineage ends" if exhausted else
+                       f"no admissible candidate: {pr['error'][:160]} (Ralph repairs "
+                       f"{len(pr.get('ralph_errors', []))}); "
+                       + ("grid exhausted -> lineage ends" if pr.get("exhausted") else
                           "the loop correctly refused to review/evaluate it (the defect is in the proposer's output)"))
             else:
                 add = _added(pr["diff"])
                 forbidden = [w for w in ("holdout", "heldout", "configfix", "datalookup", "ood/") if w in add.lower()]
                 ids = [t for t in evolve_ids if t in add]
-                v = "correct" if pr["files_changed"] and not forbidden and not ids else "wrong" if not \
-                    pr["files_changed"] else "questionable"
+                v = ("correct" if pr["files_changed"] and not forbidden and not ids else
+                     "wrong" if not pr["files_changed"] else "questionable")
                 st.add(r, tag, v,
                        f"change {pr['change'][:80]!r}, variant {pr.get('variant')}; actual diff touches "
                        f"{pr['files_changed']}; Ralph repairs {pr.get('ralph_repairs')}; held-out references "
@@ -520,8 +488,7 @@ def audit_sp(run: str) -> dict:
             st.add(r, f"{cr['candidate']} 05 review ({'pass' if cr['accept'] else 'REJECT'})", v,
                    f"{why} | reviewer: {str(cr.get('note'))[:220]}")
         g = next((e["data"] for e in rev if e["kind"] == "gate"), None)
-        sv = next((e["data"] for e in rev if e["kind"] == "eval" and not e["data"]["candidate"].startswith("rollouts(")),
-                  None)
+        sv = next((d for d in evals if not d["candidate"].startswith("rollouts(")), None)
         if g is not None:
             m = sv["metrics"]["agg"]
             s_raw = mean(x for v in sv["trials"].values() for x in v)
@@ -538,36 +505,31 @@ def audit_sp(run: str) -> dict:
                 v = "questionable"
                 txt += "; PASSES while another efficiency metric gets WORSE (the exists-rule of the gate)"
             if (run, g["candidate"]) in GATE_NOTE:
-                v, extra = GATE_NOTE[(run, g["candidate"])]
-                txt += "; " + extra
+                v, note = GATE_NOTE[(run, g["candidate"])]
+                txt += "; " + note
             st.add(r, f"{g['candidate']} 06 screen + dual gate", v, txt)
             gates[f"{idea}.{it}"] = (acc, m)
             if not acc:
                 last_gate_fail_art[idea] = sv["summary"]["artifact"]
         dec = next(e["data"] for e in rev if e["kind"] == "decision")
-        final_prop = props[-1] if props else {}
         exp = ("frozen" if g is not None and g["accept"] else "gate_failed" if g is not None else
                "rejected" if crits and not crits[-1]["accept"] else "abandoned")
-        ok = dec["outcome"] == exp
-        st.add(r, f"{idea}.{it} decision", "correct" if ok else "wrong",
+        st.add(r, f"{idea}.{it} decision", "correct" if dec["outcome"] == exp else "wrong",
                f"{dec['outcome']} (expected {exp}); {dec['why'][:160]}")
         if dec["outcome"] == "frozen":
-            frozen_names[idea] = final_prop
-
+            frozen_names[idea] = props[-1] if props else {}
     # firewall + composition
     fw_round = max(e["round"] for e in ev if e["kind"] == "round_start")
     fev = [e for e in ev if e["round"] == fw_round]
     sink_p = rd / "firewall_r1" / "heldout.jsonl"
     sink = load(sink_p) if sink_p.exists() else []
     fgates = [e["data"] for e in fev if e["kind"] == "gate"]
-    fw_ev = None
     if offline:
         from rsi.core import Evaluator
         from rsi.domains.agentworld import MockAgentLLM
         from rsi.solpi.gate import metrics_from_eval
         fw_ev = Evaluator(dom, MockAgentLLM("A"), workers=2, allow_sealed=True)
-        base_art = dom.seed_artifact()
-        hb = metrics_from_eval(fw_ev.evaluate(base_art, "holdout", k=1)).agg
+        hb = metrics_from_eval(fw_ev.evaluate(dom.seed_artifact(), "holdout", k=1)).agg
     for fg in fgates:
         s = next((x for x in sink if x["candidate"] == fg["candidate"]), None)
         hm, hbm = fg["math"]["heldout_metrics"], fg["math"]["heldout_base_metrics"]
@@ -575,17 +537,17 @@ def audit_sp(run: str) -> dict:
         ok = s is not None and s["passed"] == fg["accept"] == acc and s["metrics"]["agg"] == hm
         extra = ""
         if offline and ok:
-            idea = fg["candidate"].split(":")[0]
-            h = _apply_harness_diff({}, frozen_names[idea]["diff"])
+            h = _apply_harness_diff(frozen_names[fg["candidate"].split(":")[0]]["diff"])
             art = dom.seed_artifact().with_files({"harness.json": json.dumps(h, indent=1)})
             m2 = metrics_from_eval(fw_ev.evaluate(art, "holdout", k=1)).agg
             acc2, _ = _gate(spec, hb, m2)
-            re_ok = acc2 == acc and abs(m2["tokens"] - hm["tokens"]) < 1e-6 and abs(hb["tokens"] - hbm["tokens"]) < 1e-6
-            ok = ok and re_ok
+            ok = (acc2 == acc and abs(m2["tokens"] - hm["tokens"]) < 1e-6
+                  and abs(hb["tokens"] - hbm["tokens"]) < 1e-6)
             extra = f"; independently re-evaluated on holdout: tokens {m2['tokens']:.0f} (sink {hm['tokens']:.0f})"
         kind = fg["math"].get("idea_kind_ground_truth")
         st.add(fw_round, f"firewall {fg['candidate'][:40]}", "correct" if ok else "wrong",
-               f"held-out S {hm['score']:.4f} vs base {hbm['score']:.4f}; tokens {100 * (hbm['tokens'] - hm['tokens']) / hbm['tokens']:+.1f}%, cost "
+               f"held-out S {hm['score']:.4f} vs base {hbm['score']:.4f}; tokens "
+               f"{100 * (hbm['tokens'] - hm['tokens']) / hbm['tokens']:+.1f}%, cost "
                f"{100 * (hbm['cost'] - hm['cost']) / hbm['cost']:+.1f}% saving -> {why}; sink agrees; kind={kind}"
                + extra)
     dec = next(e["data"] for e in fev if e["kind"] == "decision")
@@ -593,17 +555,17 @@ def audit_sp(run: str) -> dict:
     if kept_ideas:
         union = {}
         for i in kept_ideas:
-            union.update(_apply_harness_diff({}, frozen_names[i]["diff"])["extensions"])
-        comp = _apply_harness_diff({}, dec["diff"])
+            union.update(_apply_harness_diff(frozen_names[i]["diff"])["extensions"])
+        comp = _apply_harness_diff(dec["diff"])
         ok = comp is not None and comp["extensions"] == union and dec["kept"] == ",".join(kept_ideas)
         cm, bs = dec["composed_screen"], dec["base_screen"]
         best_single = min(((i, gates[f"{i}.{n}"][1]) for i in kept_ideas for n in range(8) if f"{i}.{n}" in gates
                            and gates[f"{i}.{n}"][0]), key=lambda x: x[1]["cost"])
-        worse = cm["cost"] > best_single[1]["cost"]
         v = "correct" if ok else "wrong"
         txt = (f"composed = union of {kept_ideas} (verified); screen S {cm['score']:.3f}, tokens "
-               f"{100 * (bs['tokens'] - cm['tokens']) / bs['tokens']:+.1f}%, cost {100 * (bs['cost'] - cm['cost']) / bs['cost']:+.1f}% saving")
-        if ok and worse:
+               f"{100 * (bs['tokens'] - cm['tokens']) / bs['tokens']:+.1f}%, cost "
+               f"{100 * (bs['cost'] - cm['cost']) / bs['cost']:+.1f}% saving")
+        if ok and cm["cost"] > best_single[1]["cost"]:
             v = "questionable"
             txt += (f"; the composed stack costs MORE than survivor {best_single[0]} alone "
                     f"(cost {best_single[1]['cost']:.4f} vs {cm['cost']:.4f}) and is not re-gated")
@@ -616,17 +578,16 @@ def audit_sp(run: str) -> dict:
     ok = [m["data"]["version"] for m in mons] == want and all(set(m["data"]["sealed"]) <= {"holdout", "ood"}
                                                                for m in mons)
     st.add(None, "shadow monitor (base + composed only, sealed splits, trace only)", "correct" if ok else "wrong",
-           "; ".join(f"{m['data']['version']}: " + ", ".join(f"{s} S={v['S']:.3f}" for s, v in m["data"]["sealed"].items())
-                     for m in mons))
-    # sealed isolation: no lineage eval touched a non-evolve task
+           "; ".join(f"{m['data']['version']}: "
+                     + ", ".join(f"{s} S={v['S']:.3f}" for s, v in m["data"]["sealed"].items()) for m in mons))
     lin_tasks = {t for e in ev if e["kind"] == "eval" and e["round"] in rounds for t in e["data"]["per_task"]}
     st.add(None, "no sealed evaluation inside lineages", "correct" if lin_tasks <= evolve_ids else "wrong",
            f"{len(lin_tasks)} distinct tasks evaluated by lineages, all in evolve")
-    # spend
     rep = json.loads((rd / "report.json").read_text())
     sp = rep.get("spend")
     if sp:
-        prop_usd = sum((e["data"].get("proposer_usage") or {}).get("cost_usd", 0.0) for e in ev if e["kind"] == "proposal")
+        prop_usd = sum((e["data"].get("proposer_usage") or {}).get("cost_usd", 0.0)
+                       for e in ev if e["kind"] == "proposal")
         loop, cache = sp["loop"]["usd"], sp["cache_ground_truth"]["usd"]
         st.add(None, "cost accounting", "correct" if abs(loop - cache) < 0.002 else "questionable",
                f"proposer+implementer (trace) ${prop_usd:.4f}; reviewer = loop - proposer = ${loop - prop_usd:.4f}; "
@@ -636,11 +597,11 @@ def audit_sp(run: str) -> dict:
     return {"run": run, "method": "solpi", "counts": st.counts(), "steps": st.rows}
 
 
-def main(argv):
+def main(argv: list[str]) -> None:
     runs = argv or sorted(p.name for p in OUT.iterdir() if p.is_dir() and (p / "trace.jsonl").exists())
     dest = OUT / "audit_b"
     dest.mkdir(exist_ok=True)
-    tot = {"correct": 0, "questionable": 0, "wrong": 0, "unverifiable": 0}
+    tot = dict.fromkeys(VERDICTS, 0)
     for run in runs:
         res = audit_mh(run) if run.startswith("mh_") else audit_sp(run)
         (dest / f"{run}.json").write_text(json.dumps(res, indent=1, default=str))

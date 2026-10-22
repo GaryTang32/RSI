@@ -1,31 +1,9 @@
 """E13 - frame-dependent ("transductive") features: CV cannot see them, the audit frame breaks them.
 
-Claim [spec E13, the xgboost port's commit 9d6ee8b "forbid frame-dependent features in
-prepare(), which broke both sol5.6 runs"]: a feature computed from the whole frame passed
-to ``featurize`` (counts, frame statistics) means something different on the 20k-row
-training frame and on a 50k-row audit frame; CV cannot notice because features are built
-once on the full training frame before the folds are split. The port answered with a
-prompt rule ("if you ran prepare() on a random half ... would this column change?");
-this framework also mechanizes it (``prepare.check_per_row``, hardened mode).
-
-A. Battery (deterministic: fixed folds and model seed): four frame-dependent features, each
-   paired with its legal twin that fits the same statistic on ``train`` at module level
-   (the rule's "lookups fitted on train"). Measured: CV AUC (what the loop sees), hidden
-   iid / shifted AUC (post-hoc audit on 50k-row frames), and whether the mechanical
-   per-row check flags it. Prompt-rule-only (faithful) detection is 0 by construction:
-   nothing checks the rule.
-B. Live (--llm claude:haiku, or the offline --llm scripted): an LLM research agent on the
-   tabular task in faithful mode with the per-row rule in its program.md; every version it
-   proposed is re-checked with the mechanical check afterwards (how often does the prompt
-   rule alone fail?).
-
 Usage: python experiments/autoresearch/e13_frame_dependent.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
-from __future__ import annotations
-
-from _common import SCRATCH, ci, is_live, parser, plt, research_agent, suffix, usage_of, write  # noqa: I001
-
-import json
+from _common import (SCRATCH, is_live, parser, plt, report, research_agent, save_fig, slug, suffix,  # noqa: I001
+                     usage_of)
 
 import numpy as np
 
@@ -41,7 +19,8 @@ PAIRS = {
     "bucket_count": (
         f"np.unique({BUCKET}, return_inverse=True, return_counts=True)[2]"
         f"[np.unique({BUCKET}, return_inverse=True)[1]].astype(float)",
-        (f"_K, _C = np.unique({TRAIN_BUCKET}, return_counts=True)\nBUCKET_COUNT = dict(zip(_K.tolist(), _C.tolist()))\n",
+        (f"_K, _C = np.unique({TRAIN_BUCKET}, return_counts=True)\n"
+         "BUCKET_COUNT = dict(zip(_K.tolist(), _C.tolist()))\n",
          f"np.array([BUCKET_COUNT.get(b, 0) for b in {BUCKET}.tolist()], dtype=float)")),
     "bucket_freq": (
         f"np.unique({BUCKET}, return_inverse=True, return_counts=True)[2]"
@@ -52,7 +31,8 @@ PAIRS = {
     "age_over_max": ('frame["age"] / frame["age"].max()',
                      ('AGE_MAX = float(train["age"].max())\n', 'frame["age"] / AGE_MAX')),
     "priority_zscore": ('(frame["priority_score"] - frame["priority_score"].mean()) / frame["priority_score"].std()',
-                        ('PRIO_MU, PRIO_SD = float(train["priority_score"].mean()), float(train["priority_score"].std())\n',
+                        ('PRIO_MU, PRIO_SD = float(train["priority_score"].mean()), '
+                         'float(train["priority_score"].std())\n',
                          '(frame["priority_score"] - PRIO_MU) / PRIO_SD')),
 }
 
@@ -64,16 +44,17 @@ def variant(base, code: str, lookup: str = ""):
     return base.with_files({"train.py": t})
 
 
-def measure(task, art) -> dict:
+def measure(task: TabularTask, art) -> dict:
     f = task.run(art, mode="faithful")
     h = task.run(art, mode="hardened")
     aud = task.audit(art)
-    return {"cv": f.metric, "hardened_crash": h.crash_reason, "flagged": bool(h.crash_reason and
-                                                                             h.crash_reason.startswith("frame-dependent")),
+    return {"cv": f.metric, "hardened_crash": h.crash_reason,
+            "flagged": bool(h.crash_reason and h.crash_reason.startswith("frame-dependent")),
             "iid": aud.get("test_iid"), "shift": aud.get("test_shift"), "audit_flags": aud.get("audit_flags")}
 
 
 def battery() -> dict:
+    """Part A: each frame-dependent feature next to its per-row twin (deterministic folds and model seed)."""
     task = TabularTask()
     task.prepare()
     base = task.seed_artifact()
@@ -85,12 +66,14 @@ def battery() -> dict:
 
 
 def live_arm(args) -> dict:
+    """Part B: an LLM agent in faithful mode with the per-row rule in program.md, re-checked afterwards."""
     seed, n, llm_spec = args
     task = TabularTask()
     agent, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed)
-    res = AutoresearchLoop(task, agent, Config(max_experiments=n, mode="faithful", seed=seed, overwrite=True,
-                                               tag=f"e13-{seed}", hidden_audit=True, audit_discards=True),
-                           out_dir=SCRATCH / "e13" / f"live_{seed}_{llm_spec.replace(':', '_')}", llms=llms).run()
+    cfg = Config(max_experiments=n, mode="faithful", seed=seed, overwrite=True, tag=f"e13-{seed}", hidden_audit=True,
+                 audit_discards=True)
+    res = AutoresearchLoop(task, agent, cfg, out_dir=SCRATCH / "e13" / f"live_{seed}_{slug(llm_spec)}",
+                           llms=llms).run()
     rows = res.meta["audit"]
     flagged = [r for r in rows if r.get("audit_flags") and "frame-dependent" in r["audit_flags"]]
     return {"seed": seed, "n_audited": len(rows), "n_frame_dependent": len(flagged),
@@ -98,19 +81,20 @@ def live_arm(args) -> dict:
                                 for r in flagged], "usage": usage_of(llms)}
 
 
-def main():
-    ap = parser(__doc__.splitlines()[0], seeds=1)
-    a = ap.parse_args()
+def main_live(a) -> None:
+    n = 4 if a.quick else 10
+    runs = [live_arm((s, n, a.llm)) for s in range(a.seeds)]
+    verdict = {"frame_dependent_versions": sum(r["n_frame_dependent"] for r in runs),
+               "versions_audited": sum(r["n_audited"] for r in runs), "usage": [r["usage"] for r in runs]}
+    report("e13_frame_dependent" + suffix(a.llm, a.quick),
+           {"config": {"experiments": n, "seeds": list(range(a.seeds)), "llm": a.llm, "mode": "faithful"},
+            "runs": runs, "verdict": verdict})
+
+
+def main() -> None:
+    a = parser(__doc__.splitlines()[0], seeds=1).parse_args()
     if is_live(a.llm):
-        n = 4 if a.quick else 10
-        runs = [live_arm((s, n, a.llm)) for s in range(a.seeds)]
-        verdict = {"frame_dependent_versions": sum(r["n_frame_dependent"] for r in runs),
-                   "versions_audited": sum(r["n_audited"] for r in runs), "usage": [r["usage"] for r in runs]}
-        write("e13_frame_dependent" + suffix(a.llm, a.quick),
-              {"config": {"experiments": n, "seeds": list(range(a.seeds)), "llm": a.llm, "mode": "faithful"},
-               "runs": runs, "verdict": verdict})
-        print(json.dumps(verdict, indent=1))
-        return
+        return main_live(a)
     B = battery()
     base = B["baseline"]
     rows = {}
@@ -124,7 +108,7 @@ def main():
     verdict = {
         "mechanical_detection_rate": float(np.mean([r["flagged_dependent"] for r in rows.values()])),
         "mechanical_false_positive_rate": float(np.mean([r["flagged_twin"] for r in rows.values()])),
-        "prompt_rule_only_detection_rate": 0.0,        # faithful mode: nothing enforces the rule
+        "prompt_rule_only_detection_rate": 0.0,  # faithful mode: nothing enforces the rule
         "max_abs_cv_difference_dependent_vs_twin": float(max(abs(r["cv_gain_dependent"] - r["cv_gain_twin"])
                                                              for r in rows.values())),
         "iid_auc_dependent_minus_twin": dict(zip(rows, dep_minus_twin_iid)),
@@ -142,13 +126,10 @@ def main():
            "battery": B, "verdict": verdict}
     name = "e13_frame_dependent" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(rows, name))
-    write(name, out)
-    print(json.dumps({k: v for k, v in verdict.items() if k != "pairs"}, indent=1))
+    report(name, out, shown={k: v for k, v in verdict.items() if k != "pairs"})
 
 
-def figure(rows, name):
-    from _common import RESULTS
-
+def figure(rows: dict, name: str):
     p = plt()
     fig, ax = p.subplots(figsize=(9, 4))
     xs = np.arange(len(rows))
@@ -163,11 +144,7 @@ def figure(rows, name):
     ax.set_ylabel("frame-dependent minus per-row twin (AUC)")
     ax.set_title("E13: frame-dependent features vs their per-row twins", fontsize=10)
     ax.legend(fontsize=7)
-    fig.tight_layout()
-    path = RESULTS / f"{name}.png"
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=110)
-    return path
+    return save_fig(fig, name)
 
 
 if __name__ == "__main__":

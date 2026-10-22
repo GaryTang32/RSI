@@ -1,21 +1,6 @@
-"""E17 - Fig. 3b re-read on the paper's own compute axis (claims audit Q15, retry round 2).
+"""E17: Fig. 3b on the paper's compute axis (cumulative agent calls), for the paper's exact data and E3's curves.
 
-Q15: "the two trajectories diverge markedly: Dream-RSI consistently achieves superior downstream performance
-while requiring substantially lower cumulative compute across both Gemini-3.1-Pro and Gemini-3.7-Flash"
-[paper:§4.1 p.8]. The paper's x-axis is "cumulative discovery compute" = cumulative discovery-agent calls
-(Fig. 3 caption), not rounds, tokens or wall-clock; the y-axis is the arithmetic-mean held-out runtime.
-
-1. **The paper's exact data.** The arXiv source (``Main_Text/Figures/scaling_lasso.tex``) holds the plotted
-   points. Two readings of "consistently superior ... while requiring lower cumulative compute":
-   A = at the same round (the numbered markers), B = at the same cumulative compute (the Fixed curve linearly
-   interpolated at each Dream marker, as the plotted lines connect them). The source's own comments are
-   quoted: for Flash, Fixed "Iter 1--2 have no downstream evaluation" and Dream "Iter 1 has no downstream
-   evaluation", although values are plotted there.
-2. **Our E3 on the same axis.** E3's saved curves (best-so-far search score vs cumulative agent calls, Dream
-   with more, cheaper rounds up to Fixed's budget) re-read with reading B at every Dream round end that Fixed's
-   curve covers (the preregistered T2 criterion: CI lower bound > 0 at every point).
-
-    python experiments/dream-rsi/e17_fig3b_axis.py [--source <scaling_lasso.tex>]
+    python experiments/dream-rsi/e17_fig3b_axis.py [--source <scaling_lasso.tex>] [--e3 <e3 result json>]
 """
 import argparse
 import json
@@ -23,10 +8,9 @@ import re
 from pathlib import Path
 
 import numpy as np
-
 from _common import RESULTS, paired, save
 
-#: exact values from the arXiv source (scaling_lasso.tex); used when --source is not given
+# exact plotted points (cumulative calls, held-out ms) from the arXiv source's scaling_lasso.tex
 PAPER = {
     "pro": {"fixed": [(110, 5267.0500), (220, 5365.4000), (330, 5295.2333), (440, 4691.0833), (550, 3587.0667)],
             "dream": [(110, 5267.0500), (119, 5349.1500), (147, 5368.9000), (234, 5705.4333), (317, 2931.0000)]},
@@ -48,15 +32,15 @@ def parse_source(tex: str) -> dict:
 
 
 def paper_readings(data: dict) -> dict:
+    """Reading A: Dream vs Fixed at the same round; B: Fixed linearly interpolated at Dream's cumulative calls."""
     out = {}
     for model, d in data.items():
         fx, dr = d["fixed"], d["dream"]
         xs, ys = [c for c, _ in fx], [v for _, v in fx]
         pts = []
-        for r in range(1, len(dr)):              # rounds 2..5
+        for r in range(1, len(dr)):
             c, v = dr[r]
-            fa = fx[r][1]                                      # reading A: same round
-            fb = float(np.interp(c, xs, ys))                   # reading B: same cumulative calls
+            fa, fb = fx[r][1], float(np.interp(c, xs, ys))
             pts.append({"round": r + 1, "dream_calls": c, "fixed_calls_same_round": fx[r][0], "dream_ms": v,
                         "A_fixed_ms": fa, "A_dream_better": v < fa, "A_diff_ms": v - fa,
                         "B_fixed_ms_interp": fb, "B_dream_better": v < fb, "B_diff_ms": v - fb,
@@ -70,6 +54,7 @@ def paper_readings(data: dict) -> dict:
 
 
 def e3_reading_b(path: Path) -> dict:
+    """Reading B on E3's curves at every Dream round end that Fixed's curve covers (T2: CI lower bound > 0)."""
     d = json.loads(path.read_text())
     out = {}
     for dom in d["results"]:
@@ -77,9 +62,8 @@ def e3_reading_b(path: Path) -> dict:
         fx = {r["seed"]: r for r in rows if r["arm"] == "fixed"}
         dr = {r["seed"]: r for r in rows if r["arm"] == "dream"}
         seeds = sorted(set(fx) & set(dr))
-        R = min(len(dr[s]["curve"]) for s in seeds)
         pts = []
-        for r in range(2, R):                    # curve[0] = (0, seed); curve[1] = round 1 (shared)
+        for r in range(2, min(len(dr[s]["curve"]) for s in seeds)):  # curve[0] = seed, curve[1] = round 1 (shared)
             a, b = [], []
             for s in seeds:
                 c, v = dr[s]["curve"][r]
@@ -102,11 +86,10 @@ def main():
     ap.add_argument("--source", default=None, help="scaling_lasso.tex from the arXiv source")
     ap.add_argument("--e3", default=str(RESULTS / "e3_dream_vs_fixed.json"))
     a = ap.parse_args()
-    data = PAPER
     if a.source:
         parsed = parse_source(Path(a.source).read_text())
         assert parsed == {m: {k: [tuple(p) for p in v] for k, v in d.items()} for m, d in PAPER.items()}, parsed
-    paper = paper_readings(data)
+    paper = paper_readings(PAPER)
     e3 = e3_reading_b(Path(a.e3))
     decision = {"paper_contradicts_itself": any(p["A_worse_rounds"] and p["B_worse_rounds"] for p in paper.values()),
                 "rule": "Q15 stays CONTRADICTED (root cause e) iff the paper's own exact data show Dream worse than "

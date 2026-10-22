@@ -1,38 +1,4 @@
-"""A minimal agent runtime with a Pi-like extension API (spec B9.1 ``AgentRuntime``).
-
-SoL-Pi's mechanisms are Pi *extensions*: they register tools (or replace built-in
-ones) and subscribe to lifecycle events; they never patch the base harness. This
-runtime reproduces that surface so the four mechanisms (and any new ones) can be
-hosted generically:
-
-* ``register_tool(spec, replaces=None)`` - add a tool or replace a built-in one;
-* ``on(event, handler)`` for ``session_start``, ``context`` (projection of the
-  messages sent to the provider; stored history is never modified),
-  ``before_provider_request``, ``tool_result`` (may replace a result before it
-  enters history), ``turn_end``, ``agent_settled``, ``input``, ``session_compact``;
-* ``compact(custom_instructions)`` (Pi native compaction: summarise everything
-  but the most recent ``keep_recent_tokens``), ``abort()``,
-  ``send_hidden(text, trigger_turn)``, ``append_entry(type, data)`` (non-context
-  session log), ``store`` (the session's private object store, readable by the
-  bash tool under ``/.solpi/``);
-* ``meter`` - a :class:`~rsi.solpi.meter.TokenMeter` billing every provider request
-  with a simulated prefix cache;
-* ``context_usage()`` - Pi's ``getContextUsage().tokens``: the provider-reported size of the
-  last reply produced since the latest compaction (its request's prompt tokens + its output
-  tokens, recorded as ``details["usage_tokens"]``) plus the estimated tokens of every message
-  after it (the reply's tool results, hidden messages); ``None`` when no reply exists since
-  the latest compaction.
-
-Each provider request projects the context exactly once (``context`` handlers have
-side effects, e.g. ObservationPack counts sends). Pi-style auto-compaction runs *before*
-that projection when ``context_usage()`` (or, if unknown, the estimate of the unprojected
-messages) exceeds ``context_window - auto_compact_reserve`` - strictly, like Pi's
-``shouldCompact`` (``contextTokens > contextWindow - reserveTokens``).
-
-The agent itself is a *backend* with ``act(messages, tools, runtime) -> Message``
-(an assistant message with text and tool calls): the deterministic
-:class:`rsi.domains.agentworld.MockAgent` offline, or an LLM adapter.
-"""
+"""A minimal agent runtime with Pi's extension API: tools, lifecycle hooks, compaction and a token meter."""
 from __future__ import annotations
 
 import hashlib
@@ -100,7 +66,7 @@ class ToolResult:
 
 
 class ToolError(Exception):
-    """Raised by a tool to report an error result (the message becomes the result text)."""
+    """Raised by a tool to report an error result."""
 
 
 @dataclass
@@ -124,7 +90,7 @@ class Backend(Protocol):
 
 
 class Extension:
-    """Base class for opt-in mechanisms. ``register`` wires tools and handlers."""
+    """Base class for opt-in mechanisms; ``register`` wires tools and handlers."""
 
     name = "extension"
 
@@ -146,15 +112,11 @@ class RunResult:
 
 
 def default_summarizer(archived: list[Message], instructions: str, rt: "AgentRuntime") -> str:
-    """Deterministic stand-in for Pi's native compaction summariser: keeps the task,
-    the agent's own NOTE/PLAN lines (completed work, verification, decisions) and
-    the latest plan. Real LLM summarisers can be plugged in via ``AgentRuntime.summarizer``."""
+    """Deterministic stand-in for Pi's summariser: the task (or prior summary) and the agent's NOTE/PLAN/DONE lines."""
     task = next((m.content for m in archived if m.role == "user" and not m.details.get("compaction")), "")
     prior = [m.content for m in archived if m.details.get("compaction")]
-    notes = []
-    for m in archived:
-        if m.role == "assistant":
-            notes.extend(l for l in m.content.splitlines() if l.startswith(("NOTE:", "PLAN:", "DONE:")))
+    notes = [l for m in archived if m.role == "assistant" for l in m.content.splitlines()
+             if l.startswith(("NOTE:", "PLAN:", "DONE:"))]
     parts = []
     if prior:
         parts.append(prior[-1])
@@ -168,7 +130,7 @@ def default_summarizer(archived: list[Message], instructions: str, rt: "AgentRun
 
 
 class AgentRuntime:
-    """Hosts one agent session (see module docstring)."""
+    """Hosts one agent session; the backend's ``act(messages, tools, runtime)`` returns the assistant message."""
 
     def __init__(self, backend: Backend, *, system_prompt: str, meter: TokenMeter, max_turns: int = 80,
                  context_window: int = 200_000, keep_recent_tokens: int = 20_000, auto_compact: bool = True,
@@ -203,7 +165,6 @@ class AgentRuntime:
         self._pending: list[Message] = []
         self._call_seq = 0
 
-    # ------------------------------------------------------------ extension API
     def register_tool(self, spec: ToolSpec, replaces: Optional[str] = None) -> None:
         if replaces:
             if replaces in self.tools:
@@ -229,7 +190,7 @@ class AgentRuntime:
 
     @property
     def aborted(self) -> bool:
-        """``context.signal.aborted``: an abort was requested during the current turn."""
+        """An abort was requested during the current turn (``context.signal.aborted``)."""
         return self._abort
 
     def send_hidden(self, text: str, trigger_turn: bool = True) -> None:
@@ -242,7 +203,6 @@ class AgentRuntime:
         self._call_seq += 1
         return f"call_{self._call_seq:04d}"
 
-    # ------------------------------------------------------------ context
     def system_message(self) -> Message:
         lines = [self.system_prompt, "", "Tools:"]
         for t in self.tools.values():
@@ -268,10 +228,7 @@ class AgentRuntime:
         return int(sum(m.tokens() for m in msgs))
 
     def context_usage(self) -> Optional[int]:
-        """Pi 0.85 ``AgentSession.getContextUsage().tokens`` (``estimateContextTokens``): the last valid
-        reply's usage (prompt + output tokens of its request) + the estimated tokens of the messages after
-        it. Replies from before the latest compaction are stale and ignored; with none left it is ``None``
-        (Pi: "unknown until the next LLM response")."""
+        """Pi's ``getContextUsage().tokens``: last valid reply's usage + later estimates (``None``: no reply)."""
         for i in range(len(self.history) - 1, -1, -1):
             m = self.history[i]
             if m.role != "assistant":
@@ -284,16 +241,10 @@ class AgentRuntime:
         return None
 
     def emit(self, event: str, *args: Any) -> list[Any]:
-        outs = []
-        for h in list(self.handlers[event]):
-            outs.append(h(*args, self))
-        return outs
+        return [h(*args, self) for h in list(self.handlers[event])]
 
-    # ------------------------------------------------------------ compaction
     def should_auto_compact(self) -> bool:
-        """Pi ``shouldCompact(estimateContextTokens(messages).tokens, window, settings)`` before the next
-        response, on the stored (unprojected) messages: ``context_usage()`` (or, when unknown, the estimate of
-        every message) strictly greater than ``context_window - auto_compact_reserve``."""
+        """Pi's ``shouldCompact``: stored-context tokens strictly above ``context_window - auto_compact_reserve``."""
         if not self.auto_compact:
             return False
         est = self.context_usage()
@@ -302,8 +253,7 @@ class AgentRuntime:
         return est > self.context_window - self.auto_compact_reserve and self.compactable()
 
     def cut_index(self) -> int:
-        """Index of the first kept history message (Pi ``findCutPoint``): keep at least
-        ``keep_recent_tokens`` of recent history, cut at an assistant-message boundary."""
+        """Pi's ``findCutPoint``: first kept message, keeping >= ``keep_recent_tokens`` and no leading tool result."""
         acc, i = 0, len(self.history)
         while i > 0 and acc < self.keep_recent_tokens:
             i -= 1
@@ -320,12 +270,7 @@ class AgentRuntime:
         if cut <= 1:
             return None
         archived, kept = self.history[:cut], self.history[cut:]
-        # Pi 0.85.1 summarisation request (``pi_compaction``): the archived messages serialised into ONE user
-        # message (tool results cut to 2,000 chars) under the summarisation system prompt, sent with
-        # cacheRetention "none" - it shares no cached prefix with the conversation, so every input token is
-        # billed uncached. (Before retry round 2 it was billed as a continuation of the conversation's cached
-        # prefix, i.e. mostly at the cache-read price.) The conversation's own cache is untouched: the next
-        # request re-reads the unchanged system prompt and writes the summary and the kept tail.
+        # Pi sends the summarisation request with cacheRetention "none": it shares no prefix with the conversation
         self.meter.uncached(summarization_request_tokens(archived, custom_instructions, MESSAGE_OVERHEAD_TOKENS),
                             role="compaction")
         summary = self.summarizer(archived, custom_instructions, self)
@@ -337,16 +282,15 @@ class AgentRuntime:
                                       "archived_tokens": sum(m.tokens() for m in archived)})
         return summary
 
-    # ------------------------------------------------------------ the loop
     def run(self, task: str) -> RunResult:
         self.emit("session_start")
         self.history.append(Message("user", task))
-        status, final, error = "max_turns", "", None
+        status, final = "max_turns", ""
         while self.turns < self.max_turns:
             if self.should_auto_compact():
                 self.compact("")
                 self.auto_compactions += 1
-            msgs = self.project()               # exactly one projection per provider request
+            msgs = self.project()               # exactly one projection per request: handlers have side effects
             ctx = self.context_tokens(msgs)
             if ctx > self.context_window:
                 return RunResult("context_overflow", self.turns, compactions=self.compactions, overflow=True)
@@ -359,7 +303,6 @@ class AgentRuntime:
             except Exception as e:  # noqa: BLE001
                 return RunResult("error", self.turns, compactions=self.compactions, error=f"{type(e).__name__}: {e}")
             self.meter.add_output(reply.tokens(), role="main")
-            # provider-reported usage of this reply (prompt + output), as Pi stores it on the assistant message
             reply.details = {**reply.details, "usage_tokens": int(ctx + reply.tokens()),
                              "usage_compactions": self.compactions}
             self.history.append(reply)
@@ -369,27 +312,7 @@ class AgentRuntime:
                 break
             results = []
             for call in reply.tool_calls:
-                spec = self.tools.get(call.name)
-                if spec is None:
-                    res = ToolResult(f"Unknown tool: {call.name}", is_error=True)
-                else:
-                    try:
-                        res = spec.execute(dict(call.args), self, call.id)
-                    except ToolError as e:
-                        res = ToolResult(str(e), is_error=True)
-                    except Exception as e:  # noqa: BLE001
-                        res = ToolResult(f"{type(e).__name__}: {e}", is_error=True)
-                ev = ToolResultEvent(call, res)
-                for h in list(self.handlers["tool_result"]):
-                    try:
-                        out = h(ev, self)
-                    except Exception as e:  # noqa: BLE001 - result handlers fail open
-                        self.append_entry("tool_result_handler_error", {"error": repr(e)})
-                        out = None
-                    if out is not None:
-                        ev.result = out
-                msg = Message("tool", ev.result.content, tool_call_id=call.id, tool_name=call.name,
-                              is_error=ev.result.is_error, details=dict(ev.result.details))
+                msg = self._result_message(call, self._call_tool(call))
                 self.history.append(msg)
                 results.append(msg)
             self.emit("turn_end", reply, results)
@@ -401,28 +324,42 @@ class AgentRuntime:
                 self._pending.clear()
         return RunResult(status, self.turns, final=final, compactions=self.compactions)
 
+    def _call_tool(self, call: ToolCall) -> ToolResult:
+        spec = self.tools.get(call.name)
+        if spec is None:
+            return ToolResult(f"Unknown tool: {call.name}", is_error=True)
+        try:
+            return spec.execute(dict(call.args), self, call.id)
+        except ToolError as e:
+            return ToolResult(str(e), is_error=True)
+        except Exception as e:  # noqa: BLE001
+            return ToolResult(f"{type(e).__name__}: {e}", is_error=True)
 
-# ------------------------------------------------------------------ built-in tools
+    def _result_message(self, call: ToolCall, res: ToolResult) -> Message:
+        """The history message of a result after the ``tool_result`` handlers (which fail open) replaced it."""
+        ev = ToolResultEvent(call, res)
+        for h in list(self.handlers["tool_result"]):
+            try:
+                out = h(ev, self)
+            except Exception as e:  # noqa: BLE001
+                self.append_entry("tool_result_handler_error", {"error": repr(e)})
+                continue
+            if out is not None:
+                ev.result = out
+        return Message("tool", ev.result.content, tool_call_id=call.id, tool_name=call.name,
+                       is_error=ev.result.is_error, details=dict(ev.result.details))
+
+
 def builtin_tools(env: Any) -> list[ToolSpec]:
-    """Pi's base tools over an environment exposing ``read/write/edit/bash``."""
-
-    def _read(args, rt, cid):
-        return env.tool_read(args.get("path", ""), rt)
-
-    def _write(args, rt, cid):
-        return env.tool_write(args.get("path", ""), args.get("content", ""), rt)
-
-    def _edit(args, rt, cid):
-        return env.tool_edit(args.get("path", ""), args.get("old", ""), args.get("new", ""), rt)
-
-    def _bash(args, rt, cid):
-        return env.tool_bash(args.get("command", ""), rt)
-
+    """Pi's base tools over an environment exposing ``tool_read/tool_write/tool_edit/tool_bash``."""
     return [
-        ToolSpec("read", "Read a file.", {"path": "file path"}, _read),
-        ToolSpec("write", "Create or overwrite a file.", {"path": "file path", "content": "full content"}, _write),
+        ToolSpec("read", "Read a file.", {"path": "file path"},
+                 lambda a, rt, cid: env.tool_read(a.get("path", ""), rt)),
+        ToolSpec("write", "Create or overwrite a file.", {"path": "file path", "content": "full content"},
+                 lambda a, rt, cid: env.tool_write(a.get("path", ""), a.get("content", ""), rt)),
         ToolSpec("edit", "Replace one exact, unique occurrence of text in a file.",
-                 {"path": "file path", "old": "exact text", "new": "replacement"}, _edit),
-        ToolSpec("bash", "Run a shell command; non-zero exit is reported as an error.",
-                 {"command": "command line"}, _bash),
+                 {"path": "file path", "old": "exact text", "new": "replacement"},
+                 lambda a, rt, cid: env.tool_edit(a.get("path", ""), a.get("old", ""), a.get("new", ""), rt)),
+        ToolSpec("bash", "Run a shell command; non-zero exit is reported as an error.", {"command": "command line"},
+                 lambda a, rt, cid: env.tool_bash(a.get("command", ""), rt)),
     ]

@@ -1,80 +1,59 @@
 """Live demo: the rsi package improving a real LLM agent harness, end to end, with Claude Haiku.
 
-Each run starts from an untouched seed, uses Claude Haiku both as the frozen task model and
-as the proposer, and writes a full trace (``trace.jsonl`` -> ``TRACE.md``) plus a
-``summary.json`` that ``experiments/demo/plot_demo.py`` turns into graphs::
-
-    python experiments/demo/live_demo.py metaharness    # AgentQA harness, Meta-Harness, N=4 k=2
-    python experiments/demo/live_demo.py rrsi           # AgentQA harness, RRSI, T=4
-    python experiments/demo/live_demo.py autoresearch   # tinylm train.py, autoresearch, 10 experiments
-    python experiments/demo/live_demo.py metaharness --suite hard   # harder tasks: logic grids + ledgers
-    python experiments/demo/live_demo.py rrsi --suite hard
-    python experiments/demo/live_demo.py metaharness --replay-check # re-run a finished run from its cache at $0 and
-                # compare its proposer prompts, practice scores and traces, seed score, monitor readings and test results
-
-Outputs go to ``demo/runs/<method>/`` with a fresh LLM cache in ``demo/runs/.cache_<method>``
-(a re-run with the same cache replays at $0). The seed harness is one direct model call with
-the system prompt "You are a helpful assistant."; the grader is exact match, outside the artifact.
-Held-out (``holdout``) and out-of-distribution (``ood``) tasks are sealed: the loop never sees
-them, only the write-only shadow monitor and the final transfer report do.
+    python experiments/demo/live_demo.py {metaharness,rrsi,autoresearch} [--suite hard] [--replay-check] [--resume]
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import re
+import shutil
+import signal
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
-ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from _demo_common import JOURNAL, RUNS, traces_identical
 
-import rsi  # noqa: E402
-from rsi.core import Budget, CachedLLM, ClaudeCLI, transfer_report  # noqa: E402
-from rsi.domains.agentqa import AgentQADomain, make_suite  # noqa: E402
-from rsi.trace import inspect  # noqa: E402
+import rsi
+from rsi.core import Budget, CachedLLM, ClaudeCLI, transfer_report
+from rsi.domains.agentqa import AgentQADomain, make_suite
+from rsi.trace import inspect, load_trace
 
-OUT = ROOT / "demo" / "runs"
-
-
+OUT = RUNS
 RESUME = False   # set by --resume
+_WRITER_LOCK = None
+INFRA = re.compile(r"llm error|agent error|infra:|session limit")
+#: the post-run re-score's trial seeds (100, 101): loops and monitors use seeds from 0 (RRSI's loop hashed ones)
+RESCORE_K, RESCORE_SEED_OFFSET = 2, 100
+NEW_SEED_RECORD = re.compile(r"(rescore|leak_ablation)_s(-?\d+)\.json")
+MH_CFG = {"iterations": 4, "k": 2, "history_mode": "full", "seed": 0, "test_splits": ("holdout", "ood"),
+          "cost_metric": "tokens", "workers": 4, "validate_timeout_s": 240.0, "shadow_workers": 4}
 
 
 def _fresh(name: str) -> Path:
-    """The run directory for a new run. An existing one is refused, except with ``--resume`` when it holds an
-    unfinished or unclean attempt: that attempt moves to ``runs/_archive/<name>_<UTC time>`` (its log stays where the
-    chain wrote it) and the run restarts, replaying every call its cache already holds for $0."""
+    """A new run's directory; with ``--resume`` an unfinished or unclean attempt is archived and replayed from cache."""
     begin_live_write()
     out = OUT / name
     if out.exists():
         summ = out / "summary.json"
-        # a finished run (summary written, and not marked unclean) is never replaced; summaries from before the
-        # infrastructure check have no "clean" key and count as finished
+        # summaries from before the infrastructure check have no "clean" key and count as finished
         finished = summ.exists() and json.loads(summ.read_text()).get("clean", True) is not False
         if not RESUME or finished:
-            raise SystemExit(f"{out} exists: refusing to overwrite a recorded run"
-                             + ("" if finished else " (pass --resume to archive this attempt and continue from the cache)"))
-        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
-        dest = OUT / "_archive" / f"{name}_{stamp}"
+            hint = "" if finished else " (pass --resume to archive this attempt and continue from the cache)"
+            raise SystemExit(f"{out} exists: refusing to overwrite a recorded run{hint}")
+        dest = OUT / "_archive" / f"{name}_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
         dest.parent.mkdir(parents=True, exist_ok=True)
         out.rename(dest)
         print(f"archived the unfinished attempt to {dest}", flush=True)
     return out
 
 
-_WRITER_LOCK = None
-
-
 def begin_live_write() -> None:
-    """Call before a live writer (a run, a ``--record``) makes its first model call: take the demo's writer lock,
-    held until the process exits (a second live writer is refused: each drops the others' unfinished journal lines),
-    then drop the journal lines killed writers left (:func:`drop_unwritten_journal_lines`)."""
+    """Hold the demo's writer lock until exit (a second live writer is refused), then drop dangling journal lines."""
     global _WRITER_LOCK
     if _WRITER_LOCK is None:
-        import fcntl
         OUT.mkdir(parents=True, exist_ok=True)
         f = open(OUT / ".live_writer.lock", "w")
         try:
@@ -86,47 +65,33 @@ def begin_live_write() -> None:
     drop_unwritten_journal_lines()
 
 
-def drop_unwritten_journal_lines(root: Optional[Path] = None) -> int:
-    """A journal line is written just before its cache entry appears, so an attempt killed in between lists an entry
-    it never wrote; a later attempt that writes the entry would then share it. Every live writer (a run, a
-    ``--record``) calls this before it starts, holding the writer lock (:func:`begin_live_write`), so no other writer
-    is running and any line without an entry is such a leftover: drop them all. Returns how many lines it dropped."""
-    root = OUT if root is None else root
-    caches = {c.name: c for c in [*root.glob(".cache_*"), *(root / "_archive").glob(".cache_*")]}
-    dropped = 0
-    for j in root.rglob(f"*{JOURNAL}"):
+def drop_unwritten_journal_lines() -> None:
+    """Drop journal lines whose cache entry never appeared (a writer killed between writing the two).
+
+    Safe only under the writer lock, when no other writer can be between the two steps."""
+    caches = {c.name: c for c in [*OUT.glob(".cache_*"), *(OUT / "_archive").glob(".cache_*")]}
+    for j in OUT.rglob(f"*{JOURNAL}"):
         lines = j.read_text().splitlines()
         kept = []
         for ln in lines:
             cache, _, key = ln.partition("/")
-            if cache in caches and not (caches[cache] / key[:2] / f"{key}.json").exists():
-                continue   # an entry that never appeared (an unknown cache is left alone)
-            kept.append(ln)
+            if cache not in caches or (caches[cache] / key[:2] / f"{key}.json").exists():   # unknown caches stay
+                kept.append(ln)
         if kept != lines:
             j.write_text("".join(f"{ln}\n" for ln in kept))
-            dropped += len(lines) - len(kept)
-    return dropped
-
-
-#: an attempt's cache-write journal (every cache entry it paid for; spend.py attributes entries by it)
-JOURNAL = "cache_writes.txt"
 
 
 def _haiku(name: str, timeout_s: int = 300, offline: bool = False) -> CachedLLM:
-    """The run's cached Haiku. A live one journals its writes into the run directory (it moves with an archived
-    attempt); an offline replay writes nothing."""
+    """The run's cached Haiku; a live one journals its writes into the run directory."""
     return CachedLLM(ClaudeCLI("haiku", timeout_s=timeout_s), OUT / f".cache_{name}", offline=offline,
                      journal=None if offline else OUT / name / JOURNAL)
 
 
-def _agentqa(suite: str = "easy"):
+def _agentqa(suite: str = "easy") -> AgentQADomain:
     if suite == "hard":
-        # 8 practice tasks (logic grids + transaction ledgers); sealed: 6 held-out of the same kinds and
-        # 6 OOD (business-day scheduling + chained string transformations)
         from rsi.domains.agentqa.hard import OOD_HINT, make_hard_suite
-        # hard tasks cost ~$0.05 per harness run (long puzzles, 60-85 row ledgers), so the splits are smaller
+        # hard tasks cost ~$0.05 per harness run, so the splits are smaller
         return AgentQADomain(make_hard_suite(n_evolve=8, n_holdout=6, n_ood_per_family=3, seed=0), ood_hint=OOD_HINT)
-    # 12 practice tasks (numeric word problems); sealed: 8 held-out numeric + 8 ood from 4 unseen families
     return AgentQADomain(make_suite(n_evolve=12, n_holdout=8, n_ood_per_family=2, seed=1))
 
 
@@ -138,28 +103,14 @@ def _usd(llm) -> float:
     return round(llm.meter.total().cost_usd, 4)
 
 
-INFRA = re.compile(r"llm error|agent error|infra:|session limit")
+def _print_infra(errs: list[str]) -> None:
+    if errs:
+        print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ")
 
 
-def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
-    """Model calls lost to infrastructure anywhere in a run, read from structured fields only (never from prompts or
-    replies, so a harness that merely mentions such text is not flagged):
-
-    - trials missing from loop evaluations, shadow-monitor readings and the post-run re-score;
-    - every recorded model-call error of RRSI's critic (``llm.replies[].error``) and of its digesters and analyst
-      (``llm_calls[].error``): any error there is a failed call (timeout, usage cap, CLI error, offline cache miss);
-    - candidates RRSI dropped as ``eval_invalid`` (too many trials lost), and trials missing from any of RRSI's
-      evaluation files (``evals/*.json``, which include its calibration repeats);
-    - infrastructure errors on proposals, analyses, gates and other events (``error`` / ``status`` / ``reason``).
-
-    A run with any of these is not a clean result."""
-    from rsi.trace import load_trace
+def infra_errors(out: Path, rep: dict | None = None) -> list[str]:
+    """Model calls a run lost to infrastructure, read from structured fields only (never prompts or replies)."""
     found = []
-
-    def hit(where: str, text) -> None:
-        if isinstance(text, str) and (m := INFRA.search(text)):
-            found.append(f"{where}: {text[m.start():][:120]}")
-
     for e in load_trace(out):
         d, where = e["data"] if isinstance(e["data"], dict) else {}, f"{e['kind']} round {e['round']}"
         s = d.get("summary")
@@ -170,19 +121,21 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
                 if isinstance(v, dict) and (v.get("missing") or 0) > 0:
                     found.append(f"monitor {d.get('version')} {split}: {v['missing']} trials missing")
         llm = d.get("llm") if isinstance(d.get("llm"), dict) else {}
-        for i, r in enumerate(llm.get("replies") or []):
+        for i, r in enumerate(llm.get("replies") or []):   # RRSI's critic
             if isinstance(r, dict) and r.get("error"):
                 found.append(f"{where} {d.get('candidate', '')} reply {i}: {str(r['error'])[:120]}")
-        for c in d.get("llm_calls") or []:
+        for c in d.get("llm_calls") or []:                  # RRSI's digesters and analyst
             if isinstance(c, dict) and c.get("error"):
                 found.append(f"{where} {c.get('role', 'call')}: {str(c['error'])[:120]}")
-        math = d.get("math") if isinstance(d.get("math"), dict) else {}
-        if math.get("gate_failure") == "eval_invalid" or d.get("stage") == "eval_invalid":
-            found.append(f"{where} {d.get('candidate', '')} eval_invalid: {str(math.get('detail') or d.get('detail'))[:120]}")
+        gate = d.get("math") if isinstance(d.get("math"), dict) else {}
+        if gate.get("gate_failure") == "eval_invalid" or d.get("stage") == "eval_invalid":
+            detail = str(gate.get("detail") or d.get("detail"))[:120]
+            found.append(f"{where} {d.get('candidate', '')} eval_invalid: {detail}")
         for key in ("error", "status", "reason"):
-            hit(f"{where} {key}", d.get(key))
+            if isinstance(text := d.get(key), str) and (m := INFRA.search(text)):
+                found.append(f"{where} {key}: {text[m.start():][:120]}")
     # RRSI's calibration repeats and other evaluation jobs are files, not trace events
-    for f in sorted((out / "evals").glob("*.json")) if (out / "evals").is_dir() else []:
+    for f in sorted((out / "evals").glob("*.json")):
         try:
             miss = json.loads(f.read_text()).get("missing") or 0
         except ValueError:
@@ -196,22 +149,25 @@ def infra_errors(out: Path, rep: Optional[dict] = None) -> list[str]:
     return found
 
 
-#: the post-run re-score draws fresh trials: shadow monitors and Meta-Harness's loop score with trial seeds 0, 1, ...
-#: (RRSI's loop uses hashed per-job seeds), so these seeds (100, 101) are samples no loop decision and no monitor
-#: reading used
-RESCORE_K, RESCORE_SEED_OFFSET = 2, 100
+def rescore(dom, llm, arms: dict, seed_offset: int = RESCORE_SEED_OFFSET) -> dict:
+    return transfer_report(dom, llm, arms, splits=("evolve", "holdout", "ood"), k=RESCORE_K, workers=4,
+                           seed_offset=seed_offset)
 
 
-def rescore(dom, llm, arms: dict, splits=("evolve", "holdout", "ood"), seed_offset: int = RESCORE_SEED_OFFSET) -> dict:
-    return transfer_report(dom, llm, arms, splits=splits, k=RESCORE_K, workers=4, seed_offset=seed_offset)
+def record_path(run_dir: Path, kind: str, seed_offset: int) -> Path:
+    """``<kind>.json`` holds trial seeds 100 and 101, ``<kind>_s<N>.json`` seeds N and N + 1."""
+    return run_dir / (f"{kind}.json" if seed_offset == RESCORE_SEED_OFFSET else f"{kind}_s{seed_offset}.json")
 
 
-NEW_SEED_RECORD = re.compile(r"(rescore|leak_ablation)_s(-?\d+)\.json")
+def record_offsets(run_dir: Path, kind: str) -> list[int]:
+    """Seed offsets of the run's ``kind`` records (``rescore`` or ``leak_ablation``)."""
+    found = [RESCORE_SEED_OFFSET] if (run_dir / f"{kind}.json").exists() else []
+    found += [int(m.group(2)) for p in run_dir.glob(f"{kind}_s*.json") if (m := NEW_SEED_RECORD.fullmatch(p.name))]
+    return sorted(found)
 
 
 def recorded_seeds(run_dir: Path) -> set[int]:
-    """Every trial seed a run's files record under ``seeds`` (RRSI's loop: its hashed per-job seeds), apart from the
-    new-seed records, whose seeds :func:`new_seed_problem` checks separately."""
+    """Every trial seed a run's files record under ``seeds``, except in the new-seed records."""
     found: set[int] = set()
 
     def walk(x) -> None:
@@ -237,16 +193,10 @@ def recorded_seeds(run_dir: Path) -> set[int]:
     return found
 
 
-def new_seed_problem(run_dir: Path, record: str, seed_offset: int) -> Optional[str]:
-    """Why a re-score or leak check with ``seed_offset`` would not draw new trial seeds, or None.
+def new_seed_problem(run_dir: Path, record: str, seed_offset: int) -> str | None:
+    """Why ``record`` at ``seed_offset`` would reuse trial seeds another evaluation of the run used, or None.
 
-    A re-score uses trial seeds ``seed_offset .. seed_offset + RESCORE_K - 1`` and the LLM cache is keyed on the seed,
-    so any seed another evaluation of the run already used replays its samples. Meta-Harness's loop and the monitors
-    use seeds from 0 and the recorded re-score and leak check use 100 and 101, so new seeds start at 102. RRSI's loop
-    uses hashed seeds, which its evaluation files record (:func:`recorded_seeds`); none of them may fall in the range.
-    Nor may the seeds of an existing ``rescore_s<N>``/``leak_ablation_s<N>`` record, except that a re-score and a
-    leak check may share an offset, as the recorded pair does (the leak check's final arm then replays the
-    re-score's)."""
+    A re-score and a leak check may share an offset (the leak check's final arm then replays the re-score's)."""
     first = RESCORE_SEED_OFFSET + RESCORE_K
     if seed_offset < first:
         return (f"--seed-offset must be at least {first}: seeds below it were used by the loops, the monitors or the "
@@ -268,8 +218,7 @@ def new_seed_problem(run_dir: Path, record: str, seed_offset: int) -> Optional[s
 
 
 def _monitor_usd(out: Path) -> float:
-    """Spend a run metered outside its main LLM (RRSI's shadow monitor has its own meter)."""
-    from rsi.trace import load_trace
+    """Spend metered outside the run's main LLM (RRSI's shadow monitor)."""
     end = [e for e in load_trace(out) if e["kind"] == "run_end"]
     sp = (end[-1]["data"].get("spend") or {}) if end else {}
     return float(sp.get("shadow_monitor_usd") or 0.0)
@@ -286,8 +235,7 @@ def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict) -> None
             "trajectory": res.trajectory, "transfer": rep,
             "usd_total": round(_usd(llm) + monitor, 4), "usd_shadow_monitor": round(monitor, 4),
             "usd_transfer_report": round(_usd(llm) - before, 4),
-            # hits = lookups answered from the cache at $0: calls replayed from an earlier attempt, plus repeats of
-            # prompts this run already sent. Calls made inside forked interface-validation children are not counted.
+            # hits: calls replayed from an earlier attempt or repeated prompts (forked validation children excluded)
             "cache": {"loop_hits": h0, "loop_misses": m0, "rescore_hits": llm.hits - h0,
                       "rescore_misses": llm.misses - m0},
             "infra_errors": errs, "clean": not errs,
@@ -296,12 +244,7 @@ def _finish(name: str, out: Path, dom, res, llm, t0: float, setup: dict) -> None
     res.best.to_dir(out / "final_harness", clean=True)
     print(json.dumps({s: {a: v["S"] for a, v in row.items()} for s, row in rep["splits"].items()}, indent=1))
     print("usd", summ["usd_total"], "cache", summ["cache"])
-    if errs:
-        print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ")
-
-
-MH_CFG = {"iterations": 4, "k": 2, "history_mode": "full", "seed": 0, "test_splits": ("holdout", "ood"),
-          "cost_metric": "tokens", "workers": 4, "validate_timeout_s": 240.0, "shadow_workers": 4}
+    _print_infra(errs)
 
 
 def metaharness(a) -> None:
@@ -315,16 +258,6 @@ def metaharness(a) -> None:
                                            "llm": "claude haiku (task + proposer)"})
 
 
-def traces_identical(src: Path, out: Path) -> dict:
-    """Byte-compare every candidate's execution traces (model replies, tool output with sandbox paths and timeouts)
-    between a recorded run and its replay."""
-    rel = lambda d: {p.relative_to(d): p.read_bytes() for p in (d / "store" / "candidates").glob("*/eval/*/traces/*")}
-    a, b = rel(src), rel(out)
-    # the replay writes every trace afresh, so a trace only it has means the recorded run lost one
-    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k]), "missing_in_replay": len(set(a) - set(b)),
-            "extra_in_replay": len(set(b) - set(a))}
-
-
 def _subset_equal(old, new) -> bool:
     """``new`` reproduces ``old``: equal, except that a dict may carry keys ``old`` predates."""
     if isinstance(old, dict) and isinstance(new, dict):
@@ -333,24 +266,19 @@ def _subset_equal(old, new) -> bool:
 
 
 def replay_check(name: str, a) -> None:
-    """Re-run a finished Meta-Harness demo with its cache in offline mode (a cache miss is an error, so nothing
-    is sent to the model) and compare with the recorded run every proposer prompt, every candidate's practice score,
-    every candidate execution trace, the seed's score, every shadow-monitor reading and every final test result. The first check that passes is recorded in ``<run>_replay/``; a failing or interrupted one is
-    removed, so the next check starts over. Later checks replay into a scratch directory (removed afterwards) and must
-    also reproduce that record, trace counts included. ``--record`` refreshes the record from a check that passes on
-    its own (e.g. to add a field a newer check computes), never with fewer traces than it records."""
-    import shutil
-    import signal
-    from rsi.trace import load_trace
+    """Replay a finished Meta-Harness run from its cache offline and compare it with the recording.
+
+    The first passing check is recorded in ``<run>_replay/``; later ones replay into a scratch directory and must
+    also reproduce that record. ``--record`` refreshes it from a check that passes."""
     src, rec = OUT / name, OUT / f"{name}_replay"
     first = not (rec / "replay_check.json").exists()
     out = rec if first else OUT / f"{name}_replaycheck"   # same depth as the run: paths never reach a prompt
-    if out.exists():   # left by a check that was killed (SIGKILL); the next one removes it
+    if out.exists():   # left by a killed check
         shutil.rmtree(out)
     keep = False
     old_term = signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))   # so `kill`/`timeout` still clean up
     try:
-        keep = _replay_compare(name, a, src, rec, out, first, load_trace)
+        keep = _replay_compare(name, a, src, rec, out, first)
     finally:
         signal.signal(signal.SIGTERM, old_term)
         if out != rec or not keep:
@@ -359,9 +287,8 @@ def replay_check(name: str, a) -> None:
         raise SystemExit(1)
 
 
-def _scores_beyond_practice(d: Path, load_trace) -> dict:
-    """What a Meta-Harness run scored outside its practice candidates: the seed's score, every shadow-monitor reading
-    (sealed splits, model-written code included) and every one-time final test result."""
+def _scores_beyond_practice(d: Path) -> dict:
+    """The seed's score, every shadow-monitor reading and every final test result of a Meta-Harness run."""
     ev = load_trace(d)
     return {"baseline": [(e["data"].get("artifact"), e["data"]["summary"]["S"]) for e in ev if e["kind"] == "baseline"],
             "monitor": [(e["data"].get("version"), e["data"].get("artifact"), e["data"].get("decision_score"),
@@ -372,40 +299,41 @@ def _scores_beyond_practice(d: Path, load_trace) -> dict:
                      for p in sorted((d / "store" / "results").glob("*/*/test.json"))}}
 
 
-def _replay_compare(name: str, a, src: Path, rec: Path, out: Path, first: bool, load_trace) -> bool:
+def _prompts_and_scores(d: Path) -> tuple[list, list]:
+    # one proposer call yields k candidates: the trace stores its prompt on the first, a placeholder on the rest
+    ev = load_trace(d)
+    return ([e["data"].get("prompt") for e in ev
+             if e["kind"] == "proposal" and e["data"].get("prompt") != "(same proposer call as the first candidate)"],
+            [(e["data"]["candidate"], e["data"]["summary"]["S"]) for e in ev if e["kind"] == "eval"])
+
+
+def _replay_compare(name: str, a, src: Path, rec: Path, out: Path, first: bool) -> bool:
     """Replay ``name`` into ``out`` and compare; True when the check passes (and, for the first, is recorded)."""
     llm, dom = _haiku(name, offline=True), _agentqa(a.suite)
     rsi.improve(dom, method="metaharness", llm_task=llm, llm_propose=llm, config=MH_CFG, out_dir=out,
                 proposer_kind="rewrite")
-    # one proposer call yields k candidates; the trace stores its prompt on the first and a placeholder on the rest
-    same_call = "(same proposer call as the first candidate)"
-    pick = lambda d: ([e["data"].get("prompt") for e in load_trace(d)
-                       if e["kind"] == "proposal" and e["data"].get("prompt") != same_call],
-                      [(e["data"]["candidate"], e["data"]["summary"]["S"]) for e in load_trace(d) if e["kind"] == "eval"])
-    (p0, s0), (p1, s1) = pick(src), pick(out)
-    # the trace keeps at most 60,000 characters of a prompt; zero cache misses is the full-prompt proof, because the
-    # cache is keyed on a hash of the whole prompt
-    b0, b1 = _scores_beyond_practice(src, load_trace), _scores_beyond_practice(out, load_trace)
+    (p0, s0), (p1, s1) = _prompts_and_scores(src), _prompts_and_scores(out)
+    # traces keep at most 60,000 characters of a prompt; zero cache misses proves the whole prompts (hash-keyed)
+    b0, b1 = _scores_beyond_practice(src), _scores_beyond_practice(out)
     rep = {"run": name, "proposer_calls": len(p0), "candidates_scored": len(s0), "prompts_identical": p0 == p1,
            "scores_identical": s0 == s1, "traces_identical": traces_identical(src, out),
            "cache_misses": llm.misses, "cache_hits": llm.hits, "usd_spent": _usd(llm),
-           # the seed's score, the monitor readings and the final test: scores the practice comparison leaves out
-           "beyond_practice": {"baseline": len(b0["baseline"]), "monitor_readings": sum(len(m[3]) for m in b0["monitor"]),
+           "beyond_practice": {"baseline": len(b0["baseline"]),
+                               "monitor_readings": sum(len(m[3]) for m in b0["monitor"]),
                                "test_results": len(b0["test"]), "identical": b0 == b1}}
     print(json.dumps(rep, indent=1))
     t, bp = rep["traces_identical"], rep["beyond_practice"]
     ok = (rep["prompts_identical"] and rep["scores_identical"] and not rep["cache_misses"]
-          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"] and not t["extra_in_replay"]
-          and bp["identical"] and bp["baseline"] == 1 and bp["test_results"] > 0)
+          and t["files"] > 0 and t["identical"] == t["files"] and not t["missing_in_replay"]
+          and not t["extra_in_replay"] and bp["identical"] and bp["baseline"] == 1 and bp["test_results"] > 0)
     if first:
         if ok:
             (rec / "replay_check.json").write_text(json.dumps(rep, indent=1))
             print("recorded", rec / "replay_check.json")
-        else:   # a failing first check is not a record
+        else:
             print("FAILED: nothing recorded")
         return ok
     old = json.loads((rec / "replay_check.json").read_text())
-    # every recorded field, the trace counts included (a record predating a field still compares on the rest)
     same = all(k in rep and _subset_equal(v, rep[k]) for k, v in old.items())
     print("MATCH: reproduces the run and its recorded replay check" if ok and same else "MISMATCH" if ok else "FAILED")
     if ok and a.record:
@@ -440,7 +368,7 @@ def autoresearch(a) -> None:
                  tag="demo-live", seed=0)
     res = run(task, llm_propose=llm, config=cfg, out_dir=out)
     inspect(out)
-    errs = infra_errors(out)   # a "crash" row in results.tsv is a graded outcome (the edit broke training), not lost calls
+    errs = infra_errors(out)   # a "crash" row in results.tsv is a graded outcome, not a lost call
     summ = {"run": name, "setup": {"method": "autoresearch", "task": "tinylm, 8 s CPU training budget",
                                    "llm": "claude haiku (research agent)", "max_experiments": 10},
             "stop_reason": res.stop_reason, "wall_s": round(time.time() - t0, 1), "trajectory": res.trajectory,
@@ -448,8 +376,7 @@ def autoresearch(a) -> None:
             "infra_errors": errs, "clean": not errs}
     (out / "summary.json").write_text(json.dumps(summ, indent=1, default=str))
     print("usd", summ["usd_total"])
-    if errs:
-        print("INFRA_ERRORS", len(errs), *errs[:5], sep="\n  ")
+    _print_infra(errs)
 
 
 if __name__ == "__main__":

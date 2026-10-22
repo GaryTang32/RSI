@@ -1,8 +1,8 @@
 """Integrator hardening: forged sandbox results, infra error propagation, ledger truthiness."""
 from __future__ import annotations
 
-from rsi.core import Artifact, Domain, Evaluator, Execution, Ledger, Task, TaskSuite
-from rsi.core.sandbox import call_function
+from rsi.core import (Artifact, CachedLLM, Domain, Evaluator, Ledger, LLMResponse, MockLLM, Task, TaskSuite, Usage,
+                      call_function)
 
 ATEXIT_FORGER = '''
 import atexit, sys
@@ -38,30 +38,23 @@ class _InfraDomain(Domain):
 
 
 def test_infra_errors_become_missing_trials_not_cached():
-    suite = TaskSuite([Task("a", 1)], {"evolve": ["a"]})
-    ev = Evaluator(_InfraDomain(suite), None, workers=1)
+    ev = Evaluator(_InfraDomain(TaskSuite([Task("a", 1)], {"evolve": ["a"]})), None, workers=1)
     r = ev.evaluate(Artifact({"x": "1"}), "evolve", k=2)
-    assert r.n_missing == 2 and r.score == 0.0
-    tr = r.trials["a"][0]
-    assert tr.error.startswith("infra:")
+    assert r.n_missing == 2 and r.score == 0.0 and r.trials["a"][0].error.startswith("infra:")
 
 
 def test_empty_ledger_is_truthy():
     led = Ledger()
-    assert len(led) == 0 and bool(led) is True
-    assert (led or None) is led
+    assert len(led) == 0 and bool(led) is True and (led or None) is led
 
 
 def test_cached_llm_keeps_stop_reason(tmp_path):
-    from rsi.core import CachedLLM, LLMResponse, MockLLM, Usage
-
     class Truncating(MockLLM):
         def _complete(self, prompt, *, system, max_tokens, seed):
             return LLMResponse(text="partial", usage=Usage(1, 1, 1, 0.0, 0.0), model="m",
                                raw={"stop_reason": "max_tokens"})
 
     c = CachedLLM(Truncating(), tmp_path)
-    first = c.complete("p")
-    again = c.complete("p")
+    first, again = c.complete("p"), c.complete("p")
     assert first.raw["stop_reason"] == "max_tokens"
     assert again.raw["cached"] is True and again.raw["stop_reason"] == "max_tokens"

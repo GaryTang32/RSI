@@ -1,30 +1,4 @@
-"""Faithful ports of the released code's agentic protocols (opt-in; claims M4 and M28).
-
-The default RRSI plumbing is single-shot: one proposer call returns whole files plus the done()
-object (:class:`rsi.rrsi.propose.Proposer`), and one digester call per trace (the trace inline)
-plus one aggregation call build F_t (:class:`rsi.rrsi.analyst.Analyst`). The released code instead
-runs multi-turn, strict-JSON tool loops. This module ports them line by line:
-
-* :class:`JsonActionProposer` = ``rrsi/propose.py::propose``: the code's SYSTEM_TMPL, context sections
-  and interaction log; actions ``list_files`` / ``read_file`` / ``list_traces`` / ``read_trace`` /
-  ``edit_file`` / ``write_file`` / ``done`` (and the bounced ``abort``); ``MAX_TURNS = 40``,
-  ``MAX_EDITS = 80``, ``TRACE_READ_CAP = 60,000``, result caps 150,000 / 4,000 characters; the done()
-  contract checked exactly as the code does (zero edit actions, over budget, missing fields, component
-  outside K, reserved slot), "there is no abort action" (3 bounces). Select it with
-  ``Config(proposer_protocol="json_actions")``.
-* :class:`AgenticAnalyst` = ``rrsi/analyst.py::analyze`` + ``rrsi/digester.py::digest_task``: the batch
-  analyst never reads traces; it dispatches read-only digesters (``digest_many``, up to 8 per call, 6 in
-  parallel, ``MAX_TURNS = 30``), each an agent over the round's rendered traces with ``read_file`` /
-  ``glob`` / ``grep`` / an allow-listed read-only ``bash`` (``MAX_TURNS = 15``, digests capped at 6,000
-  characters, tool output at 25,000). Select it with ``Config(analyst="agentic")``.
-
-Backend adaptation (documented, not a protocol change): the code's ``llm.generate(json_only=True)`` appends
-the same JSON-only suffix to the system prompt and returns ``extract_json(text)``; :func:`generate` does the
-same over any :class:`rsi.core.LLM`. The code sends ``cache_prefix`` (constitution) as a separate cached
-content block before the prompt; over a single-string backend it is prepended with a blank line. The
-differential test ``tests/rrsi/test_rrsi_agentic.py`` runs the reference implementation and this port on the
-same scripted replies and checks identical prompts, transcripts, file results and outcomes.
-"""
+"""Opt-in ports of the released code's multi-turn JSON protocols: the action proposer and the agentic analyst."""
 from __future__ import annotations
 
 import json
@@ -38,10 +12,9 @@ from typing import Callable, Optional
 
 from ..core.artifact import Artifact
 from ..core.llm import LLM, Usage
-from .analyst import render_trace, task_row
+from .analyst import DIGEST_MAX_CHARS, DIGEST_PARALLELISM, render_trace, task_row
 from .components import Taxonomy
 
-# ------------------------------------------------------------------------------------------ generate
 JSON_SUFFIX = ("\n\nOutput ONLY a single valid JSON object. No prose before or "
                "after, no markdown fences.")
 
@@ -56,25 +29,20 @@ def ref_extract_json(text: str) -> str:
         start = min([i for i in (t.find("{"), t.find("[")) if i != -1], default=-1)
         if start != -1:
             t = t[start:]
-    if t and t[0] == "{" and not t.endswith("}"):
-        end = t.rfind("}")
-        if end != -1:
-            t = t[:end + 1]
-    if t and t[0] == "[" and not t.endswith("]"):
-        end = t.rfind("]")
-        if end != -1:
-            t = t[:end + 1]
+    for open_, close in ("{}", "[]"):
+        if t and t[0] == open_ and not t.endswith(close) and close in t:
+            t = t[:t.rfind(close) + 1]
     return t
 
 
 class GenerateError(RuntimeError):
-    """The backend failed (the code's ``generate`` raises after its retries)."""
+    """The backend failed (the code's ``generate`` raises)."""
 
 
 def generate(llm: LLM, prompt: str, *, system: Optional[str] = None, json_only: bool = False,
              cache_prefix: Optional[str] = None, seed: int = 0, role: str = "default",
              usage: Optional[list] = None) -> str:
-    """The code's ``llm.generate`` over an :class:`rsi.core.LLM`."""
+    """The code's ``llm.generate``: JSON-only suffix on the system prompt, the JSON span of the reply."""
     sys_prompt = (system or "") + (JSON_SUFFIX if json_only else "")
     full = (cache_prefix + "\n\n" + prompt) if cache_prefix else prompt
     resp = llm.complete(full, system=sys_prompt, seed=seed, role=role)
@@ -85,20 +53,25 @@ def generate(llm: LLM, prompt: str, *, system: Optional[str] = None, json_only: 
     return ref_extract_json(resp.text) if json_only else resp.text
 
 
-def _sum(us: list) -> Usage:
-    tot = Usage()
-    for u in us:
-        tot = tot + u
-    return tot
+def _action(raw: str, cut: int, bad_json: str, non_object: str) -> tuple[Optional[dict], str]:
+    """The reply's action object (first dict of a list), else None and the transcript's error line."""
+    try:
+        act = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, f"\n[you] {raw[:cut]}\n[result] ERROR: {bad_json}"
+    if isinstance(act, list):
+        act = next((x for x in act if isinstance(x, dict)), None)
+    if not isinstance(act, dict):
+        return None, "\n[you] (non-object)\n[result] ERROR: reply with EXACTLY ONE JSON action object" + non_object
+    return act, ""
 
 
-# ------------------------------------------------------------------------------------------ proposer
 MAX_TURNS = 40
 MAX_EDITS = 80
 TRACE_READ_CAP = 60_000
 DEFAULT_SOURCE_EXTS = (".py", ".txt", ".md", ".json")
 
-#: rrsi/propose.py::SYSTEM_TMPL, verbatim
+# rrsi/propose.py::SYSTEM_TMPL, verbatim
 PROPOSER_SYSTEM_TMPL = """You are a harness engineer agent. You directly modify the source
 code of an LLM-agent scaffold (the "harness") to fix recurring failure modes
 observed on an evolve set of tasks. The policy LLM is frozen and is a DIFFERENT
@@ -179,13 +152,8 @@ unchanged; model name, step budget and timeouts are injected externally so
 editing them has no effect. All code and comments in English."""
 
 
-def _path_key(rel: str) -> tuple:
-    """Sort key matching ``sorted(Path.rglob("*"))`` (by path parts, not by string)."""
-    return tuple(rel.split("/"))
-
-
 class MemWorkspace:
-    """The code's path-jailed ``Workspace``, over an in-memory file map (artifact files)."""
+    """The code's path-jailed ``Workspace`` over an in-memory file map."""
 
     def __init__(self, files: dict[str, str], source_exts=DEFAULT_SOURCE_EXTS, root_name: str = "harness") -> None:
         self.files = dict(files)
@@ -201,9 +169,12 @@ class MemWorkspace:
             raise ValueError(f"path escapes harness dir: {rel}")
         return norm
 
+    def _visible(self) -> list[str]:
+        """Paths sorted like ``sorted(Path.rglob("*"))`` (by path parts), without ``__pycache__``."""
+        return [p for p in sorted(self.files, key=lambda p: p.split("/")) if "__pycache__" not in p.split("/")]
+
     def list_files(self) -> str:
-        return "\n".join(f"{p} ({len(self.files[p].encode())}B)" for p in sorted(self.files, key=_path_key)
-                         if "__pycache__" not in p.split("/"))
+        return "\n".join(f"{p} ({len(self.files[p].encode())}B)" for p in self._visible())
 
     def read(self, rel: str) -> str:
         p = self._safe(rel)
@@ -232,17 +203,14 @@ class MemWorkspace:
         return f"OK: created {rel}"
 
     def dump(self) -> str:
-        parts = []
-        for p in sorted(self.files, key=_path_key):
-            if posixpath.splitext(p)[1] in self.exts and "__pycache__" not in p.split("/"):
-                parts.append(f"===== FILE: {p} =====\n{self.files[p]}")
-        return "\n\n".join(parts)
+        return "\n\n".join(f"===== FILE: {p} =====\n{self.files[p]}" for p in self._visible()
+                           if posixpath.splitext(p)[1] in self.exts)
 
 
 def list_traces_text(traces: dict, task_means: dict, findings: list,
                      row: Callable = None) -> str:
-    """The code's ``_list_traces``: one row per trace, lowest mean first, with the modes the digests saw."""
-    row = row or (lambda tid, rec, mean: task_row(tid, rec, mean))
+    """The code's ``_list_traces``: one row per trace, lowest mean first, with the digests' modes."""
+    row = row or task_row
     modes_by_task: dict = {}
     for f in findings or []:
         if not isinstance(f, dict):
@@ -258,7 +226,7 @@ def list_traces_text(traces: dict, task_means: dict, findings: list,
 
 def read_trace_text(traces: dict, task_id, from_step, to_step, cache: dict, detail: bool,
                     render: Callable) -> str:
-    """The code's ``_read_trace``: a rendered trajectory, optionally a step range (grading always kept)."""
+    """The code's ``_read_trace``: a rendered trajectory or a step range of it (grading always kept)."""
     task_id = str(task_id)
     rec = traces.get(task_id)
     if rec is None:
@@ -336,6 +304,25 @@ def build_proposer_context(*, ws: MemWorkspace, report: dict, history_rows: list
     ])
 
 
+def _done_problems(edits: list, budget: int, K: list, reserved: bool, untried: Optional[list]) -> list[str]:
+    """The code's done() checks; they bounce the reply only once a file was changed."""
+    problems = [] if edits else ["edits array is empty"]
+    if len(edits) > budget:
+        problems.append(f"{len(edits)} edits exceed the budget b_t = {budget}")
+    for e in edits:
+        miss = [f for f in ("id", "component", "hypothesis", "targets_mode",
+                            "predicted_affected", "retroactive_check") if not e.get(f)]
+        if miss:
+            problems.append(f"edit {e.get('id', '?')} missing {miss}")
+        if e.get("component") and str(e["component"]).lower() not in K:
+            problems.append(f"edit {e.get('id')} component {e['component']!r} not in {K}")
+    if reserved and untried and edits and not any(str(e.get("component", "")).lower() in untried for e in edits):
+        problems.append("this variant holds a RESERVED EXPLORATION SLOT: at "
+                        "least one edit must be on a never-exercised "
+                        f"component from {untried}")
+    return problems
+
+
 def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, context: str, budget: int,
                      reserved: bool, explore: dict, K: list, traces: dict, task_means: dict, findings: list,
                      render: Callable, seed: int = 0, role: str = "proposer", usage: Optional[list] = None,
@@ -351,44 +338,21 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
                        seed=seed * 1000 + turn, role=role, usage=usage)
         if turns is not None:
             turns.append({"turn": turn, "prompt": prompt, "reply": raw})
-        try:
-            act = json.loads(raw)
-        except json.JSONDecodeError:
-            transcript += f"\n[you] {raw[:500]}\n[result] ERROR: not valid JSON"
-            continue
-        if isinstance(act, list):
-            act = next((x for x in act if isinstance(x, dict)), None)
-        if not isinstance(act, dict):
-            transcript += ("\n[you] (non-object)\n[result] ERROR: reply with "
-                           "EXACTLY ONE JSON action object")
+        act, err = _action(raw, 500, "not valid JSON", "")
+        if act is None:
+            transcript += err
             continue
         a = act.get("action")
         log.append(act if a in ("done", "abort") else
                    {k: (v if len(str(v)) < 200 else str(v)[:200] + "...") for k, v in act.items()})
         if a == "done":
             edits = act.get("edits") or act.get("candidates") or []
-            problems = []
             if n_edits == 0 and edits:
                 transcript += ("\n[you] done\n[result] ERROR: you declared edits but "
                                "made ZERO file changes. Implement them with "
                                "edit_file/write_file, then call done.")
                 continue
-            if n_edits > 0 and not edits:
-                problems.append("edits array is empty")
-            if len(edits) > budget:
-                problems.append(f"{len(edits)} edits exceed the budget b_t = {budget}")
-            for e in edits:
-                miss = [f for f in ("id", "component", "hypothesis", "targets_mode",
-                                    "predicted_affected", "retroactive_check") if not e.get(f)]
-                if miss:
-                    problems.append(f"edit {e.get('id', '?')} missing {miss}")
-                if e.get("component") and str(e["component"]).lower() not in K:
-                    problems.append(f"edit {e.get('id')} component {e['component']!r} not in {K}")
-            if reserved and explore.get("untried") and edits and not any(
-                    str(e.get("component", "")).lower() in explore["untried"] for e in edits):
-                problems.append("this variant holds a RESERVED EXPLORATION SLOT: at "
-                                "least one edit must be on a never-exercised "
-                                f"component from {explore['untried']}")
+            problems = _done_problems(edits, budget, K, reserved, explore.get("untried"))
             if problems and n_edits > 0:
                 transcript += (f"\n[you] done\n[result] ERROR: {problems}. Call done "
                                f"again fixed (drop or merge edits if over budget; "
@@ -420,17 +384,12 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
             elif a == "read_trace":
                 result = read_trace_text(traces, act.get("task_id", ""), act.get("from_step"), act.get("to_step"),
                                          render_cache, act.get("detail", False), render)
-            elif a == "edit_file":
+            elif a in ("edit_file", "write_file"):
                 if n_edits >= MAX_EDITS:
                     result = "ERROR: edit budget exhausted; call done"
                 else:
-                    result = ws.edit(act["path"], act["old"], act["new"])
-                    n_edits += result.startswith("OK")
-            elif a == "write_file":
-                if n_edits >= MAX_EDITS:
-                    result = "ERROR: edit budget exhausted; call done"
-                else:
-                    result = ws.write(act["path"], act["content"])
+                    result = ws.edit(act["path"], act["old"], act["new"]) if a == "edit_file" \
+                        else ws.write(act["path"], act["content"])
                     n_edits += result.startswith("OK")
             else:
                 result = f"ERROR: unknown action {a}"
@@ -442,12 +401,7 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
 
 
 class JsonActionProposer:
-    """Drop-in for :class:`rsi.rrsi.propose.Proposer` that runs the code's JSON action protocol.
-
-    ``propose`` takes the loop's keyword arguments plus ``traces`` (task id -> trace record),
-    ``task_means`` and ``task_inputs`` (for ``list_traces`` / ``read_trace``); it edits a copy of the
-    working artifact in memory and returns the Proposer's result dict (``artifact`` is the edited harness,
-    or None when nothing changed relative to the incumbent)."""
+    """Drop-in :class:`~rsi.rrsi.propose.Proposer` running the code's JSON action protocol in memory."""
 
     def __init__(self, llm: LLM, taxonomy: Taxonomy, cfg, *, domain_brief: str = "",
                  constitution: tuple[str, str] = ("", ""), source_exts=DEFAULT_SOURCE_EXTS) -> None:
@@ -489,11 +443,11 @@ class JsonActionProposer:
                                    render=render, seed=seed, usage=usage, turns=turns)
         except GenerateError as e:
             return {"status": "error", "reason": f"llm error: {e}", "edits": [], "n_changes": 0, "artifact": None,
-                    "log": [], "usage": _sum(usage), **({"turns": turns} if capture else {})}
+                    "log": [], "usage": sum(usage, Usage()), **({"turns": turns} if capture else {})}
         new_art = working.with_files({p: ws.files.get(p) for p in set(working.files) | set(ws.files)})
         n_changes = len(base.changed_files(new_art))
         res.update(n_changes=n_changes, artifact=new_art if (res["status"] == "done" and n_changes) else None,
-                   usage=_sum(usage), protocol="json_actions")
+                   usage=sum(usage, Usage()), protocol="json_actions")
         if res["status"] == "done":
             for e in res["edits"]:
                 e["component"] = self.tax.canonical(e.get("component", ""), strip=False)
@@ -507,15 +461,11 @@ class JsonActionProposer:
         return res
 
 
-# ------------------------------------------------------------------------------------------ analyst
 ANALYST_MAX_TURNS = 30
-DIGEST_PARALLELISM = 6
 DIGESTER_MAX_TURNS = 15
-DIGEST_MAX_CHARS = 6000
 TOOL_OUT_CAP = 25_000
 BASH_TIMEOUT = 30
-#: rrsi/digester.py::SCHEMAS, verbatim (the single-shot digester's copy in analyst.py wraps the success schema's
-#: "habits" line differently; whitespace only, kept there so recorded live caches still replay)
+# rrsi/digester.py::SCHEMAS, verbatim (analyst.py's copy differs in whitespace only, so recorded caches replay)
 SCHEMAS = {
     "failure": """{"task_id": "...", "lens": "failure",
  "blocker": "one sentence: what mechanism lost the points",
@@ -539,7 +489,7 @@ ALLOWED_BASH = {"grep", "egrep", "head", "tail", "wc", "cat", "ls", "find",
 DENY_BASH = re.compile(r"(>>?|`|\$\(|sed\s+[^|]*-i|\brm\b|\bmv\b|\bcp\b|"
                        r"\btee\b|\btouch\b|\bmkdir\b|\bchmod\b|\bpython)")
 
-#: rrsi/digester.py::SYSTEM_TMPL, verbatim
+# rrsi/digester.py::SYSTEM_TMPL, verbatim
 DIGESTER_SYSTEM_TMPL = """You are a trajectory digester: a read-only investigator that
 inspects ONE agent trajectory in depth and returns a compact structured
 digest. Another agent (the batch analyst) will rely on your digest without
@@ -576,7 +526,7 @@ Rules: quotes must be exact and short; every claim needs a "where"; do not
 speculate beyond what the trace shows; no blame attribution to "model vs
 harness"."""
 
-#: rrsi/analyst.py::SYSTEM_TMPL, verbatim
+# rrsi/analyst.py::SYSTEM_TMPL, verbatim
 ANALYST_SYSTEM_TMPL = """You are the batch analyst in a harness-evolution loop. A frozen
 policy LLM, driven by an evolvable scaffold, ran the evolve set of a benchmark;
 some trials scored well, some did not. Your job: produce a three-lens analysis
@@ -631,13 +581,8 @@ Aggregation rules:
 
 
 def _bash_ok(cmd: str) -> bool:
-    if DENY_BASH.search(cmd):
-        return False
-    for seg in re.split(r"[|;&]+", cmd):
-        seg = seg.strip()
-        if seg and seg.split()[0] not in ALLOWED_BASH:
-            return False
-    return True
+    programs = [seg.split()[0] for seg in re.split(r"[|;&]+", cmd) if seg.strip()]
+    return not DENY_BASH.search(cmd) and all(p in ALLOWED_BASH for p in programs)
 
 
 def _safe(root: Path, rel: str) -> Path:
@@ -693,16 +638,9 @@ def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brie
         if calls is not None:
             calls.append({"role": "digester", "task_id": task_id, "lens": lens, "turn": turn, "prompt": transcript,
                           "reply": raw})
-        try:
-            act = json.loads(raw)
-        except json.JSONDecodeError:
-            transcript += f"\n[you] {raw[:300]}\n[result] ERROR: invalid JSON"
-            continue
-        if isinstance(act, list):
-            act = next((x for x in act if isinstance(x, dict)), None)
-        if not isinstance(act, dict):
-            transcript += ("\n[you] (non-object)\n[result] ERROR: reply with "
-                           "EXACTLY ONE JSON action object, not a list or value")
+        act, err = _action(raw, 300, "invalid JSON", ", not a list or value")
+        if act is None:
+            transcript += err
             continue
         a = act.get("action")
         if a == "return":
@@ -743,12 +681,7 @@ def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brie
 
 
 class AgenticAnalyst:
-    """Drop-in for :class:`rsi.rrsi.analyst.Analyst` running the code's analyst + digester agents.
-
-    ``analyze(traces, meas, task_inputs, prior, seed, workdir)``: renders the traces to
-    ``workdir/analysis/rendered/<task>.txt``, runs the batch-analyst loop (digests written to
-    ``workdir/analysis/digests/<task>_<lens>.json``) and returns ``(report, digests)`` where ``digests`` is
-    every digest file of the round, sorted by name (the code's ``load_digests``, which the proposer reads)."""
+    """Drop-in :class:`~rsi.rrsi.analyst.Analyst` running the code's batch analyst and digester agents."""
 
     mode = "agentic"
 
@@ -802,15 +735,9 @@ class AgenticAnalyst:
                            usage=usage)
             self.last_calls.append({"role": "analyst", "turn": turn, "system": system, "prompt": prompt,
                                     "reply": raw})
-            try:
-                act = json.loads(raw)
-            except json.JSONDecodeError:
-                transcript += f"\n[you] {raw[:300]}\n[result] ERROR: invalid JSON"
-                continue
-            if isinstance(act, list):
-                act = next((x for x in act if isinstance(x, dict)), None)
-            if not isinstance(act, dict):
-                transcript += "\n[you] (non-object)\n[result] ERROR: reply with EXACTLY ONE JSON action object"
+            act, err = _action(raw, 300, "invalid JSON", "")
+            if act is None:
+                transcript += err
                 continue
             a = act.get("action")
             if a == "report":
@@ -853,7 +780,7 @@ class AgenticAnalyst:
                       "error": "analyst hit max turns", "n_digests": n_digests}
         report["analyst"] = "agentic"
         all_digests = [json.loads(p.read_text()) for p in sorted(digests_dir.glob("*.json"))]
-        self.last_usage = _sum(usage)
+        self.last_usage = sum(usage, Usage())
         if tmp is not None:
             tmp.cleanup()
         return report, all_digests

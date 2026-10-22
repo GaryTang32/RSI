@@ -1,17 +1,4 @@
-"""Genericity audit: the shared core runs a complete propose -> run -> score -> keep
-loop on NEW problems without any change to rsi.core.
-
-``mini_loop`` below uses only the public API (RewriteEditor + MockLLM proposer,
-LeakageCritic, Evaluator, noise_from_trials, RRSIGate + select, Ledger, Budget,
-UsageMeter roles, ImprovementResult, transfer_report). It is applied unchanged to
-two domains defined here and nowhere else:
-
-* ``curve``   - FunctionDomain; the artifact is a JSON file of polynomial
-  coefficients, scores are noisy (seeded) closeness to a hidden curve;
-* ``sorter``  - a Domain subclass whose artifact is a Python program run in the
-  sandbox (``call_function``); the score is ``-loss`` in ``score_range=(-5, 0)``,
-  so a crash scores -5 instead of a (best-possible) 0.
-"""
+"""Genericity audit: a keep loop written only against the public rsi.core API runs unchanged on two new domains."""
 from __future__ import annotations
 
 import json
@@ -25,7 +12,6 @@ from rsi.core import (Artifact, Budget, Domain, Evaluator, Execution, FunctionDo
                       TaskSuite, call_function, noise_from_trials, select, transfer_report)
 
 
-# ------------------------------------------------------------------ a method written only against rsi.core
 def mini_loop(domain: Domain, seed_artifact: Artifact, *, llm_propose, llm_task=None, rounds: int = 4, k: int = 3,
               out_dir=None) -> ImprovementResult:
     ev = Evaluator(domain, llm_task, workers=2)
@@ -60,12 +46,10 @@ def mini_loop(domain: Domain, seed_artifact: Artifact, *, llm_propose, llm_task=
             inc, inc_ev, node = prop.artifact, cand_ev, n
             best_score = max(best_score, cand_ev.score)
         traj.append({"round": t, "S": inc_ev.score})
-    usage = llm_propose.meter.snapshot()
-    return ImprovementResult("mini", seed_artifact, inc, ledger, traj, usage, "max_rounds", out_dir,
-                             meta={"delta": delta})
+    return ImprovementResult("mini", seed_artifact, inc, ledger, traj, llm_propose.meter.snapshot(), "max_rounds",
+                             out_dir, meta={"delta": delta})
 
 
-# ------------------------------------------------------------------ problem 1: FunctionDomain, noisy curve fit
 TRUE = [0.5, -1.0, 2.0]
 
 
@@ -94,19 +78,17 @@ def _curve_proposer(leak_id: str) -> MockLLM:
     return MockLLM(respond, name="curve-proposer")
 
 
-# ------------------------------------------------------------------ problem 2: sandboxed program, negative loss
 class SorterDomain(Domain):
     name = "sorter"
     score_range = (-5.0, 0.0)
 
     def execute(self, artifact, task, *, seed, llm):
         out, rr = call_function(artifact["solver.py"], "solve", {"xs": task.input}, timeout_s=10)
-        if out is None:
-            return Execution(error=rr.tail(3) or "no result")
-        return Execution(output=out, steps=1)
+        return Execution(error=rr.tail(3) or "no result") if out is None else Execution(output=out, steps=1)
 
     def grade(self, task, execution):
-        loss = sum(a != b for a, b in zip(execution.output, task.target)) + abs(len(execution.output) - len(task.target))
+        out, want = execution.output, task.target
+        loss = sum(a != b for a, b in zip(out, want)) + abs(len(out) - len(want))
         return -min(5.0, float(loss)), f"{loss} positions wrong"
 
 
@@ -134,7 +116,6 @@ def _sorter_proposer() -> MockLLM:
     return MockLLM(respond, name="sorter-proposer")
 
 
-# ------------------------------------------------------------------ the audit
 @pytest.mark.parametrize("make", ["curve", "sorter"])
 def test_core_loop_runs_unchanged_on_new_domains(make, tmp_path):
     if make == "curve":
@@ -142,27 +123,24 @@ def test_core_loop_runs_unchanged_on_new_domains(make, tmp_path):
         leak = dom.tasks.splits["evolve"][0]
         seed, prop = Artifact({"model.json": json.dumps({"coeffs": [0.0, 0.0, 0.0]})}), _curve_proposer(leak)
     else:
-        dom, seed, prop = _sorter_domain(), Artifact({"solver.py": "def solve(xs):\n    return list(xs)\n"}), \
-            _sorter_proposer()
+        dom, prop = _sorter_domain(), _sorter_proposer()
+        seed = Artifact({"solver.py": "def solve(xs):\n    return list(xs)\n"})
     res = mini_loop(dom, seed, llm_propose=prop, rounds=4, out_dir=str(tmp_path))
     assert isinstance(res, ImprovementResult) and len(res.trajectory) >= 2
     statuses = [n.status for n in res.ledger.nodes()]
     assert statuses[0] == "keep" and "keep" in statuses[1:]
     assert res.best != res.baseline
-    # lineage from the final incumbent back to the seed
     best_node = [n for n in res.ledger.nodes() if n.artifact_id == res.best.id][-1]
     assert [n.id for n in res.ledger.lineage(best_node.id)][0] == "n0"
     assert res.usage["proposer"]["calls"] == 4 and res.usage["_total"]["input_tokens"] > 0
-    # the loop never touched a sealed split; the report step unseals explicitly
-    with pytest.raises(SealedSplitError):
+    with pytest.raises(SealedSplitError):        # the loop never unsealed; the report step reads sealed splits itself
         dom.tasks.split("holdout")
     rep = transfer_report(dom, None, {"seed": res.baseline, "best": res.best}, splits=("evolve", "holdout"), k=2)
     assert rep["splits"]["holdout"]["best"]["S"] > rep["splits"]["holdout"]["seed"]["S"]
     assert rep["splits"]["holdout"]["best"]["vs_reference"]["mean_diff"] > 0
     res.save(tmp_path)
     assert (tmp_path / "best_artifact").is_dir() and len(Ledger(tmp_path / "ledger.jsonl")) == len(res.ledger)
-    if make == "curve":
-        assert "rejected" in statuses                                   # the leaked task id was caught
+    if make == "curve":                          # the leaked task id was caught
         assert [h for n in res.ledger.nodes(status="rejected") for h in n.meta["hits"]] == [leak]
     else:
         crash = [n for n in res.ledger.nodes() if n.round == 1][0]

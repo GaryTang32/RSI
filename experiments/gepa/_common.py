@@ -1,18 +1,9 @@
-"""Shared plumbing for the GEPA experiments (E1-E13).
-
-* ``parse_args``: ``--llm sim|claude:<model>``, ``--seeds N``, ``--quick``, ``--workers``, ``--out``;
-* ``reflection_llm``: the reflection LM - RuleWorld / AgentQA mocks offline, or a cached
-  headless ``claude -p`` backend (cache under ``.rsi_cache/gepa``) for live showcases;
-* ``pool_map``: runs independent (seed, arm) jobs in worker processes (serial for live LLMs);
-* ``summarize`` / ``paired`` / ``save`` / ``plot_curves``: mean + 95% bootstrap CI via
-  ``rsi.core.stats`` and JSON / PNG outputs under ``results/gepa``.
-"""
+"""Shared plumbing for the GEPA experiments: CLI, reflection LM, worker pool, CI summaries, JSON and plots."""
 from __future__ import annotations
 
 import argparse
 import json
 import math
-import os
 import sys
 import time
 from multiprocessing import get_context
@@ -31,7 +22,7 @@ RESULTS = ROOT / "results" / "gepa"
 CACHE = ROOT / ".rsi_cache" / "gepa"
 
 
-def parse_args(desc: str, default_seeds: int = 30, extra: Optional[Callable] = None):
+def parse_args(desc: str, default_seeds: int = 30, extra: Optional[Callable] = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--llm", default="sim", help="reflection LM: sim (offline mock) | claude:<model> (live, cached)")
     ap.add_argument("--seeds", type=int, default=None, help=f"number of seeds (default {default_seeds}; quick: 4)")
@@ -51,16 +42,13 @@ def parse_args(desc: str, default_seeds: int = 30, extra: Optional[Callable] = N
 
 
 def reflection_llm(spec: str, world=None, kind: str = "ruleworld", profile=None):
-    """The reflection LM for one run."""
+    """The offline mock for ``kind`` when ``spec == "sim"``, else a cached ``claude -p`` (``claude:<model>``)."""
     if spec == "sim":
         if kind == "ruleworld":
             from rsi.domains.ruleworld import RuleWorldReflectionLM
             return RuleWorldReflectionLM(world, profile)
-        if kind == "agentqa":
-            from rsi.gepa import AgentQAReflectionLM
-            return AgentQAReflectionLM()
-        from rsi.gepa import GenericReflectionLM
-        return GenericReflectionLM()
+        from rsi.gepa import AgentQAReflectionLM, GenericReflectionLM
+        return AgentQAReflectionLM() if kind == "agentqa" else GenericReflectionLM()
     k, _, model = spec.partition(":")
     if k != "claude":
         raise SystemExit(f"unsupported --llm {spec!r}")
@@ -71,9 +59,49 @@ def reflection_llm(spec: str, world=None, kind: str = "ruleworld", profile=None)
 def pool_map(fn: Callable, jobs: Sequence, workers: int = 3) -> list:
     if workers <= 1 or len(jobs) <= 1:
         return [fn(j) for j in jobs]
-    ctx = get_context("fork")
-    with ctx.Pool(workers) as p:
+    with get_context("fork").Pool(workers) as p:
         return p.map(fn, jobs, chunksize=1)
+
+
+class NewestTieBest:
+    """CurrentBest control: argmax mean D_pareto score, ties broken toward the newest candidate."""
+
+    name = "current_best_newest_tie"
+
+    def select(self, state) -> int:
+        agg = state.agg_scores()
+        top = max(agg)
+        return max(k for k, v in enumerate(agg) if v == top)
+
+
+def pareto_survivors(front: dict, agg) -> list:
+    """Frontier programs left by set-cover pruning (Alg. 2), in ascending ``agg`` order (ties: first appearance)."""
+    progs = sorted(dict.fromkeys(c for v in front for c in sorted(front[v])), key=lambda c: agg[c])
+    dominated: set = set()
+    changed = True
+    while changed:
+        changed = False
+        for y in progs:
+            if y in dominated:
+                continue
+            others = set(progs) - {y} - dominated
+            if all(set(front[v]) & others for v in front if y in front[v]):
+                dominated.add(y)
+                changed = True
+                break
+    return [c for c in progs if c not in dominated]
+
+
+def by_seed(rows: list[dict], **match) -> list[dict]:
+    return sorted([r for r in rows if all(r[k] == v for k, v in match.items())], key=lambda r: r["seed"])
+
+
+def group(rows: list[dict], key: str) -> dict[str, list[dict]]:
+    """Rows by ``row[key]`` in first-seen order, each group sorted by seed."""
+    out: dict = {}
+    for r in rows:
+        out.setdefault(r[key], []).append(r)
+    return {k: sorted(v, key=lambda r: r["seed"]) for k, v in out.items()}
 
 
 def clean(xs) -> list[float]:
@@ -86,15 +114,17 @@ def summarize(xs) -> dict:
 
 
 def paired(a, b) -> dict:
-    """Paired difference b - a over seeds."""
+    """Paired difference b - a over the seeds where both are present."""
     pairs = [(x, y) for x, y in zip(a, b) if x is not None and y is not None]
-    if not pairs:
-        return {}
-    return paired_diff_ci([p[0] for p in pairs], [p[1] for p in pairs])
+    return paired_diff_ci([p[0] for p in pairs], [p[1] for p in pairs]) if pairs else {}
 
 
 def fmt(s: dict) -> str:
     return f"{s['mean']:.3f} [{s['lo']:.3f}, {s['hi']:.3f}]"
+
+
+def fmt_diff(p: dict) -> str:
+    return f"{p['mean_diff']:+.3f} [{p['lo']:+.3f}, {p['hi']:+.3f}]"
 
 
 def save(name: str, payload: dict, out: Optional[str] = None) -> Path:
@@ -116,22 +146,35 @@ def _default(x):
     return repr(x)
 
 
-def plot_curves(path: Path, budgets: Sequence[int], arms: dict[str, list[list[float]]], title: str,
-                ylabel: str = "true test score of returned candidate", hline: Optional[float] = None,
-                logx: bool = True) -> None:
-    """Mean +- 95% bootstrap CI band of per-seed curves (seeds x budgets)."""
+def pyplot():
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(7, 4.2))
+    return plt
+
+
+def ci_err(stats: Sequence[dict]) -> list[list[float]]:
+    """Error-bar extents (below, above the mean) of CI summaries."""
+    return [[s["mean"] - s["lo"] for s in stats], [s["hi"] - s["mean"] for s in stats]]
+
+
+def save_fig(fig, path: Path, **layout) -> None:
+    fig.tight_layout(**layout)
+    fig.savefig(path, dpi=130)
+    pyplot().close(fig)
+    print(f"[saved] {path}")
+
+
+def plot_curves(path: Path, budgets: Sequence[int], arms: dict[str, list[list[float]]], title: str,
+                ylabel: str = "true test score of returned candidate", hline: Optional[float] = None,
+                logx: bool = True) -> None:
+    """Mean and 95% bootstrap CI band of per-seed curves (seeds x budgets)."""
+    fig, ax = pyplot().subplots(figsize=(7, 4.2))
     for name, curves in arms.items():
         m = np.asarray(curves, float)
-        mean, lo, hi = [], [], []
-        for j in range(m.shape[1]):
-            s = summarize(m[:, j])
-            mean.append(s["mean"]), lo.append(s["lo"]), hi.append(s["hi"])
-        ax.plot(budgets, mean, marker="o", ms=3, label=name)
-        ax.fill_between(budgets, lo, hi, alpha=0.18)
+        stats = [summarize(m[:, j]) for j in range(m.shape[1])]
+        ax.plot(budgets, [s["mean"] for s in stats], marker="o", ms=3, label=name)
+        ax.fill_between(budgets, [s["lo"] for s in stats], [s["hi"] for s in stats], alpha=0.18)
     if hline is not None:
         ax.axhline(hline, color="k", ls="--", lw=0.8, label="target")
     if logx:
@@ -141,26 +184,15 @@ def plot_curves(path: Path, budgets: Sequence[int], arms: dict[str, list[list[fl
     ax.set_title(title, fontsize=10)
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
-    fig.tight_layout()
-    fig.savefig(path, dpi=130)
-    plt.close(fig)
-    print(f"[saved] {path}")
+    save_fig(fig, path)
 
 
 def bar_plot(path: Path, labels: Sequence[str], stats: Sequence[dict], title: str, ylabel: str) -> None:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(max(5, 1.1 * len(labels)), 3.8))
-    means = [s["mean"] for s in stats]
-    err = [[s["mean"] - s["lo"] for s in stats], [s["hi"] - s["mean"] for s in stats]]
-    ax.bar(range(len(labels)), means, yerr=err, capsize=3, color="#4c72b0")
+    fig, ax = pyplot().subplots(figsize=(max(5, 1.1 * len(labels)), 3.8))
+    ax.bar(range(len(labels)), [s["mean"] for s in stats], yerr=ci_err(stats), capsize=3, color="#4c72b0")
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=25, ha="right", fontsize=8)
     ax.set_ylabel(ylabel)
     ax.set_title(title, fontsize=10)
     ax.grid(axis="y", alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(path, dpi=130)
-    plt.close(fig)
-    print(f"[saved] {path}")
+    save_fig(fig, path)

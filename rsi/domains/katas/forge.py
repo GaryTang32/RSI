@@ -1,17 +1,12 @@
-"""Adversary kit for katas populations (live showcases of the EvoMap experiments).
-
-* farmer: a generic card with broad signals, a vacuous validation (``python --version``,
-  print-only script, constant assert, missing script, ...), cosmetic diff, inflated claims;
-* poisoner: one of :data:`~rsi.domains.katas.genes.CONFLICTING_GENES` (advice that produces
-  the pitfall) with a *real* discriminative proof (stub -> correct solution + smoke test).
-"""
+"""Katas adversary kit: farmer bundles (generic, vacuous, inflated) and poisoner bundles (a conflicting gene with
+a real discriminative proof)."""
 from __future__ import annotations
 
 import random
 
-from rsi.evomap.assets import Capsule, EvolutionEvent, Gene
+from rsi.evomap.assets import Gene
 from rsi.evomap.hub import Bundle
-from rsi.evomap.solidify import diff_text
+from rsi.evomap.population import forged_bundle
 
 from .domain import KatasDomain
 from .genes import CONFLICTING_GENES
@@ -19,7 +14,8 @@ from .katas import CLASS_KEYWORDS, CLASSES, KATAS
 
 VACUOUS = {"version": (["python --version"], {}), "print_only": (["python smoke.py"], {"smoke.py": "print('ok')\n"}),
            "constant_assert": (["python sanity.py"], {"sanity.py": "assert True\nprint('ok')\n"}),
-           "weak_assert": (["python exists.py"], {"exists.py": "import solution\nassert hasattr(solution, '__name__')\n"}),
+           "weak_assert": (["python exists.py"],
+                           {"exists.py": "import solution\nassert hasattr(solution, '__name__')\n"}),
            "missing_script": (["python scripts/validate_all.py"], {}), "empty": ([], {})}
 
 
@@ -30,22 +26,8 @@ class KatasForge:
 
     def _bundle(self, g: Gene, author: str, before: dict, after: dict, claims: dict) -> Bundle:
         self._n += 1
-        g.stamp()
-        cap = Capsule(id=f"capsule_{author}_{self._n:06d}", gene=g.id, trigger=list(g.signals_match),
-                      summary=f"Applied {g.id} successfully to a kata", confidence=claims["confidence"],
-                      blast_radius={"files": claims["files"], "lines": claims["lines"]},
-                      outcome={"status": "success", "score": claims["score"]}, success_streak=claims["streak"],
-                      content="\n".join(g.strategy), diff=diff_text(before, after), strategy=list(g.strategy),
-                      execution_trace=[{"step": 1, "stage": "build", "cmd": "apply", "exit": 0},
-                                       {"step": 2, "stage": "validate", "cmd": (g.validation or ["-"])[0], "exit": 0}]
-                      ).stamp()
-        ev = EvolutionEvent(id=f"evt_{author}_{self._n:06d}", signals=list(g.signals_match), genes_used=[g.id],
-                            mutation_id=f"mut_{self._n}", capsule_id=cap.id,
-                            outcome={"status": "success", "score": claims["score"]},
-                            blast_radius={"files": claims["files"], "lines": claims["lines"]}).stamp()
-        return Bundle(gene=g.to_dict(), capsule=cap.to_dict(), event=ev.to_dict(),
-                      report={"type": "ValidationReport", "overall_ok": True}, pre_state=before, post_state=after,
-                      meta={"author": author, "forged": True})
+        return forged_bundle(g, author, self._n, f"Applied {g.id} successfully to a kata", before, after, claims,
+                             {"type": "ValidationReport", "overall_ok": True})
 
     def _states(self, rng: random.Random, correct: bool = True) -> tuple[dict, dict, str]:
         k = rng.choice(KATAS)

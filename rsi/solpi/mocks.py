@@ -1,41 +1,16 @@
-"""Research roles for SoL-Pi lineages: default idea pools, offline proposers, LLM proposers/reviewers.
-
-Offline (deterministic):
-
-* :data:`AGENTWORLD_IDEAS` - a small idea pool over all six proposal families (C, P, T,
-  D, R and M = "Improvement & evaluation", the paper's largest family): the four
-  released mechanisms under their blog idea ids (C23 ObservationPack, P8 Action Fusion,
-  D1 EPR, C6 OCC - the last three mappings are the spec's guess), plus
-  environment-specific tricks, do-less shortcuts, a dud and two evaluation-family ideas
-  (M5, M12), so the protocol has something to reject. Twelve ideas against the default
-  ``Config.n_lineages = 10``: the Oracle Analysis ranks them and the two with the least
-  estimated opportunity get no rollout budget;
-* :class:`LibraryProposer` - implements an idea as a registry mechanism and walks
-  its parameter grid from aggressive to conservative using only in-lineage gate
-  feedback (capability failure -> more conservative; no efficiency gain -> more
-  aggressive; revisiting a variant -> the lineage is exhausted); once a variant has
-  passed (sweep mode) it evaluates the remaining variants in grid order, like the
-  ObservationPack V0..V7 sweep, and the lineage keeps the nondominated best-eta one;
-* :data:`AGENTQA_IDEAS` + :class:`AgentQAEditProposer` - the same protocol on
-  AgentQA harness code (second domain).
-
-LLM-backed: :class:`LLMMechanismProposer` writes a new extension against the
-runtime hook API (:data:`RUNTIME_API_DOC`) for SoL-Pi harnesses, or edits any other
-artifact with :class:`rsi.core.RewriteEditor`; :class:`LLMReviewer` checks the
-behavioural contract.
-"""
+"""Research roles: default idea pools, offline proposers, and LLM proposer / reviewer for SoL-Pi lineages."""
 from __future__ import annotations
 
 import json
 import re
-from typing import Optional
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.editors import RewriteEditor
-from ..core.llm import LLM, Usage, extract_json
-from .registry import harness_config, with_mechanism
+from ..core.llm import LLM, extract_json
+from .registry import with_mechanism
 from .research import Idea, MechanismProposal
 
+# the four released mechanisms under their blog ids plus negative controls (tricks, do-less, duds, family M)
 AGENTWORLD_IDEAS = [
     Idea("C23", "C", "Build observation packs before paying for full bodies", "observation_pack",
          [{"full_sends": 1, "excerpt_bytes": 0}, {"full_sends": 1, "excerpt_bytes": 1024},
@@ -64,7 +39,7 @@ AGENTWORLD_IDEAS = [
 
 
 class LibraryProposer:
-    """Maps an idea to its registry mechanism; walks the variant grid on gate feedback."""
+    """Maps an idea to its registry mechanism and walks the variant grid on in-lineage gate feedback."""
 
     def propose(self, idea: Idea, base: Artifact, evidence: dict, history: list[dict]) -> MechanismProposal:
         grid = idea.grid or [{}]
@@ -72,6 +47,7 @@ class LibraryProposer:
         if not history:
             v = 0
         else:
+            # a capability failure -> more conservative; no efficiency gain -> more aggressive
             last = history[-1]
             g = last.get("gate") or {}
             cap_failed = any(not c.get("pass", True) for c in (g.get("capability") or {}).values()) or \
@@ -92,7 +68,6 @@ class LibraryProposer:
                                  meta={"exhausted": True})
 
 
-# ------------------------------------------------------------------ AgentQA (second domain)
 AGENTQA_IDEAS = [
     Idea("T1", "T", "Compute with the Python tool instead of long free-text reasoning", "tool", [{}], "none"),
     Idea("R2", "R", "Drop step-by-step reasoning from the prompt", "no_cot", [{}], "none", kind="do_less"),
@@ -119,7 +94,6 @@ class AgentQAEditProposer:
         return MechanismProposal(None, error=error, meta={"exhausted": True})
 
 
-# ------------------------------------------------------------------ LLM roles
 RUNTIME_API_DOC = """\
 Runtime hook API (Python). An extension is a class `MECHANISM(Extension)` with `name` and `register(self, rt)`:
 - rt.register_tool(ToolSpec(name, description, parameters: dict, execute(args, rt, call_id) -> ToolResult),
@@ -219,7 +193,6 @@ class LLMMechanismProposer:
         if not resp.ok:
             return MechanismProposal(None, error=f"llm error: {resp.error}", usage=resp.usage)
         base = Artifact({k: v for k, v in prop.artifact.files.items() if not k.startswith("extensions/")})
-        cfg = harness_config(base.files)
         out = self._parse(resp.text, base, resp.usage, prop.variant)
         out.meta.update(prompt=prompt, reply=resp.text)
         return out
@@ -249,8 +222,7 @@ class LLMReviewer:
                 return False, f"smoke failed: {err}"
         prompt = REVIEW_PROMPT.format(title=idea.title, diff=base.diff(cand)[:20000])
         if "harness.json" in cand:
-            # the reviewer must judge against the same runtime contract the implementer was given (live r3:
-            # without it, haiku rejected correct /.solpi/ recall paths and the documented `context -> None`)
+            # judge against the same runtime contract the implementer was given
             prompt += "\n\nThe runtime API the mechanism was written against (authoritative):\n" + RUNTIME_API_DOC
         resp = self.llm.complete(prompt, role="reviewer", seed=0)
         try:

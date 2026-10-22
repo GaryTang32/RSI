@@ -1,24 +1,23 @@
-"""Genericity: both methods run unchanged on NEW tiny FunctionDomains (offline, deterministic).
-
-* Meta-Harness on a keyword-sentiment harness, driven by (a) a scripted LLM through the generic
-  RewriteProposer path and (b) a user Proposer subclass; the sealed test split is executed only by
-  finalize(), and no proposer prompt ever contains a test input.
-* SoL-Pi's research protocol on a "verbosity" harness whose ideas are a general saving, a do-less
-  shortcut and an environment-specific trick: the dual gate rejects the shortcut, the held-out
-  firewall rejects the trick, the general idea survives; also with an LLM (scripted) implementer.
-"""
+"""Meta-Harness and SoL-Pi run unchanged on new tiny FunctionDomains (offline, deterministic)."""
 import json
 import random
 
 from rsi.core import Artifact, Execution, FunctionDomain, MockLLM, Task, TaskSuite
 from rsi.metaharness import CandidateSpec, Config, ProposalBatch, Proposer, RewriteProposer, make_proposer, run
 from rsi.solpi import Config as SPConfig
-from rsi.solpi import GateSpec, Idea, MechanismProposal
+from rsi.solpi import GateSpec, MechanismProposal
 from rsi.solpi import run as sp_run
+from solpi_testkit import VERBOSITY_IDEAS, VERBOSITY_SEED, verbosity_domain
 
-# ------------------------------------------------------------------ a new Meta-Harness problem
 POS, NEG = ["great", "good", "love", "fine", "nice"], ["bad", "awful", "hate", "poor", "sad"]
 FILLER = ["the", "movie", "was", "really", "quite", "and", "plot", "actors", "today"]
+SEED_HARNESS = 'def run(text):\n    return "neu"\n'
+GOOD_HARNESS = ('POS = {"great", "good", "love", "fine", "nice"}\nNEG = {"bad", "awful", "hate", "poor", "sad"}\n\n\n'
+                'def run(text):\n    w = set(text.split())\n'
+                '    return "pos" if w & POS else "neg" if w & NEG else "neu"\n')
+HALF_HARNESS = ('POS = {"great", "good", "love", "fine", "nice"}\n\n\n'
+                'def run(text):\n    return "pos" if set(text.split()) & POS else "neu"\n')
+EXECUTED: list[str] = []
 
 
 def sentiment_suite(seed=0):
@@ -35,9 +34,6 @@ def sentiment_suite(seed=0):
     return TaskSuite(tasks, splits)
 
 
-EXECUTED: list[str] = []
-
-
 def sent_execute(artifact, task, seed, llm):
     EXECUTED.append(task.id)
     ns: dict = {}
@@ -49,12 +45,6 @@ def sent_execute(artifact, task, seed, llm):
 
 def sent_grade(task, output):
     return (1.0, "ok") if output == task.target else (0.0, f"got {output!r}, expected {task.target!r}")
-
-
-SEED_HARNESS = 'def run(text):\n    return "neu"\n'
-GOOD_HARNESS = ('POS = {"great", "good", "love", "fine", "nice"}\nNEG = {"bad", "awful", "hate", "poor", "sad"}\n\n\n'
-                'def run(text):\n    w = set(text.split())\n    return "pos" if w & POS else "neg" if w & NEG else "neu"\n')
-HALF_HARNESS = 'POS = {"great", "good", "love", "fine", "nice"}\n\n\ndef run(text):\n    return "pos" if set(text.split()) & POS else "neu"\n'
 
 
 def sentiment_domain():
@@ -88,15 +78,14 @@ def test_metaharness_on_new_function_domain_with_scripted_llm(tmp_path):
     EXECUTED.clear()
     rep = res.loop.finalize()
     assert set(EXECUTED) <= test_ids and rep["splits"]["test"]["results"]["kw_1"]["score"] == 1.0
-    n_sys = len(rep["systems"])
-    assert len(EXECUTED) == n_sys * len(test_ids)            # every finalised system tested exactly once
+    assert len(EXECUTED) == len(rep["systems"]) * len(test_ids)      # every finalised system tested exactly once
     EXECUTED.clear()
     res.loop.finalize()                                      # idempotent: no second test evaluation
     assert EXECUTED == []
 
 
 class LexiconProposer(Proposer):
-    """A user-written proposer: reads failing per-task records of the best visible candidate."""
+    """Reads the failing per-task records of the best visible candidate."""
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
         best = max((p for p in view if p.endswith("scores.json")), key=lambda p: json.loads(view[p])["score"])
@@ -116,43 +105,13 @@ def test_metaharness_on_new_domain_with_user_proposer_and_history_modes(tmp_path
         res = run(dom, Artifact({"harness.py": SEED_HARNESS}, meta={"name": "seed"}), proposer=LexiconProposer(),
                   config=Config(iterations=2, k=1, history_mode=mode, validate_in_subprocess=True),
                   out_dir=tmp_path / mode)
-        # per-task feedback lives in the trace/per-task records: only the full view lets the proposer fix 'neg'
+        # per-task feedback is only in the full view, so only it lets the proposer fix 'neg'
         assert res.meta["frontier"]["_best"]["score"] == (1.0 if mode == "full" else res.meta["curve"][0]["score"])
         assert "test" in res.meta["final"]["splits"]
 
 
-# ------------------------------------------------------------------ a new SoL-Pi problem
-def verbosity_domain():
-    rng = random.Random(1)
-    tasks, splits = [], {"evolve": [], "holdout": [], "ood": []}
-    for fam, split, n in (("alpha", "evolve", 6), ("beta", "evolve", 6), ("gamma", "holdout", 4), ("gamma", "ood", 4)):
-        for i in range(n):
-            t = Task(f"{split}-{fam}-{i}", {"need": rng.randint(1, 3)}, None, fam)
-            tasks.append(t)
-            splits[split].append(t.id)
-    runs: list[tuple[str, str]] = []
-
-    def execute(artifact, task, seed, llm):
-        cfg = json.loads(artifact["config.json"])
-        runs.append((task.id, artifact.id))
-        v = cfg["verbosity"]
-        tokens = 200 * v + 500 - (400 if cfg.get("fast") else 0)
-        ok = v >= task.input["need"] and not (cfg.get("fast") and task.family == "gamma")
-        return Execution(output=ok, tokens=tokens, cost_usd=tokens * 1e-6, steps=v + 1)
-
-    dom = FunctionDomain(TaskSuite(tasks, splits), execute, lambda t, o: 1.0 if o else 0.0, name="verbosity",
-                         description="config.json sets verbosity (tokens) and an optional 'fast' flag")
-    dom.runs = runs
-    return dom
-
-
-IDEAS = [Idea("G1", "C", "Trim one verbosity level", "trim1"),
-         Idea("D1", "P", "Answer with minimal verbosity", "trim_all", kind="do_less"),
-         Idea("T1", "T", "Fast path that assumes the familiar output format", "fast", kind="trick")]
-
-
 class ConfigProposer:
-    """A user MechanismProposer for the new domain: one edit per idea, no repair."""
+    """One edit per idea, no repair."""
 
     def propose(self, idea, base, evidence, history):
         if history:
@@ -171,12 +130,9 @@ class ConfigProposer:
         return MechanismProposal(None, error=error, meta={"exhausted": True})
 
 
-SP_SEED = Artifact({"config.json": json.dumps({"verbosity": 4}, sort_keys=True)})
-
-
 def test_solpi_protocol_on_new_function_domain(tmp_path):
     dom = verbosity_domain()
-    res = sp_run(dom, SP_SEED, ideas=IDEAS, proposer=ConfigProposer(),
+    res = sp_run(dom, VERBOSITY_SEED, ideas=VERBOSITY_IDEAS, proposer=ConfigProposer(),
                  config=SPConfig(gate=GateSpec(capability=(("score", 0.02),), efficiency=("tokens", "cost")),
                                  n_lineages=3, max_iters=2), out_dir=tmp_path)
     r = res.meta["rounds"][0]
@@ -184,11 +140,9 @@ def test_solpi_protocol_on_new_function_domain(tmp_path):
     assert r["heldout_passed"] == {n: n.startswith("G1") for n in r["frozen"]}   # the firewall rejects the trick
     assert r["survivor_ideas"] == ["G1"]
     assert json.loads(res.best["config.json"]) == {"verbosity": 3}
-    # the held-out split was only ever run by the firewall, on the base and the frozen candidates
-    holdout = set(dom.tasks.splits["holdout"])
-    ood = set(dom.tasks.splits["ood"])
+    holdout, ood = set(dom.tasks.splits["holdout"]), set(dom.tasks.splits["ood"])
     touched = {aid for tid, aid in dom.runs if tid in holdout}
-    assert len(touched) == 3 and SP_SEED.id in touched           # base + 2 frozen candidates, once each
+    assert len(touched) == 3 and VERBOSITY_SEED.id in touched    # firewall only: base + 2 frozen, once each
     assert not any(tid in ood for tid, _ in dom.runs)             # the final split is never touched by the protocol
 
 
@@ -198,9 +152,8 @@ def llm_implementer(prompt, system, seed, i):
 
 
 def test_solpi_protocol_on_new_domain_with_scripted_llm_implementer(tmp_path):
-    dom = verbosity_domain()
     llm = MockLLM(llm_implementer)
-    res = sp_run(dom, SP_SEED, llm_propose=llm, ideas=IDEAS[:1],
+    res = sp_run(verbosity_domain(), VERBOSITY_SEED, llm_propose=llm, ideas=VERBOSITY_IDEAS[:1],
                  config=SPConfig(n_lineages=1, max_iters=1), out_dir=tmp_path)
     r = res.meta["rounds"][0]
     assert r["survivor_ideas"] == ["G1"] and json.loads(res.best["config.json"]) == {"verbosity": 3}

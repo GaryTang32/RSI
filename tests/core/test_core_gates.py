@@ -1,27 +1,24 @@
-"""rsi.core.gates: every keep rule, including RRSI's floor / cost / within-band
-edge cases (checked against the formulas in rrsi/selection.py), DualGate,
+"""rsi.core.gates: every keep rule (RRSI floor, cost and within-band rules as in rrsi/selection.py), DualGate,
 BootstrapRigor, composition and select()."""
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from rsi.core import (AllOf, BootstrapRigor, CostRule, DualGate, EvalResult, GateContext, ImprovementOrEqual,
                       MetricGuard, MinGain, NoiseFloor, RRSIGate, Scored, StrictImprovement, Trial, Verdict, select)
+
+CTX = GateContext(delta=0.02)
 
 
 def S(score, cost=100.0, **kw):
     return Scored(score=score, cost=cost, **kw)
 
 
-CTX = GateContext(best_score=None, delta=0.02)
-
-
-# ------------------------------------------------------------------- Scored
 def test_scored_from_eval():
     trials = {"a": [Trial("a", 0, 1.0, tokens=10), Trial("a", 1, 0.0, tokens=30)],
               "b": [Trial("b", 0, 1.0, tokens=20), Trial("b", 1, 1.0, steps=4)]}
-    ev = EvalResult("x", "evolve", trials, k=2)
-    sc = Scored.from_eval(ev, novelty=2, metrics={"valid_rate": 0.9})
+    sc = Scored.from_eval(EvalResult("x", "evolve", trials, k=2), novelty=2, metrics={"valid_rate": 0.9})
     assert sc.score == pytest.approx(0.75) and sc.cost == pytest.approx(20.0)
     assert sc.samples == [1.0, 0.5]                     # per-seed means (bootstrap rules)
     assert sc.per_task == {"a": 0.5, "b": 1.0}
@@ -29,7 +26,6 @@ def test_scored_from_eval():
     assert Scored.from_eval(EvalResult("x", "evolve", {}, k=1)).samples == [0.0]
 
 
-# --------------------------------------------------------------- simple gates
 def test_strict_improvement():
     g = StrictImprovement()
     assert g.check(S(0.51), S(0.5), CTX)
@@ -44,15 +40,10 @@ def test_strict_improvement():
 
 
 def test_float_ties_are_ties():
-    """Bug fix: equal per-task scores summed in a different order differ in the last
-    bit; gates used to call that a strict gain (or a loss below the floor)."""
-    import numpy as np
-
-    thirds_a = [2, 0, 2, 1, 2, 3, 0, 3, 2, 1]                   # per-task successes out of k=3
-    thirds_b = [3, 1, 3, 2, 2, 0, 0, 1, 2, 2]                   # the same multiset, reordered
-    a = float(np.mean([x / 3 for x in thirds_a]))
-    b = float(np.mean([x / 3 for x in thirds_b]))
-    assert a != b and abs(a - b) < 1e-12                      # same multiset, different float
+    """Equal scores summed in a different order differ in the last bit: that is a tie, not a gain or a loss."""
+    a = float(np.mean([x / 3 for x in [2, 0, 2, 1, 2, 3, 0, 3, 2, 1]]))     # per-task successes out of k=3
+    b = float(np.mean([x / 3 for x in [3, 1, 3, 2, 2, 0, 0, 1, 2, 2]]))     # the same multiset, reordered
+    assert a != b and abs(a - b) < 1e-12
     hi, lo = max(a, b), min(a, b)
     assert not StrictImprovement().check(S(hi), S(lo), CTX)
     assert ImprovementOrEqual().check(S(lo), S(hi), CTX)
@@ -62,10 +53,6 @@ def test_float_ties_are_ties():
 
 
 def test_numpy_scores_give_plain_bool_verdicts():
-    """Bug fix: numpy float scores made Verdict.accept a numpy.bool_, and bool(verdict)
-    raised TypeError ("__bool__ should return bool")."""
-    import numpy as np
-
     s = np.array([0.5, 0.6])
     ctx = GateContext(best_score=s[0], delta=np.float64(0.02))
     for g in (StrictImprovement(), ImprovementOrEqual(), MinGain(), NoiseFloor(), CostRule(), RRSIGate(),
@@ -84,20 +71,17 @@ def test_improvement_or_equal_and_min_gain():
 
 
 def test_noise_floor_uses_best_score_so_far():
-    g = NoiseFloor()
-    ctx = GateContext(best_score=0.60, delta=0.02)
+    g, ctx = NoiseFloor(), GateContext(best_score=0.60, delta=0.02)
     assert g.check(S(0.58), S(0.55), ctx)                     # exactly at S* - delta
     assert not g.check(S(0.5799), S(0.55), ctx)               # above the incumbent but below the floor
-    assert g.check(S(0.54), S(0.55), GateContext(delta=0.02))  # no S*: falls back to incumbent
+    assert g.check(S(0.54), S(0.55), CTX)                    # no S*: falls back to incumbent
     assert g.check(S(0.5), S(0.5), GateContext(delta=0.0))
     assert g.check(S(0.58), S(0.55), ctx).details["floor"] == pytest.approx(0.58)
 
 
 def test_noise_floor_blocks_slow_slide():
     """Many individually within-noise losses cannot walk the incumbent down."""
-    g = NoiseFloor()
-    s_star, inc = 0.60, 0.60
-    accepted = []
+    g, s_star, inc, accepted = NoiseFloor(), 0.60, 0.60, []
     for _ in range(10):
         cand = inc - 0.015                                   # each step is inside the 0.02 band
         if g.check(S(cand), S(inc), GateContext(best_score=s_star, delta=0.02)):
@@ -107,44 +91,36 @@ def test_noise_floor_blocks_slow_slide():
     assert len(accepted) == 1 and inc >= 0.58
 
 
-# ------------------------------------------------------------------- CostRule
 def test_cost_rule_above_band_budget():
-    g = CostRule()                                            # beta0=0.10, beta1=40 (rrsi/config.py)
-    ctx = GateContext(delta=0.02)
-    # dS = 0.05 > delta -> budget 0.10 + 40*0.05 = 2.1 relative tokens
-    assert g.check(S(0.55, cost=300.0), S(0.5, cost=100.0), ctx)       # dC = 2.0
-    assert g.check(S(0.55, cost=310.0), S(0.5, cost=100.0), ctx)       # dC = 2.1 (boundary, <=)
-    v = g.check(S(0.55, cost=320.0), S(0.5, cost=100.0), ctx)          # dC = 2.2
+    g = CostRule()                                            # beta0=0.10, beta1=40: dS = 0.05 -> budget 2.1
+    assert g.check(S(0.55, cost=300.0), S(0.5, cost=100.0), CTX)       # dC = 2.0
+    assert g.check(S(0.55, cost=310.0), S(0.5, cost=100.0), CTX)       # dC = 2.1 (boundary, <=)
+    v = g.check(S(0.55, cost=320.0), S(0.5, cost=100.0), CTX)
     assert not v and v.details["dC"] == pytest.approx(2.2)
 
 
 def test_cost_rule_within_band_shaped_rule():
     g = CostRule()                                            # w_s=100, w_c=15, w_n=0.5
-    ctx = GateContext(delta=0.02)
-    cheaper = g.check(S(0.5, cost=90.0), S(0.5, cost=100.0), ctx)      # 0 - 15*(-0.1) = 1.5
+    cheaper = g.check(S(0.5, cost=90.0), S(0.5, cost=100.0), CTX)      # 0 - 15*(-0.1) = 1.5
     assert cheaper and cheaper.details["shaped"] == pytest.approx(1.5)
-    assert not g.check(S(0.5), S(0.5), ctx)                             # shaped == 0 is not > 0
-    assert g.check(S(0.5, novelty=1), S(0.5), ctx)                      # exploring a new component: +0.5
-    assert g.check(S(0.49, cost=90.0), S(0.5), ctx)                     # -1 + 1.5 = 0.5
-    assert not g.check(S(0.51, cost=110.0), S(0.5), ctx)                # 1 - 1.5 = -0.5
-    # dS == delta is still "within the band" (rule uses dS > delta for the budget branch)
-    at_band = g.check(S(0.52, cost=200.0), S(0.5), ctx)
+    assert not g.check(S(0.5), S(0.5), CTX)                            # shaped == 0 is not > 0
+    assert g.check(S(0.5, novelty=1), S(0.5), CTX)                     # exploring a new component: +0.5
+    assert g.check(S(0.49, cost=90.0), S(0.5), CTX)                    # -1 + 1.5 = 0.5
+    assert not g.check(S(0.51, cost=110.0), S(0.5), CTX)               # 1 - 1.5 = -0.5
+    at_band = g.check(S(0.52, cost=200.0), S(0.5), CTX)                # dS == delta is still within the band
     assert "shaped" in at_band.details and not at_band               # 2 - 15 = -13
 
 
 def test_cost_rule_zero_costs_and_ablation():
     g = CostRule()
-    ctx = GateContext(delta=0.02)
-    assert g.check(S(0.55, cost=0.0), S(0.5, cost=100.0), ctx).details["dC"] == 0.0
-    assert g.check(S(0.55, cost=500.0), S(0.5, cost=0.0), ctx).details["dC"] == 0.0
+    assert g.check(S(0.55, cost=0.0), S(0.5, cost=100.0), CTX).details["dC"] == 0.0
+    assert g.check(S(0.55, cost=500.0), S(0.5, cost=0.0), CTX).details["dC"] == 0.0
     strict = CostRule(within_band=False)
-    assert not strict.check(S(0.5, cost=10.0), S(0.5), ctx)
-    assert strict.check(S(0.6), S(0.5), ctx)
+    assert not strict.check(S(0.5, cost=10.0), S(0.5), CTX) and strict.check(S(0.6), S(0.5), CTX)
     custom = CostRule(beta0=0.0, beta1=0.0)
-    assert not custom.check(S(0.6, cost=101.0), S(0.5), ctx) and custom.check(S(0.6, cost=100.0), S(0.5), ctx)
+    assert not custom.check(S(0.6, cost=101.0), S(0.5), CTX) and custom.check(S(0.6, cost=100.0), S(0.5), CTX)
 
 
-# ---------------------------------------------------------------- MetricGuard
 def test_metric_guard():
     g = MetricGuard("valid_rate", tol=0.05)
     assert g.name == "guard:valid_rate"
@@ -156,7 +132,6 @@ def test_metric_guard():
     assert not lat.check(S(0, metrics={"latency": 11.5}), S(0, metrics={"latency": 10}), CTX)
 
 
-# -------------------------------------------------------------------- RRSIGate
 def test_rrsi_gate_composition_and_reasons():
     g = RRSIGate(guards=[MetricGuard("valid_rate", 0.0)])
     assert [x.name for x in g.gates] == ["noise_floor", "cost_rule", "guard:valid_rate"]
@@ -172,29 +147,25 @@ def test_rrsi_gate_composition_and_reasons():
 
 
 def test_rrsi_gate_ablations():
-    no_cost = RRSIGate(cost=False)
     ctx = GateContext(best_score=0.5, delta=0.02)
-    assert no_cost.check(S(0.5, cost=1e6), S(0.5), ctx)        # any cost admissible
+    assert RRSIGate(cost=False).check(S(0.5, cost=1e6), S(0.5), ctx)        # any cost admissible
     no_floor = RRSIGate(floor=False)
     assert [x.name for x in no_floor.gates] == ["cost_rule"]
     assert no_floor.check(S(0.3, cost=50.0), S(0.3), GateContext(best_score=0.9, delta=0.02))
-    custom = RRSIGate(cost_rule=CostRule(beta0=0.0, beta1=0.0))
-    assert not custom.check(S(0.6, cost=101.0), S(0.5), GateContext(best_score=0.5, delta=0.02))
+    assert not RRSIGate(cost_rule=CostRule(beta0=0.0, beta1=0.0)).check(S(0.6, cost=101.0), S(0.5), ctx)
 
 
-# ------------------------------------------------------------- BootstrapRigor
 def test_bootstrap_rigor():
     g = BootstrapRigor()                                        # p=0.95 over per-seed samples
     assert g.check(S(0.8, samples=[0.8, 0.81, 0.79]), S(0.5, samples=[0.5, 0.51, 0.49]), CTX)
     v = g.check(S(0.52, samples=[0.45, 0.6, 0.51]), S(0.5, samples=[0.48, 0.52, 0.5]), CTX)
     assert not v and 0 < v.details["p_better"] < 0.95
     assert not g.check(S(0.9), S(0.5, samples=[0.5]), CTX)      # no samples -> reject
-    bpb = BootstrapRigor(lower_is_better=True)
-    assert bpb.check(S(0, samples=[1.00, 1.01, 0.99]), S(0, samples=[1.10, 1.11, 1.09]), CTX)
-    assert not bpb.check(S(0, samples=[1.10, 1.11, 1.09]), S(0, samples=[1.00, 1.01, 0.99]), CTX)
+    bpb, low, high = BootstrapRigor(lower_is_better=True), [1.00, 1.01, 0.99], [1.10, 1.11, 1.09]
+    assert bpb.check(S(0, samples=low), S(0, samples=high), CTX)
+    assert not bpb.check(S(0, samples=high), S(0, samples=low), CTX)
 
 
-# -------------------------------------------------------------------- DualGate
 def test_dual_gate():
     g = DualGate(capability={"score": 0.01, "pass_rate": 0.0}, efficiency={"tokens": 0.0, "usd": 0.10})
     base = S(0.80, metrics={"pass_rate": 0.9, "tokens": 1000, "usd": 1.0})
@@ -207,16 +178,15 @@ def test_dual_gate():
     assert g.check(S(0.80, metrics={"pass_rate": 0.9, "tokens": 1000, "usd": 0.85}), base, CTX)
     v = g.check(S(0.80, metrics={"tokens": 1}), base, CTX)
     assert not v and "pass_rate missing" in v.reason
-    zero_base = S(0.8, metrics={"pass_rate": 0.9, "tokens": 0, "usd": 0})
-    assert not g.check(S(0.8, metrics={"pass_rate": 0.9, "tokens": 0, "usd": 0}), zero_base, CTX)
+    zero = {"pass_rate": 0.9, "tokens": 0, "usd": 0}
+    assert not g.check(S(0.8, metrics=zero), S(0.8, metrics=zero), CTX)
 
 
-# ------------------------------------------------------------ AllOf / select
 def test_allof_flattening_and_and_operator():
     g = StrictImprovement() & NoiseFloor() & MinGain()
     assert isinstance(g, AllOf) and len(g.gates) == 3
     assert len((RRSIGate() & MetricGuard("m", 0)).gates) == 3
-    v = g.check(S(0.6), S(0.5), GateContext(delta=0.02))
+    v = g.check(S(0.6), S(0.5), CTX)
     assert v and v.reason == "all gates passed"
     assert bool(Verdict(False, "x")) is False
 
@@ -228,10 +198,8 @@ def test_select_argmax_over_admissible():
     assert winner == "c"                                       # b is best but fails the cost rule
     assert [c for c, _ in verdicts] == ["a", "b", "c", "d"]
     assert [bool(v) for _, v in verdicts] == [True, False, True, False]
-    w, _ = select(cands, inc, StrictImprovement(), CTX, key=lambda s: -s.cost)
-    assert w == "a"                                            # custom key: cheapest admissible
+    assert select(cands, inc, StrictImprovement(), CTX, key=lambda s: -s.cost)[0] == "a"   # cheapest admissible
     w, vs = select([("x", S(0.4))], inc, StrictImprovement(), CTX)
     assert w is None and not vs[0][1]
-    w, _ = select([("first", S(0.6)), ("second", S(0.6))], inc, StrictImprovement(), CTX)
-    assert w == "first"                                        # ties -> earliest candidate
+    assert select([("first", S(0.6)), ("second", S(0.6))], inc, StrictImprovement(), CTX)[0] == "first"   # ties
     assert select([], inc, StrictImprovement(), CTX) == (None, [])

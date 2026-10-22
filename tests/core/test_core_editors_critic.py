@@ -1,10 +1,9 @@
-"""rsi.core.editors (parse_proposal, scope guard, deletes, no-effective-change,
-RewriteEditor, AgentEditor with a fake offline agent) and rsi.core.critic
-(LeakageCritic whole-token denylist + fail-closed LLM review)."""
+"""rsi.core.editors (parse_proposal, scope guard, RewriteEditor, AgentEditor via an offline fake agent) and
+rsi.core.critic (LeakageCritic whole-token denylist and fail-closed LLM review)."""
 from __future__ import annotations
 
 import json
-import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -19,15 +18,15 @@ BASE = Artifact({"harness.py": "def solve(q):\n    return q\n", "prompts/task.md
 
 
 def reply(header: dict | None, files: dict[str, str]) -> str:
-    out = []
-    if header is not None:
-        out.append("```json\n" + json.dumps(header) + "\n```")
-    for name, text in files.items():
-        out.append(f"=== FILE: {name} ===\n{text}")
-    return "\n".join(out)
+    out = [] if header is None else ["```json\n" + json.dumps(header) + "\n```"]
+    return "\n".join(out + [f"=== FILE: {name} ===\n{text}" for name, text in files.items()])
 
 
-# ---------------------------------------------------------------- parse_proposal
+class _Down(MockLLM):
+    def _complete(self, prompt, *, system, max_tokens, seed):
+        return LLMResponse("", Usage(1, 5, 0), "down", error="503")
+
+
 def test_parse_proposal_header_files_and_deletes():
     text = reply({"change": "add verify step", "hypothesis": "checks help", "components": ["prompt", "control_flow"]},
                  {"prompts/task.md": "Answer carefully: {q}\n", "notes.md": "<<DELETE>>", "skills/new.md": "tip\n"})
@@ -49,8 +48,8 @@ def test_parse_proposal_components_string_and_truncation():
 
 
 def test_parse_proposal_scope_guard():
-    text = reply({"change": "c"}, {"harness.py": "hacked\n", "prompts/task.md": "better {q}\n"})
-    p = parse_proposal(BASE, text, editable=["prompts/*"])
+    p = parse_proposal(BASE, reply({"change": "c"}, {"harness.py": "hacked\n", "prompts/task.md": "better {q}\n"}),
+                       editable=["prompts/*"])
     assert p.ok and p.blocked_files == ["harness.py"]
     assert p.artifact["harness.py"] == BASE["harness.py"] and p.artifact["prompts/task.md"] == "better {q}\n"
     only_blocked = parse_proposal(BASE, reply({"change": "c"}, {"harness.py": "hacked\n"}), editable=["prompts/*"])
@@ -58,7 +57,6 @@ def test_parse_proposal_scope_guard():
 
 
 def test_parse_proposal_blocks_paths_outside_the_artifact():
-    """Bug fix: '../x' and absolute names used to be accepted even without an editable list."""
     p = parse_proposal(BASE, reply({"change": "c"}, {"../escape.py": "x\n", "/etc/evil": "x\n", "ok.md": "fine\n"}))
     assert p.ok and set(p.blocked_files) == {"../escape.py", "/etc/evil"} and set(p.artifact) == set(BASE) | {"ok.md"}
 
@@ -68,14 +66,12 @@ def test_parse_proposal_no_blocks_and_no_change():
     assert not p.ok and p.artifact is None and p.error == "no file blocks in reply" and p.change == "idea only"
     same = parse_proposal(BASE, reply({"change": "noop"}, {"notes.md": "old notes\n"}))
     assert not same.ok and same.error == "no effective change" and same.artifact == BASE
-    gone = parse_proposal(BASE, reply({}, {"never-existed.md": "<<DELETE>>"}))
-    assert gone.error == "no effective change"
+    assert parse_proposal(BASE, reply({}, {"never-existed.md": "<<DELETE>>"})).error == "no effective change"
     assert parse_proposal(BASE, None).error == "no file blocks in reply"
 
 
 def test_parse_proposal_header_only_before_first_block():
-    text = "=== FILE: notes.md ===\n{\"change\": \"this is file content, not a header\"}\n"
-    p = parse_proposal(BASE, text)
+    p = parse_proposal(BASE, "=== FILE: notes.md ===\n{\"change\": \"this is file content, not a header\"}\n")
     assert p.ok and p.change == "" and p.artifact["notes.md"].startswith("{")
 
 
@@ -84,13 +80,12 @@ def test_apply_scope_returns_blocked_names():
     assert blocked == ["b.py"] and "a.md" in new and "b.py" not in new
 
 
-# ----------------------------------------------------------------- RewriteEditor
 def test_rewrite_editor_prompt_and_result():
     llm = MockLLM(lambda p, s, seed, i: reply({"change": "tweak", "components": ["prompt"]},
                                                {"prompts/task.md": "Think step by step: {q}\n"}))
-    ed = RewriteEditor(llm, max_context_chars=50)
-    p = ed.edit(BASE, "  Improve the harness.  ", context={"history.txt": "h" * 40, "traces.txt": "t" * 40},
-                editable=["prompts/*"], system="SYS", seed=4, role="proposer")
+    p = RewriteEditor(llm, max_context_chars=50).edit(
+        BASE, "  Improve the harness.  ", context={"history.txt": "h" * 40, "traces.txt": "t" * 40},
+        editable=["prompts/*"], system="SYS", seed=4, role="proposer")
     assert p.ok and p.artifact["prompts/task.md"] == "Think step by step: {q}\n"
     call = llm.calls[0]
     assert call["system"] == "SYS" and call["seed"] == 4
@@ -104,18 +99,12 @@ def test_rewrite_editor_prompt_and_result():
 
 
 def test_rewrite_editor_llm_error():
-    class Down(MockLLM):
-        def _complete(self, prompt, *, system, max_tokens, seed):
-            return LLMResponse("", Usage(1, 5, 0), "down", error="503")
-
-    p = RewriteEditor(Down()).edit(BASE, "go")
+    p = RewriteEditor(_Down()).edit(BASE, "go")
     assert not p.ok and p.error == "llm error: 503" and p.artifact is None
 
 
-# ------------------------------------------------------------------ AgentEditor
 class FakeAgentCLI(ClaudeCLI):
-    """Stands in for ``claude -p`` as a coding agent: applies scripted file edits
-    inside its working directory, offline."""
+    """Stands in for ``claude -p`` as a coding agent: applies scripted file edits in its working directory."""
 
     def __init__(self, edits=None, proposal=None, error=None, raw_proposal=None):
         super().__init__("haiku")
@@ -148,16 +137,15 @@ def test_agent_editor_applies_scoped_edits_and_reads_proposal():
     cli = FakeAgentCLI(edits={"prompts/task.md": "Verify then answer: {q}\n", "harness.py": "hacked\n",
                               "notes.md": None, "prompts/extra.md": "new\n"},
                        proposal={"change": "verify", "hypothesis": "general", "components": "prompt"})
-    ed = AgentEditor(cli, timeout_s=12)
-    p = ed.edit(BASE, "Make it better.", context={"history.md": "round 1: ...", "traces/t1.txt": "trace"},
-                editable=["prompts/*", "notes.md"], role="proposer")
+    p = AgentEditor(cli, timeout_s=12).edit(BASE, "Make it better.",
+                                            context={"history.md": "round 1: ...", "traces/t1.txt": "trace"},
+                                            editable=["prompts/*", "notes.md"], role="proposer")
     assert p.ok, p.error
     assert p.blocked_files == ["harness.py"]
     assert dict(p.artifact) == {"harness.py": BASE["harness.py"], "prompts/task.md": "Verify then answer: {q}\n",
                                 "prompts/extra.md": "new\n"}
     assert (p.change, p.hypothesis, p.components) == ("verify", "general", ["prompt"])
     assert p.usage.cost_usd == 0.01 and p.raw == "done"
-    # the agent saw the artifact plus read-only context, and the scope instruction
     assert {"_context/history.md", "_context/traces/t1.txt", "harness.py"} <= set(cli.seen["files"])
     assert "You may only edit files matching ['prompts/*', 'notes.md']" in cli.seen["prompt"]
     assert "_proposal.json" in cli.seen["prompt"] and cli.seen["timeout_s"] == 12 and cli.seen["role"] == "proposer"
@@ -166,13 +154,9 @@ def test_agent_editor_applies_scoped_edits_and_reads_proposal():
 
 
 def test_agent_editor_keep_dirs_no_change_and_errors():
-    cli = FakeAgentCLI(edits={}, proposal={"change": "nothing"})
-    ed = AgentEditor(cli, keep_dirs=True)
-    p = ed.edit(BASE, "noop")
+    p = AgentEditor(FakeAgentCLI(edits={}, proposal={"change": "nothing"}), keep_dirs=True).edit(BASE, "noop")
     assert p.error == "no effective change" and p.change == "nothing"
     assert Path(p.meta["workdir"]).exists()
-    import shutil
-
     shutil.rmtree(p.meta["workdir"])
     bad = AgentEditor(FakeAgentCLI(edits={"notes.md": "x\n"}, error="timeout")).edit(BASE, "go")
     assert not bad.ok and bad.error == "agent error: timeout" and bad.artifact["notes.md"] == "x\n"
@@ -180,12 +164,10 @@ def test_agent_editor_keep_dirs_no_change_and_errors():
 
 @pytest.mark.parametrize("raw", ["not json", "[1, 2]", '"just a string"'])
 def test_agent_editor_tolerates_bad_proposal_files(raw):
-    """Bug fix: a _proposal.json holding a list/string crashed AgentEditor.edit."""
     p = AgentEditor(FakeAgentCLI(edits={"notes.md": "n\n"}, raw_proposal=raw)).edit(BASE, "go")
     assert p.ok and p.change == "" and p.components == []
 
 
-# ---------------------------------------------------------------- LeakageCritic
 def _diff(new_text: str, old_text: str = "base line\n", name: str = "harness.py") -> str:
     return Artifact({name: old_text}).diff(Artifact({name: new_text}))
 
@@ -195,8 +177,7 @@ def _diff(new_text: str, old_text: str = "base line\n", name: str = "harness.py"
     ("x = 120\n", False), ("x = 3.12\n", False), ("x = 12.5\n", False), ("v12 = 1\n", False), ("x = 112\n", False),
 ])
 def test_denylist_whole_token_numbers(added, hit):
-    c = LeakageCritic(terms=["12"], min_term_len=2)
-    assert bool(c.denylist_hits(_diff(added))) is hit
+    assert bool(LeakageCritic(terms=["12"], min_term_len=2).denylist_hits(_diff(added))) is hit
 
 
 def test_denylist_terms_case_and_length():
@@ -212,32 +193,25 @@ def test_denylist_terms_case_and_length():
 
 
 def test_denylist_accepts_non_string_terms():
-    """Bug fix: integer answers in ``terms`` crashed the constructor (sorted by len())."""
     c = LeakageCritic(terms=[123456, "Bob", 7], min_term_len=3)
-    assert c.terms == ["123456", "Bob"]
-    assert c.denylist_hits(_diff("return 123456\n")) == ["123456"]
+    assert c.terms == ["123456", "Bob"] and c.denylist_hits(_diff("return 123456\n")) == ["123456"]
 
 
 def test_denylist_only_scans_added_lines():
-    c = LeakageCritic(terms=["SECRET"])
-    old = "keep SECRET here\nctx\n"
+    c, old = LeakageCritic(terms=["SECRET"]), "keep SECRET here\nctx\n"
     assert c.denylist_hits(Artifact({"f": old}).diff(Artifact({"f": "ctx\n"}))) == []          # removal
     assert c.denylist_hits(Artifact({"f": old}).diff(Artifact({"f": old + "new line\n"}))) == []  # context
     assert c.denylist_hits(_diff("uses SECRET\n")) == ["SECRET"]
 
 
 def test_denylist_catches_last_line_without_newline():
-    """Bug fix: an added last line without a trailing newline used to be glued to the
-    removed line and never scanned."""
-    c = LeakageCritic(terms=["SECRET_ANSWER"])
     d = Artifact({"f.py": "x = 1"}).diff(Artifact({"f.py": "x = 'SECRET_ANSWER'"}))
-    v = c.screen(d)
+    v = LeakageCritic(terms=["SECRET_ANSWER"]).screen(d)
     assert not v.accept and v.stage == "denylist" and v.hits == ["SECRET_ANSWER"]
 
 
 def test_added_lines_hunk_aware_and_headerless():
-    d = Artifact({"f": "a\n"}).diff(Artifact({"f": "a\n+++ not a header\n"}))
-    assert added_lines(d) == "+++ not a header"
+    assert added_lines(Artifact({"f": "a\n"}).diff(Artifact({"f": "a\n+++ not a header\n"}))) == "+++ not a header"
     assert added_lines("+ANSWER = 42\n context\n-removed") == "ANSWER = 42"   # hand-written diff
     assert added_lines("") == "" and added_lines(None) == ""
 
@@ -259,8 +233,8 @@ def _llm(*replies):
 
 def test_llm_review_accept_and_reject():
     llm = _llm('{"verdict": "accept", "objections": []}')
-    c = LeakageCritic(llm=llm, domain_brief="QA harness")
-    v = c.screen(_diff("Always verify your answer.\n"), change="add verification")
+    v = LeakageCritic(llm=llm, domain_brief="QA harness").screen(_diff("Always verify your answer.\n"),
+                                                                  change="add verification")
     assert v.accept and v.stage == "llm"
     call = llm.calls[0]
     assert call["system"] == CRITIC_SYSTEM and "QA harness" in call["prompt"] and "add verification" in call["prompt"]
@@ -273,20 +247,13 @@ def test_llm_review_accept_and_reject():
 
 def test_llm_review_fails_closed():
     llm = _llm("I think it is fine", "still no json", "nope")
-    c = LeakageCritic(llm=llm, parse_attempts=3)
-    v = c.screen(_diff("x\n"))
+    v = LeakageCritic(llm=llm, parse_attempts=3).screen(_diff("x\n"))
     assert not v.accept and v.objections == ["critic output unparseable"] and len(llm.calls) == 3
     assert [call["seed"] for call in llm.calls] == [0, 1, 2]
     flaky = _llm("garbage", '{"verdict": "accept"}')
     assert LeakageCritic(llm=flaky).screen(_diff("x\n")).accept and len(flaky.calls) == 2
-    listy = LeakageCritic(llm=_llm('["accept"]'), parse_attempts=2)
-    assert not listy.screen(_diff("x\n")).accept                       # non-object replies are unparseable
-
-    class Down(MockLLM):
-        def _complete(self, prompt, *, system, max_tokens, seed):
-            return LLMResponse("", Usage(1, 1, 0), "down", error="503")
-
-    assert not LeakageCritic(llm=Down()).screen(_diff("x\n")).accept
+    assert not LeakageCritic(llm=_llm('["accept"]'), parse_attempts=2).screen(_diff("x\n")).accept   # not an object
+    assert not LeakageCritic(llm=_Down()).screen(_diff("x\n")).accept
 
 
 def test_denylist_short_circuits_llm():

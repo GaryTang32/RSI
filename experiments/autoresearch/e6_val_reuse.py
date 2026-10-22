@@ -1,35 +1,14 @@
 """E6 - reusing the same validation data for every decision => slow tuning to it.
 
-Claim [doc]: "The same validation data judges every experiment, so hundreds of
-experiments slowly tune to it." The sources show no measurable gap at ~70 decisions
-(xgboost port, spec section 8.2), so a null result at small N is expected; the
-known-truth landscape lets us raise the val-specific component and the decision
-count to see where the effect appears. Overfitting (val - test_iid gap) and
-distribution shift (test_shift) are reported separately.
-
-A. Landscape, 40 seeds x 300 experiments, val-specific sd in {0.0015, 0.005}, fixed val
-   vs val re-sampled every 25 experiments (incumbent re-scored on the new split):
-   gap(t) = expected iid-test loss of the incumbent - its recorded val loss, vs experiment t
-   (optimism; includes the seed/run-noise luck that E5 studies), and the pure
-   validation-overfitting term valspec(t) = expected iid-test loss - expected loss on the
-   val split in use (noise-free: only the selected val-specific component v(x)).
-B. Tabular (real GBT, CV AUC), 30 experiments, fixed CV folds vs folds re-sampled every
-   10 experiments; HiddenAudit of every keep on hidden iid and time-shifted test sets.
-
-With --llm claude:haiku (or the offline --llm scripted) only part B runs, with an LLM
-research agent (part A needs hundreds of experiments per night).
-
 Usage: python experiments/autoresearch/e6_val_reuse.py [--seeds N] [--quick] [--llm sim|claude:haiku]
 """
-from __future__ import annotations
-
-from _common import suffix, SCRATCH, ci, is_live, parser, plt, pool_map, research_agent, usage_of, write  # noqa: I001
-
-import json
+from _common import (SCRATCH, ci, is_live, parser, plt, pool_map, report, research_agent, save_fig,  # noqa: I001
+                     slug, suffix, usage_of)
 
 import numpy as np
 
 from rsi.autoresearch import AutoresearchLoop, Config, LandscapeTask, MockResearchAgent, landscape_edit_pool
+from rsi.domains.tabular import TabularTask
 
 CHECK_EVERY = 25
 
@@ -37,77 +16,68 @@ CHECK_EVERY = 25
 def expected(task: LandscapeTask, art, split: str) -> float:
     """Noise-free loss of ``art`` on a split (quality + split-specific component [+ shift])."""
     mod = task._module(task.files["prepare.py"])
-    k = dict(mod.DEFAULTS)
-    k.update(task.knobs(art))
+    k = {**mod.DEFAULTS, **task.knobs(art)}
     cfg = mod.config_key(k)
     q = mod.quality(k, task.compute)
     if split == "test_iid":
         return q + mod.VAL_SD * mod._gauss("iid", *cfg)
     if split == "test_shift":
         return q + mod.VAL_SD * mod._gauss("shift", *cfg) + mod.shift_penalty(k)
-    if split.startswith("val"):                      # "val:<epoch>": the val split in use at that epoch
+    if split.startswith("val"):  # "val:<epoch>": the val split in use at that epoch
         return q + mod.VAL_SD * mod._gauss("val", int(split.split(":")[1]), *cfg)
     return q
 
 
-def landscape_arm(args):
+def landscape_arm(args) -> dict:
     val_sd, resample, seed, n = args
     task = LandscapeTask(seed=seed, val_sd=val_sd)
-    ag = MockResearchAgent(landscape_edit_pool(), seed=seed, p_repeat=0.5)
+    agent = MockResearchAgent(landscape_edit_pool(), seed=seed, p_repeat=0.5)
     cfg = Config(max_experiments=n, persist=False, plot=False, hidden_audit=False, seed=seed,
                  val_resample_every=CHECK_EVERY if resample else None)
-    loop = AutoresearchLoop(task, ag, cfg, out_dir=SCRATCH / "e6" / "ls")
-    arts = {}
-    orig = loop._record
+    loop = AutoresearchLoop(task, agent, cfg, out_dir=SCRATCH / "e6" / "ls")
+    arts, record = {}, loop._record
 
-    def rec(**kw):
-        node = orig(**kw)
+    def record_art(**kw):  # keep every recorded artifact, keyed by its ledger node
+        node = record(**kw)
         arts[node.id] = kw["art"]
         return node
 
-    loop._record = rec
+    loop._record = record_art
     res = loop.run()
-    nodes = {n_.id: n_ for n_ in res.ledger.nodes()}
-    # incumbent (id, recorded value) after each experiment, from the ledger in order
-    inc_id, inc_val, gaps, shift, truth, valspec = None, None, [], [], [], []
-    by_round = {}
-    for n_ in res.ledger.nodes():
-        if n_.status == "keep":
-            by_round[n_.round] = n_.id
-    rescored = {}
-    for n_ in res.ledger.nodes():
-        for k, v in n_.meta.items():
-            if k.startswith("rescore_epoch_"):
-                rescored[int(k.split("_")[-1])] = (n_.id, float(np.mean(v)))
-    for t in range(0, n + 1):
-        if t in by_round:
-            inc_id = by_round[t]
-            inc_val = nodes[inc_id].score
-        if resample and t > 0 and (t - 1) % CHECK_EVERY == 0 and t > 1:
+    nodes = res.ledger.nodes()
+    score = {nd.id: nd.score for nd in nodes}
+    keep_by_round = {nd.round: nd.id for nd in nodes if nd.status == "keep"}
+    rescored = {int(k.split("_")[-1]): (nd.id, float(np.mean(v)))
+                for nd in nodes for k, v in nd.meta.items() if k.startswith("rescore_epoch_")}
+    inc_id = inc_val = None
+    gaps, shift, truth, valspec = [], [], [], []
+    for t in range(n + 1):
+        if t in keep_by_round:
+            inc_id = keep_by_round[t]
+            inc_val = score[inc_id]
+        if resample and t > 1 and (t - 1) % CHECK_EVERY == 0:
             ep = (t - 1) // CHECK_EVERY
-            if ep in rescored and rescored[ep][0] == inc_id:
+            if ep in rescored and rescored[ep][0] == inc_id:  # incumbent re-scored on the new val split
                 inc_val = rescored[ep][1]
         if t % CHECK_EVERY == 0:
             art = arts[inc_id]
             epoch = (t - 1) // CHECK_EVERY if (resample and t >= 1) else 0
-            gaps.append(expected(task, art, "test_iid") - inc_val)
-            valspec.append(expected(task, art, "test_iid") - expected(task, art, f"val:{epoch}"))
+            iid = expected(task, art, "test_iid")
+            gaps.append(iid - inc_val)
+            valspec.append(iid - expected(task, art, f"val:{epoch}"))
             shift.append(expected(task, art, "test_shift"))
             truth.append(task.truth(art))
     return {"val_sd": val_sd, "resample": resample, "seed": seed, "gap_curve": gaps, "shift_curve": shift,
             "truth_curve": truth, "valspec_curve": valspec}
 
 
-def tabular_arm(args):
+def tabular_arm(args) -> dict:
     resample, seed, n, llm_spec = args
-    from rsi.domains.tabular import TabularTask
-
     task = TabularTask()
-    ag, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed)
-    res = AutoresearchLoop(task, ag, Config(max_experiments=n, seed=seed, tag=f"e6-{resample}-{seed}", overwrite=True,
-                                            val_resample_every=(max(2, n // 3) if is_live(llm_spec) else 10)
-                                            if resample else None),
-                           out_dir=SCRATCH / "e6" / f"tab_{int(resample)}_{seed}_{llm_spec.replace(':', '_')}",
+    agent, llms = research_agent(llm_spec, task.mock_edit_pool(), seed=seed)
+    every = (max(2, n // 3) if is_live(llm_spec) else 10) if resample else None
+    cfg = Config(max_experiments=n, seed=seed, tag=f"e6-{resample}-{seed}", overwrite=True, val_resample_every=every)
+    res = AutoresearchLoop(task, agent, cfg, out_dir=SCRATCH / "e6" / f"tab_{int(resample)}_{seed}_{slug(llm_spec)}",
                            llms=llms).run()
     rows = [r for r in res.meta["audit"] if "audit_error" not in r]
     return {"resample": resample, "seed": seed, "usage": usage_of(llms),
@@ -115,18 +85,31 @@ def tabular_arm(args):
                        "shift": r["test_shift"]} for r in rows]}
 
 
-def main():
-    ap = parser(__doc__.splitlines()[0], seeds=2)
-    a = ap.parse_args()
+def tabular_summary(rs: list[dict]) -> dict:
+    pairs = [(x["keeps"][0], x["keeps"][-1]) for x in rs]
+    return {
+        "runs": rs, "cv_minus_iid_baseline": ci([f["cv"] - f["iid"] for f, _ in pairs]),
+        "cv_minus_iid_final": ci([last["cv"] - last["iid"] for _, last in pairs]),
+        "iid_gain": ci([last["iid"] - f["iid"] for f, last in pairs]),
+        "shift_gain": ci([last["shift"] - f["shift"] for f, last in pairs]),
+        "cv_gain": ci([last["cv"] - f["cv"] for f, last in pairs]),
+        "cv_minus_iid_growth": ci([(last["cv"] - last["iid"]) - (f["cv"] - f["iid"]) for f, last in pairs]),
+        "keeps_that_raise_iid_but_lower_shift": [
+            k["description"] for x in rs for prev, k in zip(x["keeps"], x["keeps"][1:])
+            if k["iid"] > prev["iid"] and k["shift"] < prev["shift"] - 0.005]}
+
+
+def main() -> None:
+    a = parser(__doc__.splitlines()[0], seeds=2).parse_args()
     live = is_live(a.llm)
     n = 100 if a.quick else 300
     seeds = list(range(8 if a.quick else 40))
-    arms = [(v, r) for v in (0.0015, 0.005) for r in (False, True)]
-    ls = [] if live else pool_map(landscape_arm, [(v, r, s, n) for v, r in arms for s in seeds], a.workers)
+    arms = [] if live else [(v, r) for v in (0.0015, 0.005) for r in (False, True)]
+    ls = pool_map(landscape_arm, [(v, r, s, n) for v, r in arms for s in seeds], a.workers) if arms else []
     tn = (4 if a.quick else 10) if live else (12 if a.quick else 30)
     out = {"config": {"landscape_experiments": 0 if live else n, "landscape_seeds": 0 if live else len(seeds),
                       "check_every": CHECK_EVERY, "tabular_experiments": tn, "llm": a.llm}, "landscape": {}}
-    for v, r in ([] if live else arms):
+    for v, r in arms:
         rs = [x for x in ls if x["val_sd"] == v and x["resample"] == r]
         G = np.array([x["gap_curve"] for x in rs])
         V = np.array([x["valspec_curve"] for x in rs])
@@ -138,32 +121,14 @@ def main():
             "true_final": ci([x["truth_curve"][-1] for x in rs]),
             "shift_final": ci([x["shift_curve"][-1] for x in rs])}
     t_seeds = list(range(1 if (a.quick and not live) else a.seeds))
-    tb = pool_map(tabular_arm, [(r, s, tn, a.llm) for r in (False, True) for s in t_seeds],
-                  1 if live else a.workers)
-    out["tabular"] = {}
-    for r in (False, True):
-        rs = [x for x in tb if x["resample"] == r]
-        first = [x["keeps"][0] for x in rs]
-        last = [x["keeps"][-1] for x in rs]
-        out["tabular"][f"resample={r}"] = {
-            "runs": rs, "cv_minus_iid_baseline": ci([k["cv"] - k["iid"] for k in first]),
-            "cv_minus_iid_final": ci([k["cv"] - k["iid"] for k in last]),
-            "iid_gain": ci([l_["iid"] - f["iid"] for f, l_ in zip(first, last)]),
-            "shift_gain": ci([l_["shift"] - f["shift"] for f, l_ in zip(first, last)]),
-            "cv_gain": ci([l_["cv"] - f["cv"] for f, l_ in zip(first, last)]),
-            "cv_minus_iid_growth": ci([(l_["cv"] - l_["iid"]) - (f["cv"] - f["iid"]) for f, l_ in zip(first, last)]),
-            "keeps_that_raise_iid_but_lower_shift": [
-                k["description"] for x in rs for p_, k in zip(x["keeps"], x["keeps"][1:])
-                if k["iid"] > p_["iid"] and k["shift"] < p_["shift"] - 0.005]}
-    L = out["landscape"]
-    T = out["tabular"]
+    tb = pool_map(tabular_arm, [(r, s, tn, a.llm) for r in (False, True) for s in t_seeds], 1 if live else a.workers)
+    out["tabular"] = {f"resample={r}": tabular_summary([x for x in tb if x["resample"] == r]) for r in (False, True)}
+    L, fixed = out["landscape"], out["tabular"]["resample=False"]
     verdict = {
-        "tabular_cv_minus_iid_fixed": [T["resample=False"]["cv_minus_iid_baseline"]["mean"],
-                                       T["resample=False"]["cv_minus_iid_final"]["mean"]],
-        "tabular_gap_growth_fixed": T["resample=False"]["cv_minus_iid_final"]["mean"] -
-        T["resample=False"]["cv_minus_iid_baseline"]["mean"],
-        "tabular_gap_growth_fixed_ci": T["resample=False"]["cv_minus_iid_growth"],
-        "tabular_shift_trap_keeps": T["resample=False"]["keeps_that_raise_iid_but_lower_shift"],
+        "tabular_cv_minus_iid_fixed": [fixed["cv_minus_iid_baseline"]["mean"], fixed["cv_minus_iid_final"]["mean"]],
+        "tabular_gap_growth_fixed": fixed["cv_minus_iid_final"]["mean"] - fixed["cv_minus_iid_baseline"]["mean"],
+        "tabular_gap_growth_fixed_ci": fixed["cv_minus_iid_growth"],
+        "tabular_shift_trap_keeps": fixed["keeps_that_raise_iid_but_lower_shift"],
     }
     if not live:
         big_fixed, big_res = L["val_sd=0.005,resample=False"], L["val_sd=0.005,resample=True"]
@@ -197,13 +162,10 @@ def main():
     out["verdict"] = verdict
     name = "e6_val_reuse" + suffix(a.llm, a.quick)
     out["figure"] = str(figure(out, name))
-    write(name, out)
-    print(json.dumps(verdict, indent=1, default=str))
+    report(name, out, default=str)
 
 
-def figure(out, name):
-    from _common import RESULTS
-
+def figure(out: dict, name: str):
     p = plt()
     fig, axes = p.subplots(1, 3, figsize=(18, 4.5))
     style = {False: "-", True: "--"}
@@ -226,19 +188,14 @@ def figure(out, name):
     ax = axes[2]
     for key, v in out["tabular"].items():
         for run in v["runs"]:
-            xs = [k["exp"] for k in run["keeps"]]
-            ax.step(xs, [k["cv"] - k["iid"] for k in run["keeps"]], where="post",
+            ax.step([k["exp"] for k in run["keeps"]], [k["cv"] - k["iid"] for k in run["keeps"]], where="post",
                     color="#d93025" if key.endswith("False") else "#1e8e3e", alpha=0.7,
                     label=f"{key} seed {run['seed']}")
     ax.set_xlabel("experiment #")
     ax.set_ylabel("CV AUC - hidden iid AUC (kept chain)")
     ax.set_title("tabular: CV vs hidden iid test")
     ax.legend(fontsize=7)
-    fig.tight_layout()
-    path = RESULTS / f"{name}.png"
-    RESULTS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(path, dpi=110)
-    return path
+    return save_fig(fig, name)
 
 
 if __name__ == "__main__":

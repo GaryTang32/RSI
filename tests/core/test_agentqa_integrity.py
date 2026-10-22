@@ -1,15 +1,4 @@
-"""AgentQA harness isolation (second core-qa review round).
-
-* a harness that never returns used to hang the whole Evaluator forever; it is now
-  stopped after ``harness_timeout_s`` of its own time (time inside model and tool
-  calls does not count) and graded as a failure;
-* a harness could monkeypatch the grader (``is_correct``, builtins, ...), scoring
-  1.0 itself and corrupting every later trial in the process; it is now graded
-  ``tamper: ...`` and the grading path is restored;
-* the harness thread no longer has the Task (whose target is the answer) in its
-  caller's frame;
-* ``decontaminate`` keeps custom sealed splits sealed.
-"""
+"""AgentQA harness isolation: watchdog on non-terminating harnesses, grader-tampering tripwire, sealed splits."""
 from __future__ import annotations
 
 import threading
@@ -17,7 +6,7 @@ import time
 
 import pytest
 
-from rsi.core import Artifact, Evaluator, Execution, MockLLM, Task, TaskSuite
+from rsi.core import Artifact, Evaluator, Execution, MockLLM
 from rsi.domains.agentqa import AgentQADomain, SimModel, decontaminate, is_correct, make_suite
 from rsi.domains.agentqa import domain as aqd
 
@@ -47,7 +36,10 @@ def _harness_threads():
     return [t for t in threading.enumerate() if t.name == "agentqa-harness"]
 
 
-# ------------------------------------------------------------------ watchdog
+def _errors(ev):
+    return [t.error for trs in ev.trials.values() for t in trs]
+
+
 @pytest.mark.parametrize("art", [
     H("    while True:\n        pass\n"),
     H("    while True:\n        try:\n            x = 1\n        except BaseException:\n            pass\n"),
@@ -58,7 +50,7 @@ def test_non_terminating_harness_is_stopped_and_graded(dom, sim, art):
     ev = Evaluator(dom, sim, workers=2).evaluate(art, "evolve", k=1)
     assert time.time() - t0 < 10
     assert ev.score == 0.0 and ev.n_missing == 0
-    assert all(t.error.startswith("HarnessTimeout") for trs in ev.trials.values() for t in trs)
+    assert all(e.startswith("HarnessTimeout") for e in _errors(ev))
     deadline = time.time() + 20
     while _harness_threads() and time.time() < deadline:            # the reaper ends the spinning threads
         time.sleep(0.1)
@@ -91,18 +83,15 @@ def test_harness_frame_does_not_hold_the_task(dom, sim):
     assert tr.error is None and "'task'" not in tr.output and "'question'" in tr.output
 
 
-def test_default_budget_and_normal_harnesses_unchanged(sim):
+def test_default_budget_and_normal_harnesses_unchanged():
     d = AgentQADomain(make_suite(n_evolve=4, n_holdout=1, n_ood_per_family=1))
     assert d.harness_timeout_s == aqd.HARNESS_TIMEOUT_S == 60.0
-    seed = AgentQADomain.seed_artifact()
-    s = SimModel(d.tasks)
-    a = Evaluator(d, s, workers=4).evaluate(seed, "evolve", k=3)
-    b = Evaluator(d, s, workers=1).evaluate(seed, "evolve", k=3)
+    seed, s = AgentQADomain.seed_artifact(), SimModel(d.tasks)
+    a, b = (Evaluator(d, s, workers=w).evaluate(seed, "evolve", k=3) for w in (4, 1))
     assert [t.output for trs in a.trials.values() for t in trs] == [t.output for trs in b.trials.values() for t in trs]
     assert a.error_rate == 0.0
 
 
-# ------------------------------------------------------------------ grading-path tripwire
 EVIL = [
     ("import rsi.domains.agentqa.domain as d\nd.is_correct = lambda *a: True\n", "is_correct"),
     ("from rsi.domains.agentqa.domain import AgentQADomain\nAgentQADomain.grade = lambda self, t, e: (1.0, '')\n",
@@ -116,29 +105,24 @@ EVIL = [
 @pytest.mark.parametrize("patch, name", EVIL)
 def test_grader_tampering_is_caught_and_undone(dom, sim, patch, name):
     orig = {n: getattr(o, n) for o, n, _ in aqd._INTEGRITY}
-    evil = H("    return 'ANSWER: wrong'\n", top=patch)
-    ev = Evaluator(dom, sim, workers=1).evaluate(evil, "evolve", k=2)
+    ev = Evaluator(dom, sim, workers=1).evaluate(H("    return 'ANSWER: wrong'\n", top=patch), "evolve", k=2)
     assert ev.score == 0.0
-    errs = [t.error for trs in ev.trials.values() for t in trs]
-    assert all(e.startswith("tamper:") and name in e for e in errs), errs
+    assert all(e.startswith("tamper:") and name in e for e in _errors(ev)), _errors(ev)
     assert {n: getattr(o, n) for o, n, _ in aqd._INTEGRITY} == orig   # everything restored
     honest = Evaluator(dom, sim, workers=1).evaluate(H("    return 'ANSWER: wrong'\n"), "evolve", k=2)
     assert honest.score == 0.0 and honest.error_rate == 0.0          # later trials are graded honestly
 
 
 def test_grade_restores_a_concurrently_patched_grader(dom, monkeypatch):
-    t = _t(dom)
     monkeypatch.setattr(aqd, "is_correct", lambda *a: True)          # as if another harness thread did it
-    assert dom.grade(t, Execution(output="ANSWER: definitely wrong"))[0] == 0.0
+    assert dom.grade(_t(dom), Execution(output="ANSWER: definitely wrong"))[0] == 0.0
     assert aqd.is_correct is is_correct
 
 
-# ------------------------------------------------------------------ suites
 def test_decontaminate_keeps_custom_sealed_splits_sealed():
     s = make_suite(n_evolve=4, n_holdout=2, n_ood_per_family=1)
     s.splits["audit"] = list(s.splits["holdout"])
     s.seal("audit")
     s.unseal("ood")
     d = decontaminate(s)
-    assert d.is_sealed("audit") and d.is_sealed("holdout") and not d.is_sealed("ood")
-    assert not d.is_sealed("evolve")
+    assert d.is_sealed("audit") and d.is_sealed("holdout") and not d.is_sealed("ood") and not d.is_sealed("evolve")

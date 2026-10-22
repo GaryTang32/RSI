@@ -1,25 +1,6 @@
 """Account for every live Claude Haiku call the demo made: per LLM cache, per attempt, and per reported run.
 
-Every successful live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``); a call
-that failed or timed out is not cached, so it is not counted here, whether or not it was billed. Several attempts
-can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts
-from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that was
-running when the entry was written: the latest attempt that started at or before the file's write time. Attempt
-start times come from each attempt's trace (or the ``started_at`` its JSON records); a run's original post-run
-report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list is kept by
-hand. Git keeps no write times, so that attribution, made on the machine that made the calls, is recorded entry by
-entry in ``demo/spend_entries.json``, and a recorded entry keeps its attempt on any checkout. Entries written since
-are attributed without write times, by the cache-write journal of the attempt that wrote them (``CachedLLM(journal=
-...)``: ``<run>/cache_writes.txt`` for a run, ``<run>/<record>.cache_writes.txt`` for a re-score or leak check),
-which moves with an archived attempt and wins over the record; an entry neither lists is reported as unattributed.
-
-Checks or writes ``demo/spend.json`` and ``demo/spend_entries.json``::
-
-    python experiments/demo/spend.py            # recompute and compare with the committed record; exits 1 if it differs
-    python experiments/demo/spend.py --force    # rewrite the record (an entry keeps its attempt unless a journal
-                                                #  names another: a journal moves with an archived attempt)
-
-``--force`` refuses while a recorded entry is missing from the caches or an entry is unattributed.
+    python experiments/demo/spend.py [--force]   # compare with demo/spend.json (exit 1 if it differs); --force rewrites
 """
 from __future__ import annotations
 
@@ -27,10 +8,41 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-RUNS = ROOT / "demo" / "runs"
-ENTRIES = ROOT / "demo" / "spend_entries.json"
-JOURNAL = "cache_writes.txt"   # live_demo.JOURNAL
+from _demo_common import DEMO, JOURNAL, RUNS
+
+ENTRIES = DEMO / "spend_entries.json"
+#: how entries are attributed; recorded in spend.json
+METHOD = (
+    "Every successful live call is stored once in a run's LLM cache with its metered cost (``usage.cost_usd``); a call "
+    "that failed or timed out is not cached, so it is not counted here, whether or not it was billed. Several attempts "
+    "can share a cache: an attempt cut short by the usage cap or a container restart is archived and the run restarts "
+    "from the same cache, replaying the calls the earlier attempt paid for. A cache entry belongs to the attempt that "
+    "was running when the entry was written: the latest attempt that started at or before the file's write time. "
+    "Attempt start times come from each attempt's trace (or the ``started_at`` its JSON records); a run's original "
+    "post-run report (trial seeds from 0, superseded by ``rescore.py``) starts when its trace ends. The attempt list "
+    "is kept by hand. Git keeps no write times, so that attribution, made on the machine that made the calls, is "
+    "recorded entry by entry in ``demo/spend_entries.json``, and a recorded entry keeps its attempt on any checkout. "
+    "Entries written since are attributed without write times, by the cache-write journal of the attempt that wrote "
+    "them (``CachedLLM(journal= ...)``: ``<run>/cache_writes.txt`` for a run, ``<run>/<record>.cache_writes.txt`` for "
+    "a re-score or leak check), which moves with an archived attempt and wins over the record; an entry neither lists "
+    "is reported as unattributed.")
+REPORT = "original post-run report (trial seeds from 0; superseded by the fresh re-score)"
+#: runs whose re-scores and leak checks with new trial seeds (rescore_s<N>.json, leak_ablation_s<N>.json) are attempts
+NEW_SEED_RUNS = ("metaharness", "metaharness_hard", "rrsi", "rrsi_hard", "_archive/metaharness_before_fix",
+                 "_archive/metaharness_fix_v1", "_archive/metaharness_fix_v2")
+#: reported result -> the attempts whose calls its trajectory used
+REPORTED = {
+    "metaharness": ["_archive/metaharness_v3_capped", "metaharness"],
+    "metaharness_hard": ["_archive/metaharness_hard_capped", "_archive/metaharness_hard_restart1",
+                         "_archive/metaharness_hard_restart2", "_archive/metaharness_hard_capped2", "metaharness_hard"],
+    "rrsi": ["_archive/rrsi_restarted", "rrsi"],
+    "rrsi_hard": ["_archive/rrsi_hard_capped", "rrsi_hard"],
+    "autoresearch": ["autoresearch"],
+    "metaharness_a": ["metaharness_a"],
+    "_archive/metaharness_before_fix": ["_archive/metaharness_before_fix"],
+    "_archive/metaharness_fix_v1": ["_archive/metaharness_fix_v1"],
+    "_archive/metaharness_fix_v2": ["_archive/metaharness_fix_v2"],
+}
 
 
 def trace_start(run: str) -> float:
@@ -48,82 +60,60 @@ def started(path: str) -> float | None:
     return float(json.loads(p.read_text())["started_at"]) if p.exists() else None
 
 
-REPORT = "original post-run report (trial seeds from 0; superseded by the fresh re-score)"
+def _run(run: str, what: str) -> tuple:
+    return run, trace_start(run), what
+
+
+def _report(run: str, what: str = REPORT) -> tuple:
+    return f"{run}/report", trace_end(run), what
+
+
+def _rescore(run: str) -> tuple:
+    return f"{run}/rescore", started(f"{run}/rescore.json"), "fresh re-score"
 
 
 def attempts() -> dict[str, list[tuple[str, float, str]]]:
     """cache -> [(attempt, start time, what it was)], in start order."""
     a = {
         ".cache_metaharness": [
-            ("_archive/metaharness_v3_capped", trace_start("_archive/metaharness_v3_capped"), "Run 4, cut off by the usage cap"),
-            ("metaharness", trace_start("metaharness"), "Run 4, resumed (reported)"),
-            ("metaharness/report", trace_end("metaharness"), REPORT),
-            ("metaharness/rescore", started("metaharness/rescore.json"), "fresh re-score")],
+            _run("_archive/metaharness_v3_capped", "Run 4, cut off by the usage cap"),
+            _run("metaharness", "Run 4, resumed (reported)"), _report("metaharness"), _rescore("metaharness")],
         ".cache_metaharness_hard": [
-            ("_archive/metaharness_hard_capped", trace_start("_archive/metaharness_hard_capped"), "hard Meta-Harness, usage cap"),
-            ("_archive/metaharness_hard_restart1", trace_start("_archive/metaharness_hard_restart1"), "container restart"),
-            ("_archive/metaharness_hard_restart2", trace_start("_archive/metaharness_hard_restart2"), "container restart"),
-            ("_archive/metaharness_hard_capped2", trace_start("_archive/metaharness_hard_capped2"), "usage cap"),
-            ("metaharness_hard", trace_start("metaharness_hard"), "hard Meta-Harness (reported)"),
-            ("metaharness_hard/report", trace_end("metaharness_hard"), REPORT),
+            _run("_archive/metaharness_hard_capped", "hard Meta-Harness, usage cap"),
+            _run("_archive/metaharness_hard_restart1", "container restart"),
+            _run("_archive/metaharness_hard_restart2", "container restart"),
+            _run("_archive/metaharness_hard_capped2", "usage cap"),
+            _run("metaharness_hard", "hard Meta-Harness (reported)"), _report("metaharness_hard"),
             # the first leak check recorded no start time; it ran after the run's own report, which made no new calls
             ("metaharness_hard/leak_ablation_v1", trace_end("metaharness_hard") + 120, "first leak check (superseded)"),
-            ("metaharness_hard/rescore", started("metaharness_hard/rescore.json"), "fresh re-score"),
+            _rescore("metaharness_hard"),
             ("metaharness_hard/leak_ablation", started("metaharness_hard/leak_ablation.json"), "leak check")],
-        ".cache_rrsi": [
-            ("_archive/rrsi_restarted", trace_start("_archive/rrsi_restarted"), "RRSI, restarted"),
-            ("rrsi", trace_start("rrsi"), "RRSI (reported)"),
-            ("rrsi/report", trace_end("rrsi"), REPORT),
-            ("rrsi/rescore", started("rrsi/rescore.json"), "fresh re-score")],
-        ".cache_rrsi_hard": [
-            ("_archive/rrsi_hard_capped", trace_start("_archive/rrsi_hard_capped"), "hard RRSI, crashed in calibration"),
-            ("rrsi_hard", trace_start("rrsi_hard"), "hard RRSI (reported)"),
-            ("rrsi_hard/report", trace_end("rrsi_hard"), REPORT),
-            ("rrsi_hard/rescore", started("rrsi_hard/rescore.json"), "fresh re-score")],
-        ".cache_autoresearch": [("autoresearch", trace_start("autoresearch"), "autoresearch (reported)")],
+        ".cache_rrsi": [_run("_archive/rrsi_restarted", "RRSI, restarted"), _run("rrsi", "RRSI (reported)"),
+                        _report("rrsi"), _rescore("rrsi")],
+        ".cache_rrsi_hard": [_run("_archive/rrsi_hard_capped", "hard RRSI, crashed in calibration"),
+                             _run("rrsi_hard", "hard RRSI (reported)"), _report("rrsi_hard"), _rescore("rrsi_hard")],
+        ".cache_autoresearch": [_run("autoresearch", "autoresearch (reported)")],
         "_archive/.cache_metaharness_before_fix": [
-            ("metaharness_a", trace_start("metaharness_a"), "replicate, interrupted during its report"),
-            ("metaharness_a/report", trace_end("metaharness_a"), REPORT + ", interrupted"),
-            ("_archive/metaharness_before_fix", trace_start("_archive/metaharness_before_fix"), "Run 1"),
-            ("_archive/metaharness_before_fix/report", trace_end("_archive/metaharness_before_fix"), REPORT),
-            ("_archive/metaharness_before_fix/rescore", started("_archive/metaharness_before_fix/rescore.json"),
-             "fresh re-score")],
-        "_archive/.cache_metaharness_fix_v1": [
-            ("_archive/metaharness_fix_v1", trace_start("_archive/metaharness_fix_v1"), "Run 2"),
-            ("_archive/metaharness_fix_v1/report", trace_end("_archive/metaharness_fix_v1"), REPORT),
-            ("_archive/metaharness_fix_v1/rescore", started("_archive/metaharness_fix_v1/rescore.json"), "fresh re-score")],
-        "_archive/.cache_metaharness_fix_v2": [
-            ("_archive/metaharness_fix_v2", trace_start("_archive/metaharness_fix_v2"), "Run 3"),
-            ("_archive/metaharness_fix_v2/report", trace_end("_archive/metaharness_fix_v2"), REPORT),
-            ("_archive/metaharness_fix_v2/rescore", started("_archive/metaharness_fix_v2/rescore.json"), "fresh re-score")],
+            _run("metaharness_a", "replicate, interrupted during its report"),
+            _report("metaharness_a", REPORT + ", interrupted"),
+            _run("_archive/metaharness_before_fix", "Run 1"), _report("_archive/metaharness_before_fix"),
+            _rescore("_archive/metaharness_before_fix")],
+        "_archive/.cache_metaharness_fix_v1": [_run("_archive/metaharness_fix_v1", "Run 2"),
+                                               _report("_archive/metaharness_fix_v1"),
+                                               _rescore("_archive/metaharness_fix_v1")],
+        "_archive/.cache_metaharness_fix_v2": [_run("_archive/metaharness_fix_v2", "Run 3"),
+                                               _report("_archive/metaharness_fix_v2"),
+                                               _rescore("_archive/metaharness_fix_v2")],
         "_archive/.cache_calib_hard_v1": [("calibration_v1", 0.0, "first hard-suite calibration (earlier families)")],
         "_archive/.cache_calib_hard": [("calibration", 0.0, "hard-suite calibration")],
     }
-    # re-scores and leak checks with new trial seeds (rescore_s<N>.json, leak_ablation_s<N>.json) are attempts too
-    cache_of = {"metaharness": ".cache_metaharness", "metaharness_hard": ".cache_metaharness_hard", "rrsi": ".cache_rrsi",
-                "rrsi_hard": ".cache_rrsi_hard", "_archive/metaharness_before_fix": "_archive/.cache_metaharness_before_fix",
-                "_archive/metaharness_fix_v1": "_archive/.cache_metaharness_fix_v1",
-                "_archive/metaharness_fix_v2": "_archive/.cache_metaharness_fix_v2"}
-    for run, cache in cache_of.items():
+    for run in NEW_SEED_RUNS:
+        cache = str(Path(run).parent / f".cache_{Path(run).name}")   # live_demo's cache naming
         for f in sorted((RUNS / run).glob("rescore_s*.json")) + sorted((RUNS / run).glob("leak_ablation_s*.json")):
             if not f.stem.endswith("_check"):
-                a[cache].append((f"{run}/{f.stem}", started(f"{run}/{f.name}"), "re-score or leak check, new trial seeds"))
+                a[cache].append((f"{run}/{f.stem}", started(f"{run}/{f.name}"),
+                                 "re-score or leak check, new trial seeds"))
     return {c: [x for x in xs if x[1] is not None] for c, xs in a.items()}
-
-
-#: reported result -> the attempts whose calls its trajectory used
-REPORTED = {
-    "metaharness": ["_archive/metaharness_v3_capped", "metaharness"],
-    "metaharness_hard": ["_archive/metaharness_hard_capped", "_archive/metaharness_hard_restart1",
-                         "_archive/metaharness_hard_restart2", "_archive/metaharness_hard_capped2", "metaharness_hard"],
-    "rrsi": ["_archive/rrsi_restarted", "rrsi"],
-    "rrsi_hard": ["_archive/rrsi_hard_capped", "rrsi_hard"],
-    "autoresearch": ["autoresearch"],
-    "metaharness_a": ["metaharness_a"],
-    "_archive/metaharness_before_fix": ["_archive/metaharness_before_fix"],
-    "_archive/metaharness_fix_v1": ["_archive/metaharness_fix_v1"],
-    "_archive/metaharness_fix_v2": ["_archive/metaharness_fix_v2"],
-}
 
 
 def entry_cost(p: Path) -> float:
@@ -134,7 +124,7 @@ def entry_cost(p: Path) -> float:
     if not isinstance(d, dict):
         return 0.0
     u = d.get("usage")
-    return float(((u or {}).get("cost_usd") if isinstance(u, dict) else None) or d.get("cost_usd") or 0.0)
+    return float((u.get("cost_usd") if isinstance(u, dict) else None) or d.get("cost_usd") or 0.0)
 
 
 def entry_key(p: Path) -> str:
@@ -143,12 +133,10 @@ def entry_key(p: Path) -> str:
 
 
 def journal_owners() -> dict[tuple[str, str], str]:
-    """(cache directory name, entry key) -> the attempt whose cache-write journal lists the entry:
+    """(cache directory name, entry key) -> the attempt whose cache-write journal lists the entry.
+
     ``<run>/cache_writes.txt`` is the attempt ``<run>``, ``<run>/<record>.cache_writes.txt`` the attempt
-    ``<run>/<record>``. A journal line is written just before its entry appears, so an attempt killed in between lists
-    an entry it never wrote; every live writer drops such lines before it starts
-    (``live_demo.drop_unwritten_journal_lines``). (Two journals list one entry only if two processes raced to write
-    it; the first, in path order, keeps it.)"""
+    ``<run>/<record>``; if two journals list an entry, the first in path order keeps it."""
     owners: dict[tuple[str, str], str] = {}
     for j in sorted(RUNS.rglob(f"*{JOURNAL}")):
         run = str(j.parent.relative_to(RUNS))
@@ -159,33 +147,45 @@ def journal_owners() -> dict[tuple[str, str], str]:
     return owners
 
 
+def _caches() -> list[Path]:
+    return [*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]
+
+
+def _kind(attempt: str) -> str:
+    tail = attempt.rsplit("/", 1)[-1] if "/" in attempt else ""
+    if tail.startswith("rescore"):
+        return "rescore"
+    if tail == "report":
+        return "report"
+    if tail.startswith("leak_ablation"):
+        return "leak_check"
+    return "calibration" if attempt.startswith("calibration") else "run"
+
+
 def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
-    """(spend record, entry attribution {cache: {attempt: [entry keys]}}, problems {"missing": [...],
-    "unattributed": [...]})."""
+    """(spend record, {cache: {attempt: [entry keys]}}, {"missing": [...], "unattributed": [...]})."""
     if recorded is None:
         recorded = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else {}
     owner_of = {(c, k): a for c, by in recorded.items() for a, ks in by.items() for k in ks}
     journaled = journal_owners()
-    all_caches = sorted([*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")])
+    known = attempts()
+    # attempts found by a journal stay valid once --force has recorded their entries
+    by_journal = {a: "found by its cache-write journal" for a in set(journaled.values())}
     per_attempt: dict[str, dict] = {}
     caches, membership, missing, unattributed = {}, {}, [], []
-    known = attempts()
-    for c in all_caches:
+    for c in sorted(_caches()):
         rel = str(c.relative_to(RUNS))
         files = [p for p in c.rglob("*.json") if p.is_file()]
         total = round(sum(entry_cost(p) for p in files), 4)
         caches[rel] = {"usd": total, "entries": len(files)}
         if not files or (rel not in known and not total):   # e.g. the tinylm data cache: no model calls
             continue
-        # attempts found by a journal stay valid once --force has recorded their entries
-        what = {**{a: "found by its cache-write journal" for a in set(journaled.values())},
-                **{a[0]: a[2] for a in known.get(rel, [])}}
+        what = {**by_journal, **{a[0]: a[2] for a in known.get(rel, [])}}
         present = set()
         for p in files:
             k = entry_key(p)
             present.add(k)
-            # a journal names the attempt that wrote the entry and moves with it (an attempt archived by --resume),
-            # so it wins over the name the record kept; the record alone covers entries from before journals
+            # a journal moves with an archived attempt, so it wins over the record (which covers pre-journal entries)
             name = journaled.get((c.name, k)) or owner_of.get((rel, k))
             if name is None:
                 unattributed.append(f"{rel}/{k}: in neither the record nor any attempt's cache-write journal")
@@ -212,22 +212,18 @@ def main(recorded: dict | None = None) -> tuple[dict, dict, dict]:
             reported[run]["usd_rescore_new_seeds"] = new_seeds
     by_kind = {}
     for name, rec in per_attempt.items():
-        tail = name.rsplit("/", 1)[-1] if "/" in name else ""
-        kind = ("rescore" if tail.startswith("rescore") else "report" if tail == "report"
-                else "leak_check" if tail.startswith("leak_ablation") else "calibration" if name.startswith("calibration")
-                else "run")
+        kind = _kind(name)
         by_kind[kind] = by_kind.get(kind, 0.0) + rec["usd"]
-    total_raw = sum(entry_cost(p) for c in [*RUNS.glob(".cache_*"), *(RUNS / "_archive").glob(".cache_*")]
-                    for p in c.rglob("*.json") if p.is_file())
-    out = {"method": __doc__.split("\n\n")[1].replace("\n", " "),
-           "total_usd": round(total_raw, 4), "by_kind_usd": {k: round(v, 4) for k, v in by_kind.items()},
+    total_raw = sum(entry_cost(p) for c in _caches() for p in c.rglob("*.json") if p.is_file())
+    out = {"method": METHOD, "total_usd": round(total_raw, 4),
+           "by_kind_usd": {k: round(v, 4) for k, v in by_kind.items()},
            "caches": caches, "attempts": per_attempt, "reported": reported}
     return out, membership, {"missing": missing, "unattributed": unattributed}
 
 
 if __name__ == "__main__":
     o, entries, problems = main()
-    dest = ROOT / "demo" / "spend.json"
+    dest = DEMO / "spend.json"
     old = json.loads(dest.read_text()) if dest.exists() else None
     old_entries = json.loads(ENTRIES.read_text()) if ENTRIES.exists() else None
     for kind, why in (("missing", "recorded entries missing from the caches"),

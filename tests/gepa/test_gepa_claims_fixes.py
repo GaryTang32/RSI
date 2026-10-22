@@ -1,23 +1,8 @@
-"""Regression tests for the GEPA claim-audit fixes (docs/methods/gepa/claims-audit.md, "Fix log").
-
-Each test fails on the pre-fix behaviour:
-
-* F1 - ``merge_cap_mode="hard"`` capped *accepted* merges, so rejected merges (5 rollouts each)
-  were unlimited; the paper says merge "is invoked a maximum of 5 times";
-* F3 - the reflection truncation check must fire on ``CachedLLM`` hits (the core now keeps
-  ``stop_reason``) and on OpenAI/LiteLLM-style ``finish_reason`` raws;
-* V1 - the shadow monitor's wall time counted toward ``Budget.max_wall_s`` / ``Timeout``;
-* L3 - CurrentBest must break validation ties like the reference ``idxmax`` (oldest candidate),
-  and set-cover pruning of fully tied candidates keeps the newest (the E3 mechanism);
-* F5 / S1 - the regenerated E1 / E4 result files carry the matched-ratio comparison and the
-  invocation counts (skipped when the result files are absent).
-"""
-from __future__ import annotations
-
+"""Regressions for the GEPA claim-audit fixes (docs/methods/gepa/claims-audit.md, "Fix log")."""
 import json
 import random
 import time
-from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -25,72 +10,66 @@ from rsi.core import Artifact, Budget
 from rsi.core.llm import LLM, CachedLLM, LLMResponse, Usage
 from rsi.domains.ruleworld import RuleWorldReflectionLM, make_domain
 from rsi.gepa import Config, run
-from rsi.gepa.frontier import FrontierTracker, find_dominator_programs, select_from_pareto_front
+from rsi.gepa.frontier import find_dominator_programs, select_from_pareto_front
 from rsi.gepa.merge import MergeProposer
 from rsi.gepa.reflection import ReflectionProposer, response_finish_reason
 from rsi.gepa.strategies import CurrentBestSelector, EpsilonGreedySelector, idxmax
 from rsi.trace import ShadowMonitor
 
-ROOT = Path(__file__).resolve().parents[2]
+RECS = {"p.md": [{"Inputs": "q", "Generated Outputs": "a", "Feedback": "wrong"}]}
+SOLVE = Artifact({"p.md": "Solve.\n"})
 
 
-def _merge_run(seed: int, B: int = 1500, **kw):
-    d = make_domain(seed=seed)
-    res = run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world),
-              config=Config(max_metric_calls=B, seed=seed, use_merge=True, **kw))
-    ev = [e for e in res.state.trace if e.get("invoked_merge")]
-    acc = sum(1 for e in ev if e.get("event") == "merge_accepted")
-    rej = sum(1 for e in ev if e.get("event") == "merge_rejected")
-    return res, acc, rej
+def _merge_counts(res) -> tuple[int, int]:
+    """Accepted and rejected merges among the iterations that invoked merge."""
+    events = [e.get("event") for e in res.state.trace if e.get("invoked_merge")]
+    return events.count("merge_accepted"), events.count("merge_rejected")
 
 
-# ------------------------------------------------------------------------------ F1: merge cap
+def _due_proposer(cap_mode: str = "reference_soft", **kw) -> MergeProposer:
+    """A proposer capped at 2 invocations, right after a new program was found."""
+    return MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode=cap_mode,
+                         last_iter_found_new_program=True, **kw)
+
+
 def test_merge_proposer_hard_cap_counts_invocations_not_acceptances():
-    m = MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode="hard")
-    m.merges_due, m.last_iter_found_new_program = 3, True
-    assert m.should_attempt()
-    m.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])      # two merges built and scored, both rejected
-    assert m.n_invocations == 2 and m.total_merges_tested == 0
-    assert not m.should_attempt()                              # pre-fix "hard" still attempted here
-    acc = MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode="accepted")
-    acc.merges_due, acc.last_iter_found_new_program = 3, True
-    acc.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])
-    assert acc.should_attempt()                                # pre-audit semantics kept under its own name
-    soft = MergeProposer(random.Random(0), max_merge_invocations=2)
-    soft.merges_due, soft.last_iter_found_new_program, soft.total_merges_tested = 1, True, 5
-    assert soft.should_attempt()                               # reference: the cap never gates an attempt
-    # the invocation count is derived from the persisted log, so it survives resume
-    st = m.get_state()
-    m2 = MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode="hard")
-    m2.set_state(st)
-    assert m2.n_invocations == 2 and st["n_invocations"] == 2 and not m2.should_attempt()
+    hard = _due_proposer("hard", merges_due=3)
+    assert hard.should_attempt()
+    hard.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])      # two merges built and scored, both rejected
+    assert hard.n_invocations == 2 and hard.total_merges_tested == 0 and not hard.should_attempt()
+    accepted = _due_proposer("accepted", merges_due=3)
+    accepted.merges_performed[0].extend([(1, 2, 0), (1, 3, 0)])
+    assert accepted.should_attempt()
+    assert _due_proposer(merges_due=1, total_merges_tested=5).should_attempt()   # reference: the cap never gates it
+    st = hard.get_state()
+    resumed = MergeProposer(random.Random(0), max_merge_invocations=2, cap_mode="hard")
+    resumed.set_state(st)
+    assert resumed.n_invocations == st["n_invocations"] == 2 and not resumed.should_attempt()
     with pytest.raises(ValueError):
         MergeProposer(random.Random(0), cap_mode="bogus")
     with pytest.raises(ValueError):
         Config(merge_cap_mode="bogus").validate()
 
 
-def test_hard_merge_cap_bounds_accepted_plus_rejected_end_to_end():
+def test_hard_merge_cap_bounds_accepted_plus_rejected_end_to_end(merge_run):
     over_accepted_cap = False
     for seed in (0, 1):
-        res, acc, rej = _merge_run(seed, merge_cap_mode="hard")
+        res = merge_run(seed, merge_cap_mode="hard")
+        acc, rej = _merge_counts(res)
         assert acc + rej == res.meta["n_merge_invocations"] <= 5          # paper: "invoked a maximum of 5 times"
         assert res.meta["n_merges_accepted"] == acc
-        assert res.state.counter.by_phase["merge_subsample"] <= 5 * 5     # at most 5 subsample evaluations
-        _, acc_a, rej_a = _merge_run(seed, merge_cap_mode="accepted")
+        assert res.state.counter.by_phase["merge_subsample"] <= 5 * 5
+        acc_a, rej_a = _merge_counts(merge_run(seed, merge_cap_mode="accepted"))
         assert acc_a <= 5
         over_accepted_cap |= acc_a + rej_a > 5
-    assert over_accepted_cap          # the pre-fix "hard" semantics let rejected merges exceed the cap (8, 13)
+    assert over_accepted_cap          # capping accepted merges lets rejected ones exceed the cap
 
 
-def test_hard_merge_cap_one_invocation_and_soft_cap_unbounded():
-    res, acc, rej = _merge_run(1, B=1500, merge_cap_mode="hard", max_merge_invocations=1)
-    assert acc + rej <= 1
-    res_s, acc_s, rej_s = _merge_run(1, B=1500, max_merge_invocations=1)
-    assert acc_s + rej_s > 1          # reference soft cap: invocations are not bounded by the cap
+def test_hard_merge_cap_one_invocation_and_soft_cap_unbounded(merge_run):
+    assert sum(_merge_counts(merge_run(1, merge_cap_mode="hard", max_merge_invocations=1))) <= 1
+    assert sum(_merge_counts(merge_run(1, max_merge_invocations=1))) > 1     # reference soft cap
 
 
-# ------------------------------------------------------------------------ F3: truncation check
 class _Truncating(LLM):
     name = "trunc"
 
@@ -102,177 +81,120 @@ class _Truncating(LLM):
         return LLMResponse(text=self.text, usage=Usage(1, 10, 10, 0.0, 0.0), model="x", raw=dict(self.raw))
 
 
-RECS = {"p.md": [{"Inputs": "q", "Generated Outputs": "a", "Feedback": "wrong"}]}
-
-
 def test_truncated_reflection_is_rejected_on_cache_miss_and_hit(tmp_path):
     llm = CachedLLM(_Truncating("```\nNew instruction cut off mid", {"stop_reason": "max_tokens"}), tmp_path)
     prop = ReflectionProposer(llm)
-    art = Artifact({"p.md": "Solve.\n"})
     for k in range(2):
-        r = prop.propose(art, RECS, ["p.md"], seed_fn=lambda c: 1)
+        r = prop.propose(SOLVE, RECS, ["p.md"], seed_fn=lambda c: 1)
         assert r.new_texts == {} and "incomplete" in r.rejected["p.md"], k
         assert r.finish["p.md"] == "max_tokens"
-    assert llm.hits == 1                     # the second call was a cache hit and was still rejected
+    assert llm.hits == 1
 
 
-def test_finish_reason_key_and_complete_fence_semantics(tmp_path):
-    art = Artifact({"p.md": "Solve.\n"})
-    # OpenAI / LiteLLM style raw: the pre-fix reader only looked at "stop_reason" and accepted this
-    r = ReflectionProposer(_Truncating("New instruction cut off", {"finish_reason": "length"})).propose(
-        art, RECS, ["p.md"])
+def test_finish_reason_key_and_complete_fence_semantics():
+    def reflect(text: str, raw: dict):
+        return ReflectionProposer(_Truncating(text, raw)).propose(SOLVE, RECS, ["p.md"])
+
+    r = reflect("New instruction cut off", {"finish_reason": "length"})
     assert r.new_texts == {} and "finish_reason='length'" in r.rejected["p.md"]
-    # reference semantics: a complete fence pair is parsed even when the provider says max_tokens
-    r = ReflectionProposer(_Truncating("```\nFull text\n```\ntrailing", {"stop_reason": "max_tokens"})).propose(
-        art, RECS, ["p.md"])
+    # reference: a complete fence pair is parsed even when the provider says max_tokens
+    r = reflect("```\nFull text\n```\ntrailing", {"stop_reason": "max_tokens"})
     assert r.new_texts == {"p.md": "Full text\n"}
     assert response_finish_reason(LLMResponse("x", Usage(), "m", raw={"stop_reason": None})) is None
     assert response_finish_reason(LLMResponse("x", Usage(), "m", raw={"cached": True, "usage": {}})) is None
 
 
-# ------------------------------------------------------------ V1: monitor wall time is credited
-class _Clock:
-    def __init__(self) -> None:
-        self.t = 1000.0
+def _slow_monitor(domain, clock: SimpleNamespace) -> ShadowMonitor:
+    """A shadow monitor whose every sealed-split evaluation takes 100 s of fake wall time."""
+    mon = ShadowMonitor(domain, None, splits=("test",), workers=1)
+    evaluate = mon.ev.evaluate
 
-    def __call__(self) -> float:
-        return self.t
+    def slow(*a, **k):
+        clock.t += 100.0
+        return evaluate(*a, **k)
 
-
-class _SlowMonitor(ShadowMonitor):
-    """Every sealed-split evaluation takes 100 s of (fake) wall time."""
-
-    clock: _Clock
-
-    def observe(self, tracer, round, name, artifact, decision_score=None):
-        orig = self.ev.evaluate
-
-        def slow(*a, **k):
-            self.clock.t += 100.0
-            return orig(*a, **k)
-
-        self.ev.evaluate = slow
-        try:
-            super().observe(tracer, round, name, artifact, decision_score)
-        finally:
-            self.ev.evaluate = orig
-
-
-def _timed_run(tmp_path, name, clock, *, monitor: bool, **kw):
-    d = make_domain(seed=0)
-    mon = False
-    if monitor:
-        mon = _SlowMonitor(d, None, splits=("test",), workers=1)
-        mon.clock = clock
-
-    def tick(event, payload):                  # the loop's own work: 10 s per iteration
-        if event == "iteration_end":
-            clock.t += 10.0
-
-    cfg = kw.pop("config", Config(max_metric_calls=2000))
-    return run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world), config=cfg,
-               out_dir=tmp_path / name, monitor=mon, callbacks=[tick], **kw)
+    mon.ev.evaluate = slow
+    return mon
 
 
 @pytest.mark.parametrize("which", ["budget", "timeout"])
 def test_monitor_wall_time_does_not_count_toward_wall_clock_stoppers(tmp_path, monkeypatch, which):
-    clock = _Clock()
-    monkeypatch.setattr(time, "time", clock)
+    clock = SimpleNamespace(t=1000.0)
+    monkeypatch.setattr(time, "time", lambda: clock.t)
 
-    def kw():
-        if which == "budget":        # _t0 explicitly: Budget's default_factory bound the real time.time at import
-            return dict(budget=Budget(max_wall_s=35, _t0=clock()))
-        return dict(config=Config(max_metric_calls=2000, timeout_s=35))
+    def tick(event, payload):              # the loop's own work: 10 s per iteration
+        if event == "iteration_end":
+            clock.t += 10.0
 
-    with_mon = _timed_run(tmp_path, "a", clock, monitor=True, **kw())
-    assert with_mon.meta["iterations"] > 1       # pre-fix: the seed's 100 s monitor call stopped it at iteration 0
-    without = _timed_run(tmp_path, "b", clock, monitor=False, **kw())
-    # only the loop's own 10 s per iteration counts: the same stop point with and without the monitor
+    def timed_run(name: str, monitor: bool):
+        d = make_domain(seed=0)
+        if which == "budget":              # Budget's default _t0 bound the real time.time at import
+            stop = dict(budget=Budget(max_wall_s=35, _t0=clock.t), config=Config(max_metric_calls=2000))
+        else:
+            stop = dict(config=Config(max_metric_calls=2000, timeout_s=35))
+        return run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world), out_dir=tmp_path / name,
+                   monitor=_slow_monitor(d, clock) if monitor else False, callbacks=[tick], **stop)
+
+    with_mon = timed_run("a", monitor=True)
+    without = timed_run("b", monitor=False)
     assert with_mon.meta["iterations"] == without.meta["iterations"] == 4
     assert with_mon.stop_reason == without.stop_reason == ("max_wall_s" if which == "budget" else "timeout")
     assert with_mon.trajectory == without.trajectory
-    end = [json.loads(l) for l in (tmp_path / "a" / "trace.jsonl").read_text().splitlines()][-1]
+    end = json.loads((tmp_path / "a" / "trace.jsonl").read_text().splitlines()[-1])
     assert end["kind"] == "run_end" and end["data"]["monitor_wall_s_credited"] >= 100.0
 
 
-# --------------------------------------------------------------- L3: tie-breaking vs the reference
-class _S:
-    def __init__(self, agg, front):
-        self._agg = agg
-        self.candidates = list(range(len(agg)))
-        self.frontier = FrontierTracker("instance")
-        self.frontier.progs = {k: set(v) for k, v in front.items()}
-
-    def agg_scores(self):
-        return self._agg
-
-
-def test_current_best_ties_go_to_oldest_like_reference_idxmax():
+def test_current_best_ties_go_to_oldest_like_reference_idxmax(selector_state):
     agg = [0.0, 0.5, 0.5, 0.5, 0.2]
-    st = _S(agg, {"a": {1, 2, 3}})
-    ref_idxmax = lambda lst: lst.index(max(lst))          # gepa_utils.idxmax, verbatim semantics
-    assert CurrentBestSelector().select(st) == ref_idxmax(agg) == idxmax(agg) == 1
+    st = selector_state(agg, {"a": {1, 2, 3}})
+    assert CurrentBestSelector().select(st) == agg.index(max(agg)) == idxmax(agg) == 1   # gepa_utils.idxmax
     assert EpsilonGreedySelector(random.Random(0), epsilon=0.0).select(st) == 1
-    # Pareto: fully tied candidates are pruned down to the newest (ascending-score, then index order),
-    # which is why Pareto keeps building on the latest child on a validation plateau (E3 mechanism)
+    # set-cover pruning keeps the newest of fully tied candidates (the E3 plateau mechanism)
     tied = {"v1": {0, 1, 2}, "v2": {0, 1, 2}}
     assert find_dominator_programs(tied, [0.0, 0.0, 0.0]) == [2]
     assert {select_from_pareto_front(tied, [0.0, 0.0, 0.0], random.Random(s)) for s in range(20)} == {2}
 
 
-# ------------------------------------------------------------------- regenerated result files
-def _load(name):
-    p = ROOT / "results" / "gepa" / name
-    if not p.exists():
-        pytest.skip(f"{p} not generated")
-    return json.loads(p.read_text())
-
-
-def test_e1_results_report_the_matched_budget_ratio():
-    d = _load("e1_sample_efficiency.json")
-    mr = d["matched_budget_ratio"]                      # pre-fix JSON had only rollouts-to-target
+def test_e1_results_report_the_matched_budget_ratio(result):
+    d = result("e1_sample_efficiency.json")
+    mr = d["matched_budget_ratio"]
     assert mr["budgets"]["ratio_rl_over_gepa"] == 4
     assert {"mean_diff", "lo", "hi"} <= set(mr["gepa_minus_rl_final"])
     assert "1:4" in d["verdict_matched_ratio"]
     assert "agentqa" in d and len(d["agentqa"]["raw"]) == 15
 
 
-def test_e4_results_hard_cap_bounds_invocations():
-    d = _load("e4_merge.json")
+def test_e4_results_hard_cap_bounds_invocations(result):
+    d = result("e4_merge.json")
     assert "merge_accepted5" in d["config"]["arms"]
     for r in d["raw"]:
         assert r["n_merge_invocations"] == r["n_merges"] + r["n_merge_rejected"]
-        if r["arm"] == "merge_hard5":
-            assert r["n_merge_invocations"] <= 5
-    for b, summ in d["summary"].items():
-        assert summ["merge_hard5"]["max_invocations_per_run"] <= 5
+        assert r["arm"] != "merge_hard5" or r["n_merge_invocations"] <= 5
+    assert all(summ["merge_hard5"]["max_invocations_per_run"] <= 5 for summ in d["summary"].values())
 
 
-# ------------------------------------------------------------------ M16: spec E9 (credit assignment)
 def test_system_record_shows_every_module_and_misplaced_rules_are_counted():
     d = make_domain(seed=0)
-    tri, rep = (d.world.module_path(m) for m in d.world.cfg.modules)
     mods = d.world.cfg.modules
-    task = next(t for t in (d.tasks.get(i) for i in d.tasks.splits["evolve"])      # a task spanning both modules
+    tri, rep = (d.world.module_path(m) for m in mods)
+    task = next(t for t in map(d.tasks.get, d.tasks.splits["evolve"])
                 if {d.world.aspects[a].module for a in t.meta["aspects"]} == set(mods))
     trial = d.run(d.seed_artifact(), task, seed=1, llm=None)
     own = d.reflective_record(task, trial, tri)
     sys_rec = d.system_reflective_record(task, trial, tri)
-    assert sys_rec == d.system_reflective_record(task, trial, rep)          # component is ignored
-    other = [a for a in task.meta["aspects"] if d.world.aspects[a].module != d.world.cfg.modules[0]]
+    assert sys_rec == d.system_reflective_record(task, trial, rep)
+    other = [a for a in task.meta["aspects"] if d.world.aspects[a].module != mods[0]]
     assert other and all(a not in own["Generated Outputs"] for a in other)
     assert all(a in sys_rec["Generated Outputs"] for a in task.meta["aspects"])
-    # a rule for a reply property written into the triage prompt is misplaced; in its own prompt it is not
-    a = other[0]
-    code = d.world.aspects[a].codes[0]
-    wrong = d.seed_artifact().with_files({tri: d.seed_artifact()[tri] + "\n" + d.world.rule_text(a, code)})
-    right = d.seed_artifact().with_files({rep: d.seed_artifact()[rep] + "\n" + d.world.rule_text(a, code)})
-    assert d.misplaced_rule_lines(d.seed_artifact()) == 0
-    assert d.misplaced_rule_lines(wrong) == 1 and d.misplaced_rule_lines(right) == 0
+    seed = d.seed_artifact()
+    rule = "\n" + d.world.rule_text(other[0], d.world.aspects[other[0]].codes[0])
+    assert d.misplaced_rule_lines(seed) == 0
+    assert d.misplaced_rule_lines(seed.with_files({tri: seed[tri] + rule})) == 1    # reply rule in the triage prompt
+    assert d.misplaced_rule_lines(seed.with_files({rep: seed[rep] + rule})) == 0
 
 
-def test_e9_results_module_specific_records_avoid_misplaced_rules():
-    d = _load("e9_credit_assignment.json")
+def test_e9_results_module_specific_records_avoid_misplaced_rules(result):
+    d = result("e9_credit_assignment.json")
     s = d["summary"]
     assert s["module/round_robin"]["misplaced_rule_lines"]["mean"] == 0.0
     assert s["system/round_robin"]["misplaced_rule_lines"]["mean"] > 0.0

@@ -1,34 +1,4 @@
-"""Per-step audit trace of a SoL-Pi research run (``rsi.trace`` format) + write-only shadow monitor.
-
-The research protocol (spec B3.1) is mapped onto the uniform :mod:`rsi.trace` event kinds; one trace
-*round* is one lineage iteration, so the rendered ``TRACE.md`` reads as the sequence of experiments:
-
-round 0 (per driver round: the first trace round of that driver round)
-    ``baseline``    base harness on the training screen (per task + raw trials, tokens / cost / steps)
-    ``noise``       none: the dual gate compares single means against predeclared tolerances
-    ``analysis``    oracle analysis: the opportunity estimate of every idea and the selected ideas
-    ``monitor``     shadow score of the base on sealed splits (reference point)
-one round per lineage iteration
-    ``round_start`` driver round, idea (id / family / title / ground-truth kind, which the gate never
-                    sees), lineage iteration, budgets (max_iters, ralph_max), the lineage history so far
-    ``eval``        01 rollouts of the lineage's current harness (label ``rollouts``)
-    ``analysis``    02 map-reduce evidence the proposer is shown
-    ``proposal``    03+04 the proposed mechanism (change, variant, Ralph-loop repair errors, proposer
-                    reply when an LLM wrote it) and the ACTUAL diff base -> candidate
-    ``critic``      05 independent review verdict
-    ``eval``        06 validation on the training screen (label ``screen``)
-    ``gate``        the dual gate with every number (base, cand, tolerance, savings, per family)
-    ``decision``    frozen / route back / abandoned; the incumbent (base) does not change inside a lineage
-    ``state``       lineage history after the iteration
-one final round per driver round
-    ``gate``        held-out firewall verdict per frozen candidate (audit copy of the write-only sink;
-                    the driver receives only the bool, lineages nothing)
-    ``decision``    survivors, composition, incumbent base -> composed harness
-    ``monitor``     shadow score of the composed harness on sealed splits
-``run_end``         totals, usage (loop vs monitor)
-
-The tracer only reads; nothing it records is returned to a lineage or the driver.
-"""
+"""Write-only audit trace of a SoL-Pi run (``rsi.trace`` format): one trace round per lineage iteration."""
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -38,6 +8,8 @@ from ..trace import RunTracer, ShadowMonitor
 
 
 class SolpiTracer:
+    """Records the protocol for audit; nothing it records is returned to a lineage or the driver."""
+
     def __init__(self, tracer: RunTracer, monitor: Optional[ShadowMonitor] = None) -> None:
         self.tr = tracer
         if monitor is not None:
@@ -51,7 +23,6 @@ class SolpiTracer:
     def enabled(self) -> bool:
         return self.tr.enabled
 
-    # ------------------------------------------------------------------ driver level
     def run_start(self, drv) -> None:
         if not self.enabled:
             return
@@ -87,7 +58,6 @@ class SolpiTracer:
                       oracle=est, chosen=[c.id for c in chosen])
         self.tr.kept(self.r, f"base_r{rnd}", art, decision_score=bm.agg.get("score"))
 
-    # ------------------------------------------------------------------ lineage level
     def lineage_iter_start(self, lin, it: int, history: list[dict]) -> None:
         if not self.enabled:
             return
@@ -112,7 +82,7 @@ class SolpiTracer:
                       evidence=evidence)
 
     def proposal(self, lin, it: int, prop, ralph_errors: list[str], base, repair: int = 0) -> str:
-        """``repair`` > 0: the n-th re-implementation after a review rejection (05 -> 04) in the same iteration."""
+        """Records a proposal (``repair`` > 0: the n-th re-implementation after a review rejection); its name."""
         name = f"{lin.idea.id}.{it}" + (f"r{repair}" if repair else "")
         if not self.enabled:
             return name
@@ -160,7 +130,6 @@ class SolpiTracer:
                                    "iterations": len(result.iterations),
                                    "frozen_change": result.frozen.name if result.frozen else None})
 
-    # ------------------------------------------------------------------ firewall + composition
     def firewall_and_compose(self, rnd: int, base, frozen: list, passed: dict, heldout: list, kept: list,
                              composed, conflicts: list, bm, cm, dropped: list, firewall_on: bool) -> None:
         if not self.enabled:

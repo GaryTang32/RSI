@@ -1,20 +1,4 @@
-"""The harness interface of MemoClassify: a *memory system* around a frozen LLM.
-
-Port of ``reference_examples/text_classification/memory_system.py`` (Meta-Harness):
-
-* ``predict(input) -> (answer, metadata)`` - called BEFORE the label is seen;
-* ``learn_from_batch(batch_results)`` - called after each batch with dicts
-  ``{input, prediction, ground_truth, was_correct, metadata}``;
-* ``get_state() / set_state(state)`` - serialisable memory (checkpoints, test
-  finalisation reloads it);
-* ``call_llm(prompt)`` - the only way to reach the frozen model; it records the
-  last prompt's length / hash / text so the domain can measure context cost.
-
-A candidate harness is a single file ``memory.py`` defining ``class Memory``
-(any ``MemorySystem`` subclass is accepted). ``MemorySystem`` and
-``extract_json_field`` are pre-imported into the candidate's namespace and are
-also importable from ``rsi.domains.memoclassify.memory``.
-"""
+"""MemoClassify harness interface: a memory system around a frozen LLM (port of the release's ``memory_system.py``)."""
 from __future__ import annotations
 
 import hashlib
@@ -68,7 +52,7 @@ def extract_json_field(text: str, field: str, default: str = "") -> str:
 
 
 class MemorySystem(ABC):
-    """Memory system interface for online/offline learning (see module docstring)."""
+    """Online/offline learning memory; reach the model only through :meth:`call_llm`."""
 
     def __init__(self, llm: Callable[[str], str]):
         self._llm = llm
@@ -105,7 +89,6 @@ class MemorySystem(ABC):
         """Restore state."""
 
 
-# ---------------------------------------------------------------- seed programs
 NO_MEMORY = '''"""NoMemory baseline - no learning, direct prompting."""
 from typing import Any
 
@@ -210,27 +193,23 @@ class Memory(MemorySystem):
 
 SEED_PROGRAMS = {"no_memory": NO_MEMORY, "fewshot_all": FEWSHOT_ALL}
 
-#: Few-shot with at most N examples (port of the release's ``agents/fewshot_memory.py``: a random sample of N
-#: stored examples per query, shuffled, under the same global character cap). The paper's Table 2 reports
-#: few-shot with N in {4, 8, 16, 32, all}. These are *comparators*, not part of the initial population (the
-#: release's ``config.yaml`` baselines are ``no_memory`` and ``fewshot_all``): ``fewshot_all`` overflows
-#: MemoLM-A's context budget on two of three search datasets, so it is a weak comparator (audit N9), and
-#: "less context than fewshot_all" should be checked against the best of these as well.
-FEWSHOT_N = FEWSHOT_ALL.replace('"""Few-shot baseline using ALL training examples (global character cap)."""',
-                                '"""Few-shot baseline using at most MAX_EXAMPLES random stored examples per query."""') \
-    .replace("MAX_EXAMPLES = 9999", "MAX_EXAMPLES = {n}") \
-    .replace("""        to_use = list(self.examples[-MAX_EXAMPLES:])
+#: few-shot-N comparators (release ``fewshot_memory.py``), not part of the initial population
+FEWSHOT_N = (FEWSHOT_ALL
+             .replace('"""Few-shot baseline using ALL training examples (global character cap)."""',
+                      '"""Few-shot baseline using at most MAX_EXAMPLES random stored examples per query."""')
+             .replace("MAX_EXAMPLES = 9999", "MAX_EXAMPLES = {n}")
+             .replace("""        to_use = list(self.examples[-MAX_EXAMPLES:])
         if seed is not None:
-            random.Random(seed).shuffle(to_use)""", """        if seed is not None and len(self.examples) > MAX_EXAMPLES:
+            random.Random(seed).shuffle(to_use)""",
+                      """        if seed is not None and len(self.examples) > MAX_EXAMPLES:
             to_use = random.Random(seed).sample(self.examples, MAX_EXAMPLES)
         else:
             to_use = list(self.examples[-MAX_EXAMPLES:])
             if seed is not None:
-                random.Random(seed).shuffle(to_use)""")
+                random.Random(seed).shuffle(to_use)"""))
 
 
 def fewshot_program(n: int) -> str:
-    """``memory.py`` source of the few-shot-N comparator (see :data:`FEWSHOT_N`)."""
     return FEWSHOT_N.replace("MAX_EXAMPLES = {n}", f"MAX_EXAMPLES = {int(n)}")
 
 

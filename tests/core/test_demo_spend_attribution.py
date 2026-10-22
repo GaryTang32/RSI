@@ -1,16 +1,18 @@
-"""spend.py: recorded cache entries keep their attempt on any checkout unless a cache-write journal names another
-(journals move with archived attempts); an unrecorded entry goes to the attempt whose journal lists it, whatever the
-file times, and is otherwise reported instead of guessed."""
+"""spend.py assigns cache entries to attempts by record and journal, never by file time; live writers take a lock."""
+import fcntl
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "experiments" / "demo"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments" / "demo"))
 
+import leak_ablation  # noqa: E402
+import live_demo  # noqa: E402
+import rescore  # noqa: E402
 import spend  # noqa: E402
 
 T0 = 1_700_000_000.0
@@ -48,6 +50,13 @@ def demo(tmp_path, monkeypatch):
     monkeypatch.setattr(spend, "attempts", lambda: {".cache_run": list(atts)})
     monkeypatch.setattr(spend, "REPORTED", {"run": ["run"]})
     return runs, cache
+
+
+@pytest.fixture
+def writer(tmp_path, monkeypatch):
+    """live_demo writing to ``tmp_path``, no lock taken yet."""
+    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
 
 
 def test_recorded_entries_keep_their_attempt_after_a_checkout(demo):
@@ -88,13 +97,12 @@ def test_entries_no_journal_lists_are_reported(demo):
 
 def test_a_missing_recorded_entry_is_reported(demo):
     recorded = {".cache_run": {"run": ["aaaaaaaaaaaaaaaa"], "run/rescore": ["bbbbbbbbbbbbbbbb", "ffffffffffffffff"]}}
-    o, entries, problems = spend.main(recorded=recorded)
-    assert problems["missing"] == [".cache_run/ffffffffffffffff"]
+    assert spend.main(recorded=recorded)[2]["missing"] == [".cache_run/ffffffffffffffff"]
 
 
 def test_a_recorded_journal_attempt_follows_its_journal_when_archived(demo):
-    """--force recorded a journal-only attempt under its run's name; --resume then moved the run directory (and its
-    journal) to _archive and a new attempt took the name. The journal decides, so neither attempt is misnamed."""
+    """--force recorded a journal-only attempt under its run's name, then --resume archived it with its journal and
+    a new attempt took the name: the journals decide, so neither attempt is misnamed."""
     runs, cache = demo
     c = _entry(cache, "c", 0.5, T0 + 300)
     _journal(runs / "newrun" / "cache_writes.txt", c)
@@ -110,13 +118,10 @@ def test_a_recorded_journal_attempt_follows_its_journal_when_archived(demo):
     assert entries2[".cache_run"]["newrun"] == [d[:16]]
 
 
-def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_path, monkeypatch):
-    """--resume (live_demo._fresh) archives the unclean attempt and, like every live writer, first drops the journal
-    lines of entries that never appeared; a cache under _archive is resolved, an unknown one left alone."""
-    import live_demo
-    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_path, monkeypatch, writer):
+    """--resume archives the unclean attempt after dropping journal lines of entries that never appeared; a cache
+    under _archive is resolved, an unknown one left alone."""
     monkeypatch.setattr(live_demo, "RESUME", True)
-    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
     written = _entry(tmp_path / ".cache_run", "a", 1.0, T0)
     old = _entry(tmp_path / "_archive" / ".cache_old", "c", 1.0, T0)
     run = tmp_path / "run"
@@ -132,14 +137,9 @@ def test_resume_drops_journal_lines_of_entries_a_killed_attempt_never_wrote(tmp_
                                                                             f".cache_gone/{'e' * 64}\n")
 
 
-def test_every_live_writer_takes_the_lock_and_drops_dangling_lines(tmp_path, monkeypatch):
-    """A new run (not only --resume) drops what a killed writer left; a second live writer is refused while the
-    first holds demo/runs/.live_writer.lock."""
-    import subprocess
-    import live_demo
-    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+def test_every_live_writer_takes_the_lock_and_drops_dangling_lines(tmp_path, monkeypatch, writer):
+    """A new run, not only --resume, drops what a killed writer left, and holds demo/runs/.live_writer.lock."""
     monkeypatch.setattr(live_demo, "RESUME", False)
-    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
     written = _entry(tmp_path / ".cache_run", "a", 1.0, T0)
     _journal(tmp_path / "old" / "rescore_s200.cache_writes.txt", written, "b" * 64)
     assert live_demo._fresh("newrun") == tmp_path / "newrun"
@@ -165,64 +165,56 @@ def _no_model(*_a, **_k):
     raise AssertionError("a test must never build a live model client")
 
 
-def test_rescore_record_begins_a_live_write(tmp_path, monkeypatch):
-    import rescore
+def _rescore_run(tmp_path, monkeypatch, *, clean: bool | None = None) -> Path:
     run = tmp_path / "run"
     run.mkdir()
-    (run / "summary.json").write_text(json.dumps({"setup": {"suite": "easy"}, "seed_files": {}, "final_files": {}}))
+    summary = {"setup": {"suite": "easy"}, "seed_files": {}, "final_files": {}}
+    (run / "summary.json").write_text(json.dumps(summary if clean is None else {"clean": clean, **summary}))
     (tmp_path / ".cache_run").mkdir()
     monkeypatch.setattr(rescore, "OUT", tmp_path)
-    monkeypatch.setattr(rescore, "ClaudeCLI", _no_model)   # never a live call, even if the lock step went missing
+    monkeypatch.setattr(rescore, "ClaudeCLI", _no_model)    # never a live call, even if the lock step went missing
+    return run
+
+
+def test_rescore_record_begins_a_live_write(tmp_path, monkeypatch):
+    _rescore_run(tmp_path, monkeypatch)
     monkeypatch.setattr(rescore, "begin_live_write", _stop)
     with pytest.raises(_Called):
         rescore.rescore_run("run", 200, record=True)
 
 
 def test_leak_check_record_begins_a_live_write(monkeypatch):
-    import leak_ablation
     monkeypatch.setattr(leak_ablation, "ClaudeCLI", _no_model)
     monkeypatch.setattr(leak_ablation, "begin_live_write", _stop)
     with pytest.raises(_Called):
         leak_ablation.run(9000, True)
 
 
-def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkeypatch):
-    """While another process holds demo/runs/.live_writer.lock, --resume refuses before archiving the attempt or
-    touching a journal, and --record refuses before building a model client."""
-    import fcntl
-    import live_demo
-    import leak_ablation
-    import rescore
-    monkeypatch.setattr(live_demo, "OUT", tmp_path)
+def test_a_second_live_writer_is_refused_before_any_side_effect(tmp_path, monkeypatch, writer):
+    """While another process holds the lock, --resume refuses before archiving the attempt or touching a journal,
+    and --record before building a model client; each tries the lock once, without waiting."""
     monkeypatch.setattr(live_demo, "RESUME", True)
-    monkeypatch.setattr(live_demo, "_WRITER_LOCK", None)
-    run = tmp_path / "run"
-    run.mkdir()
-    (run / "summary.json").write_text(json.dumps({"clean": False, "setup": {"suite": "easy"}, "seed_files": {},
-                                                  "final_files": {}}))
+    run = _rescore_run(tmp_path, monkeypatch, clean=False)
     _journal(run / "cache_writes.txt", "b" * 64)                    # dangling: no such entry
-    (tmp_path / ".cache_run").mkdir()
     holder = open(tmp_path / ".live_writer.lock", "w")
     fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)               # another writer (a separate open file)
     real_flock, attempts = fcntl.flock, []
 
     def no_waiting(f, op):
-        attempts.append(op)                                        # one attempt per refused command, no retrying
+        attempts.append(op)
         if not op & fcntl.LOCK_NB or len(attempts) > 3:
             raise AssertionError("a live writer waited for the lock instead of refusing")
         return real_flock(f, op)
 
     monkeypatch.setattr(fcntl, "flock", no_waiting)
+    monkeypatch.setattr(leak_ablation, "ClaudeCLI", _no_model)
     try:
         with pytest.raises(SystemExit, match="one at a time"):
             live_demo._fresh("run")
         assert run.exists() and not (tmp_path / "_archive").exists()
         assert (run / "cache_writes.txt").read_text() == f".cache_run/{'b' * 64}\n"
-        monkeypatch.setattr(rescore, "OUT", tmp_path)
-        monkeypatch.setattr(rescore, "ClaudeCLI", _no_model)
         with pytest.raises(SystemExit, match="one at a time"):
             rescore.rescore_run("run", 200, record=True)
-        monkeypatch.setattr(leak_ablation, "ClaudeCLI", _no_model)
         with pytest.raises(SystemExit, match="one at a time"):
             leak_ablation.run(9000, True)
     finally:

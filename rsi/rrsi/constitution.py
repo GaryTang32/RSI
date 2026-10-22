@@ -1,23 +1,7 @@
-"""Domain-agnostic proposer constitution (the released code ships one ``SKILL.md`` +
-``PATTERNS.md`` per domain; this is the generic version with the numbers filled in
-from the run's :class:`~rsi.rrsi.config.Config`). A domain may override it with a
-``rrsi_constitution()`` method returning ``(skill_md, patterns_md)``, and
-:func:`rsi.rrsi.run` accepts ``constitution=(skill_md, patterns_md)``.
-
-The "How your work is judged" section is the proposer's reward, so it describes the
-rules that are actually in force: for full RRSI (the default) the text is the one the
-released constitutions use; an ablation arm (:class:`~rsi.rrsi.switches.RegularizerSwitches`)
-gets only the paragraphs of its active mechanisms, e.g. the unregularized baseline is
-told "keep if measured higher", not about a floor, a cost rule or exploration it will
-never meet (otherwise a live proposer in a baseline arm would be steered by
-regularizers that are switched off).
-
-As in the released SKILL.md files, the rules are stated SYMBOLICALLY ("beta0 + beta1 x
-(gain)", "w_s x (gain) - w_c x ... + w_n x (novelty)"); only m and k are numbers. The
-proposer is never told the numeric weights, the noise band or the scores it must beat.
-``Config.proposer_numbers=True`` (an extension) fills in the numeric beta/w values instead.
-"""
+"""Generic proposer constitution (SKILL.md, PATTERNS.md) stating only the rules active under the switches."""
 from __future__ import annotations
+
+from .switches import RegularizerSwitches
 
 HEADER = """# Proposer Constitution
 
@@ -165,15 +149,11 @@ PATTERNS_MD = """# Pattern Library (reference, not an allowlist)
 
 
 def _is_full_proposal(sw) -> bool:
-    return (sw.budget_anneal and sw.history_conditioning == "full" and sw.stall_exploration
-            and sw.prune_directives)
+    return sw.budget_anneal and sw.history_conditioning == "full" and sw.stall_exploration and sw.prune_directives
 
 
 def default_constitution(cfg, taxonomy, switches=None) -> tuple[str, str]:
-    """``(SKILL.md, PATTERNS.md)`` describing the rules in force under ``switches``
-    (default: full RRSI, the released constitution's reward section). The acceptance
-    weights appear as symbols, as in the released SKILL.md, unless ``cfg.proposer_numbers``."""
-    from .switches import RegularizerSwitches
+    """``(SKILL.md, PATTERNS.md)``; weights appear as symbols, as released, unless ``cfg.proposer_numbers``."""
     sw = switches or RegularizerSwitches.full()
     if getattr(cfg, "proposer_numbers", False):
         weights = dict(beta0=cfg.beta0, beta1=cfg.beta1, w_s=cfg.w_s, w_c=cfg.w_c, w_n=cfg.w_n)
@@ -187,21 +167,14 @@ def default_constitution(cfg, taxonomy, switches=None) -> tuple[str, str]:
         parts.append(ARGMAX)
     else:
         parts.append(ADMISSIBLE)
-        if sw.floor == "S_star":
-            parts.append(FLOOR_S_STAR)
-        elif sw.floor == "S_t":
-            parts.append(FLOOR_S_T)
+        parts.append({"S_star": FLOOR_S_STAR, "S_t": FLOOR_S_T}.get(sw.floor, ""))
         parts.append((COST_ON if sw.cost_rule else COST_OFF).format(**fmt))
         parts.append(BAND.get(sw.within_band, BAND["shaped"]).format(**fmt))
     if _is_full_proposal(sw):
         parts.append(PROPOSAL_FULL)
     else:
-        items = [BUDGET_ANNEAL if sw.budget_anneal else BUDGET_CONST, HIST.get(sw.history_conditioning, "")]
-        if sw.stall_exploration:
-            items.append(EXPLORE)
-        if sw.prune_directives:
-            items.append(PRUNE)
-        items = [x for x in items if x]
-        parts.append("\nWhat you are shown and how much you may bundle:\n\n" + "".join(items))
+        items = [BUDGET_ANNEAL if sw.budget_anneal else BUDGET_CONST, HIST.get(sw.history_conditioning, ""),
+                 EXPLORE if sw.stall_exploration else "", PRUNE if sw.prune_directives else ""]
+        parts.append("\nWhat you are shown and how much you may bundle:\n\n" + "".join(x for x in items if x))
     parts.append(RULES)
     return "".join(parts), PATTERNS_MD

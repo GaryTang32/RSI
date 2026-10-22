@@ -1,11 +1,4 @@
-"""HarnessWorld as an :class:`rsi.core.Domain` (execute + locked grader + split discipline).
-
-The artifact is a directory of mechanism files (``harness.md`` + one file per
-mechanism); ``execute`` runs the simulated frozen policy on one task and returns the
-number of rubric criteria passed and the tokens used; ``grade`` turns that into the
-reward ``passed / total`` with textual feedback. ``expected`` gives the noise-free
-ground truth used by experiments (never by the loop).
-"""
+"""HarnessWorld as an :class:`rsi.core.Domain`: simulated frozen policy, rubric grader and split discipline."""
 from __future__ import annotations
 
 import hashlib
@@ -34,14 +27,14 @@ class HarnessWorldDomain(Domain):
         self.world = world or World(config)
         self.policy = policy
         self.show_catalog = show_catalog
-        tasks = [Task(t.id, t.text, t.target, t.family, {"surface": t.surface, "entities": []}) for t in self.world.tasks]
+        tasks = [Task(t.id, t.text, t.target, t.family, {"surface": t.surface, "entities": []})
+                 for t in self.world.tasks]
         splits = {s: self.world.split_ids(s) for s in ("evolve", "holdout", "ood")}
         splits["smoke"] = splits["evolve"][:2]
         super().__init__(TaskSuite(tasks, splits, name=f"harnessworld-s{self.world.cfg.seed}"))
         self._cache: dict[str, tuple] = {}
         self._lock = threading.Lock()
 
-    # ------------------------------------------------------------------ helpers --
     def with_policy(self, policy: Policy) -> "HarnessWorldDomain":
         """Same world and tasks, a different frozen policy (cross-policy transfer)."""
         return HarnessWorldDomain(self.world, policy=policy, show_catalog=self.show_catalog)
@@ -56,7 +49,7 @@ class HarnessWorldDomain(Domain):
         if st is None:
             files = artifact.files
             err = None
-            for path, text in files.items():                       # compile once per artifact version
+            for path, text in files.items():
                 if path.endswith(".py"):
                     try:
                         compile(text, path, "exec")
@@ -80,9 +73,7 @@ class HarnessWorldDomain(Domain):
         return [m.id for m in self.world.active(artifact.files)[0]]
 
     def audit_truth(self, artifact: Artifact) -> dict:
-        """Report-only ground truth for run traces: analytic E[S] per split, E[C], and the kind of
-        every active mechanism (generic / leak / harmful ...) with whether its leak payload is live.
-        Never used by the loop."""
+        """Report-only ground truth for traces: E[S] per split, E[C], and each active mechanism's kind."""
         mechs, payload, extra = self.world.active(artifact.files)
         exp = {s: self.world.expected(artifact.files, s, self.policy) for s in ("evolve", "holdout", "ood")}
         return {"E_S": {s: round(v["S"], 5) for s, v in exp.items()}, "E_C": round(exp["evolve"]["C"], 1),
@@ -93,7 +84,6 @@ class HarnessWorldDomain(Domain):
     def regression_threshold(self, k: int) -> float:
         return 0.25
 
-    # ---------------------------------------------------------------- Domain API --
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
         if "harness.md" not in artifact:
             return Execution(error="harness.md missing: the harness entry point was deleted")

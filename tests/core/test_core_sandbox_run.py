@@ -1,20 +1,23 @@
-"""rsi.core.sandbox (timeouts, process-group kill, rlimits, env scrub,
-call_function, scratch-dir cleanup) and rsi.core.run (Budget, ImprovementResult,
-usd_of, transfer_report)."""
+"""rsi.core.sandbox (timeouts, process-group kill, rlimits, env scrub, call_function, scratch-dir lifecycle,
+close_sandboxes) and rsi.core.run (Budget, ImprovementResult, usd_of, transfer_report)."""
 from __future__ import annotations
 
 import json
+import os
+import resource
 import signal
 import sys
 import tempfile
 import time
-from pathlib import Path
 
 import pytest
 
 from rsi.core import (Artifact, Budget, FunctionDomain, ImprovementResult, Ledger, MockLLM, Node, RunResult,
                       SealedSplitError, Task, TaskSuite, Usage, call_function, run_cmd, run_python, transfer_report,
                       usd_of)
+from rsi.core import sandbox
+
+MEM_512 = str(512 << 20)
 
 
 @pytest.fixture
@@ -26,49 +29,65 @@ def scratch_tmp(tmp_path, monkeypatch):
     return d
 
 
-# ---------------------------------------------------------------------- run_cmd
+@pytest.fixture
+def inner(tmp_path, checkout_python):
+    """Run code in a fresh interpreter (close_sandboxes closes a process for good) with temp files under
+    ``tmp_path``; return its stdout plus any leftover scratch dirs, or its stderr when it failed."""
+    def run(code: str, **env) -> str:
+        tmp = tmp_path / "tmp"
+        tmp.mkdir(exist_ok=True)
+        out = checkout_python(code, env={"TMPDIR": str(tmp), **env}, cwd=tmp_path)
+        leftovers = [p.name for p in tmp.iterdir() if p.name.startswith(("rsi_sbx_", "rsi_fn_"))]
+        return out.stdout.strip() + (f" leftovers={leftovers}" if leftovers else "") + (
+            f" stderr={out.stderr[-1500:]}" if out.returncode else "")
+    return run
+
+
+def _py(code: str) -> list[str]:
+    return [sys.executable, "-c", code]
+
+
 def test_run_cmd_basic_stdin_cwd_and_exit_codes(tmp_path):
-    rr = run_cmd([sys.executable, "-c", "import sys, os; print(sys.stdin.read().upper()); print(os.getcwd())"],
-                 stdin="hello", cwd=tmp_path)
+    rr = run_cmd(_py("import sys, os; print(sys.stdin.read().upper()); print(os.getcwd())"), stdin="hello",
+                 cwd=tmp_path)
     assert rr.ok and rr.returncode == 0 and not rr.timed_out
     assert rr.stdout.splitlines() == ["HELLO", str(tmp_path)] and rr.wall_s >= 0
-    bad = run_cmd([sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr); sys.exit(3)"])
+    bad = run_cmd(_py("import sys; print('out'); print('err', file=sys.stderr); sys.exit(3)"))
     assert not bad.ok and bad.returncode == 3 and bad.tail().split() == ["out", "err"]
     assert RunResult(0, "a\nb\nc", "", 0.0, False).tail(2) == "b\nc"
 
 
 def test_run_cmd_scrubs_environment(monkeypatch):
     monkeypatch.setenv("RSI_TEST_SECRET", "s3cret")
-    code = "import os; print(os.environ.get('RSI_TEST_SECRET'), os.environ.get('FOO'), os.environ.get('OMP_NUM_THREADS'))"
-    assert run_cmd([sys.executable, "-c", code]).stdout.split() == ["None", "None", "1"]
-    assert run_cmd([sys.executable, "-c", code], env={"FOO": "bar"}).stdout.split() == ["None", "bar", "1"]
+    code = _py("import os; print(os.environ.get('RSI_TEST_SECRET'), os.environ.get('FOO'), "
+               "os.environ.get('OMP_NUM_THREADS'))")
+    assert run_cmd(code).stdout.split() == ["None", "None", "1"]
+    assert run_cmd(code, env={"FOO": "bar"}).stdout.split() == ["None", "bar", "1"]
 
 
 def test_run_cmd_timeout_kills_whole_process_group():
-    # the grandchild `sleep` inherits stdout; without a group kill communicate() would wait 30 s
-    code = "import subprocess, time; subprocess.Popen(['sleep', '30']); print('started', flush=True); time.sleep(30)"
+    # the grandchild `sleep` inherits stdout: without a group kill communicate() would wait 30 s
     t0 = time.time()
-    rr = run_cmd([sys.executable, "-c", code], timeout_s=1.0)
+    rr = run_cmd(_py("import subprocess, time; subprocess.Popen(['sleep', '30']); print('started', flush=True); "
+                     "time.sleep(30)"), timeout_s=1.0)
     assert time.time() - t0 < 10
     assert rr.timed_out and not rr.ok and rr.returncode == -9
     assert "[killed: timeout]" in rr.stderr and "started" in rr.stdout
 
 
 def test_run_cmd_memory_rlimit():
-    rr = run_cmd([sys.executable, "-c", "x = bytearray(600 * 1024 * 1024); print('allocated')"], mem_mb=300)
+    rr = run_cmd(_py("x = bytearray(600 * 1024 * 1024); print('allocated')"), mem_mb=300)
     assert not rr.ok and "allocated" not in rr.stdout and "MemoryError" in rr.stderr
-    assert run_cmd([sys.executable, "-c", "x = bytearray(50 * 1024 * 1024); print('ok')"], mem_mb=300).ok
+    assert run_cmd(_py("x = bytearray(50 * 1024 * 1024); print('ok')"), mem_mb=300).ok
 
 
 def test_run_cmd_cpu_rlimit():
     t0 = time.time()
-    rr = run_cmd([sys.executable, "-c", "while True: pass"], cpu_s=1, timeout_s=30)
+    rr = run_cmd(_py("while True: pass"), cpu_s=1, timeout_s=30)
     assert time.time() - t0 < 15
-    assert not rr.ok and not rr.timed_out
-    assert rr.returncode in (-signal.SIGXCPU, -signal.SIGKILL)
+    assert not rr.ok and not rr.timed_out and rr.returncode in (-signal.SIGXCPU, -signal.SIGKILL)
 
 
-# ------------------------------------------------------------------- run_python
 def test_run_python_code_and_script(tmp_path, scratch_tmp, monkeypatch):
     rr = run_python("import sys; print(sum(map(int, sys.argv[1:])))", args=["2", "3"])
     assert rr.ok and rr.stdout.strip() == "5"
@@ -85,13 +104,11 @@ def test_run_python_code_and_script(tmp_path, scratch_tmp, monkeypatch):
 
 
 def test_run_python_cleans_its_scratch_dir(scratch_tmp):
-    """Bug fix: every call leaked a /tmp/rsi_sbx_* dir (48k were found on the dev box)."""
     for _ in range(3):
         run_python("open('junk.txt', 'w').write('x' * 1000)")
     assert list(scratch_tmp.iterdir()) == []
 
 
-# ---------------------------------------------------------------- call_function
 MODULE = '''
 import json
 def add(a, b):
@@ -125,7 +142,7 @@ def test_call_function_results_and_failures(scratch_tmp):
     assert call_function(MODULE, "uses_helper", {}, extra_files={"helper.py": "VALUE = 'h'"})[0] == "h"
     res, rr = call_function("syntax error here", "f", {})
     assert res is None and "SyntaxError" in rr.stderr
-    assert list(scratch_tmp.iterdir()) == []                        # bug fix: no leaked rsi_fn_* dirs
+    assert list(scratch_tmp.iterdir()) == []                        # no leaked rsi_fn_* dirs
 
 
 @pytest.mark.parametrize("func", ["", "f; import os", "a..b", "1abc", "f()"])
@@ -134,7 +151,6 @@ def test_call_function_rejects_non_identifiers(func):
         call_function(MODULE, func, {})
 
 
-# ---------------------------------------------------------------------- Budget
 def test_budget_limits(tmp_path):
     assert Budget().exhausted(rounds=10 ** 6, rollouts=10 ** 6, usd=1e6) is None
     b = Budget(max_rounds=3, max_rollouts=100, max_usd=1.0, stop_dir=str(tmp_path))
@@ -173,18 +189,13 @@ def test_usd_of_and_improvement_result(tmp_path):
     assert not (d / "best_artifact" / "sub").exists()
 
 
-# -------------------------------------------------------------- transfer_report
 def _transfer_domain():
     ts = [Task(f"e{i}", i, i, "num") for i in range(4)] + [Task(f"h{i}", i, i, "num") for i in range(4)] + \
          [Task(f"o{i}", i, i, "dates" if i % 2 else "strings") for i in range(4)]
     suite = TaskSuite(ts, {"evolve": [f"e{i}" for i in range(4)], "holdout": [f"h{i}" for i in range(4)],
                            "ood": [f"o{i}" for i in range(4)]})
-
-    def execute(art, task, seed, llm):
-        skill = int(art["skill"])
-        return int(task.input < skill)
-
-    return FunctionDomain(suite, execute, lambda t, out: float(out))
+    return FunctionDomain(suite, lambda art, task, seed, llm: int(task.input < int(art["skill"])),
+                          lambda t, out: float(out))
 
 
 def test_transfer_report_unseals_for_reporting_only():
@@ -206,76 +217,53 @@ def test_transfer_report_unseals_for_reporting_only():
 
 
 def test_child_gets_a_cpu_backstop_from_its_wall_timeout():
-    """A CPU-bound child that outlives a SIGKILLed parent (no one left to enforce the wall timeout) still stops:
-    without an explicit cpu_s it gets RLIMIT_CPU of the wall budget times the usable cores (at least 4), plus 5 s;
-    an explicit cpu_s wins, and the memory limit is applied either way."""
-    import os as _os
-    import sys as _sys
-    from rsi.core.sandbox import run_cmd
-    cores = len(_os.sched_getaffinity(0))
-    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_CPU)[0], r.getrlimit(r.RLIMIT_AS)[0])"]
-    assert run_cmd(probe, timeout_s=10, mem_mb=512).stdout.split() == [str(10 * max(4, cores) + 5), str(512 << 20)]
-    assert run_cmd(probe, timeout_s=10, cpu_s=3, mem_mb=512).stdout.split() == ["3", str(512 << 20)]
+    """Without cpu_s, RLIMIT_CPU = wall budget x max(4, usable cores) + 5 s, so a child outliving a SIGKILLed parent
+    still stops; an explicit cpu_s wins, and the memory limit is applied either way."""
+    probe = _py("import resource as r; print(r.getrlimit(r.RLIMIT_CPU)[0], r.getrlimit(r.RLIMIT_AS)[0])")
+    cores = len(os.sched_getaffinity(0))
+    assert run_cmd(probe, timeout_s=10, mem_mb=512).stdout.split() == [str(10 * max(4, cores) + 5), MEM_512]
+    assert run_cmd(probe, timeout_s=10, cpu_s=3, mem_mb=512).stdout.split() == ["3", MEM_512]
 
 
 def test_a_refused_cpu_limit_keeps_the_memory_limit(monkeypatch):
-    """A CPU prlimit the kernel refuses (a hard limit this process may not raise) no longer skips the memory cap."""
-    import resource as _resource
-    import sys as _sys
-    from rsi.core import sandbox
-    real = _resource.prlimit
+    real = resource.prlimit
 
     def refuse_cpu(pid, res, limits=None):
-        if res == _resource.RLIMIT_CPU and limits is not None:
+        if res == resource.RLIMIT_CPU and limits is not None:
             raise PermissionError("not permitted")
         return real(pid, res, limits) if limits is not None else real(pid, res)
 
     monkeypatch.setattr(sandbox.resource, "prlimit", refuse_cpu)
-    probe = [_sys.executable, "-c", "import resource as r; print(r.getrlimit(r.RLIMIT_AS)[0])"]
-    assert sandbox.run_cmd(probe, timeout_s=10, cpu_s=100, mem_mb=512).stdout.strip() == str(512 << 20)
+    probe = _py("import resource as r; print(r.getrlimit(r.RLIMIT_AS)[0])")
+    assert sandbox.run_cmd(probe, timeout_s=10, cpu_s=100, mem_mb=512).stdout.strip() == MEM_512
 
 
-def _checkout_python(code: str, **kw):
-    """Run ``code`` in a fresh interpreter that imports this checkout's ``rsi``, from any working directory: the
-    checkout is on PYTHONPATH and the interpreter starts there (so no other ``rsi`` in the caller's cwd shadows
-    it)."""
-    import os as _os
-    import subprocess as _sp
-    import sys as _sys
-    root = str(Path(__file__).resolve().parents[2])
-    env = {**_os.environ, "PYTHONPATH": _os.pathsep.join(p for p in (root, _os.environ.get("PYTHONPATH")) if p),
-           **kw.pop("env", {})}
-    return _sp.run([_sys.executable, "-c", code], capture_output=True, text=True, timeout=60, env=env,
-                   cwd=kw.pop("cwd", root), **kw)
-
-
-def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits():
+def test_backstop_stays_within_inherited_soft_and_hard_cpu_limits(checkout_python):
     """Under an inherited RLIMIT_CPU the backstop never raises the soft limit nor lowers it below what the child would
-    inherit, fits under the hard one, and the memory limit is set as well."""
-    import os as _os
-    b = min(10 * max(4, len(_os.sched_getaffinity(0))) + 5, 1000)   # the backstop for a 10 s wall timeout here
+    inherit, and fits under the hard one."""
+    b = min(10 * max(4, len(os.sched_getaffinity(0))) + 5, 1000)   # the backstop for a 10 s wall timeout here
     for limits, want in (((30, 30), "(30, 30)"), ((20, -1), "(20, 25)"), ((6, 6), "(6, 6)"),
                          ((1000, 1002), f"({b}, {min(b + 5, 1002)})")):
-        code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); from rsi.core.sandbox import run_cmd; "
-                "p = [sys.executable, '-c', 'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
+        code = (f"import resource as r, sys; r.setrlimit(r.RLIMIT_CPU, {limits}); "
+                "from rsi.core.sandbox import run_cmd; "
+                "p = [sys.executable, '-c', "
+                "'import resource as r; print(r.getrlimit(r.RLIMIT_CPU), r.getrlimit(r.RLIMIT_AS)[0])']; "
                 "print(run_cmd(p, timeout_s=10, mem_mb=512).stdout.strip())")
-        out = _checkout_python(code).stdout.strip()
-        assert out == f"{want} {512 << 20}", (limits, out)
+        out = checkout_python(code).stdout.strip()
+        assert out == f"{want} {MEM_512}", (limits, out)
 
 
-def test_a_closed_process_starts_no_sandbox():
-    """close_sandboxes() (a process about to exit) refuses new sandboxes and scratch directories."""
+def test_a_closed_process_starts_no_sandbox(checkout_python):
     code = ("from rsi.core.sandbox import close_sandboxes, run_cmd, run_python; import sys; close_sandboxes()\n"
             "for f in (lambda: run_cmd([sys.executable, '-c', 'pass']), lambda: run_python('pass')):\n"
             "    try:\n        f(); print('started')\n    except RuntimeError as e:\n        print('refused')")
-    out = _checkout_python(code).stdout.split()
+    out = checkout_python(code).stdout.split()
     assert out == ["refused", "refused"], out
 
 
-def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
-    """A signal between spawn and registration (or between a failed kill and deregistration) leaves a sandbox
-    the registry does not hold; close_sandboxes() still kills it: every sandbox leads its own session as a direct
-    child."""
+def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered(checkout_python):
+    """A signal between spawn and registration leaves a sandbox the registry does not hold; close_sandboxes() still
+    kills it, since every sandbox leads its own session as a direct child."""
     code = ("import subprocess, sys, time, os\n"
             "from rsi.core.sandbox import close_sandboxes\n"
             "spin = 'import resource; resource.setrlimit(resource.RLIMIT_CPU, (20, 20))\\nwhile True: pass'\n"
@@ -286,19 +274,8 @@ def test_close_sandboxes_catches_a_sandbox_run_cmd_never_registered():
             "finally:\n"
             "    if p.poll() is None:\n"
             "        os.killpg(p.pid, 9)")
-    out = _checkout_python(code).stdout.strip()
+    out = checkout_python(code).stdout.strip()
     assert out == "-9", out
-
-
-def _inner(code: str, tmp_path, **env) -> str:
-    """Run ``code`` in a fresh interpreter (close_sandboxes marks a process closed for good) with its temp files
-    under ``tmp_path``; return its stdout, or fail with its stderr."""
-    tmp = tmp_path / "tmp"
-    tmp.mkdir(exist_ok=True)
-    out = _checkout_python(code, env={"TMPDIR": str(tmp), **env}, cwd=tmp_path)
-    leftovers = [p.name for p in tmp.iterdir() if p.name.startswith(("rsi_sbx_", "rsi_fn_"))]
-    return out.stdout.strip() + (f" leftovers={leftovers}" if leftovers else "") + (
-        f" stderr={out.stderr[-1500:]}" if out.returncode else "")
 
 
 _SPIN = r"""
@@ -337,9 +314,9 @@ def gone(deadline=5):
 """
 
 
-def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8(tmp_path):
-    """The kernel cuts a process name to 15 bytes, possibly inside a character: scanning /proc must still kill
-    a sandbox with such a name, an unregistered one and the registered one."""
+def test_close_sandboxes_is_not_stopped_by_a_process_name_that_is_not_utf8(inner):
+    """A process name cut to 15 bytes inside a character must not stop the /proc scan: it, an unregistered sandbox
+    and the registered one are all killed."""
     code = _SPIN + r"""
 from rsi.core.sandbox import close_sandboxes, run_cmd
 name = bytes.fromhex('74656d70c3a9726174757265735fc3')          # 'temp' + e-acute + 'ratures_' + half a character
@@ -364,10 +341,10 @@ finally:
         if p.poll() is None:
             os.killpg(p.pid, 9)
 """
-    assert _inner(code, tmp_path) == "-9 -9 []"
+    assert inner(code) == "-9 -9 []"
 
 
-def test_a_failing_proc_scan_does_not_spare_the_registered_sandboxes(tmp_path):
+def test_a_failing_proc_scan_does_not_spare_the_registered_sandboxes(inner):
     """close_sandboxes() kills the registered groups and removes their directories before it scans /proc."""
     code = _SPIN + r"""
 from rsi.core import sandbox
@@ -383,12 +360,12 @@ except RuntimeError as e:
     print(e, end=' ')
 print(gone())
 """
-    assert _inner(code, tmp_path) == "scan failed []"
+    assert inner(code) == "scan failed []"
 
 
-def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it(tmp_path):
-    """The directory is registered before it exists, and a failed creation stays registered until it is gone:
-    a stop signal as it appears, then another one during the cleanup, still leave it to close_sandboxes()."""
+def test_a_signal_while_a_scratch_directory_is_made_cannot_hide_it(inner):
+    """The directory is registered before it exists and stays registered until it is gone, so a stop signal as it
+    appears and another during the cleanup still leave it to close_sandboxes()."""
     code = r"""
 import os
 from rsi.core import sandbox
@@ -413,10 +390,10 @@ os.mkdir = real_mkdir
 sandbox.close_sandboxes()
 print(seen)
 """
-    assert _inner(code, tmp_path) == "[True]"
+    assert inner(code) == "[True]"
 
 
-def test_a_scratch_directory_made_by_another_thread_while_closing_is_removed(tmp_path):
+def test_a_scratch_directory_made_by_another_thread_while_closing_is_removed(inner):
     """close_sandboxes() waits for a creation in progress in another thread (as AgentQA's harness thread)."""
     code = r"""
 import os, threading, time
@@ -436,18 +413,17 @@ time.sleep(1.0)
 print('done', flush=True)
 os._exit(0)                                          # as the forked smoke child leaves: no thread cleans up
 """
-    assert _inner(code, tmp_path) == "done"
+    assert inner(code) == "done"
 
 
-def test_run_python_works_with_a_relative_temp_dir(tmp_path):
-    """Scratch paths are absolute (as mkdtemp's since Python 3.12), so a relative TMPDIR still works."""
+def test_run_python_works_with_a_relative_temp_dir(inner):
     code = "from rsi.core.sandbox import run_python; print(run_python('print(42)').stdout.strip())"
-    assert _inner(code, tmp_path, TMPDIR=".") == "42"             # gettempdir() keeps "." relative
+    assert inner(code, TMPDIR=".") == "42"             # gettempdir() keeps "." relative; scratch paths are absolute
 
 
-def test_a_signal_as_the_scratch_lock_is_released_leaves_no_directory(tmp_path):
-    """A stop signal can surface when the lock is released after the directory was made: the directory is
-    removed and forgotten, not left for a close_sandboxes() that a long-lived process never calls."""
+def test_a_signal_as_the_scratch_lock_is_released_leaves_no_directory(inner):
+    """A stop signal at the lock release after the directory was made removes and forgets it: a long-lived process
+    may never call close_sandboxes()."""
     code = r"""
 import os
 from rsi.core import sandbox
@@ -469,12 +445,12 @@ except KeyboardInterrupt:
     print('interrupted', end=' ')
 print(len(sandbox._LIVE_DIRS))
 """
-    assert _inner(code, tmp_path) == "interrupted 0"
+    assert inner(code) == "interrupted 0"
 
 
-def test_a_signal_while_the_scratch_lock_is_still_held_does_not_hang(tmp_path):
-    """Under a tracer (pdb) a stop signal can surface while this thread still holds the registry lock: the
-    cleanup must not wait for that lock (it used to deadlock on the first Ctrl-C)."""
+def test_a_signal_while_the_scratch_lock_is_still_held_does_not_hang(inner):
+    """Under a tracer (pdb) a stop signal can surface while this thread still holds the registry lock: the cleanup
+    must not wait for that lock."""
     code = r"""
 import threading
 from rsi.core import sandbox
@@ -505,12 +481,11 @@ t.start()
 t.join(10)
 print(out[0] if out else 'hung', len(sandbox._LIVE_DIRS))
 """
-    assert _inner(code, tmp_path) == "interrupted 0"
+    assert inner(code) == "interrupted 0"
 
 
-def test_close_sandboxes_iterates_a_copy_of_the_registry(tmp_path):
-    """_mkscratch's cleanup discards from the registry without the lock: close_sandboxes must not iterate the
-    live set while that can happen (it raised 'Set changed size during iteration')."""
+def test_close_sandboxes_iterates_a_copy_of_the_registry(inner):
+    """The registry can lose an entry mid-iteration (an unlocked discard in _mkscratch's cleanup)."""
     code = r"""
 from rsi.core import sandbox
 class Live(set):
@@ -527,4 +502,4 @@ try:
 except RuntimeError as e:
     print('RuntimeError', e)
 """
-    assert _inner(code, tmp_path) == "ok"
+    assert inner(code) == "ok"

@@ -1,48 +1,11 @@
-"""RuleWorld: a synthetic compound system whose accuracy depends on which general
-rules its prompts contain (GEPA spec section 9.2, Tier 1).
-
-The system is an order-fulfilment assistant with several *modules* (default
-``triage`` then ``reply``), each driven by one prompt file ``prompts/<module>.md``.
-Every example is a ticket from a customer *family* (retail, wholesale, ...) whose
-order has 2-4 *aspects* (fragile, perishable, ...). Each aspect is handled by one
-module and has a correct *handling protocol* (a rare code word such as ``cobalt``).
-
-The simulated task model follows its module prompt literally:
-
-* a **general rule** line ("When an order is fragile, use the cobalt protocol.")
-  applies to every family; a **conditioned rule** line that names families
-  ("For wholesale orders that are fragile, ...") applies only to them and
-  overrides general rules for those families;
-* several different applicable codes = a contradiction: the model picks one at
-  random;
-* no applicable rule: the model imitates matching **demos** (``Example: ...``
-  lines) with probability ``p_demo`` per demo, else it uses the (always wrong)
-  standard protocol;
-* a line naming a ticket id is a **memorised fact** about that ticket only
-  (the GEPA meta-prompt's "include niche facts" overfitting lure);
-* prompts longer than ``capacity`` lines dilute adherence by ``dilution`` per extra
-  line; each module slips (garbled output) with probability ``slip`` per rollout;
-* optional **interference** (``n_interfering``): the *general* rule of an interfering
-  aspect also gets applied to a victim aspect of the same module on tickets outside
-  the interfering aspect's home family (the victim then shows a foreign protocol even
-  though its own rule is present). Rules conditioned on families never bleed, and a
-  conditioned rule for the victim overrides the bleed. This models prompt rules with
-  hidden side effects - commitments a greedy search cannot easily undo.
-
-*Conflicting* aspects need different codes for the two halves of the families:
-a general rule helps half the instances and cannot help the rest, so per-instance
-trade-offs (Pareto frontiers) exist until a conditioned rule is found.
-
-Everything is analytic: :meth:`RuleWorld.expected` gives the exact expected score of
-any prompt set, which experiments use as ground truth (never the optimizer).
-"""
+"""RuleWorld: a simulated multi-module assistant whose accuracy depends on the rules its prompts state."""
 from __future__ import annotations
 
 import hashlib
 import random
 import re
 import threading
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Optional, Sequence
 
 ASPECTS = ["fragile", "perishable", "oversized", "hazardous", "international", "insured", "prepaid", "backordered",
@@ -68,11 +31,9 @@ SEED_TEXT = ("You are the {module} module of an order-fulfilment assistant. For 
              "output '<property>: <protocol>'.\nUse the standard protocol when no rule applies.\n")
 
 
+
 @dataclass
 class WorldConfig:
-    """World generator settings. Defaults give a 2-module world with 16 aspects,
-    2 of them conflicting, 4 customer families and noisy rollouts."""
-
     modules: tuple[str, ...] = ("triage", "reply")
     n_aspects: int = 16
     n_families: int = 4
@@ -85,7 +46,7 @@ class WorldConfig:
     capacity: int = 16               # prompt lines per module before dilution
     dilution: float = 0.02           # adherence loss per line beyond capacity
     p_demo: float = 0.35             # P(imitating one matching demo)
-    n_interfering: int = 0           # aspects whose GENERAL rule bleeds into a victim aspect (hidden side effect)
+    n_interfering: int = 0           # aspects whose general rule bleeds into a victim aspect
     scoring: str = "partial"         # partial: fraction of aspects right | binary: all right
     n_train: int = 30
     n_val: int = 30
@@ -101,13 +62,11 @@ class Aspect:
     name: str
     module: str
     home: Optional[int]                     # home family index (None for conflict aspects)
-    codes: tuple[str, ...]                  # the lexicon variants (decoys included)
+    codes: tuple[str, ...]                  # lexicon variants, decoys included
     conflict: bool = False
 
     def correct(self, family_idx: int, n_families: int) -> str:
-        if not self.conflict:
-            return self.codes[0]
-        return self.codes[0] if family_idx < n_families // 2 else self.codes[1]
+        return self.codes[1] if self.conflict and family_idx >= n_families // 2 else self.codes[0]
 
 
 @dataclass
@@ -126,7 +85,7 @@ class Example:
 
 @dataclass
 class ModuleView:
-    """What the simulated model 'understands' from one module prompt."""
+    """What the simulated model understands from one module prompt."""
 
     rules: dict = field(default_factory=dict)    # aspect -> list[(code, frozenset(families))]
     facts: dict = field(default_factory=dict)    # ticket -> {aspect: code}
@@ -139,7 +98,14 @@ def _h(*parts) -> random.Random:
 
 
 class RuleWorld:
-    """Lexicon + tasks + simulated task model + analytic ground truth."""
+    """Lexicon + tasks + simulated task model + analytic ground truth.
+
+    The model follows its prompt literally: a general rule applies to every family, a rule naming families applies
+    (and overrides) only for them, contradictory rules are a coin flip, a line naming a ticket is a memorised fact,
+    and without a rule it imitates matching demos or uses the (wrong) standard protocol. Long prompts dilute
+    adherence, modules slip at random, and an interfering aspect's general rule can bleed into a victim aspect.
+    Conflict aspects need different codes for the two family halves.
+    """
 
     def __init__(self, cfg: Optional[WorldConfig] = None) -> None:
         self.cfg = cfg = cfg or WorldConfig()
@@ -150,19 +116,17 @@ class RuleWorld:
         rng = random.Random(f"ruleworld-{cfg.seed}")
         names = list(ASPECTS)
         rng.shuffle(names)
-        names = names[: cfg.n_aspects]
         codes = list(CODES)
         rng.shuffle(codes)
         self.families = FAMILIES[: cfg.n_families]
         self.aspects: dict[str, Aspect] = {}
-        for i, name in enumerate(names):
+        for i, name in enumerate(names[: cfg.n_aspects]):
             conflict = i < cfg.n_conflict
             home = None if conflict else (i - cfg.n_conflict) % cfg.n_families
             self.aspects[name] = Aspect(name, cfg.modules[i % len(cfg.modules)], home,
                                         tuple(codes[i * cfg.n_variants:(i + 1) * cfg.n_variants]), conflict)
         self.code_owner = {c: a.name for a in self.aspects.values() for c in a.codes}
-        # interference pairs: interfering aspect -> victim (same module, different home family)
-        self.bleeds: dict[str, str] = {}
+        self.bleeds: dict[str, str] = {}         # interfering aspect -> victim (same module, other home family)
         normal = [a for a in self.aspects.values() if not a.conflict]
         for a in normal[: cfg.n_interfering]:
             victims = [b.name for b in normal if b.module == a.module and b.home != a.home
@@ -186,36 +150,31 @@ class RuleWorld:
         self._parse_cache: dict[str, ModuleView] = {}
         self._lock = threading.Lock()
 
-    # ------------------------------------------------------------------ lexicon --
     def module_path(self, module: str) -> str:
         return f"prompts/{module}.md"
 
     def rule_text(self, aspect: str, code: str, families: Sequence[str] = ()) -> str:
         if families:
-            fams = " and ".join(families)
-            return f"For {fams} orders that are {aspect}, use the {code} protocol."
+            return f"For {' and '.join(families)} orders that are {aspect}, use the {code} protocol."
         return f"When an order is {aspect}, use the {code} protocol."
 
     def aspects_of(self, module: str) -> list[str]:
         return [a for a, x in self.aspects.items() if x.module == module]
 
-    def family_index(self, family: str) -> int:
-        return self.families.index(family)
+    def _module_aspects(self, ex: Example, module: str) -> list[str]:
+        return [a for a in ex.aspects if self.aspects[a].module == module]
 
-    # ----------------------------------------------------------------- examples --
     def _make_example(self, eid: str, rng: random.Random, used: set) -> Example:
         cfg = self.cfg
         fam_i = rng.randrange(cfg.n_families)
-        family = self.families[fam_i]
         normal = [a for a in self.aspects.values() if not a.conflict]
         home = [a.name for a in normal if a.home == fam_i]
         chosen: list[str] = []
         k = rng.randint(*cfg.aspects_per_example)
-        tries = 0
-        while len(chosen) < k and tries < 50:
-            tries += 1
-            pool = home if (home and rng.random() < cfg.family_bias) else [a.name for a in normal]
-            a = rng.choice(pool)
+        for _ in range(50):
+            if len(chosen) >= k:
+                break
+            a = rng.choice(home if (home and rng.random() < cfg.family_bias) else [a.name for a in normal])
             if a not in chosen:
                 chosen.append(a)
         for a in self.aspects.values():
@@ -223,18 +182,16 @@ class RuleWorld:
                 chosen.append(a.name)
         order = list(self.aspects)
         chosen.sort(key=lambda a: (cfg.modules.index(self.aspects[a].module), order.index(a)))
-        while True:
+        ticket = f"T-{rng.randrange(1000, 10000)}"
+        while ticket in used:
             ticket = f"T-{rng.randrange(1000, 10000)}"
-            if ticket not in used:
-                used.add(ticket)
-                break
+        used.add(ticket)
         target = {a: self.aspects[a].correct(fam_i, cfg.n_families) for a in chosen}
         props = ", ".join(chosen[:-1]) + (" and " if len(chosen) > 1 else "") + chosen[-1]
-        text = (f"Ticket {ticket} ({family} customer): the order is {props}. "
+        text = (f"Ticket {ticket} ({self.families[fam_i]} customer): the order is {props}. "
                 f"Choose the handling protocol for each order property.")
-        return Example(eid, ticket, family, tuple(chosen), target, text)
+        return Example(eid, ticket, self.families[fam_i], tuple(chosen), target, text)
 
-    # ------------------------------------------------------------------ parsing --
     def parse_module(self, text: str) -> ModuleView:
         with self._lock:
             v = self._parse_cache.get(text)
@@ -271,10 +228,8 @@ class RuleWorld:
             self._parse_cache[text] = view
         return view
 
-    # ------------------------------------------------------------ task model ----
     def outcome_dist(self, view: ModuleView, ex: Example, aspect: str) -> tuple[list[tuple[str, float]], str]:
-        """Distribution over the code the model outputs for ``aspect`` (before
-        dilution and slip), plus a short reason string for the trace."""
+        """Distribution of the code output for ``aspect`` (before dilution and slip) and a reason for the trace."""
         fact = view.facts.get(ex.ticket, {}).get(aspect)
         if fact is not None:
             return [(fact, 1.0)], "recalled ticket fact"
@@ -299,8 +254,7 @@ class RuleWorld:
         return [(STANDARD, 1.0)], "no applicable rule"
 
     def dilution_factor(self, view: ModuleView) -> float:
-        extra = max(0, view.n_lines - self.cfg.capacity)
-        return (1.0 - self.cfg.dilution) ** extra
+        return (1.0 - self.cfg.dilution) ** max(0, view.n_lines - self.cfg.capacity)
 
     def views(self, files: dict) -> dict[str, ModuleView]:
         return {m: self.parse_module(files.get(self.module_path(m), "")) for m in self.cfg.modules}
@@ -320,8 +274,8 @@ class RuleWorld:
         if self.cfg.scoring == "partial":
             return float(sum(pc.values()) / len(pc))
         prob = 1.0
-        for m in self.cfg.modules:
-            asp = [a for a in ex.aspects if self.aspects[a].module == m]
+        for m in self.cfg.modules:        # binary: one slip draw per module
+            asp = self._module_aspects(ex, m)
             if not asp:
                 continue
             q = 1.0
@@ -337,17 +291,16 @@ class RuleWorld:
         return float(sum(vals) / len(vals)) if vals else 0.0
 
     def simulate(self, files: dict, ex: Example, seed: int, salt: str = "") -> tuple[dict, str]:
-        """One noisy rollout: returns ({aspect: code}, trace)."""
+        """One noisy rollout: ({aspect: code}, trace)."""
         vs = self.views(files)
         rng = _h("rw", seed, ex.id, salt)
         out: dict[str, str] = {}
         lines = []
         for m in self.cfg.modules:
-            asp = [a for a in ex.aspects if self.aspects[a].module == m]
             slipped = rng.random() < self.cfg.slip
             dil = self.dilution_factor(vs[m])
             decisions = []
-            for a in asp:
+            for a in self._module_aspects(ex, m):
                 dist, why = self.outcome_dist(vs[m], ex, a)
                 u = rng.random()
                 acc, code = 0.0, dist[-1][0]
@@ -368,7 +321,6 @@ class RuleWorld:
                          ("; ".join(decisions) if decisions else "(nothing to handle)"))
         return out, "\n".join(lines)
 
-    # ---------------------------------------------------------------- helpers ---
     def seed_files(self) -> dict[str, str]:
         return {self.module_path(m): SEED_TEXT.format(module=m) for m in self.cfg.modules}
 
@@ -382,9 +334,7 @@ class RuleWorld:
                 asp = self.aspects[a]
                 if a in self.bleeds and conditioned:        # scoped so it cannot bleed
                     lines.append(self.rule_text(a, asp.codes[0], self.families))
-                elif not asp.conflict:
-                    lines.append(self.rule_text(a, asp.codes[0]))
-                elif conditioned:
+                elif asp.conflict and conditioned:
                     lines.append(self.rule_text(a, asp.codes[0], self.families[:half]))
                     lines.append(self.rule_text(a, asp.codes[1], self.families[half:]))
                 else:
@@ -393,20 +343,17 @@ class RuleWorld:
         return files
 
     def vocabulary(self, module: str) -> list[str]:
-        """Every rule line a policy could write for ``module`` (general rules for all
-        variants + conditioned variants of conflict aspects for each family half)."""
+        """Every rule line a policy could write for ``module``, incl. family-half variants of conflict aspects."""
         half = self.cfg.n_families // 2
         out = []
         for a in self.aspects_of(module):
             asp = self.aspects[a]
-            for c in asp.codes:
-                out.append(self.rule_text(a, c))
+            out += [self.rule_text(a, c) for c in asp.codes]
             if asp.conflict:
-                for fams in (self.families[:half], self.families[half:]):
-                    for c in asp.codes:
-                        out.append(self.rule_text(a, c, fams))
+                out += [self.rule_text(a, c, fams) for fams in (self.families[:half], self.families[half:])
+                        for c in asp.codes]
         return out
 
     def count_facts(self, files: dict) -> int:
-        """Number of ticket-specific lines (memorised facts / demos) in a prompt set."""
+        """Ticket-specific lines (memorised facts / demos) in a prompt set."""
         return sum(len(TICKET_RE.findall(t)) for t in files.values())

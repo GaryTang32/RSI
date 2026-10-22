@@ -1,45 +1,15 @@
-"""Evidence-Preserving Reducer (EPR): delegate reading a long log without trusting a summary.
-
-Port of ``src/sol-pi/extensions/evidence-preserving-reducer/*`` (spec B3.4 / B4.3).
-A ``tool_result`` handler, before the result enters history:
-
-* reducible results: ``bash(command)``, or ``edit``/``write`` with ``then_run``
-  (the log is the suffix after the ``[then_run:*]`` marker); the command must
-  match :data:`DIAGNOSTIC_COMMAND`; when Pi truncated a large bash output, the
-  exact full log (``/tmp/pi-bash-*.log``) is used as the body (:func:`exact_body`);
-* ``bytes(body) < 4096`` -> unchanged; ``> 600,000`` chars -> fallback
-  ``source-over-max-chars``; :data:`LIKELY_SECRET` -> ``likely-secret``;
-* the exact body is archived content-addressed (``objects/<sha[:2]>/<sha>.txt``);
-* a cheap reducer model gets :func:`reducer_instructions` (verbatim) and
-  :func:`reducer_input` (``provider.ts``: 90 s timeout, ``maxTokens = min(2048,
-  model.maxTokens)``, ``cacheRetention: "none"``); errors -> ``model-call-timeout`` /
-  ``reducer-model-unavailable`` / ``model-call-exception``; a stop reason other
-  than stop/length -> ``model-response-error``;
-* :func:`validate_receipt` accepts only a JSON receipt with the right schema,
-  source hash and status, <= 12 evidence items of allowed kinds, each quote
-  1..600 chars and an exact substring of the body (duplicates dropped); a failing
-  log with a failure signal must carry fatal/failure evidence;
-* "chars" are JavaScript string lengths (UTF-16 code units: :func:`utf16_len`) for the
-  600-char quote limit, ``maxChars`` and ``ArchiveObject.chars``; ``source_lines`` is
-  ``body.split("\n").length`` (``archive.ts``), so a log ending in ``\n`` counts the empty
-  last line;
-* the receipt text (:func:`receipt_text`) must be smaller than the source,
-  else ``receipt-not-smaller``; then the raw output is replaced by the receipt.
-
-Every step is journalled (``sol-pi-evidence-preserving-reducer-v1`` entries).
-Reducers provided: :class:`DeterministicReducer` (extracts failure lines),
-:class:`MockReducer` (injects hallucinations at rate ``h``), :class:`LLMReducer`
-(any :class:`rsi.core.LLM`, e.g. ``claude -p``).
-"""
+"""Evidence-Preserving Reducer (EPR): a cheap model's receipt replaces a long log only if every quote is verbatim."""
 from __future__ import annotations
 
+import concurrent.futures as cf
 import hashlib
 import json
 import random
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Optional, Protocol
 
+from .fusion import THEN_RUN_FAILED, THEN_RUN_SUCCEEDED
 from .meter import estimate_tokens
 from .runtime import AgentRuntime, Extension, ToolResult, ToolResultEvent
 
@@ -65,8 +35,6 @@ DIAGNOSTIC_COMMAND = re.compile(
 FAILURE_SIGNAL = re.compile(r"error|failed|failure|fatal|exception|panic|timeout|unsolved|type mismatch|assert", re.I)
 LIKELY_SECRET = re.compile(r"(?:api[_-]?key|authorization|bearer|access[_-]?token|secret)[^\n]{0,32}[=:][^\n]+", re.I)
 STORE_PREFIX = "/.solpi/evidence-preserving-reducer/objects/"
-THEN_RUN_SUCCEEDED = "[then_run:succeeded]"
-THEN_RUN_FAILED = "[then_run:failed]"
 
 
 def sha256(text: str) -> str:
@@ -74,12 +42,12 @@ def sha256(text: str) -> str:
 
 
 def utf16_len(text: str) -> int:
-    """JavaScript ``String.length``: UTF-16 code units (an astral character such as an emoji counts 2)."""
+    """JavaScript ``String.length`` (UTF-16 code units)."""
     return len(text.encode("utf-16-le", "surrogatepass")) // 2
 
 
 def source_lines(body: str) -> int:
-    """``archive.ts``: ``body.length === 0 ? 0 : body.split("\n").length``."""
+    """Line count as ``archive.ts`` counts it (a trailing newline adds an empty line)."""
     return 0 if not body else len(body.split("\n"))
 
 
@@ -123,7 +91,7 @@ def _line_of(body: str, quote: str) -> Optional[int]:
 
 
 def validate_receipt(raw: str, archive: ArchiveObject, body: str, is_error: bool) -> tuple[bool, Any]:
-    """``(True, {status, uncertain, evidence[{kind, line, quote, quote_sha256}]})`` or ``(False, reason)``."""
+    """``(True, {status, uncertain, evidence})`` or ``(False, fallback reason)``."""
     try:
         parsed = json.loads(raw)
     except (json.JSONDecodeError, TypeError):
@@ -137,15 +105,13 @@ def validate_receipt(raw: str, archive: ArchiveObject, body: str, is_error: bool
         return False, "schema-mismatch"
     out, seen = [], set()
     for item in ev:
-        kind = item.get("kind") if isinstance(item, dict) else None
-        quote = item.get("quote") if isinstance(item, dict) else None
+        kind, quote = (item.get("kind"), item.get("quote")) if isinstance(item, dict) else (None, None)
         if (not isinstance(kind, str) or kind not in EVIDENCE_KINDS or not isinstance(quote, str)
-                or utf16_len(quote) < 1 or utf16_len(quote) > MAX_QUOTE_CHARS or quote not in body):
+                or not 1 <= utf16_len(quote) <= MAX_QUOTE_CHARS or quote not in body):
             return False, "unverifiable-quote"
-        key = (kind, quote)
-        if key in seen:
+        if (kind, quote) in seen:
             continue
-        seen.add(key)
+        seen.add((kind, quote))
         out.append({"kind": kind, "line": _line_of(body, quote), "quote": quote, "quote_sha256": sha256(quote)})
     if is_error and FAILURE_SIGNAL.search(body) and not any(e["kind"] in ("fatal", "failure") for e in out):
         return False, "missing-failure-evidence"
@@ -157,17 +123,13 @@ def receipt_text(command: str, archive: ArchiveObject, v: dict, provider: str, m
              f"command_sha256={sha256(command)}", f"source_sha256={archive.hash}", f"source_bytes={archive.bytes}",
              f"source_lines={archive.lines}", f"source_artifact={archive.path}", f"reducer_provider={provider}",
              f"reducer_model={model}", f"reducer_total_tokens={total_tokens}", "verified_evidence:"]
-    for e in v["evidence"]:
-        lines.append(f"- kind={e['kind']} line={e['line']} quote_sha256={e['quote_sha256']} "
-                     f"quote={json.dumps(e['quote'])}")
-    if not v["evidence"]:
-        lines.append("- none")
+    lines += [f"- kind={e['kind']} line={e['line']} quote_sha256={e['quote_sha256']} quote={json.dumps(e['quote'])}"
+              for e in v["evidence"]] or ["- none"]
     lines += ["authority=Sol retains diagnosis, repair, rerun, and pass/fail adjudication",
               "readback=use bash with an explicit byte or line range on source_artifact when exact context is needed"]
     return "\n".join(lines)
 
 
-# ------------------------------------------------------------------ reducer models
 @dataclass
 class ReducerResponse:
     text: str
@@ -224,9 +186,7 @@ class DeterministicReducer:
 
 
 class MockReducer(DeterministicReducer):
-    """A fluent-but-fallible reducer: with probability ``h`` per call it corrupts its
-    receipt the way LLM reducers do (a paraphrased quote, an invented line, a dropped
-    failure, a wrong status or hash, broken JSON). Deterministic given ``seed``."""
+    """With probability ``h`` per call, corrupts its receipt the way LLM reducers do (seeded)."""
 
     model = "mock-hallucinating-reducer"
     MODES = ("paraphrase", "invent", "drop_failure", "wrong_status", "wrong_hash", "bad_json")
@@ -235,17 +195,15 @@ class MockReducer(DeterministicReducer):
         super().__init__()
         self.h = h
         self.rng = random.Random(f"mock-reducer|{seed}")
-        self.injected: list[str] = []
 
     def reduce(self, system, user, max_tokens, *, body, archive, is_error):
         r = self.receipt(body, archive, is_error)
         if self.rng.random() < self.h:
             mode = self.rng.choice(self.MODES)
-            self.injected.append(mode)
             ev = r["evidence"]
             if mode == "paraphrase" and ev:
-                e = ev[0]
-                e["quote"] = re.sub(r"\s+", " ", e["quote"]).replace("error", "Error").replace(":", " -") + " (see above)"
+                q = re.sub(r"\s+", " ", ev[0]["quote"])
+                ev[0]["quote"] = q.replace("error", "Error").replace(":", " -") + " (see above)"
             elif mode == "invent":
                 ev.insert(0, {"kind": "failure", "quote": "FAILED: 1 test failed due to a flaky network timeout"})
             elif mode == "drop_failure":
@@ -261,8 +219,7 @@ class MockReducer(DeterministicReducer):
         return ReducerResponse(text, "stop", estimate_tokens(system + user), estimate_tokens(text))
 
 
-#: provider stop reasons -> Pi's ``AssistantMessage.stopReason`` (pi-ai's Anthropic ``mapStopReason``; only "stop"
-#: and "length" are ok in provider.ts). A backend that reports none (None) is treated as a normal stop.
+#: provider stop reason -> Pi's ``stopReason`` (pi-ai ``mapStopReason``); provider.ts accepts only stop and length
 _STOP_REASONS = {None: "stop", "": "stop", "end_turn": "stop", "stop_sequence": "stop", "pause_turn": "stop",
                  "stop": "stop", "max_tokens": "length", "length": "length", "model_context_window_exceeded": "length",
                  "tool_use": "toolUse", "toolUse": "toolUse", "refusal": "error", "sensitive": "error",
@@ -270,13 +227,7 @@ _STOP_REASONS = {None: "stop", "": "stop", "end_turn": "stop", "stop_sequence": 
 
 
 class LLMReducer:
-    """Any :class:`rsi.core.LLM` as the reducer (e.g. ``ClaudeCLI("haiku")``), called like ``provider.ts``:
-
-    * the call runs under a ``timeout_s`` (90 s) deadline; a late reply is a ``model-call-timeout`` fallback;
-    * ``max_tokens = min(requested, llm.max_tokens)`` when the backend declares a limit;
-    * the backend's stop reason (``resp.raw["stop_reason"]``, kept on cache hits) is mapped to Pi's
-      ``stopReason``, so e.g. a refusal becomes ``model-response-error`` instead of a silent "stop".
-    Backends expose no cache-retention knob; the reducer never shares a session prefix (one call per log)."""
+    """Any :class:`rsi.core.LLM` as the reducer, called like ``provider.ts`` (deadline, max_tokens, stop reason)."""
 
     provider = "llm"
 
@@ -293,7 +244,6 @@ class LLMReducer:
         return min(requested, int(lim)) if isinstance(lim, (int, float)) and lim > 0 else requested
 
     def _call(self, system, user, max_tokens):
-        import concurrent.futures as cf
         ex = cf.ThreadPoolExecutor(max_workers=1)
         fut = ex.submit(self.llm.complete, user, system=system, max_tokens=max_tokens, role="reducer")
         try:
@@ -302,7 +252,6 @@ class LLMReducer:
             ex.shutdown(wait=False)
 
     def reduce(self, system, user, max_tokens, *, body, archive, is_error):
-        import concurrent.futures as cf
         try:
             resp = self._call(system, user, self.max_tokens_for(max_tokens))
         except cf.TimeoutError:
@@ -319,7 +268,6 @@ class LLMReducer:
         return ReducerResponse(text, stop, resp.usage.input_tokens, resp.usage.output_tokens)
 
 
-# ------------------------------------------------------------------ the extension
 @dataclass
 class Reducible:
     command: str
@@ -333,10 +281,7 @@ PI_TMPDIR = "/tmp"
 
 
 def exact_body(inline: str, details: Optional[dict], store: Optional[dict]) -> str:
-    """``candidate.ts:exactBodyFromInline``: prefer the untruncated file Pi wrote for a large bash
-    result (``details.fullOutputPath`` or the inline ``Full output: <path>`` note) so evidence is
-    checked against the exact bytes the command produced, not a truncated preview. The path must be a
-    ``pi-bash-*.log`` directly in the temp dir (the runtime's store stands in for the file system)."""
+    """``candidate.ts:exactBodyFromInline``: the untruncated ``/tmp/pi-bash-*.log`` of a large bash result, if any."""
     path = (details or {}).get("fullOutputPath")
     if not isinstance(path, str):
         m = FULL_OUTPUT_INLINE.search(inline)
@@ -369,10 +314,9 @@ def reducible_tool_result(ev: ToolResultEvent, store: Optional[dict] = None) -> 
         return None
     start = i + len(marker)
     suffix = content[start:]
-    sep = re.match(r"^(?:\r?\n)+", suffix)
-    sep_s = sep.group(0) if sep else "\n"
-    body = suffix[len(sep.group(0)):] if sep else suffix
-    return Reducible(cmd, exact_body(body, ev.result.details, store), lambda receipt: content[:start] + sep_s + receipt)
+    m = re.match(r"^(?:\r?\n)+", suffix)
+    sep, body = (m.group(0), suffix[m.end():]) if m else ("\n", suffix)
+    return Reducible(cmd, exact_body(body, ev.result.details, store), lambda receipt: content[:start] + sep + receipt)
 
 
 class EvidencePreservingReducer(Extension):
@@ -386,7 +330,7 @@ class EvidencePreservingReducer(Extension):
         self.max_chars = max_chars
         self.max_output_tokens = max_output_tokens
         self.journal: list[dict] = []
-        self.receipts: list[dict] = []    # accepted receipts (for S3 audits)
+        self.receipts: list[dict] = []    # accepted receipts (for audits)
 
     def register(self, rt: AgentRuntime) -> None:
         rt.on("tool_result", self._on_result)
@@ -427,9 +371,7 @@ class EvidencePreservingReducer(Extension):
         if LIKELY_SECRET.search(body):
             self._fallback(rt, "likely-secret", sourceBytes=nbytes)
             return None
-        # archive.ts throws on an integrity failure; Pi's extension runner catches a throwing tool_result handler,
-        # keeps the original result and reports an extension error - our runtime does the same
-        # (``tool_result_handler_error`` entry). No journal "fallback" is written for it (the release writes none).
+        # an archive integrity failure raises: the runtime keeps the original result (no journal fallback, as in Pi)
         archive = self._archive(rt, body)
         is_error = ev.result.is_error
         self._log(rt, "candidate", toolCallId=ev.call.id, commandSha256=sha256(r.command), sourceSha256=archive.hash,

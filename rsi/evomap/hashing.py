@@ -1,15 +1,4 @@
-"""Content addressing compatible with GEP schema 1.14.0 (spec §4.1).
-
-``asset_id(x) = "sha256:" + hex(SHA256_utf8(canonicalize(x without "asset_id")))``
-
-:func:`canonicalize` reproduces the JavaScript reference (``@evomap/gep-sdk``
-``src/contentHash.js``, Apache-2.0) byte for byte, including JavaScript's number
-formatting (``1.0 -> "1"``, ``1e-7 -> "1e-7"``, ``1e21 -> "1e+21"``), so ids
-computed here agree with ids computed by other GEP-compatible runtimes.
-
-Keys whose value is ``None`` *do* change the hash (they canonicalize to
-``null``); producers must omit absent fields rather than send ``None``.
-"""
+"""GEP 1.14.0 content addressing: ``asset_id = "sha256:" + hex(sha256(canonicalize(x without asset_id)))``."""
 from __future__ import annotations
 
 import hashlib
@@ -23,29 +12,23 @@ ASSET_ID_PREFIX = "sha256:"
 
 
 def _js_number(x: float) -> str:
-    """``String(x)`` for a JavaScript number (ECMA-262 Number::toString)."""
-    if isinstance(x, bool):  # pragma: no cover - handled by caller
-        return "true" if x else "false"
+    """JavaScript ``String(x)`` (ECMA-262 Number::toString)."""
     if isinstance(x, int):
-        # A JavaScript number is an IEEE double: integers print exactly only below
-        # 1e21 and are rounded to the nearest double above 2**53 (N5b). Convert the
-        # way JSON.parse would, so the id matches @evomap/gep-sdk.
         if abs(x) < 2 ** 53:
             return str(x)
-        try:
+        try:  # a JS number is a double: large ints round as JSON.parse would
             x = float(x)
-        except OverflowError:       # beyond Number.MAX_VALUE: Infinity -> "null"
+        except OverflowError:
             return "null"
     if not math.isfinite(x):
         return "null"
     if x == 0:
         return "0"
     sign = "-" if x < 0 else ""
-    d = Decimal(repr(abs(x)))
-    tup = d.normalize().as_tuple()
+    tup = Decimal(repr(abs(x))).normalize().as_tuple()
     digits = "".join(str(t) for t in tup.digits)
     k = len(digits)
-    n = tup.exponent + k            # position of the decimal point
+    n = tup.exponent + k  # decimal point position
     if k <= n <= 21:
         return sign + digits + "0" * (n - k)
     if 0 < n <= 21:
@@ -60,15 +43,12 @@ def _js_number(x: float) -> str:
 
 
 def _utf16_key(s: str) -> bytes:
-    """Sort key giving JavaScript's default string order (UTF-16 code units).
-
-    Big-endian UTF-16 bytes compare exactly like the code-unit sequence.
-    ``surrogatepass`` keeps lone surrogates sortable."""
+    # JS sorts keys by UTF-16 code units; big-endian UTF-16 bytes compare the same way
     return s.encode("utf-16-be", "surrogatepass")
 
 
 def canonicalize(obj: Any) -> str:
-    """Deterministic JSON text: sorted keys, no whitespace, JS number/string rules."""
+    """Deterministic JSON text matching the reference ``contentHash.js`` byte for byte."""
     if obj is None:
         return "null"
     if isinstance(obj, bool):
@@ -80,8 +60,6 @@ def canonicalize(obj: Any) -> str:
     if isinstance(obj, (list, tuple)):
         return "[" + ",".join(canonicalize(v) for v in obj) + "]"
     if isinstance(obj, dict):
-        # Array.prototype.sort() compares UTF-16 code units, not code points (N5a):
-        # an astral character (surrogate pair D800-DFFF) sorts before U+E000-U+FFFF.
         keys = sorted((str(k) for k in obj), key=_utf16_key)
         lookup = {str(k): v for k, v in obj.items()}
         return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + canonicalize(lookup[k]) for k in keys) + "}"
@@ -91,7 +69,6 @@ def canonicalize(obj: Any) -> str:
 
 
 def asset_id(obj: Any, exclude: Iterable[str] = ("asset_id",)) -> str:
-    """``sha256:<hex>`` over the canonical form of ``obj`` minus ``exclude`` keys."""
     d = obj.to_dict() if hasattr(obj, "to_dict") else obj
     if not isinstance(d, dict):
         raise TypeError("asset_id needs a dict-like asset")
@@ -101,15 +78,13 @@ def asset_id(obj: Any, exclude: Iterable[str] = ("asset_id",)) -> str:
 
 
 def verify_asset_id(obj: Any) -> bool:
-    """True iff ``obj["asset_id"]`` equals the recomputed id."""
     d = obj.to_dict() if hasattr(obj, "to_dict") else obj
     claimed = d.get("asset_id") if isinstance(d, dict) else None
     return isinstance(claimed, str) and claimed == asset_id(d)
 
 
 def hub_capsule_asset_id(capsule: dict) -> str:
-    """Hub-side capsule id: only ``outcome.status`` and ``outcome.score`` take part
-    in the hash (``outcome.notes`` / ``outcome.details`` are stripped) [spec §2.2]."""
+    """Hub-side capsule id: only ``outcome.status`` and ``outcome.score`` are hashed (spec §2.2)."""
     c = dict(capsule)
     if isinstance(c.get("outcome"), dict):
         o = c["outcome"]

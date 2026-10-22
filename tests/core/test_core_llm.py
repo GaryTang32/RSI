@@ -1,13 +1,11 @@
-"""rsi.core.llm: usage metering, MockLLM, CachedLLM, get_llm, ClaudeCLI (against a
-fake ``claude`` executable, fully offline) and the text-parsing helpers."""
+"""rsi.core.llm: usage metering, MockLLM, CachedLLM, get_llm, ClaudeCLI against a fake ``claude`` executable, and the
+text-parsing helpers."""
 from __future__ import annotations
 
 import json
-import os
 import stat
 import sys
-import threading
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -17,15 +15,16 @@ from rsi.core import (LLM, CachedLLM, ClaudeCLI, LLMResponse, MockLLM, Usage, Us
 from rsi.core.llm import estimate_tokens, resolve_model
 
 
-# ------------------------------------------------------------------ Usage / meter
+def _in_threads(n: int, work) -> list:
+    with ThreadPoolExecutor(n) as pool:
+        return list(pool.map(lambda _: work(), range(n)))
+
+
 def test_usage_add_and_total_tokens():
-    a = Usage(1, 10, 5, 0.25, 1.0)
-    b = Usage(2, 1, 2, 0.5, 0.5)
-    c = a + b
+    c = Usage(1, 10, 5, 0.25, 1.0) + Usage(2, 1, 2, 0.5, 0.5)
     assert (c.calls, c.input_tokens, c.output_tokens) == (3, 11, 7)
     assert c.cost_usd == pytest.approx(0.75) and c.latency_s == pytest.approx(1.5)
-    assert c.total_tokens == 18
-    assert c.to_dict()["total_tokens"] == 18
+    assert c.total_tokens == 18 and c.to_dict()["total_tokens"] == 18
 
 
 def test_usage_meter_roles_snapshot_reset():
@@ -35,8 +34,7 @@ def test_usage_meter_roles_snapshot_reset():
     m.add("proposer", Usage(1, 100, 50, 1.0))
     snap = m.snapshot()
     assert snap["task"]["calls"] == 2 and snap["task"]["input_tokens"] == 20
-    assert snap["_total"]["calls"] == 3
-    assert snap["_total"]["cost_usd"] == pytest.approx(1.2)
+    assert snap["_total"]["calls"] == 3 and snap["_total"]["cost_usd"] == pytest.approx(1.2)
     assert m.total().total_tokens == 20 + 2 + 150
     m.reset()
     assert m.total().calls == 0 and m.snapshot() == {"_total": Usage().to_dict()}
@@ -49,11 +47,7 @@ def test_usage_meter_is_thread_safe():
         for _ in range(2000):
             m.add("r", Usage(1, 1, 1, 0.0))
 
-    ts = [threading.Thread(target=work) for _ in range(8)]
-    for t in ts:
-        t.start()
-    for t in ts:
-        t.join()
+    _in_threads(8, work)
     assert m.total().calls == 16000
 
 
@@ -64,7 +58,6 @@ def test_estimate_tokens_and_model_aliases():
     assert resolve_model("my-custom-model") == "my-custom-model"
 
 
-# ------------------------------------------------------------------------ MockLLM
 def test_mock_llm_default_and_responder_arguments():
     assert MockLLM().complete("hi").text == "OK"
     seen = []
@@ -82,32 +75,18 @@ def test_mock_llm_default_and_responder_arguments():
     assert [c["reply"] for c in m.calls] == [r0.text, r1.text]
     snap = m.meter.snapshot()
     assert snap["task"]["calls"] == 1 and snap["proposer"]["calls"] == 1
-    # usage is estimated from text length, so cost rules see realistic token counts
-    assert r0.usage.input_tokens == estimate_tokens("s" + "p")
+    assert r0.usage.input_tokens == estimate_tokens("s" + "p")     # estimated from text, so cost rules see tokens
     assert r0.usage.output_tokens == estimate_tokens(r0.text)
 
 
 def test_mock_llm_threaded_call_indices_unique():
     m = MockLLM(lambda p, s, seed, i: str(i))
-    outs = []
-    lock = threading.Lock()
-
-    def work():
-        for _ in range(50):
-            r = m.complete("x")
-            with lock:
-                outs.append(int(r.text))
-
-    ts = [threading.Thread(target=work) for _ in range(6)]
-    for t in ts:
-        t.start()
-    for t in ts:
-        t.join()
-    assert sorted(outs) == list(range(300))
+    outs = _in_threads(6, lambda: [int(m.complete("x").text) for _ in range(50)])
+    assert sorted(i for chunk in outs for i in chunk) == list(range(300))
 
 
 class _Priced(MockLLM):
-    """Mock that reports a dollar cost per call and can be switched to fail."""
+    """Reports a dollar cost per call and can be switched to fail."""
 
     def __init__(self, cost=0.5, fail=False):
         super().__init__(lambda p, s, seed, i: f"reply to {p} #{seed}", name="priced")
@@ -121,12 +100,10 @@ class _Priced(MockLLM):
         return r
 
 
-# ---------------------------------------------------------------------- CachedLLM
 def test_cached_llm_miss_then_hit(tmp_path):
     inner = _Priced()
     c = CachedLLM(inner, tmp_path)
-    r1 = c.complete("hello", seed=1, role="task")
-    r2 = c.complete("hello", seed=1, role="task")
+    r1, r2 = c.complete("hello", seed=1, role="task"), c.complete("hello", seed=1, role="task")
     assert r1.text == r2.text
     assert len(inner.calls) == 1, "second call must be served from disk"
     assert (c.hits, c.misses) == (1, 1)
@@ -137,8 +114,7 @@ def test_cached_llm_miss_then_hit(tmp_path):
     assert snap["task"]["calls"] == 1 and snap["task"]["cost_usd"] == pytest.approx(0.5)
     assert snap["task:cached"]["calls"] == 0 and snap["task:cached"]["cost_usd"] == 0.0
     assert snap["task:cached"]["output_tokens"] == r1.usage.output_tokens
-    # totals report real spend only (bug fix: cached hits used to re-count their original dollars)
-    assert c.meter.total().cost_usd == pytest.approx(0.5) and c.meter.total().calls == 1
+    assert c.meter.total().cost_usd == pytest.approx(0.5) and c.meter.total().calls == 1   # real spend only
     assert c.saved.total().cost_usd == pytest.approx(0.5)
 
 
@@ -154,12 +130,12 @@ def test_cached_llm_key_components(tmp_path):
     inner = _Priced()
     c = CachedLLM(inner, tmp_path)
     c.complete("p", seed=0)
-    c.complete("p", seed=1)                  # seed distinguishes repeated samples
-    c.complete("p", seed=0, system="sys")    # system prompt is part of the key
-    c.complete("p", seed=0, max_tokens=5)    # so is max_tokens
-    assert len(inner.calls) == 4
+    c.complete("p", seed=1)
+    c.complete("p", seed=0, system="sys")
+    c.complete("p", seed=0, max_tokens=5)
+    assert len(inner.calls) == 4                 # seed, system prompt and max_tokens are all part of the key
     other = _Priced()
-    other.name = "other-model"               # and the inner backend's name
+    other.name = "other-model"                   # and so is the inner backend's name
     CachedLLM(other, tmp_path).complete("p", seed=0)
     assert len(other.calls) == 1
 
@@ -169,16 +145,13 @@ def test_cached_llm_does_not_cache_errors(tmp_path):
     c = CachedLLM(inner, tmp_path)
     assert not c.complete("p").ok
     inner.fail = False
-    assert c.complete("p").ok
-    assert len(inner.calls) == 2
+    assert c.complete("p").ok and len(inner.calls) == 2
     assert c.complete("p").ok and len(inner.calls) == 2
 
 
 def test_cached_llm_journal_lists_only_the_entries_it_wrote(tmp_path):
-    inner = _Priced()
-    cache = tmp_path / ".cache_run"
+    inner, cache, j = _Priced(), tmp_path / ".cache_run", tmp_path / "run" / "cache_writes.txt"
     CachedLLM(_Priced(), cache).complete("old", seed=0)          # written by someone else, before
-    j = tmp_path / "run" / "cache_writes.txt"
     c = CachedLLM(inner, cache, journal=j)
     c.complete("old", seed=0)                                    # a hit: not this object's write
     c.complete("new", seed=0)
@@ -202,29 +175,12 @@ def test_cached_llm_corrupt_entry_is_a_miss(tmp_path):
 
 
 def test_cached_llm_concurrent_writers_same_key(tmp_path):
-    """Bug fix: concurrent misses on one key used to race on a shared temp file
-    (FileNotFoundError inside the harness -> a spurious failed trial)."""
     c = CachedLLM(MockLLM(lambda p, s, seed, i: "R" * 2000), tmp_path)
-    errors = []
-
-    def work():
-        try:
-            for k in range(60):
-                c.complete(f"prompt {k}", seed=0)
-        except Exception as e:  # noqa: BLE001
-            errors.append(repr(e))
-
-    ts = [threading.Thread(target=work) for _ in range(8)]
-    for t in ts:
-        t.start()
-    for t in ts:
-        t.join()
-    assert errors == []
+    _in_threads(8, lambda: [c.complete(f"prompt {k}", seed=0) for k in range(60)])   # raises on any error
     assert not list(tmp_path.rglob("*.tmp"))
     assert c.hits + c.misses == 480
 
 
-# ------------------------------------------------------------------------ get_llm
 def test_get_llm_specs(tmp_path, monkeypatch):
     assert isinstance(get_llm("mock"), MockLLM)
     cli = get_llm("claude:haiku", timeout_s=5)
@@ -243,7 +199,6 @@ def test_base_llm_is_abstract():
         LLM().complete("x")
 
 
-# ---------------------------------------------------- ClaudeCLI vs a fake executable
 FAKE_CLAUDE = r'''
 import json, os, sys, time
 from pathlib import Path
@@ -285,6 +240,7 @@ elif mode == "sleep":
 
 @pytest.fixture
 def fake_claude(tmp_path, monkeypatch):
+    """(path of a fake ``claude`` executable, function returning the calls it logged)."""
     exe = tmp_path / "fake_claude"
     exe.write_text(f"#!{sys.executable}\n" + FAKE_CLAUDE)
     exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
@@ -292,11 +248,11 @@ def fake_claude(tmp_path, monkeypatch):
     monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
     monkeypatch.setenv("FAKE_CLAUDE_COUNTER", str(tmp_path / "counter"))
     monkeypatch.setattr(llm_mod.time, "sleep", lambda s: None)  # no real backoff in tests
+    return str(exe), lambda: [json.loads(l) for l in log.read_text().splitlines()] if log.exists() else []
 
-    def calls():
-        return [json.loads(l) for l in log.read_text().splitlines()] if log.exists() else []
 
-    return str(exe), calls
+def _flag(argv: list[str], name: str) -> str:
+    return argv[argv.index(name) + 1]
 
 
 def test_claude_cli_parses_usage_and_cost(fake_claude):
@@ -304,14 +260,13 @@ def test_claude_cli_parses_usage_and_cost(fake_claude):
     cli = ClaudeCLI("haiku", executable=exe, retries=1)
     r = cli.complete("hello", system="be brief", role="task")
     assert r.ok and r.text == "fake reply" and r.model == resolve_model("haiku")
-    # cache read/creation tokens count as input tokens
-    assert r.usage.input_tokens == 16 and r.usage.output_tokens == 3
+    assert r.usage.input_tokens == 16 and r.usage.output_tokens == 3      # cache read/creation tokens are input
     assert r.usage.cost_usd == pytest.approx(0.0012) and r.usage.calls == 1
     assert cli.meter.snapshot()["task"]["cost_usd"] == pytest.approx(0.0012)
     argv = calls()[0]["argv"]
-    assert argv[0] == "-p" and argv[argv.index("--model") + 1] == resolve_model("haiku")
-    assert argv[argv.index("--system-prompt") + 1] == "be brief"
-    assert argv[argv.index("--tools") + 1] == ""          # plain completions get no tools
+    assert argv[0] == "-p" and _flag(argv, "--model") == resolve_model("haiku")
+    assert _flag(argv, "--system-prompt") == "be brief"
+    assert _flag(argv, "--tools") == ""                 # plain completions get no tools
     assert "--no-session-persistence" in argv and "--strict-mcp-config" in argv
     assert calls()[0]["prompt"] == "hello"
 
@@ -331,9 +286,7 @@ def test_claude_cli_list_output_and_errors(fake_claude):
 
 
 def test_claude_cli_timeout(fake_claude):
-    exe, _ = fake_claude
-    cli = ClaudeCLI("haiku", executable=exe, retries=1, timeout_s=0.5)
-    r = cli.complete("@@mode sleep")
+    r = ClaudeCLI("haiku", executable=fake_claude[0], retries=1, timeout_s=0.5).complete("@@mode sleep")
     assert not r.ok and r.error == "timeout"
 
 
@@ -346,17 +299,14 @@ def test_claude_cli_run_agent_command(fake_claude, tmp_path):
     assert r.ok and (work / "x.txt").read_text() == "hi"
     c = calls()[-1]
     assert c["cwd"] == str(work)
-    argv = c["argv"]
-    assert argv[argv.index("--tools") + 1] == "Read,Edit"
-    assert argv[argv.index("--permission-mode") + 1] == "acceptEdits"
-    assert argv[argv.index("--add-dir") + 1] == str(work)
-    assert argv[argv.index("--effort") + 1] == "low"
+    assert _flag(c["argv"], "--tools") == "Read,Edit" and _flag(c["argv"], "--permission-mode") == "acceptEdits"
+    assert _flag(c["argv"], "--add-dir") == str(work) and _flag(c["argv"], "--effort") == "low"
     assert cli.meter.snapshot()["agent"]["calls"] == 1
 
 
-# ---------------------------------------------------------------- text parsing
 def test_extract_code_blocks_and_code():
-    text = "intro\n```python\nx = 1\n```\nmid\n```js\nlet y = 2;\n```\n```\nplain\n```\n```python title\nlonger = 2\n```"
+    text = ("intro\n```python\nx = 1\n```\nmid\n```js\nlet y = 2;\n```\n```\nplain\n```\n"
+            "```python title\nlonger = 2\n```")
     assert extract_code_blocks(text) == ["x = 1\n", "let y = 2;\n", "plain\n", "longer = 2\n"]
     assert extract_code_blocks(text, "PYTHON") == ["x = 1\n", "longer = 2\n"]
     assert extract_code(text) == "longer = 2\n"                   # longest python block
@@ -371,17 +321,13 @@ def test_extract_json_variants():
     assert extract_json('prefix {"a": {"b": "}"}, "c": [1]} suffix') == {"a": {"b": "}"}, "c": [1]}
     assert extract_json('escaped {"q": "say \\"hi\\" {"} end') == {"q": 'say "hi" {'}
     assert extract_json("list only: [1, 2, 3]") == [1, 2, 3]
-    # objects are preferred over arrays (callers expect a header object)
-    assert extract_json('steps [1] then {"verdict": "accept"}') == {"verdict": "accept"}
-    # a broken candidate is skipped in favour of a later valid one
-    assert extract_json('{not json} and {"ok": true}') == {"ok": True}
-    # a fenced scalar does not shadow a later object; alone it is still returned
-    assert extract_json('```\n42\n```\n{"a": 1}') == {"a": 1}
+    assert extract_json('steps [1] then {"verdict": "accept"}') == {"verdict": "accept"}   # objects over arrays
+    assert extract_json('{not json} and {"ok": true}') == {"ok": True}                    # a broken one is skipped
+    assert extract_json('```\n42\n```\n{"a": 1}') == {"a": 1}     # a fenced scalar does not shadow an object
     assert extract_json("```\n42\n```") == 42
-    with pytest.raises(ValueError):
-        extract_json("nothing here")
-    with pytest.raises(ValueError):
-        extract_json(None)
+    for bad in ("nothing here", None):
+        with pytest.raises(ValueError):
+            extract_json(bad)
 
 
 def test_extract_tag():

@@ -1,34 +1,4 @@
-"""SoL-Pi acceptance: a predeclared dual gate and a one-way held-out firewall.
-
-``accept(c) <=> for all capability metrics j: m_j(c) within tau_j of m_j(base)
-and exists efficiency metric k: e_k(c) better than e_k(base)``, then "among
-candidates that pass the capability floor, the loop retains nondominated results"
-[blog: Capability floors]. The gate spec is *predeclared*: a frozen dataclass whose
-digest is recorded, and "kept isolated from the optimizing agent's control".
-
-Capability metrics (predeclared, default): ``score`` - the mean task score - AND ``solved`` -
-the share of trials that reach full score (the resolve rate), both within tau = 2 % relative.
-"Efficiency has its own shortcut: an agent can spend fewer tokens by doing less. So capability
-works as a gate. Every capability metric must stay within a tolerance declared before the search
-starts" [ye-blog]. A do-less shortcut concentrates its loss: a 24-turn cap leaves 2-3 of 24 tasks
-unfinished (solved 0.875-0.917) while partial credit keeps the mean at >= 0.983, inside a
-score-only 2 % floor (claims audit L4 / S6). ``GateSpec(capability=(("score", 0.02),))`` is the
-former score-only floor (explicit option).
-
-Modes (spec B3.1 note - the sources describe an aggregate gate; "survives
-everywhere" read literally is the per-family option):
-
-* ``aggregate``      - capability and efficiency on the pooled training screen (faithful);
-* ``per_family``     - capability within tolerance in EVERY family, aggregate efficiency
-                       gain, no family's efficiency worse by more than ``family_regression_tol``
-                       and (optional) gains in at least ``min_improved_frac`` of families;
-* ``efficiency_only``- any efficiency gain, no capability floor (S6's naive objective);
-* ``eta_better``     - keep iff eta = cost/score improves (single-number keep-if-better).
-
-:class:`HoldoutFirewall` evaluates *frozen* candidates on the sealed held-out split
-and returns only pass/fail to the driver; results go to a write-only sink that no
-lineage can read; a failure rejects without becoming feedback.
-"""
+"""SoL-Pi acceptance: a predeclared dual gate (capability floor AND efficiency gain) and a one-way held-out firewall."""
 from __future__ import annotations
 
 import hashlib
@@ -44,23 +14,22 @@ from ..core.evaluate import EvalResult, Evaluator
 from ..core.gates import DualGate as CoreDualGate
 from ..core.gates import Scored
 
-EFFICIENCY_METRICS = ("tokens", "cost", "steps")
-
-
 SOLVED_EPS = 1e-9
+METRICS = ("score", "solved", "tokens", "cost", "steps")
 
 
 @dataclass(frozen=True)
 class GateSpec:
-    #: every capability metric within its tolerance: mean score AND the fully-solved rate (see module docstring)
+    """Predeclared gate. Modes: aggregate | per_family (floor in every family) | efficiency_only | eta_better."""
+
     capability: tuple[tuple[str, float], ...] = (("score", 0.02), ("solved", 0.02))
     efficiency: tuple[str, ...] = ("tokens", "cost")
     min_gain: float = 0.02                       # min relative improvement of an efficiency metric
-    mode: str = "aggregate"                      # aggregate | per_family | efficiency_only | eta_better
+    mode: str = "aggregate"
     tolerance_kind: str = "relative"             # relative | absolute
     min_improved_frac: float = 0.0               # per_family: share of families whose efficiency must improve
     family_regression_tol: float = 0.05          # per_family: max relative efficiency regression in any family
-    families: Optional[tuple[str, ...]] = None   # restrict the screen to these families (single-env protocols)
+    families: Optional[tuple[str, ...]] = None   # restrict the screen to these families
 
     def digest(self) -> str:
         return hashlib.sha256(json.dumps(asdict(self), sort_keys=True).encode()).hexdigest()[:16]
@@ -82,7 +51,7 @@ def metrics_from_eval(ev: EvalResult, families: Optional[Iterable[str]] = None) 
     fams = set(families) if families else None
     rows: dict[str, list[dict]] = {}
     allrows = []
-    for tid, trs in ev.trials.items():
+    for trs in ev.trials.values():
         for t in trs:
             if fams is not None and t.family not in fams:
                 continue
@@ -91,10 +60,10 @@ def metrics_from_eval(ev: EvalResult, families: Optional[Iterable[str]] = None) 
             rows.setdefault(t.family, []).append(r)
             allrows.append(r)
 
-    def mean(rs):
+    def mean(rs: list[dict]) -> dict[str, float]:
         if not rs:
-            return {k: float("nan") for k in ("score", "solved", "tokens", "cost", "steps", "eta")}
-        m = {k: float(np.mean([r[k] for r in rs])) for k in ("score", "solved", "tokens", "cost", "steps")}
+            return {k: float("nan") for k in (*METRICS, "eta")}
+        m = {k: float(np.mean([r[k] for r in rs])) for k in METRICS}
         m["eta"] = m["cost"] / m["score"] if m["score"] > 0 else float("inf")
         return m
 
@@ -115,9 +84,7 @@ class GateResult:
 
 
 def _within(base: float, cand: float, tol: float, kind: str) -> bool:
-    if kind == "relative":
-        return cand >= base * (1 - tol) - 1e-12
-    return cand >= base - tol - 1e-12
+    return cand >= (base * (1 - tol) if kind == "relative" else base - tol) - 1e-12
 
 
 def _saving(base: float, cand: float) -> float:
@@ -125,7 +92,7 @@ def _saving(base: float, cand: float) -> float:
 
 
 class DualGate:
-    """Predeclared, immutable dual gate (see module docstring)."""
+    """accept iff every capability metric is within tolerance of the base AND some efficiency metric improves."""
 
     def __init__(self, spec: GateSpec = GateSpec()) -> None:
         self.spec = spec
@@ -134,7 +101,7 @@ class DualGate:
     def _cap(self, b: dict, c: dict) -> tuple[bool, dict]:
         out, ok = {}, True
         for m, tol in self.spec.capability:
-            if m not in b or m not in c:        # a predeclared metric that was not measured fails closed
+            if m not in b or m not in c:        # an unmeasured predeclared metric fails closed
                 out[m] = {"base": b.get(m), "cand": c.get(m), "tol": tol, "pass": False, "missing": True}
                 ok = False
                 continue
@@ -191,7 +158,7 @@ class DualGate:
         raise ValueError(f"unknown gate mode {s.mode!r}")
 
     def as_core_gate(self) -> CoreDualGate:
-        """The equivalent :class:`rsi.core.gates.DualGate` (aggregate mode, absolute tolerance)."""
+        """The :class:`rsi.core.gates.DualGate` equivalent (aggregate mode, absolute tolerance)."""
         return CoreDualGate({m: t for m, t in self.spec.capability},
                             {m: self.spec.min_gain for m in self.spec.efficiency})
 
@@ -220,15 +187,10 @@ class HeldoutResult:
 
 
 class HoldoutFirewall:
-    """One-way held-out validation of FROZEN candidates (write-only for lineages).
-
-    The firewall owns the only unsealed evaluator for ``split``. ``evaluate_frozen``
-    returns a bool to the driver; the full result is appended to a private sink
-    (``sink_dir/heldout.jsonl``) that only :meth:`final_report` reads."""
+    """One-way held-out check of frozen candidates: the driver gets a bool, full results go to a private sink."""
 
     def __init__(self, domain, llm, gate: DualGate, base_artifact, *, split: str = "holdout", k: int = 1,
                  sink_dir: Optional[str | Path] = None, workers: int = 1) -> None:
-        self._domain = domain
         self._gate = gate
         self._split = split
         self._k = k

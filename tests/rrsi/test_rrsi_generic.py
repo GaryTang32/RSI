@@ -1,8 +1,4 @@
-"""Reviewer tests: RRSI on a NEW domain it has never seen (a plain FunctionDomain), the sealed-split
-discipline, cross-process determinism, and regressions for bugs found in review (held-out monitor
-de-duplication, reserved-slot check with the critic ablated, repair only removing objected edits,
-single-pass paired transfer, torn JSONL lines)."""
-import hashlib
+"""RRSI on a new text-normalization FunctionDomain, cross-process determinism, and review regressions."""
 import json
 import os
 import random
@@ -11,127 +7,103 @@ import sys
 from pathlib import Path
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, Task, TaskSuite
-from rsi.rrsi import Config, RegularizerSwitches, RRSIRun, drive, paired_transfer, parse_sections, run
-from rsi.rrsi.history import History
+from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain
+from rsi.rrsi import (Config, History, RegularizerSwitches, RRSICritic, RRSIRun, drive, paired_transfer,
+                      parse_sections, run)
+
+from rrsi_helpers import (ACCEPT, accepting, edit, edit_rows, hw_domain, mechanism, read_json, read_jsonl, reply,
+                          reserved_rounds, spy_splits)
 
 ROOT = Path(__file__).resolve().parents[2]
-
-# ------------------------------------------------------------------ a brand-new problem
 WORDS = ["Alpha", "  beta", "GAMMA  ", "Delta", " epsilon ", "ZETA", "eta ", " Theta", "IOTA", "kappa  "]
-
-
-def _suite() -> TaskSuite:
-    tasks = []
-    for i in range(60):
-        raw = WORDS[i % len(WORDS)] + ("  " if i % 3 == 0 else "") + str(i)
-        fam = "names" if i < 40 else "codes"
-        if fam == "codes":
-            raw = "  CODE-" + raw.strip().upper()
-        tasks.append(Task(f"q{i:02d}", raw, raw.strip().lower(), fam))
-    return TaskSuite(tasks, {"evolve": [f"q{i:02d}" for i in range(20)],
-                             "holdout": [f"q{i:02d}" for i in range(20, 40)],
-                             "ood": [f"q{i:02d}" for i in range(40, 60)]}, name="normalize")
-
-
-def _execute(artifact, task, seed, llm):
-    """The harness is solve.py; a flaky frozen "model" corrupts 30% of outputs (seeded)."""
-    ns: dict = {}
-    exec(artifact["solve.py"], ns)                                   # noqa: S102 - test harness
-    out = ns["solve"](task.input)
-    rng = random.Random(f"{task.id}|{seed}")
-    return out + "?" if rng.random() < 0.3 else out
-
-
-def make_domain() -> FunctionDomain:
-    return FunctionDomain(_suite(), _execute, lambda task, out: float(out == task.target), name="normalize",
-                          description="solve.py defines solve(text) -> normalized text; exact-match grading.")
-
-
 SEED = Artifact({"solve.py": "def solve(text):\n    return text.strip()\n"})
 GENERIC = "def solve(text):\n    return text.strip().lower()\n"
 LOWER = "def solve(text):\n    return text.lower()\n"
 
 
-def _edit(comp, hyp):
-    return {"id": "C1", "component": comp, "hypothesis": hyp, "targets_mode": "unnormalized output",
-            "predicted_affected": ["q00", "q03"], "retroactive_check": "(corrective) (preservative) (transfer)"}
+def _raw(i: int) -> str:
+    raw = WORDS[i % len(WORDS)] + ("  " if i % 3 == 0 else "") + str(i)
+    return raw if i < 40 else "  CODE-" + raw.strip().upper()
 
 
-def _reply(files: dict, comp: str, hyp: str) -> str:
-    head = json.dumps({"action": "done", "summary": hyp, "edits": [_edit(comp, hyp)]})
-    return "```json\n" + head + "\n```\n" + "\n".join(f"=== FILE: {p} ===\n{t}" for p, t in files.items())
+def _suite() -> TaskSuite:
+    tasks = [Task(f"q{i:02d}", _raw(i), _raw(i).strip().lower(), "names" if i < 40 else "codes") for i in range(60)]
+    ids = [t.id for t in tasks]
+    return TaskSuite(tasks, {"evolve": ids[:20], "holdout": ids[20:40], "ood": ids[40:]}, name="normalize")
+
+
+def _execute(artifact, task, seed, llm):
+    ns: dict = {}
+    exec(artifact["solve.py"], ns)                                   # noqa: S102 - the harness is the artifact
+    out = ns["solve"](task.input)
+    return out + "?" if random.Random(f"{task.id}|{seed}").random() < 0.3 else out   # a flaky frozen "model"
+
+
+def normalize_domain() -> FunctionDomain:
+    return FunctionDomain(_suite(), _execute, lambda task, out: float(out == task.target), name="normalize",
+                          description="solve.py defines solve(text) -> normalized text; exact-match grading.")
+
+
+def _done(src: str, comp: str, hyp: str) -> str:
+    e = edit(comp, hyp, targets_mode="unnormalized output", predicted_affected=["q00", "q03"])
+    return reply({"solve.py": src}, [e], summary=hyp)
 
 
 def proposer(prompt, system, seed, i):
     if "strict reviewer" in (system or ""):
-        # the LLM review's REJECT rule 1 (LEAKAGE: expected outputs or answers hard-coded); as in the code, a
-        # literal answer table is the reviewer's to catch - the deterministic precheck holds task ids / patterns
+        # as in the code, a literal answer table is the LLM review's to catch (REJECT rule 1), not the precheck's
         added = "\n".join(l for l in prompt.split("=== DIFF ===")[-1].splitlines() if l.startswith("+"))
         if "ANSWERS = {" in added:
             return json.dumps({"verdict": "reject", "reasons": ["LEAKAGE: hard-codes practice answers"],
                                "risk_notes": []})
-        return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
+        return ACCEPT
     P = parse_sections(prompt)
     d, src = P["directives"], P["files"].get("solve.py", "")
-    if "REPAIR ROUND" in P["task"]:                                  # drop the leaked table, ship the generic fix
-        return _reply({"solve.py": GENERIC}, "control_flow", "strip and lowercase every output")
+    if "REPAIR ROUND" in P["task"]:
+        return _done(GENERIC, "control_flow", "strip and lowercase every output")
     if d.get("t") == 0 and d.get("variant") == "A":                  # a leaky lookup table of evolve answers
         table = {t.input: t.target for t in _suite().split("evolve")[:6]}
-        leak = f"ANSWERS = {json.dumps(table)}\n\n" + LOWER.replace("return text.lower()",
-                                                                   "return ANSWERS.get(text, text.lower())")
-        return _reply({"solve.py": leak}, "memory", "remember practice answers")
+        leak = f"ANSWERS = {json.dumps(table)}\n\ndef solve(text):\n    return ANSWERS.get(text, text.lower())\n"
+        return _done(leak, "memory", "remember practice answers")
     if ".lower()" not in src:
-        return _reply({"solve.py": LOWER}, "control_flow", "lowercase outputs")
-    return _reply({"solve.py": src + "\n# normalization is complete\n"}, "prompt", "document the contract")
+        return _done(LOWER, "control_flow", "lowercase outputs")
+    return _done(src + "\n# normalization is complete\n", "prompt", "document the contract")
 
 
 def test_rrsi_runs_unchanged_on_a_new_function_domain(tmp_path):
-    dom = make_domain()
-    calls = []
-    orig = dom.tasks.split
-
-    def spy(name, *, allow_sealed=False):
-        calls.append((name, allow_sealed))
-        return orig(name, allow_sealed=allow_sealed)
-    dom.tasks.split = spy
+    dom = normalize_domain()
+    calls = spy_splits(dom)
     res = run(dom, SEED, llm_propose=MockLLM(proposer), config=Config(T=4, workers=1), out_dir=tmp_path / "n")
-    dom.tasks.split = orig
-    # the loop only ever read the decision split (the critic's leakage terms read evolve explicitly)
     assert {n for n, _ in calls} <= {"evolve"}, calls
     assert res.stop_reason == "max_rounds" and len(res.trajectory) == 5
     assert res.meta["delta"] > 0                                     # calibrated by the within-task bootstrap
     assert "strip().lower()" in res.best["solve.py"] and "ANSWERS" not in res.best["solve.py"]
-    a0 = json.loads((tmp_path / "n" / "r0" / "A" / "critic_a0.json").read_text())
+    a0 = read_json(tmp_path / "n" / "r0" / "A" / "critic_a0.json")
     assert a0["verdict"] == "reject" and a0["stage"] == "llm"        # evolve answers caught before evaluation
-    recs = [json.loads(line) for line in (tmp_path / "n" / "history.jsonl").read_text().splitlines()]
+    recs = read_jsonl(tmp_path / "n" / "history.jsonl")
     assert {r["component"] for r in recs if r.get("edit_id")} <= set(res.meta["K"])
     assert {"proposer", "critic"} <= set(res.usage)
     rep = paired_transfer(dom, None, {"H0": res.baseline, "final": res.best}, k=4)
-    assert rep["splits"]["holdout"]["final"]["S"] > rep["splits"]["holdout"]["H0"]["S"] + 0.3
-    assert rep["splits"]["ood"]["final"]["S"] > rep["splits"]["ood"]["H0"]["S"] + 0.3
+    for split in ("holdout", "ood"):
+        assert rep["splits"][split]["final"]["S"] > rep["splits"][split]["H0"]["S"] + 0.3
     assert rep["non_regression"]["final"] and rep["fresh_rollouts_in_win_tie_loss_pass"] == 0
 
 
 def test_answer_denylist_is_an_opt_in_precheck_extension(tmp_path):
-    """Claims audit N3: the code's precheck holds task ids and patterns, not the practice answers. With
-    Config.precheck_answers=True (documented extension) the same leak is caught deterministically."""
-    dom = make_domain()
-    res = run(dom, SEED, llm_propose=MockLLM(proposer), config=Config(T=1, workers=1, precheck_answers=True),
-              out_dir=tmp_path / "x")
-    a0 = json.loads((tmp_path / "x" / "r0" / "A" / "critic_a0.json").read_text())
+    res = run(normalize_domain(), SEED, llm_propose=MockLLM(proposer), out_dir=tmp_path / "x",
+              config=Config(T=1, workers=1, precheck_answers=True))
+    a0 = read_json(tmp_path / "x" / "r0" / "A" / "critic_a0.json")
     assert a0["verdict"] == "reject" and a0["stage"] == "precheck"
     assert any("hard-coded evaluation data" in r for r in a0["reasons"])
     assert "ANSWERS" not in res.best["solve.py"]
 
 
 def test_unregularized_arm_keeps_the_leak_on_the_new_domain(tmp_path):
-    dom = make_domain()
-    res = run(dom, SEED, llm_propose=MockLLM(proposer), config=Config(T=1, k=2, workers=1),
+    res = run(normalize_domain(), SEED, llm_propose=MockLLM(proposer), config=Config(T=1, k=2, workers=1),
               out_dir=tmp_path / "u", switches=RegularizerSwitches.none())
     assert "ANSWERS" in res.best["solve.py"] and res.method == "rrsi[unregularized]"
 
 
-# ------------------------------------------------------------------ determinism across processes
 _DET = """
 import sys, json, hashlib, tempfile, pathlib
 sys.path.insert(0, %r)
@@ -155,94 +127,73 @@ print(hashlib.sha256(pathlib.Path(d, "history.jsonl").read_bytes()).hexdigest(),
 def test_offline_run_is_identical_across_processes_and_hash_seeds():
     outs = set()
     for hs in ("0", "12345"):
-        env = dict(os.environ, PYTHONHASHSEED=hs)
-        p = subprocess.run([sys.executable, "-c", _DET], capture_output=True, text=True, env=env, timeout=120)
+        p = subprocess.run([sys.executable, "-c", _DET], capture_output=True, text=True, timeout=120,
+                           env=dict(os.environ, PYTHONHASHSEED=hs))
         assert p.returncode == 0, p.stderr
         outs.add(p.stdout.strip())
     assert len(outs) == 1, outs
 
 
-# ------------------------------------------------------------------ regressions
 def test_heldout_monitor_logs_every_accepted_round(tmp_path):
-    dom = make_domain()
     seq = [LOWER, GENERIC, GENERIC + "\n# a\n", GENERIC + "\n# b\n"]
 
+    @accepting
     def always_better(prompt, system, seed, i):
-        if "strict reviewer" in (system or ""):
-            return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
-        d = parse_sections(prompt)["directives"]
-        return _reply({"solve.py": seq[min(d.get("t", 0), 3)]}, "control_flow", f"step {d.get('t')}")
-    r = RRSIRun(dom, SEED, out_dir=tmp_path / "m", llm_propose=MockLLM(always_better),
+        t = parse_sections(prompt)["directives"].get("t")
+        return _done(seq[min(t or 0, 3)], "control_flow", f"step {t}")
+    r = RRSIRun(normalize_domain(), SEED, out_dir=tmp_path / "m", llm_propose=MockLLM(always_better),
                 config=Config(T=2, m=1, workers=1, delta=0.0, heldout_monitor=True))
     drive(r)
-    winners = [json.loads((tmp_path / "m" / f"r{t}" / "summary.json").read_text())["winner"] for t in range(2)]
-    assert winners == ["A", "A"]
-    rows = [json.loads(x) for x in (tmp_path / "m" / "heldout_monitor.jsonl").read_text().splitlines()]
-    assert [x["t"] for x in rows] == [1, 2]
+    assert [read_json(tmp_path / "m" / f"r{t}" / "summary.json")["winner"] for t in range(2)] == ["A", "A"]
+    assert [x["t"] for x in read_jsonl(tmp_path / "m" / "heldout_monitor.jsonl")] == [1, 2]
 
 
 def test_reserved_slot_checked_on_the_diff_even_without_critic(tmp_path):
-    from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain as hw
-    dom = hw(seed=4, n_evolve=24, n_holdout=24, n_ood_per_family=6)
+    dom, out = hw_domain(4), tmp_path / "c"
     sw = RegularizerSwitches.full().but(critic=False, name="no_critic")
-    r = RRSIRun(dom, dom.seed_artifact(), out_dir=tmp_path / "c", llm_propose=HarnessWorldMockLLM(dom.world),
+    r = RRSIRun(dom, dom.seed_artifact(), out_dir=out, llm_propose=HarnessWorldMockLLM(dom.world),
                 config=Config(T=8, workers=1, delta=0.5), switches=sw)        # huge band -> stall from t = w
     drive(r)
     reserved = []
-    for t in range(8):
-        dirs = json.loads((tmp_path / "c" / f"r{t}" / "directives.json").read_text())
-        if dirs["sigma_t"] and dirs["explore"]["untried"]:
-            p = tmp_path / "c" / f"r{t}" / "B" / "critic_a0.json"
-            assert p.exists()                                        # the slot check ran without a critic
-            prep = json.loads((tmp_path / "c" / f"r{t}" / "B" / "prep.json").read_text())
-            if not prep.get("gate_failure"):
-                reserved.append(any(e["component"] in dirs["explore"]["untried"] for e in prep["edits"]))
+    for t, dirs, prep in reserved_rounds(out, 8):
+        assert (out / f"r{t}" / "B" / "critic_a0.json").exists()      # the slot check ran without a critic
+        if not prep.get("gate_failure"):
+            reserved.append(any(e["component"] in dirs["explore"]["untried"] for e in prep["edits"]))
     assert reserved and all(reserved)
 
 
 def test_mock_repair_removes_only_objected_edits():
-    from rsi.domains.harnessworld import HarnessWorldMockLLM, make_domain as hw
-    dom = hw(seed=0, n_evolve=30, n_holdout=30, n_ood_per_family=8)
+    dom = hw_domain(0, n_evolve=30, n_holdout=30, n_ood_per_family=8)
     llm = HarnessWorldMockLLM(dom.world)
-    obf = next(m for m in dom.world.catalog.values() if m.kind == "obfuscated_leak")
-    lit = next(m for m in dom.world.catalog.values() if m.kind == "leak")
-    gen = next(m for m in dom.world.catalog.values() if m.kind == "generic" and m.id not in dom.world.seed_ids)
-    e_obf = llm._edit(0, obf, "m", ["hw-e-000"])
-    e_gen = llm._edit(1, gen, "m", ["hw-e-000"])
-    e_lit = llm._edit(2, lit, "m", ["hw-e-000"])
-    target = dom.world.by_id[lit.leak_keys[0]].target
-    assert llm._objected(lit, e_lit, f"precheck: hard-coded evaluation data '{target}'")
-    assert not llm._objected(obf, e_obf, f"precheck: hard-coded evaluation data '{target}'")   # missed leak stays
+    obf, gen, lit = (mechanism(dom, k) for k in ("obfuscated_leak", "generic", "leak"))
+    e_obf, e_gen, e_lit = (llm._edit(i, m, "m", ["hw-e-000"]) for i, m in enumerate((obf, gen, lit)))
+    precheck = f"precheck: hard-coded evaluation data '{dom.world.by_id[lit.leak_keys[0]].target}'"
+    assert llm._objected(lit, e_lit, precheck)
+    assert not llm._objected(obf, e_obf, precheck)                   # a missed leak stays
     assert llm._objected(obf, e_obf, f"LEAKAGE: mechanism {obf.id} injects a lookup table")
     assert not llm._objected(gen, e_gen, "RESERVED EXPLORATION SLOT: none is")
 
 
 def test_history_survives_a_torn_last_line(tmp_path):
     h = History(tmp_path / "h.jsonl", timestamps=False)
-    h.append_candidate(0, "A", [{"id": "C1", "component": "prompt", "hypothesis": "x"},
-                                {"id": "C2", "component": "memory", "hypothesis": "y"}], "LOST", 0.01, 0.0, False,
-                       0.5, 10.0, None)
+    h.append_candidate(0, "A", edit_rows(prompt="x", memory="y"), "LOST", 0.01, 0.0, False, 0.5, 10.0, None)
     with open(tmp_path / "h.jsonl", "a") as f:
         f.write('{"t": 1, "variant": "B", "edit_')                  # a crash mid-write
     assert len(h.records()) == 2 and h.tried() == {"prompt", "memory"}
-    h.append_candidate(1, "B", [{"id": "C1", "component": "skill", "hypothesis": "z"}], "LOST", 0.02, 0.0, False,
-                       0.5, 10.0, None)
+    h.append_candidate(1, "B", edit_rows(skill="z"), "LOST", 0.02, 0.0, False, 0.5, 10.0, None)
     assert [r["component"] for r in h.records()] == ["prompt", "memory", "skill"]
 
 
 def test_catalog_text_never_names_sealed_ood_families():
-    from rsi.domains.harnessworld import make_domain as hw
-    dom = hw(seed=3)
+    dom = make_domain(seed=3)
     ood = dom.world.cfg.ood_families
     for m in dom.world.catalog.values():
         assert "aimed at" not in m.description or not any(f in m.description.split("aimed at")[1] for f in ood)
-    digest = hashlib.sha256(dom.describe().encode()).hexdigest()
-    assert digest == hashlib.sha256(hw(seed=3).describe().encode()).hexdigest()
+    assert dom.describe() == make_domain(seed=3).describe()
 
 
 def test_critic_precheck_blocks_grader_tampering():
-    from rsi.rrsi import RRSICritic
-    crit = RRSICritic(make_domain())
+    crit = RRSICritic(normalize_domain())
     tamper = SEED.with_files({"solve.py": "import rsi.core.domain as d\nd.FunctionDomain.grade = lambda *a: (1.0, '')\n"
                                           "def solve(text):\n    return text\n"})
     v = crit.review(SEED.diff(tamper))

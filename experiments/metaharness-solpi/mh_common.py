@@ -1,10 +1,4 @@
-"""Helpers shared by the Meta-Harness experiments (M1-M6); the SoL-Pi scripts do not use this file.
-
-* ``drop_traces``: full MemoClassify traces hold every prompt and raw reply (2-8 MB per candidate), so a
-  finished job deletes its run's trace files after its numbers are extracted (the JSON results keep
-  everything the experiments report);
-* ``session_stats``: per-iteration read accounting from ``sessions/iter*/meta.json``.
-"""
+"""Helpers shared by the Meta-Harness experiments (M1-M10); the SoL-Pi scripts do not use this file."""
 from __future__ import annotations
 
 import json
@@ -13,15 +7,17 @@ from pathlib import Path
 
 import numpy as np
 
+from _common import RESULTS
+
 
 def drop_traces(store_root: str | Path) -> None:
+    """Delete a finished run's trace files (2-8 MB per candidate); the JSON results keep what is reported."""
     for d in Path(store_root).glob("candidates/*/eval/search/traces"):
         shutil.rmtree(d, ignore_errors=True)
 
 
 def session_stats(store) -> dict:
-    """Mean per iteration: files read (what the proposal was based on), files scanned (parsed for
-    bookkeeping), trace files read, distinct candidates whose traces were read, chars."""
+    """Per-iteration means of the proposer's read accounting in ``sessions/iter*/meta.json``."""
     rows = []
     for p in sorted(store.sessions_dir().glob("iter*/meta.json")):
         m = json.loads(p.read_text())
@@ -33,3 +29,13 @@ def session_stats(store) -> dict:
     if not rows:
         return {}
     return {f"{k}_per_iter": float(np.mean([r[k] for r in rows])) for k in rows[0]}
+
+
+def batch_seeds(batch: str, n_seeds: int) -> tuple[int, list[int]]:
+    """``i/n`` -> (i, the seeds s < n_seeds with s % n == i)."""
+    i, n = map(int, batch.split("/"))
+    return i, [s for s in range(n_seeds) if s % n == i]
+
+
+def load_parts(name: str) -> list[dict]:
+    return [r for p in sorted(RESULTS.glob(f"{name}.part*.json")) for r in json.loads(p.read_text())]

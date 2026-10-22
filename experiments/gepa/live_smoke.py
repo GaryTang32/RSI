@@ -1,30 +1,16 @@
-"""Live smoke run: GEPA end-to-end with a real reflection LM.
+"""Smoke run: GEPA end to end with a real reflection LM (cached ``claude -p``) on RuleWorld and AgentQA tasks.
 
-The reflection LM is ``claude -p`` (default haiku) behind ``CachedLLM`` (cache under
-``.rsi_cache/gepa``, so a re-run replays for free); the task models stay simulated and
-deterministic (RuleWorld's rule-following model, AgentQA's SimModel), so the run checks
-that a real model reads GEPA's verbatim meta-prompt + side_info, returns a fenced
-instruction that parses, and that its rewrites are gated, validated and logged.
-Small by design: RuleWorld B = 300 rollouts and AgentQA (two-module harness) B = 80,
-guarded by ``Budget(max_usd=0.8, max_wall_s=900)``. ``--llm sim`` runs the same pipeline
-with the offline mocks.
-
-    python experiments/gepa/live_smoke.py --llm claude:haiku
+Run: python experiments/gepa/live_smoke.py --llm claude:haiku   (``--llm sim``: the same pipeline with offline mocks)
 """
 from __future__ import annotations
 
-import sys
 import time
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _common import parse_args, reflection_llm, save  # noqa: E402
-
-from rsi.core import Budget  # noqa: E402
-from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite  # noqa: E402
-from rsi.domains.ruleworld import make_domain  # noqa: E402
-from rsi.gepa import Config, run, two_module_harness  # noqa: E402
+from _common import parse_args, reflection_llm, save
+from rsi.core import Budget
+from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
+from rsi.domains.ruleworld import make_domain
+from rsi.gepa import Config, run, two_module_harness
 
 
 def main():
@@ -34,7 +20,6 @@ def main():
                                      ap.add_argument("--max-usd", type=float, default=0.8)))
     t0 = time.time()
     out = {"experiment": "live smoke", "llm": a.llm}
-    # ---- RuleWorld: real reflection LM, simulated rule-following task model
     d = make_domain(seed=0, feedback="rich")
     llm = reflection_llm(a.llm, d.world)
     res = run(d, d.seed_artifact(), llm_propose=llm, config=Config(max_metric_calls=a.B, seed=0),
@@ -53,7 +38,6 @@ def main():
         "ticket_facts_in_best": d.world.count_facts(res.best.files),
         "best_prompts": {k: v[:2500] for k, v in res.best.files.items()}, "usage": res.usage,
         "ledger_nodes": len(res.ledger)}
-    # ---- AgentQA two-module harness: real reflection LM, SimModel task model
     suite = make_suite(n_evolve=8, n_val=8, n_holdout=10, n_ood_per_family=3, seed=0)
     dom = AgentQADomain(suite)
     llm2 = reflection_llm(a.llm, kind="agentqa")

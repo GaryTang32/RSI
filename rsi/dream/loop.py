@@ -1,22 +1,4 @@
-"""DreamRSILoop: online explore -> append world -> dream (M versions) -> select -> deploy.
-
-Paper §3.2 outer loop [paper:§3 p.4-6, Fig.1]::
-
-    for t in 1..T:
-        plan  <- pi.plan_grid(live manifests)                 # pre-episode width x depth
-        T_t   <- OnlineRollout(pi, plan, W, K1)               # stochastic, costly (agent calls)
-        H     <- H + {T_t};  write trace_pool/iter<t>/{tree.json, live_cycle_manifest.json}
-        versions <- [pi];  V <- [ReplayScore(pi, H)]           # pi_t^0 = pi_t
-        repeat M-1 times: pi' <- developer.revise(feedback);  V += ReplayScore(pi', H)
-        pi <- versions[argmax V]                              # incumbent included
-
-Everything is logged: ``discovery.jsonl`` (every attempt of every live search, an
-:class:`rsi.core.Ledger` tree), ``policies.jsonl`` (policy lineage with replay values),
-``history/r####_<label>/`` (code, report, ``proposal_results/beta_sweep.json``,
-``proposal_results/policy_execution_traces.jsonl``), ``trace_pool/iter<t>/`` and
-``snapshots/`` (every workspace). ``dream=False`` is Recursive Fixed Exploration;
-``guidance=True`` injects written advice summarised from history (E5).
-"""
+"""DreamRSILoop: online search -> append world -> dream M policy versions -> select -> deploy [paper:§3, Fig. 1]."""
 from __future__ import annotations
 
 import json
@@ -27,15 +9,17 @@ from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import Ledger, Node
+from ..core.llm import LLM
 from ..core.run import ImprovementResult
-from .agent import AttemptContext, DirectionProvider, DiscoveryTask, EvalOutcome, history_records, record_of
+from .agent import (AttemptContext, DirectionProvider, DiscoveryTask, DomainTask, EditorAgent, EvalOutcome,
+                    history_records, record_of)
 from .baselines import Guidance, MockGuidanceSummarizer, guidance_json
 from .cost import CostMeter, llm_usage
-from .developer import DevContext, ParametricMutator, VersionRecord, default_beta_of
+from .developer import DevContext, LLMPolicyDeveloper, ParametricMutator, VersionRecord, default_beta_of
 from .evaluator import PolicyReport, ReplayEvaluator, diagnostics
 from .guard import get_runner, static_check
 from .objectives import Eq1Objective, ParetoSweepObjective
-from .policy import code_of, template_code
+from .policy import POLICY_FILE, code_of, template_code
 from .policy_api import GridPlan, GridPlanningContext
 from .question import OnlineQuestion, program_only
 from .selection import GuardedSelector, Selector
@@ -46,60 +30,51 @@ from ..trace import RunTracer, ShadowMonitor
 
 @dataclass
 class Config:
-    """Dream-RSI hyperparameters. The paper reports none of M, K1, K2, beta1, beta2,
-    lambda or the beta grid; defaults follow the spec's §9.3 suggestions [inferred]."""
+    """Dream-RSI hyperparameters; the paper reports none of M, K1, K2, beta1, beta2, lambda or the beta grid."""
 
-    rounds: int = 5                        # T: live searches (Lasso 5, math 10 in the paper)
-    W: int = 4                             # parallel workers = max batch size
-    branch_count: int = 4                  # fallback grid width (pi_1 plan): branches 0..W-1
-    refine_count: int = 4                  # fallback depth: attempts 0..refine_count per branch
+    rounds: int = 5  # T: live searches
+    W: int = 4  # parallel workers = max batch size
+    branch_count: int = 4  # fallback grid (pi_1 plan): branches 0..branch_count-1
+    refine_count: int = 4  # fallback depth: attempts 0..refine_count per branch
     hard_max_branch: int = 12
     hard_max_refine: int = 12
-    K1: Optional[int] = None               # online round cap (None: bounded by the grid)
-    K2: Optional[int] = None               # replay round cap (None: the paper's budget=None)
-    M: int = 4                             # policy versions per dreaming phase (incumbent included)
-    # the version each revision starts from: "strongest" (L2:247 "start from a strong recent policy") |
-    # "latest" (§3: "revises pi^m into pi^(m+1)"); the paper's two texts disagree (claims audit M12)
-    developer_base: str = "strongest"
-    m_semantics: str = "versions"          # "versions": M-1 revisions | "revisions": M revisions (M+1 candidates)
-    objective: str = "eq1"                 # "eq1" (paper Eq.1) | "pareto" (Listing-2 beta-sweep reward)
+    K1: Optional[int] = None  # online round cap
+    K2: Optional[int] = None  # replay round cap (None: the paper's budget=None)
+    M: int = 4  # policy versions per dreaming phase, incumbent included
+    developer_base: str = "strongest"  # "strongest" (L2:247) | "latest" (§3 "revises pi^m into pi^(m+1)")
+    m_semantics: str = "versions"  # "versions": M-1 revisions | "revisions": M revisions
+    objective: str = "eq1"  # "eq1" (paper Eq. 1) | "pareto" (Listing-2 beta-sweep reward)
     beta1: float = 0.01
     beta2: float = 0.005
-    normalize: bool = True                 # per-world score normalization before Eq.1
-    support: str = "no_reward"             # out-of-support plans "cannot earn replay reward" (L2) | "clip"
+    normalize: bool = True  # per-world score normalization before Eq. 1
+    support: str = "no_reward"  # out-of-support plans "cannot earn replay reward" (L2) | "clip"
     lam: float = 0.1
     beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
-    pareto_attainment: str = "shift"       # "shift" (b - root)/(G - root) | "ratio" clip(S/G) (unpublished draft; M18)
-    sweep: bool = True                     # beta sweep of the deployed version (feedback + default-beta rule)
-    root_mode: str = "earliest"            # replay root semantics: "earliest" (paper §3) | "addressable"
+    pareto_attainment: str = "shift"  # "shift" (b - root)/(G - root) | "ratio" clip(S/G)
+    sweep: bool = True  # beta sweep of the deployed version (feedback + default-beta rule)
+    root_mode: str = "earliest"  # replay root semantics: "earliest" (paper §3) | "addressable"
     hide_missing: bool = False
-    selector: str = "argmax"               # "argmax" (paper) | "guarded" (held-out worlds + noise margin)
+    selector: str = "argmax"  # "argmax" (paper) | "guarded" (held-out worlds + noise margin)
     include_incumbent: bool = True
     holdout_frac: float = 0.34
     noise_z: float = 2.0
     margin_floor: float = 0.01
-    sandbox: str = "subprocess"            # where policy code runs: "subprocess" | "inprocess"
+    sandbox: str = "subprocess"  # where policy code runs: "subprocess" | "inprocess"
     policy_timeout_s: float = 30.0
-    root: str = "best"                     # live root of round t: "best" program so far | "seed"
-    dream: bool = True                     # False = Recursive Fixed Exploration
-    dream_last: bool = False               # also dream after the final live search
-    guidance: bool = False                 # E5: history summarised into written advice
+    root: str = "best"  # live root of round t: best program so far | "seed"
+    dream: bool = True  # False = Recursive Fixed Exploration
+    dream_last: bool = False  # also dream after the final live search
+    guidance: bool = False  # E5: history summarised into written advice
     guidance_strength: float = 0.8
-    max_calls: Optional[int] = None        # total discovery-agent call budget across rounds
-    # per-round discovery-agent call budget. "fallback" (default) = the fallback grid's cells, i.e. exactly
-    # Recursive Fixed Exploration's per-round budget: "Dream-RSI maintains identical per-round budgets"
-    # [paper:§4 p.7]. plan_grid may still reshape width x depth within the hard caps, but a round never
-    # spends more calls than Fixed's (the policy's solve() gets it as `budget`, the question enforces it).
-    # An int sets another cap; None = no per-round cap (pre-fix behaviour: only hard caps and max_calls).
+    max_calls: Optional[int] = None  # total discovery-agent call budget
+    # per-round agent-call cap; "fallback" = the fallback grid's cells, the same per-round budget as Fixed [§4]
     round_budget: Optional[int | str] = "fallback"
-    # H_(t-1) shown to the discovery agent: None = every earlier live search (Listing 1: "read every
-    # historical proposal ... not just recent cycles"); an int keeps only the last N searches (pre-fix: 8)
-    agent_history_cycles: Optional[int] = None
-    agent_workers: Optional[int] = None    # threads for concurrent agent calls (default W)
+    agent_history_cycles: Optional[int] = None  # earlier live searches shown to the agent (None: all)
+    agent_workers: Optional[int] = None  # threads for concurrent agent calls (default W)
     leakage_check: bool = True
     seed: int = 0
-    trace: bool = True                     # write trace.jsonl (rsi.trace format) when out_dir is given
-    shadow_monitor: bool = True            # score each new best program on sealed splits (audit only)
+    trace: bool = True  # write trace.jsonl when out_dir is given
+    shadow_monitor: bool = True  # score each new best program on sealed splits (audit only)
     shadow_k: int = 1
     shadow_workers: int = 2
 
@@ -119,9 +94,7 @@ class Config:
 
 def live_manifest(t: int, tree: DiscoveryTree, q: OnlineQuestion, plan: GridPlan, requested: GridPlan,
                   final_best: float, beta: Optional[float], policy_id: str, calls: int) -> dict:
-    """``live_cycle_manifest.json``: the per-iteration facts ``plan_grid`` and the
-    default-beta rule may read (planned / effective grid, opened width and depth, probe
-    work, decision rounds, scores, beta) [paper:App.B.2 L2:169-175, L2:214-218]."""
+    """``live_cycle_manifest.json``: the facts ``plan_grid`` and the default-beta rule may read [L2:169-175]."""
     root = tree.root_score
     succ = [n for n in tree.non_root() if n.success and n.score is not None]
     round_best = max([n.score for n in succ] + [root])
@@ -129,16 +102,14 @@ def live_manifest(t: int, tree: DiscoveryTree, q: OnlineQuestion, plan: GridPlan
     early = max([n.score for n in succ if n.attempt <= 1] + [root]) - root
     fails = [n for n in tree.non_root() if not n.success]
     hard = [n for n in fails if n.fail_class in ("env_error", "dependency", "hard")]
-    # opened width / depth = what the rollout actually used (NOT the support fields, which
-    # include the plan's unopened roots and unexplored depth)
-    opened = len(tree.branches())
-    depth = max((n.attempt for n in tree.non_root()), default=-1)
     return {
         "iteration": t, "planned_grid": requested.to_dict(), "effective_grid": plan.to_dict(),
-        "opened_width": opened, "max_depth": depth, "probe_work": q.N,
-        "decision_rounds": q.k, "batch_sizes": list(q.batch_sizes), "root_score": root, "round_best": round_best,
-        "final_best": final_best, "beta": beta, "gain_early": (early / gain) if gain > 0 else 0.0,
-        "gain_late": (1.0 - early / gain) if gain > 0 else 0.0, "fail_frac": len(fails) / max(1, tree.size),
+        # what the rollout used, not the support fields (which include unopened roots)
+        "opened_width": len(tree.branches()), "max_depth": max((n.attempt for n in tree.non_root()), default=-1),
+        "probe_work": q.N, "decision_rounds": q.k, "batch_sizes": list(q.batch_sizes), "root_score": root,
+        "round_best": round_best, "final_best": final_best, "beta": beta,
+        "gain_early": (early / gain) if gain > 0 else 0.0, "gain_late": (1.0 - early / gain) if gain > 0 else 0.0,
+        "fail_frac": len(fails) / max(1, tree.size),
         "hard_fail_frac": len(hard) / max(1, tree.size), "policy": policy_id[:12], "agent_calls": calls,
         "plan_reason": plan.reason,
     }
@@ -158,10 +129,10 @@ class DreamRSILoop:
         self.summarizer = summarizer or MockGuidanceSummarizer()
         self.out = Path(out_dir) if out_dir else None
         self.seed_artifact = seed_artifact or task.seed_artifact()
-        # one entry per distinct backend: the same LLM object passed for two roles (e.g. agent and
-        # developer) keeps per-role usage in ONE meter, which must not be summed twice
+        # one entry per backend: an LLM shared by two roles keeps both in one meter, which must not count twice
         self.llms = tuple({id(l): l for l in llms if l is not None}.values())
-        self.method = method or ("dream-rsi" if self.cfg.dream else "fixed") + ("+guidance" if self.cfg.guidance else "")
+        self.method = method or (("dream-rsi" if self.cfg.dream else "fixed")
+                                 + ("+guidance" if self.cfg.guidance else ""))
         c = self.cfg
         self.meter = CostMeter()
         self.store = SnapshotStore(self.out / "snapshots" if self.out else None)
@@ -174,8 +145,7 @@ class DreamRSILoop:
             objective = Eq1Objective(c.beta1, c.beta2, c.normalize, c.support)
         self.replay = ReplayEvaluator(objective, W=c.W, K2=c.K2, root_mode=c.root_mode, hide_missing=c.hide_missing,
                                       runner=self.runner, fallback=(c.branch_count, c.refine_count),
-                                      hard_max=(c.hard_max_branch, c.hard_max_refine),
-                                      sweep_grid=tuple(c.beta_grid))
+                                      hard_max=(c.hard_max_branch, c.hard_max_refine), sweep_grid=tuple(c.beta_grid))
         self.selector = GuardedSelector(c.holdout_frac, 1, c.noise_z, c.margin_floor, c.include_incumbent) \
             if c.selector == "guarded" else Selector(c.include_incumbent)
         self.provider = DirectionProvider(task.directions(), seed=c.seed)
@@ -187,7 +157,7 @@ class DreamRSILoop:
         self.trajectory: list[dict] = []
         self.rev_counter = 0
         self.guidance: Optional[Guidance] = None
-        # audit trace (write-only: nothing it records is ever read back by the loop)
+        # write-only audit trace: the loop never reads it back
         self.tracer = RunTracer(self.out if (self.out is not None and c.trace) else None, self.method)
         self.tr = DreamTracer(self, self.tracer)
         self.shadow_llm = None
@@ -198,7 +168,6 @@ class DreamRSILoop:
             self.tracer.monitor = ShadowMonitor(dom, self.shadow_llm, splits=sealed_splits(dom), k=c.shadow_k,
                                                 workers=c.shadow_workers)
 
-    # ------------------------------------------------------------------- helpers
     def _save(self, rel: str, text: str) -> None:
         if self.out is None:
             return
@@ -215,7 +184,7 @@ class DreamRSILoop:
         self.policy_ledger.add(Node(id=nid, parent=parent_node, round=rec.iteration, kind="policy", status=status,
                                     score=None if rep is None else rep.value,
                                     cost=None if rep is None else rep.cpu_s, change=rec.change[:300],
-                                    artifact_id=Artifact({"method.py": rec.code}).id,
+                                    artifact_id=_policy_id(rec.code),
                                     metrics={} if rep is None else {k: v for k, v in rep.diagnostics.items()
                                                                     if isinstance(v, (int, float))},
                                     meta={"label": rec.label}))
@@ -227,12 +196,13 @@ class DreamRSILoop:
         if rec.report is not None:
             self._save(f"{d}/report.json", json.dumps(rec.report.summary(), indent=1, default=float))
             if rec.report.sweep:
-                self._save(f"{d}/proposal_results/beta_sweep.json", json.dumps(rec.report.sweep, indent=1, default=float))
+                self._save(f"{d}/proposal_results/beta_sweep.json",
+                           json.dumps(rec.report.sweep, indent=1, default=float))
             self._save(f"{d}/proposal_results/policy_execution_traces.jsonl", rec.report.traces_jsonl())
 
-    def _eval(self, code: str, label: str, idx: int, sweep: bool = False, worlds=None) -> PolicyReport:
+    def _eval(self, code: str, label: str, sweep: bool = False, worlds=None) -> PolicyReport:
         rep = self.replay.evaluate(code, worlds or self.worlds, manifests=self.manifests, sweep=sweep, label=label,
-                                   policy_id=Artifact({"method.py": code}).id)
+                                   policy_id=_policy_id(code))
         self.meter.add_replay(rep.n_episodes, rep.cpu_s, rep.wall_s)
         return rep
 
@@ -263,16 +233,13 @@ class DreamRSILoop:
         return fn
 
     def _calls_left(self) -> Optional[int]:
-        if self.cfg.max_calls is None:
-            return None
-        return max(0, self.cfg.max_calls - self.meter.agent_calls)
+        return None if self.cfg.max_calls is None else max(0, self.cfg.max_calls - self.meter.agent_calls)
 
     def _round_call_budget(self, left: Optional[int]) -> Optional[int]:
-        """Calls this round may spend: the per-round budget, further cut by the remaining total."""
+        """The per-round budget, further cut by the remaining total."""
         caps = [c for c in (self.cfg.round_cap, left) if c is not None]
         return min(caps) if caps else None
 
-    # ---------------------------------------------------------------------- run
     def run(self) -> ImprovementResult:
         c = self.cfg
         t_start = time.time()
@@ -297,7 +264,7 @@ class DreamRSILoop:
             if left is not None and left <= 0:
                 stop = "max_calls"
                 break
-            # ---- stage 1: online exploration with the deployed policy (stochastic, costly)
+            # stage 1: online exploration with the deployed policy (stochastic, costly)
             ctx = GridPlanningContext(history=list(self.manifests), fallback_branch_count=c.branch_count,
                                       fallback_refine_count=c.refine_count, hard_max_branch_count=c.hard_max_branch,
                                       hard_max_refine_count=c.hard_max_refine, worker_cap=c.W, mode="live")
@@ -321,12 +288,11 @@ class DreamRSILoop:
                                    world_id=f"iter{t:02d}", call_budget=round_budget, record_attempts=tr.enabled)
                 q.context_fn = self._context_fn(q, t)
                 t0 = time.time()
-                # live: solve(question, budget) gets the round's call budget (replay calls with budget=None)
                 out = sess.solve({}, q, budget=c.round_cap)
                 self.meter.online_rounds += q.k
                 self.meter.online_wall_s += time.time() - t0
             tree = q.tree
-            tree.meta.update({"round": t, "policy": Artifact({"method.py": policy.code}).id,
+            tree.meta.update({"round": t, "policy": _policy_id(policy.code),
                               "online_error": out.error, "violations": out.violations})
             self.worlds.append(tree)
             if tr.enabled:
@@ -352,12 +318,12 @@ class DreamRSILoop:
                 tree.save(self.out / f"trace_pool/iter{t:02d}/tree.json")
             self._save(f"trace_pool/iter{t:02d}/live_cycle_manifest.json", json.dumps(man, indent=1, default=float))
             tree.to_ledger(self.discovery_ledger, prefix=f"t{t}/")
-            row = {"iteration": t, "calls": q.calls, "cum_calls": self.meter.agent_calls, "round_best": man["round_best"],
-                   "best": best_score, "root": tree.root_score, "plan": plan.to_dict(), "N": q.N, "k": q.k,
-                   "batch_sizes": list(q.batch_sizes), "round_budget": c.round_cap,
-                   "policy": tree.meta["policy"][:10], "beta": beta_live,
-                   "online_error": out.error, "violations": out.violations}
-            # ---- stage 3: dreaming (cheap, offline)
+            row = {"iteration": t, "calls": q.calls, "cum_calls": self.meter.agent_calls,
+                   "round_best": man["round_best"], "best": best_score, "root": tree.root_score, "plan": plan.to_dict(),
+                   "N": q.N, "k": q.k, "batch_sizes": list(q.batch_sizes), "round_budget": c.round_cap,
+                   "policy": tree.meta["policy"][:10], "beta": beta_live, "online_error": out.error,
+                   "violations": out.violations}
+            # stage 3: dreaming (cheap, offline)
             if c.dream and (t < c.rounds or c.dream_last) and (self._calls_left() is None or self._calls_left() > 0):
                 policy, phase = self._dream(t, policy, policy_node)
                 policy_node = f"r{policy.index:04d}"
@@ -376,7 +342,7 @@ class DreamRSILoop:
         res = ImprovementResult(method=self.method, baseline=self.seed_artifact, best=best_art,
                                 ledger=self.discovery_ledger, trajectory=self.trajectory, usage=usage, stop_reason=stop,
                                 out_dir=str(self.out) if self.out else None,
-                                meta={"policy": policy.code, "policy_id": Artifact({"method.py": policy.code}).id,
+                                meta={"policy": policy.code, "policy_id": _policy_id(policy.code),
                                       "policy_ledger": self.policy_ledger, "worlds": self.worlds,
                                       "manifests": self.manifests, "best_score": best_score,
                                       "seed_score": self.seed_eval.score, "cost": self.meter.snapshot(),
@@ -389,14 +355,12 @@ class DreamRSILoop:
             tr.run_end(res, self.shadow_llm)
         return res
 
-    # ------------------------------------------------------------------ dreaming
     def _dream(self, t: int, incumbent: VersionRecord, incumbent_node: str) -> tuple[VersionRecord, dict]:
         c = self.cfg
         dev_idx = self.selector.dev_worlds(len(self.worlds))
-        dev_worlds = [self.worlds[i] for i in dev_idx]
         inc = VersionRecord(incumbent.index, incumbent.code, None, incumbent.change, incumbent.parent, t,
                             incumbent.label)
-        inc.report = self._eval(inc.code, "incumbent", inc.index)
+        inc.report = self._eval(inc.code, "incumbent")
         versions = [inc]
         forbidden = self._forbidden_terms()
         tr = self.tr
@@ -404,9 +368,9 @@ class DreamRSILoop:
             tr.replay_eval(t, inc, inc.report, role="incumbent pi_t^0")
             tr.analysis(t, self._restricted(inc, dev_idx), dev_idx, forbidden)
         for m in range(c.n_revisions):
-            fb_versions = [self._restricted(v, dev_idx) for v in versions]
-            dctx = DevContext(t, fb_versions, [self._restricted(h, dev_idx) for h in self.history],
-                              [m_ for m_ in self.manifests], self.baseline_code, c.objective, c.W, forbidden,
+            dctx = DevContext(t, [self._restricted(v, dev_idx) for v in versions],
+                              [self._restricted(h, dev_idx) for h in self.history],
+                              list(self.manifests), self.baseline_code, c.objective, c.W, forbidden,
                               first_in_phase=(m == 0), base=c.developer_base)
             rev = self.developer.revise(dctx, seed=c.seed * 100003 + t * 101 + m)
             self.meter.add_developer(rev.usage)
@@ -414,7 +378,7 @@ class DreamRSILoop:
             self.rev_counter += 1
             chk = static_check(rev.code) if rev.ok else None
             if rev.ok and chk.ok:
-                rec.report = self._eval(rev.code, rec.label, rec.index)
+                rec.report = self._eval(rev.code, rec.label)
             else:
                 rec.change = f"rejected: {rev.error or static_check(rev.code or '').errors}"
             if tr.enabled:
@@ -431,10 +395,7 @@ class DreamRSILoop:
         sel = self.selector.select(reports)
         chosen = versions[sel.index]
         if c.sweep and self.replay.sweep_grid:
-            sweep_worlds = [self.worlds[i] for i in dev_idx] or self.worlds
-            srep = self.replay.evaluate(chosen.code, sweep_worlds, manifests=self.manifests, sweep=True,
-                                        label=chosen.label, policy_id=Artifact({"method.py": chosen.code}).id)
-            self.meter.add_replay(srep.n_episodes, srep.cpu_s, srep.wall_s)
+            srep = self._eval(chosen.code, chosen.label, sweep=True, worlds=[self.worlds[i] for i in dev_idx])
             chosen.report.sweep = srep.sweep
             chosen.report.sweep_episodes = srep.sweep_episodes
         if tr.enabled:
@@ -455,20 +416,19 @@ class DreamRSILoop:
         return chosen, phase
 
     def _restricted(self, v: VersionRecord, idx: list[int]) -> VersionRecord:
-        """What the developer may see: reports restricted to the development worlds."""
+        """The version as the developer may see it: reports restricted to the development worlds."""
         if v.report is None:
             return v
         r = v.report
         if len(r.per_world) != len(self.worlds):
-            idx = self.selector.dev_worlds(len(r.per_world))      # the split in force when it was evaluated
+            idx = self.selector.dev_worlds(len(r.per_world))  # the split in force when it was evaluated
         if len(idx) == len(r.per_world):
             return v
         eps = [r.episodes[i] for i in idx if i < len(r.episodes)]
         value = float(sum(r.per_world[i] for i in idx) / max(1, len(idx)))
         sweep = r.sweep
         if isinstance(self.replay.objective, ParetoSweepObjective):
-            # the Pareto sweep covered every world: recompute it on the development worlds only, so
-            # neither the value nor beta_sweep.json leaks held-out worlds to the developer
+            # recompute the sweep on development worlds only, so held-out worlds never leak to the developer
             keep = {e.world_id for e in eps}
             by_beta: dict = {}
             for e in r.sweep_episodes:
@@ -492,6 +452,10 @@ class DreamRSILoop:
         return sorted(terms)
 
 
+def _policy_id(code: str) -> str:
+    return Artifact({POLICY_FILE: code}).id
+
+
 def _failed_report(v: VersionRecord) -> PolicyReport:
     return PolicyReport(policy_id="", label=v.label, objective="rejected", value=float("-inf"), per_world=[],
                         episodes=[], diagnostics={"rejected": v.change})
@@ -501,12 +465,8 @@ def _jsonable(d: dict) -> dict:
     return json.loads(json.dumps(d, default=float))
 
 
-# ------------------------------------------------------------------------------ run()
 def as_task(domain, seed_artifact: Optional[Artifact] = None, llm_task=None, **kw) -> DiscoveryTask:
-    """A :class:`DiscoveryTask` from a discovery task, a discovery domain (``as_task()``),
-    or ANY :class:`rsi.core.Domain` (wrapped by :class:`DomainTask`)."""
-    from .agent import DomainTask
-
+    """A discovery task from a task, a discovery domain (``as_task()``) or any :class:`rsi.core.Domain`."""
     if isinstance(domain, DiscoveryTask) or (hasattr(domain, "as_task") and hasattr(domain, "evaluate_program")):
         if kw:
             raise TypeError(f"task_kwargs {sorted(kw)} only apply to an rsi.core Domain wrapped by DomainTask; "
@@ -519,30 +479,7 @@ def as_task(domain, seed_artifact: Optional[Artifact] = None, llm_task=None, **k
 def run(domain, seed_artifact: Optional[Artifact] = None, *, llm_task=None, llm_propose=None, llm_develop=None,
         config: Optional[Config] = None, out_dir: Optional[str] = None, agent=None, developer=None,
         initial_policy=None, summarizer=None, task_kwargs: Optional[dict] = None) -> ImprovementResult:
-    """Run Dream-RSI on any problem.
-
-    Parameters
-    ----------
-    domain: an :class:`rsi.core.Domain` (programs scored by the locked grader on its
-        ``evolve`` split), a discovery domain from :mod:`rsi.domains.discovery`, or a
-        :class:`DiscoveryTask`.
-    seed_artifact: the initial program / workspace (default ``domain.seed_artifact()``).
-    llm_task: the frozen model the artifact itself calls (rsi.core Domains that need one).
-    llm_propose: the discovery agent's LLM (wrapped in :class:`EditorAgent`); omitted ->
-        ``domain.mock_agent()`` when the domain has an offline agent.
-    llm_develop: the policy developer's LLM (:class:`LLMPolicyDeveloper`); omitted ->
-        ``llm_propose`` if given, else the offline :class:`ParametricMutator`.
-    config: :class:`Config`. ``config.dream=False`` runs Recursive Fixed Exploration.
-    agent / developer / initial_policy / summarizer: explicit overrides.
-
-    Returns an :class:`rsi.core.ImprovementResult`: ``best`` = best discovered program,
-    ``trajectory`` = one row per live search (calls, best, plan, N, k, dreaming phase),
-    ``meta["policy"]`` = the final deployed policy code, ``meta["policy_ledger"]``,
-    ``meta["worlds"]`` (replay worlds), ``usage`` per LLM role plus the cost meter.
-    """
-    from .agent import EditorAgent
-    from .developer import LLMPolicyDeveloper
-
+    """Run Dream-RSI on any problem; without LLMs it uses the domain's mock agent and the ParametricMutator."""
     cfg = config or Config()
     task = as_task(domain, seed_artifact, llm_task, **(task_kwargs or {}))
     if agent is None:
@@ -556,7 +493,7 @@ def run(domain, seed_artifact: Optional[Artifact] = None, *, llm_task=None, llm_
     if developer is None:
         developer = LLMPolicyDeveloper(dev_llm, beta1=cfg.beta1, beta2=cfg.beta2, lam=cfg.lam,
                                        leakage_check=cfg.leakage_check) if dev_llm is not None else ParametricMutator()
-    # meter every LLM role, including LLMs inside an explicitly passed agent / developer / summarizer
+    # meter every LLM role, including LLMs inside an explicitly passed agent, developer or summarizer
     llms = (llm_task, llm_propose, llm_develop, _llm_of(agent), _llm_of(developer), _llm_of(summarizer),
             _llm_of(getattr(task, "evaluator", None)))
     loop = DreamRSILoop(task, agent, config=cfg, developer=developer, initial_policy=initial_policy,
@@ -565,11 +502,7 @@ def run(domain, seed_artifact: Optional[Artifact] = None, *, llm_task=None, llm_
 
 
 def _llm_of(obj):
-    """The :class:`rsi.core.LLM` behind an agent / developer / summarizer / evaluator, if any
-    (``EditorAgent`` and ``LLMPolicyDeveloper`` wrap an Editor: ``RewriteEditor.llm`` or
-    ``AgentEditor.cli``)."""
-    from ..core.llm import LLM
-
+    """The LLM behind an agent, developer, summarizer or evaluator (directly or via its editor's llm/cli)."""
     if obj is None or isinstance(obj, LLM):
         return obj
     for attr in ("llm", "editor"):

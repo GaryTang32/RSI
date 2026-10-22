@@ -1,32 +1,4 @@
-"""Collaborative autoresearch ("autoresearch at home", SETI@home style).
-
-:class:`SharedHub` replaces the Ensue key-value service of
-``mutable-state-inc/autoresearch-at-home`` with a directory of JSON files guarded
-by ``flock`` (safe across threads and processes). It reproduces
-``coordinator.py``:
-
-* **claim before run** - key ``<agent>--<slug(desc)>--<sha256(desc)[:6]>``; skip if a
-  result exists for that key or a claim on it is younger than ``CLAIM_TTL`` (900 s);
-  skip if a *semantic* search over fresh claims finds one with similarity >=
-  ``SEMANTIC_THRESHOLD`` (0.92, top-5); otherwise write the claim, wait
-  ``VERIFY_DELAY`` (2 s), re-read, keep it only if it is still ours (last writer
-  wins). The exact key embeds the agent name, so cross-agent dedup rests on the
-  semantic check (faithful); ``dedup_on_code=True`` adds a code-hash check.
-* **publish results with full source** (``results/<key>``), agent best (no sanity
-  checks), global best (reject v <= 0, v < 0.5, one-step jump > 0.1; read-compare-
-  write with a second read) and tier best (weaker: no jump check, no second read).
-* **insights and hypotheses** namespaces, ``unclaimed_hypotheses`` (a semantic
-  search that never filters tested ones), ``analyze`` and the leaderboard.
-
-Results are self-reported. ``verifier`` (hardened) re-runs a claimed best
-independently before it may become the global best - the fix for the at-home
-weakness that any participant can write the best.
-
-:class:`CollaborativeLoop` is one participant: THINK (sync every 5 runs), CLAIM
-(<= 5 alternatives, then "just run something"), run, PUBLISH (result + insight +
-hypothesis), keep vs its own branch tip, and adopt the swarm's best when it is
-better. ``report`` lets a test agent lie about its numbers.
-"""
+"""Collaborative autoresearch ("autoresearch at home"): a file-backed claim/result hub and a swarm participant."""
 from __future__ import annotations
 
 import fcntl
@@ -45,6 +17,7 @@ from typing import Callable, Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import Node, new_id
+from .keep import Samples
 from .loop import AutoresearchLoop
 
 CLAIM_TTL = 900.0
@@ -82,15 +55,9 @@ class NgramCosine:
         return dot / (na * nb) if na and nb else 0.0
 
 
-class TokenJaccard:
-    def __call__(self, a: str, b: str) -> float:
-        ta, tb = set(str(a).lower().split()), set(str(b).lower().split())
-        return len(ta & tb) / len(ta | tb) if ta | tb else 1.0
-
-
 @dataclass
 class SanityRule:
-    """Heuristic plausibility filters (at-home: reject v <= 0, v < 0.5, jump > 0.1)."""
+    """Plausibility filters for a claimed best (at-home: reject v <= 0, v < 0.5, a jump > 0.1)."""
 
     direction: str = "min"
     floor: Optional[float] = 0.5        # min-direction: reject values below; max-direction: reject above
@@ -113,7 +80,7 @@ class SanityRule:
 
 
 class SharedHub:
-    """File-backed collaboration hub (see module docstring)."""
+    """File-backed at-home hub: TTL and semantic claims, results with source, sanity-checked bests."""
 
     NAMESPACES = ("claims", "results", "best", "hypotheses", "insights")
 
@@ -133,8 +100,7 @@ class SharedHub:
         if isinstance(sanity, str):
             if sanity != "at-home":
                 raise ValueError("sanity must be 'at-home', a SanityRule or None")
-            # at-home's thresholds (v >= 0.5, jump <= 0.1) are val_bpb-scale; for a higher-is-better metric
-            # only the "v <= 0 is a crash/bug" check carries over - pass your own SanityRule for other scales
+            # at-home's thresholds are val_bpb-scale; for a higher-is-better metric only "v <= 0" carries over
             sanity = SanityRule() if direction == "min" else SanityRule(direction="max", floor=None, max_jump=None)
         if sanity is not None and sanity.direction != direction:
             raise ValueError(f"SanityRule direction {sanity.direction!r} != hub direction {direction!r}")
@@ -149,7 +115,6 @@ class SharedHub:
         if not lb.exists():
             self._write(lb, {"entries": [], "updated_at": None})
 
-    # ---- storage
     @contextmanager
     def _locked(self):
         with self._tlock, open(self.root / ".lock", "w") as fh:
@@ -194,39 +159,34 @@ class SharedHub:
     def _say(self, msg: str) -> None:
         self.log.append(msg)
 
-    # ---- setup
     def seed(self, source: dict[str, str]) -> None:
-        """setup_hub.py: best = the baseline source with no score yet."""
+        """Best = the baseline source with no score yet."""
         with self._locked():
             if self.get("best", "metadata") is None:
                 self.put("best", "train_py", {"source": source})
                 self.put("best", "metadata", {self.metric: None, "status": "baseline", "agent_id": "hub-setup"})
 
-    # ---- claims
+    def _fresh(self, claim: dict) -> bool:
+        return self.now() - float(claim.get("claimed_at", 0)) < self.claim_ttl
+
     def check_claimed(self, key: str, code_hash: Optional[str] = None) -> bool:
         if self.get("results", key) is not None:
             return True
         c = self.get("claims", key)
-        if c and self.now() - float(c.get("claimed_at", 0)) < self.claim_ttl:
+        if c and self._fresh(c):
             return True
         if self.dedup_on_code and code_hash:
-            for _, v in self.items("claims"):
-                if v.get("code_hash") == code_hash and self.now() - float(v.get("claimed_at", 0)) < self.claim_ttl:
-                    return True
-            for _, v in self.items("results"):
-                if v.get("code_hash") == code_hash:
-                    return True
+            return (any(v.get("code_hash") == code_hash and self._fresh(v) for _, v in self.items("claims"))
+                    or any(v.get("code_hash") == code_hash for _, v in self.items("results")))
         return False
 
     def check_similar_claimed(self, description: str) -> list[dict]:
-        out = []
-        for score, _, v in self.search("claims", description, limit=5):
-            if score >= self.threshold and self.now() - float(v.get("claimed_at", 0)) < self.claim_ttl:
-                out.append({"description": v.get("description"), "score": score, "agent": v.get("agent_id")})
-        return out
+        return [{"description": v.get("description"), "score": score, "agent": v.get("agent_id")}
+                for score, _, v in self.search("claims", description, limit=5)
+                if score >= self.threshold and self._fresh(v)]
 
     def claim(self, description: str, agent_id: str, code_hash: Optional[str] = None) -> Optional[str]:
-        """Claim an experiment; the key, or None if taken / similar work in progress."""
+        """The claim key, or None if taken or similar work is in progress."""
         key = experiment_key(agent_id, description)
         try:
             if self.check_claimed(key, code_hash):
@@ -246,11 +206,10 @@ class SharedHub:
                 return key
             self._say(f"{agent_id}: lost claim race for {key}")
             return None
-        except OSError as e:  # "Network is additive, never blocking": train locally on hub errors
+        except OSError as e:  # hub errors never block: run locally
             self._say(f"claim error {e!r}")
             return key
 
-    # ---- results and bests
     def _better(self, a: float, b: float) -> bool:
         return a < b if self.direction == "min" else a > b
 
@@ -320,7 +279,7 @@ class SharedHub:
         return True
 
     def _update_tier_best(self, tier: str, value: float, rec: dict, source: dict[str, str]) -> bool:
-        """Weaker than the global rule (faithful): no jump check and no second read."""
+        """At-home's weaker rule: no jump check and no second read."""
         if self.sanity is not None and self.sanity.check(value, None, jump=False):
             return False
         cur = (self.get("best", f"tier__{tier}__metadata") or {}).get(self.metric)
@@ -340,7 +299,7 @@ class SharedHub:
         self._write(p, lb)
 
     def pull_best_config(self, tier: Optional[str] = None) -> Optional[tuple[dict, dict]]:
-        """(source files, metadata) of the tier best (fallback: global best)."""
+        """(source files, metadata) of the tier best, else the global best."""
         if tier:
             m, c = self.get("best", f"tier__{tier}__metadata"), self.get("best", f"tier__{tier}__train_py")
             if m and c:
@@ -350,7 +309,6 @@ class SharedHub:
             return c["source"], m
         return None
 
-    # ---- knowledge
     def post_insight(self, agent_id: str, insight: str, evidence_keys=()) -> None:
         h = hashlib.sha256(insight.encode()).hexdigest()[:6]
         self.put("insights", f"{slugify(agent_id, 20)}--{slugify(insight)}--{h}",
@@ -366,14 +324,14 @@ class SharedHub:
                   "priority": priority, "created_at": self.now()})
 
     def unclaimed_hypotheses(self, topic: str = "experiment", limit: int = 10) -> list[dict]:
-        """Faithful: a semantic search over hypotheses, never filtered by tested/claimed."""
+        """At-home semantics: a semantic search, never filtered by tested or claimed."""
         return [v for _, _, v in self.search("hypotheses", topic, limit=limit)]
 
     def analyze(self) -> dict:
         res = [v for _, v in self.items("results")]
         keeps = [v for v in res if v.get("status") == "keep"]
         vals = sorted((v[self.metric] for v in keeps), reverse=self.direction == "max")
-        # faithful quirk: compares best 5 vs next 5 keeps sorted by value (nearly always "improving")
+        # at-home quirk: compares the best 5 vs the next 5 keeps sorted by value
         trend = None
         if len(vals) >= 10:
             trend = "improving" if sum(vals[:5]) != sum(vals[5:10]) else "flat"
@@ -384,12 +342,13 @@ class SharedHub:
                 "n_insights": len(self.items("insights")), "n_hypotheses": len(self.items("hypotheses"))}
 
 
-class CollaborativeLoop(AutoresearchLoop):
-    """One swarm participant (see module docstring).
+_FOLLOW_UPS = {"keep": ("push further", "the last change helped; the same direction may help again", 3),
+               "discard": ("try the opposite of", "this direction did not help; the other side of the knob might", 4),
+               "crash": ("retry without the bug", "the run crashed; the idea itself is untested", 5)}
 
-    ``report(value) -> value`` is what the agent publishes (identity for honest
-    agents); ``claiming=False`` disables the claim protocol (ablation).
-    """
+
+class CollaborativeLoop(AutoresearchLoop):
+    """One swarm participant: claim, run, publish, and adopt the swarm best every ``sync_every`` experiments."""
 
     def __init__(self, *args, hub: SharedHub, agent_id: str, tier: Optional[str] = None, claiming: bool = True,
                  sync_every: int = SYNC_EVERY_N, report: Optional[Callable[[float], float]] = None,
@@ -399,7 +358,7 @@ class CollaborativeLoop(AutoresearchLoop):
             raise ValueError(f"hub direction {hub.direction!r} != task direction {self.task.direction!r}")
         self.hub, self.agent_id, self.tier = hub, agent_id, tier
         self.claiming, self.sync_every, self.adopt = claiming, sync_every, adopt
-        self.report = report or (lambda v: v)
+        self.report = report or (lambda v: v)          # the value this agent publishes
         self.hub_stats = {"claims_ok": 0, "claims_refused": 0, "ran_unclaimed": 0, "adoptions": 0, "published": 0}
         self.started: list[dict] = []
 
@@ -416,8 +375,6 @@ class CollaborativeLoop(AutoresearchLoop):
         if art == self.inc["artifact"]:
             return
         sha = self.ws.commit(art, f"adopt global best ({self.hub.metric}={v:.6f} from {meta.get('agent_id')})")
-        from .keep import Samples
-
         node = Node(id=new_id("exp"), parent=self.inc.get("node"), round=self.n_rounds, kind="adopt", status="keep",
                     score=v, change=f"adopt global best from {meta.get('agent_id')}", artifact_id=art.id,
                     meta={"commit": sha[:7], "adopted_value": v})
@@ -453,7 +410,7 @@ class CollaborativeLoop(AutoresearchLoop):
                 break
             self.hub_stats["claims_refused"] += 1
         else:
-            self.hub_stats["ran_unclaimed"] += 1        # "a rare duplicate beats doing nothing"
+            self.hub_stats["ran_unclaimed"] += 1        # a rare duplicate beats doing nothing
         if last is not None:
             self.started.append({"agent": self.agent_id, "description": last.change, "code": last.artifact.id,
                                  "t": time.time()})
@@ -471,17 +428,8 @@ class CollaborativeLoop(AutoresearchLoop):
             self.hub.publish_result(key, self.agent_id, rep, samples.memory_gb if samples else 0.0, node.status,
                                     node.change, art.files, tier=self.tier, code_hash=art.id)
             self.hub.post_insight(self.agent_id, f"{node.change}: {node.status} ({rep:.4f})", [key])
-            # at-home: publishing an insight AND a hypothesis is "mandatory every time"
-            if node.status == "keep":
-                self.hub.publish_hypothesis(self.agent_id, f"push further: {node.change}",
-                                            "the last change helped; the same direction may help again", {}, [key])
-            elif node.status == "discard":
-                self.hub.publish_hypothesis(self.agent_id, f"try the opposite of: {node.change}",
-                                            "this direction did not help; the other side of the knob might", {}, [key],
-                                            priority=4)
-            else:
-                self.hub.publish_hypothesis(self.agent_id, f"retry without the bug: {node.change}",
-                                            "the run crashed; the idea itself is untested", {}, [key], priority=5)
+            title, why, priority = _FOLLOW_UPS[node.status]
+            self.hub.publish_hypothesis(self.agent_id, f"{title}: {node.change}", why, {}, [key], priority=priority)
             self.hub_stats["published"] += 1
         return node
 

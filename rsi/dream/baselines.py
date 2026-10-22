@@ -1,17 +1,4 @@
-"""Baselines: Recursive Fixed Exploration and history-as-written-guidance.
-
-* **ParallelRefine / Recursive Fixed Exploration** [paper:§4 p.6-7] - the same loop,
-  agent, evaluator, initialization and per-round cap, but the starting policy (parallel
-  refine) "is kept fixed across recursive discovery rounds": ``Config(dream=False)``.
-  :func:`fixed_config` builds it from any Dream config.
-* **Guidance** [paper:§5.1 p.11] - past trajectories are abstracted "into high-level
-  directional insights, which are directly injected into the prompt as explicit
-  semantic guidance for subsequent rounds". A :class:`GuidanceSummarizer` turns the
-  history into advice ``{"text", "focus", "avoid"}``; the loop injects ``text`` as
-  ``$direction_guidance`` and the direction provider steers new roots toward ``focus``.
-  :class:`MockGuidanceSummarizer` is deterministic (focus = directions whose branches
-  produced the largest gains); :class:`LLMGuidanceSummarizer` asks an LLM.
-"""
+"""Baselines: Recursive Fixed Exploration [paper:§4] and history summarised into written guidance [paper:§5.1]."""
 from __future__ import annotations
 
 import json
@@ -40,12 +27,11 @@ def direction_gains(worlds: Sequence) -> dict[str, float]:
     """Best gain over the round's root achieved by branches of each direction (all worlds)."""
     out: dict[str, float] = {}
     for w in worlds:
-        root = w.root_score
         for b, cells in w.branches().items():
             d = (w.branch_tags.get(b) or {}).get("direction")
             if d is None:
                 continue
-            g = max([c.score - root for c in cells if c.success and c.score is not None] or [0.0])
+            g = max([c.score - w.root_score for c in cells if c.success and c.score is not None] or [0.0])
             out[d] = max(out.get(d, float("-inf")), g)
     return out
 
@@ -89,24 +75,23 @@ class LLMGuidanceSummarizer(GuidanceSummarizer):
     def summarize(self, worlds, directions) -> Guidance:
         rows = []
         for w in worlds:
-            root = w.root_score
             for n in w.non_root():
                 d = (w.branch_tags.get(n.branch) or {}).get("direction", "?")
-                res = f"{n.score - root:+.4g}" if n.success and n.score is not None else f"failed ({n.fail_class})"
+                res = f"{n.score - w.root_score:+.4g}" if n.success and n.score is not None else \
+                    f"failed ({n.fail_class})"
                 rows.append(f"- round {w.meta.get('round', '?')} {n.id} dir={d}: {res}. {n.proposal[:120]}")
         prompt = GUIDANCE_PROMPT.format(directions=list(directions), records="\n".join(rows[-self.max_records:]))
         resp = self.llm.complete(prompt, role=self.role)
         try:
             d = extract_json(resp.text)
-            focus = [str(x) for x in d.get("focus", []) if str(x) in set(directions)] if directions else \
-                [str(x) for x in d.get("focus", [])]
+            focus = [str(x) for x in d.get("focus", []) if not directions or str(x) in set(directions)]
             return Guidance(str(d.get("advice", ""))[:1500], focus, [str(x) for x in d.get("avoid", [])])
         except (ValueError, AttributeError):
             return Guidance(resp.text[:1500])
 
 
 def fixed_config(cfg, guidance: bool = False):
-    """Recursive Fixed Exploration with the same budget/agent/evaluator settings as ``cfg``."""
+    """Recursive Fixed Exploration with the same budget, agent and evaluator settings as ``cfg``."""
     return replace(cfg, dream=False, guidance=guidance)
 
 

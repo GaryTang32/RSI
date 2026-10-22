@@ -1,23 +1,10 @@
 """Applying autoresearch to a NEW problem (copy-paste template, runs offline in seconds).
 
-The "user problem": fit a noisy 1-D function with a polynomial ridge regressor. The
-user owns a locked ``evaluate.py`` (data, the held-out score, and the entry point that
-imports the agent's code and calls ``report``) and an editable ``train.py`` (degree,
-regularisation, feature scaling; it must expose ``predict(x)``). We wrap them in a
-ScriptResearchTask and run the loop with the scripted agent - swap in
-``llm_propose=get_llm("claude:haiku", cache_dir=...)`` for a live research agent.
-
-Hardened-mode rules of thumb for your own problem: the locked file is the entry point
-and the only caller of ``report`` (so editable code cannot report a number itself), and
-``tamper_patterns`` names what the editable code must never touch (here the validation
-arrays and ``report``; the framework adds its own patterns for the record file and for
-monkeypatching the locked module).
-
 Usage: python experiments/autoresearch/example_new_problem.py [--llm sim|claude:haiku] [--quick]
 """
-from __future__ import annotations
+from _common import SCRATCH, parser, propose_llm, suffix, write  # noqa: I001
 
-from _common import suffix, SCRATCH, parser, propose_llm, write  # noqa: I001
+from pathlib import Path
 
 from rsi.autoresearch import Config, MockResearchAgent, RunBudget, ScriptResearchTask, knob_edit, run
 from rsi.autoresearch.task import RECORD_HELPER
@@ -65,6 +52,8 @@ def predict(x):
 
 
 def make_task() -> ScriptResearchTask:
+    # hardened mode: the locked evaluate.py is the entry point and the only caller of report(); tamper_patterns
+    # name what train.py must never touch
     return ScriptResearchTask(
         "poly-fit", {"evaluate.py": EVALUATE_PY, "train.py": TRAIN_PY}, metric="r2", direction="max",
         editable_paths=["train.py"], locked_paths=["evaluate.py"], run_cmd=["python", "evaluate.py"],
@@ -83,7 +72,7 @@ def edit_pool():
             knob_edit("SCALE", lambda v: v / 3, lo=0.01, name="scale_down")]
 
 
-def main():
+def main() -> None:
     a = parser(__doc__.splitlines()[0], seeds=1).parse_args()
     task = make_task()
     llm = propose_llm(a.llm, pool=edit_pool())
@@ -92,7 +81,7 @@ def main():
               config=Config(max_experiments=6 if a.quick else 20, mode="hardened", overwrite=True),
               out_dir=SCRATCH / "example_new_problem")
     s = res.meta["analysis"]
-    print(open(res.meta["results_tsv"]).read())
+    print(Path(res.meta["results_tsv"]).read_text())
     write("example_new_problem" + suffix(a.llm, a.quick),
           {"analysis": {k: v for k, v in s.items() if k != "top_hits"}, "top_hits": s["top_hits"],
            "best_train_py": res.best["train.py"], "usage": res.usage.get("_total")})
