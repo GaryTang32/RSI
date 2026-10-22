@@ -1,28 +1,14 @@
-"""Applying GEPA to a new problem with the quick-start API (no Domain class needed).
+"""Worked example: GEPA's quick-start ``optimize()`` on a new problem, a one-prompt customer-record formatter.
 
-The "system" formats customer records with one prompt; the metric runs it on one
-record, compares with the gold line field by field, and explains every failure in
-plain language (that explanation is what GEPA's reflection LM learns from).
-
-Offline (default) the task model is a small simulated formatter that follows the
-conventions its prompt states; ``--task-llm claude:haiku`` makes the formatter a real
-model, and ``--llm claude:haiku`` makes the reflection LM real (both cached under
-``.rsi_cache/gepa``).
-
-    python experiments/gepa/example_new_problem.py [--llm sim|claude:haiku] [--task-llm sim|claude:haiku]
+Run: python experiments/gepa/example_new_problem.py [--llm sim|claude:haiku] [--task-llm sim|claude:haiku]
 """
 from __future__ import annotations
 
 import random
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _common import CACHE, parse_args, reflection_llm, save  # noqa: E402
-
-from rsi.core import CachedLLM, ClaudeCLI  # noqa: E402
-from rsi.gepa import Config, optimize  # noqa: E402
+from _common import CACHE, parse_args, reflection_llm, save
+from rsi.core import CachedLLM, ClaudeCLI
+from rsi.gepa import Config, optimize
 
 FIRST = ["ada", "alan", "grace", "edsger", "barbara", "donald", "margaret", "john", "frances", "ken"]
 LAST = ["lovelace", "turing", "hopper", "dijkstra", "liskov", "knuth", "hamilton", "mccarthy", "allen", "thompson"]
@@ -33,6 +19,8 @@ CONVENTIONS = {  # field -> (keyword the simulated formatter looks for, plain-la
     "amount": ("two decimals", "Amounts must use a thousands separator and two decimals"),
     "currency": ("uppercase currency", "Put the uppercase currency code before the amount"),
 }
+RULES = {"name": CONVENTIONS["name"][1], "date": CONVENTIONS["date"][1],
+         "money": f"{CONVENTIONS['currency'][1]} and {CONVENTIONS['amount'][1]}"}
 
 
 def make_records(n: int, seed: int) -> list[dict]:
@@ -51,20 +39,22 @@ def gold(r: dict) -> dict:
 
 
 def simulated_formatter(prompt: str, r: dict) -> dict:
+    """Applies exactly the conventions whose keyword the prompt mentions."""
     p = prompt.lower()
+    has = lambda field: CONVENTIONS[field][0] in p
     d, m, y = r["date"].split("/")
-    amount = f"{r['amount']:,.2f}" if CONVENTIONS["amount"][0] in p else str(r["amount"])
-    cur = r["currency"].upper() if CONVENTIONS["currency"][0] in p else r["currency"]
-    return {"name": r["name"].title() if CONVENTIONS["name"][0] in p else r["name"],
-            "date": f"{y}-{m}-{d}" if CONVENTIONS["date"][0] in p else r["date"],
-            "money": f"{cur} {amount}" if CONVENTIONS["currency"][0] in p else f"{amount} {cur}"}
+    amount = f"{r['amount']:,.2f}" if has("amount") else str(r["amount"])
+    cur = r["currency"].upper() if has("currency") else r["currency"]
+    return {"name": r["name"].title() if has("name") else r["name"],
+            "date": f"{y}-{m}-{d}" if has("date") else r["date"],
+            "money": f"{cur} {amount}" if has("currency") else f"{amount} {cur}"}
 
 
 def llm_formatter(llm):
     def fmt(prompt: str, r: dict) -> dict:
         resp = llm.complete(f"{prompt}\n\nRecord: {r}\nReply with exactly three lines: name, date, money.",
                             seed=0, role="task")
-        lines = [l.strip() for l in resp.text.strip().splitlines() if l.strip()] + ["", "", ""]
+        lines = [line.strip() for line in resp.text.strip().splitlines() if line.strip()] + ["", "", ""]
         return {"name": lines[0], "date": lines[1], "money": lines[2]}
     return fmt
 
@@ -74,11 +64,8 @@ def make_metric(formatter):
         out = formatter(candidate["formatter.md"], record)
         g = gold(record)
         wrong = [k for k in g if out.get(k, "").strip() != g[k]]
-        rules = {"name": [CONVENTIONS["name"][1]], "date": [CONVENTIONS["date"][1]],
-                 "money": [CONVENTIONS["currency"][1], CONVENTIONS["amount"][1]]}
-        fb = " ".join(f"{rules[k][0]}. (field {k}: got {out.get(k)!r}, expected {g[k]!r})" if k != "money" else
-                      f"{' and '.join(rules[k])}. (field money: got {out.get(k)!r}, expected {g[k]!r})"
-                      for k in wrong) or "All fields correct."
+        fb = " ".join(f"{RULES[k]}. (field {k}: got {out.get(k)!r}, expected {g[k]!r})" for k in wrong) \
+            or "All fields correct."
         return 1.0 - len(wrong) / len(g), fb, " | ".join(f"{k}={out.get(k)}" for k in g)
     return metric
 

@@ -1,32 +1,16 @@
-"""Live check for the claim-audit truncation finding (docs/methods/gepa/claims-audit.md, section 3 item 3).
+"""Live check: the reflection proposer sees the provider stop reason on a CachedLLM miss and on the replayed hit.
 
-One GEPA reflection call through ``CachedLLM(ClaudeCLI("haiku"))``, made twice with the same
-seed: the first is a cache miss, the second a cache hit. It records the provider stop reason
-that :class:`rsi.gepa.reflection.ReflectionProposer` sees on each (``ReflectionResult.finish``)
-and the ``stop_reason`` stored in the cache entry. Before the core fix a hit carried
-``raw={"cached": True, "usage": ...}`` only, so the known-truncation check never saw a
-``max_tokens`` reason on a replayed reply.
-
-    python experiments/gepa/live_stop_reason_check.py [--fresh]
-
-``--fresh`` deletes the cache first (about $0.005-0.007 of haiku) and writes
-``results/gepa/live_stop_reason_check.json``; without it the check replays from
-``.rsi_cache/gepa_fix_live`` for $0 (both calls are then hits) and only prints.
+Run: python experiments/gepa/live_stop_reason_check.py [--fresh]   (``--fresh``: clear the cache, a ~$0.007 live call)
 """
 from __future__ import annotations
 
 import argparse
 import json
 import shutil
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from _common import ROOT, save  # noqa: E402
-
-from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
-from rsi.gepa.reflection import ReflectionProposer  # noqa: E402
+from _common import ROOT, save
+from rsi.core import Artifact, CachedLLM, ClaudeCLI
+from rsi.gepa.reflection import ReflectionProposer
 
 CACHE = ROOT / ".rsi_cache" / "gepa_fix_live"
 
