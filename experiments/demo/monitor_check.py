@@ -1,15 +1,6 @@
-"""Replay the shadow-monitor readings of the reported AgentQA runs and replicates offline and compare them with the
-trace.
+"""Replay every shadow-monitor reading of the reported AgentQA runs offline and compare it with the trace.
 
-The charts' orange and green lines are the shadow monitor's sealed held-out and OOD readings (one trial per task,
-trial seed 0). The recorded traces predate the monitor's missing-trial count, so a lost trial there would not show in
-``infra_errors``. This re-evaluates each monitored version from the run's LLM cache with the model switched off (a
-cache miss is an error) and checks that every reading reproduces with no missing trial, at $0::
-
-    python experiments/demo/monitor_check.py          # writes <run>/monitor_check.json for each run in RUNS
-
-The early-ended attempts and the archived replays under ``_archive/`` are not replayed, nor is autoresearch's shadow
-audit (CPU training, no model call).
+    python experiments/demo/monitor_check.py [RUN ...]   # writes <run>/monitor_check.json, exits 1 on a difference
 """
 from __future__ import annotations
 
@@ -17,15 +8,11 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-for p in (ROOT, ROOT / "experiments" / "demo"):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+from live_demo import OUT, _agentqa
 
-from live_demo import OUT, _agentqa  # noqa: E402
-from rsi.core import Artifact, CachedLLM, ClaudeCLI  # noqa: E402
-from rsi.core.evaluate import Evaluator  # noqa: E402
-from rsi.trace import load_trace  # noqa: E402
+from rsi.core import Artifact, CachedLLM, ClaudeCLI
+from rsi.core.evaluate import Evaluator
+from rsi.trace import load_trace
 
 #: run directory -> its LLM cache (both under demo/runs)
 RUNS = {
