@@ -1,20 +1,4 @@
-"""E16c - Symmetric compute-only timing of the paper's Lasso solver vs sklearn and R glmnet (claims audit Q13,
-review round; preregistered in claims-audit §6.1).
-
-E16/E16b timed the compiled programs around a whole process call (payload build, spawn, pipe I/O, parse) but R
-glmnet inside R around ``glmnet()`` only, so the comparison was asymmetric. Here every solver is timed on its
-compute only:
-
-* compiled programs (App. C, the benchmark's glmnet port, SimpleTES's best program): the unmodified binary runs
-  under ``e16c/solve_timer.c`` (LD_PRELOAD), which records the monotonic time from the return of the last
-  ``fread`` on stdin to the start of the first ``fwrite`` on stdout ("first-write" window) and to the return of
-  the last ``fwrite`` ("last-write" window, needed for a program that streams one column per lambda);
-* R glmnet: ``Sys.time()`` (microseconds) around the ``glmnet()`` call alone, at thresh in {1e-7 .. 1e-13};
-* sklearn: ``perf_counter`` around ``lasso_path`` in-process (as in E16).
-
-Secondary: the E16 harness time (``lasso_cpp.run_binary``) minus a no-op binary's harness time (``e16c/noop.c``),
-measured in the same interleaved loop. Each method gets 1 warm-up, then 3 blocks x 5 reps with the blocks
-interleaved across methods (the order rotates per block); statistic = min over the 15 reps, medians reported.
+"""E16c: symmetric compute-only timing of the App. C Lasso solver vs sklearn and R glmnet (Q13).
 
     python experiments/dream-rsi/e16c_symmetric_timing.py --progs <dir with dream_appC.py ...> --eigen <dir> \
         --heldout <dir> --rscript <Rscript> --cache <cpp cache dir>
@@ -82,19 +66,20 @@ close(con)
 
 
 def build(src: Path, out: Path, shared=False):
-    cmd = ["gcc", "-O2", str(src), "-o", str(out)] + (["-shared", "-fPIC", "-ldl"] if shared else [])
-    subprocess.run(cmd, check=True)
+    subprocess.run(["gcc", "-O2", str(src), "-o", str(out)] + (["-shared", "-fPIC", "-ldl"] if shared else []),
+                   check=True)
     return str(out)
 
 
 class Timer:
+    """Runs a binary under the ``e16c/solve_timer.c`` LD_PRELOAD shim (last stdin fread -> first/last stdout fwrite)."""
+
     def __init__(self, shim: str, tmp: Path):
         self.shim, self.out = shim, tmp / "solve_timer.txt"
 
     def call(self, binary, X, y, alphas):
-        """One call through the E16 harness with the timer loaded: (harness ms, first-write ms, last-write ms, coef)."""
-        if self.out.exists():
-            self.out.unlink()
+        """One call through the E16 harness: (harness ms, first-write ms, last-write ms, coef)."""
+        self.out.unlink(missing_ok=True)
         old = {k: os.environ.get(k) for k in ("LD_PRELOAD", "RSI_SOLVE_TIMER_OUT")}
         os.environ["LD_PRELOAD"], os.environ["RSI_SOLVE_TIMER_OUT"] = self.shim, str(self.out)
         try:
@@ -112,6 +97,7 @@ class Timer:
 
 
 def glmnet_block(rscript, fin: Path, tmp: Path, thresh, p, warm=1):
+    """REPS glmnet() fits in one R process, each timed with Sys.time() around the call alone."""
     fout, fr = tmp / "r_out.bin", tmp / "fit.R"
     fr.write_text(R_SCRIPT)
     rr = subprocess.run([rscript, str(fr), str(fin), str(fout), str(REPS), repr(float(thresh)), str(warm)],
@@ -122,12 +108,91 @@ def glmnet_block(rscript, fin: Path, tmp: Path, thresh, p, warm=1):
     reps = struct.unpack("i", raw[:4])[0]
     ts = list(struct.unpack(f"{reps}d", raw[4:4 + 8 * reps]))
     k = struct.unpack("i", raw[4 + 8 * reps:8 + 8 * reps])[0]
-    B = np.frombuffer(raw[8 + 8 * reps:], dtype=np.float64).reshape((p, k), order="F")
-    return ts, B
+    return ts, np.frombuffer(raw[8 + 8 * reps:], dtype=np.float64).reshape((p, k), order="F")
 
 
 def summ(xs):
     return {"min": min(xs), "median": statistics.median(xs), "n": len(xs), "all": xs}
+
+
+def measure(X, y, alphas, ref, bins, noop, timer, rscript, tmp, fin):
+    """1 warm-up per method, then BLOCKS x REPS timings with the blocks interleaved (the order rotates per block)."""
+    rec = {k: {"harness": [], "first": [], "last": []} for k in list(bins) + ["noop"]}
+    rec["sklearn"] = {"compute": []}
+    for th in THRESH:
+        rec[f"glmnet_R_{th:g}"] = {"compute": []}
+    gaps = {}
+    for label, b in {**bins, "noop": noop}.items():  # the R warm-up runs inside every R process
+        _, _, _, coef = timer.call(b, X, y, alphas)
+        if label != "noop":
+            gaps[label] = max_gap(X, y, np.asarray(coef), ref, alphas)
+    sklearn_path(X, y)
+    gaps["sklearn"] = 0.0
+    methods = list(bins) + ["noop", "sklearn"] + [f"glmnet_R_{th:g}" for th in THRESH]
+    for blk in range(BLOCKS):
+        for m in methods[blk % len(methods):] + methods[:blk % len(methods)]:
+            if m in bins or m == "noop":
+                for _ in range(REPS):
+                    h, f1, f2, _ = timer.call(bins.get(m, noop), X, y, alphas)
+                    rec[m]["harness"].append(h)
+                    rec[m]["first"].append(f1)
+                    rec[m]["last"].append(f2)
+            elif m == "sklearn":
+                for _ in range(REPS):
+                    t0 = time.perf_counter()
+                    sklearn_path(X, y)
+                    rec[m]["compute"].append((time.perf_counter() - t0) * 1e3)
+            else:
+                ts, B = glmnet_block(rscript, fin, tmp, float(m.rsplit("_", 1)[1]), X.shape[1])
+                rec[m]["compute"].extend(ts)
+                gaps[m] = max_gap(X, y, B, ref, alphas) if B.shape == ref.shape else math.inf
+    return rec, gaps
+
+
+def row_of(name, X, rec, gaps, bins) -> dict:
+    """Per-dataset summary; Q13 passes iff App. C is correct and faster than sklearn and every gate-passing glmnet."""
+    noop_min = min(rec["noop"]["harness"])
+    row = {"shape": list(X.shape), "gaps": gaps, "noop_harness": summ(rec["noop"]["harness"])}
+    for label in bins:
+        r = rec[label]
+        row[label] = {"compute_first_write": summ(r["first"]), "compute_last_write": summ(r["last"]),
+                      "harness": summ(r["harness"]), "harness_minus_noop_min": min(r["harness"]) - noop_min}
+    row["sklearn"] = {"compute": summ(rec["sklearn"]["compute"])}
+    for th in THRESH:
+        m = f"glmnet_R_{th:g}"
+        row[m] = {"compute": summ(rec[m]["compute"]), "gap": gaps[m], "passes_gate": bool(gaps[m] <= 1e-6)}
+    passing = [f"glmnet_R_{th:g}" for th in THRESH if row[f"glmnet_R_{th:g}"]["passes_gate"]]
+    best_pass = min(passing, key=lambda m: row[m]["compute"]["min"]) if passing else None
+    appc = row["dream_appC"]
+    prim = appc["compute_first_write"]["min"]
+    sk = row["sklearn"]["compute"]
+    row["q13"] = {
+        "appC_gap_ok": bool(gaps["dream_appC"] <= 1e-6),
+        "appC_primary_ms": prim,
+        "sklearn_ms": sk["min"],
+        "fastest_gate_passing_glmnet": best_pass,
+        "fastest_gate_passing_glmnet_ms": row[best_pass]["compute"]["min"] if best_pass else None,
+        "glmnet_default_ms": row["glmnet_R_1e-07"]["compute"]["min"],
+        "faster_than_sklearn": prim < sk["min"],
+        "faster_than_gate_passing_glmnet": (prim < row[best_pass]["compute"]["min"]) if best_pass else True,
+        "faster_than_default_glmnet": prim < row["glmnet_R_1e-07"]["compute"]["min"],
+        "secondary_harness_minus_noop_ms": appc["harness_minus_noop_min"],
+        "secondary_faster_than_gate_passing_glmnet": (appc["harness_minus_noop_min"]
+                                                      < row[best_pass]["compute"]["min"]) if best_pass else True,
+        "secondary_faster_than_sklearn": appc["harness_minus_noop_min"] < sk["min"],
+        "median_faster_than_gate_passing_glmnet": (appc["compute_first_write"]["median"]
+                                                   < row[best_pass]["compute"]["median"]) if best_pass else True,
+        "median_faster_than_sklearn": appc["compute_first_write"]["median"] < sk["median"],
+    }
+    q = row["q13"]
+    q["passes"] = bool(q["appC_gap_ok"] and q["faster_than_sklearn"] and q["faster_than_gate_passing_glmnet"])
+    print(f"[{name} {X.shape}] appC {prim:.2f} ms (harness-noop {appc['harness_minus_noop_min']:.2f}, "
+          f"harness {appc['harness']['min']:.2f}, noop {noop_min:.2f}) | sklearn {q['sklearn_ms']:.2f} | "
+          f"glmnet default {q['glmnet_default_ms']:.2f} (gap {gaps['glmnet_R_1e-07']:.1e}) | "
+          f"gate-passing {best_pass} {q['fastest_gate_passing_glmnet_ms']} | port "
+          f"{row['glmnet_port']['compute_first_write']['min']:.2f} | simpletes_best (last-write) "
+          f"{row['simpletes_best']['compute_last_write']['min']:.2f} | passes {q['passes']}", flush=True)
+    return row
 
 
 def main():
@@ -162,81 +227,8 @@ def main():
             fin = tmp / "in.bin"
             fin.write_bytes(struct.pack("iii", *X.shape, len(alphas)) + X.tobytes() + y.tobytes()
                             + np.ascontiguousarray(alphas, np.float64).tobytes())
-            rec = {k: {"harness": [], "first": [], "last": []} for k in list(bins) + ["noop"]}
-            rec["sklearn"] = {"compute": []}
-            for th in THRESH:
-                rec[f"glmnet_R_{th:g}"] = {"compute": []}
-            gaps = {}
-            # warm-ups (untimed); the R warm-up runs inside every R process
-            for label, b in {**bins, "noop": noop}.items():
-                _, _, _, coef = timer.call(b, X, y, alphas)
-                if label != "noop":
-                    gaps[label] = max_gap(X, y, np.asarray(coef), ref, alphas)
-            sklearn_path(X, y)
-            gaps["sklearn"] = 0.0
-            methods = list(bins) + ["noop", "sklearn"] + [f"glmnet_R_{th:g}" for th in THRESH]
-            for blk in range(BLOCKS):
-                order = methods[blk % len(methods):] + methods[:blk % len(methods)]
-                for m in order:
-                    if m in bins or m == "noop":
-                        b = bins.get(m, noop)
-                        for _ in range(REPS):
-                            h, f1, f2, _ = timer.call(b, X, y, alphas)
-                            rec[m]["harness"].append(h)
-                            rec[m]["first"].append(f1)
-                            rec[m]["last"].append(f2)
-                    elif m == "sklearn":
-                        for _ in range(REPS):
-                            t0 = time.perf_counter()
-                            sklearn_path(X, y)
-                            rec[m]["compute"].append((time.perf_counter() - t0) * 1e3)
-                    else:
-                        th = float(m.rsplit("_", 1)[1])
-                        ts, B = glmnet_block(a.rscript, fin, tmp, th, X.shape[1])
-                        rec[m]["compute"].extend(ts)
-                        gaps[m] = max_gap(X, y, B, ref, alphas) if B.shape == ref.shape else math.inf
-            noop_min = min(rec["noop"]["harness"])
-            row = {"shape": list(X.shape), "gaps": gaps, "noop_harness": summ(rec["noop"]["harness"])}
-            for label in bins:
-                r = rec[label]
-                row[label] = {"compute_first_write": summ(r["first"]), "compute_last_write": summ(r["last"]),
-                              "harness": summ(r["harness"]),
-                              "harness_minus_noop_min": min(r["harness"]) - noop_min}
-            row["sklearn"] = {"compute": summ(rec["sklearn"]["compute"])}
-            for th in THRESH:
-                m = f"glmnet_R_{th:g}"
-                row[m] = {"compute": summ(rec[m]["compute"]), "gap": gaps[m], "passes_gate": bool(gaps[m] <= 1e-6)}
-            passing = [f"glmnet_R_{th:g}" for th in THRESH if row[f"glmnet_R_{th:g}"]["passes_gate"]]
-            best_pass = min(passing, key=lambda m: row[m]["compute"]["min"]) if passing else None
-            appc = row["dream_appC"]
-            prim = appc["compute_first_write"]["min"]
-            row["q13"] = {
-                "appC_gap_ok": bool(gaps["dream_appC"] <= 1e-6),
-                "appC_primary_ms": prim,
-                "sklearn_ms": row["sklearn"]["compute"]["min"],
-                "fastest_gate_passing_glmnet": best_pass,
-                "fastest_gate_passing_glmnet_ms": row[best_pass]["compute"]["min"] if best_pass else None,
-                "glmnet_default_ms": row["glmnet_R_1e-07"]["compute"]["min"],
-                "faster_than_sklearn": prim < row["sklearn"]["compute"]["min"],
-                "faster_than_gate_passing_glmnet": (prim < row[best_pass]["compute"]["min"]) if best_pass else True,
-                "faster_than_default_glmnet": prim < row["glmnet_R_1e-07"]["compute"]["min"],
-                "secondary_harness_minus_noop_ms": appc["harness_minus_noop_min"],
-                "secondary_faster_than_gate_passing_glmnet": (appc["harness_minus_noop_min"]
-                                                              < row[best_pass]["compute"]["min"]) if best_pass else True,
-                "secondary_faster_than_sklearn": appc["harness_minus_noop_min"] < row["sklearn"]["compute"]["min"],
-                "median_faster_than_gate_passing_glmnet": (appc["compute_first_write"]["median"]
-                                                           < row[best_pass]["compute"]["median"]) if best_pass else True,
-                "median_faster_than_sklearn": appc["compute_first_write"]["median"] < row["sklearn"]["compute"]["median"],
-            }
-            q = row["q13"]
-            q["passes"] = bool(q["appC_gap_ok"] and q["faster_than_sklearn"] and q["faster_than_gate_passing_glmnet"])
-            rows[name] = row
-            print(f"[{name} {X.shape}] appC {prim:.2f} ms (harness-noop {appc['harness_minus_noop_min']:.2f}, "
-                  f"harness {appc['harness']['min']:.2f}, noop {noop_min:.2f}) | sklearn {q['sklearn_ms']:.2f} | "
-                  f"glmnet default {q['glmnet_default_ms']:.2f} (gap {gaps['glmnet_R_1e-07']:.1e}) | "
-                  f"gate-passing {best_pass} {q['fastest_gate_passing_glmnet_ms']} | port "
-                  f"{row['glmnet_port']['compute_first_write']['min']:.2f} | simpletes_best (last-write) "
-                  f"{row['simpletes_best']['compute_last_write']['min']:.2f} | passes {q['passes']}", flush=True)
+            rec, gaps = measure(X, y, alphas, ref, bins, noop, timer, a.rscript, tmp, fin)
+            rows[name] = row_of(name, X, rec, gaps, bins)
     res = {"experiment": "e16c_symmetric_timing", "created": time.strftime("%Y-%m-%d %H:%M:%S"),
            "config": {"blocks": BLOCKS, "reps": REPS, "thresh": THRESH, "threads": 1, "programs": PROGRAMS,
                       "timer": "LD_PRELOAD e16c/solve_timer.c (CLOCK_MONOTONIC, last stdin fread -> first/last "

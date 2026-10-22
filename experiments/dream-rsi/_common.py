@@ -1,12 +1,4 @@
-"""Shared plumbing for the Dream-RSI experiments (demo, E1-E10, live smoke).
-
-* ``parse_args``: ``--llm sim|claude:<model>``, ``--seeds N``, ``--quick``, ``--workers``, ``--out``;
-* ``llm_of`` / ``developer_of`` / ``agent_of``: offline mocks, or a cached headless ``claude -p``
-  backend (cache: ``.rsi_cache/dream-rsi``) as discovery agent and/or policy developer;
-* ``domain_of``: synthetic / sumdiff / circlepack / lasso / autocorr;
-* ``pmap``: a small process pool over seeds; ``summ``/``paired``: mean + 95% bootstrap CI;
-* ``save``: ``results/dream-rsi/<name>.json`` (+ optional figure).
-"""
+"""Shared helpers for the Dream-RSI experiments: CLI, LLM backends, domains, recorded searches, pool, stats, output."""
 from __future__ import annotations
 
 import argparse
@@ -26,11 +18,11 @@ import numpy as np  # noqa: E402
 
 from rsi.core import CachedLLM, ClaudeCLI, paired_diff_ci, spearman, summarize_runs  # noqa: E402,F401
 
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 RESULTS = ROOT / "results" / "dream-rsi"
 CACHE = ROOT / ".rsi_cache" / "dream-rsi"
-#: suffix for live-LLM result files (``e3_dream_vs_fixed__claude-haiku.json``), so a small live
-#: showcase never overwrites the full offline result the write-up cites; set by ``parse_args``
-RUN_TAG = ""
+RUN_TAG = ""  # live runs save to ``<name>__<llm>.json`` so they never overwrite the offline result; set by parse_args
 
 
 def tagged(name: str) -> str:
@@ -44,18 +36,18 @@ def parse_args(desc: str, default_seeds: int = 10, extra: Optional[Callable] = N
     ap.add_argument("--quick", action="store_true", help="few seeds / small budgets for a fast check")
     ap.add_argument("--workers", type=int, default=3, help="parallel processes (runs)")
     ap.add_argument("--out", default=None, help="output JSON path")
-    ap.add_argument("--cache", default=None, help="LLM cache directory for --llm claude:* (default "
-                                                   ".rsi_cache/dream-rsi; pass a fresh directory for a from-scratch run)")
+    ap.add_argument("--cache", default=None,
+                    help="LLM cache directory for --llm claude:* (default .rsi_cache/dream-rsi; pass a fresh "
+                         "directory for a from-scratch run)")
     if extra:
         extra(ap)
     a = ap.parse_args()
     if a.seeds is None:
         a.seeds = 3 if a.quick else default_seeds
+    global CACHE, RUN_TAG
     if a.cache:
-        global CACHE
         CACHE = Path(a.cache).resolve()
     if a.llm != "sim":
-        global RUN_TAG
         RUN_TAG = a.llm.replace(":", "-")
         a.workers = 1
         if a.seeds > 2 and not a.quick:
@@ -78,21 +70,19 @@ def developer_of(spec: str, **kw):
     from rsi.dream import LLMPolicyDeveloper, ParametricMutator
 
     llm = llm_of(spec)
-    if llm is None:
-        return ParametricMutator(**kw)
-    return LLMPolicyDeveloper(llm)
+    return ParametricMutator(**kw) if llm is None else LLMPolicyDeveloper(llm)
 
 
 def llm_policies(spec: str, worlds, *, n: int = 2, W: int = 4, fallback=(6, 4), base_code: Optional[str] = None,
                  objective=None, root_mode: str = "earliest", hard_max=(16, 16)) -> dict:
-    """``n`` policies written by the LLM developer (Listing-2 prompt) for replay-only experiments:
-    a short dreaming chain on ``worlds`` starting from ``base_code`` (default: the adaptive
-    template); each revision starts from the strongest version so far and is scored in the
-    subprocess sandbox. Returns ``{"llm_1": code, ...}`` for the accepted revisions (empty
-    offline). LLM-written code must only ever be run with ``runner="subprocess"``."""
+    """``{"llm_1": code, ...}`` from a short dreaming chain of the LLM developer on ``worlds`` (empty offline).
+
+    Each revision starts from the strongest version so far; LLM-written code only ever runs in the subprocess sandbox.
+    """
     if spec == "sim":
         return {}
-    from rsi.dream import DevContext, ReplayEvaluator, SubprocessRunner, VersionRecord, adaptive, code_of, parallel_refine
+    from rsi.dream import (DevContext, ReplayEvaluator, SubprocessRunner, VersionRecord, adaptive, code_of,
+                           parallel_refine)
 
     ev = ReplayEvaluator(objective, W=W, fallback=tuple(fallback), runner=SubprocessRunner(timeout_s=30),
                          root_mode=root_mode, hard_max=tuple(hard_max))
@@ -119,28 +109,31 @@ def runner_for(name: str) -> str:
     return "subprocess" if name.startswith("llm_") else "inprocess"
 
 
+def sandbox_of(spec: str) -> str:
+    """In-process for the offline mock developer's template edits, the subprocess sandbox for LLM-written policies."""
+    return "inprocess" if spec == "sim" else "subprocess"
+
+
 def domain_of(name: str, seed: int = 0, **kw):
-    from rsi.domains.discovery import (CirclePackingDomain, LassoPathDomain, SumDiffDomain, SyntheticConfig,
-                                       SyntheticDomain)
+    from rsi.domains.discovery import (AutocorrelationDomain, CirclePackingDomain, LassoPathDomain, SumDiffDomain,
+                                       SyntheticConfig, SyntheticDomain)
 
     if name == "synthetic":
         return SyntheticDomain(SyntheticConfig(seed=seed, **kw))
+    sandboxed = kw.pop("sandboxed", False)
     if name == "sumdiff":
-        return SumDiffDomain(sandboxed=kw.pop("sandboxed", False), **kw)
+        return SumDiffDomain(sandboxed=sandboxed, **kw)
     if name == "circlepack":
-        return CirclePackingDomain(sandboxed=kw.pop("sandboxed", False), **kw)
+        return CirclePackingDomain(sandboxed=sandboxed, **kw)
     if name == "lasso":
-        return LassoPathDomain(sandboxed=kw.pop("sandboxed", False), **kw)
+        return LassoPathDomain(sandboxed=sandboxed, **kw)
     if name == "autocorr":
-        from rsi.domains.discovery import AutocorrelationDomain
-        return AutocorrelationDomain(kw.pop("variant", "phi3"), sandboxed=kw.pop("sandboxed", False), **kw)
+        return AutocorrelationDomain(kw.pop("variant", "phi3"), sandboxed=sandboxed, **kw)
     raise KeyError(name)
 
 
 def agent_of(domain, spec: str):
-    """The frozen discovery agent: the domain's mock agent offline, an LLM editor live
-    (synthetic worlds always use their simulated agent). A live agent's programs are
-    untrusted, so the domain's evaluator is switched to its subprocess sandbox."""
+    """The domain's mock agent offline; live, an LLM editor whose untrusted programs are graded in the sandbox."""
     from rsi.dream import EditorAgent
 
     llm = llm_of(spec)
@@ -151,10 +144,23 @@ def agent_of(domain, spec: str):
     return EditorAgent(llm, editable=[domain.program_file])
 
 
-def sandbox_of(spec: str) -> str:
-    """Where policy code runs: in-process for the offline mock developer's template edits,
-    the subprocess PrefixGuard sandbox whenever an LLM writes policies."""
-    return "inprocess" if spec == "sim" else "subprocess"
+def live_search(domain, W: int, grid, seed: int, policy=None, **cfg):
+    """One live search (no dreaming) of ``domain`` with its mock agent; returns the run result."""
+    from rsi.dream import Config, DreamRSILoop
+
+    config = Config(rounds=1, W=W, branch_count=grid[0], refine_count=grid[1], dream=False, seed=seed,
+                    **{"sandbox": "inprocess", "agent_workers": 1, **cfg})
+    return DreamRSILoop(domain.as_task(), domain.mock_agent(), config=config, initial_policy=policy).run()
+
+
+def record_world(domain, W: int, grid, seed: int, **cfg):
+    """The world recorded by one parallel-refine search of ``domain``."""
+    return live_search(domain, W, grid, seed, **cfg).meta["worlds"][0]
+
+
+def online_eq1(r: dict, beta1: float, beta2: float) -> float:
+    """Raw Eq. 1 of one live round (a trajectory row)."""
+    return r["round_best"] - beta1 * r["N"] + beta2 * r["N"] / max(1, r["k"])
 
 
 def pmap(fn, jobs, workers: int = 3):
@@ -208,6 +214,11 @@ def figure(name: str):
     return plt, RESULTS / f"{tagged(name)}.png"
 
 
+def save_figure(fig, png) -> None:
+    fig.tight_layout()
+    fig.savefig(png, dpi=130)
+
+
 def best_at(curve, calls: float):
     """Best score reached with at most ``calls`` cumulative agent calls (curve = [(cum_calls, best)])."""
     vals = [b for c, b in curve if c <= calls + 1e-9]
@@ -215,10 +226,4 @@ def best_at(curve, calls: float):
 
 
 def calls_to(curve, target: float) -> Optional[float]:
-    for c, b in curve:
-        if b is not None and b >= target - 1e-12:
-            return float(c)
-    return None
-
-
-os.environ.setdefault("OMP_NUM_THREADS", "1")
+    return next((float(c) for c, b in curve if b is not None and b >= target - 1e-12), None)

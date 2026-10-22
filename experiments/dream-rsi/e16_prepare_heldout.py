@@ -1,24 +1,4 @@
-"""Build the Lasso held-out datasets of the paper's Fig. 3a that can be obtained here (claims audit, retry round 2).
-
-The paper evaluates on six LIBSVM datasets (Gisette, RCV1, DNA, Leukemia, Colon, Duke Breast), fetched by the
-benchmark it follows with ``libsvmdata`` (``gisette`` / ``rcv1.binary`` with an 85% split, ``dna`` 85%,
-``leukemia`` / ``colon-cancer`` / ``duke breast-cancer`` whole). The LIBSVM host is blocked from this
-machine, so:
-
-* **dna**, **leukemia**: the benchmark ships these two arrays itself (``eval_data/real_dna.npz`` 1700 x 180,
-  ``real_leukemia.npz`` 38 x 7129): copied as they are.
-* **colon**: Alon et al. (1999), 62 x 2000, from the ``datamicroarray`` R package (``alon.RData``) with LIBSVM's
-  preprocessing, which this script first *verifies* on Leukemia: instance-wise standardisation (population std),
-  then feature-wise standardisation (sample std, ddof = 1) over all samples. Reproducing the benchmark's
-  Leukemia array from Golub et al.'s 72 samples this way matches it to the precision of LIBSVM's text format (max mean squared difference per row ~6e-12), so the
-  same recipe on Alon's data should give LIBSVM's ``colon-cancer``.
-* **duke** (approximation): West et al. (2001), 49 x 7129 (``west.RData``) with the same recipe. LIBSVM's
-  ``duke breast-cancer`` has 44 of these samples; which 5 were dropped is unknown, so this is a Duke-like
-  dataset of the same width, not the paper's exact data.
-* **gisette**, **rcv1**: not available (not written; ``SimpleTESLassoDomain`` lists them as missing).
-
-Labels are the class labels coded -1 / +1 (the benchmark regresses the LIBSVM labels). Output: one
-``<name>.npz`` (arrays ``X``, ``y``) per dataset and ``manifest.json`` with shapes, sources and sha256.
+"""Build the Lasso held-out datasets of Fig. 3a obtainable here (dna, leukemia, colon, a Duke-like set) for E16.
 
     python experiments/dream-rsi/e16_prepare_heldout.py --simpletes <clone of wq-will/SimpleTES> \
         --datamicroarray <clone of ramhiser/datamicroarray> --out <dir> [--pylib <dir with the `rdata` package>]
@@ -37,6 +17,7 @@ def rowstd(A):
 
 
 def libsvm_recipe(A):
+    """LIBSVM's preprocessing: instance-wise (population std), then feature-wise (ddof=1) standardisation."""
     R = rowstd(A)
     return (R - R.mean(0)) / R.std(0, ddof=1)
 
@@ -60,7 +41,7 @@ def main():
     ap.add_argument("--pylib", default=None)
     a = ap.parse_args()
     if a.pylib:
-        sys.path.append(a.pylib)          # appended: never shadows the environment's numpy
+        sys.path.append(a.pylib)  # appended: never shadows the environment's numpy
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -69,28 +50,25 @@ def main():
     ev = Path(a.simpletes) / "datasets" / "numerical_tasks" / "lasso_path" / "eval_data"
     dma = Path(a.datamicroarray) / "data"
     manifest = {}
-    for name, f in (("dna", "real_dna.npz"), ("leukemia", "real_leukemia.npz")):
+    for name, f in (("dna", "real_dna.npz"), ("leukemia", "real_leukemia.npz")):  # shipped by the benchmark itself
         d = np.load(ev / f)
         np.savez(out / f"{name}.npz", X=d["X"], y=d["y"])
         manifest[name] = {"shape": list(d["X"].shape), "source": f"SimpleTES eval_data/{f} (the benchmark's own file)",
                           "exact": True}
-    # verify the LIBSVM recipe on Leukemia before trusting it for Colon / Duke
+    # verify the LIBSVM recipe on Leukemia (Golub et al.'s 72 samples) before trusting it for Colon / Duke
     Xg, _ = load_rdata(dma / "golub.RData", "golub")
     L = np.load(ev / "real_leukemia.npz")["X"]
-    G = libsvm_recipe(Xg)
-    dist = ((L[:, None, :] - G[None, :, :]) ** 2).mean(2)
-    match = dist.argmin(1)
-    recipe_check = {"max_min_sq_dist": float(dist.min(1).max()), "matched_rows": int(len(set(match.tolist()))),
+    dist = ((L[:, None, :] - libsvm_recipe(Xg)[None, :, :]) ** 2).mean(2)
+    recipe_check = {"max_min_sq_dist": float(dist.min(1).max()), "matched_rows": int(len(set(dist.argmin(1).tolist()))),
                     "of": int(L.shape[0])}
     if not (recipe_check["max_min_sq_dist"] < 1e-8 and recipe_check["matched_rows"] == L.shape[0]):
         raise SystemExit(f"LIBSVM recipe does not reproduce the benchmark's Leukemia array: {recipe_check}")
-    # colon: the recipe is verified on Leukemia but LIBSVM's colon-cancer file itself cannot be compared here
+    # LIBSVM's colon-cancer file itself cannot be compared here; duke keeps 44 of West et al.'s 49 samples
     for name, rname, pos, exact in (("colon", "alon", "t", "expected (recipe verified on Leukemia; file not compared)"),
                                     ("duke", "west", "positive", False)):
         X, y = load_rdata(dma / f"{rname}.RData", rname)
         Xn = libsvm_recipe(X)
-        yy = np.where(y == pos, 1.0, -1.0)
-        np.savez(out / f"{name}.npz", X=Xn, y=yy)
+        np.savez(out / f"{name}.npz", X=Xn, y=np.where(y == pos, 1.0, -1.0))
         manifest[name] = {"shape": list(Xn.shape), "source": f"datamicroarray {rname}.RData + LIBSVM recipe "
                           "(row standardisation, then column standardisation with ddof=1)", "exact": exact}
         if name == "duke":
