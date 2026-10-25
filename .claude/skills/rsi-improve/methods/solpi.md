@@ -10,15 +10,15 @@ silent we write "not specified in the paper"; our own choices are marked "rsi ch
 ## 1. In one paragraph
 
 Long-running coding agents spend many tokens on overhead: an edit followed by a separate run command, large tool
-outputs re-sent on later requests, a growing context, long build/test logs read by the frontier model [paper §1,
-§2.4]. SoL-Pi uses auto-research loops to find mechanisms for the open harness Pi that cut tokens and cost while
+outputs re-sent on later requests, a growing context, long build/test logs read by the main agent [paper §1,
+§2.4]. SoL-Pi uses auto-research loops to find mechanisms for the base harness Pi that cut tokens and cost while
 preserving the agent's ability to complete the work [paper §2.1]. It does NOT optimise task score: acceptance is two
 sequential gates, every capability metric within its predeclared tolerance AND at least one declared efficiency
 metric improved [paper §2.1]; token efficiency is reported as "API cost per unit of aggregate task score" [paper §3].
 The search is a broad-to-deep funnel: an outer stage over 152 directions in six families, an inner stage that
 develops each selected direction in an isolated, disposable lineage [paper §1, §2.2], on 535 environments in two
-families [paper §2.3]; a frozen candidate is then checked once on 11 held-out EdgeBench tasks, never feeding back
-[paper §2.1, §2.5]. Four of 152 directions survived (about 1 in 38): Action Fusion, Online Context Compact,
+families [paper §2.3]; a frozen candidate is then checked on 11 held-out EdgeBench tasks (one-way), never feeding
+back [paper §2.1, §2.5]. Four of 152 directions survived (about 1 in 38): Action Fusion, Online Context Compact,
 ObservationPack, Evidence-Preserving Reducer [paper §2.4]. On the 51 public EdgeBench tasks the complete stack used
 49.0% (GPT-5.6 Sol) / 44.7% (Opus 5) fewer tokens and 33.2% / 33.5% lower cost, at 93.7% / 94.3% of Pi's average
 score [paper §3.1, Tables 1-2].
@@ -34,8 +34,9 @@ Before round 1 you need (rsi names in brackets):
   code, which is discarded afterwards [paper §2.2]. [`seed_artifact`]
 - **Idea pool**: one-line directions in six families: context, progress, tools, delegation, prompt and policy,
   improvement and evaluation (paper: 152) [paper §2.2]. Families record a hypothesis's origin, not where the change
-  lands [paper §2.2]. Letter codes C/P/T/D/R/M are an rsi choice. [`ideas=[Idea(id, family, title, mechanism, grid,
-  oracle)]`; required for any domain except built-in `agentworld`/`agentqa`]
+  lands [paper §2.2]. Letter codes C/P/T/D/R/M are the blog's idea-id prefixes (C23, P8), not the paper's.
+  [`ideas=[Idea(id, family, title, mechanism, grid, oracle)]`; required for any domain except built-in
+  `agentworld`/`agentqa`]
 - **Environments in several families**, each with an executable verifier [paper §2.3]: 495 repository tasks from
   GitHub issue-PR pairs (PR and regression test hidden; kept only if the test fails before the patch and passes
   after) plus 40 verifier-first synthetic tasks, mostly with a Terminal-Bench-2-style verifier interface. Splits:
@@ -45,10 +46,10 @@ Before round 1 you need (rsi names in brackets):
   of 17 Aug 2026, average score and $/score [paper §3, Table 1]. The ObservationPack sweep gates (10% bill saving,
   -2% quality) are in the blog only. [`Config.gate = GateSpec(...)`, digest recorded; the domain must return
   `Execution.tokens`, `cost_usd`, `steps`: if they are 0, no efficiency gain is seen and nothing is accepted]
-- **Models**: the harness was optimised only on GPT-5.6 Sol trajectories (search backend; xhigh per Fig. 7), then
-  applied to Opus 5 "without further search or adaptation" [paper §3.1, §3.4, Table 2]; EPR's auxiliary model is
-  GPT-5.6 Luna at high [paper §2.5]; the research AI's model is not specified in the paper. rsi: `llm_task` (frozen
-  agent), `llm_propose` (or your own `proposer=`).
+- **Models**: the harness was optimised only on GPT-5.6 Sol trajectories (search backend; xhigh per
+  [blog:Results]; Fig. 7 runs use xhigh), then applied to Opus 5 "without further search or adaptation" [paper §3.1,
+  §3.4, Table 2]; EPR's auxiliary model is GPT-5.6 Luna at high [paper §2.5]; the research AI's model is not
+  specified in the paper. rsi: `llm_task` (frozen agent), `llm_propose` (or your own `proposer=`).
 - **Measured first**: "Before rollout budgets are assigned, Oracle Analysis examines existing development
   trajectories to identify avoidable work in the base harness" [paper §2.2]; e.g. Action Fusion's oracle measured
   missed adjacent actions ("12.3% direct headroom") and projected an 11.5% token saving under full triggering
@@ -60,15 +61,16 @@ Before round 1 you need (rsi names in brackets):
 
 The paper has no single "round": an outer stage over the idea pool, and inner lineages that "propose a change,
 implement it, run a fixed experiment, inspect the result, and retain, revise, or discard the candidate" [paper §2.2].
-rsi "driver round" = one pass of both. (The blog's step numbers 01-06 are not the paper's; Fig. 8's 01-04 are the
-phases of the Action Fusion lineage.)
+rsi "driver round" = one pass of both. (The step numbers 01-07 in spec Part B and rsi's trace are not the paper's;
+Fig. 8's 01-04 are the phases of the Action Fusion lineage.)
 
 **One research pass** (`AutoResearchDriver.run_round`):
 1. Oracle Analysis, then "selected" directions get rollout budget; each must name a concrete source of overhead and
    a harness change [paper §2.2]. Selection rule and count: not specified in the paper (rsi choice: top `n_lineages`
    by oracle estimate).
 2. One isolated, disposable lineage per selected direction; failures do not couple across lineages [paper §1, §2.2].
-   Concurrency is not specified in the paper; rsi runs lineages sequentially (`workers` only threads rollouts).
+   Concurrency is not specified in the paper; rsi runs lineages sequentially (`workers` only threads trials within
+   one evaluation).
 3. A lineage freezes its candidate [paper Fig. 2]. The paper retains "the nondominated results" among gate-passing
    candidates [paper §2.1]; rsi choice: at most one frozen candidate per lineage.
 4. **Held-out firewall**: evaluation "occurs only after the candidate is frozen"; held-out results "never feed back
@@ -165,7 +167,7 @@ survivors. `stop_reason` is always `"rounds"`.
   intensity (activations per triggered task) [paper §3.4]. rsi per trial: score, `solved` (= score >= 1), `tokens`,
   `cost_usd`, `steps`, trace text, feedback, `meta["oracle"]`; `agentworld` simulates the prefix cache (`TokenMeter`).
 - **Aggregation**: the paper reports average score and totals over the task set; $/score = cost per task / average
-  score (e.g. $1,339 / 51 / 44.833 = 0.5855) [paper §3, Table 1]. How the gate aggregates across environments is not
+  score (e.g. $1,339 / 51 / 44.833 ~ 0.5855) [paper §3, Table 1]. How the gate aggregates across environments is not
   specified in the paper beyond improving efficiency "beyond a single development environment" [paper §2.1]. rsi:
   mean over ALL trial rows (a family with more tasks weighs more), aggregate and per family; eta = mean cost / mean
   score. The gate uses the aggregate (`mode="aggregate"`, default) or also each family (`mode="per_family"`, the
@@ -262,7 +264,7 @@ res = rsi.improve(dom, seed, method="solpi", llm_task=llm, llm_propose="claude:s
                   out_dir="runs/solpi", cache_dir=".rsi_cache/solpi")
 res.best                              # composed stack of firewall survivors (== seed if none)
 res.meta["rounds"][0]["heldout_passed"], res.meta["rounds"][0]["survivor_ideas"]
-rsi.transfer_report(dom, llm, {"seed": res.baseline, "solpi": res.best}, k=2)   # holdout + ood
+rsi.transfer_report(dom, llm, {"seed": res.baseline, "solpi": res.best}, k=2)   # evolve, holdout, ood
 ```
 Needs: `evolve` with several `family` values, a sealed `holdout` (else the firewall is silently off and nothing
 guards against tricks), ideally `ood`; token/cost metering in `Execution`; `Trial.meta["oracle"]` statistics if you
