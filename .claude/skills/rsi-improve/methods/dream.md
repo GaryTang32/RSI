@@ -5,8 +5,9 @@ v2 (6 Oct 2026)**, checked here against its HTML text. Citations: `[paper §x]`,
 equation), `[paper Table n]`, `[paper Fig. n]`, `[paper Listing 1 Ln]` / `[paper Listing 2 Ln]` (line n of the prompts in
 App. D.1 / D.2). **v1 (14 Sep 2026) differs**: its Eq. 1 is `best - beta1*N + beta2*N/max(1,k)`, its §3 has an off-by-one in
 M, it has no Table 3, no harness task and no Table 2, and its prompts are App. B.1/B.2 (the listing text and line numbers are
-the same). `[paper v1 ...]` marks v1-only text. The repo's `docs/methods/dream-rsi/paper-spec.md` (tags `[paper:...]`,
-`[doc]`, `[inferred]`), `implementation.md` and `claims-audit.md` were written from the v1 PDF. The code in `rsi/dream/` is
+the same). `[paper v1 ...]` marks v1-only text. The repo's `docs/methods/dream-rsi/paper-spec.md` (tags `[paper:...]` for
+v2, `[paper-v1:...]`, `[doc]`, `[inferred]`), `implementation.md` and `claims-audit.md` were refreshed to v2 on 25 Oct 2026; their
+digitized curve values still come from the v1 PDF. The code in `rsi/dream/` is
 the source of truth for "this package". The paper links `github.com/zhengkid/Dream-RSI`. In Sept 2026 that repo held only a
 README, CITATION.cff, assets and the PDF (spec §8.16); we did not re-check it. "Not specified in the paper" = v2 does not
 say. "rsi choice" = our decision.
@@ -194,8 +195,8 @@ evaluator [paper §3]); inside replay, one revealed node.
 
 ## 6. Where our implementation differs
 
-The audit (`claims-audit.md`: 83 claims; 43 reproduced, 12 partial, 1 not reproduced, 24 not testable here, 3 contradicted)
-and `implementation.md` §4 were written against **v1**. v2 changes below are marked "(v2)".
+The audit (`claims-audit.md`: 83 claims; 42 reproduced, 14 partial, 1 not reproduced, 25 not testable here, 1 contradicted)
+was refreshed against **v2** on 25 Oct 2026; `implementation.md` §4 says where our defaults follow v1. v2 changes: "(v2)".
 - **Objective (v2).** Our default `objective="eq1"` is v1's `best - beta1*N + beta2*N/max(1,k)`, run once per world with
   no rho sweep. The paper's current Eq. 1 is the rho-swept Pareto form, which `objective="pareto"` approximates with four
   gaps. (a) It averages attainment and probe fraction per beta across worlds, then builds one frontier; the paper builds one
@@ -229,9 +230,9 @@ Audit verdicts that change how to use it:
   did not reproduce (audit L5, L6). The objective choice is not robust: the same winner in only 5/12 variants (E14). The
   developer is a real part of the bill: 14-30% of spend in our live runs; about 9% per phase at paper scale (Pro), above 10% in
   some phases (A1).
-- **Contradicted (against v1 wording)**: "consistently superior" on Lasso (Pro is worse in rounds 2-4 of v1 Fig. 3b); "matches or
-  surpasses strong baselines" (autocorrelation is worse); the overview's "open code". **(v2)** drops "consistently" ("by the
-  final round", [paper §4.3]) and narrows math to "two of three tasks" [paper §1]. Re-audit both.
+- **Contradicted**: the overview's "open code". Against v1's wording, "consistently superior" on Lasso (Pro is worse in rounds 2-4
+  of v1 Fig. 3b) and "matches or surpasses strong baselines" (autocorrelation is worse) were too. **(v2)** drops "consistently"
+  ("by the final round", [paper §4.3]) and narrows math to "two of three tasks" [paper §1]: now partial and not testable here.
 - **Not yet tested here (v2)**: the history-accumulation result [paper Table 2] and the harness result [paper §4.4].
 
 ## 7. Applying it with rsi

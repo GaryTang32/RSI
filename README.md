@@ -153,7 +153,7 @@ package) written against its paper.
 
 | Check | Scope | Outcome |
 |---|---|---|
-| [Claims audit](docs/reports/claims-summary.md) | 475 claims from the papers, each tested against our code and experiments | 257 reproduce, 79 partly, 7 do not, 9 contradicted (mostly by the paper's own data or code), 123 need frontier models, GPUs or the original benchmarks |
+| [Claims audit](docs/reports/claims-summary.md) | 475 claims from the papers, each tested against our code and experiments | 256 reproduce, 81 partly, 7 do not, 7 contradicted (mostly by the paper's own data or code), 124 need frontier models, GPUs or the original benchmarks |
 | [Step-by-step validation](https://github.com/GaryTang32/RSI/blob/data/validation/README.md) | every method run from its seed, offline and live, every step re-derived by independent auditors | 2,195 of 2,370 steps verified; no keep decision miscomputed |
 | [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,159 of 2,159 match; a script re-checks the quotes |
 | Experiments | multiple seeds per claim, 95% bootstrap intervals | claims that failed are reported as failed |
