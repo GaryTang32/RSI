@@ -278,7 +278,7 @@
    "type": "stacked",
    "source": "repo:rsi",
    "title": "Where the package's lines go",
-   "takeaway": "42,936 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
+   "takeaway": "42,989 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
    "x": {
     "label": "Subpackage of rsi/",
     "kind": "category"
@@ -302,7 +302,7 @@
       },
       {
        "x": "dream",
-       "y": 4150
+       "y": 4179
       },
       {
        "x": "rrsi",
@@ -322,7 +322,7 @@
       },
       {
        "x": "metaharness",
-       "y": 2457
+       "y": 2464
       },
       {
        "x": "core",
@@ -347,7 +347,7 @@
       },
       {
        "x": "dream",
-       "y": 302
+       "y": 309
       },
       {
        "x": "rrsi",
@@ -367,7 +367,7 @@
       },
       {
        "x": "metaharness",
-       "y": 112
+       "y": 113
       },
       {
        "x": "core",
@@ -392,7 +392,7 @@
       },
       {
        "x": "dream",
-       "y": 752
+       "y": 759
       },
       {
        "x": "rrsi",
@@ -412,7 +412,7 @@
       },
       {
        "x": "metaharness",
-       "y": 384
+       "y": 386
       },
       {
        "x": "core",
@@ -1195,7 +1195,7 @@
    "type": "stacked",
    "source": "repo:docs/reports/claims-summary.md",
    "title": "475 paper claims, each tested against the code and experiments",
-   "takeaway": "256 reproduce and 81 partly; 124 need frontier models, GPUs or the original benchmarks. Only 7 do not reproduce and 7 are contradicted, mostly by the paper's own data or code.",
+   "takeaway": "257 reproduce and 80 partly; 124 need frontier models, GPUs or the original benchmarks. Only 7 do not reproduce and 7 are contradicted, mostly by the paper's own data or code.",
    "x": {
     "label": "Method",
     "kind": "category"
@@ -1215,7 +1215,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 42
+       "y": 43
       },
       {
        "x": "Autoresearch",
@@ -1248,7 +1248,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 14
+       "y": 13
       },
       {
        "x": "Autoresearch",
@@ -1481,7 +1481,7 @@
    "type": "stacked",
    "source": "repo:docs/skill-claims/ledger",
    "title": "2,159 skill claims, each backed by a verbatim quote",
-   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 772 from the code.",
+   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 770 from the code.",
    "x": {
     "label": "Skill file",
     "kind": "category"
@@ -1554,7 +1554,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 96
+       "y": 94
       },
       {
        "x": "EvoMap",
@@ -1591,7 +1591,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 47
+       "y": 49
       },
       {
        "x": "EvoMap",

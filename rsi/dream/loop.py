@@ -18,7 +18,7 @@ from .cost import CostMeter, llm_usage
 from .developer import DevContext, LLMPolicyDeveloper, ParametricMutator, VersionRecord, default_beta_of
 from .evaluator import PolicyReport, ReplayEvaluator, diagnostics
 from .guard import get_runner, static_check
-from .objectives import Eq1Objective, ParetoSweepObjective
+from .objectives import Eq1Objective, HypervolumeObjective, ParetoSweepObjective
 from .policy import POLICY_FILE, code_of, template_code
 from .policy_api import GridPlan, GridPlanningContext
 from .question import OnlineQuestion, program_only
@@ -43,13 +43,13 @@ class Config:
     M: int = 4  # policy versions per dreaming phase, incumbent included
     developer_base: str = "strongest"  # "strongest" (L2:247) | "latest" (§3 "revises pi^m into pi^(m+1)")
     m_semantics: str = "versions"  # "versions": M-1 revisions | "revisions": M revisions
-    objective: str = "eq1"  # "eq1" (paper Eq. 1) | "pareto" (Listing-2 beta-sweep reward)
+    objective: str = "v2"  # "v2" (paper v2 Eq. 1) | "eq1" (v1's Eq. 1) | "pareto" (Listing-2 pooled sweep reward)
     beta1: float = 0.01
     beta2: float = 0.005
     normalize: bool = True  # per-world score normalization before Eq. 1
     support: str = "no_reward"  # out-of-support plans "cannot earn replay reward" (L2) | "clip"
     lam: float = 0.1
-    beta_grid: tuple = (0.2, 0.4, 0.6, 0.8, 1.0)
+    beta_grid: Optional[tuple] = None  # rho grid; None: (0, .25, .5, .75, 1) for v2 [paper:§3], (.2, ..., 1) otherwise
     pareto_attainment: str = "shift"  # "shift" (b - root)/(G - root) | "ratio" clip(S/G)
     sweep: bool = True  # beta sweep of the deployed version (feedback + default-beta rule)
     root_mode: str = "earliest"  # replay root semantics: "earliest" (paper §3) | "addressable"
@@ -138,14 +138,21 @@ class DreamRSILoop:
         self.store = SnapshotStore(self.out / "snapshots" if self.out else None)
         self.runner = get_runner(c.sandbox, timeout_s=c.policy_timeout_s) if c.sandbox == "subprocess" \
             else get_runner("inprocess")
-        if c.objective == "pareto":
-            objective = ParetoSweepObjective(beta_grid=tuple(c.beta_grid), lam=c.lam, support=c.support,
+        grid = tuple(c.beta_grid) if c.beta_grid else (
+            HypervolumeObjective.beta_grid if c.objective == "v2" else ParetoSweepObjective.beta_grid)
+        if c.objective == "v2":
+            objective = HypervolumeObjective(beta_grid=grid, lam=c.lam, support=c.support,
                                              attainment_mode=c.pareto_attainment)
-        else:
+        elif c.objective == "pareto":
+            objective = ParetoSweepObjective(beta_grid=grid, lam=c.lam, support=c.support,
+                                             attainment_mode=c.pareto_attainment)
+        elif c.objective == "eq1":
             objective = Eq1Objective(c.beta1, c.beta2, c.normalize, c.support)
+        else:
+            raise ValueError(f"unknown objective {c.objective!r} (use 'v2', 'eq1' or 'pareto')")
         self.replay = ReplayEvaluator(objective, W=c.W, K2=c.K2, root_mode=c.root_mode, hide_missing=c.hide_missing,
                                       runner=self.runner, fallback=(c.branch_count, c.refine_count),
-                                      hard_max=(c.hard_max_branch, c.hard_max_refine), sweep_grid=tuple(c.beta_grid))
+                                      hard_max=(c.hard_max_branch, c.hard_max_refine), sweep_grid=grid)
         self.selector = GuardedSelector(c.holdout_frac, 1, c.noise_z, c.margin_floor, c.include_incumbent) \
             if c.selector == "guarded" else Selector(c.include_incumbent)
         self.provider = DirectionProvider(task.directions(), seed=c.seed)

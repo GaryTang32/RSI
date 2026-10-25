@@ -44,11 +44,10 @@ Before round 1 you need:
   [paper App. D]. In rsi, `Domain.execute` must return a rich `Execution.trace`, and `grade` returns a score
   and a feedback string.
 - **Cost objective** (optional; Pareto [paper §3]): a per-task cost in `Trial.meta[Config.cost_metric]`, or tokens.
-- **Models**: `llm_task` (the frozen model `M`) and `llm_propose`. With `proposer_kind="auto"`, a *bare*
-  `ClaudeCLI` gives the coding-agent proposer. Any other LLM silently (no warning) gives the one-completion
-  `RewriteProposer`, and that includes a `ClaudeCLI` wrapped by `cache_dir`/`CachedLLM`. `None`, or a plain
-  `MockLLM` on a domain with a mock library (MemoClassify, AgentQA), gives the offline `MockProposer`. To get
-  the coding agent when `cache_dir` is set, pass `proposer_kind="agent"`.
+- **Models**: `llm_task` (the frozen model `M`) and `llm_propose`. With `proposer_kind="auto"`, a `ClaudeCLI`
+  gives the coding-agent proposer, also when `cache_dir`/`CachedLLM` wraps it (a warning says the agent's sessions
+  bypass the cache). Any other LLM gives the one-completion `RewriteProposer`. `None`, or a plain `MockLLM` on a
+  domain with a mock library (MemoClassify, AgentQA), gives the offline `MockProposer`.
 - **Budgets**: `iterations`, `k`, `eval_budget` (the most candidate evaluations allowed), `proposer_timeout_s`.
   `Config` has no dollar cap.
 - **Initial population H** [paper Alg. 1 l.2]: text classification uses zero-shot, few-shot, ACE and MCE
@@ -184,9 +183,9 @@ From `implementation.md` §5, `claims-audit-metaharness.md` and the code:
   container if that is unacceptable. `RewriteProposer` (one completion over a 60k-char render of the history,
   split 41/40/6/13% as in [paper Table 8]) and `MockProposer` (offline, reads only its parents' traces) are rsi
   choices with no counterpart in the paper.
-- **Auto proposer selection.** `proposer_kind="auto"` silently falls back to `RewriteProposer` when
-  `llm_propose` is wrapped in `CachedLLM`, which `rsi.improve(..., cache_dir=...)` does. Pass
-  `proposer_kind="agent"`.
+- **Agent sessions are not cached.** The coding agent edits files in a workspace, so a cached run cannot replay its
+  proposals at $0; only the task model's calls come from the cache. (Before 25 Oct 2026, `proposer_kind="auto"` fell
+  back to `RewriteProposer` whenever `cache_dir` was set; it now looks through `CachedLLM`.)
 - **Final test set**: baselines ∪ Pareto ∪ per-unit bests (as in the release); the paper says the Pareto
   frontier [paper §3]. Finalisation re-runs the inner loop on test, whereas the release reloads `memory.json` and
   only predicts. The two are equal only for deterministic models.
@@ -232,7 +231,7 @@ reproduced, 12 not testable here, 1 contradicted.
 ```python
 import rsi
 res = rsi.improve(dom, seed, method="metaharness", llm_task=llm,
-                  llm_propose="claude:sonnet", proposer_kind="agent",   # coding agent even though cache_dir wraps it
+                  llm_propose="claude:sonnet",                          # "auto" picks the coding agent
                   config={"iterations": 8, "k": 2, "trials": 2, "reeval_incumbent": 2,
                           "leakage_screen": True, "objectives": ("score",),   # or keep context_cost + cost_metric
                           "eval_budget": 20},

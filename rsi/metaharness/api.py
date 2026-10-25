@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -24,17 +25,26 @@ def _has_library(domain: Domain) -> bool:
     return True
 
 
+def _unwrap(llm: Optional[LLM]) -> Optional[LLM]:
+    while isinstance(llm, CachedLLM):
+        llm = llm.inner
+    return llm
+
+
 def make_proposer(domain: Domain, llm_propose: Optional[LLM], config: Config, *, kind: str = "auto",
                   leak_rate: float = 0.0) -> Proposer:
-    """``auto``: ClaudeCLI -> coding agent, None or a plain MockLLM -> MockProposer, other LLMs -> RewriteProposer."""
-    if kind == "mock" or llm_propose is None or (type(llm_propose) is MockLLM and kind == "auto"
-                                                 and _has_library(domain)):
+    """``auto``: ClaudeCLI (cached or not) -> coding agent, None or a plain MockLLM -> MockProposer,
+    other LLMs -> RewriteProposer. The coding agent edits files in a workspace, so its sessions are not cached."""
+    base = _unwrap(llm_propose)
+    if kind == "mock" or llm_propose is None or (type(base) is MockLLM and kind == "auto" and _has_library(domain)):
         return MockProposer(library_for(domain), leak_rate=leak_rate, seed=config.seed)
-    if kind == "agent" or (kind == "auto" and isinstance(llm_propose, ClaudeCLI)):
-        cli = llm_propose.inner if isinstance(llm_propose, CachedLLM) else llm_propose
-        if not isinstance(cli, ClaudeCLI):
+    if kind == "agent" or (kind == "auto" and isinstance(base, ClaudeCLI)):
+        if not isinstance(base, ClaudeCLI):
             raise ValueError("the coding-agent proposer needs a ClaudeCLI backend")
-        return AgentProposer(cli, timeout_s=config.proposer_timeout_s)
+        if base is not llm_propose:
+            warnings.warn("Meta-Harness: the coding-agent proposer runs the claude CLI directly; its sessions bypass "
+                          "the LLM cache", stacklevel=2)
+        return AgentProposer(base, timeout_s=config.proposer_timeout_s)
     return RewriteProposer(llm_propose)
 
 
