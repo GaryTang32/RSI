@@ -44,7 +44,8 @@ dom = MyDomain(suite)
 seed = Artifact.from_dir("my_harness/")
 ```
 Or wrap two functions: `rsi.core.FunctionDomain(suite, execute_fn, grade_fn)`. `holdout`/`ood`/`test` are
-sealed automatically: the loop's evaluator refuses them.
+sealed automatically: the loop's evaluator refuses them. Inside a run they reach only write-only shadow
+monitors and pass/fail firewalls (SoL-Pi's holdout gate, EvoMap's SafeHub), never the proposer.
 
 ## 3. Measure before improving
 
@@ -53,8 +54,10 @@ from rsi.core import Evaluator, get_llm, noise_from_trials
 llm = get_llm("claude:haiku", cache_dir=".rsi_cache/myproblem")      # or "api:sonnet", or a MockLLM offline
 ev = Evaluator(dom, llm, workers=8)
 base = ev.evaluate(seed, "evolve", k=2)
-print(base.summary(), noise_from_trials(base.trial_matrix()))        # delta = the smallest gain worth believing
+print(base.summary(), noise_from_trials(base.trial_matrix(), small_k_correction=True))   # delta = the smallest gain worth believing
 ```
+RRSI's bootstrap (`noise_from_trials`) underestimates the variance by (k-1)/k at small k, so pass
+`small_k_correction=True`, or better, score the seed R >= 2 times and use `noise_from_repeats(scores)`.
 If the seed already scores ~1.0, or delta is larger than any plausible gain, stop and fix the task set.
 
 ## 4. Choose a method
@@ -79,7 +82,8 @@ Check the method's requirements before running it:
 | evomap | one evolve task per cycle: its signals, the selected gene, one solve (plus retries of a newly written gene) and the memory graph of recent outcomes; hub assets only if a hub is attached (none by default) | tasks with public signals (family, `meta["signals"]`) and headroom; `llm_propose` to write genes; validation commands the policy allows; sharing needs a hub + `PopulationSimulator` (`rsi.improve` runs one agent) | the keep rule is per task, not a measured gain: faithful keeps a gene when its own validation commands pass (Behind EvoMap: 84% of genes have none or trivial ones); safe adds non-vacuous validation and own task solved (3 paired seeds for a new gene); the naive hub promotes self-reported assets |
 
 A keep rule that accepts any gain accepts an unchanged artifact about half the time under model noise
-(measured here: ~46% strict vs ~9% with the noise band), so always compare gains with delta from step 3.
+(measured here: strict keeps 45-52% of null re-evaluations; a noise band 8-9% at k=2, 4-6% at k>=3, 2-4% with the
+small-k correction), so always compare gains with delta from step 3.
 GEPA's keep rule is the paper's [Alg. 1 l.15-16]: keep the child iff its average score on the parent's minibatch is higher
 (`sum(after) > sum(before)`, ties reject). Pass `acceptance="noise_margin", noise_margin=delta` to apply the noise band.
 Dream-RSI applies no noise band at either level: policies are chosen by argmax over the same replay worlds the
@@ -96,11 +100,11 @@ import rsi
 res = rsi.improve(dom, seed, method="rrsi", llm_task=llm, llm_propose="claude:haiku",
                   config={"T": 8}, out_dir="runs/my-rrsi")
 res.save()
-report = rsi.transfer_report(dom, llm, {"seed": res.baseline, "rrsi": res.best}, k=2)   # the ONLY place sealed splits are read
+report = rsi.transfer_report(dom, llm, {"seed": res.baseline, "rrsi": res.best}, k=2)   # where YOU read the sealed splits
 ```
 Before a live run:
-- **Cap the spend yourself.** Method configs have no dollar cap: check `llm.meter.total().cost_usd` between
-  rounds or runs and stop at your limit.
+- **Cap the spend.** Only autoresearch (`max_usd`) and EvoMap (`budget=Budget(max_usd=...)`) stop on dollars;
+  Dream caps agent calls (`max_calls`). For the others check `llm.meter.total().cost_usd` between runs.
 - **Always pass `cache_dir`** (or wrap the model in `CachedLLM`): an interrupted run resumes from the cache,
   and a finished run can be replayed offline at $0 to check it.
 - Live models need the `claude` CLI or an API key; usage limits can stop a long run part-way, so prefer
@@ -143,4 +147,5 @@ departs from the paper. Each cites its paper directly (RRSI: arXiv 2609.24972v3;
 - EvoMap: [methods/evomap.md](methods/evomap.md)
 
 References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
-implementation notes, claims audit), `experiments/<method>/example_new_problem.py`.
+implementation notes, claims audit), `experiments/{gepa,autoresearch,dream-rsi,metaharness-solpi}/example_new_problem.py`
+(RRSI and EvoMap have none: start from the Domain in step 2).
