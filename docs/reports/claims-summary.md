@@ -7,15 +7,15 @@ Verdicts: **reproduced**, **partial**, **not reproduced**, **not testable here**
 | Method | Claims | Reproduced | Partial | Not reproduced | Not testable here | Contradicted | Retry-2 live spend |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | [RRSI](../methods/rrsi/claims-audit.md) | 116 | 63 (60) | 13 (15) | 1 (3) | 36 (37) | 3 (1) | $3.16 |
-| [Dream-RSI](../methods/dream-rsi/claims-audit.md) | 83 | 42 (37) | 14 (17) | 1 | 25 | 1 (3) | $2.05 |
+| [Dream-RSI](../methods/dream-rsi/claims-audit.md) | 83 | 43 (37) | 13 (17) | 1 | 25 | 1 (3) | $2.05 |
 | [Autoresearch](../methods/autoresearch/claims-audit.md) | 65 | 51 (52) | 10 | 1 (0) | 2 | 1 | $3.62 |
 | [SoL-Pi](../methods/metaharness-solpi/claims-audit-solpi.md) | 61 | 31 | 11 (12) | 1 (2) | 18 (16) | 0 | $0 |
 | [GEPA](../methods/gepa/claims-audit.md) | 58 | 28 (29) | 11 | 2 (0) | 17 | 0 (1) | $3.52 |
 | [EvoMap](../methods/evomap/claims-audit.md) | 54 | 28 (25) | 10 (11) | 1 (5) | 14 (12) | 1 | $0 |
 | [Meta-Harness](../methods/metaharness-solpi/claims-audit-metaharness.md) | 38 | 13 (12) | 12 (13) | 0 (2) | 12 (10) | 1 | $3.85 |
-| **Total** | **475** | **256** (246) | **81** (89) | **7** (13) | **124** (119) | **7** (8) | **$16.20** |
+| **Total** | **475** | **257** (246) | **80** (89) | **7** (13) | **124** (119) | **7** (8) | **$16.20** |
 
-The counts are final after two rounds of work, plus a refresh of the Dream-RSI audit against its paper's v2 (25 Oct 2026: M9 → partial, Q15 contradicted → partial, Q22 contradicted → not testable here, because v2 restates those claims). Numbers in parentheses are the counts after the first fix round (28 Sep 2026), where they differ.
+The counts are final after two rounds of work, plus a refresh of the Dream-RSI audit against its paper's v2 (25 Oct 2026: M9 → partial, Q15 contradicted → partial, Q22 contradicted → not testable here, because v2 restates those claims), then a code fix that made v2's Eq. 1 the default objective (M9 → reproduced). Numbers in parentheses are the counts after the first fix round (28 Sep 2026), where they differ.
 
 **Fix round (28 Sep).** Every mismatch between our code and the papers was fixed, documented, or classified as not testable here. Each method's file has a "Fix log", and each fix was checked by an independent verifier. Counts moved from 218/116/15/118/8 at audit time to 246/89/13/119/8.
 

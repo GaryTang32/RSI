@@ -204,7 +204,7 @@ V_i^m = (1/B_i) Σ_{j=1..L} (ā_j − ā_{j−1}) · (B_i − n̄_j)   −   λ 
 - The root is excluded (`s_r = 0`; `s = 0` when nothing is revealed). Attainment is capped at 1, i.e. at the best recorded score [paper:§3].
 - **λ: NOT REPORTED.** Neither are `K1` and `K2`.
 
-**v1's Eq. 1** [paper-v1:§3 Eq.1 p.6], which `rsi`'s default `objective="eq1"` implements (one replay per world, no ρ sweep; `T_i^{m,k*}` the revealed subtree, `N_i^m = |T_i^{m,k*}| − 1`):
+**v1's Eq. 1** [paper-v1:§3 Eq.1 p.6], which `rsi`'s `objective="eq1"` implements (the default is v2's Eq. 1, `objective="v2"`, since 25 Oct 2026) (one replay per world, no ρ sweep; `T_i^{m,k*}` the revealed subtree, `N_i^m = |T_i^{m,k*}| − 1`):
 
 ```
 V_i^m = max_{v ∈ T_i^{m,k*}} s_v   −   β1 · N_i^m   +   β2 · N_i^m / max{1, k*_i^m}

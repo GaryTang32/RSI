@@ -179,7 +179,7 @@ evaluator [paper §3]); inside replay, one revealed node.
 | workers W | 10 (Pro), 32 (Flash), 4 (harness) = branch count [paper Table 3] | `W=4` | set `W=branch_count` |
 | K1, K2 | not specified; replay uses `budget=None` [paper Listing 2 L140] | `K1=None, K2=None` | |
 | versions per phase M | 4, incl. the current policy [paper App. B.2, Table 3] | `M=4`, `m_semantics="versions"` | `"revisions"` covers v1's off-by-one reading |
-| objective | Eq. 1 = Pareto hypervolume over rho - lambda * penalty [paper §3 Eq. 1] | `objective="eq1"` = **v1's** Eq. 1 | `objective="pareto"` is the v2 form (§6) |
+| objective | Eq. 1 = Pareto hypervolume over rho - lambda * penalty [paper §3 Eq. 1] | `objective="v2"` (default), rho grid 0..1 | lambda not given (0.1, rsi choice); `"eq1"` = v1's Eq. 1 (§6) |
 | beta1, beta2 | v1 Eq. 1 only, values not given [paper v1 §3] | `beta1=0.01, beta2=0.005, normalize=True` | rsi choice (overview toy values `[doc]`) |
 | rho grid, lambda | rho in {0, 0.25, 0.5, 0.75, 1} [paper §3]; lambda not specified | `beta_grid=(0.2,...,1.0)`, `lam=0.1` | rsi choice |
 | attainment | `clip(s/S_i, 0, 1)`, with `s_r = 0` [paper §3] | `pareto_attainment="shift"`: `(s-s_r)/(S-s_r)` | `"ratio"` = paper |
@@ -195,14 +195,14 @@ evaluator [paper §3]); inside replay, one revealed node.
 
 ## 6. Where our implementation differs
 
-The audit (`claims-audit.md`: 83 claims; 42 reproduced, 14 partial, 1 not reproduced, 25 not testable here, 1 contradicted)
+The audit (`claims-audit.md`: 83 claims; 43 reproduced, 13 partial, 1 not reproduced, 25 not testable here, 1 contradicted)
 was refreshed against **v2** on 25 Oct 2026; `implementation.md` §4 says where our defaults follow v1. v2 changes: "(v2)".
-- **Objective (v2).** Our default `objective="eq1"` is v1's `best - beta1*N + beta2*N/max(1,k)`, run once per world with
-  no rho sweep. The paper's current Eq. 1 is the rho-swept Pareto form, which `objective="pareto"` approximates with four
-  gaps. (a) It averages attainment and probe fraction per beta across worlds, then builds one frontier; the paper builds one
-  frontier per world and averages `V_i`. (b) The default attainment is `"shift"`, not `clip(s/S_i)`. (c) The grid is
-  0.2..1.0, not 0..1. (d) Zero-call and disqualified replays get penalty 1, not 0. Under `"eq1"` only the deployed version is
-  beta-swept (for `beta_sweep.json`), whereas the paper replays every version under every rho.
+- **Objective (v2).** The default `objective="v2"` (since 25 Oct 2026) is the paper's Eq. 1: every version replayed on
+  every world under rho in {0, .25, .5, .75, 1}, a hypervolume per world, minus `lam` (0.1; the paper gives none) times the
+  mean `k*/n` (zero-call replays add 0), averaged over worlds. Gaps: attainment defaults to `"shift"`, `(s - s_seed)/(S_i -
+  s_seed)`, which equals the paper's `clip(s/S_i)` when the seed scores 0 (`pareto_attainment="ratio"` is literal but needs
+  positive scores), and a disqualified world scores `-lam - 1`. `objective="eq1"` keeps v1's
+  `best - beta1*N + beta2*N/max(1,k)`, which every recorded experiment used; `"pareto"` is the pooled Listing-2 reward.
 - **Reimplementation from text and prompts.** Listings 1 and 2 are verbatim apart from paths and a `FRAMEWORK_NOTES` block.
   Offline experiments use mock agents, not Gemini. Live runs are tiny (Haiku). There are no GPU kernels and no
   Terminal-Bench run. The direction provider (classes cycled, shuffled per round) is ours.
@@ -242,13 +242,13 @@ import rsi
 from rsi.dream import Config
 cfg = Config(rounds=6, branch_count=6, refine_count=5, W=6, M=4, hard_max_branch=12, hard_max_refine=12,
              max_calls=300)                                   # or a dict of Config fields
-# closest to the paper's current Eq. 1: objective="pareto", pareto_attainment="ratio", beta_grid=(0, .25, .5, .75, 1)
+# default objective="v2" is the paper's Eq. 1; objective="eq1" reproduces the recorded (v1) experiments
 res = rsi.improve(dom, seed, method="dream", llm_task="claude:haiku", llm_propose="claude:sonnet",
                   config=cfg, out_dir="runs/x", cache_dir=".rsi_cache/x", llm_develop="claude:sonnet")
 report = rsi.transfer_report(dom, task_llm, {"seed": res.baseline, "dream": res.best}, k=2)   # sealed splits
 ```
 Run `Config(dream=False)` with the same numbers as the Fixed Exploration control. Fields users usually set: `rounds`, `branch_count`, `refine_count`, `W`, `max_calls`,
-`M`, `objective` (`"eq1"`/`"pareto"`), `selector="guarded"` (+ `holdout_frac`, `noise_z`), `root`, `dream_last`, `sandbox`.
+`M`, `objective` (`"v2"`/`"eq1"`/`"pareto"`), `selector="guarded"` (+ `holdout_frac`, `noise_z`), `root`, `dream_last`, `sandbox`.
 `res.best` is the best program found. `res.meta` holds `policy` (the final `method.py`), `worlds`, `manifests` and `cost`.
 
 **Audit with `python -m rsi.cli inspect runs/x`** (`TRACE.md`, `trace.jsonl`; also `trajectory.json`, `policies.jsonl`,

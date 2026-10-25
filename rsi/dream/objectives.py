@@ -1,4 +1,4 @@
-"""Replay objectives: paper Eq. 1 per episode and the Listing-2 Pareto beta-sweep reward."""
+"""Replay objectives: paper v2 Eq. 1 (default), v1's Eq. 1 per episode, and the Listing-2 pooled sweep reward."""
 from __future__ import annotations
 
 import math
@@ -67,7 +67,7 @@ class EpisodeResult:
 
 @dataclass
 class Eq1Objective:
-    """``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper:§3 Eq. 1]; ``normalize``: per world."""
+    """v1's Eq. 1: ``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper-v1:§3]; ``normalize``: per world."""
 
     beta1: float = 0.01
     beta2: float = 0.005
@@ -169,3 +169,39 @@ class ParetoSweepObjective:
         return (f"pareto.reward = pareto.auc - {self.lam:g} * parallel_penalty over the beta grid "
                 f"{list(self.beta_grid)}" + (" (attainment = clip(S/G, 0, 1))" if self.attainment_mode == "ratio"
                                              else ""))
+
+
+@dataclass
+class HypervolumeObjective(ParetoSweepObjective):
+    """Paper v2 Eq. 1 [paper:§3]: per world, the normalised hypervolume of the non-dominated (calls n, attainment a)
+    points over the rho sweep, minus ``lam`` * mean over rho of k*/n (zero-call replays add 0); V = mean over worlds.
+
+    The paper gives no lambda; ``attainment_mode="shift"`` maps the paper's root score s_r = 0 to the seed's score
+    (``"ratio"`` is the literal clip(s / S_i) and needs positive scores). A disqualified world scores below every
+    honest one.
+    """
+
+    beta_grid: tuple = (0.0, 0.25, 0.5, 0.75, 1.0)
+    name: str = "v2"
+    disqualified_margin: float = 1.0
+
+    def world_value(self, eps: Sequence[EpisodeResult]) -> float:
+        if any(e.disqualified for e in eps):
+            return -self.lam - self.disqualified_margin
+        pts = [{"probes_frac": min(1.0, e.N / max(1, e.world_size)), "attainment": self.attainment(e), "beta": e.beta}
+               for e in eps]
+        auc, _ = self.frontier_auc(pts)
+        penalty = sum(e.eff_rounds / e.N for e in eps if e.N > 0) / max(1, len(eps))
+        return auc - self.lam * penalty
+
+    def sweep(self, by_beta: dict[float, Sequence[EpisodeResult]]) -> dict:
+        res = super().sweep(by_beta)   # pooled points and frontier, kept for reports and the default-beta rule
+        betas = [b for b in sorted(by_beta) if by_beta[b]]
+        n = min(len(by_beta[b]) for b in betas) if betas else 0
+        per = [self.world_value([by_beta[b][i] for b in betas]) for i in range(n)]
+        res.update(reward=float(np.mean(per)) if per else float("-inf"), per_world=per, objective=self.name)
+        return res
+
+    def describe(self) -> str:
+        return (f"v2 Eq. 1: per world, hypervolume of (calls, attainment) over rho {list(self.beta_grid)} "
+                f"- {self.lam:g} * mean k*/n; V = mean over all replay worlds")

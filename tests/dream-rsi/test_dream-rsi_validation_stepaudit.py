@@ -47,10 +47,11 @@ def test_repaired_revision_keeps_its_first_claim():
 
 
 def test_independent_replay_reproduces_every_recorded_replay_value(tmp_path, dream_script):
-    """experiments/dream-rsi/validate_stepaudit.py, written from the paper's §3, matches every replay value."""
+    """experiments/dream-rsi/validate_stepaudit.py, written from v1's §3 (the validation runs' objective), matches
+    every replay value."""
     audit = dream_script("validate_stepaudit")
     dom = SumDiffDomain(sandboxed=False)
-    run(dom, agent=dom.mock_agent(), config=Config(rounds=3, W=3, branch_count=3, refine_count=3, M=3,
+    run(dom, agent=dom.mock_agent(), config=Config(rounds=3, W=3, branch_count=3, refine_count=3, M=3, objective="eq1",
                                                    sandbox="inprocess", seed=3), out_dir=str(tmp_path))
     ev = [json.loads(line) for line in (tmp_path / "trace.jsonl").read_text().splitlines()]
     trees = {int(p.parent.name[4:]): json.loads(p.read_text()) for p in tmp_path.glob("trace_pool/iter*/tree.json")}
