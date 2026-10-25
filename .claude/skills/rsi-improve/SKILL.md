@@ -119,5 +119,14 @@ tasks per split the interval is usually too wide to rank methods: say that too, 
 absolute scores across runs (the same seed harness can score differently run to run); compare gains
 over a baseline re-scored in the same run.
 
+## Method flows
+
+Before running a method, read its end-to-end reference: what one round does, what happens to each task inside
+a round, the keep rule with its formula, paper defaults vs this package's Config, and where the implementation
+departs from the paper. Each cites its paper.
+
+- RRSI: [methods/rrsi.md](methods/rrsi.md)
+- Meta-Harness: [methods/metaharness.md](methods/metaharness.md)
+
 References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
 implementation notes, claims audit), `experiments/<method>/example_new_problem.py`.
