@@ -9,7 +9,7 @@ cites the repo at `228791fb` and is cited here as [Rehearse §n]. Secondary: our
 ([spec n]; its tags `[code:mlx/...]`, `[code:xgb/...]`, `[code:home/...]` are community ports, `[gh-disc:#32|#43]` agent
 session reports, `[nanochat:LEADERBOARD]`, `[inferred]`), `implementation.md`, `claims-audit.md`, and the code in
 `rsi/autoresearch/` for "this package". The discussions #32/#43 could not be fetched for this check; their numbers are as
-the spec reports them. Upstream has no formulas beyond the metric and no numeric loop hyperparameters; anything else is
+the spec reports them. Upstream has no formulas beyond the metric and no numeric loop hyperparameters beyond the 5-min budget and 10-min kill; anything else is
 "not specified upstream". Upstream results are single anecdotal runs [spec 7].
 
 ## 1. In one paragraph
@@ -129,7 +129,7 @@ There is no per-task inner loop: the unit is **one training run = one scalar**.
   MAX_SEQ_LEN)` batches (floor division, with the agent-editable `DEVICE_BATCH_SIZE`) from a fresh deterministic val loader;
   the loss comes from the agent-owned `model.forward(x, y, reduction='none')`.
 - **Data use**: training uses shards `0..N-1` of `climbmix-400b-shuffle`; validation is the **pinned shard `shard_06542`**
-  (`VAL_SHARD = MAX_SHARD`), excluded from training and tokenizer training [prepare.py:41-44, 126-127, 254-261]. Locked (by
+  (`VAL_SHARD = MAX_SHARD`), excluded from training and tokenizer training [prepare.py:41-44, 94-97, 126-127, 254-261]. Locked (by
   instruction): `prepare.py` (constants `MAX_SEQ_LEN = 2048`, `TIME_BUDGET`, `EVAL_TOKENS`, `VOCAB_SIZE = 8192`, data,
   tokenizer, dataloader, `evaluate_bpb`) and dependencies. **Hidden: nothing** - there is no test split [spec 8.2].
 
@@ -142,7 +142,7 @@ There is no per-task inner loop: the unit is **one training run = one scalar**.
 | experiments | "LOOP FOREVER"; ~12/h, ~100/night [program.md:94,114] | `max_experiments = 100` | rsi counts agent turns after the baseline |
 | per-run budget | 300 s training wall clock [prepare.py:31] | `RunBudget(kind="wallclock", amount=25.0)` | rsi choice; set it on the task |
 | warm-up steps excluded | 11 (`step > 10`) [train.py:578,603] | `RunBudget.warmup_excluded_steps = 11` | |
-| kill rule | > 10 min -> kill, "failure (discard and revert)" [program.md:108] | `kill_after=None` -> `2*amount+5 s` (wallclock/ceiling), 600 s (tokens); Domain 1800 s, soft | rsi logs a timeout as `crash` |
+| kill rule | > 10 min -> kill, "failure (discard and revert)" [program.md:108] | `kill_after=None` -> `2*amount+5 s` (wallclock/ceiling), 600 s (other kinds); Domain 1800 s, soft | rsi logs a timeout as `crash` |
 | keep rule | lower val_bpb + simplicity + VRAM judgment [program.md:35-37,103-104] | `keep_rule="upstream"` (`eps=0.001, lines_per_eps=20, mem_tol=0.10, mem_blowup=2.0`) | thresholds are rsi choices; only the 0.001/20-line example is upstream's |
 | bare strict | lower = keep, equal or worse = reset [program.md:103-104] | `keep_rule="strict"` | |
 | noise-aware gate | none upstream; MLX port `rigor.py`: 3 runs, P >= 0.95, 20,000 resamples, rng 1234, early reject [code:mlx/rigor.py] | `keep_rule="rigor"`: `repeats=3, confidence=0.95, reps=20000, vary_seed=True` | opt-in; ~25% fewer ideas at equal compute (E5) |
@@ -215,7 +215,7 @@ Audit verdicts (65 claims: 51 reproduced, 10 partial, 1 not reproduced, 2 not te
   7 classes). Hardened mode: 0 bogus classes. Use hardened for anything you will report.
 - **Reproduced (mechanism):** baseline first, fixed budget with 11 warm-up steps, strict keep recomputed 44/44, `results.tsv`
   byte-identical to [program.md:83-87], crash rows, kill rule. "Strictly better on one noisy number locks in luck" on the
-  landscape: keeps with true delta <= 0 are 19% (strict/upstream) vs 4.6% (rigor); seed-only keeps ~1.1 vs 0.26 per night.
+  landscape: keeps with true delta <= 0 are 19% (strict/upstream) vs 4.6% (rigor); seed-only keeps 1.18/1.14 vs 0.26 per night.
   Rigor shrinks the optimism gap (0.0041 -> 0.0015) at an efficiency cost; not resolved on tinylm at 3 seeds.
 - **Partial:** validation reuse (O26): val-specific optimism of about 0.015 bpb confirmed, growth over hundreds of experiments
   not significant. Strategy via `program.md` (O6/O23): a human edit changed behaviour (p = 0.001) but not outcomes (p = 0.22).
@@ -223,7 +223,7 @@ Audit verdicts (65 claims: 51 reproduced, 10 partial, 1 not reproduced, 2 not te
   live agent. Backend port (O18) and SLURM (O19) only simulated.
 - **Not reproduced:** P28, "if you run out of ideas, think harder (combine near-misses, radical changes)": at a replayed stuck
   point the live agent made only single-knob tweaks. Consistent with [Rehearse §1, §4.4, §5.1-5.2]: a memoryless judge's selective
-  accuracy falls from 82.8% to 56.9% once three or more successes accumulate, and a vanilla nanochat loop (30-min budget,
+  accuracy (AutoSOTA pairs) falls from 82.8% to 56.9% once three or more successes accumulate, and a vanilla nanochat loop (30-min budget,
   5 seeds) "largely plateaus" past experiment 50. Seed the idea pool through `program.md`.
 - **Not testable here:** H100-scale numbers (O7, O16a) and the MLX night 2.667 -> 1.808.
 - Upstream's own results are anecdotal: 15 kept of 89 (0.997900 -> 0.977287, [gh-disc:#32]) incl. one seed-only keep; #43
@@ -241,7 +241,7 @@ task = ScriptResearchTask("my-problem",
     metric="r2", direction="max", editable_paths=["train.py"], locked_paths=["evaluate.py"],
     run_cmd=["python", "evaluate.py"], budget=RunBudget(kind="ceiling", amount=60, kill_after=120),
     tamper_patterns=[r"\bX_VAL\b", r"\breport\b"], description="What the model does and how it is scored.")
-res = run(task, llm_propose="claude:haiku",                  # a spec string or an LLM; None -> scripted MockResearchAgent
+res = run(task, llm_propose=rsi.get_llm("claude:haiku"),     # an LLM object (no spec strings here); None -> scripted MockResearchAgent
           config=Config(max_experiments=50, mode="hardened", keep_rule="rigor", noise_runs=5, reeval_seeds=3, max_usd=5),
           out_dir="runs/x")
 # existing Domain (prompts/harness/solver): same loop, one experiment = one evaluation of `evolve`
@@ -282,4 +282,4 @@ has `analysis` (keep rate, running best, top hits, experiments/hour), `audit` (h
 - Greedy single chain: no memory beyond `results.tsv`; a live agent at a stuck point makes knob tweaks (P28; [Rehearse §5.2]). Put stuck-point guidance into `program.md`.
 - Throughput is agent latency, not the budget: about 95 s of latency per turn at a short budget; wall-clock budgets on a shared machine add
   about +/-15% compute noise, so parallel wall-clock runs are only comparable on separate hardware.
-- Cost: one agent call per turn (including rejected/invalid turns) plus one run per candidate (3 for rigor); cap with `max_usd`/`max_runs`, cache the LLM.
+- Cost: 1-3 agent calls per turn (retries on invalid replies; rejected/invalid turns included) plus crash-fix calls, and one run per candidate (up to 3 for rigor); cap with `max_usd`/`max_runs`, cache the LLM.
