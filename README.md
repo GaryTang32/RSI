@@ -1,8 +1,8 @@
-<h1 align="center">RSI: self-improving AI that has to prove it improved</h1>
+<h1 align="center">RSI: Recursive Self-Improvement Agent Skills</h1>
 
-<p align="center"><b>Seven recursive self-improvement methods from recent papers, rebuilt on one guarded loop.<br>
-Point any of them at your prompts, agent harness or training script. Keep only the changes that survive<br>
-a locked grader, a measured noise band and tasks the loop never saw.</b></p>
+<p align="center"><b>This repo turns recursive self-improvement papers into agent skills.<br>
+Seven methods, each rebuilt from its paper as tested code plus a Claude Code skill, so an agent can apply them<br>
+to your prompts, agent harness or training script, and keep only the changes that prove themselves on tasks the loop never saw.</b></p>
 
 <p align="center">
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
@@ -31,13 +31,18 @@ hard to trust. The model grades its own work, a score moves by luck, or a prompt
 and all three look exactly like progress. A plain "keep it if the score went up" loop accepts an unchanged artifact
 almost half the time.
 
-**The goal of this repo is to make self-improvement measurable.** That means three things:
+**The goal of this repo is to turn RSI papers into skills anyone can use on their own task, and to make the gains
+measurable.** That means four things:
 
-1. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
+1. **Papers into skills.** Each paper (for autoresearch, the upstream repo) is read in full and converted into a skill an
+   agent can follow: what one round does, what happens to each task, the keep rule, the paper's defaults and where our
+   code differs. Every factual claim in the skill is backed by a verbatim quote from the paper or the code, or by a
+   recorded search showing the paper is silent ([2,159 claims checked](docs/skill-claims/README.md)).
+2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
    their papers on a shared core, so they can be compared on the same tasks, grader and budget.
-2. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
+3. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
    held-out tasks, so you can tell a real gain from luck or memorisation.
-3. **Your problem, this afternoon.** Wrap your task in a `Domain`, pick a method, and get an audit trail of every
+4. **Your problem, this afternoon.** Wrap your task in a `Domain`, pick a method, and get an audit trail of every
    round: what was proposed, what actually changed, and why it was kept.
 
 The shared core gives every method the same safeguards:
