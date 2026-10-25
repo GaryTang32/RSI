@@ -8,7 +8,8 @@ M, it has no Table 3, no harness task and no Table 2, and its prompts are App. B
 the same). `[paper v1 ...]` marks v1-only text. The repo's `docs/methods/dream-rsi/paper-spec.md` (tags `[paper:...]`,
 `[doc]`, `[inferred]`), `implementation.md` and `claims-audit.md` were written from the v1 PDF. The code in `rsi/dream/` is
 the source of truth for "this package". The paper links `github.com/zhengkid/Dream-RSI`. In Sept 2026 that repo held only a
-README and the PDF (spec); we did not re-check it. "Not specified in the paper" = v2 does not say. "rsi choice" = our decision.
+README, CITATION.cff, assets and the PDF (spec §8.16); we did not re-check it. "Not specified in the paper" = v2 does not
+say. "rsi choice" = our decision.
 
 ## 1. In one paragraph
 
@@ -32,7 +33,8 @@ Flash) with lower mean held-out runtime [paper §4.3, Fig. 4a]. Quality gains ar
 
 Needed before round 1:
 - **Artifact** (seed program): any `rsi.core.Artifact`. The paper's root `r` is "the initial workspace state" [paper §3].
-  Whether round t starts from the seed or from the best program so far is not specified in the paper. rsi choice: `Config.root="best"`
+  Every round's tree starts as `{r}` [paper §3]; whether `r` stays the seed or moves to the best program so far is not
+  specified in the paper. rsi choice: `Config.root="best"`
   (default) or `"seed"`.
 - **Domain / task**: any `rsi.core.Domain` (wrapped by `DomainTask`), a discovery domain from `rsi.domains.discovery`, or a
   `DiscoveryTask`. Scores must be larger-is-better [paper §3]: negate minimisation tasks. rsi: the grader also returns a typed
@@ -62,7 +64,7 @@ One outer iteration `t` = online rollout + pool update + offline dreaming [paper
 
 1. **Plan the grid.** Before the live grid exists, the deployed policy's deterministic `plan_grid(context)` returns
    `GridPlan(branch_count, refine_count, reason)`. `context` holds only earlier live manifests, fallback/hard caps, the worker
-   cap and (in replay) the trace's support fields. It must not read the current cycle's outcomes [paper Listing 2 L190-220].
+   cap and (in replay) the trace's support fields. It must not read the current cycle's outcomes [paper Listing 2 L190-220, L242].
    The runner checks `1 <= branch_count <= hard_max_branch_count` and `0 <= refine_count <= hard_max_refine_count`
    [paper Listing 2 L208-210]. What happens to an invalid plan is not specified in the paper. A "direction provider assigns those
    new roots their directions" [paper Listing 2 L236-237]; how it does so is not specified. The §3 formalism does not mention
@@ -93,7 +95,7 @@ One outer iteration `t` = online rollout + pool update + offline dreaming [paper
    A pick with no recorded continuation reveals nothing. Every nonempty batch counts as one round. Replay stops on an empty
    batch, after `K2` rounds, or when the whole tree is revealed [paper §3]. Branches are traversed in recorded order and no
    outcome outside the tree is produced [paper §3]. The prompt's API differs on roots: unopened roots are distinct cells with
-   `meta` tags, and "do not choose roots merely because their branch id is small" [paper Listing 2 L33-35, L238]. A plan
+   `meta` tags, and "do not choose roots merely because their branch id is small" [paper Listing 2 L33-35, L238-239]. A plan
    beyond the trace's recorded width or depth "is out of support and cannot earn replay reward" [paper Listing 2 L210-212].
    Replay runs with `budget=None` [paper Listing 2 L140].
 7. **Score** [paper §3 Eq. 1]. Per world i: `B_i` = recorded non-root nodes; `S_i > 0` = best recorded score. Per rho:
@@ -187,7 +189,7 @@ evaluator [paper §3]); inside replay, one revealed node.
 | developer base | `pi^m -> pi^{m+1}` [paper §3] vs "a strong recent policy" [paper Listing 2 L247] | `developer_base="strongest"` | `"latest"` = §3 |
 | root of round t; dreaming after the last round | not specified | `root="best"`; `dream_last=False` | a last dream cannot affect any live search |
 | sandbox | not specified | `sandbox="subprocess"` | never run LLM policies in-process |
-| agent / developer model | Gemini CLI with 3.1-Pro / 3.7-Flash; Claude Opus 4.8 + Claude Code (harness); developer = the same agent [paper §4, §4.4, Fig. 1] | `llm_propose` / `llm_develop` (default = `llm_propose`) | |
+| agent / developer model | Gemini CLI with 3.1-Pro / 3.7-Flash; Claude Opus 4.8 + Claude Code (harness); developer = the same agent [paper §4, §4.2, §4.4, Fig. 1; v1 §4] | `llm_propose` / `llm_develop` (default = `llm_propose`) | |
 | agent history shown | all history, "not a sample" [paper Listing 1 L9] | `agent_history_cycles=None` (all) | caps are options |
 
 ## 6. Where our implementation differs
@@ -221,7 +223,8 @@ Audit verdicts that change how to use it:
   calls, and re-expands after plateaus on some tasks. Candidates replay cheaply (12,000 episodes in 128 s).
 - **Partial / not reproduced**: better quality at equal rounds does **not** reproduce (synthetic -0.038 to -0.040, sum-diff
   and circle packing tie, autocorrelation slightly worse, Lasso inconclusive or worse). At equal calls Dream wins only on
-  synthetic worlds, and a hindsight-best fixed 3x3 grid ties it there, so the gain is "spend fewer calls per round".
+  synthetic worlds, and a hindsight-best fixed 3x3 grid ties it there, so the gain is "spend fewer calls per round"
+  (E11 at the paper's 10 x 11 grid also wins on circle packing).
   Written guidance hurts on synthetic worlds but not on circle packing. "Helps early" and loss of diversity with a live LLM
   did not reproduce (audit L5, L6). The objective choice is not robust: the same winner in only 5/12 variants (E14). The
   developer is a real part of the bill: 14-30% of spend in our live runs; about 9% per phase at paper scale (Pro), above 10% in
@@ -253,7 +256,7 @@ Run `Config(dream=False)` with the same numbers as the Fixed Exploration control
 - `online_round` notes: the prefix the policy saw, legal-set size, the batch, the reveals. `proposal`/`eval` per attempt: the
   agent prompt, the real program diff vs its parent, the score. Check that it edited the intended files only.
 - `live_cycle_manifest` note: calls, `N`, `k`, batch sizes, round best. Calls per round should fall below the cap if dreaming
-  works. A flat 100% of the cap means the policy never changed.
+  works. A flat 100% of the cap suggests the policy never changed.
 - Policy `proposal` (Listing-2 prompt, reply, `method.py` diff), `critic` (lint + leakage), `eval` (V, per-world `V_i`, Eq. 1
   terms): recompute one `V_i` by hand. `gate`/`decision` for selection: the values of all versions, who won and why (ties
   keep the incumbent). `beta_sweep` note: the curve must vary with beta, else the dial is dead. `monitor`: the sealed-split
@@ -272,4 +275,4 @@ Run `Config(dream=False)` with the same numbers as the Fixed Exploration control
   sibling history the agent read. Noisy or timing graders corrupt every world. Re-measure finalists on a sealed split.
 - **Objective sensitivity**: v1 vs v2 Eq. 1, lambda, the rho grid and the attainment definition change the winner, and the
   paper gives no lambda. Fix them before the run and record them.
-- **Cost**: developer requests (one per revision per phase) come on top of agent calls. Count them.
+- **Cost**: developer requests (one per revision, plus one per repair round) come on top of agent calls. Count them.
