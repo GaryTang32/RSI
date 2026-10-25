@@ -67,7 +67,7 @@ class EpisodeResult:
 
 @dataclass
 class Eq1Objective:
-    """v1's Eq. 1: ``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper-v1:§3]; ``normalize``: per world."""
+    """v1's Eq. 1 ``V_i = max_revealed s - beta1 * N + beta2 * N / max(1, k)`` [paper-v1:§3]; ``normalize``: per world"""
 
     beta1: float = 0.01
     beta2: float = 0.005
