@@ -18,7 +18,7 @@ Agents should not each learn the same lesson alone: an agent's local engine (Evo
 content-hashed assets and can share them through a central Hub, "analogous to a Git client that publishes a repository
 to a public GitHub server" [BE §2]. A **Gene** is a compact control object `g = (m, u, π, α, c, v, η)`: matching
 signals, a one-sentence summary, a small set of ordered strategy steps, AVOID cues, optional constraints and
-validation hooks, canonical metadata [SG §3.3 Eq. 8, App. A.3]; a **Capsule** is one validated application, an
+validation hooks, canonical metadata [SG App. A.3 Eq. 15; §3.3 Eq. 8 omits η]; a **Capsule** is one validated application, an
 **EvolutionEvent** an immutable audit record [SG App. A.2; GEP spec §2]. The protocol loop is
 scan -> signal -> intent -> mutate -> validate -> solidify; "only assets that satisfy the required criteria are
 eligible for persistence" [SG App. A.6 Eq. 18]. In the engine the criteria are the gene's own validation commands
@@ -78,7 +78,7 @@ narrative [BE §2.1-2.2]. Formulas below marked [engine] come from the Evolver c
    locally, the agent sends the same query to the remote EvoMap Hub ... If none is found, the agent must generate a
    new one locally" [BE §2.1]. The released engine queries the hub **before** local selection and injects a hit as a
    "STRONG REFERENCE" next to the local gene; client hit score `r = confidence·min(max(streak,1),5)·rep/100 + 0.3·sim
-   >= 0.72` (0.55 with problem signals) [engine: spec §3.1, §4.16]. External assets "are staged (never executed
+   >= 0.72` (0.55 with problem signals) [engine: spec §3.1, §3.9, §4.16]. External assets "are staged (never executed
    directly) and require local validation" [GEP spec §10.2].
 4. **Select a gene** [GEP spec §3.2]: score = number of matching `signals_match` patterns (substring, `/regex/`, or
    `a|b` aliases [GEP spec §2.1]); drop memory-banned genes (unless drift is active); prefer the memory-preferred gene; with probability
@@ -110,7 +110,7 @@ narrative [BE §2.1-2.2]. Formulas below marked [engine] come from the Evolver c
    [engine: spec §3.6, §4.9]. Validation commands are self-declared by the gene [BE §6.1]. In SG the persisted asset
    is "typically a new or revised gene"; the engine's solidify does not parse the agent's printed Gene, so new genes
    come from distillation, auto-created `gene_auto_*` genes or the hub [engine: spec §3.6].
-10. **Distil** [GEP spec §6]: when the last 10 capsules have >= 7 successes, >= 24 h since the last run, and >= 10
+10. **Distil** [GEP spec §6, §11]: when the last 10 capsules have >= 7 successes, >= 24 h since the last run, and >= 10
    capsules: group successful capsules (score >= 0.7) by gene, analyse, LLM-synthesise a Gene, validate; id prefix
    `gene_distilled_`, `max_files` <= 12, selection factor 0.8. Engine: also every 5th successful solidify, heuristic
    synthesiser by default, failure distiller from >= 5 failed capsules [engine: spec §3.7, §4.14]. SG's guidance:
@@ -118,9 +118,9 @@ narrative [BE §2.1-2.2]. Formulas below marked [engine] come from the Evolver c
 11. **Publish** only "when sharing is enabled" [BE §2.1], as a Gene+Capsule(+Event) bundle; hub requires
    `outcome.score >= 0.7` and non-zero blast radius [GEP docs: evomap.ai/skill.md]. Engine auto-publish: success,
    score >= 0.78, streak >= 2, <= 5 files / 200 lines, not `reused` [engine: spec §4.13].
-12. **Hub admission** [BE §2.2]: verify SHA-256 `asset_id`s, reject very similar assets, hold as hidden `candidate`;
+12. **Hub admission**: verify SHA-256 `asset_id`s [wiki: 05], reject very similar assets, hold as hidden `candidate` [BE §2.2];
    validator nodes run the proposer's validation commands in a sandbox [Evolver README "Validator Role"]; GDI recomputed
-   hourly; promoted (visible, reusable) at GDI >= 25. Full rule: GDI lower bound >= 25, intrinsic >= 0.4, confidence
+   hourly; promoted (visible, reusable) at GDI >= 25 [BE §2.2]. Full rule: GDI lower bound >= 25, intrinsic >= 0.4, confidence
    >= 0.5, node reputation >= 30, validation consensus not majority-failed [wiki: 05-a2a-protocol]. GDI = 0.35 I + 0.30
    U + 0.20 S + 0.15 F [BE Eq. 1] (x100 on the wiki, ranked on a lower-bound track) with
    `I = 1/6[clip(C) + min(S/10,1) + max(0, 1 - F·L/1000) + min(T/5,1) + min(ℓ_sum/200,1) + clip(R/100)]` [BE App. B
@@ -189,7 +189,7 @@ of a fixed rollout budget whose value is not given [LWF §3.1]. No convergence t
 | validation runner | node/npm/npx, 180 s [Evolver README]; engine skips missing, empty passes, 2 retries | F same; S no skips, empty fails, 0 retries | Python commands (rsi) |
 | composite weights | engine only [engine: spec §4.10] | fixed; `estimate_drift_penalty=False` | Evolver's drift penalty is dead code |
 | gene creation | distil a verifier-passing trajectory [LWF §3.1]; engine: distiller / auto gene / hub | `propose=True`, `retry_after_propose=True`; `new_gene_retries` F 1 / S 3, `new_gene_check` F single / S paired | rsi choice |
-| distill | last 10 >= 7 successes, 24 h, >= 10 capsules, score >= 0.7, LLM [GEP §6]; engine every 5th, heuristic | `distill=True`, `distill_every=5`, `distill_min_capsules=10`, `llm_distill=False` | 24 h / 7-of-10 gate not modelled |
+| distill | last 10 >= 7 successes, 24 h, >= 10 capsules, score >= 0.7, LLM [GEP §6, §11]; engine every 5th, heuristic | `distill=True`, `distill_every=5`, `distill_min_capsules=10`, `llm_distill=False` | 24 h / 7-of-10 gate also ported (1 cycle = 1 h) |
 | failure distill | engine: >= 5 failed capsules, 12 h | `failure_distill` F on, S off | |
 | hub order | local first, then hub [BE §2.1]; engine hub first | `hub_when` F `"first"`, S `"no_local"` | sources disagree |
 | hub reuse | engine 0.72 / 0.55 with problem signals, mode `reference` | `reuse_threshold=0.72`, `reuse_threshold_problem=0.55`, `hub_k=5`; `reuse_mode` F `reference`, S `quarantine` | |
@@ -199,21 +199,21 @@ of a fixed rollout budget whose value is not given [LWF §3.1]. No convergence t
 | rollback | optional git reset [GEP §3.7]; engine `stash` | `rollback="stash"` | map workspace: gene not stored |
 | task success | checkpoint rate [SG]; all checks [LWF] | `success_threshold=0.5` | rsi choice |
 | seeds | not specified in the papers | `seed=0` | |
-| quarantine / audit | none | `quarantine_k=2`, `quarantine_n=12`, `quarantine_min_tasks=3`; `trace=True`, `shadow_monitor=True` | rsi choice |
+| quarantine / audit | no consumer A/B; external assets staged and validated locally [GEP §10.2] | `quarantine_k=2`, `quarantine_n=12`, `quarantine_min_tasks=3`; `trace=True`, `shadow_monitor=True` | rsi choice |
 
 ## 6. Where our implementation differs
 
 Package verdicts from `claims-audit.md` (54 claims after retry round 2: 28 reproduced, 10 partial, 1 not reproduced,
 14 not testable here, 1 contradicted), checked against the papers above.
-- **The rsi cycle** (`AgentNode._cycle`): next task from a shuffled `evolve` split; signals from `task:<family>` + meta +
-  regex/keyword layers (F also uses the previous trace and the hub LLM layer); de-dup; F: hub first; plateau, memory
-  advice, select; S: hub only if no local gene fits, then `stage_external` (asset_id check, confidence x0.6) and a
-  `QuarantineGate` A/B on `val` tasks; mutation/personality (feed the score and trace only, the solver sees just the gene
-  card); **solve once**; if no gene was used and the solve failed, `llm_propose` writes one gene from signals, public
-  text and the last 1,500 chars of trace, judged on its own task (F 1 fresh-seed retry; S 3 seeds paired with/without,
-  kept iff > half solve and it beats the bare harness); solidify (S also needs non-vacuous validation and the own task
-  solved; F gives a geneless cycle a `gene_auto_*`; S skips a geneless solved cycle); store the gene on success; memory
-  outcome (F next cycle, S immediately); distil; publish if eligible.
+- **The rsi cycle** (`AgentNode._cycle`): next task from a shuffled `evolve` split; signals from `task:<family>` +
+  meta + regex/keyword layers (F also uses the previous trace and the hub LLM layer); de-dup; F: hub first; plateau,
+  memory advice, select; S: hub only if no local gene fits, then `stage_external` (asset_id check, confidence x0.6)
+  and a `QuarantineGate` A/B on `val` tasks; mutation/personality (feed the score and trace only, the solver sees just
+  the gene card); **solve once**; if no local or adopted gene was used and the solve failed, `llm_propose` writes one
+  gene from signals, public text and the last 1,500 chars of trace, judged on its own task (F 1 fresh-seed retry; S 3
+  seeds paired with/without, kept iff > half solve and it beats the bare harness); solidify (S also needs non-vacuous
+  validation and the own task solved; F gives a geneless cycle a `gene_auto_*`; S skips a geneless solved cycle);
+  store the gene on success; memory outcome (F next cycle, S immediately); distil; publish if eligible.
 - **Gene creation** (rsi choice): Evolver never stores the agent's printed gene; LWF distils only verifier-passing
   trajectories after feedback-driven retries. Our writer proposes after one failed scratch attempt.
 - **Hub order**: faithful follows the engine (hub first), safe follows BE §2.1 (local first).
@@ -227,14 +227,15 @@ Package verdicts from `claims-audit.md` (54 claims after retry round 2: 28 repro
 - **Evaluation**: SG and LWF score genes on the tasks they came from; rsi scores the library on sealed
   `holdout`/`ood` (`evaluate_library`), which is stricter.
 - Verdicts: **REPRODUCED** engine mechanisms (hashing byte-identical, selector, solidify, composite, eligibility,
-  vacuity; X15 self-assessed memory outcome; X16 composite is not a task-gain measure, Spearman ~0). **PARTIAL**: signals
-  (hub LLM layer is a stand-in), distiller (never reached 10 distinct capsules in long runs), GDI internals,
-  Behind-EvoMap percentages (set by our farm-rate knob). **NOT REPRODUCED**: B7, blast radius as the dominant GDI lever
-  (BE Table 2: 40.2 -> 36.0); SafeHub extension rows (not EvoMap claims): rank validity > 0 (E3), exploration slots
-  cutting time to first reuse (E4). **CONTRADICTED**: "local store first, then hub", which is BE §2.1's own description
-  (and the overview's), against the released engine. **NOT TESTABLE**: vendor numbers (54.0/49.9/51.0, CritPt, 4,590
-  trials, LWF); offline X1-X3 only restate simulator knobs, and live Haiku has no headroom on our katas. Simulated gains:
-  GeneWorld safe 0.41 -> 0.56, katas 0.39 -> 0.84, faithful far smaller; agentqa not significant.
+  vacuity; X15 self-assessed memory outcome; X16 composite is not a task-gain measure, Spearman ~0). **PARTIAL**:
+  signals (hub LLM layer is a stand-in), distiller (never reached 10 distinct capsules in long runs), GDI internals,
+  Behind-EvoMap percentages (set by our farm-rate knob). **NOT REPRODUCED**: B7, blast radius as the dominant GDI
+  lever (BE Table 2: 40.2 -> 36.0); SafeHub extension rows (not EvoMap claims): rank validity > 0 (E3), exploration
+  slots cutting time to first reuse (E4). **CONTRADICTED**: "local store first, then hub", which is BE §2.1's own
+  description (and the overview's), against the released engine. **NOT TESTABLE**: vendor numbers (54.0/49.9/51.0,
+  CritPt, 4,590 trials; LWF is not in the audit); offline X1-X3 only restate simulator knobs, and live Haiku has no
+  headroom on our katas. Simulated gains: GeneWorld safe 0.41 -> 0.56, katas 0.39 -> 0.84, faithful far smaller;
+  agentqa not significant.
 
 ## 7. Applying it with rsi
 
@@ -246,8 +247,8 @@ res = rsi.improve(dom, seed, method="evomap", llm_task="claude:haiku", llm_propo
                   out_dir="runs/genes", cache_dir=".rsi_cache/genes")        # hub=None: one offline agent
 rep = evaluate_library(dom, task_llm, res, splits=("holdout", "ood"))        # no genes vs routed library, sealed splits
 ```
-`res.best["genes/library.json"]` is the library; `evaluate_library`/`GeneRoutedDomain` pick one gene per task by pattern
-score. Fields users set: `cycles`, `mode`, `split`, `heldout_split`, `success_threshold`, `validation_hint`,
+`res.best["genes/library.json"]` is the library; `evaluate_library`/`GeneRoutedDomain` pick one gene per task by selector
+score (no memory, no drift). Fields users set: `cycles`, `mode`, `split`, `heldout_split`, `success_threshold`, `validation_hint`,
 `default_validation`, `distill_every`, `llm_distill`, `quarantine_min_tasks` (set 1 on tiny task sets), `workers`. Sharing
 needs `hub=SafeHub(TaskBank(dom, harness, model, split="test", ...))` and several agents (`PopulationSimulator`);
 `rsi.improve` runs ONE agent. The gene writer prompt must state the allowed validation command format, or inline checks
@@ -278,5 +279,5 @@ needs `hub=SafeHub(TaskBank(dom, harness, model, split="test", ...))` and severa
 - **Provenance**: LWF's reference-distilled genes trailed Skill on every model [LWF §5.2]; prefer genes written from
   graded, solved attempts and read `leakage_audit`; score `holdout`/`ood` via `evaluate_library`.
 - **Hub poison / spam** (population runs): naive hub + direct apply ran a poisoned gene in 94% of consumer cycles (X11);
-  keep quarantine on and never trust a self-reported `validation`. Drift still picks a non-best gene ~24% of cycles.
+  keep quarantine on and never trust a self-reported `validation`. Drift still picks a non-best gene ~24% of cycles (17 genes).
 - **Missing signals**: tasks without `family`/`meta["signals"]` match nothing; genes will not be reused.
