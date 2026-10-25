@@ -74,13 +74,16 @@ Check the method's requirements before running it:
 | gepa | the parent and one rewritten child (one module, round-robin) on the same minibatch of `minibatch_size` (default 3) evolve tasks; only a child whose minibatch score strictly improves is scored on all of `val` (D_pareto) and joins the pool | named text components, a separate non-empty `val` split, grader feedback that says *why* | edits text only; the keep rule is a strict `>` on 3 single draws with no noise band (`acceptance="noise_margin"` adds one); every accepted child stays in the pool; `res.best` is the argmax of `val` means, so judge it on sealed splits |
 | autoresearch | upstream: the git state, the grep of the last run's log and its own results.tsv; here: program.md, the tip files, the whole results.tsv and the kept-commit log (never per-sample traces or hidden splits) | editable file(s) (upstream: only train.py), one metric computed by locked code, a fixed budget per run, one run per experiment | the default keep rule (`upstream`: strictly better than the tip on ONE run, plus rsi's mechanical simplicity/VRAM thresholds) keeps lucky changes: measure noise (`noise_runs`) and prefer `keep_rule="rigor"` or a gate |
 | solpi | capability and token metrics per environment family | several task families, token/cost metering | only cuts cost; never makes the agent better |
-| dream | replays candidate search policies over recorded search trees (no new model calls) | a many-attempt search problem, an agent (`llm_propose`) and optionally `llm_develop` | the winner depends on objective details; replay cannot show new discoveries |
+| dream | one live search per round with the deployed policy (up to `branch_count x (refine_count+1)` agent + grader calls on the decision split), then M policy versions (incumbent + M-1 developer rewrites) replayed over every recorded search tree with no agent or grader calls; deploys the argmax of mean replay score (incumbent kept on ties) | a many-attempt search problem with a larger-is-better score, an agent (`llm_propose`) and optionally `llm_develop` (defaults to the agent, as in the paper) | the keep rule picks the search policy, not the program: the best program is replaced on any strict gain with no noise band, so confirm it with `transfer_report`; the default `objective="eq1"` is the paper's v1 formula (v2's Eq. 1 is the rho-swept Pareto form, approximated by `objective="pareto"`); replay cannot show new discoveries |
 | evomap | one agent's own recent outcomes; genes from the hub | `rsi.improve` runs ONE agent: sharing needs the hub/population code; SafeHub needs hidden tasks | the naive hub trusts self-reported gains |
 
 A keep rule that accepts any gain accepts an unchanged artifact about half the time under model noise
 (measured here: ~46% strict vs ~9% with the noise band), so always compare gains with delta from step 3.
 GEPA's keep rule is the paper's [Alg. 1 l.15-16]: keep the child iff its average score on the parent's minibatch is higher
 (`sum(after) > sum(before)`, ties reject). Pass `acceptance="noise_margin", noise_margin=delta` to apply the noise band.
+Dream-RSI applies no noise band at either level: policies are chosen by argmax over the same replay worlds the
+developer read (use `selector="guarded"` once there are >= 3 worlds), and `res.best` is replaced on any strict gain, so
+re-score it on sealed splits before reporting a gain.
 
 ## 5. Run with a trace
 
