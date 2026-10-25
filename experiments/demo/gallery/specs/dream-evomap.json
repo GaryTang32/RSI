@@ -1,0 +1,1315 @@
+{
+ "charts": [
+  {
+   "id": "dream-vs-fixed-budget",
+   "method": "Dream-RSI",
+   "title": "Dream vs Fixed Exploration: best score at equal agent-call budgets",
+   "takeaway": "At 240 calls Dream reaches 0.910 vs 0.857 for the paper's fixed grid (+0.053 [+0.040, +0.067], 19/20 wins). But a fixed 3x3 grid chosen in hindsight reaches 0.911 and ties Dream (-0.0017 [-0.014, +0.010]): the gain comes from spending fewer calls per round. At equal rounds (5) Dream is worse (-0.040 [-0.059, -0.021]) while using 1.75x fewer calls.",
+   "source": "results/dream-rsi/e3_dream_vs_fixed.json",
+   "type": "line",
+   "x": {
+    "label": "Cumulative agent calls",
+    "kind": "linear",
+    "log": false
+   },
+   "y": {
+    "label": "Best score found (synthetic worlds)",
+    "min": 0.5,
+    "max": 1,
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Recursive Fixed Exploration (6x4 grid)",
+     "points": [
+      {
+       "x": 60.0,
+       "y": 0.563,
+       "lo": 0.536,
+       "hi": 0.59
+      },
+      {
+       "x": 120.0,
+       "y": 0.725,
+       "lo": 0.694,
+       "hi": 0.756
+      },
+      {
+       "x": 180.0,
+       "y": 0.809,
+       "lo": 0.78,
+       "hi": 0.837
+      },
+      {
+       "x": 240.0,
+       "y": 0.857,
+       "lo": 0.83,
+       "hi": 0.882
+      }
+     ]
+    },
+    {
+     "name": "Dream-RSI",
+     "points": [
+      {
+       "x": 60.0,
+       "y": 0.597,
+       "lo": 0.568,
+       "hi": 0.63
+      },
+      {
+       "x": 120.0,
+       "y": 0.808,
+       "lo": 0.774,
+       "hi": 0.84
+      },
+      {
+       "x": 180.0,
+       "y": 0.876,
+       "lo": 0.846,
+       "hi": 0.903
+      },
+      {
+       "x": 240.0,
+       "y": 0.91,
+       "lo": 0.887,
+       "hi": 0.93
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.911,
+     "label": "best fixed grid in hindsight (3x3) at 240 calls"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 20 seeds, 95% bootstrap CIs"
+  },
+  {
+   "id": "dream-paper-grid-calls",
+   "method": "Dream-RSI",
+   "title": "Paper protocol: Fixed calls per Dream call at equal rounds",
+   "takeaway": "With the paper's grids and equal rounds, Fixed spends 2.1-4.3x as many agent calls as Dream; the paper's 1.74x (Lasso, Pro) lies inside the Lasso CI [1.65, 2.54]. Fewer calls did not buy better results at equal rounds: Dream is worse on synthetic worlds (-0.037 [-0.051, -0.025] at round 5) and autocorrelation (-0.0070 [-0.0112, -0.0032] at round 10), so 'consistently superior' did not reproduce.",
+   "source": "results/dream-rsi/e11_paper_grid.json",
+   "type": "interval",
+   "x": {
+    "label": "Domain and protocol",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Fixed agent calls / Dream agent calls (ratio)",
+    "min": 0,
+    "max": 5,
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Fixed / Dream calls (mean, 95% CI)",
+     "points": [
+      {
+       "x": "Synthetic, 110 calls/round, 5 rounds",
+       "y": 2.5,
+       "lo": 2.41,
+       "hi": 2.59
+      },
+      {
+       "x": "Synthetic, Flash grid 640 calls/round, 5 rounds",
+       "y": 3.55,
+       "lo": 3.48,
+       "hi": 3.63
+      },
+      {
+       "x": "Lasso-like, 110 calls/round, 5 rounds",
+       "y": 2.1,
+       "lo": 1.65,
+       "hi": 2.54
+      },
+      {
+       "x": "Sum-difference, 110 calls/round, 10 rounds",
+       "y": 3.89,
+       "lo": 3.63,
+       "hi": 4.17
+      },
+      {
+       "x": "Autocorrelation, 110 calls/round, 10 rounds",
+       "y": 4.0,
+       "lo": 3.83,
+       "hi": 4.2
+      },
+      {
+       "x": "Circle packing, 110 calls/round, 10 rounds",
+       "y": 4.33,
+       "lo": 3.94,
+       "hi": 4.71
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 1.735,
+     "label": "paper: 1.74x (Lasso, Pro, 550/317)"
+    },
+    {
+     "axis": "y",
+     "value": 1,
+     "label": "equal calls"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; CPU analogues with mock agents, not the paper's Gemini runs"
+  },
+  {
+   "id": "dream-offpolicy-validity",
+   "method": "Dream-RSI",
+   "title": "Replayed value vs true online value for 20 search policies",
+   "takeaway": "For the 17 policies whose plans stay inside the recorded trees, replay ranks them like their true online value (Spearman 0.92, mean bias +0.002). The 3 policies that plan beyond the record are over-estimated (bias +0.14); giving them no replay reward (Listing 2 rule) lifts the all-policy Spearman from 0.91 to 0.93. The replay pick (grid_3x3) loses 0.019 to the true best (stop_after_2).",
+   "source": "results/dream-rsi/e2_offpolicy_validity.json",
+   "type": "scatter",
+   "x": {
+    "label": "Replayed value on 5 recorded worlds (Eq. 1)",
+    "kind": "linear",
+    "log": false
+   },
+   "y": {
+    "label": "True online value on 60 fresh worlds (Eq. 1)",
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "In support of the record",
+     "points": [
+      {
+       "x": 0.142,
+       "y": 0.156,
+       "label": "parallel_refine"
+      },
+      {
+       "x": 0.245,
+       "y": 0.262,
+       "label": "grid_2x4"
+      },
+      {
+       "x": 0.275,
+       "y": 0.265,
+       "label": "grid_4x2"
+      },
+      {
+       "x": 0.25,
+       "y": 0.248,
+       "label": "grid_6x1"
+      },
+      {
+       "x": 0.294,
+       "y": 0.255,
+       "label": "grid_3x3"
+      },
+      {
+       "x": 0.225,
+       "y": 0.226,
+       "label": "grid_6x2"
+      },
+      {
+       "x": 0.194,
+       "y": 0.205,
+       "label": "gainstop_0.005"
+      },
+      {
+       "x": 0.249,
+       "y": 0.231,
+       "label": "gainstop_0.02"
+      },
+      {
+       "x": 0.268,
+       "y": 0.229,
+       "label": "gainstop_0.05"
+      },
+      {
+       "x": 0.129,
+       "y": 0.143,
+       "label": "deepen_top1"
+      },
+      {
+       "x": 0.135,
+       "y": 0.148,
+       "label": "deepen_top2"
+      },
+      {
+       "x": 0.128,
+       "y": 0.142,
+       "label": "serial"
+      },
+      {
+       "x": 0.29,
+       "y": 0.274,
+       "label": "stop_after_2"
+      },
+      {
+       "x": 0.28,
+       "y": 0.27,
+       "label": "adaptive_b0.2"
+      },
+      {
+       "x": 0.23,
+       "y": 0.237,
+       "label": "adaptive_b0.6"
+      },
+      {
+       "x": 0.21,
+       "y": 0.217,
+       "label": "adaptive_b1.0"
+      },
+      {
+       "x": 0.278,
+       "y": 0.272,
+       "label": "adaptive_lean"
+      }
+     ]
+    },
+    {
+     "name": "Out of support, clipped to the record",
+     "points": [
+      {
+       "x": 0.135,
+       "y": -0.056,
+       "label": "deeper_6x8"
+      },
+      {
+       "x": 0.14,
+       "y": -0.028,
+       "label": "wider_10x4"
+      },
+      {
+       "x": 0.241,
+       "y": 0.18,
+       "label": "deep_serial_2x9"
+      }
+     ]
+    },
+    {
+     "name": "Out of support, no replay reward",
+     "points": [
+      {
+       "x": -0.089,
+       "y": -0.056,
+       "label": "deeper_6x8"
+      },
+      {
+       "x": -0.083,
+       "y": -0.028,
+       "label": "wider_10x4"
+      },
+      {
+       "x": 0.106,
+       "y": 0.18,
+       "label": "deep_serial_2x9"
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark"
+  },
+  {
+   "id": "dream-safe-selection",
+   "method": "Dream-RSI",
+   "title": "Safe selection: phases that regress, with vs without the incumbent",
+   "takeaway": "Keeping the current policy among the candidates means the selected policy never scores below it on replay: 0 of 75 phases regress at either developer noise level. Without the incumbent, 4/75 (σ=0.2) and 9/75 (σ=0.6) phases regress, the worst by 0.32. The online effect was negligible here: final best 0.770 vs 0.771 at σ=0.2.",
+   "source": "results/dream-rsi/e4_safe_selection.json",
+   "type": "stacked",
+   "x": {
+    "label": "Developer noise σ and selection rule",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Dreaming phases (count, 75 per arm)",
+    "min": 0,
+    "max": 75,
+    "lowerIsBetter": false,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Held or improved (V* ≥ V0)",
+     "points": [
+      {
+       "x": "σ=0.2, incumbent kept as candidate",
+       "y": 75
+      },
+      {
+       "x": "σ=0.2, incumbent excluded",
+       "y": 71
+      },
+      {
+       "x": "σ=0.6, incumbent kept as candidate",
+       "y": 75
+      },
+      {
+       "x": "σ=0.6, incumbent excluded",
+       "y": 66
+      }
+     ]
+    },
+    {
+     "name": "Regressed (V* < V0)",
+     "points": [
+      {
+       "x": "σ=0.2, incumbent kept as candidate",
+       "y": 0
+      },
+      {
+       "x": "σ=0.2, incumbent excluded",
+       "y": 4
+      },
+      {
+       "x": "σ=0.6, incumbent kept as candidate",
+       "y": 0
+      },
+      {
+       "x": "σ=0.6, incumbent excluded",
+       "y": 9
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 15 seeds x 5 phases per arm"
+  },
+  {
+   "id": "dream-pacing",
+   "method": "Dream-RSI",
+   "title": "Learned pacing: agent calls per round, Dream vs Fixed",
+   "takeaway": "Dream conserves compute after round 1: mean calls fall from 30 to 16.6 on synthetic worlds and from 20 to 12.7 on sum-difference, while Fixed spends its full grid every round. On sum-difference effort creeps back up to 14.8 by round 10 as progress stalls (calls after a plateau minus after an improving round: +1.8 [+0.6, +3.0]); on synthetic worlds that re-expansion is not significant (+1.9 [-0.3, +4.0]).",
+   "source": "results/dream-rsi/e6_pacing.json",
+   "type": "line",
+   "x": {
+    "label": "Round",
+    "kind": "linear",
+    "log": false
+   },
+   "y": {
+    "label": "Agent calls in the round",
+    "min": 0,
+    "max": 32,
+    "lowerIsBetter": false,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Dream, synthetic worlds",
+     "points": [
+      {
+       "x": 1,
+       "y": 30.0,
+       "lo": 30.0,
+       "hi": 30.0
+      },
+      {
+       "x": 2,
+       "y": 16.6,
+       "lo": 14.8,
+       "hi": 18.9
+      },
+      {
+       "x": 3,
+       "y": 14.9,
+       "lo": 12.7,
+       "hi": 17.3
+      },
+      {
+       "x": 4,
+       "y": 14.1,
+       "lo": 11.6,
+       "hi": 16.9
+      },
+      {
+       "x": 5,
+       "y": 13.9,
+       "lo": 11.8,
+       "hi": 16.4
+      },
+      {
+       "x": 6,
+       "y": 14.3,
+       "lo": 12.1,
+       "hi": 16.9
+      },
+      {
+       "x": 7,
+       "y": 13.7,
+       "lo": 10.8,
+       "hi": 16.9
+      },
+      {
+       "x": 8,
+       "y": 14.2,
+       "lo": 11.3,
+       "hi": 17.4
+      },
+      {
+       "x": 9,
+       "y": 13.9,
+       "lo": 11.1,
+       "hi": 17.1
+      },
+      {
+       "x": 10,
+       "y": 13.6,
+       "lo": 10.8,
+       "hi": 16.7
+      },
+      {
+       "x": 11,
+       "y": 13.3,
+       "lo": 10.8,
+       "hi": 16.4
+      },
+      {
+       "x": 12,
+       "y": 13.7,
+       "lo": 10.9,
+       "hi": 16.8
+      }
+     ]
+    },
+    {
+     "name": "Fixed, synthetic worlds",
+     "points": [
+      {
+       "x": 1,
+       "y": 30
+      },
+      {
+       "x": 2,
+       "y": 30
+      },
+      {
+       "x": 3,
+       "y": 30
+      },
+      {
+       "x": 4,
+       "y": 30
+      },
+      {
+       "x": 5,
+       "y": 30
+      },
+      {
+       "x": 6,
+       "y": 30
+      },
+      {
+       "x": 7,
+       "y": 30
+      },
+      {
+       "x": 8,
+       "y": 30
+      },
+      {
+       "x": 9,
+       "y": 30
+      },
+      {
+       "x": 10,
+       "y": 30
+      },
+      {
+       "x": 11,
+       "y": 30
+      },
+      {
+       "x": 12,
+       "y": 30
+      }
+     ]
+    },
+    {
+     "name": "Dream, sum-difference",
+     "points": [
+      {
+       "x": 1,
+       "y": 20.0,
+       "lo": 20.0,
+       "hi": 20.0
+      },
+      {
+       "x": 2,
+       "y": 12.7,
+       "lo": 10.5,
+       "hi": 15.4
+      },
+      {
+       "x": 3,
+       "y": 11.4,
+       "lo": 9.4,
+       "hi": 13.8
+      },
+      {
+       "x": 4,
+       "y": 10.9,
+       "lo": 9.0,
+       "hi": 13.4
+      },
+      {
+       "x": 5,
+       "y": 11.4,
+       "lo": 9.4,
+       "hi": 13.9
+      },
+      {
+       "x": 6,
+       "y": 11.7,
+       "lo": 9.4,
+       "hi": 14.4
+      },
+      {
+       "x": 7,
+       "y": 11.9,
+       "lo": 9.8,
+       "hi": 14.4
+      },
+      {
+       "x": 8,
+       "y": 13.3,
+       "lo": 11.3,
+       "hi": 15.7
+      },
+      {
+       "x": 9,
+       "y": 13.7,
+       "lo": 11.3,
+       "hi": 16.3
+      },
+      {
+       "x": 10,
+       "y": 14.8,
+       "lo": 12.8,
+       "hi": 17.0
+      }
+     ]
+    },
+    {
+     "name": "Fixed, sum-difference",
+     "points": [
+      {
+       "x": 1,
+       "y": 20
+      },
+      {
+       "x": 2,
+       "y": 20
+      },
+      {
+       "x": 3,
+       "y": 20
+      },
+      {
+       "x": 4,
+       "y": 20
+      },
+      {
+       "x": 5,
+       "y": 20
+      },
+      {
+       "x": 6,
+       "y": 20
+      },
+      {
+       "x": 7,
+       "y": 20
+      },
+      {
+       "x": 8,
+       "y": 20
+      },
+      {
+       "x": 9,
+       "y": 20
+      },
+      {
+       "x": 10,
+       "y": 20
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; synthetic 20 seeds, sum-difference 10 seeds with a mock agent, 95% bootstrap CIs"
+  },
+  {
+   "id": "dream-overfitting",
+   "method": "Dream-RSI",
+   "title": "Selection overfits past worlds as more candidate policies are tried",
+   "takeaway": "The argmax pick's replay advantage over its fresh-world value grows with the number of candidates M: with 1 past world from +0.070 (M=2) to +0.175 (M=32); with 3 worlds from +0.013 to +0.119. The guarded selector narrows it (M=32: +0.088 vs +0.119 at 3 worlds, +0.063 vs +0.094 at 6), but cannot help with 1 world, and its fresh-world value stays within the CIs of the argmax pick.",
+   "source": "results/dream-rsi/e9_overfitting.json",
+   "type": "line",
+   "x": {
+    "label": "Candidate policies per selection (M)",
+    "kind": "linear",
+    "log": true
+   },
+   "y": {
+    "label": "Overfitting gap: past-world V − fresh-world V",
+    "lowerIsBetter": true,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "1 past world, argmax (guarded identical)",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.07,
+       "lo": 0.031,
+       "hi": 0.112
+      },
+      {
+       "x": 4,
+       "y": 0.09,
+       "lo": 0.053,
+       "hi": 0.129
+      },
+      {
+       "x": 8,
+       "y": 0.134,
+       "lo": 0.082,
+       "hi": 0.191
+      },
+      {
+       "x": 16,
+       "y": 0.164,
+       "lo": 0.108,
+       "hi": 0.22
+      },
+      {
+       "x": 32,
+       "y": 0.175,
+       "lo": 0.112,
+       "hi": 0.239
+      }
+     ]
+    },
+    {
+     "name": "3 past worlds, argmax",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.013,
+       "lo": -0.011,
+       "hi": 0.051
+      },
+      {
+       "x": 4,
+       "y": 0.042,
+       "lo": 0.006,
+       "hi": 0.083
+      },
+      {
+       "x": 8,
+       "y": 0.074,
+       "lo": 0.028,
+       "hi": 0.125
+      },
+      {
+       "x": 16,
+       "y": 0.099,
+       "lo": 0.054,
+       "hi": 0.149
+      },
+      {
+       "x": 32,
+       "y": 0.119,
+       "lo": 0.068,
+       "hi": 0.175
+      }
+     ]
+    },
+    {
+     "name": "3 past worlds, guarded",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.0,
+       "lo": -0.033,
+       "hi": 0.041
+      },
+      {
+       "x": 4,
+       "y": 0.017,
+       "lo": -0.022,
+       "hi": 0.059
+      },
+      {
+       "x": 8,
+       "y": 0.044,
+       "lo": 0.004,
+       "hi": 0.089
+      },
+      {
+       "x": 16,
+       "y": 0.065,
+       "lo": 0.03,
+       "hi": 0.105
+      },
+      {
+       "x": 32,
+       "y": 0.088,
+       "lo": 0.043,
+       "hi": 0.14
+      }
+     ]
+    },
+    {
+     "name": "6 past worlds, guarded",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.013,
+       "lo": -0.017,
+       "hi": 0.051
+      },
+      {
+       "x": 4,
+       "y": 0.031,
+       "lo": -0.001,
+       "hi": 0.07
+      },
+      {
+       "x": 8,
+       "y": 0.024,
+       "lo": -0.007,
+       "hi": 0.064
+      },
+      {
+       "x": 16,
+       "y": 0.048,
+       "lo": 0.017,
+       "hi": 0.087
+      },
+      {
+       "x": 32,
+       "y": 0.063,
+       "lo": 0.019,
+       "hi": 0.118
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no overfitting"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 12 repetitions, 20 fresh worlds, 95% bootstrap CIs"
+  },
+  {
+   "id": "evomap-sharing",
+   "method": "EvoMap",
+   "title": "Sharing genes through SafeHub vs isolated agents: solve rate",
+   "takeaway": "Sharing verified genes raises the solve rate modestly, 0.698 → 0.721 (+0.023 [+0.017, +0.029]), mostly for weak models (+0.050); strong models lose slightly (-0.005). The bigger effect is cost: from-scratch discoveries fall 380 → 224 and tokens per solve 10,375 → 6,605; 64% of the hub genes weak agents used came from strong-model agents.",
+   "source": "results/evomap/x6_sharing.json",
+   "type": "bar",
+   "x": {
+    "label": "Agent group",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Solve rate (share of tasks)",
+    "min": 0,
+    "max": 1,
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Isolated",
+     "points": [
+      {
+       "x": "All agents",
+       "y": 0.698,
+       "lo": 0.69,
+       "hi": 0.707
+      },
+      {
+       "x": "Weak-model agents",
+       "y": 0.498,
+       "lo": 0.485,
+       "hi": 0.511
+      },
+      {
+       "x": "Strong-model agents",
+       "y": 0.899,
+       "lo": 0.891,
+       "hi": 0.906
+      }
+     ]
+    },
+    {
+     "name": "SafeHub",
+     "points": [
+      {
+       "x": "All agents",
+       "y": 0.721,
+       "lo": 0.711,
+       "hi": 0.731
+      },
+      {
+       "x": "Weak-model agents",
+       "y": 0.548,
+       "lo": 0.532,
+       "hi": 0.564
+      },
+      {
+       "x": "Strong-model agents",
+       "y": 0.894,
+       "lo": 0.886,
+       "hi": 0.901
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; GeneWorld, 24 agents x 30 epochs, 20 seeds, 95% bootstrap CIs"
+  },
+  {
+   "id": "evomap-safehub-vs-naive",
+   "method": "EvoMap",
+   "title": "SafeHub minus naive hub: paired differences on the same population",
+   "takeaway": "With farmers and inflators in the population, SafeHub raises reuse of promoted assets by +0.87, removes vacuous validation (92% → 0%) and farmer credits (90% → 0%), and lifts the solve rate 0.44 → 0.76. Rank validity did not reproduce: +0.066 [-0.050, +0.183] crosses zero, and SafeHub's own value 0.089 [-0.022, +0.204] is not clearly positive.",
+   "source": "results/evomap/x10_safehub.json",
+   "type": "interval",
+   "x": {
+    "label": "Metric",
+    "kind": "category"
+   },
+   "y": {
+    "label": "SafeHub − naive hub (paired difference, share or Spearman ρ)",
+    "min": -1,
+    "max": 1,
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "SafeHub − naive (mean, 95% CI)",
+     "points": [
+      {
+       "x": "Reuse among promoted assets",
+       "y": 0.875,
+       "lo": 0.846,
+       "hi": 0.904
+      },
+      {
+       "x": "Vacuous validation among promoted",
+       "y": -0.922,
+       "lo": -0.922,
+       "hi": -0.921
+      },
+      {
+       "x": "Farmers' share of credits",
+       "y": -0.898,
+       "lo": -0.899,
+       "hi": -0.896
+      },
+      {
+       "x": "Rank validity (Spearman, rank vs true effect)",
+       "y": 0.066,
+       "lo": -0.05,
+       "hi": 0.183
+      },
+      {
+       "x": "Surfacing validity",
+       "y": 0.13,
+       "lo": 0.115,
+       "hi": 0.144
+      },
+      {
+       "x": "True effect of served assets",
+       "y": 0.394,
+       "lo": 0.387,
+       "hi": 0.401
+      },
+      {
+       "x": "Population solve rate",
+       "y": 0.321,
+       "lo": 0.307,
+       "hi": 0.336
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; GeneWorld, 40 agents x 30 epochs, 20 seeds; the arms change both the hub and the agents' regime"
+  },
+  {
+   "id": "evomap-quarantine",
+   "method": "EvoMap",
+   "title": "Quarantine vs direct apply with 20% poisoners: consumer solve rate",
+   "takeaway": "On the naive hub, applying hub genes directly drops consumers to 0.188 vs 0.733 for isolated agents: 94% of their cycles ran a poisoned gene. Quarantining and re-testing first restores 0.741 (305 of 351 quarantined assets rejected). SafeHub alone already blocks the poison (0.747 direct, 0.747 with quarantine; 0 of 360 poisoned bundles promoted).",
+   "source": "results/evomap/x11_quarantine.json",
+   "type": "bar",
+   "x": {
+    "label": "Hub",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Consumer solve rate (share of tasks)",
+    "min": 0,
+    "max": 1,
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Apply hub genes directly",
+     "points": [
+      {
+       "x": "Naive hub",
+       "y": 0.188,
+       "lo": 0.164,
+       "hi": 0.212
+      },
+      {
+       "x": "SafeHub",
+       "y": 0.747,
+       "lo": 0.727,
+       "hi": 0.767
+      }
+     ]
+    },
+    {
+     "name": "Quarantine and re-test first",
+     "points": [
+      {
+       "x": "Naive hub",
+       "y": 0.741,
+       "lo": 0.722,
+       "hi": 0.76
+      },
+      {
+       "x": "SafeHub",
+       "y": 0.747,
+       "lo": 0.727,
+       "hi": 0.767
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.733,
+     "label": "isolated agents (no hub)"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; GeneWorld, 30 agents with 20% poisoners, 12 seeds, 95% bootstrap CIs"
+  },
+  {
+   "id": "evomap-metadata-inflation",
+   "method": "EvoMap",
+   "title": "Inflating self-reported metadata: GDI rank gain on the naive hub",
+   "takeaway": "Inflating every claimed field moves an honest asset up 24.8 percentile points [23.6, 26.0] in the naive hub's GDI ranking; outcome score and report are not in the formula and move nothing. The paper's 'blast radius dominates' did not reproduce: streak is the larger lever (16 vs 12 pp) under our reconstructed normalizations. On SafeHub the rank change is 0 for every field.",
+   "source": "results/evomap/x8_metadata_inflation.json",
+   "type": "interval",
+   "x": {
+    "label": "Inflated field",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Rank gain (percentile points)",
+    "min": 0,
+    "lowerIsBetter": false,
+    "format": ".1f"
+   },
+   "series": [
+    {
+     "name": "Naive hub (GDI), mean and 95% CI",
+     "points": [
+      {
+       "x": "All five claimed fields",
+       "y": 24.8,
+       "lo": 23.6,
+       "hi": 26.0
+      },
+      {
+       "x": "Success streak",
+       "y": 16.0,
+       "lo": 15.4,
+       "hi": 16.7
+      },
+      {
+       "x": "Blast radius",
+       "y": 11.7,
+       "lo": 10.6,
+       "hi": 12.9
+      },
+      {
+       "x": "Confidence",
+       "y": 10.7,
+       "lo": 9.8,
+       "hi": 11.5
+      },
+      {
+       "x": "Outcome score",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "Outcome report",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "SafeHub: 0 for every field"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 10 seeds"
+  },
+  {
+   "id": "evomap-gdi-halflife",
+   "method": "EvoMap",
+   "title": "Share of GDI variance from intrinsic quality vs freshness half-life",
+   "takeaway": "The study's claim that GDI 'collapses onto' its intrinsic term does not hold for all promoted assets: intrinsic carries only 0.9%-2.2% of the variance at every half-life (freshness, usage or social dominate). It holds only for the quiet bulk (no reviews, no fetches) and only under slow decay: 17% at 90 epochs, 71% at 365, 100% with no decay. Verdict: partial, since no source fixes the half-life.",
+   "source": "results/evomap/x18_gdi_protocol.json + results/evomap/x24_gdi_halflife.json",
+   "type": "line",
+   "x": {
+    "label": "Freshness half-life (epochs)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Intrinsic share of cross-asset GDI variance",
+    "min": 0,
+    "max": 1,
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "All promoted assets",
+     "points": [
+      {
+       "x": "10",
+       "y": 0.009,
+       "lo": 0.009,
+       "hi": 0.01
+      },
+      {
+       "x": "30",
+       "y": 0.013,
+       "lo": 0.013,
+       "hi": 0.014
+      },
+      {
+       "x": "90",
+       "y": 0.019,
+       "lo": 0.018,
+       "hi": 0.02
+      },
+      {
+       "x": "180",
+       "y": 0.021,
+       "lo": 0.019,
+       "hi": 0.022
+      },
+      {
+       "x": "365",
+       "y": 0.022,
+       "lo": 0.02,
+       "hi": 0.023
+      },
+      {
+       "x": "∞",
+       "y": 0.022,
+       "lo": 0.021,
+       "hi": 0.024
+      }
+     ]
+    },
+    {
+     "name": "Quiet bulk (no review, no fetch)",
+     "points": [
+      {
+       "x": "10",
+       "y": 0.019,
+       "lo": 0.019,
+       "hi": 0.019
+      },
+      {
+       "x": "30",
+       "y": 0.039,
+       "lo": 0.039,
+       "hi": 0.039
+      },
+      {
+       "x": "90",
+       "y": 0.168,
+       "lo": 0.167,
+       "hi": 0.17
+      },
+      {
+       "x": "180",
+       "y": 0.406,
+       "lo": 0.402,
+       "hi": 0.411
+      },
+      {
+       "x": "365",
+       "y": 0.714,
+       "lo": 0.709,
+       "hi": 0.721
+      },
+      {
+       "x": "∞",
+       "y": 1.0,
+       "lo": 1.0,
+       "hi": 1.0
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 40 agents x 40 epochs, 12 seeds"
+  },
+  {
+   "id": "evomap-vacuity",
+   "method": "EvoMap",
+   "title": "Which validators catch vacuous gene validation (katas, 225 items)",
+   "takeaway": "The combined lint + discriminative check catches all 200 vacuous validation commands and wrongly rejects none of the 25 real checks (same on 108 GeneWorld items). Evolver's local runner catches only 25% (the blocked -c / echo kinds), lint alone misses the weak asserts (recall 0.875), and the naive hub's empty-directory validator rejects every real check while accepting --version.",
+   "source": "results/evomap/x9_vacuity.json",
+   "type": "stacked",
+   "x": {
+    "label": "Validator",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Validation commands (count)",
+    "min": 0,
+    "max": 225,
+    "lowerIsBetter": false,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Vacuous, caught",
+     "points": [
+      {
+       "x": "Evolver local runner",
+       "y": 50
+      },
+      {
+       "x": "Naive hub empty-dir validator",
+       "y": 175
+      },
+      {
+       "x": "Lint only",
+       "y": 175
+      },
+      {
+       "x": "Discriminative check only",
+       "y": 200
+      },
+      {
+       "x": "Lint + discriminative",
+       "y": 200
+      }
+     ]
+    },
+    {
+     "name": "Vacuous, accepted",
+     "points": [
+      {
+       "x": "Evolver local runner",
+       "y": 150
+      },
+      {
+       "x": "Naive hub empty-dir validator",
+       "y": 25
+      },
+      {
+       "x": "Lint only",
+       "y": 25
+      },
+      {
+       "x": "Discriminative check only",
+       "y": 0
+      },
+      {
+       "x": "Lint + discriminative",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Real, wrongly rejected",
+     "points": [
+      {
+       "x": "Evolver local runner",
+       "y": 0
+      },
+      {
+       "x": "Naive hub empty-dir validator",
+       "y": 25
+      },
+      {
+       "x": "Lint only",
+       "y": 0
+      },
+      {
+       "x": "Discriminative check only",
+       "y": 0
+      },
+      {
+       "x": "Lint + discriminative",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Real, accepted",
+     "points": [
+      {
+       "x": "Evolver local runner",
+       "y": 25
+      },
+      {
+       "x": "Naive hub empty-dir validator",
+       "y": 0
+      },
+      {
+       "x": "Lint only",
+       "y": 25
+      },
+      {
+       "x": "Discriminative check only",
+       "y": 25
+      },
+      {
+       "x": "Lint + discriminative",
+       "y": 25
+      }
+     ]
+    }
+   ],
+   "note": "constructed validation commands (8 vacuous kinds + real checks) run as real subprocesses on the katas"
+  }
+ ]
+}

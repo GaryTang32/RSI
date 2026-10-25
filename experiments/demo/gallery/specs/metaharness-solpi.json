@@ -1,0 +1,1191 @@
+{
+ "charts": [
+  {
+   "id": "mh-history-ablation",
+   "method": "Meta-Harness",
+   "title": "History ablation: full traces vs scores only (N=20, 20 seeds)",
+   "takeaway": "Full traces lift the median candidate by +2.4 points [0.7, 4.4] over scores only and +2.7 over summaries, but not the best candidate (-0.2 [-1.3, 0.9]). The median full candidate beat the best ablation candidate in 0/20 seeds; the paper reports +15.4 median points and says it does. Verdict PARTIAL: direction on medians only.",
+   "source": "results/metaharness-solpi/m8_history_ablation_n20.json",
+   "type": "bar",
+   "x": {
+    "label": "History view shown to the proposer",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Search-split accuracy (fraction)",
+    "min": 0.5,
+    "max": 0.7,
+    "lowerIsBetter": false,
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "Median candidate",
+     "points": [
+      {
+       "x": "Scores only",
+       "y": 0.568,
+       "lo": 0.542,
+       "hi": 0.593
+      },
+      {
+       "x": "Scores + summary",
+       "y": 0.565,
+       "lo": 0.544,
+       "hi": 0.585
+      },
+      {
+       "x": "Full traces",
+       "y": 0.592,
+       "lo": 0.576,
+       "hi": 0.609
+      }
+     ]
+    },
+    {
+     "name": "Best candidate",
+     "points": [
+      {
+       "x": "Scores only",
+       "y": 0.636,
+       "lo": 0.62,
+       "hi": 0.654
+      },
+      {
+       "x": "Scores + summary",
+       "y": 0.627,
+       "lo": 0.609,
+       "hi": 0.645
+      },
+      {
+       "x": "Full traces",
+       "y": 0.635,
+       "lo": 0.617,
+       "hi": 0.651
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; offline MockProposer whose trace advantage is built in; bars are means over 20 seeds with 95% CIs"
+  },
+  {
+   "id": "mh-history-live-probe",
+   "method": "Meta-Harness",
+   "title": "Live haiku proposer: accuracy gain from each history view",
+   "takeaway": "With a live haiku proposer (5 paired snapshots), full traces beat scores only by +1.2 points [0.5, 1.8] (5/5 snapshots, p = 0.031); the gain over LLM summaries, +1.5 [-0.03, 3.2], is not significant, and summaries add nothing over scores (-0.3). The effect is real but small: the paper reports about +15 points.",
+   "source": "results/metaharness-solpi/m9_live_history_probe.json",
+   "type": "interval",
+   "x": {
+    "label": "Paired comparison",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Difference in proposal accuracy (points)",
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Mean paired difference (95% CI)",
+     "points": [
+      {
+       "x": "Full traces - scores only",
+       "y": 1.19,
+       "lo": 0.53,
+       "hi": 1.83
+      },
+      {
+       "x": "Full traces - LLM summary",
+       "y": 1.46,
+       "lo": -0.03,
+       "hi": 3.15
+      },
+      {
+       "x": "LLM summary - scores only",
+       "y": -0.26,
+       "lo": -2.26,
+       "hi": 1.49
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark (MemoLM task model); the proposer is live claude-haiku, n = 5 snapshots, live spend $3.85"
+  },
+  {
+   "id": "mh-equal-budget-lead",
+   "method": "Meta-Harness",
+   "title": "Meta-Harness lead over other optimizers at 40 evaluations",
+   "takeaway": "At an equal budget of 40 evaluations (20 seeds), Meta-Harness leads Best-of-N by +6.0 points and OpenEvolve by +2.2, ties TTT-Discover (+0.0) and beats faithful GEPA by only +1.1. Against the best other arm per seed it trails by 0.6 (CI includes 0) and needs a median 36.5 evaluations to match it (never in 9/20 seeds). The paper's \"match after 4, end >10 points ahead\" did NOT reproduce on this CPU analogue; rated not testable because the mock proposer cannot use history non-Markovianly.",
+   "source": "results/metaharness-solpi/m7b_gepa_faithful.json",
+   "type": "interval",
+   "x": {
+    "label": "Comparison (final best search accuracy)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Meta-Harness minus arm (accuracy points)",
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Mean lead (95% CI)",
+     "points": [
+      {
+       "x": "vs Best-of-N",
+       "y": 6.01,
+       "lo": 4.9,
+       "hi": 7.08
+      },
+      {
+       "x": "vs OpenEvolve",
+       "y": 2.22,
+       "lo": 1.01,
+       "hi": 3.51
+      },
+      {
+       "x": "vs TTT-Discover",
+       "y": 0.0,
+       "lo": -1.11,
+       "hi": 1.01
+      },
+      {
+       "x": "vs GEPA (faithful minibatch)",
+       "y": 1.11,
+       "lo": 0.21,
+       "hi": 2.08
+      },
+      {
+       "x": "vs best other arm per seed",
+       "y": -0.62,
+       "lo": -1.6,
+       "hi": 0.24
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    },
+    {
+     "axis": "y",
+     "value": 10,
+     "label": "paper: >10-point lead"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; all arms share one offline MockProposer"
+  },
+  {
+   "id": "mh-pareto-frontier",
+   "method": "Meta-Harness",
+   "title": "Accuracy vs context: Meta-Harness candidates and few-shot baselines",
+   "takeaway": "In this run (seed 0) 5 harnesses form the Pareto frontier; the selected one scores 0.590 at 5,658 context characters vs 0.458 at 17,724 for few-shot (all). Over 10 seeds the selected harness beats the best few-shot variant on the sealed test split by +10.5 points [7.8, 13.1] with 4.5x [3.6, 5.4] less context (paper: +7.7 over ACE at 4x fewer tokens; no ACE analogue here).",
+   "source": "results/metaharness-solpi/m3_pareto.json",
+   "type": "scatter",
+   "x": {
+    "label": "Context per query (characters, log scale)",
+    "kind": "linear",
+    "log": true
+   },
+   "y": {
+    "label": "Search-split accuracy (fraction)",
+    "min": 0,
+    "max": 0.7,
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Pareto frontier",
+     "points": [
+      {
+       "x": 191.0,
+       "y": 0.111,
+       "label": "no_memory"
+      },
+      {
+       "x": 428.0,
+       "y": 0.382,
+       "label": "i01_1_label_list"
+      },
+      {
+       "x": 1217.0,
+       "y": 0.569,
+       "label": "i05_1_crossover"
+      },
+      {
+       "x": 1217.0,
+       "y": 0.569,
+       "label": "i07_1_per_label_cap"
+      },
+      {
+       "x": 5658.0,
+       "y": 0.59,
+       "label": "i06_0_param_char_budget_4500"
+      }
+     ]
+    },
+    {
+     "name": "Other evaluated harnesses",
+     "points": [
+      {
+       "x": 2484.0,
+       "y": 0.535,
+       "label": "i01_0_retrieve_topk"
+      },
+      {
+       "x": 2467.0,
+       "y": 0.521,
+       "label": "i02_0_contrastive"
+      },
+      {
+       "x": 3606.0,
+       "y": 0.507,
+       "label": "i02_1_coverage"
+      },
+      {
+       "x": 3548.0,
+       "y": 0.535,
+       "label": "i03_0_notes"
+      },
+      {
+       "x": 3523.0,
+       "y": 0.556,
+       "label": "i03_1_notes"
+      },
+      {
+       "x": 4670.0,
+       "y": 0.562,
+       "label": "i04_0_coverage"
+      },
+      {
+       "x": 2484.0,
+       "y": 0.535,
+       "label": "i04_1_param_char_budget_14000"
+      },
+      {
+       "x": 1949.0,
+       "y": 0.549,
+       "label": "i05_0_notes_only"
+      },
+      {
+       "x": 4945.0,
+       "y": 0.562,
+       "label": "i06_1_label_list"
+      },
+      {
+       "x": 5933.0,
+       "y": 0.59,
+       "label": "i07_0_label_list"
+      },
+      {
+       "x": 12888.0,
+       "y": 0.486,
+       "label": "i08_0_param_char_budget_14000"
+      },
+      {
+       "x": 3800.0,
+       "y": 0.562,
+       "label": "i08_1_contrastive"
+      }
+     ]
+    },
+    {
+     "name": "Few-shot baselines (N = 4 to all)",
+     "points": [
+      {
+       "x": 821.0,
+       "y": 0.25,
+       "label": "fewshot_4"
+      },
+      {
+       "x": 1407.0,
+       "y": 0.312,
+       "label": "fewshot_8"
+      },
+      {
+       "x": 2579.0,
+       "y": 0.354,
+       "label": "fewshot_16"
+      },
+      {
+       "x": 4925.0,
+       "y": 0.41,
+       "label": "fewshot_32"
+      },
+      {
+       "x": 9621.0,
+       "y": 0.444,
+       "label": "fewshot_64"
+      },
+      {
+       "x": 17724.0,
+       "y": 0.458,
+       "label": "fewshot_all"
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; points are one seed (seed 0), the 10-seed numbers are in the takeaway"
+  },
+  {
+   "id": "mh-leakage",
+   "method": "Meta-Harness",
+   "title": "Injected leakage: search-set gain that does not reach the test set",
+   "takeaway": "With search-set leakage injected into the proposer (leak rate 0.3) and no screen, 10.7 leaky harnesses per run reach the frontier and one is selected in every run: it gains +52 points on the search split but -3 [-13, 5] on the unseen test split. With the pre-evaluation screen on, all leaky candidates are rejected and the selected harness gains +12 on search and +10 on test.",
+   "source": "results/metaharness-solpi/m5_leakage.json",
+   "type": "bar",
+   "x": {
+    "label": "Leakage guard",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Selected harness gain over few-shot (all), accuracy points",
+    "lowerIsBetter": false,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Gain on search split",
+     "points": [
+      {
+       "x": "Leakage screen off",
+       "y": 52.2,
+       "lo": 50.4,
+       "hi": 53.9
+      },
+      {
+       "x": "Leakage screen on",
+       "y": 12.1,
+       "lo": 10.9,
+       "hi": 13.2
+      }
+     ]
+    },
+    {
+     "name": "Gain on unseen test split",
+     "points": [
+      {
+       "x": "Leakage screen off",
+       "y": -2.9,
+       "lo": -12.9,
+       "hi": 5.1
+      },
+      {
+       "x": "Leakage screen on",
+       "y": 9.7,
+       "lo": 7.8,
+       "hi": 11.7
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; the leak rate (30%) is injected, so this measures what happens once a proposer leaks"
+  },
+  {
+   "id": "mh-noise-reeval",
+   "method": "Meta-Harness",
+   "title": "Winner's curse: false incumbent changes, with and without re-scoring",
+   "takeaway": "Selecting on one noisy seed, 9% of incumbent changes (0.4 of 4.3 per run) are false, and the selected harness scores +0.9 points [0.2, 1.6] higher on its logged seed than on 8 fresh seeds. Re-scoring each new incumbent on 4 seeds (not in the paper) cuts false changes to 8% and raises 8-seed test accuracy by +1.2 points [0.1, 2.8].",
+   "source": "results/metaharness-solpi/m6_noise_reeval.json",
+   "type": "stacked",
+   "x": {
+    "label": "Incumbent scoring rule",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Incumbent changes per run (mean of 10 seeds)",
+    "min": 0,
+    "lowerIsBetter": false,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Real improvements (confirmed on 8 fresh seeds)",
+     "points": [
+      {
+       "x": "Single-seed scores (paper loop)",
+       "y": 3.9
+      },
+      {
+       "x": "Re-score incumbent on 4 seeds",
+       "y": 3.6
+      }
+     ]
+    },
+    {
+     "name": "False changes (noise)",
+     "points": [
+      {
+       "x": "Single-seed scores (paper loop)",
+       "y": 0.4
+      },
+      {
+       "x": "Re-score incumbent on 4 seeds",
+       "y": 0.3
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; real = total changes minus false changes, both from the source summary"
+  },
+  {
+   "id": "solpi-action-fusion",
+   "method": "SoL-Pi",
+   "title": "Action Fusion: requests, tokens and cost saved per task",
+   "takeaway": "Fusing an edit with its check removes the decision-free turn: on backend A requests fall 23.1% (the trajectory oracle predicted 29.9%), tokens 20.4% and cost 11.7%, with success unchanged (+0.000). Backend B fuses less (1.3 vs 3.5 fused calls per task), so it saves only 9.3% of requests and 8.4% of cost.",
+   "source": "results/metaharness-solpi/s1_action_fusion.json",
+   "type": "bar",
+   "x": {
+    "label": "Simulated agent backend",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Reduction vs base harness (%)",
+    "min": 0,
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Requests, oracle-predicted",
+     "points": [
+      {
+       "x": "Backend A",
+       "y": 0.299,
+       "lo": 0.297,
+       "hi": 0.302
+      },
+      {
+       "x": "Backend B",
+       "y": 0.292,
+       "lo": 0.288,
+       "hi": 0.296
+      }
+     ]
+    },
+    {
+     "name": "Requests, measured",
+     "points": [
+      {
+       "x": "Backend A",
+       "y": 0.231,
+       "lo": 0.218,
+       "hi": 0.24
+      },
+      {
+       "x": "Backend B",
+       "y": 0.093,
+       "lo": 0.08,
+       "hi": 0.104
+      }
+     ]
+    },
+    {
+     "name": "Tokens",
+     "points": [
+      {
+       "x": "Backend A",
+       "y": 0.204,
+       "lo": 0.168,
+       "hi": 0.241
+      },
+      {
+       "x": "Backend B",
+       "y": 0.125,
+       "lo": 0.08,
+       "hi": 0.164
+      }
+     ]
+    },
+    {
+     "name": "Cost",
+     "points": [
+      {
+       "x": "Backend A",
+       "y": 0.117,
+       "lo": 0.096,
+       "hi": 0.138
+      },
+      {
+       "x": "Backend B",
+       "y": 0.084,
+       "lo": 0.057,
+       "hi": 0.109
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 5 seeds x 40 tasks per backend, 95% CIs"
+  },
+  {
+   "id": "solpi-observation-pack",
+   "method": "SoL-Pi",
+   "title": "ObservationPack sweep: tokens fall 8-15%, the bill barely moves",
+   "takeaway": "All 9 packing settings keep quality inside the -2% gate and cut tokens 8%-15%, but the bill changes only -1.9% to +3.3%; none reaches the paper's 10% bill-saving gate. That is a property of this world: replayed large outputs are only 5.9% (A) / 4.8% (B) of the bill, and each swap re-writes the cached prefix (cache writes +12% on A). Verdict: not testable here.",
+   "source": "results/metaharness-solpi/s2_observation_pack.json",
+   "type": "scatter",
+   "x": {
+    "label": "Token saving vs base harness (%)",
+    "kind": "linear",
+    "log": false
+   },
+   "y": {
+    "label": "Bill (API cost) saving vs base harness (%)",
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Backend A",
+     "points": [
+      {
+       "x": 0.146,
+       "y": 0.023,
+       "label": "excerpt 0 B, 1 full send"
+      },
+      {
+       "x": 0.128,
+       "y": -0.003,
+       "label": "excerpt 0 B, 2 full sends"
+      },
+      {
+       "x": 0.143,
+       "y": 0.021,
+       "label": "excerpt 512 B, 1 full send"
+      },
+      {
+       "x": 0.126,
+       "y": -0.005,
+       "label": "excerpt 512 B, 2 full sends"
+      },
+      {
+       "x": 0.14,
+       "y": 0.019,
+       "label": "excerpt 1,024 B, 1 full send"
+      },
+      {
+       "x": 0.124,
+       "y": -0.007,
+       "label": "excerpt 1,024 B, 2 full sends"
+      },
+      {
+       "x": 0.133,
+       "y": 0.012,
+       "label": "excerpt 2,048 B, 1 full send"
+      },
+      {
+       "x": 0.118,
+       "y": -0.012,
+       "label": "excerpt 2,048 B, 2 full sends"
+      },
+      {
+       "x": 0.11,
+       "y": -0.019,
+       "label": "blog V2: 2,048 B head + 1,536 B tail, 2 sends"
+      }
+     ]
+    },
+    {
+     "name": "Backend B",
+     "points": [
+      {
+       "x": 0.111,
+       "y": 0.033,
+       "label": "excerpt 0 B, 1 full send"
+      },
+      {
+       "x": 0.091,
+       "y": 0.005,
+       "label": "excerpt 0 B, 2 full sends"
+      },
+      {
+       "x": 0.11,
+       "y": 0.031,
+       "label": "excerpt 512 B, 1 full send"
+      },
+      {
+       "x": 0.09,
+       "y": 0.003,
+       "label": "excerpt 512 B, 2 full sends"
+      },
+      {
+       "x": 0.108,
+       "y": 0.029,
+       "label": "excerpt 1,024 B, 1 full send"
+      },
+      {
+       "x": 0.089,
+       "y": 0.002,
+       "label": "excerpt 1,024 B, 2 full sends"
+      },
+      {
+       "x": 0.104,
+       "y": 0.024,
+       "label": "excerpt 2,048 B, 1 full send"
+      },
+      {
+       "x": 0.086,
+       "y": -0.002,
+       "label": "excerpt 2,048 B, 2 full sends"
+      },
+      {
+       "x": 0.081,
+       "y": -0.009,
+       "label": "blog V2: 2,048 B head + 1,536 B tail, 2 sends"
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.1,
+     "label": "paper's 10% bill-saving gate"
+    },
+    {
+     "axis": "y",
+     "value": 0.059,
+     "label": "max possible saving, backend A"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; each point is one excerpt/sends setting, mean of 5 seeds"
+  },
+  {
+   "id": "solpi-reducer",
+   "method": "SoL-Pi",
+   "title": "Evidence-Preserving Reducer as the reducer model makes more errors",
+   "takeaway": "As the share of corrupted receipts h rises from 0 to 1, receipt acceptance falls from 100% to 5% and backend A's cost saving from 30% to -2.9%, because rejected receipts fall back to the raw log. Accepted receipts never contained a non-verbatim quote at any h, and success did not drop.",
+   "source": "results/metaharness-solpi/s3_reducer.json",
+   "type": "line",
+   "x": {
+    "label": "Injected reducer error rate h (share of corrupted receipts)",
+    "kind": "linear",
+    "log": false
+   },
+   "y": {
+    "label": "Share (%)",
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Receipts accepted, backend A",
+     "points": [
+      {
+       "x": 0.0,
+       "y": 1.0,
+       "lo": 1.0,
+       "hi": 1.0
+      },
+      {
+       "x": 0.1,
+       "y": 0.865,
+       "lo": 0.859,
+       "hi": 0.871
+      },
+      {
+       "x": 0.3,
+       "y": 0.741,
+       "lo": 0.737,
+       "hi": 0.745
+      },
+      {
+       "x": 0.6,
+       "y": 0.46,
+       "lo": 0.452,
+       "hi": 0.468
+      },
+      {
+       "x": 1.0,
+       "y": 0.052,
+       "lo": 0.041,
+       "hi": 0.062
+      }
+     ]
+    },
+    {
+     "name": "Cost saving, backend A",
+     "points": [
+      {
+       "x": 0.0,
+       "y": 0.304,
+       "lo": 0.3,
+       "hi": 0.308
+      },
+      {
+       "x": 0.1,
+       "y": 0.255,
+       "lo": 0.251,
+       "hi": 0.259
+      },
+      {
+       "x": 0.3,
+       "y": 0.214,
+       "lo": 0.21,
+       "hi": 0.217
+      },
+      {
+       "x": 0.6,
+       "y": 0.111,
+       "lo": 0.106,
+       "hi": 0.116
+      },
+      {
+       "x": 1.0,
+       "y": -0.029,
+       "lo": -0.031,
+       "hi": -0.027
+      }
+     ]
+    },
+    {
+     "name": "Cost saving, backend B",
+     "points": [
+      {
+       "x": 0.0,
+       "y": 0.442,
+       "lo": 0.436,
+       "hi": 0.445
+      },
+      {
+       "x": 0.1,
+       "y": 0.374,
+       "lo": 0.368,
+       "hi": 0.38
+      },
+      {
+       "x": 0.3,
+       "y": 0.333,
+       "lo": 0.322,
+       "hi": 0.344
+      },
+      {
+       "x": 0.6,
+       "y": 0.159,
+       "lo": 0.149,
+       "hi": 0.173
+      },
+      {
+       "x": 1.0,
+       "y": -0.009,
+       "lo": -0.011,
+       "hi": -0.008
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no saving"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; mock reducer corrupts each receipt with probability h; 5 seeds, 95% CIs"
+  },
+  {
+   "id": "solpi-occ",
+   "method": "SoL-Pi",
+   "title": "Compaction policies: cost per success vs session length (backend B)",
+   "takeaway": "On backend B, OCC has the lowest cost per success at every length, 4% to 17% below Pi's late compaction; compacting at every plan boundary costs 11% to 30% more than late, and never compacting overflows in 37% of the longest runs. On backend A (not shown) OCC is within 3.2% of the best arm in every bin. OCC never compacted when the saving could not repay the cache rewrite.",
+   "source": "results/metaharness-solpi/s4_occ.json",
+   "type": "line",
+   "x": {
+    "label": "Session length (subtasks per task)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Cost per unit success (simulated $)",
+    "min": 0,
+    "lowerIsBetter": true,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Never compact",
+     "points": [
+      {
+       "x": "4-8",
+       "y": 0.77,
+       "lo": 0.731,
+       "hi": 0.808
+      },
+      {
+       "x": "8-12",
+       "y": 1.62,
+       "lo": 1.525,
+       "hi": 1.711
+      },
+      {
+       "x": "12-16",
+       "y": 2.701,
+       "lo": 2.648,
+       "hi": 2.759
+      },
+      {
+       "x": "16-20",
+       "y": 5.379,
+       "lo": 4.89,
+       "hi": 5.869
+      }
+     ]
+    },
+    {
+     "name": "Late (Pi default)",
+     "points": [
+      {
+       "x": "4-8",
+       "y": 0.77,
+       "lo": 0.731,
+       "hi": 0.808
+      },
+      {
+       "x": "8-12",
+       "y": 1.62,
+       "lo": 1.525,
+       "hi": 1.711
+      },
+      {
+       "x": "12-16",
+       "y": 2.648,
+       "lo": 2.541,
+       "hi": 2.744
+      },
+      {
+       "x": "16-20",
+       "y": 3.424,
+       "lo": 3.309,
+       "hi": 3.527
+      }
+     ]
+    },
+    {
+     "name": "Every plan boundary",
+     "points": [
+      {
+       "x": "4-8",
+       "y": 0.855,
+       "lo": 0.753,
+       "hi": 0.93
+      },
+      {
+       "x": "8-12",
+       "y": 1.796,
+       "lo": 1.643,
+       "hi": 1.931
+      },
+      {
+       "x": "12-16",
+       "y": 3.056,
+       "lo": 2.89,
+       "hi": 3.223
+      },
+      {
+       "x": "16-20",
+       "y": 4.464,
+       "lo": 4.302,
+       "hi": 4.61
+      }
+     ]
+    },
+    {
+     "name": "OCC",
+     "points": [
+      {
+       "x": "4-8",
+       "y": 0.706,
+       "lo": 0.659,
+       "hi": 0.747
+      },
+      {
+       "x": "8-12",
+       "y": 1.343,
+       "lo": 1.247,
+       "hi": 1.423
+      },
+      {
+       "x": "12-16",
+       "y": 2.308,
+       "lo": 2.191,
+       "hi": 2.407
+      },
+      {
+       "x": "16-20",
+       "y": 3.276,
+       "lo": 3.142,
+       "hi": 3.366
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; invented prices with cache write = 12.5x read; 5 seeds, 95% CIs"
+  },
+  {
+   "id": "solpi-gate-survival",
+   "method": "SoL-Pi",
+   "title": "Ideas admitted by each gate: mechanisms, tricks, do-less shortcuts",
+   "takeaway": "The capability floor stops saving by doing less: efficiency-only selection admits 2.0 do-less shortcuts and keeps only 60% of held-out capability (backend A, firewall on); every dual gate admits 0 and keeps 100%. Gating on 5 environments instead of 1 cuts admitted tricks from 3.0 to 1.6, but held-out results are no better (eta saving +0.39 vs +0.40); \"survives everywhere transfers better\" did NOT reproduce.",
+   "source": "results/metaharness-solpi/s5_survive.json",
+   "type": "stacked",
+   "x": {
+    "label": "Selection protocol",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Ideas admitted at the training gate (mean of 5 seeds, of 12)",
+    "min": 0,
+    "lowerIsBetter": false,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "General mechanisms",
+     "points": [
+      {
+       "x": "1 env, efficiency only",
+       "y": 3.4
+      },
+      {
+       "x": "1 env, dual gate",
+       "y": 4.0
+      },
+      {
+       "x": "5 envs, dual gate pooled",
+       "y": 4.0
+      },
+      {
+       "x": "5 envs, dual gate per family",
+       "y": 3.6
+      }
+     ]
+    },
+    {
+     "name": "Environment-specific tricks",
+     "points": [
+      {
+       "x": "1 env, efficiency only",
+       "y": 3.0
+      },
+      {
+       "x": "1 env, dual gate",
+       "y": 3.0
+      },
+      {
+       "x": "5 envs, dual gate pooled",
+       "y": 1.6
+      },
+      {
+       "x": "5 envs, dual gate per family",
+       "y": 1.6
+      }
+     ]
+    },
+    {
+     "name": "Do-less shortcuts",
+     "points": [
+      {
+       "x": "1 env, efficiency only",
+       "y": 2.0
+      },
+      {
+       "x": "1 env, dual gate",
+       "y": 0.0
+      },
+      {
+       "x": "5 envs, dual gate pooled",
+       "y": 0.0
+      },
+      {
+       "x": "5 envs, dual gate per family",
+       "y": 0.0
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; no protocol admitted any of the 3 dud ideas"
+  },
+  {
+   "id": "solpi-composition",
+   "method": "SoL-Pi",
+   "title": "Each mechanism alone and the full stack: tokens and cost saved",
+   "takeaway": "In long sessions the full stack saves 58% of tokens and 33% of cost on backend A and 68% / 61% on B, at 1.000 and 1.006 of base success (paper on Sol: -49% tokens, -33% cost at 93.7% of Pi's score; the quality loss does not appear here). The stack is not cheapest everywhere: on A the reducer alone saves 46% of cost.",
+   "source": "results/metaharness-solpi/s7_composition.json",
+   "type": "bar",
+   "x": {
+    "label": "Mechanism added to the base harness",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Saving vs base harness, long sessions (%)",
+    "lowerIsBetter": false,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Tokens saved, backend A",
+     "points": [
+      {
+       "x": "Action Fusion",
+       "y": 0.283,
+       "lo": 0.273,
+       "hi": 0.293
+      },
+      {
+       "x": "ObservationPack",
+       "y": 0.039,
+       "lo": 0.029,
+       "hi": 0.049
+      },
+      {
+       "x": "Reducer (EPR)",
+       "y": 0.559,
+       "lo": 0.553,
+       "hi": 0.565
+      },
+      {
+       "x": "OCC",
+       "y": 0.237,
+       "lo": 0.218,
+       "hi": 0.258
+      },
+      {
+       "x": "Full stack",
+       "y": 0.584,
+       "lo": 0.568,
+       "hi": 0.598
+      }
+     ]
+    },
+    {
+     "name": "Cost saved, backend A",
+     "points": [
+      {
+       "x": "Action Fusion",
+       "y": 0.2,
+       "lo": 0.189,
+       "hi": 0.21
+      },
+      {
+       "x": "ObservationPack",
+       "y": 0.016,
+       "lo": 0.008,
+       "hi": 0.023
+      },
+      {
+       "x": "Reducer (EPR)",
+       "y": 0.461,
+       "lo": 0.45,
+       "hi": 0.47
+      },
+      {
+       "x": "OCC",
+       "y": 0.01,
+       "lo": -0.007,
+       "hi": 0.026
+      },
+      {
+       "x": "Full stack",
+       "y": 0.327,
+       "lo": 0.295,
+       "hi": 0.352
+      }
+     ]
+    },
+    {
+     "name": "Tokens saved, backend B",
+     "points": [
+      {
+       "x": "Action Fusion",
+       "y": 0.166,
+       "lo": 0.149,
+       "hi": 0.185
+      },
+      {
+       "x": "ObservationPack",
+       "y": 0.059,
+       "lo": 0.051,
+       "hi": 0.063
+      },
+      {
+       "x": "Reducer (EPR)",
+       "y": 0.615,
+       "lo": 0.601,
+       "hi": 0.627
+      },
+      {
+       "x": "OCC",
+       "y": 0.255,
+       "lo": 0.239,
+       "hi": 0.272
+      },
+      {
+       "x": "Full stack",
+       "y": 0.684,
+       "lo": 0.681,
+       "hi": 0.689
+      }
+     ]
+    },
+    {
+     "name": "Cost saved, backend B",
+     "points": [
+      {
+       "x": "Action Fusion",
+       "y": 0.126,
+       "lo": 0.115,
+       "hi": 0.139
+      },
+      {
+       "x": "ObservationPack",
+       "y": 0.028,
+       "lo": 0.022,
+       "hi": 0.033
+      },
+      {
+       "x": "Reducer (EPR)",
+       "y": 0.606,
+       "lo": 0.597,
+       "hi": 0.615
+      },
+      {
+       "x": "OCC",
+       "y": 0.129,
+       "lo": 0.113,
+       "hi": 0.146
+      },
+      {
+       "x": "Full stack",
+       "y": 0.61,
+       "lo": 0.604,
+       "hi": 0.615
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.49,
+     "label": "paper: -49% tokens (Sol)"
+    },
+    {
+     "axis": "y",
+     "value": 0.332,
+     "label": "paper: -33% cost (Sol)"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; invented prices; 5 seeds, 95% CIs"
+  }
+ ]
+}
