@@ -32,13 +32,14 @@ feedback function `mu_f`, budget `B`; hyperparameters `b` (minibatch size) and `
 - **Artifact** `Phi_0`: here the files of an `Artifact`. Evolvable **components** = text files (`Config.components`;
   default `domain.component_paths()`, else text-like files, else non-`*.py`); every other file is frozen; the
   component set is fixed at the seed (rsi choice mirroring the paper's fixed module set `M` [paper §2]).
-- **Splits**: Alg. 1 l.3 splits `D_train` into disjoint `D_feedback` (minibatches, traces, feedback) and
-  `D_pareto` (scores only, for selection). In the experiments the benchmark's train split is `D_feedback` and its
-  validation split is `D_pareto`; the test split is held out, and optimisers may track validation scores but not
-  read validation contents [paper §4, App. E.4]. Here: `evolve` = `D_feedback` (`train_split`, falls back to
-  `train`), `val` = `D_pareto` (`val_split`), `holdout`/`ood`/`test` sealed. **If there is no non-empty `val` split,
-  `D_pareto = D_train` with a warning** (rsi choice): the paper does this only on purpose, for inference-time search
-  [paper §5.1]; for generalisation it overfits (E6: gap +0.42 vs +0.03 at |train| = 6). Build a real `val` split.
+- **Splits**: Alg. 1 l.3 splits `D_train` into `D_feedback` (minibatches, traces, feedback) and `D_pareto`
+  (scores only, for selection); disjointness is not stated. In the experiments the benchmark's train split is
+  `D_feedback` and its validation split is `D_pareto`; the test split is held out, and optimisers may track
+  validation scores but not read validation contents [paper §4, App. E.4]. Here: `evolve` = `D_feedback`
+  (`train_split`, falls back to `train`), `val` = `D_pareto` (`val_split`), `holdout`/`ood`/`test` sealed. **If there
+  is no non-empty `val` split, `D_pareto = D_train` with a warning** (the reference code's fallback; the warning is
+  rsi's): the paper does this only on purpose, for inference-time search [paper §5.1]; for generalisation it overfits
+  (E6: gap +0.42 vs +0.03 at |train| = 6). Build a real `val` split.
 - **Grader**: `mu` plus `mu_f`, which returns a score and `feedback_text` (compiler errors, failed rubrics, which
   documents are still missing...), possibly module-specific, possibly human-written explanations [paper §3; the
   per-benchmark feedback functions are in App. E.1]. Here: `Domain.grade` -> score in `domain.score_range` plus a
@@ -141,7 +142,7 @@ One sample = one `(x, m)` instance run through one candidate and scored by `mu` 
 |---|---|---|---|
 | minibatch size b | 3 [paper App. E.4] | `minibatch_size = 3` | |
 | rollout budget B | MIPROv2-matched; GEPA 1,839-7,051 [paper Table 1, App. E.4] | `max_metric_calls = 500` | rsi choice; `None` needs another stopper |
-| D_feedback / D_pareto | train / val split [paper App. E.4]; disjoint split of D_train [Alg. 1 l.3] | `train_split="evolve"`, `val_split="val"` | missing val -> D_pareto = D_train (rsi choice) |
+| D_feedback / D_pareto | train / val split [paper App. E.4]; split of D_train [Alg. 1 l.3] | `train_split="evolve"`, `val_split="val"` | missing val -> D_pareto = D_train (reference fallback, warned) |
 | parent selection | Pareto [paper Alg. 2]; ablations SelectBest, BeamSearch(N=4) [paper Table 3] | `candidate_selection="pareto"`; `current_best`, `epsilon_greedy`(`epsilon=0.1`), `top_k_pareto`(`top_k=5`), `beam_search`(`beam_n=4`) | Beam's exact rule not specified in the paper |
 | frontier keys | per D_pareto instance [paper Alg. 2 l.3-6] | `frontier_type="instance"` | `objective`/`hybrid`/`cartesian` are extensions |
 | module choice | round-robin [paper §3, Alg. 1 l.10] | `module_selector="round_robin"` (`all`) | per-candidate pointer: reference/rsi choice |
@@ -161,13 +162,14 @@ One sample = one `(x, m)` instance run through one candidate and scored by `mu` 
 The engine follows the reference code `gepa-ai/gepa@d771eb21` wherever code and paper text disagree. Claims audit:
 58 claims, 28 reproduced, 11 partial, 2 not reproduced, 17 not testable, 0 contradicted (final verdicts).
 - **Iteration order** (reference): parent is selected, the minibatch is drawn and the parent is run *before* the
-  module is chosen (paper: module at Alg. 1 l.10, before the minibatch). Skipped iterations (below) do not advance
-  the round-robin pointer. Pointer is per candidate; a child inherits the parent's advanced pointer.
+  module is chosen (paper: module at Alg. 1 l.10, before the minibatch). Skips decided on the parent's minibatch
+  (perfect score, infra error; below) do not advance the round-robin pointer; later skips do. Pointer is per
+  candidate; a child inherits the parent's advanced pointer.
 - **Extra skips** (not in the paper): no reflection when every parent minibatch score is perfect
   (`skip_perfect_score`; such a child could not improve anyway), when a rollout failed with an `infra:` error
-  (retried twice first), or when the reflection reply has no usable fenced text (`no_proposal`; known-truncated
-  replies dropped). Optional `critic=` screens the diff before child rollouts. 3 consecutive infra-lost iterations
-  stop the run.
+  (retried twice first), or when the reflection call fails or its reply is known-truncated (`no_proposal`; an
+  unfenced reply is used whole). Optional `critic=` screens the diff before child rollouts. 3 consecutive
+  infra-lost iterations stop the run.
 - **Minibatch sampling** (reference): epoch-shuffled, each `D_feedback` id once per epoch, padded to a multiple of
   `b` with the least-used ids. Parent and child rollouts get independent seeds from `(seed, "mb", i, role, j)`, so
   they are not seed-paired; every `D_pareto` rollout uses `val_seed`. Reflection records cap traces at 3,000 chars.
@@ -180,7 +182,7 @@ The engine follows the reference code `gepa-ai/gepa@d771eb21` wherever code and 
   reflective child while `merges_due > 0` (paper: "routinely checks"). If no triplet exists the iteration falls
   through to reflective mutation.
 - **Merge cap is soft by default** (`reference_soft`): the cap gates only scheduling and counts accepted merges, so
-  invocations are unbounded and accepted merges exceeded 5 in 73-100% of E4 runs. `merge_cap_mode="hard"` is the
+  invocations are unbounded and accepted merges exceeded 5 in 73-90% of E4 runs. `merge_cap_mode="hard"` is the
   paper's "invoked a maximum of 5 times"; `"accepted"` caps accepted merges only. `merge_zero_weight="uniform"`
   avoids the reference crash when every ancestor has mean 0; `merge_start_frac` (extension) delays merges.
 - **Budget**: `budget_mode="reference_soft"` overshoots by up to `2b + |D_pareto|`; `"hard"` stops mid-iteration.
@@ -210,7 +212,7 @@ from rsi.gepa import Config
 cfg = Config(max_metric_calls=600, minibatch_size=3)          # or a dict of Config fields
 res = rsi.improve(dom, seed, method="gepa", llm_task="claude:haiku", llm_propose="claude:sonnet",
                   config=cfg, out_dir="runs/x", cache_dir=".rsi_cache/x")
-report = rsi.transfer_report(dom, task_llm, {"seed": res.baseline, "gepa": res.best}, k=2)   # sealed splits
+report = rsi.transfer_report(dom, task_llm, {"seed": res.baseline, "gepa": res.best}, k=2)   # evolve, holdout, ood
 ```
 No domain class: `rsi.gepa.optimize(seed_dict, trainset, valset, metric=fn, llm_propose=..., testset=...)` with
 `metric(candidate_dict, example) -> score | (score, feedback[, output])`.
