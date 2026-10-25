@@ -70,7 +70,7 @@ Check the method's requirements before running it:
 | Method | Looks at each iteration | Needs | Watch out for |
 |---|---|---|---|
 | rrsi | every candidate on the whole evolve split; an analyst condenses the failures | enough evolve tasks for a stable score, a measured delta | most expensive per round; may keep nothing |
-| metaharness | every candidate on the whole evolve split; the proposer reads all past code, scores and traces | a strong proposer model, disk for every candidate | no keep rule: check the chosen harness on holdout/ood |
+| metaharness | every candidate on the whole evolve split (`trials` seeds, default 1); the proposer reads all past code, scores and raw traces | a strong coding-agent proposer (pass `proposer_kind="agent"` when `cache_dir` is set), rich `Execution.trace` text, disk for every candidate | no keep rule: every valid candidate is kept and the best is the top-score Pareto point on evolve from one seed; nothing blocks hard-coded answers unless `leakage_screen=True`: check it on holdout/ood |
 | gepa | a minibatch of `minibatch_size` (default 3) evolve tasks; full validation only after acceptance | named text components, grader feedback that says *why* | edits text only; a 3-task gate is noisy on small task sets |
 | autoresearch | only the metric of the last run plus the results table | one editable file, one locked metric, a fixed budget per run | the default strict rule keeps lucky changes: prefer a noise-aware keep rule |
 | solpi | capability and token metrics per environment family | several task families, token/cost metering | only cuts cost; never makes the agent better |
@@ -122,7 +122,7 @@ over a baseline re-scored in the same run.
 ## Method flows
 
 Before running a method, read its end-to-end reference: what one round does, what happens to each task inside
-a round, the keep rule with its formula, paper defaults vs this package's Config, and where the implementation
+a round, the keep rule with its formula (Meta-Harness has none; its reference gives the Pareto-dominance rule instead), paper defaults vs this package's Config, and where the implementation
 departs from the paper. Each cites its source; for RRSI and SoL-Pi the paper text itself was not available, so
 their references cite the reference code, blog and secondary sources instead, and say so.
 
