@@ -45,9 +45,10 @@ Before round 1 you need:
   and a feedback string.
 - **Cost objective** (optional; Pareto [paper §3]): a per-task cost in `Trial.meta[Config.cost_metric]`, or tokens.
 - **Models**: `llm_task` (the frozen model `M`) and `llm_propose`. With `proposer_kind="auto"`, a *bare*
-  `ClaudeCLI` gives the coding-agent proposer. Any other LLM gives the one-completion `RewriteProposer`, and
-  that includes a `ClaudeCLI` wrapped by `cache_dir`/`CachedLLM`. `None` or a plain `MockLLM` gives the offline
-  `MockProposer`. To get the coding agent when `cache_dir` is set, pass `proposer_kind="agent"`.
+  `ClaudeCLI` gives the coding-agent proposer. Any other LLM silently (no warning) gives the one-completion
+  `RewriteProposer`, and that includes a `ClaudeCLI` wrapped by `cache_dir`/`CachedLLM`. `None`, or a plain
+  `MockLLM` on a domain with a mock library (MemoClassify, AgentQA), gives the offline `MockProposer`. To get
+  the coding agent when `cache_dir` is set, pass `proposer_kind="agent"`.
 - **Budgets**: `iterations`, `k`, `eval_budget` (the most candidate evaluations allowed), `proposer_timeout_s`.
   `Config` has no dollar cap.
 - **Initial population H** [paper Alg. 1 l.2]: text classification uses zero-shot, few-shot, ACE and MCE
@@ -72,7 +73,7 @@ One iteration is one proposer step of [paper Alg. 1 l.7-12].
    [paper §3]. The paper gives several counts:
    - Text classification: 2 per iteration, 40 in 20 iterations [paper §4.1].
    - Math: 109 candidates over 40 iterations [paper §4.2].
-   - "Typical run": "roughly 60 harnesses over 20 iterations" [paper §3]; §1 and Fig. 1 also refer to 60 proposals.
+   - "Typical run": "roughly 60 harnesses over 20 iterations" [paper §3]; §1, citing Fig. 1, says 60 proposals.
    - TB2: k is not specified in the paper. The release skill says 1 [release: TB2 SKILL.md].
 4. **Interface validation** [paper Alg. 1 l.11]. The test imports the module, instantiates the class and calls
    both methods on a tiny set of examples [paper App. D]. A candidate that fails is not evaluated.
@@ -80,12 +81,14 @@ One iteration is one proposer step of [paper Alg. 1 l.7-12].
    `(H, scores, traces)` is added to `D`, in a new directory per candidate [paper §3, Fig. 2]. The proposer does
    not run the evaluations [paper App. D].
 6. **Selection / keep rule: none.** Every evaluated harness stays in `D`. The paper tracks a Pareto frontier
-   [paper §3] but gives no dominance formula; the formula is the release's `compute_pareto_frontier`
-   [release]. The system reported as "Meta-Harness" in text classification is the highest-accuracy frontier
-   point [paper App. B.1, Table 9, footnote 2]. Selection uses search-set performance only [paper §4.1].
+   [paper §3] but gives no dominance formula; the formula is the release's `compute_pareto_frontier`: a
+   point is on the frontier iff no other has `a' >= a`, `c' <= c` and one of them strict (accuracy `a`,
+   context `c`) [release]; rsi's `frontier.dominates` is the same. The system reported as "Meta-Harness" in
+   text classification is the highest-accuracy frontier point [paper App. B.1, Table 9, footnote 2].
+   Selection uses search-set performance only [paper §4.1].
 7. **State update**: `D` only grows. It also stores the proposer's reasoning traces [paper Fig. 2]. The loop
-   has no schedule, annealing or temperature. In the authors' experience, accumulated traces end up shaping the
-   proposer more than the skill does [paper App. D].
+   has no schedule, annealing or temperature. The authors' intuition is that after enough iterations the
+   accumulated traces often shape the proposer more than the skill does [paper App. D].
 
 ```
 H = initial valid harnesses; D = {}                           # [paper Alg. 1 l.1-3]
@@ -97,9 +100,9 @@ for t = 1..N:                                                  # fixed N [paper 
 return Pareto frontier of D  ->  one final test-set evaluation of the frontier   # [paper Alg. 1 l.13, §3]
 ```
 
-**The proposer's workflow inside a session** is not specified in the paper beyond "inspect, diagnose,
-propose" [paper §3] and the skill guidance [paper App. D]. The release skill and rsi's `SKILL_TEXT` (in
-`proposer.py`) both prescribe this workflow:
+**The proposer's workflow inside a session** is not specified in the paper beyond "inspects prior code,
+scores, and execution traces, then reasons about likely failure modes" [paper §3] and the skill guidance
+[paper App. D]. The release skill and rsi's `SKILL_TEXT` (in `proposer.py`) both prescribe this workflow:
 - Step 0: write post-eval reports for iterations that have none.
 - Step 1: read the summary, the frontier, the code, and failed AND successful traces.
 - Step 2: form k falsifiable hypotheses, each about a different mechanism.
@@ -181,8 +184,9 @@ From `implementation.md` §5, `claims-audit-metaharness.md` and the code:
   container if that is unacceptable. `RewriteProposer` (one completion over a 60k-char render of the history,
   split 41/40/6/13% as in [paper Table 8]) and `MockProposer` (offline, reads only its parents' traces) are rsi
   choices with no counterpart in the paper.
-- **Auto proposer selection.** `proposer_kind="auto"` falls back to `RewriteProposer` when `llm_propose` is
-  wrapped in `CachedLLM`, which `rsi.improve(..., cache_dir=...)` does. Pass `proposer_kind="agent"`.
+- **Auto proposer selection.** `proposer_kind="auto"` silently falls back to `RewriteProposer` when
+  `llm_propose` is wrapped in `CachedLLM`, which `rsi.improve(..., cache_dir=...)` does. Pass
+  `proposer_kind="agent"`.
 - **Final test set**: baselines ∪ Pareto ∪ per-unit bests (as in the release); the paper says the Pareto
   frontier [paper §3]. Finalisation re-runs the inner loop on test, whereas the release reloads `memory.json` and
   only predicts. The two are equal only for deterministic models.
@@ -264,5 +268,6 @@ Also read `store/evolution_summary.jsonl` and `store/sessions/iterNNN/meta.json`
 - The proposer sees too little: `view.by_kind` has few trace files, or `files_read` is near zero (the
   one-completion proposer truncates traces). Or every candidate is invalid: check `reason` in `meta.json`.
 - No keep gate: the chosen harness is only "best on search". `finalize()` is the only test read and it locks
-  the run (start a new `out_dir` to continue). An `incomplete` status means some test trials were missing.
+  the run (start a new `out_dir` to continue). An `incomplete` status means some test trials were missing
+  or a test evaluation raised; it does not lock the run.
 - Cost: full-history coding-agent sessions are the expensive part, so cap spend yourself between runs.
