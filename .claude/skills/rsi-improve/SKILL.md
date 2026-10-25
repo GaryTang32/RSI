@@ -123,10 +123,16 @@ over a baseline re-scored in the same run.
 
 Before running a method, read its end-to-end reference: what one round does, what happens to each task inside
 a round, the keep rule with its formula, paper defaults vs this package's Config, and where the implementation
-departs from the paper. Each cites its paper.
+departs from the paper. Each cites its source; for RRSI and SoL-Pi the paper text itself was not available, so
+their references cite the reference code, blog and secondary sources instead, and say so.
 
 - RRSI: [methods/rrsi.md](methods/rrsi.md)
 - Meta-Harness: [methods/metaharness.md](methods/metaharness.md)
+- SoL-Pi: [methods/solpi.md](methods/solpi.md)
+- GEPA: [methods/gepa.md](methods/gepa.md)
+- autoresearch: [methods/autoresearch.md](methods/autoresearch.md)
+- Dream-RSI: [methods/dream.md](methods/dream.md)
+- EvoMap: [methods/evomap.md](methods/evomap.md)
 
 References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
 implementation notes, claims audit), `experiments/<method>/example_new_problem.py`.
