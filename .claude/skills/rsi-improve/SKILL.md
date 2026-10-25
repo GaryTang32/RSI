@@ -69,7 +69,7 @@ Check the method's requirements before running it:
 
 | Method | Looks at each iteration | Needs | Watch out for |
 |---|---|---|---|
-| rrsi | every candidate on the whole evolve split; an analyst condenses the failures | enough evolve tasks for a stable score, a measured delta | most expensive per round; may keep nothing |
+| rrsi | m candidates per round (paper: 2), each scored on the whole evolve split with k trials per task; an analyst condenses the incumbent's failures | enough evolve tasks for a stable score; a noise band delta measured on repeated base evaluations (set `delta`, or `calibration_repeats` >= 2) | most expensive per round; may keep nothing. Keep rule: S' >= S* - delta AND (dS > delta ? dC <= beta0 + beta1*dS : w_s*dS - w_c*dC + w_n*nu > 0) AND domain guards; winner = max S' among admissible, else keep H_t |
 | metaharness | every candidate on the whole evolve split (`trials` seeds, default 1); the proposer reads all past code, scores and raw traces | a strong coding-agent proposer (pass `proposer_kind="agent"` when `cache_dir` is set), rich `Execution.trace` text, disk for every candidate | no keep rule: every valid candidate is kept and the best is the top-score Pareto point on evolve from one seed; nothing blocks hard-coded answers unless `leakage_screen=True`: check it on holdout/ood |
 | gepa | the parent and one rewritten child (one module, round-robin) on the same minibatch of `minibatch_size` (default 3) evolve tasks; only a child whose minibatch score strictly improves is scored on all of `val` (D_pareto) and joins the pool | named text components, a separate non-empty `val` split, grader feedback that says *why* | edits text only; the keep rule is a strict `>` on 3 single draws with no noise band (`acceptance="noise_margin"` adds one); every accepted child stays in the pool; `res.best` is the argmax of `val` means, so judge it on sealed splits |
 | autoresearch | only the metric of the last run plus the results table | one editable file, one locked metric, a fixed budget per run | the default strict rule keeps lucky changes: prefer a noise-aware keep rule |
@@ -125,8 +125,7 @@ over a baseline re-scored in the same run.
 
 Before running a method, read its end-to-end reference: what one round does, what happens to each task inside
 a round, the keep rule with its formula (Meta-Harness has none; its reference gives the Pareto-dominance rule instead), paper defaults vs this package's Config, and where the implementation
-departs from the paper. Each cites its source; for RRSI and SoL-Pi the paper text itself was not available, so
-their references cite the reference code, blog and secondary sources instead, and say so.
+departs from the paper. Each cites its paper directly (RRSI: arXiv 2609.24972v3; see each file's header for the version used).
 
 - RRSI: [methods/rrsi.md](methods/rrsi.md)
 - Meta-Harness: [methods/metaharness.md](methods/metaharness.md)
