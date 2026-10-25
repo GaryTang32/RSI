@@ -1,0 +1,351 @@
+<title>RSI in Charts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: header + one filter row, then a two-column grid of chart cards (one column under 900px) */
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --chip: #efeee9;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --neutral: #b5b3ab;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --chip: #262624;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutral: #5c5b57; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --chip: #262624;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutral: #5c5b57; color-scheme: dark }
+body { background: var(--page); color: var(--ink); font: 15px/1.5 var(--font); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+.wrap > * { min-width: 0; }
+header { display: grid; gap: 8px; }
+h1 { margin: 0; font-size: 1.9rem; letter-spacing: -0.015em; text-wrap: balance; }
+.lede { margin: 0; max-width: 72ch; color: var(--ink-2); }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 4px; color: var(--ink-2); font-size: 0.9rem; }
+.stats b { color: var(--ink); font-size: 1.15rem; margin-right: 4px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--page); padding-block: 10px; border-bottom: 1px solid var(--grid); }
+.chip { font: inherit; font-size: 0.85rem; border: 1px solid var(--ring); background: var(--surface); color: var(--ink); border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chip .n { color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: 0.7; }
+input[type=search] { font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--surface); border: 1px solid var(--ring); border-radius: 999px;
+  padding: 4px 12px; width: 14rem; max-width: 100%; margin-left: auto; }
+:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } input[type=search] { margin-left: 0; width: 100%; } }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 16px; display: grid; gap: 10px; min-width: 0; position: relative; align-content: start; }
+.card .eyebrow { display: flex; gap: 8px; align-items: center; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.card .eyebrow a { color: var(--muted); text-decoration: none; margin-left: auto; text-transform: none; letter-spacing: 0; }
+.card h2 { margin: 0; font-size: 1.05rem; line-height: 1.3; text-wrap: balance; }
+.card .take { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.8rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend i.ln { height: 3px; border-radius: 2px; }
+.chart { width: 100%; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--font); }
+.foot { font-size: 0.78rem; color: var(--muted); display: grid; gap: 2px; }
+.foot code { font-size: 0.75rem; overflow-wrap: anywhere; }
+details summary { cursor: pointer; font-size: 0.8rem; color: var(--ink-2); }
+.tbl { overflow-x: auto; margin-top: 6px; }
+.tbl table { border-collapse: collapse; font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.tbl th, .tbl td { padding: 3px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring); border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 8px 10px; font-size: 0.8rem; min-width: 140px; max-width: 280px; z-index: 4; }
+.tip .h { font-weight: 600; margin-bottom: 4px; }
+.tip .r { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.tip .r span:first-child { display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
+.tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.tip .r b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.empty { color: var(--muted); padding: 24px 0; }
+@media (prefers-reduced-motion: no-preference) { .mark { transition: opacity 120ms; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>RSI in Charts</h1>
+    <p class="lede">What the <code>rsi</code> toolkit's seven self-improvement methods do, measured. Each chart is drawn from a recorded experiment
+      (on the repo's <code>data</code> branch) or the repo itself, and its caption states what the numbers show, including the claims that did not hold up.
+      Hover any mark for exact values; every chart has its data table.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+  <div class="filters" id="filters" role="toolbar" aria-label="Filter charts"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script type="application/json" id="specs">__SPECS__</script>
+<script>
+const SPECS = JSON.parse(document.getElementById("specs").textContent).charts;
+const ORDER = ["Live demo", "Core", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Verification"];
+const ROLE = {"Reproduced": "good", "Correct": "good", "Kept": "good", "Partial": "warning", "Questionable": "warning",
+  "Wrong": "critical", "Rejected": "critical", "Not reproduced or contradicted": "critical", "Not testable here": "neutral",
+  "Unverifiable": "neutral", "Kept as alternative": "neutral", "Blank": "neutral",
+  "Silence in the paper, or a skill cross-reference": "neutral"};
+const NS = "http://www.w3.org/2000/svg";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function colors(spec) {
+  let slot = 0;
+  return spec.series.map(s => { const r = ROLE[s.name]; return r ? `var(--${r})` : `var(--s${(slot++ % 4) + 1})`; });
+}
+function fmt(f, v) {
+  if (v == null || !isFinite(v)) return "–";
+  f = f || ".2f"; const plus = f.startsWith("+") && v > 0 ? "+" : ""; const cur = f.includes("$") ? "$" : "";
+  const m = f.match(/\.(\d+)([f%])/) || [0, 2, "f"]; const d = +m[1];
+  if (m[2] === "%") return plus + (v * 100).toFixed(d) + "%";
+  const s = Math.abs(v) >= 1000 && d === 0 ? Math.round(v).toLocaleString("en-US") : v.toFixed(d);
+  return plus + cur + s;
+}
+function nice(lo, hi, n = 5) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const step0 = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(step0))), r = step0 / p;
+  const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * p;
+  const a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step, t = [];
+  for (let v = a; v <= b + step / 2; v += step) t.push(+v.toFixed(10));
+  return {lo: a, hi: b, ticks: t};
+}
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function txt(parent, x, y, s, attrs = {}) { const t = el("text", Object.assign({x, y, fill: "var(--muted)", "font-size": 11}, attrs), parent); t.textContent = s; return t; }
+function roundTop(x, y, w, h, r) {   // bar with 4px rounded data end, square at the baseline
+  r = Math.min(r, w / 2, Math.abs(h)); if (h <= 0) return "";
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function roundRight(x, y, w, h, r) {
+  r = Math.min(r, h / 2, w); if (w <= 0) return "";
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+function yDomain(spec, extra = []) {
+  const vals = extra.slice();
+  spec.series.forEach(s => s.points.forEach(p => { vals.push(p.y); if (p.lo != null) vals.push(p.lo, p.hi); }));
+  (spec.refLines || []).filter(r => r.axis === "y").forEach(r => vals.push(r.value));
+  let lo = spec.y.min ?? Math.min(...vals), hi = spec.y.max ?? Math.max(...vals);
+  if (spec.y.min == null && spec.y.max == null) { const pad = (hi - lo) * 0.08 || 0.5; lo -= pad; hi += pad; }
+  const n = nice(lo, hi);
+  return {lo: spec.y.min ?? n.lo, hi: spec.y.max ?? n.hi, ticks: n.ticks.filter(t => t >= (spec.y.min ?? n.lo) - 1e-9 && t <= (spec.y.max ?? n.hi) + 1e-9)};
+}
+
+function ylab(spec) { const l = spec.y.label; return spec.y.lowerIsBetter && !/lower is better/i.test(l) ? l + "  ↓ lower is better" : l; }
+function tipShow(card, html, cx, cy) {
+  const t = card.querySelector(".tip"); t.innerHTML = html; t.hidden = false;
+  const cw = card.clientWidth, tw = t.offsetWidth, th = t.offsetHeight;
+  let x = cx + 14, y = cy - th - 10; if (x + tw > cw - 8) x = cx - tw - 14; if (x < 8) x = 8; if (y < 8) y = cy + 16;
+  t.style.left = x + "px"; t.style.top = y + "px";
+}
+function tipHide(card) { card.querySelector(".tip").hidden = true; }
+function rel(card, ev) { const b = card.getBoundingClientRect(); return [ev.clientX - b.left, ev.clientY - b.top]; }
+function row(c, name, val) { return `<div class="r"><span><i style="background:${c}"></i>${esc(name)}</span><b>${esc(val)}</b></div>`; }
+function pv(spec, p) { return fmt(spec.y.format, p.y) + (p.lo != null ? ` [${fmt(spec.y.format, p.lo)}, ${fmt(spec.y.format, p.hi)}]` : ""); }
+
+function drawLine(spec, box, card, W) {
+  const C = colors(spec), H = 262, m = {l: 48, r: 132, t: 26, b: 40};
+  const cat = spec.x.kind === "category";
+  const xs = cat ? [...new Set(spec.series.flatMap(s => s.points.map(p => String(p.x))))] : null;
+  const allx = spec.series.flatMap(s => s.points.map(p => p.x));
+  const lg = !!spec.x.log;
+  const xf = v => lg ? Math.log10(v) : v;
+  let x0 = cat ? 0 : Math.min(...allx.map(xf)), x1 = cat ? xs.length - 1 : Math.max(...allx.map(xf)); if (x0 === x1) { x0 -= 1; x1 += 1; }
+  const yd = yDomain(spec), iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const X = v => m.l + ((cat ? xs.indexOf(String(v)) : xf(v)) - x0) / (x1 - x0) * iw;
+  const Y = v => m.t + (1 - (v - yd.lo) / (yd.hi - yd.lo)) * ih;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": spec.title}, box);
+  yd.ticks.forEach(t => { el("line", {x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: "var(--grid)", "stroke-width": 1}, svg); txt(svg, m.l - 8, Y(t) + 4, fmt(spec.y.format, t), {"text-anchor": "end"}); });
+  el("line", {x1: m.l, x2: W - m.r, y1: m.t + ih, y2: m.t + ih, stroke: "var(--axis)"}, svg);
+  let xt;
+  if (cat) xt = xs; else if (lg) { xt = []; for (let e = Math.floor(x0); e <= Math.ceil(x1); e++) xt.push(Math.pow(10, e)); xt = xt.filter(v => xf(v) >= x0 - 1e-9 && xf(v) <= x1 + 1e-9); }
+  else { const uniq = [...new Set(allx)].sort((a, b) => a - b); xt = uniq.length <= 12 ? uniq : nice(x0, x1, 6).ticks.filter(v => v >= x0 && v <= x1); }
+  const every = Math.ceil(xt.length / Math.max(2, Math.floor(iw / 56)));
+  xt.forEach((v, i) => { if (i % every === 0) txt(svg, X(v), m.t + ih + 16, cat ? v : (Math.abs(v) >= 1000 ? (+v).toLocaleString("en-US") : +(+v).toPrecision(4)), {"text-anchor": "middle"}); });
+  txt(svg, m.l + iw / 2, H - 6, spec.x.label + (lg ? " (log scale)" : ""), {"text-anchor": "middle", fill: "var(--ink-2)"});
+  txt(svg, 0, 10, ylab(spec), {fill: "var(--ink-2)"});
+  (spec.refLines || []).forEach(r => {
+    if (r.axis === "y") { el("line", {x1: m.l, x2: W - m.r, y1: Y(r.value), y2: Y(r.value), stroke: "var(--ink-2)", "stroke-dasharray": "4 4"}, svg); txt(svg, m.l + 6, Y(r.value) - 5, r.label, {fill: "var(--ink-2)"}); }
+    else { el("line", {x1: X(r.value), x2: X(r.value), y1: m.t, y2: m.t + ih, stroke: "var(--ink-2)", "stroke-dasharray": "4 4"}, svg); txt(svg, X(r.value) + 4, m.t + 10, r.label, {fill: "var(--ink-2)"}); }
+  });
+  const ends = [];
+  spec.series.forEach((s, i) => {
+    const pts = s.points.slice().sort((a, b) => cat ? 0 : a.x - b.x);
+    if (pts.some(p => p.lo != null)) {
+      const b = pts.filter(p => p.lo != null);
+      el("path", {d: "M" + b.map(p => `${X(p.x)},${Y(p.hi)}`).join("L") + "L" + b.slice().reverse().map(p => `${X(p.x)},${Y(p.lo)}`).join("L") + "Z", fill: C[i], opacity: 0.14}, svg);
+    }
+    el("path", {d: "M" + pts.map(p => `${X(p.x)},${Y(p.y)}`).join("L"), fill: "none", stroke: C[i], "stroke-width": 2, "stroke-linejoin": "round", class: "mark"}, svg);
+    if (pts.length <= 24) pts.forEach(p => el("circle", {cx: X(p.x), cy: Y(p.y), r: 4, fill: C[i], stroke: "var(--surface)", "stroke-width": 2}, svg));
+    const last = pts[pts.length - 1]; ends.push({y: Y(last.y), name: s.name, c: C[i]});
+  });
+  ends.sort((a, b) => a.y - b.y); for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+  if (spec.series.length > 1) ends.forEach(e => { const t = txt(svg, W - m.r + 8, e.y + 4, e.name.length > 20 ? e.name.slice(0, 19) + "…" : e.name, {fill: "var(--ink-2)"}); });
+  const hair = el("line", {y1: m.t, y2: m.t + ih, stroke: "var(--axis)", opacity: 0}, svg);
+  const hit = el("rect", {x: m.l, y: m.t, width: iw, height: ih, fill: "transparent"}, svg);
+  const keys = cat ? xs : [...new Set(allx)].sort((a, b) => a - b);
+  const move = ev => {
+    const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    let best = keys[0], bd = 1e9; keys.forEach(k => { const d = Math.abs(X(k) - loc.x); if (d < bd) { bd = d; best = k; } });
+    hair.setAttribute("x1", X(best)); hair.setAttribute("x2", X(best)); hair.setAttribute("opacity", 1);
+    let h = `<div class="h">${esc(spec.x.label)}: ${esc(best)}</div>`;
+    spec.series.forEach((s, i) => { const p = s.points.find(q => String(q.x) === String(best)); if (p) h += row(C[i], s.name, pv(spec, p)) + (p.label ? `<div style="color:var(--muted)">${esc(p.label)}</div>` : ""); });
+    const [cx, cy] = rel(card, ev); tipShow(card, h, cx, cy);
+  };
+  hit.addEventListener("pointermove", move); hit.addEventListener("pointerleave", () => { hair.setAttribute("opacity", 0); tipHide(card); });
+}
+
+function drawBar(spec, box, card, W) {
+  const C = colors(spec), H = 262, m = {l: 48, r: 12, t: 26, b: 44};
+  const cats = spec.series[0].points.map(p => String(p.x)), n = spec.series.length;
+  const yd = yDomain(spec, [0]), iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const Y = v => m.t + (1 - (v - yd.lo) / (yd.hi - yd.lo)) * ih;
+  const band = iw / cats.length, gw = Math.min(band * 0.78, n * 34), bw = (gw - (n - 1) * 2) / n;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": spec.title}, box);
+  yd.ticks.forEach(t => { el("line", {x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: "var(--grid)"}, svg); txt(svg, m.l - 8, Y(t) + 4, fmt(spec.y.format, t), {"text-anchor": "end"}); });
+  txt(svg, 0, 10, ylab(spec), {fill: "var(--ink-2)"});
+  const z = Y(Math.max(yd.lo, Math.min(0, yd.hi)));
+  cats.forEach((c, ci) => {
+    const gx = m.l + ci * band + (band - gw) / 2;
+    const lab = txt(svg, m.l + ci * band + band / 2, m.t + ih + 16, c.length > Math.floor(band / 6.2) ? c.slice(0, Math.max(4, Math.floor(band / 6.2) - 1)) + "…" : c, {"text-anchor": "middle"});
+    spec.series.forEach((s, si) => {
+      const p = s.points[ci], x = gx + si * (bw + 2), y = Y(Math.max(p.y, 0)), h = Math.abs(Y(p.y) - z);
+      const d = p.y >= 0 ? roundTop(x, y, bw, h, 4) : `M${x},${z}h${bw}v${h}h${-bw}Z`;
+      const bar = el("path", {d, fill: C[si], class: "mark"}, svg);
+      if (p.lo != null) { const cx = x + bw / 2; el("path", {d: `M${cx},${Y(p.lo)}V${Y(p.hi)}M${cx - 4},${Y(p.lo)}h8M${cx - 4},${Y(p.hi)}h8`, stroke: "var(--ink-2)", "stroke-width": 1.5, fill: "none"}, svg); }
+      const hit = el("rect", {x: x - 1, y: m.t, width: bw + 2, height: ih, fill: "transparent"}, svg);
+      hit.addEventListener("pointermove", ev => { const [cx, cy] = rel(card, ev); tipShow(card, `<div class="h">${esc(c)}</div>` + row(C[si], s.name, pv(spec, p)), cx, cy); });
+      hit.addEventListener("pointerleave", () => tipHide(card));
+    });
+  });
+  el("line", {x1: m.l, x2: W - m.r, y1: z, y2: z, stroke: "var(--axis)"}, svg);
+  txt(svg, m.l + iw / 2, H - 6, spec.x.label, {"text-anchor": "middle", fill: "var(--ink-2)"});
+}
+
+function drawRows(spec, box, card, W, stacked) {   // interval (forest) and horizontal stacked bars: one labelled row per category
+  const C = colors(spec), cats = spec.series[0].points.map(p => String(p.x));
+  const rowH = stacked ? 40 : 38, m = {l: 8, r: 16, t: 8, b: 36}, H = m.t + cats.length * rowH + m.b, iw = W - m.l - m.r;
+  let lo, hi, ticks;
+  if (stacked) { const tot = cats.map((c, i) => spec.series.reduce((a, s) => a + s.points[i].y, 0)); const n = nice(0, Math.max(...tot) * 1.1); lo = 0; hi = n.hi; ticks = n.ticks; }
+  else { const d = yDomain(spec); lo = d.lo; hi = d.hi; ticks = d.ticks; }
+  const X = v => m.l + (v - lo) / (hi - lo) * iw;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": spec.title}, box);
+  ticks.forEach(t => { el("line", {x1: X(t), x2: X(t), y1: m.t, y2: H - m.b, stroke: "var(--grid)"}, svg); txt(svg, X(t), H - m.b + 15, fmt(spec.y.format, t), {"text-anchor": "middle"}); });
+  txt(svg, m.l + iw / 2, H - 4, ylab(spec), {"text-anchor": "middle", fill: "var(--ink-2)"});
+  (spec.refLines || []).filter(r => r.axis === "y").forEach(r => { el("line", {x1: X(r.value), x2: X(r.value), y1: m.t, y2: H - m.b, stroke: "var(--ink-2)", "stroke-dasharray": "4 4"}, svg); });
+  cats.forEach((c, ci) => {
+    const y0 = m.t + ci * rowH;
+    txt(svg, m.l, y0 + 12, c.length > Math.floor(iw / 6.4) ? c.slice(0, Math.floor(iw / 6.4) - 1) + "…" : c, {fill: "var(--ink-2)", "font-size": 11.5});
+    const by = y0 + 18, bh = stacked ? 14 : 12;
+    if (stacked) {
+      let acc = 0; const total = spec.series.reduce((a, s) => a + s.points[ci].y, 0);
+      spec.series.forEach((s, si) => {
+        const v = s.points[ci].y; if (v <= 0) return;
+        const x = X(acc), w = Math.max(0, X(acc + v) - X(acc) - 2), last = spec.series.slice(si + 1).every(q => q.points[ci].y <= 0);
+        el("path", {d: last ? roundRight(x, by, w + 2, bh, 4) : `M${x},${by}h${w}v${bh}h${-w}Z`, fill: C[si], class: "mark"}, svg);
+        const hit = el("rect", {x, y: y0, width: Math.max(w, 4), height: rowH, fill: "transparent"}, svg);
+        hit.addEventListener("pointermove", ev => { const [cx, cy] = rel(card, ev);
+          tipShow(card, `<div class="h">${esc(c)}</div>` + spec.series.map((q, qi) => row(C[qi], q.name, fmt(spec.y.format, q.points[ci].y))).join("") + `<div class="r"><span>Total</span><b>${fmt(spec.y.format, total)}</b></div>`, cx, cy); });
+        hit.addEventListener("pointerleave", () => tipHide(card));
+        acc += v;
+      });
+      txt(svg, X(acc) + 6, by + 11, fmt(spec.y.format, acc), {fill: "var(--ink-2)"});
+    } else {
+      spec.series.forEach((s, si) => {
+        const p = s.points[ci], yy = by + bh / 2 + si * 6;
+        if (p.lo != null) el("line", {x1: X(p.lo), x2: X(p.hi), y1: yy, y2: yy, stroke: C[si], "stroke-width": 2, "stroke-linecap": "round"}, svg);
+        el("circle", {cx: X(p.y), cy: yy, r: 5, fill: C[si], stroke: "var(--surface)", "stroke-width": 2, class: "mark"}, svg);
+        const hit = el("rect", {x: m.l, y: y0, width: iw, height: rowH, fill: "transparent"}, svg);
+        hit.addEventListener("pointermove", ev => { const [cx, cy] = rel(card, ev); tipShow(card, `<div class="h">${esc(c)}</div>` + row(C[si], s.name, pv(spec, p)) + (p.label ? `<div style="color:var(--muted)">${esc(p.label)}</div>` : ""), cx, cy); });
+        hit.addEventListener("pointerleave", () => tipHide(card));
+      });
+    }
+  });
+  const refs = (spec.refLines || []).filter(r => r.axis === "y").sort((a, b) => a.value - b.value);
+  refs.forEach((r, i) => { const left = refs.length > 1 && i === 0; txt(svg, X(r.value) + (left ? -4 : 4), H - m.b - 4, r.label, {fill: "var(--ink-2)", "text-anchor": left ? "end" : "start"}); });
+}
+
+function drawScatter(spec, box, card, W) {
+  const C = colors(spec), H = 272, m = {l: 52, r: 16, t: 28, b: 40};
+  const xsAll = spec.series.flatMap(s => s.points.map(p => p.x)), lg = !!spec.x.log, xf = v => lg ? Math.log10(v) : v;
+  const xn = nice(Math.min(...xsAll.map(xf)), Math.max(...xsAll.map(xf))), yd = yDomain(spec), iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const x0 = lg ? Math.min(...xsAll.map(xf)) : xn.lo, x1 = lg ? Math.max(...xsAll.map(xf)) : xn.hi;
+  const X = v => m.l + (xf(v) - x0) / ((x1 - x0) || 1) * iw, Y = v => m.t + (1 - (v - yd.lo) / (yd.hi - yd.lo)) * ih;
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": spec.title}, box);
+  yd.ticks.forEach(t => { el("line", {x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: "var(--grid)"}, svg); txt(svg, m.l - 8, Y(t) + 4, fmt(spec.y.format, t), {"text-anchor": "end"}); });
+  (lg ? [] : xn.ticks).forEach(t => txt(svg, X(t), m.t + ih + 16, +(+t).toPrecision(4), {"text-anchor": "middle"}));
+  if (lg) for (let e = Math.ceil(x0); e <= Math.floor(x1); e++) txt(svg, X(Math.pow(10, e)), m.t + ih + 16, Math.pow(10, e).toLocaleString("en-US"), {"text-anchor": "middle"});
+  el("line", {x1: m.l, x2: W - m.r, y1: m.t + ih, y2: m.t + ih, stroke: "var(--axis)"}, svg);
+  txt(svg, m.l + iw / 2, H - 6, spec.x.label + (lg ? " (log scale)" : ""), {"text-anchor": "middle", fill: "var(--ink-2)"});
+  txt(svg, 0, 10, ylab(spec), {fill: "var(--ink-2)"});
+  (spec.refLines || []).forEach(r => { if (r.axis === "y") { el("line", {x1: m.l, x2: W - m.r, y1: Y(r.value), y2: Y(r.value), stroke: "var(--ink-2)", "stroke-dasharray": "4 4"}, svg); txt(svg, W - m.r - 4, Y(r.value) - 5, r.label, {"text-anchor": "end", fill: "var(--ink-2)"}); } });
+  spec.series.forEach((s, si) => s.points.forEach(p => {
+    el("circle", {cx: X(p.x), cy: Y(p.y), r: 4.5, fill: C[si], stroke: "var(--surface)", "stroke-width": 2, class: "mark"}, svg);
+    const hit = el("circle", {cx: X(p.x), cy: Y(p.y), r: 10, fill: "transparent"}, svg);
+    hit.addEventListener("pointermove", ev => { const [cx, cy] = rel(card, ev);
+      tipShow(card, `<div class="h">${esc(s.name)}${p.label ? ": " + esc(p.label) : ""}</div>` + row(C[si], spec.x.label, String(+(+p.x).toPrecision(5))) + row(C[si], spec.y.label, pv(spec, p)), cx, cy); });
+    hit.addEventListener("pointerleave", () => tipHide(card));
+  }));
+}
+
+function table(spec) {
+  const xs = [...new Set(spec.series.flatMap(s => s.points.map(p => String(p.x))))];
+  const hasCI = spec.series.some(s => s.points.some(p => p.lo != null));
+  let h = `<table><thead><tr><th>${esc(spec.x.label)}</th>` + spec.series.map(s => `<th>${esc(s.name)}</th>`).join("") + `</tr></thead><tbody>`;
+  xs.forEach(x => { h += `<tr><td>${esc(x)}</td>` + spec.series.map(s => { const p = s.points.find(q => String(q.x) === x); return `<td>${p ? esc(hasCI ? pv(spec, p) : fmt(spec.y.format, p.y)) : ""}</td>`; }).join("") + `</tr>`; });
+  return h + `</tbody></table>`;
+}
+
+const cards = [];
+function build() {
+  const grid = document.getElementById("grid");
+  const specs = SPECS.slice().sort((a, b) => ORDER.indexOf(a.method) - ORDER.indexOf(b.method));
+  specs.forEach(spec => {
+    const card = document.createElement("article"); card.className = "card"; card.id = spec.id; card.dataset.method = spec.method;
+    const C = colors(spec);
+    const legend = spec.series.length > 1 ? `<div class="legend">` + spec.series.map((s, i) => `<span><i class="${spec.type === "line" ? "ln" : ""}" style="background:${C[i]}"></i>${esc(s.name)}</span>`).join("") + `</div>` : "";
+    card.innerHTML = `<div class="eyebrow"><span>${esc(spec.method)}</span><a href="#${spec.id}" aria-label="Link to this chart">#</a></div>
+      <h2>${esc(spec.title)}</h2><p class="take">${esc(spec.takeaway)}</p>${legend}<div class="chart"></div>
+      <div class="foot">${spec.note ? `<span>${esc(spec.note)}</span>` : ""}<span>Source: <code>${esc(spec.source.replace(/^repo:/, ""))}</code>${spec.source.startsWith("repo:") ? " (repo)" : " (data branch)"}</span></div>
+      <details><summary>Data table</summary><div class="tbl">${table(spec)}</div></details><div class="tip" hidden></div>`;
+    grid.appendChild(card); cards.push({card, spec});
+  });
+  const counts = {}; specs.forEach(s => counts[s.method] = (counts[s.method] || 0) + 1);
+  const methods = ORDER.filter(m => counts[m]);
+  const f = document.getElementById("filters");
+  f.innerHTML = `<button class="chip" aria-pressed="true" data-m="">All<span class="n">${specs.length}</span></button>` +
+    methods.map(m => `<button class="chip" aria-pressed="false" data-m="${esc(m)}">${esc(m)}<span class="n">${counts[m]}</span></button>`).join("") +
+    `<input type="search" id="q" placeholder="Search titles and captions" aria-label="Search charts">`;
+  let sel = "";
+  const apply = () => { const q = document.getElementById("q").value.trim().toLowerCase();
+    cards.forEach(({card, spec}) => { card.hidden = !((!sel || spec.method === sel) && (!q || (spec.title + " " + spec.takeaway + " " + spec.method).toLowerCase().includes(q))); }); };
+  f.querySelectorAll(".chip").forEach(b => b.onclick = () => { sel = b.dataset.m; f.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === b)); apply(); });
+  document.getElementById("q").oninput = apply;
+  const nLive = counts["Live demo"] || 0;
+  document.getElementById("stats").innerHTML = `<span><b>${specs.length}</b>charts</span><span><b>${methods.filter(m => !["Live demo", "Core", "Verification"].includes(m)).length}</b>methods charted</span>` +
+    `<span><b>${new Set(specs.map(s => s.source)).size}</b>source files</span><span><b>${nLive}</b>from live Claude Haiku runs</span>`;
+}
+function render() {
+  cards.forEach(({card, spec}) => {
+    const box = card.querySelector(".chart"); box.innerHTML = "";
+    const W = Math.max(300, Math.round(box.clientWidth || 520));
+    try {
+      if (spec.type === "line") drawLine(spec, box, card, W);
+      else if (spec.type === "bar") drawBar(spec, box, card, W);
+      else if (spec.type === "interval") drawRows(spec, box, card, W, false);
+      else if (spec.type === "stacked") drawRows(spec, box, card, W, true);
+      else if (spec.type === "scatter") drawScatter(spec, box, card, W);
+    } catch (e) { box.innerHTML = `<div class="empty">This chart could not be drawn (${esc(e.message)}). Its data table is below.</div>`; }
+  });
+}
+build(); render();
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+if (location.hash) { const t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }
+</script>

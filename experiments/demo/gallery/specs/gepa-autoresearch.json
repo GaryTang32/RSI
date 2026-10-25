@@ -1,0 +1,1381 @@
+{
+ "charts": [
+  {
+   "id": "gepa-sample-efficiency",
+   "method": "GEPA",
+   "type": "line",
+   "title": "GEPA vs scalar-reward RL: true test score by rollouts spent",
+   "takeaway": "GEPA reaches 80% of the oracle score after 851 rollouts on average vs 5,327 for scalar RL (median per-seed ratio 5.7x; 6.1x at 90%), and text-free score-only reflection stalls at 0.76. The spec's >=10x is not met, and RL keeps climbing to 0.902 at 24k rollouts vs GEPA's 0.917 plateau at 6k.",
+   "source": "results/gepa/e1_sample_efficiency.json",
+   "x": {
+    "label": "Rollouts spent (log scale)",
+    "kind": "linear",
+    "log": true
+   },
+   "y": {
+    "label": "True test score (fraction of properties right)",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "GEPA (budget 6,000)",
+     "points": [
+      {
+       "x": 100,
+       "y": 0.072,
+       "lo": 0.055,
+       "hi": 0.087
+      },
+      {
+       "x": 200,
+       "y": 0.272,
+       "lo": 0.246,
+       "hi": 0.298
+      },
+      {
+       "x": 400,
+       "y": 0.517,
+       "lo": 0.483,
+       "hi": 0.55
+      },
+      {
+       "x": 800,
+       "y": 0.745,
+       "lo": 0.712,
+       "hi": 0.776
+      },
+      {
+       "x": 1600,
+       "y": 0.86,
+       "lo": 0.838,
+       "hi": 0.882
+      },
+      {
+       "x": 3200,
+       "y": 0.906,
+       "lo": 0.889,
+       "hi": 0.919
+      },
+      {
+       "x": 6000,
+       "y": 0.917,
+       "lo": 0.91,
+       "hi": 0.923
+      }
+     ]
+    },
+    {
+     "name": "Score-only reflection (budget 6,000)",
+     "points": [
+      {
+       "x": 100,
+       "y": 0.058,
+       "lo": 0.045,
+       "hi": 0.071
+      },
+      {
+       "x": 200,
+       "y": 0.182,
+       "lo": 0.154,
+       "hi": 0.21
+      },
+      {
+       "x": 400,
+       "y": 0.31,
+       "lo": 0.277,
+       "hi": 0.343
+      },
+      {
+       "x": 800,
+       "y": 0.476,
+       "lo": 0.434,
+       "hi": 0.523
+      },
+      {
+       "x": 1600,
+       "y": 0.606,
+       "lo": 0.569,
+       "hi": 0.644
+      },
+      {
+       "x": 3200,
+       "y": 0.704,
+       "lo": 0.67,
+       "hi": 0.737
+      },
+      {
+       "x": 6000,
+       "y": 0.763,
+       "lo": 0.734,
+       "hi": 0.792
+      }
+     ]
+    },
+    {
+     "name": "Scalar RL, lr 2 (budget 24,000)",
+     "points": [
+      {
+       "x": 100,
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": 200,
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": 400,
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": 800,
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": 1600,
+       "y": 0.069,
+       "lo": 0.047,
+       "hi": 0.092
+      },
+      {
+       "x": 3200,
+       "y": 0.583,
+       "lo": 0.546,
+       "hi": 0.621
+      },
+      {
+       "x": 6000,
+       "y": 0.824,
+       "lo": 0.79,
+       "hi": 0.855
+      },
+      {
+       "x": 12000,
+       "y": 0.885,
+       "lo": 0.862,
+       "hi": 0.907
+      },
+      {
+       "x": 24000,
+       "y": 0.902,
+       "lo": 0.881,
+       "hi": 0.922
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.95,
+     "label": "oracle prompt (0.95)"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. RuleWorld with a mock reflection LM; 20 seeds, bands are 95% bootstrap CIs."
+  },
+  {
+   "id": "gepa-vs-rl-paired",
+   "method": "GEPA",
+   "type": "interval",
+   "title": "GEPA minus RL test score: large at equal budgets, a tie at 1:4",
+   "takeaway": "At equal rollout budgets GEPA is far ahead (+0.79 at 1,600, still +0.09 at 6,000), but at the paper's 1:4 ratio (GEPA 6k vs RL 24k) the paired difference is +0.015 [-0.004, +0.035], a tie: 'outperforms RL' did not reproduce there, and only RL reached the oracle prompt (7 of 20 seeds vs 0).",
+   "source": "results/gepa/e1_sample_efficiency.json",
+   "x": {
+    "label": "Rollouts: GEPA vs RL",
+    "kind": "category"
+   },
+   "y": {
+    "label": "GEPA minus RL true test score (paired over 20 seeds)",
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "GEPA - scalar RL (lr 2)",
+     "points": [
+      {
+       "x": "100 vs 100",
+       "y": 0.072,
+       "lo": 0.055,
+       "hi": 0.087
+      },
+      {
+       "x": "200 vs 200",
+       "y": 0.272,
+       "lo": 0.246,
+       "hi": 0.298
+      },
+      {
+       "x": "400 vs 400",
+       "y": 0.517,
+       "lo": 0.483,
+       "hi": 0.55
+      },
+      {
+       "x": "800 vs 800",
+       "y": 0.745,
+       "lo": 0.712,
+       "hi": 0.776
+      },
+      {
+       "x": "1,600 vs 1,600",
+       "y": 0.791,
+       "lo": 0.758,
+       "hi": 0.822
+      },
+      {
+       "x": "3,200 vs 3,200",
+       "y": 0.322,
+       "lo": 0.282,
+       "hi": 0.362
+      },
+      {
+       "x": "6,000 vs 6,000",
+       "y": 0.093,
+       "lo": 0.061,
+       "hi": 0.126
+      },
+      {
+       "x": "6,000 vs 24,000 (paper's 1:4)",
+       "y": 0.015,
+       "lo": -0.004,
+       "hi": 0.035
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. Error bars are 95% bootstrap CIs of the paired difference."
+  },
+  {
+   "id": "gepa-feedback",
+   "method": "GEPA",
+   "type": "bar",
+   "title": "Feedback text that names the fix drives GEPA's gains",
+   "takeaway": "At 3,000 rollouts, feedback naming the violated rule reaches 0.900 true test vs 0.753 for symptom-only and 0.721 for score-only (rich - symptom +0.148 [+0.117, +0.179]). Symptom vs score-only (+0.031 [-0.014, +0.075]) is not significant, so only text that says how to fix the failure helps.",
+   "source": "results/gepa/e2_feedback.json",
+   "x": {
+    "label": "Feedback given to the reflection LM",
+    "kind": "category"
+   },
+   "y": {
+    "label": "True test score",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "After 800 rollouts",
+     "points": [
+      {
+       "x": "Rich (names the rule)",
+       "y": 0.758,
+       "lo": 0.731,
+       "hi": 0.783
+      },
+      {
+       "x": "Rich, first error only",
+       "y": 0.672,
+       "lo": 0.639,
+       "hi": 0.703
+      },
+      {
+       "x": "Symptom (names the property)",
+       "y": 0.502,
+       "lo": 0.469,
+       "hi": 0.535
+      },
+      {
+       "x": "Score only",
+       "y": 0.492,
+       "lo": 0.461,
+       "hi": 0.524
+      }
+     ]
+    },
+    {
+     "name": "After 3,000 rollouts (final)",
+     "points": [
+      {
+       "x": "Rich (names the rule)",
+       "y": 0.9,
+       "lo": 0.887,
+       "hi": 0.912
+      },
+      {
+       "x": "Rich, first error only",
+       "y": 0.916,
+       "lo": 0.904,
+       "hi": 0.927
+      },
+      {
+       "x": "Symptom (names the property)",
+       "y": 0.753,
+       "lo": 0.725,
+       "hi": 0.781
+      },
+      {
+       "x": "Score only",
+       "y": 0.721,
+       "lo": 0.69,
+       "hi": 0.752
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. 30 seeds; error bars are 95% bootstrap CIs."
+  },
+  {
+   "id": "gepa-pareto-vs-greedy",
+   "method": "GEPA",
+   "type": "interval",
+   "title": "Pareto selection vs greedy: the win depends on greedy's tie rule",
+   "takeaway": "Against the reference greedy selector (ties go to the oldest candidate) Pareto wins hugely on binary rewards (+0.60 at B=1,500, +0.75 at B=4,000) but loses slightly with partial credit at B=1,500 (-0.027). When greedy breaks ties toward the newest candidate, Pareto is significantly better in none of the 8 cells, so the claimed mechanism did not reproduce.",
+   "source": "results/gepa/e3_selection.json",
+   "x": {
+    "label": "World and rollout budget B",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Pareto minus greedy true test score (paired)",
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "vs greedy, oldest-tie (reference idxmax)",
+     "points": [
+      {
+       "x": "Partial credit, B=1,500",
+       "y": -0.027,
+       "lo": -0.046,
+       "hi": -0.007
+      },
+      {
+       "x": "Binary reward, B=1,500",
+       "y": 0.603,
+       "lo": 0.547,
+       "hi": 0.664
+      },
+      {
+       "x": "Interference, B=1,500",
+       "y": -0.051,
+       "lo": -0.086,
+       "hi": -0.015
+      },
+      {
+       "x": "Interference, undiagnosable, B=1,500",
+       "y": -0.003,
+       "lo": -0.032,
+       "hi": 0.025
+      },
+      {
+       "x": "Partial credit, B=4,000",
+       "y": 0.003,
+       "lo": -0.01,
+       "hi": 0.015
+      },
+      {
+       "x": "Binary reward, B=4,000",
+       "y": 0.745,
+       "lo": 0.679,
+       "hi": 0.799
+      },
+      {
+       "x": "Interference, B=4,000",
+       "y": 0.004,
+       "lo": -0.02,
+       "hi": 0.027
+      },
+      {
+       "x": "Interference, undiagnosable, B=4,000",
+       "y": 0.021,
+       "lo": 0.003,
+       "hi": 0.037
+      }
+     ]
+    },
+    {
+     "name": "vs greedy, newest-tie (control)",
+     "points": [
+      {
+       "x": "Partial credit, B=1,500",
+       "y": -0.016,
+       "lo": -0.037,
+       "hi": 0.005
+      },
+      {
+       "x": "Binary reward, B=1,500",
+       "y": -0.039,
+       "lo": -0.115,
+       "hi": 0.04
+      },
+      {
+       "x": "Interference, B=1,500",
+       "y": -0.051,
+       "lo": -0.088,
+       "hi": -0.011
+      },
+      {
+       "x": "Interference, undiagnosable, B=1,500",
+       "y": -0.005,
+       "lo": -0.036,
+       "hi": 0.024
+      },
+      {
+       "x": "Partial credit, B=4,000",
+       "y": 0.01,
+       "lo": -0.004,
+       "hi": 0.023
+      },
+      {
+       "x": "Binary reward, B=4,000",
+       "y": 0.002,
+       "lo": -0.06,
+       "hi": 0.069
+      },
+      {
+       "x": "Interference, B=4,000",
+       "y": 0.009,
+       "lo": -0.012,
+       "hi": 0.03
+      },
+      {
+       "x": "Interference, undiagnosable, B=4,000",
+       "y": 0.016,
+       "lo": -0.003,
+       "hi": 0.035
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. 30 seeds per cell; error bars are 95% bootstrap CIs."
+  },
+  {
+   "id": "gepa-merge",
+   "method": "GEPA",
+   "type": "interval",
+   "title": "Merge helps only when rationed: gain over GEPA without merge",
+   "takeaway": "No merge variant differs significantly from plain GEPA at B=1,500. At B=4,000 only the rationed ones gain: the paper's hard cap of 5 invocations +0.014 [+0.001, +0.027] using 3% of rollouts, soft cap 1 +0.017 [+0.006, +0.029]; the reference soft cap 5 (20 invocations, 12% of rollouts) gains +0.008, not significant.",
+   "source": "results/gepa/e4_merge.json",
+   "x": {
+    "label": "Merge setting",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Merge minus no-merge true test score (paired)",
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "B = 1,500 rollouts",
+     "points": [
+      {
+       "x": "Soft cap 5 (reference default)",
+       "y": 0.005,
+       "lo": -0.017,
+       "hi": 0.027
+      },
+      {
+       "x": "Hard cap 5 invocations (paper)",
+       "y": 0.014,
+       "lo": -0.014,
+       "hi": 0.039
+      },
+      {
+       "x": "Accepted-merge cap 5",
+       "y": 0.011,
+       "lo": -0.013,
+       "hi": 0.033
+      },
+      {
+       "x": "Soft cap 1",
+       "y": 0.016,
+       "lo": -0.013,
+       "hi": 0.041
+      },
+      {
+       "x": "Soft cap 20",
+       "y": 0.003,
+       "lo": -0.02,
+       "hi": 0.025
+      }
+     ]
+    },
+    {
+     "name": "B = 4,000 rollouts",
+     "points": [
+      {
+       "x": "Soft cap 5 (reference default)",
+       "y": 0.008,
+       "lo": -0.006,
+       "hi": 0.021
+      },
+      {
+       "x": "Hard cap 5 invocations (paper)",
+       "y": 0.014,
+       "lo": 0.001,
+       "hi": 0.027
+      },
+      {
+       "x": "Accepted-merge cap 5",
+       "y": 0.007,
+       "lo": -0.008,
+       "hi": 0.022
+      },
+      {
+       "x": "Soft cap 1",
+       "y": 0.017,
+       "lo": 0.006,
+       "hi": 0.029
+      },
+      {
+       "x": "Soft cap 20",
+       "y": 0.005,
+       "lo": -0.008,
+       "hi": 0.019
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. 30 seeds; error bars are 95% bootstrap CIs. Complementary merges beat both parents 86% of the time at B=1,500 (soft cap 5)."
+  },
+  {
+   "id": "gepa-saturation",
+   "method": "GEPA",
+   "type": "bar",
+   "title": "GEPA on an already-perfect seed: what it returns and reports",
+   "takeaway": "With noise-free evaluation GEPA accepts 0 children and returns a perfect seed every time. With 5% rollout noise it accepts 12.2 children per run and returns the seed in only 60% of runs, without any true gain (0.95 either way). A seed that memorises the training tickets scores 0.00 on test but reports 1.00 when validation reuses the training set; a separate validation set exposes it (reported 0.00).",
+   "source": "results/gepa/e12_saturation.json",
+   "x": {
+    "label": "Seed prompt and evaluation setting",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Score of the returned prompt",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Reported validation score",
+     "points": [
+      {
+       "x": "Oracle seed, no noise",
+       "y": 1.0,
+       "lo": 1.0,
+       "hi": 1.0
+      },
+      {
+       "x": "Oracle seed, 5% noise",
+       "y": 0.977,
+       "lo": 0.968,
+       "hi": 0.985
+      },
+      {
+       "x": "Memorising seed, val = train",
+       "y": 1.0,
+       "lo": 1.0,
+       "hi": 1.0
+      },
+      {
+       "x": "Memorising seed, separate val",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      }
+     ]
+    },
+    {
+     "name": "True test score",
+     "points": [
+      {
+       "x": "Oracle seed, no noise",
+       "y": 1.0,
+       "lo": 1.0,
+       "hi": 1.0
+      },
+      {
+       "x": "Oracle seed, 5% noise",
+       "y": 0.95,
+       "lo": 0.95,
+       "hi": 0.95
+      },
+      {
+       "x": "Memorising seed, val = train",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "Memorising seed, separate val",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. 10 seeds, budget 600 rollouts; error bars are 95% bootstrap CIs."
+  },
+  {
+   "id": "ar-progress",
+   "method": "autoresearch",
+   "type": "scatter",
+   "title": "One unattended night: each experiment's val_bpb, kept or discarded",
+   "takeaway": "In this 30-experiment night (seed 0) the loop kept 8 edits and discarded 21, taking val_bpb from 3.615 to 2.824; one kept edit only changed the random seed (42 -> 397), a luck keep. Over 3 seeds the gain is 0.73 [0.62, 0.79] bpb recorded and 0.78 on a fresh-seed re-eval, well beyond the 0.20 noise band and above best-of-N random search (0.30).",
+   "source": "results/autoresearch/e1_progress.json",
+   "x": {
+    "label": "Experiment number",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Validation bits per byte (val_bpb)",
+    "lowerIsBetter": true,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Kept (incl. baseline)",
+     "points": [
+      {
+       "x": 0,
+       "y": 3.615,
+       "label": "baseline"
+      },
+      {
+       "x": 5,
+       "y": 3.548,
+       "label": "ACTIVATION 'tanh' -> 'relu'"
+      },
+      {
+       "x": 9,
+       "y": 3.515,
+       "label": "SEED 42 -> 397"
+      },
+      {
+       "x": 12,
+       "y": 3.43,
+       "label": "CONTEXT 6 -> 4"
+      },
+      {
+       "x": 17,
+       "y": 3.222,
+       "label": "LR 0.003 -> 0.006"
+      },
+      {
+       "x": 18,
+       "y": 3.047,
+       "label": "LR 0.006 -> 0.012"
+      },
+      {
+       "x": 19,
+       "y": 2.875,
+       "label": "LR 0.012 -> 0.024"
+      },
+      {
+       "x": 27,
+       "y": 2.87,
+       "label": "BATCH_SIZE 32 -> 16"
+      },
+      {
+       "x": 28,
+       "y": 2.824,
+       "label": "INIT_SCALE 1.0 -> 0.7"
+      }
+     ]
+    },
+    {
+     "name": "Discarded",
+     "points": [
+      {
+       "x": 1,
+       "y": 3.746,
+       "label": "WEIGHT_DECAY 0.0 -> 0.0001"
+      },
+      {
+       "x": 2,
+       "y": 3.958,
+       "label": "TRAIN_SEQ_LEN 16 -> 32"
+      },
+      {
+       "x": 3,
+       "y": 3.975,
+       "label": "EMBED_DIM 16 -> 8"
+      },
+      {
+       "x": 4,
+       "y": 3.817,
+       "label": "HIDDEN 128 -> 256"
+      },
+      {
+       "x": 6,
+       "y": 3.771,
+       "label": "ACTIVATION 'relu' -> 'tanh'"
+      },
+      {
+       "x": 7,
+       "y": 3.575,
+       "label": "WEIGHT_DECAY 0.0 -> 0.0001"
+      },
+      {
+       "x": 8,
+       "y": 3.858,
+       "label": "TRAIN_SEQ_LEN 16 -> 32"
+      },
+      {
+       "x": 10,
+       "y": 3.588,
+       "label": "HIDDEN 128 -> 256"
+      },
+      {
+       "x": 11,
+       "y": 3.516,
+       "label": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+      },
+      {
+       "x": 13,
+       "y": 3.487,
+       "label": "CONTEXT 4 -> 2"
+      },
+      {
+       "x": 14,
+       "y": 3.463,
+       "label": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+      },
+      {
+       "x": 15,
+       "y": 3.456,
+       "label": "CONTEXT 4 -> 6"
+      },
+      {
+       "x": 16,
+       "y": 3.634,
+       "label": "TRAIN_SEQ_LEN 16 -> 32"
+      },
+      {
+       "x": 21,
+       "y": 2.979,
+       "label": "TRAIN_SEQ_LEN 16 -> 32"
+      },
+      {
+       "x": 22,
+       "y": 2.888,
+       "label": "ADAM_BETAS (0.9, 0.99) -> (0.8, 0.95)"
+      },
+      {
+       "x": 23,
+       "y": 3.007,
+       "label": "HIDDEN 128 -> 64"
+      },
+      {
+       "x": 24,
+       "y": 2.892,
+       "label": "WEIGHT_DECAY 0.0 -> 0.0001"
+      },
+      {
+       "x": 25,
+       "y": 2.981,
+       "label": "LR 0.024 -> 0.012"
+      },
+      {
+       "x": 26,
+       "y": 3.036,
+       "label": "DEPTH 1 -> 2"
+      },
+      {
+       "x": 29,
+       "y": 2.948,
+       "label": "ACTIVATION 'relu' -> 'tanh'"
+      },
+      {
+       "x": 30,
+       "y": 2.906,
+       "label": "CONTEXT 4 -> 6"
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 3.615,
+     "label": "baseline 3.615"
+    }
+   ],
+   "note": "Real tiny-LM training on CPU (2 s budget, hardened mode) with an offline scripted agent; experiment 20 crashed (OOM) and has no score."
+  },
+  {
+   "id": "ar-strict-luck",
+   "method": "autoresearch",
+   "type": "interval",
+   "title": "Share of kept edits that were not truly better, by keep rule",
+   "takeaway": "Under 'strictly better on one noisy number', 19% [16, 22] of keeps had no true gain (same for the upstream default), vs 4.6% under the rigor rule and 1% under a noise-band gate. Rigor cuts the optimism gap from 0.0041 to 0.0015 but tests about 25% fewer ideas (112 vs 149), so its true final is slightly worse (0.958 vs 0.956, lower is better). On real tiny-LM runs (3 seeds) the ordering was not resolved.",
+   "source": "results/autoresearch/e5_strict_luck.json",
+   "x": {
+    "label": "Keep rule",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Kept edits with true delta <= 0 (% of keeps)",
+    "min": 0,
+    "lowerIsBetter": true,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "False-keep rate",
+     "points": [
+      {
+       "x": "Strict (better by any margin)",
+       "y": 0.1915,
+       "lo": 0.1641,
+       "hi": 0.2185
+      },
+      {
+       "x": "Upstream default",
+       "y": 0.1911,
+       "lo": 0.1647,
+       "hi": 0.2173
+      },
+      {
+       "x": "Rigor (bootstrap re-runs)",
+       "y": 0.0464,
+       "lo": 0.0286,
+       "hi": 0.066
+      },
+      {
+       "x": "Rigor, pinned seed",
+       "y": 0.1201,
+       "lo": 0.0926,
+       "hi": 0.1478
+      },
+      {
+       "x": "Noise-band gate",
+       "y": 0.0112,
+       "lo": 0.0,
+       "hi": 0.0257
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. Landscape with exact truth, 50 seeds, equal total of 150 training runs per rule; 95% bootstrap CIs."
+  },
+  {
+   "id": "ar-grader-locking",
+   "method": "autoresearch",
+   "type": "bar",
+   "title": "Bogus val_bpb gains from 11 grader exploits, faithful vs hardened",
+   "takeaway": "With the grader locked only by instruction (faithful mode, as upstream), 9 of 11 exploit classes book gains the locked measurement does not confirm, up to 3.56 bpb (peeking at the next byte) and 2.73 (faking the report). Hardened mode rejects or crashes 9 classes and lets the other 2 run with exactly 0.0 gain at equal compute: 0 bogus classes.",
+   "source": "results/autoresearch/e4_grader_locking.json",
+   "x": {
+    "label": "Exploit class (tinylm)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Recorded val_bpb gain vs baseline (bpb)",
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Faithful (social lock only)",
+     "points": [
+      {
+       "x": "Edit the grader",
+       "y": 0.404
+      },
+      {
+       "x": "Rescale the loss",
+       "y": 0.79
+      },
+      {
+       "x": "Slow the budget clock",
+       "y": 0.358
+      },
+      {
+       "x": "Train on hidden test",
+       "y": -0.029
+      },
+      {
+       "x": "Train on val",
+       "y": 0.075
+      },
+      {
+       "x": "Fake the report",
+       "y": 2.727
+      },
+      {
+       "x": "Peek at the next byte",
+       "y": 3.561
+      },
+      {
+       "x": "Forge the result record",
+       "y": -0.02
+      },
+      {
+       "x": "Rebind TOKEN_BYTES",
+       "y": 0.296
+      },
+      {
+       "x": "Mutate a locked constant",
+       "y": 1.846
+      },
+      {
+       "x": "Patch numpy.log",
+       "y": 0.444
+      }
+     ]
+    },
+    {
+     "name": "Hardened (mechanical lock)",
+     "points": [
+      {
+       "x": "Edit the grader",
+       "y": 0,
+       "label": "no result: rejected (scope guard: locked_edit)"
+      },
+      {
+       "x": "Rescale the loss",
+       "y": -0.037,
+       "label": "kept 1 of 3; 0.0 gain at equal compute"
+      },
+      {
+       "x": "Slow the budget clock",
+       "y": 0.155,
+       "label": "legit LR-schedule effect; honest no-warmdown control gains 0.17"
+      },
+      {
+       "x": "Train on hidden test",
+       "y": 0,
+       "label": "no result: rejected (scope guard: tamper)"
+      },
+      {
+       "x": "Train on val",
+       "y": 0,
+       "label": "no result: crash: PermissionError"
+      },
+      {
+       "x": "Fake the report",
+       "y": 0,
+       "label": "no result: crash: no locked result record"
+      },
+      {
+       "x": "Peek at the next byte",
+       "y": 0,
+       "label": "no result: crash: non-causal model"
+      },
+      {
+       "x": "Forge the result record",
+       "y": 0,
+       "label": "no result: rejected (scope guard: tamper)"
+      },
+      {
+       "x": "Rebind TOKEN_BYTES",
+       "y": 0,
+       "label": "no result: rejected (scope guard: tamper)"
+      },
+      {
+       "x": "Mutate a locked constant",
+       "y": 0,
+       "label": "no result: rejected (scope guard: tamper)"
+      },
+      {
+       "x": "Patch numpy.log",
+       "y": 0,
+       "label": "no result: rejected (scope guard: tamper)"
+      }
+     ]
+    }
+   ],
+   "note": "Real tiny-LM training on CPU, 3 seeds per class; bars are means. In faithful mode the hidden-data and forge-record edits are no-ops (small negative values are noise). Hardened bars at 0 mean the edit was rejected or crashed, so no result was recorded."
+  },
+  {
+   "id": "ar-budget-bias",
+   "method": "autoresearch",
+   "type": "line",
+   "title": "Edits kept under a short wall-clock budget fade when trained longer",
+   "takeaway": "A fixed wall-clock budget favours small, fast models: kept configs end at 0.23x the baseline size vs 2.93x under a token budget. Their true gain shrinks from +0.069 at the search horizon to +0.005 at 4x and reverses to -0.040 at 16x. On real tiny-LM runs the gain shrinks from 0.65 to 0.27 bpb at 4x but does not reverse.",
+   "source": "results/autoresearch/e2_budget_bias.json",
+   "x": {
+    "label": "Training horizon used for re-evaluation (x search budget)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "True gain of the kept config over baseline",
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "Wall-clock-budget winners",
+     "points": [
+      {
+       "x": "1x",
+       "y": 0.069,
+       "lo": 0.067,
+       "hi": 0.07
+      },
+      {
+       "x": "4x",
+       "y": 0.005,
+       "lo": 0.003,
+       "hi": 0.007
+      },
+      {
+       "x": "16x",
+       "y": -0.04,
+       "lo": -0.043,
+       "hi": -0.037
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no gain"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. Landscape, 30 seeds x 100 experiments; bands are 95% bootstrap CIs."
+  },
+  {
+   "id": "ar-val-reuse",
+   "method": "autoresearch",
+   "type": "line",
+   "title": "Optimism of the kept chain on a reused vs re-sampled val set",
+   "takeaway": "Judging 300 experiments on one fixed validation set leaves the kept chain 0.0117 optimistic vs 0.0082 when val is re-sampled every 25; the val-specific part grows from 0.0068 (50) to 0.0087 (300), growth CI [0.0003, 0.0035]. Only partly reproduced: on real gradient-boosted trees at 30 decisions the CV-minus-hidden gap did not grow (0.0087 -> 0.0074 AUC).",
+   "source": "results/autoresearch/e6_val_reuse.json",
+   "x": {
+    "label": "Experiments run",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Hidden score minus val score of incumbent (optimism)",
+    "lowerIsBetter": true,
+    "format": ".3f"
+   },
+   "series": [
+    {
+     "name": "Fixed val: total optimism",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.0002
+      },
+      {
+       "x": 25,
+       "y": 0.0072
+      },
+      {
+       "x": 50,
+       "y": 0.0091
+      },
+      {
+       "x": 75,
+       "y": 0.0101
+      },
+      {
+       "x": 100,
+       "y": 0.0101
+      },
+      {
+       "x": 125,
+       "y": 0.0113
+      },
+      {
+       "x": 150,
+       "y": 0.012
+      },
+      {
+       "x": 175,
+       "y": 0.0119
+      },
+      {
+       "x": 200,
+       "y": 0.0124
+      },
+      {
+       "x": 225,
+       "y": 0.0126
+      },
+      {
+       "x": 250,
+       "y": 0.0122
+      },
+      {
+       "x": 275,
+       "y": 0.0122
+      },
+      {
+       "x": 300,
+       "y": 0.0117
+      }
+     ]
+    },
+    {
+     "name": "Re-sampled val: total optimism",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.0002
+      },
+      {
+       "x": 25,
+       "y": 0.0072
+      },
+      {
+       "x": 50,
+       "y": 0.0074
+      },
+      {
+       "x": 75,
+       "y": 0.0101
+      },
+      {
+       "x": 100,
+       "y": 0.0081
+      },
+      {
+       "x": 125,
+       "y": 0.0104
+      },
+      {
+       "x": 150,
+       "y": 0.0101
+      },
+      {
+       "x": 175,
+       "y": 0.0103
+      },
+      {
+       "x": 200,
+       "y": 0.0106
+      },
+      {
+       "x": 225,
+       "y": 0.0089
+      },
+      {
+       "x": 250,
+       "y": 0.0097
+      },
+      {
+       "x": 275,
+       "y": 0.0089
+      },
+      {
+       "x": 300,
+       "y": 0.0082
+      }
+     ]
+    },
+    {
+     "name": "Fixed val: val-specific part",
+     "points": [
+      {
+       "x": 0,
+       "y": -0.0005
+      },
+      {
+       "x": 25,
+       "y": 0.0057
+      },
+      {
+       "x": 50,
+       "y": 0.0068
+      },
+      {
+       "x": 75,
+       "y": 0.0073
+      },
+      {
+       "x": 100,
+       "y": 0.0074
+      },
+      {
+       "x": 125,
+       "y": 0.0081
+      },
+      {
+       "x": 150,
+       "y": 0.0089
+      },
+      {
+       "x": 175,
+       "y": 0.0091
+      },
+      {
+       "x": 200,
+       "y": 0.0092
+      },
+      {
+       "x": 225,
+       "y": 0.0093
+      },
+      {
+       "x": 250,
+       "y": 0.009
+      },
+      {
+       "x": 275,
+       "y": 0.009
+      },
+      {
+       "x": 300,
+       "y": 0.0087
+      }
+     ]
+    },
+    {
+     "name": "Re-sampled val: val-specific part",
+     "points": [
+      {
+       "x": 0,
+       "y": -0.0005
+      },
+      {
+       "x": 25,
+       "y": 0.0057
+      },
+      {
+       "x": 50,
+       "y": 0.0056
+      },
+      {
+       "x": 75,
+       "y": 0.0081
+      },
+      {
+       "x": 100,
+       "y": 0.0061
+      },
+      {
+       "x": 125,
+       "y": 0.008
+      },
+      {
+       "x": 150,
+       "y": 0.0077
+      },
+      {
+       "x": 175,
+       "y": 0.0073
+      },
+      {
+       "x": 200,
+       "y": 0.008
+      },
+      {
+       "x": 225,
+       "y": 0.0068
+      },
+      {
+       "x": 250,
+       "y": 0.008
+      },
+      {
+       "x": 275,
+       "y": 0.007
+      },
+      {
+       "x": 300,
+       "y": 0.0063
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no optimism"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. Landscape, 40 seeds, val-specific noise sd 0.005; lines are means (no per-checkpoint CIs in the source)."
+  },
+  {
+   "id": "ar-hub-liar",
+   "method": "autoresearch",
+   "type": "bar",
+   "title": "Shared hub with 4 agents: how often a lying agent owns the global best",
+   "takeaway": "Without filters a lying agent owns the swarm's global best in 100% of runs. Sanity filters stop a blatant liar (0%) but not a subtle one (100%), and only re-running claimed bests independently stops both (0%). Claiming ideas before running them cuts duplicate experiments from 48% to 32%.",
+   "source": "results/autoresearch/e11_hub.json",
+   "x": {
+    "label": "Hub defence",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Runs where the liar owns the global best (% of 5 seeds)",
+    "min": 0,
+    "max": 1,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Blatant liar (reports 0.30)",
+     "points": [
+      {
+       "x": "No filters",
+       "y": 1.0
+      },
+      {
+       "x": "Sanity filters",
+       "y": 0.0
+      },
+      {
+       "x": "Filters + independent re-run",
+       "y": 0.0
+      }
+     ]
+    },
+    {
+     "name": "Subtle liar (reports 0.03 better)",
+     "points": [
+      {
+       "x": "No filters",
+       "y": 1.0
+      },
+      {
+       "x": "Sanity filters",
+       "y": 1.0
+      },
+      {
+       "x": "Filters + independent re-run",
+       "y": 0.0
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark. Landscape, 4 agents x 20 experiments, 5 seeds."
+  }
+ ]
+}

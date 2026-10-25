@@ -1,0 +1,1629 @@
+{
+ "charts": [
+  {
+   "id": "rrsi-overfit-curves",
+   "method": "RRSI",
+   "type": "line",
+   "title": "Unguarded evolution climbs on practice tasks, sinks on unseen ones",
+   "takeaway": "Over 20 rounds (mean of 50 HarnessWorld worlds) the unregularized loop lifts its true evolve score from 0.47 to 0.92 while OOD falls from 0.39 to 0.36 (-2.8 pts). Full RRSI practises less (0.74) but raises OOD to 0.56 (+17.4 pts).",
+   "source": "results/rrsi/e1_overfitting.json",
+   "x": {
+    "label": "Round",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "True score (fraction of tasks solved)",
+    "min": 0.3,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Unregularized: evolve set",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.466
+      },
+      {
+       "x": 1,
+       "y": 0.518
+      },
+      {
+       "x": 2,
+       "y": 0.566
+      },
+      {
+       "x": 3,
+       "y": 0.612
+      },
+      {
+       "x": 4,
+       "y": 0.654
+      },
+      {
+       "x": 5,
+       "y": 0.685
+      },
+      {
+       "x": 6,
+       "y": 0.716
+      },
+      {
+       "x": 7,
+       "y": 0.746
+      },
+      {
+       "x": 8,
+       "y": 0.774
+      },
+      {
+       "x": 9,
+       "y": 0.8
+      },
+      {
+       "x": 10,
+       "y": 0.818
+      },
+      {
+       "x": 11,
+       "y": 0.837
+      },
+      {
+       "x": 12,
+       "y": 0.853
+      },
+      {
+       "x": 13,
+       "y": 0.865
+      },
+      {
+       "x": 14,
+       "y": 0.873
+      },
+      {
+       "x": 15,
+       "y": 0.884
+      },
+      {
+       "x": 16,
+       "y": 0.895
+      },
+      {
+       "x": 17,
+       "y": 0.903
+      },
+      {
+       "x": 18,
+       "y": 0.91
+      },
+      {
+       "x": 19,
+       "y": 0.915
+      },
+      {
+       "x": 20,
+       "y": 0.922
+      }
+     ]
+    },
+    {
+     "name": "Unregularized: OOD set",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.385
+      },
+      {
+       "x": 1,
+       "y": 0.383
+      },
+      {
+       "x": 2,
+       "y": 0.377
+      },
+      {
+       "x": 3,
+       "y": 0.374
+      },
+      {
+       "x": 4,
+       "y": 0.372
+      },
+      {
+       "x": 5,
+       "y": 0.372
+      },
+      {
+       "x": 6,
+       "y": 0.373
+      },
+      {
+       "x": 7,
+       "y": 0.377
+      },
+      {
+       "x": 8,
+       "y": 0.382
+      },
+      {
+       "x": 9,
+       "y": 0.376
+      },
+      {
+       "x": 10,
+       "y": 0.375
+      },
+      {
+       "x": 11,
+       "y": 0.365
+      },
+      {
+       "x": 12,
+       "y": 0.361
+      },
+      {
+       "x": 13,
+       "y": 0.355
+      },
+      {
+       "x": 14,
+       "y": 0.356
+      },
+      {
+       "x": 15,
+       "y": 0.361
+      },
+      {
+       "x": 16,
+       "y": 0.361
+      },
+      {
+       "x": 17,
+       "y": 0.361
+      },
+      {
+       "x": 18,
+       "y": 0.358
+      },
+      {
+       "x": 19,
+       "y": 0.354
+      },
+      {
+       "x": 20,
+       "y": 0.357
+      }
+     ]
+    },
+    {
+     "name": "Full RRSI: evolve set",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.466
+      },
+      {
+       "x": 1,
+       "y": 0.491
+      },
+      {
+       "x": 2,
+       "y": 0.518
+      },
+      {
+       "x": 3,
+       "y": 0.543
+      },
+      {
+       "x": 4,
+       "y": 0.559
+      },
+      {
+       "x": 5,
+       "y": 0.581
+      },
+      {
+       "x": 6,
+       "y": 0.601
+      },
+      {
+       "x": 7,
+       "y": 0.62
+      },
+      {
+       "x": 8,
+       "y": 0.641
+      },
+      {
+       "x": 9,
+       "y": 0.655
+      },
+      {
+       "x": 10,
+       "y": 0.664
+      },
+      {
+       "x": 11,
+       "y": 0.675
+      },
+      {
+       "x": 12,
+       "y": 0.685
+      },
+      {
+       "x": 13,
+       "y": 0.692
+      },
+      {
+       "x": 14,
+       "y": 0.702
+      },
+      {
+       "x": 15,
+       "y": 0.705
+      },
+      {
+       "x": 16,
+       "y": 0.713
+      },
+      {
+       "x": 17,
+       "y": 0.717
+      },
+      {
+       "x": 18,
+       "y": 0.724
+      },
+      {
+       "x": 19,
+       "y": 0.729
+      },
+      {
+       "x": 20,
+       "y": 0.737
+      }
+     ]
+    },
+    {
+     "name": "Full RRSI: OOD set",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.385
+      },
+      {
+       "x": 1,
+       "y": 0.399
+      },
+      {
+       "x": 2,
+       "y": 0.41
+      },
+      {
+       "x": 3,
+       "y": 0.427
+      },
+      {
+       "x": 4,
+       "y": 0.436
+      },
+      {
+       "x": 5,
+       "y": 0.454
+      },
+      {
+       "x": 6,
+       "y": 0.46
+      },
+      {
+       "x": 7,
+       "y": 0.473
+      },
+      {
+       "x": 8,
+       "y": 0.486
+      },
+      {
+       "x": 9,
+       "y": 0.496
+      },
+      {
+       "x": 10,
+       "y": 0.502
+      },
+      {
+       "x": 11,
+       "y": 0.511
+      },
+      {
+       "x": 12,
+       "y": 0.516
+      },
+      {
+       "x": 13,
+       "y": 0.524
+      },
+      {
+       "x": 14,
+       "y": 0.531
+      },
+      {
+       "x": 15,
+       "y": 0.532
+      },
+      {
+       "x": 16,
+       "y": 0.536
+      },
+      {
+       "x": 17,
+       "y": 0.542
+      },
+      {
+       "x": 18,
+       "y": 0.547
+      },
+      {
+       "x": 19,
+       "y": 0.551
+      },
+      {
+       "x": 20,
+       "y": 0.559
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; true scores, averaged over 50 seeds"
+  },
+  {
+   "id": "rrsi-ablations",
+   "method": "RRSI",
+   "type": "bar",
+   "title": "Removing RRSI's acceptance guards trades OOD gain for evolve gain",
+   "takeaway": "No guards: evolve +45.6, OOD -2.8 pts; without acceptance guards: +43.4 / +3.1; full RRSI: +27.2 / +17.4. Removing only the proposal guards changed nothing (+27.2 / +17.0), so the paper's -proposal signature did NOT reproduce, and the annealed budget alone (OOD -1.2) does not explain the gain.",
+   "source": "results/rrsi/e2_ablations.json",
+   "x": {
+    "label": "Ablation arm",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Gain over H_0 (percentage points)",
+    "format": "+.1f"
+   },
+   "series": [
+    {
+     "name": "True evolve gain",
+     "points": [
+      {
+       "x": "No guards",
+       "y": 45.6,
+       "lo": 44.6,
+       "hi": 46.6
+      },
+      {
+       "x": "Budget anneal only",
+       "y": 43.4,
+       "lo": 42.3,
+       "hi": 44.5
+      },
+      {
+       "x": "No acceptance guards",
+       "y": 43.4,
+       "lo": 42.3,
+       "hi": 44.5
+      },
+      {
+       "x": "No proposal guards",
+       "y": 27.2,
+       "lo": 25.0,
+       "hi": 29.2
+      },
+      {
+       "x": "Full RRSI",
+       "y": 27.2,
+       "lo": 25.7,
+       "hi": 28.6
+      }
+     ]
+    },
+    {
+     "name": "OOD gain",
+     "points": [
+      {
+       "x": "No guards",
+       "y": -2.8,
+       "lo": -5.2,
+       "hi": -0.5
+      },
+      {
+       "x": "Budget anneal only",
+       "y": -1.2,
+       "lo": -3.8,
+       "hi": 1.6
+      },
+      {
+       "x": "No acceptance guards",
+       "y": 3.1,
+       "lo": 0.4,
+       "hi": 6.0
+      },
+      {
+       "x": "No proposal guards",
+       "y": 17.0,
+       "lo": 15.1,
+       "hi": 18.8
+      },
+      {
+       "x": "Full RRSI",
+       "y": 17.4,
+       "lo": 15.4,
+       "hi": 19.4
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "H_0"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 50 seeds, 95% CIs"
+  },
+  {
+   "id": "rrsi-leakage-critic",
+   "method": "RRSI",
+   "type": "bar",
+   "title": "The leakage critic keeps task-specific leaks out of the harness",
+   "takeaway": "Without the critic the final harness keeps 2.7, 8.8 and 13.1 leaky mechanisms at 5%, 15% and 30% leaky proposals; the id precheck alone cuts that to 0.9-3.6, and an LLM review catching 80% to 0.1-0.8. OOD gains +15.9 and +18.4 pts at 15% and 30%, but at 5% the OOD effect is not significant (-3.3 [-8.1, +2.0]).",
+   "source": "results/rrsi/e3_critic.json",
+   "x": {
+    "label": "Share of leaky proposals",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Leaky mechanisms in final harness (count)",
+    "min": 0,
+    "format": ".1f"
+   },
+   "series": [
+    {
+     "name": "Critic off",
+     "points": [
+      {
+       "x": "5% leaky proposals",
+       "y": 2.67,
+       "lo": 1.87,
+       "hi": 3.47
+      },
+      {
+       "x": "15% leaky proposals",
+       "y": 8.8,
+       "lo": 7.4,
+       "hi": 10.2
+      },
+      {
+       "x": "30% leaky proposals",
+       "y": 13.13,
+       "lo": 12.33,
+       "hi": 14.0
+      }
+     ]
+    },
+    {
+     "name": "Precheck only (review catch 0)",
+     "points": [
+      {
+       "x": "5% leaky proposals",
+       "y": 0.87,
+       "lo": 0.33,
+       "hi": 1.53
+      },
+      {
+       "x": "15% leaky proposals",
+       "y": 2.53,
+       "lo": 1.6,
+       "hi": 3.47
+      },
+      {
+       "x": "30% leaky proposals",
+       "y": 3.6,
+       "lo": 2.73,
+       "hi": 4.47
+      }
+     ]
+    },
+    {
+     "name": "Review catch 0.8",
+     "points": [
+      {
+       "x": "5% leaky proposals",
+       "y": 0.13,
+       "lo": 0.0,
+       "hi": 0.33
+      },
+      {
+       "x": "15% leaky proposals",
+       "y": 0.73,
+       "lo": 0.33,
+       "hi": 1.2
+      },
+      {
+       "x": "30% leaky proposals",
+       "y": 0.8,
+       "lo": 0.47,
+       "hi": 1.13
+      }
+     ]
+    },
+    {
+     "name": "Review catch 1.0",
+     "points": [
+      {
+       "x": "5% leaky proposals",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "15% leaky proposals",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "30% leaky proposals",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 15 seeds, mock LLM review with a set catch rate, 95% CIs"
+  },
+  {
+   "id": "rrsi-noise-floor-drift",
+   "method": "RRSI",
+   "type": "line",
+   "title": "The S* noise floor stops a slow slide of cheaper, slightly worse edits",
+   "takeaway": "Offered 40 rounds of cheaper but slightly harmful edits, RRSI's floor at the best-so-far score minus delta limits the true loss to -2.5 pts (about 1.6 delta); a floor at the current score slides -13.2 pts and no floor -30.4. Keep-if-better slides least (-0.7) because it never admits a lower measured score.",
+   "source": "results/rrsi/e4_noise_floor.json",
+   "x": {
+    "label": "Round",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "True evolve score (fraction solved)",
+    "min": 0.1,
+    "max": 0.5,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Floor at S* - delta (RRSI)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.467
+      },
+      {
+       "x": 1,
+       "y": 0.463
+      },
+      {
+       "x": 2,
+       "y": 0.458
+      },
+      {
+       "x": 3,
+       "y": 0.457
+      },
+      {
+       "x": 4,
+       "y": 0.456
+      },
+      {
+       "x": 5,
+       "y": 0.453
+      },
+      {
+       "x": 6,
+       "y": 0.452
+      },
+      {
+       "x": 7,
+       "y": 0.452
+      },
+      {
+       "x": 8,
+       "y": 0.452
+      },
+      {
+       "x": 9,
+       "y": 0.452
+      },
+      {
+       "x": 10,
+       "y": 0.451
+      },
+      {
+       "x": 11,
+       "y": 0.451
+      },
+      {
+       "x": 12,
+       "y": 0.451
+      },
+      {
+       "x": 13,
+       "y": 0.45
+      },
+      {
+       "x": 14,
+       "y": 0.45
+      },
+      {
+       "x": 15,
+       "y": 0.449
+      },
+      {
+       "x": 16,
+       "y": 0.448
+      },
+      {
+       "x": 17,
+       "y": 0.448
+      },
+      {
+       "x": 18,
+       "y": 0.448
+      },
+      {
+       "x": 19,
+       "y": 0.447
+      },
+      {
+       "x": 20,
+       "y": 0.447
+      },
+      {
+       "x": 21,
+       "y": 0.447
+      },
+      {
+       "x": 22,
+       "y": 0.447
+      },
+      {
+       "x": 23,
+       "y": 0.447
+      },
+      {
+       "x": 24,
+       "y": 0.447
+      },
+      {
+       "x": 25,
+       "y": 0.446
+      },
+      {
+       "x": 26,
+       "y": 0.446
+      },
+      {
+       "x": 27,
+       "y": 0.446
+      },
+      {
+       "x": 28,
+       "y": 0.446
+      },
+      {
+       "x": 29,
+       "y": 0.445
+      },
+      {
+       "x": 30,
+       "y": 0.445
+      },
+      {
+       "x": 31,
+       "y": 0.445
+      },
+      {
+       "x": 32,
+       "y": 0.444
+      },
+      {
+       "x": 33,
+       "y": 0.443
+      },
+      {
+       "x": 34,
+       "y": 0.443
+      },
+      {
+       "x": 35,
+       "y": 0.443
+      },
+      {
+       "x": 36,
+       "y": 0.443
+      },
+      {
+       "x": 37,
+       "y": 0.443
+      },
+      {
+       "x": 38,
+       "y": 0.442
+      },
+      {
+       "x": 39,
+       "y": 0.442
+      },
+      {
+       "x": 40,
+       "y": 0.442
+      }
+     ]
+    },
+    {
+     "name": "Floor at S_t - delta",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.467
+      },
+      {
+       "x": 1,
+       "y": 0.459
+      },
+      {
+       "x": 2,
+       "y": 0.453
+      },
+      {
+       "x": 3,
+       "y": 0.451
+      },
+      {
+       "x": 4,
+       "y": 0.444
+      },
+      {
+       "x": 5,
+       "y": 0.443
+      },
+      {
+       "x": 6,
+       "y": 0.44
+      },
+      {
+       "x": 7,
+       "y": 0.437
+      },
+      {
+       "x": 8,
+       "y": 0.435
+      },
+      {
+       "x": 9,
+       "y": 0.43
+      },
+      {
+       "x": 10,
+       "y": 0.425
+      },
+      {
+       "x": 11,
+       "y": 0.422
+      },
+      {
+       "x": 12,
+       "y": 0.418
+      },
+      {
+       "x": 13,
+       "y": 0.418
+      },
+      {
+       "x": 14,
+       "y": 0.414
+      },
+      {
+       "x": 15,
+       "y": 0.413
+      },
+      {
+       "x": 16,
+       "y": 0.411
+      },
+      {
+       "x": 17,
+       "y": 0.409
+      },
+      {
+       "x": 18,
+       "y": 0.406
+      },
+      {
+       "x": 19,
+       "y": 0.403
+      },
+      {
+       "x": 20,
+       "y": 0.401
+      },
+      {
+       "x": 21,
+       "y": 0.4
+      },
+      {
+       "x": 22,
+       "y": 0.396
+      },
+      {
+       "x": 23,
+       "y": 0.394
+      },
+      {
+       "x": 24,
+       "y": 0.389
+      },
+      {
+       "x": 25,
+       "y": 0.387
+      },
+      {
+       "x": 26,
+       "y": 0.386
+      },
+      {
+       "x": 27,
+       "y": 0.382
+      },
+      {
+       "x": 28,
+       "y": 0.379
+      },
+      {
+       "x": 29,
+       "y": 0.375
+      },
+      {
+       "x": 30,
+       "y": 0.373
+      },
+      {
+       "x": 31,
+       "y": 0.369
+      },
+      {
+       "x": 32,
+       "y": 0.365
+      },
+      {
+       "x": 33,
+       "y": 0.362
+      },
+      {
+       "x": 34,
+       "y": 0.357
+      },
+      {
+       "x": 35,
+       "y": 0.353
+      },
+      {
+       "x": 36,
+       "y": 0.35
+      },
+      {
+       "x": 37,
+       "y": 0.346
+      },
+      {
+       "x": 38,
+       "y": 0.342
+      },
+      {
+       "x": 39,
+       "y": 0.338
+      },
+      {
+       "x": 40,
+       "y": 0.335
+      }
+     ]
+    },
+    {
+     "name": "No floor",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.467
+      },
+      {
+       "x": 1,
+       "y": 0.449
+      },
+      {
+       "x": 2,
+       "y": 0.436
+      },
+      {
+       "x": 3,
+       "y": 0.421
+      },
+      {
+       "x": 4,
+       "y": 0.404
+      },
+      {
+       "x": 5,
+       "y": 0.389
+      },
+      {
+       "x": 6,
+       "y": 0.376
+      },
+      {
+       "x": 7,
+       "y": 0.36
+      },
+      {
+       "x": 8,
+       "y": 0.342
+      },
+      {
+       "x": 9,
+       "y": 0.329
+      },
+      {
+       "x": 10,
+       "y": 0.315
+      },
+      {
+       "x": 11,
+       "y": 0.298
+      },
+      {
+       "x": 12,
+       "y": 0.282
+      },
+      {
+       "x": 13,
+       "y": 0.267
+      },
+      {
+       "x": 14,
+       "y": 0.256
+      },
+      {
+       "x": 15,
+       "y": 0.243
+      },
+      {
+       "x": 16,
+       "y": 0.229
+      },
+      {
+       "x": 17,
+       "y": 0.22
+      },
+      {
+       "x": 18,
+       "y": 0.211
+      },
+      {
+       "x": 19,
+       "y": 0.202
+      },
+      {
+       "x": 20,
+       "y": 0.193
+      },
+      {
+       "x": 21,
+       "y": 0.183
+      },
+      {
+       "x": 22,
+       "y": 0.176
+      },
+      {
+       "x": 23,
+       "y": 0.173
+      },
+      {
+       "x": 24,
+       "y": 0.168
+      },
+      {
+       "x": 25,
+       "y": 0.167
+      },
+      {
+       "x": 26,
+       "y": 0.166
+      },
+      {
+       "x": 27,
+       "y": 0.165
+      },
+      {
+       "x": 28,
+       "y": 0.165
+      },
+      {
+       "x": 29,
+       "y": 0.165
+      },
+      {
+       "x": 30,
+       "y": 0.164
+      },
+      {
+       "x": 31,
+       "y": 0.164
+      },
+      {
+       "x": 32,
+       "y": 0.163
+      },
+      {
+       "x": 33,
+       "y": 0.163
+      },
+      {
+       "x": 34,
+       "y": 0.163
+      },
+      {
+       "x": 35,
+       "y": 0.163
+      },
+      {
+       "x": 36,
+       "y": 0.163
+      },
+      {
+       "x": 37,
+       "y": 0.163
+      },
+      {
+       "x": 38,
+       "y": 0.162
+      },
+      {
+       "x": 39,
+       "y": 0.162
+      },
+      {
+       "x": 40,
+       "y": 0.162
+      }
+     ]
+    },
+    {
+     "name": "Keep-if-better",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.467
+      },
+      {
+       "x": 1,
+       "y": 0.466
+      },
+      {
+       "x": 2,
+       "y": 0.466
+      },
+      {
+       "x": 3,
+       "y": 0.466
+      },
+      {
+       "x": 4,
+       "y": 0.465
+      },
+      {
+       "x": 5,
+       "y": 0.465
+      },
+      {
+       "x": 6,
+       "y": 0.465
+      },
+      {
+       "x": 7,
+       "y": 0.464
+      },
+      {
+       "x": 8,
+       "y": 0.464
+      },
+      {
+       "x": 9,
+       "y": 0.463
+      },
+      {
+       "x": 10,
+       "y": 0.462
+      },
+      {
+       "x": 11,
+       "y": 0.462
+      },
+      {
+       "x": 12,
+       "y": 0.462
+      },
+      {
+       "x": 13,
+       "y": 0.462
+      },
+      {
+       "x": 14,
+       "y": 0.462
+      },
+      {
+       "x": 15,
+       "y": 0.462
+      },
+      {
+       "x": 16,
+       "y": 0.462
+      },
+      {
+       "x": 17,
+       "y": 0.461
+      },
+      {
+       "x": 18,
+       "y": 0.461
+      },
+      {
+       "x": 19,
+       "y": 0.461
+      },
+      {
+       "x": 20,
+       "y": 0.461
+      },
+      {
+       "x": 21,
+       "y": 0.461
+      },
+      {
+       "x": 22,
+       "y": 0.461
+      },
+      {
+       "x": 23,
+       "y": 0.46
+      },
+      {
+       "x": 24,
+       "y": 0.46
+      },
+      {
+       "x": 25,
+       "y": 0.46
+      },
+      {
+       "x": 26,
+       "y": 0.46
+      },
+      {
+       "x": 27,
+       "y": 0.46
+      },
+      {
+       "x": 28,
+       "y": 0.46
+      },
+      {
+       "x": 29,
+       "y": 0.46
+      },
+      {
+       "x": 30,
+       "y": 0.46
+      },
+      {
+       "x": 31,
+       "y": 0.46
+      },
+      {
+       "x": 32,
+       "y": 0.46
+      },
+      {
+       "x": 33,
+       "y": 0.46
+      },
+      {
+       "x": 34,
+       "y": 0.46
+      },
+      {
+       "x": 35,
+       "y": 0.46
+      },
+      {
+       "x": 36,
+       "y": 0.46
+      },
+      {
+       "x": 37,
+       "y": 0.46
+      },
+      {
+       "x": 38,
+       "y": 0.46
+      },
+      {
+       "x": 39,
+       "y": 0.46
+      },
+      {
+       "x": 40,
+       "y": 0.46
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; drift world, mean of 20 seeds"
+  },
+  {
+   "id": "rrsi-lucky-nulls",
+   "method": "RRSI",
+   "type": "interval",
+   "title": "RRSI keeps fewer lucky null edits than keep-if-better, not rarely",
+   "takeaway": "Of evaluated zero-effect edits that cost a few tokens, RRSI keeps 6.8% [6.2, 7.5] vs 10.4% [9.4, 11.4] for keep-if-better (paired -3.5 pts). Every rule misses the preregistered 5% bound, so 'lucky candidates are not kept' reproduces only partially.",
+   "source": "results/rrsi/e4c_costly_nulls.json",
+   "x": {
+    "label": "Keep rule",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Share of evaluated null edits kept",
+    "min": 0,
+    "max": 0.12,
+    "lowerIsBetter": true,
+    "format": ".1%"
+   },
+   "series": [
+    {
+     "name": "Kept-null rate",
+     "points": [
+      {
+       "x": "RRSI, bootstrap delta (default)",
+       "y": 0.0684,
+       "lo": 0.0616,
+       "hi": 0.0754
+      },
+      {
+       "x": "RRSI, repeat R=5 delta",
+       "y": 0.0684,
+       "lo": 0.0622,
+       "hi": 0.0749
+      },
+      {
+       "x": "RRSI, coding rule (w_s=0)",
+       "y": 0.0645,
+       "lo": 0.0572,
+       "hi": 0.0717
+      },
+      {
+       "x": "Keep-if-better",
+       "y": 0.1038,
+       "lo": 0.0936,
+       "hi": 0.1138
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.05,
+     "label": "preregistered 5% bound"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 100 worlds, 95% CIs over worlds"
+  },
+  {
+   "id": "rrsi-cost-beta-sweep",
+   "method": "RRSI",
+   "type": "scatter",
+   "title": "Token price of the final harness across cost-rule slopes (beta1)",
+   "takeaway": "Making each point of gain buy more tokens (beta1 0 to 40) moves the final harness from 1.28x to 3.47x H_0's tokens and OOD from +6.2 to +17.4 pts, but not monotonically (beta1 80: 2.94x). Dropping the complexity term entirely costs 6.24x for the same OOD (+17.5); unregularized (not shown) reaches 71.5x with OOD -2.8.",
+   "source": "results/rrsi/e5_cost_rule.json",
+   "x": {
+    "label": "Final harness tokens per trial (x H_0)",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "OOD gain over H_0 (percentage points)",
+    "format": "+.1f"
+   },
+   "series": [
+    {
+     "name": "Cost rule on, beta1 sweep",
+     "points": [
+      {
+       "x": 1.28,
+       "y": 6.2,
+       "lo": 4.8,
+       "hi": 7.6,
+       "label": "beta1=0"
+      },
+      {
+       "x": 1.84,
+       "y": 14.5,
+       "lo": 12.2,
+       "hi": 16.7,
+       "label": "beta1=5"
+      },
+      {
+       "x": 1.83,
+       "y": 14.5,
+       "lo": 12.7,
+       "hi": 16.3,
+       "label": "beta1=10"
+      },
+      {
+       "x": 2.61,
+       "y": 15.1,
+       "lo": 13.1,
+       "hi": 17.2,
+       "label": "beta1=20"
+      },
+      {
+       "x": 3.47,
+       "y": 17.4,
+       "lo": 15.4,
+       "hi": 19.4,
+       "label": "beta1=40"
+      },
+      {
+       "x": 2.94,
+       "y": 15.8,
+       "lo": 13.6,
+       "hi": 18.1,
+       "label": "beta1=80"
+      },
+      {
+       "x": 3.11,
+       "y": 16.1,
+       "lo": 14.0,
+       "hi": 18.2,
+       "label": "beta1=160"
+      }
+     ]
+    },
+    {
+     "name": "Cost rule off above band",
+     "points": [
+      {
+       "x": 3.52,
+       "y": 17.3,
+       "lo": 15.8,
+       "hi": 18.9
+      }
+     ]
+    },
+    {
+     "name": "No complexity term (w_c=0)",
+     "points": [
+      {
+       "x": 6.24,
+       "y": 17.5,
+       "lo": 15.7,
+       "hi": 19.3
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; 50 seeds, 95% CIs on OOD"
+  },
+  {
+   "id": "rrsi-cost-rule-powered",
+   "method": "RRSI",
+   "type": "interval",
+   "title": "Complexity term: lighter harness, small transfer loss at 1,200 worlds",
+   "takeaway": "Across 1,200 worlds the complexity term cuts final-harness tokens by 4.9x H_0 [4.5, 5.4] and 6.6 mechanisms, but OOD drops 1.7 pts [-2.2, -1.1], missing the 1-pt non-inferiority margin. The claim 'lighter harness with equal or better OOD' did NOT reproduce (the first 50 worlds alone gave -0.1).",
+   "source": "results/rrsi/e5b_cost_rule_power.json",
+   "x": {
+    "label": "Score (on - off)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Paired difference, complexity term on - off (pts)",
+    "format": "+.1f"
+   },
+   "series": [
+    {
+     "name": "On - off",
+     "points": [
+      {
+       "x": "True evolve gain",
+       "y": -2.5,
+       "lo": -2.9,
+       "hi": -2.1
+      },
+      {
+       "x": "Held-out gain",
+       "y": -2.2,
+       "lo": -2.7,
+       "hi": -1.8
+      },
+      {
+       "x": "OOD gain",
+       "y": -1.7,
+       "lo": -2.2,
+       "hi": -1.1
+      },
+      {
+       "x": "Unseen gain (held-out + OOD)",
+       "y": -1.9,
+       "lo": -2.4,
+       "hi": -1.5
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no difference"
+    },
+    {
+     "axis": "y",
+     "value": -1,
+     "label": "1-pt non-inferiority margin"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; paired over 1,200 worlds, 95% CIs"
+  },
+  {
+   "id": "rrsi-live-critic",
+   "method": "RRSI",
+   "type": "stacked",
+   "title": "Live Haiku critic on 24 diffs: every leak out, 3 good edits too",
+   "takeaway": "The real critic (id precheck, then the code's review prompt on Haiku) rejected all 12 leaky diffs (2 at the precheck) but accepted only 9 of 12 generic ones, rejecting an answer-format line, a normalization fix and a number parser. That misses the preregistered 10/12 bar, so 'generic improvements pass' reproduced only partially.",
+   "source": "results/rrsi/e14_live_critic.json",
+   "x": {
+    "label": "Diff set",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Diffs (count)",
+    "min": 0,
+    "max": 12,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Rejected by precheck",
+     "points": [
+      {
+       "x": "Leaky diffs (12)",
+       "y": 2
+      },
+      {
+       "x": "Generic diffs (12)",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Rejected by LLM review",
+     "points": [
+      {
+       "x": "Leaky diffs (12)",
+       "y": 10
+      },
+      {
+       "x": "Generic diffs (12)",
+       "y": 3
+      }
+     ]
+    },
+    {
+     "name": "Accepted",
+     "points": [
+      {
+       "x": "Leaky diffs (12)",
+       "y": 0
+      },
+      {
+       "x": "Generic diffs (12)",
+       "y": 9
+      }
+     ]
+    }
+   ],
+   "note": "one live run (Claude Haiku, $0.43) on AgentQA diffs; a small labelled set, not a benchmark"
+  },
+  {
+   "id": "rrsi-delta-calibration",
+   "method": "RRSI",
+   "type": "bar",
+   "title": "How often an unchanged harness clears the z=2 noise floor (k=2)",
+   "takeaway": "With the reference calibrate() at its default k=2, an unchanged harness clears delta only 90.8% (HarnessWorld) and 91.1% (AgentQA) of the time, not the ~97.5% claimed: CONTRADICTED. The small-sample correction restores 97.1% / 97.3%; two repeated evaluations give 88.2% / 91.0%.",
+   "source": "results/rrsi/e10b_reference_calibration.json",
+   "x": {
+    "label": "How delta is estimated",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Unchanged harness clears the floor (one-sided)",
+    "min": 0.8,
+    "max": 1,
+    "format": ".1%"
+   },
+   "series": [
+    {
+     "name": "HarnessWorld",
+     "points": [
+      {
+       "x": "Reference bootstrap (code default)",
+       "y": 0.908
+      },
+      {
+       "x": "Bootstrap + sqrt(k/(k-1)) fix",
+       "y": 0.971
+      },
+      {
+       "x": "Repeated evals, R=2",
+       "y": 0.882
+      },
+      {
+       "x": "Repeated evals, R=5",
+       "y": 0.95
+      }
+     ]
+    },
+    {
+     "name": "AgentQA",
+     "points": [
+      {
+       "x": "Reference bootstrap (code default)",
+       "y": 0.911
+      },
+      {
+       "x": "Bootstrap + sqrt(k/(k-1)) fix",
+       "y": 0.973
+      },
+      {
+       "x": "Repeated evals, R=2",
+       "y": 0.91
+      },
+      {
+       "x": "Repeated evals, R=5",
+       "y": 0.955
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.977,
+     "label": "z=2 target, Phi(2) = 97.7%"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; reference code be50316, 100 calibrations per setting"
+  }
+ ]
+}

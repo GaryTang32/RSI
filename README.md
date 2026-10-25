@@ -11,7 +11,7 @@ Point them at your prompts, agent harness or training script, and keep only the 
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C159-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">61 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -58,6 +58,10 @@ excludes zero. Details, intervals and every candidate are in [`demo/`](demo/READ
 These are small task sets (6-12 tasks per split), so read them as demonstrations rather than benchmarks. The hard
 Meta-Harness gains are large but not significant, and its best harness copied practice answers into its prompts; the
 demo page measures what that leak was worth.
+
+**More charts:** [`demo/gallery.html`](demo/gallery.html) has 61 interactive charts covering the live runs, the shared core,
+every method's experiments and the verification work. Each chart says what its numbers show, including claims that did not
+reproduce. Open it in a browser; it is one self-contained file.
 
 ## Quick start
 
