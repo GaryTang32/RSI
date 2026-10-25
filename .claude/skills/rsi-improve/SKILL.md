@@ -71,7 +71,7 @@ Check the method's requirements before running it:
 |---|---|---|---|
 | rrsi | every candidate on the whole evolve split; an analyst condenses the failures | enough evolve tasks for a stable score, a measured delta | most expensive per round; may keep nothing |
 | metaharness | every candidate on the whole evolve split (`trials` seeds, default 1); the proposer reads all past code, scores and raw traces | a strong coding-agent proposer (pass `proposer_kind="agent"` when `cache_dir` is set), rich `Execution.trace` text, disk for every candidate | no keep rule: every valid candidate is kept and the best is the top-score Pareto point on evolve from one seed; nothing blocks hard-coded answers unless `leakage_screen=True`: check it on holdout/ood |
-| gepa | a minibatch of `minibatch_size` (default 3) evolve tasks; full validation only after acceptance | named text components, grader feedback that says *why* | edits text only; a 3-task gate is noisy on small task sets |
+| gepa | the parent and one rewritten child (one module, round-robin) on the same minibatch of `minibatch_size` (default 3) evolve tasks; only a child whose minibatch score strictly improves is scored on all of `val` (D_pareto) and joins the pool | named text components, a separate non-empty `val` split, grader feedback that says *why* | edits text only; the keep rule is a strict `>` on 3 single draws with no noise band (`acceptance="noise_margin"` adds one); every accepted child stays in the pool; `res.best` is the argmax of `val` means, so judge it on sealed splits |
 | autoresearch | only the metric of the last run plus the results table | one editable file, one locked metric, a fixed budget per run | the default strict rule keeps lucky changes: prefer a noise-aware keep rule |
 | solpi | capability and token metrics per environment family | several task families, token/cost metering | only cuts cost; never makes the agent better |
 | dream | replays candidate search policies over recorded search trees (no new model calls) | a many-attempt search problem, an agent (`llm_propose`) and optionally `llm_develop` | the winner depends on objective details; replay cannot show new discoveries |
@@ -79,6 +79,8 @@ Check the method's requirements before running it:
 
 A keep rule that accepts any gain accepts an unchanged artifact about half the time under model noise
 (measured here: ~46% strict vs ~9% with the noise band), so always compare gains with delta from step 3.
+GEPA's keep rule is the paper's [Alg. 1 l.15-16]: keep the child iff its average score on the parent's minibatch is higher
+(`sum(after) > sum(before)`, ties reject). Pass `acceptance="noise_margin", noise_margin=delta` to apply the noise band.
 
 ## 5. Run with a trace
 
