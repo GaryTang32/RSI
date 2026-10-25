@@ -40,7 +40,7 @@ Upstream setup, done by the agent "with the user" [program.md:7-19]:
 Rules [program.md:25-37]: edit only `train.py` ("Everything is fair game"); do not modify `prepare.py`, the `evaluate_bpb`
 harness ("the ground truth metric"), or install packages beyond `pyproject.toml`. The goal is "the lowest val_bpb"; the code
 must run without crashing and "finish within the time budget". The lock on `prepare.py` is an instruction only.
-Requirements: one NVIDIA GPU (tested on H100), the agent run "with all permissions disabled" [README:23, 44].
+Requirements: one NVIDIA GPU (tested on H100), the agent is started in the repo "(and disable all permissions)" [README:23, 44].
 
 **The baseline** [program.md:39, 84]: "Your very first run should always be to establish the baseline, so you will run the
 training script as is"; it is logged as a `keep` row with description `baseline`. Upstream measures no noise and repeats
@@ -149,7 +149,7 @@ There is no per-task inner loop: the unit is **one training run = one scalar**.
 | noise measurement | none upstream; 5 re-runs suggested [spec 9.4, inferred] | `noise_runs = 0` | only gate rules (`rrsi`, core gates) use delta |
 | crash fixes | fix if easy, give up "after more than a few attempts" [program.md:101,110] | `max_fix_attempts=3`, `crash_fix="agent"` | 3 is rsi's reading (spec 9.4) |
 | seed | `train.py` pins 42 [train.py:458] | `run_seed = 0` | framework-owned, passed to every run |
-| confirm and go | setup step 6, before the baseline [program.md:17] | `confirm = None` | rsi: opt-in, called after the baseline |
+| confirm and go | setup step 6, before the baseline [program.md:16-19] | `confirm = None` | rsi: opt-in, called after the baseline |
 | NEVER STOP | prompt rule [program.md:112]; `spawn.sh` nudge every 120 s [b11d6f2] | `max_consecutive_invalid = None` | the loop owns the turns; "think harder" note after empty turns |
 | agent history | not specified upstream | `history_rows = None` (whole `results.tsv`) | |
 | grader lock | instruction only [program.md:29-31] | `mode = "hardened"` (alt. `"faithful"`) | see 6 |
@@ -222,7 +222,7 @@ Audit verdicts (65 claims: 51 reproduced, 10 partial, 1 not reproduced, 2 not te
   Transfer to another machine (O17): gains shrink, no sign flips. ~12/h (P29/O2): 11.98/h scripted at 300 s, 9.59/h with a
   live agent. Backend port (O18) and SLURM (O19) only simulated.
 - **Not reproduced:** P28, "if you run out of ideas, think harder (combine near-misses, radical changes)": at a replayed stuck
-  point the live agent made only single-knob tweaks. Consistent with [Rehearse §4.4, §5.2]: a memoryless judge's selective
+  point the live agent made only single-knob tweaks. Consistent with [Rehearse §1, §4.4, §5.1-5.2]: a memoryless judge's selective
   accuracy falls from 82.8% to 56.9% once three or more successes accumulate, and a vanilla nanochat loop (30-min budget,
   5 seeds) "largely plateaus" past experiment 50. Seed the idea pool through `program.md`.
 - **Not testable here:** H100-scale numbers (O7, O16a) and the MLX night 2.667 -> 1.808.
