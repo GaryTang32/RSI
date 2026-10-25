@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rsi"
 version = "0.1.0"
-description = "Recursive Self-Improvement toolkit: autoresearch, RRSI, Dream-RSI, EvoMap, GEPA, Meta-Harness and SoL-Pi mechanisms on one shared propose-measure-keep core."
+description = "Self-improving AI that has to prove it improved: seven recursive self-improvement methods (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap) on one guarded propose-measure-keep loop."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

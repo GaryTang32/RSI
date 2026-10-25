@@ -1,7 +1,8 @@
-<h1 align="center">RSI</h1>
+<h1 align="center">RSI: self-improving AI that has to prove it improved</h1>
 
-<p align="center"><b>Seven recursive self-improvement methods on one tested core.<br>
-Point them at your prompts, agent harness or training script, and keep only the changes that hold up on tasks the loop never saw.</b></p>
+<p align="center"><b>Seven recursive self-improvement methods from recent papers, rebuilt on one guarded loop.<br>
+Point any of them at your prompts, agent harness or training script. Keep only the changes that survive<br>
+a locked grader, a measured noise band and tasks the loop never saw.</b></p>
 
 <p align="center">
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
@@ -13,11 +14,33 @@ Point them at your prompts, agent harness or training script, and keep only the 
 
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">61 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
+<table align="center">
+<tr>
+<td align="center"><h3>46% → 4%</h3>how often a do-nothing change gets "kept":<br>naive keep-if-better vs a corrected noise band</td>
+<td align="center"><h3>0.50 → 0.94</h3>held-out accuracy after Claude Haiku<br>rewrote its own agent harness with RRSI, for $2.76</td>
+<td align="center"><h3>475</h3>paper claims re-tested against<br>code and experiments, failures included</td>
+</tr>
+</table>
+
 ---
 
-Self-improving loops are easy to fool. A model that grades its own edits, a score that moves by luck, or a prompt
-that memorises the practice answers will all look like progress. `rsi` runs every method through the same guarded
-loop, so a gain has to survive four checks before it counts:
+## Why this exists
+
+Every few weeks a new paper shows a model improving its own prompts, harness or training code. Those gains are
+hard to trust. The model grades its own work, a score moves by luck, or a prompt quietly memorises the practice answers,
+and all three look exactly like progress. A plain "keep it if the score went up" loop accepts an unchanged artifact
+almost half the time.
+
+**The goal of this repo is to make self-improvement measurable.** That means three things:
+
+1. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
+   their papers on a shared core, so they can be compared on the same tasks, grader and budget.
+2. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
+   held-out tasks, so you can tell a real gain from luck or memorisation.
+3. **Your problem, this afternoon.** Wrap your task in a `Domain`, pick a method, and get an audit trail of every
+   round: what was proposed, what actually changed, and why it was kept.
+
+The shared core gives every method the same safeguards:
 
 ```mermaid
 flowchart LR
@@ -34,7 +57,8 @@ flowchart LR
 
 - **Locked grader.** The artifact being improved cannot touch how it is scored.
 - **Noise band.** A gain must beat the spread of re-scoring the unchanged artifact. Without one, a strict
-  "keep if better" rule keeps an unchanged artifact about half the time (45-52% in our runs).
+  "keep if better" rule keeps an unchanged artifact about half the time (45-52% in our runs). RRSI applies it by
+  default, GEPA and autoresearch take it as an option, and Meta-Harness, as in its paper, keeps every candidate.
 - **Sealed splits.** The loop's evaluator refuses `holdout`, `ood` and `test` tasks. Only write-only monitors and your
   final transfer report read them.
 - **Audit trail.** Every round records the proposal, the actual diff, the per-task scores and the keep decision.
