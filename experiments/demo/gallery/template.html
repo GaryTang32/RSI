@@ -17,7 +17,7 @@
   --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --chip: #262624;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --neutral: #5c5b57; color-scheme: dark }
-body { background: var(--page); color: var(--ink); font: 15px/1.5 var(--font); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 var(--font); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--page); }
 .wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
