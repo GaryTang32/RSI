@@ -13,3 +13,4 @@ demo/runs/.live_writer.lock
 /validation/
 /demo/runs/
 /demo/*.json
+/docs/skill-claims/corpus/
