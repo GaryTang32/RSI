@@ -1195,7 +1195,7 @@
    "type": "stacked",
    "source": "repo:docs/reports/claims-summary.md",
    "title": "475 paper claims, each tested against the code and experiments",
-   "takeaway": "257 reproduce and 79 partly; 123 need frontier models, GPUs or the original benchmarks. Only 7 do not reproduce and 9 are contradicted, mostly by the paper's own data or code.",
+   "takeaway": "256 reproduce and 81 partly; 124 need frontier models, GPUs or the original benchmarks. Only 7 do not reproduce and 7 are contradicted, mostly by the paper's own data or code.",
    "x": {
     "label": "Method",
     "kind": "category"
@@ -1215,7 +1215,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 43
+       "y": 42
       },
       {
        "x": "Autoresearch",
@@ -1248,7 +1248,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 12
+       "y": 14
       },
       {
        "x": "Autoresearch",
@@ -1281,7 +1281,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 24
+       "y": 25
       },
       {
        "x": "Autoresearch",
@@ -1314,7 +1314,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 4
+       "y": 2
       },
       {
        "x": "Autoresearch",
@@ -1648,7 +1648,7 @@
    "type": "bar",
    "source": "repo:docs/skill-claims/ledger",
    "title": "Skill claims corrected to match their source",
-   "takeaway": "74 of 2,159 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 in SKILL.md's shared sections (spend caps, noise band, sealed splits).",
+   "takeaway": "77 of 2,159 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
    "x": {
     "label": "Skill file",
     "kind": "category"
@@ -1684,7 +1684,7 @@
       },
       {
        "x": "Dream-RSI",
-       "y": 8
+       "y": 11
       },
       {
        "x": "EvoMap",

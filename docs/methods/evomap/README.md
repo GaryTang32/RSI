@@ -2,7 +2,7 @@
 
 Agents distil what worked into small, content-hashed strategy genes and share them through a hub; a faithful naive hub and a verified SafeHub.
 
-**Source:** EvoMap Evolver / GEP, Strategy Genes (arXiv 2604.15097), Behind EvoMap (arXiv 2605.25815).
+**Source:** EvoMap Evolver / GEP, Strategy Genes (arXiv 2604.15097v4), Behind EvoMap (arXiv 2605.25815v4), LongWoF-Bench (arXiv 2608.23200v4); papers read in full and citations refreshed on 25 Oct 2026.
 
 ## Read in this order
 
