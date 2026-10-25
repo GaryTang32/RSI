@@ -65,6 +65,21 @@ or `rsi methods`. Rules of thumb (from the overview):
 - one script + one metric + fixed budget -> **autoresearch**; tokens are the bottleneck -> **solpi**;
 - long many-attempt searches -> **dream**; many agents sharing lessons -> **evomap** (SafeHub only).
 
+Check the method's requirements before running it:
+
+| Method | Looks at each iteration | Needs | Watch out for |
+|---|---|---|---|
+| rrsi | every candidate on the whole evolve split; an analyst condenses the failures | enough evolve tasks for a stable score, a measured delta | most expensive per round; may keep nothing |
+| metaharness | every candidate on the whole evolve split; the proposer reads all past code, scores and traces | a strong proposer model, disk for every candidate | no keep rule: check the chosen harness on holdout/ood |
+| gepa | a minibatch of `minibatch_size` (default 3) evolve tasks; full validation only after acceptance | named text components, grader feedback that says *why* | edits text only; a 3-task gate is noisy on small task sets |
+| autoresearch | only the metric of the last run plus the results table | one editable file, one locked metric, a fixed budget per run | the default strict rule keeps lucky changes: prefer a noise-aware keep rule |
+| solpi | capability and token metrics per environment family | several task families, token/cost metering | only cuts cost; never makes the agent better |
+| dream | replays candidate search policies over recorded search trees (no new model calls) | a many-attempt search problem, an agent (`llm_propose`) and optionally `llm_develop` | the winner depends on objective details; replay cannot show new discoveries |
+| evomap | one agent's own recent outcomes; genes from the hub | `rsi.improve` runs ONE agent: sharing needs the hub/population code; SafeHub needs hidden tasks | the naive hub trusts self-reported gains |
+
+A keep rule that accepts any gain accepts an unchanged artifact about half the time under model noise
+(measured here: ~46% strict vs ~9% with the noise band), so always compare gains with delta from step 3.
+
 ## 5. Run with a trace
 
 ```python
@@ -74,6 +89,16 @@ res = rsi.improve(dom, seed, method="rrsi", llm_task=llm, llm_propose="claude:ha
 res.save()
 report = rsi.transfer_report(dom, llm, {"seed": res.baseline, "rrsi": res.best}, k=2)   # the ONLY place sealed splits are read
 ```
+Before a live run:
+- **Cap the spend yourself.** Method configs have no dollar cap: check `llm.meter.total().cost_usd` between
+  rounds or runs and stop at your limit.
+- **Always pass `cache_dir`** (or wrap the model in `CachedLLM`): an interrupted run resumes from the cache,
+  and a finished run can be replayed offline at $0 to check it.
+- Live models need the `claude` CLI or an API key; usage limits can stop a long run part-way, so prefer
+  several small runs that each save their results over one long run.
+- In an ephemeral environment (e.g. a cloud container), push work and results as you go; anything only on
+  local disk can disappear when the environment is reclaimed.
+
 CLI equivalent: `python -m rsi.cli improve --method rrsi --problem my_problem.py:make --llm claude:haiku --out runs/x --set T=8`
 (`make()` returns `(domain, seed_artifact)`).
 
@@ -89,7 +114,10 @@ decision, state, and shadow held-out scores (never shown to the loop). Check tha
 ## 7. Report honestly
 
 Give baseline vs final on evolve, holdout and ood with the paired CI from `transfer_report`, tokens per task,
-dollars, and what the kept edits actually were. Say so when a gain is within the noise band.
+dollars, and what the kept edits actually were. Say so when a gain is within the noise band. With 6-8
+tasks per split the interval is usually too wide to rank methods: say that too, and do not compare
+absolute scores across runs (the same seed harness can score differently run to run); compare gains
+over a baseline re-scored in the same run.
 
 References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
 implementation notes, claims audit), `experiments/<method>/example_new_problem.py`.
