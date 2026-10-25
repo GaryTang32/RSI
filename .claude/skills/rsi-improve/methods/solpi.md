@@ -1,12 +1,11 @@
 # SoL-Pi: end-to-end methodology (for `rsi.improve(..., method="solpi")`)
 
-Sources, in order: `docs/methods/metaharness-solpi/paper-spec.md` Part B (spec), then `README.md`,
-`implementation.md`, `claims-audit-solpi.md`, and `rsi/solpi/{driver,research,gate}.py`. Read this first:
-**the SoL-Pi paper text (arXiv 2609.20519) was never read by the spec authors** (arXiv was blocked). Every
-paper-level fact carries a secondary tag: `[blog:<section>]` (authors' project page), `[ye-blog]` (co-first
-author), `[sec:<id>]` (third-party summaries, unverified), `[code:SoL-Pi/...]` (the NVlabs release). The
-research orchestration and prompts are NOT public, so the rsi protocol below is a reconstruction (spec §B3.1,
-marked `[inferred]` there). Anything the spec does not state is "not specified in the paper".
+Sources: `docs/methods/metaharness-solpi/paper-spec.md` Part B (spec), `implementation.md`,
+`claims-audit-solpi.md`, `rsi/solpi/{driver,research,gate}.py`. **The spec authors never read the SoL-Pi paper
+text (arXiv 2609.20519)**; paper-level facts carry secondary tags: `[blog:<section>]` (authors' project page),
+`[ye-blog]` (co-first author), `[sec:<id>]` (unverified summaries), `[code:SoL-Pi/...]` (NVlabs release). The
+research orchestration and prompts are unpublished, so the rsi protocol is a reconstruction (spec §B3.1).
+Anything the spec does not state is "not specified in the paper".
 
 ## 1. In one paragraph
 
@@ -37,11 +36,10 @@ Before round 1 you need (rsi names in brackets):
 - **Metrics predeclared before search** (paper: capability metrics with tolerances; efficiency metrics such as
   bill, tokens, turns, cost per response; no numeric tolerance published, spec §B4.1). Only the ObservationPack
   sweep gates are known: 10% bill saving, -2% quality. [`Config.gate = GateSpec(...)`, digest recorded]
-- **Cost metering**: the domain must return `Execution.tokens`, `cost_usd`, `steps`, and score in `[0,1]`. If
-  tokens and cost are 0 for everyone, no efficiency gain can ever be seen and nothing is accepted.
-- **Models**: paper searched with GPT-5.6 Sol xhigh and applied the stack to Opus 5 with no further search
-  [blog:Results][ye-blog]. rsi: `llm_task` (the frozen agent) and `llm_propose` (implementer/proposer LLM, or
-  `proposer=` for your own).
+- **Cost metering**: the domain must return `Execution.tokens`, `cost_usd`, `steps`. If they are 0, no
+  efficiency gain is ever seen and nothing is accepted.
+- **Models**: paper searched on GPT-5.6 Sol xhigh, then applied the stack to Opus 5 without further search
+  [blog:Results][ye-blog]. rsi: `llm_task` (frozen agent), `llm_propose` (or your own `proposer=`).
 - **Measured first** (every driver round): the base artifact on the screen = all `evolve` tasks x `k` seeds ->
   `Metrics` (aggregate and per family: score, solved, tokens, cost, steps, eta = cost/score), then the Oracle
   Analysis on those trajectories. The paper's Oracle Analysis "estimates opportunity from existing
@@ -51,8 +49,8 @@ Before round 1 you need (rsi names in brackets):
 
 ## 3. Round by round
 
-SoL-Pi has no single "round" in the paper. Two levels: a **lineage iteration** (paper stages 01-06) and the
-**research pass** (breadth, lineages in parallel, held-out, composition). rsi "driver round" = one research pass.
+The paper has no single "round": a **lineage iteration** (stages 01-06) sits inside a **research pass**
+(breadth, lineages, held-out, composition). rsi "driver round" = one research pass.
 
 **One research pass** (`AutoResearchDriver.run_round`; spec §B3.1):
 1. Evaluate base on the screen; compute oracle estimate per idea; keep the top `n_lineages` ideas (paper: ideas
@@ -111,8 +109,8 @@ best = compose(base, survivors)            # = res.best; 'ood' is never read by 
 ```
 
 **What changes across rounds.** No annealing, schedule or temperature. The base metrics and the gate
-(digest-frozen) never change within a pass. Per lineage only its own history grows; lineages never share state.
-The gate always compares with the ORIGINAL base, not with the previous iteration. Mechanisms are gated one at
+(digest-frozen) never change within a pass. Per lineage only its own history grows; lineages
+share nothing. The gate always compares with the ORIGINAL base, not the previous iteration. Mechanisms are gated one at
 a time, "so the small losses it permits can accumulate once mechanisms combine" [blog:Capability floors].
 
 **Stopping rule.** Per lineage: `max_iters` (default 4), proposer exhausted (variant grid used up), or first
@@ -226,7 +224,7 @@ survivors, conflicts, dropped, base vs composed screen metrics). Also `rounds.js
   confirm the holdout rejected them; a trick that is lossless on the screen will pass the gate.
 - Composition loss: the composed stack was never run on `holdout`; run `transfer_report` and consider
   `validate_composition=True`.
-- Zero tokens/cost in `Execution`, no `holdout` split, or all oracle estimates equal (ranking is arbitrary).
+- Zero tokens/cost in `Execution`, no `holdout` split, or equal oracle estimates (arbitrary ranking).
 - Small screen (8 tasks per family was not enough in our sims). No survivors is normal (paper: ~1 in 40);
   `res.best` is then the seed. Gains can vanish on another model (mechanisms fire less on Opus 5): test on the
   model you deploy. Do not tune the gate on holdout results between runs without refreshing the split.
