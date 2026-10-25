@@ -11,7 +11,7 @@ paper is silent. Package facts come from `rsi/rrsi/` and `docs/methods/rrsi/{imp
 
 Xia et al. (Google Cloud AI Research, with Stanford, WashU and UNC) evolve the **harness** `H` (prompts, control flow,
 config, output plumbing, context management, tools, skills, memory, sub-agents) around a **frozen** policy [paper §2,
-§3.1]. Plain harness evolution reuses one finite evolve set both to suggest edits and to judge them, so it overfits:
+§3.1, Eq. 12]. Plain harness evolution reuses one finite evolve set both to suggest edits and to judge them, so it overfits:
 large evolve gains that shrink or vanish out of distribution, and a costlier harness [paper §1, Table 1, Table 2].
 RRSI keeps the edit space open and regularizes how the search moves [paper §3.1]. Proposal side [paper §3.2]: an
 annealed cap `b_t` on independently attributable edits per candidate (`L0`-style), an edit history with measured score
@@ -37,7 +37,7 @@ Needed before round 1:
 - **Models**: frozen policy (Claude Opus 4.8; Gemini 3.5 Flash in a robustness run); proposer, analyst and critic all
   Claude Opus 4.8 [paper §4.1, §4.3 Table 3]. Here: `llm_task`, `llm_propose`; `llm_critic` defaults to `llm_propose`.
   `analyst="auto"` uses an LLM analyst only if `llm_analyst` is passed, else a deterministic heuristic clusterer over
-  grader feedback (rsi choice); `analyst="llm"` uses `llm_propose` for the code's three-lens analyst and digesters.
+  grader feedback (rsi choice); `analyst="llm"` uses `llm_analyst` (else `llm_propose`) for the code's three-lens analyst and digesters.
 - **Domain extras** (optional): component vocabulary `K` (paper: 9 components, Eq. 12) and `K_str` = {client_tool,
   skill, memory, subagent} [paper Eq. 15] (`components`/`structural_components`), `critic_patterns`, non-compensatory
   `guards` [paper Alg. 2 l.13], `regression_threshold(k)`, a constitution (SKILL.md/PATTERNS.md [code]; generic here).
@@ -50,8 +50,8 @@ Measured first [paper §D.1, §3.3]:
 2. Here: `frontier` incumbent = `H_0`, `S* = S_0`, `trajectory = [S_0]`; history gets a `BASELINE` row.
 3. **Noise band `delta`**: the paper evaluates the unchanged base harness repeatedly before evolution and takes `delta`
    as "how far apart two evaluations of the same harness land": 3 passes (coding), 60 criterion verdicts (workspace);
-   on EngDesign the first percentile of a null built by half-splitting the base evaluation's own trials. Results
-   0.017 / 0.004 / 0.020; never tuned [paper §3.3, §D.1, §E.1, Table 5]. Here: `Config.delta` if set (presets carry
+   5 passes on EngDesign, read off the first percentile of a null built by half-splitting the base evaluation's own
+   trials. Results 0.017 / 0.004 / 0.020; never tuned [paper §3.3, §D.1, §E.1, Table 5]. Here: `Config.delta` if set (presets carry
    the paper's values), else `delta = delta_z * sd_null` (rsi/code estimator): one base evaluation -> within-task
    bootstrap of trials (2000 reps, seed 7), `sd_null = sqrt(2) * se`; `calibration_repeats = R >= 2` -> `sd_null` from
    the R base scores. `delta == 0` (k=1, deterministic grader) writes a warning: set `delta` yourself.
@@ -161,7 +161,7 @@ the code's values for what the paper leaves out); `"overview"` is the blog's ill
 | stall window | 3 [paper Table 5] | `w = 3` | |
 | reserved slots | `m_draft` 1 [paper Table 5] | `m_draft = 1` | |
 | noise band | 0.017 / 0.004 / 0.020, measured on repeated base evals [paper Table 5, §E.1] | `delta = None` (calibrate), `delta_z = 2.0`, `calibration_repeats = 1`, `calibration_reps = 2000`, `calibration_seed = 7` | rsi/code estimator; set `delta`, `calibration_repeats >= 2` or `bootstrap_small_k_correction=True` |
-| cost rule | `beta0` 0.10/0.10/0.15; `beta1` 44.5/35.4/24.4 [paper Table 5] (25%/25%/10% tokens per pass or per 100 criteria [paper §E.1]) | `beta0 = 0.10`, `beta1 = 40.0` | relative `dC`; `beta0 = 0.10` = 10% growth free; `beta1 = 40` is an rsi choice |
+| cost rule | `beta0` 0.10/0.10/0.15; `beta1` 44.5/35.4/24.4 [paper Table 5] (25%/25%/10% tokens per pass or per 100 criteria [paper §E.1]) | `beta0 = 0.10`, `beta1 = 40.0` | relative `dC`; `beta0 = 0.10` = 10% growth free; `beta1 = 40` is the code's `RRSIConfig` default |
 | in-band weights | coding `w_s = 0`, others `w_s > 0`; values not given (§D.3 says Table 5 lists them; it does not) [paper §D.3] | `w_s = 100.0`, `w_c = 15.0`, `w_n = 0.5` | code: `w_s` 0/1414/244, `w_c` 15/15/2, `w_n` 0.5 [code]; `w_s` scales with S units |
 | prune window | 4 / 4 / 5 [paper Table 5] | `n_prune = 4` | |
 | critic repairs | not specified in the paper; 5 [code] | `repair_rounds = 5` | |
@@ -203,8 +203,9 @@ From `implementation.md` §5, `claims-audit.md` and a check against the paper te
   `proposer_numbers`, `tie_eps`, `heldout_monitor`, `component_aliases`.
 - **Ablations**: `RegularizerSwitches` (`full`, `no_proposal`, `no_acceptance`, `none`, `budget_only`, `selector_only`).
   The paper names the arms (unregularized, w/o proposal, w/o acceptance [paper Table 2]) and defines unregularized
-  evolution only abstractly (unconstrained `P_0`, keep the argmax of candidates and incumbent [paper Eq. 2]); which
-  mechanism (critic, pruning) sits in which arm is not specified in the paper. Our `none` keeps a `b_max` cap.
+  evolution only abstractly (unconstrained `P_0`, keep the argmax of candidates and incumbent [paper Eq. 2]); it puts
+  the critic and pruning on the selection side [paper abstract, §3.3] but does not list each arm's contents. Our `none`
+  keeps a `b_max` cap.
 
 Audit verdicts that matter (116 claims: 63 reproduced, 13 partial, 1 not reproduced, 36 not testable, 3 contradicted):
 - Mechanism functions (Alg. 2, `normalize`, `render`, `edit_budget`, `stall_flag`, T/g/B, nu, `aggregate`, repeated-run
@@ -245,7 +246,7 @@ Fields users usually set: `T`, `k`, `m`, `delta` (or `calibration_repeats >= 2` 
 `res.best` is the final incumbent `H_T`. `res.trajectory` has one row per round (S, C, S*, b_t, sigma_t, winner, decisions).
 Give the domain `components`/`structural_components` and sealed `holdout`/`ood`; without them the audit is weaker.
 
-**Audit with `python -m rsi.cli inspect runs/x`** (`TRACE.md`, `audit.json`, `trace.jsonl`):
+**Audit with `python -m rsi.cli inspect runs/x`** (renders `trace.jsonl` to `TRACE.md`; `rsi.rrsi.audit.audit_run` writes `audit.json`):
 - `noise`: delta, method, warnings (delta = 0?). `round_start`: `b_t`, `sigma_t` arithmetic, `T_t`/`U_t`, reserved
   variants, `B_t`; recompute `b_t` by hand.
 - `proposal`: declared edits vs actual diff (count <= `b_t`; one declared edit hiding several changes is a red flag);
