@@ -1,6 +1,6 @@
 ---
 name: rsi-improve
-description: Apply a recursive self-improvement loop (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap from the `rsi` package in this repo) to a user's own problem - improving an agent harness, prompts, a training/solver script, a search strategy, or a shared library of strategies - with a locked grader, held-out evaluation and a per-iteration audit trail. Use when the user wants to "self-improve", "evolve", "optimize prompts/harness automatically", "run autoresearch", or apply any of these techniques to new tasks.
+description: Apply a recursive self-improvement loop (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap, Harness² from the `rsi` package in this repo) to a user's own problem - improving an agent harness, prompts, a training/solver script, a search strategy, or a shared library of strategies, including open-ended tasks with no grader - with a locked grader, held-out evaluation and a per-iteration audit trail. Use when the user wants to "self-improve", "evolve", "optimize prompts/harness automatically", "run autoresearch", or apply any of these techniques to new tasks.
 ---
 
 # Applying `rsi` to a new problem
@@ -67,7 +67,9 @@ or `rsi methods`. Rules of thumb (from the overview):
 - prompts only, few rollouts -> **gepa**; harness edits that must transfer -> **rrsi** (safe default);
 - one script + one metric + fixed budget -> **autoresearch**; tokens are the bottleneck -> **solpi**;
 - long many-attempt searches -> **dream**; many agents sharing lessons -> **evomap** (share via SafeHub or consumer quarantine;
-  the naive hub reproduces EvoMap's self-reported promotion).
+  the naive hub reproduces EvoMap's self-reported promotion);
+- no grader or labels at all (open-ended tasks) -> **harness2**: it improves the harness per task without ever reading a score,
+  so you still need labelled tasks to evaluate it afterwards (`posthoc_report`, outside the loop).
 
 Check the method's requirements before running it:
 
@@ -80,6 +82,7 @@ Check the method's requirements before running it:
 | solpi | each candidate on the whole evolve split x k (aggregate gate; per family with `gate=GateSpec(mode="per_family")`); the proposer sees the idea, the base and only its own lineage's rollouts (2 tasks/family) and history; each frozen candidate runs once on holdout | `n_lineages=10` ideas x `max_iters=4` steps, one mechanism and one candidate per step (prompt-level); composition drops conflicting edits | several task families with executable verifiers, token/cost metering, a sealed non-empty holdout split (the run stops with an error without one, unless you pass `firewall=False`), ideally `Trial.meta["oracle"]` | optimises tokens/cost under a capability floor, not score (paper: full stack kept 93.7-94.3% of Pi's score); default k=1 has no noise band; mechanisms gated one at a time can lose quality once composed |
 | dream | one live search per round with the deployed policy (up to `branch_count x (refine_count+1)` agent + grader calls on the decision split), then M policy versions (incumbent + M-1 developer rewrites) replayed over every recorded search tree with no agent or grader calls; deploys the argmax of mean replay score (incumbent kept on ties) | live: up to `branch_count x (refine_count+1)` attempts (20 by default); dreaming: `M-1=3` policy rewrites, size unlimited | a many-attempt search problem with a larger-is-better score, an agent (`llm_propose`) and optionally `llm_develop` (defaults to the agent, as in the paper) | the keep rule picks the search policy, not the program: the best program is replaced on any strict gain with no noise band, so confirm it with `transfer_report`; the default `objective="v2"` is the paper's Eq. 1 (`"eq1"` keeps v1's formula, which the recorded experiments used); replay cannot show new discoveries |
 | evomap | one evolve task per cycle: its signals, the selected gene, one solve (plus retries of a newly written gene) and the memory graph of recent outcomes; hub assets only if a hub is attached (none by default) | one task per cycle; the harness is frozen, so the change is the injected gene: one reused gene, or at most one newly written after a failed attempt (plus a hub reference if a hub is attached) | tasks with public signals (family, `meta["signals"]`) and headroom; `llm_propose` to write genes; validation commands the policy allows; sharing needs a hub + `PopulationSimulator` (`rsi.improve` runs one agent) | the keep rule is per task, not a measured gain: faithful keeps a gene when its own validation commands pass (Behind EvoMap: 84% of genes have none or trivial ones); safe adds non-vacuous validation and own task solved (3 paired seeds for a new gene); the naive hub promotes self-reported assets |
+| harness2 | per task: k reference rollouts of the seed harness H0 and one rollout per INV/DOM candidate, read as behavioural contrasts; never a score, label or grader | per task: a composed harness used for that task only (each task restarts from H0), R = 4k rollouts and P = 3k improver sessions; across tasks only the per-domain library grows, when the reflector writes a supported lesson | a `Domain` with `rollout()` and a seed harness, a task model and an improver model, tasks arriving one at a time; labelled tasks only to evaluate afterwards (`posthoc_report`) | no correctness signal, so the selector can prefer a weaker deliverable; candidates share the model's biases; any grader phrase or `"score":` key in a trajectory stops the run (`GraderLeak`); `res.best` is H0, so do not run `transfer_report` |
 
 A keep rule that accepts any gain accepts an unchanged artifact about half the time under model noise
 (measured here: strict keeps 45-52% of null re-evaluations; a noise band 8-9% at k=2, 4-6% at k>=3, 2-4% with the
@@ -145,6 +148,7 @@ departs from the paper. Each cites its paper directly (RRSI: arXiv 2609.24972v3;
 - autoresearch: [methods/autoresearch.md](methods/autoresearch.md)
 - Dream-RSI: [methods/dream.md](methods/dream.md)
 - EvoMap: [methods/evomap.md](methods/evomap.md)
+- Harness²: [methods/harness2.md](methods/harness2.md)
 
 References: `docs/guide/RSI-101.md` (concepts), `docs/methods/<slug>/README.md` (per-method hub: paper spec,
 implementation notes, claims audit), `experiments/{gepa,autoresearch,dream-rsi,metaharness-solpi}/example_new_problem.py`

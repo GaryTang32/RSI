@@ -178,9 +178,12 @@ How to read it:
 
 ## 6. Limitations
 
-- **Offline evidence only.** No live run has been made. The mock improver knows the simulator's levers; a real
-  improver must find them from trajectories, and a real selector may prefer weaker deliverables (the paper's own
-  failure analysis [spec §7.4]).
+- **Small live evidence.** One live comparison (`experiments/harness2/compare_live.py` + `merge_live.py`, Claude Haiku
+  as agent, improver and selector, 20 AgentQA holdout+ood tasks, 26 Oct 2026; results and LLM cache on the data branch
+  under `results/harness2/`): seed 0.50, k = 1 0.70 (+0.20 [0.00, +0.45]), k = 3 0.95 (+0.45 [+0.25, +0.65]), k = 3 − k = 1
+  +0.25 [+0.10, +0.45]; $13.83 in all. One domain and 20 tasks; best-of-n was not run live. Offline, the mock improver
+  knows the simulator's levers; a real selector may prefer weaker deliverables (the paper's own failure analysis
+  [spec §7.4]).
 - **Long prompts.** Because sessions are single completions, every editor/composer prompt holds the whole evidence
   (k base trajectories, 2k candidates with diffs, the domain library). With a real model, prompt size grows with k
   and with the library (no retrieval, no consolidation, as in the reference [spec §10.13]).

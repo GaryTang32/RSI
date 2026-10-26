@@ -13,7 +13,7 @@ Method reference for `rsi.improve(..., method="harness2")`. **Sources** (as reco
 ## 1. In one paragraph
 
 Harness² adapts an agent's harness *at test time*, task by task, when there is no ground truth: tasks arrive as a
-stream "with no ground-truth answers, verifiers or labelled validation feedback", each starts from the same common
+stream "without ground-truth answers or labeled validation feedback", each starts from the same common
 harness H0, the current task may be re-run within a bounded budget, completed tasks are never replayed and future ones
 are unavailable [paper §2.1, App. A.1]. Per task (task-level recursion) it runs **Propose-Probe-Compose**: k reference
 rollouts of H0 show how the harness behaves ("not whether its deliverable is correct"); scoped editors propose an INV
@@ -87,8 +87,8 @@ Stage details:
    STAGE_ATTEMPTS = 2].
 4. **Composer**: MERGE (expected when an INV and a DOM edit each earn their place), ADOPT ONE WHOLESALE, or KEEP_BASE
    (sequential: keep the current checkpoint; also REPRODUCE an earlier checkpoint). "Every rule that bound the
-   proposers binds you ... merging an edit launders it"; an edit tied to a rollout that produced nothing is UNSAFE
-   [code prompts.aggregate]. The decision is the resulting tree, not a parsed label [code recursion._accept_tree].
+   candidate proposers binds you ... merging an edit launders it"; an edit tied to a rollout that produced nothing is
+   UNSAFE [code prompts.aggregate]. The decision is the resulting tree, not a parsed label [code recursion._accept_tree].
 5. **Selection** (k > 1): ids `A, B, ...` from a seeded shuffle; the selector sees `task.md`, `source/` and each
    candidate's complete deliverable, no harness, trajectory, diff, notes, library or score; criteria DELIVERY,
    CONFORMANCE, FIDELITY, INTERNAL CONSISTENCY, OPERATIONAL FITNESS, FINISH; output `<why>` + a ```` ```choice ````
@@ -111,7 +111,8 @@ convergence test or score-based stop.
 - Every rollout of the task uses the same model, substrate and timeout, a fresh environment and a different harness
   only; rollouts never carry a score (`RunView` "never carries a score") [paper App. D.1; code spec.RunView].
 - Behavioural contrast is not computed: it is laid out as files (candidate diff vs baseline, its rollout, the base
-  rollouts, the editors' notes) and read by the composer; it "does not verify task correctness" [paper §2.2.1 Probe].
+  rollouts, the editors' notes) and read by the composer; it informs composition "rather than verify task correctness"
+  [paper §2.2.1 Probe].
 - Recorded per task: every stage's notes, tree, attempts, fallback; every rollout; the selection (pool, dropped
   non-delivering finals, anonymous ids, why); the reflection; the library entry. Final deliverable: the submitted
   re-execution. Benchmark evaluation: means over three runs, each a shuffled task order [paper §3.1].
@@ -128,7 +129,7 @@ convergence test or score-based stop.
 | stream order | sorted, or seeded shuffles per domain [code schedule.stream_order] | `order="sorted"`, `seed=0` | `"shuffle"` for the paper's runs |
 | always-on cap | 24,000 chars OpenCode, 8,000 Codex [code OPENCODE_SURFACE] | `max_text_chars=24000` | applies to all non-code text |
 | observation clip | 50,000 per observation, min 10,000 [code context.py] | `obs_trunc=50000` | per rendered file here |
-| improver model | Claude Opus 4.8, high effort [paper §3.1]; code default = solver model | `llm_propose` (default `llm_task`) | |
+| improver model | Claude Opus 4.8, high effort [paper §3.1, App. D.2]; code default = solver model | `llm_propose` (default `llm_task`) | |
 | rollout caps | 200 turns, 3,600 s [paper App. D.1] | the domain's (AgentQA: 12 model calls, 8 tool calls, 60 s own time) | |
 | prompt slots | `BenchPrompts` validated against measurement words [code spec.BenchPrompts] | `prompts={}`; `work` defaults to `domain.harness_brief()` | same validation |
 | targets in tasks | adapter strips criteria / answer keys [code spec.BenchmarkAdapter] | `strip_targets=True` | |
@@ -157,11 +158,13 @@ convergence test or score-based stop.
   **Not ported**: the `tts` prompt pack, `autotrigger`, the OpenCode/Codex substrates and benchmark adapters, the
   w/o-scoping and w/o-composition ablations (not in the reference core either [spec §10.6]), and the ReasoningBank /
   Harness Scaling / Meta-Harness baselines; Best-of-k is `rsi.harness2.best_of_n` with the same selector.
-- **Offline evidence only** (`experiments/harness2/compare_sim.py`, AgentQA, 43-task holdout+ood stream, 3
+- **Offline evidence** (`experiments/harness2/compare_sim.py`, AgentQA, 43-task holdout+ood stream, 3
   shuffled seeds, `SimModel` + `MockImprover`): seed 0.488; Harness² k = 1 0.597 (+0.109 [+0.008, +0.209] paired vs
   seed); k = 3 0.643 (+0.155 [+0.054, +0.256]); Best-of-4 and Best-of-12 with the same selector no better than seed;
   the library ablation has no effect offline because the mock editors find the same edits every task. The mocks know
-  the simulator's levers, so this checks the wiring, not live performance. No paper number is reproduced here.
+  the simulator's levers, so this checks the wiring, not live performance. No paper number is reproduced here. A live
+  Claude Haiku comparison (`compare_live.py` + `merge_live.py`) keeps its results on the data branch; they are not
+  quoted here.
 
 ## 7. Applying it with rsi
 
@@ -169,7 +172,7 @@ convergence test or score-based stop.
 import rsi
 from rsi.harness2 import Config
 res = rsi.improve(dom, method="harness2", llm_task="claude:haiku", llm_propose="claude:haiku",
-                  config=Config(k=1, split="test", order="shuffle", seed=0, max_usd=10.0,
+                  config=Config(k=1, order="shuffle", seed=0, max_usd=10.0,   # streams holdout, else test, else ood
                                 prompts={"work": "Answer short questions with one exact value."}),
                   out_dir="runs/h2", cache_dir=".rsi_cache/h2")
 res.meta["deliverables"]     # what to ship: one submitted output per task

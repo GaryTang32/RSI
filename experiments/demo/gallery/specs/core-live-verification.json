@@ -278,7 +278,7 @@
    "type": "stacked",
    "source": "repo:rsi",
    "title": "Where the package's lines go",
-   "takeaway": "43,009 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
+   "takeaway": "45,233 Python lines, 82% of them code. The test problems in domains/ are the largest part (10,006); the shared core is only 2,398, each method builds its own loop on it.",
    "x": {
     "label": "Subpackage of rsi/",
     "kind": "category"
@@ -294,7 +294,7 @@
      "points": [
       {
        "x": "domains",
-       "y": 8159
+       "y": 8180
       },
       {
        "x": "evomap",
@@ -326,11 +326,15 @@
       },
       {
        "x": "core",
-       "y": 1839
+       "y": 1843
+      },
+      {
+       "x": "harness2",
+       "y": 1697
       },
       {
        "x": "top level",
-       "y": 461
+       "y": 485
       }
      ]
     },
@@ -339,7 +343,7 @@
      "points": [
       {
        "x": "domains",
-       "y": 444
+       "y": 447
       },
       {
        "x": "evomap",
@@ -371,11 +375,15 @@
       },
       {
        "x": "core",
-       "y": 126
+       "y": 128
+      },
+      {
+       "x": "harness2",
+       "y": 128
       },
       {
        "x": "top level",
-       "y": 19
+       "y": 22
       }
      ]
     },
@@ -384,7 +392,7 @@
      "points": [
       {
        "x": "domains",
-       "y": 1376
+       "y": 1379
       },
       {
        "x": "evomap",
@@ -416,11 +424,15 @@
       },
       {
        "x": "core",
-       "y": 425
+       "y": 427
+      },
+      {
+       "x": "harness2",
+       "y": 335
       },
       {
        "x": "top level",
-       "y": 94
+       "y": 96
       }
      ]
     }
@@ -1480,8 +1492,8 @@
    "method": "Verification",
    "type": "stacked",
    "source": "repo:docs/skill-claims/ledger",
-   "title": "2,176 skill claims, each backed by a verbatim quote",
-   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 781 from the code.",
+   "title": "2,410 skill claims, each backed by a verbatim quote",
+   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 942 from the papers, 847 from the code.",
    "x": {
     "label": "Skill file",
     "kind": "category"
@@ -1524,6 +1536,10 @@
        "y": 180
       },
       {
+       "x": "Harness²",
+       "y": 75
+      },
+      {
        "x": "SKILL.md",
        "y": 0
       }
@@ -1559,6 +1575,10 @@
       {
        "x": "EvoMap",
        "y": 141
+      },
+      {
+       "x": "Harness²",
+       "y": 66
       },
       {
        "x": "SKILL.md",
@@ -1598,6 +1618,10 @@
        "y": 72
       },
       {
+       "x": "Harness²",
+       "y": 81
+      },
+      {
        "x": "SKILL.md",
        "y": 3
       }
@@ -1635,6 +1659,10 @@
        "y": 22
       },
       {
+       "x": "Harness²",
+       "y": 12
+      },
+      {
        "x": "SKILL.md",
        "y": 0
       }
@@ -1648,7 +1676,7 @@
    "type": "bar",
    "source": "repo:docs/skill-claims/ledger",
    "title": "Skill claims corrected to match their source",
-   "takeaway": "77 of 2,176 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
+   "takeaway": "82 of 2,410 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
    "x": {
     "label": "Skill file",
     "kind": "category"
@@ -1689,6 +1717,10 @@
       {
        "x": "EvoMap",
        "y": 12
+      },
+      {
+       "x": "Harness²",
+       "y": 5
       },
       {
        "x": "SKILL.md",

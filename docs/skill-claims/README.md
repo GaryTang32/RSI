@@ -1,7 +1,7 @@
 # Skill claim ledger
 
 Evidence for every factual claim in `.claude/skills/rsi-improve/` (SKILL.md and `methods/*.md`), checked on 25-26 Oct 2026:
-2,176 claims, all matching the skill, 77 of them corrected in the skill during the check (3 on 25 Oct 2026, when the
+2,410 claims, all matching the skill, 82 of them corrected in the skill during the check (3 on 25 Oct 2026, when the
 Dream-RSI docs moved to the paper's v2).
 
 | Ledger | Claims | Corrected | Sources |
@@ -14,6 +14,7 @@ Dream-RSI docs moved to the paper's v2).
 | `autoresearch` | 269 | 8 | karpathy/autoresearch @228791fb; Rehearse, arXiv 2607.27687 |
 | `dream` | 303 | 11 | arXiv 2609.14858v2 with Listings 1-2 (v1 where tagged) |
 | `evomap` | 415 | 12 | arXiv 2604.15097v4, 2605.25815v4, 2608.23200v4; GEP spec 1.14.0; Evolver README; evomap.ai skill.md and wiki |
+| `harness2` | 234 | 5 | arXiv 2610.14224v1; the reference code as quoted in `docs/methods/harness2/paper-spec.md` |
 
 One JSON object per line in `ledger/<method>.jsonl`:
 

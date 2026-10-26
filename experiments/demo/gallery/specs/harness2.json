@@ -1,0 +1,327 @@
+{
+ "charts": [
+  {
+   "id": "h2-live-accuracy",
+   "method": "Harness²",
+   "type": "bar",
+   "source": "results/harness2/compare_live.json",
+   "title": "Harness² with no grader: accuracy on a 20-task stream",
+   "takeaway": "Without reading any score, Harness² lifted accuracy from 0.50 (the seed harness) to 0.70 at k = 1 and 0.95 at k = 3.",
+   "x": {
+    "label": "Arm",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Accuracy (graded after the loop)",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Accuracy",
+     "points": [
+      {
+       "x": "Seed harness (1 rollout)",
+       "y": 0.5,
+       "lo": 0.3,
+       "hi": 0.75
+      },
+      {
+       "x": "Harness² k = 1 (4 rollouts)",
+       "y": 0.7,
+       "lo": 0.5,
+       "hi": 0.9
+      },
+      {
+       "x": "Harness² k = 3 (12 rollouts)",
+       "y": 0.95,
+       "lo": 0.85,
+       "hi": 1.0
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent, improver and selector; 20 AgentQA held-out/OOD tasks; labels used only after the loop; bars show 95% bootstrap CIs over tasks"
+  },
+  {
+   "id": "h2-live-gains",
+   "method": "Harness²",
+   "type": "interval",
+   "source": "results/harness2/compare_live.json",
+   "title": "Paired gains: Harness² vs the seed, and k = 3 vs k = 1",
+   "takeaway": "k = 3's gain over the seed (+0.45) and over k = 1 (+0.25) exclude zero; k = 1's +0.20 reaches zero.",
+   "x": {
+    "label": "Comparison",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Accuracy difference (paired by task)",
+    "format": "+.2f"
+   },
+   "series": [
+    {
+     "name": "Difference",
+     "points": [
+      {
+       "x": "k = 1 - seed",
+       "y": 0.2,
+       "lo": -0.001,
+       "hi": 0.45
+      },
+      {
+       "x": "k = 3 - seed",
+       "y": 0.45,
+       "lo": 0.25,
+       "hi": 0.65
+      },
+      {
+       "x": "k = 3 - k = 1",
+       "y": 0.25,
+       "lo": 0.1,
+       "hi": 0.45
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no change"
+    }
+   ],
+   "note": "Claude Haiku as agent, improver and selector; 20 AgentQA held-out/OOD tasks; labels used only after the loop"
+  },
+  {
+   "id": "h2-live-task-fates",
+   "method": "Harness²",
+   "type": "stacked",
+   "source": "results/harness2/compare_live.json",
+   "title": "What each arm did to the seed's answers, task by task",
+   "takeaway": "k = 3 fixed 9 of the seed's 10 failures and broke 0 of its successes; k = 1 fixed 5 and broke 1.",
+   "x": {
+    "label": "Arm",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Tasks",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Still correct",
+     "points": [
+      {
+       "x": "Harness² k = 1",
+       "y": 9
+      },
+      {
+       "x": "Harness² k = 3",
+       "y": 10
+      }
+     ]
+    },
+    {
+     "name": "Broke",
+     "points": [
+      {
+       "x": "Harness² k = 1",
+       "y": 1
+      },
+      {
+       "x": "Harness² k = 3",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Fixed",
+     "points": [
+      {
+       "x": "Harness² k = 1",
+       "y": 5
+      },
+      {
+       "x": "Harness² k = 3",
+       "y": 9
+      }
+     ]
+    },
+    {
+     "name": "Still wrong",
+     "points": [
+      {
+       "x": "Harness² k = 1",
+       "y": 5
+      },
+      {
+       "x": "Harness² k = 3",
+       "y": 1
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent, improver and selector; 20 AgentQA held-out/OOD tasks; labels used only after the loop"
+  },
+  {
+   "id": "h2-live-families",
+   "method": "Harness²",
+   "type": "bar",
+   "source": "results/harness2/compare_live.json",
+   "title": "Accuracy by task family, seed vs Harness²",
+   "takeaway": "k = 3 brought numeric, lists and strings tasks to 1.00 and number theory from 0.00 to 0.67; dates were already solved.",
+   "x": {
+    "label": "Task family",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Accuracy",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Seed harness",
+     "points": [
+      {
+       "x": "dates (n=3)",
+       "y": 1.0
+      },
+      {
+       "x": "lists (n=4)",
+       "y": 0.5
+      },
+      {
+       "x": "numbertheory (n=3)",
+       "y": 0.0
+      },
+      {
+       "x": "numeric (n=7)",
+       "y": 0.429
+      },
+      {
+       "x": "strings (n=3)",
+       "y": 0.667
+      }
+     ]
+    },
+    {
+     "name": "Harness² k = 1",
+     "points": [
+      {
+       "x": "dates (n=3)",
+       "y": 1.0
+      },
+      {
+       "x": "lists (n=4)",
+       "y": 0.5
+      },
+      {
+       "x": "numbertheory (n=3)",
+       "y": 0.0
+      },
+      {
+       "x": "numeric (n=7)",
+       "y": 0.857
+      },
+      {
+       "x": "strings (n=3)",
+       "y": 1.0
+      }
+     ]
+    },
+    {
+     "name": "Harness² k = 3",
+     "points": [
+      {
+       "x": "dates (n=3)",
+       "y": 1.0
+      },
+      {
+       "x": "lists (n=4)",
+       "y": 1.0
+      },
+      {
+       "x": "numbertheory (n=3)",
+       "y": 0.667
+      },
+      {
+       "x": "numeric (n=7)",
+       "y": 1.0
+      },
+      {
+       "x": "strings (n=3)",
+       "y": 1.0
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent, improver and selector; 20 AgentQA held-out/OOD tasks; labels used only after the loop; 3-7 tasks per family"
+  },
+  {
+   "id": "h2-sim-arms",
+   "method": "Harness²",
+   "type": "bar",
+   "source": "results/harness2/compare_sim.json",
+   "title": "Offline: Harness² vs best-of-n with the same selector, and GEPA",
+   "takeaway": "With the simulated model, Harness² gained (k = 1 0.60, k = 3 0.64 vs seed 0.49) while best-of-4/12 with the same selector did not (0.48, 0.40): extra rollouts alone did not help.",
+   "x": {
+    "label": "Arm",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Accuracy",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Accuracy",
+     "points": [
+      {
+       "x": "Seed",
+       "y": 0.488,
+       "lo": 0.372,
+       "hi": 0.605
+      },
+      {
+       "x": "Harness² k = 1",
+       "y": 0.597,
+       "lo": 0.488,
+       "hi": 0.698
+      },
+      {
+       "x": "Harness² k = 3",
+       "y": 0.643,
+       "lo": 0.535,
+       "hi": 0.752
+      },
+      {
+       "x": "Best-of-4",
+       "y": 0.481,
+       "lo": 0.357,
+       "hi": 0.605
+      },
+      {
+       "x": "Best-of-12",
+       "y": 0.403,
+       "lo": 0.287,
+       "hi": 0.527
+      },
+      {
+       "x": "GEPA (matched calls)",
+       "y": 0.457,
+       "lo": 0.357,
+       "hi": 0.558
+      }
+     ]
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark; the mock improver knows which edits the simulated model rewards; GEPA trains on a separate labelled split"
+  }
+ ]
+}

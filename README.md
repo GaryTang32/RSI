@@ -1,18 +1,18 @@
 <h1 align="center">RSI: Recursive Self-Improvement Agent Skills</h1>
 
 <p align="center"><b>This repo turns recursive self-improvement papers into agent skills.<br>
-Seven methods, each rebuilt from its paper as tested code plus a Claude Code skill, so an agent can apply them<br>
+Eight methods, each rebuilt from its paper as tested code plus a Claude Code skill, so an agent can apply them<br>
 to your prompts, agent harness or training script, and keep only the changes that prove themselves on tasks the loop never saw.</b></p>
 
 <p align="center">
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2e7d4f">
-  <img alt="methods" src="https://img.shields.io/badge/methods-7-6f42c1">
+  <img alt="methods" src="https://img.shields.io/badge/methods-8-6f42c1">
   <img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b">
-  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C176-2f5d8a">
+  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">61 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 <table align="center">
 <tr>
@@ -37,8 +37,8 @@ measurable.** That means four things:
 1. **Papers into skills.** Each paper (for autoresearch, the upstream repo) is read in full and converted into a skill an
    agent can follow: what one round does, what happens to each task, the keep rule, the paper's defaults and where our
    code differs. Every factual claim in the skill is backed by a verbatim quote from the paper or the code, or by a
-   recorded search showing the paper is silent ([2,176 claims checked](docs/skill-claims/README.md)).
-2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
+   recorded search showing the paper is silent ([2,410 claims checked](docs/skill-claims/README.md)).
+2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap and Harness², rebuilt from
    their papers on a shared core, so they can be compared on the same tasks, grader and budget.
 3. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
    held-out tasks, so you can tell a real gain from luck or memorisation.
@@ -88,7 +88,13 @@ These are small task sets (6-12 tasks per split), so read them as demonstrations
 Meta-Harness gains are large but not significant, and its best harness copied practice answers into its prompts; the
 demo page measures what that leak was worth.
 
-**More charts:** [`demo/gallery.html`](demo/gallery.html) has 61 interactive charts covering the live runs, the shared core,
+**Harness² (no grader, no labels in the loop).** On a 20-task stream of AgentQA's held-out and OOD tasks with Claude
+Haiku as agent, improver and selector, accuracy went from 0.50 (the seed harness) to 0.70 at k = 1 (+0.20 [0.00, +0.45])
+and **0.95 at k = 3** (+0.45 [+0.25, +0.65]); k = 3 beat k = 1 by +0.25 [+0.10, +0.45]. Total spend $13.83. k = 3 runs 12
+agent rollouts per task against the seed's 1; a best-of-n baseline with the same selector gained nothing offline but was
+not run live.
+
+**More charts:** [`demo/gallery.html`](demo/gallery.html) has 66 interactive charts covering the live runs, the shared core,
 every method's experiments and the verification work. Each chart says what its numbers show, including claims that did not
 reproduce. Open it in a browser; it is one self-contained file.
 
@@ -126,6 +132,8 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 | **Dream-RSI** [arXiv 2609.14858](https://arxiv.org/abs/2609.14858) | the search strategy itself, as code | the policy that replays best over all recorded searches | long, many-attempt discovery searches |
 | **EvoMap** [arXiv 2604.15097](https://arxiv.org/abs/2604.15097) | a shared library of strategy "genes" | per-task validation, then hub ranking (naive or SafeHub) | many agents sharing what they learn |
 
+| **Harness²** [arXiv 2610.14224](https://arxiv.org/abs/2610.14224) | an agent harness, per task, with no grader or labels | none: probes contrast executions, an anonymised selector picks the deliverable, and an experience library carries lessons to later tasks | open-ended tasks with no grader, labels or validation set |
+
 Not sure? `rsi.recommend(what_changes="prompt", prompts_only=True)` returns a ranked suggestion with its reason.
 
 ## Bring your own problem
@@ -160,7 +168,7 @@ package) written against its paper.
 |---|---|---|
 | [Claims audit](docs/reports/claims-summary.md) | 475 claims from the papers, each tested against our code and experiments | 257 reproduce, 80 partly, 7 do not, 7 contradicted (mostly by the paper's own data or code), 124 need frontier models, GPUs or the original benchmarks |
 | [Step-by-step validation](https://github.com/GaryTang32/RSI/blob/data/validation/README.md) | every method run from its seed, offline and live, every step re-derived by independent auditors | 2,195 of 2,370 steps verified; no keep decision miscomputed |
-| [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,176 of 2,176 match; a script re-checks the quotes |
+| [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,410 of 2,410 match; a script re-checks the quotes |
 | Experiments | multiple seeds per claim, 95% bootstrap intervals | claims that failed are reported as failed |
 
 ## Repository map
@@ -171,6 +179,7 @@ package) written against its paper.
 | RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/rrsi) |
 | Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/dream-rsi) |
 | EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/evomap) |
+| Harness² | [docs](docs/methods/harness2/README.md) | [`rsi/harness2`](rsi/harness2) | [tests](tests/harness2) | [scripts](experiments/harness2) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/harness2) |
 | GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/gepa) |
 | Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/metaharness-solpi) |
 

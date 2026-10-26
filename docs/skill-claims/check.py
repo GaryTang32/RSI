@@ -11,7 +11,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-METHODS = ["general", "rrsi", "metaharness", "solpi", "gepa", "autoresearch", "dream", "evomap"]
+METHODS = ["general", "rrsi", "metaharness", "solpi", "gepa", "autoresearch", "dream", "evomap", "harness2"]
 KINDS = {"paper", "code", "repo-doc", "absent", "skill-ref"}
 TR = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-",
                     "−": "-", " ": " ", " ": " ", " ": " ", "­": "", "`": "'", "′": "'"})
