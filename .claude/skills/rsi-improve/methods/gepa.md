@@ -236,7 +236,7 @@ budget=Budget(max_usd=...))` adds a pre-screen and a dollar cap. `res.best` = be
 - `monitor`: holdout/ood score of each new incumbent. Evolve/val rising while holdout/ood stall = memorizing.
 
 **Method-specific failure modes**:
-- **Noisy 3-example gate**: single stochastic draws, strict `>`, no noise band (none in the paper either). Many false
+- **Noisy 3-example gate**: single stochastic draws, strict `>`, no noise band (none in the paper either; `run` warns). Many false
   accepts and rejects (E5: ~48% false accepts at b=3). Every accepted child stays in the pool and can be a parent.
 - **Winner's curse on the answer**: `res.best` is the argmax of many single-draw `D_pareto` means. Report it on a
   sealed split only; with a small `val` the argmax is noise.

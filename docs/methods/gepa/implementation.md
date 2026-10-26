@@ -606,3 +606,6 @@ All 125 audited steps across the 6 run directories reproduce exactly: every pare
 
 **Claim-audit fix round.** The two open register items (monitor wall time; the E1 AgentQA table) are fixed (§5.17, §4 E1). The three offline runs were re-run from scratch with the fixed code into a scratch directory and re-audited by stage B: trajectories, run logs and audits are byte-identical, and every check and verdict count matches (`validation/gepa/AUDIT.md` §5).
 
+## Noise-band warning (2026-10-26)
+
+`rsi.gepa.run` warns when the acceptance rule has no noise band (anything but `acceptance="noise_margin"` with `noise_margin > 0`): the paper's strict rule on 3 single draws accepts about half of no-op rewrites. The default stays the paper's. Test: `tests/core/test_noise_band_defaults.py`.

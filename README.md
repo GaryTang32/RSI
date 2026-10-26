@@ -9,7 +9,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2e7d4f">
   <img alt="methods" src="https://img.shields.io/badge/methods-7-6f42c1">
   <img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b">
-  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C173-2f5d8a">
+  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C176-2f5d8a">
 </p>
 
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">61 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
@@ -37,7 +37,7 @@ measurable.** That means four things:
 1. **Papers into skills.** Each paper (for autoresearch, the upstream repo) is read in full and converted into a skill an
    agent can follow: what one round does, what happens to each task, the keep rule, the paper's defaults and where our
    code differs. Every factual claim in the skill is backed by a verbatim quote from the paper or the code, or by a
-   recorded search showing the paper is silent ([2,173 claims checked](docs/skill-claims/README.md)).
+   recorded search showing the paper is silent ([2,176 claims checked](docs/skill-claims/README.md)).
 2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
    their papers on a shared core, so they can be compared on the same tasks, grader and budget.
 3. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
@@ -160,7 +160,7 @@ package) written against its paper.
 |---|---|---|
 | [Claims audit](docs/reports/claims-summary.md) | 475 claims from the papers, each tested against our code and experiments | 257 reproduce, 80 partly, 7 do not, 7 contradicted (mostly by the paper's own data or code), 124 need frontier models, GPUs or the original benchmarks |
 | [Step-by-step validation](https://github.com/GaryTang32/RSI/blob/data/validation/README.md) | every method run from its seed, offline and live, every step re-derived by independent auditors | 2,195 of 2,370 steps verified; no keep decision miscomputed |
-| [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,173 of 2,173 match; a script re-checks the quotes |
+| [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,176 of 2,176 match; a script re-checks the quotes |
 | Experiments | multiple seeds per claim, 95% bootstrap intervals | claims that failed are reported as failed |
 
 ## Repository map

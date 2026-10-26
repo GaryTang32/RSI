@@ -1,6 +1,7 @@
 """Public entry points: :func:`run` (Domain + seed Artifact), :func:`optimize` (dicts + metric), :func:`report`."""
 from __future__ import annotations
 
+import warnings
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
@@ -76,6 +77,10 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
         selector=None, monitor=None) -> ImprovementResult:
     """Evolve the text components of ``seed_artifact`` on ``domain``; calling again on ``out_dir`` resumes."""
     cfg = config or Config()
+    if not (cfg.acceptance == "noise_margin" and cfg.noise_margin > 0):
+        warnings.warn("GEPA: the keep rule has no noise band, so a no-op rewrite passes the 3-example minibatch about "
+                      "half the time; pass acceptance='noise_margin', noise_margin=<delta> to require a real gain",
+                      stacklevel=2)
     if adapter is None:
         adapter = DomainAdapter(domain, llm_task, workers=cfg.workers, feedback=cfg.feedback)
     comps = list(components or cfg.components or default_components(domain, seed_artifact))
