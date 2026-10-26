@@ -1,1 +1,0 @@
-{"text": "To find 31720986418951 mod 123, I'll calculate the remainder:\n\n31720986418951 \u00f7 123 = 257886876245 remainder **78**\n\nTherefore: **31720986418951 mod 123 = 78**", "usage": {"calls": 1, "input_tokens": 1296, "output_tokens": 489, "cost_usd": 0.0037409999999999995, "latency_s": 10.873668193817139}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}
