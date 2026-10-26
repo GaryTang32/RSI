@@ -12,7 +12,7 @@ from .evaluator import PolicyReport, ReplayEvaluator, diagnostics
 from .guard import (CheckResult, InProcessRunner, PrefixGuard, SolveOutcome, SubprocessRunner, get_runner,
                     static_check)
 from .loop import Config, DreamRSILoop, as_task, live_manifest, run
-from .objectives import EpisodeResult, Eq1Objective, ParetoSweepObjective
+from .objectives import EpisodeResult, Eq1Objective, HypervolumeObjective, ParetoSweepObjective
 from .policy import (POLICY_FILE, adaptive, code_of, get_params, make_policy, parallel_refine, policy_artifact, rules,
                      set_params, template_code)
 from .policy_api import (BatchError, CellMeta, GridPlan, GridPlanningContext, GuardViolation, LLMDesignedMethod,
@@ -30,7 +30,8 @@ __all__ = [
     "PrefixGuard", "static_check", "CheckResult", "InProcessRunner", "SubprocessRunner", "get_runner", "SolveOutcome",
     "POLICY_FILE", "template_code", "policy_artifact", "code_of", "get_params", "set_params", "make_policy",
     "parallel_refine", "adaptive", "rules",
-    "EpisodeResult", "Eq1Objective", "ParetoSweepObjective", "ReplayEvaluator", "PolicyReport", "diagnostics",
+    "EpisodeResult", "Eq1Objective", "HypervolumeObjective", "ParetoSweepObjective", "ReplayEvaluator", "PolicyReport",
+    "diagnostics",
     "PolicyDeveloper", "LLMPolicyDeveloper", "ParametricMutator", "DevContext", "VersionRecord", "Revision",
     "choose_default_beta", "mock_developer_llm", "DEVELOPER_PROMPT", "FRAMEWORK_NOTES", "developer_prompt",
     "EXPLORATION_PROMPT",

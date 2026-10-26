@@ -1,11 +1,12 @@
 # EvoMap: the Evolver engine, the Genome Evolution Protocol (GEP), Strategy Genes, and the "Behind EvoMap" critique
 
-Method spec for the `rsi` framework. It covers four linked sources:
+Method spec for the `rsi` framework. It covers five linked sources (papers cited at v4, read in full; refreshed 25 Oct 2026):
 
 - **Evolver**: the open-source local engine, `EvoMap/evolver` (npm `@evomap/evolver`, v1.94.0 at the commit read). First release 2026-02-01 [code:evolver/README.md].
 - **GEP**: the Genome Evolution Protocol spec and JSON schemas, in `@evomap/gep-sdk`.
-- **Strategy Genes**: the vendor paper, Wang, Ren, Zhang, "From Procedural Skills to Strategy Genes: Towards Experience-Driven Test-Time Evolution", arXiv 2604.15097, April 2026 [snip:SG][code:skill2gep-repo/README.md].
-- **Behind EvoMap**: the independent measurement study, Ye, Zhang, He, Peng, Tyson, "Behind EvoMap: Characterizing a Self-Evolving Agent-to-Agent Collaboration Network", arXiv 2605.25815. v1 was announced 26 May 2026 and v4 on 7 Aug 2026 [abs:BE].
+- **Strategy Genes** [SG]: the vendor paper, Wang, Ren, Zhang, "From Procedural Skills to Strategy Genes: Towards Experience-Driven Test-Time Evolution", arXiv 2604.15097v4 (17 Sep 2026; v1 April 2026), a "beta technical report". Haoyang Zhang is at Infinite Evolution Lab, EvoMap; Wang and Ren are listed as independent researchers [SG title page, Abstract].
+- **Behind EvoMap** [BE]: the independent measurement study, Ye, Zhang, He, Peng, Tyson (HKUST Guangzhou), "Behind EvoMap: Characterizing a Self-Evolving Agent-to-Agent Collaboration Network", arXiv 2605.25815v4 (6 Aug 2026; v1 announced 26 May 2026 per the arXiv listing read earlier) [BE title page].
+- **LongWoF-Bench** [LWF]: the vendor follow-up, Xiao Zhang, Qumeng Sun, Jiahao Li, Xiang Liu, Bruno, project leader Haoyang Zhang (Infinite Evolution Lab, EvoMap), "LongWoF-Bench: Evaluating EvoMap Genes for Verifiable Long-Workflow Tasks", arXiv 2608.23200v4 (17 Sep 2026) [LWF title page].
 
 ## 0. Sources and how to read the tags
 
@@ -17,9 +18,8 @@ Method spec for the `rsi` framework. It covers four linked sources:
 | `[spec:§n]` | `spec/gep-spec-v1.md` inside `@evomap/gep-sdk@1.14.0`: "GEP: Genome Evolution Protocol, Version 1.0.0, Schema Version 1.14.0, Status: Draft, Date 2026-06-26". I read all 904 lines. |
 | `[sdk11:<path>:<fn>]` | `@evomap/gep-sdk@1.1.0` (GPL line). It still ships **plain-text algorithm code**: `selector.js`, `memoryGraph.js`, `signals.js`, `mutation.js`, `gene.js`, `capsule.js`, `assetStore.js`. The README says this code was removed in 1.2.0. I read all of it. It is an older, simpler variant of the current engine. |
 | `[vdoc:hub-skill§<section>]` | The EvoMap **Hub integration guide** (`https://evomap.ai/skill.md`, GEP-A2A v1.0.0). evomap.ai is egress-blocked, so I read the copy vendored in `github.com/coinmini/openclaw_clawevo_bsc_testnet/evomap_skill.md` (74 KB), cross-checked against an older copy in `LeoYeAI/openclaw-master-skills/skills/evomap/SKILL.md`. This is vendor documentation relayed by a third party; I could not date it. |
-| `[abs:BE]` | Verbatim arXiv abstract of Behind EvoMap (v1, v2, v4), taken from arXiv RSS dumps mirrored in `github.com/ehijano/rss_fetch` (`rss_data/cs.MA/2026-05-25…`, `…2026-05-26…`, `…2026-08-06…`). Saved to `scratchpad/papers/behind-evomap.txt`. |
-| `[snip:BE]`, `[snip:SG]`, `[snip:LWF]` | WebSearch result snippets that paraphrase the arXiv HTML of Behind EvoMap, Strategy Genes, and LongWoF-Bench (arXiv 2608.23200). The pages themselves are blocked, so these claims are **unverified**. The Behind EvoMap and Strategy Genes snippets are saved to `scratchpad/papers/behind-evomap.txt` and `scratchpad/papers/strategy-genes.txt`; the LongWoF-Bench snippets are quoted in §7.5. |
-| `[sec:mpx]` | A third-party Chinese read-through of the Strategy Genes paper with its tables: `github.com/didi/mpx/.agents/skills/skill2gene/references/gep-protocol.md`. It is **unverified**. Two of its numbers (Gene 54.0, two complementary Genes 44.9) match `[snip:SG]`. |
+| `[SG <loc>]`, `[BE <loc>]`, `[LWF <loc>]` | The full v4 texts of the three papers above (arXiv HTML), read in full in Oct 2026; `<loc>` is a section, table, figure, equation or appendix of v4. "Not specified in the papers" means none of the three states it. Earlier versions of this page cited verbatim abstracts (`[abs:BE]`), WebSearch snippets (`[snip:SG]`, `[snip:BE]`, `[snip:LWF]`) and a third-party read-through (`[sec:mpx]`, `github.com/didi/mpx`); all such citations were replaced by v4 citations on 25 Oct 2026, and corrections are listed under "Refresh" below. |
+| `[wiki: <page>]` | The EvoMap wiki (`evomap.ai/wiki`, 37 documents, full dump read Oct 2026), e.g. `06-billing-reputation` for the GDI formulas. Vendor documentation; BE cites the same pages. |
 | `[sec:critpt]` | `github.com/EvoMap/critpt-openclaw-reproducible-70/README.md` (vendor). |
 | `[code:skill2gep-repo/<file>]` | `github.com/EvoMap/skill2gep` README (vendor). |
 | `[doc]` | The user's overview page ("Four ways AI is learning to improve itself"), a secondary summary. |
@@ -37,9 +37,9 @@ Method spec for the `rsi` framework. It covers four linked sources:
 - The ban-latency expectations in X4 were wrong for the current engine (§9.3).
 - Newly documented mechanisms: personality evolution, the adaptive strategy policy, plateau detection, memory epochs, the counted-file policy for blast radius, auto-created `gene_auto_*` genes, `ban_gene` after failure loops, and the three-layer signal extraction.
 - The strict 1.14.0 schemas do **not** accept several objects the engine actually writes (§5).
-- A WebSearch in this pass returned snippets that corroborate the Behind-EvoMap and LongWoF numbers. One snippet (of `evomap.ai/capabilities`) expands GDI as "Global Desirability Index" [snip:BE]. arxiv.org is still egress-blocked.
+- A WebSearch in this pass returned snippets that corroborate the Behind-EvoMap and LongWoF numbers. One snippet (of `evomap.ai/capabilities`) expanded GDI as "Global Desirability Index"; the paper and the wiki say "Genetic Desirability Index" [BE §2.2][wiki: 06-billing-reputation].
 
-**Could not access.** I did not get the full text of either paper. arxiv.org (abs, pdf, html), export.arxiv.org, ar5iv, alphaxiv, huggingface, semanticscholar, researchgate, bytez, pith.science and awesomepapers.io all returned `CONNECT 403` or `EGRESS_BLOCKED`. The same happened for the EvoMap GEP whitepaper and wiki (evomap.ai), the OpenClaw CritPt blog post and the evomap.ai economics page. The GDI weights and the Behind EvoMap measurements beyond the abstract therefore rest on `[snip:BE]` only. Git history of `EvoMap/evolver` was squashed at v1.66.0 (2026-04-16), and npm versions before 1.67.0 are unpublished, so the older unobfuscated engine is only visible through `[sdk11]`.
+**Refresh (25 Oct 2026, full texts v4).** The papers were first written up while arxiv.org and evomap.ai were egress-blocked, so the paper claims rested on abstracts, search snippets and a third-party summary. The full v4 texts of SG, BE and LWF and a full wiki dump are now read, and every paper citation points to them. Corrections made in place: the LongWoF-Bench author shared with SG is Haoyang Zhang, not Yiming Ren (§7.5); "128K daily active agents" is BE's own §1 wording, not only the overview's (§7.4, §8.5); BE's 84.2% is a share of Genes with no (66.0%) or only trivial (18.2%) validation commands (§7.6); the CritPt pairs hold the base model fixed, and the confound is the OpenClaw + Evolver agent (§8.3); the B7 Worst and Optimal configurations are fixed values, and BE's own measured intrinsic scores do not follow its Eq. 3 (§4.18); freshness is `exp(-days/90)` in the wiki (§4.18); SG's mutate step also rewrites code and prompt structure (§3.10). The OpenClaw CritPt blog post and the evomap.ai economics page are still not read. Git history of `EvoMap/evolver` was squashed at v1.66.0 (2026-04-16), and npm versions before 1.67.0 are unpublished, so the older unobfuscated engine is only visible through `[sdk11]`.
 
 **Naming, licence and trademark.** The spec text is CC-BY-4.0 and the SDK code is Apache-2.0. The notice says: "'EvoMap', 'GEP', and 'Genome Evolution Protocol' are trademarks of EvoMap … Independent implementations of the protocol are welcome … but must not be marketed under these names" [sdk114:README.md]. Evolver itself is GPL-3.0-or-later, as is gep-sdk up to 1.2.x [code:evolver/LICENSE][sdk114:README.md]. My recommendation [inferred]: implement from the spec and schemas with attribution, do not copy Evolver source, and name our module something neutral such as `rsi.genehub`, "compatible with GEP schema 1.14.0". This is not legal advice.
 
@@ -55,11 +55,11 @@ Most self-improvement loops improve one system. EvoMap's idea is that **agents s
 
 At the start of each cycle, Evolver turns logs into **signals**. It then picks the best-matching gene from its local store, helped by a memory graph of past outcomes and some random "genetic drift" for exploration. It first asks the hub whether another agent already solved this. It then writes a strict protocol prompt, and the host coding agent (Claude Code, Cursor, OpenClaw, …) makes the change. The engine then **solidifies**: it measures blast radius, runs the gene's validation commands, scores the result, writes the event and capsule, and rolls back on failure [code:evolver/README.md][spec:§3].
 
-Periodically it **distils** repeated successes into new genes [spec:§6]. By default this uses a heuristic synthesizer that merges the most frequent success pattern. When that fails, it falls back to an LLM prompt handed to the host agent [deob:evolver/src/gep/skillDistiller.js:autoDistill,prepareDistillation][code:evolver/index.js "DISTILL_REQUEST"]. Good capsules can be **published** to the EvoMap Hub. Other agents, possibly on different models, fetch "promoted" assets, apply them, and report back. A credit economy rewards contributors, and a score called GDI ranks assets [vdoc:hub-skill§Why EvoMap][abs:BE].
+Periodically it **distils** repeated successes into new genes [spec:§6]. By default this uses a heuristic synthesizer that merges the most frequent success pattern. When that fails, it falls back to an LLM prompt handed to the host agent [deob:evolver/src/gep/skillDistiller.js:autoDistill,prepareDistillation][code:evolver/index.js "DISTILL_REQUEST"]. Good capsules can be **published** to the EvoMap Hub. Other agents, possibly on different models, fetch "promoted" assets, apply them, and report back. A credit economy rewards contributors, and a score called GDI ranks assets [vdoc:hub-skill§Why EvoMap][BE §2.2].
 
-The vendor paper argues that this compact gene form carries experience better than long "skill" documents. Across 4,590 trials, a gene of about 230 tokens beat a skill package of about 2,500 tokens (54.0% vs 49.9%, against 51.0% with no guidance). Gene-evolved agents also raised CritPt physics scores from 9.1% to 18.57% (about 2×) and from 17.7% to 27.14% (about 1.5×) over their paired base models [snip:SG][code:evolver/README.md].
+The vendor paper argues that this compact gene form carries experience better than long "skill" documents. In 4,590 trials over 45 scenarios, a gene of about 230 tokens beat a skill package of about 2,500 tokens (54.0% vs 49.9%, against 51.0% with no guidance; checkpoint pass rate averaged over two Gemini models, from the 1,440-trial Skill Probe). Gene-evolved agents also raised CritPt physics scores from 9.1% to 18.57% (about 2×) and from 17.7% to 27.14% (about 1.5×) over their paired base models [SG Abstract, §4.1.1 Table 1, §4.4][code:evolver/README.md]. The vendor follow-up adds that provenance matters: genes distilled from verifier-confirmed trajectories beat Skill by 8.7–15.5 pp on 252 tasks, while genes distilled from reference material trail it by 3.3–11.3 pp [LWF §5.1–5.2 Table 2].
 
-The independent study found the network's quality signals are mostly **self-reported**. 98% of assets were never reused, rewards track publishing rather than adoption, ranking is dominated by claimed metadata, and more than 84% of approved assets pass validation with vacuous tests such as `console.log` [abs:BE].
+The independent study found the network's quality signals are mostly **self-reported**. 98% of assets were never called, rewards track publishing rather than adoption, ranking is dominated by claimed metadata, and 84.2% of Genes carry no validation commands (66.0%) or only trivial ones such as `console.log` (18.2%) [BE Abstract, §4.1, §5, §6.1 Table 1].
 
 The lesson for our framework is to keep EvoMap's asset format and population-level sharing, but put **verifiable execution, adoption-based ranking and quarantine of untrusted assets** in place of self-reporting [doc "Never let the loop grade itself", "Measure reuse, not output"].
 
@@ -67,12 +67,12 @@ The lesson for our framework is to keep EvoMap's asset format and population-lev
 
 ## 2. What is improved, what is frozen, who grades
 
-| Aspect | Local Evolver loop | Hub / network | Strategy Genes paper |
+| Aspect | Local Evolver loop | Hub / network | Vendor papers (SG, LWF) |
 |---|---|---|---|
-| **Improved** | The agent's local **asset store**: `genes.json`, `capsules.json(l)`, the append-only `events.jsonl`, `memory_graph.jsonl` [code:evolver/README.md "GEP Protocol"][spec:§8]. The **target workspace** (a git repo) is also changed, by the host agent following the gene [deob:evolver/src/gep/prompt.js]. Gene metadata evolves too: `epigenetic_marks`, `learning_history`, `anti_patterns`, and on success `signals_match` gains `problem:*`/`area:*` learning tags [deob:evolver/src/gep/solidify.js:adaptGeneFromLearning][sdk114:schemas/gene.schema.json]. The run-level meta-parameters also evolve. A **PersonalityState** vector is moved by "natural selection" toward the best-scoring personality key and by rule-triggered mutations (§3.4) [deob:evolver/src/gep/personality.js:selectPersonalityForRun]. A per-cycle **strategy policy** caps target files and can force innovation (§3.4) [deob:evolver/src/evolve/pipeline/select.js:computeAdaptiveStrategyPolicy]. | The shared library of promoted Gene+Capsule(+Event) bundles, plus per-asset GDI, call counts, reviews and node reputation (0–100) [vdoc:hub-skill§Concepts, §Why EvoMap]. | Per-task experience objects (genes) injected at test time. For CritPt, an evolving gene pool [snip:SG]. |
-| **Frozen** | Model weights. The host agent's harness (each agent keeps its own) [doc]. The evolver engine source is protected: "NEVER modify `skills/evolver/`", enforced by `critical_path_modified` unless `EVOLVE_ALLOW_SELF_MODIFY=true` [deob:evolver/src/gep/prompt.js][deob:evolver/src/gep/policyCheck.js]. | Models; each agent's local setup [doc]. | Base models (Gemini 3 Pro Preview, Gemini 3.1 Pro Preview; Gemini 3.1 Pro/Flash Lite for the 4,590 trials) [snip:SG][code:skill2gep-repo/README.md]. |
-| **Who proposes** | The host coding agent (an LLM) reading the GEP prompt. Evolver itself "is a prompt generator, not a code patcher" [code:evolver/README.md]. The distiller LLM proposes new genes [deob:evolver/src/gep/skillDistiller.js]. | Any registered agent (500 starter credits, no human approval) [vdoc:hub-skill§Welcome]. | An "evolution" process over genes (Scan→Signal→Intent→Mutate→Validate→Solidify) [sec:mpx]. |
-| **Who grades** | **Self-grading.** Success requires three things: the gene's own validation commands pass (whatever the gene declares), constraints pass (blast radius from `git diff`, forbidden paths, canary), and there are no protocol violations. The score is a weighted composite (§4.10) [deob:evolver/src/gep/solidify.js]. Solidify computes status and score from engine-held state (`last_run.mutation`/`personality_state`, which the engine itself built), git and validation results. It does **not** parse the five JSON objects the LLM prints, whose EvolutionEvent carries an LLM-typed `outcome.score` [deob:evolver/src/gep/prompt.js][deob:evolver/src/evolve/pipeline/dispatch.js:last_run]. The **memory graph**, however, which drives future gene preference and bans, takes its outcome at the start of the next cycle from the last single-line EvolutionEvent JSON found in the session transcript or today's log (note `evolutionevent_observed`), falling back to an error-delta heuristic (§4.11) [deob:evolver/src/gep/memoryGraph.js:recordOutcomeFromState]. An LLM-printed self-assessment can therefore steer selection [inferred]. An LLM review is optional and off by default (`EVOLVER_LLM_REVIEW`), and its only built-in executor is a stub that always returns `approved: true` (§6.7) [code:evolver/src/gep/llmReview.js:defaultExecute]. | The Hub verifies `asset_id` hashes and structure, stores bundles as `candidate`, "runs validation" through decentralized validator nodes that execute the **proposer's own validation commands** in an empty sandbox, then "admin or auto-promote" [vdoc:hub-skill§How It Works][code:evolver/src/gep/validator/index.js]. It ranks by GDI, which is 35% intrinsic, mostly self-reported [snip:BE]. | Task pass rate on 45 scientific code-solving scenarios; CritPt accuracy [snip:SG]. |
+| **Improved** | The agent's local **asset store**: `genes.json`, `capsules.json(l)`, the append-only `events.jsonl`, `memory_graph.jsonl` [code:evolver/README.md "GEP Protocol"][spec:§8]. The **target workspace** (a git repo) is also changed, by the host agent following the gene [deob:evolver/src/gep/prompt.js]. Gene metadata evolves too: `epigenetic_marks`, `learning_history`, `anti_patterns`, and on success `signals_match` gains `problem:*`/`area:*` learning tags [deob:evolver/src/gep/solidify.js:adaptGeneFromLearning][sdk114:schemas/gene.schema.json]. The run-level meta-parameters also evolve. A **PersonalityState** vector is moved by "natural selection" toward the best-scoring personality key and by rule-triggered mutations (§3.4) [deob:evolver/src/gep/personality.js:selectPersonalityForRun]. A per-cycle **strategy policy** caps target files and can force innovation (§3.4) [deob:evolver/src/evolve/pipeline/select.js:computeAdaptiveStrategyPolicy]. | The shared library of promoted Gene+Capsule(+Event) bundles, plus per-asset GDI, call counts, reviews and node reputation (0–100) [vdoc:hub-skill§Concepts, §Why EvoMap]. | Per-task experience objects (genes) injected at test time [SG §3.3]. For CritPt, an evolving gene pool [SG §4.4, App. D]. LWF: one gene per task, distilled from a verifier-passing trajectory [LWF §3.1]. |
+| **Frozen** | Model weights. The host agent's harness (each agent keeps its own) [doc]. The evolver engine source is protected: "NEVER modify `skills/evolver/`", enforced by `critical_path_modified` unless `EVOLVE_ALLOW_SELF_MODIFY=true` [deob:evolver/src/gep/prompt.js][deob:evolver/src/gep/policyCheck.js]. | Models; each agent's local setup [doc]. | Base models: Gemini 3.1 Pro Preview and Gemini 3.1 Flash Lite Preview for the 4,590 trials [SG App. B.3 Table 11]; Gemini 3 Pro Preview and Gemini 3.1 Pro Preview for CritPt [SG §4.4]; seven consumer models, Claude Opus 4.8 as producer, in LWF [LWF §4]. |
+| **Who proposes** | The host coding agent (an LLM) reading the GEP prompt. Evolver itself "is a prompt generator, not a code patcher" [code:evolver/README.md]. The distiller LLM proposes new genes [deob:evolver/src/gep/skillDistiller.js]. | Any registered agent (500 starter credits, no human approval) [vdoc:hub-skill§Welcome]; BE App. F Table 8 lists 200 and the current wiki 100 starter credits [wiki: 06-billing-reputation]. | An "evolution" process over genes (scan → signal → intent → mutate → validate → solidify) [SG App. A.6 Eq. 18]. Gene-Bench genes are distilled from "the same per-scenario experience source" as the Skill [SG §4.1.1]; who or what performs the distillation ψ (Eq. 7) is not specified in the papers. LWF: an LLM producer (Opus) [LWF §3.1]. |
+| **Who grades** | **Self-grading.** Success requires three things: the gene's own validation commands pass (whatever the gene declares), constraints pass (blast radius from `git diff`, forbidden paths, canary), and there are no protocol violations. The score is a weighted composite (§4.10) [deob:evolver/src/gep/solidify.js]. Solidify computes status and score from engine-held state (`last_run.mutation`/`personality_state`, which the engine itself built), git and validation results. It does **not** parse the five JSON objects the LLM prints, whose EvolutionEvent carries an LLM-typed `outcome.score` [deob:evolver/src/gep/prompt.js][deob:evolver/src/evolve/pipeline/dispatch.js:last_run]. The **memory graph**, however, which drives future gene preference and bans, takes its outcome at the start of the next cycle from the last single-line EvolutionEvent JSON found in the session transcript or today's log (note `evolutionevent_observed`), falling back to an error-delta heuristic (§4.11) [deob:evolver/src/gep/memoryGraph.js:recordOutcomeFromState]. An LLM-printed self-assessment can therefore steer selection [inferred]. An LLM review is optional and off by default (`EVOLVER_LLM_REVIEW`), and its only built-in executor is a stub that always returns `approved: true` (§6.7) [code:evolver/src/gep/llmReview.js:defaultExecute]. | The Hub verifies `asset_id` hashes and structure, stores bundles as `candidate`, "runs validation" through decentralized validator nodes that execute the **proposer's own validation commands** in an empty sandbox, then "admin or auto-promote" [vdoc:hub-skill§How It Works][code:evolver/src/gep/validator/index.js]. It ranks by GDI, which is 35% intrinsic, mostly self-reported [BE Eq. 1, §5.2]. | Checkpoint pass rate from a scenario test script run on the generated program in a sandbox (120 s), over 45 scientific code-solving scenarios [SG §3.3.1, App. B.1]; CritPt accuracy [SG §4.4]. LWF: strict pass of a private task verifier [LWF §2.3, §4]. |
 | **Overview summary** | "What changes: a shared library of strategies and worked examples. What stays fixed: the models; each agent keeps its own harness. How it decides: local validation plus a hub ranking score" [doc]. | "Keep rule: passes a local validation command; ranked by a hub score. Guard against overfitting: weak, since validation is self-reported and often vacuous" [doc]. | — |
 
 ---
@@ -485,14 +485,16 @@ GET /a2a/assets?sort=ranked → ranked by GDI (§4.18)
 
 ### 3.10 Paper-level evolution loop (Strategy Genes)
 
-[sec:mpx] (unverified) gives the paper's abstract loop as `(G, C, E) → SCAN → SIGNAL → INTENT → MUTATE → VALIDATE → SOLIDIFY → (G′, C′, E′)`. MUTATE edits a gene's strategy steps, AVOID items or metadata; VALIDATE executes the candidate in a sandbox; SOLIDIFY writes accepted changes back and updates Capsules and Events.
+The paper's protocol loop is `(G, C, E) →scan σ →signal σ̂ →intent ι →mutate a′ →validate ν →solidify (G′, C′, E′)`, where a′ is "typically a new or revised gene (and optionally an associated capsule)" [SG App. A.6 Eq. 18]. Mutate: "A candidate asset is generated by rewriting code, prompt structure, strategy steps, AVOID cues, or associated metadata." Validate: "executed in a sandbox or otherwise checked against validation hooks. Only assets that satisfy the required criteria are eligible for persistence." Solidify writes the validated capability back "as a new or revised gene" and updates the capsule and event records [SG App. A.6]. The criteria, the mutation operator and the stopping rule are not specified in the papers.
 
-For CritPt, two regimes are reported [snip:SG]:
+For CritPt, two regimes are reported, each run on OpenClaw with Evolver "for approximately two days" [SG §4.4, App. D]:
 
-- **Version A** (Evolver (Gene) 2026-02-16, on Gemini 3 Pro Preview) is "memory-grounded evolution: consolidating prior failures, execution traces, and corrective experience into reusable control units".
-- **Version B** (2026-03-26, on Gemini 3.1 Pro Preview) is "exploration-augmented: the agent … selecting from a larger gene pool and routing different genes to different tasks".
+- **Version A** (Evolver (Gene) 2026-02-16, on Gemini 3 Pro Preview) is "memory-grounded evolution: its gains mainly come from consolidating prior failures, execution traces, and corrective experience into reusable control units" [SG §4.4]. The agent was asked to "inspect prior logs, identify recurring execution failures and bottlenecks, and distill those observations into reusable genes". Its full-benchmark cost was about $0.81 in input/output tokens (reasoning tokens not recovered), against a reported $26 for gemini-3-pro-preview [SG App. D.1].
+- **Version B** (2026-03-26, on Gemini 3.1 Pro Preview) is exploration-augmented: "selecting from a larger gene pool and routing different genes to different tasks", combining run experience with "externally sourced genes, especially paper-derived and topic-facing assets". Over 70 tasks it used 210 gene slots and 36 unique gene IDs: 148 selections from arxiv-derived genes, 44 from run_experience, 18 from builtin_topic_prior [SG App. D.3].
 
-The paper's guidance for evolution is "compressing failure into focused warnings, preserving structured editability, and avoiding additive growth that blurs control" [snip:SG].
+The paper's guidance for evolution is "compressing failure into focused warnings, preserving structured editability, and avoiding additive growth that blurs control" [SG §4.3.3].
+
+LWF's gene construction is a per-task loop [LWF §3.1, App. A.3 Table 8]: a producer model attempts the task without verifier information; on failure, the next rollout gets the previous solution plus sanitized verifier feedback, "within a fixed rollout budget until a passing trajectory is obtained". "The object being refined during evolution is the task solution rather than the Gene itself." The passing trajectory is then distilled into a Gene (strategies, prerequisite checks, boundary conditions, corrections). Of the 252 Opus trajectories, 140 passed in round 1 (thinking off), 72 in round 2 (low) and 40 in round 3 (high), 404 calls in all. The budget value and the distillation prompt are not specified; the paper says it follows Evolver's paradigm "with GDIv2" without defining it.
 
 ---
 
@@ -645,7 +647,7 @@ The README's table differs: balanced is given as 50/30/20 for innovate/optimize/
 - **Violations**: `hard_cap_breach`, `critical_overrun`, `max_files exceeded`, `forbidden_path touched`, `critical_path_modified` (the evolver itself, unless `EVOLVE_ALLOW_SELF_MODIFY=true` for repair/optimize genes), a `hollow_commit` (files changed but 0 of them are counted code, i.e. only GEP metadata), and **ethics** regexes applied to the gene's strategy/summary text: bypass/disable safety, covert monitoring, social-engineering templates, exploiting users, concealing actions from audit. A canary failure and destructive changes are appended by solidify (§3.6).
 - **Warnings only**: `approaching_limit`, estimate drift, and `incomplete_skill` (a new `skills/<name>/` with fewer than 2 files).
 - **Counted-file policy** (what counts toward files and lines). Excluded prefixes: `logs/ memory/ .evolver/ assets/gep/ out/ temp/ node_modules/`. Also excluded: files matching `capsule` or `events?.jsonl$` and a few temp files. Included: `src/ scripts/ config/`, `index.js`, `package.json`, and extensions `.js .cjs .mjs .ts .tsx .json .yaml .yml .toml .ini .sh`. The policy is overridable through `evolver.json`/`openclaw.json` `evolver.constraints.countedFilePolicy` [deob:evolver/src/gep/policyCheck.js:readOpenclawConstraintPolicy]. Lines = added + deleted from `git diff --numstat` (staged and unstaged) on counted files, plus the line count of new untracked counted files. Edits to, for example, `.py` or `.md` files outside `src/`, `scripts/` and `config/` therefore count as **0 files**, and a change made only of such files is a `hollow_commit` violation. A portable implementation must make this policy per-domain [inferred].
-- Blast radius is computed from `git diff` locally. It is **not** recomputed by the Hub, which reads the Capsule's claimed `blast_radius` [vdoc:hub-skill§Capsule Structure][snip:BE].
+- Blast radius is computed from `git diff` locally. It is **not** recomputed by the Hub, which reads the Capsule's claimed `blast_radius`: "the Hub cannot verify all local modifications because agents are not required to upload complete version histories" [vdoc:hub-skill§Capsule Structure][BE §6.2].
 
 ### 4.9 Validation command policy and runner semantics
 
@@ -777,23 +779,28 @@ Every factor except reputation is supplied by the publisher (confidence, streak)
 
 ### 4.18 GDI ranking and the credit economy
 
-The GDI weights are known only from search snippets [snip:BE]. The same 35% intrinsic share also appears in [doc]. A search snippet of the vendor page `evomap.ai/capabilities` expands GDI as **"Global Desirability Index"**, "a quality scoring system for ranking genes, capsules, recipes, and agent services" [snip:BE, vendor page, unverified]. The vendor guide claims that "all assets pass content-addressable verification (SHA256), validation consensus, and GDI scoring before promotion. You only receive battle-tested solutions" [vdoc:hub-skill§Why EvoMap].
+GDI is the **"Genetic Desirability Index"**, recomputed hourly by the Hub with the "official equation" below [BE §2.2 Eq. 1]. The wiki gives the same weights on a 0–100 scale, with a lower-bound track used for ranking and promotion and a mean track for display [wiki: 06-billing-reputation]. (A search snippet of `evomap.ai/capabilities` had expanded GDI as "Global Desirability Index".) The vendor guide claims that "all assets pass content-addressable verification (SHA256), validation consensus, and GDI scoring before promotion. You only receive battle-tested solutions" [vdoc:hub-skill§Why EvoMap].
 
 ```text
 GDI = 0.35·I + 0.30·U + 0.20·S + 0.15·F
-  I (intrinsic) = mean of six standardized metadata metrics, each normalized to [0,1]; 5 of 6 are self-reported
-                  at publication (blast radius the most influential; confidence and success streak minor)
-  U (usage)     = call count, success rate
-  S (social)    = reviews/votes, citations, forks   (omitting the EvolutionEvent costs "−6.7% social dimension")
-  F (freshness) = recency, update frequency
+  I (intrinsic) = mean of six metadata metrics, each normalized to [0,1], fixed at publication; 5 of 6 are
+                  self-reported [BE §5.2, App. B Eq. 3]. In BE's live-hub ablation blast radius is the most
+                  influential and confidence and streak minor [BE §6.2 Table 2]
+  U (usage)     = "how many times other agents fetch and successfully reuse the asset" [BE §2.2]
+  S (social)    = "review (i.e., votes) from other agents" [BE §2.2]   (omitting the EvolutionEvent costs
+                  "−6.7% social dimension" [vdoc])
+  F (freshness) = "decays the score over time if the asset remains unused" [BE §2.2]
 ```
 
-**Added in retry round 2 (2026-09-29; WebSearch snippets of the Behind-EvoMap HTML and the EvoMap wiki, unverified):**
+The papers give no formula for U, S or F. The wiki gives them: U = 0.40·satExp(fetch30d, 50) + 0.30·satExp(unique30d, 15) + 0.30·satExp(exec90d, 20); S = 0.30 vote + 0.30 validation + 0.15 agent reviews + 0.15 reproducibility + 0.10 bundle (Beta means or Wilson lower bounds, a review default of 0.5); F = `exp(-days_since_last_activity / 90)`, "~62-day half-life" [wiki: 06-billing-reputation]. BE's refit on the crawl gives `0.35 I + 0.29 U + 0.17 S + 0.10 F − 1.38`, R² = 0.995 [BE §5.2 Eq. 2].
 
-- The intrinsic formula: `GDI_I = 1/6 [clip(C,0,1) + min(S/10,1) + max(0, 1 − F·L/1000) + min(T/5,1) + min(ℓ_sum/200,1) + clip(R/100,0,1)]`. "Trigger Count is the second most sensitive signal", and "Streak exhibits the steepest dose-response" [snip:BE]. The symbols are not defined in the snippet. `rsi.evomap` reads them as confidence, streak, files × lines, trigger count, summary length and node reputation.
-- The B7 method: "The top rows present the baseline configurations (Median, Worst, and Optimal), while the bottom ablation rows degrade one metadata field from its optimal to worst value at a time"; "Inflating metadata to the Optimal setup raises the GDI from the Median 38.6 to 40.2" [snip:BE].
-- Freshness: "Each asset has a gdiFreshness score (0.0–1.0) that decays exponentially based on lastActivityAt". A fetch by another agent, reuse, a new validation report or a vote refreshes `lastActivityAt`; the freshness check runs every 6 hours [snip:wiki]. No half-life is given.
-- Promotion requires all of: GDI (lower bound) ≥ 25, GDI intrinsic ≥ 0.4, confidence ≥ 0.5, source-node reputation ≥ 30, and validation consensus not majority-failed. Node reputation (0–100) comes from the promoted, rejected and revoked rates, the average confidence and the publish volume [snip:wiki]. Not modelled in `rsi.evomap`.
+**Added in retry round 2 (2026-09-29, from snippets) and checked against the full texts on 25 Oct 2026:**
+
+- The intrinsic formula: `GDI_I = 1/6 [clip(C,0,1) + min(S/10,1) + max(0, 1 − F·L/1000) + min(T/5,1) + min(ℓ_sum/200,1) + clip(R/100,0,1)]` [BE App. B Eq. 3; same table in wiki: 06-billing-reputation]. Symbols [BE §6.2, App. B Table 3]: C = the agent's self-reported confidence; S = consecutive passes of the exact Capsule code (a failure resets it); F, L = modified files and lines; T = trigger specificity, "the number of matching signals"; ℓ_sum = summary length in characters; R = publisher reputation, "capped at 100, with newly registered agents assigned a default score of 50". This matches the reading `rsi.evomap` uses. In BE's sweep, "Trigger Count is the second most sensitive signal" and "Streak exhibits the steepest dose–response" [BE App. C].
+- The B7 method [BE §6.2 Table 2, App. C Tables 4–5]: fresh agent identities (R = 50) publish Capsules with set metadata to the live Hub, 30 runs per configuration, GDI read after promotion. Median = the dataset medians (C 0.93, S 323, F×L 2×30, T 3, ℓ 139: GDI 38.6, 65th percentile); Worst and Optimal are fixed values "determined analytically from the official GDI_I scoring function" (Worst 0.10, 0, 8×300, 1, 50: GDI 23.9; Optimal 0.99, 10, 1×5, 5, 200: GDI 40.2, 75th percentile). 40.2 → 36.0 is on the full GDI scale; in intrinsic units Optimal is 0.649 and the blast ablation 0.527. Leave-one-out intrinsic drops: blast −0.122, trigger −0.099, summary −0.087, streak −0.077, confidence −0.070.
+- **Eq. 3 does not reproduce BE's own measurements** [inferred arithmetic]. At these configurations and R = 50, Eq. 3 gives 0.914 / 0.777 / 0.175 for Optimal / Median / Worst (measured 0.649 / 0.602 / 0.182), and drops of streak 0.167 ≈ blast 0.166 > confidence 0.148 > trigger 0.133 > summary 0.125. The live hub's scorer therefore differs from the printed formula, and blast dominance is a property of the live hub, not of Eq. 3. BE's Median configuration also uses S = 323 while its sweep gives the empirical median as S = 4 [BE App. C Table 4]; the paper does not explain the difference.
+- Freshness: "Each asset has a `gdiFreshness` score (0.0 -- 1.0) that decays exponentially based on `lastActivityAt`" [wiki: 06-billing-reputation]: `exp(-days/90)`, a half-life of about 62 days. A fetch, reuse, a new validation report or a vote refreshes `lastActivityAt`; the freshness check runs every 6 hours. The papers give no decay constant [BE §2.2].
+- Promotion requires all of: GDI (lower bound) ≥ 25, GDI intrinsic ≥ 0.4, confidence ≥ 0.5, source-node reputation ≥ 30, and validation consensus not majority-failed [wiki: 06-billing-reputation]. BE states only the GDI ≥ 25 condition [BE §2.2]. Node reputation (0–100) comes from the promoted, rejected and revoked rates, the average confidence and the publish volume [wiki: 06-billing-reputation]; BE describes it as successful executions by others of the agent's past assets over all attempts [BE §6.2]. Not modelled in `rsi.evomap`.
 - The worker side of bounties is concrete in Evolver v2 `packages/evolver-cli/dist/taskReceiver.js` (ported from v1 `src/gep/taskReceiver.js`): the strategy weights greedy / balanced / conservative, ROI = min(bounty / (difficulty + 0.1) / 200, 1), bounty_norm = min(bounty / 100, 1), and a capability match of 0.4·Jaccard + 0.6·Laplace success.
 
 The "−6.7% social dimension" figure is from [vdoc:hub-skill§Bundle Rules]. The vendor guide advises agents directly: "Increase GDI scores: Always include EvolutionEvent in bundles. Keep `blast_radius` small and focused. Maintain high `confidence` and `success_streak`" [vdoc:hub-skill§Level 4].
@@ -855,7 +862,7 @@ All schemas are Draft-07 with `additionalProperties: false` unless noted [sdk114
   [code:evolver/src/gep/skill2gep.js][code:evolver/assets/gep/genes.seed.json][deob:evolver/src/gep/skillDistiller.js][deob:evolver/src/gep/solidify.js].
 - **Schema/engine drift.** The strict schema types `epigenetic_marks` as `string[]`, but the engine writes objects `{context, boost, reason, created_at}` (§4.12). An engine-evolved gene therefore fails strict validation [sdk114:schemas/gene.schema.json][deob:evolver/src/gep/solidify.js:buildEpigeneticMark].
 - The Hub accepts a looser Gene: required `type`, `category` ∈ {repair, optimize, innovate}, `signals_match` (each ≥ 3 chars), `summary` (≥ 10 chars), `asset_id`. `validation` is **optional** at the Hub [vdoc:hub-skill§Gene Structure].
-- The paper's form is `g = (m, u, π, α, c, v, η)`: signals_match, summary, strategy, AVOID, constraints, validation, metadata [sec:mpx]. Snippets confirm "task-matching signals, a compact summary, a small set of strategic steps, a set of failure-aware AVOID cues, optional execution constraints, and optional validation hooks" [snip:SG].
+- The paper's form is `g = (m, u, π, α, c, v)`: "task-matching signals, a compact summary, a small set of strategic steps, a set of failure-aware AVOID cues, optional execution constraints, and optional validation hooks" [SG §3.3 Eq. 8]. App. A.3 adds η, "canonical metadata such as type, version, identifier, and hash" [SG App. A.3 Eq. 15]. The operational schema has `type, schema_version, id, signals_match, summary, strategy, constraints, validation, asset_id`, and the AVOID items sit inside the ordered `strategy` list [SG App. A.3, Table 8]. BE describes a Gene by three parts only: precondition, constraint, validation [BE §2.1].
 
 **5.2 Capsule** [sdk114:schemas/capsule.schema.json][spec:§2.2]
 
@@ -921,10 +928,11 @@ The GEP spec §11 still gives `GEP_ASSETS_DIR` a default of `<repo>/assets/gep`,
 
 The **`.gepx`** export is a gzipped tar with a `manifest.json` {gep_version, schema_version, created_at, agent_id, agent_name, statistics{total_events, total_genes, total_capsules, success_rate, memory_graph_entries}, source{platform, version}}, per-type folders and `checksum.sha256`.
 
-**5.11 Paper's formal tuples** [sec:mpx] (unverified):
+**5.11 Paper's formal tuples** [SG App. A.4 Eq. 16, App. A.5 Eq. 17]. SG calls them "paper-side formalizations of higher-level protocol objects" (Table 8 caption); its experiments use the gene layer only.
 
-- capsule `κ = (q, G_κ, T_κ, o_κ, V_κ, ℓ_κ)`: task signature, genes used, trace, observed outcome, verification record, lineage pointer;
-- event `e = (t, ρ, a_src, a_dst, σ, ι, Δ, ν, τ)`: event type, run id, source and destination asset, signal, intent, diff, validation result, timestamp.
+- capsule `κ = (q, G_κ, T_κ, o_κ, V_κ, ℓ_κ)`: task signature, genes used, trace, observed outcome, validation record, lineage pointer;
+- event `e = (t, ρ, a_src, a_dst, σ, ι, Δ, ν, τ)`: event type (e.g. repair, innovation, validation_pass, validation_fail, solidify), run id, source and target asset, triggering signal, intended objective, diff, validation result, timestamp.
+- BE's Capsule has three parts: content, trigger ("the exact signature (e.g., a specific stack trace)"), metadata [BE §2.1].
 
 ---
 
@@ -972,7 +980,7 @@ In the **default** `reference` mode, the normal GEP prompt instead carries a blo
 
 **6.8d Executor bridge** (when a host bridge is enabled): "You are the executor (the Hand). Your job is to apply a safe, minimal patch in this repo following the attached GEP protocol prompt. … After applying changes and validations, you MUST run: node index.js solidify". The bridge sends this through `sessions_spawn`, with the prompt truncated to 24000 chars [deob:evolver/src/evolve/pipeline/dispatch.js].
 
-**6.9 Solver consuming a gene (paper)**: genes are injected "under a shared injection interface". The gene template reads "Domain keywords: …, Summary: …, Strategy: 1. … n. AVOID: …" [snip:SG][sec:mpx].
+**6.9 Solver consuming a gene (paper)**: the control prompt goes into Gemini's `systemInstruction` and the task description into `contents` [SG App. B.3–B.4]. The Gene prompt reads: "You are given the following strategic gene to guide your approach. The gene describes a high-level strategy -- use it as directional guidance, not as implementation instructions." followed by `<strategy-gene> Domain keywords: … Summary: … Strategy: 1. … 2. … 3. AVOID: … </strategy-gene>`. The Skill prompt reads "You are given the following skill package to guide your work. Follow its instructions carefully." followed by SKILL.md plus scripts. Some analyses wrap the gene in an `<evolution-event>` block with a failed-attempt history [SG App. B.5]. In LWF the consumer receives the public task information with the Gene, never the trajectory or verifier feedback [LWF §3.2]; its prompt text is not given.
 
 ---
 
@@ -980,89 +988,103 @@ In the **default** `reference` mode, the normal GEP prompt instead carries a blo
 
 ### 7.1 Strategy Genes: protocol
 
-- **Scale.** 4,590 controlled trials on 45 scientific code-solving scenarios [code:evolver/README.md][snip:SG]. Models: Gemini 3.1 Pro and Flash Lite [code:skill2gep-repo/README.md][code:evolver/src/gep/skill2gep.js:RATIONALE_TEXT].
-- **Arms.** No guidance; Skill (the full documentation package, "main skill document together with auxiliary scripts, notes, and references", about 2,500 tokens); Gene (about 230 tokens). All are "derived from the same per-scenario experience source" [snip:SG].
-- **Ablations.** Progressive gene construction; semantic versus structural perturbations; matched-budget Skill fragments; failure-history encodings; gene composition [snip:SG][sec:mpx].
-- **CritPt.** 70 tasks. The 27.14% run is reproduced in a vendor repo with OpenClaw generating answers and Evolver "supplying and iteratively refining gene-guided solving strategies" [sec:critpt]. As a check, 13/70 = 18.57% and 19/70 = 27.14% [inferred arithmetic].
+- **Scale.** 4,590 retained trials on 45 scientific code-solving scenarios: the Skill Probe has 1,440, the Gene Probe 1,890 and the Evolution Probe 1,260 [SG Abstract, §4.1–4.3, App. B.2 Table 10]. Trials per scenario and condition, seeds and repeats are not specified in the papers.
+- **Models and decoding.** Gemini 3.1 Pro Preview and Gemini 3.1 Flash Lite Preview through the Google AI Studio REST API, T = 0.05, at most 16,384 output tokens, 120 s execution timeout [SG §3.3.1, App. B.3 Table 11].
+- **Metric.** Per trial, the generated Python program runs in a sandbox and a scenario test script checks n_i checkpoints. The trial score is r_i = p_i/n_i, and PassRate is the mean of r_i; a complete pass (p_i = n_i) is secondary. "Avg." is the mean of Pro and Flash, and Δ is in pp against no guidance [SG Eq. 11–12, App. B.1 Table 9]. No confidence intervals are reported.
+- **Arms.** No guidance; Skill, the full documentation package "including the main skill document together with auxiliary scripts, notes, and references", about 2,500 tokens [SG App. B.4]; Gene, about 230 tokens. All are "derived from the same per-scenario experience source" [SG §4.1.1], and each is evaluated on its own scenario. No held-out scenarios are reported.
+- **Ablations.** Skill sections and matched-budget fragments (§4.1.2, App. C.1–C.2); progressive gene construction (§4.2.1); content and structural perturbations (§4.2.2, App. C.3); documentation added back (§4.2.3); composition (§4.2.4); failure-history carriers, flattened prose and failure encoding (§4.3) [SG].
+- **CritPt.** OpenClaw as the host runtime and Evolver as the engine, about two days per version [SG §4.4, App. D]. Version B covers 70 tasks, and its answers are public in the vendor repo [SG App. D.3][sec:critpt]. Version A's task count is not specified. As a check, 13/70 = 18.57% and 19/70 = 27.14% [inferred arithmetic].
 
 ### 7.2 Strategy Genes: results
 
-Average pass rate. Deltas are versus that table's own no-guidance baseline.
+Average pass rate (Pro and Flash). Deltas are against each table's own no-guidance baseline.
 
 | Condition | Avg. | Δ | Source |
 |---|---|---|---|
-| No guidance | 51.0% | 0.0 | [snip:SG][sec:mpx] |
-| Skill (full package, ~2,500 tok) | 49.9% | −1.1 | [snip:SG][sec:mpx] |
-| **Gene (~230 tok)** | **54.0%** | **+3.0** | [snip:SG][sec:mpx] |
-| Gene: keywords only | 53.5% | +2.5 | [sec:mpx] |
-| Gene: keywords + summary | 51.0% | +0.0 | [sec:mpx] |
-| Gene: keywords + summary + strategy | 54.0% | +3.0 | [sec:mpx] |
-| Perturbed: wrong algorithm / wrong domain (semantic) | 48.8% / 49.4% | — | [sec:mpx] |
-| Perturbed: reversed order / over-constrained (structural) | 52.8% / 55.9% | — | [sec:mpx] |
-| Failure encoding: strategy only / failure warnings only / failure first / strategy first | 52.3 / **54.4** / 50.5 / 51.8 | +2.5 / +4.6 / +0.7 / +2.0 (implied baseline 49.8 [inferred]) | [sec:mpx] |
-| Composition: single Gene / two conflicting / three complementary / two complementary | **54.0** / 53.2 / 50.4 / **44.9** | +3.0 / +2.2 / −0.6 / −6.1 | [sec:mpx]; 54.0 and 44.9 also [snip:SG] |
+| No guidance | 51.0% | 0.0 | [SG Table 1] |
+| Skill (full package, ~2,500 tok) | 49.9% | −1.1 | [SG Table 1] (Pro 50.7, Flash 49.0) |
+| **Gene (~230 tok)** | **54.0%** | **+3.0** | [SG Table 1] (Pro 59.9, Flash 48.2) |
+| Skill sections: Overview / Pitfalls / QuickRef / ErrorHandling / Workflow | 46.3 / 50.1 / 51.5 / 51.7 / 52.5 | −4.7 / +0.1 / +0.5 / +0.7 / +1.5 | [SG App. C.1 Table 12] |
+| Matched-budget Skill (~230 tok): Workflow-Short / Pitfalls-Short | 51.5 / 52.0 | +0.5 / +1.0 | [SG App. C.2 Table 13] |
+| Gene: keywords only / keywords + summary / + strategy | 53.5 / 51.0 / 54.0 | +2.5 / +0.0 / +3.0 | [SG §4.2.1 Table 2] |
+| Gene + API notes / Gene + examples | 51.5 / 52.0 | +0.5 / +1.0 | [SG §4.2.3 Table 3] |
+| Perturbed: wrong algorithm / wrong domain (content) | 48.8% / 49.4% | — | [SG §4.2.2, Table 14] |
+| Perturbed: inverted priority / overconstrained / stale paradigm | 52.8% / 55.9% / **56.6%** | — | [SG Table 14]; stale paradigm is the highest Gene variant |
+| Composition: single Gene / two conflicting / three complementary / two complementary | **54.0** / 53.2 / 50.4 / **44.9** | +3.0 / +2.2 / −0.6 / −6.1 | [SG §4.2.4 Table 4] |
+| Failure attached: Gene / Freeform / Skill + failure; Gene flattened to prose | 52.0 / 49.6 / 47.8; 50.5 | +1.0 / −1.4 / −3.2; −0.5 | [SG §4.3.1 Table 5, §4.3.2 Table 6] |
+| Failure encoding: strategy only / failure warnings only / failure first / strategy first | 52.3 / **54.4** / 50.5 / 51.8 | +2.5 / +4.6 / +0.7 / +2.0 (this table's own baseline: 49.8, Pro 57.9) | [SG §4.3.3 Table 7] |
 
 Qualitative conclusions reported:
 
-- The Skill signal is "unstable" and "sparse". Matched-budget Skill fragments lose to the Gene. "Reattaching documentation-oriented material usually weakens rather than improves it" [code:evolver/README.md][snip:SG].
-- The Gene is "robust to structure, sensitive to content" [sec:mpx].
-- "Attached failure history is more effective in Gene than in Skill or freeform text … failure information is most useful when distilled into compact warnings rather than naively appended" [snip:SG].
-- "Complementary composition is more harmful than conflicting composition" [snip:SG].
+- Skill packages "provide unstable control: their useful signal is sparse". Gene "outperforms matched-budget Skill fragments, while reattaching documentation-oriented material usually weakens rather than improves it" [SG Abstract][code:evolver/README.md].
+- "Gene is substantially more sensitive to content corruption than to structural distortion" [SG Fig. 4].
+- "Attached failure history is more effective in Gene than in Skill or freeform text … failure information is most useful when distilled into compact warnings rather than naively appended" [SG Abstract].
+- "Complementary composition is more harmful than conflicting composition" [SG §4.2.4].
 
-**CritPt** [code:evolver/README.md][snip:SG][sec:critpt]:
+**CritPt** [SG §4.4 Fig. 5, App. D][code:evolver/README.md][sec:critpt]:
 
 | System | Base model | CritPt |
 |---|---|---|
 | Gemini 3 Pro Preview | — | 9.1% |
-| Evolver (Gene) 2026-02-16, "Version A", memory-grounded | Gemini 3 Pro Preview | 18.57% |
+| Evolver (Gene) 2026-02-16, "Version A", memory-grounded | Gemini 3 Pro Preview | 18.57% (+9.47 pp) |
 | Gemini 3.1 Pro Preview | — | 17.7% |
-| Evolver (Gene) 2026-03-26, "Version B", exploration-augmented | Gemini 3.1 Pro Preview | 27.14% (reproduced 70/70 submissions, 0 judge errors) |
+| Evolver (Gene) 2026-03-26, "Version B", exploration-augmented | Gemini 3.1 Pro Preview | 27.14% (+9.44 pp; reproduced 70/70 submissions, 0 judge errors [sec:critpt]) |
 
 ### 7.3 OpenClaw applied report (vendor blog, not accessed)
 
-"drives an OpenClaw agent from 9.1% to 18.57% on CritPt Physics Solver across five versions (Beta -> v2.2), with full token-cost trajectories, gene activation mapping, and the 'tokens rise then fall' signature of reasoning getting compressed into reusable genes" [code:evolver/README.md][doc].
+"drives an OpenClaw agent from 9.1% to 18.57% on CritPt Physics Solver across five versions (Beta -> v2.2), with full token-cost trajectories, gene activation mapping, and the 'tokens rise then fall' signature of reasoning getting compressed into reusable genes" [code:evolver/README.md][doc]. SG itself reports two versions and no token trajectory. Its only cost figure is Version A's: about $0.81 in input/output tokens against a reported $26 [SG App. D.1].
 
 ### 7.4 Scale and adoption claims
 
-- By April 2026: 1.5M+ shared assets from 128K agents. The overview says "128,000 daily active agents"; the study abstract says "128K agents" [doc][abs:BE].
+- "By April 2026, the platform had grown to host over 1.5M assets from 128K daily active agents" [BE §1]. The abstract says "128K agents" [BE Abstract]. The crawl snapshot holds 799,389 Genes, 792,481 Capsules, 95 EvolutionEvents and 128,054 agents [BE §3]. How "daily active" was measured is not specified in the papers.
 - About 9,000 GitHub stars by July 2026 [doc]. The first author reported seeing 9,117 when searching; this was not re-checked [unverified].
 
-### 7.5 A related vendor-side follow-up: LongWoF-Bench (arXiv 2608.23200) [snip:LWF]
+### 7.5 A related vendor-side follow-up: LongWoF-Bench [LWF]
 
-- 778 machine-verifiable tasks across code generation, agent-environment synthesis, math and rule following.
-- On the 252 tasks with verifier-confirmed Claude Opus trajectories, "evolved EvoMap Genes outperform Skills across all seven evaluated models by 8.7–15.5 percentage points". For Opus, Gene reuse completes 39 more tasks than Skill and uses 9.9% fewer solve-time tokens.
-- Evolver's code cites a "TaskGenome Bench, §3.1" with the same +8.7..+15.5pp range: **"distilled" genes transcribed from reference text "tend to be WORSE than Skills (-3.2..-11.2pp)"**, while evolved genes (from fail→pass trajectories) beat Skills (+8.7..+15.5pp) [code:evolver/src/gep/skill2gep.js:classifyProvenance comment]. That TaskGenome Bench and LongWoF-Bench are the same study is an inference from the matching numbers [inferred].
-- A search in the fact-check pass re-found the abstract-level claims: 778 tasks; 252 tasks with verifier-confirmed Opus trajectories; Genes beat Skills "across all seven evaluated models by 8.7–15.5 percentage points", "extending to consumer models from different model families". The pages themselves stayed blocked [snip:LWF].
-- The paper appears to share an author with the Strategy Genes paper (Yiming Ren) [snip:LWF, unverified]. A search result also lists a Haoyang Zhang profile page next to it. I treat it as vendor-affiliated, unverified.
+- **Authors.** Vendor: Infinite Evolution Lab, EvoMap. Its project leader, Haoyang Zhang, is the EvoMap author of SG; an earlier version of this page wrongly named Yiming Ren from a search snippet [LWF title page][SG title page].
+- **Benchmark.** 778 machine-verifiable tasks: 341 code generation, 127 agent-environment synthesis, 151 mathematical reasoning, 159 rule following [LWF §2.2]. A task is `T = (S, E, Y, V)`, successful only if `V(S, E, y) = 1` [LWF §2.1 Eq. 1]. Solvers see the public specification and assets, never hidden tests, gold outputs or verifier logic [LWF §2.3].
+- **Gene construction.** See §3.10: verifier-feedback rollouts until a pass, then distillation of the passing trajectory. Opus produced 252 evolved genes. For the other 526 tasks, a fallback gene was "distilled from reference-side teacher signals" [LWF §3.1, §5.2, Table 1]. How the Skill condition was written is not specified.
+- **Protocol.** Three conditions (No Context, Skill, EvoMap Gene) and one recorded trial per task-condition, with no verifier feedback at inference. Seven consumer models from four families: Claude Opus 4.8, Claude Sonnet 4.6, Gemini 3.1 Flash-Lite Preview, Gemini 3.1 Pro Preview, MiniMax M3, Qwen3-Coder-30B-A3B-Instruct, Qwen3.5-397B-A17B. The metric is strict pass rate (all mandatory checks pass), with deterministic task-level bootstrap CIs and exact McNemar tests; "reported uncertainty reflects variation over tasks rather than repeated hosted-model API runs" [LWF §4].
+- **Results.**
+  - On the 252 Opus-evolved tasks, the mean over the seven models is 41.0% (No Context), 51.2% (Skill) and 62.9% (Gene), and Gene beats Skill for every model by 8.7–15.5 pp. For Opus it is 63.9 → 79.4. Every paired CI excludes 0 [LWF §5.1, App. A.1 Tables 4–5].
+  - On the 526 reference-distilled tasks, Gene trails Skill for every model by 3.3–11.3 pp. The paper calls this "provenance-associated evidence rather than a same-task causal ablation" [LWF §5.2 Table 2].
+  - On 180 tasks where both produced trajectories, Opus-authored genes beat Gemini-authored ones by 4.4–11.7 pp [LWF §5.2, App. A.2 Table 7].
+  - For Opus, Gene passes 39 more tasks than Skill with 9.9% fewer solve-time tokens. One-shot reuse (252 calls, 723,480 tokens, 200 passes) against multi-round discovery (404 calls, 1,333,968 tokens, 252 passes) is −45.8% tokens, excluding "the one-time cost of Gene distillation and auditing" [LWF §5.3, App. A.3 Tables 8–9].
+  - Gains are largest in agent-environment synthesis and rule following and are model-dependent in code generation and math [LWF §5.4].
+- **What it measures.** Genes are reused on the same tasks they were distilled from, so the result is amortized reuse and cross-model transfer, not generalization to new tasks [LWF §5.3].
+- Evolver's code cites a "TaskGenome Bench, §3.1" with "distilled" genes "WORSE than Skills (-3.2..-11.2pp)" and evolved genes +8.7..+15.5pp [code:evolver/src/gep/skill2gep.js:classifyProvenance comment]. LWF's §3.1 is its gene-construction section and its ranges are −3.3..−11.3 / +8.7..+15.5, so the two are very likely the same study, cited at an earlier rounding [inferred].
 
 ### 7.6 Behind EvoMap: protocol and results
 
-- **Protocol.** A large-scale measurement of the live network (a crawl of the Hub): over 1.5M assets and 128K agents [abs:BE]. 73% of assets were created within 30 days of the crawl [snip:BE].
-- **Analyses:** the credit economy (who earns and how), GDI ranking (decomposition, ablation, attack by optimizing self-reported metadata), and validation evidence (the commands attached to approved assets) [abs:BE][snip:BE].
+- **Protocol.** A crawl through the official protocol endpoints over 47 days (Feb 11 – Mar 30, 2026): 799,389 Genes, 792,481 Capsules, 95 EvolutionEvents, 128,054 agents, 92,414 bounties and 123,246 submissions [BE §3]. 73% of assets were created within 30 days of the crawl [BE §5.2].
+- **Analyses.** Reusability: calls, reuse, clustering [BE §4]. Evolution: credits [BE §5.1] and GDI, with a regression refit [BE §5.2]. Auditability: a static plus empty-sandbox classifier of validation commands [BE §6.1, App. D], and a live score-forgery experiment on the Hub [BE §6.2, App. C].
 
 | Finding | Value | Source |
 |---|---|---|
-| Assets never reused | **98%** ("98% of assets are never reused") | [abs:BE] |
-| Cause | "rewards are tied primarily to publication rather than adoption … agents … mass-produce assets" | [abs:BE] |
-| Credit concentration | "highly concentrated among a small fraction of agents", about **10%**. Credits come mostly from "repeatedly publishing assets and benefiting from the platform's high promotion rate, rather than through community reuse or bounty completion" | [abs:BE][snip:BE][doc] |
-| Vacuous validation | "over **84%** of approved assets bypass quality checks using vacuous tests (e.g., console.log)"; validations "are not independently verified" | [abs:BE] |
-| GDI weights | intrinsic **35%**, usage 30%, social 20%, freshness 15% | [snip:BE][doc] |
-| Intrinsic component | mean of 6 normalized metadata values, 5 of them self-reported, fixed at publication | [snip:BE] |
-| Social signal | **99%** of assets have zero votes | [snip:BE] |
-| Collapse | "the four-dimensional GDI … collapses into a one-dimensional metric dominated by the Intrinsic component" | [snip:BE] |
-| Dominant lever | blast radius. Degrading only blast radius drops the optimal score from **40.2 to 36.0**; confidence and streak have minimal effect. The snippets do not say whether 40.2 is on the intrinsic sub-score or on the full GDI scale | [snip:BE] |
-| Manipulation in the wild | 6 promoted Capsules satisfy the full "Optimal" configuration: average GDI **43.53** (85th percentile), mean call count **3.0** (99th percentile). **1.4%** of promoted Capsules hit the optimal blast-radius configuration | [snip:BE] |
-| Conclusion | "future A2A collaboration networks cannot rely on unverified self-reporting alone … [they] require … verifiable execution and trustworthy evaluation" | [abs:BE] |
+| Assets never reused | **98%** of assets are never called; 97% of called Capsules are reused; calls and reuse happen almost entirely at Capsule level (32× and 26× the Gene totals) | [BE Abstract, §4.1] |
+| What gets reused | 59% of assets fall in no topic cluster; 92.8% of called assets were created earlier than 90% of their cluster peers | [BE §4.2] |
+| Cause | "rewards are tied primarily to publication rather than adoption … agents … mass-produce assets"; 75% of assets are promoted, and the top 10% of agents account for 82.1% of promoted assets | [BE Abstract, §5.1] |
+| Credit concentration | 18% of bounties are resolved, and the top 10% of agents take 74% of bounty credits. "Agents obtain most credits by repeatedly publishing assets and benefiting from the platform's high promotion rate, rather than through community reuse or bounty completion" | [BE §5.1, §8] |
+| Credit amounts | 200 at registration, 20 per promotion, 0–12 per call by GDI tier, 10–30 per validation report | [BE App. F Table 8] (the vendored Hub guide in §8.2 gives 500 / +100 / +5) |
+| Vacuous validation | Over Genes: **66.0%** have no validation commands, **18.2%** only trivial ones (16.0% by static patterns, 2.2% pass in an empty sandbox), 15.8% legitimate ones. The abstract calls the 84% "approved assets" and §8 calls it "agents" | [BE §6.1 Table 1, Abstract, §8] |
+| GDI weights | intrinsic **35%**, usage 30%, social 20%, freshness 15%; refit 0.35 / 0.29 / 0.17 / 0.10, R² 0.995 | [BE Eq. 1, Eq. 2] |
+| Intrinsic component | mean of 6 normalized metadata values, 5 of them self-reported, fixed at publication | [BE §5.2, App. B Eq. 3] |
+| Sparsity | **99%** of assets have zero votes; 99% have usage < 0.1 | [BE §5.2] |
+| Collapse | "the four-dimensional GDI mechanism collapses into a one-dimensional metric dominated by the Intrinsic component" | [BE §5.2] |
+| Dominant lever | blast radius. Degrading only blast drops the full GDI from **40.2 to 36.0** (intrinsic 0.649 → 0.527); confidence and streak have minimal effect. Eq. 3 as printed does not reproduce these drops (§4.18) | [BE §6.2 Table 2, App. C] |
+| Manipulation in the wild | 6 promoted Capsules satisfy the full Optimal configuration: average GDI **43.53** (85th percentile), mean call count **3.0** (99th percentile). **1.4%** of promoted Capsules hit the optimal blast-radius configuration | [BE §6.2] |
+| Bounty winners | winning assets have a slightly higher median GDI (38.7 vs 35.5) | [BE §5.1] |
+| Conclusion | "future A2A collaboration networks cannot rely on unverified self-reporting alone. Scalable collaboration requires mechanisms that balance open participation with verifiable execution and trustworthy evaluation" | [BE Abstract] |
 
 ---
 
 ## 8. Known weaknesses and critiques
 
-**8.1 From the independent study** [abs:BE][snip:BE][doc]:
+**8.1 From the independent study** [BE §4–§6, §8][doc]:
 
-1. Incentives reward output, not usefulness. 98% of assets are never reused, and credits concentrate on mass publishers.
-2. The ranking is gameable because it is computed from self-reported metadata. Blast radius (claimed lines and files changed) dominates, and social signals are almost absent.
-3. Validation is self-reported and mostly vacuous (over 84% of approved assets).
+1. Incentives reward output, not usefulness. 98% of assets are never called, and credits concentrate on mass publishers.
+2. The ranking is gameable because it is computed from self-reported metadata. Blast radius (claimed lines and files changed) dominates in the live-hub ablation, and social signals are almost absent.
+3. Validation is self-reported and mostly vacuous: 84.2% of Genes have no or only trivial validation commands. BE suggests "simple verification steps (e.g., checking file changes via Git or executing validations)" as mitigations [BE §1].
 4. Agents grade their own work. Inheriting an asset means trusting code and instructions of unknown quality [doc "Watch out for"].
 
 **8.2 Mechanisms in the code that explain these findings** [inferred, from the cited code]:
@@ -1078,7 +1100,7 @@ Qualitative conclusions reported:
   - The client reuse score is `confidence × streak × reputation` (§4.16). The Hub *requires* non-zero blast radius for distribution, which creates an incentive to claim it [vdoc:hub-skill§Broadcast Eligibility]. The vendor guide itself coaches agents to "Maintain high `confidence` and `success_streak`" [vdoc:hub-skill§Level 4].
 - **Publishing is the default and is paid; reuse is barely measured.**
   - `EVOLVER_AUTO_PUBLISH` defaults to true, visibility defaults to public, and skill2gep auto-publishes by default with its quality gate off by default.
-  - Promotion pays +100 credits, while a fetch pays +5.
+  - Promotion pays +100 credits, while a fetch pays +5 (per this guide; BE App. F Table 8 and the current wiki list +20 per promotion and 0–12 per call by GDI tier [wiki: 06-billing-reputation]).
   - Reuse attribution and outcome reporting are **off by default**, and the shadow attribution data "is read by NO payout path today" [code:evolver/src/config.js][vdoc:hub-skill§Agent Survival].
   - Third-party repos show agents explicitly publishing "GDI optimization" bundles (`lorissun2025/price-monitor/evomap-gdi-optimization.js`) and "credit farmer" bots (`ulsreall/evomap-farmer`). This is anecdotal: I saw these repos while searching, not as study data.
 - **The `--validated` promotion flag is an operator's self-assertion** [code:evolver/scripts/a2a_promote.js]. The "Hub verify" step in solidify sends only the gene id, hashes of the signals and mutation, a timestamp and an HMAC. It is a permit/quota check, not an execution check [deob:evolver/src/gep/hubVerify.js:requestSolidifyPermit][deob:evolver/src/gep/solidify.js].
@@ -1091,16 +1113,24 @@ Qualitative conclusions reported:
 
 **8.3 About the Strategy Genes evidence** [inferred unless tagged]:
 
-- It is a vendor-authored "beta technical report" with no peer review [snip:SG][doc], and the gains are small in absolute terms (54.0 vs 51.0).
-- I could not find error bars or per-scenario variance in any accessible source, and the overview says results are single runs without replication [doc].
-- The domain is narrow: code-science tasks with Gemini models. The engine's own metadata marks generalization as an assumption (`claims_outside_scope: "assumption"`) [code:evolver/src/gep/skill2gep.js].
-- The CritPt comparisons confound gene evolution with other changes. Version B also changed the base model, added exploration, enlarged the gene pool and added routing [snip:SG]. OpenClaw also generated answers [sec:critpt].
-- The vendor-side follow-up says genes transcribed from reference text can be **worse** than Skills (§7.5). The benefit therefore depends on real fail→pass evidence, not on compactness alone.
+- It is a vendor-authored "beta technical report" with no peer review [SG Abstract][doc], and the gains are small in absolute terms (54.0 vs 51.0). Gene does not help the stronger model: Pro is 59.9% with the gene and 60.1% without; the gain comes from Flash (41.8 → 48.2) [SG Table 1].
+- SG reports no error bars, CIs or per-scenario variance and does not state trials per condition [SG §4, App. B]; the overview says the results are single runs without replication [doc]. LWF reports task-level bootstrap CIs and McNemar tests, but from one trial per task-condition [LWF §4, App. A.1].
+- No held-out tasks. SG builds Gene and Skill from each scenario's own experience and tests them on that scenario [SG §4.1.1]. LWF reuses each gene on the task it was distilled from [LWF §5.3].
+- The domain is narrow in SG: code-science tasks with two Gemini models. LWF widens it to four task families and seven models. The engine's own metadata marks generalization as an assumption (`claims_outside_scope: "assumption"`) [code:evolver/src/gep/skill2gep.js].
+- The CritPt comparisons confound gene evolution with the agent. Each evolved system is compared with its own base model, so the base model is fixed within a pair. But the evolved arm is an OpenClaw agent driven by Evolver, and no agent-without-genes arm is reported. Between A and B, the task design, exploration and the gene pool also change: in B, 148 of 210 gene slots are arxiv-derived [SG §4.4, App. D.1, D.3][sec:critpt].
+- The vendor follow-up finds that genes distilled from reference material are **worse** than Skills on every model (−3.3 to −11.3 pp), on different tasks from the evolved set [LWF §5.2]. The benefit therefore depends on real fail→pass evidence, not on compactness alone.
 - The composition result (multi-gene hurts) argues for injecting one gene at a time, which the engine does.
 
 **8.4 Overview caveats** [doc]: the performance figures come from EvoMap's own team and have not been independently replicated. The independent study measured the network, not benchmark performance. There is a name clash with EvoMap's unrelated "AutoResearch" project.
 
-**8.5 Source discrepancies to note.** The overview says "128,000 daily active agents"; the abstract says "128K agents". The Behind EvoMap submission date is 25 May in the overview, and its arXiv listing is dated 26 May [doc][abs:BE].
+**8.5 Source discrepancies to note.**
+
+- "128K daily active agents" is BE's own §1 wording, which the overview repeats; the abstract says "128K agents", and §3 counts 128,054 agents in the snapshot [BE Abstract, §1, §3].
+- BE's 84% is "of approved assets" in the abstract, "of Genes" in §6.1 Table 1 and "of agents" in §8.
+- BE's Median configuration uses streak 323 while its sweep gives the empirical median streak as 4 [BE §6.2 Table 2, App. C Table 4].
+- BE's measured intrinsic scores do not follow its Eq. 3 (§4.18).
+- Starter credits are 500 in the vendored Hub guide, 200 in BE App. F and 100 in the current wiki.
+- The overview dates Behind EvoMap to 25 May, while the arXiv listing read earlier shows v1 on 26 May; v4 is dated 6 Aug 2026 [doc][BE title page].
 
 ---
 
@@ -1299,20 +1329,20 @@ exploration: for each signal class, reserve an ε share of search results for ve
 
 | # | Claim | Measure | Arms | Confirming outcome (qualitative, consistent across seeds; paired bootstrap CIs) |
 |---|---|---|---|---|
-| X1 | Compact genes carry experience better than long skill documents [doc][snip:SG] | hidden-grader pass rate; tokens | Tier 2: none / Skill / Gene (/ Gene truncated-Skill at matched budget) × 3 seeds | Gene ≥ none and Gene > Skill in direction; matched-budget Skill < Gene. Report as "does/does not reproduce" given small N. |
-| X2 | Failure warnings work best as compact AVOID items, not appended history [snip:SG] | pass rate | Tier 2: strategy only / AVOID only / strategy + appended raw failure log | AVOID-only ≥ appended-log |
-| X3 | One targeted gene beats compositions [snip:SG] | pass rate | Tier 2 and Tier 1: 1 gene vs 2 complementary vs 2 conflicting | single ≥ multi (Tier 2 measured; Tier 1 is only a mechanism check since λ_comp is a knob) |
+| X1 | Compact genes carry experience better than long skill documents [doc][SG §4.1, Table 1] | hidden-grader pass rate; tokens | Tier 2: none / Skill / Gene (/ Gene truncated-Skill at matched budget) × 3 seeds | Gene ≥ none and Gene > Skill in direction; matched-budget Skill < Gene. Report as "does/does not reproduce" given small N. |
+| X2 | Failure warnings work best as compact AVOID items, not appended history [SG §4.3.1, §4.3.3] | pass rate | Tier 2: strategy only / AVOID only / strategy + appended raw failure log | AVOID-only ≥ appended-log |
+| X3 | One targeted gene beats compositions [SG §4.2.4 Table 4] | pass rate | Tier 2 and Tier 1: 1 gene vs 2 complementary vs 2 conflicting | single ≥ multi (Tier 2 measured; Tier 1 is only a mechanism check since λ_comp is a knob) |
 | X4 | The local loop reuses what worked, bans what fails, explores when stuck (§3.3, §4.3–4.5) | per-class selection accuracy vs the oracle-best gene over cycles; ban latency for a harmful gene; stagnation escape | Tier 1: memory graph on/off, drift on/off, plateau override on/off; ban rule "spec" (total ≥ 2, value < 0.18) vs "current" (per-key ≥ 4, best < 0.15) | accuracy rises toward the oracle; drift finds the better gene after a plateau; ban latency matches the code-derived expectations of §4.4: 4 failures under the spec rule; 5 (6 with the predictive factor) under the current memory-graph rule; 2 via failed-capsule overlap when diffs are non-empty [inferred arithmetic] |
 | X5 | "Doing nothing" can masquerade as success (issue #562) | share of cycles selecting an inert gene | Tier 1: count `stable_no_error` as success (old) vs inert (fixed) | the old rule shows domination (share near 1); the fixed rule does not |
 | X6 | Sharing lets a lesson learned once be inherited by many agents, even on different models [doc] | cumulative solves, redundant re-solves, tokens per solve, time-to-solve per class | Tier 1: isolated agents vs SafeHub; heterogeneous `a_m` | hub arm solves more with fewer redundant solves and tokens; weak models benefit from strong models' genes |
-| X7 | Replication of Behind-EvoMap dynamics under publish-rewarding, self-reported validation [abs:BE] | never_reused share, top-10% credit share, Gini, vacuous_share_promoted, Spearman(rank, true effect) | Tier 1 population with 10–20% farmers: NaiveEvoMapHub | never_reused large (e.g., > 90%); credits concentrated in farmers; vacuous share high; rank correlates weakly or negatively with true effect |
-| X8 | GDI is manipulable through self-reported metadata; blast radius dominates [snip:BE] | Δrank when an inflator changes only claimed blast / confidence / streak | NaiveEvoMapHub vs SafeHub | large Δrank under GDI, largest for blast radius; Δrank = 0 under SafeHub (metadata ignored or recomputed) |
+| X7 | Replication of Behind-EvoMap dynamics under publish-rewarding, self-reported validation [BE §4–§6] | never_reused share, top-10% credit share, Gini, vacuous_share_promoted, Spearman(rank, true effect) | Tier 1 population with 10–20% farmers: NaiveEvoMapHub | never_reused large (e.g., > 90%); credits concentrated in farmers; vacuous share high; rank correlates weakly or negatively with true effect |
+| X8 | GDI is manipulable through self-reported metadata; blast radius dominates [BE §6.2] | Δrank when an inflator changes only claimed blast / confidence / streak | NaiveEvoMapHub vs SafeHub | large Δrank under GDI, largest for blast radius; Δrank = 0 under SafeHub (metadata ignored or recomputed) |
 | X9 | Verifiable execution stops vacuous validation | recall and precision of VacuityDetector (lint + discriminative) on seeded vacuous vs real validators | Tier 1 and Tier 2 assets | recall ≈ 1 on the seeded vacuous classes; low false rejects on real validators |
 | X10 | Adoption-based ranking plus adoption credits fix the incentives | same metrics as X7, plus consumer_uplift | same population: SafeHub (with and without exploration slots) | reuse_rate up, vacuous ≈ 0 among promoted, rank validity ρ > 0, farmers' credits ≈ 0; exploration slots cut time-to-first-reuse for new good assets |
 | X11 | Untrusted assets must be quarantined and re-tested [doc] | poisoned or harmful assets reaching local stores; consumer regressions | quarantine + local RRSI gate vs direct apply ("REUSE MODE: apply faithfully") | ≈ 0 poisoned promotions and no consumer regression beyond δ with quarantine; measurable harm without |
-| X12 | Distilled genes from real fail→pass evidence beat reference-transcribed genes (§7.5) | pass rate of the distilled gene on held-out tasks | Tier 1/2: Distiller from evolved trajectories vs from reference text only | evolved > reference-distilled (direction) |
+| X12 | Distilled genes from real fail→pass evidence beat reference-transcribed genes (§7.5) [LWF §5.2] | pass rate of the distilled gene on held-out tasks | Tier 1/2: Distiller from evolved trajectories vs from reference text only | evolved > reference-distilled (direction) |
 | X13 | Auditability: every change traceable; tampering detectable [doc][spec:§1] | reconstruct the lineage (event.parent chain, capsule→gene→asset_id); detect a modified asset | inject byte-level tampering; export/import an archive | 100% tamper detection via asset_id; lineage reconstructed exactly; round-trip identical hashes |
-| X14 | "Tokens rise then fall" as reasoning is compressed into genes [code:evolver/README.md] | tokens per solved task over successive gene-library versions | Tier 2 across 4–5 library versions | qualitative rise then fall. Label it as exploratory; the vendor report is not accessible |
+| X14 | "Tokens rise then fall" as reasoning is compressed into genes [code:evolver/README.md] | tokens per solved task over successive gene-library versions | Tier 2 across 4–5 library versions | qualitative rise then fall. Label it as exploratory; the vendor report is not accessible, and SG reports no token trajectory |
 | X15 | Self-assessment contaminates learning: when the memory graph reads the executor's self-reported EvolutionEvent (§4.11), an over-confident executor steers gene preference toward genes that do not help [inferred from deob:memoryGraph.js] | preferred-gene accuracy vs the oracle; correlation between the preferred gene's true effect and the self-reported scores | Tier 1: an honest vs an over-reporting mock executor (always prints `outcome.score 0.9`); OutcomeInferrer faithful (transcript-first) vs safe (solidify-measured only) | faithful mode + over-reporting executor ⇒ preference drifts to ineffective genes; safe mode is unaffected |
 | X16 | The composite "process score" is not a task-gain measure (§4.10) | Spearman ρ between the composite score and the hidden-grader task gain per cycle | Tier 1 and 2: cycles with real, vacuous (`--version`) and skipped validations | ρ near 0 for vacuous/skipped validations, and most such cycles still ≥ 0.78 (publishable) |
 
@@ -1327,7 +1357,7 @@ exploration: for each signal class, reserve an ε share of search results for ve
 | 3 | 1.5M assets, but 98% never reused | `ReuseMetrics.never_reused` / `reuse_rate`; replication X7 |
 | 4 | GEP whitepaper and "compact strategy genes beat long skill documents" | GEP-compatible `Gene/Capsule/EvolutionEvent` + `JsonSchemaValidator`; X1 (Gene vs Skill) |
 | 5 | What improves is a shared library of know-how; each agent keeps a local store and can publish to a hub where agents on different models reuse it | `LocalStore` + `Hub`; heterogeneous `a_m` / real models in X6 |
-| 6 | Look before solving: search the local store, then the hub (matching by what the asset does); only then work out a new approach | **Evolver's real order is hub first** (§3.1; `enrich.js` "SearchFirst", the executor prompt's "EVOMAP-FIRST"): signals → `Hub.search` (signal and semantic match) on every non-idle cycle → `GeneSelector` over `LocalStore` → `Executor` with the local gene and, on a hub hit, the hub asset as a "STRONG REFERENCE" next to it → gene writer only if nothing fits. Faithful mode follows this (`hub_when="first"`, `reuse_mode="reference"`); safe mode keeps the overview's local-then-hub order (`hub_when="no_local"`). The overview's order, which is also the Behind-EvoMap study's own description of the agent [snip:BE, arXiv HTML v3, WebSearch 2026-09-30], is contradicted by the released code (docs/methods/evomap/claims-audit.md M8a). Evolver v2 (`v2-beta` 415ed84): pre-solve hub reuse is opt-in (`EVOLVER_REUSE_BEFORE_SOLVE=1`; off in solo mode) and pools hub and local candidates; `evolver reuse --id` checks the local recall library before fetching by id from the hub |
+| 6 | Look before solving: search the local store, then the hub (matching by what the asset does); only then work out a new approach | **Evolver's real order is hub first** (§3.1; `enrich.js` "SearchFirst", the executor prompt's "EVOMAP-FIRST"): signals → `Hub.search` (signal and semantic match) on every non-idle cycle → `GeneSelector` over `LocalStore` → `Executor` with the local gene and, on a hub hit, the hub asset as a "STRONG REFERENCE" next to it → gene writer only if nothing fits. Faithful mode follows this (`hub_when="first"`, `reuse_mode="reference"`); safe mode keeps the overview's local-then-hub order (`hub_when="no_local"`). The overview's order, which is also the Behind-EvoMap study's own description of the agent [BE §2.1], is contradicted by the released code (docs/methods/evomap/claims-audit.md M8a). Evolver v2 (`v2-beta` 415ed84): pre-solve hub reuse is opt-in (`EVOLVER_REUSE_BEFORE_SOLVE=1`; off in solo mode) and pools hub and local candidates; `evolver reuse --id` checks the local recall library before fetching by id from the hub |
 | 7 | Solve and distil: Evolver distils what worked into reusable assets | `Solidifier` (Capsule) + `Distiller` (heuristic synthesizer by default, LLM distill-request fallback, and failure distillation; triggers in §4.14) + `LeakageAuditor` |
 | 8 | Validate and record: a validation command tests the asset; the outcome is recorded as an event (audit trail) | `ValidationRunner` + `CommandPolicy` + `CountedFilePolicy`/`ConstraintChecker` + `VacuityDetector` (safe mode) + `EvolutionEvent` appended to `events.jsonl` with `parent` chain; the memory-graph outcome via `OutcomeInferrer` (X15) |
 | 9 | Publish and rank: a ranking score decides which rise; a credit economy rewards contributors | `Hub.rank` (GDI in the naive hub, adoption-based in `SafeHub`) + `CreditLedger` |

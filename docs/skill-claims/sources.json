@@ -1,0 +1,134 @@
+[
+ {
+  "file": "autoresearch/README.md",
+  "origin": "https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/README.md",
+  "bytes": 8039,
+  "sha256": "3958fd4195ac2f98ed35c4eaa4f3028a335165ee24945e96426c408d25793a41"
+ },
+ {
+  "file": "autoresearch/prepare.py",
+  "origin": "https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/prepare.py",
+  "bytes": 15043,
+  "sha256": "4f2ba9cbb8ba8c4a3d35be405a913e2f3be3af9aea103ed52ef7b2a662058150"
+ },
+ {
+  "file": "autoresearch/program.md",
+  "origin": "https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/program.md",
+  "bytes": 7039,
+  "sha256": "86cf987a5c381e46eefe0d0a82765223fd766d8d7acdc2afacfbbce15ecacece"
+ },
+ {
+  "file": "autoresearch/rehearse_2607.27687.txt",
+  "origin": "https://arxiv.org/html/2607.27687 (as served 25 Oct 2026)",
+  "bytes": 68161,
+  "sha256": "682dc241fa15ed6dec59fb6b6e52dd2447920e1f79be5797ba3d5276943809e9"
+ },
+ {
+  "file": "autoresearch/train.py",
+  "origin": "https://github.com/karpathy/autoresearch/blob/228791fb499afffb54b46200aca536f79142f117/train.py",
+  "bytes": 26230,
+  "sha256": "2954175f4ac42ad65164aef40910ef953789abcd05a5cc886ac9ba5a00814414"
+ },
+ {
+  "file": "dream/listing1.txt",
+  "origin": "Listing 1 of https://arxiv.org/html/2609.14858v2, one line per listing line ('Ln: ')",
+  "bytes": 1717,
+  "sha256": "01896272b63382e454277fd7ddbf99abe344f7fb413bd49beb6b994ec669a51d"
+ },
+ {
+  "file": "dream/listing2.txt",
+  "origin": "Listing 2 of https://arxiv.org/html/2609.14858v2, one line per listing line ('Ln: ')",
+  "bytes": 16677,
+  "sha256": "eaedc6275814f5eb763f4a96b14a53a73e9feddda6c43b7978afec897d4cccf4"
+ },
+ {
+  "file": "dream/paper_v1.txt",
+  "origin": "https://arxiv.org/html/2609.14858v1",
+  "bytes": 115600,
+  "sha256": "b6c2bd087d6a6332e60e6630d5414194b07806f14288b789ef393852e712e0b6"
+ },
+ {
+  "file": "dream/paper_v2.txt",
+  "origin": "https://arxiv.org/html/2609.14858v2",
+  "bytes": 130800,
+  "sha256": "f9aa125378a5a8b5c6290d051a43679a22b130df56debf1d22205ed8419cf8ed"
+ },
+ {
+  "file": "evomap/BE_2605.25815.txt",
+  "origin": "https://arxiv.org/html/2605.25815v4",
+  "bytes": 81695,
+  "sha256": "1a64dd9c2b9c30f6b4b6ea37b3170fe736bfaf00eb576370321d08f73799628b"
+ },
+ {
+  "file": "evomap/LWF_2608.23200.txt",
+  "origin": "https://arxiv.org/html/2608.23200v4",
+  "bytes": 48266,
+  "sha256": "247cad62fb0c1c5a581636a0962bc1e8f4e94fa63660574537896400ad5f2298"
+ },
+ {
+  "file": "evomap/SG_2604.15097.txt",
+  "origin": "https://arxiv.org/html/2604.15097v4",
+  "bytes": 96770,
+  "sha256": "ec4104f935091ef0ee61f81af3aceccaa2dec9bf3b2260d7f46bfa87344ce108"
+ },
+ {
+  "file": "evomap/evolver_README.md",
+  "origin": "https://github.com/EvoMap/evolver README.md (as served 25 Oct 2026)",
+  "bytes": 34245,
+  "sha256": "6df15a67995378b52ccae213a01c07b6a6e1bd812803f89d7d8cebb3c7fe81a5"
+ },
+ {
+  "file": "evomap/evomap_skill.md",
+  "origin": "https://evomap.ai/skill.md (as served 25 Oct 2026)",
+  "bytes": 39039,
+  "sha256": "77e2f249a28c119e9b6b3fd5b84debca138dfa70fdb7ff0449dfeb932476e553"
+ },
+ {
+  "file": "evomap/gep-spec-v1.md",
+  "origin": "npm @evomap/gep-sdk@1.14.0, spec/gep-spec-v1.md",
+  "bytes": 45228,
+  "sha256": "1310617d8c76384056d815ff1b3a36a2d450cc394d5f2792aa8fac3555233fb6"
+ },
+ {
+  "file": "evomap/wiki_full.txt",
+  "origin": "https://evomap.ai/wiki, all pages concatenated (as served 25 Oct 2026)",
+  "bytes": 617664,
+  "sha256": "3030d3f9700330e399fbba753b1f94dbfaed6c211977c892b8d6fa8106a8089c"
+ },
+ {
+  "file": "gepa/paper_v2.txt",
+  "origin": "https://arxiv.org/html/2507.19457v2",
+  "bytes": 268458,
+  "sha256": "914ef3fbea1a6215ec227a7384e1fc902b9529abb812277348bf25dc032dda61"
+ },
+ {
+  "file": "metaharness/paper.txt",
+  "origin": "https://arxiv.org/html/2603.28052v1",
+  "bytes": 88511,
+  "sha256": "cb765a901f33a54604d0c96ecfa275c57c3692330742be7180a8b77ef8192da2"
+ },
+ {
+  "file": "rrsi/paper_v1.txt",
+  "origin": "https://arxiv.org/html/2609.24972v1",
+  "bytes": 78586,
+  "sha256": "8d6c44c1131964516582628630a1cc6f290e59c57bcfad5769ff17988d1c737a"
+ },
+ {
+  "file": "rrsi/paper_v3.txt",
+  "origin": "https://arxiv.org/html/2609.24972v3",
+  "bytes": 88873,
+  "sha256": "23ef5b30617d59e2b60ca02017c8fbcd6d6150e2da249b3b176e21683d8e0be5"
+ },
+ {
+  "file": "solpi/paper.txt",
+  "origin": "https://arxiv.org/html/2609.20519v1",
+  "bytes": 57047,
+  "sha256": "c39245322d312a8616b8fcf58d7e5ffd60a1e5d7fae9b2c52ea386a32deb24dd"
+ },
+ {
+  "file": "solpi/paper_pdf.txt",
+  "origin": "https://arxiv.org/pdf/2609.20519v1 (pdftotext)",
+  "bytes": 428903,
+  "sha256": "4caafcc30cc8f4a22fc3b440994bcd5772442e0f063b28baff9b507e391cf18f"
+ }
+]

@@ -1,0 +1,1702 @@
+{
+ "charts": [
+  {
+   "id": "core-null-keeps",
+   "method": "Core",
+   "type": "bar",
+   "source": "results/core-qa/core_calibration.json",
+   "title": "How often each keep rule accepts an unchanged artifact",
+   "takeaway": "Re-scoring the same harness twice and keeping any gain accepts pure noise 46%-47% of the time. A noise band cuts that to 9% at k = 2, and the small-k correction to 4%.",
+   "x": {
+    "label": "Trials per task (k)",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Share of null pairs kept",
+    "min": 0,
+    "max": 0.6,
+    "format": ".0%"
+   },
+   "series": [
+    {
+     "name": "Keep any gain (strict)",
+     "points": [
+      {
+       "x": "k = 2",
+       "y": 0.462,
+       "lo": 0.441,
+       "hi": 0.484
+      },
+      {
+       "x": "k = 3",
+       "y": 0.452,
+       "lo": 0.426,
+       "hi": 0.477
+      },
+      {
+       "x": "k = 5",
+       "y": 0.473,
+       "lo": 0.452,
+       "hi": 0.494
+      }
+     ]
+    },
+    {
+     "name": "Noise band (bootstrap delta)",
+     "points": [
+      {
+       "x": "k = 2",
+       "y": 0.087,
+       "lo": 0.072,
+       "hi": 0.104
+      },
+      {
+       "x": "k = 3",
+       "y": 0.058,
+       "lo": 0.046,
+       "hi": 0.071
+      },
+      {
+       "x": "k = 5",
+       "y": 0.039,
+       "lo": 0.028,
+       "hi": 0.051
+      }
+     ]
+    },
+    {
+     "name": "Noise band, small-k corrected",
+     "points": [
+      {
+       "x": "k = 2",
+       "y": 0.037,
+       "lo": 0.027,
+       "hi": 0.048
+      },
+      {
+       "x": "k = 3",
+       "y": 0.034,
+       "lo": 0.025,
+       "hi": 0.043
+      },
+      {
+       "x": "k = 5",
+       "y": 0.023,
+       "lo": 0.014,
+       "hi": 0.033
+      }
+     ]
+    }
+   ],
+   "note": "AgentQA with a simulated model, 30 seeds x 40 null pairs per k; bars show 95% CIs."
+  },
+  {
+   "id": "core-floor-clearance",
+   "method": "Core",
+   "type": "line",
+   "source": "results/core-qa/core_calibration.json",
+   "title": "Does the noise floor hold an unchanged artifact 97.5% of the time?",
+   "takeaway": "RRSI's floor S* - delta lets an unchanged harness through 91.8% of the time at k = 2, not the 97.5% its code comment claims: the bootstrap underestimates variance by (k-1)/k. With the correction it clears 96.9%.",
+   "x": {
+    "label": "Trials per task (k)",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Unchanged artifact clears the floor",
+    "min": 0.88,
+    "max": 1.0,
+    "format": ".1%"
+   },
+   "series": [
+    {
+     "name": "Bootstrap delta (as in RRSI)",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.918,
+       "lo": 0.903,
+       "hi": 0.933
+      },
+      {
+       "x": 3,
+       "y": 0.947,
+       "lo": 0.935,
+       "hi": 0.959
+      },
+      {
+       "x": 5,
+       "y": 0.973,
+       "lo": 0.963,
+       "hi": 0.983
+      }
+     ]
+    },
+    {
+     "name": "Small-k corrected delta",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.969,
+       "lo": 0.96,
+       "hi": 0.978
+      },
+      {
+       "x": 3,
+       "y": 0.976,
+       "lo": 0.967,
+       "hi": 0.984
+      },
+      {
+       "x": 5,
+       "y": 0.985,
+       "lo": 0.978,
+       "hi": 0.991
+      }
+     ]
+    },
+    {
+     "name": "Predicted by the (k-1)/k bias",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.921
+      },
+      {
+       "x": 3,
+       "y": 0.949
+      },
+      {
+       "x": 5,
+       "y": 0.963
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0.975,
+     "label": "claimed 97.5%"
+    }
+   ],
+   "note": "AgentQA with a simulated model; bands are 95% CIs."
+  },
+  {
+   "id": "core-delta-ratio",
+   "method": "Core",
+   "type": "line",
+   "source": "results/core-qa/core_calibration.json",
+   "title": "Bootstrap noise band vs the band from repeated evaluations",
+   "takeaway": "One evaluation's bootstrap gives a band about 0.70x / 0.81x / 0.90x the width of the one measured by re-running the artifact (k = 2 / 3 / 5), tracking the predicted sqrt((k-1)/k) on both domains.",
+   "x": {
+    "label": "Trials per task (k)",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "delta_bootstrap / delta_repeat",
+    "min": 0.6,
+    "max": 1.05,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "AgentQA",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.699,
+       "lo": 0.677,
+       "hi": 0.721
+      },
+      {
+       "x": 3,
+       "y": 0.806,
+       "lo": 0.786,
+       "hi": 0.827
+      },
+      {
+       "x": 5,
+       "y": 0.901,
+       "lo": 0.877,
+       "hi": 0.925
+      }
+     ]
+    },
+    {
+     "name": "Bernoulli toy",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.726,
+       "lo": 0.705,
+       "hi": 0.748
+      },
+      {
+       "x": 3,
+       "y": 0.844,
+       "lo": 0.819,
+       "hi": 0.871
+      },
+      {
+       "x": 5,
+       "y": 0.919,
+       "lo": 0.894,
+       "hi": 0.944
+      }
+     ]
+    },
+    {
+     "name": "sqrt((k-1)/k)",
+     "points": [
+      {
+       "x": 2,
+       "y": 0.707
+      },
+      {
+       "x": 3,
+       "y": 0.816
+      },
+      {
+       "x": 5,
+       "y": 0.894
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 1.0,
+     "label": "unbiased"
+    }
+   ],
+   "note": "simulated domain: shows the mechanism, not a benchmark"
+  },
+  {
+   "id": "core-package-size",
+   "method": "Core",
+   "type": "stacked",
+   "source": "repo:rsi",
+   "title": "Where the package's lines go",
+   "takeaway": "42,990 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
+   "x": {
+    "label": "Subpackage of rsi/",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Lines",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Code",
+     "points": [
+      {
+       "x": "domains",
+       "y": 8159
+      },
+      {
+       "x": "evomap",
+       "y": 5242
+      },
+      {
+       "x": "dream",
+       "y": 4180
+      },
+      {
+       "x": "rrsi",
+       "y": 4213
+      },
+      {
+       "x": "autoresearch",
+       "y": 3331
+      },
+      {
+       "x": "solpi",
+       "y": 2814
+      },
+      {
+       "x": "gepa",
+       "y": 2458
+      },
+      {
+       "x": "metaharness",
+       "y": 2464
+      },
+      {
+       "x": "core",
+       "y": 1839
+      },
+      {
+       "x": "top level",
+       "y": 461
+      }
+     ]
+    },
+    {
+     "name": "Docstrings and comments",
+     "points": [
+      {
+       "x": "domains",
+       "y": 444
+      },
+      {
+       "x": "evomap",
+       "y": 266
+      },
+      {
+       "x": "dream",
+       "y": 309
+      },
+      {
+       "x": "rrsi",
+       "y": 176
+      },
+      {
+       "x": "autoresearch",
+       "y": 143
+      },
+      {
+       "x": "solpi",
+       "y": 114
+      },
+      {
+       "x": "gepa",
+       "y": 111
+      },
+      {
+       "x": "metaharness",
+       "y": 113
+      },
+      {
+       "x": "core",
+       "y": 126
+      },
+      {
+       "x": "top level",
+       "y": 19
+      }
+     ]
+    },
+    {
+     "name": "Blank",
+     "points": [
+      {
+       "x": "domains",
+       "y": 1376
+      },
+      {
+       "x": "evomap",
+       "y": 814
+      },
+      {
+       "x": "dream",
+       "y": 759
+      },
+      {
+       "x": "rrsi",
+       "y": 592
+      },
+      {
+       "x": "autoresearch",
+       "y": 565
+      },
+      {
+       "x": "solpi",
+       "y": 518
+      },
+      {
+       "x": "gepa",
+       "y": 479
+      },
+      {
+       "x": "metaharness",
+       "y": 386
+      },
+      {
+       "x": "core",
+       "y": 425
+      },
+      {
+       "x": "top level",
+       "y": 94
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "live-rrsi-iterations",
+   "method": "Live demo",
+   "type": "line",
+   "source": "demo/data.json",
+   "title": "RRSI on AgentQA: practice and sealed scores per round",
+   "takeaway": "Two kept rounds lift practice from 0.17 to 1.00 while sealed held-out rises 0.50 to 0.88 and OOD 0.50 to 0.75; both round-3 proposals failed the cost rule and were discarded.",
+   "x": {
+    "label": "Iteration",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Accuracy (1 trial per task)",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Practice (in loop)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.167
+      },
+      {
+       "x": 1,
+       "y": 0.833
+      },
+      {
+       "x": 2,
+       "y": 1.0
+      },
+      {
+       "x": 3,
+       "y": 1.0
+      }
+     ]
+    },
+    {
+     "name": "Held-out (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.5
+      },
+      {
+       "x": 1,
+       "y": 0.75
+      },
+      {
+       "x": 2,
+       "y": 0.875
+      },
+      {
+       "x": 3,
+       "y": 0.875
+      }
+     ]
+    },
+    {
+     "name": "OOD (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.5
+      },
+      {
+       "x": 1,
+       "y": 0.75
+      },
+      {
+       "x": 2,
+       "y": 0.75
+      },
+      {
+       "x": 3,
+       "y": 0.75
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent and proposer. Sealed splits come from a write-only shadow monitor the loop never sees."
+  },
+  {
+   "id": "live-mh-hard-iterations",
+   "method": "Live demo",
+   "type": "line",
+   "source": "demo/data.json",
+   "title": "Meta-Harness on hard AgentQA: the router appears at iteration 3",
+   "takeaway": "Iteration 3's hybrid-task-router combined two earlier candidates and reached 1.0 on practice and held-out in the loop (OOD 0.67); later candidates did not beat it.",
+   "x": {
+    "label": "Iteration",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Accuracy (1 trial per task)",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Practice (in loop)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.75
+      },
+      {
+       "x": 1,
+       "y": 0.75
+      },
+      {
+       "x": 2,
+       "y": 0.75
+      },
+      {
+       "x": 3,
+       "y": 1.0
+      },
+      {
+       "x": 4,
+       "y": 1.0
+      }
+     ]
+    },
+    {
+     "name": "Held-out (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.667
+      },
+      {
+       "x": 1,
+       "y": 0.667
+      },
+      {
+       "x": 2,
+       "y": 0.667
+      },
+      {
+       "x": 3,
+       "y": 1.0
+      },
+      {
+       "x": 4,
+       "y": 1.0
+      }
+     ]
+    },
+    {
+     "name": "OOD (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.167
+      },
+      {
+       "x": 1,
+       "y": 0.5
+      },
+      {
+       "x": 2,
+       "y": 0.5
+      },
+      {
+       "x": 3,
+       "y": 0.667
+      },
+      {
+       "x": 4,
+       "y": 0.667
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent and proposer. Sealed splits come from a write-only shadow monitor the loop never sees."
+  },
+  {
+   "id": "live-mh-iterations",
+   "method": "Live demo",
+   "type": "line",
+   "source": "demo/data.json",
+   "title": "Meta-Harness on standard AgentQA: one keep, then a plateau",
+   "takeaway": "Smart answer extraction lifted practice 0.33 to 0.50 and held-out 0.50 to 0.63 at iteration 1; every later proposal scored lower and was kept only as an alternative.",
+   "x": {
+    "label": "Iteration",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "Accuracy (1 trial per task)",
+    "min": 0,
+    "max": 1,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Practice (in loop)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.333
+      },
+      {
+       "x": 1,
+       "y": 0.5
+      },
+      {
+       "x": 2,
+       "y": 0.5
+      },
+      {
+       "x": 3,
+       "y": 0.5
+      },
+      {
+       "x": 4,
+       "y": 0.5
+      }
+     ]
+    },
+    {
+     "name": "Held-out (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.5
+      },
+      {
+       "x": 1,
+       "y": 0.625
+      },
+      {
+       "x": 2,
+       "y": 0.625
+      },
+      {
+       "x": 3,
+       "y": 0.625
+      },
+      {
+       "x": 4,
+       "y": 0.625
+      }
+     ]
+    },
+    {
+     "name": "OOD (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 0.625
+      },
+      {
+       "x": 1,
+       "y": 0.625
+      },
+      {
+       "x": 2,
+       "y": 0.625
+      },
+      {
+       "x": 3,
+       "y": 0.625
+      },
+      {
+       "x": 4,
+       "y": 0.625
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent and proposer. Sealed splits come from a write-only shadow monitor the loop never sees."
+  },
+  {
+   "id": "live-ar-iterations",
+   "method": "Live demo",
+   "type": "line",
+   "source": "demo/data.json",
+   "title": "autoresearch on a tiny language model: kept edits and hidden tests",
+   "takeaway": "Raising the learning rate twice and widening the hidden layer cut validation bpb 2.956 to 2.637; hidden and shifted tests fell with it. Six later edits lost and were reset.",
+   "x": {
+    "label": "Iteration",
+    "kind": "linear"
+   },
+   "y": {
+    "label": "val_bpb (lower is better)",
+    "lowerIsBetter": true,
+    "format": ".2f"
+   },
+   "series": [
+    {
+     "name": "Validation (in loop)",
+     "points": [
+      {
+       "x": 0,
+       "y": 2.956
+      },
+      {
+       "x": 1,
+       "y": 2.956
+      },
+      {
+       "x": 2,
+       "y": 2.682
+      },
+      {
+       "x": 3,
+       "y": 2.648
+      },
+      {
+       "x": 4,
+       "y": 2.637
+      },
+      {
+       "x": 5,
+       "y": 2.637
+      },
+      {
+       "x": 6,
+       "y": 2.637
+      },
+      {
+       "x": 7,
+       "y": 2.637
+      },
+      {
+       "x": 8,
+       "y": 2.637
+      },
+      {
+       "x": 9,
+       "y": 2.637
+      },
+      {
+       "x": 10,
+       "y": 2.637
+      }
+     ]
+    },
+    {
+     "name": "Hidden test (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 3.004
+      },
+      {
+       "x": 1,
+       "y": 3.004
+      },
+      {
+       "x": 2,
+       "y": 2.736
+      },
+      {
+       "x": 3,
+       "y": 2.725
+      },
+      {
+       "x": 4,
+       "y": 2.734
+      },
+      {
+       "x": 5,
+       "y": 2.734
+      },
+      {
+       "x": 6,
+       "y": 2.734
+      },
+      {
+       "x": 7,
+       "y": 2.734
+      },
+      {
+       "x": 8,
+       "y": 2.734
+      },
+      {
+       "x": 9,
+       "y": 2.734
+      },
+      {
+       "x": 10,
+       "y": 2.734
+      }
+     ]
+    },
+    {
+     "name": "Shifted test (sealed)",
+     "points": [
+      {
+       "x": 0,
+       "y": 3.063
+      },
+      {
+       "x": 1,
+       "y": 3.063
+      },
+      {
+       "x": 2,
+       "y": 2.814
+      },
+      {
+       "x": 3,
+       "y": 2.78
+      },
+      {
+       "x": 4,
+       "y": 2.846
+      },
+      {
+       "x": 5,
+       "y": 2.846
+      },
+      {
+       "x": 6,
+       "y": 2.846
+      },
+      {
+       "x": 7,
+       "y": 2.846
+      },
+      {
+       "x": 8,
+       "y": 2.846
+      },
+      {
+       "x": 9,
+       "y": 2.846
+      },
+      {
+       "x": 10,
+       "y": 2.846
+      }
+     ]
+    }
+   ],
+   "note": "Claude Haiku as agent and proposer. Sealed splits come from a write-only shadow monitor the loop never sees."
+  },
+  {
+   "id": "live-gains-forest",
+   "method": "Live demo",
+   "type": "interval",
+   "source": "demo/data.json",
+   "title": "Gain over the seed after each live run, with 95% intervals",
+   "takeaway": "Re-scored with fresh trials, RRSI's standard-suite gains on practice (+0.67) and held-out (+0.44) exclude zero, as do Meta-Harness's (+0.29, +0.44). The hard-suite Meta-Harness gains are large (+0.31 to +0.33) but their intervals reach zero; hard RRSI kept the seed.",
+   "x": {
+    "label": "Run and split",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Accuracy gain (final - seed)",
+    "format": "+.2f"
+   },
+   "series": [
+    {
+     "name": "Gain",
+     "points": [
+      {
+       "x": "RRSI, standard: practice",
+       "y": 0.667,
+       "lo": 0.375,
+       "hi": 0.917
+      },
+      {
+       "x": "RRSI, standard: held-out",
+       "y": 0.438,
+       "lo": 0.188,
+       "hi": 0.688
+      },
+      {
+       "x": "RRSI, standard: OOD",
+       "y": 0.25,
+       "lo": -0.125,
+       "hi": 0.562
+      },
+      {
+       "x": "Meta-Harness, standard: practice",
+       "y": 0.292,
+       "lo": 0.083,
+       "hi": 0.542
+      },
+      {
+       "x": "Meta-Harness, standard: held-out",
+       "y": 0.438,
+       "lo": 0.25,
+       "hi": 0.625
+      },
+      {
+       "x": "Meta-Harness, standard: OOD",
+       "y": 0.0,
+       "lo": -0.375,
+       "hi": 0.375
+      },
+      {
+       "x": "Meta-Harness, hard: practice",
+       "y": 0.312,
+       "lo": 0.0,
+       "hi": 0.625
+      },
+      {
+       "x": "Meta-Harness, hard: held-out",
+       "y": 0.333,
+       "lo": -0.083,
+       "hi": 0.75
+      },
+      {
+       "x": "Meta-Harness, hard: OOD",
+       "y": 0.333,
+       "lo": -0.333,
+       "hi": 0.833
+      },
+      {
+       "x": "RRSI, hard: practice",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "RRSI, hard: held-out",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      },
+      {
+       "x": "RRSI, hard: OOD",
+       "y": 0.0,
+       "lo": 0.0,
+       "hi": 0.0
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no change"
+    }
+   ],
+   "note": "Paired bootstrap over tasks; 6-12 tasks per split, so intervals are wide."
+  },
+  {
+   "id": "live-candidate-fates",
+   "method": "Live demo",
+   "type": "stacked",
+   "source": "demo/data.json",
+   "title": "What happened to every candidate the model proposed",
+   "takeaway": "RRSI and autoresearch reject most proposals (cost rule, noise floor, or no gain); Meta-Harness has no keep rule, so every candidate stays in its population or frontier.",
+   "x": {
+    "label": "Run",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Candidates",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Kept",
+     "points": [
+      {
+       "x": "RRSI, standard",
+       "y": 2
+      },
+      {
+       "x": "RRSI, hard",
+       "y": 0
+      },
+      {
+       "x": "Meta-Harness, standard",
+       "y": 1
+      },
+      {
+       "x": "Meta-Harness, hard",
+       "y": 2
+      },
+      {
+       "x": "autoresearch",
+       "y": 3
+      }
+     ]
+    },
+    {
+     "name": "Kept as alternative",
+     "points": [
+      {
+       "x": "RRSI, standard",
+       "y": 0
+      },
+      {
+       "x": "RRSI, hard",
+       "y": 0
+      },
+      {
+       "x": "Meta-Harness, standard",
+       "y": 7
+      },
+      {
+       "x": "Meta-Harness, hard",
+       "y": 6
+      },
+      {
+       "x": "autoresearch",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Rejected",
+     "points": [
+      {
+       "x": "RRSI, standard",
+       "y": 4
+      },
+      {
+       "x": "RRSI, hard",
+       "y": 4
+      },
+      {
+       "x": "Meta-Harness, standard",
+       "y": 0
+      },
+      {
+       "x": "Meta-Harness, hard",
+       "y": 0
+      },
+      {
+       "x": "autoresearch",
+       "y": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "live-mh-replicates",
+   "method": "Live demo",
+   "type": "interval",
+   "source": "demo/replicates.json",
+   "title": "Meta-Harness held-out gain across four live replicates",
+   "takeaway": "All four standard-suite Meta-Harness runs improved held-out accuracy, by +0.62, +0.62, +0.62, +0.44; every interval excludes zero.",
+   "x": {
+    "label": "Replicate",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Held-out gain (final - seed)",
+    "format": "+.2f"
+   },
+   "series": [
+    {
+     "name": "Held-out gain",
+     "points": [
+      {
+       "x": "Run 1 (before the replay fix)",
+       "y": 0.625,
+       "lo": 0.25,
+       "hi": 1.0
+      },
+      {
+       "x": "Run 2 (after part 1 of the fix)",
+       "y": 0.625,
+       "lo": 0.312,
+       "hi": 0.875
+      },
+      {
+       "x": "Run 3 (after part 2 of the fix)",
+       "y": 0.625,
+       "lo": 0.312,
+       "hi": 0.875
+      },
+      {
+       "x": "Run 4 (final code; cut off by the usage cap after iteration 3, then resumed from its cache)",
+       "y": 0.438,
+       "lo": 0.25,
+       "hi": 0.625
+      }
+     ]
+    }
+   ],
+   "refLines": [
+    {
+     "axis": "y",
+     "value": 0,
+     "label": "no change"
+    }
+   ]
+  },
+  {
+   "id": "live-spend",
+   "method": "Live demo",
+   "type": "stacked",
+   "source": "demo/data.json",
+   "title": "Dollars spent per live run",
+   "takeaway": "Each improvement run cost under $9 with Claude Haiku, including attempts cut short by usage caps; the fresh re-scoring behind the result tables is shown separately.",
+   "x": {
+    "label": "Run",
+    "kind": "category"
+   },
+   "y": {
+    "label": "US dollars",
+    "min": 0,
+    "format": "$.2f"
+   },
+   "series": [
+    {
+     "name": "Improvement run",
+     "points": [
+      {
+       "x": "RRSI, standard",
+       "y": 2.76
+      },
+      {
+       "x": "RRSI, hard",
+       "y": 7.19
+      },
+      {
+       "x": "Meta-Harness, standard",
+       "y": 1.71
+      },
+      {
+       "x": "Meta-Harness, hard",
+       "y": 8.8
+      },
+      {
+       "x": "autoresearch",
+       "y": 0.7
+      }
+     ]
+    },
+    {
+     "name": "Fresh re-score",
+     "points": [
+      {
+       "x": "RRSI, standard",
+       "y": 0.71
+      },
+      {
+       "x": "RRSI, hard",
+       "y": 2.61
+      },
+      {
+       "x": "Meta-Harness, standard",
+       "y": 1.21
+      },
+      {
+       "x": "Meta-Harness, hard",
+       "y": 5.79
+      },
+      {
+       "x": "autoresearch",
+       "y": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ver-claims-audit",
+   "method": "Verification",
+   "type": "stacked",
+   "source": "repo:docs/reports/claims-summary.md",
+   "title": "475 paper claims, each tested against the code and experiments",
+   "takeaway": "257 reproduce and 80 partly; 124 need frontier models, GPUs or the original benchmarks. Only 7 do not reproduce and 7 are contradicted, mostly by the paper's own data or code.",
+   "x": {
+    "label": "Method",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Paper claims",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Reproduced",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 63
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 43
+      },
+      {
+       "x": "Autoresearch",
+       "y": 51
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 31
+      },
+      {
+       "x": "GEPA",
+       "y": 28
+      },
+      {
+       "x": "EvoMap",
+       "y": 28
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 13
+      }
+     ]
+    },
+    {
+     "name": "Partial",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 13
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 13
+      },
+      {
+       "x": "Autoresearch",
+       "y": 10
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 11
+      },
+      {
+       "x": "GEPA",
+       "y": 11
+      },
+      {
+       "x": "EvoMap",
+       "y": 10
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 12
+      }
+     ]
+    },
+    {
+     "name": "Not testable here",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 36
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 25
+      },
+      {
+       "x": "Autoresearch",
+       "y": 2
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 18
+      },
+      {
+       "x": "GEPA",
+       "y": 17
+      },
+      {
+       "x": "EvoMap",
+       "y": 14
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 12
+      }
+     ]
+    },
+    {
+     "name": "Not reproduced or contradicted",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 4
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 2
+      },
+      {
+       "x": "Autoresearch",
+       "y": 2
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 1
+      },
+      {
+       "x": "GEPA",
+       "y": 2
+      },
+      {
+       "x": "EvoMap",
+       "y": 2
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ver-step-audit",
+   "method": "Verification",
+   "type": "stacked",
+   "source": "validation/README.md",
+   "title": "Every step of every validation run, re-derived by an auditor",
+   "takeaway": "2,195 of 2,370 steps verified correct. The 35 wrong steps came from defects such as a mock bug or a parser fence; no gate arithmetic was miscomputed.",
+   "x": {
+    "label": "Method",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Loop steps",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Correct",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 612
+      },
+      {
+       "x": "GEPA",
+       "y": 89
+      },
+      {
+       "x": "autoresearch",
+       "y": 593
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 315
+      },
+      {
+       "x": "EvoMap",
+       "y": 293
+      },
+      {
+       "x": "Meta-Harness + SoL-Pi",
+       "y": 293
+      }
+     ]
+    },
+    {
+     "name": "Questionable",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 26
+      },
+      {
+       "x": "GEPA",
+       "y": 26
+      },
+      {
+       "x": "autoresearch",
+       "y": 5
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 4
+      },
+      {
+       "x": "EvoMap",
+       "y": 25
+      },
+      {
+       "x": "Meta-Harness + SoL-Pi",
+       "y": 18
+      }
+     ]
+    },
+    {
+     "name": "Wrong",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 1
+      },
+      {
+       "x": "GEPA",
+       "y": 0
+      },
+      {
+       "x": "autoresearch",
+       "y": 4
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 15
+      },
+      {
+       "x": "EvoMap",
+       "y": 9
+      },
+      {
+       "x": "Meta-Harness + SoL-Pi",
+       "y": 6
+      }
+     ]
+    },
+    {
+     "name": "Unverifiable",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 1
+      },
+      {
+       "x": "GEPA",
+       "y": 10
+      },
+      {
+       "x": "autoresearch",
+       "y": 20
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 1
+      },
+      {
+       "x": "EvoMap",
+       "y": 3
+      },
+      {
+       "x": "Meta-Harness + SoL-Pi",
+       "y": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ver-skill-ledger",
+   "method": "Verification",
+   "type": "stacked",
+   "source": "repo:docs/skill-claims/ledger",
+   "title": "2,173 skill claims, each backed by a verbatim quote",
+   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 779 from the code.",
+   "x": {
+    "label": "Skill file",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Claims",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Quoted from the paper",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 139
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 100
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 110
+      },
+      {
+       "x": "GEPA",
+       "y": 114
+      },
+      {
+       "x": "autoresearch",
+       "y": 85
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 139
+      },
+      {
+       "x": "EvoMap",
+       "y": 180
+      },
+      {
+       "x": "SKILL.md",
+       "y": 0
+      }
+     ]
+    },
+    {
+     "name": "Quoted from our code",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 92
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 91
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 121
+      },
+      {
+       "x": "GEPA",
+       "y": 101
+      },
+      {
+       "x": "autoresearch",
+       "y": 103
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 96
+      },
+      {
+       "x": "EvoMap",
+       "y": 141
+      },
+      {
+       "x": "SKILL.md",
+       "y": 34
+      }
+     ]
+    },
+    {
+     "name": "Quoted from our docs",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 47
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 48
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 41
+      },
+      {
+       "x": "GEPA",
+       "y": 50
+      },
+      {
+       "x": "autoresearch",
+       "y": 69
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 49
+      },
+      {
+       "x": "EvoMap",
+       "y": 72
+      },
+      {
+       "x": "SKILL.md",
+       "y": 3
+      }
+     ]
+    },
+    {
+     "name": "Silence in the paper, or a skill cross-reference",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 23
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 22
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 30
+      },
+      {
+       "x": "GEPA",
+       "y": 21
+      },
+      {
+       "x": "autoresearch",
+       "y": 11
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 19
+      },
+      {
+       "x": "EvoMap",
+       "y": 22
+      },
+      {
+       "x": "SKILL.md",
+       "y": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ver-skill-corrections",
+   "method": "Verification",
+   "type": "bar",
+   "source": "repo:docs/skill-claims/ledger",
+   "title": "Skill claims corrected to match their source",
+   "takeaway": "77 of 2,173 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
+   "x": {
+    "label": "Skill file",
+    "kind": "category"
+   },
+   "y": {
+    "label": "Corrected claims",
+    "min": 0,
+    "format": ".0f"
+   },
+   "series": [
+    {
+     "name": "Corrected",
+     "points": [
+      {
+       "x": "RRSI",
+       "y": 6
+      },
+      {
+       "x": "Meta-Harness",
+       "y": 12
+      },
+      {
+       "x": "SoL-Pi",
+       "y": 9
+      },
+      {
+       "x": "GEPA",
+       "y": 8
+      },
+      {
+       "x": "autoresearch",
+       "y": 8
+      },
+      {
+       "x": "Dream-RSI",
+       "y": 11
+      },
+      {
+       "x": "EvoMap",
+       "y": 12
+      },
+      {
+       "x": "SKILL.md",
+       "y": 11
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

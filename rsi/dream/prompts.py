@@ -331,7 +331,7 @@ promising probes, but batch independent promising probes whenever possible."""
 
 def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1) -> str:
     """The objective paragraph of Listing 2 (L2:12-22) for the objective used for selection."""
-    if objective == "pareto":
+    if objective in ("pareto", "v2"):   # L2:12-22 is v2's Eq. 1 written for the developer
         return PARETO_OBJECTIVE.format(lam=lam)
     return EQ1_OBJECTIVE.format(beta1=beta1, beta2=beta2, lam=lam)
 

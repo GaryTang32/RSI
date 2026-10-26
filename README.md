@@ -1,127 +1,209 @@
-# RSI: a toolkit for recursive self-improvement loops
+<h1 align="center">RSI: Recursive Self-Improvement Agent Skills</h1>
 
-`rsi` reproduces the mechanisms of seven 2026 self-improvement techniques on one shared,
-tested core, so they can be applied to new problems:
+<p align="center"><b>This repo turns recursive self-improvement papers into agent skills.<br>
+Seven methods, each rebuilt from its paper as tested code plus a Claude Code skill, so an agent can apply them<br>
+to your prompts, agent harness or training script, and keep only the changes that prove themselves on tasks the loop never saw.</b></p>
 
-| Method | Improves | Keep rule | Package |
-|---|---|---|---|
-| **autoresearch** (Karpathy) | the work: one editable script under a fixed budget | strictly better on one number | `rsi.autoresearch` |
-| **RRSI** (Google, arXiv 2609.24972) | the agent harness | noise floor + leakage critic + cost rule + pruning | `rsi.rrsi` |
-| **Dream-RSI** (DeepMind, arXiv 2609.14858) | the search strategy, as code | best replay score over past searches | `rsi.dream` |
-| **EvoMap** (+ "Behind EvoMap") | a shared library of strategy genes | local validation + hub ranking (naive vs safe) | `rsi.evomap` |
-| **GEPA** (ICLR 2026) | prompts inside a compound system | minibatch improvement, Pareto frontier, merge | `rsi.gepa` |
-| **Meta-Harness** (Stanford) | harness code, end to end | none: all candidates evaluated; Pareto frontier | `rsi.metaharness` |
-| **SoL-Pi** (NVIDIA) | token-saving harness mechanisms | dual gate across environment families | `rsi.solpi` |
+<p align="center">
+  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-2e7d4f">
+  <img alt="methods" src="https://img.shields.io/badge/methods-7-6f42c1">
+  <img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b">
+  <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C173-2f5d8a">
+</p>
 
-All of them run the same loop: propose a change, run it, score it with a grader the loop
-cannot touch, then keep or discard. New to the topic? Start with **[docs/guide/RSI-101.md](docs/guide/RSI-101.md)**.
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">61 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
-## Install
+<table align="center">
+<tr>
+<td align="center"><h3>46% → 4%</h3>how often a do-nothing change gets "kept":<br>naive keep-if-better vs a corrected noise band</td>
+<td align="center"><h3>0.50 → 0.94</h3>held-out accuracy after Claude Haiku<br>rewrote its own agent harness with RRSI, for $2.76</td>
+<td align="center"><h3>475</h3>paper claims re-tested against<br>code and experiments, failures included</td>
+</tr>
+</table>
 
-```bash
-pip install -e ".[science,dev]"      # numpy, scipy, scikit-learn, matplotlib, pytest
+---
+
+## Why this exists
+
+Every few weeks a new paper shows a model improving its own prompts, harness or training code. Those gains are
+hard to trust. The model grades its own work, a score moves by luck, or a prompt quietly memorises the practice answers,
+and all three look exactly like progress. A plain "keep it if the score went up" loop accepts an unchanged artifact
+almost half the time.
+
+**The goal of this repo is to turn RSI papers into skills anyone can use on their own task, and to make the gains
+measurable.** That means four things:
+
+1. **Papers into skills.** Each paper (for autoresearch, the upstream repo) is read in full and converted into a skill an
+   agent can follow: what one round does, what happens to each task, the keep rule, the paper's defaults and where our
+   code differs. Every factual claim in the skill is backed by a verbatim quote from the paper or the code, or by a
+   recorded search showing the paper is silent ([2,173 claims checked](docs/skill-claims/README.md)).
+2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI and EvoMap, rebuilt from
+   their papers on a shared core, so they can be compared on the same tasks, grader and budget.
+3. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
+   held-out tasks, so you can tell a real gain from luck or memorisation.
+4. **Your problem, this afternoon.** Wrap your task in a `Domain`, pick a method, and get an audit trail of every
+   round: what was proposed, what actually changed, and why it was kept.
+
+The shared core gives every method the same safeguards:
+
+```mermaid
+flowchart LR
+    P[Propose a change] --> R[Run it on practice tasks]
+    R --> S[Score with a locked grader]
+    S --> G{Gain bigger than<br>measured noise?}
+    G -- yes --> K[Keep]
+    G -- no --> D[Discard]
+    K --> P
+    D --> P
+    K -.-> H[(Sealed held-out<br>and OOD tasks)]
+    H -.-> T[Transfer report]
 ```
 
-Model backends (`rsi.core.get_llm`):
-- `mock` / simulated models: offline and deterministic, used by the tests.
-- `claude:<model>`: the headless `claude -p` CLI.
-- `api:<model>`: the Anthropic API; needs `ANTHROPIC_API_KEY`.
+- **Locked grader.** The artifact being improved cannot touch how it is scored.
+- **Noise band.** A gain must beat the spread of re-scoring the unchanged artifact. Without one, a strict
+  "keep if better" rule keeps an unchanged artifact about half the time (45-52% in our runs). RRSI applies it by
+  default, GEPA and autoresearch take it as an option, and Meta-Harness, as in its paper, keeps every candidate.
+- **Sealed splits.** The loop's evaluator refuses `holdout`, `ood` and `test` tasks. Only write-only monitors and your
+  final transfer report read them.
+- **Audit trail.** Every round records the proposal, the actual diff, the per-task scores and the keep decision.
+
+## Results with a real model
+
+Live runs with Claude Haiku as both the agent and the proposer, from an untouched seed. Held-out and OOD tasks were
+sealed during the run and re-scored afterwards with fresh trials. **Bold** = the 95% bootstrap interval of the gain
+excludes zero. Details, intervals and every candidate are in [`demo/`](demo/README.md).
+
+| Task | Method | Practice | Held-out | Unseen kinds (OOD) | Cost |
+|---|---|---|---|---|---:|
+| AgentQA, standard | RRSI | 0.25 → **0.92** | 0.50 → **0.94** | 0.56 → 0.81 | $2.76 |
+| AgentQA, standard | Meta-Harness | 0.17 → **0.46** | 0.31 → **0.75** | 0.56 → 0.56 | $1.71 |
+| AgentQA, hard | Meta-Harness | 0.69 → 1.00 | 0.58 → 0.92 | 0.42 → 0.75 | $8.80 |
+| AgentQA, hard | RRSI | 0.63 → 0.63 (kept the seed) | 0.50 → 0.50 | 0.58 → 0.58 | $7.19 |
+| tinylm training script (val_bpb, lower is better) | autoresearch | 2.835 → **2.599** | 2.905 → **2.682** | 2.969 → **2.733** | $0.70 |
+
+<p align="center"><img src="demo/figures/seed_vs_final.png" alt="Seed vs final harness on the four AgentQA runs, re-scored with fresh trials" width="720"></p>
+
+These are small task sets (6-12 tasks per split), so read them as demonstrations rather than benchmarks. The hard
+Meta-Harness gains are large but not significant, and its best harness copied practice answers into its prompts; the
+demo page measures what that leak was worth.
+
+**More charts:** [`demo/gallery.html`](demo/gallery.html) has 61 interactive charts covering the live runs, the shared core,
+every method's experiments and the verification work. Each chart says what its numbers show, including claims that did not
+reproduce. Open it in a browser; it is one self-contained file.
 
 ## Quick start
 
 ```bash
-python -m rsi.cli methods                                    # what each technique does
-python -m rsi.cli improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim     # offline, seconds
-python -m rsi.cli improve --method rrsi --problem agentqa --llm claude:haiku --out runs/rrsi-live --set T=6
-python -m rsi.cli inspect runs/rrsi-live                     # per-iteration audit trail -> TRACE.md
-python -m rsi.cli experiments                                # every reproduction experiment
-python -m rsi.cli experiment rrsi e0_overfitting_trap        # run one
+pip install -e ".[science,dev]"
+rsi methods                                                                  # what each method does
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim    # offline, ~10 s, no API key
+rsi inspect runs/rrsi-sim                                                    # per-round audit trail -> TRACE.md
 ```
+
+Swap `--llm sim` for `--llm claude:haiku` (the `claude` CLI) or `--llm api:sonnet` (`ANTHROPIC_API_KEY`) to run live.
+`sim` is a simulated model: its scores show the loop working, not real gains.
 
 ```python
 import rsi
 from rsi.domains.agentqa import AgentQADomain
 
-dom = AgentQADomain()                                          # practice: number problems; unseen: dates, number theory, text, lists
+dom = AgentQADomain()
 res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="claude:haiku",
-                  config={"T": 6}, out_dir="runs/rrsi")
-print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}))
+                  config={"T": 6}, out_dir="runs/rrsi", cache_dir=".rsi_cache/agentqa")
+print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
 ```
 
-## Apply it to your own problem
+## Choose a method
 
-1. Write a `Domain`. Implement `execute(artifact, task, seed, llm)` to run your artifact, and
-   `grade(task, execution)` to score it with your locked grader. Or wrap two plain functions
-   with `FunctionDomain`.
-2. Build a `TaskSuite` with an `evolve` split, plus `holdout`/`ood` splits the loop never sees.
-3. Measure noise on the seed (`Evaluator` + `noise_from_trials`).
-4. Pick a method (`rsi.recommend(...)`), run `rsi.improve(...)`, then read the
-   `transfer_report` and the trace.
+| Method | What it improves | Keep rule | Reach for it when |
+|---|---|---|---|
+| **RRSI** [arXiv 2609.24972](https://arxiv.org/abs/2609.24972) | an agent harness (prompts, control flow, tools) | beats the incumbent by more than the noise band, pays for its cost, passes a leakage critic | harness edits must transfer; the safe default |
+| **GEPA** [arXiv 2507.19457](https://arxiv.org/abs/2507.19457) | prompts inside a multi-step system | child beats its parent on a 3-task minibatch, then joins a Pareto pool | prompts only, few rollouts, grader explains failures |
+| **autoresearch** [karpathy/autoresearch](https://github.com/karpathy/autoresearch) | one script under a fixed compute budget | the metric improves (upstream rule), or a noise-aware `rigor` rule | one file, one metric, many cheap runs |
+| **Meta-Harness** [arXiv 2603.28052](https://arxiv.org/abs/2603.28052) | harness code, end to end, by a coding agent | none: every candidate is kept, best on a Pareto frontier | a strong coding agent and rich execution traces |
+| **SoL-Pi** [arXiv 2609.20519](https://arxiv.org/abs/2609.20519) | token-saving harness mechanisms | capability within tolerance AND an efficiency gain, then a held-out firewall | tokens or dollars are the bottleneck |
+| **Dream-RSI** [arXiv 2609.14858](https://arxiv.org/abs/2609.14858) | the search strategy itself, as code | the policy that replays best over all recorded searches | long, many-attempt discovery searches |
+| **EvoMap** [arXiv 2604.15097](https://arxiv.org/abs/2604.15097) | a shared library of strategy "genes" | per-task validation, then hub ranking (naive or SafeHub) | many agents sharing what they learn |
 
-The Claude Code skill in `.claude/skills/rsi-improve/SKILL.md` walks through these steps. Each
-method also ships `experiments/<method>/example_new_problem.py` as a template.
+Not sure? `rsi.recommend(what_changes="prompt", prompts_only=True)` returns a ranked suggestion with its reason.
 
-## See it working
+## Bring your own problem
 
-[`demo/`](demo/README.md) has fresh live runs with Claude Haiku: Meta-Harness, RRSI and autoresearch improving a real LLM agent harness and a training script. Each has per-iteration graphs, every candidate the model proposed, the gate's verdict, sealed held-out and OOD scores, and the code it produced.
+```python
+import rsi
+from rsi.core import Artifact, Domain, Execution, Task, TaskSuite
 
-![Meta-Harness iterations](demo/figures/metaharness_iterations.png)
+class MyDomain(Domain):
+    def execute(self, artifact, task, *, seed, llm):        # run your artifact on one task
+        ...
+        return Execution(output=answer, trace=log, tokens=n_tokens)
+    def grade(self, task, execution):                        # locked grader: score + feedback text
+        ok = execution.output == task.target
+        return float(ok), "correct" if ok else f"expected {task.target!r}"
+
+suite = TaskSuite.from_tasks(tasks, fractions={"evolve": 0.5, "holdout": 0.5}, by_family={"ood": ["other-kind"]})
+res = rsi.improve(MyDomain(suite), Artifact.from_dir("my_harness/"), method="rrsi", llm_task=..., llm_propose=...)
+```
+
+Then measure the noise band on your seed, run, and read `rsi.transfer_report`. Templates:
+`experiments/{gepa,autoresearch,dream-rsi,metaharness-solpi}/example_new_problem.py`.
+
+**Using Claude Code?** The bundled skill ([`.claude/skills/rsi-improve`](.claude/skills/rsi-improve/SKILL.md)) walks
+an agent through all of this: pin down the problem, build the domain, measure noise, pick a method, run with a spend
+cap, audit, and report. Each method has an end-to-end reference (round by round, task by task, keep rule, paper vs
+package) written against its paper.
+
+## How we know it works
+
+| Check | Scope | Outcome |
+|---|---|---|
+| [Claims audit](docs/reports/claims-summary.md) | 475 claims from the papers, each tested against our code and experiments | 257 reproduce, 80 partly, 7 do not, 7 contradicted (mostly by the paper's own data or code), 124 need frontier models, GPUs or the original benchmarks |
+| [Step-by-step validation](https://github.com/GaryTang32/RSI/blob/data/validation/README.md) | every method run from its seed, offline and live, every step re-derived by independent auditors | 2,195 of 2,370 steps verified; no keep decision miscomputed |
+| [Skill claim ledger](docs/skill-claims/README.md) | every factual claim in the Claude Code skill, paired with a verbatim quote from its paper or code | 2,173 of 2,173 match; a script re-checks the quotes |
+| Experiments | multiple seeds per claim, 95% bootstrap intervals | claims that failed are reported as failed |
 
 ## Repository map
 
-Every method uses one slug everywhere: `autoresearch`, `rrsi`, `dream-rsi`, `evomap`, `gepa`, `metaharness-solpi`.
-Its docs hub is `docs/methods/<slug>/README.md`.
+| Method | Docs | Code | Tests | Experiments | Recorded results |
+|---|---|---|---|---|---|
+| autoresearch | [docs](docs/methods/autoresearch/README.md) | [`rsi/autoresearch`](rsi/autoresearch) | [tests](tests/autoresearch) | [scripts](experiments/autoresearch) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/autoresearch) |
+| RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/rrsi) |
+| Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/dream-rsi) |
+| EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/evomap) |
+| GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/gepa) |
+| Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [data branch](https://github.com/GaryTang32/RSI/tree/data/results/metaharness-solpi) |
 
-| Method | Docs hub | Code | Tests | Experiments | Results | Validation |
-|---|---|---|---|---|---|---|
-| Autoresearch | [docs](docs/methods/autoresearch/README.md) | [`rsi/autoresearch`](rsi/autoresearch) | [tests](tests/autoresearch) | [scripts](experiments/autoresearch) | [results](https://github.com/GaryTang32/RSI/tree/data/results/autoresearch) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/autoresearch) |
-| RRSI | [docs](docs/methods/rrsi/README.md) | [`rsi/rrsi`](rsi/rrsi) | [tests](tests/rrsi) | [scripts](experiments/rrsi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/rrsi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/rrsi) |
-| Dream-RSI | [docs](docs/methods/dream-rsi/README.md) | [`rsi/dream`](rsi/dream) | [tests](tests/dream-rsi) | [scripts](experiments/dream-rsi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/dream-rsi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/dream-rsi) |
-| EvoMap | [docs](docs/methods/evomap/README.md) | [`rsi/evomap`](rsi/evomap) | [tests](tests/evomap) | [scripts](experiments/evomap) | [results](https://github.com/GaryTang32/RSI/tree/data/results/evomap) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/evomap) |
-| GEPA | [docs](docs/methods/gepa/README.md) | [`rsi/gepa`](rsi/gepa) | [tests](tests/gepa) | [scripts](experiments/gepa) | [results](https://github.com/GaryTang32/RSI/tree/data/results/gepa) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/gepa) |
-| Meta-Harness, SoL-Pi | [docs](docs/methods/metaharness-solpi/README.md) | [`rsi/metaharness`](rsi/metaharness), [`rsi/solpi`](rsi/solpi) | [tests](tests/metaharness-solpi) | [scripts](experiments/metaharness-solpi) | [results](https://github.com/GaryTang32/RSI/tree/data/results/metaharness-solpi) | [runs](https://github.com/GaryTang32/RSI/tree/data/validation/metaharness-solpi) |
+<details>
+<summary>Folder layout</summary>
 
 ```
 rsi/            the Python package
-  core/         shared machinery: LLM backends, Artifact, TaskSuite (sealed splits), Domain, Evaluator,
-                stats (noise band, CIs), gates (keep rules), Ledger, editors, leakage critic, sandbox
-  <method>/     one package per technique
-  domains/      agentqa (shared harness domain) + method-specific domains with ground truth
-  api.py        rsi.improve(), rsi.recommend()        cli.py   command line
-  trace.py      per-iteration trace, shadow held-out monitor, run inspector
-docs/           README index; guide/ (RSI-101, architecture); methods/<slug>/ (hub, paper spec,
-                implementation, claims audit); core/; reports/ (claims summary, HTML report)
-tests/          core/ and one folder per method; offline and deterministic (pytest -m live for live checks)
-experiments/    reproduction scripts per method; they write results/<slug>/*.json and figures
-demo/           live-demo page (index.html), README and figures
+  core/         LLM backends, Artifact, TaskSuite (sealed splits), Domain, Evaluator,
+                stats (noise band, CIs), gates (keep rules), ledger, editors, leakage critic, sandbox
+  <method>/     one package per method
+  domains/      test problems with known ground truth (agentqa, agentworld, discovery, tinylm, ...)
+  api.py        rsi.improve(), rsi.recommend()      cli.py  the `rsi` command      trace.py  audit trail
+docs/           guide/ (RSI-101, architecture), methods/<slug>/ (paper spec, implementation, claims audit),
+                core/, reports/, skill-claims/ (the skill's evidence ledger)
+tests/          offline and deterministic; `pytest -m live` for checks against a real model
+experiments/    reproduction scripts per method
+demo/           live-run page, README and figures
+.claude/skills/ the rsi-improve skill for Claude Code
 ```
 
-Recorded output (`results/`, `validation/`, `demo/runs/`, `demo/*.json`) lives on the
-[`data`](https://github.com/GaryTang32/RSI/tree/data) branch at the same paths. Restore it into a checkout with
+Recorded output (`results/`, `validation/`, `demo/runs/`) lives on the
+[`data`](https://github.com/GaryTang32/RSI/tree/data) branch. Restore it with
 `git fetch origin data && git archive origin/data results validation demo | tar -x`.
-
-## What is verified
-
-- **Paper specs** (`docs/methods/<slug>/paper-spec.md`): built from the papers and the authors' released code.
-  Every detail is tagged with its source.
-- **Implementation notes** (`implementation.md`): module map, API, and each claim mapped to code, experiment and result.
-- **Claims audits** (`claims-audit*.md`, summary in [docs/reports/claims-summary.md](docs/reports/claims-summary.md)):
-  475 paper claims, each checked against our code and evidence. After a fix round and a second, preregistered and
-  adversarially reviewed attempt at every claim that still failed, 257 reproduce, 79 partially, 7 do not,
-  123 need frontier models, GPUs or the original benchmarks, and 9 are contradicted (most of these by the
-  paper's own data or reference code).
-- **Step-by-step validation** ([validation/README.md](https://github.com/GaryTang32/RSI/blob/data/validation/README.md)): each method was run from its untouched
-  seed, offline and with live Claude Haiku, with every iteration traced. Independent auditors re-derived each step
-  from the raw trial scores and checked it against the paper: 2,195 of 2,370 steps verified correct, and no gate
-  decision was miscomputed.
-- **Experiments** use multiple seeds and report means with 95% bootstrap CIs; claims that did not reproduce are
-  stated as such.
+</details>
 
 ## Limits
 
-- Everything runs on CPU. The papers' GPU-scale experiments (nanochat, KernelBench, frontier-model
-  benchmark suites) are reproduced *qualitatively*, on small analogues with known ground truth.
-- The RRSI and SoL-Pi paper texts could not be retrieved. For those, the specs follow the
-  authors' released code and secondary sources, and mark this.
-- Numbers from simulated domains show that a mechanism behaves as claimed. They are not
-  benchmark results.
+- Everything runs on CPU. The papers' GPU-scale experiments (nanochat, KernelBench, frontier benchmark suites) are
+  reproduced qualitatively, on small analogues with known ground truth.
+- Numbers from simulated domains show that a mechanism behaves as claimed. They are not benchmark results.
+- Live results above use 6-12 tasks per split; most intervals are wide.
+- Some per-method docs (`docs/methods/evomap`, `docs/methods/dream-rsi`) still describe earlier paper versions.
+  The skill's method references are checked against the current ones.
+
+MIT licensed.
