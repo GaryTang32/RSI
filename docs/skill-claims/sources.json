@@ -130,5 +130,11 @@
   "origin": "https://arxiv.org/pdf/2609.20519v1 (pdftotext)",
   "bytes": 428903,
   "sha256": "4caafcc30cc8f4a22fc3b440994bcd5772442e0f063b28baff9b507e391cf18f"
+ },
+ {
+  "file": "harness2/paper.txt",
+  "origin": "https://arxiv.org/html/2610.14224v1",
+  "bytes": 117152,
+  "sha256": "5f0a95cae88ffe49d0d0965af12111534aba709513c5a21b1ef5f3a3bab7eaf0"
  }
 ]

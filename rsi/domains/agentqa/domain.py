@@ -1,6 +1,7 @@
 """AgentQA: evolve an agent harness (``harness.py`` + prompts) around a frozen model; answers are graded exactly."""
 from __future__ import annotations
 
+import ast
 import builtins
 import ctypes
 import hashlib
@@ -176,6 +177,31 @@ class AgentQADomain(Domain):
                "number theory), so improvements must be general.")
         )
 
+    def harness_brief(self) -> str:
+        """The harness interface without the grading description (for improvers that must never see a grader)."""
+        return ("The harness is an LLM agent harness. harness.py defines solve(question, llm, tools, files) -> str, "
+                "where llm(prompt, system=None) -> str calls a frozen language model (each call costs tokens), "
+                "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps harness file "
+                "paths to their text (prompts, skills, memory). The returned string is the deliverable: the final "
+                "answer to a short question with one exact answer.")
+
+    def validate_artifact(self, artifact: Artifact) -> Optional[str]:
+        """None if harness.py parses and defines a top-level ``solve``, else the problem."""
+        src = artifact.get("harness.py")
+        if src is None:
+            return "harness.py is missing"
+        try:
+            tree = ast.parse(src)
+        except SyntaxError as e:
+            return f"harness.py does not parse: {e.msg} (line {e.lineno})"
+        if not any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "solve" for n in tree.body):
+            return "harness.py must define a top-level solve(question, llm, tools, files)"
+        return None
+
+    def grader_verdict_markers(self) -> tuple[str, ...]:
+        """Strings that only this domain's grader feedback produces."""
+        return ("Incorrect. Extracted answer ", "Correct (answer ")
+
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
         if llm is None:
             raise ValueError("AgentQA needs a task LLM")
@@ -283,8 +309,9 @@ def _run_harness(src: str, question, call_llm, tools: Tools, files: dict, box: d
 def _integrity_targets() -> list:
     mod = sys.modules[__name__]
     return ([(mod, n) for n in ("is_correct", "extract_answer", "normalize", "_NUM", "_restore_integrity")]
-            + [(AgentQADomain, n) for n in ("grade", "execute", "run")]
-            + [(_core_domain.Domain, "run"), (_core_domain, "Trial"),
+            + [(AgentQADomain, n) for n in ("grade", "execute", "run", "rollout", "grade_execution",
+                                            "validate_artifact", "grader_verdict_markers", "harness_brief")]
+            + [(_core_domain.Domain, n) for n in ("run", "rollout", "grade_execution")] + [(_core_domain, "Trial"),
                (_core_evaluate.Evaluator, "run_one"), (_core_evaluate.Evaluator, "evaluate"),
                (_core_evaluate.EvalResult, "task_scores"), (_core_evaluate.EvalResult, "score"),
                (_core_evaluate.EvalResult, "S")]

@@ -22,6 +22,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
 .wrap > * { min-width: 0; }
+[hidden] { display: none !important; }
 header { display: grid; gap: 8px; }
 h1 { margin: 0; font-size: 1.9rem; letter-spacing: -0.015em; text-wrap: balance; }
 .lede { margin: 0; max-width: 72ch; color: var(--ink-2); }
@@ -72,7 +73,7 @@ details summary { cursor: pointer; font-size: 0.8rem; color: var(--ink-2); }
 <div class="wrap">
   <header>
     <h1>RSI in Charts</h1>
-    <p class="lede">What the <code>rsi</code> toolkit's seven self-improvement methods do, measured. Each chart is drawn from a recorded experiment
+    <p class="lede">What the <code>rsi</code> toolkit's eight self-improvement methods do, measured. Each chart is drawn from a recorded experiment
       (on the repo's <code>data</code> branch) or the repo itself, and its caption states what the numbers show, including the claims that did not hold up.
       Hover any mark for exact values; every chart has its data table.</p>
     <div class="stats" id="stats"></div>
@@ -84,9 +85,9 @@ details summary { cursor: pointer; font-size: 0.8rem; color: var(--ink-2); }
 <script type="application/json" id="specs">__SPECS__</script>
 <script>
 const SPECS = JSON.parse(document.getElementById("specs").textContent).charts;
-const ORDER = ["Live demo", "Core", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Verification"];
+const ORDER = ["Live demo", "Core", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Harness²", "Verification"];
 const ROLE = {"Reproduced": "good", "Correct": "good", "Kept": "good", "Partial": "warning", "Questionable": "warning",
-  "Wrong": "critical", "Rejected": "critical", "Not reproduced or contradicted": "critical", "Not testable here": "neutral",
+  "Wrong": "critical", "Rejected": "critical", "Broke": "critical", "Fixed": "good", "Still wrong": "neutral", "Not reproduced or contradicted": "critical", "Not testable here": "neutral",
   "Unverifiable": "neutral", "Kept as alternative": "neutral", "Blank": "neutral",
   "Silence in the paper, or a skill cross-reference": "neutral"};
 const NS = "http://www.w3.org/2000/svg";

@@ -16,7 +16,8 @@ from .trace import inspect
 REPO = Path(__file__).resolve().parent.parent
 EXPERIMENTS = REPO / "experiments"
 EXP_DIRS = {"autoresearch": "autoresearch", "rrsi": "rrsi", "dream": "dream-rsi", "evomap": "evomap",
-            "gepa": "gepa", "metaharness": "metaharness-solpi", "solpi": "metaharness-solpi", "core": "core-qa"}
+            "gepa": "gepa", "metaharness": "metaharness-solpi", "solpi": "metaharness-solpi", "core": "core-qa",
+            "harness2": "harness2"}
 
 
 def _parse_value(v: str) -> Any:
@@ -60,6 +61,10 @@ def offline_proposer(method: str, problem: str):
         from .gepa.mocks import AgentQAReflectionLM
 
         return AgentQAReflectionLM()
+    if method in ("harness2", "harness-squared"):
+        from .harness2.mocks import MockImprover
+
+        return MockImprover()
     return None
 
 
@@ -71,7 +76,7 @@ def cmd_methods(a) -> int:
 def cmd_recommend(a) -> int:
     for m, why in recommend(what_changes=a.what, must_transfer=not a.no_transfer, cost_is_bottleneck=a.cost,
                             many_agents=a.many_agents, search_heavy=a.search, single_metric_script=a.script,
-                            prompts_only=a.prompts_only):
+                            prompts_only=a.prompts_only, no_grader=a.no_grader):
         print(f"{m:13s} {why}")
     return 0
 
@@ -93,7 +98,14 @@ def cmd_improve(a) -> int:
     out = Path(a.out)
     res.save(out)
     print(json.dumps(res.summary(), indent=1, default=str))
-    if not a.no_transfer:
+    if res.method == "harness2":   # test-time method: its evaluation is the post-hoc grade of the deliverables
+        rep = res.meta.get("report")
+        if rep:
+            (out / "report.json").write_text(json.dumps(rep, indent=1, default=float))
+            print(f"stream accuracy: H0 base rollout {rep['base'][0]:.3f}  submitted {rep['submitted'][0]:.3f}  "
+                  f"(paired diff {rep['paired']['mean_diff']:+.3f} [{rep['paired']['lo']:+.3f}, "
+                  f"{rep['paired']['hi']:+.3f}], n={rep['n']})")
+    elif not a.no_transfer:
         rep = transfer_report(dom, llm_task, {"seed": res.baseline, a.method: res.best}, k=a.k)
         (out / "transfer.json").write_text(json.dumps(rep, indent=1, default=float))
         for split, row in rep["splits"].items():
@@ -136,6 +148,7 @@ def main(argv=None) -> int:
     r.add_argument("--search", action="store_true", help="long many-attempt searches")
     r.add_argument("--script", action="store_true", help="one editable script + one metric")
     r.add_argument("--prompts-only", action="store_true")
+    r.add_argument("--no-grader", action="store_true", help="open-ended tasks: no grader, labels or score")
     r.set_defaults(fn=cmd_recommend)
 
     i = sub.add_parser("improve")

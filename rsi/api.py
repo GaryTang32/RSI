@@ -55,8 +55,18 @@ METHODS: dict[str, MethodInfo] = {
         "dual gate: every capability metric within tolerance AND some efficiency metric improves",
         "keep only mechanisms that survive every environment family; one-way held-out firewall",
         "quality is already fine and tokens/cost are the bottleneck"),
+    "harness2": MethodInfo(
+        "harness2", "rsi.harness2", "the execution harness of each task at test time (Propose-Probe-Compose from "
+        "H0), plus a per-domain library of adopted harnesses with lessons",
+        "no score: composers merge/adopt/keep from behavioural contrasts; an anonymised selector picks among the "
+        "k composed re-executions by deliverable",
+        "open-world guard (no grader, label or score reaches the loop); validation retry-once-then-inherit; "
+        "lessons stored only when execution contrasts support them",
+        "tasks arrive one at a time with no grader or labels (open-ended work) and ~4k rollouts per task are "
+        "affordable"),
 }
-ALIASES = {"dream-rsi": "dream", "meta-harness": "metaharness", "sol-pi": "solpi", "karpathy": "autoresearch"}
+ALIASES = {"dream-rsi": "dream", "meta-harness": "metaharness", "sol-pi": "solpi", "karpathy": "autoresearch",
+           "harness-squared": "harness2", "harness²": "harness2"}
 
 
 def method_module(name: str):
@@ -102,8 +112,14 @@ def improve(domain: Domain, seed_artifact: Optional[Artifact] = None, *, method:
 
 def recommend(*, what_changes: str = "harness", must_transfer: bool = True, cost_is_bottleneck: bool = False,
               many_agents: bool = False, search_heavy: bool = False, single_metric_script: bool = False,
-              prompts_only: bool = False) -> list[tuple[str, str]]:
-    """Rank methods for a problem description as ``[(method, reason), ...]``."""
+              prompts_only: bool = False, no_grader: bool = False) -> list[tuple[str, str]]:
+    """Rank methods for a problem description as ``[(method, reason), ...]``.
+
+    ``no_grader``: open-ended tasks with no grader, labels or score; only Harness² applies (every other method
+    keeps or ranks candidates by a grade)."""
+    if no_grader:
+        return [("harness2", "no grader or labels: per-task Propose-Probe-Compose from execution contrasts, an "
+                             "anonymised deliverable selector and a per-domain library; never reads a score")]
     out: list[tuple[str, str]] = []
     if single_metric_script or what_changes in ("script", "training", "code-file"):
         out.append(("autoresearch", "one editable file, one metric, fixed budget: the simplest loop that works"))

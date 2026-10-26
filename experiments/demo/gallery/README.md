@@ -5,6 +5,7 @@ light and dark themes. Each number is copied from the source file the spec names
 
 ```
 python experiments/demo/gallery/make_core_specs.py   # core, live-demo and verification specs (needs the data branch restored)
+python experiments/demo/gallery/make_harness2_specs.py   # Harness² specs (same)
 python experiments/demo/gallery/validate.py experiments/demo/gallery/specs/*.json
 python experiments/demo/gallery/build_gallery.py     # writes demo/gallery.html
 ```

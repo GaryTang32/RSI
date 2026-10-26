@@ -18,8 +18,9 @@ Start with the [guide](guide/RSI-101.md) if you are new to self-improving loops,
 | EvoMap | Agents distil what worked into small, content-hashed strategy genes and share them through a hub; a faithful naive hub and a verified SafeHub | [methods/evomap/](methods/evomap/README.md) |
 | GEPA | Reflects on full execution traces in plain language to rewrite prompts, keeping a per-instance Pareto frontier and merging lineages | [methods/gepa/](methods/gepa/README.md) |
 | Meta-Harness and SoL-Pi | Meta-Harness: a coding agent reads every past candidate's code, scores and traces and rewrites the harness | [methods/metaharness-solpi/](methods/metaharness-solpi/README.md) |
+| Harness² | Improves an agent harness per task with no grader or labels: probes contrast executions, an anonymised selector picks the deliverable, and an experience library carries lessons forward | [methods/harness2](methods/harness2/README.md) |
 
-Each method folder has a README hub, a paper spec, implementation notes and a claims audit.
+Each method folder has a README hub, a paper spec, implementation notes and a claims audit (Harness² has no claims audit yet).
 
 ## Core
 

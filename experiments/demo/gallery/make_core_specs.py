@@ -151,7 +151,7 @@ charts.append(dict(id="ver-step-audit", method="Verification", type="stacked", s
     x={"label": "Method", "kind": "category"}, y={"label": "Loop steps", "min": 0, "format": ".0f"},
     series=[{"name": n, "points": [{"x": r[0], "y": r[i]} for r in vrows]} for i, n in ((2, "Correct"), (3, "Questionable"), (4, "Wrong"), (5, "Unverifiable"))]))
 led = {}
-for m, lab in (("rrsi", "RRSI"), ("metaharness", "Meta-Harness"), ("solpi", "SoL-Pi"), ("gepa", "GEPA"), ("autoresearch", "autoresearch"), ("dream", "Dream-RSI"), ("evomap", "EvoMap"), ("general", "SKILL.md")):
+for m, lab in (("rrsi", "RRSI"), ("metaharness", "Meta-Harness"), ("solpi", "SoL-Pi"), ("gepa", "GEPA"), ("autoresearch", "autoresearch"), ("dream", "Dream-RSI"), ("evomap", "EvoMap"), ("harness2", "Harness²"), ("general", "SKILL.md")):
     rs = [json.loads(l) for l in (R / f"docs/skill-claims/ledger/{m}.jsonl").read_text().splitlines() if l.strip()]
     led[lab] = rs
 kk = (("paper", "Quoted from the paper"), ("code", "Quoted from our code"), ("repo-doc", "Quoted from our docs"))
