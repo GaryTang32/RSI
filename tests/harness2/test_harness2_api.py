@@ -9,7 +9,7 @@ from harness2_helpers import RecordingImprover
 import rsi
 from rsi.core.run import Budget
 from rsi.domains.agentqa import AgentQADomain, SimModel
-from rsi.harness2 import BudgetExceeded, Config, MockImprover, TaskBudget
+from rsi.harness2 import BudgetExceeded, Config, MockImprover, TaskBudget, run
 from rsi.trace import load_trace
 
 
@@ -111,3 +111,53 @@ def test_cli_improve_offline(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "stream accuracy" in out and (tmp_path / "cli" / "report.json").exists()
     assert main(["recommend", "--no-grader"]) == 0 and "harness2" in capsys.readouterr().out
+
+
+def test_best_of_n_uses_the_same_stream_selector_and_rollout_seeds(dom, sim, suite):
+    from rsi.harness2 import best_of_n
+    from rsi.harness2.api import stream_tasks
+    tasks = stream_tasks(dom, Config(split="holdout", max_tasks=3))
+    sel = RecordingImprover()
+    out = best_of_n(dom, dom.seed_artifact(), llm_task=sim, llm_select=sel, n=4, tasks=tasks)
+    assert [r.task_id for r in out["records"]] == [t.id for t in tasks]
+    assert all(len(r.rollouts) == 4 and r.adopted.startswith("base") for r in out["records"])
+    assert [role for role, _ in sel.prompts] == ["selector"] * 3
+    rolls = [e for e in dom.events if e[0] == "rollout"]
+    assert all(target is None for _, _, target, _, _ in rolls)
+    h2 = run(dom, dom.seed_artifact(), llm_task=sim, llm_propose=MockImprover(), config=Config(k=1), tasks=tasks)
+    assert all(a.rollouts["base1"].seed == b.rollouts["base1"].seed
+               for a, b in zip(out["records"], h2.meta["records"]))
+    assert out["report"]["n"] == 3
+
+
+def test_compare_sim_quick_runs_and_reports_cis(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    dest = tmp_path / "cmp.json"
+    r = subprocess.run([sys.executable, str(root / "experiments/harness2/compare_sim.py"), "--quick", "--out",
+                        str(dest)], capture_output=True, text=True, timeout=300, cwd=root)
+    assert r.returncode == 0, r.stderr[-2000:]
+    d = json.loads(dest.read_text())
+    assert set(d["arms"]) >= {"seed", "harness2_k1", "harness2_k3", "best_of_4", "best_of_12"}
+    for name, arm in d["arms"].items():
+        lo, hi = arm["ci95"]
+        assert lo <= arm["accuracy"] <= hi
+        if name != "seed":
+            assert arm["vs_seed"]["ci95"][0] <= arm["vs_seed"]["diff"] <= arm["vs_seed"]["ci95"][1]
+    assert d["arms"]["harness2_k1"]["rollouts_per_task"] == d["arms"]["best_of_4"]["rollouts_per_task"] == 4
+    assert d["arms"]["harness2_k3"]["rollouts_per_task"] == d["arms"]["best_of_12"]["rollouts_per_task"] == 12
+
+
+def test_stored_compare_sim_result_is_consistent():
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[2] / "results" / "harness2" / "compare_sim.json"
+    if not p.exists():
+        pytest.skip("results/harness2/compare_sim.json is not in this checkout (gitignored on main)")
+    d = json.loads(p.read_text())
+    assert d["seeds"] == 3 and d["n_tasks"] == 43
+    for arm in d["arms"].values():
+        assert arm["ci95"][0] <= arm["accuracy"] <= arm["ci95"][1]
+        per_task = [v for ps in d["per_task"][next(k for k, a in d["arms"].items() if a is arm)] for v in ps.values()]
+        assert abs(sum(per_task) / len(per_task) - arm["accuracy"]) < 1e-9
