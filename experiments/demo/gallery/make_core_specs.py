@@ -156,7 +156,7 @@ for m, lab in (("rrsi", "RRSI"), ("metaharness", "Meta-Harness"), ("solpi", "SoL
     led[lab] = rs
 kk = (("paper", "Quoted from the paper"), ("code", "Quoted from our code"), ("repo-doc", "Quoted from our docs"))
 charts.append(dict(id="ver-skill-ledger", method="Verification", type="stacked", source="repo:docs/skill-claims/ledger",
-    title="2,159 skill claims, each backed by a verbatim quote",
+    title=f"{sum(map(len, led.values())):,} skill claims, each backed by a verbatim quote",
     takeaway="Every factual claim in the Claude Code skill is paired with a quote a script found in its source: "
              f"{sum(r['kind'] == 'paper' for v in led.values() for r in v)} from the papers, {sum(r['kind'] == 'code' for v in led.values() for r in v)} from the code.",
     x={"label": "Skill file", "kind": "category"}, y={"label": "Claims", "min": 0, "format": ".0f"},
@@ -164,7 +164,7 @@ charts.append(dict(id="ver-skill-ledger", method="Verification", type="stacked",
            [{"name": "Silence in the paper, or a skill cross-reference", "points": [{"x": lab, "y": sum(r["kind"] in ("absent", "skill-ref") for r in v)} for lab, v in led.items()]}]))
 charts.append(dict(id="ver-skill-corrections", method="Verification", type="bar", source="repo:docs/skill-claims/ledger",
     title="Skill claims corrected to match their source",
-    takeaway=f"{sum(r['verdict'] == 'fixed' for v in led.values() for r in v)} of 2,159 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
+    takeaway=f"{sum(r['verdict'] == 'fixed' for v in led.values() for r in v)} of {sum(map(len, led.values())):,} claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
     x={"label": "Skill file", "kind": "category"}, y={"label": "Corrected claims", "min": 0, "format": ".0f"},
     series=[{"name": "Corrected", "points": [{"x": lab, "y": sum(r["verdict"] == "fixed" for r in v)} for lab, v in led.items()]}]))
 (V / "specs/core-live-verification.json").write_text(json.dumps({"charts": charts}, indent=1, ensure_ascii=False))
