@@ -36,12 +36,20 @@ class Session:
     max_text_chars: int = 24000
     seed: int = 0
     calls: int = 0
+    transport_attempts: int = 2     # TRANSPORT_ATTEMPTS [code proposer.py]; no back-off sleep here
 
-    def ask(self, prompt: str, *, role: str, where: str) -> LLMResponse:
-        """The single choke point to an improver: every prompt is screened for grader verdicts first."""
+    def ask(self, prompt: str, *, role: str, where: str, attempts: Optional[int] = None) -> LLMResponse:
+        """The single choke point to an improver: every prompt is screened for grader verdicts first.
+
+        A transport failure (``resp.ok`` false) is retried up to ``transport_attempts`` times in total."""
         self.guard.check(SYSTEM + "\n" + prompt, where)
-        self.calls += 1
-        return self.llm.complete(prompt, system=SYSTEM, seed=_seed(self.seed, where), role=role)
+        resp = None
+        for n in range(max(1, attempts or self.transport_attempts)):
+            self.calls += 1
+            resp = self.llm.complete(prompt, system=SYSTEM, seed=_seed(self.seed, where, n or ""), role=role)
+            if resp.ok:
+                break
+        return resp
 
 
 def _seed(*parts) -> int:
@@ -136,7 +144,7 @@ def select(s: Session, rec: TaskRecord, finals: Sequence[str], *, task_text: str
     resp = None
     for _ in range(attempts):
         st.attempts += 1
-        resp = s.ask(text + END, role="selector", where="selector")
+        resp = s.ask(text + END, role="selector", where="selector", attempts=1)
         if resp.ok:
             break
     st.reply = resp.text if resp else ""

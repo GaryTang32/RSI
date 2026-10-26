@@ -176,3 +176,29 @@ def test_base_failed_task_stops_without_a_deliverable(dom):
               config=Config(split="holdout", max_tasks=2))
     assert all(r.status == "base-failed" and r.submitted is None for r in res.meta["records"])
     assert res.meta["report"]["submitted"][0] == 0.0 and res.meta["library_entries"] == 0
+
+
+def test_transport_failure_is_retried_then_the_stage_inherits(go):
+    from rsi.core.llm import LLMResponse, Usage
+
+    class Flaky(RecordingImprover):
+        """Every first call of a prompt fails in transport; with ``always`` every call fails."""
+
+        def __init__(self, always=False):
+            super().__init__()
+            self.always, self.seen = always, set()
+
+        def _complete(self, prompt, *, system, max_tokens, seed):
+            if self.always or prompt not in self.seen:
+                self.seen.add(prompt)
+                return LLMResponse(text="", usage=Usage(1), model="flaky", error="503")
+            return super()._complete(prompt, system=system, max_tokens=max_tokens, seed=seed)
+
+    res, imp = go(k=1, max_tasks=1, improver=Flaky())
+    rec = res.meta["records"][0]
+    assert not any(s.fell_back for s in rec.stages) and imp.meter.total().calls == 2 * len(rec.stages)
+    res, _ = go(k=1, max_tasks=1, improver=Flaky(always=True), out="dead")
+    rec = res.meta["records"][0]
+    eds = [s for s in rec.stages if s.role in ("inv", "dom", "composer")]
+    assert all(s.fell_back and s.error.startswith("transport") and s.attempts == 1 for s in eds)
+    assert rec.kept_base() and rec.submitted.delivered and rec.reflection.get("error", "").startswith("transport")

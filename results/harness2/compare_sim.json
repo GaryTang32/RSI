@@ -35,21 +35,21 @@
      "task_llm_calls": 43,
      "improver_calls": 0,
      "rollouts_per_task": 1.0,
-     "wall_s": 0.05122733116149902
+     "wall_s": 0.08381414413452148
     },
     {
      "rollouts": 43,
      "task_llm_calls": 43,
      "improver_calls": 0,
      "rollouts_per_task": 1.0,
-     "wall_s": 0.05342698097229004
+     "wall_s": 0.052010536193847656
     },
     {
      "rollouts": 43,
      "task_llm_calls": 43,
      "improver_calls": 0,
      "rollouts_per_task": 1.0,
-     "wall_s": 0.05599093437194824
+     "wall_s": 0.04712677001953125
     }
    ]
   },
@@ -89,7 +89,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.5818674564361572
+     "wall_s": 0.569399356842041
     },
     {
      "rollouts": 172,
@@ -99,7 +99,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.6040744781494141
+     "wall_s": 0.531545877456665
     },
     {
      "rollouts": 172,
@@ -109,7 +109,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.5384116172790527
+     "wall_s": 0.5319199562072754
     }
    ]
   },
@@ -149,7 +149,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 12.0,
-     "wall_s": 1.2875373363494873
+     "wall_s": 1.3019659519195557
     },
     {
      "rollouts": 516,
@@ -159,7 +159,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 12.0,
-     "wall_s": 1.254765272140503
+     "wall_s": 1.3217689990997314
     },
     {
      "rollouts": 516,
@@ -169,7 +169,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 12.0,
-     "wall_s": 1.3588414192199707
+     "wall_s": 1.2585465908050537
     }
    ]
   },
@@ -209,7 +209,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.25957202911376953
+     "wall_s": 0.3084115982055664
     },
     {
      "rollouts": 172,
@@ -219,7 +219,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.3021869659423828
+     "wall_s": 0.33376049995422363
     },
     {
      "rollouts": 172,
@@ -229,7 +229,7 @@
      "kept_base_tasks": 0,
      "fell_back_stages": 0,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.27476072311401367
+     "wall_s": 0.30820608139038086
     }
    ]
   },
@@ -266,21 +266,21 @@
      "task_llm_calls": 172,
      "improver_calls": 43,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.1431260108947754
+     "wall_s": 0.17294025421142578
     },
     {
      "rollouts": 172,
      "task_llm_calls": 172,
      "improver_calls": 43,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.14355707168579102
+     "wall_s": 0.1731407642364502
     },
     {
      "rollouts": 172,
      "task_llm_calls": 172,
      "improver_calls": 43,
      "rollouts_per_task": 4.0,
-     "wall_s": 0.14481496810913086
+     "wall_s": 0.16972112655639648
     }
    ]
   },
@@ -317,21 +317,21 @@
      "task_llm_calls": 516,
      "improver_calls": 43,
      "rollouts_per_task": 12.0,
-     "wall_s": 0.47020840644836426
+     "wall_s": 0.4503910541534424
     },
     {
      "rollouts": 516,
      "task_llm_calls": 516,
      "improver_calls": 43,
      "rollouts_per_task": 12.0,
-     "wall_s": 0.4080510139465332
+     "wall_s": 0.4739861488342285
     },
     {
      "rollouts": 516,
      "task_llm_calls": 516,
      "improver_calls": 43,
      "rollouts_per_task": 12.0,
-     "wall_s": 0.3980987071990967
+     "wall_s": 0.4199216365814209
     }
    ]
   },
@@ -370,7 +370,7 @@
      "train_rollouts": 124,
      "best_artifact_diff": "--- a/prompts/task.md\n+++ b/prompts/task.md\n@@ -1 +1,2 @@\n {question}\n+End your reply with a final line of the form 'ANSWER: <value>'.\n",
      "rollouts_per_task": 3.883720930232558,
-     "wall_s": 0.19725728034973145
+     "wall_s": 0.17551803588867188
     },
     {
      "rollouts": 163,
@@ -379,7 +379,7 @@
      "train_rollouts": 120,
      "best_artifact_diff": "--- a/prompts/task.md\n+++ b/prompts/task.md\n@@ -1 +1,2 @@\n {question}\n+End your reply with a final line of the form 'ANSWER: <value>'.\n",
      "rollouts_per_task": 3.7906976744186047,
-     "wall_s": 0.17052626609802246
+     "wall_s": 0.13391637802124023
     },
     {
      "rollouts": 175,
@@ -388,7 +388,7 @@
      "train_rollouts": 132,
      "best_artifact_diff": "--- a/prompts/task.md\n+++ b/prompts/task.md\n@@ -1 +1,2 @@\n {question}\n+End your reply with a final line of the form 'ANSWER: <value>'.\n",
      "rollouts_per_task": 4.069767441860465,
-     "wall_s": 0.16022515296936035
+     "wall_s": 0.16214704513549805
     }
    ]
   }
@@ -1533,5 +1533,5 @@
    }
   ]
  },
- "wall_s": 8.890540838241577
+ "wall_s": 9.04643988609314
 }
