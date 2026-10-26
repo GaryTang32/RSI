@@ -1,0 +1,94 @@
+{
+ "experiment": "harness2_compare_live",
+ "model": "claude:haiku",
+ "stream": "AgentQA holdout+ood",
+ "order_seed": 0,
+ "n_requested": 1,
+ "n_common": 1,
+ "cap_per_arm": 10.0,
+ "total_usd": 0.2265,
+ "summary": {
+  "seed (H0 base1)": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "harness2_k1": {
+   "acc": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "vs_seed": {
+    "mean_diff": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n": 1,
+    "p_better": 1.0
+   }
+  }
+ },
+ "arms": {
+  "harness2_k1": {
+   "k": 1,
+   "tasks_done": 1,
+   "stop_reason": "stream_end",
+   "wall_s": 318.1,
+   "usd": 0.2265,
+   "calls": 8,
+   "usd_from_cache": 0.0,
+   "stages": {
+    "n": 4,
+    "fell_back": 0,
+    "kept_base": 1,
+    "errors": [],
+    "by_role": {
+     "composer": 1,
+     "dom": 1,
+     "inv": 1,
+     "reflector": 1
+    }
+   },
+   "status": {
+    "ok": 1
+   },
+   "library_added": 1,
+   "report": {
+    "n": 1,
+    "base": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "submitted": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "paired": {
+     "mean_diff": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n": 1,
+     "p_better": 1.0
+    },
+    "families": {
+     "strings": {
+      "n": 1,
+      "base": 0.0,
+      "submitted": 1.0
+     }
+    }
+   },
+   "per_task": {
+    "ood-strings-001": {
+     "family": "strings",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    }
+   }
+  }
+ }
+}
