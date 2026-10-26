@@ -98,19 +98,20 @@ class Domain:
         """Score of a failed rollout: the bottom of :attr:`score_range`, so a crash never outscores a working one."""
         return float(self.score_range[0])
 
-    def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Trial:
-        """Execute and grade one rollout; crashes and non-finite grades become :attr:`failure_score` trials."""
-        t0 = time.time()
-        fail = self.failure_score
+    def rollout(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Execution:
+        """Execute one rollout without grading; a crash becomes an :class:`Execution` with ``error`` set."""
         try:
             ex = self.execute(artifact, task, seed=seed, llm=llm)
-            if not isinstance(ex, Execution):
-                ex = Execution(output=ex)
+            return ex if isinstance(ex, Execution) else Execution(output=ex)
         except (Exception, SystemExit) as e:  # noqa: BLE001 - an artifact crash is a graded failure, not a loop crash
             msg = str(e)
             # "infra:" errors keep their prefix: the Evaluator counts them as missing and never caches them
             err = msg if msg.startswith("infra:") else f"{type(e).__name__}: {e}"
-            ex = Execution(error=err, trace=traceback.format_exc(limit=5))
+            return Execution(error=err, trace=traceback.format_exc(limit=5))
+
+    def grade_execution(self, task: Task, ex: Execution) -> tuple[float, str]:
+        """``(score, feedback)`` of a rollout; errors and non-finite grades give :attr:`failure_score`."""
+        fail = self.failure_score
         try:
             if ex.error is None:
                 score, feedback = self.grade(task, ex)
@@ -121,6 +122,13 @@ class Domain:
                 score, feedback = fail, f"execution error: {ex.error}"
         except (Exception, SystemExit) as e:  # noqa: BLE001
             score, feedback = fail, f"grader error: {type(e).__name__}: {e}"
+        return score, feedback
+
+    def run(self, artifact: Artifact, task: Task, *, seed: int = 0, llm: Optional[LLM] = None) -> Trial:
+        """:meth:`rollout` then :meth:`grade_execution`: one graded :class:`Trial`."""
+        t0 = time.time()
+        ex = self.rollout(artifact, task, seed=seed, llm=llm)
+        score, feedback = self.grade_execution(task, ex)
         return Trial(task_id=task.id, seed=seed, score=score, feedback=feedback, output=ex.output, trace=ex.trace,
                      tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps, latency_s=time.time() - t0,
                      error=ex.error, family=task.family, meta=ex.meta)

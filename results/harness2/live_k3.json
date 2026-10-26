@@ -1,0 +1,252 @@
+{
+ "experiment": "harness2_compare_live",
+ "model": "claude:haiku",
+ "stream": "AgentQA holdout+ood",
+ "order_seed": 0,
+ "n_requested": 20,
+ "n_common": 20,
+ "caps": {
+  "3": 16.0
+ },
+ "total_usd": 4.4921,
+ "summary": {
+  "seed (H0 base1)": [
+   0.5,
+   0.3,
+   0.7
+  ],
+  "harness2_k3": {
+   "acc": [
+    0.95,
+    0.85,
+    1.0
+   ],
+   "vs_seed": {
+    "mean_diff": 0.45,
+    "lo": 0.25,
+    "hi": 0.65,
+    "n": 20,
+    "p_better": 0.45
+   }
+  }
+ },
+ "arms": {
+  "harness2_k3": {
+   "k": 3,
+   "tasks_done": 20,
+   "stop_reason": "stream_end",
+   "wall_s": 5600.6,
+   "usd": 4.4921,
+   "calls": 172,
+   "usd_from_cache": 6.6754,
+   "stages": {
+    "n": 220,
+    "fell_back": 1,
+    "kept_base": 81,
+    "errors": [
+     "prompts/task.md lost placeholders ['{question}']; keep every placeholder"
+    ],
+    "by_role": {
+     "composer": 60,
+     "dom": 60,
+     "inv": 60,
+     "reflector": 20,
+     "selector": 20
+    }
+   },
+   "status": {
+    "ok": 20
+   },
+   "library_added": 11,
+   "report": {
+    "n": 20,
+    "base": [
+     0.5,
+     0.3,
+     0.7
+    ],
+    "submitted": [
+     0.95,
+     0.85,
+     1.0
+    ],
+    "paired": {
+     "mean_diff": 0.45,
+     "lo": 0.25,
+     "hi": 0.65,
+     "n": 20,
+     "p_better": 0.45
+    },
+    "families": {
+     "dates": {
+      "n": 3,
+      "base": 1.0,
+      "submitted": 1.0
+     },
+     "lists": {
+      "n": 4,
+      "base": 0.5,
+      "submitted": 1.0
+     },
+     "numbertheory": {
+      "n": 3,
+      "base": 0.0,
+      "submitted": 0.6666666666666666
+     },
+     "numeric": {
+      "n": 7,
+      "base": 0.42857142857142855,
+      "submitted": 1.0
+     },
+     "strings": {
+      "n": 3,
+      "base": 0.6666666666666666,
+      "submitted": 1.0
+     }
+    }
+   },
+   "per_task": {
+    "ood-strings-001": {
+     "family": "strings",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-lists-005": {
+     "family": "lists",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-strings-002": {
+     "family": "strings",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-dates-000": {
+     "family": "dates",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-numeric-005": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "holdout-numeric-002": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-numbertheory-002": {
+     "family": "numbertheory",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-lists-001": {
+     "family": "lists",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "holdout-numeric-000": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-numeric-003": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-numbertheory-000": {
+     "family": "numbertheory",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-lists-000": {
+     "family": "lists",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-dates-005": {
+     "family": "dates",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-dates-001": {
+     "family": "dates",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-numeric-010": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-numbertheory-003": {
+     "family": "numbertheory",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-lists-004": {
+     "family": "lists",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-strings-003": {
+     "family": "strings",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-numeric-009": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-numeric-017": {
+     "family": "numeric",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 1.0,
+     "kept_base": false
+    }
+   }
+  }
+ }
+}
