@@ -12,7 +12,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 <table align="center">
 <tr>
@@ -135,6 +135,145 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 | **Harness²** [arXiv 2610.14224](https://arxiv.org/abs/2610.14224) | an agent harness, per task, with no grader or labels | none: probes contrast executions, an anonymised selector picks the deliverable, and an experience library carries lessons to later tasks | open-ended tasks with no grader, labels or validation set |
 
 Not sure? `rsi.recommend(what_changes="prompt", prompts_only=True)` returns a ranked suggestion with its reason.
+
+## How each method works
+
+One loop per method, from its skill reference (`.claude/skills/rsi-improve/methods/*.md`). Dashed arrows go back to the
+start of the next round or task.
+
+<details open>
+<summary><b>RRSI</b>: a few small edits per round, kept only if they beat the noise floor and pay for their cost</summary>
+
+```mermaid
+flowchart LR
+    H["Incumbent harness H_t"] --> A["Analyst: failure modes<br>+ edit history"]
+    A --> P["Draft m = 2 candidates,<br>each at most b_t edits"]
+    P --> C{"Leakage critic:<br>generic edits only?"}
+    C -- no --> X["Reject"]
+    C -- yes --> E["Score on the evolve split<br>(k trials per task)"]
+    E --> G{"Above S* - delta, cost rule ok,<br>domain guards ok?"}
+    G -- yes --> W["Best admissible candidate<br>becomes H_t+1"]
+    G -- no --> K["Keep H_t"]
+    W -.-> H
+    K -.-> H
+```
+Each round, `b_t` shrinks (explore early, refine late) and components whose edits stopped paying are pruned.
+</details>
+
+<details>
+<summary><b>GEPA</b>: reflect on traces in plain language to rewrite one prompt at a time</summary>
+
+```mermaid
+flowchart LR
+    F["Candidate pool<br>(Pareto front on D_pareto)"] --> S["Sample a parent"]
+    S --> M["Pick one module<br>(round-robin)"]
+    M --> R["Run parent on a<br>3-example minibatch"]
+    R --> L["LLM reflects on traces<br>+ feedback, rewrites<br>that module's prompt"]
+    L --> T{"Child beats parent<br>on the same minibatch?"}
+    T -- yes --> V["Score child on D_pareto,<br>add to pool"]
+    T -- no --> D["Discard"]
+    V -.-> F
+```
+An optional merge step combines modules from two lineages; `res.best` is the candidate with the best D_pareto mean.
+</details>
+
+<details>
+<summary><b>autoresearch</b>: one idea per experiment, keep the commit only if the metric improves</summary>
+
+```mermaid
+flowchart LR
+    T["Branch tip<br>(best train.py so far)"] --> E["Agent edits train.py<br>with one idea, commits"]
+    E --> R["Train for a fixed budget<br>(5 minutes upstream)"]
+    R --> M["Read val_bpb<br>from the log"]
+    M --> K{"Better than the tip?"}
+    K -- yes --> A["Advance the branch"]
+    K -- no --> B["git reset"]
+    A --> L["Append to results.tsv"]
+    B --> L
+    L -.-> T
+```
+`keep_rule="rigor"` (repeated runs) or a noise-band gate replaces "better on one run".
+</details>
+
+<details>
+<summary><b>Meta-Harness</b>: a coding agent reads every past harness, score and trace, then writes new ones</summary>
+
+```mermaid
+flowchart LR
+    FS[("Filesystem of every past candidate:<br>code, scores, raw traces")] --> P["Coding-agent proposer<br>reads what it chooses"]
+    P --> N["Writes k = 2<br>new harnesses"]
+    N --> V["Interface check"]
+    V --> E["Evaluate on the<br>search set"]
+    E --> FS
+    E --> PF["Pareto frontier<br>(accuracy vs context cost)"]
+```
+There is no keep rule: every valid candidate is stored; the final answer is chosen from the frontier.
+</details>
+
+<details>
+<summary><b>SoL-Pi</b>: research token-saving mechanisms in isolated lineages, keep only those that pass a dual gate</summary>
+
+```mermaid
+flowchart LR
+    B["Base harness: measure tokens,<br>cost, score + oracle headroom"] --> I["Rank ideas,<br>one lineage each"]
+    I --> L["Lineage: rollouts, analysis,<br>implement one mechanism, review"]
+    L --> G{"Dual gate: capability within<br>tolerance AND efficiency gain?"}
+    G -- no --> L
+    G -- yes --> F{"Frozen: held-out<br>firewall, pass/fail"}
+    F -- pass --> C["Compose survivors<br>into the new harness"]
+    F -- fail --> X["Drop"]
+```
+The held-out result never feeds back into a lineage; it only accepts or rejects the frozen candidate.
+</details>
+
+<details>
+<summary><b>Dream-RSI</b>: improve the search policy by replaying past searches, with no new agent calls</summary>
+
+```mermaid
+flowchart LR
+    P["Deployed search policy"] --> S["Live round: plan the grid,<br>run the agent search"]
+    S --> W[("World pool: every<br>recorded search tree")]
+    W --> D["Dream: developer rewrites<br>the policy M - 1 times"]
+    D --> R["Replay every version on every<br>tree, under each budget rho"]
+    R --> Q["Score: hypervolume of<br>calls vs attainment - penalty"]
+    Q --> A["Deploy the best version<br>(current one included)"]
+    A -.-> P
+```
+Replay reveals only recorded results, so dreaming costs CPU, not agent calls.
+</details>
+
+<details>
+<summary><b>EvoMap</b>: agents distil what worked into small strategy genes and share them through a hub</summary>
+
+```mermaid
+flowchart LR
+    T["Task + signals"] --> G["Select a gene<br>(local store or hub)"]
+    G --> S["Solve with the<br>gene injected"]
+    S --> V{"Validated?"}
+    V -- yes --> K["Solidify: record<br>a capsule"]
+    V -- "no, and no local gene fit" --> N["Write a new gene<br>from the failed attempt"]
+    K --> H[("Hub, if sharing: naive self-report<br>or SafeHub verified uplift")]
+    N --> H
+    H -.-> G
+```
+The harness itself never changes; only the library of genes does.
+</details>
+
+<details>
+<summary><b>Harness²</b>: improve the harness for each task with no grader, and carry lessons to the next task</summary>
+
+```mermaid
+flowchart LR
+    Q["New task<br>(no labels)"] --> B["k reference rollouts<br>of the seed harness H0"]
+    B --> E["INV + DOM editors propose<br>(evidence + library)"]
+    E --> P["Probe: run each<br>candidate once"]
+    P --> C["Composer: merge, adopt<br>or keep base, re-run"]
+    C --> S["Selector picks one of<br>the k deliverables (anonymised)"]
+    S --> R["Reflector: lesson to<br>the per-domain library"]
+    R -.-> Q
+```
+Each task restarts from H0; only the library carries over. No score is read inside the loop.
+</details>
 
 ## Bring your own problem
 
