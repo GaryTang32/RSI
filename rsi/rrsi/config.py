@@ -59,7 +59,7 @@ class Config:
     calibration_repeats: int = 1         # 1 = within-task bootstrap of one evaluation
     calibration_reps: int = 2000
     calibration_seed: int = 7
-    bootstrap_small_k_correction: bool = False   # extension: se * sqrt(k/(k-1))
+    bootstrap_small_k_correction: bool = True    # se * sqrt(k/(k-1)); False = the paper code's plug-in estimate
     # proposer protocol
     max_done_bounces: int = 3
     max_abort_bounces: int = 3

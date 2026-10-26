@@ -267,7 +267,7 @@ has `analysis` (keep rate, running best, top hits, experiments/hour), `audit` (h
 - Read the **kept diffs**, not only the numbers: sub-noise keeps (gain below the noise band) and seed-only keeps are the luck.
 
 **Failure modes to watch:**
-- Lucky keeps: the upstream rule keeps anything below the tip on one noisy run. Measure noise (`noise_runs>=3`, or repeat the baseline) and
+- Lucky keeps: the upstream rule keeps anything below the tip on one noisy run (`run` warns for `upstream`, `strict` and `simplicity`). Measure noise (`noise_runs>=3`, or repeat the baseline) and
   prefer `rigor` or a gate when per-run noise is comparable to typical gains. If gains are of the same size as the noise band, say so.
 - Winner's curse: the incumbent is never re-measured, so its stored score is a lucky draw and later real gains must beat that inflated bar; use `reeval_seeds`.
 - Scale mismatch: `eps=0.001` and the 20-lines clause assume a metric of upstream's scale; for a 0..1 pass-rate every added prompt line costs

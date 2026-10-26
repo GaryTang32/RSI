@@ -278,7 +278,7 @@
    "type": "stacked",
    "source": "repo:rsi",
    "title": "Where the package's lines go",
-   "takeaway": "42,990 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
+   "takeaway": "43,009 Python lines, 82% of them code. The test problems in domains/ are the largest part (9,979); the shared core is only 2,390, each method builds its own loop on it.",
    "x": {
     "label": "Subpackage of rsi/",
     "kind": "category"
@@ -306,19 +306,19 @@
       },
       {
        "x": "rrsi",
-       "y": 4213
+       "y": 4216
       },
       {
        "x": "autoresearch",
-       "y": 3331
+       "y": 3337
       },
       {
        "x": "solpi",
-       "y": 2814
+       "y": 2818
       },
       {
        "x": "gepa",
-       "y": 2458
+       "y": 2463
       },
       {
        "x": "metaharness",
@@ -400,7 +400,7 @@
       },
       {
        "x": "autoresearch",
-       "y": 565
+       "y": 566
       },
       {
        "x": "solpi",
@@ -1480,8 +1480,8 @@
    "method": "Verification",
    "type": "stacked",
    "source": "repo:docs/skill-claims/ledger",
-   "title": "2,173 skill claims, each backed by a verbatim quote",
-   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 779 from the code.",
+   "title": "2,176 skill claims, each backed by a verbatim quote",
+   "takeaway": "Every factual claim in the Claude Code skill is paired with a quote a script found in its source: 867 from the papers, 781 from the code.",
    "x": {
     "label": "Skill file",
     "kind": "category"
@@ -1546,11 +1546,11 @@
       },
       {
        "x": "GEPA",
-       "y": 101
+       "y": 102
       },
       {
        "x": "autoresearch",
-       "y": 103
+       "y": 104
       },
       {
        "x": "Dream-RSI",
@@ -1620,7 +1620,7 @@
       },
       {
        "x": "GEPA",
-       "y": 21
+       "y": 22
       },
       {
        "x": "autoresearch",
@@ -1648,7 +1648,7 @@
    "type": "bar",
    "source": "repo:docs/skill-claims/ledger",
    "title": "Skill claims corrected to match their source",
-   "takeaway": "77 of 2,173 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
+   "takeaway": "77 of 2,176 claims were wrong or imprecise and were fixed: 12 each in Meta-Harness and EvoMap, 11 each in Dream-RSI and SKILL.md's shared sections.",
    "x": {
     "label": "Skill file",
     "kind": "category"

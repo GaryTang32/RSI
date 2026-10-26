@@ -58,6 +58,10 @@ class AutoResearchDriver:
         self.pool = IdeaPool(ideas)
         self.proposer = proposer
         self.cfg = config
+        if config.firewall and not (config.holdout_split and domain.tasks.splits.get(config.holdout_split)):
+            raise ValueError(f"SoL-Pi's held-out firewall needs a non-empty {config.holdout_split!r} split: add one "
+                             "(e.g. TaskSuite fractions with 'holdout') or pass firewall=False to accept candidates on "
+                             "the screen alone")
         self.gate = DualGate(config.gate)
         self.reviewer = reviewer or SmokeReviewer(domain, llm_task)
         self.out = Path(out_dir) if out_dir else Path(tempfile.mkdtemp(prefix="solpi_"))

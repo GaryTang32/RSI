@@ -5,6 +5,7 @@ import json
 import shutil
 import tempfile
 import time
+import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Sequence
@@ -26,6 +27,8 @@ from .results import ResultsLog, Workspace
 from .task import DomainResearchTask, ResearchTask, RunOutcome
 from .tracing import CachedAuditTask, make_monitor, outcome_json
 from ..trace import RunTracer
+
+NOISE_BLIND_RULES = ("upstream", "strict", "simplicity")   # keep any gain on one run
 
 
 @dataclass
@@ -791,4 +794,8 @@ def run(domain_or_task, seed_artifact: Optional[Artifact] = None, *, llm_task: O
     else:
         loop = AutoresearchLoop(task, ag, cfg, keep_rule=keep_rule, program=program, out_dir=out_dir, llms=llms,
                                 seed_artifact=seed_artifact)
+    if loop.keep.name in NOISE_BLIND_RULES:
+        warnings.warn(f"autoresearch: keep rule {loop.keep.name!r} keeps any improvement on one run, including luck; "
+                      "pass keep_rule='rigor' (or a Gate) and noise_runs >= 2 to require a gain beyond the noise",
+                      stacklevel=2)
     return loop.run()

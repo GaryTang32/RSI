@@ -75,6 +75,9 @@ def _audit_noise(A: _Audit, base: Optional[dict], noise: Optional[dict]) -> Opti
             if sd is None:
                 A.add("bootstrap sd_null vs plug-in formula", "unverifiable", "k < 2: nothing to resample")
             else:
+                k = int(cal.get("k") or 1)
+                if cal.get("small_k_correction") and k > 1:
+                    sd *= math.sqrt(k / (k - 1))     # the run applied the small-k correction (calibrate.py)
                 rel = abs(cal["sd_null_bootstrap"] - sd) / sd if sd > 0 else abs(cal["sd_null_bootstrap"])
                 A.add("bootstrap sd_null vs plug-in formula", "pass" if rel < 0.1 else "fail",
                       f"bootstrap={cal['sd_null_bootstrap']:.5f} plug-in={sd:.5f} (rel diff {rel:.3f}; "

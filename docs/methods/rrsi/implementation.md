@@ -418,3 +418,7 @@ Each check reports pass, fail, unverifiable or info. `audit.json` is written nex
 **Deviation introduced by this change.** Within a round, the directives of steps 2–3 (b_t, σ_t, E_t, B_t, L_t) are now computed *before* the analyst's F_t, so the trace opens each round with the full loop state. They do not depend on F_t, so decisions are unchanged (all earlier tests pass, and the ledgers are identical). `proposal.json` no longer receives the captured prompts; these live in the trace.
 
 **From-scratch validation runs.** `experiments/rrsi/validate_rrsi.py` writes to `validation/rrsi/<run>/`. The results and round-by-round narratives are in `validation/rrsi/RUNS.md`.
+
+## Small-k correction on by default (2026-10-26)
+
+`Config.bootstrap_small_k_correction` now defaults to `True`: the within-task bootstrap of one k-trial evaluation (as in the reference code) underestimates the null sd by sqrt((k-1)/k), so an unchanged harness fell below `S* - delta` about 8% of the time at k = 2 instead of 2.5% (`docs/core/implementation.md`, C1). `False` restores the reference estimate; the paper presets fix `delta` and are unaffected. `audit.py` applies the same factor when it re-derives a corrected run's bootstrap sd. Test: `tests/core/test_noise_band_defaults.py`.

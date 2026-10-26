@@ -320,3 +320,7 @@ Bugs found and fixed in review, each with a regression test or a re-run:
 12. `ClaudeCLI` / `LLM`: a shadow monitor's calls share the task LLM's meter, so budgets cannot tell them apart;
    a per-role or per-caller meter tag would let every method exclude write-only audit spend (autoresearch snapshots
    the meter around each audit instead).
+
+## Noise-band warning (2026-10-26)
+
+`rsi.autoresearch.run` warns when the keep rule is `upstream`, `strict` or `simplicity`, which keep any gain on one run (E5: 19% of keeps had no true gain). The default stays upstream's. Test: `tests/core/test_noise_band_defaults.py`.

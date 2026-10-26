@@ -160,7 +160,7 @@ the code's values for what the paper leaves out); `"overview"` is the blog's ill
 | edit budget | `b_min` 1/1/1, `b_max` 4/3/4 [paper Table 5, Eq. 4] | `b_min = 1`, `b_max = 4`, `budget_rounding = "ceil"` | ceil never reaches `b_min` for `t <= T-1`; see 6 |
 | stall window | 3 [paper Table 5] | `w = 3` | |
 | reserved slots | `m_draft` 1 [paper Table 5] | `m_draft = 1` | |
-| noise band | 0.017 / 0.004 / 0.020, measured on repeated base evals [paper Table 5, §E.1] | `delta = None` (calibrate), `delta_z = 2.0`, `calibration_repeats = 1`, `calibration_reps = 2000`, `calibration_seed = 7` | rsi/code estimator; set `delta`, `calibration_repeats >= 2` or `bootstrap_small_k_correction=True` |
+| noise band | 0.017 / 0.004 / 0.020, measured on repeated base evals [paper Table 5, §E.1] | `delta = None` (calibrate), `delta_z = 2.0`, `calibration_repeats = 1`, `calibration_reps = 2000`, `calibration_seed = 7` | `bootstrap_small_k_correction=True` by default (since 26 Oct 2026): the code's plug-in bootstrap is (k-1)/k low; `False` restores it; better, set `delta` or `calibration_repeats >= 2` |
 | cost rule | `beta0` 0.10/0.10/0.15; `beta1` 44.5/35.4/24.4 [paper Table 5] (25%/25%/10% tokens per pass or per 100 criteria [paper §E.1]) | `beta0 = 0.10`, `beta1 = 40.0` | relative `dC`; `beta0 = 0.10` = 10% growth free; `beta1 = 40` is the code's `RRSIConfig` default |
 | in-band weights | coding `w_s = 0`, others `w_s > 0`; values not given (§D.3 says Table 5 lists them; it does not) [paper §D.3] | `w_s = 100.0`, `w_c = 15.0`, `w_n = 0.5` | code: `w_s` 0/1414/244, `w_c` 15/15/2, `w_n` 0.5 [code]; `w_s` scales with S units |
 | prune window | 4 / 4 / 5 [paper Table 5] | `n_prune = 4` | |
@@ -199,7 +199,8 @@ From `implementation.md` §5, `claims-audit.md` and a check against the paper te
   count is missing, `sigma_t = 0` for `t < w`, ties to the first variant, incumbent never re-measured.
 - **Defaults**: `beta1 = 40`, `w_s = 100` sit between the instances (code `RRSIConfig`); use a preset or scale them.
 - **Resume fix**: novelty counts use accepted edits from rounds `< t` only (matches `N_t` [paper Eq. 16]).
-- **Extensions, off by default**: `bootstrap_small_k_correction`, `budget_rounding="floor_at_bmin_last"`,
+- **Small-k correction, on by default**: `bootstrap_small_k_correction=True` scales the bootstrap sd by sqrt(k/(k-1)).
+- **Extensions, off by default**: `budget_rounding="floor_at_bmin_last"`,
   `proposer_numbers`, `tie_eps`, `heldout_monitor`, `component_aliases`.
 - **Ablations**: `RegularizerSwitches` (`full`, `no_proposal`, `no_acceptance`, `none`, `budget_only`, `selector_only`).
   The paper names the arms (unregularized, w/o proposal, w/o acceptance [paper Table 2]) and defines unregularized
@@ -240,7 +241,7 @@ res = rsi.improve(dom, seed, method="rrsi", llm_task=task_llm, llm_propose="clau
                   config=cfg, out_dir="runs/x", cache_dir=".rsi_cache/x")        # config may also be a dict of Config fields
 report = rsi.transfer_report(dom, task_llm, {"seed": res.baseline, "rrsi": res.best}, k=2)
 ```
-Fields users usually set: `T`, `k`, `m`, `delta` (or `calibration_repeats >= 2` / `bootstrap_small_k_correction`),
+Fields users usually set: `T`, `k`, `m`, `delta` (or `calibration_repeats >= 2`),
 `b_max`, `beta0`/`beta1`, `w_s` (scale to your score units), `repair_rounds`, `n_fail_traces`, `analyst`, `editable`
 (globs the proposer may edit), plus `guards=`, `budget=Budget(max_usd=...)`, `critic_patterns=` on `run`/`improve`.
 `res.best` is the final incumbent `H_T`. `res.trajectory` has one row per round (S, C, S*, b_t, sigma_t, winner, decisions).

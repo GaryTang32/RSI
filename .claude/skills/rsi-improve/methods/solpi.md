@@ -207,7 +207,7 @@ survivors. `stop_reason` is always `"rounds"`.
 | Efficiency metrics | declared list not published; reports tokens, cost, $/score [paper §3] | `efficiency=("tokens","cost")`, `min_gain=0.02` | "better" = >2% relative saving |
 | Gate scope | "beyond a single development environment" [paper §2.1]; aggregation not specified | `mode="aggregate"` | `"per_family"`, `"efficiency_only"`, `"eta_better"` |
 | Nondominated keep | yes, among gate passers [paper §2.1] | `sweep=True` | best-eta passer frozen |
-| Held-out check | after freeze, no feedback; 11 EdgeBench tasks [paper §2.1, §2.5] | `firewall=True`, `holdout_split="holdout"` | silently OFF if no `holdout` split |
+| Held-out check | after freeze, no feedback; 11 EdgeBench tasks [paper §2.1, §2.5] | `firewall=True`, `holdout_split="holdout"` | no non-empty `holdout` split: error (since 26 Oct 2026; was silently off); `firewall=False` opts out |
 | Integration | combine, refine while preserving capability [paper §2.1] | `compose=True`, `validate_composition=False` | no refinement step |
 | Recursion | future work [paper §5.1] | `rounds=1` | untested; lineages sequential |
 | OCC cache write/read ratio | used, value not given [paper §2.5] | mechanism param `cache_write_read_ratio=12.5` | 12.5 from [code:agents-install.md] |
@@ -266,8 +266,8 @@ res.best                              # composed stack of firewall survivors (==
 res.meta["rounds"][0]["heldout_passed"], res.meta["rounds"][0]["survivor_ideas"]
 rsi.transfer_report(dom, llm, {"seed": res.baseline, "solpi": res.best}, k=2)   # evolve, holdout, ood
 ```
-Needs: `evolve` with several `family` values, a sealed `holdout` (else the firewall is silently off and nothing
-guards against tricks), ideally `ood`; token/cost metering in `Execution`; `Trial.meta["oracle"]` statistics if you
+Needs: `evolve` with several `family` values, a sealed non-empty `holdout` (without one the run stops with an error;
+`firewall=False` runs with nothing guarding against tricks), ideally `ood`; token/cost metering in `Execution`; `Trial.meta["oracle"]` statistics if you
 want oracle ranking. Measure the noise band first (SKILL.md step 3) and set `k >= 2`: the gate has no noise band, so
 a 2% tolerance can sit inside run-to-run noise. `validate_composition=True` is the closest rsi gets to the paper's
 "refine while preserving capability" integration step.

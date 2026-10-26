@@ -581,3 +581,6 @@ Second attempt at the open Meta-Harness claims; the preregistration, per-claim t
 
 The main new finding: the M2 "Meta-Harness beats the others" result depended on weak comparison arms. TTT-Discover's PUCT reuse matches the mock Meta-Harness, and so did the first, over-generous GEPA arm (a faithful GEPA trails it by 1.1 points), because the mock only ever uses its parents' traces (audit N4); showing the paper's advantage would need an LLM proposer that uses the whole history, in every arm.
 
+## Held-out firewall required (2026-10-26)
+
+`AutoResearchDriver` now raises `ValueError` when `firewall=True` and the domain has no non-empty `holdout_split`; before, the firewall switched itself off and every frozen candidate passed. `firewall=False` runs without it on purpose. Test: `tests/metaharness-solpi/test_solpi_firewall_required.py`.

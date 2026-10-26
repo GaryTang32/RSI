@@ -76,6 +76,7 @@ def test_generic_domain_without_val_split_and_train_named_train():
     assert res.meta["n_val"] == res.meta["n_train"] == 12
     with warnings.catch_warnings():
         warnings.simplefilter("error")                                   # explicit multi-task mode: no warning
+        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")   # tested elsewhere
         _run(d, 100, val_split=None)
 
 
@@ -181,6 +182,7 @@ def test_optimize_without_valset_is_explicit_multitask_mode():
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
+        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")   # tested elsewhere
         res = optimize({"p.md": "start"}, ["alpha", "beta", "gamma"], metric=metric,
                        llm_propose=GenericReflectionLM(max_new=3),
                        config=Config(max_metric_calls=60, train_split="train"))
