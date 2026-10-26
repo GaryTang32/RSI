@@ -18,8 +18,11 @@ FORBIDDEN = re.compile(r"benchmark|evaluation|grader|rubric|score", re.I)
 class Config:
     mode: str = "parallel"                  # parallel ("agg") | sequential ("seq")
     k: int = 1                              # budget: 4k rollouts and 3k editor/composer sessions per task
-    split: Optional[str] = None             # None -> the sealed evaluation split: holdout, else test, else ood
-    max_tasks: Optional[int] = None
+    split: Optional[str] = None             # None -> the sealed evaluation split: holdout, else test, else ood;
+                                            # "a+b" streams several splits
+    max_tasks: Optional[int] = None         # first N tasks of the ordered stream
+    max_usd: Optional[float] = None         # spend cap, checked between tasks (stops early when the next task
+                                            # would likely cross it at the mean cost per task so far)
     order: str = "sorted"                   # sorted | split (as listed) | shuffle (seeded, per domain)
     retry_invalid: int = 1                  # extra attempts per stage after an invalid proposal (STAGE_ATTEMPTS = 2)
     selector_attempts: int = 2              # transport attempts of the selector before its fallback
@@ -46,8 +49,8 @@ class Config:
             raise ValueError(f"mode must be one of {MODES}")
         if self.order not in ORDERS:
             raise ValueError(f"order must be one of {ORDERS}")
-        if self.k < 1 or self.retry_invalid < 0 or self.selector_attempts < 1:
-            raise ValueError("need k >= 1, retry_invalid >= 0 and selector_attempts >= 1")
+        if self.k < 1 or self.retry_invalid < 0 or self.selector_attempts < 1 or (self.max_tasks is not None and self.max_tasks < 0):
+            raise ValueError("need k >= 1, retry_invalid >= 0, selector_attempts >= 1 and max_tasks >= 0")
         if unknown := sorted(set(self.prompts) - set(SLOTS)):
             raise ValueError(f"unknown prompt slots {unknown}; valid: {SLOTS}")
         for name, text in self.prompts.items():

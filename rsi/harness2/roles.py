@@ -16,7 +16,7 @@ from .records import Rollout, Stage, TaskRecord
 from .tree import off_surface, validate
 
 SYSTEM = "You improve an autonomous agent's harness from execution evidence. Follow the mission exactly."
-END = "\n=== END OF EVIDENCE ===\nReply now, in the format the mission gives.\n"
+END = f"\n{C.END_MARK}\nReply now, in the format the mission gives.\n"
 ADOPT = re.compile(r"^[ \t]*(ADOPT|REPRODUCE)[ \t]*:[ \t]*`?([A-Za-z0-9_.-]+)`?[ \t]*$", re.M)
 CHOICE = re.compile(r"```choice\s*\n?\s*([A-Za-z0-9_-]+)\s*\n?\s*```", re.S)
 TRIVIAL = "trivial pool: single final at k=1; delivered without a selector session"
@@ -115,7 +115,8 @@ def _anon(i: int) -> str:
 
 
 def select(s: Session, rec: TaskRecord, finals: Sequence[str], *, task_text: str, source: Mapping[str, str],
-           attempts: int, slots: Mapping[str, str], obs_trunc: int) -> tuple[dict, Optional[Stage]]:
+           attempts: int, slots: Mapping[str, str], obs_trunc: int,
+           mode_token: Optional[str] = None) -> tuple[dict, Optional[Stage]]:
     """``(selection, stage)``: trivial at k = 1, else one anonymised deliverable-only selector session."""
     delivered = [lab for lab in finals if rec.rollouts[lab].delivered]
     sel = {"pool": list(finals), "dropped": [lab for lab in finals if lab not in delivered], "ids": {},
@@ -128,7 +129,7 @@ def select(s: Session, rec: TaskRecord, finals: Sequence[str], *, task_text: str
     if not delivered:
         return {**sel, "chosen": sorted(finals)[0], "why": "", "ok": False, "fallback": True,
                 "error": "no candidate produced an artifact (finals-only pool has no base fallback)"}, None
-    ids = anon_ids(rec.task_id, rec.k, rec.mode, delivered)
+    ids = anon_ids(rec.task_id, rec.k, mode_token or rec.mode, delivered)
     cands = {cid: C.produced_md(rec.rollouts[lab], obs_trunc) for cid, lab in ids.items()}
     text = P.select(len(ids), list(ids), slots=slots) + "\n" + C.render(C.selector_context(task_text, cands, source))
     st = Stage(label="select", role="selector", prompt=text)

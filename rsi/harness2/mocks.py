@@ -22,8 +22,8 @@ class Lever:
 
 INV_LEVERS = (
     Lever("final-line", "End your reply with one final line of the form 'ANSWER: <value>'.", "unlabelled"),
-    Lever("check", "Before that final line, check the result once more against the question and fix it if the check "
-          "fails.", "unchecked"),
+    Lever("check", "Before that final line, verify the result once more against the question and fix it if the "
+          "check fails.", "unchecked"),
 )
 DOM_LEVERS = (
     Lever("steps", "Work through it step by step: name the quantities involved, then combine them.", "no-steps"),
@@ -45,7 +45,7 @@ def _evidence(why: str, dels: dict[str, str], rolls: dict[str, str]) -> Optional
     if why == "unlabelled":
         bad = [k for k, v in base.items() if not labelled(v)]
         return f"{bad[0]} ends with {last_line(base[bad[0]])[:80]!r}: no labelled final line" if bad else None
-    text = " ".join(rolls.values()).lower()
+    text = " ".join(v.split("## trajectory", 1)[-1] for v in rolls.values()).lower()
     if why == "unchecked":
         return None if ("check" in text or "verify" in text) else "no rollout re-checks its result before finishing"
     if why == "no-steps":
@@ -90,7 +90,8 @@ class MockEditor:
             return "<notes>\nKEEP_BASE -- no text component to edit\n</notes>"
         text = "\n".join(ln for ln in files[target].splitlines() if not any(b in ln for b in BRACES)) + "\n"
         notes = [f"repaired {target}: removed the template braces the validator rejected"] if rejected else []
-        dels, rolls = C.subtree(ctx, "context/deliverables"), C.subtree(ctx, "context/rollouts")
+        dels = {k.removesuffix(".md"): v for k, v in C.subtree(ctx, "context/deliverables").items()}
+        rolls = C.subtree(ctx, "context/rollouts")
         cands = [(lv, ev) for lv in (INV_LEVERS if dim == "inv" else DOM_LEVERS)
                  if lv.line not in text and (ev := _evidence(lv.why, dels, rolls))]
         if cands:
@@ -169,9 +170,10 @@ class MockReflector:
     def __call__(self, prompt: str) -> str:
         ctx = C.parse(prompt)
         base, adopted = C.subtree(ctx, "context/base_harness"), C.subtree(ctx, "context/harness")
-        dels = C.subtree(ctx, "context/deliverables")
+        dels = {k.removesuffix(".md"): v for k, v in C.subtree(ctx, "context/deliverables").items()}
         base_bad = [k for k, v in dels.items() if k.startswith("base") and not labelled(v)]
         labels = list(dict.fromkeys(k.split("/")[2] for k in ctx if k.startswith("context/pool/")))
+        dels.update({lab: ctx.get(f"context/pool/{lab}/produced.md", "") for lab in labels})
         forms: dict[tuple[str, str], list[str]] = {}
         n_changed: dict[str, int] = {}
         for lab in labels:

@@ -200,7 +200,7 @@ class AgentQADomain(Domain):
 
     def grader_verdict_markers(self) -> tuple[str, ...]:
         """Strings that only this domain's grader feedback produces."""
-        return ("Extracted answer", "Correct (answer", "; expected ")
+        return ("Incorrect. Extracted answer ", "Correct (answer ")
 
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
         if llm is None:

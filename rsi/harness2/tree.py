@@ -80,3 +80,12 @@ def diff_summary(old: Artifact, new: Artifact) -> dict:
     removed = sorted(set(old) - set(new))
     modified = sorted(p for p in set(old) & set(new) if old[p] != new[p])
     return {"added": added, "removed": removed, "modified": modified}
+
+
+def diversity(trees: Sequence[Artifact]) -> float:
+    """Mean pairwise line-Jaccard distance of the trees' text (0 = identical) [code tree.diversity]."""
+    sets = [{f"{p}\0{ln}" for p, t in tr.items() for ln in t.splitlines() if ln.strip()} for tr in trees]
+    pairs = [(a, b) for i, a in enumerate(sets) for b in sets[i + 1:]]
+    if not pairs:
+        return 0.0
+    return sum(1 - len(a & b) / max(1, len(a | b)) for a, b in pairs) / len(pairs)

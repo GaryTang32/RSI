@@ -9,6 +9,8 @@ from ..core.artifact import Artifact
 from .records import Rollout
 
 Ctx = dict[str, str]
+#: closes the rendered evidence in a mission (nothing after it is a context file)
+END_MARK = "=== END OF EVIDENCE ==="
 BLOCK = re.compile(r"^=== (context/\S[^\n]*?) ===[ \t]*$", re.M)
 DESCRIBE = {
     "task.md": "the task as the agent received it",
@@ -125,7 +127,7 @@ def render(ctx: Mapping[str, str]) -> str:
 
 def parse(text: str) -> Ctx:
     """Inverse of :func:`render` (the mocks read their evidence back this way)."""
-    pieces = BLOCK.split(text or "")
+    pieces = BLOCK.split((text or "").split("\n" + END_MARK, 1)[0])
     return {pieces[i]: pieces[i + 1].strip("\n") for i in range(1, len(pieces) - 1, 2)}
 
 
