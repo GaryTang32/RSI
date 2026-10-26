@@ -275,7 +275,7 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM], llm
                             trajectory=traj, usage=usage, stop_reason=stop, out_dir=str(out) if out else None,
                             meta=meta)
     if cfg.report:                      # evaluation only: after the open-world loop has ended
-        rep = posthoc_report(domain, records)
+        rep = posthoc_report(domain, records, tasks=stream_list)
         res.meta["report"] = rep
         if tracer.enabled:
             tracer.event("report", None, note="evaluation only, after the loop ended; never an input to it", **rep)
@@ -309,13 +309,15 @@ def _score(domain: Domain, task: Task, rollout) -> float:
     return float(domain.grade_execution(task, rollout.execution)[0])
 
 
-def posthoc_report(domain: Domain, records: Sequence[TaskRecord], *, seed: int = 0) -> dict:
+def posthoc_report(domain: Domain, records: Sequence[TaskRecord], *, seed: int = 0,
+                   tasks: Optional[Sequence[Task]] = None) -> dict:
     """Evaluation only: grade each task's submitted deliverable and its first reference rollout (H0), after the loop.
 
     Raises if called while an :class:`OpenWorld` guard is active on ``domain`` (the refused method raises)."""
+    labelled = {t.id: t for t in tasks or ()}
     rows: dict[str, dict] = {}
     for r in records:
-        task = domain.tasks.get(r.task_id)          # the labelled task, outside the loop
+        task = labelled.get(r.task_id) or domain.tasks.get(r.task_id)   # the labelled task, outside the loop
         rows[r.task_id] = {"family": task.family, "status": r.status, "base": _score(domain, task, r.base_rollout),
                            "submitted": _score(domain, task, r.submitted), "kept_base": r.kept_base()}
     base = [v["base"] for v in rows.values()]
