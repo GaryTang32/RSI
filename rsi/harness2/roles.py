@@ -65,7 +65,8 @@ def parse_edit(reply: str, start: Artifact, pool: Mapping[str, Artifact], editab
     if m := ADOPT.search(head):
         adopted = m.group(2)
         if adopted not in pool:
-            return None, None, notes or reply, f"{m.group(1)} names unknown candidate {adopted!r}; known: {sorted(pool)}"
+            err = f"{m.group(1)} names unknown candidate {adopted!r}; known: {sorted(pool)}"
+            return None, None, notes or reply, err
         base = pool[adopted]
     updates = {k: (None if v.strip() == "<<DELETE>>" else v) for k, v in parse_file_blocks(body).items()}
     if bad := off_surface(list(updates), editable):

@@ -29,7 +29,7 @@ class Config:
     seed: int = 0
     library: bool = True                    # False = the paper's "w/o library" ablation (neither read nor written)
     library_dir: Optional[str] = None       # None -> <out_dir>/library (or a temp dir), emptied at the start
-    editable: Optional[list[str]] = None    # globs of editable files; None -> every file of the seed harness
+    editable: Optional[list[str]] = None    # editable globs; None -> the seed's files + domain.components
     strip_targets: bool = True              # rollouts get the task without target and answer-like meta keys
     obs_trunc: int = 50000                  # per-trajectory render cap, with an explicit renderer marker
     max_text_chars: int = 24000             # cap on non-code harness text (the always-on cap of OpenCode)
@@ -49,7 +49,7 @@ class Config:
             raise ValueError(f"mode must be one of {MODES}")
         if self.order not in ORDERS:
             raise ValueError(f"order must be one of {ORDERS}")
-        if self.k < 1 or self.retry_invalid < 0 or self.selector_attempts < 1 or (self.max_tasks is not None and self.max_tasks < 0):
+        if self.k < 1 or self.retry_invalid < 0 or self.selector_attempts < 1 or (self.max_tasks or 0) < 0:
             raise ValueError("need k >= 1, retry_invalid >= 0, selector_attempts >= 1 and max_tasks >= 0")
         if unknown := sorted(set(self.prompts) - set(SLOTS)):
             raise ValueError(f"unknown prompt slots {unknown}; valid: {SLOTS}")

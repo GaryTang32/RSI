@@ -74,7 +74,7 @@ def blocks(files: dict[str, Optional[str]]) -> str:
 
 @dataclass
 class MockEditor:
-    """INV/DOM editor: one evidence-backed lever per candidate; DOM also copies library lines; may emit invalid trees."""
+    """INV/DOM editor: one evidence-backed lever per candidate; DOM copies library lines; may emit invalid trees."""
 
     invalid: str = "never"          # never | first | always (adds a template brace to test retry and fallback)
 
@@ -115,7 +115,7 @@ class MockEditor:
 
 @dataclass
 class MockComposer:
-    """Composer: merges the added lines of every candidate whose rollout delivered; ADOPT when one candidate equals it."""
+    """Composer: merges the added lines of every candidate whose rollout delivered; ADOPT if one candidate equals it."""
 
     def __call__(self, prompt: str) -> str:
         ctx = C.parse(prompt.split("# YOUR EVIDENCE", 1)[-1])
@@ -163,7 +163,7 @@ class MockSelector:
 
 @dataclass
 class MockReflector:
-    """Reflector: one row per (component, form) with a verdict from deliverable contrasts; NO_ENTRY unless one helped."""
+    """Reflector: a row per (component, form), verdict from deliverable contrasts; NO_ENTRY unless one helped."""
 
     force: Optional[str] = None     # None | "none" (always NO_ENTRY)
 

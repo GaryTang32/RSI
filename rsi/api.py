@@ -65,7 +65,8 @@ METHODS: dict[str, MethodInfo] = {
         "tasks arrive one at a time with no grader or labels (open-ended work) and ~4k rollouts per task are "
         "affordable"),
 }
-ALIASES = {"dream-rsi": "dream", "harness-squared": "harness2", "harness²": "harness2", "meta-harness": "metaharness", "sol-pi": "solpi", "karpathy": "autoresearch"}
+ALIASES = {"dream-rsi": "dream", "meta-harness": "metaharness", "sol-pi": "solpi", "karpathy": "autoresearch",
+           "harness-squared": "harness2", "harness²": "harness2"}
 
 
 def method_module(name: str):
