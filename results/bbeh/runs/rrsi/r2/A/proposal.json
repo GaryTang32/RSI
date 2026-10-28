@@ -1,0 +1,51 @@
+{
+ "status": "done",
+ "summary": "Answer format cleaning and output simplification for robust extraction across all task types (control_flow post-processing, zero token overhead)",
+ "edits": [
+  {
+   "id": "F1",
+   "component": "control_flow",
+   "hypothesis": "Removing descriptive text appended after choice letters in ANSWER lines (e.g., reformatting '(D) Rodrigo' → '(D)', 'C' → '(C)') will fix format-based extraction failures without adding tokens",
+   "targets_mode": "answer format mismatches where models append descriptions after choice letters, or output bare letters instead of parenthesized choices",
+   "why_not_lower_lever": "This is post-processing extraction logic, not a prompt/reasoning issue—pure control plumbing ensures deterministic, robust handling without relying on model's formatting discipline",
+   "trigger_condition": "Always applied: every ANSWER: line is normalized to clean choice format if the answer matches a choice pattern (A-F, with or without parens and descriptions)",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023",
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003"
+   ],
+   "retroactive_check": "(corrective) Format failures like '(D) Rodrigo'→'(D)' and 'C'→'(C)' would be fixed; (preservative) passing tasks with clean ANSWER lines are unchanged (regex conservatively matches only choice patterns at line start); (transfer) choice-format answer cleaning generalizes to any multi-choice task (boolean, shuffled_objects, web_of_lies, object_properties with choices)",
+   "regression_risk": "Regex could over-match if a passing task's answer legitimately contains a choice pattern (e.g., '(D)ependent'). Mitigated by requiring exact match at line start and end, and handling edge cases (no spaces, multi-word answers left unchanged).",
+   "mechanism": "Removing descriptive text appended after choice letters in ANSWER lines (e.g., reformatting '(D) Rodrigo' → '(D)', 'C' → '(C)') will fix format-based extraction failures without adding tokens"
+  },
+  {
+   "id": "F2",
+   "component": "control_flow",
+   "hypothesis": "Simplifying the output to keep only the answer context (lines around ANSWER:) and discard verbose preamble will reduce extraction confusion and ensure the grader sees clean, focused answer text without distracting explanation",
+   "targets_mode": "verbose-output failures where models output long reasoning before ANSWER line, especially linguini tasks with lengthy explanations",
+   "why_not_lower_lever": "This is output plumbing and response truncation (control flow), not a prompt issue—deterministically keeping answer context and discarding excess explanation is orthogonal to what the model was asked to do",
+   "trigger_condition": "Always applied: after LLM call, if an ANSWER: line is found, keep from 1 line before it to end of response; if no ANSWER: found, return full response unchanged",
+   "predicted_affected": [
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110"
+   ],
+   "retroactive_check": "(corrective) Very long extracted answers like 'Do we come? (or possibly ...lengthy explanation' would be truncated to just ANSWER context; (preservative) passing tasks that already have concise outputs are unaffected (lines are kept as-is if short); (transfer) generalizes to any task where model over-explains—by keeping answer-adjacent context, we preserve reasoning hints but strip excessive preamble",
+   "regression_risk": "If a passing task needs its full preamble for context (unlikely given grader only extracts ANSWER line), truncation could hurt. Mitigated by keeping 1 line before ANSWER, so immediate context is preserved.",
+   "mechanism": "Simplifying the output to keep only the answer context (lines around ANSWER:) and discard verbose preamble will reduce extraction confusion and ensure the grader sees clean, focused answer text without distracting explanation"
+  }
+ ],
+ "mechanism": "Answer format cleaning and output simplification for robust extraction across all task types (control_flow post-processing, zero token overhead)",
+ "targets_mode": "answer format mismatches where models append descriptions after choice letters, or output bare letters instead of parenthesized choices, verbose-output failures where models output long reasoning befo",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

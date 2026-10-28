@@ -1,0 +1,15 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "PATTERN 3 OVERLY BROAD (Criterion 3 - Format Gaming): The regex `^([A-F])\\s+\\S.+$` in `_clean_choice_answer()` matches ANY bare single letter A-F followed by space and text. This will match and reformat legitimate non-choice answers from counting/tracking tasks, e.g., 'B 5' (variable B with count 5) → '(B)', or 'C true' → '(C)'. This is not improving task performance, it's corrupting the answer. The declared edit claims the pattern is 'conservative' and 'only matches choice patterns,' but Pattern 3 makes no distinction between choice formats and variable assignments.",
+  "VIOLATES GENERALIZATION REQUIREMENT: The spec explicitly states the harness 'will later be run unchanged on other kinds of long, multi-step reasoning questions with exact answers (counting, tracking, ordering, multiple choice), so improvements must be general.' Pattern 3 will break on counting/tracking tasks with single-letter variable names, which are feasible answers (e.g., 'Count the objects with property B; express as B=<count>'; output 'B 5'). Pattern 3 would corrupt this to '(B)'.",
+  "INCONSISTENT CONSERVATISM CLAIM: The retroactive_check asserts '(regex conservatively matches only choice patterns),' but Pattern 3 doesn't enforce choice-context. Pattern 1 (bare letter alone) and Pattern 2 (parenthesized letter + text) are conservative; Pattern 3 applies choice-cleaning to any bare A-F + space + text, without verifying the context is actually a multi-choice scenario."
+ ],
+ "risk_notes": [
+  "F2 (output simplification via _simplify_output) appears safe—it only truncates preamble and preserves answer context, with no loss to grader (which only extracts ANSWER lines anyway).",
+  "Patterns 1, 2, and 4 in F1 are appropriately conservative: bare letter alone wrapped, parenthesized choice with text extracted cleanly, parenthesized choice alone preserved.",
+  "F1's core issue is isolated to Pattern 3. A more conservative approach would either (a) restrict Pattern 3 to multi-word descriptions (e.g., match `^([A-F])\\s+[A-Za-z]{2,}` to avoid numeric suffixes), (b) require heuristic context (e.g., check if question contains 'choose' or 'option'), or (c) explicitly document that cleaning only applies to known multi-choice tasks.",
+  "The probability of Pattern 3 triggering on evolve-set tasks is low (boolean_expressions, shuffled_objects, etc. are unlikely to output 'B 5'). However, the spec explicitly promises generalization to counting/tracking tasks, and Pattern 3's over-match creates a real regression risk on those task types."
+ ],
+ "stage": "llm"
+}

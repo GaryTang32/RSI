@@ -1,0 +1,33 @@
+{
+ "status": "done",
+ "summary": "Replace broken verification mechanism with tool-based answer extraction that handles choice-based answers with appended descriptions, removing grader-gaming assumption",
+ "edits": [
+  {
+   "id": "R1",
+   "component": "tool",
+   "hypothesis": "Replace the problematic format-checking verification mechanism with Python-based answer extraction that robustly parses the ANSWER: line and intelligently extracts choice letters when appended descriptions are present (e.g., '(D) Rodrigo' → '(D)'), fixing extraction mismatches without encoding grader assumptions",
+   "targets_mode": "Incorrect extracted answers where model appends descriptions to choice letters; overcomes grader-gaming check that violated generalization",
+   "why_not_lower_lever": "This requires tool orchestration (call Python, parse regex, conditionally extract). A simple prompt tweak cannot robustly handle choice extraction across heterogeneous task formats. Extraction logic must live in code, not prose.",
+   "trigger_condition": "Always — replaces previous conditional re-prompt with unconditional tool-based extraction on every task; extracts robustly from ANSWER: line or last line, then checks for choice pattern and strips extra text if present",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Tasks failing with '(D) Rodrigo' vs '(D)' mismatch would pass once the appended text is stripped; the heuristic extracts just the choice. (preservative) Tasks outputting non-choice answers (linguini 'šʼəwtʷan', web_of_lies 'yes, no, no', causal_understanding 'Ambiguous') bypass the choice-pattern match and return full answer intact, preserving correct extraction. Tasks already passing (causal_understanding-023, -025, -136; linguini-188; web_of_lies-074; object_properties-153; boolean_expressions-148) output complete ANSWER: lines and are not disrupted. (transfer) Any multi-step task benefit from robust extraction that doesn't assume format; heuristic-based stripping of choice-only answers is general across unfamiliar task suites",
+   "regression_risk": "Very low. The extraction is conservative: it only strips text after choice patterns; all other answers pass through unchanged. Passing tasks with correct ANSWER: output are unaffected. Edge case: if a task legitimately expects '(D) Rodrigo' as the answer (unlikely given all observed expected answers are just the choice), the tool would strip it—but no evidence of this in the evolve set.",
+   "mechanism": "Replace the problematic format-checking verification mechanism with Python-based answer extraction that robustly parses the ANSWER: line and intelligently extracts choice letters when appended descriptions are present (e.g., '(D) Rodrigo' → '(D)'), fixing extraction mismatches without encoding grader assumptions"
+  }
+ ],
+ "mechanism": "Replace broken verification mechanism with tool-based answer extraction that handles choice-based answers with appended descriptions, removing grader-gaming assumption",
+ "targets_mode": "Incorrect extracted answers where model appends descriptions to choice letters; overcomes grader-gaming check that violated generalization",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

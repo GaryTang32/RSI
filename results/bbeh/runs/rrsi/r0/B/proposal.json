@@ -1,0 +1,62 @@
+{
+ "status": "done",
+ "summary": "Add deterministic answer extraction and improve prompt clarity to fix format mismatches and strengthen reasoning guidance",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "prompt",
+   "hypothesis": "Explicit instruction that answer must contain ONLY the final value without extra descriptive text will reduce model's tendency to append descriptions (e.g., '(D) Rodrigo' instead of '(D)').",
+   "targets_mode": "answer format mismatches in shuffled_objects and boolean_expressions where descriptions are appended to choice letters",
+   "why_not_lower_lever": "Output format specification is most effective via prompt instructions that directly shape generation behavior; the model needs unambiguous specification of required format.",
+   "trigger_condition": "Always - applies to all tasks",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) shuffled_objects-067 ('(D) Rodrigo') and shuffled_objects-023 ('(B) orange ball') would have generated clean answers if format was explicit; (preservative) all 8 passing tasks already output concise answers so clarity will not break them; (transfer) applies to any multi-choice or structured-answer task",
+   "regression_risk": "Low - emphasizing answer conciseness should not harm sound reasoning; successful tasks generate clean output already",
+   "mechanism": "Explicit instruction that answer must contain ONLY the final value without extra descriptive text will reduce model's tendency to append descriptions (e.g., '(D) Rodrigo' instead of '(D)')."
+  },
+  {
+   "id": "C2",
+   "component": "control_flow",
+   "hypothesis": "Using Python tool to robustly extract answers (parse ANSWER: line, isolate choice letter or first token) will strip descriptive text appended by the model, fixing format-based mismatches.",
+   "targets_mode": "answer extraction where model appends text after core answer despite instructions",
+   "why_not_lower_lever": "Deterministic parsing of structured output is logic that requires control flow, not prose; a tool provides reliable extraction that cannot be guaranteed via instruction alone.",
+   "trigger_condition": "Always - every reply processed through extraction",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) regex extraction isolates '(D)' from '(D) Rodrigo' and '(B)' from '(B) orange ball'; (preservative) non-choice answers (linguistics, counting, yes/no) pass through unchanged; (transfer) applicable to any task where model appends extraneous text",
+   "regression_risk": "Minimal - fallback to last line ensures answer recovery; all tasks instructed to use ANSWER: line",
+   "mechanism": "Using Python tool to robustly extract answers (parse ANSWER: line, isolate choice letter or first token) will strip descriptive text appended by the model, fixing format-based mismatches."
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "System prompt guidance to think step-by-step and double-check reasoning will improve accuracy on logic-heavy tasks (web_of_lies, boolean_expressions, causal_understanding) where reasoning errors dominate.",
+   "targets_mode": "incorrect reasoning and wrong choice selection on logic puzzles and causal problems",
+   "why_not_lower_lever": "Reasoning quality is shaped by system-level problem-solving guidance; prose in system prompt is the direct lever to improve reasoning habits across task families.",
+   "trigger_condition": "Always - system context applied globally",
+   "predicted_affected": [
+    "evolve-causal_understanding-099"
+   ],
+   "retroactive_check": "(corrective) causal_understanding-099 (wrong causality reasoning) and web_of_lies tasks (logic tracing errors) would benefit from explicit step-by-step guidance; (preservative) 3 passing causal_understanding and 1 passing web_of_lies task already use sound logic and will not regress from encouragement to double-check; (transfer) generalizes to any complex multi-step reasoning task",
+   "regression_risk": "Low - encouraging careful reasoning strengthens sound paths; minimal token overhead",
+   "mechanism": "System prompt guidance to think step-by-step and double-check reasoning will improve accuracy on logic-heavy tasks (web_of_lies, boolean_expressions, causal_understanding) where reasoning errors dominate."
+  }
+ ],
+ "mechanism": "Add deterministic answer extraction and improve prompt clarity to fix format mismatches and strengthen reasoning guidance",
+ "targets_mode": "answer format mismatches in shuffled_objects and boolean_expressions where descriptions are appended to choice letters, answer extraction where model appends text after core answer despite instruction",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

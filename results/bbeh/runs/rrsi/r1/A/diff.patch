@@ -1,0 +1,53 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,42 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""Harness with tool-based answer extraction for robust formatting."""
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    return reply.strip()
++    
++    # Extract and normalize the answer using Python tool
++    # This handles format normalization for choice-letter answers:
++    # "(D) Rodrigo" -> "(D)", while preserving other answer types like "New York"
++    extraction_script = f"""
++import re
++
++response = {repr(reply)}
++
++# Find the ANSWER: line (case-insensitive)
++answer_text = None
++for line in response.split('\\n'):
++    if 'answer:' in line.lower():
++        answer_text = line.split(':', 1)[-1].strip()
++        break
++
++# Fallback: use last non-empty line if no ANSWER: found
++if not answer_text:
++    lines = [l.strip() for l in response.split('\\n') if l.strip()]
++    answer_text = lines[-1] if lines else ""
++
++answer_text = answer_text.strip()
++
++# Normalize choice-letter answers: if answer starts with (LETTER),
++# keep only that part to remove any trailing descriptive text.
++# For all other answers, keep them intact.
++match = re.match(r'^\\(([A-Z])\\)', answer_text)
++if match:
++    print(f"({match.group(1)})")
++else:
++    print(answer_text)
++"""
++
++    result = tools.python(extraction_script)
++    return result.strip()
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,3 @@
+ You are a helpful assistant.
++
++When providing your final answer, use the format ANSWER: <answer> with only the answer itself—no additional explanation or text after the answer.

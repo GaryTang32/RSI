@@ -1,0 +1,15 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "GRADER GAMING: The code hard-codes the assumption that choice-style answers should be in the format '(<letter>)' without descriptive text, based on explicit knowledge of what the grader expects for specific task failures. The retroactive check section explicitly states 'Task 067 fails with extracted (D) Rodrigo; expected (D)' and 'Task 023 fails with extracted (B) orange ball; expected (B)' — these reference the expected outputs from specific task IDs and the grader's actual requirements. The mechanism was designed to fit the model's output to match these specific expectations, not to improve general model behavior.",
+  "RETURN FORMAT CHANGE: The code fundamentally changes what solve() returns. The original returned reply.strip() (the full model response, which the grader would parse for ANSWER: lines). The new code returns 'ANSWER: ' + answer (a reformatted single line). This changes the harness contract and could have unintended side effects on other tasks or evaluation pipelines that depend on the original format.",
+  "BRITTLE PATTERN ASSUMPTION: The code assumes that all answers matching the pattern '(<char>) <text>' should be truncated to '(<char>)'. This assumption is specific to multiple-choice tasks with choice letters and may not apply to (or may break) other tasks. For example, if a future task's expected answer is literally '(D) Rodrigo' (with description included), this code would incorrectly strip it to '(D)'.",
+  "LEAKAGE MARKERS: The declared edits explicitly identify failing tasks by ID ('evolve-shuffled_objects-067', 'evolve-shuffled_objects-023') and reference their specific expected outputs. This indicates the code was evolved with knowledge of particular task failure modes and grader expectations, which is a form of task specialization even if the code logic itself is structurally general."
+ ],
+ "risk_notes": [
+  "The mechanism would likely hurt tasks where choice descriptions are intentional or where non-choice answers happen to contain parentheses.",
+  "Changing the return format of solve() from full reply to just a formatted answer is a breaking change that bypasses the original contract and may break other system components.",
+  "The code adds 'ANSWER: ' prefix unconditionally, but the fallback (returning the last line) also gets wrapped, changing the output format for all tasks."
+ ],
+ "stage": "llm"
+}

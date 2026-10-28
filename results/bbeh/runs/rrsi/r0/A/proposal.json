@@ -1,0 +1,82 @@
+{
+ "status": "done",
+ "summary": "Improve answer extraction and add structured reasoning guidance to fix formatting errors and reasoning failures",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "prompt",
+   "hypothesis": "Clearer instructions about answer format (only the answer, no descriptions) and a structured reasoning procedure will reduce extraction errors and improve logical accuracy across task types",
+   "targets_mode": "answer extraction and formatting issues, reasoning quality",
+   "why_not_lower_lever": "The model needs explicit, detailed guidance on what format is expected and what procedure to follow for complex reasoning; prose is the right medium to teach this",
+   "trigger_condition": "Always applies—every task benefits from clearer instructions",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023",
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-boolean_expressions-008",
+    "evolve-web_of_lies-025",
+    "evolve-web_of_lies-080",
+    "evolve-web_of_lies-177",
+    "evolve-object_properties-017",
+    "evolve-object_properties-167",
+    "evolve-object_properties-087",
+    "evolve-causal_understanding-099",
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110"
+   ],
+   "retroactive_check": "(corrective) Tasks with extra text in answer (D) Rodrigo → (D) will pass because the system prompt tells the model to output only the answer without descriptions; tasks with reasoning errors will improve because the skill provides a structured procedure with self-checks. (preservative) The passing tasks (e.g., causal_understanding-025, boolean_expressions-148) output clean answers already and use sound reasoning, so clearer instructions reinforce good behavior. (transfer) Any multi-step reasoning task benefits from structured thinking; the format guidance is general to all answer types",
+   "regression_risk": "Overly restrictive format instructions could break answers that legitimately need multiple parts (e.g., comma-separated lists); mitigation: instructions are flexible enough to allow 'any answer format appropriate to the task'.",
+   "mechanism": "Clearer instructions about answer format (only the answer, no descriptions) and a structured reasoning procedure will reduce extraction errors and improve logical accuracy across task types"
+  },
+  {
+   "id": "E2",
+   "component": "control_flow",
+   "hypothesis": "Extracting and sanitizing the ANSWER line before returning—removing extra text that appears after the core answer token (e.g., stripping ' Rodrigo' from '(D) Rodrigo')—will fix grader mismatch on extraction failures",
+   "targets_mode": "answer extraction issues where model outputs extra descriptions",
+   "why_not_lower_lever": "Prose cannot fix a mechanical extraction problem; this requires code logic to parse the output and clean it",
+   "trigger_condition": "When the output contains 'ANSWER:' followed by extra text that matches certain patterns (choice letter with trailing description)",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Tasks where the model outputs '(D) Rodrigo' will be cleaned to '(D)'; similar cleanup for '(B) orange ball' → '(B)'. (preservative) Tasks that already output clean answers like '(D)' alone pass through unchanged; the extraction logic only cleans when it detects the pattern. (transfer) The mechanism is general and will help any task where the model adds descriptions after the core answer",
+   "regression_risk": "Over-aggressive stripping could remove legitimate parts of answers (e.g., removing 'no' from 'Rodrigo says no'); mitigation: only strip after a closing parenthesis or at well-defined boundaries, using regex to match exactly '(LETTER)' patterns",
+   "mechanism": "Extracting and sanitizing the ANSWER line before returning—removing extra text that appears after the core answer token (e.g., stripping ' Rodrigo' from '(D) Rodrigo')—will fix grader mismatch on extraction failures"
+  },
+  {
+   "id": "E3",
+   "component": "skill",
+   "hypothesis": "Providing a structured reasoning procedure (break the problem down, check constraints, verify each step, reconsider ambiguous points) and referencing it in the system prompt will improve reasoning accuracy on logic puzzles and counting tasks",
+   "targets_mode": "reasoning errors on web_of_lies, boolean_expressions, object_properties, causal_understanding",
+   "why_not_lower_lever": "A structured procedure must be written as prose and made available to the model; it cannot be captured in prompt wording alone and is reusable across many tasks",
+   "trigger_condition": "The system prompt references the skill; the model reads and applies it on any reasoning task",
+   "predicted_affected": [
+    "evolve-web_of_lies-025",
+    "evolve-web_of_lies-080",
+    "evolve-web_of_lies-177",
+    "evolve-boolean_expressions-008",
+    "evolve-object_properties-017",
+    "evolve-object_properties-167",
+    "evolve-object_properties-087",
+    "evolve-causal_understanding-099"
+   ],
+   "retroactive_check": "(corrective) Logic puzzle tasks will benefit from explicit constraint checking; counting tasks from step-by-step tracking; causal reasoning from considering both sides. (preservative) Passing tasks (causal_understanding-025/023/136, web_of_lies-074) already demonstrate sound reasoning; the skill reinforces what they are already doing. (transfer) The procedure applies to any multi-step logic or counting task, not task-family specific",
+   "regression_risk": "If the procedure is too prescriptive, it could block correct intuitive leaps; mitigation: procedure emphasizes 'consider each constraint' not 'follow these exact steps', leaving room for creativity",
+   "mechanism": "Providing a structured reasoning procedure (break the problem down, check constraints, verify each step, reconsider ambiguous points) and referencing it in the system prompt will improve reasoning accuracy on logic puzzles and counting tasks"
+  }
+ ],
+ "mechanism": "Improve answer extraction and add structured reasoning guidance to fix formatting errors and reasoning failures",
+ "targets_mode": "answer extraction and formatting issues, reasoning quality, answer extraction issues where model outputs extra descriptions, reasoning errors on web_of_lies, boolean_expressions, object_properties, ca",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

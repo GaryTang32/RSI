@@ -1,0 +1,41 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,36 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""Harness for multi-step reasoning tasks."""
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    return reply.strip()
++    
++    # Use Python tool to robustly extract the final answer from the response.
++    # Looks for ANSWER: line, falls back to last non-empty line.
++    extraction_script = f"""
++full_response = {repr(reply)}
++lines = full_response.strip().split('\\n')
++
++# Look for ANSWER: line, prefer the last one
++answer = None
++for line in reversed(lines):
++    if 'ANSWER:' in line:
++        answer = line.split('ANSWER:', 1)[1].strip()
++        break
++
++# If no ANSWER: line, use the last non-empty line
++if answer is None:
++    for line in reversed(lines):
++        if line.strip():
++            answer = line.strip()
++            break
++
++if answer:
++    print(answer, end='')
++else:
++    print(full_response.strip(), end='')
++"""
++    
++    extracted_answer = tools.python(extraction_script).strip()
++    return extracted_answer

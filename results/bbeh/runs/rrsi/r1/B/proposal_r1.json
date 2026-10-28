@@ -1,0 +1,45 @@
+{
+ "status": "done",
+ "summary": "Bounded verification for response completeness: re-prompt once if response lacks ANSWER: line or appears truncated, ensuring fuller reasoning without format assumptions",
+ "edits": [
+  {
+   "id": "T1",
+   "component": "control_flow",
+   "hypothesis": "Bounded verification for response completeness—requesting clarification if the response lacks an ANSWER: line or is suspiciously brief—encourages complete reasoning and proper formatting without assuming any specific answer format or outcome.",
+   "targets_mode": "incomplete or truncated responses where model doesn't provide ANSWER: line or stops reasoning early",
+   "why_not_lower_lever": "This requires conditional logic and a second LLM call if needed. It's a control-flow decision (check response properties, conditionally re-prompt once) that must live in the harness code, not prose.",
+   "trigger_condition": "Activates if response lacks 'ANSWER:' string OR response body is under 50 characters (signal of truncation). Issues one clarification request, then returns result. Bounded to exactly 2 LLM calls maximum.",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-web_of_lies-025",
+    "evolve-shuffled_objects-107",
+    "evolve-object_properties-017",
+    "evolve-linguini-018",
+    "evolve-causal_understanding-099"
+   ],
+   "retroactive_check": "(corrective) Tasks failing due to missing or incomplete ANSWER: lines would benefit from a completeness check that re-prompts once to ensure the model finishes its thought. (preservative) Passing tasks already contain ANSWER: lines and full responses, so they bypass the branch and return immediately with no disruption. (transfer) Any multi-step reasoning task benefits from ensuring response completeness without format assumptions.",
+   "regression_risk": "Very low. The mechanism is conservative: it only branches if response lacks ANSWER: line or is implausibly short. Passing tasks skip the branch entirely. The re-prompt is generic (ask for ANSWER: format, not task-specific content). If a task legitimately outputs short answers (under 50 chars), it may re-prompt unnecessarily, but the model should still output a correct short answer on the second attempt.",
+   "mechanism": "Bounded verification for response completeness—requesting clarification if the response lacks an ANSWER: line or is suspiciously brief—encourages complete reasoning and proper formatting without assuming any specific answer format or outcome."
+  }
+ ],
+ "mechanism": "Bounded verification for response completeness: re-prompt once if response lacks ANSWER: line or appears truncated, ensuring fuller reasoning without format assumptions",
+ "targets_mode": "incomplete or truncated responses where model doesn't provide ANSWER: line or stops reasoning early",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  },
+  {
+   "turn": 1,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "TASK-SPECIALIZATION / OVERFITTING: The extraction tool is specifically designed to fix format issues observed on choice-letter multiple-choice tasks ('(D) Rodrigo' → '(D)', 'C' → '(C)'), with no principled handling for non-choice task formats. The retroactive check explicitly references observed failures on specific task IDs (evolve-shuffled_objects-067, evolve-boolean_expressions-003, etc.), indicating the tool was engineered to these particular failure modes rather than a general principle.",
+  "GRADER GAMING (borderline): The tool's Pattern 1-2 logic assumes knowledge that choice-letter answers should NOT include descriptive text after the parentheses. This assumption—that '(D) Rodrigo' should become '(D)'—is derived from observing the grader's reference format. While not hard-coded values, the tool is reconstructing the grader's implicit rubric (choice answers must be bare letters in parentheses) by post-processing answers to match that rubric, rather than improving the model's actual reasoning.",
+  "CRITICAL REGRESSION: Pattern 3 (the fallback for non-choice answers) returns only the first whitespace-delimited token, which catastrophically breaks multi-word answers. For example: 'ANSWER: New York' → 'New', 'ANSWER: Alice Bob Charlie' → 'Alice'. This occurs even with clean ANSWER: lines where the model is following the system prompt correctly. The harness is supposed to work on 'counting, tracking, ordering, multiple choice' tasks—answers like 'New York', 'three objects', or 'ordered list' would fail. The retroactive check claims 'Success cases with clean ANSWER: lines are unaffected,' but clean multi-token answers are directly harmed by the first-token logic."
+ ],
+ "risk_notes": [
+  "The mechanism is not truly task-agnostic: it works for choice-letter tasks and breaks for non-choice tasks, yet is applied universally without branching. This violates the requirement that 'improvements must be general' and 'still make sense on an unfamiliar task from a different suite in the same kind of work.'",
+  "The system prompt addition (T2) explicitly asks the model to output only the answer without trailing explanation. If the model follows this instruction on non-choice tasks (e.g., 'ANSWER: New York'), the first-token fallback still truncates it to 'New', creating a regression despite correct model output.",
+  "The tool leaks its design intent from the evolve-set failure modes. While not hard-coded references, the pattern-match thresholds and conditional logic are reverse-engineered from specific observed failures, making this overfitted in spirit if not in letter."
+ ],
+ "stage": "llm"
+}

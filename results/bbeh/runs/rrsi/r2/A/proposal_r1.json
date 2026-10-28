@@ -1,0 +1,49 @@
+{
+ "status": "done",
+ "summary": "Remove overly-broad Pattern 3 from answer cleaning to prevent corruption of counting/tracking answers; retain conservative formatting for choice-format answers",
+ "edits": [
+  {
+   "id": "F1",
+   "component": "control_flow",
+   "hypothesis": "Normalize choice-format answers by converting bare choice letters to parenthesized form and removing trailing descriptions from parenthesized choices, using only conservative patterns that match clear choice context.",
+   "targets_mode": "answer extraction format issues: parenthesized choices with appended descriptive text, and bare choice letters that should be parenthesized",
+   "why_not_lower_lever": "Post-processing extraction cleanup (regex on extracted ANSWER lines) is control-flow logic, not prompt/reasoning—deterministic normalization requires plumbing changes",
+   "trigger_condition": "Applied to all ANSWER: lines; Case 1 wraps bare A-F alone in parentheses; Case 2 strips trailing text from (A-F) format; no pattern matches bare letter + description to avoid corrupting non-choice answers",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Format failures like '(D) Rodrigo'→'(D)' and '(B) orange ball'→'(B)' are fixed by Case 2; (preservative) passing clean-answer tasks unaffected since they already have correct format; (transfer) choice normalization generalizes to any multi-choice task family",
+   "regression_risk": "Removed Pattern 3 (bare A-F + any following text) to prevent false matches on counting/tracking answers like 'B 5'→'(B)'. Retained only Patterns 1 (bare letter alone) and 2 (parenthesized with description), both conservative and task-safe.",
+   "mechanism": "Normalize choice-format answers by converting bare choice letters to parenthesized form and removing trailing descriptions from parenthesized choices, using only conservative patterns that match clear choice context."
+  },
+  {
+   "id": "F2",
+   "component": "control_flow",
+   "hypothesis": "Simplify output by keeping only lines from 1 line before ANSWER: to end, discarding verbose preamble; since grader extracts only ANSWER: line, this reduces confusion without loss.",
+   "targets_mode": "verbose extracted answers where explanatory preamble causes confusion (linguini family with long reasoning before answer)",
+   "why_not_lower_lever": "Output truncation is response plumbing (control flow), not prompt—deterministic context-keeping requires structural change to post-processing",
+   "trigger_condition": "Applied after LLM call if ANSWER: line is present; keeps lines from 1 before ANSWER to end; if no ANSWER: found, returns full output unchanged",
+   "predicted_affected": [
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110"
+   ],
+   "retroactive_check": "(corrective) Very long extracted answers with verbose explanations would be truncated to answer-adjacent context only; (preservative) passing tasks with concise outputs unaffected; (transfer) preamble truncation generalizes to any task where model over-explains before ANSWER: line",
+   "regression_risk": "Low—truncation keeps 1 line before ANSWER for immediate context; grader only reads ANSWER: line anyway, so answer content is preserved.",
+   "mechanism": "Simplify output by keeping only lines from 1 line before ANSWER: to end, discarding verbose preamble; since grader extracts only ANSWER: line, this reduces confusion without loss."
+  }
+ ],
+ "mechanism": "Remove overly-broad Pattern 3 from answer cleaning to prevent corruption of counting/tracking answers; retain conservative formatting for choice-format answers",
+ "targets_mode": "answer extraction format issues: parenthesized choices with appended descriptive text, and bare choice letters that should be parenthesized, verbose extracted answers where explanatory preamble causes",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

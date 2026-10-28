@@ -1,0 +1,25 @@
+{
+ "gate_failure": "smoke_fail",
+ "detail": "evolve-boolean_expressions-186: NameError: name 'match' is not defined; evolve-boolean_expressions-003: NameError: name 'match' is not defined",
+ "edits": [
+  {
+   "id": "T1",
+   "component": "control_flow",
+   "hypothesis": "Extract the ANSWER: line and normalize only choice-letter format (strip trailing descriptive text after (LETTER)) while preserving all other answer types. This handles format inconsistencies without overfitting or breaking multi-word answers.",
+   "targets_mode": "answer extraction where models append descriptions after choice letters (format issues only, not reasoning errors)",
+   "why_not_lower_lever": "Post-hoc deterministic normalization via tool is robust and costs no additional LLM tokens. Prompt-based approaches failed in round 0 on cost.",
+   "trigger_condition": "Every solve() call; applies to all tasks using ANSWER: format",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Tasks with trailing descriptions after choice letters ('(D) Rodrigo' → '(D)') would be normalized. (preservative) Multi-word answers ('New York') are preserved; correctly formatted choices pass unchanged; success cases on well-formed ANSWER: lines unaffected. (transfer) General mechanism works for any task pair with choice-letter or free-form answers using ANSWER: format.",
+   "regression_risk": "Low. Only triggers when answer text starts with (LETTER); for well-formed responses matching the system prompt's format requirement, this is correct behavior. No risk to multi-word or numeric answers since they don't match the (LETTER) pattern.",
+   "mechanism": "Extract the ANSWER: line and normalize only choice-letter format (strip trailing descriptive text after (LETTER)) while preserving all other answer types. This handles format inconsistencies without overfitting or breaking multi-word answers.",
+   "declared_component": "tool"
+  }
+ ],
+ "diff_path": "r1/A/diff.patch",
+ "artifact_id": "770c7379ef271f1130fcc6910e88926013371b355402f215c2abedc64df47868",
+ "mechanism": "Fix extraction tool overfitting: remove pattern-adding (Pattern 2) and first-token truncation (Pattern 3), keep only choice-letter normalization; admit realistic predicted scope"
+}
