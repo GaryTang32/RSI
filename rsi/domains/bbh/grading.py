@@ -7,13 +7,14 @@ and ``\\boxed{}``, strip quotes and trailing periods, lower-case). Then, by the 
 ``choice``  ``(A)``..``(R)``: correct iff exactly one option letter is named in parentheses (``(a)``, ``(a) text``)
             and it is the target's; or the answer is the bare letter (``a``, ``a)``, ``option a``); or, with no letter,
             the answer equals the target option's text and no other option has that text. Two letters = wrong.
-``binary``  True/False, Yes/No, valid/invalid (any case): the answer equals the target word, or it is short (at most
-            8 words), names only the target word of its pair and contains no negation.
+``binary``  True/False, Yes/No, valid/invalid (any case): the answer equals the target word, or starts with it
+            ("No, she lies"), or it is short (at most 8 words), names only the target word of its pair and contains no negation.
 ``number``  integers: the last number in the answer equals the target (``1,234`` and ``12.0`` accepted); with no
             digits, a number word (zero..twenty).
 ``dyck``    closing sequences such as ``] ) }``: the trailing run of bracket characters, whitespace removed, equals the
             target; the full sequence (the question's input followed by the target) is also accepted.
-``text``    word lists (word_sorting) and the few free-text targets: the answer's tokens (commas, brackets and quotes
+``text``    word lists (word_sorting) and the few free-text targets (a target equal to one option's text also accepts
+            that option's letter): the answer's tokens (commas, brackets and quotes
             dropped) equal the target's, after an optional lead-in ("the answer is", "sorted list:") or a label
             ending in ``:``. A word list with extra words in front is wrong (no suffix match).
 """
@@ -74,6 +75,8 @@ def _binary_ok(tgt: str, ans: str) -> bool:
         return True
     pair = next(p for p in BINARY_PAIRS if tgt in p)
     words = re.findall(r"[a-z']+", ans)
+    if words and words[0] in pair and not (pair - {words[0]}) & set(words):
+        return words[0] == tgt          # "no, fidel does not tell the truth": the leading word answers, no hedge
     named = {w for w in words if w in pair}
     return named == {tgt} and len(words) <= 8 and not _NEGATION.search(ans)
 
@@ -135,6 +138,9 @@ def grade_answer(target: str, answer: str, question: Optional[str] = None) -> bo
         return _number_ok(tgt, ans)
     if kind == "dyck":
         return _dyck_ok(tgt, ans, question)
+    opt = [k for k, v in parse_options(question or "").items() if v == tgt]
+    if len(opt) == 1 and _choice_letter(ans, question) == opt[0]:
+        return True                     # a few targets (ruin_names) are the option text, not its letter
     return _text_ok(str(target), ans)
 
 
