@@ -1,0 +1,165 @@
+{
+ "arm": "seed",
+ "benchmark": "bbeh",
+ "status": "ok",
+ "mode": "live",
+ "smoke": true,
+ "model": "claude:haiku",
+ "cap": 0.5,
+ "k": 1,
+ "suite": {
+  "name": "bbeh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic"
+    ]
+   },
+   "holdout": {
+    "n": 1,
+    "families": [
+     "multistep_arithmetic"
+    ]
+   },
+   "ood": {
+    "n": 1,
+    "families": [
+     "object_counting"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 2,
+   "holdout": 1,
+   "ood": 1
+  }
+ },
+ "families": {
+  "practice": [
+   "multistep_arithmetic",
+   "boolean_expressions",
+   "time_arithmetic",
+   "word_sorting",
+   "web_of_lies",
+   "causal_understanding"
+  ],
+  "ood": [
+   "object_counting",
+   "temporal_sequence",
+   "shuffled_objects",
+   "dyck_languages",
+   "geometric_shapes",
+   "hyperbaton"
+  ],
+  "pilot_candidates": [
+   "boardgame_qa",
+   "boolean_expressions",
+   "buggy_tables",
+   "causal_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "geometric_shapes",
+   "hyperbaton",
+   "linguini",
+   "movie_recommendation",
+   "multistep_arithmetic",
+   "nycc",
+   "object_counting",
+   "object_properties",
+   "sarc_triples",
+   "shuffled_objects",
+   "spatial_reasoning",
+   "sportqa",
+   "temporal_sequence",
+   "time_arithmetic",
+   "web_of_lies",
+   "word_sorting",
+   "zebra_puzzles"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/smoke/runs/seed",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/live_cache",
+ "started": 1793173301.9490445,
+ "eval": {
+  "holdout": {
+   "S": 1.0,
+   "C": 16061.0,
+   "missing": 0,
+   "families": {
+    "multistep_arithmetic": 1.0
+   },
+   "tasks": {
+    "holdout-multistep_arithmetic-113": 1.0
+   }
+  },
+  "ood": {
+   "S": 1.0,
+   "C": 11384.0,
+   "missing": 0,
+   "families": {
+    "object_counting": 1.0
+   },
+   "tasks": {
+    "ood-object_counting-014": 1.0
+   }
+  }
+ },
+ "per_task": {
+  "holdout-multistep_arithmetic-113": 1.0,
+  "ood-object_counting-014": 1.0
+ },
+ "task_family": {
+  "holdout-multistep_arithmetic-113": "multistep_arithmetic",
+  "ood-object_counting-014": "object_counting"
+ },
+ "accuracy": 1.0,
+ "phases": [
+  {
+   "phase": "eval_holdout",
+   "usd": 0.07292,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 90.3
+  },
+  {
+   "phase": "eval_ood",
+   "usd": 0.04223,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 42.9
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "eval": {
+   "usd": 0.11515,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  },
+  "total": {
+   "usd": 0.11515,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  }
+ },
+ "usd": 0.11514,
+ "wall_s": 133.2,
+ "eval_usd_per_example": 0.057575
+}
