@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import os
 import random
 import shutil
 import sys
@@ -182,6 +183,7 @@ def suite_signature(suite, a) -> dict:
 def make_llms(a, suite, arm: str):
     """(task LLM, proposer LLM): one cached live model for both, or the offline sim + the arm's mock proposer."""
     if not a.offline:
+        os.environ.setdefault("RSI_EXIT_ON_USAGE_LIMIT", "1")   # stop (resumably) instead of scoring empty replies
         llm = get_llm(a.model, cache_dir=str(a.cache_dir),
                       **({"timeout_s": a.llm_timeout, "retries": a.llm_retries} if a.model.startswith("claude:") else {}))
         return llm, llm

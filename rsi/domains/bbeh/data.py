@@ -38,10 +38,10 @@ def _manifest() -> dict:
 BBEH = Benchmark(
     name="bbeh", tasks=TASKS, examples_path="bbeh/benchmark_tasks/bbeh_{task}/task.json", manifest=_manifest,
     cache_env="RSI_BBEH_CACHE", cache_subdir="bbeh", cot_path=None,
-    default_practice=("multistep_arithmetic", "boolean_expressions", "time_arithmetic", "word_sorting",
-                      "web_of_lies", "causal_understanding"),
-    default_ood=("object_counting", "temporal_sequence", "shuffled_objects", "dyck_languages", "geometric_shapes",
-                 "hyperbaton"),
+    # families picked by the live pilot (Haiku seed accuracy in [0.15, 0.75]; experiments/bbeh/families.json)
+    default_practice=("boolean_expressions", "causal_understanding", "linguini", "object_properties", "web_of_lies",
+                      "shuffled_objects"),
+    default_ood=("buggy_tables", "geometric_shapes", "nycc", "temporal_sequence", "sarc_triples", "sportqa"),
     default_per_family={"evolve": 4, "val": 0, "holdout": 6, "ood": 6}, pilot_per_family=5,
     pilot_seed="bbeh-pilot-v1", pilot_band=(0.15, 0.75))
 
