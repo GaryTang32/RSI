@@ -1,0 +1,1 @@
+{"text": "You have **3 animals**:\n1. A bear\n2. A mouse\n3. A snake\n\n(The banana is a fruit, not an animal.)\n\nANSWER: 3", "usage": {"calls": 1, "input_tokens": 1319, "output_tokens": 145, "cost_usd": 0.002044, "latency_s": 4.35749363899231}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

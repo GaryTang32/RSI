@@ -1,0 +1,63 @@
+{
+ "status": "done",
+ "summary": "Robust ANSWER extraction and enhanced prompts for consistency across task types",
+ "edits": [
+  {
+   "id": "C1",
+   "component": "control_flow",
+   "hypothesis": "Explicit ANSWER line extraction ensures consistent, parseable output format regardless of the model's full response, improving robustness for the grader across all task types",
+   "targets_mode": "Output format robustness and grader compatibility",
+   "why_not_lower_lever": "Output parsing requires control flow changes in the harness execution path; prompt adjustments alone cannot enforce the grader's format expectations once the model responds",
+   "trigger_condition": "Always: every response is scanned for ANSWER: prefix",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) Both passing tasks include ANSWER lines and would continue to pass; the extraction would return 'ANSWER: 42' and 'ANSWER: -114' respectively; (preservative) Fallback to last line preserves behavior when no ANSWER line exists, preventing regressions on novel formats; (transfer) Answer extraction is task-type agnostic and works for arithmetic, multiple choice, yes/no, counting, and sequences",
+   "regression_risk": "Minimal: only changes which line is returned, not the content; model already produces ANSWER lines in both test cases",
+   "mechanism": "Explicit ANSWER line extraction ensures consistent, parseable output format regardless of the model's full response, improving robustness for the grader across all task types"
+  },
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "Explicit system-level guidance on consistent formatting and step-by-step thinking encourages reliable ANSWER-line output and structured reasoning across all task types",
+   "targets_mode": "Output consistency and problem decomposition",
+   "why_not_lower_lever": "This is system-prompt guidance where prose is the right lever: explicit formatting rules and behavioral expectations directly influence model output structure",
+   "trigger_condition": "Always: system prompt applies to every task",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) Both tasks already demonstrate the requested behavior (step-by-step thinking, ANSWER lines), so the instructions align with observed output; (preservative) Guidance reinforces existing good patterns rather than changing them; (transfer) General formatting rules apply uniformly across all reasoning task types",
+   "regression_risk": "Low: reinforces patterns already demonstrated in passing traces",
+   "mechanism": "Explicit system-level guidance on consistent formatting and step-by-step thinking encourages reliable ANSWER-line output and structured reasoning across all task types"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "Task-level prompt clarifying step-by-step decomposition and explicit answer format improves consistency and clarity, generalizing beyond single task types",
+   "targets_mode": "Problem-solving structure and output format clarity",
+   "why_not_lower_lever": "Task-level instructions are the right prose lever for setting expectations about problem-solving approach and output format for individual tasks",
+   "trigger_condition": "Always: task prompt applies to every task",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) Both passing tasks already solve step-by-step and include ANSWER lines, matching the requested format; (preservative) Clearer instructions support and reinforce the observed successful pattern; (transfer) General decomposition guidance applies to arithmetic, multiple choice, yes/no, counting, and sequence tasks",
+   "regression_risk": "Low: requested behavior matches observed behavior in both passing test cases",
+   "mechanism": "Task-level prompt clarifying step-by-step decomposition and explicit answer format improves consistency and clarity, generalizing beyond single task types"
+  }
+ ],
+ "mechanism": "Robust ANSWER extraction and enhanced prompts for consistency across task types",
+ "targets_mode": "Output format robustness and grader compatibility, Output consistency and problem decomposition, Problem-solving structure and output format clarity",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

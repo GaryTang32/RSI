@@ -1,0 +1,38 @@
+[
+ {
+  "task": "holdout-multistep_arithmetic_two-161",
+  "domain": "multistep_arithmetic_two",
+  "status": "ok",
+  "adopted": "agg1",
+  "adopted_tree": "745ba24861",
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 0,
+  "delivered": true,
+  "rollouts": 4,
+  "sessions": 3,
+  "selector": 0,
+  "reflector": 1,
+  "attempts": 3,
+  "fell_back": 0,
+  "stages_kept_base": 3
+ },
+ {
+  "task": "ood-navigate-235",
+  "domain": "navigate",
+  "status": "ok",
+  "adopted": "agg1",
+  "adopted_tree": "745ba24861",
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 0,
+  "delivered": true,
+  "rollouts": 4,
+  "sessions": 3,
+  "selector": 0,
+  "reflector": 1,
+  "attempts": 3,
+  "fell_back": 0,
+  "stages_kept_base": 3
+ }
+]

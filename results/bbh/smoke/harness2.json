@@ -1,0 +1,183 @@
+{
+ "arm": "harness2",
+ "status": "ok",
+ "mode": "live",
+ "smoke": true,
+ "model": "claude:haiku",
+ "cap": 2.0,
+ "k": 1,
+ "suite": {
+  "name": "bbh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "holdout": {
+    "n": 1,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "ood": {
+    "n": 1,
+    "families": [
+     "navigate"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 2,
+   "holdout": 1,
+   "ood": 1
+  }
+ },
+ "families": {
+  "practice": [
+   "multistep_arithmetic_two",
+   "word_sorting",
+   "dyck_languages",
+   "logical_deduction_five_objects",
+   "tracking_shuffled_objects_five_objects",
+   "date_understanding"
+  ],
+  "ood": [
+   "navigate",
+   "object_counting",
+   "temporal_sequences",
+   "geometric_shapes",
+   "penguins_in_a_table",
+   "web_of_lies"
+  ],
+  "pilot_candidates": [
+   "boolean_expressions",
+   "causal_judgement",
+   "date_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "formal_fallacies",
+   "geometric_shapes",
+   "hyperbaton",
+   "logical_deduction_three_objects",
+   "logical_deduction_five_objects",
+   "logical_deduction_seven_objects",
+   "movie_recommendation",
+   "multistep_arithmetic_two",
+   "navigate",
+   "object_counting",
+   "penguins_in_a_table",
+   "reasoning_about_colored_objects",
+   "ruin_names",
+   "salient_translation_error_detection",
+   "snarks",
+   "sports_understanding",
+   "temporal_sequences",
+   "tracking_shuffled_objects_three_objects",
+   "tracking_shuffled_objects_five_objects",
+   "tracking_shuffled_objects_seven_objects",
+   "web_of_lies",
+   "word_sorting"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/smoke/runs/harness2",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/live_cache",
+ "started": 1793162549.942413,
+ "subset": [
+  "holdout-multistep_arithmetic_two-161",
+  "ood-navigate-235"
+ ],
+ "stop_reason": "stream_end",
+ "tasks_done": 2,
+ "per_task": {
+  "holdout-multistep_arithmetic_two-161": 1.0,
+  "ood-navigate-235": 1.0
+ },
+ "base_per_task": {
+  "holdout-multistep_arithmetic_two-161": 1.0,
+  "ood-navigate-235": 1.0
+ },
+ "task_family": {
+  "holdout-multistep_arithmetic_two-161": "multistep_arithmetic_two",
+  "ood-navigate-235": "navigate"
+ },
+ "report": {
+  "n": 2,
+  "base": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "submitted": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "paired": {
+   "mean_diff": 0.0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "n": 2,
+   "p_better": 0.0
+  },
+  "families": {
+   "multistep_arithmetic_two": {
+    "n": 1,
+    "base": 1.0,
+    "submitted": 1.0
+   },
+   "navigate": {
+    "n": 1,
+    "base": 1.0,
+    "submitted": 1.0
+   }
+  }
+ },
+ "status_counts": {
+  "ok": 2
+ },
+ "library_added": 0,
+ "calls_per_task": 8.0,
+ "accuracy": 1.0,
+ "phases": [
+  {
+   "phase": "stream",
+   "usd": 0.18916,
+   "fresh_calls": 16,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 214.4
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 0.18916,
+   "fresh_calls": 16,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  },
+  "eval": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "total": {
+   "usd": 0.18916,
+   "fresh_calls": 16,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  }
+ },
+ "usd": 0.18916,
+ "wall_s": 214.4,
+ "eval_usd_per_example": null
+}

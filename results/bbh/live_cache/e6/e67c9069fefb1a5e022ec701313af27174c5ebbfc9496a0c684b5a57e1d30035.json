@@ -1,0 +1,1 @@
+{"text": "You have 3 animals:\n1. A dog\n2. A pig\n3. A snail\n\nANSWER: 3", "usage": {"calls": 1, "input_tokens": 1317, "output_tokens": 98, "cost_usd": 0.001807, "latency_s": 5.213717460632324}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

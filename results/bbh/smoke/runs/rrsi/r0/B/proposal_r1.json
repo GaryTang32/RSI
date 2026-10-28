@@ -1,0 +1,48 @@
+{
+ "status": "done",
+ "summary": "Removed C1 (harness ANSWER extraction) per reviewer objections; harness now returns full response for grader extraction as intended. Retained C2 and C3 (prompt improvements) as the sole mechanism for output quality.",
+ "edits": [
+  {
+   "id": "C2",
+   "component": "prompt",
+   "hypothesis": "Explicit system-level guidance on consistent formatting and step-by-step thinking ensures reliable ANSWER-line output and structured reasoning across all task types",
+   "targets_mode": "Output consistency and reasoning structure",
+   "why_not_lower_lever": "System prompts are the right lever for setting behavioral expectations about model output format and reasoning style; they directly shape model behavior at the point of instruction",
+   "trigger_condition": "Always: system prompt applies to every task",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) Both tasks already demonstrate step-by-step thinking and ANSWER-line format, confirming the prompt guidance aligns with observed behavior; (preservative) Enhanced system guidance reinforces existing good patterns without disrupting them; (transfer) General reasoning and formatting guidance applies uniformly across arithmetic, multiple choice, yes/no, counting, and sequence tasks",
+   "regression_risk": "Minimal: guidance reinforces patterns already demonstrated in both passing test cases",
+   "mechanism": "Explicit system-level guidance on consistent formatting and step-by-step thinking ensures reliable ANSWER-line output and structured reasoning across all task types"
+  },
+  {
+   "id": "C3",
+   "component": "prompt",
+   "hypothesis": "Task-level prompt clarifying step-by-step decomposition and explicit answer format ensures consistent problem-solving structure and output clarity",
+   "targets_mode": "Problem-solving structure and output format consistency",
+   "why_not_lower_lever": "Task-level instructions are the right prose lever for setting clear expectations about problem-solving approach and output format at the point of task invocation",
+   "trigger_condition": "Always: task prompt applies to every task",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) Both tasks already decompose step-by-step and include ANSWER lines, matching the requested structure; (preservative) Explicit instructions support and reinforce observed successful patterns; (transfer) General decomposition guidance applies to all reasoning task families",
+   "regression_risk": "Minimal: requested behavior matches observed behavior in both passing test cases",
+   "mechanism": "Task-level prompt clarifying step-by-step decomposition and explicit answer format ensures consistent problem-solving structure and output clarity"
+  }
+ ],
+ "mechanism": "Removed C1 (harness ANSWER extraction) per reviewer objections; harness now returns full response for grader extraction as intended. Retained C2 and C3 (prompt improvements) as the sole mechanism for output quality.",
+ "targets_mode": "Output consistency and reasoning structure, Problem-solving structure and output format consistency",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,35 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""Harness with robust answer extraction for generalization across task types."""
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    return reply.strip()
++    
++    # Extract the final answer from the model's reply
++    answer = extract_final_answer(reply)
++    return answer
++
++
++def extract_final_answer(reply):
++    """
++    Extract the final answer from the model's reply.
++    Looks for a line starting with 'ANSWER:' and returns it.
++    Falls back to the last non-empty line if no 'ANSWER:' line is found.
++    This handles variations in output format across different task types.
++    """
++    lines = reply.split('\n')
++    
++    # First pass: look for a line starting with "ANSWER:"
++    for line in lines:
++        stripped = line.strip()
++        if stripped.startswith('ANSWER:'):
++            return stripped
++    
++    # Fallback: return the last non-empty line
++    for line in reversed(lines):
++        stripped = line.strip()
++        if stripped:
++            return stripped
++    
++    return ""
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1 @@
+-You are a helpful assistant.
++You are a helpful assistant. Provide clear reasoning for your answer and always end with a final answer.

@@ -1,0 +1,39 @@
+{
+ "artifact_id": "0f0d6d7fb73910df806f5434691ba743c0d1f27ddf7312d651ddd9d79d07735c",
+ "edits": [
+  {
+   "id": "E1",
+   "component": "control_flow",
+   "hypothesis": "Extract the final answer line explicitly instead of returning raw model output, making the harness robust to variations in explanation style across task types",
+   "targets_mode": "robustness gap: the current harness trusts model output format but different task types may produce varying output styles; explicit extraction isolates the actual answer",
+   "why_not_lower_lever": "This requires processing logic on the reply (splitting lines, searching for patterns, selecting output) before returning—control flow, not just instructions",
+   "trigger_condition": "always: on every task, the reply is parsed to extract either an ANSWER: line or the final non-empty line",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) both passing tasks already output ANSWER: lines which are correctly extracted; (preservative) the extraction preserves the ANSWER: line format, maintaining compatibility with current success; (transfer) the extraction mechanism handles any output format—answers preceded by reasoning, answers with variations in punctuation, fallback to last line—generalizing to yes/no, multiple choice, counting, and sequence tasks",
+   "regression_risk": "if the model outputs malformed ANSWER: lines or no answer at all, fallback to last line may still capture text that isn't an answer; however, this is no worse than current behavior and handles edge cases better",
+   "mechanism": "Extract the final answer line explicitly instead of returning raw model output, making the harness robust to variations in explanation style across task types",
+   "declared_component": "control_flow"
+  },
+  {
+   "id": "E2",
+   "component": "prompt",
+   "hypothesis": "Add explicit guidance to the system prompt about providing clear reasoning and proper answer structure, helping the model format output consistently across diverse task types",
+   "targets_mode": "capability gap: the task instruction (in prompts/task.md) only mentions answer format for the current task; the system-level instruction should reinforce general output structure for arithmetic, multiple choice, yes/no, and other types",
+   "why_not_lower_lever": "The control flow extraction is already handling output robustness; this is about the *input* instruction to help the model structure its response consistently in the first place",
+   "trigger_condition": "always: the system prompt is included on every task",
+   "predicted_affected": [
+    "evolve-multistep_arithmetic_two-033",
+    "evolve-multistep_arithmetic_two-238"
+   ],
+   "retroactive_check": "(corrective) both tasks already demonstrate clear step-by-step reasoning despite generic system prompt, so enhanced prompt won't hurt; (preservative) the new prompt is compatible with the model's existing behavior; (transfer) clearer system-level guidance about providing reasoning and final answers generalizes across arithmetic, logical reasoning, selection, and counting tasks",
+   "regression_risk": "the new prompt is generic and does not override task-specific instructions, so no conflict with task.md",
+   "mechanism": "Add explicit guidance to the system prompt about providing clear reasoning and proper answer structure, helping the model format output consistently across diverse task types",
+   "declared_component": "prompt"
+  }
+ ],
+ "diff_path": "r0/A/diff.patch",
+ "mechanism": "Add robust answer extraction and clarify system prompt for generalization to diverse task types"
+}

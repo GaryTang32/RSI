@@ -1,0 +1,168 @@
+{
+ "arm": "seed",
+ "status": "ok",
+ "mode": "live",
+ "smoke": true,
+ "model": "claude:haiku",
+ "cap": null,
+ "k": 1,
+ "suite": {
+  "name": "bbh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "holdout": {
+    "n": 1,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "ood": {
+    "n": 1,
+    "families": [
+     "navigate"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 2,
+   "holdout": 1,
+   "ood": 1
+  }
+ },
+ "families": {
+  "practice": [
+   "multistep_arithmetic_two",
+   "word_sorting",
+   "dyck_languages",
+   "logical_deduction_five_objects",
+   "tracking_shuffled_objects_five_objects",
+   "date_understanding"
+  ],
+  "ood": [
+   "navigate",
+   "object_counting",
+   "temporal_sequences",
+   "geometric_shapes",
+   "penguins_in_a_table",
+   "web_of_lies"
+  ],
+  "pilot_candidates": [
+   "boolean_expressions",
+   "causal_judgement",
+   "date_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "formal_fallacies",
+   "geometric_shapes",
+   "hyperbaton",
+   "logical_deduction_three_objects",
+   "logical_deduction_five_objects",
+   "logical_deduction_seven_objects",
+   "movie_recommendation",
+   "multistep_arithmetic_two",
+   "navigate",
+   "object_counting",
+   "penguins_in_a_table",
+   "reasoning_about_colored_objects",
+   "ruin_names",
+   "salient_translation_error_detection",
+   "snarks",
+   "sports_understanding",
+   "temporal_sequences",
+   "tracking_shuffled_objects_three_objects",
+   "tracking_shuffled_objects_five_objects",
+   "tracking_shuffled_objects_seven_objects",
+   "web_of_lies",
+   "word_sorting"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/smoke/runs/seed",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/live_cache",
+ "started": 1793161722.9819586,
+ "eval": {
+  "holdout": {
+   "S": 1.0,
+   "C": 1942.0,
+   "missing": 0,
+   "families": {
+    "multistep_arithmetic_two": 1.0
+   },
+   "tasks": {
+    "holdout-multistep_arithmetic_two-161": 1.0
+   }
+  },
+  "ood": {
+   "S": 1.0,
+   "C": 1822.0,
+   "missing": 0,
+   "families": {
+    "navigate": 1.0
+   },
+   "tasks": {
+    "ood-navigate-235": 1.0
+   }
+  }
+ },
+ "per_task": {
+  "holdout-multistep_arithmetic_two-161": 1.0,
+  "ood-navigate-235": 1.0
+ },
+ "task_family": {
+  "holdout-multistep_arithmetic_two-161": "multistep_arithmetic_two",
+  "ood-navigate-235": "navigate"
+ },
+ "accuracy": 1.0,
+ "phases": [
+  {
+   "phase": "eval_holdout",
+   "usd": 0.00439,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 7.6
+  },
+  {
+   "phase": "eval_ood",
+   "usd": 0.00362,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 7.0
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "eval": {
+   "usd": 0.00801,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  },
+  "total": {
+   "usd": 0.00801,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  }
+ },
+ "usd": 0.00801,
+ "wall_s": 14.6,
+ "eval_usd_per_example": 0.004005
+}

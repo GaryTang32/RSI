@@ -1,0 +1,23 @@
+{
+ "split": "search",
+ "score": 1.0,
+ "avg_val": 100.0,
+ "per_unit": {
+  "evolve-multistep_arithmetic_two-033": 1.0,
+  "evolve-multistep_arithmetic_two-238": 1.0
+ },
+ "per_unit_cost": {
+  "evolve-multistep_arithmetic_two-033": 1922.0,
+  "evolve-multistep_arithmetic_two-238": 1856.0
+ },
+ "context_cost": 1889.0,
+ "tokens": 1889.0,
+ "steps": 1.0,
+ "n_units": 2,
+ "k": 1,
+ "error_rate": 0.0,
+ "n_missing": 0,
+ "families": {
+  "multistep_arithmetic_two": 1.0
+ }
+}

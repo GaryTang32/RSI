@@ -1,0 +1,187 @@
+{
+ "method": "harness2",
+ "rounds": 2,
+ "stop_reason": "stream_end",
+ "baseline": "745ba24861",
+ "best": "745ba24861",
+ "first": {
+  "task": "holdout-multistep_arithmetic_two-161",
+  "domain": "multistep_arithmetic_two",
+  "status": "ok",
+  "adopted": "agg1",
+  "adopted_tree": "745ba24861",
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 0,
+  "delivered": true,
+  "rollouts": 4,
+  "sessions": 3,
+  "selector": 0,
+  "reflector": 1,
+  "attempts": 3,
+  "fell_back": 0,
+  "stages_kept_base": 3
+ },
+ "last": {
+  "task": "ood-navigate-235",
+  "domain": "navigate",
+  "status": "ok",
+  "adopted": "agg1",
+  "adopted_tree": "745ba24861",
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 0,
+  "delivered": true,
+  "rollouts": 4,
+  "sessions": 3,
+  "selector": 0,
+  "reflector": 1,
+  "attempts": 3,
+  "fell_back": 0,
+  "stages_kept_base": 3
+ },
+ "usage": {
+  "task": {
+   "calls": 8,
+   "input_tokens": 10812,
+   "output_tokens": 5035,
+   "cost_usd": 0.035987,
+   "latency_s": 61.331939697265625,
+   "total_tokens": 15847
+  },
+  "inv": {
+   "calls": 2,
+   "input_tokens": 10048,
+   "output_tokens": 2533,
+   "cost_usd": 0.032743,
+   "latency_s": 33.93520140647888,
+   "total_tokens": 12581
+  },
+  "dom": {
+   "calls": 2,
+   "input_tokens": 10328,
+   "output_tokens": 2879,
+   "cost_usd": 0.035033,
+   "latency_s": 40.10391902923584,
+   "total_tokens": 13207
+  },
+  "composer": {
+   "calls": 2,
+   "input_tokens": 13556,
+   "output_tokens": 2364,
+   "cost_usd": 0.038914,
+   "latency_s": 31.92979335784912,
+   "total_tokens": 15920
+  },
+  "reflector": {
+   "calls": 2,
+   "input_tokens": 13144,
+   "output_tokens": 4042,
+   "cost_usd": 0.046479999999999994,
+   "latency_s": 47.00458359718323,
+   "total_tokens": 17186
+  },
+  "_total": {
+   "calls": 16,
+   "input_tokens": 57888,
+   "output_tokens": 16853,
+   "cost_usd": 0.189157,
+   "latency_s": 214.3054370880127,
+   "total_tokens": 74741
+  }
+ },
+ "meta": {
+  "config": {
+   "mode": "parallel",
+   "k": 1,
+   "split": null,
+   "max_tasks": null,
+   "max_usd": 2.0,
+   "order": "sorted",
+   "retry_invalid": 1,
+   "selector_attempts": 2,
+   "seed": 0,
+   "library": true,
+   "library_dir": null,
+   "editable": null,
+   "strip_targets": true,
+   "obs_trunc": 50000,
+   "max_text_chars": 24000,
+   "prompts": {},
+   "report": true,
+   "trace": true
+  },
+  "n_stream": 2,
+  "n_done": 2,
+  "unprocessed": [],
+  "deliverables": {
+   "holdout-multistep_arithmetic_two-161": "I'll solve this step by step, following the order of operations (PEMDAS/BODMAS).\n\n**First parenthesis: (-8 - -1 - -2 * -7)**\n- Multiplication first: -2 * -7 = 14\n- Then left to right: -8 - (-1) = -8 + 1 = -7\n- Continue: -7 - 14 = -21\n\n**Second parenthesis: (3 + 2 - 3 * 3)**\n- Multiplication first: 3 * 3 = 9\n- Then left to right: 3 + 2 = 5\n- Continue: 5 - 9 = -4\n\n**Combine the results:**\n-21 + (-4) = -25\n\nANSWER: -25",
+   "ood-navigate-235": "I need to trace through these movement instructions step by step, keeping track of my position.\n\nStarting position: (0, 0), facing forward (north)\n\n1. **Always face forward** \u2192 I maintain facing north throughout\n2. **Take 3 steps forward** \u2192 Position: (0, 3)\n3. **Take 3 steps backward** \u2192 Position: (0, 0)\n4. **Take 3 steps backward** \u2192 Position: (0, -3)\n5. **Take 7 steps left** \u2192 Position: (-7, -3)\n6. **Take 7 steps right** \u2192 Position: (0, -3)\n7. **Take 8 steps backward** \u2192 Position: (0, -11)\n8. **Take 4 steps backward** \u2192 Position: (0, -15)\n\n**Final position: (0, -15)**\n**Starting position: (0, 0)**\n\nI end up 15 steps south of where I started, not at the starting point.\n\nANSWER: No"
+  },
+  "library_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/smoke/runs/harness2/library/agg",
+  "library_entries": 0,
+  "status": {
+   "holdout-multistep_arithmetic_two-161": "ok",
+   "ood-navigate-235": "ok"
+  },
+  "editable": [
+   "agents/*",
+   "harness.py",
+   "memory/*",
+   "prompts/*",
+   "prompts/system.md",
+   "prompts/task.md",
+   "skills/*",
+   "tools/*"
+  ],
+  "best_is": "H0: every task starts from the common harness; adopted harnesses live in the records and the library",
+  "report": {
+   "n": 2,
+   "base": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "submitted": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "paired": {
+    "mean_diff": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 2,
+    "p_better": 0.0
+   },
+   "families": {
+    "multistep_arithmetic_two": {
+     "n": 1,
+     "base": 1.0,
+     "submitted": 1.0
+    },
+    "navigate": {
+     "n": 1,
+     "base": 1.0,
+     "submitted": 1.0
+    }
+   },
+   "per_task": {
+    "holdout-multistep_arithmetic_two-161": {
+     "family": "multistep_arithmetic_two",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-navigate-235": {
+     "family": "navigate",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    }
+   }
+  }
+ }
+}

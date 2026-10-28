@@ -1,0 +1,1 @@
+{"text": "You have 3 fruits in total:\n- 2 grapes\n- 1 plum\n\nANSWER: 3", "usage": {"calls": 1, "input_tokens": 1315, "output_tokens": 97, "cost_usd": 0.0018, "latency_s": 5.5431740283966064}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}

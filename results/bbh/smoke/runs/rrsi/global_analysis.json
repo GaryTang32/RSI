@@ -1,0 +1,11 @@
+{
+ "failure_modes": [],
+ "success_habits": [
+  {
+   "habit": "clean_multistep_arithmetic_two",
+   "n_tasks": 2,
+   "description": "passing tasks of kind 'multistep_arithmetic_two' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  }
+ ]
+}

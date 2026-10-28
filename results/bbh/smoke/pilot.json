@@ -1,0 +1,153 @@
+{
+ "arm": "pilot",
+ "status": "ok",
+ "mode": "live",
+ "smoke": true,
+ "model": "claude:haiku",
+ "cap": 2.0,
+ "k": 1,
+ "suite": {
+  "name": "bbh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "holdout": {
+    "n": 1,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   },
+   "ood": {
+    "n": 1,
+    "families": [
+     "navigate"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic_two"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 2,
+   "holdout": 1,
+   "ood": 1
+  }
+ },
+ "families": {
+  "practice": [
+   "multistep_arithmetic_two",
+   "word_sorting",
+   "dyck_languages",
+   "logical_deduction_five_objects",
+   "tracking_shuffled_objects_five_objects",
+   "date_understanding"
+  ],
+  "ood": [
+   "navigate",
+   "object_counting",
+   "temporal_sequences",
+   "geometric_shapes",
+   "penguins_in_a_table",
+   "web_of_lies"
+  ],
+  "pilot_candidates": [
+   "boolean_expressions",
+   "causal_judgement",
+   "date_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "formal_fallacies",
+   "geometric_shapes",
+   "hyperbaton",
+   "logical_deduction_three_objects",
+   "logical_deduction_five_objects",
+   "logical_deduction_seven_objects",
+   "movie_recommendation",
+   "multistep_arithmetic_two",
+   "navigate",
+   "object_counting",
+   "penguins_in_a_table",
+   "reasoning_about_colored_objects",
+   "ruin_names",
+   "salient_translation_error_detection",
+   "snarks",
+   "sports_understanding",
+   "temporal_sequences",
+   "tracking_shuffled_objects_three_objects",
+   "tracking_shuffled_objects_five_objects",
+   "tracking_shuffled_objects_seven_objects",
+   "web_of_lies",
+   "word_sorting"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/smoke/runs/pilot",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbh/live_cache",
+ "started": 1793161744.302214,
+ "family_accuracy": {
+  "boolean_expressions": 1.0,
+  "causal_judgement": 1.0
+ },
+ "per_task": {
+  "pilot-boolean_expressions-191": 1.0,
+  "pilot-causal_judgement-096": 1.0
+ },
+ "suggestion": {
+  "practice": [],
+  "ood": [],
+  "excluded_floor_or_ceiling": [
+   "boolean_expressions",
+   "causal_judgement"
+  ],
+  "rule": "accuracy in [0.15, 0.85], nearest 0.5 first, alternating sides, one per sibling group"
+ },
+ "n_per_family": 1,
+ "phases": [
+  {
+   "phase": "pilot_boolean_expressions",
+   "usd": 0.00296,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 6.4
+  },
+  {
+   "phase": "pilot_causal_judgement",
+   "usd": 0.00562,
+   "fresh_calls": 1,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0,
+   "wall_s": 12.4
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 0.00858,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  },
+  "eval": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "total": {
+   "usd": 0.00858,
+   "fresh_calls": 2,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0.0
+  }
+ },
+ "usd": 0.00858,
+ "wall_s": 18.8,
+ "eval_usd_per_example": null
+}

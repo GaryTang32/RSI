@@ -1,0 +1,15 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "C1 (ANSWER extraction) changes the harness-grader interface in an undocumented and potentially problematic way. The original design—harness returns full response, grader extracts ANSWER line—is the intended flow. The new code extracts within the harness, making an implicit choice: returns the FIRST ANSWER line encountered via `for...break` iteration, not the LAST, without knowing whether the grader looks for first, last, or has a different rule entirely. This is a brittle assumption.",
+  "C1 violates the principle that the harness should return the model's actual output and let the grader perform its documented extraction. By pre-extracting, the harness hides the full response from the grader and changes what the grader sees—this is output-format gaming for the grader's convenience, not genuine task performance improvement. If the model outputs 'ANSWER: 42\\n\\nWait, actually ANSWER: 43', the new harness returns 'ANSWER: 42', but it's unclear if that is correct or if the grader would prefer to see the full response or the last ANSWER line.",
+  "C1 is effectively a workaround rather than a fix: the real solution is ensuring the model outputs one clean ANSWER line (which C2 and C3 prompts already do). If C2/C3 work, the model produces clean output and the grader extracts correctly. The harness extraction is redundant in that case and unnecessary if the prompts are fixed.",
+  "C1 makes a harder robustness guarantee than needed: the original fallback `reply.strip()` + grader extraction handles missing ANSWER lines. The new code is more aggressive (searching for ANSWER lines), which could encourage the harness to return partial output even when the model's intent was to show reasoning—overfitting to the format expectation rather than the task itself."
+ ],
+ "risk_notes": [
+  "C2 and C3 (prompt changes) are reasonable general improvements that should generalize to other reasoning tasks. However, the candidate is bundled with C1, which is problematic.",
+  "If C2/C3 successfully condition the model to output clean ANSWER lines, C1's extraction becomes unnecessary, suggesting C1 is solving a problem that doesn't exist in the passing cases and may break on novel tasks where output format varies.",
+  "The retroactive check claims both tasks 'would continue to pass,' but that comparison is against the grader, not against the original harness behavior—the extraction does change what the harness returns, even if the grader's final extraction is the same. The change is observable and alters the harness contract."
+ ],
+ "stage": "llm"
+}

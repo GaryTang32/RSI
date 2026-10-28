@@ -1,0 +1,26 @@
+[
+ {
+  "task_id": "evolve-multistep_arithmetic_two-033",
+  "lens": "success",
+  "family": "multistep_arithmetic_two",
+  "habits": [
+   {
+    "habit": "clean_multistep_arithmetic_two",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-multistep_arithmetic_two-238",
+  "lens": "success",
+  "family": "multistep_arithmetic_two",
+  "habits": [
+   {
+    "habit": "clean_multistep_arithmetic_two",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ }
+]

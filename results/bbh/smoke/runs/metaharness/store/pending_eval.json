@@ -1,0 +1,15 @@
+{
+ "iteration": 1,
+ "candidates": [
+  {
+   "name": "struct_reason",
+   "base_system": "seed",
+   "hypothesis": "Explicit step-by-step scaffolding (ANALYZE \u2192 SOLVE \u2192 VERIFY \u2192 ANSWER) will improve generalization to unseen reasoning task types (multiple choice, yes/no, counting, sequences) by teaching systematic problem-solving independent of domain-specific heuristics, while maintaining or improving accuracy on arithmetic.",
+   "axis": "exploitation",
+   "components": [
+    "A: prompt_architecture",
+    "F: model_guided_reasoning"
+   ]
+  }
+ ]
+}
