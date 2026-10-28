@@ -1,0 +1,491 @@
+{
+ "arm": "pilot",
+ "benchmark": "bbeh",
+ "status": "ok",
+ "mode": "live",
+ "smoke": false,
+ "model": "claude:haiku",
+ "cap": 0.2,
+ "k": 2,
+ "suite": {
+  "name": "bbeh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 24,
+    "families": [
+     "boolean_expressions",
+     "causal_understanding",
+     "multistep_arithmetic",
+     "time_arithmetic",
+     "web_of_lies",
+     "word_sorting"
+    ]
+   },
+   "holdout": {
+    "n": 60,
+    "families": [
+     "boolean_expressions",
+     "causal_understanding",
+     "multistep_arithmetic",
+     "time_arithmetic",
+     "web_of_lies",
+     "word_sorting"
+    ]
+   },
+   "ood": {
+    "n": 60,
+    "families": [
+     "dyck_languages",
+     "geometric_shapes",
+     "hyperbaton",
+     "object_counting",
+     "shuffled_objects",
+     "temporal_sequence"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "multistep_arithmetic"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 4,
+   "holdout": 10,
+   "ood": 10
+  }
+ },
+ "families": {
+  "practice": [
+   "multistep_arithmetic",
+   "boolean_expressions",
+   "time_arithmetic",
+   "word_sorting",
+   "web_of_lies",
+   "causal_understanding"
+  ],
+  "ood": [
+   "object_counting",
+   "temporal_sequence",
+   "shuffled_objects",
+   "dyck_languages",
+   "geometric_shapes",
+   "hyperbaton"
+  ],
+  "pilot_candidates": [
+   "boardgame_qa",
+   "boolean_expressions",
+   "buggy_tables",
+   "causal_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "geometric_shapes",
+   "hyperbaton",
+   "linguini",
+   "movie_recommendation",
+   "multistep_arithmetic",
+   "nycc",
+   "object_counting",
+   "object_properties",
+   "sarc_triples",
+   "shuffled_objects",
+   "spatial_reasoning",
+   "sportqa",
+   "temporal_sequence",
+   "time_arithmetic",
+   "web_of_lies",
+   "word_sorting",
+   "zebra_puzzles"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/runs/pilot",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/live_cache",
+ "started": 1793200809.4172335,
+ "family_accuracy": {
+  "boardgame_qa": 1.0,
+  "boolean_expressions": 0.4,
+  "buggy_tables": 0.4,
+  "causal_understanding": 0.4,
+  "disambiguation_qa": 0.8,
+  "dyck_languages": 1.0,
+  "geometric_shapes": 0.6,
+  "hyperbaton": 0.8,
+  "linguini": 0.4,
+  "movie_recommendation": 0.8,
+  "multistep_arithmetic": 1.0,
+  "nycc": 0.4,
+  "object_counting": 1.0,
+  "object_properties": 0.4,
+  "sarc_triples": 0.2,
+  "shuffled_objects": 0.2,
+  "spatial_reasoning": 1.0,
+  "sportqa": 0.2,
+  "temporal_sequence": 0.4,
+  "time_arithmetic": 1.0,
+  "web_of_lies": 0.6,
+  "word_sorting": 0.8,
+  "zebra_puzzles": 0.8
+ },
+ "per_task": {
+  "pilot-boardgame_qa-034": 1.0,
+  "pilot-boardgame_qa-060": 1.0,
+  "pilot-boardgame_qa-151": 1.0,
+  "pilot-boardgame_qa-147": 1.0,
+  "pilot-boardgame_qa-042": 1.0,
+  "pilot-boolean_expressions-025": 0.0,
+  "pilot-boolean_expressions-143": 0.0,
+  "pilot-boolean_expressions-016": 1.0,
+  "pilot-boolean_expressions-059": 0.0,
+  "pilot-boolean_expressions-142": 1.0,
+  "pilot-buggy_tables-150": 0.0,
+  "pilot-buggy_tables-024": 1.0,
+  "pilot-buggy_tables-130": 0.0,
+  "pilot-buggy_tables-104": 1.0,
+  "pilot-buggy_tables-157": 0.0,
+  "pilot-causal_understanding-064": 1.0,
+  "pilot-causal_understanding-158": 0.0,
+  "pilot-causal_understanding-098": 1.0,
+  "pilot-causal_understanding-146": 0.0,
+  "pilot-causal_understanding-166": 0.0,
+  "pilot-disambiguation_qa-012": 1.0,
+  "pilot-disambiguation_qa-008": 0.0,
+  "pilot-disambiguation_qa-036": 1.0,
+  "pilot-disambiguation_qa-018": 1.0,
+  "pilot-disambiguation_qa-076": 1.0,
+  "pilot-dyck_languages-179": 1.0,
+  "pilot-dyck_languages-023": 1.0,
+  "pilot-dyck_languages-130": 1.0,
+  "pilot-dyck_languages-168": 1.0,
+  "pilot-dyck_languages-037": 1.0,
+  "pilot-geometric_shapes-179": 0.0,
+  "pilot-geometric_shapes-150": 1.0,
+  "pilot-geometric_shapes-013": 1.0,
+  "pilot-geometric_shapes-014": 1.0,
+  "pilot-geometric_shapes-199": 0.0,
+  "pilot-hyperbaton-174": 0.0,
+  "pilot-hyperbaton-176": 1.0,
+  "pilot-hyperbaton-092": 1.0,
+  "pilot-hyperbaton-087": 1.0,
+  "pilot-hyperbaton-097": 1.0,
+  "pilot-linguini-174": 1.0,
+  "pilot-linguini-119": 0.0,
+  "pilot-linguini-103": 1.0,
+  "pilot-linguini-052": 0.0,
+  "pilot-linguini-154": 0.0,
+  "pilot-movie_recommendation-129": 1.0,
+  "pilot-movie_recommendation-155": 1.0,
+  "pilot-movie_recommendation-157": 0.0,
+  "pilot-movie_recommendation-000": 1.0,
+  "pilot-movie_recommendation-196": 1.0,
+  "pilot-multistep_arithmetic-198": 1.0,
+  "pilot-multistep_arithmetic-106": 1.0,
+  "pilot-multistep_arithmetic-156": 1.0,
+  "pilot-multistep_arithmetic-015": 1.0,
+  "pilot-multistep_arithmetic-029": 1.0,
+  "pilot-nycc-193": 0.0,
+  "pilot-nycc-019": 0.0,
+  "pilot-nycc-062": 1.0,
+  "pilot-nycc-141": 1.0,
+  "pilot-nycc-134": 0.0,
+  "pilot-object_counting-118": 1.0,
+  "pilot-object_counting-173": 1.0,
+  "pilot-object_counting-109": 1.0,
+  "pilot-object_counting-138": 1.0,
+  "pilot-object_counting-092": 1.0,
+  "pilot-object_properties-043": 0.0,
+  "pilot-object_properties-058": 0.0,
+  "pilot-object_properties-080": 1.0,
+  "pilot-object_properties-029": 1.0,
+  "pilot-object_properties-073": 0.0,
+  "pilot-sarc_triples-103": 0.0,
+  "pilot-sarc_triples-012": 0.0,
+  "pilot-sarc_triples-009": 1.0,
+  "pilot-sarc_triples-109": 0.0,
+  "pilot-sarc_triples-062": 0.0,
+  "pilot-shuffled_objects-091": 0.0,
+  "pilot-shuffled_objects-148": 0.0,
+  "pilot-shuffled_objects-194": 0.0,
+  "pilot-shuffled_objects-087": 1.0,
+  "pilot-shuffled_objects-185": 0.0,
+  "pilot-spatial_reasoning-119": 1.0,
+  "pilot-spatial_reasoning-125": 1.0,
+  "pilot-spatial_reasoning-073": 1.0,
+  "pilot-spatial_reasoning-176": 1.0,
+  "pilot-spatial_reasoning-113": 1.0,
+  "pilot-sportqa-048": 0.0,
+  "pilot-sportqa-105": 1.0,
+  "pilot-sportqa-107": 0.0,
+  "pilot-sportqa-118": 0.0,
+  "pilot-sportqa-171": 0.0,
+  "pilot-temporal_sequence-182": 1.0,
+  "pilot-temporal_sequence-173": 1.0,
+  "pilot-temporal_sequence-153": 0.0,
+  "pilot-temporal_sequence-050": 0.0,
+  "pilot-temporal_sequence-038": 0.0,
+  "pilot-time_arithmetic-113": 1.0,
+  "pilot-time_arithmetic-079": 1.0,
+  "pilot-time_arithmetic-137": 1.0,
+  "pilot-time_arithmetic-004": 1.0,
+  "pilot-time_arithmetic-104": 1.0,
+  "pilot-web_of_lies-062": 1.0,
+  "pilot-web_of_lies-064": 1.0,
+  "pilot-web_of_lies-054": 1.0,
+  "pilot-web_of_lies-191": 0.0,
+  "pilot-web_of_lies-146": 0.0,
+  "pilot-word_sorting-175": 1.0,
+  "pilot-word_sorting-067": 1.0,
+  "pilot-word_sorting-117": 0.0,
+  "pilot-word_sorting-011": 1.0,
+  "pilot-word_sorting-038": 1.0,
+  "pilot-zebra_puzzles-156": 1.0,
+  "pilot-zebra_puzzles-090": 1.0,
+  "pilot-zebra_puzzles-127": 0.0,
+  "pilot-zebra_puzzles-081": 1.0,
+  "pilot-zebra_puzzles-116": 1.0
+ },
+ "suggestion": {
+  "practice": [
+   "boolean_expressions",
+   "causal_understanding",
+   "linguini",
+   "object_properties",
+   "web_of_lies",
+   "shuffled_objects"
+  ],
+  "ood": [
+   "buggy_tables",
+   "geometric_shapes",
+   "nycc",
+   "temporal_sequence",
+   "sarc_triples",
+   "sportqa"
+  ],
+  "excluded_floor_or_ceiling": [
+   "boardgame_qa",
+   "disambiguation_qa",
+   "dyck_languages",
+   "hyperbaton",
+   "movie_recommendation",
+   "multistep_arithmetic",
+   "object_counting",
+   "spatial_reasoning",
+   "time_arithmetic",
+   "word_sorting",
+   "zebra_puzzles"
+  ],
+  "rule": "accuracy in [0.15, 0.75], nearest 0.5 first, alternating sides, one per sibling group"
+ },
+ "n_per_family": 5,
+ "applied": true,
+ "phases": [
+  {
+   "phase": "pilot_boardgame_qa",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.21246,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_boolean_expressions",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.33777,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_buggy_tables",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.78098,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_causal_understanding",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.10589,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_disambiguation_qa",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.11399,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_dyck_languages",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.29066,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_geometric_shapes",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.63965,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_hyperbaton",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.50753,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_linguini",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.25087,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_movie_recommendation",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.09513,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_multistep_arithmetic",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.35891,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_nycc",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.05229,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_object_counting",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.1904,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_object_properties",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.71052,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_sarc_triples",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.04084,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_shuffled_objects",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.91799,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_spatial_reasoning",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.37894,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_sportqa",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.08939,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_temporal_sequence",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 1.02311,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_time_arithmetic",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.2428,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_web_of_lies",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.34402,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_word_sorting",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.16494,
+   "wall_s": 0.0
+  },
+  {
+   "phase": "pilot_zebra_puzzles",
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 5,
+   "usd_saved_by_cache": 0.56222,
+   "wall_s": 0.0
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 115,
+   "usd_saved_by_cache": 8.4113
+  },
+  "eval": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "total": {
+   "usd": 0.0,
+   "fresh_calls": 0,
+   "cached_calls": 115,
+   "usd_saved_by_cache": 8.4113
+  }
+ },
+ "usd": 0.0,
+ "wall_s": 0.3,
+ "eval_usd_per_example": null
+}
