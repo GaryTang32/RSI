@@ -59,9 +59,15 @@ def merge(d: Path, reps: int = 10000) -> dict:
         if name == "pilot":
             continue
         sp = o.get("spend", {})
-        row = {"status": o.get("status"), "n": len(o.get("per_task") or {}),
-               "search_usd": sp.get("search", {}).get("usd"), "eval_usd": sp.get("eval", {}).get("usd"),
-               "eval_usd_per_example": o.get("eval_usd_per_example"), "total_usd": o.get("usd"),
+        # compute cost: every call the arm used at its original price (fresh + replayed from the shared cache), so a
+        # resumed run or one that reuses another arm's calls is not shown as free
+        full = {k: round((sp.get(k, {}).get("usd") or 0) + (sp.get(k, {}).get("usd_saved_by_cache") or 0), 4)
+                for k in ("search", "eval")}
+        n_ex = len(o.get("per_task") or {})
+        row = {"status": o.get("status"), "n": n_ex,
+               "search_usd": full["search"], "eval_usd": full["eval"],
+               "fresh_search_usd": sp.get("search", {}).get("usd"), "fresh_eval_usd": sp.get("eval", {}).get("usd"),
+               "eval_usd_per_example": round(full["eval"] / n_ex, 4) if n_ex else None, "fresh_usd": o.get("usd"),
                "fresh_calls": sp.get("total", {}).get("fresh_calls"),
                "cached_calls": sp.get("total", {}).get("cached_calls"),
                "leak_check": None if "leak_check" not in o else ("pass" if o["leak_check"]["passed"] else "FAIL")}
@@ -106,7 +112,7 @@ def merge(d: Path, reps: int = 10000) -> dict:
             "arms": rows, "families": fam_rows, "paired_extra": extra,
             "pilot": None if not pilot else {"family_accuracy": pilot.get("family_accuracy"),
                                              "suggestion": pilot.get("suggestion"), "usd": pilot.get("usd")},
-            "total_usd": round(sum((o.get("usd") or 0) for o in arms.values()), 4)}
+            "fresh_usd_this_run": round(sum((o.get("usd") or 0) for o in arms.values()), 4)}
 
 
 def _fmt_ci(v):
@@ -139,7 +145,8 @@ def markdown(m: dict) -> str:
             out.append(f"| {f} | " + " | ".join(str(v.get(f, "-")) for v in m["families"].values()) + " |")
     out.append(f"\nHarness² and best-of-n rows use the {next((r.get('subset') for r in m['arms'].values() if r.get('subset')), '?')}"
                "-example subsample; their vs-seed/vs-cot3 columns compare on those examples only.")
-    out.append(f"Total spend: ${m['total_usd']:.3f}")
+    out.append("eval $/ex and search $ price every call an arm used, fresh or replayed from the shared cache (its compute "
+               "cost); the money actually spent is the sum over the cache, as the shared cache bills each call once.")
     return "\n".join(out)
 
 
