@@ -1,0 +1,20 @@
+# holdout-shuffled_objects-020
+
+- adopted: `agg1`  (harness `ff8576c3d9`)
+- components: 3 files (1 code, 2 text); 83 text chars
+
+## Why this was chosen
+trivial pool: single final at k=1; delivered without a selector session
+
+## What each edit did
+component: solve() function - core approach
+candidates: inv1, dom1, agg1
+change: Replaced direct LLM call with embedded deterministic Python code executed via tools.python(). The code uses regex to parse all "X and Y swap their gifts" patterns from input, executes each swap deterministically as a state transformation, and returns the final gift color mapped to a multiple-choice letter.
+observed: base1 (LLM approach) produced answer (G) in 23,759 tokens with reasoning trajectory showing incomplete manual tracking ("hand-waves through 240+ operations", spot-checks final steps only). inv1, dom1, and agg1 (deterministic code approach) all produced answer (F) in 0 tokens via complete mechanical execution of all parsed operations. All three candidates converge on the same output despite no shared LLM reasoning.
+verdict: helped
+
+## Transferable lesson
+- **cue**: A task requires mechanical execution of many sequential deterministic operations (swaps, exchanges, position changes), where each operation follows a parseable pattern, is simple and deterministic, but there are so many (100s) that LLM reasoning must either hand-wave or exhaust reasoning budget. The LLM correctly identifies the right method but cannot execute all steps exhaustively in a single response without losing precision.
+- **lesson**: In solve(), replace LLM reasoning with embedded Python code that uses pattern matching (regex) to extract all operations from the input, applies each deterministically as a state transformation in a loop, and returns the final computed result via tools.python(). The code structure should mirror the problem's mechanics directly (parse → transform → return), ensuring every operation is tracked rather than selectively reasoned about.
+- **evidence**: base1 trajectory explicitly hand-waves ("Rather than manually tracking all 240+ operations, let me write a simple script...") then spot-checks only final steps, accumulating 23,759 tokens on incomplete reasoning that concluded (G). All three independent candidates (inv1, dom1, agg1) implemented deterministic code-based solve() and converged on answer (F) with 0 tokens. Library precedent (holdout-shuffled_objects-062, cited in decision documents) directly validates this pattern for mechanical repetition: "Replace the LLM reasoning with Python code embedded directly in the harness.solve() function... moving mechanical repetition from reasoning budget to verified code execution."
+- **confidence**: high — three independent implementations converge on the same approach and output; base1's reasoning is explicitly documented as incomplete; library precedent strongly validates the pattern for the same failure signature (many sequential deterministic operations, hand-waving in reasoning).
