@@ -181,6 +181,9 @@ def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = No
     from .mocks import AGENTQA_IDEAS, AGENTWORLD_IDEAS, AgentQAEditProposer, LibraryProposer, LLMMechanismProposer
     cfg = config or Config()
     name = getattr(domain, "name", "")
+    from ..domains.agentqa import AgentQADomain
+    if isinstance(domain, AgentQADomain):
+        name = "agentqa"                # AgentQA-layout domains (e.g. BBH) share its offline ideas and proposer
     if ideas is None:
         ideas = AGENTWORLD_IDEAS if name == "agentworld" else AGENTQA_IDEAS if name == "agentqa" else None
         if ideas is None:

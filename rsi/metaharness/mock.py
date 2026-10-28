@@ -195,11 +195,17 @@ class AgentQALibrary:
             ("+lookup" if genome.get("lookup") else "")
 
 
+def _agentqa_layout(domain) -> bool:
+    """True for AgentQA and domains built on it (e.g. BBH): same harness.py + prompts layout."""
+    from ..domains.agentqa import AgentQADomain
+    return isinstance(domain, AgentQADomain)
+
+
 def library_for(domain) -> Library:
     name = getattr(domain, "name", "")
     if name == "memoclassify":
         return MemoClassifyLibrary()
-    if name == "agentqa":
+    if name == "agentqa" or _agentqa_layout(domain):
         return AgentQALibrary()
     raise ValueError(f"no MockProposer library for domain {name!r}; pass proposer=... or llm_propose=...")
 
