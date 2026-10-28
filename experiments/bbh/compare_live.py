@@ -395,8 +395,9 @@ def _search_metaharness(a, ctx, dom, llm, prop, run_dir: Path):
                 ctx.extra_calls += b.usage.calls
             return b
 
+    # the interface smoke runs a real task: give it the per-call LLM timeout (BBEH calls take minutes, not 30 s)
     cfg = Config(iterations=a.mh_iterations, k=a.mh_k, search_split="evolve", finalize=False, workers=a.workers,
-                 seed=0, shadow_monitor=False)
+                 seed=0, shadow_monitor=False, validate_timeout_s=max(30.0, a.llm_timeout + 60.0))
     res = run(dom, dom.seed_artifact(), llm_task=llm, llm_propose=None if a.offline else llm, config=cfg,
               out_dir=str(run_dir), proposer=CapGuard())
     return res, {"iterations": a.mh_iterations, "k": a.mh_k, "best_system": res.meta.get("best_system"),
