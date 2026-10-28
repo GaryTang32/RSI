@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-linguini-018",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'Do we come?'; expected 'Did we go?'.",
+  "output": "Do we come?",
+  "tokens": 13013,
+  "cost_usd": 0.058692999999999995,
+  "steps": 1,
+  "latency_s": 0.018340587615966797,
+  "error": null,
+  "family": "linguini",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

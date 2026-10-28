@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-boolean_expressions-008",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'B'; expected '(A)'.",
+  "output": "B",
+  "tokens": 22435,
+  "cost_usd": 0.10177100000000001,
+  "steps": 1,
+  "latency_s": 0.004053831100463867,
+  "error": null,
+  "family": "boolean_expressions",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

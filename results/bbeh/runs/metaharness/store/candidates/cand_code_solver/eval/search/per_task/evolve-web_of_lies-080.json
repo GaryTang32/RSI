@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-web_of_lies-080",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '[killed: timeout]'; expected 'yes, yes, yes'.",
+  "output": "[killed: timeout]",
+  "tokens": 19659,
+  "cost_usd": 0.09033500000000001,
+  "steps": 2,
+  "latency_s": 115.36804246902466,
+  "error": null,
+  "family": "web_of_lies",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

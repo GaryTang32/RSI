@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-web_of_lies-074",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '<yes, yes, yes>'; expected 'yes, yes, yes'.",
+  "output": "<yes, yes, yes>",
+  "tokens": 21168,
+  "cost_usd": 0.09784399999999999,
+  "steps": 1,
+  "latency_s": 0.021481752395629883,
+  "error": null,
+  "family": "web_of_lies",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

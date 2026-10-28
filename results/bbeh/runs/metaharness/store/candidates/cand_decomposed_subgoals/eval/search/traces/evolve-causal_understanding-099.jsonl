@@ -1,0 +1,85 @@
+[llm call 1]
+SYSTEM: You are an expert problem solver using explicit decomposition and sub-goal analysis.
+
+Your approach:
+1. Detect the problem type (tracking, pattern, logic, calculation, translation, etc.)
+2. Decompose into explicit sub-goals based on the type
+3. Solve each sub-goal systematically
+4. Verify each sub-goal solution
+5. Combine sub-goal solutions into the final answer
+
+Problem-type specific strategies:
+
+**TRACKING PROBLEMS** (objects, positions, state changes over time):
+  Sub-goals:
+  1. List initial state of all entities
+  2. For each operation/event, apply state changes
+  3. Track final state of 
+PROMPT: Question: Janet is an employee in a factory. Since she works in the maintenance department, she knows how to grease and oil all of the machines in the factory. It is her responsibility to put oil into the machines. Kate is also an employee at the factory. While she works in the human resources department, she knows how to grease and oil all of the machines in the factory. If Janet does not put oil in the machines, it is not Kate's responsibility to do so. One day, Janet forgets to put oil in an important machine. Kate did not notice that Janet did not put oil in the machine, and Kate also did not put oil in the machine. The machine broke down a few days later. Did Kate not putting oil in the machine cause it to break down?  Reply Yes or No based on the answer the majority of people would give. If you think people would be split roughly 50-50 between Yes and No then reply Ambiguous.
+
+---
+
+SOLVE USING SUB-GOAL DECOMPOSITION:
+
+Step 1: Identify the problem type and appropriate sub-goals
+Step 2: Work through each sub-goal systematically
+Step 3: Show all work and verify each step
+Step 4: Combine sub-goal results into final answer
+
+Format your response as:
+- PROBLEM TYPE: [what kind of problem]
+- SUB-GOALS: [numbered list of sub-goals]
+- WORK: [solving each sub-goal with verification]
+- FINAL ANSWER: [the answer]
+
+End with a line `ANSWER: <answer>`.
+
+REPLY: # SOLUTION
+
+## PROBLEM TYPE
+Logical reasoning with causal attribution - determining responsibility and causation in a scenario with multiple agents and explicit responsibility rules.
+
+## SUB-GOALS
+1. Extract all facts and constraints from the problem
+2. Identify responsibility assignments and rules
+3. Determine the actual cause of the breakdown
+4. Distinguish between "something could have prevented it" vs. "someone caused it"
+5. Apply majority reasoning patterns about responsibility and causation
+
+## WORK
+
+**SUB-GOAL 1: Extract Facts and Constraints**
+
+Facts:
+- Janet: works in maintenance, knows how to oil machines, **has responsibility** to oil machines
+- Kate: works in HR, knows how to oil machines, **no responsibility** (has capability but not duty)
+- **Critical Rule**: "If Janet does not put oil in the machines, it is NOT Kate's responsibility to do so"
+- What happened: Janet forgot to oil an important machine
+- Kate did not notice Janet's failure
+- Kate did not put oil in the machine
+- Result: Machine broke down days later
+
+✓ Verified: All information extracted clearly
+
+**SUB-GOAL 2: Identify Responsibility Assignments**
+
+- Janet: Explicit responsibility for oiling machines
+- Kate: Has capability but NO responsibility to oil machines
+- The rule explicitly **removes Kate's responsibility** when Janet fails to act
+- Kate cannot be held accountable for Kate has no duty to check on Janet's work
+
+✓ Verified: Responsibility is clearly assigned by the rule
+
+**SUB-GOAL 3: Determine the Actual Cause**
+
+Immediate physical cause: Lack of oil in the machine causes breakdown
+- Who failed to prevent this? Both Janet and Kate didn't put oil
+- But responsibility matters: Janet was supposed to; Kate wasn't obligated to
+
+Person responsible for the breakdown: **Janet** (failed in her explicit responsibility)
+
+✓ Verified: Janet's failure to do her job is the responsible cause
+
+**SUB-GOAL 4: "Caused" vs. "Could Have Prevented"**
+
+- Could Kate's oiling have prevented it? Yes (counte

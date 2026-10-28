@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-shuffled_objects-107",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'The Great Gatsby'; expected '(E)'.",
+  "output": "The Great Gatsby",
+  "tokens": 29530,
+  "cost_usd": 0.13338799999999998,
+  "steps": 2,
+  "latency_s": 0.04557514190673828,
+  "error": null,
+  "family": "shuffled_objects",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

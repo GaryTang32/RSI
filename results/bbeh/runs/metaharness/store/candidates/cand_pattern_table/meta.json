@@ -1,0 +1,19 @@
+{
+ "name": "cand_pattern_table",
+ "artifact_id": "0f727bc42d11105a57e73fc67c1416e5a6a9f9debab1446ab5fdf28d89b8b2ea",
+ "created_at": 1793222567.0429678,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Linguini problems (language pattern learning) currently succeed at 25% with informal pattern matching. By asking the model to build explicit morphological component tables, verify them against all examples, and apply rules systematically (rather than reasoning informally), we create better scaffolding for pattern discovery. Unlike cand_decomposed_subgoals which forced structure everywhere, this only activates for language/morphology problems, preserving performance on other problem types.",
+ "axis": "exploration",
+ "components": [
+  "A:pattern_table_prompting",
+  "B:explicit_component_mapping",
+  "B:table_verification"
+ ],
+ "parents_read": [],
+ "order": 6,
+ "reason": ""
+}

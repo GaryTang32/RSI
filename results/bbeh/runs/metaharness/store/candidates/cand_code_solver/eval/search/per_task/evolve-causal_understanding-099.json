@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-causal_understanding-099",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'No'; expected 'Ambiguous'.",
+  "output": "No",
+  "tokens": 6321,
+  "cost_usd": 0.025189,
+  "steps": 2,
+  "latency_s": 46.489458322525024,
+  "error": null,
+  "family": "causal_understanding",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

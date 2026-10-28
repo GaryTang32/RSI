@@ -1,0 +1,18 @@
+{
+ "name": "cand_selective_code",
+ "artifact_id": "00d6720fd7885117df340627d92c61fc9fecc106a6736218eb3ae2328376fe41",
+ "created_at": 1793222755.918579,
+ "status": "evaluated",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "cand_code_solver failed (29.2%) because it applied code generation to logic puzzles and boolean expressions where it was inappropriate. By being much more selective\u2014only triggering code for state-tracking problems with explicit initial state, swap operations, and domain context (dance/gift/partner)\u2014we can help shuffled_objects problems while preserving baseline performance on logical reasoning problems.",
+ "axis": "exploitation",
+ "components": [
+  "C:conservative_problem_detection",
+  "F:selective_code_generation"
+ ],
+ "parents_read": [],
+ "order": 7,
+ "reason": ""
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-linguini-049",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'sant\u02b7\u0259n'; expected '\u0161\u02bc\u0259wt\u02b7an'.",
+  "output": "sant\u02b7\u0259n",
+  "tokens": 21645,
+  "cost_usd": 0.10174899999999999,
+  "steps": 2,
+  "latency_s": 146.09978532791138,
+  "error": null,
+  "family": "linguini",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

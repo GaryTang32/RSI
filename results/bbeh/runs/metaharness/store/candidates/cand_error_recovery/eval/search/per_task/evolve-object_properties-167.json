@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-object_properties-167",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '5').",
+  "output": "5",
+  "tokens": 23037,
+  "cost_usd": 0.10567700000000001,
+  "steps": 1,
+  "latency_s": 0.00452876091003418,
+  "error": null,
+  "family": "object_properties",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

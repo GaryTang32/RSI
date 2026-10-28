@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-shuffled_objects-067",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer '(D)').",
+  "output": "(D)",
+  "tokens": 33635,
+  "cost_usd": 0.1472111,
+  "steps": 1,
+  "latency_s": 0.006831169128417969,
+  "error": null,
+  "family": "shuffled_objects",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

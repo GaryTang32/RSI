@@ -1,0 +1,70 @@
+[llm call 1]
+SYSTEM: You are an expert problem solver using explicit decomposition and sub-goal analysis.
+
+Your approach:
+1. Detect the problem type (tracking, pattern, logic, calculation, translation, etc.)
+2. Decompose into explicit sub-goals based on the type
+3. Solve each sub-goal systematically
+4. Verify each sub-goal solution
+5. Combine sub-goal solutions into the final answer
+
+Problem-type specific strategies:
+
+**TRACKING PROBLEMS** (objects, positions, state changes over time):
+  Sub-goals:
+  1. List initial state of all entities
+  2. For each operation/event, apply state changes
+  3. Track final state of 
+PROMPT: In this question, assume each person either always tells the truth or always lies. Mustafa says Mickey lies. Vina says either exactly two of Phoebe, Otis and Oda tell the truth or none of them. Raymond says exactly one of Jerry, Mickey and Mustafa tell the truth. Malcolm says Mia tells the truth. Osborne says Ovid tells the truth. Delbert says exactly one of Sal, Octavia and Orlando tell the truth. Elanor says Sherrie tells the truth. Mariah says Miriam lies. Mindy says Natasha lies. Oda says Otis tells the truth. Mickey says Mustafa lies. Shenna says Conception lies. Ozzy says Maya lies. Shaunda says either all three of Elanor, Mia and Malcolm lie, or two of them tell the truth. Max says Odessa tells the truth. Bernita says exactly two of Sima, Maya and Ozzy tell the truth. Sima says Delbert lies. Maria says Molly lies. Orin says Milo lies. Andree says Alexis lies. Jamey says exactly one of Raymond, Bahar and Maynard tells the truth.Mackenzie says Millie lies. Phoebe says either all three of Amberly, Odessa and Max lie, or two of them tell the truth. Shalonda says either exactly two of Crista, Omar and Muhammad tell the truth or none of them. Lorine says Bernita tells the truth. Teressa says only one of Shalonda, Matteo and Maria lies. Orlando says Octavia lies. Sal says exactly one of Andree, Opal and Mark tells the truth.Oleg says Millicent tells the truth. Ryan says exactly one of Fidel, Millie and Mackenzie tells the truth.Crista says Kandi tells the truth. Tamika says either all three of Lorine, Disha and Mike tell the truth or only one of them. Mike says Disha tells the truth. Octavius says Oprah lies. Maya says Ozzy lies. Odessa says Max tells the truth. Mark says Opal lies. Miriam says Mariah lies. Antwan says either exactly two of Ka, Uri and Ophelia tell the truth or none of them. Yoland says either exactly two of Christie, Osborne and Ovid tell the truth or none of them. Jerry says exactly one of Antwan, Oprah and Octavius tells the truth.Mia says Malcol
+REPLY: # SOLVING TRUTH-TELLER/LIAR LOGIC PUZZLE
+
+**PROBLEM TYPE**: Logical reasoning with constraints (determining truth values for interdependent claims)
+
+**SUB-GOALS**:
+1. Identify key truth-value pairs (people who claim opposite things about each other)
+2. Determine truth values for Sherrie, Tamika, and Shenna through logical chains
+3. Verify consistency of derived values
+4. Final answer for all three
+
+---
+
+## WORK
+
+### SUB-GOAL 1: Determine if Sherrie tells the truth
+
+**Chain 1: Malcolm-Mia relationship**
+- Malcolm says: Mia tells the truth
+- Mia says: Malcolm tells the truth
+→ Both must have the same truth value (both truth-tellers or both liars)
+
+**Chain 2: Apply to Shaunda's constraint**
+- Shaunda says: "Either all three of Elanor, Mia and Malcolm lie, OR two of them tell the truth"
+- Case A: If Malcolm and Mia both tell the truth → Shaunda's statement is true only if "two tell the truth" → Elanor lies
+- Case B: If Malcolm and Mia both lie → Shaunda's statement is true only if "all three lie" → Elanor lies
+
+**Result**: Elanor lies (true in both cases)
+
+**Chain 3: Determine Sherrie**
+- Elanor says: Sherrie tells the truth
+- Since Elanor lies, Sherrie does NOT tell the truth
+→ **Sherrie LIES**
+
+---
+
+### SUB-GOAL 2: Determine if Tamika tells the truth
+
+**Chain 1: Murphy-Osric relationship**
+- Murphy says: Osric tells the truth
+- Osric says: Murphy tells the truth
+→ Both have the same truth value
+
+**Chain 2: Apply to Sherrie's constraint**
+- Sherrie says: "Either exactly two of Tamika, Murphy and Osric tell the truth, OR none of them"
+- Since Sherrie LIES, the opposite is true: NOT(exactly two OR none)
+- This means: **exactly one** of {Tamika, Murphy, Osric} tells the truth
+
+**Chain 3: Resolve with Murphy-Osric equivalence**
+- Murphy and Osric must have same truth value
+- For exactly one person to tell the truth:
+  - If both Murphy and Osric tell the truth: that's 2 people minimum → Contradiction
+  - If both Murphy and Osric lie: only Tamika can tell the truth → Exactly

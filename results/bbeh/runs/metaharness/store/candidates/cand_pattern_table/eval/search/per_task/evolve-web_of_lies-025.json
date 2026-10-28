@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-web_of_lies-025",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'no, yes, yes'; expected 'yes, no, no'.",
+  "output": "Looking at this logic puzzle, I need to track truth values systematically.\n\n**Finding contradictory pairs:**\n\nFirst, let me identify people who directly reference each other and establish their values:\n- Statements 1 & 11: Mustafa says Mickey lies; Mickey says Mustafa lies \u2192 One tells truth, one lies. Testing: If Mustafa tells truth, Mickey lies; if Mickey lies, Mustafa lies (contradiction). So **Mustafa lies, Mickey tells truth**.\n- Statements 8 & 38: Mariah says Miriam lies; Miriam says Mariah lies \u2192 **Mariah lies, Miriam tells truth**\n- Statements 9 & 54: Mindy says Natasha lies; Natasha says Mindy lies \u2192 **Mindy lies, Natasha tells truth**\n- Statements 13 & 35: Ozzy says Maya lies; Maya says Ozzy lies \u2192 **Ozzy lies, Maya tells truth**\n- Statements 19 & 51: Orin says Milo lies; Milo says Orin lies \u2192 **Orin lies, Milo tells truth**\n- Statements 22 & 61: Mackenzie says Millie lies; Millie says Mackenzie lies \u2192 **Mackenzie lies, Millie tells truth**\n- Statements 34 & 46: Octavius says Oprah lies; Oprah says Octavius lies \u2192 **Octavius lies, Oprah tells truth**\n- Statements 27 & 62: Orlando says Octavia lies; Octavia says Orlando lies \u2192 **Orlando lies, Octavia tells truth**\n- Statements 37 & 58: Mark says Opal lies; Opal says Mark lies \u2192 **Mark lies, Opal tells truth**\n- Statements 49 & 63: Bahar says Maynard lies; Maynard says Bahar lies \u2192 **Bahar lies, Maynard tells truth**\n\nAlso establishing same-value pairs:\n- Statements 4 & 42: Malcolm and Mia must have the same value\n- Statements 10 & 53: Oda and Otis must have the same value\n- Statements 15 & 36: Max and Odessa must have the same value\n- Statements 5 & 45: Osborne and Ovid must have the same value\n- And several others...\n\n**Key deduction chain:**\n\nStatement 3 (Raymond): With Mickey=truth, Mustafa=false, exactly one tells truth requires Jerry=false (making Raymond=true).\n\nStatement 21 (Jamey): With Bahar=false, Maynard=true, Raymond=true, we have 2 truths, so \"exactly one\" is false. Therefore **Jamey=false**.\n\nStatement 41 (Jerry): Oprah=truth, Octavius=false, so exactly one tells truth requires Antwan=false.\n\nStatement 39 (Antwan): Ka, Uri, Ophelia must satisfy exactly 2 or 0 tell truth. Analysis shows Antwan's statement is true iff Ka=false.\n\nStatement 69 (Alexis): If Alexis=true, then Jamey=true, but Jamey=false, so **Alexis=false**.\n\nFollowing chains through statements 64, 52, 2, and 23, I can establish that these create a consistent value for **S = false**.\n\n**For Tamika, Sherrie, and Shenna specifically:**\n\nFrom statement 56 (Sherrie): With Tamika and Murphy=Osric, the statement \"exactly two or none tell truth\" is satisfied for any value of Murphy/Osric. The statement is always true, so **Sherrie must tell truth**.\n\nFrom statement 32 (Tamika) combined with statement 56: Sherrie=true \u2194 Tamika=false, so **Tamika lies**.\n\nFrom statement 12 (Shenna): Shenna says Conception lies.\n- Statements 55 & 30 show: Conception \u2194 Ryan \u2194 \u00acFidel\n- Statement 48: Fidel \u2194 Yoland  \n- Statement 40: Yoland \u2194 \u00acChristie\n- Statement 44: Christie \u2194 \u00acTeressa\n- Statements 26 & 24 combined show: Teressa \u2194 Shalonda, and Shalonda=true (her statement is always true)\n- Therefore: Conception=false, so **Shenna tells truth**\n\nANSWER: <no, yes, yes>",
+  "tokens": 20369,
+  "cost_usd": 0.092533,
+  "steps": 1,
+  "latency_s": 0.0176851749420166,
+  "error": null,
+  "family": "web_of_lies",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

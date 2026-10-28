@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-causal_understanding-025",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'No').",
+  "output": "No",
+  "tokens": 6923,
+  "cost_usd": 0.028155,
+  "steps": 2,
+  "latency_s": 48.02625489234924,
+  "error": null,
+  "family": "causal_understanding",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

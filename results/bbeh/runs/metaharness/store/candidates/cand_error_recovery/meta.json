@@ -1,0 +1,18 @@
+{
+ "name": "cand_error_recovery",
+ "artifact_id": "a5d74aad051a31fcd61c7ea4745fe2dbc4f9ac3d80423d66cd01fe405cd6b009",
+ "created_at": 1793222235.0136259,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Many answer extraction failures are due to formatting issues rather than reasoning failures. Adding a recovery mechanism that asks for explicit answer formatting on second attempt improves accuracy by catching cases where the model produced correct reasoning but poor formatting.",
+ "axis": "exploitation",
+ "components": [
+  "E:recovery_trigger",
+  "A:recovery_prompt"
+ ],
+ "parents_read": [],
+ "order": 5,
+ "reason": ""
+}

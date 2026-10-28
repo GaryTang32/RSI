@@ -1,0 +1,19 @@
+{
+ "name": "cand_decomposed_subgoals",
+ "artifact_id": "1830c55eea44162736ee3f24e6edc18e7a1641378ca63346d1bd7a4186e3e4df",
+ "created_at": 1793220923.8121452,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Different problem types benefit from different decomposition strategies. Providing explicit sub-goal guidance tailored to problem type (tracking, pattern learning, logic, calculation) improves accuracy more than generic guidance. This allows the model to apply the most effective reasoning strategy for each problem.",
+ "axis": "exploration",
+ "components": [
+  "A:problem_specific_prompts",
+  "A:sub_goal_decomposition",
+  "B:structured_verification"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": ""
+}

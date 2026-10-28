@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-web_of_lies-025",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer \"ModuleNotFoundError: No module named 'z3'\"; expected 'yes, no, no'.",
+  "output": "ModuleNotFoundError: No module named 'z3'",
+  "tokens": 19741,
+  "cost_usd": 0.088965,
+  "steps": 2,
+  "latency_s": 95.59970951080322,
+  "error": null,
+  "family": "web_of_lies",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

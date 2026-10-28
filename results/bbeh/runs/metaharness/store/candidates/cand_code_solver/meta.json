@@ -1,0 +1,19 @@
+{
+ "name": "cand_code_solver",
+ "artifact_id": "278adebf9480e81aafa0d0849f8b0bef0276655239de6884ec4ccb31419ea7a8",
+ "created_at": 1793221946.8656619,
+ "status": "evaluated",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Structured reasoning problems (tracking objects, evaluating expressions, counting patterns) are more reliably solved through code generation and execution than text-based reasoning. Detecting structured problems and generating Python to compute answers reduces calculation errors and improves accuracy on these problem families.",
+ "axis": "exploration",
+ "components": [
+  "C:problem_detection",
+  "F:code_generation",
+  "F:tool_execution"
+ ],
+ "parents_read": [],
+ "order": 4,
+ "reason": ""
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-object_properties-167",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '[killed: timeout]'; expected '5'.",
+  "output": "[killed: timeout]",
+  "tokens": 18943,
+  "cost_usd": 0.08477900000000001,
+  "steps": 2,
+  "latency_s": 123.40103459358215,
+  "error": null,
+  "family": "object_properties",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

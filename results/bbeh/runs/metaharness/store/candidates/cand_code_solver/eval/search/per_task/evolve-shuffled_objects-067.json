@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-shuffled_objects-067",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'Rodrigo'; expected '(D)'.",
+  "output": "Rodrigo",
+  "tokens": 23713,
+  "cost_usd": 0.10539499999999999,
+  "steps": 2,
+  "latency_s": 110.02168869972229,
+  "error": null,
+  "family": "shuffled_objects",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

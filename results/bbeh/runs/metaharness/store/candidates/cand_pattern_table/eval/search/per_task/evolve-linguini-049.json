@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-linguini-049",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '\u0161\u02bcawt\u02b7\u0259n (or with separation: \u0161\u02bc-aw-t\u02b7\u0259n)'; expected '\u0161\u02bc\u0259wt\u02b7an'.",
+  "output": "**\u0161\u02bcawt\u02b7\u0259n** (or with separation: **\u0161\u02bc-aw-t\u02b7\u0259n**)",
+  "tokens": 26341,
+  "cost_usd": 0.124993,
+  "steps": 1,
+  "latency_s": 188.8269488811493,
+  "error": null,
+  "family": "linguini",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]

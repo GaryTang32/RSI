@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-boolean_expressions-148",
+  "seed": 0,
+  "score": 1.0,
+  "feedback": "Correct (answer 'C').",
+  "output": "C",
+  "tokens": 50227,
+  "cost_usd": 0.228943,
+  "steps": 2,
+  "latency_s": 140.0415427684784,
+  "error": null,
+  "family": "boolean_expressions",
+  "meta": {
+   "llm_calls": 2,
+   "tool_calls": 0
+  }
+ }
+]

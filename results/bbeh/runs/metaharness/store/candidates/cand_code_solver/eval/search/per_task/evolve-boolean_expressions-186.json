@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-boolean_expressions-186",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer \"SyntaxError: unmatched ')'\"; expected '(B)'.",
+  "output": "SyntaxError: unmatched ')'",
+  "tokens": 15025,
+  "cost_usd": 0.065197,
+  "steps": 2,
+  "latency_s": 0.08063983917236328,
+  "error": null,
+  "family": "boolean_expressions",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

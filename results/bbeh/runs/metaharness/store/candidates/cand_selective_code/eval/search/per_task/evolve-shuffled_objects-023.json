@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-shuffled_objects-023",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer 'green'; expected '(B)'.",
+  "output": "green",
+  "tokens": 30405,
+  "cost_usd": 0.13661100000000004,
+  "steps": 2,
+  "latency_s": 0.043237924575805664,
+  "error": null,
+  "family": "shuffled_objects",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 1
+  }
+ }
+]

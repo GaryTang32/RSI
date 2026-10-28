@@ -1,0 +1,18 @@
+{
+ "name": "cand_structured_reasoning",
+ "artifact_id": "725e72fa7f50b488def34dac92cfbda31f02d6caa1044731a836f9138ce996cf",
+ "created_at": 1793221391.0529583,
+ "status": "evaluated",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Making the model's reasoning process explicit and forcing verification steps improves accuracy on complex problems (tracking, pattern learning) without requiring multiple calls. The structured reasoning approach guides the model through problem identification, strategy selection, execution, and verification.",
+ "axis": "exploitation",
+ "components": [
+  "A:prompt_template",
+  "B:reasoning_structure"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": ""
+}

@@ -1,0 +1,19 @@
+[
+ {
+  "task_id": "evolve-shuffled_objects-023",
+  "seed": 0,
+  "score": 0.0,
+  "feedback": "Incorrect. Extracted answer '(B) orange ball'; expected '(B)'.",
+  "output": "(B) orange ball",
+  "tokens": 24837,
+  "cost_usd": 0.09955589999999999,
+  "steps": 1,
+  "latency_s": 0.012744665145874023,
+  "error": null,
+  "family": "shuffled_objects",
+  "meta": {
+   "llm_calls": 1,
+   "tool_calls": 0
+  }
+ }
+]
