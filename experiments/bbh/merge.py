@@ -63,6 +63,9 @@ def merge(d: Path, reps: int = 10000) -> dict:
         # resumed run or one that reuses another arm's calls is not shown as free
         full = {k: round((sp.get(k, {}).get("usd") or 0) + (sp.get(k, {}).get("usd_saved_by_cache") or 0), 4)
                 for k in ("search", "eval")}
+        own = ((o.get("search") or {}).get("usage") or {}).get("cost_usd")
+        if own:     # a run resumed from saved method state never replays its earlier calls: take the method's counter
+            full["search"] = round(max(full["search"], own), 4)
         n_ex = len(o.get("per_task") or {})
         row = {"status": o.get("status"), "n": n_ex,
                "search_usd": full["search"], "eval_usd": full["eval"],
