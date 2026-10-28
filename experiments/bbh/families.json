@@ -1,0 +1,48 @@
+{
+ "_comment": "Practice (evolve/holdout) and OOD families for experiments/bbh. Re-pick after the pilot arm (compare_live.py --arm pilot --apply rewrites practice/ood from its suggestion). pilot_candidates: families the pilot scores (10 reserved examples each, never used by any other split).",
+ "practice": [
+  "multistep_arithmetic_two",
+  "word_sorting",
+  "dyck_languages",
+  "logical_deduction_five_objects",
+  "tracking_shuffled_objects_five_objects",
+  "date_understanding"
+ ],
+ "ood": [
+  "navigate",
+  "object_counting",
+  "temporal_sequences",
+  "geometric_shapes",
+  "penguins_in_a_table",
+  "web_of_lies"
+ ],
+ "pilot_candidates": [
+  "boolean_expressions",
+  "causal_judgement",
+  "date_understanding",
+  "disambiguation_qa",
+  "dyck_languages",
+  "formal_fallacies",
+  "geometric_shapes",
+  "hyperbaton",
+  "logical_deduction_three_objects",
+  "logical_deduction_five_objects",
+  "logical_deduction_seven_objects",
+  "movie_recommendation",
+  "multistep_arithmetic_two",
+  "navigate",
+  "object_counting",
+  "penguins_in_a_table",
+  "reasoning_about_colored_objects",
+  "ruin_names",
+  "salient_translation_error_detection",
+  "snarks",
+  "sports_understanding",
+  "temporal_sequences",
+  "tracking_shuffled_objects_three_objects",
+  "tracking_shuffled_objects_five_objects",
+  "tracking_shuffled_objects_seven_objects",
+  "web_of_lies",
+  "word_sorting"
+ ]
+}
