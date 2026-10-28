@@ -25,19 +25,16 @@ from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
 from ...core.tasks import Task, TaskSuite
-from .data import TASKS, load_examples
+from .data import BBH, TASKS, Benchmark, load_examples
 
-DEFAULT_PRACTICE: tuple[str, ...] = ("multistep_arithmetic_two", "word_sorting", "dyck_languages",
-                                     "logical_deduction_five_objects", "tracking_shuffled_objects_five_objects",
-                                     "date_understanding")
-DEFAULT_OOD: tuple[str, ...] = ("navigate", "object_counting", "temporal_sequences", "geometric_shapes",
-                                "penguins_in_a_table", "web_of_lies")
+DEFAULT_PRACTICE: tuple[str, ...] = BBH.default_practice
+DEFAULT_OOD: tuple[str, ...] = BBH.default_ood
 #: candidate families of the pilot (all 27 tasks; trim in families.json to make the pilot cheaper)
 PILOT_CANDIDATES: tuple[str, ...] = TASKS
 #: examples per family: evolve 6 (36), holdout 10 (60), ood 10 (60); val is off by default
-DEFAULT_PER_FAMILY: dict[str, int] = {"evolve": 6, "val": 0, "holdout": 10, "ood": 10}
-PILOT_PER_FAMILY = 10
-PILOT_SEED = "bbh-pilot-v1"
+DEFAULT_PER_FAMILY: dict[str, int] = dict(BBH.default_per_family)
+PILOT_PER_FAMILY = BBH.pilot_per_family
+PILOT_SEED = BBH.pilot_seed
 #: families that are re-sized copies of one task; a pilot should not put siblings on both sides
 SIBLINGS: dict[str, str] = {t: t.rsplit("_", 2)[0] for t in TASKS
                             if t.startswith(("logical_deduction_", "tracking_shuffled_objects_"))}
@@ -47,27 +44,30 @@ def sibling_group(task: str) -> str:
     return SIBLINGS.get(task, task)
 
 
-def load_families(path: str | Path) -> dict:
+def load_families(path: str | Path, benchmark: Optional[Benchmark] = None) -> dict:
     """``{"practice": [...], "ood": [...], "pilot_candidates": [...]}`` from a JSON file, validated."""
+    b = benchmark or BBH
     d = json.loads(Path(path).read_text())
     fam = {"practice": list(d["practice"]), "ood": list(d["ood"]),
-           "pilot_candidates": list(d.get("pilot_candidates") or PILOT_CANDIDATES)}
-    check_families(fam["practice"], fam["ood"])
-    if bad := [t for t in fam["pilot_candidates"] if t not in TASKS]:
+           "pilot_candidates": list(d.get("pilot_candidates") or b.tasks)}
+    check_families(fam["practice"], fam["ood"], b)
+    if bad := [t for t in fam["pilot_candidates"] if t not in b.tasks]:
         raise ValueError(f"unknown pilot candidates {bad}")
     return fam
 
 
-def check_families(practice: Sequence[str], ood: Sequence[str]) -> None:
-    if bad := [t for t in [*practice, *ood] if t not in TASKS]:
-        raise ValueError(f"unknown BBH tasks {bad}")
+def check_families(practice: Sequence[str], ood: Sequence[str], benchmark: Optional[Benchmark] = None) -> None:
+    b = benchmark or BBH
+    if bad := [t for t in [*practice, *ood] if t not in b.tasks]:
+        raise ValueError(f"unknown {b.name.upper()} tasks {bad}")
     if len(set(practice)) != len(practice) or len(set(ood)) != len(ood):
         raise ValueError("duplicate family in practice or ood")
     if both := sorted(set(practice) & set(ood)):
         raise ValueError(f"families in both practice and ood: {both}")
 
 
-def _family_order(examples: list[dict], family: str, pilot_reserve: int, seed) -> tuple[list[int], list[int]]:
+def _family_order(examples: list[dict], family: str, pilot_reserve: int, seed,
+                  pilot_seed: str = PILOT_SEED, name: str = "bbh") -> tuple[list[int], list[int]]:
     """(pilot indices, the remaining indices shuffled by ``seed``); duplicate inputs keep their first index."""
     seen: set = set()
     idx = []
@@ -75,9 +75,9 @@ def _family_order(examples: list[dict], family: str, pilot_reserve: int, seed) -
         if e["input"] not in seen:
             seen.add(e["input"])
             idx.append(i)
-    random.Random(f"{PILOT_SEED}:{family}").shuffle(idx)
+    random.Random(f"{pilot_seed}:{family}").shuffle(idx)
     pilot, rest = idx[:pilot_reserve], idx[pilot_reserve:]
-    random.Random(f"bbh:{seed}:{family}").shuffle(rest)
+    random.Random(f"{name}:{seed}:{family}").shuffle(rest)
     return pilot, rest
 
 
@@ -87,22 +87,25 @@ def _task(split: str, family: str, i: int, ex: dict) -> Task:
 
 def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[str]] = None, *,
                per_family: Optional[Mapping[str, int]] = None, seed: int = 0,
-               pilot_reserve: int = PILOT_PER_FAMILY, families_file: Optional[str | Path] = None,
-               **load_kw) -> TaskSuite:
+               pilot_reserve: Optional[int] = None, families_file: Optional[str | Path] = None,
+               benchmark: Optional[Benchmark] = None, **load_kw) -> TaskSuite:
     """evolve / (val) / holdout from ``practice`` and ood from ``ood``, per-family counts from ``per_family``.
 
     ``families_file`` supplies ``practice``/``ood`` when they are not given; ``load_kw`` (``cache_dir``,
-    ``manifest``, ``fetch``, ``download``) go to the loader. Task ids are ``<split>-<family>-<BBH index>``."""
+    ``manifest``, ``fetch``, ``download``) go to the loader. Task ids are ``<split>-<family>-<index in file>``.
+    ``benchmark`` (default BBH) supplies the tasks, the default families/sizes and the pilot reserve."""
+    b = benchmark or BBH
     if families_file is not None and (practice is None or ood is None):
-        fam = load_families(families_file)
+        fam = load_families(families_file, b)
         practice = fam["practice"] if practice is None else practice
         ood = fam["ood"] if ood is None else ood
-    practice = list(DEFAULT_PRACTICE if practice is None else practice)
-    ood = list(DEFAULT_OOD if ood is None else ood)
-    check_families(practice, ood)
-    n = {**DEFAULT_PER_FAMILY, **(per_family or {})}
-    if unknown := sorted(set(n) - set(DEFAULT_PER_FAMILY)):
-        raise ValueError(f"unknown per_family keys {unknown}; valid: {sorted(DEFAULT_PER_FAMILY)}")
+    practice = list(b.default_practice if practice is None else practice)
+    ood = list(b.default_ood if ood is None else ood)
+    check_families(practice, ood, b)
+    pilot_reserve = b.pilot_per_family if pilot_reserve is None else pilot_reserve
+    n = {**b.default_per_family, **(per_family or {})}
+    if unknown := sorted(set(n) - set(b.default_per_family)):
+        raise ValueError(f"unknown per_family keys {unknown}; valid: {sorted(b.default_per_family)}")
     order = [s for s in ("evolve", "val", "holdout") if n[s]]
     splits: dict[str, list[str]] = {s: [] for s in order}
     splits.setdefault("evolve", [])
@@ -110,8 +113,8 @@ def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[
     splits["ood"] = []
     tasks: list[Task] = []
     for fam in practice + ood:
-        ex = load_examples(fam, **load_kw)
-        _, rest = _family_order(ex, fam, pilot_reserve, seed)
+        ex = load_examples(fam, benchmark=b, **load_kw)
+        _, rest = _family_order(ex, fam, pilot_reserve, seed, b.pilot_seed, b.name)
         plan = [(s, n[s]) for s in order] if fam in practice else [("ood", n["ood"])]
         need = sum(c for _, c in plan)
         if need > len(rest):
@@ -124,23 +127,25 @@ def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[
                 splits[split].append(t.id)
             pos += count
     splits["smoke"] = splits["evolve"][:2]
-    return TaskSuite(tasks, splits, name=f"bbh-s{seed}")
+    return TaskSuite(tasks, splits, name=f"{b.name}-s{seed}")
 
 
-def make_pilot_suite(families: Optional[Sequence[str]] = None, *, n_per_family: int = PILOT_PER_FAMILY,
-                     **load_kw) -> TaskSuite:
+def make_pilot_suite(families: Optional[Sequence[str]] = None, *, n_per_family: Optional[int] = None,
+                     benchmark: Optional[Benchmark] = None, **load_kw) -> TaskSuite:
     """The pilot pool: the first ``n_per_family`` reserved examples of each candidate family (split ``pilot``).
 
     Never overlaps :func:`make_suite` with the same ``pilot_reserve >= n_per_family`` (the default)."""
-    families = list(PILOT_CANDIDATES if families is None else families)
-    if bad := [t for t in families if t not in TASKS]:
-        raise ValueError(f"unknown BBH tasks {bad}")
+    b = benchmark or BBH
+    n_per_family = b.pilot_per_family if n_per_family is None else n_per_family
+    families = list(b.tasks if families is None else families)
+    if bad := [t for t in families if t not in b.tasks]:
+        raise ValueError(f"unknown {b.name.upper()} tasks {bad}")
     tasks: list[Task] = []
     for fam in families:
-        ex = load_examples(fam, **load_kw)
-        pilot, _ = _family_order(ex, fam, n_per_family, 0)
+        ex = load_examples(fam, benchmark=b, **load_kw)
+        pilot, _ = _family_order(ex, fam, n_per_family, 0, b.pilot_seed, b.name)
         tasks += [_task("pilot", fam, i, ex[i]) for i in pilot]
-    return TaskSuite(tasks, {"pilot": [t.id for t in tasks], "evolve": []}, name="bbh-pilot")
+    return TaskSuite(tasks, {"pilot": [t.id for t in tasks], "evolve": []}, name=f"{b.name}-pilot")
 
 
 def suggest_families(acc: Mapping[str, float], *, n_practice: int = 6, n_ood: int = 6, lo: float = 0.15,

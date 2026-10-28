@@ -41,6 +41,12 @@ class BBHDomain(AgentQADomain):
     searched harnesses run with the default ``False``, like on AgentQA."""
 
     name = "bbh"
+    #: answer-format sentence of :meth:`describe`
+    answer_note = "multiple-choice questions are answered with the option letter in parentheses, e.g. (B). "
+    #: grading functions (staticmethods, bound at class creation: replacing the module attribute changes nothing)
+    _is_correct = staticmethod(is_correct)
+    _extract = staticmethod(extract_answer)
+    _is_generic = staticmethod(is_generic_target)
 
     def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0,
                  ood_hint: Optional[str] = None, family_hint: bool = False) -> None:
@@ -59,9 +65,8 @@ class BBHDomain(AgentQADomain):
             "where llm(prompt, system=None) -> str calls a frozen language model (each call costs tokens), "
             "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps artifact file "
             "paths to their text (prompts, skills, memory). The returned string is graded by exact match of the "
-            "final answer (a line 'ANSWER: <value>' is extracted if present, else the last line); multiple-choice "
-            "questions are answered with the option letter in parentheses, e.g. (B). "
-            f"Practice tasks are multi-step reasoning questions of these kinds: {fams}. " + (self.ood_hint or ""))
+            "final answer (a line 'ANSWER: <value>' is extracted if present, else the last line); "
+            + self.answer_note + f"Practice tasks are multi-step reasoning questions of these kinds: {fams}. " + (self.ood_hint or ""))
 
     def domain_of(self, task: Task) -> str:
         """Harness² library key: the BBH task family."""
@@ -72,7 +77,7 @@ class BBHDomain(AgentQADomain):
         terms = []
         for t in self.tasks.split(split, allow_sealed=True):
             terms.append(str(t.id))
-            if t.target is not None and not is_generic_target(str(t.target)):
+            if t.target is not None and not self._is_generic(str(t.target)):
                 terms.append(str(t.target))
         return sorted(set(terms))
 
@@ -80,16 +85,20 @@ class BBHDomain(AgentQADomain):
         if self.family_hint:
             artifact = artifact.with_files({FAMILY_FILE: str(task.family)})
         ex = super().execute(artifact, task, seed=seed, llm=llm)
-        if tampered := _restore_integrity():
+        if tampered := self._restore_grading():
             return Execution(error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); "
                                    "restored", trace=ex.trace, tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps)
         return ex
 
+    def _restore_grading(self) -> list[str]:
+        """Put back replaced grading-path attributes (BBH's tripwire; subclasses add theirs)."""
+        return _restore_integrity()
+
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         _aq._restore_integrity()
-        _restore_integrity()
-        ok = is_correct(str(task.target), str(execution.output), str(task.input))
-        got = extract_answer(str(execution.output))[:200]
+        self._restore_grading()
+        ok = self._is_correct(str(task.target), str(execution.output), str(task.input))
+        got = self._extract(str(execution.output))[:200]
         if ok:
             return 1.0, f"Correct (answer {got!r})."
         return 0.0, f"Incorrect. Extracted answer {got!r}; expected {task.target!r}."
@@ -108,9 +117,13 @@ SIM_KIND = {"multistep_arithmetic_two": "numeric", "word_sorting": "strings", "d
 class BBHSimModel(SimModel):
     """AgentQA's simulated frozen model on BBH questions (offline tests and dry runs only)."""
 
+    sim_kind = SIM_KIND
+    prefix = "bbh"
+
     def __init__(self, suite: TaskSuite, skill: float = 1.0, name: Optional[str] = None) -> None:
-        super().__init__(suite, skill=skill, name=name or ("bbh-sim-model" if skill == 1.0 else f"bbh-sim@{skill:g}"))
-        self.questions = {q: (ans, SIM_KIND.get(fam, fam)) for q, (ans, fam) in self.questions.items()}
+        p = self.prefix
+        super().__init__(suite, skill=skill, name=name or (f"{p}-sim-model" if skill == 1.0 else f"{p}-sim@{skill:g}"))
+        self.questions = {q: (ans, self.sim_kind.get(fam, fam)) for q, (ans, fam) in self.questions.items()}
 
 
 # ----- fixed reference: the official 3-shot CoT prompt per family ---------------------------------------------------
@@ -145,7 +158,8 @@ def _integrity_targets() -> list:
                                      "_binary_ok", "_number_ok", "_dyck_ok", "_text_ok", "_tokens", "extract_answer",
                                      "normalize")]
             + [(mod, n) for n in ("is_correct", "extract_answer", "_restore_integrity")]
-            + [(BBHDomain, n) for n in ("grade", "execute", "domain_of", "leakage_terms")])
+            + [(BBHDomain, n) for n in ("grade", "execute", "domain_of", "leakage_terms", "_restore_grading",
+                                        "_is_correct", "_extract", "_is_generic")])
 
 
 def _restore_integrity() -> list[str]:

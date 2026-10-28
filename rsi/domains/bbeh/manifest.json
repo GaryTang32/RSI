@@ -1,0 +1,31 @@
+{
+ "source": "https://github.com/google-deepmind/bbeh",
+ "commit": "80d12ca916b7158f22293fcf3144f4d3d854d4be",
+ "url_template": "https://raw.githubusercontent.com/google-deepmind/bbeh/{commit}/{path}",
+ "license": "Data: CC-BY 4.0; code: Apache 2.0 (Google LLC). BIG-Bench Extra Hard (Kazemi et al. 2025)",
+ "files": {
+  "bbeh/benchmark_tasks/bbeh_boardgame_qa/task.json": "3d47dc41eb825b2ee77a696e79859d8d2043b1bf04077e120caec4ad324f32a8",
+  "bbeh/benchmark_tasks/bbeh_boolean_expressions/task.json": "49e763f10dbea048be56036c8cbf2a6d0bb735235e3806b50809a1addb57eee2",
+  "bbeh/benchmark_tasks/bbeh_buggy_tables/task.json": "c27b76200bf1b0d4ada3729f5a40aa1f0062267e42c4f40820b3e40891c3fe85",
+  "bbeh/benchmark_tasks/bbeh_causal_understanding/task.json": "b10bbf43f7f5cdde927b0ad03f99a7a78b3525de4bfa90008b36b12b010c9a81",
+  "bbeh/benchmark_tasks/bbeh_disambiguation_qa/task.json": "6d34e0c89c3b1e1386df5919159b8d67b4668308d1225bd1ee54eb1e946472bd",
+  "bbeh/benchmark_tasks/bbeh_dyck_languages/task.json": "a089612502bdfb98a447c8cba84f972724308ea0d059e8561e3cc9785de585cc",
+  "bbeh/benchmark_tasks/bbeh_geometric_shapes/task.json": "7ff506d026450cb878a0963ce478724ad1451bc56469c813c791b9345ac1bea7",
+  "bbeh/benchmark_tasks/bbeh_hyperbaton/task.json": "0fbacc94f4c740c3050021f4c57089f2011d7bd77fcff3346a7f4b9dbef842e2",
+  "bbeh/benchmark_tasks/bbeh_linguini/task.json": "ba387d2aa1bde122e6c9937fca4e075b9cc7d64e6047b170cfcffd6304919ea8",
+  "bbeh/benchmark_tasks/bbeh_movie_recommendation/task.json": "808882647b84c116a57e0975e3d357749525e12d215c4a5dae83de83ae8c4772",
+  "bbeh/benchmark_tasks/bbeh_multistep_arithmetic/task.json": "47207086cd2afe74df9968172d24134c82af8c666144092f04e4c1ebad8cf3d2",
+  "bbeh/benchmark_tasks/bbeh_nycc/task.json": "67c9a9dca40e6ec820a279da19a019cedd5427fbaaae3fd175cdb74965474b08",
+  "bbeh/benchmark_tasks/bbeh_object_counting/task.json": "a0a8b10ca1aa06eae611c7c7e854fbec4f9622c8f74a74ffa00436a9a8609b67",
+  "bbeh/benchmark_tasks/bbeh_object_properties/task.json": "d606b3aa0c35d5397afc5937207174593c82ad5dfcaf7e5dfb40a99278aef0e4",
+  "bbeh/benchmark_tasks/bbeh_sarc_triples/task.json": "4c7b8eb4b542d326152394456c0a1afc8ef5447ee06dd4187b7eb91027a6b821",
+  "bbeh/benchmark_tasks/bbeh_shuffled_objects/task.json": "43cda28220c66e8d63e667d3091cd18b0b17aa55c005bb24bbb63144afdba9c1",
+  "bbeh/benchmark_tasks/bbeh_spatial_reasoning/task.json": "e77986b73e0ed15b5f950978b7758f55311b4d50e7215961084b126e4d960cb7",
+  "bbeh/benchmark_tasks/bbeh_sportqa/task.json": "69b3f164d9617eab9185830eacf4250badb56c2d718ddc75012597ed1a4bc9bf",
+  "bbeh/benchmark_tasks/bbeh_temporal_sequence/task.json": "55f6711d3d76925acb5d2fffdc1947e0e7186c686f0a343598394a57df6c7c6e",
+  "bbeh/benchmark_tasks/bbeh_time_arithmetic/task.json": "2510515a6f12024a742743e29a389f07beacb3bf4c71e0b59be12f3e364cf31b",
+  "bbeh/benchmark_tasks/bbeh_web_of_lies/task.json": "15f23d32579285701f68dae7947e2191eff21ee97440dfa73cb3565a66c77a6d",
+  "bbeh/benchmark_tasks/bbeh_word_sorting/task.json": "f49674b7b85774d6190c2844e1682c2ee8ff591ca1eeee4e785a45ef1e20024d",
+  "bbeh/benchmark_tasks/bbeh_zebra_puzzles/task.json": "0acd979060ee49f063f241dd1a298bd80b63d6b7fbfb08057ff480bff98a6198"
+ }
+}

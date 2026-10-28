@@ -11,7 +11,7 @@ A harness fails if any file contains
 """
 from __future__ import annotations
 
-from typing import Iterable, Mapping
+from typing import Callable, Iterable, Mapping
 
 from ...core.tasks import Task, TaskSuite
 from .grading import is_generic_target
@@ -32,8 +32,11 @@ def _standalone(text: str, needle: str) -> bool:
 
 
 def leak_check(files: Mapping[str, str], tasks: Iterable[Task] | TaskSuite, *, split: str = "evolve",
-               window: int = 40, max_hits: int = 20) -> dict:
-    """``{"passed": bool, "hits": [...], "checked": {...}}`` for harness ``files`` (an Artifact works)."""
+               window: int = 40, max_hits: int = 20,
+               is_generic: Callable[[str], bool] = is_generic_target) -> dict:
+    """``{"passed": bool, "hits": [...], "checked": {...}}`` for harness ``files`` (an Artifact works).
+
+    ``is_generic`` decides which targets are too common to count (BBEH passes its own: at most 2 tokens)."""
     ts = tasks.split(split, allow_sealed=True) if isinstance(tasks, TaskSuite) else list(tasks)
     texts = {p: str(files[p] or "") for p in files}
     questions = [(t.id, str(t.input)) for t in ts]
@@ -48,11 +51,11 @@ def leak_check(files: Mapping[str, str], tasks: Iterable[Task] | TaskSuite, *, s
                     break
     for t in ts:
         tgt = str(t.target).strip()
-        if is_generic_target(tgt):
+        if is_generic(tgt):
             continue
         for path, text in texts.items():
             if _standalone(text, tgt):
                 hits.append({"kind": "target", "task": t.id, "file": path, "snippet": tgt[:80]})
     return {"passed": not hits, "hits": hits[:max_hits], "n_hits": len(hits),
             "checked": {"split": split, "tasks": len(ts), "window": window, "files": sorted(texts),
-                        "non_generic_targets": sum(not is_generic_target(str(t.target)) for t in ts)}}
+                        "non_generic_targets": sum(not is_generic(str(t.target)) for t in ts)}}
