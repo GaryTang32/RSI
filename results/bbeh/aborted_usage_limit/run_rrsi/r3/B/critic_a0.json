@@ -1,0 +1,8 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "critic output unparseable after 3 attempts: "
+ ],
+ "risk_notes": [],
+ "stage": "llm"
+}

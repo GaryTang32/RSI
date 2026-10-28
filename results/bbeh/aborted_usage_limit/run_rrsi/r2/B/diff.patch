@@ -1,0 +1,51 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,29 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""
++Harness with ANSWER line extraction and choice-letter cleanup.
++Extracts the line containing ANSWER:, and strips appended descriptive text
++from choice-letter answers like "(D) Rodrigo" → "(D)".
++"""
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
++    
++    # Find and extract the ANSWER line
++    for line in reply.split('\n'):
++        if 'ANSWER:' in line:
++            answer = line.split('ANSWER:')[-1].strip()
++            
++            # Clean up choice-letter format: if answer is "(LETTER) extra_text", extract just "(LETTER)"
++            # Pattern: starts with '(', has a single character at position 1, closes with ')' at position 2
++            # and has additional text after (length > 3)
++            if len(answer) >= 3 and answer[0] == '(' and answer[2] == ')' and len(answer) > 3:
++                # This is (A)-like format with extra text appended; keep only the choice
++                return answer[:3]
++            
++            # Otherwise return first line of answer (in case multi-line)
++            return answer.split('\n')[0]
++    
++    # Fallback: no ANSWER: line found, return stripped reply
+     return reply.strip()
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,14 @@
+-You are a helpful assistant.
++You are a helpful assistant. When solving problems, use careful step-by-step reasoning:
++
++1. Break down the problem into clear steps.
++2. Work through each step methodically.
++3. Verify your logic before concluding.
++4. Double-check your answer makes sense.
++
++CRITICAL: When you provide your final answer in the ANSWER line:
++- Give ONLY the answer itself, with no additional text or explanation.
++- For multiple-choice questions, provide ONLY the letter in parentheses, e.g., "(A)".
++- For numeric answers, provide ONLY the number, e.g., "5".
++- For yes/no questions, provide ONLY the word, e.g., "Yes".
++- Do NOT append names, descriptions, or explanations to your answer.
++- The ANSWER line must be a single, clean token or phrase.

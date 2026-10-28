@@ -1,36 +1,6 @@
 {
  "failure_modes": [
   {
-   "mode": "shuffled_objects__incorrect_extracted_answer_v_expected_v",
-   "n_tasks": 4,
-   "affected_tasks": [
-    "evolve-shuffled_objects-107",
-    "evolve-shuffled_objects-067",
-    "evolve-shuffled_objects-023",
-    "evolve-shuffled_objects-041"
-   ],
-   "loss": 2.0,
-   "description": "tasks of kind 'shuffled_objects' end with: Incorrect. Extracted answer <v>; expected <v>.",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-shuffled_objects-107",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '(D)'; expected '(E)'."
-    },
-    {
-     "task_id": "evolve-shuffled_objects-067",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '(D) Rodrigo'; expected '(D)'."
-    },
-    {
-     "task_id": "evolve-shuffled_objects-023",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '(B) orange ball'; expected '(B)'."
-    }
-   ]
-  },
-  {
    "mode": "linguini__incorrect_extracted_answer_v_expected_v",
    "n_tasks": 3,
    "affected_tasks": [
@@ -45,17 +15,17 @@
     {
      "task_id": "evolve-linguini-018",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer 'Do we come? (or possibly \"Do we stay?\" - the exact meaning of the verb tiʔ would require additional linguistic data to determine wi"
+     "quote": "Incorrect. Extracted answer 'Do we come?'; expected 'Did we go?'."
     },
     {
      "task_id": "evolve-linguini-049",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer 'saʼantʷən'; expected 'šʼəwtʷan'."
+     "quote": "Incorrect. Extracted answer 'santʷən'; expected 'šʼəwtʷan'."
     },
     {
      "task_id": "evolve-linguini-110",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer 'um-tamab'; expected 'a-tameb'."
+     "quote": "Incorrect. Extracted answer 'um-tamah'; expected 'a-tameb'."
     }
    ]
   },
@@ -67,19 +37,19 @@
     "evolve-boolean_expressions-003",
     "evolve-boolean_expressions-008"
    ],
-   "loss": 2.0,
+   "loss": 1.5,
    "description": "tasks of kind 'boolean_expressions' end with: Incorrect. Extracted answer <v>; expected <v>.",
    "needed_instead": "a general mechanism that fixes this outcome",
    "representative_evidence": [
     {
      "task_id": "evolve-boolean_expressions-186",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer 'C'; expected '(B)'."
+     "quote": "Incorrect. Extracted answer '(A)'; expected '(B)'."
     },
     {
      "task_id": "evolve-boolean_expressions-003",
      "where": "grader",
-     "quote": "Incorrect. Extracted answer 'A'; expected '(D)'."
+     "quote": "Incorrect. Extracted answer 'E'; expected '(D)'."
     },
     {
      "task_id": "evolve-boolean_expressions-008",
@@ -89,70 +59,13 @@
    ]
   },
   {
-   "mode": "object_properties__incorrect_extracted_answer_v_expected_v",
-   "n_tasks": 3,
-   "affected_tasks": [
-    "evolve-object_properties-017",
-    "evolve-object_properties-167",
-    "evolve-object_properties-087"
-   ],
-   "loss": 2.0,
-   "description": "tasks of kind 'object_properties' end with: Incorrect. Extracted answer <v>; expected <v>.",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-object_properties-017",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '8'; expected '9'."
-    },
-    {
-     "task_id": "evolve-object_properties-167",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '3'; expected '5'."
-    },
-    {
-     "task_id": "evolve-object_properties-087",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer '11'; expected '12'."
-    }
-   ]
-  },
-  {
-   "mode": "web_of_lies__incorrect_extracted_answer_v_expected_v",
-   "n_tasks": 3,
-   "affected_tasks": [
-    "evolve-web_of_lies-025",
-    "evolve-web_of_lies-080",
-    "evolve-web_of_lies-177"
-   ],
-   "loss": 2.0,
-   "description": "tasks of kind 'web_of_lies' end with: Incorrect. Extracted answer <v>; expected <v>.",
-   "needed_instead": "a general mechanism that fixes this outcome",
-   "representative_evidence": [
-    {
-     "task_id": "evolve-web_of_lies-025",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer 'no, yes, no'; expected 'yes, no, no'."
-    },
-    {
-     "task_id": "evolve-web_of_lies-080",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer 'yes, no, no'; expected 'yes, yes, yes'."
-    },
-    {
-     "task_id": "evolve-web_of_lies-177",
-     "where": "grader",
-     "quote": "Incorrect. Extracted answer 'yes, yes, no'; expected 'yes, yes, yes'."
-    }
-   ]
-  },
-  {
    "mode": "causal_understanding__incorrect_extracted_answer_v_expected_v",
-   "n_tasks": 1,
+   "n_tasks": 2,
    "affected_tasks": [
-    "evolve-causal_understanding-099"
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023"
    ],
-   "loss": 1.0,
+   "loss": 1.5,
    "description": "tasks of kind 'causal_understanding' end with: Incorrect. Extracted answer <v>; expected <v>.",
    "needed_instead": "a general mechanism that fixes this outcome",
    "representative_evidence": [
@@ -160,15 +73,78 @@
      "task_id": "evolve-causal_understanding-099",
      "where": "grader",
      "quote": "Incorrect. Extracted answer 'No'; expected 'Ambiguous'."
+    },
+    {
+     "task_id": "evolve-causal_understanding-023",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer 'Yes'; expected 'No'."
+    }
+   ]
+  },
+  {
+   "mode": "shuffled_objects__incorrect_extracted_answer_v_expected_v",
+   "n_tasks": 2,
+   "affected_tasks": [
+    "evolve-shuffled_objects-107",
+    "evolve-shuffled_objects-041"
+   ],
+   "loss": 1.0,
+   "description": "tasks of kind 'shuffled_objects' end with: Incorrect. Extracted answer <v>; expected <v>.",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-shuffled_objects-107",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '(C)'; expected '(E)'."
+    },
+    {
+     "task_id": "evolve-shuffled_objects-041",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '(B)'; expected '(F)'."
+    }
+   ]
+  },
+  {
+   "mode": "object_properties__incorrect_extracted_answer_v_expected_v",
+   "n_tasks": 1,
+   "affected_tasks": [
+    "evolve-object_properties-017"
+   ],
+   "loss": 1.0,
+   "description": "tasks of kind 'object_properties' end with: Incorrect. Extracted answer <v>; expected <v>.",
+   "needed_instead": "a general mechanism that fixes this outcome",
+   "representative_evidence": [
+    {
+     "task_id": "evolve-object_properties-017",
+     "where": "grader",
+     "quote": "Incorrect. Extracted answer '8'; expected '9'."
     }
    ]
   }
  ],
  "success_habits": [
   {
-   "habit": "clean_causal_understanding",
+   "habit": "clean_web_of_lies",
+   "n_tasks": 4,
+   "description": "passing tasks of kind 'web_of_lies' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  },
+  {
+   "habit": "clean_object_properties",
    "n_tasks": 3,
+   "description": "passing tasks of kind 'object_properties' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  },
+  {
+   "habit": "clean_causal_understanding",
+   "n_tasks": 2,
    "description": "passing tasks of kind 'causal_understanding' finish cleanly",
+   "risk_if_broken": "regressions on currently solved tasks"
+  },
+  {
+   "habit": "clean_shuffled_objects",
+   "n_tasks": 2,
+   "description": "passing tasks of kind 'shuffled_objects' finish cleanly",
    "risk_if_broken": "regressions on currently solved tasks"
   },
   {
@@ -181,18 +157,6 @@
    "habit": "clean_linguini",
    "n_tasks": 1,
    "description": "passing tasks of kind 'linguini' finish cleanly",
-   "risk_if_broken": "regressions on currently solved tasks"
-  },
-  {
-   "habit": "clean_object_properties",
-   "n_tasks": 1,
-   "description": "passing tasks of kind 'object_properties' finish cleanly",
-   "risk_if_broken": "regressions on currently solved tasks"
-  },
-  {
-   "habit": "clean_web_of_lies",
-   "n_tasks": 1,
-   "description": "passing tasks of kind 'web_of_lies' finish cleanly",
    "risk_if_broken": "regressions on currently solved tasks"
   }
  ]

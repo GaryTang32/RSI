@@ -1,0 +1,47 @@
+[
+ {
+  "i": 0,
+  "event": "skip_infra_error",
+  "selected_program_candidate": 0,
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rollouts": 27,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "frontier_size": 1
+ },
+ {
+  "i": 1,
+  "event": "skip_infra_error",
+  "selected_program_candidate": 0,
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rollouts": 30,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "frontier_size": 1
+ },
+ {
+  "i": 2,
+  "event": "skip_infra_error",
+  "selected_program_candidate": 0,
+  "subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rollouts": 33,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "frontier_size": 1
+ }
+]

@@ -1,0 +1,77 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,40 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""Harness with answer extraction and structured reasoning prompting."""
++
++import re
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    return reply.strip()
++    
++    # Extract and clean the answer
++    cleaned_answer = extract_and_clean_answer(reply)
++    
++    return f"ANSWER: {cleaned_answer}"
++
++
++def extract_and_clean_answer(text):
++    """Extract the answer from model output and remove extraneous descriptions."""
++    lines = text.split('\n')
++    
++    # Look for the ANSWER: line
++    for line in lines:
++        if 'ANSWER:' in line:
++            answer_part = line.split('ANSWER:', 1)[1].strip()
++            
++            # If it looks like a multiple-choice answer (e.g., "(D) Rodrigo"),
++            # extract just the choice letter
++            choice_match = re.match(r'^(\([A-Z]\))\b', answer_part)
++            if choice_match:
++                return choice_match.group(1)
++            
++            # Otherwise return the full answer part (handles yes/no, numbers, phrases, etc.)
++            return answer_part
++    
++    # Fallback: use the last non-empty line if no ANSWER: line found
++    for line in reversed(lines):
++        if line.strip():
++            return line.strip()
++    
++    return ""
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1,12 @@
+-You are a helpful assistant.
++You are a helpful assistant. When solving complex problems, apply the Structured Reasoning Procedure:
++
++**Structured Reasoning Procedure:**
++1. **Decompose:** Break the problem into clear sub-questions or constraints.
++2. **Track:** Keep explicit track of facts, assumptions, and derived conclusions as you work through the problem.
++3. **Check:** After each step, verify that your conclusion is consistent with all constraints so far.
++4. **Reconsider Ambiguity:** If a step feels ambiguous or uncertain, pause and re-examine the evidence.
++5. **Final Verification:** Before answering, review all constraints one more time and confirm your answer satisfies them.
++
++For your final answer, output a line starting with ANSWER: followed by only the answer value itself—nothing else. Do not include descriptions, explanations, or alternative phrasings after the answer.
++
++---
+--- a/prompts/task.md
++++ b/prompts/task.md
+@@ -1,3 +1,12 @@
+ {question}
+ 
+-End with a final line `ANSWER: <answer>`.
++Apply the Structured Reasoning Procedure:
++1. Decompose the problem into sub-questions.
++2. Work through each constraint or piece of information carefully.
++3. Check your reasoning at each step.
++4. If the answer is ambiguous, mark it as such.
++5. Verify your final answer against all constraints.
++
++End with a final line `ANSWER: <answer only, no description>`.
++
++---

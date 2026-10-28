@@ -1,0 +1,73 @@
+{
+ "status": "done",
+ "summary": "Replace generic reasoning checklist with task-family-specific error patterns; target observed reasoning failures with concrete guidance for each task type",
+ "edits": [
+  {
+   "id": "S1",
+   "component": "skill",
+   "hypothesis": "Concrete, task-family-specific reasoning patterns targeting observed failure modes (negation errors in boolean logic, morpheme analysis in translation, causation confusion in causal reasoning) will activate better model behavior than generic advice, improving reasoning accuracy",
+   "targets_mode": "reasoning errors across all task families (boolean_expressions, linguini, causal_understanding, shuffled_objects, object_properties selection errors)",
+   "why_not_lower_lever": "Prose guidance IS the right lever here: the frozen model learns context through example and instruction. Generic checklist hasn't worked; specific patterns targeting actual failure modes have better odds of triggering in-context learning",
+   "trigger_condition": "Always—system prompt always includes skill guidance; this version directly addresses errors present in the evolve traces",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-boolean_expressions-008",
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110",
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023",
+    "evolve-shuffled_objects-107",
+    "evolve-shuffled_objects-041",
+    "evolve-object_properties-017"
+   ],
+   "retroactive_check": "(corrective) F1 and F2 cleaned format but left reasoning errors untouched; this directly targets the remaining reasoning failures by example and pattern, not format. (preservative) Success tasks (web_of_lies, passing causal/object/boolean/shuffled/linguini) will be unaffected because we're adding reasoning guidance that applies equally to correct and incorrect reasoning paths; it does not disrupt the extraction/output cleanup already in place. (transfer) Task families in the held-out set will benefit from family-specific error patterns that generalize (negation handling applies to any logic puzzle, morpheme analysis to any linguistic task, causation reasoning to any causal query)",
+   "regression_risk": "If the new guidance confuses the model or activates wrong behavior patterns, it could regress passing tasks; mitigated by grounding guidance in concrete examples from the traces rather than abstract rules",
+   "mechanism": "Concrete, task-family-specific reasoning patterns targeting observed failure modes (negation errors in boolean logic, morpheme analysis in translation, causation confusion in causal reasoning) will activate better model behavior than generic advice, improving reasoning accuracy"
+  },
+  {
+   "id": "S2",
+   "component": "control_flow",
+   "hypothesis": "Loading task-family-specific reasoning patterns instead of generic checklist will provide targeted guidance without context bloat, enabling the same reasoning support with better relevance",
+   "targets_mode": "reasoning quality improvement by replacing generic advice with specific error-prevention patterns",
+   "why_not_lower_lever": "This is control_flow plumbing: changing which skill file is loaded and integrated into the system prompt. Necessary to actually use the new skill.",
+   "trigger_condition": "Every task: harness loads the new skill file instead of the old one in system prompt construction",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-boolean_expressions-008",
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110",
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023",
+    "evolve-shuffled_objects-107",
+    "evolve-shuffled_objects-041",
+    "evolve-object_properties-017"
+   ],
+   "retroactive_check": "(corrective) Same set as S1—this completes the mechanism. (preservative) Passing tasks unaffected because the loading change is transparent; format cleaning (F1, F2) and output simplification (F2) remain intact. (transfer) Generalizes because the mechanism is skill-file substitution, applicable to any task set; the skill content is family-specific, but the loading pattern is generic",
+   "regression_risk": "If the new skill file is malformed or missing, the system prompt would be empty or incomplete; mitigated by always checking file presence and falling back gracefully",
+   "mechanism": "Loading task-family-specific reasoning patterns instead of generic checklist will provide targeted guidance without context bloat, enabling the same reasoning support with better relevance"
+  }
+ ],
+ "mechanism": "Replace generic reasoning checklist with task-family-specific error patterns; target observed reasoning failures with concrete guidance for each task type",
+ "targets_mode": "reasoning errors across all task families (boolean_expressions, linguini, causal_understanding, shuffled_objects, object_properties selection errors), reasoning quality improvement by replacing generi",
+ "n_changes": 4,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  },
+  {
+   "turn": 1,
+   "action": "done",
+   "n_changes": 4,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

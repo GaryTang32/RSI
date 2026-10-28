@@ -1,0 +1,7 @@
+{
+ "status": "error",
+ "reason": "llm error: You've hit your 5-hour limit · resets 7pm (UTC)",
+ "edits": [],
+ "n_changes": 0,
+ "log": []
+}

@@ -1,0 +1,52 @@
+{
+ "status": "done",
+ "summary": "Fixed S1 skill file: removed task-domain names (Boolean Expressions, Web of Lies, etc.); replaced with generic problem-type categories (constraint problems, counting, causality, patterns). Eliminates implicit task memorization while preserving systematic-thinking scaffolding. S2 (ultra-minimal output) unchanged.",
+ "edits": [
+  {
+   "id": "S1",
+   "component": "skill",
+   "hypothesis": "Generic problem-solving procedures organized by problem type (not task domain)—constraint problems, counting tasks, causal analysis, pattern application—provide scaffolding for systematic thinking while preventing implicit memorization of the evaluator's task structure",
+   "targets_mode": "reasoning errors where model rushes through logic or inconsistently applies rules across task types",
+   "why_not_lower_lever": "This is a skill file providing reusable procedural scaffolding separate from prompts. Skill is the right component because these are general heuristics the model references during reasoning, not wording changes.",
+   "trigger_condition": "Always included in system prompt; activates when model encounters a complex reasoning problem",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023",
+    "evolve-linguini-018",
+    "evolve-linguini-049"
+   ],
+   "retroactive_check": "(corrective) These tasks fail due to reasoning errors; generic procedures scaffold systematic thinking. (preservative) Passing tasks on web_of_lies, object_properties, shuffled_objects are unaffected—procedures don't override working solutions, only offer organization. (transfer) Applies to any reasoning domain: zero task-specific references means no implicit pattern-matching against task structure.",
+   "regression_risk": "Very low. Removed task-domain names entirely, replacing them with problem-type categories that apply universally. Passing tasks see only procedural scaffolding, no task-identifying triggers.",
+   "mechanism": "Generic problem-solving procedures organized by problem type (not task domain)—constraint problems, counting tasks, causal analysis, pattern application—provide scaffolding for systematic thinking while preventing implicit memorization of the evaluator's task structure"
+  },
+  {
+   "id": "S2",
+   "component": "control_flow",
+   "hypothesis": "Returning ONLY the ANSWER line (discarding preamble and trailing content) minimizes output verbosity and format ambiguity, since the grader extracts only the ANSWER: line anyway",
+   "targets_mode": "output format confusion from verbose extracted answers",
+   "why_not_lower_lever": "This is control-flow / output plumbing—structural simplification of what the harness returns, not wording",
+   "trigger_condition": "Always applied; whenever an ANSWER: line is found, return only that line",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Choice-format cleanup (F1 predecessor) worked on shuffled_objects; ultra-minimal output removes remaining context noise. (preservative) Passing tasks with clean ANSWER: lines lose nothing when extra context is stripped. (transfer) Minimal output is universally safer when grader only reads ANSWER: line.",
+   "regression_risk": "Very low. Simpler code, returns only what grader uses.",
+   "mechanism": "Returning ONLY the ANSWER line (discarding preamble and trailing content) minimizes output verbosity and format ambiguity, since the grader extracts only the ANSWER: line anyway"
+  }
+ ],
+ "mechanism": "Fixed S1 skill file: removed task-domain names (Boolean Expressions, Web of Lies, etc.); replaced with generic problem-type categories (constraint problems, counting, causality, patterns). Eliminates implicit task memorization while preserving systematic-thinking scaffolding. S2 (ultra-minimal output) unchanged.",
+ "targets_mode": "reasoning errors where model rushes through logic or inconsistently applies rules across task types, output format confusion from verbose extracted answers",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

@@ -1,0 +1,543 @@
+{
+ "method": "harness2",
+ "rounds": 36,
+ "stop_reason": "stream_end",
+ "baseline": "745ba24861",
+ "best": "745ba24861",
+ "first": {
+  "task": "holdout-boolean_expressions-042",
+  "domain": "boolean_expressions",
+  "status": "ok",
+  "adopted": "agg1",
+  "adopted_tree": "745ba24861",
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 0,
+  "delivered": true,
+  "rollouts": 4,
+  "sessions": 3,
+  "selector": 0,
+  "reflector": 1,
+  "attempts": 3,
+  "fell_back": 0,
+  "stages_kept_base": 3
+ },
+ "last": {
+  "task": "ood-buggy_tables-032",
+  "domain": "buggy_tables",
+  "status": "base-failed",
+  "adopted": null,
+  "adopted_tree": null,
+  "kept_base": true,
+  "library_added": false,
+  "library_size": 3,
+  "delivered": false,
+  "rollouts": 1,
+  "sessions": 0,
+  "selector": 0,
+  "reflector": 0,
+  "attempts": 0,
+  "fell_back": 0,
+  "stages_kept_base": 0
+ },
+ "usage": {
+  "task": {
+   "calls": 59,
+   "input_tokens": 93358,
+   "output_tokens": 422224,
+   "cost_usd": 2.176524,
+   "latency_s": 2902.1317472457886,
+   "total_tokens": 515582
+  },
+  "inv": {
+   "calls": 8,
+   "input_tokens": 56669,
+   "output_tokens": 39502,
+   "cost_usd": 0.310776,
+   "latency_s": 377.41407775878906,
+   "total_tokens": 96171
+  },
+  "dom": {
+   "calls": 8,
+   "input_tokens": 57789,
+   "output_tokens": 32578,
+   "cost_usd": 0.278396,
+   "latency_s": 341.3808982372284,
+   "total_tokens": 90367
+  },
+  "composer": {
+   "calls": 8,
+   "input_tokens": 96228,
+   "output_tokens": 27697,
+   "cost_usd": 0.33086899999999997,
+   "latency_s": 299.05576848983765,
+   "total_tokens": 123925
+  },
+  "reflector": {
+   "calls": 7,
+   "input_tokens": 79355,
+   "output_tokens": 39981,
+   "cost_usd": 0.358552,
+   "latency_s": 380.7860584259033,
+   "total_tokens": 119336
+  },
+  "_total": {
+   "calls": 90,
+   "input_tokens": 383399,
+   "output_tokens": 561982,
+   "cost_usd": 3.455117,
+   "latency_s": 4300.768550157547,
+   "total_tokens": 945381
+  }
+ },
+ "meta": {
+  "config": {
+   "mode": "parallel",
+   "k": 1,
+   "split": null,
+   "max_tasks": null,
+   "max_usd": 35.0,
+   "order": "sorted",
+   "retry_invalid": 1,
+   "selector_attempts": 2,
+   "seed": 0,
+   "library": true,
+   "library_dir": null,
+   "editable": null,
+   "strip_targets": true,
+   "obs_trunc": 50000,
+   "max_text_chars": 24000,
+   "prompts": {},
+   "report": true,
+   "trace": true
+  },
+  "n_stream": 36,
+  "n_done": 36,
+  "unprocessed": [],
+  "deliverables": {
+   "holdout-boolean_expressions-042": "Looking at this logic puzzle, I need to evaluate each complex boolean expression. Let me work through them systematically, starting with the factual claims and mathematical expressions.\n\nFirst, let me verify the key factual statements:\n- The capital of Germany is Berlin: **TRUE**\n- The capital of UAE is Dubai: **FALSE** (it's Abu Dhabi)\n- The capital of Colombia is Bogota: **TRUE**\n- The capital of India is Mumbai: **FALSE** (it's New Delhi)\n- The capital of India is New Delhi: **TRUE**\n- The capital of Cameroon is Douala: **FALSE** (it's Yaound\u00e9)\n- The capital of Iran is Tehran: **TRUE**\n- The capital of Turkey is Istanbul: **FALSE** (current capital is Ankara, since 1923)\n- The capital of Canada is Ottawa: **TRUE**\n\nNow let me check option **(D)** first, as it contains factual statements I've verified:\n\nThe structure is: `(PART1) or (PART2)`\n\n**PART1**: `not ((True) and (2 * 9 + -8 * 8 <= 5 * -9)) or (...)`\n- 2 * 9 + (-8 * 8) = 18 - 64 = -46\n- Is -46 <= -45? **YES** (TRUE)\n- So: (True) and (TRUE) = **TRUE**\n- not(TRUE) = **FALSE**\n- The \"or\" portion evaluates to **FALSE**\n- PART1 = **FALSE**\n\n**PART2**: `not not not ((-3 * -1 > 6) and (The capital of India is New Delhi.)) and not not (...)`\n- (-3 * -1) = 3, and 3 > 6? **NO** (FALSE)\n- FALSE and TRUE = **FALSE**\n- not not not(FALSE) = **TRUE**\n- For the second part: Iran statement is TRUE, and 8 - (4/-2) = 10 > -6 is TRUE\n- not not not(TRUE) and not not(TRUE) = **FALSE** and **TRUE** = **FALSE**\n- PART2 = TRUE and FALSE = **FALSE**\n\nD = FALSE or FALSE = **FALSE**\n\nNow checking option **(E)**:\n\nThe expression ends with: `... or (The capital of Turkey is Istanbul.) or (The capital of Canada is Ottawa.)`\n\nThis becomes: `(something) or (FALSE) or (TRUE)`\n\nBy the properties of OR in boolean logic:\n`(anything) or (FALSE) or (TRUE) = (anything) or (TRUE) = **TRUE**`\n\nSince option E contains an explicit `or (TRUE)` at the end (with Canada), the entire expression evaluates to **TRUE** regardless of the complex expressions before it.\n\nLet me verify the other options would be FALSE by checking their structures - they either lack terminal TRUE values or contain false chains that propagate through the nested NOTs.\n\n**ANSWER: E**",
+   "ood-geometric_shapes-025": "Looking at this SVG path, I need to identify the unique points and then trace the line segments to find what shapes are formed.\n\n## Identifying Unique Points\n\nLet me extract the distinct coordinates from the path:\n- O: (0, 0)\n- I: (0, 18.91109)\n- L: (0, 29.15804)\n- F: (6.6963, 11.59834)\n- E: (13.39261, 0)\n- C: (13.39261, 18.91109)\n- D: (13.39261, 24.85432)\n- B: (13.39261, 29.15804)\n- S: (21.39261, 18.91109)\n- A: (21.39261, 29.15804)\n\n## Line Segments\n\nThe drawn segments are:\n1. O-I (vertical)\n2. I-C (horizontal)\n3. C-D (vertical segment)\n4. D-B (vertical segment)\n5. C-E (vertical)\n6. E-F (diagonal)\n7. F-O (diagonal)\n8. C-S (horizontal)\n9. S-A (vertical)\n10. A-B (horizontal)\n11. B-L (horizontal)\n12. B-C (vertical, which includes C-D-B on the same line)\n\n## Finding Closed Shapes\n\n**Shape 1: Pentagon O-I-C-E-F**\nTracing: O\u2192I (drawn) \u2192 C (drawn) \u2192 E (drawn) \u2192 F (drawn) \u2192 O (drawn)\n\nThis forms a closed pentagon. Let me check if it's convex by examining the cross products at each vertex:\n- At O\u2192I\u2192C: right turn (cross product < 0)\n- At I\u2192C\u2192E: right turn (cross product < 0)\n- At C\u2192E\u2192F: right turn (cross product < 0)\n- At E\u2192F\u2192O: **left turn** (cross product > 0)\n- At F\u2192O\u2192I: right turn (cross product < 0)\n\nSince there's one left turn among right turns, this is a **concave pentagon**. It's also irregular (sides have different lengths). No diagonals are explicitly drawn.\n\nThis matches: **Option 8** (irregular concave pentagon with no diagonals drawn)\n\n**Shape 2: Rectangle C-S-A-B**\nTracing: C\u2192S (drawn) \u2192 A (drawn) \u2192 B (drawn) \u2192 C (drawn)\n\nThis forms a closed rectangle:\n- C: (13.39261, 18.91109)\n- S: (21.39261, 18.91109)\n- A: (21.39261, 29.15804)\n- B: (13.39261, 29.15804)\n\nWidth: 21.39261 - 13.39261 = 8\nHeight: 29.15804 - 18.91109 \u2248 11.06\n\nSince width \u2260 height, it's **not a square**. All four sides are explicitly drawn, and no diagonals are drawn.\n\nThis matches: **Option 1** (rectangle that is not a square and with no diagonals drawn)\n\nANSWER: (J)",
+   "holdout-linguini-137": "atlow nop\u044al \u0144ollow",
+   "ood-sarc_triples-001": "1,0,1",
+   "ood-sportqa-087": "# Analysis\n\n## Main Question: Why are specific positioning and movement patterns crucial for ensuring the best view of the action during a volleyball game?\n\nLet me evaluate each option:\n\n**A) They allow the referee to see both teams' actions clearly.**\n- \u2713 CORRECT - Positioning patterns are directly crucial for allowing referees and officials to see the action clearly to make proper calls.\n\n**B) They facilitate better strategic planning by the coach.**\n- \u2717 Incorrect - While strategy is important, the question specifically asks about \"ensuring the best view of the action,\" not strategic planning.\n\n**C) They help in capturing high-quality footage for broadcasting.**\n- \u2717 Incorrect - Broadcasting is a secondary consideration, not the primary reason for game positioning patterns.\n\n**D) They ensure safety by preventing collisions between players.**\n- \u2717 Incorrect - Safety is separate from viewing the action, though related.\n\n**Answer for Main Question: A**\n\n## Sub-Question 1: Why are rotational movement patterns essential during a volleyball game?\n\n**A) They ensure each player gets a chance to serve.**\n- \u2713 CORRECT - Rotation rules ensure fairness by giving each player an opportunity to serve.\n\n**B) They help in confusing the opponent's team.**\n- \u2717 Incorrect - This is not a legitimate purpose of rotational patterns.\n\n**C) They allow each player to play in all positions, enhancing their skills in low or amateur level.**\n- \u2717 Not universally essential - This benefit applies specifically to amateur/low levels, not across all volleyball levels.\n\n**D) They ensure equal distribution of physical exertion among players.**\n- \u2713 CORRECT - Rotation distributes playing time and physical demands among all players fairly.\n\n**Answer for Sub-Question: AD**\n\n---\n\nANSWER: A, AD",
+   "holdout-web_of_lies-001": "Looking at this logic puzzle, I need to systematically determine the truth values for Sherrie, Raymond, and Leda.\n\n## Key Deductions:\n\n**Starting point:** Tamika tells the truth (given)\n\n**From Teressa's statement (statement 7):**\nTeressa says \"exactly two of {Tamika, Osborne, Meredith} tell the truth or none of them.\"\n\nSince Tamika tells the truth, the only way to satisfy this is if exactly two tell the truth. But statements 1 & 39 create a logical equivalence (Osborne and Meredith must have the same truth value). This means we can't have exactly two truth-tellers among the three, so **Teressa must lie**. The consequence is that all three must tell the truth, so **Osborne and Meredith both tell the truth**.\n\n**From Yoland and Phoebe's statements:**\nWorking through statements 29 and 48 with the constraint that Antwan tells the truth (from statement 33), and that Mickey and Oona have opposite truth values: Yoland's statement becomes false when you count all the truth-tellers, so **Yoland lies** and **Phoebe lies**.\n\n**From Jamey's statement (statement 8):**\nSince Phoebe lies, **Jamey tells the truth**.\n\n**From Jaymie and Shenna's statements:**\nStatement 40: Jaymie claims all of {Jamey, Milton, Ottoline} tell the truth. \nStatements 14 & 50: Milton and Ottoline have opposite truth values.\nSo this statement is false, meaning **Jaymie lies**, which means **Shenna lies** (statements 13).\n\n**From Willian's statement (statement 41):**\nSince Shenna lies and Olivia/Ophelia have opposite truth values, exactly one of {Shenna, Olivia, Ophelia} tells the truth. **Willian tells the truth**.\n\n**From Kandi's statement (statement 43):**\nWith Willian telling the truth and Orin/Melinda having the same truth value, Kandi's statement is always true regardless of Orin/Melinda's values. So **Kandi tells the truth**.\n\n**From Raymond's statement (statement 55):**\n\"Raymond says Kandi tells the truth.\" Since Kandi tells the truth, **Raymond must tell the truth**.\n\n**From Sherrie's statement (statement 38):**\nMike and Oswin have opposite truth values. If Vina tells the truth (and one of Mike/Oswin tells the truth), then two tell the truth total, not one. So Sherrie's statement is false, meaning **Sherrie lies**.\n\n**From Rashida's statement (statement 11):**\nAndree tells the truth. Orla and Millicent have the same truth value.\n- If Orla and Millicent tell the truth: 3 truth-tellers in {Andree, Orla, Millicent}\n- If Orla and Millicent lie: 1 truth-teller\n\nNeither case gives exactly 2 or 0, so the statement is always false. **Rashida lies**.\n\n**From Jerry's statement (statement 45):**\nSince Sanket and Olympia have opposite truth values, and Rashida lies (giving 1 truth-teller in {Rashida, Sanket, Olympia}), this matches \"exactly one,\" so Jerry's statement is true. **Jerry tells the truth**.\n\n**From Leda's statement (statement 5):**\n\"Leda says Jerry lies.\" Since Jerry tells the truth, this statement is false. **Leda lies**.\n\nANSWER: <no, yes, no>",
+   "ood-sarc_triples-196": "0,1,1",
+   "ood-buggy_tables-036": "None",
+   "holdout-causal_understanding-188": null,
+   "holdout-web_of_lies-193": null,
+   "holdout-shuffled_objects-062": null,
+   "holdout-causal_understanding-187": null,
+   "ood-temporal_sequence-094": null,
+   "holdout-causal_understanding-101": null,
+   "ood-sportqa-142": null,
+   "ood-temporal_sequence-161": null,
+   "holdout-linguini-194": null,
+   "holdout-object_properties-140": null,
+   "ood-nycc-099": null,
+   "ood-sarc_triples-018": null,
+   "holdout-shuffled_objects-020": null,
+   "ood-nycc-051": null,
+   "holdout-boolean_expressions-158": null,
+   "ood-buggy_tables-101": null,
+   "holdout-web_of_lies-065": null,
+   "holdout-object_properties-078": null,
+   "holdout-object_properties-062": null,
+   "ood-sportqa-030": null,
+   "ood-geometric_shapes-168": null,
+   "ood-temporal_sequence-039": null,
+   "holdout-boolean_expressions-124": null,
+   "ood-geometric_shapes-122": null,
+   "holdout-shuffled_objects-154": null,
+   "holdout-linguini-016": null,
+   "ood-nycc-153": null,
+   "ood-buggy_tables-032": null
+  },
+  "library_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/runs/harness2/library/agg",
+  "library_entries": 3,
+  "status": {
+   "holdout-boolean_expressions-042": "ok",
+   "ood-geometric_shapes-025": "ok",
+   "holdout-linguini-137": "ok",
+   "ood-sarc_triples-001": "ok",
+   "ood-sportqa-087": "ok",
+   "holdout-web_of_lies-001": "ok",
+   "ood-sarc_triples-196": "ok",
+   "ood-buggy_tables-036": "partial",
+   "holdout-causal_understanding-188": "base-failed",
+   "holdout-web_of_lies-193": "base-failed",
+   "holdout-shuffled_objects-062": "base-failed",
+   "holdout-causal_understanding-187": "base-failed",
+   "ood-temporal_sequence-094": "base-failed",
+   "holdout-causal_understanding-101": "base-failed",
+   "ood-sportqa-142": "base-failed",
+   "ood-temporal_sequence-161": "base-failed",
+   "holdout-linguini-194": "base-failed",
+   "holdout-object_properties-140": "base-failed",
+   "ood-nycc-099": "base-failed",
+   "ood-sarc_triples-018": "base-failed",
+   "holdout-shuffled_objects-020": "base-failed",
+   "ood-nycc-051": "base-failed",
+   "holdout-boolean_expressions-158": "base-failed",
+   "ood-buggy_tables-101": "base-failed",
+   "holdout-web_of_lies-065": "base-failed",
+   "holdout-object_properties-078": "base-failed",
+   "holdout-object_properties-062": "base-failed",
+   "ood-sportqa-030": "base-failed",
+   "ood-geometric_shapes-168": "base-failed",
+   "ood-temporal_sequence-039": "base-failed",
+   "holdout-boolean_expressions-124": "base-failed",
+   "ood-geometric_shapes-122": "base-failed",
+   "holdout-shuffled_objects-154": "base-failed",
+   "holdout-linguini-016": "base-failed",
+   "ood-nycc-153": "base-failed",
+   "ood-buggy_tables-032": "base-failed"
+  },
+  "editable": [
+   "agents/*",
+   "harness.py",
+   "memory/*",
+   "prompts/*",
+   "prompts/system.md",
+   "prompts/task.md",
+   "skills/*",
+   "tools/*"
+  ],
+  "best_is": "H0: every task starts from the common harness; adopted harnesses live in the records and the library",
+  "report": {
+   "n": 36,
+   "base": [
+    0.1111111111111111,
+    0.027777777777777776,
+    0.2222222222222222
+   ],
+   "submitted": [
+    0.1111111111111111,
+    0.027777777777777776,
+    0.2222222222222222
+   ],
+   "paired": {
+    "mean_diff": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n": 36,
+    "p_better": 0.0
+   },
+   "families": {
+    "boolean_expressions": {
+     "n": 3,
+     "base": 0.3333333333333333,
+     "submitted": 0.3333333333333333
+    },
+    "buggy_tables": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "causal_understanding": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "geometric_shapes": {
+     "n": 3,
+     "base": 0.3333333333333333,
+     "submitted": 0.3333333333333333
+    },
+    "linguini": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "nycc": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "object_properties": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "sarc_triples": {
+     "n": 3,
+     "base": 0.3333333333333333,
+     "submitted": 0.3333333333333333
+    },
+    "shuffled_objects": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "sportqa": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "temporal_sequence": {
+     "n": 3,
+     "base": 0.0,
+     "submitted": 0.0
+    },
+    "web_of_lies": {
+     "n": 3,
+     "base": 0.3333333333333333,
+     "submitted": 0.3333333333333333
+    }
+   },
+   "per_task": {
+    "holdout-boolean_expressions-042": {
+     "family": "boolean_expressions",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-geometric_shapes-025": {
+     "family": "geometric_shapes",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "holdout-linguini-137": {
+     "family": "linguini",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": false
+    },
+    "ood-sarc_triples-001": {
+     "family": "sarc_triples",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": false
+    },
+    "ood-sportqa-087": {
+     "family": "sportqa",
+     "status": "ok",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-web_of_lies-001": {
+     "family": "web_of_lies",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": true
+    },
+    "ood-sarc_triples-196": {
+     "family": "sarc_triples",
+     "status": "ok",
+     "base": 1.0,
+     "submitted": 1.0,
+     "kept_base": false
+    },
+    "ood-buggy_tables-036": {
+     "family": "buggy_tables",
+     "status": "partial",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-causal_understanding-188": {
+     "family": "causal_understanding",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-web_of_lies-193": {
+     "family": "web_of_lies",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-shuffled_objects-062": {
+     "family": "shuffled_objects",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-causal_understanding-187": {
+     "family": "causal_understanding",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-temporal_sequence-094": {
+     "family": "temporal_sequence",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-causal_understanding-101": {
+     "family": "causal_understanding",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-sportqa-142": {
+     "family": "sportqa",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-temporal_sequence-161": {
+     "family": "temporal_sequence",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-linguini-194": {
+     "family": "linguini",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-object_properties-140": {
+     "family": "object_properties",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-nycc-099": {
+     "family": "nycc",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-sarc_triples-018": {
+     "family": "sarc_triples",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-shuffled_objects-020": {
+     "family": "shuffled_objects",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-nycc-051": {
+     "family": "nycc",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-boolean_expressions-158": {
+     "family": "boolean_expressions",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-buggy_tables-101": {
+     "family": "buggy_tables",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-web_of_lies-065": {
+     "family": "web_of_lies",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-object_properties-078": {
+     "family": "object_properties",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-object_properties-062": {
+     "family": "object_properties",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-sportqa-030": {
+     "family": "sportqa",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-geometric_shapes-168": {
+     "family": "geometric_shapes",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-temporal_sequence-039": {
+     "family": "temporal_sequence",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-boolean_expressions-124": {
+     "family": "boolean_expressions",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-geometric_shapes-122": {
+     "family": "geometric_shapes",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-shuffled_objects-154": {
+     "family": "shuffled_objects",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "holdout-linguini-016": {
+     "family": "linguini",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-nycc-153": {
+     "family": "nycc",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    },
+    "ood-buggy_tables-032": {
+     "family": "buggy_tables",
+     "status": "base-failed",
+     "base": 0.0,
+     "submitted": 0.0,
+     "kept_base": true
+    }
+   }
+  }
+ }
+}

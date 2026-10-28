@@ -1,0 +1,24 @@
+[
+ {
+  "variant": "A",
+  "admissible": false,
+  "reason": "smoke_fail",
+  "S": null,
+  "C": null,
+  "delta_S": null,
+  "delta_C": null,
+  "novelty": 0,
+  "guards": []
+ },
+ {
+  "variant": "B",
+  "admissible": false,
+  "reason": "cost rule failed: within band: shaped=-12.475 (<= 0)",
+  "S": 0.375,
+  "C": 22246.125,
+  "delta_S": -0.125,
+  "delta_C": -0.0016837834173977944,
+  "novelty": 0,
+  "guards": []
+ }
+]

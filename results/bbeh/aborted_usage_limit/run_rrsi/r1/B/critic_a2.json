@@ -1,0 +1,15 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "LEAKAGE / TASK-SPECIALIZATION: The regex pattern `[A-Z]` for choice letter detection is specific to multiple-choice task formats. The retroactive_check explicitly names specific evolved task IDs ('evolve-shuffled_objects-067', 'evolve-shuffled_objects-023') and states: 'Tasks failing with \"(D) Rodrigo\" vs \"(D)\" mismatch would pass once the appended text is stripped.' This reveals the mechanism is designed to fix a specific, known failure pattern on a subset of the evolve set, not a general improvement. A harness improvement should help unfamiliar task suites equally; this choice-detection logic would be inert on counting, tracking, or ordering tasks with non-choice answers.",
+  "GRADER GAMING: The change post-processes the model's output to match expected grader formats rather than improving actual task performance. It detects choice patterns and strips appended descriptions to convert '(D) Rodrigo' → '(D)', working around the model's failure to output the correct format. This is gaming the grader, not fixing the model. The grader already extracts ANSWER: or last line; the harness should not attempt to further normalize the model's output by detecting and fixing format issues.",
+  "CONTRADICTION IN DECLARED EDIT: The candidate claims to 'remove grader-gaming assumption' while actually implementing grader gaming (detecting choice formats and post-processing to fix extraction). The premise of the declared edit is inconsistent with its mechanism.",
+  "UNDECLARED ASSUMPTIONS: The mechanism treats choice-based answers (with parentheses/letters) as a special case requiring post-processing, while leaving all other answers unchanged. This encodes implicit knowledge about task heterogeneity in the evolve set. A general harness should not branch on answer format without explicit task instruction."
+ ],
+ "risk_notes": [
+  "The retroactive_check inadvertently confesses the overfitting: it lists the exact tasks and extraction mismatches ('(D) Rodrigo' vs '(D)') that motivated the change, indicating this is a fix for a specific, known failure, not a general principle.",
+  "The mechanism is inactive on any task suite using non-choice answers (e.g., counting → '42', tracking → 'Carol is at the door'), providing no benefit on unfamiliar task kinds. This violates the generalization requirement.",
+  "If a new task legitimately expected a choice plus description (e.g., '(D) is the correct answer: Rodrigo'), this mechanism would silently corrupt the output by stripping it."
+ ],
+ "stage": "llm"
+}

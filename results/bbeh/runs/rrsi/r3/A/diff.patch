@@ -1,0 +1,102 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,10 +1,19 @@
+-"""Enhanced harness: answer format cleaning and output simplification for robust extraction."""
++"""Enhanced harness: task-specific reasoning guidance + answer format cleaning."""
+ 
+ import re
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
++    
++    # Include task-specific reasoning guidance for problem-solving support
++    task_guide = files.get("skills/task_reasoning_guide.md", "")
++    if task_guide:
++        if system:
++            system = system + "\n\n" + task_guide
++        else:
++            system = task_guide
++    
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+     
+--- a/skills/task_reasoning_guide.md
++++ b/skills/task_reasoning_guide.md
+@@ -0,0 +1,76 @@
++# Task-Family-Specific Reasoning Guidance
++
++## For Boolean Logic & Expression Problems
++
++**Common Error**: Mishandling negation (especially double/triple NOT) and operator precedence.
++
++**Concrete Pattern**:
++- Break the expression into sub-expressions at each logical operator (AND, OR, NOT)
++- For each NOT, flip the truth value: `not True = False`, `not False = True`
++- When NOT is chained (e.g., `not not X`), each NOT flips once: `not not X = X`, `not not not X = not X`
++- Evaluate innermost parentheses first
++- Combine results with AND (both must be true) and OR (at least one must be true)
++- **Check your work**: After choosing an answer, re-evaluate that expression and verify it actually evaluates to TRUE as required
++
++Example: To evaluate `not (A and B)`, first evaluate `A and B`, then apply NOT to flip the result.
++
++## For Language Translation & Pattern Problems
++
++**Common Error**: Identifying the wrong morpheme or transformation rule; missing consistent patterns across examples.
++
++**Concrete Pattern**:
++- List each example side-by-side with its translation
++- Identify stable, invariant parts (these are often morpheme roots)
++- Look for transformations that apply consistently: prefixes, suffixes, vowel changes, order changes
++- Write down the rules you identify (e.g., "if translation contains 'do X', the original word structure is...")
++- Apply those rules step-by-step to the new problem
++- **Verify your answer matches the structure and complexity of the examples** (e.g., if examples show 3 syllables, your answer should too)
++
++Example: If all examples with "you-plural" add a certain prefix or change a vowel, apply that same change to your answer.
++
++## For Causal Reasoning Problems
++
++**Common Error**: Confusing causation (would the outcome happen anyway?) with mere coincidence or opportunity; misunderstanding responsibility vs. actual causation.
++
++**Concrete Pattern**:
++- Identify the key actor and their role/responsibility
++- Identify what actually happened (the action or inaction in question)
++- Identify the outcome (what broke, what happened)
++- Ask: "Would the outcome have occurred without this action?" 
++  - If YES, that action did NOT cause it (someone else should have prevented it, but this person wasn't responsible)
++  - If NO, that action was necessary (causation exists)
++  - If UNCLEAR (could go either way), answer "Ambiguous"
++- **Do not confuse**: responsibility with causation; opportunity with action; coincidence with causation
++
++Example: If a person is NOT responsible for a task and their inaction cannot change the outcome (someone else should handle it), then inaction did NOT cause the problem.
++
++## For Counting & Object Property Problems
++
++**Common Error**: Miscounting, missing items, or incorrectly applying transformations.
++
++**Concrete Pattern**:
++- List out all entities and their properties systematically
++- Track transformations one step at a time
++- Count by category or by individual, whichever matches the question
++- **Verify**: Recount using a different method (sum parts vs. total, explicit vs. formula)
++- Spot-check: Does your final count match the initial state plus/minus the stated changes?
++
++Example: If 10 items start and 3 are removed, verify your count of 7 by listing them or summing categories.
++
++## For Multiple-Choice Selection Problems
++
++**Common Error**: Choosing the first plausible answer instead of verifying it is the ONLY correct one.
++
++**Concrete Pattern**:
++- Evaluate each option against the problem constraints
++- Eliminate options that violate stated rules or facts
++- Of the remaining candidates, pick the one that best matches the problem
++- **If unsure, re-read the problem**: Ensure you didn't miss a constraint or condition
++
++---
++
++## General Rule for All Problems
++
++- Slow down: evaluate systematically, don't guess
++- Double-check your answer once: verify it against the problem statement
++- If multiple answers seem possible, re-examine the problem for conditions you may have missed

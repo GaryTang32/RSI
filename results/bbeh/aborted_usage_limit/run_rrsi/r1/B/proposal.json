@@ -1,0 +1,33 @@
+{
+ "status": "done",
+ "summary": "Robust answer extraction from ANSWER: line with extraneous text stripping for choice-style answers (zero-cost fix for format mismatches).",
+ "edits": [
+  {
+   "id": "D1",
+   "component": "control_flow",
+   "hypothesis": "Post-processing the LLM's response to extract text after the ANSWER: line and truncating extraneous descriptions appended to choice letters (e.g., '(D) Rodrigo' → '(D)') will fix format-mismatch failures where the grader expects a clean answer but the model appends descriptive text.",
+   "targets_mode": "answer extraction failures where models append descriptive text to choice-letter answers on the ANSWER: line",
+   "why_not_lower_lever": "Prompt-based instructions did not improve outcomes in variant A and were rejected. This requires programmatic pattern detection (identify opening parenthesis, find closing parenthesis, truncate), which is a control-flow decision and post-processing operation that must live in the harness, not in prose.",
+   "trigger_condition": "Activates on every response; looks for ANSWER: line, then detects if answer text matches pattern '(<letter>) <extra_text>' and truncates to just '(<letter>)'.",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) Task 067 fails with extracted '(D) Rodrigo'; expected '(D)'. The fix identifies the closing parenthesis at position 2 and returns substring [0:3]='(D)', converting extracted answer to match expected. Task 023 fails with extracted '(B) orange ball'; expected '(B)'. Same mechanism applies. (preservative) Passing tasks like causal_understanding-025, linguini-188, web_of_lies-074 output clean single-token or comma-separated answers without parenthetical descriptions; the extraction code detects no closing-paren pattern and returns answer unchanged, preserving success. (transfer) Any multi-choice task across future unseen sets where models append descriptions to choice letters will benefit from this mechanism.",
+   "regression_risk": "Very low. The extraction logic is conservative: it only modifies answers matching the '(<char>)<space><extra>' pattern, leaving clean answers untouched. For web_of_lies (outputs 'yes, no, no'), for linguini (outputs single words), for object_properties (outputs numbers), and for causal_understanding (outputs yes/no), the fallback branch returns the answer as-is. Risk only if some task intentionally requires the parenthetical text as part of the answer, which contradicts the extraction format and is ruled out by task design.",
+   "mechanism": "Post-processing the LLM's response to extract text after the ANSWER: line and truncating extraneous descriptions appended to choice letters (e.g., '(D) Rodrigo' → '(D)') will fix format-mismatch failures where the grader expects a clean answer but the model appends descriptive text."
+  }
+ ],
+ "mechanism": "Robust answer extraction from ANSWER: line with extraneous text stripping for choice-style answers (zero-cost fix for format mismatches).",
+ "targets_mode": "answer extraction failures where models append descriptive text to choice-letter answers on the ANSWER: line",
+ "n_changes": 1,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 1,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

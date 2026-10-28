@@ -1,0 +1,61 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,8 +1,41 @@
+-"""Seed harness: one direct model call; the reply (ending in an ANSWER line) is the deliverable."""
++"""Harness with answer extraction and improved prompting."""
+ 
+ 
+ def solve(question, llm, tools, files):
+     system = files.get("prompts/system.md", "")
+     prompt = files["prompts/task.md"].replace("{question}", question)
+     reply = llm(prompt, system=system)
+-    return reply.strip()
++    
++    # Extract and clean the answer using deterministic parsing
++    extraction_code = f"""
++import re
++
++reply = {repr(reply)}
++
++# Find ANSWER: line (case-insensitive)
++lines = reply.split('\\n')
++answer_text = ""
++
++for line in lines:
++    if 'ANSWER:' in line.upper():
++        idx = line.upper().find('ANSWER:')
++        answer_text = line[idx+7:].strip()
++        break
++
++# Fallback: use last non-empty line
++if not answer_text:
++    for line in reversed(lines):
++        if line.strip():
++            answer_text = line.strip()
++            break
++
++# For multiple choice, extract just the letter in parentheses (e.g., (A) from "(A) description")
++choice_match = re.search(r'\\(([A-Z])\\)', answer_text)
++if choice_match:
++    print(f"({choice_match.group(1)})")
++else:
++    # Return full answer text if no choice pattern found
++    print(answer_text if answer_text else "")
++"""
++    result = tools.python(extraction_code)
++    return result.strip()
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1 @@
+-You are a helpful assistant.
++You are a helpful assistant. Think carefully and work through problems step by step. For logic, reasoning, or counting problems, double-check your work to ensure correctness. Provide clear, concise answers.
+--- a/prompts/task.md
++++ b/prompts/task.md
+@@ -1,3 +1,6 @@
+ {question}
+ 
+-End with a final line `ANSWER: <answer>`.
++Respond with your final answer in this format:
++ANSWER: <answer>
++
++Important: The answer must contain ONLY the final answer value with no additional explanation or description. For multiple choice questions, provide only the choice letter in parentheses like (A) or (B), with nothing after it.

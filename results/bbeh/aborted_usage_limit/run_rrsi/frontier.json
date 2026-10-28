@@ -1,0 +1,213 @@
+{
+ "domain": "bbeh",
+ "incumbent": {
+  "t": 4,
+  "artifact_id": "e121c94359ef4e383d94092e4b344a659a2836ddb6bc054ca8f305dec4a1cbaa",
+  "job": "r2A",
+  "S": 0.6666666666666666,
+  "C": 22349.75,
+  "extra": {
+   "steps": 1.0,
+   "error_rate": 0.0,
+   "families": {
+    "boolean_expressions": 0.625,
+    "causal_understanding": 0.625,
+    "linguini": 0.25,
+    "object_properties": 0.75,
+    "web_of_lies": 1.0,
+    "shuffled_objects": 0.75
+   },
+   "llm_calls": 1.0,
+   "tool_calls": 0.0
+  },
+  "variant": "A",
+  "node": "r2A"
+ },
+ "S_star": 0.6666666666666666,
+ "trajectory": [
+  {
+   "t": 0,
+   "S": 0.5,
+   "C": 22283.645833333332,
+   "artifact_id": "745ba24861ca238be0c8c7b875aea8d8df45588ed561d9520806639d54995c63",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "boolean_expressions": 0.5,
+     "causal_understanding": 0.75,
+     "linguini": 0.25,
+     "object_properties": 0.5,
+     "web_of_lies": 0.5,
+     "shuffled_objects": 0.5
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 1,
+   "S": 0.5,
+   "C": 22283.645833333332,
+   "artifact_id": "745ba24861ca238be0c8c7b875aea8d8df45588ed561d9520806639d54995c63",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "boolean_expressions": 0.5,
+     "causal_understanding": 0.75,
+     "linguini": 0.25,
+     "object_properties": 0.5,
+     "web_of_lies": 0.5,
+     "shuffled_objects": 0.5
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 2,
+   "S": 0.5,
+   "C": 22283.645833333332,
+   "artifact_id": "745ba24861ca238be0c8c7b875aea8d8df45588ed561d9520806639d54995c63",
+   "job": "base",
+   "node": "H0",
+   "variant": null,
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "boolean_expressions": 0.5,
+     "causal_understanding": 0.75,
+     "linguini": 0.25,
+     "object_properties": 0.5,
+     "web_of_lies": 0.5,
+     "shuffled_objects": 0.5
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 3,
+   "S": 0.6666666666666666,
+   "C": 22349.75,
+   "artifact_id": "e121c94359ef4e383d94092e4b344a659a2836ddb6bc054ca8f305dec4a1cbaa",
+   "job": "r2A",
+   "node": "r2A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "boolean_expressions": 0.625,
+     "causal_understanding": 0.625,
+     "linguini": 0.25,
+     "object_properties": 0.75,
+     "web_of_lies": 1.0,
+     "shuffled_objects": 0.75
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  },
+  {
+   "t": 4,
+   "S": 0.6666666666666666,
+   "C": 22349.75,
+   "artifact_id": "e121c94359ef4e383d94092e4b344a659a2836ddb6bc054ca8f305dec4a1cbaa",
+   "job": "r2A",
+   "node": "r2A",
+   "variant": "A",
+   "extra": {
+    "steps": 1.0,
+    "error_rate": 0.0,
+    "families": {
+     "boolean_expressions": 0.625,
+     "causal_understanding": 0.625,
+     "linguini": 0.25,
+     "object_properties": 0.75,
+     "web_of_lies": 1.0,
+     "shuffled_objects": 0.75
+    },
+    "llm_calls": 1.0,
+    "tool_calls": 0.0
+   }
+  }
+ ],
+ "config": {
+  "T": 4,
+  "k": 2,
+  "m": 2,
+  "b_min": 1,
+  "b_max": 4,
+  "budget_rounding": "ceil",
+  "w": 3,
+  "m_draft": 1,
+  "delta": null,
+  "delta_z": 2.0,
+  "beta0": 0.1,
+  "beta1": 40.0,
+  "w_s": 100.0,
+  "w_c": 15.0,
+  "w_n": 0.5,
+  "n_prune": 4,
+  "repair_rounds": 5,
+  "invalid_missing_frac": 0.15,
+  "n_fail_traces": 22,
+  "n_success_traces": 6,
+  "eval_parallel": 1,
+  "calibration_repeats": 1,
+  "calibration_reps": 2000,
+  "calibration_seed": 7,
+  "bootstrap_small_k_correction": true,
+  "max_done_bounces": 3,
+  "max_abort_bounces": 3,
+  "history_render_n": 40,
+  "scoreboard_n": 20,
+  "trace_chars": 3000,
+  "max_digests": 8,
+  "analyst": "auto",
+  "proposer_protocol": "rewrite",
+  "tie_eps": 0.0,
+  "proposer_numbers": false,
+  "precheck_answers": false,
+  "precheck_scope": "added",
+  "component_aliases": false,
+  "smoke_n": 2,
+  "smoke_require_score": false,
+  "workers": 16,
+  "trial_cache": false,
+  "smoke": true,
+  "heldout_monitor": false,
+  "trace": true,
+  "shadow_monitor": false,
+  "shadow_monitor_k": 1,
+  "trace_max_text": 100000,
+  "record_timestamps": true,
+  "editable": null,
+  "seed": 0,
+  "notes": {}
+ },
+ "switches": {
+  "name": "full",
+  "budget_anneal": true,
+  "constant_budget": null,
+  "history_conditioning": "full",
+  "stall_exploration": true,
+  "critic": true,
+  "floor": "S_star",
+  "cost_rule": true,
+  "within_band": "shaped",
+  "prune_directives": true,
+  "domain_guards": true,
+  "selection": "rrsi",
+  "smoke": true
+ }
+}

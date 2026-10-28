@@ -1,0 +1,52 @@
+{
+ "status": "done",
+ "summary": "Add tool-based answer extraction to robustly parse and normalize ANSWER: lines, removing extra text and standardizing format; add explicit system prompt guidance on answer format.",
+ "edits": [
+  {
+   "id": "T1",
+   "component": "tool",
+   "hypothesis": "Using a Python tool to parse the ANSWER: line, strip extra descriptive text, and normalize choice formatting (e.g., '(D) Rodrigo' → '(D)', 'C' → '(C)') will fix format mismatches without requiring additional LLM calls.",
+   "targets_mode": "answer extraction and formatting inconsistencies where model appends descriptions or omits parentheses around choice letters",
+   "why_not_lower_lever": "Prompt-based corrections failed in round 0 due to cost. A post-hoc tool is robust, deterministic, and doesn't increase LLM token usage. It handles systematic formatting variability across all answer types.",
+   "trigger_condition": "Every solve() call; runs after LLM reply to clean the extracted answer before return.",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023",
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003"
+   ],
+   "retroactive_check": "(corrective) Tasks failing on '(D) Rodrigo' vs '(D)' and 'C' vs '(C)' would pass with normalization. (preservative) Success cases with clean ANSWER: lines are unaffected; tool is transparent for well-formatted answers. (transfer) Mechanism is task-agnostic and applies to any task using ANSWER: format.",
+   "regression_risk": "Tool correctly handles patterns like (A)–(Z) and single letters; edge case: answers containing parentheses elsewhere would need care (mitigated by pattern matching from string start).",
+   "mechanism": "Using a Python tool to parse the ANSWER: line, strip extra descriptive text, and normalize choice formatting (e.g., '(D) Rodrigo' → '(D)', 'C' → '(C)') will fix format mismatches without requiring additional LLM calls."
+  },
+  {
+   "id": "T2",
+   "component": "prompt",
+   "hypothesis": "Explicit instruction in the system prompt about answer formatting (ANSWER: followed only by the answer, no trailing text) will reduce ambiguity and reinforce clean answer output, complementing the tool's robustness.",
+   "targets_mode": "answer format clarity; reducing model's tendency to append descriptions",
+   "why_not_lower_lever": "The tool provides post-hoc defense; explicit prompting prevents the issue upstream. Together they create defense-in-depth without duplicating effort. Minimal wording keeps token cost low.",
+   "trigger_condition": "Always (included in system message for every task).",
+   "predicted_affected": [
+    "evolve-shuffled_objects-023",
+    "evolve-shuffled_objects-067",
+    "evolve-boolean_expressions-186",
+    "evolve-object_properties-017"
+   ],
+   "retroactive_check": "(corrective) Explicit format rules would have reduced extra-text issues in shuffled_objects. (preservative) Minimal change (one sentence) does not disrupt successful reasoning paths. (transfer) Format guidance is task-family-agnostic.",
+   "regression_risk": "Minimal. Single-sentence instruction is unlikely to confuse or distract the model; if anything, it clarifies expectations.",
+   "mechanism": "Explicit instruction in the system prompt about answer formatting (ANSWER: followed only by the answer, no trailing text) will reduce ambiguity and reinforce clean answer output, complementing the tool's robustness."
+  }
+ ],
+ "mechanism": "Add tool-based answer extraction to robustly parse and normalize ANSWER: lines, removing extra text and standardizing format; add explicit system prompt guidance on answer format.",
+ "targets_mode": "answer extraction and formatting inconsistencies where model appends descriptions or omits parentheses around choice letters, answer format clarity; reducing model's tendency to append descriptions",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

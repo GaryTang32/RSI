@@ -1,0 +1,16 @@
+{
+ "segments": [
+  {
+   "segment": 0,
+   "usd": 22.897315,
+   "live_usd": 22.751215,
+   "replayed_usd": 0.1461
+  },
+  {
+   "segment": 1,
+   "usd": 5.224292,
+   "live_usd": 1.079517,
+   "replayed_usd": 4.144774
+  }
+ ]
+}

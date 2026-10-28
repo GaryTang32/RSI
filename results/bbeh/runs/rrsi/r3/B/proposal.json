@@ -1,0 +1,51 @@
+{
+ "status": "done",
+ "summary": "Add skill-based reasoning procedures for exploration + ultra-minimal answer output for robustness",
+ "edits": [
+  {
+   "id": "S1",
+   "component": "skill",
+   "hypothesis": "Structured reasoning procedures (break problem into steps, verify constraints, check alternatives) guide the model toward systematic thinking without task-specific content, improving reasoning accuracy across logic/counting/translation tasks",
+   "targets_mode": "reasoning errors on boolean_expressions, causal_understanding, linguini, shuffled_objects, object_properties",
+   "why_not_lower_lever": "A skill file is structural guidance separate from prompts; it's a general procedure repository, not prose rewording. Skill is the right component because it provides reusable procedures the model can reference during reasoning.",
+   "trigger_condition": "Always included in system prompt; activates whenever model reasons through a problem",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-causal_understanding-099",
+    "evolve-linguini-018",
+    "evolve-linguini-049"
+   ],
+   "retroactive_check": "(corrective) These tasks fail due to reasoning errors; explicit procedures might improve systematic thinking. (preservative) The skill is general and doesn't override working tasks; passing tasks on web_of_lies, object_properties, shuffled_objects use logical reasoning and would benefit if anything. (transfer) Generalizes to any reasoning task—causal chains, logic puzzles, pattern completion.",
+   "regression_risk": "If skill text is too verbose, token cost increases and triggers cost rule failure like E1/E2. Mitigation: keep skill text minimal and reference it sparingly in system prompt.",
+   "mechanism": "Structured reasoning procedures (break problem into steps, verify constraints, check alternatives) guide the model toward systematic thinking without task-specific content, improving reasoning accuracy across logic/counting/translation tasks"
+  },
+  {
+   "id": "S2",
+   "component": "control_flow",
+   "hypothesis": "Returning ONLY the ANSWER line (instead of 1 line before ANSWER to end) further minimizes output verbosity and potential format confusion. Since grader extracts only ANSWER: line, stripping everything else reduces cognitive overhead and format edge cases.",
+   "targets_mode": "output format confusion and potential extraction ambiguity",
+   "why_not_lower_lever": "This is control flow / output plumbing (what gets returned), not wording. It's a structural simplification of what the harness outputs to grader.",
+   "trigger_condition": "Always applied when simplifying output; whenever ANSWER: line is found, only that line is returned",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) F1 worked well on shuffled_objects (2/2); ultra-minimal output removes any remaining context noise. (preservative) Passing tasks return clean ANSWER: lines and lose nothing when context stripped. (transfer) Generalizes to all task types—minimal output is always safer than cluttered output when grader only reads ANSWER line.",
+   "regression_risk": "Very low. Simpler code is more robust. Loss of '1 line before' context is safe since grader doesn't use it.",
+   "mechanism": "Returning ONLY the ANSWER line (instead of 1 line before ANSWER to end) further minimizes output verbosity and potential format confusion. Since grader extracts only ANSWER: line, stripping everything else reduces cognitive overhead and format edge cases."
+  }
+ ],
+ "mechanism": "Add skill-based reasoning procedures for exploration + ultra-minimal answer output for robustness",
+ "targets_mode": "reasoning errors on boolean_expressions, causal_understanding, linguini, shuffled_objects, object_properties, output format confusion and potential extraction ambiguity",
+ "n_changes": 3,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 3,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

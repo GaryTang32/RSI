@@ -2,15 +2,9 @@
  "segments": [
   {
    "segment": 0,
-   "usd": 22.897315,
-   "live_usd": 22.751215,
-   "replayed_usd": 0.1461
-  },
-  {
-   "segment": 1,
-   "usd": 0.0,
-   "live_usd": 0.0,
-   "replayed_usd": 0.0
+   "usd": 38.098219,
+   "live_usd": 9.976613,
+   "replayed_usd": 28.121607
   }
  ]
 }

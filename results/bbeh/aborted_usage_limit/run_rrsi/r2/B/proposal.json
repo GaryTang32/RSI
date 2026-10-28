@@ -1,0 +1,50 @@
+{
+ "status": "done",
+ "summary": "Extract ANSWER line with choice-letter cleanup + stronger system prompt for format discipline",
+ "edits": [
+  {
+   "id": "F1",
+   "component": "control_flow",
+   "hypothesis": "Extracting the ANSWER: line and stripping appended descriptive text from choice-letter answers (e.g., '(D) Rodrigo' → '(D)') will fix format-mismatch failures without breaking clean outputs, since it's a safe cleanup only when format matches.",
+   "targets_mode": "answer extraction where model appends descriptions to choice letters ('(D) Rodrigo' vs '(D)', '(B) orange ball' vs '(B')",
+   "why_not_lower_lever": "Prompt-only instructions failed (E1-E3); code plumbing for safe extraction avoids redrawing R1's risky tool approach by keeping extraction simple and local.",
+   "trigger_condition": "When ANSWER: line exists and contains (LETTER) followed by extra text (detected as length>3 after closing paren)",
+   "predicted_affected": [
+    "evolve-shuffled_objects-067",
+    "evolve-shuffled_objects-023"
+   ],
+   "retroactive_check": "(corrective) The two shuffled_objects tasks with '(X) name' extraction errors would return clean (X) and match expected; (preservative) clean (A)–only answers pass through unchanged; multi-token answers like 'yes, no, no' have no parens so bypass the cleanup; (transfer) any task outputting choice letters with appended text benefits, generalizes beyond shuffled_objects",
+   "regression_risk": "If model outputs unexpected formats like nested parens or parens mid-string, the indexing could misfire; guarded by length and position checks to catch only the (LETTER) pattern.",
+   "mechanism": "Extracting the ANSWER: line and stripping appended descriptive text from choice-letter answers (e.g., '(D) Rodrigo' → '(D)') will fix format-mismatch failures without breaking clean outputs, since it's a safe cleanup only when format matches."
+  },
+  {
+   "id": "F2",
+   "component": "prompt",
+   "hypothesis": "Explicit system-level instruction emphasizing step-by-step reasoning AND strict answer format (single token, no extras) will reinforce discipline on both reasoning accuracy and format compliance, complementing the code cleanup with cognitive structure.",
+   "targets_mode": "reasoning errors where model rushes through logic, and format errors where model adds description",
+   "why_not_lower_lever": "Prior prompts (E1-E3) lacked specificity on execution discipline; this version separates formatting requirement (prose-level habit) from reasoning method (procedural), targeting both halves of the failure.",
+   "trigger_condition": "Always active; system prompt applied to every call.",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-web_of_lies-025",
+    "evolve-causal_understanding-099"
+   ],
+   "retroactive_check": "(corrective) Tasks failing on logic (wrong choice selected, wrong count) benefit from forced deliberation; tasks with format issues benefit from format reminder; (preservative) passing tasks (boolean_expressions-148, causal_understanding-025/023/136, linguini-188, object_properties-153, web_of_lies-074) see same system behavior, no regression expected; (transfer) step-by-step reasoning + format discipline is universal, generalizes to any logic/answer task",
+   "regression_risk": "If model becomes verbose and the code extraction catches only the first line, structured reasoning might output multi-line answers that get truncated; mitigated by testing on current successes (which already handle this format).",
+   "mechanism": "Explicit system-level instruction emphasizing step-by-step reasoning AND strict answer format (single token, no extras) will reinforce discipline on both reasoning accuracy and format compliance, complementing the code cleanup with cognitive structure."
+  }
+ ],
+ "mechanism": "Extract ANSWER line with choice-letter cleanup + stronger system prompt for format discipline",
+ "targets_mode": "answer extraction where model appends descriptions to choice letters ('(D) Rodrigo' vs '(D)', '(B) orange ball' vs '(B'), reasoning errors where model rushes through logic, and format errors where mod",
+ "n_changes": 2,
+ "log": [
+  {
+   "turn": 0,
+   "action": "done",
+   "n_changes": 2,
+   "blocked": [],
+   "error": null
+  }
+ ]
+}

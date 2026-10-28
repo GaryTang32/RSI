@@ -1,0 +1,45 @@
+{
+ "t": 3,
+ "b_t": 2,
+ "sigma_t": 1,
+ "delta": 0.186656,
+ "S_star": 0.6666666666666666,
+ "S": 0.6666666666666666,
+ "C": 22349.75,
+ "incumbent": "e121c94359ef4e383d94092e4b344a659a2836ddb6bc054ca8f305dec4a1cbaa",
+ "winner": null,
+ "n_candidates": 2,
+ "n_screened": 1,
+ "n_untried": 4,
+ "prune_set": [
+  "prompt"
+ ],
+ "decisions": [
+  {
+   "variant": "A",
+   "admissible": false,
+   "reason": "eval_invalid",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
+   "novelty": 0,
+   "guards": []
+  },
+  {
+   "variant": "B",
+   "admissible": false,
+   "reason": "critic_reject",
+   "S": null,
+   "C": null,
+   "delta_S": null,
+   "delta_C": null,
+   "novelty": 0,
+   "guards": []
+  }
+ ],
+ "gate_failures": {
+  "A": "eval_invalid",
+  "B": "critic_reject"
+ }
+}

@@ -1,0 +1,57 @@
+{
+ "artifact_id": "df286f755add13ab5ab6e9fc5f1eaf7e2a883ecc64d9497b8120aa78af138dfb",
+ "edits": [
+  {
+   "id": "S1",
+   "component": "skill",
+   "hypothesis": "Create skills/task_reasoning_guide.md (not a generic checklist) with concrete, task-family-specific error-prevention patterns (negation in boolean logic, morpheme identification in translation, causation reasoning) targeting observed failure modes to trigger in-context learning",
+   "targets_mode": "reasoning errors across task families where systematic patterns (negation handling, structural analysis, causal reasoning) address root causes",
+   "why_not_lower_lever": "Prose guidance IS the right lever: frozen model learns from in-context examples and instructions. Concrete, family-specific patterns addressing actual observed errors have better odds than generic checklists.",
+   "trigger_condition": "Always—system prompt includes skill file on every task",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-boolean_expressions-008",
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110",
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023",
+    "evolve-shuffled_objects-107",
+    "evolve-shuffled_objects-041",
+    "evolve-object_properties-017"
+   ],
+   "retroactive_check": "(corrective) F1/F2 fixed extraction format; this fixes reasoning errors those didn't touch. (preservative) Success tasks unaffected—guidance applies equally to correct and incorrect reasoning paths without disrupting output cleanup. (transfer) Generalizes: negation patterns apply to any logic task, morpheme patterns to linguistic tasks, causation patterns to causal reasoning tasks",
+   "regression_risk": "Guidance could confuse model if it contradicts baseline behavior; mitigated by grounding in concrete examples from traces",
+   "mechanism": "Create skills/task_reasoning_guide.md (not a generic checklist) with concrete, task-family-specific error-prevention patterns (negation in boolean logic, morpheme identification in translation, causation reasoning) targeting observed failure modes to trigger in-context learning",
+   "declared_component": "skill"
+  },
+  {
+   "id": "S2",
+   "component": "control_flow",
+   "hypothesis": "Wire skills/task_reasoning_guide.md into system prompt construction, appending task-family patterns to base prompt; this makes the skill guidance active without unnecessary context bloat",
+   "targets_mode": "enabling skill-based reasoning patterns by loading them into model context",
+   "why_not_lower_lever": "Control_flow: selecting and wiring which skill file loads into system prompt. Without this, skill content never reaches model.",
+   "trigger_condition": "Every task: harness loads and appends skills/task_reasoning_guide.md to system prompt",
+   "predicted_affected": [
+    "evolve-boolean_expressions-186",
+    "evolve-boolean_expressions-003",
+    "evolve-boolean_expressions-008",
+    "evolve-linguini-018",
+    "evolve-linguini-049",
+    "evolve-linguini-110",
+    "evolve-causal_understanding-099",
+    "evolve-causal_understanding-023",
+    "evolve-shuffled_objects-107",
+    "evolve-shuffled_objects-041",
+    "evolve-object_properties-017"
+   ],
+   "retroactive_check": "(corrective) Completes S1's mechanism. (preservative) Success tasks unaffected—skill loading is transparent; format cleanup (F1, F2) remains. (transfer) Generalizes: skill-file loading pattern is generic, applicable to any task type",
+   "regression_risk": "Missing/malformed skill file could degrade system prompt; mitigated by safe files.get() with fallback to empty string",
+   "mechanism": "Wire skills/task_reasoning_guide.md into system prompt construction, appending task-family patterns to base prompt; this makes the skill guidance active without unnecessary context bloat",
+   "declared_component": "control_flow"
+  }
+ ],
+ "diff_path": "r3/A/diff.patch",
+ "mechanism": "Fix undeclared bundling: delete reasoning_checklist.md, restore system.md, clarify S1 names correct skill file and S2 wires its loading"
+}

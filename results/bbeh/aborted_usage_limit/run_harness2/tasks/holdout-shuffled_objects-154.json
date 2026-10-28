@@ -1,0 +1,41 @@
+{
+ "task_id": "holdout-shuffled_objects-154",
+ "domain": "shuffled_objects",
+ "mode": "parallel",
+ "k": 1,
+ "base_tree": "745ba24861",
+ "status": "base-failed",
+ "adopted": null,
+ "adopted_tree": null,
+ "kept_base": true,
+ "selection": {},
+ "counts": {
+  "rollouts": 1,
+  "sessions": 0,
+  "selector": 0,
+  "reflector": 0,
+  "attempts": 0,
+  "fell_back": 0,
+  "kept_base": 0
+ },
+ "stages": [],
+ "rollouts": {
+  "base1": {
+   "label": "base1",
+   "tree": "745ba24861",
+   "seed": 868720,
+   "ok": false,
+   "delivered": false,
+   "output": "",
+   "error": "infra: llm backend error: You've hit your 5-hour limit \u00b7 resets 7pm (UTC)",
+   "steps": 1,
+   "tokens": 0,
+   "trace": ""
+  }
+ },
+ "reflection": {},
+ "library_added": null,
+ "notes": [
+  "no reference rollout ran; the task stops without a deliverable"
+ ]
+}

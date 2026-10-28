@@ -1,0 +1,324 @@
+[
+ {
+  "task_id": "evolve-boolean_expressions-186",
+  "lens": "failure",
+  "family": "boolean_expressions",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'C'; expected '(B)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'C'; expected '(B)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-causal_understanding-099",
+  "lens": "failure",
+  "family": "causal_understanding",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'No'; expected 'Ambiguous'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'No'; expected 'Ambiguous'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-linguini-018",
+  "lens": "failure",
+  "family": "linguini",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'Do we come? (or possibly \"Do we stay?\" - the exact meaning of the verb tiʔ would require additional linguistic data to determine with certainty)'; expected 'Did we go?'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'Do we come? (or possibly \"Do we stay?\" - the exact meaning of the verb tiʔ would require additional linguistic data to determine wi"
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-linguini-049",
+  "lens": "failure",
+  "family": "linguini",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'saʼantʷən'; expected 'šʼəwtʷan'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'saʼantʷən'; expected 'šʼəwtʷan'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-linguini-110",
+  "lens": "failure",
+  "family": "linguini",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'um-tamab'; expected 'a-tameb'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'um-tamab'; expected 'a-tameb'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-object_properties-017",
+  "lens": "failure",
+  "family": "object_properties",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '8'; expected '9'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '8'; expected '9'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-web_of_lies-025",
+  "lens": "failure",
+  "family": "web_of_lies",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'no, yes, no'; expected 'yes, no, no'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'no, yes, no'; expected 'yes, no, no'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-boolean_expressions-003",
+  "lens": "failure",
+  "family": "boolean_expressions",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'A'; expected '(D)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'A'; expected '(D)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-boolean_expressions-008",
+  "lens": "failure",
+  "family": "boolean_expressions",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '(D)'; expected '(A)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '(D)'; expected '(A)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-object_properties-167",
+  "lens": "failure",
+  "family": "object_properties",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '3'; expected '5'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '3'; expected '5'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-object_properties-087",
+  "lens": "failure",
+  "family": "object_properties",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '11'; expected '12'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '11'; expected '12'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-web_of_lies-080",
+  "lens": "failure",
+  "family": "web_of_lies",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'yes, no, no'; expected 'yes, yes, yes'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'yes, no, no'; expected 'yes, yes, yes'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-web_of_lies-177",
+  "lens": "failure",
+  "family": "web_of_lies",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer 'yes, yes, no'; expected 'yes, yes, yes'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer 'yes, yes, no'; expected 'yes, yes, yes'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-shuffled_objects-107",
+  "lens": "failure",
+  "family": "shuffled_objects",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '(D)'; expected '(E)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '(D)'; expected '(E)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-shuffled_objects-067",
+  "lens": "failure",
+  "family": "shuffled_objects",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '(D) Rodrigo'; expected '(D)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '(D) Rodrigo'; expected '(D)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-shuffled_objects-023",
+  "lens": "failure",
+  "family": "shuffled_objects",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '(B) orange ball'; expected '(B)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '(B) orange ball'; expected '(B)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-shuffled_objects-041",
+  "lens": "failure",
+  "family": "shuffled_objects",
+  "blocker": "Incorrect. Extracted answer <v>; expected <v>.",
+  "narrative": "Incorrect. Extracted answer '(C)'; expected '(F)'.",
+  "evidence": [
+   {
+    "where": "grader",
+    "quote": "Incorrect. Extracted answer '(C)'; expected '(F)'."
+   }
+  ],
+  "needed_instead": ""
+ },
+ {
+  "task_id": "evolve-boolean_expressions-148",
+  "lens": "success",
+  "family": "boolean_expressions",
+  "habits": [
+   {
+    "habit": "clean_boolean_expressions",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-causal_understanding-025",
+  "lens": "success",
+  "family": "causal_understanding",
+  "habits": [
+   {
+    "habit": "clean_causal_understanding",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-causal_understanding-023",
+  "lens": "success",
+  "family": "causal_understanding",
+  "habits": [
+   {
+    "habit": "clean_causal_understanding",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-causal_understanding-136",
+  "lens": "success",
+  "family": "causal_understanding",
+  "habits": [
+   {
+    "habit": "clean_causal_understanding",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-linguini-188",
+  "lens": "success",
+  "family": "linguini",
+  "habits": [
+   {
+    "habit": "clean_linguini",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-object_properties-153",
+  "lens": "success",
+  "family": "object_properties",
+  "habits": [
+   {
+    "habit": "clean_object_properties",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ },
+ {
+  "task_id": "evolve-web_of_lies-074",
+  "lens": "success",
+  "family": "web_of_lies",
+  "habits": [
+   {
+    "habit": "clean_web_of_lies",
+    "where_shown": "final"
+   }
+  ],
+  "risk_if_removed": "a change that disrupts this path regresses passing tasks"
+ }
+]

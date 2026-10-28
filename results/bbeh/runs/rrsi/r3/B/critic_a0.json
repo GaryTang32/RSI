@@ -1,0 +1,16 @@
+{
+ "verdict": "reject",
+ "reasons": [
+  "TASK-SPECIALIZATION LEAKAGE in S1: The skill file (prompts/skills/reasoning.md) explicitly names and organizes reasoning procedures by task domains from the evolve suite: 'For Logic Problems (Boolean Expressions, Web of Lies)', 'For Counting and Object Properties', 'For Causal and Conditional Reasoning', 'For Translation and Pattern Tasks'. These headers directly correspond to the exact task structure of the evaluated domain. This violates the criterion 'hard-codes knowledge of specific evolve-set tasks: task names' and 'a list of the suite's domains'. A model reading this file learns the task taxonomy of the evaluator.",
+  "DECLARED HYPOTHESIS VIOLATION: S1's hypothesis explicitly promised procedures 'without task-specific content', but the implementation is organized entirely around task-domain categories that match the evolve suite. The gap between promise and implementation is a red flag.",
+  "FAILED LITMUS TEST: The skill file would not transfer to a different task suite (e.g., chemistry problems, legal reasoning, medical diagnosis). The section headings 'Boolean Expressions', 'Web of Lies', 'Linguini' reference are task-specific to this domain. A truly general improvement would use generic categories like 'Problems with binary constraints', 'Deduction under stated conditions', 'Pattern application', not names lifted from the test suite itself.",
+  "IMPLICIT MEMORIZATION via STRUCTURE: By organizing procedures by task domain, the model can implicitly learn to pattern-match its input problem against these categories and select the 'correct' procedure for that task type. This is a form of task-specific adaptation that improves only on the known task set, not on transfer."
+ ],
+ "risk_notes": [
+  "S2 (ultra-minimal output returning only ANSWER line) appears sound on its own—it simplifies post-processing and doesn't affect grader extraction since the grader reads only the ANSWER: line anyway. However, it is bundled with S1.",
+  "The predicted_affected list in S1 explicitly names task IDs from the evolve set (e.g., 'evolve-boolean_expressions-186'), further evidencing task specialization rather than general improvement.",
+  "The retroactive_check for S1 explicitly references specific task names ('web_of_lies', 'object_properties', 'shuffled_objects') as tasks that will 'benefit' or should be 'preserved', indicating the author is optimizing against known tasks.",
+  "If S2 were submitted alone (ultra-minimal output simplification), it would likely be acceptable—it's a cleaner control-flow change with no task specificity. But the bundle includes the leakage."
+ ],
+ "stage": "llm"
+}

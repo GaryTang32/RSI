@@ -1,0 +1,92 @@
+--- a/harness.py
++++ b/harness.py
+@@ -1,4 +1,4 @@
+-"""Enhanced harness: answer format cleaning and output simplification for robust extraction."""
++"""Enhanced harness: answer format cleaning and ultra-minimal output simplification."""
+ 
+ import re
+ 
+@@ -11,7 +11,7 @@
+     # Clean choice-format answers (remove descriptive text after choice letters)
+     cleaned_reply = _clean_answer_format(reply)
+     
+-    # Simplify output: keep only answer context, discard verbose preamble
++    # Ultra-simplify output: return ONLY the ANSWER line
+     simplified_reply = _simplify_output(cleaned_reply)
+     
+     return simplified_reply.strip()
+@@ -67,24 +67,17 @@
+ 
+ 
+ def _simplify_output(text):
+-    """Keep just the relevant answer context, discard excessive preamble explanation.
++    """Return ONLY the ANSWER line, discarding all preamble and trailing content.
+     
+-    Finds the ANSWER: line and returns from a few lines before it to the end,
+-    removing long preamble while preserving immediate context.
++    Since the grader extracts only from the ANSWER: line, returning just that line
++    minimizes confusion and format ambiguity. Falls back to full text if no ANSWER line found.
+     """
+     lines = text.split('\n')
+     
+-    # Find ANSWER line
+-    answer_line_idx = -1
+-    for i, line in enumerate(lines):
++    # Find ANSWER line and return it alone
++    for line in lines:
+         if 'ANSWER:' in line.upper():
+-            answer_line_idx = i
+-            break
++            return line
+     
+-    if answer_line_idx == -1:
+-        # No ANSWER line found, return full text
+-        return text
+-    
+-    # Keep from 1 line before ANSWER to the end (preserves immediate context)
+-    start_idx = max(0, answer_line_idx - 1)
+-    return '\n'.join(lines[start_idx:])
++    # Fallback: if no ANSWER line, return all text
++    return text
+--- a/prompts/skills/reasoning.md
++++ b/prompts/skills/reasoning.md
+@@ -0,0 +1,34 @@
++# Problem-Solving Procedures
++
++## For problems with constraints and conditions
++1. State the problem clearly: What are you trying to determine?
++2. Identify ALL constraints and conditions explicitly
++3. Enumerate possibilities or cases systematically
++4. Check each possibility against EVERY constraint
++5. Verify your solution satisfies all constraints
++6. Double-check by working through the logic again
++
++## For problems asking to count or identify objects
++1. List all objects mentioned, noting their properties
++2. Apply constraints one by one (filters, selections, transformations)
++3. Count the remaining objects carefully
++4. Double-check your count by listing them again
++5. Verify your final count matches your list
++
++## For problems about causality or responsibility
++1. Identify the cause and the effect clearly
++2. Check whether the cause actually occurred
++3. Check whether the effect actually occurred
++4. Consider whether other factors could have caused the effect
++5. Determine: Did this cause directly produce the effect?
++
++## For problems asking to identify patterns or rules
++1. Identify the pattern or rule from the examples provided
++2. State the pattern explicitly in your own words
++3. Apply the pattern to the new input or problem
++4. Check whether your output matches the pattern
++5. Verify your answer against similar examples from the original set
++
++---
++
++When solving complex problems, refer to these procedures to organize your thinking. Work through each step carefully before stating your final answer.
+--- a/prompts/system.md
++++ b/prompts/system.md
+@@ -1 +1 @@
+-You are a helpful assistant.
++You are a helpful assistant. When solving reasoning problems, use the structured procedures in prompts/skills/reasoning.md to organize your thinking.
