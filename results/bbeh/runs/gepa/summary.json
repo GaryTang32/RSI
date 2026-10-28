@@ -1,0 +1,347 @@
+{
+ "method": "gepa",
+ "rounds": 18,
+ "stop_reason": "max_metric_calls",
+ "baseline": "745ba24861",
+ "best": "745ba24861",
+ "first": {
+  "i": 0,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/system.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "new_subsample_scores": [
+   0.0,
+   1.0,
+   0.0
+  ],
+  "rollouts": 30,
+  "n_candidates": 1,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "frontier_size": 1
+ },
+ "last": {
+  "i": 17,
+  "event": "rejected",
+  "selected_program_candidate": 0,
+  "components": [
+   "prompts/system.md"
+  ],
+  "subsample_scores": [
+   1.0,
+   0.0,
+   1.0
+  ],
+  "new_subsample_scores": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "rollouts": 153,
+  "n_candidates": 2,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "frontier_size": 2
+ },
+ "usage": {
+  "task:cached": {
+   "calls": 0,
+   "input_tokens": 308463,
+   "output_tokens": 2053095,
+   "cost_usd": 0.0,
+   "latency_s": 0.0,
+   "total_tokens": 2361558
+  },
+  "task": {
+   "calls": 129,
+   "input_tokens": 542705,
+   "output_tokens": 2090990,
+   "cost_usd": 11.184004699999997,
+   "latency_s": 13317.480102300644,
+   "total_tokens": 2633695
+  },
+  "reflection": {
+   "calls": 17,
+   "input_tokens": 199894,
+   "output_tokens": 43191,
+   "cost_usd": 0.6155729999999999,
+   "latency_s": 522.4254395961761,
+   "total_tokens": 243085
+  },
+  "_total": {
+   "calls": 146,
+   "input_tokens": 1051062,
+   "output_tokens": 4187276,
+   "cost_usd": 11.799577699999997,
+   "latency_s": 13839.90554189682,
+   "total_tokens": 5238338
+  }
+ },
+ "meta": {
+  "config": {
+   "max_metric_calls": 150,
+   "budget_mode": "reference_soft",
+   "train_split": "evolve",
+   "val_split": "val",
+   "components": null,
+   "minibatch_size": 3,
+   "candidate_selection": "pareto",
+   "frontier_type": "instance",
+   "module_selector": "round_robin",
+   "acceptance": "noise_margin",
+   "noise_margin": 0.10312228238065249,
+   "epsilon": 0.1,
+   "top_k": 5,
+   "beam_n": 4,
+   "skip_perfect_score": true,
+   "perfect_score": null,
+   "use_merge": false,
+   "max_merge_invocations": 5,
+   "merge_val_overlap_floor": 5,
+   "merge_subsample_size": 5,
+   "merge_cap_mode": "reference_soft",
+   "merge_zero_weight": "uniform",
+   "merge_start_frac": 0.0,
+   "reflection_template": null,
+   "reflection_system": null,
+   "feedback": "full",
+   "val_seed": 0,
+   "cache_evaluation": false,
+   "workers": 16,
+   "seed": 0,
+   "max_iterations": null,
+   "stop_at_score": null,
+   "no_improvement_patience": null,
+   "max_candidate_proposals": null,
+   "max_reflection_cost": null,
+   "timeout_s": null,
+   "max_consecutive_infra_failures": 3,
+   "save_every": 1,
+   "diff_chars": 4000,
+   "extra": {},
+   "trace": true,
+   "trace_max_text": 20000,
+   "shadow_monitor": false,
+   "shadow_splits": null,
+   "shadow_k": 1,
+   "shadow_workers": 4
+  },
+  "components": [
+   "prompts/system.md",
+   "prompts/task.md"
+  ],
+  "splits": {
+   "train": "evolve",
+   "val": "evolve"
+  },
+  "n_train": 24,
+  "n_val": 24,
+  "rollouts": 153,
+  "rollouts_by_phase": {
+   "seed_val": 24,
+   "minibatch_parent": 54,
+   "minibatch_child": 51,
+   "val_reflective": 24,
+   "merge_subsample": 0,
+   "val_merge": 0
+  },
+  "iterations": 18,
+  "n_candidates": 2,
+  "n_proposals": 17,
+  "n_accepted": 1,
+  "n_merges_accepted": 0,
+  "n_reflection_calls": 17,
+  "best_idx": 0,
+  "best_val": 0.625,
+  "seed_val": 0.625,
+  "candidates": [
+   {
+    "idx": 0,
+    "artifact_id": "745ba24861ca238be0c8c7b875aea8d8df45588ed561d9520806639d54995c63",
+    "parents": [
+     null
+    ],
+    "kind": "baseline",
+    "val_mean": 0.625,
+    "frontier_wins": 22,
+    "rollouts_at_discovery": 0,
+    "iteration": -1,
+    "depth": 0
+   },
+   {
+    "idx": 1,
+    "artifact_id": "727d513ffc748913406364bf60e5953a1b0c0a9d8e19866e45c1f70591b44895",
+    "parents": [
+     0
+    ],
+    "kind": "reflective",
+    "val_mean": 0.5833333333333334,
+    "frontier_wins": 21,
+    "rollouts_at_discovery": 105,
+    "iteration": 13,
+    "depth": 1
+   }
+  ],
+  "frontier": {
+   "frontier_type": "instance",
+   "best": {
+    "i:evolve-boolean_expressions-186": 1.0,
+    "i:evolve-boolean_expressions-003": 1.0,
+    "i:evolve-boolean_expressions-148": 1.0,
+    "i:evolve-boolean_expressions-008": 1.0,
+    "i:evolve-causal_understanding-025": 1.0,
+    "i:evolve-causal_understanding-099": 0.0,
+    "i:evolve-causal_understanding-023": 1.0,
+    "i:evolve-causal_understanding-136": 1.0,
+    "i:evolve-linguini-018": 0.0,
+    "i:evolve-linguini-049": 0.0,
+    "i:evolve-linguini-188": 1.0,
+    "i:evolve-linguini-110": 0.0,
+    "i:evolve-object_properties-153": 1.0,
+    "i:evolve-object_properties-017": 1.0,
+    "i:evolve-object_properties-167": 1.0,
+    "i:evolve-object_properties-087": 1.0,
+    "i:evolve-web_of_lies-025": 0.0,
+    "i:evolve-web_of_lies-080": 1.0,
+    "i:evolve-web_of_lies-074": 1.0,
+    "i:evolve-web_of_lies-177": 1.0,
+    "i:evolve-shuffled_objects-107": 0.0,
+    "i:evolve-shuffled_objects-067": 1.0,
+    "i:evolve-shuffled_objects-023": 0.0,
+    "i:evolve-shuffled_objects-041": 1.0
+   },
+   "progs": {
+    "i:evolve-boolean_expressions-186": [
+     0,
+     1
+    ],
+    "i:evolve-boolean_expressions-003": [
+     0,
+     1
+    ],
+    "i:evolve-boolean_expressions-148": [
+     0,
+     1
+    ],
+    "i:evolve-boolean_expressions-008": [
+     1
+    ],
+    "i:evolve-causal_understanding-025": [
+     0,
+     1
+    ],
+    "i:evolve-causal_understanding-099": [
+     0,
+     1
+    ],
+    "i:evolve-causal_understanding-023": [
+     0,
+     1
+    ],
+    "i:evolve-causal_understanding-136": [
+     0,
+     1
+    ],
+    "i:evolve-linguini-018": [
+     0,
+     1
+    ],
+    "i:evolve-linguini-049": [
+     0,
+     1
+    ],
+    "i:evolve-linguini-188": [
+     0,
+     1
+    ],
+    "i:evolve-linguini-110": [
+     0,
+     1
+    ],
+    "i:evolve-object_properties-153": [
+     0,
+     1
+    ],
+    "i:evolve-object_properties-017": [
+     0,
+     1
+    ],
+    "i:evolve-object_properties-167": [
+     0,
+     1
+    ],
+    "i:evolve-object_properties-087": [
+     0
+    ],
+    "i:evolve-web_of_lies-025": [
+     0,
+     1
+    ],
+    "i:evolve-web_of_lies-080": [
+     0,
+     1
+    ],
+    "i:evolve-web_of_lies-074": [
+     0
+    ],
+    "i:evolve-web_of_lies-177": [
+     0,
+     1
+    ],
+    "i:evolve-shuffled_objects-107": [
+     0,
+     1
+    ],
+    "i:evolve-shuffled_objects-067": [
+     0
+    ],
+    "i:evolve-shuffled_objects-023": [
+     0,
+     1
+    ],
+    "i:evolve-shuffled_objects-041": [
+     1
+    ]
+   }
+  },
+  "best_history": [
+   [
+    24,
+    0
+   ],
+   [
+    129,
+    0
+   ]
+  ],
+  "resumed_at": 17,
+  "merge": null,
+  "n_merge_invocations": 0,
+  "perfect_score": 1.0,
+  "n_infra_errors": 0,
+  "n_infra_retries": 0,
+  "selector": "pareto",
+  "n_exec_errors": 0,
+  "seed_val_error_rate": 0.0,
+  "n_reflection_failed": 0,
+  "n_reflection_unparsed": 0,
+  "trace": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/runs/gepa/trace.jsonl",
+  "shadow_usage": {
+   "_total": {
+    "calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0.0,
+    "latency_s": 0.0,
+    "total_tokens": 0
+   }
+  }
+ }
+}
