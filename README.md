@@ -14,14 +14,6 @@ to your prompts, agent harness or training script, and keep only the changes tha
 
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
-<table align="center">
-<tr>
-<td align="center"><h3>46% → 4%</h3>how often a do-nothing change gets "kept":<br>naive keep-if-better vs a corrected noise band</td>
-<td align="center"><h3>0.50 → 0.94</h3>held-out accuracy after Claude Haiku<br>rewrote its own agent harness with RRSI, for $2.76</td>
-<td align="center"><h3>475</h3>paper claims re-tested against<br>code and experiments, failures included</td>
-</tr>
-</table>
-
 ---
 
 ## Why this exists
