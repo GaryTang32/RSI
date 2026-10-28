@@ -20,11 +20,21 @@ _ANSWER_LINE = re.compile(r"ANSWER\s*\**\s*[:=]\s*\**\s*(.+)", re.I)
 OFFICIAL_PREFIXES = ("The answer is:", "The final answer is ", "The final answer is: ", "The answer is ")
 
 
+_WRAPPED = re.compile(r"(\*\*)?\s*<([^<>]+)>\s*(\*\*)?")
+
+
 def answer_text(output: str) -> str:
-    """Our step: the text after the last ``ANSWER:`` if any, else the whole output."""
+    """Our step: the text after the last ``ANSWER:`` if any, else the whole output.
+
+    An answer wrapped whole in ``<...>`` is unwrapped: the seed prompt's own placeholder (``ANSWER: <answer>``) invites
+    it, and no BBEH target is so wrapped."""
     text = str(output or "")
     m = _ANSWER_LINE.findall(text)
-    return m[-1].strip() if m else text
+    if not m:
+        return text
+    ans = m[-1].strip()
+    w = _WRAPPED.fullmatch(ans.split("\n")[0].strip())
+    return w.group(2).strip() if w else ans
 
 
 # ----- port of bbeh/evaluate.py (Apache 2.0, Google LLC) -----------------------------------------------------------

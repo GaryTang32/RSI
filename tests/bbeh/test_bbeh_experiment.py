@@ -34,7 +34,7 @@ def test_offline_dry_run_of_every_arm_then_merge(exp, tmp_path):
         {a: (r["status"], r.get("error")) for a, r in res.items()}
     assert not (tmp_path / "cot3.json").exists()
     for a in ("seed", "rrsi", "gepa", "metaharness"):
-        assert len(res[a]["per_task"]) == 24 and res[a]["k"] == 1
+        assert len(res[a]["per_task"]) == 24 and res[a]["k"] == 2
     for a in cl.SEARCHED:
         assert res[a]["leak_check"]["passed"]
     assert len(res["pilot"]["per_task"]) == 5 * 23
@@ -54,11 +54,12 @@ def test_bbeh_defaults_and_subsample(exp, tmp_path):
     cl, _ = exp
     a = cl.parse_args(["--arm", "seed", "--offline"])
     assert (a.evolve, a.holdout, a.ood, a.k, a.n_sub, a.rrsi_T, a.gepa_B, a.mh_iterations, a.mh_k,
-            a.mh_session_usd) == (4, 6, 6, 1, 24, 4, 150, 3, 2, 0.75)
+            a.mh_session_usd) == (4, 10, 10, 2, 36, 4, 150, 3, 2, 0.75)
+    assert (a.llm_timeout, a.llm_retries) == (900.0, 2)
     assert a.out_dir.parts[-2:] == ("bbeh", "offline") and a.families.endswith("experiments/bbeh/families.json")
     _, suite = cl.build_suite(a)
     sub = cl.subsample(suite, a.n_sub, 0)
-    assert Counter(t.id.split("-")[0] for t in sub) == {"holdout": 12, "ood": 12}
-    assert set(Counter(t.family for t in sub).values()) == {2}
+    assert Counter(t.id.split("-")[0] for t in sub) == {"holdout": 18, "ood": 18}
+    assert set(Counter(t.family for t in sub).values()) == {3}
     s = cl.parse_args(["--arm", "seed", "--offline", "--smoke"])
     assert len(cl.build_suite(s)[1].splits["holdout"]) + len(cl.build_suite(s)[1].splits["ood"]) == 2

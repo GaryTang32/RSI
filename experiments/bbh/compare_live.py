@@ -93,10 +93,11 @@ PROFILES = {
     "bbh": Profile(BBH, BBHDomain, BBHSimModel, bbh_grading.is_generic_target, ARMS,
                    dict(evolve=6, holdout=10, ood=10, k=2, n_sub=36, rrsi_T=10, gepa_B=400, mh_iterations=6, mh_k=2,
                         mh_session_usd=1.0)),
-    # BBEH inputs are long (median ~2.5k chars): smaller splits, k = 1, shorter searches; no cot3 (no CoT prompts)
+    # BBEH answers are long (median ~10k output tokens, ~$0.056 per Haiku call): small evolve split, short searches;
+    # no cot3 (no official CoT prompts)
     "bbeh": Profile(BBEH, BBEHDomain, BBEHSimModel, bbeh_grading.is_generic_target,
                     tuple(x for x in ARMS if x != "cot3"),
-                    dict(evolve=4, holdout=6, ood=6, k=1, n_sub=24, rrsi_T=4, gepa_B=150, mh_iterations=3, mh_k=2,
+                    dict(evolve=4, holdout=10, ood=10, k=2, n_sub=36, rrsi_T=4, gepa_B=150, mh_iterations=3, mh_k=2,
                          mh_session_usd=0.75)),
 }
 
@@ -130,6 +131,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--eval-reserve", type=float, default=0.3, help="share of --cap kept for the final evaluation")
     ap.add_argument("--phase", choices=("all", "search", "eval"), default="all", help="searched arms only")
+    ap.add_argument("--llm-timeout", type=float, default=900.0,
+                    help="seconds per claude -p call (BBEH answers can run past 30k tokens; a timeout is billed but lost)")
+    ap.add_argument("--llm-retries", type=int, default=2)
     ap.add_argument("--fresh", action="store_true", help="delete this arm's run directory first (no resume)")
     ap.add_argument("--apply", action="store_true", help="pilot: write the suggested families into --families")
     ap.add_argument("--rrsi-T", type=int, default=None)
@@ -178,7 +182,8 @@ def suite_signature(suite, a) -> dict:
 def make_llms(a, suite, arm: str):
     """(task LLM, proposer LLM): one cached live model for both, or the offline sim + the arm's mock proposer."""
     if not a.offline:
-        llm = get_llm(a.model, cache_dir=str(a.cache_dir))
+        llm = get_llm(a.model, cache_dir=str(a.cache_dir),
+                      **({"timeout_s": a.llm_timeout, "retries": a.llm_retries} if a.model.startswith("claude:") else {}))
         return llm, llm
     from rsi.gepa import AgentQAReflectionLM
     from rsi.harness2 import MockImprover
