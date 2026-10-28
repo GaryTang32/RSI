@@ -1,0 +1,136 @@
+{
+ "evolve-boolean_expressions-003": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 19143.0
+ },
+ "evolve-boolean_expressions-008": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 22435.0
+ },
+ "evolve-boolean_expressions-148": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 24497.0
+ },
+ "evolve-boolean_expressions-186": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 14061.0
+ },
+ "evolve-causal_understanding-023": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 3287.0
+ },
+ "evolve-causal_understanding-025": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 2471.0
+ },
+ "evolve-causal_understanding-099": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 2753.0
+ },
+ "evolve-causal_understanding-136": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 6404.0
+ },
+ "evolve-linguini-018": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 13013.0
+ },
+ "evolve-linguini-049": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 16119.0
+ },
+ "evolve-linguini-110": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 21635.0
+ },
+ "evolve-linguini-188": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 10269.0
+ },
+ "evolve-object_properties-017": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 29762.0
+ },
+ "evolve-object_properties-087": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 31657.0
+ },
+ "evolve-object_properties-153": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 28900.0
+ },
+ "evolve-object_properties-167": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 23037.0
+ },
+ "evolve-shuffled_objects-023": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 24837.0
+ },
+ "evolve-shuffled_objects-041": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 17181.0
+ },
+ "evolve-shuffled_objects-067": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 33635.0
+ },
+ "evolve-shuffled_objects-107": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 31284.0
+ },
+ "evolve-web_of_lies-025": {
+  "best_system": "seed",
+  "score": 0.0,
+  "cost": 20369.0
+ },
+ "evolve-web_of_lies-074": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 21168.0
+ },
+ "evolve-web_of_lies-080": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 16534.0
+ },
+ "evolve-web_of_lies-177": {
+  "best_system": "seed",
+  "score": 1.0,
+  "cost": 21705.0
+ },
+ "_pareto": [
+  {
+   "system": "seed",
+   "score": 0.625,
+   "val_accuracy": 62.5,
+   "context_cost": 19006.5
+  }
+ ],
+ "_best": {
+  "system": "seed",
+  "score": 0.625
+ },
+ "_hypervolume": 1188.531250000001,
+ "_hv_ref_cost": 20908.15
+}

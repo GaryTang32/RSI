@@ -1,0 +1,19 @@
+{
+ "name": "fact_memory",
+ "artifact_id": "f652bea49f7092bcfa01668cb00166962f86e7ad7159125822ecfb5070564ba3",
+ "created_at": 1793218426.7164385,
+ "status": "invalid",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Two-phase problem solving with explicit fact extraction helps pattern-matching tasks (especially linguistic translation) by forcing the model to systematically map examples before solving, reducing inference errors and providing a structured knowledge base.",
+ "axis": "B+C",
+ "components": [
+  "example_detection",
+  "fact_extraction",
+  "fact_application"
+ ],
+ "parents_read": [],
+ "order": 2,
+ "reason": "smoke timed out after 30.0s (1 model call(s) in flight at the kill: their usage is unknown)"
+}

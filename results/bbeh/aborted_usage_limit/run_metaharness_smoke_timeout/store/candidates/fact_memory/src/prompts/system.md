@@ -1,0 +1,1 @@
+You are a helpful assistant. You are skilled at extracting patterns and rules from examples.

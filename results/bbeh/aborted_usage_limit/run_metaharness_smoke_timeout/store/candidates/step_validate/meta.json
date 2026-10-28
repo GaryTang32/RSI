@@ -1,0 +1,19 @@
+{
+ "name": "step_validate",
+ "artifact_id": "880a92f2400b41fc10849204ec859000166040a3cb4c9a299c5b65dd9b6bb77c",
+ "created_at": 1793218456.7376292,
+ "status": "invalid",
+ "iteration": 1,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Executing Python code blocks that the model writes improves performance on deterministic reasoning tasks (logic puzzles, object tracking, boolean expressions) by allowing validation and actual computation instead of just text reasoning.",
+ "axis": "F",
+ "components": [
+  "code_extraction",
+  "code_execution",
+  "answer_refinement"
+ ],
+ "parents_read": [],
+ "order": 3,
+ "reason": "smoke timed out after 30.0s (1 model call(s) in flight at the kill: their usage is unknown)"
+}

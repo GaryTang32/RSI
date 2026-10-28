@@ -1,0 +1,18 @@
+{
+ "name": "structured_output",
+ "artifact_id": "15033c4d69650c610333c41ddb8ef419e9fafee66d8e38ee3b7ac6f036a776c8",
+ "created_at": 1793218998.8104653,
+ "status": "invalid",
+ "iteration": 3,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Explicitly requesting working/reasoning space in the task prompt before the final answer will improve accuracy on complex problems. By asking the model to 'work through step-by-step' and 'show reasoning' before giving the ANSWER, the model has explicit space to track state and verify patterns, reducing errors especially in shuffled_objects (25%) and linguini (25%) tasks.",
+ "axis": "exploration",
+ "components": [
+  "task_prompt_structure",
+  "explicit_reasoning_space"
+ ],
+ "parents_read": [],
+ "order": 7,
+ "reason": "smoke timed out after 30.0s (1 model call(s) in flight at the kill: their usage is unknown)"
+}

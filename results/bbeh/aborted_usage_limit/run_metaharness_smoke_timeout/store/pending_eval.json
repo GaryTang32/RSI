@@ -1,0 +1,25 @@
+{
+ "iteration": 3,
+ "candidates": [
+  {
+   "name": "enhanced_reasoning",
+   "base_system": "seed",
+   "hypothesis": "A more detailed system prompt that explicitly encourages step-by-step reasoning, state tracking, and pattern analysis will improve performance on all problems, particularly the weak areas (linguini at 25% and shuffled_objects at 25%). By guiding the model to 'think deeply' and 'work through problems systematically', the model will be more careful with complex patterns and state changes without requiring complex detection logic.",
+   "axis": "exploitation",
+   "components": [
+    "system_prompt_enhancement",
+    "reasoning_guidance"
+   ]
+  },
+  {
+   "name": "structured_output",
+   "base_system": "seed",
+   "hypothesis": "Explicitly requesting working/reasoning space in the task prompt before the final answer will improve accuracy on complex problems. By asking the model to 'work through step-by-step' and 'show reasoning' before giving the ANSWER, the model has explicit space to track state and verify patterns, reducing errors especially in shuffled_objects (25%) and linguini (25%) tasks.",
+   "axis": "exploration",
+   "components": [
+    "task_prompt_structure",
+    "explicit_reasoning_space"
+   ]
+  }
+ ]
+}

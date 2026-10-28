@@ -1,0 +1,20 @@
+{
+ "name": "code_required",
+ "artifact_id": "448916003edbc1b3df92d117fbb208c901f1f2a3486e6364bd7847dbc483d82a",
+ "created_at": 1793218660.418822,
+ "status": "invalid",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Forcing explicit code generation for state-tracking problems improves accuracy by ensuring systematic tracking instead of error-prone manual reasoning. Detecting problems with object swaps/partner exchanges and requiring Python code execution provides ground-truth results.",
+ "axis": "F",
+ "components": [
+  "problem_detection",
+  "code_generation_request",
+  "code_execution",
+  "answer_extraction"
+ ],
+ "parents_read": [],
+ "order": 4,
+ "reason": "smoke timed out after 30.0s (1 model call(s) in flight at the kill: their usage is unknown)"
+}

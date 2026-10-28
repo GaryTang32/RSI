@@ -1,0 +1,19 @@
+{
+ "name": "example_retrieval",
+ "artifact_id": "a5697bbcb4880cb45471e92742195def838f97630d5fc4274ff4d80e8aaf2ddd",
+ "created_at": 1793218690.466183,
+ "status": "invalid",
+ "iteration": 2,
+ "kind": "candidate",
+ "base_system": "seed",
+ "hypothesis": "Adding strategy guidance for linguistic pattern analysis helps translation/plural problems by teaching the model a systematic approach: identify transformations, find patterns, apply consistently. This is simpler and more robust than extracting facts.",
+ "axis": "C",
+ "components": [
+  "family_detection",
+  "strategy_injection",
+  "pattern_analysis_guidance"
+ ],
+ "parents_read": [],
+ "order": 5,
+ "reason": "smoke timed out after 30.0s (1 model call(s) in flight at the kill: their usage is unknown)"
+}
