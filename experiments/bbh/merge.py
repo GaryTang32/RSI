@@ -7,7 +7,7 @@
 - Per-family accuracy table, eval $ per example, search $, fresh and cached calls, status (failed leak checks and
   errors are listed but never compared).
 
-Run:  python experiments/bbh/merge.py [--dir results/bbh] [--reps 10000]
+Run:  python experiments/bbh/merge.py [--benchmark bbh|bbeh] [--dir results/<bench>] [--reps 10000]
 """
 from __future__ import annotations
 
@@ -145,10 +145,11 @@ def markdown(m: dict) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=str(ROOT / "results" / "bbh"))
+    ap.add_argument("--benchmark", choices=("bbh", "bbeh"), default="bbh")
+    ap.add_argument("--dir", default=None, help="default results/<benchmark>")
     ap.add_argument("--reps", type=int, default=10000)
     a = ap.parse_args(argv)
-    d = Path(a.dir)
+    d = Path(a.dir) if a.dir else ROOT / "results" / a.benchmark
     m = merge(d, a.reps)
     (d / "merged.json").write_text(json.dumps(m, indent=1, default=str))
     md = markdown(m)

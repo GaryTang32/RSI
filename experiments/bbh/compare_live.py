@@ -1,4 +1,9 @@
-"""BBH comparison, one arm per command: pilot, seed, cot3, rrsi, gepa, metaharness, harness2, bestofn.
+"""BBH / BBEH comparison, one arm per command: pilot, seed, cot3 (BBH only), rrsi, gepa, metaharness, harness2, bestofn.
+
+``--benchmark bbh`` (default) or ``bbeh`` picks the data, grader, families file (experiments/<bench>/families.json),
+result directory (results/<bench>) and size defaults (BBEH: evolve 4, holdout 6, ood 6 per family, k = 1,
+n_sub = 24, rrsi T = 4, gepa B = 150, metaharness 3 x k = 2 at $0.75 per session, pilot 5 per family with band
+[0.15, 0.75]). ``experiments/bbeh/compare_live.py`` is this script with ``--benchmark bbeh``. Below, sizes are BBH's.
 
 Every arm uses the same model as agent and proposer (``--model``, default claude:haiku) and one shared LLM cache
 (``--cache-dir``, default results/bbh/live_cache), and writes ``results/bbh/<arm>.json``; ``merge.py`` builds the table.
@@ -34,6 +39,7 @@ Run (live; one background command per arm):
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 import random
 import shutil
@@ -51,13 +57,48 @@ if str(ROOT) not in sys.path:
 
 from rsi.core import Artifact, Budget, CachedLLM, ClaudeCLI, Evaluator, get_llm, transfer_report  # noqa: E402
 from rsi.core.stats import noise_from_trials  # noqa: E402
-from rsi.domains.bbh import (BBHDomain, BBHSimModel, cot3_artifact, leak_check, load_families,  # noqa: E402
-                             make_pilot_suite, make_suite, suggest_families)
+from rsi.domains.bbh import BBHDomain, BBHSimModel, cot3_artifact, leak_check  # noqa: E402
+from rsi.domains.bbh import grading as bbh_grading  # noqa: E402
+from rsi.domains.bbh.data import BBH, Benchmark  # noqa: E402
+from rsi.domains.bbh.suite import load_families, make_pilot_suite, make_suite, suggest_families  # noqa: E402
+from rsi.domains.bbeh import BBEHDomain, BBEHSimModel  # noqa: E402
+from rsi.domains.bbeh import grading as bbeh_grading  # noqa: E402
+from rsi.domains.bbeh.data import BBEH  # noqa: E402
 
-RESULTS = ROOT / "results" / "bbh"
-FAMILIES = Path(__file__).resolve().parent / "families.json"
 ARMS = ("pilot", "seed", "cot3", "rrsi", "gepa", "metaharness", "harness2", "bestofn")
 SEARCHED = ("rrsi", "gepa", "metaharness")
+
+
+@dataclass(frozen=True)
+class Profile:
+    """Everything that differs between the BBH and BBEH runs of this script."""
+
+    spec: Benchmark
+    domain_cls: type
+    sim_cls: type
+    is_generic: Any
+    arms: tuple
+    defaults: dict
+
+    @property
+    def results(self) -> Path:
+        return ROOT / "results" / self.spec.name
+
+    @property
+    def families(self) -> Path:
+        return ROOT / "experiments" / self.spec.name / "families.json"
+
+
+PROFILES = {
+    "bbh": Profile(BBH, BBHDomain, BBHSimModel, bbh_grading.is_generic_target, ARMS,
+                   dict(evolve=6, holdout=10, ood=10, k=2, n_sub=36, rrsi_T=10, gepa_B=400, mh_iterations=6, mh_k=2,
+                        mh_session_usd=1.0)),
+    # BBEH inputs are long (median ~2.5k chars): smaller splits, k = 1, shorter searches; no cot3 (no CoT prompts)
+    "bbeh": Profile(BBEH, BBEHDomain, BBEHSimModel, bbeh_grading.is_generic_target,
+                    tuple(x for x in ARMS if x != "cot3"),
+                    dict(evolve=4, holdout=6, ood=6, k=1, n_sub=24, rrsi_T=4, gepa_B=150, mh_iterations=3, mh_k=2,
+                         mh_session_usd=0.75)),
+}
 
 
 class CapReached(RuntimeError):
@@ -68,34 +109,44 @@ class CapReached(RuntimeError):
 
 def parse_args(argv=None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--benchmark", choices=sorted(PROFILES), default="bbh")
     ap.add_argument("--arm", required=True, choices=ARMS + ("all",))
     ap.add_argument("--cap", type=float, default=None, help="USD spend cap for this arm (fresh calls)")
     ap.add_argument("--smoke", action="store_true", help="2 tasks, smallest config: a cheap live check")
     ap.add_argument("--offline", action="store_true", help="mock LLMs (BBHSimModel + offline proposers); no spend")
     ap.add_argument("--model", default="claude:haiku", help="agent and proposer model (one model for all roles)")
-    ap.add_argument("--cache-dir", default=None, help="shared LLM response cache (default results/bbh/live_cache)")
-    ap.add_argument("--data-cache", default=None, help="BBH file cache (default $RSI_BBH_CACHE or ~/.cache/rsi/bbh)")
-    ap.add_argument("--families", default=str(FAMILIES))
-    ap.add_argument("--out-dir", default=None, help="result directory (default results/bbh[/smoke|/offline])")
+    ap.add_argument("--cache-dir", default=None, help="shared LLM response cache (default results/<bench>/live_cache)")
+    ap.add_argument("--data-cache", default=None, help="data cache (default $RSI_BBH_CACHE or ~/.cache/rsi/bbh; "
+                                                       "$RSI_BBEH_CACHE or ~/.cache/rsi/bbeh)")
+    ap.add_argument("--families", default=None, help="default experiments/<bench>/families.json")
+    ap.add_argument("--out-dir", default=None, help="result directory (default results/<bench>[/smoke|/offline])")
     ap.add_argument("--seed", type=int, default=0, help="suite seed")
-    ap.add_argument("--evolve", type=int, default=6, help="evolve examples per practice family")
-    ap.add_argument("--holdout", type=int, default=10, help="holdout examples per practice family")
-    ap.add_argument("--ood", type=int, default=10, help="ood examples per unseen family")
-    ap.add_argument("--k", type=int, default=2, help="trials per example in the final evaluation")
-    ap.add_argument("--n-sub", type=int, default=36, help="Harness²/best-of-n subsample (half holdout, half ood)")
+    ap.add_argument("--evolve", type=int, default=None, help="evolve examples per practice family")
+    ap.add_argument("--holdout", type=int, default=None, help="holdout examples per practice family")
+    ap.add_argument("--ood", type=int, default=None, help="ood examples per unseen family")
+    ap.add_argument("--k", type=int, default=None, help="trials per example in the final evaluation")
+    ap.add_argument("--n-sub", type=int, default=None, help="Harness²/best-of-n subsample (half holdout, half ood)")
     ap.add_argument("--order-seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--eval-reserve", type=float, default=0.3, help="share of --cap kept for the final evaluation")
     ap.add_argument("--phase", choices=("all", "search", "eval"), default="all", help="searched arms only")
     ap.add_argument("--fresh", action="store_true", help="delete this arm's run directory first (no resume)")
     ap.add_argument("--apply", action="store_true", help="pilot: write the suggested families into --families")
-    ap.add_argument("--rrsi-T", type=int, default=10)
-    ap.add_argument("--gepa-B", type=int, default=400, help="GEPA rollout budget (max_metric_calls)")
-    ap.add_argument("--mh-iterations", type=int, default=6)
-    ap.add_argument("--mh-k", type=int, default=2)
-    ap.add_argument("--mh-session-usd", type=float, default=1.0, help="per agent-session budget of the proposer")
+    ap.add_argument("--rrsi-T", type=int, default=None)
+    ap.add_argument("--gepa-B", type=int, default=None, help="GEPA rollout budget (max_metric_calls)")
+    ap.add_argument("--mh-iterations", type=int, default=None)
+    ap.add_argument("--mh-k", type=int, default=None)
+    ap.add_argument("--mh-session-usd", type=float, default=None, help="per agent-session budget of the proposer")
     ap.add_argument("--bon-n", type=int, default=None, help="best-of-n n (default: matched to harness2.json)")
     a = ap.parse_args(argv)
+    a.P = PROFILES[a.benchmark]
+    for key, val in a.P.defaults.items():       # benchmark defaults for whatever was not given
+        if getattr(a, key) is None:
+            setattr(a, key, val)
+    if a.arm != "all" and a.arm not in a.P.arms:
+        raise SystemExit(f"arm {a.arm!r} is unavailable for {a.benchmark}"
+                         + (": BBEH publishes no official CoT prompts" if a.arm == "cot3" else ""))
+    a.families = a.families or str(a.P.families)
     if a.smoke:
         a.evolve, a.holdout, a.ood, a.k, a.n_sub = 2, 1, 1, 1, 2
         a.rrsi_T, a.gepa_B, a.mh_iterations, a.mh_k = 1, 12, 1, 1
@@ -103,18 +154,19 @@ def parse_args(argv=None) -> argparse.Namespace:
     sub = "offline" if a.offline else "smoke" if a.smoke else ""
     if a.offline and a.smoke:
         sub = "offline_smoke"
-    a.out_dir = Path(a.out_dir) if a.out_dir else (RESULTS / sub if sub else RESULTS)
-    a.cache_dir = Path(a.cache_dir) if a.cache_dir else RESULTS / "live_cache"
+    res = a.P.results
+    a.out_dir = Path(a.out_dir) if a.out_dir else (res / sub if sub else res)
+    a.cache_dir = Path(a.cache_dir) if a.cache_dir else res / "live_cache"
     return a
 
 
 def build_suite(a):
-    fam = load_families(a.families)
+    fam = load_families(a.families, a.P.spec)
     practice, ood = fam["practice"], fam["ood"]
     if a.smoke:
         practice, ood = practice[:1], ood[:1]
     suite = make_suite(practice, ood, per_family={"evolve": a.evolve, "holdout": a.holdout, "ood": a.ood},
-                       seed=a.seed, cache_dir=a.data_cache)
+                       seed=a.seed, cache_dir=a.data_cache, benchmark=a.P.spec)
     return fam, suite
 
 
@@ -133,7 +185,7 @@ def make_llms(a, suite, arm: str):
     from rsi.rrsi.mocks import AgentQAMockLLM
     prop = {"rrsi": AgentQAMockLLM, "gepa": AgentQAReflectionLM, "harness2": MockImprover,
             "bestofn": MockImprover}.get(arm)
-    return BBHSimModel(suite), (prop() if prop else None)
+    return a.P.sim_cls(suite), (prop() if prop else None)
 
 
 def subsample(suite, n_sub: int, order_seed: int) -> list:
@@ -235,19 +287,20 @@ def eval_fields(ev: dict, suite) -> dict:
             "accuracy": (sum(per_task.values()) / len(per_task)) if per_task else None}
 
 
-def leak(art: Artifact, suite) -> dict:
-    return leak_check(art, suite, split="evolve")
+def leak(a, art: Artifact, suite) -> dict:
+    return leak_check(art, suite, split="evolve", is_generic=a.P.is_generic)
 
 
 # ----- arms ---------------------------------------------------------------------------------------------------------
 
 def arm_pilot(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     cands = fam["pilot_candidates"][:2] if a.smoke else fam["pilot_candidates"]
-    psuite = make_pilot_suite(cands, n_per_family=1 if a.smoke else 10, cache_dir=a.data_cache)
+    n_pilot = 1 if a.smoke else a.P.spec.pilot_per_family
+    psuite = make_pilot_suite(cands, n_per_family=n_pilot, cache_dir=a.data_cache, benchmark=a.P.spec)
     if a.offline:
-        llm = BBHSimModel(psuite)
+        llm = a.P.sim_cls(psuite)
         ctx.llms = [llm]
-    pdom = BBHDomain(psuite)
+    pdom = a.P.domain_cls(psuite)
     ev = Evaluator(pdom, llm, workers=a.workers)
     per_task, acc = {}, {}
     for f in cands:
@@ -257,8 +310,9 @@ def arm_pilot(a, ctx, fam, suite, llm, prop, out: dict) -> None:
             r = ev.evaluate(pdom.seed_artifact(), tasks, k=1, label="pilot")
         per_task.update(r.task_scores())
         acc[f] = r.score
-    sug = suggest_families(acc, n_practice=len(fam["practice"]), n_ood=len(fam["ood"]))
-    out.update(family_accuracy=acc, per_task=per_task, suggestion=sug, n_per_family=1 if a.smoke else 10)
+    lo, hi = a.P.spec.pilot_band
+    sug = suggest_families(acc, n_practice=len(fam["practice"]), n_ood=len(fam["ood"]), lo=lo, hi=hi)
+    out.update(family_accuracy=acc, per_task=per_task, suggestion=sug, n_per_family=n_pilot)
     if a.apply and not a.smoke:
         if len(sug["practice"]) == len(fam["practice"]) and len(sug["ood"]) == len(fam["ood"]):
             d = json.loads(Path(a.families).read_text())
@@ -271,11 +325,13 @@ def arm_pilot(a, ctx, fam, suite, llm, prop, out: dict) -> None:
 
 
 def arm_seed(a, ctx, fam, suite, llm, prop, out: dict) -> None:
-    dom = BBHDomain(suite)
+    dom = a.P.domain_cls(suite)
     out.update(eval_fields(final_eval(ctx, dom, llm, "seed", dom.seed_artifact()), suite))
 
 
 def arm_cot3(a, ctx, fam, suite, llm, prop, out: dict) -> None:
+    if a.P.spec.cot_path is None:
+        raise SystemExit(f"cot3 is unavailable for {a.P.spec.name}: no official CoT prompts")
     dom = BBHDomain(suite, family_hint=True)
     art = cot3_artifact(suite.families(), cache_dir=a.data_cache)
     out["note"] = "fixed reference (no search): official BBH 3-shot CoT prompt of the example's family"
@@ -342,7 +398,7 @@ def _search_metaharness(a, ctx, dom, llm, prop, run_dir: Path):
 
 
 def arm_searched(a, ctx, fam, suite, llm, prop, out: dict) -> None:
-    dom = BBHDomain(suite)
+    dom = a.P.domain_cls(suite)
     run_dir = Path(out["run_dir"])
     best_dir = run_dir / "final_harness"
     if a.phase in ("all", "search"):
@@ -359,7 +415,7 @@ def arm_searched(a, ctx, fam, suite, llm, prop, out: dict) -> None:
         raise SystemExit(f"no saved search result in {best_dir}; run --phase search first")
     best = Artifact.from_dir(best_dir)
     out["final_harness"] = {"dir": str(best_dir), "id": best.short_id, "files": sorted(best)}
-    lc = leak(best, suite)
+    lc = leak(a, best, suite)
     out["leak_check"] = lc
     if not lc["passed"]:
         out["status"] = "failed_leak_check"
@@ -381,7 +437,7 @@ def _bon_n(a) -> tuple[int, str]:
 
 def arm_harness2(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     from rsi.harness2 import Config, run
-    dom = BBHDomain(suite)
+    dom = a.P.domain_cls(suite)
     tasks = subsample(suite, a.n_sub, a.order_seed)
     ctx.check("harness2 stream")
     with ctx.phase("stream"):
@@ -407,7 +463,7 @@ def arm_harness2(a, ctx, fam, suite, llm, prop, out: dict) -> None:
 def arm_bestofn(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     from rsi.harness2.api import posthoc_report
     from rsi.harness2.baselines import best_of_n
-    dom = BBHDomain(suite)
+    dom = a.P.domain_cls(suite)
     tasks = subsample(suite, a.n_sub, a.order_seed)
     n, why = _bon_n(a)
     recs: list = []
@@ -445,7 +501,7 @@ def run_arm(a, arm: str) -> dict:
     if (a.fresh or a.offline) and a.phase != "eval" and run_dir.exists():
         shutil.rmtree(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    out: dict[str, Any] = {"arm": arm, "status": "ok", "mode": "offline" if a.offline else "live",
+    out: dict[str, Any] = {"arm": arm, "benchmark": a.P.spec.name, "status": "ok", "mode": "offline" if a.offline else "live",
                            "smoke": a.smoke, "model": "bbh-sim + mocks" if a.offline else a.model, "cap": a.cap,
                            "k": a.k, "suite": suite_signature(suite, a), "families": fam, "run_dir": str(run_dir),
                            "cache_dir": None if a.offline else str(a.cache_dir), "started": time.time()}
@@ -486,7 +542,7 @@ def summary_line(o: dict) -> str:
 
 def main(argv=None) -> int:
     a = parse_args(argv)
-    arms = ARMS if a.arm == "all" else (a.arm,)
+    arms = a.P.arms if a.arm == "all" else (a.arm,)
     bad = 0
     for arm in arms:
         o = run_arm(a, arm)
