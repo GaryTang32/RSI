@@ -63,6 +63,9 @@ def merge(d: Path, reps: int = 10000) -> dict:
         # resumed run or one that reuses another arm's calls is not shown as free
         full = {k: round((sp.get(k, {}).get("usd") or 0) + (sp.get(k, {}).get("usd_saved_by_cache") or 0), 4)
                 for k in ("search", "eval")}
+        ph = {x.get("phase"): x for x in o.get("phases") or []}
+        if "prewarm" in ph and "stream" in ph:   # best-of-n: the stream replays the prewarmed rollouts; count once
+            full["search"] = round(full["search"] - (ph["stream"].get("usd_saved_by_cache") or 0), 4)
         own = ((o.get("search") or {}).get("usage") or {}).get("cost_usd")
         if own:     # a run resumed from saved method state never replays its earlier calls: take the method's counter
             full["search"] = round(max(full["search"], own), 4)
