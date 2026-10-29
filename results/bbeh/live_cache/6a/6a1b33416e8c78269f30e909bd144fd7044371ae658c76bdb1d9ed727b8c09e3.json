@@ -1,0 +1,1 @@
+{"text": "<edits>\n(no components changed \u2014 all candidate harnesses in context/pool are identical to context/base_harness)\n</edits>\n\nNO_ENTRY", "usage": {"calls": 1, "input_tokens": 8877, "output_tokens": 2915, "cost_usd": 0.03232, "latency_s": 34.0553994178772}, "model": "claude-haiku-4-5-20251001", "stop_reason": "end_turn"}
