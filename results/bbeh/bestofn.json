@@ -1,0 +1,387 @@
+{
+ "arm": "bestofn",
+ "benchmark": "bbeh",
+ "status": "ok",
+ "mode": "live",
+ "smoke": false,
+ "model": "claude:haiku",
+ "cap": 35.0,
+ "k": 2,
+ "suite": {
+  "name": "bbeh-s0",
+  "seed": 0,
+  "summary": {
+   "evolve": {
+    "n": 24,
+    "families": [
+     "boolean_expressions",
+     "causal_understanding",
+     "linguini",
+     "object_properties",
+     "shuffled_objects",
+     "web_of_lies"
+    ]
+   },
+   "holdout": {
+    "n": 60,
+    "families": [
+     "boolean_expressions",
+     "causal_understanding",
+     "linguini",
+     "object_properties",
+     "shuffled_objects",
+     "web_of_lies"
+    ]
+   },
+   "ood": {
+    "n": 60,
+    "families": [
+     "buggy_tables",
+     "geometric_shapes",
+     "nycc",
+     "sarc_triples",
+     "sportqa",
+     "temporal_sequence"
+    ]
+   },
+   "smoke": {
+    "n": 2,
+    "families": [
+     "boolean_expressions"
+    ]
+   }
+  },
+  "per_family": {
+   "evolve": 4,
+   "holdout": 10,
+   "ood": 10
+  }
+ },
+ "families": {
+  "practice": [
+   "boolean_expressions",
+   "causal_understanding",
+   "linguini",
+   "object_properties",
+   "web_of_lies",
+   "shuffled_objects"
+  ],
+  "ood": [
+   "buggy_tables",
+   "geometric_shapes",
+   "nycc",
+   "temporal_sequence",
+   "sarc_triples",
+   "sportqa"
+  ],
+  "pilot_candidates": [
+   "boardgame_qa",
+   "boolean_expressions",
+   "buggy_tables",
+   "causal_understanding",
+   "disambiguation_qa",
+   "dyck_languages",
+   "geometric_shapes",
+   "hyperbaton",
+   "linguini",
+   "movie_recommendation",
+   "multistep_arithmetic",
+   "nycc",
+   "object_counting",
+   "object_properties",
+   "sarc_triples",
+   "shuffled_objects",
+   "spatial_reasoning",
+   "sportqa",
+   "temporal_sequence",
+   "time_arithmetic",
+   "web_of_lies",
+   "word_sorting",
+   "zebra_puzzles"
+  ]
+ },
+ "run_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/runs/bestofn",
+ "cache_dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh/live_cache",
+ "started": 1793248514.198199,
+ "n": 7,
+ "n_rule": "--bon-n",
+ "subset": [
+  "holdout-boolean_expressions-042",
+  "ood-geometric_shapes-025",
+  "holdout-linguini-137",
+  "ood-sarc_triples-001",
+  "ood-sportqa-087",
+  "holdout-web_of_lies-001",
+  "ood-sarc_triples-196",
+  "ood-buggy_tables-036",
+  "holdout-causal_understanding-188",
+  "holdout-web_of_lies-193",
+  "holdout-shuffled_objects-062",
+  "holdout-causal_understanding-187",
+  "ood-temporal_sequence-094",
+  "holdout-causal_understanding-101",
+  "ood-sportqa-142",
+  "ood-temporal_sequence-161",
+  "holdout-linguini-194",
+  "holdout-object_properties-140",
+  "ood-nycc-099",
+  "ood-sarc_triples-018",
+  "holdout-shuffled_objects-020",
+  "ood-nycc-051",
+  "holdout-boolean_expressions-158",
+  "ood-buggy_tables-101",
+  "holdout-web_of_lies-065",
+  "holdout-object_properties-078",
+  "holdout-object_properties-062",
+  "ood-sportqa-030",
+  "ood-geometric_shapes-168",
+  "ood-temporal_sequence-039",
+  "holdout-boolean_expressions-124",
+  "ood-geometric_shapes-122",
+  "holdout-shuffled_objects-154",
+  "holdout-linguini-016",
+  "ood-nycc-153",
+  "ood-buggy_tables-032"
+ ],
+ "stop_reason": "stream_end",
+ "tasks_done": 36,
+ "per_task": {
+  "holdout-boolean_expressions-042": 1.0,
+  "ood-geometric_shapes-025": 1.0,
+  "holdout-linguini-137": 0.0,
+  "ood-sarc_triples-001": 0.0,
+  "ood-sportqa-087": 0.0,
+  "holdout-web_of_lies-001": 1.0,
+  "ood-sarc_triples-196": 1.0,
+  "ood-buggy_tables-036": 0.0,
+  "holdout-causal_understanding-188": 0.0,
+  "holdout-web_of_lies-193": 1.0,
+  "holdout-shuffled_objects-062": 1.0,
+  "holdout-causal_understanding-187": 0.0,
+  "ood-temporal_sequence-094": 1.0,
+  "holdout-causal_understanding-101": 0.0,
+  "ood-sportqa-142": 0.0,
+  "ood-temporal_sequence-161": 1.0,
+  "holdout-linguini-194": 0.0,
+  "holdout-object_properties-140": 1.0,
+  "ood-nycc-099": 1.0,
+  "ood-sarc_triples-018": 1.0,
+  "holdout-shuffled_objects-020": 0.0,
+  "ood-nycc-051": 1.0,
+  "holdout-boolean_expressions-158": 1.0,
+  "ood-buggy_tables-101": 1.0,
+  "holdout-web_of_lies-065": 1.0,
+  "holdout-object_properties-078": 1.0,
+  "holdout-object_properties-062": 0.0,
+  "ood-sportqa-030": 1.0,
+  "ood-geometric_shapes-168": 0.0,
+  "ood-temporal_sequence-039": 1.0,
+  "holdout-boolean_expressions-124": 0.0,
+  "ood-geometric_shapes-122": 0.0,
+  "holdout-shuffled_objects-154": 1.0,
+  "holdout-linguini-016": 1.0,
+  "ood-nycc-153": 0.0,
+  "ood-buggy_tables-032": 0.0
+ },
+ "base_per_task": {
+  "holdout-boolean_expressions-042": 1.0,
+  "ood-geometric_shapes-025": 1.0,
+  "holdout-linguini-137": 0.0,
+  "ood-sarc_triples-001": 0.0,
+  "ood-sportqa-087": 0.0,
+  "holdout-web_of_lies-001": 1.0,
+  "ood-sarc_triples-196": 1.0,
+  "ood-buggy_tables-036": 0.0,
+  "holdout-causal_understanding-188": 0.0,
+  "holdout-web_of_lies-193": 0.0,
+  "holdout-shuffled_objects-062": 1.0,
+  "holdout-causal_understanding-187": 0.0,
+  "ood-temporal_sequence-094": 1.0,
+  "holdout-causal_understanding-101": 0.0,
+  "ood-sportqa-142": 0.0,
+  "ood-temporal_sequence-161": 1.0,
+  "holdout-linguini-194": 0.0,
+  "holdout-object_properties-140": 1.0,
+  "ood-nycc-099": 1.0,
+  "ood-sarc_triples-018": 0.0,
+  "holdout-shuffled_objects-020": 0.0,
+  "ood-nycc-051": 0.0,
+  "holdout-boolean_expressions-158": 0.0,
+  "ood-buggy_tables-101": 1.0,
+  "holdout-web_of_lies-065": 1.0,
+  "holdout-object_properties-078": 0.0,
+  "holdout-object_properties-062": 0.0,
+  "ood-sportqa-030": 1.0,
+  "ood-geometric_shapes-168": 0.0,
+  "ood-temporal_sequence-039": 0.0,
+  "holdout-boolean_expressions-124": 1.0,
+  "ood-geometric_shapes-122": 0.0,
+  "holdout-shuffled_objects-154": 0.0,
+  "holdout-linguini-016": 1.0,
+  "ood-nycc-153": 0.0,
+  "ood-buggy_tables-032": 1.0
+ },
+ "task_family": {
+  "holdout-boolean_expressions-042": "boolean_expressions",
+  "ood-geometric_shapes-025": "geometric_shapes",
+  "holdout-linguini-137": "linguini",
+  "ood-sarc_triples-001": "sarc_triples",
+  "ood-sportqa-087": "sportqa",
+  "holdout-web_of_lies-001": "web_of_lies",
+  "ood-sarc_triples-196": "sarc_triples",
+  "ood-buggy_tables-036": "buggy_tables",
+  "holdout-causal_understanding-188": "causal_understanding",
+  "holdout-web_of_lies-193": "web_of_lies",
+  "holdout-shuffled_objects-062": "shuffled_objects",
+  "holdout-causal_understanding-187": "causal_understanding",
+  "ood-temporal_sequence-094": "temporal_sequence",
+  "holdout-causal_understanding-101": "causal_understanding",
+  "ood-sportqa-142": "sportqa",
+  "ood-temporal_sequence-161": "temporal_sequence",
+  "holdout-linguini-194": "linguini",
+  "holdout-object_properties-140": "object_properties",
+  "ood-nycc-099": "nycc",
+  "ood-sarc_triples-018": "sarc_triples",
+  "holdout-shuffled_objects-020": "shuffled_objects",
+  "ood-nycc-051": "nycc",
+  "holdout-boolean_expressions-158": "boolean_expressions",
+  "ood-buggy_tables-101": "buggy_tables",
+  "holdout-web_of_lies-065": "web_of_lies",
+  "holdout-object_properties-078": "object_properties",
+  "holdout-object_properties-062": "object_properties",
+  "ood-sportqa-030": "sportqa",
+  "ood-geometric_shapes-168": "geometric_shapes",
+  "ood-temporal_sequence-039": "temporal_sequence",
+  "holdout-boolean_expressions-124": "boolean_expressions",
+  "ood-geometric_shapes-122": "geometric_shapes",
+  "holdout-shuffled_objects-154": "shuffled_objects",
+  "holdout-linguini-016": "linguini",
+  "ood-nycc-153": "nycc",
+  "ood-buggy_tables-032": "buggy_tables"
+ },
+ "report": {
+  "n": 36,
+  "base": [
+   0.4166666666666667,
+   0.25,
+   0.5833333333333334
+  ],
+  "submitted": [
+   0.5555555555555556,
+   0.3888888888888889,
+   0.7222222222222222
+  ],
+  "paired": {
+   "mean_diff": 0.1388888888888889,
+   "lo": -0.027777777777777776,
+   "hi": 0.3055555555555556,
+   "n": 36,
+   "p_better": 0.19444444444444445
+  },
+  "families": {
+   "boolean_expressions": {
+    "n": 3,
+    "base": 0.6666666666666666,
+    "submitted": 0.6666666666666666
+   },
+   "buggy_tables": {
+    "n": 3,
+    "base": 0.6666666666666666,
+    "submitted": 0.3333333333333333
+   },
+   "causal_understanding": {
+    "n": 3,
+    "base": 0.0,
+    "submitted": 0.0
+   },
+   "geometric_shapes": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.3333333333333333
+   },
+   "linguini": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.3333333333333333
+   },
+   "nycc": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.6666666666666666
+   },
+   "object_properties": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.6666666666666666
+   },
+   "sarc_triples": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.6666666666666666
+   },
+   "shuffled_objects": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.6666666666666666
+   },
+   "sportqa": {
+    "n": 3,
+    "base": 0.3333333333333333,
+    "submitted": 0.3333333333333333
+   },
+   "temporal_sequence": {
+    "n": 3,
+    "base": 0.6666666666666666,
+    "submitted": 1.0
+   },
+   "web_of_lies": {
+    "n": 3,
+    "base": 0.6666666666666666,
+    "submitted": 1.0
+   }
+  }
+ },
+ "calls_per_task": 15.0,
+ "accuracy": 0.5555555555555556,
+ "phases": [
+  {
+   "phase": "prewarm",
+   "usd": 0.39899,
+   "fresh_calls": 2,
+   "cached_calls": 250,
+   "usd_saved_by_cache": 26.87105,
+   "wall_s": 1558.2
+  },
+  {
+   "phase": "stream",
+   "usd": 2.47137,
+   "fresh_calls": 17,
+   "cached_calls": 271,
+   "usd_saved_by_cache": 28.56085,
+   "wall_s": 1128.3
+  }
+ ],
+ "spend": {
+  "search": {
+   "usd": 2.87036,
+   "fresh_calls": 19,
+   "cached_calls": 521,
+   "usd_saved_by_cache": 55.4319
+  },
+  "eval": {
+   "usd": 0,
+   "fresh_calls": 0,
+   "cached_calls": 0,
+   "usd_saved_by_cache": 0
+  },
+  "total": {
+   "usd": 2.87036,
+   "fresh_calls": 19,
+   "cached_calls": 521,
+   "usd_saved_by_cache": 55.4319
+  }
+ },
+ "usd": 2.87036,
+ "wall_s": 2686.5,
+ "eval_usd_per_example": null
+}

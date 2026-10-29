@@ -1,0 +1,7 @@
+gepa         status=ok                 acc=0.417 n=120 usd=4.0855 calls=75+264cached leak_check=pass
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== gepa exit=0 17:33
+== gepa exit=124 21:01
+gepa         status=ok                 acc=0.417 n=120 usd=0.0000 calls=1+287cached leak_check=pass
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== gepa exit=0 21:28

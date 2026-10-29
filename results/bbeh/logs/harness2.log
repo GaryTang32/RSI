@@ -1,0 +1,9 @@
+harness2     status=ok                 acc=0.111 n=36 usd=3.4551 calls=90+0cached
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== harness2 exit=0 17:36
+== harness2 exit=124 21:01
+== harness2 exit=124 22:56
+== harness2 exit=124 01:45
+harness2     status=ok                 acc=0.444 n=36 usd=0.3504 calls=4+272cached
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== harness2 exit=0 01:53

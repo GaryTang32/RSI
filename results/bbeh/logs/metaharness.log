@@ -1,0 +1,6 @@
+metaharness  status=ok                 acc=0.417 n=120 usd=1.0979 calls=4+263cached leak_check=pass
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== metaharness exit=0 20:50
+metaharness  status=ok                 acc=0.417 n=120 usd=8.2361 calls=83+334cached leak_check=pass
+results in /tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh
+== metaharness exit=0 21:52
