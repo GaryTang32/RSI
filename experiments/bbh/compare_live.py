@@ -468,6 +468,18 @@ def arm_harness2(a, ctx, fam, suite, llm, prop, out: dict) -> None:
         out["calls_per_task"] = merged_usage(llm, prop)["_total"]["calls"] / max(1, len(recs))
 
 
+def _prewarm_bon(a, ctx, dom, tasks, n: int, llm) -> None:
+    """best_of_n runs its rollouts one by one; run the same rollouts (same seeds) in parallel first so that the
+    stream below replays them from the shared cache. Results are unchanged; only wall time drops."""
+    from concurrent.futures import ThreadPoolExecutor
+    from rsi.harness2.baselines import _seed
+    art = dom.seed_artifact()
+    jobs = [(t, _seed(0, t.id, f"base{i}")) for t in tasks for i in range(1, n + 1)]
+    ctx.check("best-of-n prewarm")
+    with ctx.phase("prewarm"), ThreadPoolExecutor(max(1, a.workers)) as ex:
+        list(ex.map(lambda j: dom.rollout(art, j[0], seed=j[1], llm=llm), jobs))
+
+
 def arm_bestofn(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     from rsi.harness2.api import posthoc_report
     from rsi.harness2.baselines import best_of_n
@@ -476,6 +488,8 @@ def arm_bestofn(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     n, why = _bon_n(a)
     recs: list = []
     stop = "stream_end"
+    if not a.offline:
+        _prewarm_bon(a, ctx, dom, tasks, n, llm)
     with ctx.phase("stream"):
         for t in tasks:
             try:
