@@ -490,15 +490,22 @@ def arm_bestofn(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     stop = "stream_end"
     if not a.offline:
         _prewarm_bon(a, ctx, dom, tasks, n, llm)
-    with ctx.phase("stream"):
-        for t in tasks:
+    def one(t):
+        # tasks are independent in best-of-n (no library); each gets its own domain object, as the open-world
+        # guard patches the instance it guards
+        ctx.check(f"task {t.id}")
+        d = a.P.domain_cls(suite)
+        return best_of_n(d, d.seed_artifact(), llm_task=llm, llm_select=prop, n=n, tasks=[t], seed=0,
+                         report=False)["records"]
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ctx.phase("stream"), ThreadPoolExecutor(1 if a.offline else max(1, min(a.workers, 8))) as ex:
+        futs = [ex.submit(one, t) for t in tasks]
+        for f in futs:
             try:
-                ctx.check(f"task {t.id}")
+                recs += f.result()
             except CapReached as e:
                 stop = str(e)
-                break
-            recs += best_of_n(dom, dom.seed_artifact(), llm_task=llm, llm_select=prop, n=n, tasks=[t], seed=0,
-                              report=False)["records"]
     rep = posthoc_report(dom, recs, tasks=tasks)
     fresh, cached = ctx.calls()
     out.update(n=n, n_rule=why, subset=[t.id for t in tasks], stop_reason=stop, tasks_done=len(recs),
