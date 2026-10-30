@@ -1,5 +1,5 @@
 {
- "dir": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/bbh-wt/results/bbeh",
+ "dir": "results/bbeh",
  "reps": 10000,
  "suite": {
   "evolve": {
@@ -301,6 +301,13 @@
    "hi": 0.1944,
    "n": 36,
    "p_better": 0.1667
+  },
+  "bestofn_submitted_minus_H0_base1": {
+   "mean_diff": 0.1389,
+   "lo": -0.0278,
+   "hi": 0.3056,
+   "n": 36,
+   "p_better": 0.1944
   }
  },
  "pilot": {

@@ -11,6 +11,8 @@ harness2_minus_bestofn: -0.111 [-0.250, +0.028] (n=36)
 
 harness2_submitted_minus_H0_base1: +0.028 [-0.139, +0.194] (n=36)
 
+bestofn_submitted_minus_H0_base1: +0.139 [-0.028, +0.306] (n=36)
+
 | family | seed | rrsi | gepa | metaharness | harness2 | bestofn |
 |---|---|---|---|---|---|---|
 | boolean_expressions | 0.6 | 0.6 | 0.6 | 0.6 | 0.6667 | 0.6667 |
