@@ -11,12 +11,13 @@ seed harness (one call, asked to end with an ``ANSWER:`` line).
 from __future__ import annotations
 
 import sys
+import threading
 from pathlib import Path
 from typing import Optional
 
 from ...core.artifact import Artifact
 from ...core.domain import Execution
-from ...core.llm import LLM
+from ...core.llm import LLM, artifact_usage
 from ...core.tasks import Task, TaskSuite
 from ..agentqa import domain as _aq
 from ..agentqa.domain import AgentQADomain, SimModel
@@ -84,7 +85,10 @@ class BBHDomain(AgentQADomain):
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
         if self.family_hint:
             artifact = artifact.with_files({FAMILY_FILE: str(task.family)})
-        ex = super().execute(artifact, task, seed=seed, llm=llm)
+        counter = _OutputTokens(llm) if llm is not None else None
+        ex = super().execute(artifact, task, seed=seed, llm=counter)
+        if counter is not None:     # answer length: SoL-Pi's objective, reported per example by the experiment
+            ex.meta = {**(ex.meta or {}), "output_tokens": counter.output_tokens}
         if tampered := self._restore_grading():
             return Execution(error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); "
                                    "restored", trace=ex.trace, tokens=ex.tokens, cost_usd=ex.cost_usd, steps=ex.steps)
@@ -102,6 +106,27 @@ class BBHDomain(AgentQADomain):
         if ok:
             return 1.0, f"Correct (answer {got!r})."
         return 0.0, f"Incorrect. Extracted answer {got!r}; expected {task.target!r}."
+
+
+class _OutputTokens:
+    """Pass-through to the task LLM that sums the output tokens of the calls one rollout makes (a cache replay
+    reports the original call's usage). Only ``complete`` is used by the AgentQA executor."""
+
+    def __init__(self, llm: LLM) -> None:
+        self._llm = llm
+        self._lock = threading.Lock()
+        self.output_tokens = 0
+
+    def complete(self, prompt, **kw):
+        resp = self._llm.complete(prompt, **kw)
+        if resp.ok:
+            n = artifact_usage(resp).output_tokens
+            with self._lock:
+                self.output_tokens += int(n)
+        return resp
+
+    def __getattr__(self, name):
+        return getattr(self._llm, name)
 
 
 # ----- offline task model -------------------------------------------------------------------------------------------

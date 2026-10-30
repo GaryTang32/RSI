@@ -6,6 +6,10 @@
   to the same examples, plus Harness² vs best-of-n.
 - Per-family accuracy table, eval $ per example, search $, fresh and cached calls, status (failed leak checks and
   errors are listed but never compared).
+- Answer length and price per example for every holdout+ood arm (SoL-Pi's objective is fewer tokens at held
+  accuracy): mean output tokens per answer, $ per example (its k trials), and the paired token difference vs seed.
+  Arms scored before the eval recorded tokens get them from ``<arm>.tokens.json``, written by
+  ``rescore_tokens.py`` (a cache-only replay of the final eval: $0, never touches ``<arm>.json``).
 
 Run:  python experiments/bbh/merge.py [--benchmark bbh|bbeh] [--dir results/<bench>] [--reps 10000]
 """
@@ -22,7 +26,7 @@ if str(ROOT) not in sys.path:
 
 from rsi.core.stats import bootstrap_ci, paired_diff_ci  # noqa: E402
 
-EVAL_ARMS = ("seed", "cot3", "rrsi", "gepa", "metaharness")
+EVAL_ARMS = ("seed", "cot3", "rrsi", "gepa", "metaharness", "autoresearch", "solpi", "dream", "evomap")
 STREAM_ARMS = ("harness2", "bestofn")
 REFS = ("seed", "cot3")
 
@@ -33,6 +37,12 @@ def load(d: Path) -> dict:
         p = d / f"{name}.json"
         if p.exists():
             arms[name] = json.loads(p.read_text())
+            side = d / f"{name}.tokens.json"
+            if side.exists() and not arms[name].get("per_task_out_tokens"):
+                t = json.loads(side.read_text())
+                arms[name]["per_task_out_tokens"] = t.get("per_task_out_tokens") or {}
+                arms[name]["per_task_usd"] = t.get("per_task_usd") or {}
+                arms[name]["tokens_from"] = side.name
     return arms
 
 
@@ -88,6 +98,18 @@ def merge(d: Path, reps: int = 10000) -> dict:
             for split in ("holdout", "ood"):
                 ts = o["eval"][split]["tasks"]
                 row[f"acc_{split}"] = round(sum(ts.values()) / max(1, len(ts)), 4)
+            tok = {t: v for t, v in (o.get("per_task_out_tokens") or {}).items() if t in pt and v is not None}
+            usd = {t: v for t, v in (o.get("per_task_usd") or {}).items() if t in pt}
+            if tok:
+                row["out_tokens_per_example"] = round(sum(tok.values()) / len(tok), 1)
+            if usd:
+                row["usd_per_example"] = round(sum(usd.values()) / len(usd), 4)
+            ref = arms.get("seed")
+            rtok = (ref or {}).get("per_task_out_tokens") or {}
+            if name != "seed" and tok and rtok and _usable(ref) and "seed" not in mismatched:
+                ids = sorted(set(tok) & {t for t, v in rtok.items() if v is not None})
+                if ids:
+                    row["out_tokens_vs_seed"] = _diff(rtok, tok, ids, reps)
         else:
             row["subset"] = len(o.get("subset") or [])
             row["calls_per_task"] = o.get("calls_per_task")
@@ -136,6 +158,10 @@ def _money(v):
     return "-" if v is None else f"{v:.3f}"
 
 
+def _fmt_tok(v):
+    return "-" if not v else f"{v['mean_diff']:+.0f} [{v['lo']:+.0f}, {v['hi']:+.0f}]"
+
+
 def markdown(m: dict) -> str:
     out = ["| arm | status | n | accuracy [95% CI] | holdout | ood | vs seed | vs cot3 | eval $/ex | search $ | "
            "calls (fresh+cached) | leak |", "|" + "---|" * 12]
@@ -144,6 +170,13 @@ def markdown(m: dict) -> str:
                    f"{r.get('acc_ood', '-')} | {_fmt_diff(r.get('vs_seed'))} | {_fmt_diff(r.get('vs_cot3'))} | "
                    f"{_money(r.get('eval_usd_per_example'))} | {_money(r.get('search_usd'))} | "
                    f"{r.get('fresh_calls')}+{r.get('cached_calls')} | {r.get('leak_check') or '-'} |")
+    tok_rows = {n: r for n, r in m["arms"].items() if r.get("out_tokens_per_example") is not None}
+    if tok_rows:
+        out.append("\n| arm | accuracy | output tokens per answer | tokens vs seed (paired) | $ per example (k trials) |")
+        out.append("|---|---|---|---|---|")
+        for n, r in tok_rows.items():
+            out.append(f"| {n} | {_fmt_ci(r.get('acc'))} | {r['out_tokens_per_example']:.0f} | "
+                       f"{_fmt_tok(r.get('out_tokens_vs_seed'))} | {_money(r.get('usd_per_example'))} |")
     for k, v in m["paired_extra"].items():
         out.append(f"\n{k}: {_fmt_diff(v)}")
     fams = sorted({f for v in m["families"].values() for f in v})

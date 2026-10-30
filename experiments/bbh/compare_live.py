@@ -66,8 +66,12 @@ from rsi.domains.bbeh import BBEHDomain, BBEHSimModel  # noqa: E402
 from rsi.domains.bbeh import grading as bbeh_grading  # noqa: E402
 from rsi.domains.bbeh.data import BBEH  # noqa: E402
 
-ARMS = ("pilot", "seed", "cot3", "rrsi", "gepa", "metaharness", "harness2", "bestofn")
-SEARCHED = ("rrsi", "gepa", "metaharness")
+ARMS = ("pilot", "seed", "cot3", "rrsi", "gepa", "metaharness", "autoresearch", "solpi", "dream", "evomap",
+        "harness2", "bestofn")
+SEARCHED = ("rrsi", "gepa", "metaharness", "autoresearch", "solpi", "dream", "evomap")
+#: search knobs of the four later arms (same for BBH and BBEH; BBEH calls cost ~$0.11 and take 1-4 min)
+LATER_DEFAULTS = dict(ar_experiments=6, ar_k=2, solpi_lineages=4, solpi_iters=2, solpi_firewall=2, dream_rounds=2,
+                      dream_branches=2, dream_refine=1, dream_M=3, evomap_cycles=12, evomap_taskcheck_n=4)
 
 
 @dataclass(frozen=True)
@@ -93,13 +97,13 @@ class Profile:
 PROFILES = {
     "bbh": Profile(BBH, BBHDomain, BBHSimModel, bbh_grading.is_generic_target, ARMS,
                    dict(evolve=6, holdout=10, ood=10, k=2, n_sub=36, rrsi_T=10, gepa_B=400, mh_iterations=6, mh_k=2,
-                        mh_session_usd=1.0)),
+                        mh_session_usd=1.0, **LATER_DEFAULTS)),
     # BBEH answers are long (median ~10k output tokens, ~$0.056 per Haiku call): small evolve split, short searches;
     # no cot3 (no official CoT prompts)
     "bbeh": Profile(BBEH, BBEHDomain, BBEHSimModel, bbeh_grading.is_generic_target,
                     tuple(x for x in ARMS if x != "cot3"),
                     dict(evolve=4, holdout=10, ood=10, k=2, n_sub=36, rrsi_T=4, gepa_B=150, mh_iterations=3, mh_k=2,
-                         mh_session_usd=0.75)),
+                         mh_session_usd=0.75, **LATER_DEFAULTS)),
 }
 
 
@@ -143,6 +147,17 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--mh-k", type=int, default=None)
     ap.add_argument("--mh-session-usd", type=float, default=None, help="per agent-session budget of the proposer")
     ap.add_argument("--bon-n", type=int, default=None, help="best-of-n n (default: matched to harness2.json)")
+    ap.add_argument("--ar-experiments", type=int, default=None, help="autoresearch: experiments after the baseline")
+    ap.add_argument("--ar-k", type=int, default=None, help="autoresearch: trials per evolve example per experiment")
+    ap.add_argument("--solpi-lineages", type=int, default=None, help="SoL-Pi: efficiency ideas explored")
+    ap.add_argument("--solpi-iters", type=int, default=None, help="SoL-Pi: iterations per lineage")
+    ap.add_argument("--solpi-firewall", type=int, default=None, help="SoL-Pi: firewall examples per practice family")
+    ap.add_argument("--dream-rounds", type=int, default=None, help="Dream-RSI: live searches (dreaming between them)")
+    ap.add_argument("--dream-branches", type=int, default=None, help="Dream-RSI: fallback grid branches per search")
+    ap.add_argument("--dream-refine", type=int, default=None, help="Dream-RSI: fallback refinements per branch")
+    ap.add_argument("--dream-M", type=int, default=None, help="Dream-RSI: policy versions per dreaming phase")
+    ap.add_argument("--evomap-cycles", type=int, default=None, help="EvoMap: gene-loop cycles over evolve tasks")
+    ap.add_argument("--evomap-taskcheck-n", type=int, default=None, help="EvoMap: tasks per rsi-taskcheck A/B")
     a = ap.parse_args(argv)
     a.P = PROFILES[a.benchmark]
     for key, val in a.P.defaults.items():       # benchmark defaults for whatever was not given
@@ -156,6 +171,9 @@ def parse_args(argv=None) -> argparse.Namespace:
         a.evolve, a.holdout, a.ood, a.k, a.n_sub = 2, 1, 1, 1, 2
         a.rrsi_T, a.gepa_B, a.mh_iterations, a.mh_k = 1, 12, 1, 1
         a.bon_n = a.bon_n or 2
+        a.ar_experiments, a.solpi_lineages, a.solpi_iters, a.solpi_firewall = 1, 1, 1, 1
+        a.dream_rounds, a.dream_branches, a.dream_refine, a.dream_M, a.evomap_cycles, a.evomap_taskcheck_n = \
+            1, 1, 0, 2, 2, 2
     sub = "offline" if a.offline else "smoke" if a.smoke else ""
     if a.offline and a.smoke:
         sub = "offline_smoke"
@@ -165,19 +183,28 @@ def parse_args(argv=None) -> argparse.Namespace:
     return a
 
 
-def build_suite(a):
+def build_suite(a, arm: Optional[str] = None):
+    """The shared suite; for SoL-Pi it also has a sealed ``firewall`` split (``--solpi-firewall`` per practice
+    family, cut after holdout), so evolve/holdout/ood are the same examples as every other arm's."""
     fam = load_families(a.families, a.P.spec)
     practice, ood = fam["practice"], fam["ood"]
     if a.smoke:
         practice, ood = practice[:1], ood[:1]
-    suite = make_suite(practice, ood, per_family={"evolve": a.evolve, "holdout": a.holdout, "ood": a.ood},
-                       seed=a.seed, cache_dir=a.data_cache, benchmark=a.P.spec)
+    per = {"evolve": a.evolve, "holdout": a.holdout, "ood": a.ood}
+    if arm == "solpi":
+        per["firewall"] = a.solpi_firewall
+    suite = make_suite(practice, ood, per_family=per, seed=a.seed, cache_dir=a.data_cache, benchmark=a.P.spec)
     return fam, suite
 
 
 def suite_signature(suite, a) -> dict:
-    return {"name": suite.name, "seed": a.seed, "summary": suite.summary(),
-            "per_family": {"evolve": a.evolve, "holdout": a.holdout, "ood": a.ood}}
+    """What merge.py compares across arms: the firewall split (SoL-Pi only) is listed apart."""
+    summary = {k: v for k, v in suite.summary().items() if k != "firewall"}
+    sig = {"name": suite.name, "seed": a.seed, "summary": summary,
+           "per_family": {"evolve": a.evolve, "holdout": a.holdout, "ood": a.ood}}
+    if "firewall" in suite.splits:
+        sig["firewall"] = suite.summary()["firewall"]
+    return sig
 
 
 def make_llms(a, suite, arm: str):
@@ -191,7 +218,7 @@ def make_llms(a, suite, arm: str):
     from rsi.harness2 import MockImprover
     from rsi.rrsi.mocks import AgentQAMockLLM
     prop = {"rrsi": AgentQAMockLLM, "gepa": AgentQAReflectionLM, "harness2": MockImprover,
-            "bestofn": MockImprover}.get(arm)
+            "bestofn": MockImprover, "evomap": mock_gene_writer}.get(arm)
     return a.P.sim_cls(suite), (prop() if prop else None)
 
 
@@ -275,22 +302,33 @@ class Ctx:
 
 # ----- shared phases ------------------------------------------------------------------------------------------------
 
+def split_eval(dom, llm, art: Artifact, split: str, k: int, workers: int) -> dict:
+    """What ``transfer_report`` computes for one arm and split (same Evaluator, same seeds, so the same cached calls),
+    plus per-example answer length and price: mean output tokens per trial and the summed $ of the k trials."""
+    r = Evaluator(dom, llm, workers=workers, allow_sealed=True).evaluate(art, split, k)
+    out_tok = {tid: (sum(float((t.meta or {}).get("output_tokens", 0)) for t in trs) / len(trs)) if trs else None
+               for tid, trs in r.trials.items()}
+    usd = {tid: float(sum(t.cost_usd for t in trs)) for tid, trs in r.trials.items()}
+    return {"S": r.score, "C": r.cost, "missing": r.n_missing, "families": r.family_scores(), "tasks": r.task_scores(),
+            "out_tokens": out_tok, "usd": usd}
+
+
 def final_eval(ctx: Ctx, dom, llm, name: str, art: Artifact) -> dict:
-    """``transfer_report`` per split (holdout, then ood) with a cap check between them."""
+    """Holdout, then ood, at k trials (a cap check between them)."""
     out: dict = {}
     for split in ("holdout", "ood"):
         ctx.check(f"eval {split}")
         with ctx.phase(f"eval_{split}"):
-            rep = transfer_report(dom, llm, {name: art}, splits=(split,), k=ctx.a.k, workers=ctx.a.workers)
-        v = rep["splits"][split][name]
-        out[split] = {"S": v["S"], "C": v["C"], "missing": v["missing"], "families": v["families"],
-                      "tasks": v["tasks"]}
+            out[split] = split_eval(dom, llm, art, split, ctx.a.k, ctx.a.workers)
     return out
 
 
 def eval_fields(ev: dict, suite) -> dict:
     per_task = {t: s for split in ("holdout", "ood") for t, s in ev.get(split, {}).get("tasks", {}).items()}
+    tok = {t: v for split in ("holdout", "ood") for t, v in (ev.get(split, {}).get("out_tokens") or {}).items()}
+    usd = {t: v for split in ("holdout", "ood") for t, v in (ev.get(split, {}).get("usd") or {}).items()}
     return {"eval": ev, "per_task": per_task, "task_family": {t: suite.get(t).family for t in per_task},
+            "per_task_out_tokens": tok, "per_task_usd": usd,
             "accuracy": (sum(per_task.values()) / len(per_task)) if per_task else None}
 
 
@@ -353,12 +391,18 @@ def _search_rrsi(a, ctx, dom, llm, prop, run_dir: Path):
     return res, {"T": a.rrsi_T, "stop_reason": res.stop_reason, "rounds": len(res.trajectory)}
 
 
-def _search_gepa(a, ctx, dom, llm, prop, run_dir: Path):
-    from rsi.gepa import Config, run
+def seed_noise(a, ctx, dom, llm):
+    """The seed's noise band on evolve: one k = 2 evaluation (seeds 0 and 1: shared with every arm that scores the
+    seed on evolve, so a warm cache replays it), RRSI's within-task bootstrap, z = 2."""
     ctx.check("noise band")
     with ctx.phase("noise_band"):
         r = Evaluator(dom, llm, workers=a.workers).evaluate(dom.seed_artifact(), "evolve", k=2)
-        noise = noise_from_trials(r.trial_matrix())
+        return r, noise_from_trials(r.trial_matrix())
+
+
+def _search_gepa(a, ctx, dom, llm, prop, run_dir: Path):
+    from rsi.gepa import Config, run
+    r, noise = seed_noise(a, ctx, dom, llm)
     cfg = Config(max_metric_calls=a.gepa_B, acceptance="noise_margin", noise_margin=float(noise.delta),
                  workers=a.workers, seed=0, shadow_monitor=False)
     with warnings.catch_warnings():
@@ -405,6 +449,161 @@ def _search_metaharness(a, ctx, dom, llm, prop, run_dir: Path):
                  "proposer": type(inner).__name__}
 
 
+def _search_autoresearch(a, ctx, dom, llm, prop, run_dir: Path):
+    """autoresearch on the harness: each experiment = one evaluation on evolve at k = ar_k; keep iff the gain over the
+    incumbent exceeds the seed's noise band (StrictImprovement with min_gain = delta, a GateKeep), not the upstream
+    rule that keeps any improvement on one run. Editable: harness.py and prompts/*."""
+    from rsi.autoresearch import Config, DomainResearchTask, MockResearchAgent, make_agent, run
+    from rsi.autoresearch.pools import harness_edit_pool
+    from rsi.core.gates import StrictImprovement
+    r, noise = seed_noise(a, ctx, dom, llm)
+    delta = float(noise.delta) * (2.0 / a.ar_k) ** 0.5     # the band was measured at k = 2
+    task = DomainResearchTask(dom, llm, seed_artifact=dom.seed_artifact(), split="evolve", k=a.ar_k,
+                              workers=a.workers, editable_paths=("harness.py", "prompts/*"), audit_splits=(),
+                              kill_after=max(1800.0, 8 * a.llm_timeout * a.ar_k))
+    agent = MockResearchAgent(harness_edit_pool(), seed=0) if a.offline else make_agent(task, prop)
+    cfg = Config(max_experiments=a.ar_experiments, max_usd=ctx.search_cap(), keep_rule=StrictImprovement(min_gain=delta),
+                 hidden_audit=False, shadow_monitor=False, plot=False, overwrite=True, seed=0,
+                 stop_dir=str(run_dir))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = run(task, llm_task=llm, llm_propose=prop, config=cfg, out_dir=str(run_dir / "search"), agent=agent)
+    kept = [n for n in res.ledger.nodes() if n.status == "keep"] if hasattr(res.ledger, "nodes") else []
+    return res, {"experiments": a.ar_experiments, "k": a.ar_k, "keep_rule": f"gain > delta = {delta:.4f}",
+                 "noise_delta_k2": float(noise.delta), "seed_evolve_S": r.score, "stop_reason": res.stop_reason,
+                 "n_keeps": len(kept)}
+
+
+#: SoL-Pi's live idea pool for an LLM-answering harness: ways to spend fewer output tokens at held accuracy (generic;
+#: nothing about BBEH tasks). Offline runs use AGENTQA_IDEAS, which the offline proposer can implement.
+def efficiency_ideas():
+    from rsi.solpi.research import Idea
+    return [
+        Idea("E1", "R", "Cap the reasoning: ask for a short scratchpad of key facts and steps only, then the ANSWER "
+                        "line", kind="do_less"),
+        Idea("E2", "R", "Tell the model not to restate the question or re-check steps it has already verified",
+             kind="do_less"),
+        Idea("E3", "T", "Do counting, arithmetic and table lookups with the Python tool instead of long free-text "
+                        "reasoning"),
+        Idea("E4", "R", "End with the ANSWER line in the shortest exact form, with nothing after it"),
+    ]
+
+
+class _CapProposer:
+    """SoL-Pi mechanism proposer that stops proposing once the arm's search cap is reached."""
+
+    def __init__(self, inner, ctx) -> None:
+        self.inner, self.ctx = inner, ctx
+
+    def _over(self):
+        from rsi.solpi.research import MechanismProposal
+        cap = self.ctx.search_cap()
+        if cap is not None and self.ctx.usd() >= cap:
+            return MechanismProposal(None, error=f"spend cap: ${self.ctx.usd():.3f} >= search cap ${cap:.2f}",
+                                     meta={"exhausted": True})
+        return None
+
+    def propose(self, idea, base, evidence, history):
+        return self._over() or self.inner.propose(idea, base, evidence, history)
+
+    def fix(self, idea, prop, error):
+        return self._over() or self.inner.fix(idea, prop, error)
+
+
+def _search_solpi(a, ctx, dom, llm, prop, run_dir: Path):
+    """SoL-Pi: efficiency mechanisms (fewer tokens / $ at held score) screened on evolve, frozen per lineage, then a
+    one-way check on the sealed ``firewall`` split (practice families, disjoint from evolve/holdout/ood/pilot); the
+    survivors are composed. Its own objective is reported in merge.py as tokens and $ per example vs the seed."""
+    from rsi.solpi import AGENTQA_IDEAS, AgentQAEditProposer, Config, LLMMechanismProposer, run
+    ideas = AGENTQA_IDEAS if a.offline else efficiency_ideas()
+    inner = AgentQAEditProposer() if a.offline else LLMMechanismProposer(prop)
+    cfg = Config(n_lineages=a.solpi_lineages, max_iters=a.solpi_iters, screen_split="evolve", holdout_split="firewall",
+                 k=1, workers=a.workers, seed=0, shadow_monitor=False)
+    res = run(dom, dom.seed_artifact(), llm_task=llm, config=cfg, out_dir=str(run_dir), ideas=ideas,
+              proposer=_CapProposer(inner, ctx))
+    rnd = (res.meta.get("rounds") or [{}])[0]
+    return res, {"lineages": a.solpi_lineages, "iters": a.solpi_iters, "firewall_split": "firewall",
+                 "ideas": [i.id for i in ideas], "frozen": rnd.get("frozen_ideas"),
+                 "firewall_passed": rnd.get("heldout_passed"), "survivors": rnd.get("survivor_ideas"),
+                 "base_screen": (rnd.get("base_metrics") or {}).get("agg"),
+                 "composed_screen": (rnd.get("composed_metrics") or {}).get("agg"), "stop_reason": res.stop_reason}
+
+
+def _search_dream(a, ctx, dom, llm, prop, run_dir: Path):
+    """Dream-RSI on the harness: live searches of an LLM discovery agent on evolve (k = 1 per attempt; the round's
+    attempts are the fallback grid branches x (refinements + 1)); between searches the developer rewrites the
+    exploration policy and scores it by replaying the recorded searches (no task calls). ``best`` = the best program
+    on evolve; it is then leak-checked and evaluated like every searched arm."""
+    from rsi.domains.discovery.agentqa_agent import MECHANISMS, agentqa_mock_agent
+    from rsi.dream import AgentAttempt, Config, DiscoveryAgent, DomainTask, EditorAgent, run
+    task = DomainTask(dom, dom.seed_artifact(), llm, split="evolve", k=1, workers=a.workers, directions=MECHANISMS,
+                      editable=["harness.py", "prompts/*"])
+    inner = agentqa_mock_agent() if a.offline else EditorAgent(prop, editable=task.editable())
+    cap = ctx.search_cap()
+
+    class CapAgent(DiscoveryAgent):
+        """Delegates to the discovery agent until the arm's search cap is reached, then returns no candidate."""
+        editor = getattr(inner, "editor", None)
+
+        def attempt(self, actx, *, seed):
+            if cap is not None and ctx.usd() >= cap:
+                return AgentAttempt(None, error=f"spend cap: ${ctx.usd():.3f} >= search cap ${cap:.2f}")
+            return inner.attempt(actx, seed=seed)
+
+    per_round = a.dream_branches * (a.dream_refine + 1)
+    cfg = Config(rounds=a.dream_rounds, W=max(1, min(4, per_round)), branch_count=a.dream_branches,
+                 refine_count=a.dream_refine, M=a.dream_M, max_calls=a.dream_rounds * per_round,
+                 sandbox="inprocess" if a.offline else "subprocess", shadow_monitor=False, seed=0)
+    res = run(task, dom.seed_artifact(), llm_task=llm, llm_propose=None if a.offline else prop, config=cfg,
+              out_dir=str(run_dir), agent=CapAgent())
+    return res, {"rounds": a.dream_rounds, "attempts_per_round": per_round, "M": a.dream_M,
+                 "agent_calls": (res.usage.get("_total") or {}).get("agent_calls"),
+                 "trajectory": [{k: r.get(k) for k in ("iteration", "calls", "round_best", "best", "root")}
+                                for r in res.trajectory], "stop_reason": res.stop_reason}
+
+
+EVOMAP_HINT = (" (it MUST fail before the fix and pass after it). Use the in-process command `rsi-taskcheck --n 4`: "
+               "it answers the practice tasks the gene matches with and without the gene (paired) and passes only "
+               "if the gene helps")
+
+
+def mock_gene_writer():
+    """Offline EvoMap gene writer: always the same generic strategy gene, validated by rsi-taskcheck."""
+    from rsi.core import MockLLM
+    gene = {"id": "gene_steps_verify", "category": "optimize", "signals_match": ["task:"],
+            "summary": "Work through the problem step by step and verify before answering.",
+            "strategy": ["Think step by step.", "Verify the result.", "End with a line 'ANSWER: <value>'."],
+            "avoid": ["Guessing."], "validation": ["rsi-taskcheck --n 2"]}
+    return MockLLM(lambda p, sy, seed, i: "```json\n" + json.dumps(gene) + "\n```", name="mock-gene-writer")
+
+
+def evomap_eval_domain(dom):
+    """EvoMap's artifact is the seed plus genes/library.json; it is run through GeneRoutedDomain (per task, the
+    best-matching gene is appended to the system prompt; a task no gene matches runs the plain seed)."""
+    from rsi.evomap import AppendInjector, GeneRoutedDomain
+    return GeneRoutedDomain(dom, injector=AppendInjector("prompts/system.md"))
+
+
+def _search_evomap(a, ctx, dom, llm, prop, run_dir: Path):
+    """EvoMap, local store only (no hub), safe mode: cycles over evolve tasks; a gene is written after an unsolved
+    task, kept only if ``rsi-taskcheck`` (gene vs no gene, paired) passes, and the library is frozen for eval."""
+    from rsi.evomap import AppendInjector, Config, run
+    cfg = Config(cycles=a.evomap_cycles, mode="safe", seed=0, split="evolve", validation_hint=EVOMAP_HINT,
+                 taskcheck_n=a.evomap_taskcheck_n, taskcheck_k=1, trace_baseline_k=0, shadow_monitor=False,
+                 workers=a.workers, publish=False)
+    res = run(dom, dom.seed_artifact(), llm_task=llm, llm_propose=prop, config=cfg, out_dir=str(run_dir),
+              injector=AppendInjector("prompts/system.md"),
+              budget=Budget(max_rounds=a.evomap_cycles, max_usd=ctx.search_cap()))
+    return res, {"cycles": a.evomap_cycles, "n_genes": res.meta.get("n_genes"), "genes": res.meta.get("genes"),
+                 "rollouts": res.meta.get("rollouts"), "proposer_calls": res.meta.get("proposer_calls"),
+                 "stop_reason": res.stop_reason}
+
+
+SEARCH_FN = {"rrsi": _search_rrsi, "gepa": _search_gepa, "metaharness": _search_metaharness,
+             "autoresearch": _search_autoresearch, "solpi": _search_solpi, "dream": _search_dream,
+             "evomap": _search_evomap}
+
+
 def arm_searched(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     dom = a.P.domain_cls(suite)
     run_dir = Path(out["run_dir"])
@@ -412,11 +611,11 @@ def arm_searched(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     if a.phase in ("all", "search"):
         ctx.check("search")
         with ctx.phase("search"):
-            res, info = {"rrsi": _search_rrsi, "gepa": _search_gepa,
-                         "metaharness": _search_metaharness}[ctx.arm](a, ctx, dom, llm, prop, run_dir)
+            res, info = SEARCH_FN[ctx.arm](a, ctx, dom, llm, prop, run_dir)
         res.best.to_dir(best_dir, clean=True)
+        usage = res.usage.get("_total") if isinstance(res.usage, dict) else None
         out["search"] = {**info, "best_is_seed": res.best == res.baseline, "best_id": res.best.short_id,
-                         "usage": res.usage.get("_total") if isinstance(res.usage, dict) else None}
+                         "usage": usage if isinstance(usage, dict) and "cost_usd" in usage else None}
     if a.phase == "search":
         return
     if not best_dir.exists():
@@ -428,7 +627,8 @@ def arm_searched(a, ctx, fam, suite, llm, prop, out: dict) -> None:
     if not lc["passed"]:
         out["status"] = "failed_leak_check"
         return
-    out.update(eval_fields(final_eval(ctx, dom, llm, ctx.arm, best), suite))
+    eval_dom = evomap_eval_domain(dom) if ctx.arm == "evomap" else dom
+    out.update(eval_fields(final_eval(ctx, eval_dom, llm, ctx.arm, best), suite))
 
 
 def _bon_n(a) -> tuple[int, str]:
@@ -516,14 +716,14 @@ def arm_bestofn(a, ctx, fam, suite, llm, prop, out: dict) -> None:
                calls_per_task=(fresh + cached) / max(1, len(recs)), accuracy=rep["submitted"][0])
 
 
-ARM_FN = {"pilot": arm_pilot, "seed": arm_seed, "cot3": arm_cot3, "rrsi": arm_searched, "gepa": arm_searched,
-          "metaharness": arm_searched, "harness2": arm_harness2, "bestofn": arm_bestofn}
+ARM_FN = {"pilot": arm_pilot, "seed": arm_seed, "cot3": arm_cot3, "harness2": arm_harness2, "bestofn": arm_bestofn,
+          **{arm: arm_searched for arm in SEARCHED}}
 
 
 # ----- driver -------------------------------------------------------------------------------------------------------
 
 def run_arm(a, arm: str) -> dict:
-    fam, suite = build_suite(a)
+    fam, suite = build_suite(a, arm)
     llm, prop = make_llms(a, suite, arm)
     ctx = Ctx(a, arm, [llm, prop])
     run_dir = a.out_dir / "runs" / arm

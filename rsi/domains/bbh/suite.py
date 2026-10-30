@@ -93,7 +93,9 @@ def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[
 
     ``families_file`` supplies ``practice``/``ood`` when they are not given; ``load_kw`` (``cache_dir``,
     ``manifest``, ``fetch``, ``download``) go to the loader. Task ids are ``<split>-<family>-<index in file>``.
-    ``benchmark`` (default BBH) supplies the tasks, the default families/sizes and the pilot reserve."""
+    ``benchmark`` (default BBH) supplies the tasks, the default families/sizes and the pilot reserve.
+    ``per_family["firewall"]`` (default 0) adds a sealed ``firewall`` split from the practice families, cut after
+    holdout: the other splits do not change."""
     b = benchmark or BBH
     if families_file is not None and (practice is None or ood is None):
         fam = load_families(families_file, b)
@@ -103,10 +105,13 @@ def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[
     ood = list(b.default_ood if ood is None else ood)
     check_families(practice, ood, b)
     pilot_reserve = b.pilot_per_family if pilot_reserve is None else pilot_reserve
-    n = {**b.default_per_family, **(per_family or {})}
-    if unknown := sorted(set(n) - set(b.default_per_family)):
-        raise ValueError(f"unknown per_family keys {unknown}; valid: {sorted(b.default_per_family)}")
-    order = [s for s in ("evolve", "val", "holdout") if n[s]]
+    valid = set(b.default_per_family) | {"firewall"}
+    n = {"firewall": 0, **b.default_per_family, **(per_family or {})}
+    if unknown := sorted(set(n) - valid):
+        raise ValueError(f"unknown per_family keys {unknown}; valid: {sorted(valid)}")
+    # firewall: a sealed held-out split of practice families for SoL-Pi's one-way check, cut after holdout so
+    # evolve/val/holdout/ood are identical with or without it
+    order = [s for s in ("evolve", "val", "holdout", "firewall") if n[s]]
     splits: dict[str, list[str]] = {s: [] for s in order}
     splits.setdefault("evolve", [])
     splits.setdefault("holdout", [])
@@ -127,7 +132,9 @@ def make_suite(practice: Optional[Sequence[str]] = None, ood: Optional[Sequence[
                 splits[split].append(t.id)
             pos += count
     splits["smoke"] = splits["evolve"][:2]
-    return TaskSuite(tasks, splits, name=f"{b.name}-s{seed}")
+    suite = TaskSuite(tasks, splits, name=f"{b.name}-s{seed}")
+    suite.seal("firewall")
+    return suite
 
 
 def make_pilot_suite(families: Optional[Sequence[str]] = None, *, n_per_family: Optional[int] = None,
