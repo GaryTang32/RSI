@@ -1,0 +1,8 @@
+commit	score	memory_gb	status	description
+a672854	0.625000	0.0	keep	baseline
+54b9c01	0.458333	0.0	discard	Add chain-of-thought prompting to encourage systematic reasoning
+1700aa1	0.354167	0.0	discard	Add Python tool availability to system prompt
+d93f849	0.625000	0.0	discard	Improve system prompt to encourage logical reasoning for puzzles
+9040c62	0.458333	0.0	discard	Clarify answer format requirement in task prompt; enhance system prompt for logical reasoning
+6d5a066	0.479167	0.0	discard	Emphasize careful problem-solving and clarify answer format in task prompt
+628dcee	0.500000	0.0	discard	Add explicit examples of answer formats to help model output correctly

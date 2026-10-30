@@ -1,0 +1,95 @@
+{
+ "method": "autoresearch",
+ "rounds": 7,
+ "stop_reason": "max_rounds",
+ "baseline": "745ba24861",
+ "best": "745ba24861",
+ "first": {
+  "exp": 0,
+  "status": "keep",
+  "metric": 0.625,
+  "best": 0.625,
+  "description": "baseline",
+  "commit": "a672854",
+  "wall_s": 0.047,
+  "t": 0.05,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.625
+  ]
+ },
+ "last": {
+  "exp": 6,
+  "status": "discard",
+  "metric": 0.5,
+  "best": 0.625,
+  "description": "Add explicit examples of answer formats to help model output correctly",
+  "commit": "628dcee",
+  "wall_s": 684.146,
+  "t": 3898.959,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.5
+  ]
+ },
+ "usage": {
+  "calls": 294,
+  "input_tokens": 1266285,
+  "output_tokens": 5681704,
+  "cost_usd": 30.12772199999999
+ },
+ "meta": {
+  "results_tsv": "/tmp/claude-0/-home-user-RSI/ebd00391-ba98-5b98-9125-83abd1dce979/scratchpad/skill-wt/results/bbeh/runs/autoresearch/search/results.tsv",
+  "counters": {
+   "rejected": 0,
+   "duplicate": 0,
+   "invalid": 0,
+   "fix_attempts": 0,
+   "fixed": 0,
+   "rewinds": 0
+  },
+  "crash_kinds": {},
+  "scope": {
+   "checked": 6,
+   "rejected": 0
+  },
+  "budget_events": {
+   "killed": 0,
+   "over_budget": 0
+  },
+  "programs": {
+   "67fe238": "upstream"
+  },
+  "n_experiments": 6,
+  "n_runs": 7,
+  "wall_s": 3898.959063053131,
+  "noise": null,
+  "workspace": {
+   "branch": "autoresearch/run",
+   "head": "a672854",
+   "resets": 6,
+   "rewinds": 0
+  },
+  "final_samples": [
+   0.625
+  ],
+  "val_epochs": 0,
+  "analysis": {
+   "n_rows": 7,
+   "n_experiments": 6,
+   "n_keep": 1,
+   "n_discard": 6,
+   "n_crash": 0,
+   "keep_rate": 0.14285714285714285,
+   "baseline": 0.625,
+   "best": 0.625,
+   "improvement": 0.0,
+   "total_keep_delta": 0.0,
+   "top_hits": [],
+   "improvement_pct": 0.0,
+   "experiments_per_hour": 5.539940186775348
+  }
+ }
+}

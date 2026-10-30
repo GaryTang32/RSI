@@ -1,0 +1,107 @@
+[
+ {
+  "exp": 0,
+  "status": "keep",
+  "metric": 0.625,
+  "best": 0.625,
+  "description": "baseline",
+  "commit": "a672854",
+  "wall_s": 0.047,
+  "t": 0.05,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.625
+  ]
+ },
+ {
+  "exp": 1,
+  "status": "discard",
+  "metric": 0.4583333333333333,
+  "best": 0.625,
+  "description": "Add chain-of-thought prompting to encourage systematic reasoning",
+  "commit": "54b9c01",
+  "wall_s": 503.435,
+  "t": 525.938,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.4583333333333333
+  ]
+ },
+ {
+  "exp": 2,
+  "status": "discard",
+  "metric": 0.3541666666666667,
+  "best": 0.625,
+  "description": "Add Python tool availability to system prompt",
+  "commit": "1700aa1",
+  "wall_s": 605.453,
+  "t": 1169.572,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.3541666666666667
+  ]
+ },
+ {
+  "exp": 3,
+  "status": "discard",
+  "metric": 0.625,
+  "best": 0.625,
+  "description": "Improve system prompt to encourage logical reasoning for puzzles",
+  "commit": "d93f849",
+  "wall_s": 541.662,
+  "t": 1744.215,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.625
+  ]
+ },
+ {
+  "exp": 4,
+  "status": "discard",
+  "metric": 0.4583333333333333,
+  "best": 0.625,
+  "description": "Clarify answer format requirement in task prompt; enhance system prompt for logical reasoning",
+  "commit": "9040c62",
+  "wall_s": 779.729,
+  "t": 2588.113,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.4583333333333333
+  ]
+ },
+ {
+  "exp": 5,
+  "status": "discard",
+  "metric": 0.4791666666666667,
+  "best": 0.625,
+  "description": "Emphasize careful problem-solving and clarify answer format in task prompt",
+  "commit": "6d5a066",
+  "wall_s": 503.596,
+  "t": 3143.193,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.4791666666666667
+  ]
+ },
+ {
+  "exp": 6,
+  "status": "discard",
+  "metric": 0.5,
+  "best": 0.625,
+  "description": "Add explicit examples of answer formats to help model output correctly",
+  "commit": "628dcee",
+  "wall_s": 684.146,
+  "t": 3898.959,
+  "kind": null,
+  "truth": null,
+  "samples": [
+   0.5
+  ]
+ }
+]

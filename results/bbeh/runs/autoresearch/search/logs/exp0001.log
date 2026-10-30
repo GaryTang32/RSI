@@ -1,0 +1,8 @@
+---
+score:            0.458333
+cost_tokens:      22474.3
+steps:            1.00
+error_rate:       0.000
+n_trials:         48
+training_seconds: 503.4
+peak_mem_mb:      0.0
