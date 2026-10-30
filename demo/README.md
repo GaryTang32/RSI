@@ -8,7 +8,7 @@ The proposer's domain description does name the OOD kinds, and so does RRSI's cr
 
 So the OOD column measures transfer to unseen tasks of announced kinds.
 
-For charts of every method's experiments as well as these runs, open [`gallery.html`](gallery.html) (72 interactive charts).
+For charts of every method's experiments as well as these runs, open [`gallery.html`](gallery.html) (66 interactive charts).
 
 The AgentQA headline numbers come from a re-score after each run with fresh trials. It uses trial seeds 100 and 101, which no loop decision and no monitor reading used ([how the numbers were measured](#how-the-numbers-were-measured)). The autoresearch numbers come from three fresh training runs per version. The interactive version is `demo/index.html`. It shows every candidate, what became of it and the code each run produced.
 

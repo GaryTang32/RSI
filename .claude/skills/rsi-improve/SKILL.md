@@ -160,7 +160,9 @@ decision, state, and shadow held-out scores (never shown to the loop). Check tha
 ## 7. Report honestly
 
 Give baseline vs final on evolve, holdout and ood with the paired CI from `transfer_report`, tokens per task,
-dollars, and what the kept edits actually were. Say so when a gain is within the noise band. With 6-8
+dollars, and what the kept edits actually were. If nothing was kept, or the final harness is the seed, lead with that:
+"no change beat the noise band; the original is kept", then list what was tried and why each was rejected. That is a
+valid result, not a failure to hide; never present the best rejected candidate as the outcome. Say so when a gain is within the noise band. With 6-8
 tasks per split the interval is usually too wide to rank methods: say that too, and do not compare
 absolute scores across runs (the same seed harness can score differently run to run); compare gains
 over a baseline re-scored in the same run.

@@ -85,7 +85,7 @@ details summary { cursor: pointer; font-size: 0.8rem; color: var(--ink-2); }
 <script type="application/json" id="specs">__SPECS__</script>
 <script>
 const SPECS = JSON.parse(document.getElementById("specs").textContent).charts;
-const ORDER = ["Live demo", "Core", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Harness²", "BBEH", "Verification"];
+const ORDER = ["Live demo", "Core", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Harness²", "Verification"];
 const ROLE = {"Reproduced": "good", "Correct": "good", "Kept": "good", "Partial": "warning", "Questionable": "warning",
   "Wrong": "critical", "Rejected": "critical", "Broke": "critical", "Fixed": "good", "Still wrong": "neutral", "Not reproduced or contradicted": "critical", "Not testable here": "neutral",
   "Unverifiable": "neutral", "Kept as alternative": "neutral", "Blank": "neutral",

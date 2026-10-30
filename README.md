@@ -12,32 +12,34 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#use-the-skill-in-claude-code">Skill</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">72 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-and-use-the-skill">Install and use</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
-## Why this exists
+## 1. What this repo is
 
-Every few weeks a new paper shows a model improving its own prompts, harness or training code. Those gains are
-hard to trust. The model grades its own work, a score moves by luck, or a prompt quietly memorises the practice answers,
-and all three look exactly like progress. A plain "keep it if the score went up" loop accepts an unchanged artifact
-almost half the time.
+Every few weeks a new paper shows a model improving its own prompts, harness or training code. This repo turns those
+recursive self-improvement (RSI) papers into tools you can use on your own task:
 
-**The goal of this repo is to turn RSI papers into skills anyone can use on their own task, and to make the gains
-measurable.** That means four things:
+- **A Python package, `rsi`.** Eight methods (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap,
+  Harness²) rebuilt from their papers on one shared core, so they can be compared on the same tasks, grader and budget.
+- **A Claude Code skill, `rsi-improve`.** It tells Claude how to apply any of those methods to your problem: set it
+  up, measure the noise first, pick a method, run it with an audit trail, and report the result honestly.
+- **The evidence.** Every factual claim in the skill is paired with a verbatim quote from its paper or code
+  ([2,410 claims checked](docs/skill-claims/README.md)), and each paper's claims were tested against the code
+  ([475 claims audited](docs/reports/claims-summary.md)).
 
-1. **Papers into skills.** Each paper (for autoresearch, the upstream repo) is read in full and converted into a skill an
-   agent can follow: what one round does, what happens to each task, the keep rule, the paper's defaults and where our
-   code differs. Every factual claim in the skill is backed by a verbatim quote from the paper or the code, or by a
-   recorded search showing the paper is silent ([2,410 claims checked](docs/skill-claims/README.md)).
-2. **Every method, one loop.** RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap and Harness², rebuilt from
-   their papers on a shared core, so they can be compared on the same tasks, grader and budget.
-3. **Gains you can believe.** The core keeps the grader out of the artifact's reach, measures the noise band, and seals
-   held-out tasks, so you can tell a real gain from luck or memorisation.
-4. **Your problem, this afternoon.** Wrap your task in a `Domain`, pick a method, and get an audit trail of every
-   round: what was proposed, what actually changed, and why it was kept.
+## 2. Methodology
 
-The shared core gives every method the same safeguards:
+**From paper to skill.** Each paper (for autoresearch, the upstream repo) is read in full and rebuilt as code on a shared
+core, with the paper's defaults and every place our code differs written down. The skill's description of each method
+(what one round does, what it reads, how many changes it makes, its keep rule) is then checked line by line against the
+paper and the code.
+
+**One guarded loop for every method.** Self-improvement gains are hard to trust: the model grades its own work, a score
+moves by luck, or a prompt quietly memorises the practice answers, and all three look like progress. A plain "keep it
+if the score went up" loop accepts an unchanged artifact almost half the time. Every method here runs inside the same
+safeguards:
 
 ```mermaid
 flowchart LR
@@ -59,6 +61,65 @@ flowchart LR
 - **Sealed splits.** The loop's evaluator refuses `holdout`, `ood` and `test` tasks. Only write-only monitors and your
   final transfer report read them.
 - **Audit trail.** Every round records the proposal, the actual diff, the per-task scores and the keep decision.
+
+**What to expect: the skill may not improve your problem.** With a noise band, a change is kept only when it beats the
+noise, so "no change worth keeping" is a common and correct outcome. It is most likely when the starting prompt or
+harness is already strong for the model, when the practice set is small or noisy, or when the model proposing changes
+is weak. In that case the skill says so first ("no change beat the noise band; the original is kept") and lists what it
+tried and why each was rejected, instead of presenting a lucky score as a gain. When a change is kept, the transfer
+report shows whether it holds on tasks the loop never saw.
+
+## 3. Install and use the skill
+
+**Install.** Clone the repo and install the package:
+```bash
+git clone https://github.com/GaryTang32/RSI && cd RSI
+pip install -e ".[science,dev]"        # or, without cloning: pip install "rsi @ git+https://github.com/GaryTang32/RSI"
+```
+
+**Add the skill to Claude Code.**
+- In this repo: run `claude` in the clone. Claude Code loads `.claude/skills/` automatically.
+- In another project: copy the skill, either for every project or for one:
+  ```bash
+  cp -r RSI/.claude/skills/rsi-improve ~/.claude/skills/            # every project
+  cp -r RSI/.claude/skills/rsi-improve your-project/.claude/skills/ # one project
+  ```
+
+**Use it.** Describe the goal ("self-improve my agent's prompts", "run autoresearch on train.py") or type
+`/rsi-improve`. The skill checks the setup first and asks only about what it cannot find: whether to install the
+package, which model runs the loop, a spend limit, and where runs and the cache go. It then helps you wrap your task
+(an artifact to change, tasks, a grader), measures the noise, picks a method and runs it.
+
+**Try it without Claude Code.** The same loop from the command line or Python:
+```bash
+rsi methods                                                                  # what each method does
+rsi improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim    # offline, ~10 s, no API key
+rsi inspect runs/rrsi-sim                                                    # per-round audit trail -> TRACE.md
+```
+Swap `--llm sim` for `--llm claude:haiku` (the `claude` CLI) or `--llm api:sonnet` (`ANTHROPIC_API_KEY`) to run live.
+`sim` is a simulated model: its scores show the loop working, not real gains.
+
+```python
+import rsi
+from rsi.domains.agentqa import AgentQADomain
+
+dom = AgentQADomain()
+res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="claude:haiku",
+                  config={"T": 6}, out_dir="runs/rrsi", cache_dir=".rsi_cache/agentqa")
+print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
+```
+
+## 4. Prerequisites
+
+| Need | For | Notes |
+|---|---|---|
+| Python 3.10+ and `pip` | everything | the package needs only `numpy`; `[science]` adds scipy, scikit-learn and matplotlib for some domains |
+| [Claude Code](https://claude.com/claude-code) | the skill | CLI, desktop, IDE or web |
+| A model for live runs, one of: | running a loop for real | not needed for the offline simulator (`--llm sim`) |
+| &nbsp;&nbsp;the `claude` CLI, logged in | `claude:<model>` | uses your Claude plan and counts toward its usage limits |
+| &nbsp;&nbsp;`ANTHROPIC_API_KEY` and `pip install -e ".[api]"` | `api:<model>` | billed per token |
+| Your problem in three parts | using it on your own task | an artifact the loop may change (prompts, a harness, a script); about 20 practice tasks plus held-out tasks it never sees; a grader that does not depend on the artifact, ideally deterministic |
+| A spend limit and some patience | live runs | the skill measures the cost of one call before a run; long runs on hard tasks take hours and can stop at a usage limit, then resume from the cache |
 
 ## Results with a real model
 
@@ -86,67 +147,9 @@ and **0.95 at k = 3** (+0.45 [+0.25, +0.65]); k = 3 beat k = 1 by +0.25 [+0.10, 
 agent rollouts per task against the seed's 1; a best-of-n baseline with the same selector gained nothing offline but was
 not run live.
 
-**A public benchmark: BIG-Bench Extra Hard.** Five methods and two controls improved the same one-call Haiku harness on
-12 BBEH task families (6 practice, 6 never seen during search), scored on 120 held-out and unseen-family examples with
-BBEH's official answer check. Only RRSI's gain excludes zero, and it is small: one kept edit that cleans up the answer
-line. GEPA and Meta-Harness kept the seed. On a 36-task stream, plain best-of-7 beat Harness² at the same number of
-calls. Full design, costs (about $150) and caveats: [`docs/reports/bbeh-live.md`](docs/reports/bbeh-live.md).
-
-| Arm | Accuracy (n) | vs seed, paired |
-|---|---|---|
-| Seed harness | 0.417 (120) | |
-| RRSI | 0.438 (120) | **+0.021 [+0.004, +0.042]** |
-| GEPA, Meta-Harness | 0.417 (120), kept the seed | 0 |
-| Harness² k = 1 / best-of-7 | 0.444 / 0.556 (36) | Harness² - best-of-7: -0.111 [-0.250, +0.028] |
-
-On BIG-Bench Hard the seed harness already scored 0.96 (20 of 27 families at 10/10), which is why the run moved to BBEH.
-
-**More charts:** [`demo/gallery.html`](demo/gallery.html) has 72 interactive charts covering the live runs, the shared core,
+**More charts:** [`demo/gallery.html`](demo/gallery.html) has 66 interactive charts covering the live runs, the shared core,
 every method's experiments and the verification work. Each chart says what its numbers show, including claims that did not
 reproduce. Open it in a browser; it is one self-contained file.
-
-## Quick start
-
-```bash
-pip install -e ".[science,dev]"
-rsi methods                                                                  # what each method does
-rsi improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim    # offline, ~10 s, no API key
-rsi inspect runs/rrsi-sim                                                    # per-round audit trail -> TRACE.md
-```
-
-Swap `--llm sim` for `--llm claude:haiku` (the `claude` CLI) or `--llm api:sonnet` (`ANTHROPIC_API_KEY`) to run live.
-`sim` is a simulated model: its scores show the loop working, not real gains.
-
-```python
-import rsi
-from rsi.domains.agentqa import AgentQADomain
-
-dom = AgentQADomain()
-res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="claude:haiku",
-                  config={"T": 6}, out_dir="runs/rrsi", cache_dir=".rsi_cache/agentqa")
-print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
-```
-
-## Use the skill in Claude Code
-
-The [`rsi-improve`](.claude/skills/rsi-improve/SKILL.md) skill lets Claude apply these methods to your own problem.
-
-- **In this repo:** run `claude` in the clone. Claude Code loads `.claude/skills/` automatically.
-- **In another project:** copy the skill, either for every project or for one:
-  ```bash
-  cp -r RSI/.claude/skills/rsi-improve ~/.claude/skills/            # every project
-  cp -r RSI/.claude/skills/rsi-improve your-project/.claude/skills/ # one project
-  ```
-
-Then describe the goal ("self-improve my agent's prompts", "run autoresearch on train.py") or type `/rsi-improve`.
-The skill checks the setup first and asks only about what it cannot find:
-
-- whether to install the `rsi` package;
-- which model runs the loop: the `claude` CLI on your plan, the API with `ANTHROPIC_API_KEY`, or the offline simulator;
-- a spend limit;
-- where runs and the cache go.
-
-To install the package yourself: `pip install "rsi @ git+https://github.com/GaryTang32/RSI"`.
 
 ## Choose a method
 
@@ -379,8 +382,7 @@ Recorded output (`results/`, `validation/`, `demo/runs/`) lives on the
 - Everything runs on CPU. The papers' GPU-scale experiments (nanochat, KernelBench, frontier benchmark suites) are
   reproduced qualitatively, on small analogues with known ground truth.
 - Numbers from simulated domains show that a mechanism behaves as claimed. They are not benchmark results.
-- Live results above use 6-12 tasks per split; most intervals are wide. The BBEH comparison uses 120 evaluation
-  examples but only 24 for search, one search run per method and one model (Haiku) as both agent and proposer.
+- Live results above use 6-12 tasks per split; most intervals are wide.
 - Some per-method docs (`docs/methods/evomap`, `docs/methods/dream-rsi`) still describe earlier paper versions.
   The skill's method references are checked against the current ones.
 

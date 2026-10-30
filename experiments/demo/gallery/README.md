@@ -6,7 +6,6 @@ light and dark themes. Each number is copied from the source file the spec names
 ```
 python experiments/demo/gallery/make_core_specs.py   # core, live-demo and verification specs (needs the data branch restored)
 python experiments/demo/gallery/make_harness2_specs.py   # Harness² specs (same)
-python experiments/demo/gallery/make_bbeh_specs.py       # BBH/BBEH specs (same)
 python experiments/demo/gallery/validate.py experiments/demo/gallery/specs/*.json
 python experiments/demo/gallery/build_gallery.py     # writes demo/gallery.html
 ```
@@ -15,7 +14,7 @@ python experiments/demo/gallery/build_gallery.py     # writes demo/gallery.html
 
 spec = {
   "id": "rrsi-overfit",                 # unique, lowercase, [a-z0-9-]
-  "method": "RRSI",                     # one of: Core, Live demo, RRSI, Meta-Harness, SoL-Pi, GEPA, autoresearch, Dream-RSI, EvoMap, Harness², BBEH, Verification
+  "method": "RRSI",                     # one of: Core, Live demo, RRSI, Meta-Harness, SoL-Pi, GEPA, autoresearch, Dream-RSI, EvoMap, Verification
   "title": "Short chart title (<= 70 chars)",
   "takeaway": "One or two plain sentences: what the chart shows, with the key numbers. Must be true of the data in this spec.",
   "source": "results/rrsi/e0_overfitting_trap.json",   # a data-branch path, or "repo:<path>" for a repo file

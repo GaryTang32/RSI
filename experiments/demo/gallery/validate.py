@@ -7,7 +7,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 WARN = set()
-METHODS = {"Core", "Live demo", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Harness²", "BBEH", "Verification"}
+METHODS = {"Core", "Live demo", "RRSI", "Meta-Harness", "SoL-Pi", "GEPA", "autoresearch", "Dream-RSI", "EvoMap", "Harness²", "Verification"}
 TYPES = {"line", "bar", "interval", "stacked", "scatter"}
 def num(v): return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 def check(c):
