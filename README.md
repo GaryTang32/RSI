@@ -12,7 +12,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">72 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -86,7 +86,22 @@ and **0.95 at k = 3** (+0.45 [+0.25, +0.65]); k = 3 beat k = 1 by +0.25 [+0.10, 
 agent rollouts per task against the seed's 1; a best-of-n baseline with the same selector gained nothing offline but was
 not run live.
 
-**More charts:** [`demo/gallery.html`](demo/gallery.html) has 66 interactive charts covering the live runs, the shared core,
+**A public benchmark: BIG-Bench Extra Hard.** Five methods and two controls improved the same one-call Haiku harness on
+12 BBEH task families (6 practice, 6 never seen during search), scored on 120 held-out and unseen-family examples with
+BBEH's official answer check. Only RRSI's gain excludes zero, and it is small: one kept edit that cleans up the answer
+line. GEPA and Meta-Harness kept the seed. On a 36-task stream, plain best-of-7 beat Harness² at the same number of
+calls. Full design, costs (about $150) and caveats: [`docs/reports/bbeh-live.md`](docs/reports/bbeh-live.md).
+
+| Arm | Accuracy (n) | vs seed, paired |
+|---|---|---|
+| Seed harness | 0.417 (120) | |
+| RRSI | 0.438 (120) | **+0.021 [+0.004, +0.042]** |
+| GEPA, Meta-Harness | 0.417 (120), kept the seed | 0 |
+| Harness² k = 1 / best-of-7 | 0.444 / 0.556 (36) | Harness² - best-of-7: -0.111 [-0.250, +0.028] |
+
+On BIG-Bench Hard the seed harness already scored 0.96 (20 of 27 families at 10/10), which is why the run moved to BBEH.
+
+**More charts:** [`demo/gallery.html`](demo/gallery.html) has 72 interactive charts covering the live runs, the shared core,
 every method's experiments and the verification work. Each chart says what its numbers show, including claims that did not
 reproduce. Open it in a browser; it is one self-contained file.
 
@@ -322,7 +337,8 @@ rsi/            the Python package
   core/         LLM backends, Artifact, TaskSuite (sealed splits), Domain, Evaluator,
                 stats (noise band, CIs), gates (keep rules), ledger, editors, leakage critic, sandbox
   <method>/     one package per method
-  domains/      test problems with known ground truth (agentqa, agentworld, discovery, tinylm, ...)
+  domains/      test problems with known ground truth (agentqa, agentworld, discovery, tinylm, ...) and public
+                benchmarks (bbh, bbeh: downloaded on first use, sha256-checked, never committed)
   api.py        rsi.improve(), rsi.recommend()      cli.py  the `rsi` command      trace.py  audit trail
 docs/           guide/ (RSI-101, architecture), methods/<slug>/ (paper spec, implementation, claims audit),
                 core/, reports/, skill-claims/ (the skill's evidence ledger)
@@ -342,7 +358,8 @@ Recorded output (`results/`, `validation/`, `demo/runs/`) lives on the
 - Everything runs on CPU. The papers' GPU-scale experiments (nanochat, KernelBench, frontier benchmark suites) are
   reproduced qualitatively, on small analogues with known ground truth.
 - Numbers from simulated domains show that a mechanism behaves as claimed. They are not benchmark results.
-- Live results above use 6-12 tasks per split; most intervals are wide.
+- Live results above use 6-12 tasks per split; most intervals are wide. The BBEH comparison uses 120 evaluation
+  examples but only 24 for search, one search run per method and one model (Haiku) as both agent and proposer.
 - Some per-method docs (`docs/methods/evomap`, `docs/methods/dream-rsi`) still describe earlier paper versions.
   The skill's method references are checked against the current ones.
 

@@ -113,6 +113,9 @@ def merge(d: Path, reps: int = 10000) -> dict:
     if h2 and _usable(h2):
         ids = sorted(h2.get("base_per_task", {}))
         extra["harness2_submitted_minus_H0_base1"] = _diff(h2["base_per_task"], h2["per_task"], ids, reps)
+    if bon and _usable(bon) and bon.get("base_per_task"):
+        ids = sorted(bon["base_per_task"])
+        extra["bestofn_submitted_minus_H0_base1"] = _diff(bon["base_per_task"], bon["per_task"], ids, reps)
     pilot = arms.get("pilot")
     return {"dir": str(d), "reps": reps, "suite": ref_sig and json.loads(ref_sig), "mismatched_suites": mismatched,
             "arms": rows, "families": fam_rows, "paired_extra": extra,
