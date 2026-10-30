@@ -5,12 +5,42 @@ description: Apply a recursive self-improvement loop (RRSI, GEPA, autoresearch, 
 
 # Applying `rsi` to a new problem
 
-The package lives at the repo root (`rsi/`). Every technique runs the same loop
+The skill drives the `rsi` Python package ([GaryTang32/RSI](https://github.com/GaryTang32/RSI)); step 0 checks that
+it is installed. Every technique runs the same loop
 (propose -> run -> score -> keep/discard) through one API:
 `rsi.improve(domain, seed_artifact, method=..., llm_task=..., llm_propose=..., config=..., out_dir=...)`.
 
 Follow these steps in order. Do not skip step 3: a loop without a measured noise
 band and a sealed held-out split will happily "improve" by luck or memorization.
+
+## 0. Set up: check first, then ask
+
+Run these checks before asking anything; ask only about what they could not settle.
+```bash
+python -c "import rsi; print(rsi.__file__)"                      # is the package importable?
+command -v claude                                                # claude CLI, for claude:<model>
+python -c "import os; print(bool(os.environ.get('ANTHROPIC_API_KEY')))"   # API key, for api:<model>
+```
+Then ask with the AskUserQuestion tool, all questions in one call (in chat if the tool is missing). Offer only
+options whose prerequisites the checks found, and put the recommended one first:
+
+1. **Install the `rsi` package?** Only if `import rsi` failed.
+   - Clone it and install editable (recommended, brings the docs and examples):
+     `git clone https://github.com/GaryTang32/RSI && pip install -e "./RSI[science]"`
+   - Install from GitHub into this environment: `pip install "rsi @ git+https://github.com/GaryTang32/RSI"`
+   - Not now: explain the methods only, run nothing.
+2. **Which model runs the loop?**
+   - `claude:haiku` (or `claude:sonnet`) through the `claude` CLI: uses the user's Claude plan and its usage limits.
+   - `api:<model>`: needs `ANTHROPIC_API_KEY`, billed per token.
+   - `sim`, offline: free; shows the loop working, not real gains. Say so next to every number it produces.
+3. **Spend limit for this run?** e.g. a $2 smoke run first, then $10, $50, or the user's own figure. Measure the cost
+   of one task call in step 3 and give the expected total before any run larger than a smoke test.
+4. **Where should runs and the cache go?** Default `runs/<name>` and `.rsi_cache/<name>` in the current project. Both
+   can grow large; the cache is what lets an interrupted run resume for free.
+
+Do what the answers require: install the package, `export RSI_EXIT_ON_USAGE_LIMIT=1` for a `claude:*` run (a plan
+usage limit then stops the run instead of scoring empty replies, and a rerun resumes from the cache), and write the
+answers at the top of the run notes. If the user already said what they want, skip those questions.
 
 ## 1. Pin down the problem with the user
 

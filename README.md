@@ -12,7 +12,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">72 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="#quick-start">Quick start</a> · <a href="#use-the-skill-in-claude-code">Skill</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">72 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -126,6 +126,27 @@ res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="clau
                   config={"T": 6}, out_dir="runs/rrsi", cache_dir=".rsi_cache/agentqa")
 print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
 ```
+
+## Use the skill in Claude Code
+
+The [`rsi-improve`](.claude/skills/rsi-improve/SKILL.md) skill lets Claude apply these methods to your own problem.
+
+- **In this repo:** run `claude` in the clone. Claude Code loads `.claude/skills/` automatically.
+- **In another project:** copy the skill, either for every project or for one:
+  ```bash
+  cp -r RSI/.claude/skills/rsi-improve ~/.claude/skills/            # every project
+  cp -r RSI/.claude/skills/rsi-improve your-project/.claude/skills/ # one project
+  ```
+
+Then describe the goal ("self-improve my agent's prompts", "run autoresearch on train.py") or type `/rsi-improve`.
+The skill checks the setup first and asks only about what it cannot find:
+
+- whether to install the `rsi` package;
+- which model runs the loop: the `claude` CLI on your plan, the API with `ANTHROPIC_API_KEY`, or the offline simulator;
+- a spend limit;
+- where runs and the cache go.
+
+To install the package yourself: `pip install "rsi @ git+https://github.com/GaryTang32/RSI"`.
 
 ## Choose a method
 
