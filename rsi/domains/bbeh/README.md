@@ -82,9 +82,74 @@ These scripts are thin wrappers that call `experiments/bbh/compare_live.py --ben
 
 | setting | BBEH default |
 |---|---|
-| final eval | k = 1, paired by example |
+| final eval (all holdout + ood arms) | k = 2, paired by example |
 | rrsi | T = 4, k = 2 |
 | gepa | B = 150 |
 | metaharness | 3 iterations × k = 2, $0.75 per agent session |
-| harness2 | k = 1 on 24 tasks (12 holdout + 12 ood) |
-| bestofn | matched to Harness² calls per task |
+| autoresearch | 6 experiments, each on evolve at k = 2 |
+| solpi | 4 ideas × 2 iterations, k = 1; firewall 2 per practice family |
+| dream | 2 live searches × 4 attempts, k = 1; M = 3 policy versions |
+| evomap | 12 cycles, safe mode, local store; rsi-taskcheck on 4 tasks |
+| harness2 / bestofn | k = 1 on 36 tasks (18 holdout + 18 ood); best-of-n matched to Harness² calls |
+
+## The four later arms
+
+All four use the same suite, seed harness and model (agent and proposer) as the other arms. They search on evolve
+only. Each final harness is leak-checked and scored on holdout + ood at k = 2.
+
+### autoresearch
+
+- **Setup:** the loop edits `harness.py` and `prompts/*`. One experiment is one evaluation on evolve at k = 2.
+- **Keep rule:** keep iff the gain over the incumbent exceeds the seed's noise band. This is the same band GEPA uses
+  (one k = 2 seed evaluation on evolve, within-task bootstrap, z = 2). The upstream rule, which keeps any gain from
+  one run, is not used.
+- **Why:** the live evolve split is noisy. The same seed scored 0.50 and 0.625 in two measurements, so a noise-blind
+  rule would keep luck.
+
+### SoL-Pi
+
+- **Objective:** fewer tokens and dollars at held accuracy.
+- **Ideas:** four generic efficiency ideas (short scratchpad, no restating, the Python tool for counting and
+  arithmetic, a bare final answer line). Each is implemented by the same model, screened on evolve and frozen per
+  lineage.
+- **Firewall:** a one-way check on a sealed `firewall` split.
+  - It holds 2 examples per practice family (12 in all).
+  - It is cut after holdout, so every other split keeps its examples.
+  - It is disjoint from evolve, holdout, ood and the pilot.
+  - Only SoL-Pi's firewall reads it.
+- **Reporting:** `merge.py` shows tokens per answer, $ per example and the paired token difference vs seed for
+  every 120-example arm, so "fewer tokens at equal accuracy" is visible.
+
+### Dream-RSI
+
+- **Setup:** two live searches of an LLM discovery agent on evolve. Each search has 4 attempts (k = 1, one
+  24-example evaluation per attempt).
+- **Dreaming:** between the searches, the developer rewrites the exploration policy and scores the new versions by
+  replaying the recorded search. This makes no task calls.
+- **Result:** `best` is the best program on evolve.
+- **Fairness:**
+  - Fair: same data, model, budget scale and final evaluation as every arm.
+  - Unfair to the method: the paper's regime is many cheap searches. Here there is one recorded search of 4
+    attempts to dream on, so the policy revision has little to learn from. The arm behaves close to Fixed
+    Exploration with 8 attempts.
+  - Winner's curse: picking the best of 8 noisy k = 1 evolve scores biases the evolve number upward. The held-out
+    eval is unaffected.
+
+### EvoMap
+
+- **Setup:** a local gene store, no hub, safe mode.
+  - A gene is written after an unsolved evolve task.
+  - It is kept only if `rsi-taskcheck` passes. The check runs the same family's practice tasks with and without
+    the gene, paired.
+  - The library is then frozen and evaluated through `GeneRoutedDomain`: per task, the best-matching gene is
+    appended to the system prompt.
+- **Why evolve-then-eval rather than streaming:** EvoMap's cycle grades its own task to decide whether to keep a
+  gene, so streaming the eval tasks would use their labels.
+- **Consequence:** genes keyed to a practice family match no unseen-family task. Those tasks run the plain seed and
+  replay its cached calls.
+
+### Answer length for older arms
+
+`experiments/bbh/rescore_tokens.py --benchmark bbeh --arm seed rrsi gepa metaharness` replays each final eval from the
+shared cache in cache-only mode. It never calls the model, and it writes `<arm>.tokens.json` beside `<arm>.json`
+without changing it.

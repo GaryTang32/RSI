@@ -10,7 +10,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SMALL = ["--evolve", "2", "--holdout", "2", "--ood", "2", "--n-sub", "4", "--rrsi-T", "1", "--gepa-B", "20",
-         "--mh-iterations", "1", "--workers", "2"]
+         "--mh-iterations", "1", "--workers", "2", "--ar-experiments", "2", "--solpi-lineages", "2",
+         "--dream-rounds", "2", "--dream-branches", "1", "--evomap-cycles", "4"]
 
 
 def _load(name: str, rel: str):
@@ -27,14 +28,15 @@ def exp(bbeh_offline):
 
 def test_offline_dry_run_of_every_arm_then_merge(exp, tmp_path):
     cl, merge = exp
-    assert "cot3" not in cl.ARMS and len(cl.ARMS) == 7
+    assert "cot3" not in cl.ARMS and len(cl.ARMS) == 11
     assert cl.main(["--arm", "all", "--offline", "--out-dir", str(tmp_path), *SMALL]) == 0
     res = {a: json.loads((tmp_path / f"{a}.json").read_text()) for a in cl.ARMS}
     assert all(r["status"] == "ok" and r["benchmark"] == "bbeh" for r in res.values()), \
         {a: (r["status"], r.get("error")) for a, r in res.items()}
     assert not (tmp_path / "cot3.json").exists()
-    for a in ("seed", "rrsi", "gepa", "metaharness"):
+    for a in ("seed", "rrsi", "gepa", "metaharness", "autoresearch", "solpi", "dream", "evomap"):
         assert len(res[a]["per_task"]) == 24 and res[a]["k"] == 2
+        assert set(res[a]["per_task_out_tokens"]) == set(res[a]["per_task"]) == set(res[a]["per_task_usd"])
     for a in cl.SEARCHED:
         assert res[a]["leak_check"]["passed"]
     assert len(res["pilot"]["per_task"]) == 5 * 23

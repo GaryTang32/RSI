@@ -18,6 +18,21 @@ Every arm uses the same model as agent and proposer (``--model``, default claude
                gepa: acceptance = noise_margin with delta from the seed's noise band on evolve (k = 2).
                metaharness: the coding-agent proposer (``claude -p`` with file tools; needs a claude:* model);
                its spend cap is enforced between iterations by a guard around the proposer.
+- autoresearch searched on evolve: each experiment scores the edited harness (harness.py, prompts/*) on evolve at
+               k = 2 (``--ar-k``); keep iff the gain over the incumbent exceeds the seed's noise band (the delta GEPA
+               uses), not the upstream keep-any-gain rule. ``--ar-experiments`` (6) after the cached baseline.
+- solpi        token efficiency at held accuracy: 4 generic efficiency ideas (``--solpi-lineages``), each screened
+               on evolve (k = 1, ``--solpi-iters`` = 2 implementations), the frozen ones checked once on a sealed
+               ``firewall`` split (``--solpi-firewall`` = 2 per practice family, cut after holdout, so no other split
+               changes; disjoint from evolve/holdout/ood/pilot), the survivors composed.
+- dream        Dream-RSI: ``--dream-rounds`` (2) live searches of an LLM discovery agent on evolve (k = 1 per
+               attempt; ``--dream-branches`` x (``--dream-refine`` + 1) = 4 attempts per search, capped), with a
+               dreaming phase in between (the developer rewrites the exploration policy and scores it by replaying
+               the recorded search: no task calls). ``best`` = the best program on evolve.
+- evomap       EvoMap, local gene store (no hub), safe mode: ``--evomap-cycles`` (12) over evolve tasks; a gene is
+               written after an unsolved task and kept only if ``rsi-taskcheck`` (gene vs no gene, paired) passes; the
+               frozen library is evaluated through GeneRoutedDomain (a task no gene matches runs the plain seed).
+               The final eval of all seven searched arms: leak check, then holdout + ood at k = 2.
 - harness2     Harness² at k = 1 streaming a fixed subsample (``--n-sub`` = 36: 18 holdout + 18 ood, family-
                stratified, order seed 0); labels are used only by the post-hoc report after the loop.
 - bestofn      matched-compute control on the same subsample: the seed harness n times per task, the Harness²
@@ -28,6 +43,9 @@ The spend cap (``--cap`` USD, fresh calls only; cache replays are free) is passe
 checked between phases (and between tasks/families for pilot, bestofn and evaluation splits). A started phase
 finishes, so the final figure can exceed the cap by about one phase step. Re-running an arm resumes its search from
 results/bbh/runs/<arm> (``--fresh`` starts over); ``--phase eval`` scores a saved search result only.
+
+Every holdout + ood eval also records each example's mean output tokens per answer and the $ of its k trials
+(merge.py: tokens vs seed, paired); ``rescore_tokens.py`` adds them to arms scored earlier by a cache-only replay.
 
 Run (live; one background command per arm):
     python experiments/bbh/compare_live.py --arm seed --cap 3
