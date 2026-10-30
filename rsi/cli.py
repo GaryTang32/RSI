@@ -28,7 +28,19 @@ def _parse_value(v: str) -> Any:
 
 
 def load_problem(spec: str, *, seed: int = 0):
-    """``(domain, seed_artifact, offline_task_llm)`` for ``agentqa`` or ``path/to/file.py:factory``."""
+    """``(domain, seed_artifact, offline_task_llm)`` for ``agentqa``, ``bbh``, ``bbeh`` or ``path/to/file.py:factory``."""
+    if spec == "bbh":
+        from .domains.bbh import BBHDomain, BBHSimModel, make_suite as make_bbh_suite
+
+        suite = make_bbh_suite(seed=seed)   # downloads the BBH files once into ~/.cache/rsi/bbh (sha256-checked)
+        dom = BBHDomain(suite)
+        return dom, dom.seed_artifact(), BBHSimModel(suite)
+    if spec == "bbeh":
+        from .domains.bbeh import BBEHDomain, BBEHSimModel, make_suite as make_bbeh_suite
+
+        suite = make_bbeh_suite(seed=seed)  # downloads the BBEH files once into ~/.cache/rsi/bbeh (sha256-checked)
+        dom = BBEHDomain(suite)
+        return dom, dom.seed_artifact(), BBEHSimModel(suite)
     if spec == "agentqa":
         from .domains.agentqa import AgentQADomain, SimModel, make_suite
 
@@ -36,7 +48,7 @@ def load_problem(spec: str, *, seed: int = 0):
         dom = AgentQADomain(suite)
         return dom, dom.seed_artifact(), SimModel(suite)
     if ":" not in spec:
-        raise SystemExit(f"unknown problem {spec!r}: use 'agentqa' or 'path/to/file.py:factory'")
+        raise SystemExit(f"unknown problem {spec!r}: use 'agentqa', 'bbh', 'bbeh' or 'path/to/file.py:factory'")
     path, _, fn = spec.rpartition(":")
     mod_spec = importlib.util.spec_from_file_location("rsi_user_problem", path)
     if mod_spec is None or mod_spec.loader is None:
@@ -51,7 +63,7 @@ def load_problem(spec: str, *, seed: int = 0):
 
 def offline_proposer(method: str, problem: str):
     """Scripted offline proposer for a built-in problem, or None for the method's own default."""
-    if problem != "agentqa":
+    if problem not in ("agentqa", "bbh", "bbeh"):     # bbh/bbeh run the AgentQA harness layout: same mocks
         return None
     if method == "rrsi":
         from .rrsi.mocks import AgentQAMockLLM
@@ -153,7 +165,7 @@ def main(argv=None) -> int:
 
     i = sub.add_parser("improve")
     i.add_argument("--method", default="rrsi")
-    i.add_argument("--problem", default="agentqa")
+    i.add_argument("--problem", default="agentqa", help="agentqa | bbh | bbeh | path/to/file.py:factory")
     i.add_argument("--llm", default="sim", help="task model: sim (offline) | claude:haiku | api:sonnet | ...")
     i.add_argument("--propose-llm", default=None, help="proposer model (default: same as --llm; 'offline' = mocks)")
     i.add_argument("--set", nargs="*", default=[], help="Config overrides key=value (JSON values)")

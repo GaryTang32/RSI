@@ -7,6 +7,7 @@ import math
 import os
 import re
 import subprocess
+import sys
 import threading
 import time
 from dataclasses import asdict, astuple, dataclass
@@ -143,6 +144,9 @@ def strip_attribution(text: str) -> str:
     return _ATTRIBUTION.sub("", text)
 
 
+_USAGE_LIMIT = re.compile(r"hit your .{0,40}limit|usage limit", re.I)
+
+
 class ClaudeCLI(LLM):
     """Headless ``claude -p`` backend, run lean: no tools, MCP, settings or session persistence."""
 
@@ -187,6 +191,12 @@ class ClaudeCLI(LLM):
                 continue
             if data.get("is_error"):
                 last_err = str(data.get("result") or data.get("subtype") or "is_error")[-500:]
+                if _USAGE_LIMIT.search(last_err) and os.environ.get("RSI_EXIT_ON_USAGE_LIMIT"):
+                    # account usage limit: every later call fails too, and scoring the empty replies would corrupt
+                    # the run; failures are never cached, so stopping here lets a rerun resume from the cache
+                    sys.stderr.write(f"rsi: stopping on account usage limit: {last_err}\n")
+                    sys.stderr.flush()
+                    os._exit(75)
                 time.sleep(2 ** attempt)
                 continue
             u = data.get("usage") or {}

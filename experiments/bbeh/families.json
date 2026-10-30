@@ -1,0 +1,44 @@
+{
+ "_comment": "Practice (evolve/holdout) and OOD families for experiments/bbeh. Initial guess; re-pick after the pilot arm (compare_live.py --arm pilot --apply; band [0.15, 0.75]). pilot_candidates: families the pilot scores (5 reserved examples each, never used by any other split).",
+ "practice": [
+  "boolean_expressions",
+  "causal_understanding",
+  "linguini",
+  "object_properties",
+  "web_of_lies",
+  "shuffled_objects"
+ ],
+ "ood": [
+  "buggy_tables",
+  "geometric_shapes",
+  "nycc",
+  "temporal_sequence",
+  "sarc_triples",
+  "sportqa"
+ ],
+ "pilot_candidates": [
+  "boardgame_qa",
+  "boolean_expressions",
+  "buggy_tables",
+  "causal_understanding",
+  "disambiguation_qa",
+  "dyck_languages",
+  "geometric_shapes",
+  "hyperbaton",
+  "linguini",
+  "movie_recommendation",
+  "multistep_arithmetic",
+  "nycc",
+  "object_counting",
+  "object_properties",
+  "sarc_triples",
+  "shuffled_objects",
+  "spatial_reasoning",
+  "sportqa",
+  "temporal_sequence",
+  "time_arithmetic",
+  "web_of_lies",
+  "word_sorting",
+  "zebra_puzzles"
+ ]
+}

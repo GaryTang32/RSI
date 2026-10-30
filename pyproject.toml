@@ -22,6 +22,10 @@ rsi = "rsi.cli:main"
 [tool.setuptools.packages.find]
 include = ["rsi*"]
 
+[tool.setuptools.package-data]
+# seed-harness prompts, benchmark manifests and EvoMap's schemas: a non-editable install needs them too
+"*" = ["*.json", "*.md", "NOTICE-*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
