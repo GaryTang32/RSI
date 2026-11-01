@@ -27,7 +27,8 @@ Tests never call a real model: `pytest` deselects the `live` marker. To run the 
 - New behaviour has a test. Bug fixes have a test that fails without the fix.
 - User-facing changes are listed under "Unreleased" in [`CHANGELOG.md`](CHANGELOG.md).
 
-Keep pull requests focused: one fix or feature per PR is easier to review than a bundle.
+Keep pull requests focused: one fix or feature per PR is easier to review than a bundle. Looking for something to
+work on? [`ROADMAP.md`](ROADMAP.md) marks good first issues.
 
 ## What goes where
 

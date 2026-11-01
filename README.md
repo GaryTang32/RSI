@@ -428,7 +428,8 @@ first use, never redistributed.
 
 Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers setup, tests and the rules that keep
 results trustworthy; please also read the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately as
-described in [`SECURITY.md`](SECURITY.md). Changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
+described in [`SECURITY.md`](SECURITY.md). Changes are listed in [`CHANGELOG.md`](CHANGELOG.md); what comes next, with
+good first issues, is in [`ROADMAP.md`](ROADMAP.md). For questions, see [`SUPPORT.md`](.github/SUPPORT.md).
 
 ## Citing
 

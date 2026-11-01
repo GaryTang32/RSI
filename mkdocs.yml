@@ -139,6 +139,7 @@ nav:
   - API reference: api.md
   - Project:
       - Contributing: contributing.md
+      - Roadmap: roadmap.md
       - Changelog: changelog.md
       - Security: security.md
       - Code of conduct: code-of-conduct.md
