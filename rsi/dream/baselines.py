@@ -1,9 +1,10 @@
 """Baselines: Recursive Fixed Exploration [paper:§4] and history summarised into written guidance [paper:§5.1]."""
+
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from typing import Optional, Sequence
 
 from ..core.llm import LLM, extract_json
 
@@ -48,11 +49,13 @@ class MockGuidanceSummarizer(GuidanceSummarizer):
             return Guidance()
         ranked = sorted(gains, key=lambda d: (-gains[d], d))
         focus = ranked[: self.top]
-        avoid = [d for d in ranked[self.top:] if gains[d] <= 0]
-        text = ("Guidance distilled from earlier searches: the largest gains came from "
-                + ", ".join(f"{d} (+{gains[d]:.3g})" for d in focus)
-                + ". Concentrate new attempts on these directions"
-                + (f"; avoid {', '.join(avoid)}, which did not improve." if avoid else "."))
+        avoid = [d for d in ranked[self.top :] if gains[d] <= 0]
+        text = (
+            "Guidance distilled from earlier searches: the largest gains came from "
+            + ", ".join(f"{d} (+{gains[d]:.3g})" for d in focus)
+            + ". Concentrate new attempts on these directions"
+            + (f"; avoid {', '.join(avoid)}, which did not improve." if avoid else ".")
+        )
         return Guidance(text, focus, avoid)
 
 
@@ -77,10 +80,13 @@ class LLMGuidanceSummarizer(GuidanceSummarizer):
         for w in worlds:
             for n in w.non_root():
                 d = (w.branch_tags.get(n.branch) or {}).get("direction", "?")
-                res = f"{n.score - w.root_score:+.4g}" if n.success and n.score is not None else \
-                    f"failed ({n.fail_class})"
+                res = (
+                    f"{n.score - w.root_score:+.4g}"
+                    if n.success and n.score is not None
+                    else f"failed ({n.fail_class})"
+                )
                 rows.append(f"- round {w.meta.get('round', '?')} {n.id} dir={d}: {res}. {n.proposal[:120]}")
-        prompt = GUIDANCE_PROMPT.format(directions=list(directions), records="\n".join(rows[-self.max_records:]))
+        prompt = GUIDANCE_PROMPT.format(directions=list(directions), records="\n".join(rows[-self.max_records :]))
         resp = self.llm.complete(prompt, role=self.role)
         try:
             d = extract_json(resp.text)
@@ -95,5 +101,5 @@ def fixed_config(cfg, guidance: bool = False):
     return replace(cfg, dream=False, guidance=guidance)
 
 
-def guidance_json(g: Optional[Guidance]) -> str:
+def guidance_json(g: Guidance | None) -> str:
     return json.dumps({"text": g.text, "focus": g.focus, "avoid": g.avoid} if g else {})

@@ -1,10 +1,10 @@
 """Offline reflection LMs for domains other than RuleWorld, and a two-module AgentQA harness."""
+
 from __future__ import annotations
 
 import hashlib
 import random
 import re
-from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.llm import MockLLM
@@ -28,17 +28,17 @@ def _split(prompt: str) -> tuple[str, str]:
     ends = [i for i in (prompt.find(m, a + 3) for m in _CUR_END) if i != -1]
     b = min(ends) if ends else prompt.find("```", a + 3)
     if b == -1:
-        return prompt[a + 3:].strip("\n"), ""
-    cur = prompt[a + 3:b].strip("\n")
+        return prompt[a + 3 :].strip("\n"), ""
+    cur = prompt[a + 3 : b].strip("\n")
     c = prompt.find("```", b + 3)
     if c == -1:
         return cur, ""
     side_ends = [i for i in (prompt.rfind(m) for m in _SIDE_END) if i > c]
     d = max(side_ends) if side_ends else prompt.find("```", c + 3)
-    return cur, (prompt[c + 3:d] if d != -1 else prompt[c + 3:])
+    return cur, (prompt[c + 3 : d] if d != -1 else prompt[c + 3 :])
 
 
-def _score(fb: str) -> Optional[float]:
+def _score(fb: str) -> float | None:
     m = re.search(r"Score:\s*(\d+(?:\.\d+)?)", fb or "")
     return float(m.group(1)) if m else None
 
@@ -73,9 +73,16 @@ SKILLS = {
     "verify": "Verify (double-check) your result before giving the final answer.",
     "python": "Write a short Python program that prints the exact answer, in a fenced python code block.",
 }
-DISTRACTORS = ["Be concise.", "Be polite and friendly.", "Use British spelling.", "Avoid jargon.",
-               "Keep the reply under 200 words.", "Mention your confidence level.", "Restate the question first.",
-               "Use bullet points where helpful."]
+DISTRACTORS = [
+    "Be concise.",
+    "Be polite and friendly.",
+    "Use British spelling.",
+    "Avoid jargon.",
+    "Keep the reply under 200 words.",
+    "Mention your confidence level.",
+    "Restate the question first.",
+    "Use bullet points where helpful.",
+]
 _SKILL_KEYS = {"format": "answer:", "step": "step by step", "verify": "verify", "python": "python"}
 
 
@@ -87,21 +94,22 @@ class AgentQAReflectionLM(MockLLM):
 
     def _respond(self, prompt, system, seed, i) -> str:
         rng = _rng("aq", prompt, seed)
-        if prompt.startswith("You are helping to optimize the instruction"):      # RL brainstorm
+        if prompt.startswith("You are helping to optimize the instruction"):  # RL brainstorm
             lines = list(SKILLS.values()) + DISTRACTORS
             rng.shuffle(lines)
             return "```\n" + "\n".join(lines) + "\n```"
         cur, side = _split(prompt)
         missing = [k for k, key in _SKILL_KEYS.items() if key not in cur.lower()]
-        if "correct outputs for several example inputs" in prompt:                # few-shot grounded proposal
+        if "correct outputs for several example inputs" in prompt:  # few-shot grounded proposal
             order = [k for k in ("format", "step", "verify") if k in missing]
         else:
             fails = [r for r in parse_side_info(side) if (_score(r.get("Feedback", "")) or 0.0) < 1.0]
             if not fails:
                 order = []
             elif any("expected" in r.get("Feedback", "").lower() for r in fails):
-                garbled = any(re.search(r"extracted answer '([^0-9'-][^']*)'", r.get("Feedback", ""), re.I)
-                              for r in fails)
+                garbled = any(
+                    re.search(r"extracted answer '([^0-9'-][^']*)'", r.get("Feedback", ""), re.I) for r in fails
+                )
                 pref = ["format", "python", "step", "verify"] if garbled else ["python", "step", "verify", "format"]
                 order = [k for k in pref if k in missing]
             else:
@@ -137,7 +145,11 @@ def solve(question, llm, tools, files):
 
 def two_module_harness() -> Artifact:
     """AgentQA seed artifact with two evolvable prompts (harness.py stays frozen)."""
-    return Artifact({"harness.py": TWO_MODULE_HARNESS,
-                     "prompts/solver.md": "You are a helpful assistant. Solve the question.\n",
-                     "prompts/reporter.md": "Give the final answer to the question.\n"},
-                    {"domain": "agentqa", "harness": "two-module"})
+    return Artifact(
+        {
+            "harness.py": TWO_MODULE_HARNESS,
+            "prompts/solver.md": "You are a helpful assistant. Solve the question.\n",
+            "prompts/reporter.md": "Give the final answer to the question.\n",
+        },
+        {"domain": "agentqa", "harness": "two-module"},
+    )

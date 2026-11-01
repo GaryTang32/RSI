@@ -1,12 +1,20 @@
 """BBEH suites: cost-driven sizes, pilot 5/family, disjoint splits, unseen OOD families, families.json."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
 
-from rsi.domains.bbeh import (DEFAULT_OOD, DEFAULT_PRACTICE, TASKS, load_families, make_pilot_suite, make_suite,
-                              suggest_families)
+from rsi.domains.bbeh import (
+    DEFAULT_OOD,
+    DEFAULT_PRACTICE,
+    TASKS,
+    load_families,
+    make_pilot_suite,
+    make_suite,
+    suggest_families,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -54,4 +62,3 @@ def test_families_json_is_valid_and_matches_the_defaults_initially():
 def test_suggest_uses_the_bbeh_band():
     sug = suggest_families({"a": 0.5, "b": 0.8, "c": 0.7, "d": 0.1}, n_practice=1, n_ood=1)
     assert set(sug["excluded_floor_or_ceiling"]) == {"b", "d"} and set(sug["practice"] + sug["ood"]) == {"a", "c"}
-

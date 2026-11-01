@@ -1,4 +1,5 @@
 """Shared helpers for the autoresearch experiment scripts."""
+
 import argparse
 import json
 import os
@@ -35,15 +36,20 @@ def require_windows(task, splits: dict) -> None:
     short = {s: sizes[s]["bytes"] for s, n in splits.items() if sizes[s]["bytes"] < n * WINDOW_BYTES + 1}
     if short:
         need = {s: n * WINDOW_BYTES + 1 for s, n in splits.items()}
-        raise ValueError(f"tinylm corpus too small for disjoint windows: {short} bytes, need {need} "
-                         f"(this Python's standard library yields a smaller corpus)")
+        raise ValueError(
+            f"tinylm corpus too small for disjoint windows: {short} bytes, need {need} "
+            f"(this Python's standard library yields a smaller corpus)"
+        )
 
 
 def parser(description: str, seeds: int = 3) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description)
-    ap.add_argument("--llm", default="sim",
-                    help="sim (scripted offline agent) | claude:haiku (live research agent) | scripted (offline "
-                         "MockLLM through the same LLM-agent code path as a live run)")
+    ap.add_argument(
+        "--llm",
+        default="sim",
+        help="sim (scripted offline agent) | claude:haiku (live research agent) | scripted (offline "
+        "MockLLM through the same LLM-agent code path as a live run)",
+    )
     ap.add_argument("--seeds", type=int, default=seeds)
     ap.add_argument("--quick", action="store_true", help="tiny settings for a smoke check")
     ap.add_argument("--workers", type=int, default=2, help="parallel seeds (processes)")
@@ -173,8 +179,9 @@ def time_to(traj, target: float) -> float:
 
 def setk(text: str, k: str, v) -> str:
     """Set the constant ``k`` of a train.py to ``repr(v)``, keeping its comment."""
-    out, n = re.subn(rf"^{k}(\s*=\s*)[^#\n]+?(\s*(#.*)?)$", lambda m: f"{k}{m.group(1)}{v!r}{m.group(2)}", text,
-                     count=1, flags=re.M)
+    out, n = re.subn(
+        rf"^{k}(\s*=\s*)[^#\n]+?(\s*(#.*)?)$", lambda m: f"{k}{m.group(1)}{v!r}{m.group(2)}", text, count=1, flags=re.M
+    )
     assert n == 1, k
     return out
 

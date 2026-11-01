@@ -1,4 +1,5 @@
 """Meta-Harness and MemoClassify tests (offline, deterministic)."""
+
 import json
 import time
 
@@ -7,9 +8,20 @@ import pytest
 from rsi.core import Artifact, Evaluator, MockLLM, SealedSplitError
 from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
 from rsi.domains.memoclassify import extract_json_field, make_domain, programs, validate_memory
-from rsi.metaharness import (Config, FinalizedError, InterfaceValidator, LeakageScreen, MemoClassifyLibrary,
-                             MetaHarnessLoop, MockProposer, RewriteProposer, hypervolume, pareto_frontier,
-                             per_unit_best, run)
+from rsi.metaharness import (
+    Config,
+    FinalizedError,
+    InterfaceValidator,
+    LeakageScreen,
+    MemoClassifyLibrary,
+    MetaHarnessLoop,
+    MockProposer,
+    RewriteProposer,
+    hypervolume,
+    pareto_frontier,
+    per_unit_best,
+    run,
+)
 
 
 @pytest.fixture(scope="module")
@@ -18,9 +30,14 @@ def dom():
 
 
 def _tiny_loop(dom, tmp_path, proposer=None, **cfg) -> MetaHarnessLoop:
-    return MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=proposer or MockProposer(MemoClassifyLibrary()),
-                           config=Config(iterations=2, k=2, validate_in_subprocess=False, **cfg), out_dir=tmp_path,
-                           baselines=dom.baselines())
+    return MetaHarnessLoop(
+        dom,
+        llm_task=dom.make_model("A"),
+        proposer=proposer or MockProposer(MemoClassifyLibrary()),
+        config=Config(iterations=2, k=2, validate_in_subprocess=False, **cfg),
+        out_dir=tmp_path,
+        baselines=dom.baselines(),
+    )
 
 
 def test_datasets_deterministic_and_disjoint():
@@ -144,8 +161,13 @@ def test_interface_validator_catches_errors_and_hangs(dom):
     assert v.validate(dom, dom.seed_artifact("fewshot_all"))[0]
     ok, msg = v.validate(dom, Artifact({"memory.py": "def broken(:\n"}))
     assert not ok and "syntax" in msg
-    hang = Artifact({"memory.py": dom.seed_artifact("no_memory")["memory.py"].replace(
-        "response = self.call_llm", "while True:\n            pass\n        response = self.call_llm")})
+    hang = Artifact(
+        {
+            "memory.py": dom.seed_artifact("no_memory")["memory.py"].replace(
+                "response = self.call_llm", "while True:\n            pass\n        response = self.call_llm"
+            )
+        }
+    )
     t0 = time.time()
     ok, msg = v.validate(dom, hang)
     assert not ok and "timed out" in msg and time.time() - t0 < 10
@@ -153,22 +175,39 @@ def test_interface_validator_catches_errors_and_hangs(dom):
 
 def test_rewrite_proposer_parses_k_candidates(dom):
     src = programs.render(programs.apply_move(programs.DEFAULT_GENOME, "retrieve_topk"))
-    reply = ('```json\n{"iteration": 1, "candidates": [{"name": "topk_a", "base_system": "fewshot_all", '
-             '"hypothesis": "h", "axis": "exploitation", "components": ["retrieval"]}]}\n```\n'
-             f'=== FILE: agents/topk_a/memory.py ===\n{src}\n')
+    reply = (
+        '```json\n{"iteration": 1, "candidates": [{"name": "topk_a", "base_system": "fewshot_all", '
+        '"hypothesis": "h", "axis": "exploitation", "components": ["retrieval"]}]}\n```\n'
+        f"=== FILE: agents/topk_a/memory.py ===\n{src}\n"
+    )
     llm = MockLLM(lambda p, s, seed, i: reply)
-    b = RewriteProposer(llm).propose(iteration=1, view={"evolution_summary.jsonl": "{}"}, k=2, brief="b",
-                                     artifacts={"fewshot_all": dom.seed_artifact()})
+    b = RewriteProposer(llm).propose(
+        iteration=1,
+        view={"evolution_summary.jsonl": "{}"},
+        k=2,
+        brief="b",
+        artifacts={"fewshot_all": dom.seed_artifact()},
+    )
     assert len(b.candidates) == 1 and b.candidates[0].base_system == "fewshot_all"
     code = b.candidates[0].artifact["memory.py"]
     assert "SCALE" not in code and code == src.rstrip() + "\n"
     assert "Write exactly 2 new candidate" in llm.calls[0]["system"]
 
 
+@pytest.mark.slow
 def test_run_end_to_end_is_deterministic(dom, tmp_path):
     cfg = Config(iterations=3, k=2, validate_in_subprocess=False)
-    r1, r2 = (run(dom, dom.seed_artifact(), llm_task=dom.make_model("A"), config=cfg, out_dir=tmp_path / sub,
-                  baselines=dom.baselines()) for sub in ("a", "b"))
+    r1, r2 = (
+        run(
+            dom,
+            dom.seed_artifact(),
+            llm_task=dom.make_model("A"),
+            config=cfg,
+            out_dir=tmp_path / sub,
+            baselines=dom.baselines(),
+        )
+        for sub in ("a", "b")
+    )
     assert [c["score"] for c in r1.meta["curve"]] == [c["score"] for c in r2.meta["curve"]]
     fr = r1.meta["frontier"]
     assert fr["_best"]["score"] >= max(v["score"] for u, v in fr.items() if not u.startswith("_")) - 1
@@ -177,19 +216,34 @@ def test_run_end_to_end_is_deterministic(dom, tmp_path):
 
 
 def test_eval_budget_is_respected(dom, tmp_path):
-    res = run(dom, dom.seed_artifact(), llm_task=dom.make_model("A"),
-              config=Config(iterations=10, k=2, eval_budget=3, validate_in_subprocess=False, finalize=False),
-              out_dir=tmp_path, baselines=dom.baselines())
+    res = run(
+        dom,
+        dom.seed_artifact(),
+        llm_task=dom.make_model("A"),
+        config=Config(iterations=10, k=2, eval_budget=3, validate_in_subprocess=False, finalize=False),
+        out_dir=tmp_path,
+        baselines=dom.baselines(),
+    )
     assert res.meta["n_evaluated"] == 3 and res.stop_reason == "eval_budget"
 
 
 def test_runs_on_agentqa_second_domain(tmp_path):
     suite = make_suite(n_evolve=6, n_holdout=4, n_ood_per_family=2, seed=0)
     d = AgentQADomain(suite)
-    res = run(d, d.seed_artifact(), llm_task=SimModel(suite),
-              config=Config(iterations=2, k=2, objectives=("score", "context_cost"), cost_metric="tokens",
-                            test_splits=("holdout", "ood"), validate_in_subprocess=False),
-              out_dir=tmp_path)
+    res = run(
+        d,
+        d.seed_artifact(),
+        llm_task=SimModel(suite),
+        config=Config(
+            iterations=2,
+            k=2,
+            objectives=("score", "context_cost"),
+            cost_metric="tokens",
+            test_splits=("holdout", "ood"),
+            validate_in_subprocess=False,
+        ),
+        out_dir=tmp_path,
+    )
     assert res.meta["n_evaluated"] >= 2
     assert res.meta["frontier"]["_best"]["score"] >= res.meta["curve"][0]["best_so_far"] - 1e-9
     assert "ood" in res.meta["final"]["splits"]

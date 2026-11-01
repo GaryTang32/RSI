@@ -1,4 +1,5 @@
 """Proposers that turn a history view into k new whole-program harnesses (coding agent, single completion)."""
+
 from __future__ import annotations
 
 import json
@@ -7,8 +8,8 @@ import re
 import subprocess
 import time
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.editors import AgentEditor
@@ -117,8 +118,13 @@ class CandidateSpec:
     meta: dict = field(default_factory=dict)
 
     def pending_row(self) -> dict:
-        return {"name": self.name, "base_system": self.base_system, "hypothesis": self.hypothesis,
-                "axis": self.axis, "components": self.components}
+        return {
+            "name": self.name,
+            "base_system": self.base_system,
+            "hypothesis": self.hypothesis,
+            "axis": self.axis,
+            "components": self.components,
+        }
 
 
 @dataclass
@@ -130,7 +136,7 @@ class ProposalBatch:
     files_read: list[str] = field(default_factory=list)
     transcript: str = ""
     prompt: str = ""
-    error: Optional[str] = None
+    error: str | None = None
     meta: dict = field(default_factory=dict)
     files_scanned: list[str] = field(default_factory=list)
     reports: dict[str, str] = field(default_factory=dict)
@@ -141,8 +147,9 @@ class Proposer:
 
     role = "proposer"
 
-    def propose(self, *, iteration: int, view: dict[str, str], k: int, brief: str,
-                artifacts: dict[str, Artifact], seed: int = 0) -> ProposalBatch:  # pragma: no cover
+    def propose(
+        self, *, iteration: int, view: dict[str, str], k: int, brief: str, artifacts: dict[str, Artifact], seed: int = 0
+    ) -> ProposalBatch:  # pragma: no cover
         """``artifacts``: sources of the visible systems, for copying unchanged files from ``base_system``."""
         raise NotImplementedError
 
@@ -157,10 +164,10 @@ def clean_code_block(text: str) -> str:
     m = _FENCE_OPEN.match(text)
     if not m:
         return text
-    body = text[m.end():]
+    body = text[m.end() :]
     end = body.rfind("\n```")
     if end >= 0:
-        body = body[:end + 1]
+        body = body[: end + 1]
     elif body.rstrip().endswith("```"):
         body = body.rstrip()[:-3]
     return body.rstrip() + "\n"
@@ -188,10 +195,11 @@ def reports_from(files: dict[str, str]) -> dict[str, str]:
     return out
 
 
-def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, Artifact],
-             taken: set[str], iteration: int) -> list[CandidateSpec]:
+def _collect(
+    files: dict[str, str], header: dict, k: int, artifacts: dict[str, Artifact], taken: set[str], iteration: int
+) -> list[CandidateSpec]:
     """Group ``agents/<name>/<path>`` files into candidates completed from their base system."""
-    groups: dict[str, dict[str, Optional[str]]] = {}
+    groups: dict[str, dict[str, str | None]] = {}
     for path, text in files.items():
         m = re.match(r"^agents/([^/]+)/(.+)$", path)
         if m:
@@ -214,9 +222,17 @@ def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, A
         taken.add(name)
         comps = row.get("components") or []
         meta = {"base_fallback": True, "claimed_base_system": claimed or "(none)"} if fell_back else {}
-        out.append(CandidateSpec(name, art, str(row.get("hypothesis", ""))[:2000], str(row.get("axis", "")),
-                                 [str(c) for c in (comps if isinstance(comps, list) else [comps])], base_name,
-                                 meta=meta))
+        out.append(
+            CandidateSpec(
+                name,
+                art,
+                str(row.get("hypothesis", ""))[:2000],
+                str(row.get("axis", "")),
+                [str(c) for c in (comps if isinstance(comps, list) else [comps])],
+                base_name,
+                meta=meta,
+            )
+        )
         if len(out) >= k:
             break
     return out
@@ -225,8 +241,9 @@ def _collect(files: dict[str, str], header: dict, k: int, artifacts: dict[str, A
 class RewriteProposer(Proposer):
     """Single-completion proposer over a rendered history view (works with any LLM)."""
 
-    def __init__(self, llm: LLM, *, max_context_chars: int = 60000, skill: str = SKILL_TEXT,
-                 read_mix: Optional[dict] = None) -> None:
+    def __init__(
+        self, llm: LLM, *, max_context_chars: int = 60000, skill: str = SKILL_TEXT, read_mix: dict | None = None
+    ) -> None:
         self.llm = llm
         self.max_context_chars = max_context_chars
         self.skill = skill
@@ -234,13 +251,19 @@ class RewriteProposer(Proposer):
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
         rendered, read = render_view(view, self.max_context_chars, mix=self.read_mix)
-        prompt = TASK_PROMPT.format(iteration=iteration, brief=brief, ctx="history",
-                                    output=REWRITE_OUTPUT.format(iteration=iteration, k=k))
+        prompt = TASK_PROMPT.format(
+            iteration=iteration, brief=brief, ctx="history", output=REWRITE_OUTPUT.format(iteration=iteration, k=k)
+        )
         prompt = prompt + "\n\n## History (rendered)\n" + rendered
         system = format_skill(self.skill, k, PROTOTYPE_ON_PAPER)
         resp = self.llm.complete(prompt, system=system, seed=seed * 1000 + iteration, role=self.role)
-        batch = ProposalBatch(usage=resp.usage, files_read=read, transcript=resp.text, prompt=prompt,
-                              meta={"rendered_chars": len(rendered)})
+        batch = ProposalBatch(
+            usage=resp.usage,
+            files_read=read,
+            transcript=resp.text,
+            prompt=prompt,
+            meta={"rendered_chars": len(rendered)},
+        )
         if not resp.ok:
             batch.error = f"llm error: {resp.error}"
             return batch
@@ -266,13 +289,20 @@ INSPECT_COMMANDS = ("cat", "head", "tail", "grep", "ls", "wc", "find", "sort", "
 class AgentProposer(Proposer):
     """The paper's proposer: a ``claude -p`` coding agent over a read-only history directory."""
 
-    def __init__(self, cli: ClaudeCLI, *, timeout_s: float = 2400.0, skill: str = SKILL_TEXT,
-                 tools: Optional[tuple[str, ...]] = None, prototype: bool = True,
-                 allowed_commands: Sequence[str] = PROTOTYPE_COMMANDS + INSPECT_COMMANDS,
-                 max_budget_usd: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        cli: ClaudeCLI,
+        *,
+        timeout_s: float = 2400.0,
+        skill: str = SKILL_TEXT,
+        tools: tuple[str, ...] | None = None,
+        prototype: bool = True,
+        allowed_commands: Sequence[str] = PROTOTYPE_COMMANDS + INSPECT_COMMANDS,
+        max_budget_usd: float | None = None,
+    ) -> None:
         self.cli = cli
         self.skill = skill
-        self.prototype = prototype              # Bash limited to allowed_commands; python3 itself is unrestricted
+        self.prototype = prototype  # Bash limited to allowed_commands; python3 itself is unrestricted
         if tools is None:
             tools = ("Read", "Edit", "Write", "Glob", "Grep") + (("Bash",) if prototype else ())
         allowed = [f"Bash({c} *)" for c in allowed_commands] if prototype and "Bash" in tools else []
@@ -280,34 +310,52 @@ class AgentProposer(Proposer):
         self.editor = AgentEditor(self.agent_cli, tools=tools, timeout_s=timeout_s)
 
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
-        workspace = Artifact({"agents/README.md": "Write new candidates here: agents/<name>/<files>.\n",
-                              "reports/README.md": "Write post-eval reports here: reports/iter<NNN>.md.\n"})
-        prompt = TASK_PROMPT.format(iteration=iteration, brief=brief, ctx="_context",
-                                    output=AGENT_OUTPUT.format(iteration=iteration, k=k))
+        workspace = Artifact(
+            {
+                "agents/README.md": "Write new candidates here: agents/<name>/<files>.\n",
+                "reports/README.md": "Write post-eval reports here: reports/iter<NNN>.md.\n",
+            }
+        )
+        prompt = TASK_PROMPT.format(
+            iteration=iteration, brief=brief, ctx="_context", output=AGENT_OUTPUT.format(iteration=iteration, k=k)
+        )
         t0 = time.time()
         agent_cli = getattr(self, "agent_cli", None)
         if agent_cli is not None:
             agent_cli.reset()
         step2 = PROTOTYPE_RUN if getattr(self, "prototype", False) else PROTOTYPE_ON_PAPER
-        prop = self.editor.edit(workspace, prompt, context=view,
-                                editable=["agents/*", "pending_eval.json", "reports/*"],
-                                system=format_skill(self.skill, k, step2), seed=seed, role=self.role)
+        prop = self.editor.edit(
+            workspace,
+            prompt,
+            context=view,
+            editable=["agents/*", "pending_eval.json", "reports/*"],
+            system=format_skill(self.skill, k, step2),
+            seed=seed,
+            role=self.role,
+        )
         calls = tool_calls(agent_cli.last_messages) if agent_cli is not None else []
         read, searched = files_touched(calls, view)
         blocked = list(getattr(prop, "blocked_files", []) or [])
-        batch = ProposalBatch(usage=prop.usage, transcript=prop.raw, prompt=prompt, files_read=read,
-                              meta={"seconds": time.time() - t0, "files_searched": searched,
-                                    "tool_summary": dict(Counter(c["name"] for c in calls)),
-                                    "tool_calls": [{"name": c["name"], "input": _short(c["input"])}
-                                                   for c in calls][:300],
-                                    "prototype_files": sorted(b for b in blocked if b.startswith("scratch/")),
-                                    "prototype": prototype_activity(calls),
-                                    "transcript_available": bool(agent_cli is not None and agent_cli.last_messages)})
+        batch = ProposalBatch(
+            usage=prop.usage,
+            transcript=prop.raw,
+            prompt=prompt,
+            files_read=read,
+            meta={
+                "seconds": time.time() - t0,
+                "files_searched": searched,
+                "tool_summary": dict(Counter(c["name"] for c in calls)),
+                "tool_calls": [{"name": c["name"], "input": _short(c["input"])} for c in calls][:300],
+                "prototype_files": sorted(b for b in blocked if b.startswith("scratch/")),
+                "prototype": prototype_activity(calls),
+                "transcript_available": bool(agent_cli is not None and agent_cli.last_messages),
+            },
+        )
         if prop.artifact is None:
             batch.error = prop.error or "agent produced no files"
             return batch
         if prop.error and prop.error.startswith("agent error"):
-            batch.error = prop.error          # release: a failed or timed-out proposer skips the iteration
+            batch.error = prop.error  # release: a failed or timed-out proposer skips the iteration
             return batch
         files = {n: prop.artifact[n] for n in prop.artifact if n not in ("agents/README.md", "reports/README.md")}
         header: dict = {}
@@ -326,8 +374,9 @@ class AgentProposer(Proposer):
 class TranscriptCLI:
     """ClaudeCLI adapter for AgentEditor: adds ``--allowedTools`` and ``--verbose`` and keeps the transcript."""
 
-    def __init__(self, cli: ClaudeCLI, *, allowed_tools: Sequence[str] = (),
-                 max_budget_usd: Optional[float] = None) -> None:
+    def __init__(
+        self, cli: ClaudeCLI, *, allowed_tools: Sequence[str] = (), max_budget_usd: float | None = None
+    ) -> None:
         self.cli = cli
         self.allowed_tools = list(allowed_tools)
         self.max_budget_usd = max_budget_usd
@@ -344,31 +393,47 @@ class TranscriptCLI:
     def reset(self) -> None:
         self.last_messages = []
 
-    def run_agent(self, prompt: str, *, cwd: str, system: Optional[str] = None,
-                  tools: tuple[str, ...] = ("Read", "Edit", "Write", "Glob", "Grep"),
-                  timeout_s: Optional[float] = None, role: str = "agent") -> LLMResponse:
-        cmd = self.cli.base_cmd(system) + ["--verbose", "--tools", ",".join(tools), "--permission-mode", "acceptEdits",
-                                           "--add-dir", cwd]
+    def run_agent(
+        self,
+        prompt: str,
+        *,
+        cwd: str,
+        system: str | None = None,
+        tools: tuple[str, ...] = ("Read", "Edit", "Write", "Glob", "Grep"),
+        timeout_s: float | None = None,
+        role: str = "agent",
+    ) -> LLMResponse:
+        cmd = self.cli.base_cmd(system) + [
+            "--verbose",
+            "--tools",
+            ",".join(tools),
+            "--permission-mode",
+            "acceptEdits",
+            "--add-dir",
+            cwd,
+        ]
         if self.max_budget_usd:
             cmd += ["--max-budget-usd", f"{self.max_budget_usd:g}"]
         if self.allowed_tools:
-            cmd += ["--allowedTools", *self.allowed_tools]          # variadic: keep it last
+            cmd += ["--allowedTools", *self.allowed_tools]  # variadic: keep it last
         resp, messages = run_transcript(self.cli, cmd, prompt, cwd=cwd, timeout=timeout_s)
         self.last_messages = messages
         self.cli.meter.add(role, resp.usage)
         return resp
 
 
-def run_transcript(cli: ClaudeCLI, cmd: list[str], prompt: str, *, cwd: Optional[str] = None,
-                   timeout: Optional[float] = None) -> tuple[LLMResponse, list]:
+def run_transcript(
+    cli: ClaudeCLI, cmd: list[str], prompt: str, *, cwd: str | None = None, timeout: float | None = None
+) -> tuple[LLMResponse, list]:
     """Run a ``claude -p --output-format json --verbose`` command; returns ``(response, message list)``."""
     last_err = "unknown"
-    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}          # prototype runs leave no __pycache__
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}  # prototype runs leave no __pycache__
     for attempt in range(max(1, cli.retries)):
         t0 = time.time()
         try:
-            proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout or cli.timeout_s,
-                                  cwd=cwd, env=env)
+            proc = subprocess.run(
+                cmd, input=prompt, capture_output=True, text=True, timeout=timeout or cli.timeout_s, cwd=cwd, env=env
+            )
         except subprocess.TimeoutExpired:
             last_err = "timeout"
             break
@@ -379,20 +444,25 @@ def run_transcript(cli: ClaudeCLI, cmd: list[str], prompt: str, *, cwd: Optional
             result = messages[0]
         if not isinstance(result, dict):
             last_err = (proc.stderr or proc.stdout or "no output")[-500:]
-            time.sleep(min(2 ** attempt, 4))
+            time.sleep(min(2**attempt, 4))
             continue
         if result.get("is_error"):
             last_err = str(result.get("result") or result.get("subtype") or "is_error")[-500:]
-            time.sleep(min(2 ** attempt, 4))
+            time.sleep(min(2**attempt, 4))
             continue
         u = result.get("usage") or {}
-        in_tok = int(u.get("input_tokens", 0)) + int(u.get("cache_read_input_tokens", 0)) + int(
-            u.get("cache_creation_input_tokens", 0))
+        in_tok = (
+            int(u.get("input_tokens", 0))
+            + int(u.get("cache_read_input_tokens", 0))
+            + int(u.get("cache_creation_input_tokens", 0))
+        )
         usage = Usage(1, in_tok, int(u.get("output_tokens", 0)), float(result.get("total_cost_usd") or 0.0), dt)
-        return LLMResponse(text=strip_attribution(result.get("result") or ""), usage=usage, model=cli.model,
-                           raw=result), messages
-    return LLMResponse(text="", usage=Usage(1, estimate_tokens(prompt), 0, 0.0, 0.0), model=cli.model,
-                       error=last_err), []
+        return LLMResponse(
+            text=strip_attribution(result.get("result") or ""), usage=usage, model=cli.model, raw=result
+        ), messages
+    return LLMResponse(
+        text="", usage=Usage(1, estimate_tokens(prompt), 0, 0.0, 0.0), model=cli.model, error=last_err
+    ), []
 
 
 def _parse_messages(stdout: str) -> list:
@@ -431,10 +501,11 @@ _RUNS_CODE = re.compile(r"(^|[\s;&|(])(python3?|pytest)(\s|$)")
 
 def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], list[str]]:
     """(files read, files/dirs searched) as history-view paths, from Read/Grep/Glob/Bash tool calls."""
-    def rel(p: str) -> Optional[str]:
+
+    def rel(p: str) -> str | None:
         p = str(p or "").strip().strip("'\"")
         i = p.find("_context/")
-        return None if i < 0 else p[i + len("_context/"):].rstrip("/")
+        return None if i < 0 else p[i + len("_context/") :].rstrip("/")
 
     read, searched = [], []
     for c in calls:
@@ -458,22 +529,29 @@ def files_touched(calls: list[dict], view: dict[str, str]) -> tuple[list[str], l
 
 def prototype_activity(calls: list[dict], editable_prefixes: Sequence[str] = ("agents/", "reports/")) -> dict:
     """Skill Step 2 in a transcript: Bash calls that run Python, and files written outside the editable paths."""
-    runs = [str((c.get("input") or {}).get("command", ""))[:300] for c in calls
-            if c.get("name") == "Bash" and _RUNS_CODE.search(str((c.get("input") or {}).get("command", "")))]
+    runs = [
+        str((c.get("input") or {}).get("command", ""))[:300]
+        for c in calls
+        if c.get("name") == "Bash" and _RUNS_CODE.search(str((c.get("input") or {}).get("command", "")))
+    ]
     written = []
     for c in calls:
         if c.get("name") in ("Write", "Edit"):
             fp = str((c.get("input") or {}).get("file_path", ""))
             tail = fp.split("/rsi_agent_", 1)[-1].split("/", 1)[-1] if "/rsi_agent_" in fp else fp
-            if not (any(tail.startswith(e) for e in editable_prefixes) or
-                    tail in ("pending_eval.json", "_proposal.json")):
+            if not (
+                any(tail.startswith(e) for e in editable_prefixes) or tail in ("pending_eval.json", "_proposal.json")
+            ):
                 written.append(fp)
     return {"python_runs": len(runs), "python_commands": runs[:20], "scripts_written": sorted(set(written))}
 
 
 def _short(inp: dict, n: int = 2000) -> dict:
-    return {k: (v[:n] + "...") if isinstance(v, str) and len(v) > n else v for k, v in (inp or {}).items()
-            if k not in ("content", "new_string", "old_string")}
+    return {
+        k: (v[:n] + "...") if isinstance(v, str) and len(v) > n else v
+        for k, v in (inp or {}).items()
+        if k not in ("content", "new_string", "old_string")
+    }
 
 
 #: The paper's median proposer reading mix (App. A.1, Table 8); render_view splits its budget this way.
@@ -499,7 +577,7 @@ def excerpt(text: str, cap: int, field_cap: int = 700) -> str:
     lines = text.splitlines()
     if not (lines and sum(1 for l in lines if l.lstrip().startswith("{")) >= 0.8 * len(lines)):
         h = cap // 3
-        return text[:h] + f"\n...[{len(text) - cap} chars omitted]...\n" + text[-(cap - h):]
+        return text[:h] + f"\n...[{len(text) - cap} chars omitted]...\n" + text[-(cap - h) :]
 
     def cut(v):
         if isinstance(v, str) and len(v) > field_cap:
@@ -545,12 +623,13 @@ def excerpt(text: str, cap: int, field_cap: int = 700) -> str:
     return "\n".join(out)
 
 
-def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
-                mix: Optional[dict] = None) -> tuple[str, list[str]]:
+def render_view(
+    view: dict[str, str], budget: int, per_file: int = 12000, mix: dict | None = None
+) -> tuple[str, list[str]]:
     """Render a view under ``budget`` chars split by file kind as ``mix``; returns ``(text, rendered paths)``."""
     mix = dict(mix or READ_MIX)
 
-    def cand(path: str) -> Optional[str]:
+    def cand(path: str) -> str | None:
         m = re.match(r"candidates/([^/]+)/", path)
         return m.group(1) if m else None
 
@@ -568,13 +647,13 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
     def unit_of(path: str) -> str:
         return path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
 
-    units_of: dict[Optional[str], set[str]] = {}
+    units_of: dict[str | None, set[str]] = {}
     for q in view:
         if _view_kind(q) == "traces":
             units_of.setdefault(cand(q), set()).add(unit_of(q))
     sorted_units = {c: sorted(u) for c, u in units_of.items()}
 
-    def unit_index(path: str) -> int:                    # per_task/<u>.json and traces/<u>.jsonl share an index
+    def unit_index(path: str) -> int:  # per_task/<u>.json and traces/<u>.jsonl share an index
         us = sorted_units.get(cand(path), [])
         return us.index(unit_of(path)) if unit_of(path) in us else 0
 
@@ -613,11 +692,11 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
             spent += len(ch)
             used += len(ch)
 
-    for k in kinds:                                       # each kind within its share
+    for k in kinds:  # each kind within its share
         fill(by_kind[k], int(budget * mix.get(k, 0)))
-    for k in kinds:                                       # leftover budget, same priority order
+    for k in kinds:  # leftover budget, same priority order
         fill(by_kind[k], budget - used)
-    for path in by_kind["traces"]:                        # widen trace excerpts with what is left
+    for path in by_kind["traces"]:  # widen trace excerpts with what is left
         if path not in chunks or len(view[path]) <= trace_cap:
             continue
         cap = min(per_file, budget - used + len(chunks[path]) - len(path) - 200)
@@ -627,8 +706,13 @@ def render_view(view: dict[str, str], budget: int, per_file: int = 12000,
         if len(wider) > len(chunks[path]) and used - len(chunks[path]) + len(wider) <= budget:
             used += len(wider) - len(chunks[path])
             chunks[path] = wider
-    order = sorted(chunks, key=lambda p: ((0,) if _view_kind(p) == "other" else (1, rank.get(cand(p), len(rank)))) +
-                   ((kinds.index(_view_kind(p)),) + prio(p)[-1:]))
+    order = sorted(
+        chunks,
+        key=lambda p: (
+            ((0,) if _view_kind(p) == "other" else (1, rank.get(cand(p), len(rank))))
+            + ((kinds.index(_view_kind(p)),) + prio(p)[-1:])
+        ),
+    )
     return "".join(chunks[p] for p in order), order
 
 
@@ -661,6 +745,7 @@ def summarizer_input(traces: dict[str, str], max_chars: int = 40000) -> str:
     for u, t in traces.items():
         lines = [l for l in (t or "").splitlines() if l.strip()]
         n_fail = sum(1 for l in lines if _FAIL_LINE.search(l))
-        parts.append(f"--- {u} --- ({len(lines)} records, {n_fail} failure-looking; excerpt)\n"
-                     f"{excerpt(t or '', share)}")
+        parts.append(
+            f"--- {u} --- ({len(lines)} records, {n_fail} failure-looking; excerpt)\n{excerpt(t or '', share)}"
+        )
     return "\n".join(parts)[:max_chars]

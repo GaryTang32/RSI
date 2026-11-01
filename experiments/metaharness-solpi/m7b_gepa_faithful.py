@@ -1,7 +1,8 @@
 """M7b - M7 with a faithful GEPA arm (``gepa_minibatch``), retry round 2 follow-up (preregistration P7).
 
-    python experiments/metaharness-solpi/m7b_gepa_faithful.py --seeds 20 --workers 2 [--reanalyse]
+python experiments/metaharness-solpi/m7b_gepa_faithful.py --seeds 20 --workers 2 [--reanalyse]
 """
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import RESULTS, parse_args, pool_map, save, summarize  # noqa: E402
-from m7_optimizers_equal_budget import BUDGET, K, N_ITER, job as m7_job, match_next_best, summary_vs_mh  # noqa: E402
+from m7_optimizers_equal_budget import BUDGET, N_ITER, K, match_next_best, summary_vs_mh  # noqa: E402
+from m7_optimizers_equal_budget import job as m7_job
 
 M7_ARMS = ("metaharness", "best_of_n", "openevolve", "ttt_discover", "gepa")
 NEW = "gepa_minibatch"
@@ -25,13 +27,15 @@ def job(spec: tuple[str, int]) -> dict:
 
 
 def outcome(reproduced: bool, partial: bool) -> str:
-    return ("reproduced" if reproduced else "partially reproduced" if partial else "not reproduced") \
-        + " on the CPU analogue"
+    return (
+        "reproduced" if reproduced else "partially reproduced" if partial else "not reproduced"
+    ) + " on the CPU analogue"
 
 
 def main():
-    args = parse_args(__doc__.splitlines()[0], default_seeds=20,
-                      extra=lambda ap: ap.add_argument("--reanalyse", action="store_true"))
+    args = parse_args(
+        __doc__.splitlines()[0], default_seeds=20, extra=lambda ap: ap.add_argument("--reanalyse", action="store_true")
+    )
     seeds = list(range(args.seeds))
     m7 = json.loads((RESULTS / "m7_optimizers_equal_budget.json").read_text())
     if args.reanalyse:
@@ -49,10 +53,13 @@ def main():
     all_ci = all(cmp[a][k].get("lo", -1) > TOL for a in FAITHFUL for k in ("final_best", "median_candidate"))
     means = all(cmp[a]["final_best"].get("mean_diff", 0) > TOL for a in FAITHFUL)
     q4_analogue = outcome(all_ci, means)
-    q5r = {"next_best_any_faithful": match_next_best(by, seeds, FAITHFUL, TOL),
-           "next_best_openevolve_ttt": match_next_best(by, seeds, ["openevolve", "ttt_discover"], TOL)}
-    per_arm_lead = {a: summarize([by["metaharness"][s]["final_best"] - by[a][s]["final_best"] for s in seeds])
-                    for a in FAITHFUL}
+    q5r = {
+        "next_best_any_faithful": match_next_best(by, seeds, FAITHFUL, TOL),
+        "next_best_openevolve_ttt": match_next_best(by, seeds, ["openevolve", "ttt_discover"], TOL),
+    }
+    per_arm_lead = {
+        a: summarize([by["metaharness"][s]["final_best"] - by[a][s]["final_best"] for s in seeds]) for a in FAITHFUL
+    }
     p = q5r["next_best_any_faithful"]
     q5_analogue = outcome(p["speed_ok"] and p["lead_ok"], p["speed_ok"] or p["lead_ok"])
     dedup = {a: int(sum(by[a][s].get("dedup_retries", 0) for s in seeds)) for a in arms}
@@ -63,17 +70,33 @@ def main():
     print("per-arm lead", per_arm_lead)
     print("Q5", {k: {kk: vv for kk, vv in v.items() if kk != "evals_to_match_per_seed"} for k, v in q5r.items()})
     print("determinism", determinism, "| Q4 analogue:", q4_analogue, "| Q5 analogue:", q5_analogue)
-    save("m7b_gepa_faithful", {
-        "claim": "Q4/Q5 with a faithful GEPA arm [MH §4.1, Table 4, Figs. 1, 4]",
-        "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P7",
-        "config": {"seeds": seeds, "iterations": N_ITER, "k": K, "budget": BUDGET, "proposer": "MockProposer",
-                   "new_arm": NEW, "other_arms_from": "m7_optimizers_equal_budget.json"},
-        "determinism_check_metaharness_curves_identical": determinism,
-        "summary": summ, "paired_mh_minus_arm": cmp, "per_arm_lead_final_best": per_arm_lead, "q5": q5r,
-        "dedup_retries_total": dedup, "analogue_outcome_q4": q4_analogue, "analogue_outcome_q5": q5_analogue,
-        "verdict_rule": "P7: Q4 and Q5 are NOT TESTABLE HERE (c) whatever this shows; the mock is Markovian (N4) "
-                        "and cannot express non-Markovian full-history use",
-        "per_seed": new + check})
+    save(
+        "m7b_gepa_faithful",
+        {
+            "claim": "Q4/Q5 with a faithful GEPA arm [MH §4.1, Table 4, Figs. 1, 4]",
+            "preregistration": "claims-audit-metaharness.md, Retry round 2: preregistration, P7",
+            "config": {
+                "seeds": seeds,
+                "iterations": N_ITER,
+                "k": K,
+                "budget": BUDGET,
+                "proposer": "MockProposer",
+                "new_arm": NEW,
+                "other_arms_from": "m7_optimizers_equal_budget.json",
+            },
+            "determinism_check_metaharness_curves_identical": determinism,
+            "summary": summ,
+            "paired_mh_minus_arm": cmp,
+            "per_arm_lead_final_best": per_arm_lead,
+            "q5": q5r,
+            "dedup_retries_total": dedup,
+            "analogue_outcome_q4": q4_analogue,
+            "analogue_outcome_q5": q5_analogue,
+            "verdict_rule": "P7: Q4 and Q5 are NOT TESTABLE HERE (c) whatever this shows; the mock is Markovian (N4) "
+            "and cannot express non-Markovian full-history use",
+            "per_seed": new + check,
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 """Shared helpers for the SoL-Pi tests: a scripted runtime and a tiny "verbosity" FunctionDomain."""
+
 import json
 import random
 
@@ -52,8 +53,9 @@ class Env:
         return ToolResult(*self.outputs.get(cmd, (f"ran {cmd}", False)))
 
 
-def runtime(env=None, steps=(), exts=(), *, prices: str = "sim-a", system_prompt: str = "sys", pad_tokens: int = 0,
-            **kw) -> AgentRuntime:
+def runtime(
+    env=None, steps=(), exts=(), *, prices: str = "sim-a", system_prompt: str = "sys", pad_tokens: int = 0, **kw
+) -> AgentRuntime:
     """Runtime with the built-in tools and ``exts``, driven by a :class:`Script` of ``steps``."""
     env = Env() if env is None else env
     price = PRICES[prices]
@@ -75,8 +77,13 @@ def tool_messages(rt: AgentRuntime) -> list[Message]:
 
 
 def failure_receipt(source_sha256: str, quote: str) -> dict:
-    return {"schema": REDUCER_RECEIPT_SCHEMA, "source_sha256": source_sha256, "status": "failure", "uncertain": False,
-            "evidence": [{"kind": "failure", "quote": quote}]}
+    return {
+        "schema": REDUCER_RECEIPT_SCHEMA,
+        "source_sha256": source_sha256,
+        "status": "failure",
+        "uncertain": False,
+        "evidence": [{"kind": "failure", "quote": quote}],
+    }
 
 
 def verbosity_domain() -> FunctionDomain:
@@ -98,13 +105,20 @@ def verbosity_domain() -> FunctionDomain:
         ok = v >= task.input["need"] and not (cfg.get("fast") and task.family == "gamma")
         return Execution(output=ok, tokens=tokens, cost_usd=tokens * 1e-6, steps=v + 1)
 
-    dom = FunctionDomain(TaskSuite(tasks, splits), execute, lambda t, o: 1.0 if o else 0.0, name="verbosity",
-                         description="config.json sets verbosity (tokens) and an optional 'fast' flag")
+    dom = FunctionDomain(
+        TaskSuite(tasks, splits),
+        execute,
+        lambda t, o: 1.0 if o else 0.0,
+        name="verbosity",
+        description="config.json sets verbosity (tokens) and an optional 'fast' flag",
+    )
     dom.runs = runs
     return dom
 
 
-VERBOSITY_IDEAS = [Idea("G1", "C", "Trim one verbosity level", "trim1"),
-                   Idea("D1", "P", "Answer with minimal verbosity", "trim_all", kind="do_less"),
-                   Idea("T1", "T", "Fast path that assumes the familiar output format", "fast", kind="trick")]
+VERBOSITY_IDEAS = [
+    Idea("G1", "C", "Trim one verbosity level", "trim1"),
+    Idea("D1", "P", "Answer with minimal verbosity", "trim_all", kind="do_less"),
+    Idea("T1", "T", "Fast path that assumes the familiar output format", "fast", kind="trick"),
+]
 VERBOSITY_SEED = Artifact({"config.json": json.dumps({"verbosity": 4}, sort_keys=True)})

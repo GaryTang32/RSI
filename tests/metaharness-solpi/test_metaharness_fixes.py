@@ -1,4 +1,5 @@
 """Regression tests for the Meta-Harness claims-audit fixes (each failed on the code before its fix)."""
+
 import importlib.util
 import json
 import os
@@ -17,27 +18,42 @@ from rsi.core.llm import LLM, ClaudeCLI, LLMResponse, Usage
 from rsi.core.sandbox import run_cmd, run_python
 from rsi.domains.memoclassify import COMPARATOR_PROGRAMS, make_domain, programs, validate_memory
 from rsi.domains.memoclassify.memory import SEED_PROGRAMS
-from rsi.metaharness import (SKILL_TEXT, AgentProposer, CandidateSpec, Config, InterfaceValidator, MemoClassifyLibrary,
-                             MetaHarnessLoop, MockProposer, ProposalBatch, Proposer, RewriteProposer, pareto_frontier,
-                             per_unit_best, render_view, run)
+from rsi.metaharness import (
+    SKILL_TEXT,
+    AgentProposer,
+    CandidateSpec,
+    Config,
+    InterfaceValidator,
+    MemoClassifyLibrary,
+    MetaHarnessLoop,
+    MockProposer,
+    ProposalBatch,
+    Proposer,
+    RewriteProposer,
+    pareto_frontier,
+    per_unit_best,
+    render_view,
+    run,
+)
 from rsi.metaharness.proposer import _collect, files_touched, prototype_activity
 from rsi.metaharness.tracing import make_tracer
 
 ROOT = Path(__file__).resolve().parents[2]
 
 TWO_CALL = SEED_PROGRAMS["fewshot_all"].replace(
-    '''        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
-        return extract_json_field(response, "final_answer"), {"num_examples": len(self.examples)}''',
-    '''        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
+    """        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
+        return extract_json_field(response, "final_answer"), {"num_examples": len(self.examples)}""",
+    """        response = self.call_llm(PROMPT_TEMPLATE.format(examples_section=section, input=input))
         draft = extract_json_field(response, "final_answer")
         if not draft:
             return draft, {}
         confirm = self.call_llm("Labels: " + draft + "\\n\\n" + input + "\\n\\nReply with final_answer.")
-        return extract_json_field(confirm, "final_answer") or draft, {"num_examples": len(self.examples)}''')
+        return extract_json_field(confirm, "final_answer") or draft, {"num_examples": len(self.examples)}""",
+)
 
 # A stand-in `claude` executable: records its argv next to itself, acts like a coding agent in its cwd and prints
 # a --verbose JSON transcript.
-_FAKE_CLAUDE = '''
+_FAKE_CLAUDE = """
 import json, os, sys
 json.dump(sys.argv[1:], open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "argv.json"), "w"))
 sys.stdin.read()
@@ -60,7 +76,7 @@ calls = [use("Read", file_path=os.path.join(cwd, "_context/evolution_summary.jso
 result = {"type": "result", "result": "CANDIDATES: cand_a", "usage": {"input_tokens": 1000, "output_tokens": 200},
           "total_cost_usd": 0.0123}
 print(json.dumps([{"type": "system", "subtype": "init"}, {"type": "assistant", "message": {"content": calls}}, result]))
-'''
+"""
 
 # Prelude of the fresh-interpreter smoke scripts.
 _PRELUDE = """
@@ -99,7 +115,10 @@ def reaped():
 
 # A smoke that runs until stopped (SIGTERM exits, as in the demo's replay check); stop_after(s, f) runs f in another
 # thread s seconds after the smoke started; outcome(t) validates and names the exception it raised.
-_STOPPED = _PRELUDE + _CHILDREN + """
+_STOPPED = (
+    _PRELUDE
+    + _CHILDREN
+    + """
 signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
 marker, main = sys.argv[1], threading.main_thread().ident
 class Smoke:
@@ -126,13 +145,20 @@ def outcome(timeout_s):
     except BaseException as e:
         return type(e).__name__
 """
+)
 
 
 def _run_inner(code: str, *args: str) -> subprocess.CompletedProcess:
     """Run ``code`` in a fresh interpreter, started in this checkout so its ``rsi`` is the one imported."""
     path = os.pathsep.join(p for p in (str(ROOT), os.environ.get("PYTHONPATH")) if p)
-    return subprocess.run([sys.executable, "-c", code, *args], capture_output=True, text=True, timeout=60,
-                          env={**os.environ, "PYTHONPATH": path}, cwd=ROOT)
+    return subprocess.run(
+        [sys.executable, "-c", code, *args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env={**os.environ, "PYTHONPATH": path},
+        cwd=ROOT,
+    )
 
 
 def _check_inner(code: str, *expected: str, args: tuple[str, ...] = ()) -> None:
@@ -208,17 +234,23 @@ def _noisy_domain() -> FunctionDomain:
 
 
 def _noisy_loop(proposer, out_dir, incumbent: str, **cfg) -> MetaHarnessLoop:
-    return MetaHarnessLoop(_noisy_domain(), llm_task=None, proposer=proposer,
-                           config=Config(iterations=1, k=1, validate=False, trace=False, **cfg), out_dir=out_dir,
-                           baselines={incumbent: Artifact({"h.txt": "q=0.6"})})
+    return MetaHarnessLoop(
+        _noisy_domain(),
+        llm_task=None,
+        proposer=proposer,
+        config=Config(iterations=1, k=1, validate=False, trace=False, **cfg),
+        out_dir=out_dir,
+        baselines={incumbent: Artifact({"h.txt": "q=0.6"})},
+    )
 
 
 class _OneShot(Proposer):
     def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
         if iteration > 1:
             return ProposalBatch(error="done")
-        return ProposalBatch(candidates=[CandidateSpec("lucky", Artifact({"h.txt": "q=0.45 lucky"}),
-                                                       base_system="inc")])
+        return ProposalBatch(
+            candidates=[CandidateSpec("lucky", Artifact({"h.txt": "q=0.45 lucky"}), base_system="inc")]
+        )
 
 
 @pytest.fixture(scope="module")
@@ -230,9 +262,14 @@ def dom():
 def mock_store(tmp_path_factory):
     """A 3-iteration offline MemoClassify run (full history, MockProposer)."""
     d = make_domain(seed=0, scale=0.3)
-    res = run(d, d.seed_artifact("fewshot_all"), llm_task=d.make_model("A"),
-              config=Config(iterations=3, k=2, validate_in_subprocess=False, finalize=False, trace=False),
-              out_dir=tmp_path_factory.mktemp("mh_mock"), baselines=d.baselines())
+    res = run(
+        d,
+        d.seed_artifact("fewshot_all"),
+        llm_task=d.make_model("A"),
+        config=Config(iterations=3, k=2, validate_in_subprocess=False, finalize=False, trace=False),
+        out_dir=tmp_path_factory.mktemp("mh_mock"),
+        baselines=d.baselines(),
+    )
     return res.loop
 
 
@@ -261,10 +298,14 @@ def test_a_query_answered_without_a_model_call_costs_no_context():
 
 
 def test_loop_can_select_the_release_last_call_metric(dom, tmp_path):
-    lp = MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=MockProposer(MemoClassifyLibrary()),
-                         config=Config(iterations=0, cost_metric="context_chars_last_call",
-                                       validate_in_subprocess=False, trace=False),
-                         out_dir=tmp_path, baselines={"two": Artifact({"memory.py": TWO_CALL})})
+    lp = MetaHarnessLoop(
+        dom,
+        llm_task=dom.make_model("A"),
+        proposer=MockProposer(MemoClassifyLibrary()),
+        config=Config(iterations=0, cost_metric="context_chars_last_call", validate_in_subprocess=False, trace=False),
+        out_dir=tmp_path,
+        baselines={"two": Artifact({"memory.py": TWO_CALL})},
+    )
     lp.run_baselines()
     assert lp.store.scores("two")["context_cost"] < 200
 
@@ -281,8 +322,12 @@ def test_full_traces_hold_every_prompt_raw_reply_and_state_checkpoints(dom):
     ck = [x for x in rec if x["type"] == "checkpoint"]
     assert {c["step"] for c in ck} == {0, rec[0]["n_train"] - 1}  # release default steps
     assert all(len(c["memory_state"]) == c["memory_state_chars"] for c in ck)  # not truncated
-    biggest = max(json.loads(line)["memory_state_chars"] for trs in r.trials.values()
-                  for line in trs[0].trace.splitlines() if '"type": "checkpoint"' in line)
+    biggest = max(
+        json.loads(line)["memory_state_chars"]
+        for trs in r.trials.values()
+        for line in trs[0].trace.splitlines()
+        if '"type": "checkpoint"' in line
+    )
     assert biggest > 3000  # the old format cut at 3000
     compact = make_domain(seed=0, scale=0.3, trace_detail="compact")
     rc = Evaluator(compact, compact.make_model("A"), workers=1).evaluate(compact.seed_artifact("fewshot_all"), "evolve")
@@ -307,15 +352,23 @@ def test_rewrite_proposer_prompt_shows_traces_objective_and_reports(mock_store):
 
         def _complete(self, prompt, *, system, max_tokens, seed):
             self.seen = (prompt, system)
-            return LLMResponse(text='```json\n{"candidates": [{"name": "c1", "base_system": "fewshot_all"}]}\n```\n'
-                                    "=== FILE: agents/c1/memory.py ===\n" + SEED_PROGRAMS["fewshot_all"] +
-                                    "\n=== FILE: reports/iter001.md ===\n# iteration 1\nwhat changed\n",
-                               usage=Usage(1, 10, 10, 0.0), model="echo")
+            return LLMResponse(
+                text='```json\n{"candidates": [{"name": "c1", "base_system": "fewshot_all"}]}\n```\n'
+                "=== FILE: agents/c1/memory.py ===\n"
+                + SEED_PROGRAMS["fewshot_all"]
+                + "\n=== FILE: reports/iter001.md ===\n# iteration 1\nwhat changed\n",
+                usage=Usage(1, 10, 10, 0.0),
+                model="echo",
+            )
 
     llm, st = Echo(), mock_store.store
-    b = RewriteProposer(llm).propose(iteration=4, view=st.view("full"), k=1,
-                                     brief="domain\n\n" + mock_store.objective_text(),
-                                     artifacts={n: st.artifact(n) for n in st.names()})
+    b = RewriteProposer(llm).propose(
+        iteration=4,
+        view=st.view("full"),
+        k=1,
+        brief="domain\n\n" + mock_store.objective_text(),
+        artifacts={n: st.artifact(n) for n in st.names()},
+    )
     prompt, system = llm.seen
     assert "/traces/" in prompt and "## Objective" in prompt and "Pareto dominance" in prompt
     assert "Post-eval reports" in system and "axis" in system and "Prototype" in system
@@ -341,18 +394,25 @@ def test_mock_writes_post_eval_reports_into_the_store(mock_store):
 def test_agent_proposer_prototypes_writes_reports_and_logs_the_files_it_opened(tmp_path):
     d = make_domain(seed=0, scale=0.25)
     cli = ClaudeCLI("haiku", executable=str(_fake_claude(tmp_path)), retries=1)
-    lp = MetaHarnessLoop(d, llm_task=d.make_model("A"), proposer=AgentProposer(cli, timeout_s=60),
-                         config=Config(iterations=1, k=1, validate_in_subprocess=False, trace=False),
-                         out_dir=tmp_path / "run", baselines=d.baselines())
+    lp = MetaHarnessLoop(
+        d,
+        llm_task=d.make_model("A"),
+        proposer=AgentProposer(cli, timeout_s=60),
+        config=Config(iterations=1, k=1, validate_in_subprocess=False, trace=False),
+        out_dir=tmp_path / "run",
+        baselines=d.baselines(),
+    )
     lp.run()
     argv = json.loads((tmp_path / "argv.json").read_text())
     assert "Bash" in argv[argv.index("--tools") + 1].split(",") and "--verbose" in argv
-    allowed = argv[argv.index("--allowedTools") + 1:]
+    allowed = argv[argv.index("--allowedTools") + 1 :]
     assert "Bash(python3 *)" in allowed and not any(a.startswith("Bash(rm") for a in allowed)
     meta = json.loads((lp.store.sessions_dir() / "iter001" / "meta.json").read_text())
     # the files actually opened (Read + head), not the whole view
-    assert meta["files_read"] == ["candidates/fewshot_all/eval/search/traces/ds_alpha__val.jsonl",
-                                  "evolution_summary.jsonl"]
+    assert meta["files_read"] == [
+        "candidates/fewshot_all/eval/search/traces/ds_alpha__val.jsonl",
+        "evolution_summary.jsonl",
+    ]
     assert meta["view_files"] > 10
     pm = meta["proposer_meta"]
     assert pm["tool_summary"] == {"Read": 1, "Bash": 2, "Grep": 1}
@@ -365,12 +425,16 @@ def test_agent_proposer_prototypes_writes_reports_and_logs_the_files_it_opened(t
 
 def test_transcript_accounting_sees_reads_inside_scripts_and_prototypes_anywhere():
     view = {"candidates/a/eval/search/traces/u.jsonl": "x", "evolution_summary.jsonl": "y"}
-    calls = [{"name": "Bash", "input": {"command": "python3 << 'EOF'\nf = '/w/_context/candidates/a/eval/search/"
-                                                  "traces/u.jsonl'\nEOF"}},
-             {"name": "Bash", "input": {"command": "ls -la /w/_context/candidates/"}},
-             {"name": "Write", "input": {"file_path": "/tmp/elsewhere/test_retrieval.py"}},
-             {"name": "Write", "input": {"file_path": "/tmp/rsi_agent_x/agents/c/memory.py"}},
-             {"name": "Bash", "input": {"command": "cd /tmp/elsewhere && python3 test_retrieval.py"}}]
+    calls = [
+        {
+            "name": "Bash",
+            "input": {"command": "python3 << 'EOF'\nf = '/w/_context/candidates/a/eval/search/traces/u.jsonl'\nEOF"},
+        },
+        {"name": "Bash", "input": {"command": "ls -la /w/_context/candidates/"}},
+        {"name": "Write", "input": {"file_path": "/tmp/elsewhere/test_retrieval.py"}},
+        {"name": "Write", "input": {"file_path": "/tmp/rsi_agent_x/agents/c/memory.py"}},
+        {"name": "Bash", "input": {"command": "cd /tmp/elsewhere && python3 test_retrieval.py"}},
+    ]
     read, searched = files_touched(calls, view)
     assert read == ["candidates/a/eval/search/traces/u.jsonl"] and "candidates" in searched
     act = prototype_activity(calls)
@@ -418,8 +482,9 @@ def test_exact_ties_keep_registration_order_on_the_frontier_and_per_unit():
 def test_an_exact_copy_never_displaces_the_incumbent(tmp_path):
     class Copy(Proposer):
         def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
-            return ProposalBatch(candidates=[CandidateSpec("aaa_copy", Artifact({"h.txt": "q=0.6"}),
-                                                           base_system="zzz_incumbent")])
+            return ProposalBatch(
+                candidates=[CandidateSpec("aaa_copy", Artifact({"h.txt": "q=0.6"}), base_system="zzz_incumbent")]
+            )
 
     lp = _noisy_loop(Copy(), tmp_path, "zzz_incumbent")
     lp.run()
@@ -452,8 +517,10 @@ def test_forked_smoke_timeout_kills_its_sandboxed_process(tmp_path):
     pidfile = tmp_path / "pid"
 
     def spins(artifact, llm):
-        run_cmd([sys.executable, "-c", f"import os; open({str(pidfile)!r}, 'w').write(str(os.getpid()))\n"
-                                       "while True: pass"], timeout_s=60)
+        run_cmd(
+            [sys.executable, "-c", f"import os; open({str(pidfile)!r}, 'w').write(str(os.getpid()))\nwhile True: pass"],
+            timeout_s=60,
+        )
 
     ok, msg = _smoke(spins, 1.5)
     assert not ok and "timed out" in msg
@@ -467,14 +534,16 @@ def test_forked_smoke_timeout_kills_a_sandbox_started_from_a_harness_thread(tmp_
     mine, theirs = tmp_path / "smoke_pid", tmp_path / "parent_pid"
 
     def threaded(artifact, llm):
-        th = threading.Thread(target=run_python, args=(spin,), kwargs={"args": [str(mine)], "timeout_s": 60},
-                              daemon=True)
+        th = threading.Thread(
+            target=run_python, args=(spin,), kwargs={"args": [str(mine)], "timeout_s": 60}, daemon=True
+        )
         th.start()
         while th.is_alive():
             th.join(0.05)
 
-    threading.Thread(target=run_cmd, args=([sys.executable, "-c", spin, str(theirs)],), kwargs={"timeout_s": 20},
-                     daemon=True).start()
+    threading.Thread(
+        target=run_cmd, args=([sys.executable, "-c", spin, str(theirs)],), kwargs={"timeout_s": 20}, daemon=True
+    ).start()
     for _ in range(100):
         if theirs.exists() and theirs.read_text():
             break
@@ -521,7 +590,9 @@ def test_forked_smoke_child_ignores_the_parents_sigterm_once_leaving(tmp_path):
 def test_a_stop_signal_during_the_fork_reaches_the_childs_own_handler(tmp_path):
     """A SIGTERM in the after-fork hooks is held until the child's handler is in place: the smoke never runs."""
     marker = tmp_path / "smoke_ran"
-    out = _run_inner(_PRELUDE + """
+    out = _run_inner(
+        _PRELUDE
+        + """
 signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
 os.register_at_fork(after_in_child=lambda: os.kill(os.getpid(), signal.SIGTERM))
 class Smoke:
@@ -531,7 +602,9 @@ class Smoke:
 t0 = time.monotonic()
 ok, msg = validate(Smoke(), 8)
 print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
-""", str(marker))
+""",
+        str(marker),
+    )
     lines = out.stdout.strip().splitlines()
     assert len(lines) == 1, (out.stdout, out.stderr[-1500:])  # one process printed: no child escaped
     assert not marker.exists(), "the smoke ran although a stop signal arrived during the fork"
@@ -540,7 +613,10 @@ print(os.getpid(), round(time.monotonic() - t0, 1), msg[:40])
 
 def test_the_signal_mask_is_restored_when_a_stop_signal_surfaces_right_after_the_fork():
     """Simulated: the parent's first call after the fork (closing the write end) raises while signals are blocked."""
-    _check_inner(_PRELUDE + _CHILDREN + """
+    _check_inner(
+        _PRELUDE
+        + _CHILDREN
+        + """
 parent, real_close, raised = os.getpid(), os.close, []
 def close(fd):
     real_close(fd)
@@ -556,11 +632,15 @@ try:
 except KeyboardInterrupt:
     print("interrupted", end=" ")
 print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), time.monotonic() - t0 < 5, reaped())
-""", "interrupted [] True child reaped")
+""",
+        "interrupted [] True child reaped",
+    )
 
 
 def test_a_failed_fork_restores_the_mask_and_closes_the_pipe():
-    _check_inner(_PRELUDE + """
+    _check_inner(
+        _PRELUDE
+        + """
 def fork():
     raise KeyboardInterrupt
 os.fork = fork
@@ -571,20 +651,30 @@ try:
 except KeyboardInterrupt:
     print("interrupted", end=" ")
 print(sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])), len(os.listdir("/proc/self/fd")) - fds_before)
-""", "interrupted [] 0")
+""",
+        "interrupted [] 0",
+    )
 
 
 def test_two_stop_signals_in_a_row_still_stop_the_smoke_child(tmp_path):
     """Ctrl-C then a kill, back to back: the second surfaces as the cleanup starts, which runs again."""
-    _check_inner(_STOPPED + """
+    _check_inner(
+        _STOPPED
+        + """
 stop_after(0.2, interrupt)
 print(outcome(20), reaped(), sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
-""", "SystemExit child reaped []", "KeyboardInterrupt child reaped []", args=(str(tmp_path / "smoke_started"),))
+""",
+        "SystemExit child reaped []",
+        "KeyboardInterrupt child reaped []",
+        args=(str(tmp_path / "smoke_started"),),
+    )
 
 
 def test_a_stop_signal_during_the_childs_grace_period_still_reaps_it(tmp_path):
     """A second stop signal in the grace period of a child ignoring SIGTERM: the retry's grace is shorter (0.5 s)."""
-    _check_inner(_STOPPED + """
+    _check_inner(
+        _STOPPED
+        + """
 second = []
 def stop():
     signal.pthread_kill(main, signal.SIGINT)  # ends the wait; the cleanup's grace starts
@@ -594,21 +684,33 @@ def stop():
 Smoke.ignore_term = True
 stop_after(0.2, stop)
 print(outcome(20), reaped(), time.monotonic() - second[0] < 1.5)  # not the first 2 s grace again
-""", "SystemExit child reaped True", "KeyboardInterrupt child reaped True", args=(str(tmp_path / "smoke_started"),))
+""",
+        "SystemExit child reaped True",
+        "KeyboardInterrupt child reaped True",
+        args=(str(tmp_path / "smoke_started"),),
+    )
 
 
 def test_two_stop_signals_pending_together_during_the_cleanup_still_reap_the_child(tmp_path):
     """Both land while the cleanup waits for a child slow to stop; the nested retries still kill and reap it."""
-    _check_inner(_STOPPED + """
+    _check_inner(
+        _STOPPED
+        + """
 Smoke.ignore_term = True
 stop_after(1.0, interrupt)  # past the 0.5 s timeout: inside the cleanup
 print(outcome(0.5), reaped())
-""", "KeyboardInterrupt child reaped", "SystemExit child reaped", args=(str(tmp_path / "smoke_started"),))
+""",
+        "KeyboardInterrupt child reaped",
+        "SystemExit child reaped",
+        args=(str(tmp_path / "smoke_started"),),
+    )
 
 
 def test_an_interrupt_between_popping_and_closing_the_write_end_cannot_leak_it():
     """The write end is popped and closed with no bytecode in between for an interrupt to land on."""
-    _check_inner(_PRELUDE + """
+    _check_inner(
+        _PRELUDE
+        + """
 parent, fired = os.getpid(), []
 def prof(frame, event, arg):
     if (event == "c_return" and getattr(arg, "__name__", "") == "pop" and os.getpid() == parent and not fired
@@ -623,12 +725,16 @@ except KeyboardInterrupt:
     pass
 sys.setprofile(None)
 print(len(os.listdir("/proc/self/fd")) - before, sorted(signal.pthread_sigmask(signal.SIG_BLOCK, [])))
-""", "0 []")
+""",
+        "0 []",
+    )
 
 
 def test_a_process_another_thread_forks_during_validation_still_stops_on_ctrl_c():
     """Validation changes no process-wide signal handler, so a worker forked meanwhile still stops on SIGINT."""
-    _check_inner(_PRELUDE + """
+    _check_inner(
+        _PRELUDE
+        + """
 import multiprocessing as mp
 import rsi.metaharness.validate as v
 workers, real_stop = [], v._stop_child
@@ -648,12 +754,16 @@ p.join(5)
 print("stopped" if p.exitcode is not None else "still running")
 if p.exitcode is None:
     p.kill()
-""", "stopped")
+""",
+        "stopped",
+    )
 
 
 def test_a_raising_handler_of_another_signal_cannot_make_the_child_escape():
     """Every signal stays blocked in the child until it is inside its own try (which ends in os._exit)."""
-    out = _run_inner(_PRELUDE + """
+    out = _run_inner(
+        _PRELUDE
+        + """
 import functools, hashlib
 def alarm(*_):
     raise RuntimeError("alarm")
@@ -666,10 +776,12 @@ try:
 except RuntimeError:
     pass
 os.write(1, f"{os.getpid()}\\n".encode())  # unbuffered: an escaped child may be killed before it flushes
-""")
+"""
+    )
     assert len(out.stdout.split()) == 1, (out.stdout, out.stderr[-1500:])  # only the parent wrote
 
 
+@pytest.mark.slow
 def test_forked_smoke_stopped_while_its_harness_thread_spawns():
     """A sandbox the harness thread is just starting is closed too (spawn and registration share one lock)."""
     tag = f"rsi_spawn_race_{os.getpid()}"
@@ -679,6 +791,7 @@ def test_forked_smoke_stopped_while_its_harness_thread_spawns():
         def loop():
             while True:
                 run_cmd([sys.executable, "-S", "-c", spin], timeout_s=0.1)
+
         th = threading.Thread(target=loop, daemon=True)
         th.start()
         while th.is_alive():
@@ -706,9 +819,14 @@ def test_unknown_base_system_is_recorded_not_silently_replaced(dom, tmp_path):
         def propose(self, *, iteration, view, k, brief, artifacts, seed=0):
             return ProposalBatch(candidates=_collect(files, hdr, 1, artifacts, set(), iteration))
 
-    lp = MetaHarnessLoop(dom, llm_task=dom.make_model("A"), proposer=Unknown(),
-                         config=Config(iterations=1, k=1, validate_in_subprocess=False), out_dir=tmp_path,
-                         baselines=arts)
+    lp = MetaHarnessLoop(
+        dom,
+        llm_task=dom.make_model("A"),
+        proposer=Unknown(),
+        config=Config(iterations=1, k=1, validate_in_subprocess=False),
+        out_dir=tmp_path,
+        baselines=arts,
+    )
     lp.tr = make_tracer(lp, tmp_path, enabled=True, monitor=False, llm_task=None)
     lp.run()
     m = lp.store.meta("x")
@@ -739,8 +857,9 @@ def test_fewshot_n_comparators_exist_and_are_valid(dom):
 
 def test_m2_reports_both_evaluations_to_match_statistics():
     # tests/conftest.py drops cached experiment modules, so m2's own _common is the one imported
-    spec = importlib.util.spec_from_file_location("m2_equal_budget",
-                                                  ROOT / "experiments" / "metaharness-solpi" / "m2_equal_budget.py")
+    spec = importlib.util.spec_from_file_location(
+        "m2_equal_budget", ROOT / "experiments" / "metaharness-solpi" / "m2_equal_budget.py"
+    )
     m2 = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m2)
     s = m2.reach_stats({"opro": [4, 7, 8, 10, None, None]}, budget=20)["opro"]

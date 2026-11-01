@@ -2,17 +2,30 @@
 
 States: submitted -> gate -> quarantined -> verified -> promoted (or rejected); promoted -> deprecated | revoked.
 """
+
 from __future__ import annotations
 
 import copy
 import math
 import random
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
-from rsi.core import (Artifact, Domain, Evaluator, Gate, GateContext, LLM, NoiseFloor, Scored, Verdict,
-                      beta_lcb, noise_from_trials, paired_diff_ci)
+from rsi.core import (
+    LLM,
+    Artifact,
+    Domain,
+    Evaluator,
+    Gate,
+    GateContext,
+    NoiseFloor,
+    Scored,
+    Verdict,
+    beta_lcb,
+    noise_from_trials,
+    paired_diff_ci,
+)
 from rsi.core.llm import estimate_tokens
 
 from .assets import Gene
@@ -23,14 +36,19 @@ from .inject import FileInjector, Injector
 from .schema import JsonSchemaValidator
 from .signals import RunContext, TaskSignalExtractor, cosine, jaccard, pattern_hits, tokens
 from .solidify import CountedFilePolicy, blast_radius
-from .validation import CommandPolicy, InProcessExecutor, ValidationRunner, VacuityDetector
+from .validation import CommandPolicy, InProcessExecutor, VacuityDetector, ValidationRunner
 
 INJECTION_PATTERNS = [
-    r"ignore (all )?(previous|prior|above) (instructions|rules)", r"disregard (the )?(system|previous)",
+    r"ignore (all )?(previous|prior|above) (instructions|rules)",
+    r"disregard (the )?(system|previous)",
     r"(disable|skip|bypass|delete|remove) (the )?(tests?|validation|checks?|safety|guard)",
-    r"exfiltrat", r"rm -rf", r"curl .*\|\s*(sh|bash)",
+    r"exfiltrat",
+    r"rm -rf",
+    r"curl .*\|\s*(sh|bash)",
     r"(print|reveal|send) (the )?(api[_ ]?key|secret|token|password)",
-    r"allow_only", r"you are now", r"system prompt",
+    r"allow_only",
+    r"you are now",
+    r"system prompt",
 ]
 # agent-internal task-level checks: a gene validated only by these is verified by the bank uplift test alone
 TASK_CHECKS = ("rsi-taskcheck",)
@@ -64,21 +82,30 @@ class UpliftLCB(Gate):
     name = "uplift_lcb"
 
     def __init__(self, alpha: float = 0.10, reps: int = 2000) -> None:
-        self.alpha = alpha           # two-sided 0.10 -> one-sided 5% lower bound
+        self.alpha = alpha  # two-sided 0.10 -> one-sided 5% lower bound
         self.reps = reps
 
     def check(self, cand: Scored, inc: Scored, ctx: GateContext) -> Verdict:
         ids = sorted(set(cand.per_task or {}) & set(inc.per_task or {}))
         if len(ids) < 2:
             return Verdict(False, "too few paired tasks", {"n": len(ids)})
-        d = paired_diff_ci([inc.per_task[i] for i in ids], [cand.per_task[i] for i in ids], alpha=self.alpha,
-                           reps=self.reps, seed=ctx.round)
+        d = paired_diff_ci(
+            [inc.per_task[i] for i in ids],
+            [cand.per_task[i] for i in ids],
+            alpha=self.alpha,
+            reps=self.reps,
+            seed=ctx.round,
+        )
         # LCB > 0 too: a bank at ceiling calibrates delta = 0, which alone would accept U = 0
         ok = d["lo"] >= ctx.delta and d["lo"] > 0
-        why = (f"{'>=' if d['lo'] >= ctx.delta else '<'} delta={ctx.delta:.3f}"
-               + ("" if d["lo"] > 0 or d["lo"] < ctx.delta else " but LCB <= 0 (no established uplift)"))
-        return Verdict(ok, f"U={d['mean_diff']:+.3f} LCB={d['lo']:+.3f} {why}",
-                       {"U": d["mean_diff"], "U_LCB": d["lo"], "n": d["n"]})
+        why = f"{'>=' if d['lo'] >= ctx.delta else '<'} delta={ctx.delta:.3f}" + (
+            "" if d["lo"] > 0 or d["lo"] < ctx.delta else " but LCB <= 0 (no established uplift)"
+        )
+        return Verdict(
+            ok,
+            f"U={d['mean_diff']:+.3f} LCB={d['lo']:+.3f} {why}",
+            {"U": d["mean_diff"], "U_LCB": d["lo"], "n": d["n"]},
+        )
 
 
 @dataclass
@@ -87,7 +114,7 @@ class TaskBank:
 
     domain: Domain
     harness: Artifact
-    llm: Optional[LLM]
+    llm: LLM | None
     split: str = "test"
     injector: Injector = field(default_factory=FileInjector)
     extractor: TaskSignalExtractor = field(default_factory=TaskSignalExtractor)
@@ -95,7 +122,7 @@ class TaskBank:
     n_off: int = 12
     k: int = 2
     z: float = 2.0
-    delta: Optional[float] = None          # None = calibrated from the baseline trials
+    delta: float | None = None  # None = calibrated from the baseline trials
     delta_scale: float = 1.0
     workers: int = 1
 
@@ -103,20 +130,25 @@ class TaskBank:
         self.ev = Evaluator(self.domain, self.llm, workers=self.workers, allow_sealed=True)
         self.tasks = self.domain.tasks.split(self.split, allow_sealed=True)
         self._sig = {t.id: self.extractor.extract(RunContext(task=t)) for t in self.tasks}
-        self.last: dict = {}           # the last measure()'s EvalResults, for traces only
+        self.last: dict = {}  # the last measure()'s EvalResults, for traces only
 
     def scope(self, g: Gene) -> tuple[list, list]:
         ins = [t for t in self.tasks if pattern_hits(g.signals_match, self._sig[t.id]) > 0]
         off = [t for t in self.tasks if pattern_hits(g.signals_match, self._sig[t.id]) == 0]
         return ins, off
 
-    def measure(self, g: Gene, rng: random.Random, *, n: Optional[int] = None) -> dict:
+    def measure(self, g: Gene, rng: random.Random, *, n: int | None = None) -> dict:
         """Accept iff U_LCB >= delta on in-scope tasks and off-scope regression R >= -delta (noise floor)."""
         ins, off = self.scope(g)
         ins = rng.sample(ins, min(n or self.n, len(ins)))
         off = rng.sample(off, min(self.n_off, len(off)))
-        out = {"n": len(ins), "n_off": len(off), "k": self.k, "seeds": list(range(self.k)),
-               "task_ids_hash": sha256_text("|".join(sorted(t.id for t in ins + off)))[:16]}
+        out = {
+            "n": len(ins),
+            "n_off": len(off),
+            "k": self.k,
+            "seeds": list(range(self.k)),
+            "task_ids_hash": sha256_text("|".join(sorted(t.id for t in ins + off)))[:16],
+        }
         if len(ins) < 2:
             return {**out, "U": 0.0, "U_LCB": -1.0, "R": 0.0, "delta": 0.0, "reason": "too few in-scope bank tasks"}
         art = self.injector.inject(self.harness, [g])
@@ -128,19 +160,35 @@ class TaskBank:
         else:
             delta = noise_from_trials(base_in.trial_matrix(), z=self.z).delta if self.k >= 2 else 0.05
         delta *= self.delta_scale
-        v = UpliftLCB().check(Scored.from_eval(gene_in), Scored.from_eval(base_in),
-                              GateContext(delta=delta, round=rng.randrange(10 ** 6)))
+        v = UpliftLCB().check(
+            Scored.from_eval(gene_in), Scored.from_eval(base_in), GateContext(delta=delta, round=rng.randrange(10**6))
+        )
         R, floor_ok = 0.0, True
         if off:
             base_off = self.ev.evaluate(self.harness, off, self.k, label="bank")
             gene_off = self.ev.evaluate(art, off, self.k, label="bank")
             self.last.update(base_off=base_off, gene_off=gene_off)
             R = gene_off.score - base_off.score
-            floor_ok = NoiseFloor().check(Scored(gene_off.score), Scored(base_off.score),
-                                          GateContext(best_score=base_off.score, delta=delta)).accept
-        return {**out, "U": v.details.get("U", 0.0), "U_LCB": v.details.get("U_LCB", -1.0), "R": R,
-                "delta": delta, "uplift_ok": v.accept, "floor_ok": floor_ok, "accept": v.accept and floor_ok,
-                "verdict": v.reason, "base_in": base_in.score, "gene_in": gene_in.score}
+            floor_ok = (
+                NoiseFloor()
+                .check(
+                    Scored(gene_off.score), Scored(base_off.score), GateContext(best_score=base_off.score, delta=delta)
+                )
+                .accept
+            )
+        return {
+            **out,
+            "U": v.details.get("U", 0.0),
+            "U_LCB": v.details.get("U_LCB", -1.0),
+            "R": R,
+            "delta": delta,
+            "uplift_ok": v.accept,
+            "floor_ok": floor_ok,
+            "accept": v.accept and floor_ok,
+            "verdict": v.reason,
+            "base_in": base_in.score,
+            "gene_in": gene_in.score,
+        }
 
 
 class SafeHub(_HubBase):
@@ -150,11 +198,30 @@ class SafeHub(_HubBase):
     name = "safe"
     admitted = ("verified", "promoted")
 
-    def __init__(self, bank: TaskBank, *, eps: float = 0.2, n_min: int = 2, nu: float = 3.0, h: float = 15.0,
-                 stake: float = 20.0, adoption_credit: float = 30.0, adoption_cap: int = 3, rho: float = 0.2,
-                 r_min: float = 10.0, max_tokens: int = 500, dup_jaccard: float = 0.6, dup_cos: float = 0.9,
-                 require_discriminative: bool = True, min_kill_rate: float = 0.0, deprecate_after: int = 30,
-                 executor=None, seed: int = 0, deny_terms: Sequence[str] = (), ledger=None) -> None:
+    def __init__(
+        self,
+        bank: TaskBank,
+        *,
+        eps: float = 0.2,
+        n_min: int = 2,
+        nu: float = 3.0,
+        h: float = 15.0,
+        stake: float = 20.0,
+        adoption_credit: float = 30.0,
+        adoption_cap: int = 3,
+        rho: float = 0.2,
+        r_min: float = 10.0,
+        max_tokens: int = 500,
+        dup_jaccard: float = 0.6,
+        dup_cos: float = 0.9,
+        require_discriminative: bool = True,
+        min_kill_rate: float = 0.0,
+        deprecate_after: int = 30,
+        executor=None,
+        seed: int = 0,
+        deny_terms: Sequence[str] = (),
+        ledger=None,
+    ) -> None:
         super().__init__(ledger=ledger)
         self.bank = bank
         self.eps, self.n_min, self.nu, self.h = eps, n_min, nu, h
@@ -165,8 +232,9 @@ class SafeHub(_HubBase):
         self.require_discriminative = require_discriminative
         self.deprecate_after = deprecate_after
         self.rng = random.Random(seed)
-        self.runner = ValidationRunner(CommandPolicy.safe(internal=TASK_CHECKS), executor or InProcessExecutor(),
-                                       mode="safe")
+        self.runner = ValidationRunner(
+            CommandPolicy.safe(internal=TASK_CHECKS), executor or InProcessExecutor(), mode="safe"
+        )
         self.vacuity = VacuityDetector(self.runner, min_kill_rate=min_kill_rate)
         self.schema = JsonSchemaValidator(strict=False)
         self.auditor = LeakageAuditor(deny_terms or bank.domain.leakage_terms(bank.split))
@@ -177,12 +245,12 @@ class SafeHub(_HubBase):
         self.n_spot_checks = self.n_slashed = 0
         self.counted_policy = CountedFilePolicy()
 
-    def register(self, agent: str, cluster: Optional[str] = None, reputation: float = 50.0) -> None:
+    def register(self, agent: str, cluster: str | None = None, reputation: float = 50.0) -> None:
         self.credits.register(agent)
         self.reputation.setdefault(agent, reputation)
         self.cluster.setdefault(agent, cluster or agent)
 
-    def static_gate(self, b: Bundle) -> tuple[list[str], Optional[AssetRecord]]:
+    def static_gate(self, b: Bundle) -> tuple[list[str], AssetRecord | None]:
         """Reasons to reject the bundle before execution, and a near-duplicate record to merge into."""
         r = self._integrity(b)
         for name, a in (("gene", b.gene), ("capsule", b.capsule), ("event", b.event)):
@@ -227,9 +295,11 @@ class SafeHub(_HubBase):
             for aid in self.order:
                 rec = self.records[aid]
                 og = rec.bundle.gene
-                if rec.status in ("verified", "promoted", "quarantined") \
-                        and jaccard(og.get("signals_match", []), g.signals_match) >= self.dup_jaccard \
-                        and cosine(tokens(" ".join(og.get("strategy", []))), strategy) >= self.dup_cos:
+                if (
+                    rec.status in ("verified", "promoted", "quarantined")
+                    and jaccard(og.get("signals_match", []), g.signals_match) >= self.dup_jaccard
+                    and cosine(tokens(" ".join(og.get("strategy", []))), strategy) >= self.dup_cos
+                ):
                     dup = rec
                     break
         return r, dup
@@ -243,8 +313,9 @@ class SafeHub(_HubBase):
             reasons.append("duplicate asset_id")
         if reasons:
             if aid not in self.records and aid != "none":
-                self.records[aid] = AssetRecord(aid, copy.deepcopy(bundle), author, "rejected", self.epoch,
-                                                reasons=reasons[:5])
+                self.records[aid] = AssetRecord(
+                    aid, copy.deepcopy(bundle), author, "rejected", self.epoch, reasons=reasons[:5]
+                )
                 self.order.append(aid)
             self._node("publish", "rejected", aid, author, stage="gate", reasons=reasons[:5])
             return Decision(False, "rejected", aid, reasons)
@@ -254,8 +325,14 @@ class SafeHub(_HubBase):
             self.credits.credit(author, self.stake, "stake_refund", self.epoch)
             self._node("publish", "merged", dup.asset_id, author)
             return Decision(True, "merged", dup.asset_id, ["near-duplicate merged into existing lineage"])
-        rec = AssetRecord(aid, copy.deepcopy(bundle), author, "quarantined", self.epoch,
-                          lineage=sha256_text(repr(Gene.from_dict(bundle.gene).content_key()))[:16])
+        rec = AssetRecord(
+            aid,
+            copy.deepcopy(bundle),
+            author,
+            "quarantined",
+            self.epoch,
+            lineage=sha256_text(repr(Gene.from_dict(bundle.gene).content_key()))[:16],
+        )
         self.records[aid] = rec
         self.order.append(aid)
         self._node("publish", "quarantined", aid, author)
@@ -267,15 +344,28 @@ class SafeHub(_HubBase):
         else:
             rec.status = "rejected"
             rec.reasons.append(report.get("reason", "verification failed"))
-        self._node("verify", rec.status, aid, author, U=report.get("U"), U_LCB=report.get("U_LCB"),
-                   delta=report.get("delta"), discriminative=report.get("discriminative"))
+        self._node(
+            "verify",
+            rec.status,
+            aid,
+            author,
+            U=report.get("U"),
+            U_LCB=report.get("U_LCB"),
+            delta=report.get("delta"),
+            discriminative=report.get("discriminative"),
+        )
         return Decision(ok, rec.status, aid, [] if ok else [report.get("reason", "verification failed")], report)
 
     def verify(self, rec: AssetRecord) -> tuple[bool, dict]:
         """Hub-run discriminative validation (workspace genes), then the task-bank uplift test."""
         b, g = rec.bundle, rec.gene
-        rep: dict = {"type": "ValidationReport", "signer": "hub", "hub_run_id": f"hub_{len(self.ledger):07d}",
-                     "executor_id": getattr(self.bank.llm, "name", "reference"), "gene_id": g.id}
+        rep: dict = {
+            "type": "ValidationReport",
+            "signer": "hub",
+            "hub_run_id": f"hub_{len(self.ledger):07d}",
+            "executor_id": getattr(self.bank.llm, "name", "reference"),
+            "gene_id": g.id,
+        }
         br = blast_radius(b.pre_state or {}, b.post_state or {}, self.counted_policy)
         rep["recomputed_blast"] = {"files": br["files"], "lines": br["lines"]}
         disc = None
@@ -292,8 +382,28 @@ class SafeHub(_HubBase):
             rep["reason"] = f"mutation kill rate {disc.kill_rate:.2f} too low"
             return False, rep
         m = self.bank.measure(g, self.rng)
-        rep.update({k: m[k] for k in ("n", "n_off", "k", "seeds", "task_ids_hash", "U", "U_LCB", "R", "delta",
-                                       "uplift_ok", "floor_ok", "verdict", "base_in", "gene_in") if k in m})
+        rep.update(
+            {
+                k: m[k]
+                for k in (
+                    "n",
+                    "n_off",
+                    "k",
+                    "seeds",
+                    "task_ids_hash",
+                    "U",
+                    "U_LCB",
+                    "R",
+                    "delta",
+                    "uplift_ok",
+                    "floor_ok",
+                    "verdict",
+                    "base_in",
+                    "gene_in",
+                )
+                if k in m
+            }
+        )
         if not m.get("accept"):
             rep["reason"] = m.get("reason") or f"uplift not established: {m.get('verdict', '')}; R={m.get('R', 0):+.3f}"
             return False, rep
@@ -307,13 +417,17 @@ class SafeHub(_HubBase):
         """q * (1 - exp(-n_a/nu)) * (0.5 + 0.5 u) * 0.5^(age/h), q = 5% quantile of Beta(1+s, 1+f) (§9.2.4)."""
         q = beta_lcb(_counted(rec, 1), _counted(rec, 0), q=0.05)
         n_a = len(rec.adopters(counted_only=True))
-        return (q * (1 - math.exp(-n_a / self.nu)) * (0.5 + 0.5 * self.u_of(rec))
-                * 0.5 ** ((self.epoch - _last_success(rec)) / self.h))
+        return (
+            q
+            * (1 - math.exp(-n_a / self.nu))
+            * (0.5 + 0.5 * self.u_of(rec))
+            * 0.5 ** ((self.epoch - _last_success(rec)) / self.h)
+        )
 
     def _score(self, rec: AssetRecord) -> float:
         return self.rank_score(rec)
 
-    def search(self, signals: Sequence[str], k: int = 5, consumer: Optional[str] = None) -> list[AssetView]:
+    def search(self, signals: Sequence[str], k: int = 5, consumer: str | None = None) -> list[AssetView]:
         cands = [(r, sim) for r, sim in self._matching(signals, ("verified", "promoted")) if r.author != consumer]
         adopted = [(r, sim) for r, sim in cands if r.adopters(True)]
         fresh = [(r, sim) for r, sim in cands if not r.adopters(True)]
@@ -322,25 +436,32 @@ class SafeHub(_HubBase):
         explore: list[AssetView] = []
         if fresh:
             if self.eps > 0:  # Thompson sampling among verified-but-unadopted assets
-                order = sorted(fresh, key=lambda rs: -self.rng.betavariate(1 + _counted(rs[0], 1),
-                                                                           1 + _counted(rs[0], 0)))
+                order = sorted(
+                    fresh, key=lambda rs: -self.rng.betavariate(1 + _counted(rs[0], 1), 1 + _counted(rs[0], 0))
+                )
             else:
                 order = sorted(fresh, key=lambda rs: (-self.u_of(rs[0]), rs[0].asset_id))
             explore = [self._view(r, 0.0, sim, exploration=True) for r, sim in order[:k]]
         if self.eps > 0 and explore and (not views or self.rng.random() < self.eps):
             out = [explore[0]] + views[: k - 1] + explore[1:]
         else:
-            out = views + explore       # without exploration, fresh assets only fill empty slots
+            out = views + explore  # without exploration, fresh assets only fill empty slots
         return out[:k]
 
-    def report_outcome(self, asset_id: str, consumer: str, outcome: int, proof: Optional[dict] = None) -> dict:
+    def report_outcome(self, asset_id: str, consumer: str, outcome: int, proof: dict | None = None) -> dict:
         """Count an adoption report only from an eligible reporter with proof; spot-check a fraction ``rho``."""
         self.register(consumer)
         rec = self.records.get(asset_id)
         if rec is None or rec.status not in ("verified", "promoted"):
             return {"counted": False, "reason": "asset not verified"}
-        row = {"consumer": consumer, "outcome": int(outcome), "epoch": self.epoch, "counted": False,
-               "uplift": (proof or {}).get("dS"), "reason": ""}
+        row = {
+            "consumer": consumer,
+            "outcome": int(outcome),
+            "epoch": self.epoch,
+            "counted": False,
+            "uplift": (proof or {}).get("dS"),
+            "reason": "",
+        }
         if consumer == rec.author:
             row["reason"] = "self-report by author"
         elif self.cluster.get(consumer) == self.cluster.get(rec.author):
@@ -380,8 +501,14 @@ class SafeHub(_HubBase):
             if rec.status == "verified" and len(succ) >= self.n_min:
                 rec.status = "promoted"
                 rec.promoted_epoch = self.epoch
-        self._node("adopt", "counted" if row["counted"] else "ignored", asset_id, consumer, outcome=int(outcome),
-                   reason=row["reason"])
+        self._node(
+            "adopt",
+            "counted" if row["counted"] else "ignored",
+            asset_id,
+            consumer,
+            outcome=int(outcome),
+            reason=row["reason"],
+        )
         return row
 
     def revoke(self, asset_id: str, by: str = "hub", reason: str = "") -> None:

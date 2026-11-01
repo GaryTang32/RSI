@@ -1,4 +1,5 @@
 """Research roles: default idea pools, offline proposers, and LLM proposer / reviewer for SoL-Pi lineages."""
+
 from __future__ import annotations
 
 import json
@@ -12,29 +13,92 @@ from .research import Idea, MechanismProposal
 
 # the four released mechanisms under their blog ids plus negative controls (tricks, do-less, duds, family M)
 AGENTWORLD_IDEAS = [
-    Idea("C23", "C", "Build observation packs before paying for full bodies", "observation_pack",
-         [{"full_sends": 1, "excerpt_bytes": 0}, {"full_sends": 1, "excerpt_bytes": 1024},
-          {"full_sends": 2, "excerpt_bytes": 1024}, {"full_sends": 2, "excerpt_bytes": 2048}],
-         "replayed_large_outputs"),
+    Idea(
+        "C23",
+        "C",
+        "Build observation packs before paying for full bodies",
+        "observation_pack",
+        [
+            {"full_sends": 1, "excerpt_bytes": 0},
+            {"full_sends": 1, "excerpt_bytes": 1024},
+            {"full_sends": 2, "excerpt_bytes": 1024},
+            {"full_sends": 2, "excerpt_bytes": 2048},
+        ],
+        "replayed_large_outputs",
+    ),
     Idea("P8", "P", "Couple successful mutations to their verifier", "action_fusion", [{}], "adjacent_edit_command"),
-    Idea("D1", "D", "Delegate oversized result compression with deterministic fallback",
-         "evidence_preserving_reducer", [{"reducer": "deterministic"}], "diagnostic_log_tokens"),
-    Idea("C6", "C", "Use layered context epochs and event-driven compaction", "online_context_compact",
-         [{"cache_write_read_ratio": 12.5}], "archivable_context"),
-    Idea("T3", "T", "Keep only the last lines of long command outputs", "tail_trim",
-         [{"lines": 20}, {"lines": 40}, {"lines": 120}], "tail_of_outputs", kind="trick"),
-    Idea("T7", "T", "Keep only the first lines of long command outputs", "head_trim",
-         [{"lines": 40}, {"lines": 120}], "tail_of_outputs", kind="trick"),
-    Idea("T11", "T", "Run the test runner in quiet mode by default", "pytest_quiet", [{}], "diagnostic_log_tokens",
-         kind="trick"),
-    Idea("P14", "P", "Skip redundant re-verification after edits", "no_verify", [{}], "adjacent_edit_command",
-         kind="do_less"),
-    Idea("P20", "P", "Cap the turn budget", "turn_cap", [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}],
-         "late_turn_tokens", kind="do_less"),
+    Idea(
+        "D1",
+        "D",
+        "Delegate oversized result compression with deterministic fallback",
+        "evidence_preserving_reducer",
+        [{"reducer": "deterministic"}],
+        "diagnostic_log_tokens",
+    ),
+    Idea(
+        "C6",
+        "C",
+        "Use layered context epochs and event-driven compaction",
+        "online_context_compact",
+        [{"cache_write_read_ratio": 12.5}],
+        "archivable_context",
+    ),
+    Idea(
+        "T3",
+        "T",
+        "Keep only the last lines of long command outputs",
+        "tail_trim",
+        [{"lines": 20}, {"lines": 40}, {"lines": 120}],
+        "tail_of_outputs",
+        kind="trick",
+    ),
+    Idea(
+        "T7",
+        "T",
+        "Keep only the first lines of long command outputs",
+        "head_trim",
+        [{"lines": 40}, {"lines": 120}],
+        "tail_of_outputs",
+        kind="trick",
+    ),
+    Idea(
+        "T11",
+        "T",
+        "Run the test runner in quiet mode by default",
+        "pytest_quiet",
+        [{}],
+        "diagnostic_log_tokens",
+        kind="trick",
+    ),
+    Idea(
+        "P14",
+        "P",
+        "Skip redundant re-verification after edits",
+        "no_verify",
+        [{}],
+        "adjacent_edit_command",
+        kind="do_less",
+    ),
+    Idea(
+        "P20",
+        "P",
+        "Cap the turn budget",
+        "turn_cap",
+        [{"max_turns": 10}, {"max_turns": 16}, {"max_turns": 24}],
+        "late_turn_tokens",
+        kind="do_less",
+    ),
     Idea("R5", "R", "Slim the system prompt", "prompt_slim", [{}], "prompt_tokens", kind="dud"),
     Idea("M5", "M", "Attribute cost to actions, phases, and providers", "cost_attribution", [{}], "none", kind="dud"),
-    Idea("M12", "M", "Judge patches with fail-before/pass-after tests", "fail_before_pass_after", [{}], "none",
-         kind="dud"),
+    Idea(
+        "M12",
+        "M",
+        "Judge patches with fail-before/pass-after tests",
+        "fail_before_pass_after",
+        [{}],
+        "none",
+        kind="dud",
+    ),
 ]
 
 
@@ -50,22 +114,23 @@ class LibraryProposer:
             # a capability failure -> more conservative; no efficiency gain -> more aggressive
             last = history[-1]
             g = last.get("gate") or {}
-            cap_failed = any(not c.get("pass", True) for c in (g.get("capability") or {}).values()) or \
-                any(not pf.get("cap_ok", True) for pf in (g.get("per_family") or {}).values())
+            cap_failed = any(not c.get("pass", True) for c in (g.get("capability") or {}).values()) or any(
+                not pf.get("cap_ok", True) for pf in (g.get("per_family") or {}).values()
+            )
             v = last.get("variant", 0) + (1 if cap_failed or last.get("outcome") != "gate_failed" else -1)
-            if any(h.get("outcome") == "frozen" for h in history):   # sweep mode: evaluate the rest of the grid
+            if any(h.get("outcome") == "frozen" for h in history):  # sweep mode: evaluate the rest of the grid
                 rest = [i for i in range(len(grid)) if i not in visited]
                 v = rest[0] if rest else len(grid)
             if v < 0 or v >= len(grid) or v in visited:
                 return MechanismProposal(None, error="variant grid exhausted", variant=v, meta={"exhausted": True})
         params = grid[v]
         files = with_mechanism(base.files, idea.mechanism, params)
-        return MechanismProposal(Artifact(files), change=f"{idea.mechanism}{json.dumps(params, sort_keys=True)}",
-                                 variant=v)
+        return MechanismProposal(
+            Artifact(files), change=f"{idea.mechanism}{json.dumps(params, sort_keys=True)}", variant=v
+        )
 
     def fix(self, idea, prop, error):
-        return MechanismProposal(None, error=f"cannot repair: {error}", variant=prop.variant,
-                                 meta={"exhausted": True})
+        return MechanismProposal(None, error=f"cannot repair: {error}", variant=prop.variant, meta={"exhausted": True})
 
 
 AGENTQA_IDEAS = [
@@ -81,6 +146,7 @@ class AgentQAEditProposer:
 
     def __init__(self) -> None:
         from ..metaharness.mock import AgentQALibrary
+
         self.lib = AgentQALibrary()
 
     def propose(self, idea, base, evidence, history):
@@ -142,25 +208,40 @@ class LLMMechanismProposer:
         self.editor = RewriteEditor(llm)
 
     def _history(self, history):
-        return "\n".join(f"- iter {h['iteration']}: {h.get('change', '')} -> {h.get('outcome')} "
-                         f"({(h.get('gate') or {}).get('reason', h.get('error', ''))})" for h in history) or "(none)"
+        return (
+            "\n".join(
+                f"- iter {h['iteration']}: {h.get('change', '')} -> {h.get('outcome')} "
+                f"({(h.get('gate') or {}).get('reason', h.get('error', ''))})"
+                for h in history
+            )
+            or "(none)"
+        )
 
     def propose(self, idea, base, evidence, history):
         ev = json.dumps({k: v for k, v in evidence.items() if k != "worst"}, default=float)
         if "harness.json" in base:
-            prompt = MECH_PROMPT.format(title=idea.title, family=idea.family, evidence=ev,
-                                        history=self._history(history), api=RUNTIME_API_DOC)
+            prompt = MECH_PROMPT.format(
+                title=idea.title, family=idea.family, evidence=ev, history=self._history(history), api=RUNTIME_API_DOC
+            )
             resp = self.llm.complete(prompt, role="proposer", seed=len(history))
             if not resp.ok:
                 return MechanismProposal(None, error=f"llm error: {resp.error}", usage=resp.usage)
             out = self._parse(resp.text, base, resp.usage, len(history))
             out.meta.update(prompt=prompt, reply=resp.text)
             return out
-        instr = (f"Implement ONE efficiency mechanism in this harness: {idea.title}. Goal: fewer tokens / lower cost "
-                 f"at unchanged accuracy on unseen tasks. Evidence: {ev}. Earlier attempts:\n{self._history(history)}")
+        instr = (
+            f"Implement ONE efficiency mechanism in this harness: {idea.title}. Goal: fewer tokens / lower cost "
+            f"at unchanged accuracy on unseen tasks. Evidence: {ev}. Earlier attempts:\n{self._history(history)}"
+        )
         p = self.editor.edit(base, instr, seed=len(history), role="proposer")
-        return MechanismProposal(p.artifact if p.ok else None, change=p.change, usage=p.usage, error=p.error,
-                                 variant=len(history), meta={"prompt": instr, "reply": getattr(p, "raw", "")})
+        return MechanismProposal(
+            p.artifact if p.ok else None,
+            change=p.change,
+            usage=p.usage,
+            error=p.error,
+            variant=len(history),
+            meta={"prompt": instr, "reply": getattr(p, "raw", "")},
+        )
 
     def _parse(self, text, base, usage, variant) -> MechanismProposal:
         try:
@@ -172,23 +253,31 @@ class LLMMechanismProposer:
         if not code_path:
             return MechanismProposal(None, error="no extensions/<name>.py in reply", usage=usage, variant=variant)
         from ..metaharness.proposer import clean_code_block
+
         files[code_path] = clean_code_block(files[code_path])
         name = re.sub(r"\W", "_", str(h.get("name") or code_path[11:-3]))
         art = Artifact(with_mechanism(base.files, name, h.get("params") or {}, files[code_path]))
         if code_path != f"extensions/{name}.py":
-            art = Artifact({**{k: v for k, v in art.files.items() if k != f"extensions/{name}.py"},
-                            f"extensions/{name}.py": files[code_path]})
-        return MechanismProposal(art, change=str(h.get("change", name))[:200], usage=usage, variant=variant,
-                                 meta={"code": files[code_path]})
+            art = Artifact(
+                {
+                    **{k: v for k, v in art.files.items() if k != f"extensions/{name}.py"},
+                    f"extensions/{name}.py": files[code_path],
+                }
+            )
+        return MechanismProposal(
+            art, change=str(h.get("change", name))[:200], usage=usage, variant=variant, meta={"code": files[code_path]}
+        )
 
     def fix(self, idea, prop, error):
         if prop.artifact is None or "code" not in prop.meta:
             return MechanismProposal(None, error=error, meta={"exhausted": True})
-        prompt = (f"This mechanism failed a check (the implementation exit check, or the independent reviewer's "
-                  f"behavioural-contract review):\n{error[:2000]}\n\nFix the problem if it is real; keep the "
-                  f"mechanism.\n\nCode:\n```python\n{prop.meta['code']}"
-                  f"\n```\n{RUNTIME_API_DOC}\nReturn the same JSON header and the corrected complete file in the same "
-                  f"format (=== FILE: extensions/<name>.py ===).")
+        prompt = (
+            f"This mechanism failed a check (the implementation exit check, or the independent reviewer's "
+            f"behavioural-contract review):\n{error[:2000]}\n\nFix the problem if it is real; keep the "
+            f"mechanism.\n\nCode:\n```python\n{prop.meta['code']}"
+            f"\n```\n{RUNTIME_API_DOC}\nReturn the same JSON header and the corrected complete file in the same "
+            f"format (=== FILE: extensions/<name>.py ===)."
+        )
         resp = self.llm.complete(prompt, role="implementer", seed=prop.variant)
         if not resp.ok:
             return MechanismProposal(None, error=f"llm error: {resp.error}", usage=resp.usage)

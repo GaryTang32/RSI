@@ -3,6 +3,7 @@
     python experiments/dream-rsi/e16c_symmetric_timing.py --progs <dir with dream_appC.py ...> --eigen <dir> \
         --heldout <dir> --rscript <Rscript> --cache <cpp cache dir>
 """
+
 import argparse
 import json
 import math
@@ -25,16 +26,24 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 import numpy as np  # noqa: E402
 
 from rsi.core.artifact import Artifact  # noqa: E402
-from rsi.domains.discovery.lasso_cpp import (SimpleTESLassoDomain, load_heldout, max_gap, run_binary,  # noqa: E402
-                                             sklearn_path)
+from rsi.domains.discovery.lasso_cpp import (  # noqa: E402
+    SimpleTESLassoDomain,
+    load_heldout,
+    max_gap,
+    run_binary,
+    sklearn_path,
+)
 
 RESULTS = ROOT / "results" / "dream-rsi"
 THRESH = (1e-7, 1e-9, 1e-11, 1e-13)
 BLOCKS, REPS = 3, 5
-PROGRAMS = {"dream_appC": "dream_appC.py", "glmnet_port": "simpletes_init_glmnet_port.py",
-            "simpletes_best": "simpletes_best.py"}
+PROGRAMS = {
+    "dream_appC": "dream_appC.py",
+    "glmnet_port": "simpletes_init_glmnet_port.py",
+    "simpletes_best": "simpletes_best.py",
+}
 
-R_SCRIPT = r'''
+R_SCRIPT = r"""
 suppressMessages(library(glmnet))
 args <- commandArgs(trailingOnly = TRUE)
 con <- file(args[1], "rb")
@@ -62,12 +71,13 @@ writeBin(as.double(ts * 1000), con)
 writeBin(as.integer(ncol(B)), con, size = 4)
 writeBin(as.double(B), con)
 close(con)
-'''
+"""
 
 
 def build(src: Path, out: Path, shared=False):
-    subprocess.run(["gcc", "-O2", str(src), "-o", str(out)] + (["-shared", "-fPIC", "-ldl"] if shared else []),
-                   check=True)
+    subprocess.run(
+        ["gcc", "-O2", str(src), "-o", str(out)] + (["-shared", "-fPIC", "-ldl"] if shared else []), check=True
+    )
     return str(out)
 
 
@@ -100,15 +110,20 @@ def glmnet_block(rscript, fin: Path, tmp: Path, thresh, p, warm=1):
     """REPS glmnet() fits in one R process, each timed with Sys.time() around the call alone."""
     fout, fr = tmp / "r_out.bin", tmp / "fit.R"
     fr.write_text(R_SCRIPT)
-    rr = subprocess.run([rscript, str(fr), str(fin), str(fout), str(REPS), repr(float(thresh)), str(warm)],
-                        capture_output=True, text=True, timeout=3600, env={**os.environ, "OMP_NUM_THREADS": "1"})
+    rr = subprocess.run(
+        [rscript, str(fr), str(fin), str(fout), str(REPS), repr(float(thresh)), str(warm)],
+        capture_output=True,
+        text=True,
+        timeout=3600,
+        env={**os.environ, "OMP_NUM_THREADS": "1"},
+    )
     if rr.returncode != 0:
         raise RuntimeError(rr.stderr[-800:])
     raw = fout.read_bytes()
     reps = struct.unpack("i", raw[:4])[0]
-    ts = list(struct.unpack(f"{reps}d", raw[4:4 + 8 * reps]))
-    k = struct.unpack("i", raw[4 + 8 * reps:8 + 8 * reps])[0]
-    return ts, np.frombuffer(raw[8 + 8 * reps:], dtype=np.float64).reshape((p, k), order="F")
+    ts = list(struct.unpack(f"{reps}d", raw[4 : 4 + 8 * reps]))
+    k = struct.unpack("i", raw[4 + 8 * reps : 8 + 8 * reps])[0]
+    return ts, np.frombuffer(raw[8 + 8 * reps :], dtype=np.float64).reshape((p, k), order="F")
 
 
 def summ(xs):
@@ -130,7 +145,7 @@ def measure(X, y, alphas, ref, bins, noop, timer, rscript, tmp, fin):
     gaps["sklearn"] = 0.0
     methods = list(bins) + ["noop", "sklearn"] + [f"glmnet_R_{th:g}" for th in THRESH]
     for blk in range(BLOCKS):
-        for m in methods[blk % len(methods):] + methods[:blk % len(methods)]:
+        for m in methods[blk % len(methods) :] + methods[: blk % len(methods)]:
             if m in bins or m == "noop":
                 for _ in range(REPS):
                     h, f1, f2, _ = timer.call(bins.get(m, noop), X, y, alphas)
@@ -155,8 +170,12 @@ def row_of(name, X, rec, gaps, bins) -> dict:
     row = {"shape": list(X.shape), "gaps": gaps, "noop_harness": summ(rec["noop"]["harness"])}
     for label in bins:
         r = rec[label]
-        row[label] = {"compute_first_write": summ(r["first"]), "compute_last_write": summ(r["last"]),
-                      "harness": summ(r["harness"]), "harness_minus_noop_min": min(r["harness"]) - noop_min}
+        row[label] = {
+            "compute_first_write": summ(r["first"]),
+            "compute_last_write": summ(r["last"]),
+            "harness": summ(r["harness"]),
+            "harness_minus_noop_min": min(r["harness"]) - noop_min,
+        }
     row["sklearn"] = {"compute": summ(rec["sklearn"]["compute"])}
     for th in THRESH:
         m = f"glmnet_R_{th:g}"
@@ -177,21 +196,28 @@ def row_of(name, X, rec, gaps, bins) -> dict:
         "faster_than_gate_passing_glmnet": (prim < row[best_pass]["compute"]["min"]) if best_pass else True,
         "faster_than_default_glmnet": prim < row["glmnet_R_1e-07"]["compute"]["min"],
         "secondary_harness_minus_noop_ms": appc["harness_minus_noop_min"],
-        "secondary_faster_than_gate_passing_glmnet": (appc["harness_minus_noop_min"]
-                                                      < row[best_pass]["compute"]["min"]) if best_pass else True,
+        "secondary_faster_than_gate_passing_glmnet": (appc["harness_minus_noop_min"] < row[best_pass]["compute"]["min"])
+        if best_pass
+        else True,
         "secondary_faster_than_sklearn": appc["harness_minus_noop_min"] < sk["min"],
-        "median_faster_than_gate_passing_glmnet": (appc["compute_first_write"]["median"]
-                                                   < row[best_pass]["compute"]["median"]) if best_pass else True,
+        "median_faster_than_gate_passing_glmnet": (
+            appc["compute_first_write"]["median"] < row[best_pass]["compute"]["median"]
+        )
+        if best_pass
+        else True,
         "median_faster_than_sklearn": appc["compute_first_write"]["median"] < sk["median"],
     }
     q = row["q13"]
     q["passes"] = bool(q["appC_gap_ok"] and q["faster_than_sklearn"] and q["faster_than_gate_passing_glmnet"])
-    print(f"[{name} {X.shape}] appC {prim:.2f} ms (harness-noop {appc['harness_minus_noop_min']:.2f}, "
-          f"harness {appc['harness']['min']:.2f}, noop {noop_min:.2f}) | sklearn {q['sklearn_ms']:.2f} | "
-          f"glmnet default {q['glmnet_default_ms']:.2f} (gap {gaps['glmnet_R_1e-07']:.1e}) | "
-          f"gate-passing {best_pass} {q['fastest_gate_passing_glmnet_ms']} | port "
-          f"{row['glmnet_port']['compute_first_write']['min']:.2f} | simpletes_best (last-write) "
-          f"{row['simpletes_best']['compute_last_write']['min']:.2f} | passes {q['passes']}", flush=True)
+    print(
+        f"[{name} {X.shape}] appC {prim:.2f} ms (harness-noop {appc['harness_minus_noop_min']:.2f}, "
+        f"harness {appc['harness']['min']:.2f}, noop {noop_min:.2f}) | sklearn {q['sklearn_ms']:.2f} | "
+        f"glmnet default {q['glmnet_default_ms']:.2f} (gap {gaps['glmnet_R_1e-07']:.1e}) | "
+        f"gate-passing {best_pass} {q['fastest_gate_passing_glmnet_ms']} | port "
+        f"{row['glmnet_port']['compute_first_write']['min']:.2f} | simpletes_best (last-write) "
+        f"{row['simpletes_best']['compute_last_write']['min']:.2f} | passes {q['passes']}",
+        flush=True,
+    )
     return row
 
 
@@ -225,19 +251,34 @@ def main():
             y = np.ascontiguousarray(y, dtype=np.float64)
             alphas, ref = sklearn_path(X, y)
             fin = tmp / "in.bin"
-            fin.write_bytes(struct.pack("iii", *X.shape, len(alphas)) + X.tobytes() + y.tobytes()
-                            + np.ascontiguousarray(alphas, np.float64).tobytes())
+            fin.write_bytes(
+                struct.pack("iii", *X.shape, len(alphas))
+                + X.tobytes()
+                + y.tobytes()
+                + np.ascontiguousarray(alphas, np.float64).tobytes()
+            )
             rec, gaps = measure(X, y, alphas, ref, bins, noop, timer, a.rscript, tmp, fin)
             rows[name] = row_of(name, X, rec, gaps, bins)
-    res = {"experiment": "e16c_symmetric_timing", "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-           "config": {"blocks": BLOCKS, "reps": REPS, "thresh": THRESH, "threads": 1, "programs": PROGRAMS,
-                      "timer": "LD_PRELOAD e16c/solve_timer.c (CLOCK_MONOTONIC, last stdin fread -> first/last "
-                               "stdout fwrite); R: Sys.time around glmnet(); sklearn: perf_counter in-process",
-                      "loadavg_start": load_start, "loadavg_end": os.getloadavg()},
-           "missing": missing, "rows": rows,
-           "q13_passes_all_available": bool(rows) and all(r["q13"]["passes"] for r in rows.values()),
-           "q13_datasets_passing": [n for n, r in rows.items() if r["q13"]["passes"]],
-           "wall_s": round(time.time() - t_start, 1)}
+    res = {
+        "experiment": "e16c_symmetric_timing",
+        "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "config": {
+            "blocks": BLOCKS,
+            "reps": REPS,
+            "thresh": THRESH,
+            "threads": 1,
+            "programs": PROGRAMS,
+            "timer": "LD_PRELOAD e16c/solve_timer.c (CLOCK_MONOTONIC, last stdin fread -> first/last "
+            "stdout fwrite); R: Sys.time around glmnet(); sklearn: perf_counter in-process",
+            "loadavg_start": load_start,
+            "loadavg_end": os.getloadavg(),
+        },
+        "missing": missing,
+        "rows": rows,
+        "q13_passes_all_available": bool(rows) and all(r["q13"]["passes"] for r in rows.values()),
+        "q13_datasets_passing": [n for n, r in rows.items() if r["q13"]["passes"]],
+        "wall_s": round(time.time() - t_start, 1),
+    }
     Path(a.out).write_text(json.dumps(res, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     print(json.dumps({n: r["q13"] for n, r in rows.items()}, indent=1, default=str))
     print(f"[Q13 passes on all available datasets] {res['q13_passes_all_available']}  [saved] {a.out}")

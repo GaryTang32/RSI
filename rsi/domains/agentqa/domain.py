@@ -1,4 +1,5 @@
 """AgentQA: evolve an agent harness (``harness.py`` + prompts) around a frozen model; answers are graded exactly."""
+
 from __future__ import annotations
 
 import ast
@@ -13,7 +14,6 @@ import time
 import types
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from typing import Optional
 
 from ...core import domain as _core_domain
 from ...core import evaluate as _core_evaluate
@@ -84,7 +84,7 @@ class Tools:
         self.timeout_s = timeout_s
         self.calls = 0
         self.log: list[str] = []
-        self._clock: Optional[_CallClock] = None
+        self._clock: _CallClock | None = None
         self._dead = False
 
     def python(self, code: str) -> str:
@@ -148,16 +148,23 @@ class AgentQADomain(Domain):
     """Runs ``solve(question, llm, tools, files) -> str`` from ``harness.py`` in-process, under an own-time watchdog."""
 
     name = "agentqa"
-    components = {"prompt": ["prompts/*"], "control_flow": ["harness.py"], "tool": ["tools/*"], "skill": ["skills/*"],
-                  "memory": ["memory/*"], "subagent": ["agents/*"]}
+    components = {
+        "prompt": ["prompts/*"],
+        "control_flow": ["harness.py"],
+        "tool": ["tools/*"],
+        "skill": ["skills/*"],
+        "memory": ["memory/*"],
+        "subagent": ["agents/*"],
+    }
     structural_components = ("tool", "skill", "memory", "subagent")
     harness_timeout_s: float = HARNESS_TIMEOUT_S
 
-    def __init__(self, tasks: Optional[TaskSuite] = None, *, tool_timeout_s: float = 10.0,
-                 ood_hint: Optional[str] = None) -> None:
+    def __init__(
+        self, tasks: TaskSuite | None = None, *, tool_timeout_s: float = 10.0, ood_hint: str | None = None
+    ) -> None:
         super().__init__(tasks or make_suite())
         self.tool_timeout_s = tool_timeout_s
-        self.ood_hint = ood_hint            # replaces the default sentence about unseen question kinds
+        self.ood_hint = ood_hint  # replaces the default sentence about unseen question kinds
 
     @staticmethod
     def seed_artifact() -> Artifact:
@@ -172,20 +179,25 @@ class AgentQADomain(Domain):
             "paths to their text (prompts, skills, memory). The returned string is graded by exact match of the "
             "final answer (a line 'ANSWER: <value>' is extracted if present, else the last line). "
             f"Practice tasks are short questions of these kinds: {fams}. "
-            + (self.ood_hint or "The harness will later be run unchanged "
-               "on other kinds of short questions with exact answers (dates, text manipulation, list statistics, "
-               "number theory), so improvements must be general.")
+            + (
+                self.ood_hint
+                or "The harness will later be run unchanged "
+                "on other kinds of short questions with exact answers (dates, text manipulation, list statistics, "
+                "number theory), so improvements must be general."
+            )
         )
 
     def harness_brief(self) -> str:
         """The harness interface without the grading description (for improvers that must never see a grader)."""
-        return ("The harness is an LLM agent harness. harness.py defines solve(question, llm, tools, files) -> str, "
-                "where llm(prompt, system=None) -> str calls a frozen language model (each call costs tokens), "
-                "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps harness file "
-                "paths to their text (prompts, skills, memory). The returned string is the deliverable: the final "
-                "answer to a short question with one exact answer.")
+        return (
+            "The harness is an LLM agent harness. harness.py defines solve(question, llm, tools, files) -> str, "
+            "where llm(prompt, system=None) -> str calls a frozen language model (each call costs tokens), "
+            "tools.python(code) -> str runs Python in a sandbox and returns stdout, and files maps harness file "
+            "paths to their text (prompts, skills, memory). The returned string is the deliverable: the final "
+            "answer to a short question with one exact answer."
+        )
 
-    def validate_artifact(self, artifact: Artifact) -> Optional[str]:
+    def validate_artifact(self, artifact: Artifact) -> str | None:
         """None if harness.py parses and defines a top-level ``solve``, else the problem."""
         src = artifact.get("harness.py")
         if src is None:
@@ -202,7 +214,7 @@ class AgentQADomain(Domain):
         """Strings that only this domain's grader feedback produces."""
         return ("Incorrect. Extracted answer ", "Correct (answer ")
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         if llm is None:
             raise ValueError("AgentQA needs a task LLM")
         src = artifact.get("harness.py")
@@ -215,7 +227,7 @@ class AgentQADomain(Domain):
         state = {"calls": 0, "tokens": 0, "usd": 0.0, "dead": False}
         lock = threading.Lock()
 
-        def call_llm(prompt: str, system: Optional[str] = None) -> str:
+        def call_llm(prompt: str, system: str | None = None) -> str:
             with lock:
                 if state["dead"]:
                     raise HarnessBudgetExceeded("harness timed out")
@@ -228,20 +240,26 @@ class AgentQADomain(Domain):
             if not resp.ok:
                 msg = f"infra: llm backend error: {resp.error}"
                 with lock:
-                    state.setdefault("infra", msg)   # remembered even if the harness swallows the exception
+                    state.setdefault("infra", msg)  # remembered even if the harness swallows the exception
                 raise RuntimeError(msg)
-            u = artifact_usage(resp)   # a cache replay reports the original call's cost, like a fresh run
+            u = artifact_usage(resp)  # a cache replay reports the original call's cost, like a fresh run
             with lock:
                 state["tokens"] += u.total_tokens
                 state["usd"] += u.cost_usd
-            trace.append(f"[llm call {i}]\nSYSTEM: {(system or '')[:600]}\nPROMPT: {str(prompt)[:2000]}\n"
-                         f"REPLY: {resp.text[:2000]}")
+            trace.append(
+                f"[llm call {i}]\nSYSTEM: {(system or '')[:600]}\nPROMPT: {str(prompt)[:2000]}\n"
+                f"REPLY: {resp.text[:2000]}"
+            )
             return resp.text
 
         box: dict = {}
         # the harness thread gets only what the harness may see (no Task object: its target is the answer)
-        th = threading.Thread(target=_run_harness, args=(src, task.input, call_llm, tools, artifact.files, box),
-                              name="agentqa-harness", daemon=True)
+        th = threading.Thread(
+            target=_run_harness,
+            args=(src, task.input, call_llm, tools, artifact.files, box),
+            name="agentqa-harness",
+            daemon=True,
+        )
         t0 = time.monotonic()
         th.start()
         timed_out = False
@@ -256,20 +274,28 @@ class AgentQADomain(Domain):
                 tools._dead = True
                 threading.Thread(target=_reap, args=(th,), daemon=True, name="agentqa-reaper").start()
                 break
-        tampered = _restore_integrity()   # a tripwire against reward hacking, not a security boundary
+        tampered = _restore_integrity()  # a tripwire against reward hacking, not a security boundary
 
         def done(**kw) -> Execution:
             with lock:
                 toks, usd = state["tokens"], state["usd"]
-            return Execution(trace="\n".join(list(trace) + list(tools.log)), tokens=toks, cost_usd=usd,
-                             steps=state["calls"] + tools.calls, **kw)
+            return Execution(
+                trace="\n".join(list(trace) + list(tools.log)),
+                tokens=toks,
+                cost_usd=usd,
+                steps=state["calls"] + tools.calls,
+                **kw,
+            )
 
         if tampered:
-            return done(error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); "
-                              "restored")
+            return done(
+                error=f"tamper: the harness replaced part of the grading path ({', '.join(tampered)}); restored"
+            )
         if timed_out:
-            return done(error=f"HarnessTimeout: the harness ran more than {self.harness_timeout_s:g} s of its own "
-                              "time (outside model and tool calls)")
+            return done(
+                error=f"HarnessTimeout: the harness ran more than {self.harness_timeout_s:g} s of its own "
+                "time (outside model and tool calls)"
+            )
         if "no_solve" in box:
             return Execution(error="harness.py defines no solve()")
         if "exc" in box:
@@ -279,11 +305,12 @@ class AgentQADomain(Domain):
         if "infra" in state:  # the harness caught a backend failure: still a missing trial, not a wrong answer
             return done(error=state["infra"])
         out = box.get("out")
-        return done(output=str(out) if out is not None else "",
-                    meta={"llm_calls": state["calls"], "tool_calls": tools.calls})
+        return done(
+            output=str(out) if out is not None else "", meta={"llm_calls": state["calls"], "tool_calls": tools.calls}
+        )
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
-        _restore_integrity()   # grade with the original functions even if a concurrent harness replaced them
+        _restore_integrity()  # grade with the original functions even if a concurrent harness replaced them
         ok = is_correct(str(task.target), str(execution.output))
         got = extract_answer(str(execution.output))[:200]
         if ok:
@@ -308,15 +335,33 @@ def _run_harness(src: str, question, call_llm, tools: Tools, files: dict, box: d
 
 def _integrity_targets() -> list:
     mod = sys.modules[__name__]
-    return ([(mod, n) for n in ("is_correct", "extract_answer", "normalize", "_NUM", "_restore_integrity")]
-            + [(AgentQADomain, n) for n in ("grade", "execute", "run", "rollout", "grade_execution",
-                                            "validate_artifact", "grader_verdict_markers", "harness_brief")]
-            + [(_core_domain.Domain, n) for n in ("run", "rollout", "grade_execution")] + [(_core_domain, "Trial"),
-               (_core_evaluate.Evaluator, "run_one"), (_core_evaluate.Evaluator, "evaluate"),
-               (_core_evaluate.EvalResult, "task_scores"), (_core_evaluate.EvalResult, "score"),
-               (_core_evaluate.EvalResult, "S")]
-            + [(re, n) for n in ("findall", "fullmatch", "sub", "match", "search", "compile")]
-            + [(builtins, n) for n in ("float", "abs", "str", "len", "isinstance", "repr")])
+    return (
+        [(mod, n) for n in ("is_correct", "extract_answer", "normalize", "_NUM", "_restore_integrity")]
+        + [
+            (AgentQADomain, n)
+            for n in (
+                "grade",
+                "execute",
+                "run",
+                "rollout",
+                "grade_execution",
+                "validate_artifact",
+                "grader_verdict_markers",
+                "harness_brief",
+            )
+        ]
+        + [(_core_domain.Domain, n) for n in ("run", "rollout", "grade_execution")]
+        + [
+            (_core_domain, "Trial"),
+            (_core_evaluate.Evaluator, "run_one"),
+            (_core_evaluate.Evaluator, "evaluate"),
+            (_core_evaluate.EvalResult, "task_scores"),
+            (_core_evaluate.EvalResult, "score"),
+            (_core_evaluate.EvalResult, "S"),
+        ]
+        + [(re, n) for n in ("findall", "fullmatch", "sub", "match", "search", "compile")]
+        + [(builtins, n) for n in ("float", "abs", "str", "len", "isinstance", "repr")]
+    )
 
 
 def _restore_integrity() -> list[str]:
@@ -332,8 +377,15 @@ def _restore_integrity() -> list[str]:
     return changed
 
 
-BASE_ACC = {"numeric": 0.4, "dates": 0.15, "numbertheory": 0.05, "strings": 0.8, "lists": 0.8, "arith": 0.9,
-            "units": 0.95}
+BASE_ACC = {
+    "numeric": 0.4,
+    "dates": 0.15,
+    "numbertheory": 0.05,
+    "strings": 0.8,
+    "lists": 0.8,
+    "arith": 0.9,
+    "units": 0.95,
+}
 #: simulated reasoning tokens when answering directly (strings/lists need long reasoning)
 DIRECT_TOKENS = {"strings": 3000, "lists": 2500, "numeric": 700, "numbertheory": 700, "dates": 600}
 
@@ -354,7 +406,7 @@ def _wrong(ans: str, rng: random.Random) -> str:
 class SimModel(MockLLM):
     """Simulated frozen model that rewards generic harness skills: tool code, step-by-step, verifying, ANSWER lines."""
 
-    def __init__(self, suite: TaskSuite, skill: float = 1.0, name: Optional[str] = None) -> None:
+    def __init__(self, suite: TaskSuite, skill: float = 1.0, name: str | None = None) -> None:
         self.questions = {t.input: (str(t.target), t.family) for t in suite.tasks.values()}
         self.skill = skill
         # the name is part of cache identities, so models of different skill must not share it
@@ -364,12 +416,12 @@ class SimModel(MockLLM):
         for q, v in self.questions.items():
             if q in prompt:
                 return q, v
-        for q, v in self.questions.items():   # fuzzy: the first question whose first 60 chars appear
+        for q, v in self.questions.items():  # fuzzy: the first question whose first 60 chars appear
             if q[:60] in prompt:
                 return q, v
         return None, None
 
-    def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
+    def _respond(self, prompt: str, system: str | None, seed, i) -> str:
         low = ((system or "") + "\n" + prompt).lower()
         rng = _h(prompt, system, seed)
         q, info = self._find(prompt)
@@ -394,8 +446,13 @@ class SimModel(MockLLM):
         val = ans if rng.random() < p else _wrong(ans, rng)
         body = "(thinking) " + "x" * 4 * DIRECT_TOKENS.get(fam, 400) + "\n"
         if verbose:
-            body = "Let me work through this step by step. " + " ".join(
-                f"Step {k}: consider the quantities involved and combine them carefully." for k in range(1, 9)) + "\n"
+            body = (
+                "Let me work through this step by step. "
+                + " ".join(
+                    f"Step {k}: consider the quantities involved and combine them carefully." for k in range(1, 9)
+                )
+                + "\n"
+            )
         if "answer:" in low:
             return f"{body}ANSWER: {val}"
         return f"{body}The answer is {val}." if rng.random() < 0.7 else f"{body}{val}"

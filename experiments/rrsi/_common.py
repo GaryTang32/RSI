@@ -1,4 +1,5 @@
 """Shared plumbing for the RRSI experiments: CLI, search backends, HarnessWorld / AgentQA runs, stats and output."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,9 +11,9 @@ import sys
 import tempfile
 import time
 from collections import Counter
+from collections.abc import Callable
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Callable, Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -21,8 +22,13 @@ if str(ROOT) not in sys.path:
 import numpy as np  # noqa: E402
 
 from rsi.core import ArtifactStore, CachedLLM, ClaudeCLI, paired_diff_ci, spearman, summarize_runs  # noqa: E402
-from rsi.domains.harnessworld import (WEAK, CriticProfile, HarnessWorldMockLLM, ProposerProfile,  # noqa: E402
-                                      make_domain)
+from rsi.domains.harnessworld import (  # noqa: E402
+    WEAK,
+    CriticProfile,
+    HarnessWorldMockLLM,
+    ProposerProfile,
+    make_domain,
+)
 from rsi.rrsi import ARMS, Config, RegularizerSwitches, run  # noqa: E402
 
 RESULTS = ROOT / "results" / "rrsi"
@@ -32,7 +38,7 @@ SPLITS = ("evolve", "holdout", "ood")
 METRICS = ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain", "unseen_gain", "token_ratio")
 
 
-def parse_args(desc: str, default_seeds: int = 50, extra: Optional[Callable] = None) -> argparse.Namespace:
+def parse_args(desc: str, default_seeds: int = 50, extra: Callable | None = None) -> argparse.Namespace:
     """The E0-E13 CLI; ``a.procs`` is ``--workers`` offline and 1 with a live LLM."""
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--llm", default="sim", help="sim (offline mocks) | claude:<model> (live, cached)")
@@ -51,7 +57,7 @@ def parse_args(desc: str, default_seeds: int = 50, extra: Optional[Callable] = N
     return a
 
 
-def retry_args(desc: str, seeds: int = 100, T: Optional[int] = 20) -> argparse.Namespace:
+def retry_args(desc: str, seeds: int = 100, T: int | None = 20) -> argparse.Namespace:
     """The retry-round CLI: ``--seeds``, ``--workers`` (2), ``--T``."""
     ap = argparse.ArgumentParser(description=desc)
     ap.add_argument("--seeds", type=int, default=seeds)
@@ -60,12 +66,19 @@ def retry_args(desc: str, seeds: int = 100, T: Optional[int] = 20) -> argparse.N
     return ap.parse_args()
 
 
-def search_llm(spec: str, world=None, proposer: Optional[dict] = None, critic: Optional[dict] = None,
-               agentqa: bool = False, cache_dir: Optional[Path] = None):
+def search_llm(
+    spec: str,
+    world=None,
+    proposer: dict | None = None,
+    critic: dict | None = None,
+    agentqa: bool = False,
+    cache_dir: Path | None = None,
+):
     """Proposer + critic backend: ``sim`` -> the domain mock, ``claude:<model>`` -> cached headless CLI."""
     if spec == "sim":
         if agentqa:
             from rsi.rrsi.mocks import AgentQAMockLLM, AgentQAMockProfile
+
             return AgentQAMockLLM(AgentQAMockProfile(**(proposer or {})))
         return HarnessWorldMockLLM(world, ProposerProfile(**(proposer or {})), CriticProfile(**(critic or {})))
     kind, _, model = spec.partition(":")
@@ -118,13 +131,13 @@ def analyze_hw(dom, out_dir: Path, res=None, weak=None) -> dict:
     m["curve"]["tokens"] = [dom.expected(a, "evolve")["C"] for a in arts]
     m["curve"]["measured"] = [x["S"] for x in traj]
     recs = [json.loads(line) for line in (out_dir / "history.jsonl").read_text().splitlines() if line.strip()]
-    first: dict = {}                       # all records of one candidate share its outcome and dS
+    first: dict = {}  # all records of one candidate share its outcome and dS
     for r in recs:
         if r.get("edit_id"):
             first.setdefault((r["t"], r["variant"]), r)
     inc_at = {x["t"]: a for x, a in zip(traj, arts)}
     n = Counter()
-    credit = []                            # (recorded dS, true marginal effect) per measured edit
+    credit = []  # (recorded dS, true marginal effect) per measured edit
     for (t, v), r in sorted(first.items()):
         prep_p = out_dir / f"r{t}" / v / "prep.json"
         prep = json.loads(prep_p.read_text()) if prep_p.exists() else {}
@@ -153,31 +166,43 @@ def analyze_hw(dom, out_dir: Path, res=None, weak=None) -> dict:
             d_t = json.loads((out_dir / f"r{t}" / "directives.json").read_text())["delta"]
             n["null_eval"] += 1
             n["null_gain"] += r["delta_S"] > d_t
-            if t == 0:                     # round 0 compares against H_0's unselected measurement
+            if t == 0:  # round 0 compares against H_0's unselected measurement
                 n["null_eval0"] += 1
                 n["null_gain0"] += r["delta_S"] > d_t
         if r["accepted"]:
             n["acc"] += 1
             n["hitch"] += any(mm is not None and not prune and mm.kind == "harmful" for mm, prune in ek)
             n["prune_acc"] += sum(1 for e in edits if e.get("prune"))
-    m.update({"n_evaluated": n["eval"], "n_critic_reject": n["crit"], "evals_on_leaky": n["leak_eval"],
-              "n_accepted": n["acc"], "hitchhiker_rate": n["hitch"] / n["acc"] if n["acc"] else 0.0,
-              "prune_accepted": n["prune_acc"], "null_candidates": n["null_eval"], "null_false_gain": n["null_gain"],
-              "null_candidates_r0": n["null_eval0"], "null_false_gain_r0": n["null_gain0"]})
+    m.update(
+        {
+            "n_evaluated": n["eval"],
+            "n_critic_reject": n["crit"],
+            "evals_on_leaky": n["leak_eval"],
+            "n_accepted": n["acc"],
+            "hitchhiker_rate": n["hitch"] / n["acc"] if n["acc"] else 0.0,
+            "prune_accepted": n["prune_acc"],
+            "null_candidates": n["null_eval"],
+            "null_false_gain": n["null_gain"],
+            "null_candidates_r0": n["null_eval0"],
+            "null_false_gain_r0": n["null_gain0"],
+        }
+    )
     rec, tru = [p[0] for p in credit], [p[1] for p in credit]
     ok = len(credit) >= 3 and np.std(rec) > 0 and np.std(tru) > 0
     m["credit_corr"] = spearman(rec, tru) if ok else float("nan")
     comps = {r["component"] for r in recs if r.get("delta_S") is not None and r.get("component")}
     m["coverage"] = len(comps) / len(dom.components)
-    m["accepted_structural"] = sum(1 for r in recs if r.get("accepted") and r.get("edit_id")
-                                   and r.get("component") in dom.structural_components)
+    m["accepted_structural"] = sum(
+        1 for r in recs if r.get("accepted") and r.get("edit_id") and r.get("component") in dom.structural_components
+    )
     cal = out_dir / "calibration.json"
     m["delta"] = json.loads(cal.read_text())["delta"] if cal.exists() else fr["config"].get("delta")
     if res is not None:
         m["usage_calls"] = {k: v.get("calls") for k, v in res.usage.items()}
         # tokens of the search roles only (proposer, critic, analyst, digesters)
-        m["search_tokens"] = sum(v.get("total_tokens", 0) for k, v in res.usage.items()
-                                 if k != "_total" and not k.startswith("task"))
+        m["search_tokens"] = sum(
+            v.get("total_tokens", 0) for k, v in res.usage.items() if k != "_total" and not k.startswith("task")
+        )
         m["n_rollouts"] = res.meta.get("n_rollouts")
     return m
 
@@ -214,10 +239,18 @@ def run_hw(job: dict) -> dict:
     _check_complete(res, job, out)
     m = analyze_hw(dom, out, res, dom.with_policy(WEAK) if job.get("weak") else None)
     name = arm if isinstance(arm, str) else arm.name
-    m.update({"seed": seed, "arm": name, "wall_s": time.time() - t0, "label": job.get("label", name),
-              "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1,
-              # "heuristic" (deterministic clusterer, offline default) or "llm" (digesters + aggregator)
-              "analyst_mode": res.meta.get("analyst_mode")})
+    m.update(
+        {
+            "seed": seed,
+            "arm": name,
+            "wall_s": time.time() - t0,
+            "label": job.get("label", name),
+            "stop_reason": res.stop_reason,
+            "rounds_settled": len(res.trajectory) - 1,
+            # "heuristic" (deterministic clusterer, offline default) or "llm" (digesters + aggregator)
+            "analyst_mode": res.meta.get("analyst_mode"),
+        }
+    )
     return _finish(m, job, out)
 
 
@@ -225,6 +258,7 @@ def run_aq(job: dict) -> dict:
     """One AgentQA run, SimModel as the frozen task model. ``job``: seed, arm, label, llm, cfg, weak_skill."""
     from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
     from rsi.rrsi import paired_transfer
+
     seed, arm = job["seed"], job["arm"]
     suite = make_suite(seed=seed)
     dom, task = AgentQADomain(suite), SimModel(suite)
@@ -232,17 +266,32 @@ def run_aq(job: dict) -> dict:
     cfg = Config(**{"T": 8, "workers": 4, "seed": seed, **job.get("cfg", {})})
     out = Path(tempfile.mkdtemp(prefix=f"rrsi_aq_{seed}_", dir=scratch_dir()))
     t0 = time.time()
-    res = run(dom, AgentQADomain.seed_artifact(), llm_task=task, llm_propose=llm, config=cfg, out_dir=out,
-              switches=switches(arm))
+    res = run(
+        dom,
+        AgentQADomain.seed_artifact(),
+        llm_task=task,
+        llm_propose=llm,
+        config=cfg,
+        out_dir=out,
+        switches=switches(arm),
+    )
     _check_complete(res, job, out)
     harnesses = {"H0": res.baseline, "final": res.best}
     rep = paired_transfer(dom, task, harnesses, k=4, workers=4)["splits"]
-    m = {"seed": seed, "arm": arm, "label": job.get("label", arm), "wall_s": time.time() - t0,
-         "stop_reason": res.stop_reason, "rounds_settled": len(res.trajectory) - 1,
-         "analyst_mode": res.meta.get("analyst_mode"),
-         "measured_gain": res.trajectory[-1]["S"] - res.trajectory[0]["S"], "delta": res.meta.get("delta"),
-         "files": sorted(res.best.files), "leaky_final": "memory/answers.json" in res.best,
-         "usage_calls": {k: v.get("calls") for k, v in res.usage.items()}}
+    m = {
+        "seed": seed,
+        "arm": arm,
+        "label": job.get("label", arm),
+        "wall_s": time.time() - t0,
+        "stop_reason": res.stop_reason,
+        "rounds_settled": len(res.trajectory) - 1,
+        "analyst_mode": res.meta.get("analyst_mode"),
+        "measured_gain": res.trajectory[-1]["S"] - res.trajectory[0]["S"],
+        "delta": res.meta.get("delta"),
+        "files": sorted(res.best.files),
+        "leaky_final": "memory/answers.json" in res.best,
+        "usage_calls": {k: v.get("calls") for k, v in res.usage.items()},
+    }
     for split in SPLITS:
         h0, fin = rep[split]["H0"], rep[split]["final"]
         m[f"{split}_H0"], m[f"{split}_final"] = h0["S"], fin["S"]
@@ -262,8 +311,11 @@ def run_aq(job: dict) -> dict:
 def agentqa_rows(a, arms: list, **extra) -> tuple[int, list]:
     """The AgentQA arms of E1 / E12: (number of suite seeds, rows)."""
     n = min(5, a.seeds) if a.llm == "sim" else 1
-    jobs = [{"seed": s, "arm": arm, "label": arm, "cfg": {"T": 4 if a.quick else 8}, "llm": a.llm, **extra}
-            for s in range(n) for arm in arms]
+    jobs = [
+        {"seed": s, "arm": arm, "label": arm, "cfg": {"T": 4 if a.quick else 8}, "llm": a.llm, **extra}
+        for s in range(n)
+        for arm in arms
+    ]
     return n, pmap(run_aq, jobs, min(2, a.procs))
 
 
@@ -280,8 +332,10 @@ def _finite(v) -> bool:
 
 def summarize(rows: list, key: str = "label", metrics=METRICS) -> dict:
     """Per label and metric: mean + 95% bootstrap CI over the rows where the metric is present and not NaN."""
-    return {lab: {m: summarize_runs([float(r[m]) for r in rows if r[key] == lab and _finite(r.get(m))])
-                  for m in metrics} for lab in dict.fromkeys(r[key] for r in rows)}
+    return {
+        lab: {m: summarize_runs([float(r[m]) for r in rows if r[key] == lab and _finite(r.get(m))]) for m in metrics}
+        for lab in dict.fromkeys(r[key] for r in rows)
+    }
 
 
 def paired(rows: list, a: str, b: str, metric: str, key: str = "label") -> dict:
@@ -342,8 +396,10 @@ def figure(name: str, draw: Callable, ncols: int = 1, **subplots) -> None:
     """Save ``draw(ax)`` as results/rrsi/<name>.png; a plotting error only skips the figure."""
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots(1, ncols, **subplots)
         draw(ax)
         fig.tight_layout()

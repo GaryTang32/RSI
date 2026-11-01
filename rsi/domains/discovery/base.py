@@ -1,10 +1,12 @@
 """ProgramDomain: a discovery problem whose artifact is a program, graded by a locked ``evaluate_program``."""
+
 from __future__ import annotations
 
 import json
 import random
 import time
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
@@ -13,18 +15,18 @@ from ...core.tasks import Task, TaskSuite
 from ...dream.agent import AttemptContext, DiscoveryTask, EvalOutcome
 
 
-def failure(fail_class: str, error: str, diagnostics: Optional[dict] = None, seconds: float = 0.0) -> EvalOutcome:
+def failure(fail_class: str, error: str, diagnostics: dict | None = None, seconds: float = 0.0) -> EvalOutcome:
     """Score-0 failed evaluation (0 of 1 outputs valid)."""
     return EvalOutcome(0.0, True, False, fail_class, error, 0, 1, {} if diagnostics is None else diagnostics, seconds)
 
 
 def execution(ev: EvalOutcome) -> Execution:
-    return Execution(output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error,
-                             "diagnostics": ev.diagnostics})
+    return Execution(
+        output={"score": ev.score, "fail_class": ev.fail_class, "error": ev.error, "diagnostics": ev.diagnostics}
+    )
 
 
-def pick_mechanism(ctx: Optional[AttemptContext], rng: random.Random, mechanisms: Sequence[str],
-                   p_switch: float) -> str:
+def pick_mechanism(ctx: AttemptContext | None, rng: random.Random, mechanisms: Sequence[str], p_switch: float) -> str:
     """The branch's assigned direction (else a random one); later attempts switch with probability ``p_switch``."""
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(mechanisms)
     if ctx and ctx.attempt > 0 and rng.random() < p_switch:
@@ -32,7 +34,7 @@ def pick_mechanism(ctx: Optional[AttemptContext], rng: random.Random, mechanisms
     return mech
 
 
-def parent_measured(ctx: Optional[AttemptContext], key: str, default):
+def parent_measured(ctx: AttemptContext | None, key: str, default):
     """``diagnostics[key]`` of the parent's ``eval/score.json`` (its measured result), else ``default``."""
     if ctx is None:
         return default
@@ -51,7 +53,7 @@ def single_task_suite(name: str, payload: Any = None) -> TaskSuite:
 class ProgramTask(DiscoveryTask):
     """A domain as the discovery loop's task: its ``evaluate_program`` is the locked evaluator."""
 
-    def __init__(self, dom: Domain, name: str, program_file: Optional[str] = None) -> None:
+    def __init__(self, dom: Domain, name: str, program_file: str | None = None) -> None:
         self._dom, self.name, self._program_file = dom, name, program_file
 
     def describe(self) -> str:
@@ -66,7 +68,7 @@ class ProgramTask(DiscoveryTask):
     def directions(self) -> list[str]:
         return self._dom.directions()
 
-    def editable(self) -> Optional[list[str]]:
+    def editable(self) -> list[str] | None:
         return None if self._program_file is None else [self._program_file]
 
 
@@ -78,7 +80,7 @@ class ProgramDomain(Domain):
     entry = "main"
     components = {"program": ["*.py"]}
 
-    def __init__(self, tasks: Optional[TaskSuite] = None, *, sandboxed: bool = True, timeout_s: float = 30.0) -> None:
+    def __init__(self, tasks: TaskSuite | None = None, *, sandboxed: bool = True, timeout_s: float = 30.0) -> None:
         super().__init__(tasks or single_task_suite(self.name))
         self.sandboxed = sandboxed
         self.timeout_s = timeout_s
@@ -89,7 +91,7 @@ class ProgramDomain(Domain):
     def entry_payload(self, *, seed: int = 0) -> dict:
         return {}
 
-    def run_program(self, artifact: Artifact, *, seed: int = 0) -> tuple[Any, Optional[str], str, float]:
+    def run_program(self, artifact: Artifact, *, seed: int = 0) -> tuple[Any, str | None, str, float]:
         """``(output, error, fail_class, seconds)``; sandboxed via :func:`rsi.core.sandbox.call_function`."""
         code = artifact.get(self.program_file)
         if code is None:

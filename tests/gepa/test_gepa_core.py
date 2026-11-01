@@ -1,4 +1,5 @@
 """GEPA pure components against the reference probe vectors (spec 4.7) and reference semantics."""
+
 import random
 from collections import Counter
 from pathlib import Path
@@ -6,10 +7,25 @@ from pathlib import Path
 import pytest
 
 from rsi.core import Artifact, MockLLM
-from rsi.gepa import (DEFAULT_TEMPLATE, OPTIMIZE_ANYTHING_TEMPLATE, BeamSearchSelector, EpochShuffledBatchSampler,
-                      FrontierTracker, ImprovementOrEqual, NoiseMargin, ReflectionProposer, StrictImprovement,
-                      build_prompt, find_dominator_programs, parse_fenced, remove_dominated_programs,
-                      render_samples, sample_and_attempt_merge, select_eval_subsample, select_from_pareto_front)
+from rsi.gepa import (
+    DEFAULT_TEMPLATE,
+    OPTIMIZE_ANYTHING_TEMPLATE,
+    BeamSearchSelector,
+    EpochShuffledBatchSampler,
+    FrontierTracker,
+    ImprovementOrEqual,
+    NoiseMargin,
+    ReflectionProposer,
+    StrictImprovement,
+    build_prompt,
+    find_dominator_programs,
+    parse_fenced,
+    remove_dominated_programs,
+    render_samples,
+    sample_and_attempt_merge,
+    select_eval_subsample,
+    select_from_pareto_front,
+)
 from rsi.gepa.merge import merge_texts
 from rsi.gepa.state import SearchState
 from rsi.gepa.strategies import CurrentBestSelector, EpsilonGreedySelector, RoundRobinComponents, TopKParetoSelector
@@ -75,7 +91,7 @@ def test_epoch_shuffled_sampler_padding_and_epochs():
     assert all(len(b) == 3 for b in batches) and len(s.shuffled_ids) == 12
     assert set(flat) == set(ids)
     assert sorted(Counter(flat).values()) == [1] * 8 + [2] * 2
-    assert s.shuffled_ids[10:] == [s.shuffled_ids[9], s.shuffled_ids[8]]   # reference pads with the last ids, reversed
+    assert s.shuffled_ids[10:] == [s.shuffled_ids[9], s.shuffled_ids[8]]  # reference pads with the last ids, reversed
     epoch0 = list(s.shuffled_ids)
     s.next_ids(ids, 4)
     assert s.epoch == 1 and s.shuffled_ids != epoch0
@@ -104,10 +120,12 @@ def test_merge_zero_weight_probe():
 def test_merge_rules_and_ancestry_guard():
     cands = _probe_cands() + [Artifact({"A": "z", "B": "s"})]
     new, desc = merge_texts(random.Random(0), cands, ["A", "B"], [0.1, 0.5, 0.4, 0.9], 1, 3, 0)
-    assert new == {"A": "z", "B": "s"} and desc == (3, 1)        # both changed A: the higher aggregate wins
-    parents = [[None], [0], [0], [1]]                            # 1 is the parent of 3: no merge between them
-    assert sample_and_attempt_merge([0.1, 0.5, 0.5, 0.6], random.Random(0), [1, 3], ([], []), cands, parents,
-                                    ["A", "B"]) is None
+    assert new == {"A": "z", "B": "s"} and desc == (3, 1)  # both changed A: the higher aggregate wins
+    parents = [[None], [0], [0], [1]]  # 1 is the parent of 3: no merge between them
+    assert (
+        sample_and_attempt_merge([0.1, 0.5, 0.5, 0.6], random.Random(0), [1, 3], ([], []), cands, parents, ["A", "B"])
+        is None
+    )
 
 
 def test_merge_subsample_buckets():
@@ -120,7 +138,7 @@ def test_merge_subsample_buckets():
 
 def _spec_block(after: str) -> str:
     text = SPEC.read_text()
-    return text[text.index(after):].split("````text\n", 1)[1].split("\n````", 1)[0]
+    return text[text.index(after) :].split("````text\n", 1)[1].split("\n````", 1)[0]
 
 
 def test_meta_prompts_are_verbatim():
@@ -130,8 +148,10 @@ def test_meta_prompts_are_verbatim():
 
 def test_render_samples_markdown():
     txt = render_samples([{"Inputs": {"q": "2+2", "ctx": ["a", "b"]}, "Generated Outputs": "5", "Feedback": "wrong "}])
-    assert txt == ("# Example 1\n## Inputs\n### q\n2+2\n\n### ctx\n#### Item 1\na\n\n#### Item 2\nb\n\n"
-                   "## Generated Outputs\n5\n\n## Feedback\nwrong\n\n")
+    assert txt == (
+        "# Example 1\n## Inputs\n### q\n2+2\n\n### ctx\n#### Item 1\na\n\n#### Item 2\nb\n\n"
+        "## Generated Outputs\n5\n\n## Feedback\nwrong\n\n"
+    )
     p = build_prompt(DEFAULT_TEMPLATE, "Be good.", [RECORD])
     assert "```\nBe good.\n```" in p and "# Example 1\n## Inputs\nx" in p and "<side_info>" not in p
 

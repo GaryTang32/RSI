@@ -1,4 +1,5 @@
 """Structured optimisers (OpenEvolve, TTT-Discover PUCT, GEPA) as equal-budget comparison arms (paper §4.1)."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,6 @@ import math
 import random
 import re
 from collections import Counter
-from typing import Optional
 
 from ..core.llm import Usage
 from .mock import PARENT_HINT
@@ -77,8 +77,11 @@ class StructuredOptimizerProposer(Proposer):
     def _openevolve(self, progs: list[_Prog], slot_index: int, rng: random.Random) -> tuple[_Prog, list[_Prog]]:
         # islands; 20% exploration, 70% exploitation (archive), 10% uniform; context = top + diverse island programs
         island = slot_index % OE_ISLANDS
-        members = [p for p in progs if p.kind == "baseline" or p.meta.get("island") in (None, "") or
-                   int(p.meta.get("island", -1)) == island]
+        members = [
+            p
+            for p in progs
+            if p.kind == "baseline" or p.meta.get("island") in (None, "") or int(p.meta.get("island", -1)) == island
+        ]
         members = members or progs
         archive = {p.name for p in sorted(progs, key=lambda p: -p.score)[:OE_ARCHIVE]}
         r = rng.random()
@@ -114,6 +117,7 @@ class StructuredOptimizerProposer(Proposer):
         def score(p: _Prog) -> float:
             visits = len(children.get(p.name, [])) + extra_visits.get(p.name, 0)
             return best_desc(p) + self.puct_c * (w[p.name] / tot) * math.sqrt(1 + t) / (1 + visits)
+
         return max(progs, key=lambda p: (score(p), -p.order))
 
     def _gepa(self, progs: list[_Prog], rng: random.Random) -> _Prog:
@@ -138,7 +142,7 @@ class StructuredOptimizerProposer(Proposer):
             return self._inst_cache[key]
         out: dict[tuple[str, str], tuple[float, str]] = {}
         for p in paths:
-            unit = p[len(pre):].rsplit(".", 1)[0]
+            unit = p[len(pre) :].rsplit(".", 1)[0]
             for line in view[p].splitlines():
                 if '"eval_step"' not in line:
                     continue
@@ -198,13 +202,18 @@ class StructuredOptimizerProposer(Proposer):
         epoch, pos = divmod(n_proposed, max(1, len(keys) // GEPA_MINIBATCH))
         perm = list(keys)
         random.Random(f"gepa-epoch|{self.seed}|{seed}|{epoch}").shuffle(perm)
-        chosen = perm[pos * GEPA_MINIBATCH:(pos + 1) * GEPA_MINIBATCH] or perm[:GEPA_MINIBATCH]
+        chosen = perm[pos * GEPA_MINIBATCH : (pos + 1) * GEPA_MINIBATCH] or perm[:GEPA_MINIBATCH]
         out: dict[str, list[str]] = {}
         for unit, step in sorted(chosen):
             out.setdefault(unit, []).append(inst[(unit, step)][1])
-        return {f"candidates/{parent}/eval/search/traces/{u}.jsonl": json.dumps({"type": "meta", "unit": u,
-                "note": f"GEPA reflective minibatch: {len(lines)} of this unit's examples"}) + "\n" + "\n".join(lines)
-                for u, lines in out.items()}
+        return {
+            f"candidates/{parent}/eval/search/traces/{u}.jsonl": json.dumps(
+                {"type": "meta", "unit": u, "note": f"GEPA reflective minibatch: {len(lines)} of this unit's examples"}
+            )
+            + "\n"
+            + "\n".join(lines)
+            for u, lines in out.items()
+        }
 
     @staticmethod
     def _files(view: dict[str, str], name: str, *, traces: str = "none") -> dict[str, str]:
@@ -225,8 +234,9 @@ class StructuredOptimizerProposer(Proposer):
                 out[p] = excerpt(t, share)
         return out
 
-    def select(self, view: dict[str, str], iteration: int, slot: int, seed: int,
-               extra_visits: Optional[dict[str, int]] = None) -> tuple[str, dict[str, str]]:
+    def select(
+        self, view: dict[str, str], iteration: int, slot: int, seed: int, extra_visits: dict[str, int] | None = None
+    ) -> tuple[str, dict[str, str]]:
         """``(parent, sub-view)`` for one candidate slot."""
         progs = programs_in(view)
         if not progs:
@@ -256,7 +266,7 @@ class StructuredOptimizerProposer(Proposer):
         out = ProposalBatch(meta={"policy": self.policy, "parents": []})
         usage = Usage()
         visits: dict[str, int] = {}
-        known = {a.id: n for n, a in artifacts.items()}      # exact programs already in the store
+        known = {a.id: n for n, a in artifacts.items()}  # exact programs already in the store
         suffix = self.policy[:2] + ("m" if self.policy == "gepa_minibatch" else "")
         read, scanned, transcripts = [], [], []
         for slot in range(k):
@@ -267,9 +277,14 @@ class StructuredOptimizerProposer(Proposer):
             visits[parent] = visits.get(parent, 0) + 1
             names = _cand_names(sub)
             for attempt in range(1 + MAX_DEDUP_RETRIES):
-                b = self.inner.propose(iteration=iteration, view=sub, k=1, brief=brief,
-                                       artifacts={n: a for n, a in artifacts.items() if n in names},
-                                       seed=seed * 1000 + slot + 7919 * attempt)
+                b = self.inner.propose(
+                    iteration=iteration,
+                    view=sub,
+                    k=1,
+                    brief=brief,
+                    artifacts={n: a for n, a in artifacts.items() if n in names},
+                    seed=seed * 1000 + slot + 7919 * attempt,
+                )
                 usage = usage + b.usage
                 dup = [c for c in b.candidates if c.artifact.id in known]
                 if not dup:

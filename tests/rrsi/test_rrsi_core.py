@@ -1,18 +1,33 @@
 """RRSI pure components against google-research/rrsi tests/test_core.py vectors, plus this package's extensions."""
+
 import json
 import math
 
 import numpy as np
 import pytest
+from rrsi_helpers import edit_rows
 
 from rsi.core import Artifact, MetricGuard
-from rsi.rrsi import (K, Candidate, Config, History, Measurement, RegularizerSwitches, Taxonomy, aggregate,
-                      budget_table, build_gates, calibrate, cost_rule, edit_budget, exploration, select_round,
-                      stall_flag)
+from rsi.rrsi import (
+    Candidate,
+    Config,
+    History,
+    K,
+    Measurement,
+    RegularizerSwitches,
+    Taxonomy,
+    aggregate,
+    budget_table,
+    build_gates,
+    calibrate,
+    cost_rule,
+    edit_budget,
+    exploration,
+    select_round,
+    stall_flag,
+)
 from rsi.rrsi.components import normalize, novelty
 from rsi.rrsi.evaluate import TaskResult, job_seeds, relative_cost_change
-
-from rrsi_helpers import edit_rows
 
 
 def _ev(job, rewards_by_task, k, tokens=1000.0):
@@ -39,11 +54,11 @@ def test_schedule_matches_eq_anneal():
 
 
 def test_schedule_tables_from_spec():
-    assert budget_table(20, 1, 4) == [4] * 8 + [3] * 5 + [2] * 7            # coding
-    assert budget_table(20, 1, 3) == [3] * 10 + [2] * 10                    # workspace
-    assert budget_table(40, 1, 4) == [4] * 16 + [3] * 9 + [2] * 15          # eng
-    assert budget_table(10, 1, 4) == [4, 4, 4, 4, 3, 3, 3, 2, 2, 2]          # overview
-    assert min(budget_table(20, 1, 4)) == 2                                 # ceil never reaches b_min
+    assert budget_table(20, 1, 4) == [4] * 8 + [3] * 5 + [2] * 7  # coding
+    assert budget_table(20, 1, 3) == [3] * 10 + [2] * 10  # workspace
+    assert budget_table(40, 1, 4) == [4] * 16 + [3] * 9 + [2] * 15  # eng
+    assert budget_table(10, 1, 4) == [4, 4, 4, 4, 3, 3, 3, 2, 2, 2]  # overview
+    assert min(budget_table(20, 1, 4)) == 2  # ceil never reaches b_min
     assert budget_table(10, 1, 4, "floor_at_bmin_last")[-1] == 1
     assert edit_budget(3, 0, 1, 4) == 4
 
@@ -54,7 +69,7 @@ def test_estimator_weights_and_missing():
     per = {"a": TaskResult(rewards=[0.5, 1.0], weights=[10, 10]), "b": TaskResult(rewards=[0.0, 0.0], weights=[90, 90])}
     assert abs(aggregate("w", 2, per).S - 15 / 200) < 1e-9
     ev = aggregate("m", 2, {"a": TaskResult(rewards=[1.0, 0.0], tokens=[100, None], missing=1)})
-    assert ev.S == 0.5 and ev.C == 100 and ev.missing == 1                  # missing -> 0, full denominator
+    assert ev.S == 0.5 and ev.C == 100 and ev.missing == 1  # missing -> 0, full denominator
     assert relative_cost_change(None, 10) == 0.0 and relative_cost_change(12, 10) == pytest.approx(0.2)
 
 
@@ -83,17 +98,17 @@ def test_bootstrap_matches_theory_for_bernoulli():
     m = {f"t{i}": list((rng.random(8) < p[i]).astype(float)) for i in range(200)}
     cal = calibrate([_ev("b", m, 8)], z=2.0, reps=2000)
     theory = math.sqrt(2 * np.mean(p * (1 - p)) / (200 * 8))
-    assert 0.8 * theory < cal["sd_null"] < 1.1 * theory   # plug-in bootstrap is ~6% low at k=8: sqrt((k-1)/k)
+    assert 0.8 * theory < cal["sd_null"] < 1.1 * theory  # plug-in bootstrap is ~6% low at k=8: sqrt((k-1)/k)
 
 
 def test_cost_rule_both_branches():
     cfg = Config(beta0=0.1, beta1=40.0, w_s=100.0, w_c=15.0, w_n=0.5)
-    assert cost_rule(0.05, 0.10 + 40 * 0.05 - 0.01, 0, 0.02, cfg)[0]          # within budget
-    assert not cost_rule(0.05, 0.10 + 40 * 0.05 + 0.01, 0, 0.02, cfg)[0]      # over budget
-    assert cost_rule(0.0, -0.10, 0, 0.02, cfg)[0]                             # neutral, cheaper
-    assert not cost_rule(0.0, 0.10, 0, 0.02, cfg)[0]                          # neutral, costlier
-    assert cost_rule(0.0, 0.0, 1, 0.02, cfg)[0]                               # neutral, new structural
-    coding = Config.preset("coding")                                          # w_s = 0: dC < nu/30
+    assert cost_rule(0.05, 0.10 + 40 * 0.05 - 0.01, 0, 0.02, cfg)[0]  # within budget
+    assert not cost_rule(0.05, 0.10 + 40 * 0.05 + 0.01, 0, 0.02, cfg)[0]  # over budget
+    assert cost_rule(0.0, -0.10, 0, 0.02, cfg)[0]  # neutral, cheaper
+    assert not cost_rule(0.0, 0.10, 0, 0.02, cfg)[0]  # neutral, costlier
+    assert cost_rule(0.0, 0.0, 1, 0.02, cfg)[0]  # neutral, new structural
+    coding = Config.preset("coding")  # w_s = 0: dC < nu/30
     assert not cost_rule(0.015, 0.0, 0, coding.delta, coding)[0]
     assert cost_rule(0.0, 0.03, 1, coding.delta, coding)[0] and not cost_rule(0.0, 0.034, 1, coding.delta, coding)[0]
 
@@ -113,11 +128,11 @@ def test_selection_floor_argmax_and_sstar():
     costly = _cand("E", "prompt", _solved("E", 7, tokens=1000.0 * (1 + 0.1 + 40 * 0.2 + 0.5)))
     win2, decs2 = select_round([costly], inc, 0.55, 0.05, cfg, {})
     assert win2 is None and "cost rule" in decs2[0].reason
-    a.ev.extra["valid_rate"], inc.extra["valid_rate"] = 0.80, 0.95                 # domain guards are non-compensatory
+    a.ev.extra["valid_rate"], inc.extra["valid_rate"] = 0.80, 0.95  # domain guards are non-compensatory
     gates = build_gates(cfg, RegularizerSwitches.full(), [MetricGuard("valid_rate", 0.03)])
     win3, decs3 = select_round([a], inc, 0.55, 0.05, cfg, {}, gates)
     assert win3 is None and "domain guard" in decs3[0].reason
-    worse = _solved("G", 5)                                                      # within-band loss that saves tokens
+    worse = _solved("G", 5)  # within-band loss that saves tokens
     worse.S -= 0.01
     worse.C = 500.0
     cheap = _cand("F", "prompt", worse)
@@ -130,11 +145,12 @@ def test_ablation_gates():
 
     def winner(s_star, delta, switches):
         return select_round([lower], inc, s_star, delta, cfg, {}, build_gates(cfg, switches))[0]
+
     full = RegularizerSwitches.full()
-    assert winner(0.6, 0.05, full) is None                          # floor S* - delta = 0.55 blocks 0.4
-    assert winner(0.6, 0.15, full.but(floor="S_t")) is lower        # S_t floor 0.35 admits the cheaper one
+    assert winner(0.6, 0.05, full) is None  # floor S* - delta = 0.55 blocks 0.4
+    assert winner(0.6, 0.15, full.but(floor="S_t")) is lower  # S_t floor 0.35 admits the cheaper one
     assert winner(0.6, 0.05, full.but(floor="none")) is lower
-    assert winner(0.6, 0.05, RegularizerSwitches.none()) is None    # greedy: only strictly better
+    assert winner(0.6, 0.05, RegularizerSwitches.none()) is None  # greedy: only strictly better
 
 
 def test_history_summaries_prune_and_explore(tmp_path):
@@ -185,18 +201,23 @@ def test_component_normalization_reference_vectors():
 
 def test_taxonomy_from_domain_paths_and_retagging():
     class D:
-        components = {"prompt": ["prompts/*"], "control_flow": ["harness.py"], "tool": ["tools/*"],
-                      "memory": ["memory/*"]}
+        components = {
+            "prompt": ["prompts/*"],
+            "control_flow": ["harness.py"],
+            "tool": ["tools/*"],
+            "memory": ["memory/*"],
+        }
         structural_components = ("tool", "memory")
+
     tax = Taxonomy.from_domain(D())
     assert tax.K == ["prompt", "control_flow", "tool", "memory"] and tax.K_str == ["tool", "memory"]
     a = Artifact({"harness.py": "def solve():\n    return 1\n", "prompts/s.md": "hi\n"})
     d = a.diff(a.with_files({"prompts/s.md": "hi\nThink step by step.\n"}))
-    assert tax.normalize("memory", d) == "prompt"                 # no memory evidence: re-tagged
-    assert tax.normalize("client_tool", a.diff(a.with_files({"tools/calc.py": "x = 1\n"}))) == "tool"   # alias
+    assert tax.normalize("memory", d) == "prompt"  # no memory evidence: re-tagged
+    assert tax.normalize("client_tool", a.diff(a.with_files({"tools/calc.py": "x = 1\n"}))) == "tool"  # alias
     c = a.with_files({"harness.py": "def solve():\n    return 2\n", "memory/m.py": "M = {}\n"})
     assert tax.normalize("memory", a.diff(c)) == "memory"
-    assert tax.classify(a.diff(c)) == "memory"                    # structural paths first
+    assert tax.classify(a.diff(c)) == "memory"  # structural paths first
     assert tax.novelty(["tool", "prompt"], {}) == 1
 
 
@@ -205,12 +226,31 @@ def test_config_presets_and_roundtrip(tmp_path):
     p.write_text(json.dumps({"T": 7, "k": 3, "beta1": 12.5, "custom": "x"}))
     cfg = Config.load(p, T=None, k=5)
     assert cfg.T == 7 and cfg.k == 5 and cfg.beta1 == 12.5 and cfg.notes["custom"] == "x"
-    for name, (delta, beta1, w_s) in {"coding": (0.017, 44.5, 0.0), "workspace": (0.004, 35.4, 1414.0),
-                                      "eng": (0.020, 24.4, 244.0)}.items():
+    for name, (delta, beta1, w_s) in {
+        "coding": (0.017, 44.5, 0.0),
+        "workspace": (0.004, 35.4, 1414.0),
+        "eng": (0.020, 24.4, 244.0),
+    }.items():
         c = Config.preset(name)
         assert (c.delta, c.beta1, c.w_s) == (delta, beta1, w_s)
     d = Config()
-    assert (d.T, d.k, d.m, d.b_min, d.b_max, d.w, d.m_draft, d.delta, d.delta_z, d.beta0, d.beta1, d.w_s, d.w_c,
-            d.w_n, d.n_prune, d.repair_rounds, d.invalid_missing_frac) == (20, 2, 2, 1, 4, 3, 1, None, 2.0, 0.10,
-                                                                           40.0, 100.0, 15.0, 0.5, 4, 5, 0.15)
+    assert (
+        d.T,
+        d.k,
+        d.m,
+        d.b_min,
+        d.b_max,
+        d.w,
+        d.m_draft,
+        d.delta,
+        d.delta_z,
+        d.beta0,
+        d.beta1,
+        d.w_s,
+        d.w_c,
+        d.w_n,
+        d.n_prune,
+        d.repair_rounds,
+        d.invalid_missing_frac,
+    ) == (20, 2, 2, 1, 4, 3, 1, None, 2.0, 0.10, 40.0, 100.0, 15.0, 0.5, 4, 5, 0.15)
     assert Config.from_dict(d.dump()) == d and K[0] == "prompt"

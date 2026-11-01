@@ -1,9 +1,10 @@
 """Leakage critic: a denylist scan of a diff's added lines, then an optional LLM review; it never sees scores."""
+
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, Sequence
 
 from .llm import LLM, extract_json
 
@@ -40,7 +41,7 @@ Reply with a JSON object: {{"verdict": "accept" | "reject", "objections": ["..."
 class CriticVerdict:
     accept: bool
     objections: list[str] = field(default_factory=list)
-    stage: str = "none"     # "denylist" | "llm" | "none"
+    stage: str = "none"  # "denylist" | "llm" | "none"
     hits: list[str] = field(default_factory=list)
 
 
@@ -64,21 +65,28 @@ def added_lines(diff: str) -> str:
                 old_left -= 1
                 new_left -= 1
                 continue
-            if line.startswith("\\"):   # "\ No newline at end of file"
+            if line.startswith("\\"):  # "\ No newline at end of file"
                 continue
-            old_left = new_left = 0     # malformed counts: leave the hunk
+            old_left = new_left = 0  # malformed counts: leave the hunk
         m = _HUNK.match(line)
         if m:
             old_left, new_left = (int(g) if g is not None else 1 for g in m.groups())
         elif line.startswith("+") and not line.startswith("+++"):
-            out.append(line[1:])        # header-less diffs are still screened
+            out.append(line[1:])  # header-less diffs are still screened
     return "\n".join(out)
 
 
 class LeakageCritic:
-    def __init__(self, terms: Iterable[str] = (), patterns: Sequence[str] = (), llm: Optional[LLM] = None,
-                 domain_brief: str = "", min_term_len: int = 4, case_sensitive: bool = False,
-                 parse_attempts: int = 3) -> None:
+    def __init__(
+        self,
+        terms: Iterable[str] = (),
+        patterns: Sequence[str] = (),
+        llm: LLM | None = None,
+        domain_brief: str = "",
+        min_term_len: int = 4,
+        case_sensitive: bool = False,
+        parse_attempts: int = 3,
+    ) -> None:
         self.terms = sorted({str(t) for t in terms if len(str(t)) >= min_term_len}, key=lambda t: (-len(t), t))
         self.patterns = [re.compile(p) for p in patterns]
         self.llm = llm
@@ -92,8 +100,11 @@ class LeakageCritic:
         text = added_lines(diff)
         hay = text if self.case_sensitive else text.lower()
         # whole-token match: "12" fires on neither "120" nor "3.12" nor "12.5" (a sentence-ending "12." does)
-        hits = [t for t in self.terms if re.search(
-            r"(?<![\w.])" + re.escape(t if self.case_sensitive else t.lower()) + r"(?!\w)(?!\.\d)", hay)]
+        hits = [
+            t
+            for t in self.terms
+            if re.search(r"(?<![\w.])" + re.escape(t if self.case_sensitive else t.lower()) + r"(?!\w)(?!\.\d)", hay)
+        ]
         return hits + [f"/{p.pattern}/" for p in self.patterns if p.search(text)]
 
     def screen(self, diff: str, change: str = "") -> CriticVerdict:
@@ -105,8 +116,9 @@ class LeakageCritic:
             return CriticVerdict(False, objections, "denylist", hits)
         if self.llm is None:
             return CriticVerdict(True, [], "none")
-        prompt = CRITIC_PROMPT.format(domain=self.domain_brief or "(none)", change=change or "(none)",
-                                      diff=diff[:30000])
+        prompt = CRITIC_PROMPT.format(
+            domain=self.domain_brief or "(none)", change=change or "(none)", diff=diff[:30000]
+        )
         for attempt in range(self.parse_attempts):
             resp = self.llm.complete(prompt, system=CRITIC_SYSTEM, seed=attempt, role="critic")
             try:
@@ -120,5 +132,5 @@ class LeakageCritic:
                 return CriticVerdict(ok, [str(o) for o in objections], "llm")
             except (ValueError, AttributeError):
                 continue
-        self.n_rejected += 1   # unparseable reviews fail closed
+        self.n_rejected += 1  # unparseable reviews fail closed
         return CriticVerdict(False, ["critic output unparseable"], "llm")

@@ -1,35 +1,151 @@
 """RuleWorld: a simulated multi-module assistant whose accuracy depends on the rules its prompts state."""
+
 from __future__ import annotations
 
 import hashlib
 import random
 import re
 import threading
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Optional, Sequence
 
-ASPECTS = ["fragile", "perishable", "oversized", "hazardous", "international", "insured", "prepaid", "backordered",
-           "refurbished", "bulk", "gift", "subscription", "rural", "express", "holiday", "warranty", "recalled",
-           "customized", "lithium", "frozen", "liquid", "luxury", "returned", "embargoed"]
-CODES = ["cobalt", "basalt", "obsidian", "saffron", "juniper", "cypress", "garnet", "jasper", "ochre", "umber",
-         "sienna", "vermilion", "cerulean", "chartreuse", "magenta", "turquoise", "aquamarine", "periwinkle",
-         "mahogany", "walnut", "sycamore", "hawthorn", "alder", "hemlock", "tamarack", "larch", "sequoia", "acacia",
-         "banyan", "baobab", "ginkgo", "magnolia", "wisteria", "camellia", "gardenia", "hibiscus", "jasmine",
-         "lavender", "marigold", "peony", "zinnia", "dahlia", "begonia", "azalea", "freesia", "primrose", "bluebell",
-         "foxglove", "thistle", "fennel", "anise", "cardamom", "cumin", "nutmeg", "paprika", "tarragon", "oregano",
-         "chervil", "sorrel", "quartz", "feldspar", "beryl", "zircon", "topaz", "onyx", "agate", "malachite",
-         "lapis", "citrine", "peridot", "tourmaline", "spinel", "tanzanite", "amethyst", "carnelian", "hematite",
-         "pyrite", "gypsum", "dolomite", "granite", "marble", "shale", "gneiss", "schist", "pumice", "tungsten",
-         "nickel", "bismuth", "iridium", "osmium", "rhodium", "palladium", "titanium", "vanadium", "chromium",
-         "gallium", "indium", "hafnium", "niobium", "yttrium"]
+ASPECTS = [
+    "fragile",
+    "perishable",
+    "oversized",
+    "hazardous",
+    "international",
+    "insured",
+    "prepaid",
+    "backordered",
+    "refurbished",
+    "bulk",
+    "gift",
+    "subscription",
+    "rural",
+    "express",
+    "holiday",
+    "warranty",
+    "recalled",
+    "customized",
+    "lithium",
+    "frozen",
+    "liquid",
+    "luxury",
+    "returned",
+    "embargoed",
+]
+CODES = [
+    "cobalt",
+    "basalt",
+    "obsidian",
+    "saffron",
+    "juniper",
+    "cypress",
+    "garnet",
+    "jasper",
+    "ochre",
+    "umber",
+    "sienna",
+    "vermilion",
+    "cerulean",
+    "chartreuse",
+    "magenta",
+    "turquoise",
+    "aquamarine",
+    "periwinkle",
+    "mahogany",
+    "walnut",
+    "sycamore",
+    "hawthorn",
+    "alder",
+    "hemlock",
+    "tamarack",
+    "larch",
+    "sequoia",
+    "acacia",
+    "banyan",
+    "baobab",
+    "ginkgo",
+    "magnolia",
+    "wisteria",
+    "camellia",
+    "gardenia",
+    "hibiscus",
+    "jasmine",
+    "lavender",
+    "marigold",
+    "peony",
+    "zinnia",
+    "dahlia",
+    "begonia",
+    "azalea",
+    "freesia",
+    "primrose",
+    "bluebell",
+    "foxglove",
+    "thistle",
+    "fennel",
+    "anise",
+    "cardamom",
+    "cumin",
+    "nutmeg",
+    "paprika",
+    "tarragon",
+    "oregano",
+    "chervil",
+    "sorrel",
+    "quartz",
+    "feldspar",
+    "beryl",
+    "zircon",
+    "topaz",
+    "onyx",
+    "agate",
+    "malachite",
+    "lapis",
+    "citrine",
+    "peridot",
+    "tourmaline",
+    "spinel",
+    "tanzanite",
+    "amethyst",
+    "carnelian",
+    "hematite",
+    "pyrite",
+    "gypsum",
+    "dolomite",
+    "granite",
+    "marble",
+    "shale",
+    "gneiss",
+    "schist",
+    "pumice",
+    "tungsten",
+    "nickel",
+    "bismuth",
+    "iridium",
+    "osmium",
+    "rhodium",
+    "palladium",
+    "titanium",
+    "vanadium",
+    "chromium",
+    "gallium",
+    "indium",
+    "hafnium",
+    "niobium",
+    "yttrium",
+]
 FAMILIES = ["retail", "wholesale", "government", "nonprofit", "education", "medical"]
 STANDARD = "standard"
 GARBLED = "unclear"
 TICKET_RE = re.compile(r"\bT-\d{4}\b")
 
-SEED_TEXT = ("You are the {module} module of an order-fulfilment assistant. For each order property you handle, "
-             "output '<property>: <protocol>'.\nUse the standard protocol when no rule applies.\n")
-
+SEED_TEXT = (
+    "You are the {module} module of an order-fulfilment assistant. For each order property you handle, "
+    "output '<property>: <protocol>'.\nUse the standard protocol when no rule applies.\n"
+)
 
 
 @dataclass
@@ -37,17 +153,17 @@ class WorldConfig:
     modules: tuple[str, ...] = ("triage", "reply")
     n_aspects: int = 16
     n_families: int = 4
-    n_conflict: int = 2              # aspects whose correct code differs between family halves
-    n_variants: int = 3              # candidate protocols per aspect (1-2 correct, rest decoys)
+    n_conflict: int = 2  # aspects whose correct code differs between family halves
+    n_variants: int = 3  # candidate protocols per aspect (1-2 correct, rest decoys)
     aspects_per_example: tuple[int, int] = (2, 4)
-    family_bias: float = 0.75        # P(an aspect slot is drawn from the family's home pool)
-    p_conflict: float = 0.5          # P(an example includes each conflict aspect)
-    slip: float = 0.05               # per-module garbling probability per rollout
-    capacity: int = 16               # prompt lines per module before dilution
-    dilution: float = 0.02           # adherence loss per line beyond capacity
-    p_demo: float = 0.35             # P(imitating one matching demo)
-    n_interfering: int = 0           # aspects whose general rule bleeds into a victim aspect
-    scoring: str = "partial"         # partial: fraction of aspects right | binary: all right
+    family_bias: float = 0.75  # P(an aspect slot is drawn from the family's home pool)
+    p_conflict: float = 0.5  # P(an example includes each conflict aspect)
+    slip: float = 0.05  # per-module garbling probability per rollout
+    capacity: int = 16  # prompt lines per module before dilution
+    dilution: float = 0.02  # adherence loss per line beyond capacity
+    p_demo: float = 0.35  # P(imitating one matching demo)
+    n_interfering: int = 0  # aspects whose general rule bleeds into a victim aspect
+    scoring: str = "partial"  # partial: fraction of aspects right | binary: all right
     n_train: int = 30
     n_val: int = 30
     n_test: int = 300
@@ -61,8 +177,8 @@ class WorldConfig:
 class Aspect:
     name: str
     module: str
-    home: Optional[int]                     # home family index (None for conflict aspects)
-    codes: tuple[str, ...]                  # lexicon variants, decoys included
+    home: int | None  # home family index (None for conflict aspects)
+    codes: tuple[str, ...]  # lexicon variants, decoys included
     conflict: bool = False
 
     def correct(self, family_idx: int, n_families: int) -> str:
@@ -75,7 +191,7 @@ class Example:
     ticket: str
     family: str
     aspects: tuple[str, ...]
-    target: dict                             # aspect -> correct code
+    target: dict  # aspect -> correct code
     text: str
 
     @property
@@ -87,9 +203,9 @@ class Example:
 class ModuleView:
     """What the simulated model understands from one module prompt."""
 
-    rules: dict = field(default_factory=dict)    # aspect -> list[(code, frozenset(families))]
-    facts: dict = field(default_factory=dict)    # ticket -> {aspect: code}
-    demos: list = field(default_factory=list)    # list[(family or None, {aspect: code})]
+    rules: dict = field(default_factory=dict)  # aspect -> list[(code, frozenset(families))]
+    facts: dict = field(default_factory=dict)  # ticket -> {aspect: code}
+    demos: list = field(default_factory=list)  # list[(family or None, {aspect: code})]
     n_lines: int = 0
 
 
@@ -107,7 +223,7 @@ class RuleWorld:
     Conflict aspects need different codes for the two family halves.
     """
 
-    def __init__(self, cfg: Optional[WorldConfig] = None) -> None:
+    def __init__(self, cfg: WorldConfig | None = None) -> None:
         self.cfg = cfg = cfg or WorldConfig()
         if cfg.n_aspects > len(ASPECTS) or cfg.n_families > len(FAMILIES):
             raise ValueError("too many aspects or families for the lexicon")
@@ -123,14 +239,25 @@ class RuleWorld:
         for i, name in enumerate(names[: cfg.n_aspects]):
             conflict = i < cfg.n_conflict
             home = None if conflict else (i - cfg.n_conflict) % cfg.n_families
-            self.aspects[name] = Aspect(name, cfg.modules[i % len(cfg.modules)], home,
-                                        tuple(codes[i * cfg.n_variants:(i + 1) * cfg.n_variants]), conflict)
+            self.aspects[name] = Aspect(
+                name,
+                cfg.modules[i % len(cfg.modules)],
+                home,
+                tuple(codes[i * cfg.n_variants : (i + 1) * cfg.n_variants]),
+                conflict,
+            )
         self.code_owner = {c: a.name for a in self.aspects.values() for c in a.codes}
-        self.bleeds: dict[str, str] = {}         # interfering aspect -> victim (same module, other home family)
+        self.bleeds: dict[str, str] = {}  # interfering aspect -> victim (same module, other home family)
         normal = [a for a in self.aspects.values() if not a.conflict]
         for a in normal[: cfg.n_interfering]:
-            victims = [b.name for b in normal if b.module == a.module and b.home != a.home
-                       and b.name not in self.bleeds and b.name not in self.bleeds.values()]
+            victims = [
+                b.name
+                for b in normal
+                if b.module == a.module
+                and b.home != a.home
+                and b.name not in self.bleeds
+                and b.name not in self.bleeds.values()
+            ]
             if victims:
                 self.bleeds[a.name] = rng.choice(victims)
         self.victim_of = {v: a for a, v in self.bleeds.items()}
@@ -188,8 +315,10 @@ class RuleWorld:
         used.add(ticket)
         target = {a: self.aspects[a].correct(fam_i, cfg.n_families) for a in chosen}
         props = ", ".join(chosen[:-1]) + (" and " if len(chosen) > 1 else "") + chosen[-1]
-        text = (f"Ticket {ticket} ({self.families[fam_i]} customer): the order is {props}. "
-                f"Choose the handling protocol for each order property.")
+        text = (
+            f"Ticket {ticket} ({self.families[fam_i]} customer): the order is {props}. "
+            f"Choose the handling protocol for each order property."
+        )
         return Example(eid, ticket, self.families[fam_i], tuple(chosen), target, text)
 
     def parse_module(self, text: str) -> ModuleView:
@@ -243,8 +372,9 @@ class RuleWorld:
                 return [(bleed[0], 1.0)], f"applied the {src} rule by mistake"
         codes = specific or general
         if codes:
-            why = ("conditioned rule" if specific else "general rule") + (" (contradictory rules)" if len(codes) > 1
-                                                                            else "")
+            why = ("conditioned rule" if specific else "general rule") + (
+                " (contradictory rules)" if len(codes) > 1 else ""
+            )
             return [(c, 1.0 / len(codes)) for c in codes], why
         demo_codes = [pairs[aspect] for fam, pairs in view.demos if aspect in pairs]
         if demo_codes:
@@ -274,7 +404,7 @@ class RuleWorld:
         if self.cfg.scoring == "partial":
             return float(sum(pc.values()) / len(pc))
         prob = 1.0
-        for m in self.cfg.modules:        # binary: one slip draw per module
+        for m in self.cfg.modules:  # binary: one slip draw per module
             asp = self._module_aspects(ex, m)
             if not asp:
                 continue
@@ -315,10 +445,16 @@ class RuleWorld:
                     code, why = GARBLED, "output garbled"
                 out[a] = code
                 decisions.append(f"{a} -> {code} ({why})")
-            upstream = "" if m == self.cfg.modules[0] else " | upstream notes: " + "; ".join(
-                f"{a}: {out[a]}" for a in ex.aspects if self.aspects[a].module != m and a in out)
-            lines.append(f"[{m}] prompt lines={vs[m].n_lines}{upstream}\n[{m}] decisions: " +
-                         ("; ".join(decisions) if decisions else "(nothing to handle)"))
+            upstream = (
+                ""
+                if m == self.cfg.modules[0]
+                else " | upstream notes: "
+                + "; ".join(f"{a}: {out[a]}" for a in ex.aspects if self.aspects[a].module != m and a in out)
+            )
+            lines.append(
+                f"[{m}] prompt lines={vs[m].n_lines}{upstream}\n[{m}] decisions: "
+                + ("; ".join(decisions) if decisions else "(nothing to handle)")
+            )
         return out, "\n".join(lines)
 
     def seed_files(self) -> dict[str, str]:
@@ -332,7 +468,7 @@ class RuleWorld:
             lines = [files[self.module_path(m)].rstrip("\n")]
             for a in self.aspects_of(m):
                 asp = self.aspects[a]
-                if a in self.bleeds and conditioned:        # scoped so it cannot bleed
+                if a in self.bleeds and conditioned:  # scoped so it cannot bleed
                     lines.append(self.rule_text(a, asp.codes[0], self.families))
                 elif asp.conflict and conditioned:
                     lines.append(self.rule_text(a, asp.codes[0], self.families[:half]))
@@ -350,8 +486,11 @@ class RuleWorld:
             asp = self.aspects[a]
             out += [self.rule_text(a, c) for c in asp.codes]
             if asp.conflict:
-                out += [self.rule_text(a, c, fams) for fams in (self.families[:half], self.families[half:])
-                        for c in asp.codes]
+                out += [
+                    self.rule_text(a, c, fams)
+                    for fams in (self.families[:half], self.families[half:])
+                    for c in asp.codes
+                ]
         return out
 
     def count_facts(self, files: dict) -> int:

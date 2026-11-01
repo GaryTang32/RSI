@@ -2,6 +2,7 @@
 
 Run after E2c: python experiments/rrsi/e15_metaharness_rival.py [--seeds 100] [--workers 2] [--T 20]
 """
+
 import argparse
 import json
 import random
@@ -19,7 +20,7 @@ from rsi.metaharness import Config as MHConfig
 from rsi.metaharness import run as mh_run
 from rsi.metaharness.proposer import CandidateSpec, ProposalBatch, Proposer
 
-EDIT_CAP = 4                     # Meta-Harness itself has none; 4 = RRSI's default b_max
+EDIT_CAP = 4  # Meta-Harness itself has none; 4 = RRSI's default b_max
 
 
 class HWMetaHarnessProposer(Proposer):
@@ -30,7 +31,7 @@ class HWMetaHarnessProposer(Proposer):
         self.seed = seed
         self.explore_frac = explore_frac
         self.history_compliance = history_compliance
-        self.drawer = HarnessWorldMockLLM(world, ProposerProfile())      # the RRSI mock's _draw (shares, family bias)
+        self.drawer = HarnessWorldMockLLM(world, ProposerProfile())  # the RRSI mock's _draw (shares, family bias)
         self.pp = self.drawer.pp
 
     def _read(self, view: dict) -> list[dict]:
@@ -39,8 +40,9 @@ class HWMetaHarnessProposer(Proposer):
             if not path.startswith("candidates/"):
                 continue
             _, name, rest = path.split("/", 2)
-            c = cands.setdefault(name, {"name": name, "files": {}, "score": None, "cost": None, "families": {},
-                                        "meta": {}})
+            c = cands.setdefault(
+                name, {"name": name, "files": {}, "score": None, "cost": None, "families": {}, "meta": {}}
+            )
             if rest.startswith("src/"):
                 c["files"][rest[4:]] = text
             elif rest == "eval/search/scores.json":
@@ -54,8 +56,9 @@ class HWMetaHarnessProposer(Proposer):
         rng = random.Random(f"hw-mh|{self.seed}|{seed}|{iteration}")
         seen = self._read(view)
         batch = ProposalBatch()
-        scored = sorted([c for c in seen if c["score"] is not None],
-                        key=lambda c: (-c["score"], c["cost"] or 0, c["name"]))
+        scored = sorted(
+            [c for c in seen if c["score"] is not None], key=lambda c: (-c["score"], c["cost"] or 0, c["name"])
+        )
         if not scored:
             batch.error = "no scored candidate"
             return batch
@@ -63,11 +66,14 @@ class HWMetaHarnessProposer(Proposer):
         front = []
         if "frontier_val.json" in view:
             try:
-                front = [p["system"] for p in json.loads(view["frontier_val.json"]).get("_pareto", [])
-                         if p.get("system") in by]
+                front = [
+                    p["system"]
+                    for p in json.loads(view["frontier_val.json"]).get("_pareto", [])
+                    if p.get("system") in by
+                ]
             except (ValueError, TypeError):
                 front = []
-        regressed = set()                                    # mechanisms whose visible application lowered the score
+        regressed = set()  # mechanisms whose visible application lowered the score
         for c in seen:
             base = by.get(c["meta"].get("base_system", ""))
             if base and c["score"] is not None and base["score"] is not None and c["score"] < base["score"]:
@@ -97,10 +103,17 @@ class HWMetaHarnessProposer(Proposer):
             for m in chosen:
                 files[m.path] = m.file_text()
             ids = [m.id for m in chosen]
-            out.append(CandidateSpec(f"i{iteration:02d}_{slot}_{'_'.join(ids)}", Artifact(files),
-                                     hypothesis="; ".join(f"[{m.id}] {m.title}" for m in chosen),
-                                     axis="exploitation" if slot == 0 else "exploration", components=ids,
-                                     base_system=parent["name"], parents_read=[parent["name"]]))
+            out.append(
+                CandidateSpec(
+                    f"i{iteration:02d}_{slot}_{'_'.join(ids)}",
+                    Artifact(files),
+                    hypothesis="; ".join(f"[{m.id}] {m.title}" for m in chosen),
+                    axis="exploitation" if slot == 0 else "exploration",
+                    components=ids,
+                    base_system=parent["name"],
+                    parents_read=[parent["name"]],
+                )
+            )
         batch.candidates = out
         return batch
 
@@ -114,9 +127,19 @@ def one(job: dict) -> dict:
     t0 = time.time()
     seed_art = Artifact(dom.seed_artifact().files, {"name": "seed"})
     # validate_in_subprocess=False: HarnessWorld harnesses cannot hang, so the fork only costs time
-    cfg = MHConfig(iterations=job["T"], k=2, trials=2, objectives=("score", "context_cost"), cost_metric="tokens",
-                   search_split="evolve", finalize=False, trace=False, shadow_monitor=False,
-                   validate_in_subprocess=False, seed=seed)
+    cfg = MHConfig(
+        iterations=job["T"],
+        k=2,
+        trials=2,
+        objectives=("score", "context_cost"),
+        cost_metric="tokens",
+        search_split="evolve",
+        finalize=False,
+        trace=False,
+        shadow_monitor=False,
+        validate_in_subprocess=False,
+        seed=seed,
+    )
     res = mh_run(dom, seed_art, config=cfg, out_dir=out, proposer=HWMetaHarnessProposer(w, seed=seed))
     h0, fin = res.baseline, res.best
     m = {"seed": seed, "label": "Meta-Harness", "wall_s": time.time() - t0}
@@ -153,15 +176,31 @@ def main():
     ap.add_argument("--rrsi", default=str(RESULTS / "e2c_ablations_workspace.json"))
     a = ap.parse_args()
     rows = pmap(one, [{"seed": s, "T": a.T} for s in range(a.seeds)], a.workers)
-    keep = {"full": "RRSI (full)", "unregularized": "unregularized", "-proposal": "-proposal",
-            "-acceptance": "-acceptance"}
-    rr = [dict(r, label=keep[r["label"]], steps_proxy=1 + r["n_mechanisms"])
-          for r in json.loads(Path(a.rrsi).read_text())["rows"] if r["label"] in keep and r["seed"] < a.seeds]
+    keep = {
+        "full": "RRSI (full)",
+        "unregularized": "unregularized",
+        "-proposal": "-proposal",
+        "-acceptance": "-acceptance",
+    }
+    rr = [
+        dict(r, label=keep[r["label"]], steps_proxy=1 + r["n_mechanisms"])
+        for r in json.loads(Path(a.rrsi).read_text())["rows"]
+        if r["label"] in keep and r["seed"] < a.seeds
+    ]
     allrows = rows + rr
-    metrics = ("measured_gain", "evolve_gain", "holdout_gain", "ood_gain", "token_ratio", "steps_proxy",
-               "n_mechanisms", "leaks_in_final", "evals_on_leaky")
+    metrics = (
+        "measured_gain",
+        "evolve_gain",
+        "holdout_gain",
+        "ood_gain",
+        "token_ratio",
+        "steps_proxy",
+        "n_mechanisms",
+        "leaks_in_final",
+        "evals_on_leaky",
+    )
     summ = summarize(allrows, metrics=metrics)
-    pd = pairs(allrows, "Meta-Harness", "RRSI (full)", metrics)          # RRSI - MH
+    pd = pairs(allrows, "Meta-Harness", "RRSI (full)", metrics)  # RRSI - MH
     ev = {x: s["measured_gain"]["mean"] for x, s in summ.items()}
     ood = {x: s["ood_gain"]["mean"] for x, s in summ.items()}
     checks = {
@@ -177,10 +216,22 @@ def main():
         "L31: MH keeps more leaky mechanisms than RRSI (RRSI - MH CI < 0)": pd["leaks_in_final"]["hi"] < 0,
         "L31: MH spends more evaluations on leaky candidates (RRSI - MH CI < 0)": pd["evals_on_leaky"]["hi"] < 0,
     }
-    out = {"experiment": "E15 Meta-Harness rival on HarnessWorld (retry round 2: P5)",
-           "config": {"seeds": a.seeds, "iterations": a.T, "k": 2, "trials": 2, "edit_cap": EDIT_CAP,
-                      "rrsi_rows": a.rrsi, "mh_defaults": "full history, no leakage screen, best = top search score"},
-           "summary": summ, "paired_rrsi_minus_mh": pd, "checks": checks, "rows": rows}
+    out = {
+        "experiment": "E15 Meta-Harness rival on HarnessWorld (retry round 2: P5)",
+        "config": {
+            "seeds": a.seeds,
+            "iterations": a.T,
+            "k": 2,
+            "trials": 2,
+            "edit_cap": EDIT_CAP,
+            "rrsi_rows": a.rrsi,
+            "mh_defaults": "full history, no leakage screen, best = top search score",
+        },
+        "summary": summ,
+        "paired_rrsi_minus_mh": pd,
+        "checks": checks,
+        "rows": rows,
+    }
     save("e15_metaharness_rival", out)
     for lab, s in summ.items():
         print(lab, {m: round(s[m]["mean"] * (100 if m.endswith("gain") else 1), 2) for m in metrics})

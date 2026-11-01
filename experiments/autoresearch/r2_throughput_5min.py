@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/r2_throughput_5min.py --arm scripted|agent [--budget 300] [--experiments 3]
 """
+
 from _common import SCRATCH, write  # noqa: I001
 
 import argparse
@@ -40,8 +41,16 @@ def main() -> None:
     task = TinyLMTask(budget_s=a.budget)
     llm = None if a.arm == "scripted" else CachedLLM(ClaudeCLI("haiku", timeout_s=900), cache)
     # shadow_monitor and hidden_audit are off: upstream has neither
-    cfg = Config(max_experiments=a.experiments, seed=a.seed, shadow_monitor=False, hidden_audit=False, plot=False,
-                 overwrite=True, max_usd=a.max_usd if llm is not None else None, tag=f"r2-tput-{a.arm}")
+    cfg = Config(
+        max_experiments=a.experiments,
+        seed=a.seed,
+        shadow_monitor=False,
+        hidden_audit=False,
+        plot=False,
+        overwrite=True,
+        max_usd=a.max_usd if llm is not None else None,
+        tag=f"r2-tput-{a.arm}",
+    )
     t0 = time.time()
     res = run(task, llm_propose=llm, config=cfg, out_dir=out_dir, editor="agent" if a.arm == "agent" else "rewrite")
     wall = time.time() - t0
@@ -52,23 +61,37 @@ def main() -> None:
     usage = res.usage or {}
     mean_exp = float(np.mean(per_exp)) if per_exp else float("nan")
     out = {
-        "config": {"arm": a.arm, "budget_s": a.budget, "experiments": a.experiments, "seed": a.seed,
-                   "task": "tinylm", "mode": "hardened", "keep_rule": "upstream", "shadow_monitor": False,
-                   "hidden_audit": False, "editor": {"agent": "AgentEditor", "rewrite": "RewriteEditor"}.get(a.arm),
-                   "llm": None if llm is None else "claude-haiku-4-5 (claude -p)"},
-        "decisions": [{k: r.get(k) for k in ("exp", "status", "metric", "description", "wall_s", "t")}
-                      for r in decisions],
-        "per_experiment_loop_s": per_exp, "mean_loop_s": mean_exp,
+        "config": {
+            "arm": a.arm,
+            "budget_s": a.budget,
+            "experiments": a.experiments,
+            "seed": a.seed,
+            "task": "tinylm",
+            "mode": "hardened",
+            "keep_rule": "upstream",
+            "shadow_monitor": False,
+            "hidden_audit": False,
+            "editor": {"agent": "AgentEditor", "rewrite": "RewriteEditor"}.get(a.arm),
+            "llm": None if llm is None else "claude-haiku-4-5 (claude -p)",
+        },
+        "decisions": [
+            {k: r.get(k) for k in ("exp", "status", "metric", "description", "wall_s", "t")} for r in decisions
+        ],
+        "per_experiment_loop_s": per_exp,
+        "mean_loop_s": mean_exp,
         "experiments_per_hour": 3600.0 / mean_exp if per_exp else None,
         "run_wall_s": [r.get("wall_s") for r in decisions],
-        "llm_latency_s": cache_latencies(cache) if llm is not None else [], "total_wall_s": wall,
+        "llm_latency_s": cache_latencies(cache) if llm is not None else [],
+        "total_wall_s": wall,
         "usage": usage.get("_total") if isinstance(usage, dict) else str(usage),
         "results_tsv": (out_dir / "results.tsv").read_text(),
     }
     rate = out["experiments_per_hour"]
-    out["verdict"] = {"experiments_per_hour": rate,
-                      "within_pm15pct_of_12": bool(rate is not None and 10.2 <= rate <= 13.8),
-                      "projected_per_8h_night": None if rate is None else 8 * rate}
+    out["verdict"] = {
+        "experiments_per_hour": rate,
+        "within_pm15pct_of_12": bool(rate is not None and 10.2 <= rate <= 13.8),
+        "projected_per_8h_night": None if rate is None else 8 * rate,
+    }
     write(f"r2_throughput_{a.arm}_{a.budget:g}s", out)
     print(json.dumps(out["verdict"], indent=1), per_exp)
 

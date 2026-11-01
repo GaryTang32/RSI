@@ -1,4 +1,5 @@
 """Combine per-arm live files (results/harness2/live_k*.json) into compare_live.json with paired comparisons."""
+
 import json
 import sys
 from pathlib import Path
@@ -19,9 +20,16 @@ for name, v in arms.items():
     sub = [v["per_task"][t]["submitted"] for t in ids]
     summary[name] = {"acc": bootstrap_ci(sub), "vs_seed": paired_diff_ci(seed, sub)}
 if {"harness2_k1", "harness2_k3"} <= set(arms):
-    summary["k3_minus_k1"] = paired_diff_ci([arms["harness2_k1"]["per_task"][t]["submitted"] for t in ids],
-                                            [arms["harness2_k3"]["per_task"][t]["submitted"] for t in ids])
-out = {"experiment": "harness2_compare_live", "n_common": len(ids), "total_usd": round(sum(v["usd"] for v in arms.values()), 4),
-       "summary": summary, "arms": arms}
+    summary["k3_minus_k1"] = paired_diff_ci(
+        [arms["harness2_k1"]["per_task"][t]["submitted"] for t in ids],
+        [arms["harness2_k3"]["per_task"][t]["submitted"] for t in ids],
+    )
+out = {
+    "experiment": "harness2_compare_live",
+    "n_common": len(ids),
+    "total_usd": round(sum(v["usd"] for v in arms.values()), 4),
+    "summary": summary,
+    "arms": arms,
+}
 (RES / "compare_live.json").write_text(json.dumps(out, indent=1, default=str))
 print(json.dumps({"n_common": len(ids), "total_usd": out["total_usd"], "summary": summary}, indent=1, default=str))

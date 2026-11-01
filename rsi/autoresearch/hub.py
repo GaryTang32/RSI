@@ -1,4 +1,5 @@
 """Collaborative autoresearch ("autoresearch at home"): a file-backed claim/result hub and a swarm participant."""
+
 from __future__ import annotations
 
 import fcntl
@@ -10,10 +11,10 @@ import re
 import threading
 import time
 from collections import Counter
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import Node, new_id
@@ -45,7 +46,7 @@ class NgramCosine:
 
     def _vec(self, s: str) -> Counter:
         s = f"  {' '.join(str(s).lower().split())}  "
-        return Counter(s[i:i + self.n] for i in range(len(s) - self.n + 1))
+        return Counter(s[i : i + self.n] for i in range(len(s) - self.n + 1))
 
     def __call__(self, a: str, b: str) -> float:
         va, vb = self._vec(a), self._vec(b)
@@ -60,11 +61,11 @@ class SanityRule:
     """Plausibility filters for a claimed best (at-home: reject v <= 0, v < 0.5, a jump > 0.1)."""
 
     direction: str = "min"
-    floor: Optional[float] = 0.5        # min-direction: reject values below; max-direction: reject above
-    max_jump: Optional[float] = 0.1
+    floor: float | None = 0.5  # min-direction: reject values below; max-direction: reject above
+    max_jump: float | None = 0.1
     reject_nonpositive: bool = True
 
-    def check(self, v: float, current: Optional[float], jump: bool = True) -> Optional[str]:
+    def check(self, v: float, current: float | None, jump: bool = True) -> str | None:
         if self.reject_nonpositive and v <= 0:
             return f"value {v} <= 0 (likely a crash/bug)"
         if self.floor is not None:
@@ -84,12 +85,23 @@ class SharedHub:
 
     NAMESPACES = ("claims", "results", "best", "hypotheses", "insights")
 
-    def __init__(self, root: str | Path, *, direction: str = "min", metric: str = "val_bpb",
-                 claim_ttl: float = CLAIM_TTL, verify_delay: float = VERIFY_DELAY,
-                 semantic_threshold: float = SEMANTIC_THRESHOLD, similarity: Optional[Callable] = None,
-                 sanity: object = "at-home", verifier: Optional[Callable[[dict], Optional[float]]] = None,
-                 verify_tol: float = 0.0, dedup_on_code: bool = False, now: Callable[[], float] = time.time,
-                 sleep: Callable[[float], None] = time.sleep) -> None:
+    def __init__(
+        self,
+        root: str | Path,
+        *,
+        direction: str = "min",
+        metric: str = "val_bpb",
+        claim_ttl: float = CLAIM_TTL,
+        verify_delay: float = VERIFY_DELAY,
+        semantic_threshold: float = SEMANTIC_THRESHOLD,
+        similarity: Callable | None = None,
+        sanity: object = "at-home",
+        verifier: Callable[[dict], float | None] | None = None,
+        verify_tol: float = 0.0,
+        dedup_on_code: bool = False,
+        now: Callable[[], float] = time.time,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
         self.root = Path(root)
         for ns in self.NAMESPACES:
             (self.root / ns).mkdir(parents=True, exist_ok=True)
@@ -133,7 +145,7 @@ class SharedHub:
         tmp.write_text(json.dumps(value, default=str))
         os.replace(tmp, p)
 
-    def get(self, ns: str, key: str) -> Optional[dict]:
+    def get(self, ns: str, key: str) -> dict | None:
         p = self._path(ns, key)
         try:
             return json.loads(p.read_text())
@@ -169,23 +181,26 @@ class SharedHub:
     def _fresh(self, claim: dict) -> bool:
         return self.now() - float(claim.get("claimed_at", 0)) < self.claim_ttl
 
-    def check_claimed(self, key: str, code_hash: Optional[str] = None) -> bool:
+    def check_claimed(self, key: str, code_hash: str | None = None) -> bool:
         if self.get("results", key) is not None:
             return True
         c = self.get("claims", key)
         if c and self._fresh(c):
             return True
         if self.dedup_on_code and code_hash:
-            return (any(v.get("code_hash") == code_hash and self._fresh(v) for _, v in self.items("claims"))
-                    or any(v.get("code_hash") == code_hash for _, v in self.items("results")))
+            return any(v.get("code_hash") == code_hash and self._fresh(v) for _, v in self.items("claims")) or any(
+                v.get("code_hash") == code_hash for _, v in self.items("results")
+            )
         return False
 
     def check_similar_claimed(self, description: str) -> list[dict]:
-        return [{"description": v.get("description"), "score": score, "agent": v.get("agent_id")}
-                for score, _, v in self.search("claims", description, limit=5)
-                if score >= self.threshold and self._fresh(v)]
+        return [
+            {"description": v.get("description"), "score": score, "agent": v.get("agent_id")}
+            for score, _, v in self.search("claims", description, limit=5)
+            if score >= self.threshold and self._fresh(v)
+        ]
 
-    def claim(self, description: str, agent_id: str, code_hash: Optional[str] = None) -> Optional[str]:
+    def claim(self, description: str, agent_id: str, code_hash: str | None = None) -> str | None:
         """The claim key, or None if taken or similar work is in progress."""
         key = experiment_key(agent_id, description)
         try:
@@ -196,9 +211,19 @@ class SharedHub:
             if sim:
                 self._say(f"{agent_id}: similar work in progress: {sim[0]}")
                 return None
-            self.put("claims", key, {"agent_id": agent_id, "description": description, "experiment_key": key,
-                                     "claimed_at": self.now(), "expected_duration_seconds": 300,
-                                     "status": "claimed", "code_hash": code_hash})
+            self.put(
+                "claims",
+                key,
+                {
+                    "agent_id": agent_id,
+                    "description": description,
+                    "experiment_key": key,
+                    "claimed_at": self.now(),
+                    "expected_duration_seconds": 300,
+                    "status": "claimed",
+                    "code_hash": code_hash,
+                },
+            )
             if self.verify_delay:
                 self.sleep(self.verify_delay)
             c = self.get("claims", key)
@@ -213,16 +238,38 @@ class SharedHub:
     def _better(self, a: float, b: float) -> bool:
         return a < b if self.direction == "min" else a > b
 
-    def publish_result(self, key: str, agent_id: str, value: float, memory_gb: float, status: str,
-                       description: str, source: dict[str, str], *, tier: Optional[str] = None,
-                       code_hash: Optional[str] = None, extra: Optional[dict] = None) -> dict:
+    def publish_result(
+        self,
+        key: str,
+        agent_id: str,
+        value: float,
+        memory_gb: float,
+        status: str,
+        description: str,
+        source: dict[str, str],
+        *,
+        tier: str | None = None,
+        code_hash: str | None = None,
+        extra: dict | None = None,
+    ) -> dict:
         gb = self.global_best_value()
         ab = (self.get("best", f"agent__{slugify(agent_id, 20)}") or {}).get(self.metric)
-        rec = {"agent_id": agent_id, self.metric: value, "memory_gb": memory_gb, "vram_tier": tier, "status": status,
-               "description": description, "source": dict(source), "completed_at": self.now(),
-               "delta_vs_best": (value - gb) if gb is not None else None, "global_best_at_publish": gb,
-               "delta_vs_own_best": (value - ab) if ab is not None else None, "agent_best_at_publish": ab,
-               "code_hash": code_hash, **(extra or {})}
+        rec = {
+            "agent_id": agent_id,
+            self.metric: value,
+            "memory_gb": memory_gb,
+            "vram_tier": tier,
+            "status": status,
+            "description": description,
+            "source": dict(source),
+            "completed_at": self.now(),
+            "delta_vs_best": (value - gb) if gb is not None else None,
+            "global_best_at_publish": gb,
+            "delta_vs_own_best": (value - ab) if ab is not None else None,
+            "agent_best_at_publish": ab,
+            "code_hash": code_hash,
+            **(extra or {}),
+        }
         self.put("results", key, rec)
         flags = {"global": False, "tier": False, "agent": False}
         if status == "keep":
@@ -238,11 +285,20 @@ class SharedHub:
             cur = (self.get("best", k) or {}).get(self.metric)
             if cur is not None and not self._better(value, cur):
                 return False
-            self.put("best", k, {"agent_id": agent_id, self.metric: value, "description": rec["description"],
-                                 "achieved_at": self.now(), "previous_best": cur})
+            self.put(
+                "best",
+                k,
+                {
+                    "agent_id": agent_id,
+                    self.metric: value,
+                    "description": rec["description"],
+                    "achieved_at": self.now(),
+                    "previous_best": cur,
+                },
+            )
         return True
 
-    def global_best_value(self) -> Optional[float]:
+    def global_best_value(self) -> float | None:
         m = self.get("best", "metadata")
         return None if m is None else m.get(self.metric)
 
@@ -260,8 +316,12 @@ class SharedHub:
                 return False
         if self.verifier is not None:
             verified = self.verifier(source)
-            if verified is None or (cur is not None and not self._better(verified, cur)) or \
-                    abs(verified - value) > self.verify_tol and self._better(value, verified):
+            if (
+                verified is None
+                or (cur is not None and not self._better(verified, cur))
+                or abs(verified - value) > self.verify_tol
+                and self._better(value, verified)
+            ):
                 self._say(f"REJECTED best update: claimed {value:.6f}, independent re-run gave {verified}")
                 return False
             value = verified if self._better(value, verified) else value
@@ -271,10 +331,18 @@ class SharedHub:
                 self._say("lost best-update race")
                 return False
             self.put("best", "train_py", {"source": dict(source)})
-            self.put("best", "metadata", {**{k: v for k, v in rec.items() if k != "source"}, self.metric: value,
-                                          "achieved_at": self.now(), "previous_best": cur2,
-                                          "previous_best_by": cur_meta.get("agent_id"),
-                                          "verified": self.verifier is not None})
+            self.put(
+                "best",
+                "metadata",
+                {
+                    **{k: v for k, v in rec.items() if k != "source"},
+                    self.metric: value,
+                    "achieved_at": self.now(),
+                    "previous_best": cur2,
+                    "previous_best_by": cur_meta.get("agent_id"),
+                    "verified": self.verifier is not None,
+                },
+            )
             self._leaderboard(rec, value)
         return True
 
@@ -286,19 +354,28 @@ class SharedHub:
         if cur is not None and not self._better(value, cur):
             return False
         self.put("best", f"tier__{tier}__train_py", {"source": dict(source)})
-        self.put("best", f"tier__{tier}__metadata", {**{k: v for k, v in rec.items() if k != "source"},
-                                                     self.metric: value, "previous_best": cur})
+        self.put(
+            "best",
+            f"tier__{tier}__metadata",
+            {**{k: v for k, v in rec.items() if k != "source"}, self.metric: value, "previous_best": cur},
+        )
         return True
 
     def _leaderboard(self, rec: dict, value: float) -> None:
         p = self.root / "leaderboard.json"
         lb = json.loads(p.read_text()) if p.exists() else {"entries": []}
-        lb["entries"].append({"agent_id": rec.get("agent_id"), self.metric: value,
-                              "description": rec.get("description"), "t": self.now()})
+        lb["entries"].append(
+            {
+                "agent_id": rec.get("agent_id"),
+                self.metric: value,
+                "description": rec.get("description"),
+                "t": self.now(),
+            }
+        )
         lb["updated_at"] = self.now()
         self._write(p, lb)
 
-    def pull_best_config(self, tier: Optional[str] = None) -> Optional[tuple[dict, dict]]:
+    def pull_best_config(self, tier: str | None = None) -> tuple[dict, dict] | None:
         """(source files, metadata) of the tier best, else the global best."""
         if tier:
             m, c = self.get("best", f"tier__{tier}__metadata"), self.get("best", f"tier__{tier}__train_py")
@@ -311,17 +388,42 @@ class SharedHub:
 
     def post_insight(self, agent_id: str, insight: str, evidence_keys=()) -> None:
         h = hashlib.sha256(insight.encode()).hexdigest()[:6]
-        self.put("insights", f"{slugify(agent_id, 20)}--{slugify(insight)}--{h}",
-                 {"agent_id": agent_id, "insight": insight, "description": insight,
-                  "evidence_keys": list(evidence_keys), "posted_at": self.now()})
+        self.put(
+            "insights",
+            f"{slugify(agent_id, 20)}--{slugify(insight)}--{h}",
+            {
+                "agent_id": agent_id,
+                "insight": insight,
+                "description": insight,
+                "evidence_keys": list(evidence_keys),
+                "posted_at": self.now(),
+            },
+        )
 
-    def publish_hypothesis(self, agent_id: str, title: str, hypothesis: str, suggested_config: Optional[dict] = None,
-                           evidence_keys=(), priority: int = 3) -> None:
+    def publish_hypothesis(
+        self,
+        agent_id: str,
+        title: str,
+        hypothesis: str,
+        suggested_config: dict | None = None,
+        evidence_keys=(),
+        priority: int = 3,
+    ) -> None:
         h = hashlib.sha256(title.encode()).hexdigest()[:6]
-        self.put("hypotheses", f"{slugify(agent_id, 20)}--{slugify(title)}--{h}",
-                 {"agent_id": agent_id, "title": title, "hypothesis": hypothesis, "description": title,
-                  "suggested_config": suggested_config or {}, "evidence_keys": list(evidence_keys),
-                  "priority": priority, "created_at": self.now()})
+        self.put(
+            "hypotheses",
+            f"{slugify(agent_id, 20)}--{slugify(title)}--{h}",
+            {
+                "agent_id": agent_id,
+                "title": title,
+                "hypothesis": hypothesis,
+                "description": title,
+                "suggested_config": suggested_config or {},
+                "evidence_keys": list(evidence_keys),
+                "priority": priority,
+                "created_at": self.now(),
+            },
+        )
 
     def unclaimed_hypotheses(self, topic: str = "experiment", limit: int = 10) -> list[dict]:
         """At-home semantics: a semantic search, never filtered by tested or claimed."""
@@ -336,29 +438,47 @@ class SharedHub:
         if len(vals) >= 10:
             trend = "improving" if sum(vals[:5]) != sum(vals[5:10]) else "flat"
         by_time = [v[self.metric] for v in sorted(keeps, key=lambda v: v.get("completed_at", 0))]
-        return {"n_results": len(res), "n_keep": len(keeps), "global_best": self.global_best_value(),
-                "agents": sorted({v["agent_id"] for v in res}), "improvement_trend_faithful": trend,
-                "keeps_by_time": by_time, "n_claims": len(self.items("claims")),
-                "n_insights": len(self.items("insights")), "n_hypotheses": len(self.items("hypotheses"))}
+        return {
+            "n_results": len(res),
+            "n_keep": len(keeps),
+            "global_best": self.global_best_value(),
+            "agents": sorted({v["agent_id"] for v in res}),
+            "improvement_trend_faithful": trend,
+            "keeps_by_time": by_time,
+            "n_claims": len(self.items("claims")),
+            "n_insights": len(self.items("insights")),
+            "n_hypotheses": len(self.items("hypotheses")),
+        }
 
 
-_FOLLOW_UPS = {"keep": ("push further", "the last change helped; the same direction may help again", 3),
-               "discard": ("try the opposite of", "this direction did not help; the other side of the knob might", 4),
-               "crash": ("retry without the bug", "the run crashed; the idea itself is untested", 5)}
+_FOLLOW_UPS = {
+    "keep": ("push further", "the last change helped; the same direction may help again", 3),
+    "discard": ("try the opposite of", "this direction did not help; the other side of the knob might", 4),
+    "crash": ("retry without the bug", "the run crashed; the idea itself is untested", 5),
+}
 
 
 class CollaborativeLoop(AutoresearchLoop):
     """One swarm participant: claim, run, publish, and adopt the swarm best every ``sync_every`` experiments."""
 
-    def __init__(self, *args, hub: SharedHub, agent_id: str, tier: Optional[str] = None, claiming: bool = True,
-                 sync_every: int = SYNC_EVERY_N, report: Optional[Callable[[float], float]] = None,
-                 adopt: bool = True, **kw) -> None:
+    def __init__(
+        self,
+        *args,
+        hub: SharedHub,
+        agent_id: str,
+        tier: str | None = None,
+        claiming: bool = True,
+        sync_every: int = SYNC_EVERY_N,
+        report: Callable[[float], float] | None = None,
+        adopt: bool = True,
+        **kw,
+    ) -> None:
         super().__init__(*args, **kw)
         if hub.direction != self.task.direction:
             raise ValueError(f"hub direction {hub.direction!r} != task direction {self.task.direction!r}")
         self.hub, self.agent_id, self.tier = hub, agent_id, tier
         self.claiming, self.sync_every, self.adopt = claiming, sync_every, adopt
-        self.report = report or (lambda v: v)          # the value this agent publishes
+        self.report = report or (lambda v: v)  # the value this agent publishes
         self.hub_stats = {"claims_ok": 0, "claims_refused": 0, "ran_unclaimed": 0, "adoptions": 0, "published": 0}
         self.started: list[dict] = []
 
@@ -375,13 +495,25 @@ class CollaborativeLoop(AutoresearchLoop):
         if art == self.inc["artifact"]:
             return
         sha = self.ws.commit(art, f"adopt global best ({self.hub.metric}={v:.6f} from {meta.get('agent_id')})")
-        node = Node(id=new_id("exp"), parent=self.inc.get("node"), round=self.n_rounds, kind="adopt", status="keep",
-                    score=v, change=f"adopt global best from {meta.get('agent_id')}", artifact_id=art.id,
-                    meta={"commit": sha[:7], "adopted_value": v})
+        node = Node(
+            id=new_id("exp"),
+            parent=self.inc.get("node"),
+            round=self.n_rounds,
+            kind="adopt",
+            status="keep",
+            score=v,
+            change=f"adopt global best from {meta.get('agent_id')}",
+            artifact_id=art.id,
+            meta={"commit": sha[:7], "adopted_value": v},
+        )
         self.store.put(art)
         self.ledger.add(node)
-        self.inc = {"sha": sha, "artifact": art, "node": node.id,
-                    "samples": Samples([v], memory_gb=meta.get("memory_gb", 0.0), artifact_id=art.id)}
+        self.inc = {
+            "sha": sha,
+            "artifact": art,
+            "node": node.id,
+            "samples": Samples([v], memory_gb=meta.get("memory_gb", 0.0), artifact_id=art.id),
+        }
         self.keeps.append((node.id, self.inc["samples"]))
         self.hub_stats["adoptions"] += 1
 
@@ -410,10 +542,11 @@ class CollaborativeLoop(AutoresearchLoop):
                 break
             self.hub_stats["claims_refused"] += 1
         else:
-            self.hub_stats["ran_unclaimed"] += 1        # a rare duplicate beats doing nothing
+            self.hub_stats["ran_unclaimed"] += 1  # a rare duplicate beats doing nothing
         if last is not None:
-            self.started.append({"agent": self.agent_id, "description": last.change, "code": last.artifact.id,
-                                 "t": time.time()})
+            self.started.append(
+                {"agent": self.agent_id, "description": last.change, "code": last.artifact.id, "t": time.time()}
+            )
             last.meta.setdefault("hub_key", experiment_key(self.agent_id, last.change or ""))
         return last
 
@@ -425,8 +558,17 @@ class CollaborativeLoop(AutoresearchLoop):
             v = samples.mean if samples is not None and node.status != "crash" else 0.0
             rep = self.report(v) if node.status != "crash" else 0.0
             key = experiment_key(self.agent_id, node.change)
-            self.hub.publish_result(key, self.agent_id, rep, samples.memory_gb if samples else 0.0, node.status,
-                                    node.change, art.files, tier=self.tier, code_hash=art.id)
+            self.hub.publish_result(
+                key,
+                self.agent_id,
+                rep,
+                samples.memory_gb if samples else 0.0,
+                node.status,
+                node.change,
+                art.files,
+                tier=self.tier,
+                code_hash=art.id,
+            )
             self.hub.post_insight(self.agent_id, f"{node.change}: {node.status} ({rep:.4f})", [key])
             title, why, priority = _FOLLOW_UPS[node.status]
             self.hub.publish_hypothesis(self.agent_id, f"{title}: {node.change}", why, {}, [key], priority=priority)

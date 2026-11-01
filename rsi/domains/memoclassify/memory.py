@@ -1,4 +1,5 @@
 """MemoClassify harness interface: a memory system around a frozen LLM (port of the release's ``memory_system.py``)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,7 +7,8 @@ import json
 import re
 import threading
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def extract_json_field(text: str, field: str, default: str = "") -> str:
@@ -65,9 +67,11 @@ class MemorySystem(ABC):
         return self._llm(prompt)
 
     def get_last_prompt_info(self) -> dict[str, Any]:
-        return {"prompt_len": getattr(self._prompt_local, "last_prompt_len", None),
-                "prompt_hash": getattr(self._prompt_local, "last_prompt_hash", None),
-                "prompt_text": getattr(self._prompt_local, "last_prompt_text", None)}
+        return {
+            "prompt_len": getattr(self._prompt_local, "last_prompt_len", None),
+            "prompt_hash": getattr(self._prompt_local, "last_prompt_hash", None),
+            "prompt_text": getattr(self._prompt_local, "last_prompt_text", None),
+        }
 
     @abstractmethod
     def predict(self, input: str) -> tuple[str, dict[str, Any]]:
@@ -194,19 +198,24 @@ class Memory(MemorySystem):
 SEED_PROGRAMS = {"no_memory": NO_MEMORY, "fewshot_all": FEWSHOT_ALL}
 
 #: few-shot-N comparators (release ``fewshot_memory.py``), not part of the initial population
-FEWSHOT_N = (FEWSHOT_ALL
-             .replace('"""Few-shot baseline using ALL training examples (global character cap)."""',
-                      '"""Few-shot baseline using at most MAX_EXAMPLES random stored examples per query."""')
-             .replace("MAX_EXAMPLES = 9999", "MAX_EXAMPLES = {n}")
-             .replace("""        to_use = list(self.examples[-MAX_EXAMPLES:])
+FEWSHOT_N = (
+    FEWSHOT_ALL.replace(
+        '"""Few-shot baseline using ALL training examples (global character cap)."""',
+        '"""Few-shot baseline using at most MAX_EXAMPLES random stored examples per query."""',
+    )
+    .replace("MAX_EXAMPLES = 9999", "MAX_EXAMPLES = {n}")
+    .replace(
+        """        to_use = list(self.examples[-MAX_EXAMPLES:])
         if seed is not None:
             random.Random(seed).shuffle(to_use)""",
-                      """        if seed is not None and len(self.examples) > MAX_EXAMPLES:
+        """        if seed is not None and len(self.examples) > MAX_EXAMPLES:
             to_use = random.Random(seed).sample(self.examples, MAX_EXAMPLES)
         else:
             to_use = list(self.examples[-MAX_EXAMPLES:])
             if seed is not None:
-                random.Random(seed).shuffle(to_use)"""))
+                random.Random(seed).shuffle(to_use)""",
+    )
+)
 
 
 def fewshot_program(n: int) -> str:

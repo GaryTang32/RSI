@@ -1,10 +1,25 @@
 """E2: does replay on recorded synthetic worlds rank a ~20-policy zoo like their true online value?
 
-    python experiments/dream-rsi/e2_offpolicy_validity.py [--llm sim|claude:haiku] [--seeds K] [--quick]
+python experiments/dream-rsi/e2_offpolicy_validity.py [--llm sim|claude:haiku] [--seeds K] [--quick]
 """
+
 import numpy as np
-from _common import (domain_of, figure, fmt, live_search, llm_policies, online_eq1, parse_args, pmap, record_world,
-                     runner_for, save, save_figure, spearman, summ)
+from _common import (
+    domain_of,
+    figure,
+    fmt,
+    live_search,
+    llm_policies,
+    online_eq1,
+    parse_args,
+    pmap,
+    record_world,
+    runner_for,
+    save,
+    save_figure,
+    spearman,
+    summ,
+)
 
 from rsi.dream import Eq1Objective, ReplayEvaluator, adaptive, code_of, parallel_refine, rules
 
@@ -35,8 +50,17 @@ def zoo():
 def online_value(job):
     """True online value of the policy's own plan: no per-round call cap, so out-of-grid plans pay online."""
     name, code, seed, coupling = job
-    r = live_search(domain_of("synthetic", seed, context_coupling=coupling), W, GRID, seed, code,
-                    sandbox=runner_for(name), hard_max_branch=12, hard_max_refine=12, round_budget=None).trajectory[0]
+    r = live_search(
+        domain_of("synthetic", seed, context_coupling=coupling),
+        W,
+        GRID,
+        seed,
+        code,
+        sandbox=runner_for(name),
+        hard_max_branch=12,
+        hard_max_refine=12,
+        round_budget=None,
+    ).trajectory[0]
     return name, seed, online_eq1(r, OBJ["beta1"], OBJ["beta2"])
 
 
@@ -46,8 +70,12 @@ def record(seed, coupling):
 
 def evaluators(runner):
     """Replay evaluators with the two support rules: clip, no_reward."""
-    return tuple(ReplayEvaluator(Eq1Objective(normalize=False, support=s, **OBJ), W=W, fallback=GRID, runner=runner,
-                                 hard_max=(12, 12)) for s in ("clip", "no_reward"))
+    return tuple(
+        ReplayEvaluator(
+            Eq1Objective(normalize=False, support=s, **OBJ), W=W, fallback=GRID, runner=runner, hard_max=(12, 12)
+        )
+        for s in ("clip", "no_reward")
+    )
 
 
 def study(policies, K, n_true, coupling, workers, worlds=None):
@@ -61,23 +89,30 @@ def study(policies, K, n_true, coupling, workers, worlds=None):
         replay_nr[name] = ev_nr.evaluate(code, worlds).value
         support[name] = not any(e.out_of_support for e in rep.episodes)
     true: dict[str, list] = {}
-    for name, seed, v in pmap(online_value, [(n, c, 1000 + s, coupling) for n, c in policies.items()
-                                             for s in range(n_true)], workers):
+    for name, _seed, v in pmap(
+        online_value, [(n, c, 1000 + s, coupling) for n, c in policies.items() for s in range(n_true)], workers
+    ):
         true.setdefault(name, []).append(v)
     tv = {n: float(np.mean(v)) for n, v in true.items()}
     names = list(policies)
     ins = [n for n in names if support[n]]
     oos = [n for n in names if not support[n]]
     pick = max(names, key=lambda n: replay[n])
-    return {"replay": replay, "replay_no_reward": replay_nr, "true": tv, "true_ci": {n: summ(true[n]) for n in names},
-            "in_support": support,
-            "spearman_all": spearman([replay[n] for n in names], [tv[n] for n in names]),
-            "spearman_all_no_reward": spearman([replay_nr[n] for n in names], [tv[n] for n in names]),
-            "spearman_in_support": spearman([replay[n] for n in ins], [tv[n] for n in ins]),
-            "bias_in_support": float(np.mean([replay[n] - tv[n] for n in ins])),
-            "bias_out_of_support": float(np.mean([replay[n] - tv[n] for n in oos])) if oos else None,
-            "top1_replay": pick, "top1_true": max(names, key=lambda n: tv[n]),
-            "regret_of_replay_pick": max(tv.values()) - tv[pick]}
+    return {
+        "replay": replay,
+        "replay_no_reward": replay_nr,
+        "true": tv,
+        "true_ci": {n: summ(true[n]) for n in names},
+        "in_support": support,
+        "spearman_all": spearman([replay[n] for n in names], [tv[n] for n in names]),
+        "spearman_all_no_reward": spearman([replay_nr[n] for n in names], [tv[n] for n in names]),
+        "spearman_in_support": spearman([replay[n] for n in ins], [tv[n] for n in ins]),
+        "bias_in_support": float(np.mean([replay[n] - tv[n] for n in ins])),
+        "bias_out_of_support": float(np.mean([replay[n] - tv[n] for n in oos])) if oos else None,
+        "top1_replay": pick,
+        "top1_true": max(names, key=lambda n: tv[n]),
+        "regret_of_replay_pick": max(tv.values()) - tv[pick],
+    }
 
 
 def main():
@@ -86,12 +121,21 @@ def main():
     pol = zoo()
     if a.llm != "sim":  # LLM-written policies join the zoo (dreamed on the same recorded worlds)
         rec_worlds = [record(100 + i, 0.0) for i in range(a.seeds)]
-        pol.update(llm_policies(a.llm, rec_worlds, n=2, W=W, fallback=GRID, hard_max=(12, 12),
-                                objective=Eq1Objective(normalize=False, **OBJ)))
+        pol.update(
+            llm_policies(
+                a.llm,
+                rec_worlds,
+                n=2,
+                W=W,
+                fallback=GRID,
+                hard_max=(12, 12),
+                objective=Eq1Objective(normalize=False, **OBJ),
+            )
+        )
     base = study(pol, a.seeds, n_true, 0.0, a.workers)
     coup = study(pol, a.seeds, n_true, 0.6, a.workers)
     by_k = {}  # replay estimate vs number of recorded worlds (sampling noise of the simulator itself)
-    for k in ([1, 3] if a.quick else [1, 2, 5, 10]):
+    for k in [1, 3] if a.quick else [1, 2, 5, 10]:
         rs = []
         for rep in range(3):
             worlds = [record(5000 + 100 * rep + i, 0.0) for i in range(k)]
@@ -100,12 +144,18 @@ def main():
             rs.append(spearman([vals[n] for n in pol], [base["true"][n] for n in pol]))
         by_k[k] = summ(rs)
     print(f"Spearman(replay, true) all={base['spearman_all']:.3f}  in-support={base['spearman_in_support']:.3f}")
-    print(f"bias in-support {base['bias_in_support']:+.4f}, out-of-support {base['bias_out_of_support']:+.4f} "
-          f"(clip); Spearman all with the no-reward support rule = {base['spearman_all_no_reward']:.3f}")
-    print(f"replay pick {base['top1_replay']} vs true best {base['top1_true']} "
-          f"(regret {base['regret_of_replay_pick']:.4f})")
-    print(f"with context coupling: Spearman all={coup['spearman_all']:.3f}, "
-          f"in-support bias {coup['bias_in_support']:+.4f}")
+    print(
+        f"bias in-support {base['bias_in_support']:+.4f}, out-of-support {base['bias_out_of_support']:+.4f} "
+        f"(clip); Spearman all with the no-reward support rule = {base['spearman_all_no_reward']:.3f}"
+    )
+    print(
+        f"replay pick {base['top1_replay']} vs true best {base['top1_true']} "
+        f"(regret {base['regret_of_replay_pick']:.4f})"
+    )
+    print(
+        f"with context coupling: Spearman all={coup['spearman_all']:.3f}, "
+        f"in-support bias {coup['bias_in_support']:+.4f}"
+    )
     for k, s in by_k.items():
         print(f"  K={k} recorded worlds: Spearman {fmt(s, 3)}")
     plt, png = figure("e2_offpolicy_validity")
@@ -130,16 +180,31 @@ def main():
             f"(all-policy Spearman {b['spearman_all']:.2f} -> {b['spearman_all_no_reward']:.2f}); "
             f"(2) when outcomes depend on how many sibling attempts the agent read, replay is biased "
             f"(in-support bias {c['bias_in_support']:+.3f}, Spearman {c['spearman_all']:.2f}); "
-            f"(3) the replay-optimal policy is not the true optimum (regret {b['regret_of_replay_pick']:.3f}).")
+            f"(3) the replay-optimal policy is not the true optimum (regret {b['regret_of_replay_pick']:.3f})."
+        )
     else:
         verdict = f"NOT reproduced: in-support Spearman {base['spearman_in_support']:.2f}"
-    save("e2_offpolicy_validity", {"config": {"W": W, "recording_grid": GRID, "recorded_worlds": a.seeds,
-                                              "true_value_worlds": n_true, "objective": OBJ | {"normalize": False},
-                                              "policies": list(pol),
-                                              "llm": a.llm if a.llm != "sim" else "not used (replay only)",
-                                              "llm_policies": {n: c for n, c in pol.items() if n.startswith("llm_")}},
-                                   "independent": base, "context_coupling_0.6": coup,
-                                   "spearman_vs_recorded_worlds": by_k, "figure": str(png), "verdict": verdict}, a.out)
+    save(
+        "e2_offpolicy_validity",
+        {
+            "config": {
+                "W": W,
+                "recording_grid": GRID,
+                "recorded_worlds": a.seeds,
+                "true_value_worlds": n_true,
+                "objective": OBJ | {"normalize": False},
+                "policies": list(pol),
+                "llm": a.llm if a.llm != "sim" else "not used (replay only)",
+                "llm_policies": {n: c for n, c in pol.items() if n.startswith("llm_")},
+            },
+            "independent": base,
+            "context_coupling_0.6": coup,
+            "spearman_vs_recorded_worlds": by_k,
+            "figure": str(png),
+            "verdict": verdict,
+        },
+        a.out,
+    )
     print(verdict)
 
 

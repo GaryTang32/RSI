@@ -6,6 +6,13 @@ Before 1.0, minor versions may change the API.
 
 ## [Unreleased]
 
+### Changed
+- The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.
+- Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.
+
+### Fixed
+- SoL-Pi's `Run` no longer shares one mutable default `Config` across calls.
+
 ## [0.1.0] - 2026-11-01
 
 First tagged release.

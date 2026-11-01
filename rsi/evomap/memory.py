@@ -1,14 +1,15 @@
 """Memory graph (append-only MemoryGraphEvents), its gene advice, and outcome inference (spec §4.4, §4.11, §5.7)."""
+
 from __future__ import annotations
 
 import json
 import re
 import zlib
 from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import takewhile
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
 
 from .signals import jaccard, signal_key
 
@@ -17,7 +18,7 @@ DAY_S = 86400.0
 
 @dataclass
 class Advice:
-    preferred_gene_id: Optional[str] = None
+    preferred_gene_id: str | None = None
     banned_gene_ids: set = field(default_factory=set)
     total_attempts: int = 0
     scores: dict = field(default_factory=dict)
@@ -25,7 +26,7 @@ class Advice:
 
 
 class MemoryGraph:
-    def __init__(self, path: Optional[str | Path] = None, *, clock=None, read_limit: int = 1000) -> None:
+    def __init__(self, path: str | Path | None = None, *, clock=None, read_limit: int = 1000) -> None:
         self.path = Path(path) if path else None
         self.clock = clock
         self.read_limit = read_limit
@@ -41,8 +42,13 @@ class MemoryGraph:
     def record(self, kind: str, **fields) -> dict:
         self._n += 1
         body = json.dumps(fields, sort_keys=True, default=str)
-        ev = {"type": "MemoryGraphEvent", "kind": kind,
-              "id": f"mge_{self._n:06d}_{zlib.crc32(body.encode()) & 0xffffffff:08x}", "ts": self._now(), **fields}
+        ev = {
+            "type": "MemoryGraphEvent",
+            "kind": kind,
+            "id": f"mge_{self._n:06d}_{zlib.crc32(body.encode()) & 0xFFFFFFFF:08x}",
+            "ts": self._now(),
+            **fields,
+        }
         self.events.append(ev)
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,27 +56,57 @@ class MemoryGraph:
                 f.write(json.dumps(ev, default=str) + "\n")
         return ev
 
-    def record_outcome(self, *, signals: Sequence[str], gene_id: Optional[str], status: str, score: float,
-                       note: str = "", observed: bool = True, predictive: Optional[dict] = None) -> dict:
-        return self.record("outcome", signal={"key": signal_key(signals), "signals": list(signals)},
-                           gene={"id": gene_id}, outcome={"status": status, "score": float(score), "note": note,
-                                                          "observed": observed, "predictive": predictive})
+    def record_outcome(
+        self,
+        *,
+        signals: Sequence[str],
+        gene_id: str | None,
+        status: str,
+        score: float,
+        note: str = "",
+        observed: bool = True,
+        predictive: dict | None = None,
+    ) -> dict:
+        return self.record(
+            "outcome",
+            signal={"key": signal_key(signals), "signals": list(signals)},
+            gene={"id": gene_id},
+            outcome={
+                "status": status,
+                "score": float(score),
+                "note": note,
+                "observed": observed,
+                "predictive": predictive,
+            },
+        )
 
     def epoch_boundary(self, reason: str = "") -> dict:
         return self.record("epoch_boundary", reason=reason)
 
     def outcomes(self) -> list[dict]:
-        return [e for e in self.events[-self.read_limit:] if e.get("kind") == "outcome"]
+        return [e for e in self.events[-self.read_limit :] if e.get("kind") == "outcome"]
 
-    def advice(self, signals: Sequence[str], genes: Iterable = (), *, mode: str = "current",
-               key_match: str = "jaccard", half_life_days: float = 30.0, prior_half_life_days: float = 45.0,
-               jaccard_min: float = 0.34, ban_value: float = 0.18, per_key_attempts: int = 4,
-               ban_best: float = 0.15, inert_streak: int = 8) -> Advice:
+    def advice(
+        self,
+        signals: Sequence[str],
+        genes: Iterable = (),
+        *,
+        mode: str = "current",
+        key_match: str = "jaccard",
+        half_life_days: float = 30.0,
+        prior_half_life_days: float = 45.0,
+        jaccard_min: float = 0.34,
+        ban_value: float = 0.18,
+        per_key_attempts: int = 4,
+        ban_best: float = 0.15,
+        inert_streak: int = 8,
+    ) -> Advice:
         """Preferred and banned genes from past outcomes: ``spec`` (GEP sdk 1.1.0) or ``current`` (Evolver)."""
         if mode == "spec":
             return self._advice_spec(signals, key_match, half_life_days, jaccard_min, ban_value)
-        return self._advice_current(signals, half_life_days, prior_half_life_days, jaccard_min,
-                                    per_key_attempts, ban_best, inert_streak)
+        return self._advice_current(
+            signals, half_life_days, prior_half_life_days, jaccard_min, per_key_attempts, ban_best, inert_streak
+        )
 
     def _age_w(self, ts: float, hl: float) -> float:
         return 0.5 ** (max(0.0, (self._now() - ts) / DAY_S) / hl)
@@ -79,7 +115,7 @@ class MemoryGraph:
         # value = Laplace (s+1)/(n+2) * 0.5^(age/hl); banned iff n >= 2 and value < ban_value
         cur = set(signals)
         key = signal_key(signals)
-        edges: dict = defaultdict(lambda: [0, 0, 0.0])   # gene -> [succ, total, last_ts]
+        edges: dict = defaultdict(lambda: [0, 0, 0.0])  # gene -> [succ, total, last_ts]
         for o in self.outcomes():
             gid = (o.get("gene") or {}).get("id")
             if not gid:
@@ -111,12 +147,13 @@ class MemoryGraph:
         # Evolver: per similar key, value = p * w * 1.15^predictive * sim; inert (stable_no_error) outcomes count
         # for neither side per key but as successes in the gene prior; an epoch boundary scales older evidence x0.1
         cur = set(signals)
-        evs = self.events[-self.read_limit:]
+        evs = self.events[-self.read_limit :]
         epoch_ts = max((float(e.get("ts", 0.0)) for e in evs if e.get("kind") == "epoch_boundary"), default=None)
-        per: dict = defaultdict(lambda: {"s": 0, "f": 0, "ts": 0.0, "pred": False, "sim": 0.0, "pre": False,
-                                         "post_s": 0, "post_f": 0})
+        per: dict = defaultdict(
+            lambda: {"s": 0, "f": 0, "ts": 0.0, "pred": False, "sim": 0.0, "pre": False, "post_s": 0, "post_f": 0}
+        )
         prior: dict = defaultdict(lambda: {"s": 0, "n": 0, "ts": 0.0})
-        seq: dict = defaultdict(list)       # gene -> 'S' / 'F' / 'I' in order
+        seq: dict = defaultdict(list)  # gene -> 'S' / 'F' / 'I' in order
         post_epoch_seen: set = set()
         for o in (e for e in evs if e.get("kind") == "outcome"):
             gid = (o.get("gene") or {}).get("id")
@@ -198,13 +235,13 @@ class Outcome:
     score: float
     note: str
     observed: bool = False
-    predictive: Optional[dict] = None
+    predictive: dict | None = None
 
 
 _EVENT_LINE = re.compile(r"^\s*\{.*\}\s*$")
 
 
-def find_transcript_event(transcript: str, max_lines: int = 400) -> Optional[dict]:
+def find_transcript_event(transcript: str, max_lines: int = 400) -> dict | None:
     """The last single-line JSON EvolutionEvent with an outcome in ``transcript``."""
     for line in reversed((transcript or "").splitlines()[-max_lines:]):
         if not _EVENT_LINE.match(line):
@@ -225,8 +262,17 @@ class OutcomeInferrer:
     def __init__(self, mode: str = "faithful") -> None:
         self.mode = mode
 
-    def infer(self, *, prev_error: bool, cur_error: bool, transcript: str = "", measured: Optional[Outcome] = None,
-              prev_err_count: int = 0, cur_err_count: int = 0, recent_success: Sequence[bool] = ()) -> Outcome:
+    def infer(
+        self,
+        *,
+        prev_error: bool,
+        cur_error: bool,
+        transcript: str = "",
+        measured: Outcome | None = None,
+        prev_err_count: int = 0,
+        cur_err_count: int = 0,
+        recent_success: Sequence[bool] = (),
+    ) -> Outcome:
         if self.mode == "safe":
             if measured is None:
                 raise ValueError("safe outcome inference needs the measured solidify outcome")

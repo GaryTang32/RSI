@@ -1,4 +1,5 @@
 """Experiment ledger (every attempt as a node in a tree, append-only JSONL) and a content-addressed artifact store."""
+
 from __future__ import annotations
 
 import csv
@@ -6,9 +7,10 @@ import json
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from .artifact import Artifact
 
@@ -16,19 +18,19 @@ from .artifact import Artifact
 @dataclass
 class Node:
     id: str
-    parent: Optional[str]
+    parent: str | None
     round: int = 0
-    kind: str = "candidate"          # baseline | candidate | merge | policy | gene | ...
-    status: str = "pending"          # keep | discard | crash | rejected | accepted | lost | ...
-    score: Optional[float] = None
-    cost: Optional[float] = None
+    kind: str = "candidate"  # baseline | candidate | merge | policy | gene | ...
+    status: str = "pending"  # keep | discard | crash | rejected | accepted | lost | ...
+    score: float | None = None
+    cost: float | None = None
     change: str = ""
-    artifact_id: Optional[str] = None
+    artifact_id: str | None = None
     diff: str = ""
     metrics: dict = field(default_factory=dict)
     meta: dict = field(default_factory=dict)
     t: float = field(default_factory=time.time)
-    seq: int = 0                     # creation order
+    seq: int = 0  # creation order
 
     def to_json(self) -> dict:
         return asdict(self)
@@ -43,7 +45,7 @@ def new_id(prefix: str = "n") -> str:
 
 
 class Ledger:
-    def __init__(self, path: Optional[str | Path] = None) -> None:
+    def __init__(self, path: str | Path | None = None) -> None:
         self.path = Path(path) if path else None
         self._nodes: dict[str, Node] = {}
         self._order: list[str] = []
@@ -57,7 +59,7 @@ class Ledger:
                 continue
             try:
                 n = Node.from_json(json.loads(line))
-            except (ValueError, TypeError, KeyError):   # a line torn by a crash mid-write
+            except (ValueError, TypeError, KeyError):  # a line torn by a crash mid-write
                 self.n_corrupt_lines += 1
                 continue
             if n.id not in self._nodes:
@@ -106,7 +108,7 @@ class Ledger:
             f.write(line)
 
     def __bool__(self) -> bool:
-        return True   # `ledger or Ledger()` must keep an empty ledger
+        return True  # `ledger or Ledger()` must keep an empty ledger
 
     def __len__(self) -> int:
         return len(self._order)
@@ -114,17 +116,20 @@ class Ledger:
     def __getitem__(self, node_id: str) -> Node:
         return self._nodes[node_id]
 
-    def nodes(self, kind: Optional[str] = None, status: Optional[str] = None) -> list[Node]:
-        return [n for n in (self._nodes[i] for i in self._order)
-                if (not kind or n.kind == kind) and (not status or n.status == status)]
+    def nodes(self, kind: str | None = None, status: str | None = None) -> list[Node]:
+        return [
+            n
+            for n in (self._nodes[i] for i in self._order)
+            if (not kind or n.kind == kind) and (not status or n.status == status)
+        ]
 
-    def children(self, node_id: Optional[str]) -> list[Node]:
+    def children(self, node_id: str | None) -> list[Node]:
         return [n for n in self.nodes() if n.parent == node_id]
 
     def lineage(self, node_id: str) -> list[Node]:
         """Root-first ancestors ending at ``node_id``; stops at an unknown parent or a cycle."""
         out, seen = [], set()
-        cur: Optional[str] = node_id
+        cur: str | None = node_id
         while cur is not None and cur not in seen:
             n = self._nodes.get(cur)
             if n is None:
@@ -136,12 +141,13 @@ class Ledger:
             cur = n.parent
         return out[::-1]
 
-    def best(self, lower_is_better: bool = False, status: Optional[str] = None) -> Optional[Node]:
+    def best(self, lower_is_better: bool = False, status: str | None = None) -> Node | None:
         cands = [n for n in self.nodes(status=status) if n.score is not None]
         return (min if lower_is_better else max)(cands, key=lambda n: n.score) if cands else None
 
     def render(self, last: int = 40, fields: Iterable[str] = ("round", "status", "score", "cost", "change")) -> str:
         """Compact text table of recent attempts (fed back to proposers)."""
+
         def cell(v: Any) -> str:
             if isinstance(v, float):
                 v = f"{v:.4f}"

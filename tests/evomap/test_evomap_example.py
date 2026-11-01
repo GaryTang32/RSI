@@ -1,4 +1,5 @@
 """The 'apply EvoMap to a new problem' example from docs/methods/evomap/implementation.md."""
+
 import json
 
 from rsi.core import Artifact, FunctionDomain, MockLLM, Task, TaskSuite
@@ -6,10 +7,19 @@ from rsi.evomap import Config, SafeHub, TaskBank, evaluate_library, run
 
 
 def test_new_problem_example(tmp_path):
-    tasks = [Task(f"t{i}", {"amount": i * 1.5}, f"EUR {i * 1.5:.2f}", "money", {"signals": ["money", "format"]})
-             for i in range(1, 61)]
-    suite = TaskSuite(tasks, {"evolve": [f"t{i}" for i in range(1, 21)], "val": [f"t{i}" for i in range(21, 31)],
-                              "holdout": [f"t{i}" for i in range(31, 46)], "test": [f"t{i}" for i in range(46, 61)]})
+    tasks = [
+        Task(f"t{i}", {"amount": i * 1.5}, f"EUR {i * 1.5:.2f}", "money", {"signals": ["money", "format"]})
+        for i in range(1, 61)
+    ]
+    suite = TaskSuite(
+        tasks,
+        {
+            "evolve": [f"t{i}" for i in range(1, 21)],
+            "val": [f"t{i}" for i in range(21, 31)],
+            "holdout": [f"t{i}" for i in range(31, 46)],
+            "test": [f"t{i}" for i in range(46, 61)],
+        },
+    )
 
     def execute(artifact, task, seed, llm):
         system = "\n".join(artifact[p] for p in sorted(artifact))
@@ -22,23 +32,35 @@ def test_new_problem_example(tmp_path):
         return f"EUR {amt:.2f}" if "two decimals" in (system or "") else f"EUR {amt}"
 
     model = MockLLM(model_fn, name="invoice-model")
-    gene = {"id": "gene_two_decimals", "category": "repair", "signals_match": ["money"],
-            "summary": "Money amounts must be printed with two decimals.",
-            "strategy": ["Read the amount.", "Format it with exactly two decimals.", "Prefix the currency code."],
-            "avoid": ["Printing the raw float."], "validation": ["rsi-taskcheck --n 4"]}
+    gene = {
+        "id": "gene_two_decimals",
+        "category": "repair",
+        "signals_match": ["money"],
+        "summary": "Money amounts must be printed with two decimals.",
+        "strategy": ["Read the amount.", "Format it with exactly two decimals.", "Prefix the currency code."],
+        "avoid": ["Printing the raw float."],
+        "validation": ["rsi-taskcheck --n 4"],
+    }
     proposer = MockLLM(lambda p, s, seed, i: "```json\n" + json.dumps(gene) + "\n```", name="gene-writer")
     harness = Artifact({"prompt.md": "Format the invoice amount.\n"})
 
-    res = run(dom, harness, llm_task=model, llm_propose=proposer, config=Config(cycles=8, mode="safe"),
-              out_dir=tmp_path / "invoices")
+    res = run(
+        dom,
+        harness,
+        llm_task=model,
+        llm_propose=proposer,
+        config=Config(cycles=8, mode="safe"),
+        out_dir=tmp_path / "invoices",
+    )
     assert res.best["genes/library.json"]
     rep = evaluate_library(dom, model, res, splits=("holdout",), workers=1)
     assert rep["splits"]["holdout"]["no_genes"]["S"] < 0.2
     assert rep["splits"]["holdout"]["gene_library"]["S"] == 1.0
 
     hub = SafeHub(TaskBank(dom, harness, model, split="test", n=12, n_off=0, k=2))
-    res2 = run(dom, harness, llm_task=model, llm_propose=proposer, config=Config(cycles=8, mode="safe"), hub=hub,
-               name="alice")
+    res2 = run(
+        dom, harness, llm_task=model, llm_propose=proposer, config=Config(cycles=8, mode="safe"), hub=hub, name="alice"
+    )
     assert res2.meta["n_genes"] == 1
     rec = hub.published()[0]
     assert rec.status == "verified" and rec.hub_report["U_LCB"] >= rec.hub_report["delta"]

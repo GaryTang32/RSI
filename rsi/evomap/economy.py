@@ -3,12 +3,13 @@
 Task ranking is ported from Evolver ``taskReceiver.js``. Escrow on posting, refund on expiry and 1 epoch = 1 day are
 our choices (no source specifies them). Completion is self-reported, as in Evolver's solidify.
 """
+
 from __future__ import annotations
 
 import math
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, Sequence
 
 from .signals import TaskSignalExtractor
 
@@ -31,7 +32,7 @@ DORMANT_AFTER_EPOCHS = 30
 
 
 def _js_round(x: float, digits: int) -> float:
-    f = 10 ** digits
+    f = 10**digits
     return math.floor(x * f + 0.5) / f
 
 
@@ -78,29 +79,41 @@ def estimate_capability_match(task_signals, memory_events: Sequence[dict]) -> fl
     return min(1.0, overlap * 0.4 + success_score * 0.6)
 
 
-def local_difficulty_estimate(task: "BountyTask") -> float:
+def local_difficulty_estimate(task: BountyTask) -> float:
     signal_factor = min(len(parse_signals(task.signals)) / 8, 1)
     words = len([w for w in str(task.title or "").split() if w])
     return min(1.0, signal_factor * 0.6 + min(words / 15, 1) * 0.4)
 
 
-def score_task(task: "BountyTask", capability_match: float, strategy: str = "balanced") -> dict:
+def score_task(task: BountyTask, capability_match: float, strategy: str = "balanced") -> dict:
     w = STRATEGY_WEIGHTS[strategy]
     difficulty = task.complexity_score if task.complexity_score is not None else local_difficulty_estimate(task)
     bounty = task.bounty_amount or 0.0
     completion = task.historical_completion_rate if task.historical_completion_rate is not None else 0.5
     roi = min(bounty / (difficulty + 0.1) / ROI_REFERENCE, 1)
     bounty_norm = min(bounty / BOUNTY_REFERENCE, 1)
-    composite = w["roi"] * roi + w["capability"] * capability_match + w["completion"] * completion + \
-        w["bounty"] * bounty_norm
-    return {"composite": _js_round(composite, 3),
-            "factors": {"roi": _js_round(roi, 2), "capability": _js_round(capability_match, 2),
-                        "completion": _js_round(completion, 2), "bounty": _js_round(bounty_norm, 2),
-                        "difficulty": _js_round(difficulty, 2)}}
+    composite = (
+        w["roi"] * roi + w["capability"] * capability_match + w["completion"] * completion + w["bounty"] * bounty_norm
+    )
+    return {
+        "composite": _js_round(composite, 3),
+        "factors": {
+            "roi": _js_round(roi, 2),
+            "capability": _js_round(capability_match, 2),
+            "completion": _js_round(completion, 2),
+            "bounty": _js_round(bounty_norm, 2),
+            "difficulty": _js_round(difficulty, 2),
+        },
+    }
 
 
-def rank_tasks(tasks: Iterable["BountyTask"], node_id: str, memory_events: Sequence[dict] = (),
-               strategy: str = "balanced", min_capability: float = MIN_CAPABILITY_MATCH) -> list[dict]:
+def rank_tasks(
+    tasks: Iterable[BountyTask],
+    node_id: str,
+    memory_events: Sequence[dict] = (),
+    strategy: str = "balanced",
+    min_capability: float = MIN_CAPABILITY_MATCH,
+) -> list[dict]:
     """``rankTasks``: tasks this node holds first, then open tasks by composite score above the capability floor
     (once the node has history); greedy nodes without history sort by bounty."""
     tasks = list(tasks)
@@ -110,10 +123,12 @@ def rank_tasks(tasks: Iterable["BountyTask"], node_id: str, memory_events: Seque
     if strategy == "greedy" and not mem:
         by_bounty = sorted(open_, key=lambda t: (-int(bool(t.bounty_id)), -(t.bounty_amount or 0.0)))
         return mine + [{"task": t, "reason": "scored", "score": score_task(t, 0.0, strategy)} for t in by_bounty]
-    scored = [{"task": t, "reason": "scored",
-               "score": score_task(t, estimate_capability_match(t.signals, mem), strategy)} for t in open_]
+    scored = [
+        {"task": t, "reason": "scored", "score": score_task(t, estimate_capability_match(t.signals, mem), strategy)}
+        for t in open_
+    ]
     scored = [e for e in scored if e["score"]["factors"]["capability"] >= min_capability or not mem]
-    scored.sort(key=lambda e: -e["score"]["composite"])       # stable, as Array.prototype.sort
+    scored.sort(key=lambda e: -e["score"]["composite"])  # stable, as Array.prototype.sort
     return mine + scored
 
 
@@ -124,33 +139,52 @@ class BountyTask:
     bounty_amount: float
     signals: list = field(default_factory=list)
     title: str = ""
-    status: str = "open"                      # open | claimed | completed | expired | cancelled
-    claimed_by: Optional[str] = None
+    status: str = "open"  # open | claimed | completed | expired | cancelled
+    claimed_by: str | None = None
     created_epoch: int = 0
-    expires_epoch: Optional[int] = None
-    result_asset_id: Optional[str] = None
-    complexity_score: Optional[float] = None
-    historical_completion_rate: Optional[float] = None
+    expires_epoch: int | None = None
+    result_asset_id: str | None = None
+    complexity_score: float | None = None
+    historical_completion_rate: float | None = None
     swarm: bool = False
-    bounty_id: Optional[str] = None
+    bounty_id: str | None = None
     meta: dict = field(default_factory=dict)
 
 
 class BountyBoard:
     """Hub-side bounty tasks on top of a hub's ``CreditLedger``."""
 
-    def __init__(self, credits, *, reputation: Optional[dict] = None) -> None:
+    def __init__(self, credits, *, reputation: dict | None = None) -> None:
         self.credits = credits
         self.reputation = reputation if reputation is not None else {}
         self.tasks: dict[str, BountyTask] = {}
         self._n = 0
 
-    def post(self, proposer: str, amount: float, signals: Sequence[str], *, title: str = "", epoch: int = 0,
-             expires_in: Optional[int] = None, swarm: bool = False, **meta) -> BountyTask:
+    def post(
+        self,
+        proposer: str,
+        amount: float,
+        signals: Sequence[str],
+        *,
+        title: str = "",
+        epoch: int = 0,
+        expires_in: int | None = None,
+        swarm: bool = False,
+        **meta,
+    ) -> BountyTask:
         self._n += 1
-        t = BountyTask(f"task_{self._n:06d}", proposer, float(amount), list(signals), title, created_epoch=epoch,
-                       expires_epoch=None if expires_in is None else epoch + expires_in, swarm=swarm,
-                       bounty_id=f"bounty_{self._n:06d}", meta=meta)
+        t = BountyTask(
+            f"task_{self._n:06d}",
+            proposer,
+            float(amount),
+            list(signals),
+            title,
+            created_epoch=epoch,
+            expires_epoch=None if expires_in is None else epoch + expires_in,
+            swarm=swarm,
+            bounty_id=f"bounty_{self._n:06d}",
+            meta=meta,
+        )
         self.credits.credit(proposer, -float(amount), "bounty_escrow", epoch)
         self.tasks[t.task_id] = t
         return t
@@ -171,8 +205,9 @@ class BountyBoard:
         self.credits.credit(node, t.bounty_amount, "bounty", epoch)
         return True
 
-    def complete_swarm(self, task_id: str, contributions: dict, aggregator: str, epoch: int = 0,
-                       asset_id: str = "swarm") -> dict:
+    def complete_swarm(
+        self, task_id: str, contributions: dict, aggregator: str, epoch: int = 0, asset_id: str = "swarm"
+    ) -> dict:
         """Swarm split: 5 % proposer, 85 % solvers by contribution weight, 10 % aggregator (reputation >= 60)."""
         t = self.tasks.get(task_id)
         if t is None or t.status not in ("open", "claimed"):
@@ -208,24 +243,34 @@ def refer(credits, referrer: str, referred: str, epoch: int = 0) -> None:
 
 def dormant_nodes(credits, last_active: dict, epoch: int, inactive_epochs: int = DORMANT_AFTER_EPOCHS) -> set:
     """Nodes at or below 0 credits inactive for >= ``inactive_epochs``."""
-    return {n for n, bal in credits.balance.items()
-            if bal <= 0 and epoch - last_active.get(n, -10 ** 9) >= inactive_epochs}
+    return {
+        n for n, bal in credits.balance.items() if bal <= 0 and epoch - last_active.get(n, -(10**9)) >= inactive_epochs
+    }
 
 
 class BountyDriver:
     """Population hook (X19): post bounties each epoch; agents rank the board, claim the head, work a task of its
     family and self-report completion after a successful solidify; unfinished bounties expire and are refunded."""
 
-    def __init__(self, board: BountyBoard, *, per_epoch: int = 4, amount: float = BOUNTY_REFERENCE,
-                 poster: str = "bounty_poster", strategy: str = "balanced", expires_in: int = 3,
-                 extractor=None, claimant_kinds: Sequence[str] = ("honest", "inflator")) -> None:
+    def __init__(
+        self,
+        board: BountyBoard,
+        *,
+        per_epoch: int = 4,
+        amount: float = BOUNTY_REFERENCE,
+        poster: str = "bounty_poster",
+        strategy: str = "balanced",
+        expires_in: int = 3,
+        extractor=None,
+        claimant_kinds: Sequence[str] = ("honest", "inflator"),
+    ) -> None:
         self.board = board
         # "farmer" claimants run no solve cycle: they complete with an asset id they just published (P5b)
         self.claimant_kinds = tuple(claimant_kinds)
         self.per_epoch, self.amount, self.poster = per_epoch, float(amount), poster
         self.strategy, self.expires_in = strategy, expires_in
         self.extractor = extractor
-        self.active: dict[str, str] = {}             # agent -> task_id
+        self.active: dict[str, str] = {}  # agent -> task_id
         self.log: list[dict] = []
 
     def on_epoch_start(self, sim, ep: int, rng) -> None:
@@ -236,13 +281,22 @@ class BountyDriver:
         ext = self.extractor or TaskSignalExtractor()
         for _ in range(self.per_epoch):
             t = rng.choice(sim.tasks)
-            self.board.post(self.poster, self.amount, ext.task_signals(t), title=f"Fix {t.family}", epoch=ep,
-                            expires_in=self.expires_in, family=t.family)
+            self.board.post(
+                self.poster,
+                self.amount,
+                ext.task_signals(t),
+                title=f"Fix {t.family}",
+                epoch=ep,
+                expires_in=self.expires_in,
+                family=t.family,
+            )
 
     @staticmethod
     def memory_events(ag) -> list[dict]:
-        return [{"signals": list(e.signals), "status": (e.outcome or {}).get("status")}
-                for e in ag.store.recent_events(HISTORY_WINDOW)]
+        return [
+            {"signals": list(e.signals), "status": (e.outcome or {}).get("status")}
+            for e in ag.store.recent_events(HISTORY_WINDOW)
+        ]
 
     def task_for(self, sim, sp, ag, rng):
         tid = self.active.get(sp.name)

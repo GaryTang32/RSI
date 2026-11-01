@@ -1,10 +1,12 @@
 """Public entry points: :func:`run` (Domain + seed Artifact), :func:`optimize` (dicts + metric), :func:`report`."""
+
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
 
 from ..core.artifact import Artifact
 from ..core.domain import Domain, Execution
@@ -29,9 +31,21 @@ def default_components(domain: Domain, seed: Artifact) -> list[str]:
     return comps or [f for f in seed if not f.endswith(".py")] or list(seed)
 
 
-COMPACT_KEYS = ("i", "event", "selected_program_candidate", "components", "subsample_scores", "new_subsample_scores",
-                "new_program_idx", "merged_entities", "rollouts", "n_candidates", "best_idx", "best_val",
-                "frontier_size")
+COMPACT_KEYS = (
+    "i",
+    "event",
+    "selected_program_candidate",
+    "components",
+    "subsample_scores",
+    "new_subsample_scores",
+    "new_program_idx",
+    "merged_entities",
+    "rollouts",
+    "n_candidates",
+    "best_idx",
+    "best_val",
+    "frontier_size",
+)
 
 
 def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
@@ -40,17 +54,30 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
     agg = st.agg_scores()
     extra = st.extra
     meta = {
-        "config": eng.cfg.to_json(), "components": eng.components, "splits": eng.split_names,
-        "n_train": len(eng.train_ids), "n_val": len(eng.val_ids),
-        "rollouts": st.counter.total, "rollouts_by_phase": dict(st.counter.by_phase),
-        "iterations": st.i + 1, "n_candidates": len(st.candidates), "n_proposals": st.n_proposals,
-        "n_accepted": st.kinds.count("reflective"), "n_merges_accepted": st.kinds.count("merge"),
-        "n_reflection_calls": st.n_reflection_calls, "best_idx": b, "best_val": agg[b], "seed_val": agg[0],
-        "candidates": st.candidates_table(), "frontier": st.frontier.to_json(),
-        "best_history": st.best_history, "resumed_at": eng.resumed_at,
+        "config": eng.cfg.to_json(),
+        "components": eng.components,
+        "splits": eng.split_names,
+        "n_train": len(eng.train_ids),
+        "n_val": len(eng.val_ids),
+        "rollouts": st.counter.total,
+        "rollouts_by_phase": dict(st.counter.by_phase),
+        "iterations": st.i + 1,
+        "n_candidates": len(st.candidates),
+        "n_proposals": st.n_proposals,
+        "n_accepted": st.kinds.count("reflective"),
+        "n_merges_accepted": st.kinds.count("merge"),
+        "n_reflection_calls": st.n_reflection_calls,
+        "best_idx": b,
+        "best_val": agg[b],
+        "seed_val": agg[0],
+        "candidates": st.candidates_table(),
+        "frontier": st.frontier.to_json(),
+        "best_history": st.best_history,
+        "resumed_at": eng.resumed_at,
         "merge": eng.merge.get_state() if eng.merge else None,
         "n_merge_invocations": eng.merge.n_invocations if eng.merge else 0,
-        "perfect_score": eng.perfect_score, "n_infra_errors": int(extra.get("n_infra", 0)),
+        "perfect_score": eng.perfect_score,
+        "n_infra_errors": int(extra.get("n_infra", 0)),
         "n_infra_retries": getattr(eng.adapter, "n_infra_retries", 0),
         "selector": getattr(eng.selector, "name", type(eng.selector).__name__),
         "n_exec_errors": int(extra.get("n_exec_errors", 0)),
@@ -60,45 +87,93 @@ def build_result(eng: GEPAEngine, method: str = "gepa") -> ImprovementResult:
         "trace": str(eng.tr.tr.path) if eng.tr.enabled else None,
         "shadow_usage": eng.shadow_usage_snapshot(),
     }
-    res = ImprovementResult(method=method, baseline=st.candidates[0], best=st.candidates[b], ledger=eng.ledger,
-                            trajectory=[{k: e[k] for k in COMPACT_KEYS if k in e} for e in st.trace],
-                            usage=eng.usage_snapshot(), stop_reason=eng.stop_reason,
-                            out_dir=str(eng.out_dir) if eng.out_dir else None, meta=meta)
+    res = ImprovementResult(
+        method=method,
+        baseline=st.candidates[0],
+        best=st.candidates[b],
+        ledger=eng.ledger,
+        trajectory=[{k: e[k] for k in COMPACT_KEYS if k in e} for e in st.trace],
+        usage=eng.usage_snapshot(),
+        stop_reason=eng.stop_reason,
+        out_dir=str(eng.out_dir) if eng.out_dir else None,
+        meta=meta,
+    )
     res.state = st
     res.candidates = list(st.candidates)
     return res
 
 
-def run(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None, llm_propose: Optional[LLM] = None,
-        config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
-        components: Optional[Sequence[str]] = None, budget=None, proposer=None, adapter: Optional[DomainAdapter] = None,
-        stoppers: Sequence[Callable] = (), callbacks: Sequence[Callable] = (), report_splits: Sequence[str] = (),
-        report_k: int = 1, verbose: bool = False, method: str = "gepa", critic=None,
-        selector=None, monitor=None) -> ImprovementResult:
+def run(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM | None = None,
+    config: Config | None = None,
+    out_dir: str | Path | None = None,
+    components: Sequence[str] | None = None,
+    budget=None,
+    proposer=None,
+    adapter: DomainAdapter | None = None,
+    stoppers: Sequence[Callable] = (),
+    callbacks: Sequence[Callable] = (),
+    report_splits: Sequence[str] = (),
+    report_k: int = 1,
+    verbose: bool = False,
+    method: str = "gepa",
+    critic=None,
+    selector=None,
+    monitor=None,
+) -> ImprovementResult:
     """Evolve the text components of ``seed_artifact`` on ``domain``; calling again on ``out_dir`` resumes."""
     cfg = config or Config()
     if not (cfg.acceptance == "noise_margin" and cfg.noise_margin > 0):
-        warnings.warn("GEPA: the keep rule has no noise band, so a no-op rewrite passes the 3-example minibatch about "
-                      "half the time; pass acceptance='noise_margin', noise_margin=<delta> to require a real gain",
-                      stacklevel=2)
+        warnings.warn(
+            "GEPA: the keep rule has no noise band, so a no-op rewrite passes the 3-example minibatch about "
+            "half the time; pass acceptance='noise_margin', noise_margin=<delta> to require a real gain",
+            stacklevel=2,
+        )
     if adapter is None:
         adapter = DomainAdapter(domain, llm_task, workers=cfg.workers, feedback=cfg.feedback)
     comps = list(components or cfg.components or default_components(domain, seed_artifact))
-    eng = GEPAEngine(adapter, seed_artifact, comps, llm_propose=llm_propose, config=cfg, out_dir=out_dir,
-                     proposer=proposer, llm_task=llm_task, budget=budget, stoppers=stoppers, callbacks=callbacks,
-                     verbose=verbose, method=method, critic=critic, selector=selector, monitor=monitor)
+    eng = GEPAEngine(
+        adapter,
+        seed_artifact,
+        comps,
+        llm_propose=llm_propose,
+        config=cfg,
+        out_dir=out_dir,
+        proposer=proposer,
+        llm_task=llm_task,
+        budget=budget,
+        stoppers=stoppers,
+        callbacks=callbacks,
+        verbose=verbose,
+        method=method,
+        critic=critic,
+        selector=selector,
+        monitor=monitor,
+    )
     eng.run()
     res = build_result(eng, method)
     if report_splits:
-        res.meta["report"] = report(domain, llm_task, {"seed": res.baseline, "best": res.best}, splits=report_splits,
-                                    k=report_k)
+        res.meta["report"] = report(
+            domain, llm_task, {"seed": res.baseline, "best": res.best}, splits=report_splits, k=report_k
+        )
     if out_dir:
         res.save(out_dir)
     return res
 
 
-def report(domain: Domain, llm_task: Optional[LLM], arms: dict[str, Artifact], *, splits: Sequence[str] = ("test",),
-           k: int = 1, workers: int = 4) -> dict:
+def report(
+    domain: Domain,
+    llm_task: LLM | None,
+    arms: dict[str, Artifact],
+    *,
+    splits: Sequence[str] = ("test",),
+    k: int = 1,
+    workers: int = 4,
+) -> dict:
     """Sealed-split scores per arm and paired differences against the first arm."""
     return transfer_report(domain, llm_task, arms, splits=tuple(splits), k=k, workers=workers)
 
@@ -130,10 +205,18 @@ class MetricDomain(Domain):
         return self._description or super().describe()
 
 
-def optimize(seed_candidate: dict[str, str], trainset: Sequence[Any], valset: Optional[Sequence[Any]] = None, *,
-             metric: Callable[[dict, Any], Any], llm_propose: LLM, config: Optional[Config] = None,
-             testset: Optional[Sequence[Any]] = None, out_dir: Optional[str | Path] = None,
-             description: str = "") -> ImprovementResult:
+def optimize(
+    seed_candidate: dict[str, str],
+    trainset: Sequence[Any],
+    valset: Sequence[Any] | None = None,
+    *,
+    metric: Callable[[dict, Any], Any],
+    llm_propose: LLM,
+    config: Config | None = None,
+    testset: Sequence[Any] | None = None,
+    out_dir: str | Path | None = None,
+    description: str = "",
+) -> ImprovementResult:
     """``gepa.optimize``-style quick start; ``metric(candidate, example) -> score | (score, feedback[, output])``."""
     tasks, splits = [], {"evolve": [], "val": [], "test": []}
     for split, data in (("evolve", trainset), ("val", valset or []), ("test", testset or [])):
@@ -147,5 +230,12 @@ def optimize(seed_candidate: dict[str, str], trainset: Sequence[Any], valset: Op
     dom = MetricDomain(TaskSuite(tasks, splits, name="optimize"), metric, description)
     seed = Artifact(seed_candidate)
     cfg = replace(config or Config(), train_split="evolve", val_split="val" if valset else None)
-    return run(dom, seed, llm_propose=llm_propose, config=cfg, out_dir=out_dir, components=list(seed_candidate),
-               report_splits=("test",) if testset else ())
+    return run(
+        dom,
+        seed,
+        llm_propose=llm_propose,
+        config=cfg,
+        out_dir=out_dir,
+        components=list(seed_candidate),
+        report_splits=("test",) if testset else (),
+    )

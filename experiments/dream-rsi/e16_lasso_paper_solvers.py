@@ -4,6 +4,7 @@
         [--program simpletes_best=<file> --program glmnet_port=<file>] --eigen <eigen dir> --heldout <dir> \
         [--rscript <Rscript>] [--search-evals 3]
 """
+
 import argparse
 import json
 import math
@@ -24,12 +25,18 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 import numpy as np  # noqa: E402
 
 from rsi.core.artifact import Artifact  # noqa: E402
-from rsi.domains.discovery.lasso_cpp import (SimpleTESLassoDomain, load_heldout, max_gap, run_binary,  # noqa: E402
-                                             sklearn_path, timed)
+from rsi.domains.discovery.lasso_cpp import (  # noqa: E402
+    SimpleTESLassoDomain,
+    load_heldout,
+    max_gap,
+    run_binary,
+    sklearn_path,
+    timed,
+)
 
 RESULTS = ROOT / "results" / "dream-rsi"
 
-R_SCRIPT = r'''
+R_SCRIPT = r"""
 suppressMessages(library(glmnet))
 args <- commandArgs(trailingOnly = TRUE)
 con <- file(args[1], "rb")
@@ -57,7 +64,7 @@ writeBin(as.double(best * 1000), con)
 writeBin(as.integer(ncol(B)), con, size = 4)
 writeBin(as.double(B), con)                  # column-major
 close(con)
-'''
+"""
 
 
 def glmnet_r(rscript, X, y, alphas, reps=5, thresh=1e-7):
@@ -66,11 +73,19 @@ def glmnet_r(rscript, X, y, alphas, reps=5, thresh=1e-7):
         fin, fout, fr = Path(d) / "in.bin", Path(d) / "out.bin", Path(d) / "fit.R"
         fr.write_text(R_SCRIPT)
         Xc = np.ascontiguousarray(X, dtype=np.float64)
-        fin.write_bytes(struct.pack("iii", *Xc.shape, len(alphas)) + Xc.tobytes()
-                        + np.ascontiguousarray(y, np.float64).tobytes()
-                        + np.ascontiguousarray(alphas, np.float64).tobytes())
-        rr = subprocess.run([rscript, str(fr), str(fin), str(fout), str(reps), repr(float(thresh))],
-                            capture_output=True, text=True, timeout=3600, env={**os.environ, "OMP_NUM_THREADS": "1"})
+        fin.write_bytes(
+            struct.pack("iii", *Xc.shape, len(alphas))
+            + Xc.tobytes()
+            + np.ascontiguousarray(y, np.float64).tobytes()
+            + np.ascontiguousarray(alphas, np.float64).tobytes()
+        )
+        rr = subprocess.run(
+            [rscript, str(fr), str(fin), str(fout), str(reps), repr(float(thresh))],
+            capture_output=True,
+            text=True,
+            timeout=3600,
+            env={**os.environ, "OMP_NUM_THREADS": "1"},
+        )
         if rr.returncode != 0:
             raise RuntimeError(rr.stderr[-800:])
         raw = fout.read_bytes()
@@ -111,8 +126,11 @@ def heldout_table(programs, doms, heldout_dir, rscript, reps):
             except Exception as e:  # noqa: BLE001
                 row[label] = _failed(e)
         rows[name] = row
-        print(f"[held-out {name} {X.shape}] " + "  ".join(f"{k}={v['ms']:.1f}ms(gap {v['gap']:.1e})"
-                                                        for k, v in row.items() if isinstance(v, dict)), flush=True)
+        print(
+            f"[held-out {name} {X.shape}] "
+            + "  ".join(f"{k}={v['ms']:.1f}ms(gap {v['gap']:.1e})" for k, v in row.items() if isinstance(v, dict)),
+            flush=True,
+        )
     return rows, missing
 
 
@@ -121,13 +139,13 @@ def q13_of(h: dict) -> dict:
     q13 = {}
     for name, row in h.items():
         d = row.get("dream_appC", {})
-        q13[name] = {"correct": bool(d.get("gap", math.inf) <= 1e-6),
-                     "faster_than_sklearn": bool(d.get("ms", math.inf) < row["sklearn"]["ms"]),
-                     "faster_than_glmnet_R": bool(d.get("ms", math.inf) < row["glmnet_R"]["ms"]) if "glmnet_R" in row
-                     else None,
-                     "speedup_vs_sklearn": row["sklearn"]["ms"] / d["ms"] if d.get("ms") else None,
-                     "speedup_vs_glmnet_R": (row["glmnet_R"]["ms"] / d["ms"]) if "glmnet_R" in row and d.get("ms")
-                     else None}
+        q13[name] = {
+            "correct": bool(d.get("gap", math.inf) <= 1e-6),
+            "faster_than_sklearn": bool(d.get("ms", math.inf) < row["sklearn"]["ms"]),
+            "faster_than_glmnet_R": bool(d.get("ms", math.inf) < row["glmnet_R"]["ms"]) if "glmnet_R" in row else None,
+            "speedup_vs_sklearn": row["sklearn"]["ms"] / d["ms"] if d.get("ms") else None,
+            "speedup_vs_glmnet_R": (row["glmnet_R"]["ms"] / d["ms"]) if "glmnet_R" in row and d.get("ms") else None,
+        }
     return q13
 
 
@@ -144,11 +162,21 @@ def search_evals(programs, eigen, cache, n_evals) -> dict:
                 ev = sd.evaluate_solver(lambda X, y, lam: lasso_path(X, y, alphas=lam)[1], "search", eval_seed=e)
             else:
                 ev = sd.evaluate_split(programs[k], "search", eval_seed=e)
-            evs.append({"fail_class": ev.fail_class, "score": ev.score, "error": ev.error,
-                        "geomean_ms": ev.diagnostics.get("geomean_ms"), "max_gap": ev.diagnostics.get("max_gap"),
-                        "problems": ev.diagnostics.get("problems")})
-            print(f"[search {k} eval {e}] {ev.fail_class} score {ev.score:.4f} geomean "
-                  f"{ev.diagnostics.get('geomean_ms')} max_gap {ev.diagnostics.get('max_gap')}", flush=True)
+            evs.append(
+                {
+                    "fail_class": ev.fail_class,
+                    "score": ev.score,
+                    "error": ev.error,
+                    "geomean_ms": ev.diagnostics.get("geomean_ms"),
+                    "max_gap": ev.diagnostics.get("max_gap"),
+                    "problems": ev.diagnostics.get("problems"),
+                }
+            )
+            print(
+                f"[search {k} eval {e}] {ev.fail_class} score {ev.score:.4f} geomean "
+                f"{ev.diagnostics.get('geomean_ms')} max_gap {ev.diagnostics.get('max_gap')}",
+                flush=True,
+            )
         search[k] = evs
     return search
 
@@ -168,45 +196,74 @@ def main():
     programs = {label: Artifact({"solver.py": Path(path).read_text()}) for label, _, path in specs}
     t0 = time.time()
     manifest = Path(a.heldout) / "manifest.json"
-    out = {"config": {"programs": {label: path for label, _, path in specs}, "reps": a.reps,
-                      "protocol": "SimpleTES generate_results.py: 1 warm-up + min of reps; lasso_path(n_alphas=50, "
-                                  "eps=1e-2) alphas and reference; gap <= 1e-6", "search_evals": a.search_evals,
-                      "rscript": a.rscript, "heldout_manifest": json.loads(manifest.read_text())
-                      if manifest.exists() else None}}
+    out = {
+        "config": {
+            "programs": {label: path for label, _, path in specs},
+            "reps": a.reps,
+            "protocol": "SimpleTES generate_results.py: 1 warm-up + min of reps; lasso_path(n_alphas=50, "
+            "eps=1e-2) alphas and reference; gap <= 1e-6",
+            "search_evals": a.search_evals,
+            "rscript": a.rscript,
+            "heldout_manifest": json.loads(manifest.read_text()) if manifest.exists() else None,
+        }
+    }
     for threads in (1, 2):  # the benchmark's single thread; a secondary pass with 2
-        doms = {k: SimpleTESLassoDomain(eigen_dir=a.eigen, heldout_dir=a.heldout, threads=threads, heldout_reps=a.reps,
-                                        cache_dir=a.cache) for k in programs}
+        doms = {
+            k: SimpleTESLassoDomain(
+                eigen_dir=a.eigen, heldout_dir=a.heldout, threads=threads, heldout_reps=a.reps, cache_dir=a.cache
+            )
+            for k in programs
+        }
         rows, missing = heldout_table(programs, doms, a.heldout, a.rscript if threads == 1 else None, a.reps)
         out[f"heldout_threads{threads}"] = rows
         out["missing"] = missing
     h = out["heldout_threads1"]
     q13 = q13_of(h)
-    passes = {"Q13": {"per_dataset": q13, "datasets": list(h), "missing": out["missing"],
-                      "all_available_pass": bool(q13) and all(v["correct"] and v["faster_than_sklearn"] and
-                                                              v["faster_than_glmnet_R"] is not False
-                                                              for v in q13.values()),
-                      "glmnet_measured": all(v["faster_than_glmnet_R"] is not None for v in q13.values())}}
+    passes = {
+        "Q13": {
+            "per_dataset": q13,
+            "datasets": list(h),
+            "missing": out["missing"],
+            "all_available_pass": bool(q13)
+            and all(
+                v["correct"] and v["faster_than_sklearn"] and v["faster_than_glmnet_R"] is not False
+                for v in q13.values()
+            ),
+            "glmnet_measured": all(v["faster_than_glmnet_R"] is not None for v in q13.values()),
+        }
+    }
     search = out["search"] = search_evals(programs, a.eigen, a.cache, a.search_evals)
 
     def gm(k):
         return float(np.exp(np.mean([math.log(e["geomean_ms"]) for e in search[k] if e["geomean_ms"]])))
 
     # Q32: correctness on 17 shapes x search_evals fresh instances + speed vs sklearn and the glmnet port
-    q32 = {"correct_all_search_problems": all(e["fail_class"] == "ok" for e in search.get("dream_appC", [])),
-           "n_correctness_checks": 17 * a.search_evals,
-           "correct_all_heldout": all(v["correct"] for v in q13.values()),
-           "geomean_ms": {k: gm(k) for k in search},
-           "faster_than_sklearn_search": gm("dream_appC") < gm("sklearn") if "dream_appC" in search else None,
-           "faster_than_glmnet_port_search": gm("dream_appC") < gm("glmnet_port") if "glmnet_port" in search else None,
-           "faster_than_sklearn_every_heldout": all(v["faster_than_sklearn"] for v in q13.values())}
-    q32["passes"] = bool(q32["correct_all_search_problems"] and q32["correct_all_heldout"]
-                         and q32["faster_than_sklearn_search"] and q32["faster_than_glmnet_port_search"]
-                         and q32["faster_than_sklearn_every_heldout"])
+    q32 = {
+        "correct_all_search_problems": all(e["fail_class"] == "ok" for e in search.get("dream_appC", [])),
+        "n_correctness_checks": 17 * a.search_evals,
+        "correct_all_heldout": all(v["correct"] for v in q13.values()),
+        "geomean_ms": {k: gm(k) for k in search},
+        "faster_than_sklearn_search": gm("dream_appC") < gm("sklearn") if "dream_appC" in search else None,
+        "faster_than_glmnet_port_search": gm("dream_appC") < gm("glmnet_port") if "glmnet_port" in search else None,
+        "faster_than_sklearn_every_heldout": all(v["faster_than_sklearn"] for v in q13.values()),
+    }
+    q32["passes"] = bool(
+        q32["correct_all_search_problems"]
+        and q32["correct_all_heldout"]
+        and q32["faster_than_sklearn_search"]
+        and q32["faster_than_glmnet_port_search"]
+        and q32["faster_than_sklearn_every_heldout"]
+    )
     passes["Q32"] = q32
     if "simpletes_best" in programs:  # context (Q14 / Q33): App. C vs the benchmark's best program per dataset
         passes["Q14_context_appC_vs_simpletes_best"] = {
-            n: {"appC_ms": r["dream_appC"]["ms"], "simpletes_best_ms": r["simpletes_best"]["ms"],
-                "appC_faster": r["dream_appC"]["ms"] < r["simpletes_best"]["ms"]} for n, r in h.items()}
+            n: {
+                "appC_ms": r["dream_appC"]["ms"],
+                "simpletes_best_ms": r["simpletes_best"]["ms"],
+                "appC_faster": r["dream_appC"]["ms"] < r["simpletes_best"]["ms"],
+            }
+            for n, r in h.items()
+        }
     out["tests"] = passes
     out["wall_s"] = round(time.time() - t0, 1)
     out["created"] = time.strftime("%Y-%m-%d %H:%M:%S")

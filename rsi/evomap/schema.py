@@ -1,18 +1,27 @@
 """Validator for the Draft-07 subset used by the GEP 1.14.0 JSON schemas (``jsonschema`` is not a dependency)."""
+
 from __future__ import annotations
 
 import json
 import re
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 SCHEMA_DIR = Path(__file__).parent / "schemas"
-KIND_FILES = {"Gene": "gene.schema.json", "Capsule": "capsule.schema.json",
-              "EvolutionEvent": "evolution-event.schema.json", "Mutation": "mutation.schema.json"}
+KIND_FILES = {
+    "Gene": "gene.schema.json",
+    "Capsule": "capsule.schema.json",
+    "EvolutionEvent": "evolution-event.schema.json",
+    "Mutation": "mutation.schema.json",
+}
 # fields the engine writes with a different type than the strict schema (spec §5 "schema/engine drift")
-DRIFT_FIELDS = {"Gene": {"epigenetic_marks"}, "Capsule": {"content", "diff"}, "EvolutionEvent": set(),
-                "Mutation": set()}
+DRIFT_FIELDS = {
+    "Gene": {"epigenetic_marks"},
+    "Capsule": {"content", "diff"},
+    "EvolutionEvent": set(),
+    "Mutation": set(),
+}
 
 _TYPES = {
     "object": lambda v: isinstance(v, dict),
@@ -25,7 +34,7 @@ _TYPES = {
 }
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_schema(kind: str) -> dict:
     return json.loads((SCHEMA_DIR / KIND_FILES[kind]).read_text())
 

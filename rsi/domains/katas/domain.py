@@ -3,6 +3,7 @@
 Injected files under ``genes/`` or ``skills/`` are appended to the system prompt as guidance. Validation
 workspaces: W0 = stub + ``smoke_test.py`` (public asserts), W1 = the model's solution + the same smoke test.
 """
+
 from __future__ import annotations
 
 import ast
@@ -12,9 +13,9 @@ import math
 import random
 import re
 import threading
+from collections.abc import Sequence
 from decimal import Decimal
 from fractions import Fraction
-from typing import Optional, Sequence
 
 from rsi.core import Artifact, Domain, Execution, MockLLM, Task, TaskSuite
 from rsi.core.llm import estimate_tokens, extract_code
@@ -23,10 +24,14 @@ from rsi.core.sandbox import run_python
 from .genes import CLASS_GENES
 from .katas import CLASS_KEYWORDS, CLASSES, KATA_BY_ID, KATAS, Kata
 
-SYSTEM = ("You are an expert Python programmer. Write one correct, self-contained function that satisfies the "
-          "specification exactly, including edge cases.\n")
-TASK = ("Implement this function:\n\n{signature}\n    \"\"\"{description}\"\"\"\n\nExamples that must hold:\n"
-        "{public_tests}\n\nReturn only the complete function (with any imports it needs) in one ```python block.\n")
+SYSTEM = (
+    "You are an expert Python programmer. Write one correct, self-contained function that satisfies the "
+    "specification exactly, including edge cases.\n"
+)
+TASK = (
+    'Implement this function:\n\n{signature}\n    """{description}"""\n\nExamples that must hold:\n'
+    "{public_tests}\n\nReturn only the complete function (with any imports it needs) in one ```python block.\n"
+)
 GUIDANCE_HEADER = "\n# Strategy guidance from your team's shared library\n"
 
 
@@ -39,14 +44,21 @@ def make_suite(scheme: str = "default") -> TaskSuite:
     test 3-4; ``audit`` evolve 0 / val 1 / test 2-3 / holdout 4 (every split a verified hub run needs)."""
     tasks, splits = [], {}
     by_cls = {c: [k for k in KATAS if k.cls == c] for c in CLASSES}
-    layout = {"default": {"evolve": (0, 3), "holdout": (3, 5)},
-              "hub": {"evolve": (0, 2), "val": (2, 3), "test": (3, 5)},
-              "audit": {"evolve": (0, 1), "val": (1, 2), "test": (2, 4), "holdout": (4, 5)}}[scheme]
+    layout = {
+        "default": {"evolve": (0, 3), "holdout": (3, 5)},
+        "hub": {"evolve": (0, 2), "val": (2, 3), "test": (3, 5)},
+        "audit": {"evolve": (0, 1), "val": (1, 2), "test": (2, 4), "holdout": (4, 5)},
+    }[scheme]
     for k in KATAS:
-        tasks.append(Task(k.id, {"fn": k.fn, "signature": k.signature, "description": k.description,
-                                 "public_tests": list(k.public)}, None, k.cls,
-                          {"signals": [*CLASS_KEYWORDS[k.cls], *k.keywords], "public": list(k.public),
-                           "signature": k.signature}))
+        tasks.append(
+            Task(
+                k.id,
+                {"fn": k.fn, "signature": k.signature, "description": k.description, "public_tests": list(k.public)},
+                None,
+                k.cls,
+                {"signals": [*CLASS_KEYWORDS[k.cls], *k.keywords], "public": list(k.public), "signature": k.signature},
+            )
+        )
     for split, (a, b) in layout.items():
         splits[split] = [k.id for c in CLASSES for k in by_cls[c][a:b]]
     splits["smoke"] = splits["evolve"][:1]
@@ -55,9 +67,26 @@ def make_suite(scheme: str = "default") -> TaskSuite:
 
 # Locked grader: the sandboxed child only evaluates the calls and prints canonical builtin values; the asserts run
 # here, so a solution can neither print a fake pass marker nor return an always-equal object.
-_SAFE = {"len": len, "list": list, "tuple": tuple, "range": range, "sorted": sorted, "sum": sum, "min": min,
-         "max": max, "abs": abs, "round": round, "set": set, "dict": dict, "str": str, "int": int, "float": float,
-         "bool": bool, "any": any, "all": all}
+_SAFE = {
+    "len": len,
+    "list": list,
+    "tuple": tuple,
+    "range": range,
+    "sorted": sorted,
+    "sum": sum,
+    "min": min,
+    "max": max,
+    "abs": abs,
+    "round": round,
+    "set": set,
+    "dict": dict,
+    "str": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "any": any,
+    "all": all,
+}
 _VALS_MARK = "__RSI_VALS__"
 
 _CHILD = r"""
@@ -148,8 +177,10 @@ def _split_assert(a: str, exprs: list) -> tuple:
                 return self.generic_visit(node)
             exprs.append(ast.unparse(node))
             used.append(len(exprs) - 1)
-            return ast.copy_location(ast.Subscript(value=ast.Name("_v", ast.Load()),
-                                                   slice=ast.Constant(len(exprs) - 1), ctx=ast.Load()), node)
+            return ast.copy_location(
+                ast.Subscript(value=ast.Name("_v", ast.Load()), slice=ast.Constant(len(exprs) - 1), ctx=ast.Load()),
+                node,
+            )
 
     new = ast.fix_missing_locations(Lift().visit(tree))
     return compile(new, "<assert>", "eval"), used
@@ -162,7 +193,7 @@ def check_asserts(code: str, asserts: Sequence[str], *, timeout_s: float = 10.0)
     rr = run_python(_CHILD.format(code=code, exprs=exprs, mark=_VALS_MARK), timeout_s=timeout_s, mem_mb=512)
     lines = [ln for ln in rr.stdout.splitlines() if ln.startswith(_VALS_MARK + " ")]
     try:
-        raw = json.loads(lines[-1][len(_VALS_MARK) + 1:]) if lines else None
+        raw = json.loads(lines[-1][len(_VALS_MARK) + 1 :]) if lines else None
         if not isinstance(raw, list) or len(raw) != len(exprs):
             raise ValueError("malformed result line")
     except ValueError:
@@ -192,7 +223,7 @@ class KatasDomain(Domain):
     name = "katas"
     components = {"prompt": ["prompts/*"], "gene": ["genes/*"], "skill": ["skills/*"]}
 
-    def __init__(self, suite: Optional[TaskSuite] = None, *, scheme: str = "default", timeout_s: float = 10.0) -> None:
+    def __init__(self, suite: TaskSuite | None = None, *, scheme: str = "default", timeout_s: float = 10.0) -> None:
         super().__init__(suite or make_suite(scheme))
         self.timeout_s = timeout_s
         self._cache: dict = {}
@@ -201,24 +232,30 @@ class KatasDomain(Domain):
     seed_artifact = staticmethod(seed_harness)
 
     def describe(self) -> str:
-        return ("Katas: a solver harness prompts a model to write one small Python function; hidden unit tests grade "
-                "it. Strategy genes are injected as guidance files under genes/ (or skills/).")
+        return (
+            "Katas: a solver harness prompts a model to write one small Python function; hidden unit tests grade "
+            "it. Strategy genes are injected as guidance files under genes/ (or skills/)."
+        )
 
     @staticmethod
     def guidance(artifact: Artifact) -> str:
-        parts = [f"--- guidance file: {p} ---\n{t.strip()}\n" for p, t in artifact.items()
-                 if p.startswith(("genes/", "skills/")) and p != "genes/library.json"]
+        parts = [
+            f"--- guidance file: {p} ---\n{t.strip()}\n"
+            for p, t in artifact.items()
+            if p.startswith(("genes/", "skills/")) and p != "genes/library.json"
+        ]
         return (GUIDANCE_HEADER + "\n".join(parts)) if parts else ""
 
     def public_text(self, task: Task) -> str:
         i = task.input
-        return f"{i['signature']}\n    \"\"\"{i['description']}\"\"\"\nExamples: " + "; ".join(i["public_tests"])
+        return f'{i["signature"]}\n    """{i["description"]}"""\nExamples: ' + "; ".join(i["public_tests"])
 
     def build_prompt(self, artifact: Artifact, task: Task) -> tuple[str, str]:
         i = task.input
         system = artifact.get("prompts/system.md", SYSTEM) + self.guidance(artifact)
-        prompt = artifact.get("prompts/task.md", TASK).format(signature=i["signature"], description=i["description"],
-                                                              public_tests="\n".join(i["public_tests"]))
+        prompt = artifact.get("prompts/task.md", TASK).format(
+            signature=i["signature"], description=i["description"], public_tests="\n".join(i["public_tests"])
+        )
         return system, prompt
 
     def execute(self, artifact: Artifact, task: Task, *, seed: int, llm) -> Execution:
@@ -229,9 +266,14 @@ class KatasDomain(Domain):
         if not resp.ok:
             return Execution(error=f"infra: llm backend error: {resp.error}")
         code = extract_code(resp.text) or ""
-        return Execution(output=code, trace=f"[prompt] {prompt[:400]}\n[reply] {resp.text[:1500]}",
-                         tokens=resp.usage.total_tokens, cost_usd=resp.usage.cost_usd, steps=1,
-                         error=None if code.strip() else "no python code block in reply")
+        return Execution(
+            output=code,
+            trace=f"[prompt] {prompt[:400]}\n[reply] {resp.text[:1500]}",
+            tokens=resp.usage.total_tokens,
+            cost_usd=resp.usage.cost_usd,
+            steps=1,
+            error=None if code.strip() else "no python code block in reply",
+        )
 
     def _run_asserts(self, code: str, asserts: Sequence[str]) -> tuple[int, str]:
         key = hashlib.sha256((code + "\x00" + "\x00".join(asserts)).encode()).hexdigest()
@@ -260,9 +302,11 @@ class KatasDomain(Domain):
     @staticmethod
     def smoke_script(k: Kata) -> str:
         """A pytest-collectable test that also runs as a plain script (genes may validate either way)."""
-        return ("from solution import *\n\n\ndef test_public():\n"
-                + "".join(f"    assert {a}, {a!r}\n" for a in k.public)
-                + "\n\nif __name__ == '__main__':\n    test_public()\n    print('public tests passed')\n")
+        return (
+            "from solution import *\n\n\ndef test_public():\n"
+            + "".join(f"    assert {a}, {a!r}\n" for a in k.public)
+            + "\n\nif __name__ == '__main__':\n    test_public()\n    print('public tests passed')\n"
+        )
 
     def pre_workspace(self, task: Task) -> dict:
         k = KATA_BY_ID[task.id]
@@ -285,12 +329,18 @@ HINTS = {
     "unicode": [r"normaliz|nfc|nfd", r"casefold", r"combining"],
     "dates": [r"fromisoformat|strptime", r"timedelta|datetime", r"leap", r"weekday\(\)|monday == 0", r"month/day"],
     "rounding": [r"decimal", r"half.?up", r"divmod|remainder", r"integer cents"],
-    "retry": [r"min\(cap|cap every|each delay", r"min\(success_at|number of attempts", r"429",
-              r"max\(0\.0|non-negative"],
+    "retry": [
+        r"min\(cap|cap every|each delay",
+        r"min\(success_at|number of attempts",
+        r"429",
+        r"max\(0\.0|non-negative",
+    ],
 }
 PITFALLS = {
-    "boundaries": [r"lst\[-n:\]", r"floor division"], "unicode": [r"ascii', 'ignore'|encode\(", r"code points|raw"],
-    "dates": [r"365|30-day", r"day/month"], "rounding": [r"round\(\)|banker", r"%\.2f|float sums"],
+    "boundaries": [r"lst\[-n:\]", r"floor division"],
+    "unicode": [r"ascii', 'ignore'|encode\(", r"code points|raw"],
+    "dates": [r"365|30-day", r"day/month"],
+    "rounding": [r"round\(\)|banker", r"%\.2f|float sums"],
     "retry": [r"uncapped", r">= 400"],
 }
 ANTI = {
@@ -304,19 +354,38 @@ CLASS_BASE = {"boundaries": -0.2, "unicode": -0.6, "dates": -0.1, "rounding": -0
 
 
 def _u(*parts) -> float:
-    return int.from_bytes(hashlib.sha256("|".join(map(str, parts)).encode()).digest()[:8], "big") / 2 ** 64
+    return int.from_bytes(hashlib.sha256("|".join(map(str, parts)).encode()).digest()[:8], "big") / 2**64
 
 
 class KataSimSolver(MockLLM):
     """Offline coder: writes the correct or the pitfall implementation with a probability driven by the guidance
     (hint phrases, AVOID warnings, contradictory advice, skill dilution, composition and length). All knobs."""
 
-    def __init__(self, ability: float = 0.0, *, hint_gain: float = 0.9, max_hints: float = 2.5,
-                 avoid_gain: float = 0.5, log_weight: float = 0.5, anti_gain: float = 1.0, skill_dilution: float = 0.5,
-                 lambda_comp: float = 0.4, lambda_len: float = 0.2, name: str = "kata-sim") -> None:
+    def __init__(
+        self,
+        ability: float = 0.0,
+        *,
+        hint_gain: float = 0.9,
+        max_hints: float = 2.5,
+        avoid_gain: float = 0.5,
+        log_weight: float = 0.5,
+        anti_gain: float = 1.0,
+        skill_dilution: float = 0.5,
+        lambda_comp: float = 0.4,
+        lambda_len: float = 0.2,
+        name: str = "kata-sim",
+    ) -> None:
         self.ability = ability
-        self.kw = dict(hint_gain=hint_gain, max_hints=max_hints, avoid_gain=avoid_gain, log_weight=log_weight,
-                       anti_gain=anti_gain, dil=skill_dilution, lc=lambda_comp, ll=lambda_len)
+        self.kw = dict(
+            hint_gain=hint_gain,
+            max_hints=max_hints,
+            avoid_gain=avoid_gain,
+            log_weight=log_weight,
+            anti_gain=anti_gain,
+            dil=skill_dilution,
+            lc=lambda_comp,
+            ll=lambda_len,
+        )
         super().__init__(self._respond, name=name)
 
     def _units(self, system: str) -> list[tuple[str, str]]:
@@ -344,11 +413,17 @@ class KataSimSolver(MockLLM):
             if log_part and any(re.search(rx, log_part) for rx in PITFALLS[kata.cls]):
                 avoid_w += kw["log_weight"]
             anti += sum(1 for rx in ANTI[kata.cls] if re.search(rx, strat))
-        return (self.ability + CLASS_BASE[kata.cls] + kw["hint_gain"] * min(kw["max_hints"], hint_w)
-                + kw["avoid_gain"] * min(1.0, avoid_w) - kw["anti_gain"] * min(2, anti)
-                - kw["lc"] * max(0, len(units) - 1) - kw["ll"] * toks / 1000.0)
+        return (
+            self.ability
+            + CLASS_BASE[kata.cls]
+            + kw["hint_gain"] * min(kw["max_hints"], hint_w)
+            + kw["avoid_gain"] * min(1.0, avoid_w)
+            - kw["anti_gain"] * min(2, anti)
+            - kw["lc"] * max(0, len(units) - 1)
+            - kw["ll"] * toks / 1000.0
+        )
 
-    def _respond(self, prompt: str, system: Optional[str], seed, i) -> str:
+    def _respond(self, prompt: str, system: str | None, seed, i) -> str:
         k = next((k for k in KATAS if f"def {k.fn}(" in prompt), None)
         if k is None:
             return "I cannot find the function to implement."
@@ -378,12 +453,27 @@ class KataMockProposer(MockLLM):
         real = "MUST fail before" in prompt or rng.random() < self.p_real
         val = ["python smoke_test.py"] if real else ["python --version"]
         if rng.random() < self.insight:
-            d = {"id": g.id, "category": "repair", "signals_match": list(g.signals_match), "summary": g.summary,
-                 "strategy": list(g.strategy), "avoid": list(g.avoid), "validation": val}
+            d = {
+                "id": g.id,
+                "category": "repair",
+                "signals_match": list(g.signals_match),
+                "summary": g.summary,
+                "strategy": list(g.strategy),
+                "avoid": list(g.avoid),
+                "validation": val,
+            }
         else:
-            d = {"id": f"gene_{cls}_generic_{rng.randrange(1000):03d}", "category": "repair",
-                 "signals_match": list(CLASS_KEYWORDS[cls]), "summary": f"Be careful with {cls} problems.",
-                 "strategy": ["Read the specification twice.", "Write the simplest implementation.",
-                              "Check the visible examples."], "avoid": ["Overcomplicating the solution."],
-                 "validation": val}
+            d = {
+                "id": f"gene_{cls}_generic_{rng.randrange(1000):03d}",
+                "category": "repair",
+                "signals_match": list(CLASS_KEYWORDS[cls]),
+                "summary": f"Be careful with {cls} problems.",
+                "strategy": [
+                    "Read the specification twice.",
+                    "Write the simplest implementation.",
+                    "Check the visible examples.",
+                ],
+                "avoid": ["Overcomplicating the solution."],
+                "validation": val,
+            }
         return "```json\n" + json.dumps(d) + "\n```"

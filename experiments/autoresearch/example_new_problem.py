@@ -2,6 +2,7 @@
 
 Usage: python experiments/autoresearch/example_new_problem.py [--llm sim|claude:haiku] [--quick]
 """
+
 from _common import SCRATCH, parser, propose_llm, suffix, write  # noqa: I001
 
 from pathlib import Path
@@ -9,7 +10,9 @@ from pathlib import Path
 from rsi.autoresearch import Config, MockResearchAgent, RunBudget, ScriptResearchTask, knob_edit, run
 from rsi.autoresearch.task import RECORD_HELPER
 
-EVALUATE_PY = RECORD_HELPER + '''
+EVALUATE_PY = (
+    RECORD_HELPER
+    + '''
 import numpy as np
 
 rng = np.random.default_rng(0)
@@ -28,8 +31,9 @@ if __name__ == "__main__":                 # the framework runs `python evaluate
     import train                           # the agent's code: fits at import, exposes predict(x)
     report(r2=score(train.predict))
 '''
+)
 
-TRAIN_PY = '''import numpy as np
+TRAIN_PY = """import numpy as np
 from evaluate import X_TRAIN, Y_TRAIN
 
 DEGREE = 1
@@ -48,28 +52,36 @@ w = np.linalg.solve(F.T @ F + RIDGE * np.eye(F.shape[1]), F.T @ Y_TRAIN)
 
 def predict(x):
     return features(x) @ w
-'''
+"""
 
 
 def make_task() -> ScriptResearchTask:
     # hardened mode: the locked evaluate.py is the entry point and the only caller of report(); tamper_patterns
     # name what train.py must never touch
     return ScriptResearchTask(
-        "poly-fit", {"evaluate.py": EVALUATE_PY, "train.py": TRAIN_PY}, metric="r2", direction="max",
-        editable_paths=["train.py"], locked_paths=["evaluate.py"], run_cmd=["python", "evaluate.py"],
+        "poly-fit",
+        {"evaluate.py": EVALUATE_PY, "train.py": TRAIN_PY},
+        metric="r2",
+        direction="max",
+        editable_paths=["train.py"],
+        locked_paths=["evaluate.py"],
+        run_cmd=["python", "evaluate.py"],
         budget=RunBudget(kind="ceiling", amount=10.0, kill_after=20.0, mem_mb=1024),
         tamper_patterns=[r"\bX_VAL\b", r"\bY_VAL\b", r"\breport\b"],
         description="Fit a noisy 1-D curve; train.py sets polynomial features and ridge regularisation; "
-                    "the metric is validation R^2 (higher is better).")
+        "the metric is validation R^2 (higher is better).",
+    )
 
 
 def edit_pool():
-    return [knob_edit("DEGREE", lambda v: v + 2, hi=15, name="deg_up"),
-            knob_edit("DEGREE", lambda v: v - 2, lo=1, name="deg_down"),
-            knob_edit("RIDGE", lambda v: v * 10, hi=1e4, name="ridge_up"),
-            knob_edit("RIDGE", lambda v: v / 10, lo=1e-6, name="ridge_down"),
-            knob_edit("SCALE", lambda v: v * 3, hi=100, name="scale_up"),
-            knob_edit("SCALE", lambda v: v / 3, lo=0.01, name="scale_down")]
+    return [
+        knob_edit("DEGREE", lambda v: v + 2, hi=15, name="deg_up"),
+        knob_edit("DEGREE", lambda v: v - 2, lo=1, name="deg_down"),
+        knob_edit("RIDGE", lambda v: v * 10, hi=1e4, name="ridge_up"),
+        knob_edit("RIDGE", lambda v: v / 10, lo=1e-6, name="ridge_down"),
+        knob_edit("SCALE", lambda v: v * 3, hi=100, name="scale_up"),
+        knob_edit("SCALE", lambda v: v / 3, lo=0.01, name="scale_down"),
+    ]
 
 
 def main() -> None:
@@ -77,14 +89,24 @@ def main() -> None:
     task = make_task()
     llm = propose_llm(a.llm, pool=edit_pool())
     agent = None if llm is not None else MockResearchAgent(edit_pool(), seed=0)
-    res = run(task, llm_propose=llm, agent=agent,
-              config=Config(max_experiments=6 if a.quick else 20, mode="hardened", overwrite=True),
-              out_dir=SCRATCH / "example_new_problem")
+    res = run(
+        task,
+        llm_propose=llm,
+        agent=agent,
+        config=Config(max_experiments=6 if a.quick else 20, mode="hardened", overwrite=True),
+        out_dir=SCRATCH / "example_new_problem",
+    )
     s = res.meta["analysis"]
     print(Path(res.meta["results_tsv"]).read_text())
-    write("example_new_problem" + suffix(a.llm, a.quick),
-          {"analysis": {k: v for k, v in s.items() if k != "top_hits"}, "top_hits": s["top_hits"],
-           "best_train_py": res.best["train.py"], "usage": res.usage.get("_total")})
+    write(
+        "example_new_problem" + suffix(a.llm, a.quick),
+        {
+            "analysis": {k: v for k, v in s.items() if k != "top_hits"},
+            "top_hits": s["top_hits"],
+            "best_train_py": res.best["train.py"],
+            "usage": res.usage.get("_total"),
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -1,23 +1,45 @@
 """SoL-Pi runtime and mechanism tests (offline)."""
+
 import dataclasses
 import json
 
 import pytest
+from solpi_testkit import Env, bash_steps, failure_receipt, runtime, tool_messages
 
-from rsi.solpi import (DEFAULT_COMPACTION_ECONOMICS, FULL_SENDS, PRICES, THEN_RUN_FAILED, THEN_RUN_SKIPPED,
-                       THEN_RUN_SUCCEEDED, ActionFusion, ArchiveObject, DeterministicReducer,
-                       EvidencePreservingReducer, Message, MockReducer, ObservationPack, OnlineContextCompact,
-                       TokenMeter, ToolCall, decide_compaction, estimate_remaining_requests, parse_solpi_config,
-                       validate_receipt)
+from rsi.solpi import (
+    DEFAULT_COMPACTION_ECONOMICS,
+    FULL_SENDS,
+    PRICES,
+    THEN_RUN_FAILED,
+    THEN_RUN_SKIPPED,
+    THEN_RUN_SUCCEEDED,
+    ActionFusion,
+    ArchiveObject,
+    DeterministicReducer,
+    EvidencePreservingReducer,
+    Message,
+    MockReducer,
+    ObservationPack,
+    OnlineContextCompact,
+    TokenMeter,
+    ToolCall,
+    decide_compaction,
+    estimate_remaining_requests,
+    parse_solpi_config,
+    validate_receipt,
+)
 from rsi.solpi.obspack import create_observation, read_recall_chunk
 from rsi.solpi.occ import OnlineState, record_boundary, record_compaction, record_provider_request
 from rsi.solpi.reducer import reducible_tool_result, sha256
 from rsi.solpi.runtime import ToolResult, ToolResultEvent
-from solpi_testkit import Env, bash_steps, failure_receipt, runtime, tool_messages
 
 BIG = "\n".join(f"line {i:05d} " + "x" * 60 for i in range(400)) + "\n"
-LOG = "\n".join(f"test_{i} PASSED" for i in range(300)) + "\nFAILED tests/test_a.py::t - AssertionError: 1 != 2\n" \
-      + "\n".join(f"debug {i}" for i in range(200)) + "\n1 failed, 300 passed\n"
+LOG = (
+    "\n".join(f"test_{i} PASSED" for i in range(300))
+    + "\nFAILED tests/test_a.py::t - AssertionError: 1 != 2\n"
+    + "\n".join(f"debug {i}" for i in range(200))
+    + "\n1 failed, 300 passed\n"
+)
 
 
 def _reads(path, n):
@@ -30,16 +52,18 @@ def test_prefix_cache_meter():
     assert (u1.cache_read, u1.cache_write) == (0, 150)
     u2 = m.request(["a", "b", "c"], [100, 50, 30])
     assert (u2.cache_read, u2.cache_write) == (150, 30)
-    u3 = m.request(["a", "x", "c"], [100, 60, 30])        # prefix broken at index 1
+    u3 = m.request(["a", "x", "c"], [100, 60, 30])  # prefix broken at index 1
     assert (u3.cache_read, u3.cache_write) == (100, 90)
     assert PRICES["sim-a"].ratio == pytest.approx(12.5) and PRICES["sim-b"].ratio == pytest.approx(12.5)
 
 
 def test_action_fusion_success_failure_and_markers():
     env = Env({"a.py": "X = 1\n"}, {"pytest": ("1 passed", False), "pytest -x": ("1 failed", True)})
-    steps = [[("edit", {"path": "a.py", "old": "X = 1", "new": "X = 2", "then_run": {"command": "pytest"}})],
-             [("edit", {"path": "@a.py", "old": "X = 2", "new": "X = 3", "then_run": {"command": "pytest -x"}})],
-             [("edit", {"path": "a.py", "old": "NOPE", "new": "Y", "then_run": {"command": "pytest"}})]]
+    steps = [
+        [("edit", {"path": "a.py", "old": "X = 1", "new": "X = 2", "then_run": {"command": "pytest"}})],
+        [("edit", {"path": "@a.py", "old": "X = 2", "new": "X = 3", "then_run": {"command": "pytest -x"}})],
+        [("edit", {"path": "a.py", "old": "NOPE", "new": "Y", "then_run": {"command": "pytest"}})],
+    ]
     af = ActionFusion()
     rt = runtime(env, steps, [af])
     rt.run("task")
@@ -55,11 +79,14 @@ def test_action_fusion_hash_guard_skips_on_interleaved_write():
     ran = []
 
     def interleave(rt, path):
-        env.files[path] = "X = 99\n"                           # another writer runs during the yield
+        env.files[path] = "X = 99\n"  # another writer runs during the yield
 
     env.tool_bash = lambda cmd, rt=None: ran.append(cmd) or ToolResult("ran")
-    rt = runtime(env, [[("edit", {"path": "a.py", "old": "X = 1", "new": "X = 2",
-                                  "then_run": {"command": "pytest"}})]], [ActionFusion(yield_hook=interleave)])
+    rt = runtime(
+        env,
+        [[("edit", {"path": "a.py", "old": "X = 1", "new": "X = 2", "then_run": {"command": "pytest"}})]],
+        [ActionFusion(yield_hook=interleave)],
+    )
     rt.run("task")
     res = tool_messages(rt)[0]
     assert res.is_error and "target content changed" in res.content and ran == []
@@ -71,9 +98,9 @@ def test_obspack_placeholder_after_full_sends_and_recall_fidelity():
     rt.run("task")
     sent = rt.backend.seen
     carried = [any(m.content == BIG for m in msgs) for msgs in sent]
-    assert carried[1:1 + FULL_SENDS] == [True] * FULL_SENDS and carried[1 + FULL_SENDS] is False
+    assert carried[1 : 1 + FULL_SENDS] == [True] * FULL_SENDS and carried[1 + FULL_SENDS] is False
     ph = next(m for m in sent[-1] if m.content.startswith("[large tool result replaced"))
-    assert "id: obs_" in ph.content and rt.history[2].content == BIG            # history itself is untouched
+    assert "id: obs_" in ph.content and rt.history[2].content == BIG  # history itself is untouched
     oid = ph.content.split("id: ")[1].split("\n")[0]
     pages, off = [], 0
     while True:
@@ -95,8 +122,9 @@ def test_obspack_rules_threshold_errors_receipts_utf8_and_fail_open():
     assert ch["bytes"] % 2 == 0 and ch["text"] == "é" * (ch["bytes"] // 2)
     op = ObservationPack()
     op.fail_store = True
-    rt = runtime(Env(outputs={"cat big": (BIG, False), "bad": (BIG, True)}),
-                 bash_steps("cat big", "bad") + _reads("n", 3), [op])
+    rt = runtime(
+        Env(outputs={"cat big": (BIG, False), "bad": (BIG, True)}), bash_steps("cat big", "bad") + _reads("n", 3), [op]
+    )
     rt.run("t")
     assert op.stats["fail_open"] > 0 and any(m.content == BIG for m in rt.backend.seen[-1])
 
@@ -106,11 +134,14 @@ def test_validate_receipt_all_rejection_reasons():
     good = failure_receipt(a.hash, "FAILED tests/test_a.py::t - AssertionError: 1 != 2")
     ok, v = validate_receipt(json.dumps(good), a, LOG, True)
     assert ok and v["evidence"][0]["line"] == 301
-    cases = {"invalid-json": "nope",
-             "schema-mismatch": json.dumps({**good, "status": "success"}),
-             "unverifiable-quote": json.dumps({**good, "evidence": [{"kind": "failure", "quote": "FAILED: made up"}]}),
-             "missing-failure-evidence": json.dumps({**good, "evidence": [{"kind": "summary",
-                                                                          "quote": "1 failed, 300 passed"}]})}
+    cases = {
+        "invalid-json": "nope",
+        "schema-mismatch": json.dumps({**good, "status": "success"}),
+        "unverifiable-quote": json.dumps({**good, "evidence": [{"kind": "failure", "quote": "FAILED: made up"}]}),
+        "missing-failure-evidence": json.dumps(
+            {**good, "evidence": [{"kind": "summary", "quote": "1 failed, 300 passed"}]}
+        ),
+    }
     for reason, raw in cases.items():
         assert validate_receipt(raw, a, LOG, True) == (False, reason)
     for bad in ({**good, "source_sha256": "0" * 64}, {**good, "evidence": good["evidence"] * 13}):
@@ -120,20 +151,26 @@ def test_validate_receipt_all_rejection_reasons():
 
 
 def test_epr_replaces_long_diagnostic_output_and_falls_back():
-    env = Env(outputs={"pytest -q": (LOG, True), "cat notes": (LOG, True), "pytest short": ("1 failed", True),
-                       "make": ("api_key=abc123\n" + LOG, True)})
+    env = Env(
+        outputs={
+            "pytest -q": (LOG, True),
+            "cat notes": (LOG, True),
+            "pytest short": ("1 failed", True),
+            "make": ("api_key=abc123\n" + LOG, True),
+        }
+    )
     epr = EvidencePreservingReducer(DeterministicReducer())
     rt = runtime(env, bash_steps("pytest -q", "cat notes", "pytest short", "make"), [epr])
     rt.run("t")
     reduced, plain, short, secret = tool_messages(rt)
     assert reduced.content.startswith("sol_pi_evidence_receipt_v1") and len(reduced.content) < len(LOG)
     assert "FAILED tests/test_a.py::t" in reduced.content and "source_artifact=/.solpi/" in reduced.content
-    assert plain.content == LOG                       # not a diagnostic command
-    assert short.content == "1 failed"                # below 4096 bytes
-    assert secret.content.startswith("api_key")       # likely secret -> fallback
+    assert plain.content == LOG  # not a diagnostic command
+    assert short.content == "1 failed"  # below 4096 bytes
+    assert secret.content.startswith("api_key")  # likely secret -> fallback
     assert epr.stats["fallback:likely-secret"] == 1 and epr.stats["applied"] == 1
     path = next(l for l in reduced.content.splitlines() if l.startswith("source_artifact=")).split("=", 1)[1]
-    assert rt.store[path] == LOG                      # exact readback available
+    assert rt.store[path] == LOG  # exact readback available
 
 
 def test_epr_accepted_receipts_are_always_verbatim_under_hallucination():
@@ -154,24 +191,41 @@ def test_epr_accepted_receipts_are_always_verbatim_under_hallucination():
 
 def test_epr_handles_fused_then_run_results():
     content = "edited a.py\n\n" + THEN_RUN_FAILED + "\n\n" + LOG
-    ev = ToolResultEvent(ToolCall("c1", "edit", {"path": "a.py", "then_run": {"command": "pytest"}}),
-                         ToolResult(content, True))
+    ev = ToolResultEvent(
+        ToolCall("c1", "edit", {"path": "a.py", "then_run": {"command": "pytest"}}), ToolResult(content, True)
+    )
     r = reducible_tool_result(ev)
     assert r.command == "pytest" and r.body == LOG and r.project("RECEIPT").endswith("\n\nRECEIPT")
 
 
 def test_occ_economics_test_vectors():
-    h = estimate_remaining_requests(completed_boundary_request_counts=[4, 6, 5], remaining_boundaries=3, scale=1,
-                                    standard_deviation_k=0, context_tokens=100_000, context_window_tokens=200_000,
-                                    average_context_token_increment=5_000)
+    h = estimate_remaining_requests(
+        completed_boundary_request_counts=[4, 6, 5],
+        remaining_boundaries=3,
+        scale=1,
+        standard_deviation_k=0,
+        context_tokens=100_000,
+        context_window_tokens=200_000,
+        average_context_token_increment=5_000,
+    )
     assert (h["requestsPerBoundaryMean"], h["expectedRemainingRequests"], h["windowRequestUpperBound"]) == (5, 16, 20)
 
     def dec(**o):
-        base = dict(write_tokens=80_000, archive_tokens=60_000, memo_tokens=1_000, context_tokens=80_000,
-                    completed_boundary_request_counts=[4, 6, 5], remaining_boundaries=4,
-                    average_context_token_increment=2_000, context_window_tokens=200_000, prior_compaction_count=0,
-                    carried_debt_tokens=0, cache_debt_repayment_tokens=0, cache_write_read_ratio=1,
-                    economics=DEFAULT_COMPACTION_ECONOMICS)
+        base = dict(
+            write_tokens=80_000,
+            archive_tokens=60_000,
+            memo_tokens=1_000,
+            context_tokens=80_000,
+            completed_boundary_request_counts=[4, 6, 5],
+            remaining_boundaries=4,
+            average_context_token_increment=2_000,
+            context_window_tokens=200_000,
+            prior_compaction_count=0,
+            carried_debt_tokens=0,
+            cache_debt_repayment_tokens=0,
+            cache_write_read_ratio=1,
+            economics=DEFAULT_COMPACTION_ECONOMICS,
+        )
         return decide_compaction(**{**base, **o})
 
     assert (dec()["compact"], dec()["reason"]) == (True, "economic")
@@ -211,14 +265,31 @@ def test_occ_compacts_at_boundary_and_reminds():
     assert any(m.hidden and "Online context compaction finished" in m.content for m in rt.history)
     assert rt.history[0].details.get("compaction") or any(m.details.get("compaction") for m in rt.history)
     assert occ.state.native_compaction_count == rt.compactions >= 1
-    assert all(d["reason"] in {"economic", "window_protection", "deferred_economic", "deferred_subsequent_margin",
-                               "deferred_carried_debt", "horizon_unavailable", "cache_ratio_unavailable",
-                               "native_not_compactable", "non_positive_saving"} for d in occ.decisions)
+    assert all(
+        d["reason"]
+        in {
+            "economic",
+            "window_protection",
+            "deferred_economic",
+            "deferred_subsequent_margin",
+            "deferred_carried_debt",
+            "horizon_unavailable",
+            "cache_ratio_unavailable",
+            "native_not_compactable",
+            "non_positive_saving",
+        }
+        for d in occ.decisions
+    )
 
 
 def test_solpi_config_validation():
     assert parse_solpi_config({"actionFusion": True})["extensions"] == {"action_fusion": {}}
-    for bad in ({"foo": 1}, {"version": 2}, {"actionFusion": "yes"}, {"cacheWriteReadRatio": -1},
-                {"evidencePreservingReducerModel": " "}):
+    for bad in (
+        {"foo": 1},
+        {"version": 2},
+        {"actionFusion": "yes"},
+        {"cacheWriteReadRatio": -1},
+        {"evidencePreservingReducerModel": " "},
+    ):
         with pytest.raises(ValueError):
             parse_solpi_config(bad)

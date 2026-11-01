@@ -1,7 +1,8 @@
 """Stage prompts of the ``adapt`` pack [code harness2/core/prompts.py], adapted from file tools to text blocks."""
+
 from __future__ import annotations
 
-from typing import Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
 
 VERSION = "harness2-1+rsi-text"
 
@@ -104,9 +105,11 @@ of your dimension. A later stage compares and merges.
 """
 
 CANDIDATE = "You are candidate {i} of {k} on this dimension, drawn independently from the same evidence.\n"
-ROUND = ("This is round {t}. You are editing the checkpoint the previous round produced, not the original harness, "
-         "and the evidence includes every earlier round. In this stage `KEEP_BASE` means leave that CURRENT "
-         "checkpoint unchanged; it never resets to the original harness.\n")
+ROUND = (
+    "This is round {t}. You are editing the checkpoint the previous round produced, not the original harness, "
+    "and the evidence includes every earlier round. In this stage `KEEP_BASE` means leave that CURRENT "
+    "checkpoint unchanged; it never resets to the original harness.\n"
+)
 
 ANSWER_FREE = """\
 # WHAT YOU DO NOT HAVE
@@ -195,10 +198,12 @@ Reply with ONE `<notes>` block, then your FILE blocks, and nothing else: in the 
 moment in a trajectory that motivated it. The notes are read by a person, not applied by a machine.
 """
 
-AGG_OPENING = ("You are composing THE final harness for one piece of work. What you emit is what gets ADOPTED: it "
-               "runs on this task, and if selected it enters this area's library where later tasks read it. Every "
-               "rule that bound the candidate proposers binds you -- you are the last gate, and merging an edit "
-               "launders it.\n")
+AGG_OPENING = (
+    "You are composing THE final harness for one piece of work. What you emit is what gets ADOPTED: it "
+    "runs on this task, and if selected it enters this area's library where later tasks read it. Every "
+    "rule that bound the candidate proposers binds you -- you are the last gate, and merging an edit "
+    "launders it.\n"
+)
 
 AGG_HAVE = """\
 # WHAT YOU HAVE
@@ -224,10 +229,13 @@ UNSAFE unless the rest of the evidence is overwhelming. Never merge an edit from
 stating why.
 """
 
-KEEP_BASE_REAL = ("KEEP_BASE is a real answer, not a failure. Adaptation that the evidence does not argue for is a\n"
-                  "regression: it costs context and buys nothing.\n")
+KEEP_BASE_REAL = (
+    "KEEP_BASE is a real answer, not a failure. Adaptation that the evidence does not argue for is a\n"
+    "regression: it costs context and buys nothing.\n"
+)
 
-AGG_JOB = """\
+AGG_JOB = (
+    """\
 # YOUR JOB
 Compose ONE harness. All of these are valid, judged only on what the rollouts support:
 - MERGE across candidates -- the expected outcome when an INV edit and a DOM edit each earn their place. Resolve the \
@@ -235,10 +243,14 @@ overlaps rather than concatenating. Write the merged files as FILE blocks agains
 - ADOPT ONE WHOLESALE if a single candidate is simply the best state: write the line `ADOPT: <label>` before any \
 FILE block (FILE blocks after it then edit that candidate's files).
 - KEEP_BASE: write no FILE block and no ADOPT line; the base harness in `context/harness/` is kept.
-""" + KEEP_BASE_REAL
+"""
+    + KEEP_BASE_REAL
+)
 
-AGG_ONE_OF = ("You are one of {k} aggregators composing a final from this same evidence in parallel, and you will not "
-              "see the others. Do not aim for the consensus answer -- commit to the harness you can defend.\n")
+AGG_ONE_OF = (
+    "You are one of {k} aggregators composing a final from this same evidence in parallel, and you will not "
+    "see the others. Do not aim for the consensus answer -- commit to the harness you can defend.\n"
+)
 
 NOTES_FORMAT = """\
 # NOTES FORMAT
@@ -260,7 +272,8 @@ actually does.
 """
 SEQ_FIRST = "This is the FIRST round, so the only evidence is the base rollouts and this round's two candidates.\n"
 
-SEQ_JOB = """\
+SEQ_JOB = (
+    """\
 # YOUR JOB
 
 {goal}
@@ -272,12 +285,16 @@ it: write the line `REPRODUCE: <label>`.
 - ADOPT this round's best candidate: write the line `ADOPT: <label>` (FILE blocks after it edit that candidate).
 - KEEP_BASE.
 
-""" + KEEP_BASE_REAL + """
+"""
+    + KEEP_BASE_REAL
+    + """
 Here `KEEP_BASE` means keep the CURRENT checkpoint in `context/harness/` unchanged; it does not restore the original \
 harness. In `<notes>`, identify which rounds' edits survive and which were dropped or restored.
 """
+)
 
-SELECT = """\
+SELECT = (
+    """\
 You are choosing which of {n} candidate answers should be delivered to the person who asked for this work.
 
 # THE CANDIDATES ARE ANONYMOUS ON PURPOSE
@@ -324,7 +341,11 @@ comparison is not a defect in the original artifact; judge only what is actually
 Length and polish are not merits in themselves. A shorter, correct, complete, exactly-shaped answer beats a longer \
 one with a gap or an embellishment.
 {checks}
-""" + ANSWER_FREE_SELECT + "\n" + EVIDENCE_BOUNDARY_SELECT + """
+"""
+    + ANSWER_FREE_SELECT
+    + "\n"
+    + EVIDENCE_BOUNDARY_SELECT
+    + """
 # OUTPUT FORMAT
 First the reasoning, then the choice as the very last thing:
 <why>
@@ -335,8 +356,10 @@ the pick. If you rejected a candidate on CONFORMANCE, say which field, column or
 <the id of the single candidate to submit>
 ```
 """
+)
 
-EXPERIENCE = """\
+EXPERIENCE = (
+    """\
 You are reading the complete record of one improvement round: a base harness, the edits proposed against it, the \
 executions those edited harnesses produced, and which output was finally submitted. Write two things for a library \
 that future work in this area reads before it makes its own edits.
@@ -369,7 +392,11 @@ narrow it to what the record does show, or decline. Adoption alone never establi
 transfer. If the record shows no concrete, reusable execution contrast, write the single line NO_ENTRY in place of \
 the <experience> block -- the edit rows are still worth writing.
 
-""" + ANSWER_FREE + "\n" + EVIDENCE_BOUNDARY + """
+"""
+    + ANSWER_FREE
+    + "\n"
+    + EVIDENCE_BOUNDARY
+    + """
 # OUTPUT FORMAT
 <edits>
 component: <name as it appears in the harness tree>
@@ -386,6 +413,7 @@ evidence: <the edit rows this rests on, and the execution contrast>
 confidence: <high|medium|low, and why>
 </experience>
 """
+)
 
 MISSION = """\
 # YOUR EVIDENCE
@@ -417,13 +445,15 @@ def _block(title: str, text: str) -> str:
 
 
 def _head(slots: Mapping[str, str]) -> str:
-    return _block("THE WORK", _s(slots, "work", "Run the agent on the task it is given.")) + \
-        _block("DOMAIN AND TASK LENS", _s(slots, "domain_guidance"))
+    return _block("THE WORK", _s(slots, "work", "Run the agent on the task it is given.")) + _block(
+        "DOMAIN AND TASK LENS", _s(slots, "domain_guidance")
+    )
 
 
 def _surface(editable: Sequence[str], interface: str) -> str:
-    return SURFACE.format(editable=", ".join(f"`{p}`" for p in editable) or "every file",
-                          interface=f" ({interface})" if interface else "")
+    return SURFACE.format(
+        editable=", ".join(f"`{p}`" for p in editable) or "every file", interface=f" ({interface})" if interface else ""
+    )
 
 
 def _levers(text: str) -> str:
@@ -431,27 +461,50 @@ def _levers(text: str) -> str:
 
 
 def _tail(slots, editable, interface) -> str:
-    return "\n".join([_block("WHAT GOOD PROCESS LOOKS LIKE HERE", _s(slots, "yardstick")) + ANSWER_FREE,
-                      EVIDENCE_BOUNDARY, _surface(editable, interface)])
+    return "\n".join(
+        [
+            _block("WHAT GOOD PROCESS LOOKS LIKE HERE", _s(slots, "yardstick")) + ANSWER_FREE,
+            EVIDENCE_BOUNDARY,
+            _surface(editable, interface),
+        ]
+    )
 
 
-def propose(dim: str, k: int, i: int, *, round_t: Optional[int] = None, slots: Mapping[str, str] = {},
-            editable: Sequence[str] = (), interface: str = "") -> str:
+def propose(
+    dim: str,
+    k: int,
+    i: int,
+    *,
+    round_t: int | None = None,
+    slots: Mapping[str, str] = {},
+    editable: Sequence[str] = (),
+    interface: str = "",
+) -> str:
     """Editor prompt (INV or DOM)."""
     if dim == "inv":
-        body = INV_TEMPLATE.format(levers=_levers(_s(slots, "inv_levers")),
-                                   deliverable=_s(slots, "deliverable_word", "deliverable"))
+        body = INV_TEMPLATE.format(
+            levers=_levers(_s(slots, "inv_levers")), deliverable=_s(slots, "deliverable_word", "deliverable")
+        )
     else:
         body = DOM_TEMPLATE.format(levers=_levers(_s(slots, "dom_levers")), domain=_s(slots, "domain_word", "domain"))
     cand = CANDIDATE.format(i=i, k=k) if k > 1 else ""
     if round_t is not None:
         cand += "\n" + ROUND.format(t=round_t) + "\n"
-    return "\n".join(["You are adapting an autonomous agent's harness.\n", _head(slots), body, GENERALIZE,
-                      HOW_TO_DECIDE.format(candidate=cand), _tail(slots, editable, interface)])
+    return "\n".join(
+        [
+            "You are adapting an autonomous agent's harness.\n",
+            _head(slots),
+            body,
+            GENERALIZE,
+            HOW_TO_DECIDE.format(candidate=cand),
+            _tail(slots, editable, interface),
+        ]
+    )
 
 
-def aggregate(k: int, j: int, *, slots: Mapping[str, str] = {}, editable: Sequence[str] = (),
-              interface: str = "") -> str:
+def aggregate(
+    k: int, j: int, *, slots: Mapping[str, str] = {}, editable: Sequence[str] = (), interface: str = ""
+) -> str:
     """Parallel composer prompt (also the sequential composer at k = 1)."""
     plural = dict(rollouts="rollouts" if k > 1 else "rollout", are="are draws" if k > 1 else "is a draw")
     weigh = AGG_WEIGH.format(k=k, **plural)
@@ -462,14 +515,27 @@ def aggregate(k: int, j: int, *, slots: Mapping[str, str] = {}, editable: Sequen
     return "\n".join(parts)
 
 
-def compose_round(t: int, k: int, *, slots: Mapping[str, str] = {}, editable: Sequence[str] = (),
-                  interface: str = "") -> str:
+def compose_round(
+    t: int, k: int, *, slots: Mapping[str, str] = {}, editable: Sequence[str] = (), interface: str = ""
+) -> str:
     """Sequential composer prompt for k > 1 (no weighing section, notes format or yardstick, as in the code)."""
-    goal = ("Compose THE FINAL harness, from the WHOLE history rather than just this round." if t >= k
-            else f"Compose checkpoint {t}, which the next round will build on.")
+    goal = (
+        "Compose THE FINAL harness, from the WHOLE history rather than just this round."
+        if t >= k
+        else f"Compose checkpoint {t}, which the next round will build on."
+    )
     have = SEQ_HAVE + (SEQ_FIRST if t == 1 else "")
-    return "\n".join([SEQ_OPENING.format(t=t, k=k), _head(slots), have, SEQ_JOB.format(goal=goal), ANSWER_FREE,
-                      EVIDENCE_BOUNDARY, _surface(editable, interface)])
+    return "\n".join(
+        [
+            SEQ_OPENING.format(t=t, k=k),
+            _head(slots),
+            have,
+            SEQ_JOB.format(goal=goal),
+            ANSWER_FREE,
+            EVIDENCE_BOUNDARY,
+            _surface(editable, interface),
+        ]
+    )
 
 
 def select(n: int, ids: Sequence[str], *, slots: Mapping[str, str] = {}) -> str:
@@ -478,15 +544,22 @@ def select(n: int, ids: Sequence[str], *, slots: Mapping[str, str] = {}) -> str:
     checks = _block("WHAT CORRECTNESS MEANS FOR THIS WORK", _s(slots, "selection_checks"))
     text = SELECT.format(n=n, lead=f"0. {lead.strip()}\n" if lead else "", checks=checks)
     listed = ", ".join(ids)
-    return text + ("\n# YOUR EVIDENCE\n\n context/task.md the request, verbatim\n context/source/ the material the "
-                   f"work was done from\n context/candidates/<id>.md one block per candidate: {listed}\nOpen every "
-                   f"candidate before choosing. Choose exactly one of: {listed}.\n")
+    return text + (
+        "\n# YOUR EVIDENCE\n\n context/task.md the request, verbatim\n context/source/ the material the "
+        f"work was done from\n context/candidates/<id>.md one block per candidate: {listed}\nOpen every "
+        f"candidate before choosing. Choose exactly one of: {listed}.\n"
+    )
 
 
 def experience(chosen: str, why: str, *, slots: Mapping[str, str] = {}) -> str:
     """Reflector prompt plus its mission."""
-    return "\n".join([EXPERIENCE, _head(slots),
-                      f"Harness {chosen} was adopted. The selection reasoning was: {why or '(none)'}. "
-                      "context/adoption.json maps any anonymous IDs to labels. Compare context/harness/ with "
-                      "context/base_harness/ and the candidates in context/pool/. Read the decisions and execution "
-                      "contrasts before writing.\n"])
+    return "\n".join(
+        [
+            EXPERIENCE,
+            _head(slots),
+            f"Harness {chosen} was adopted. The selection reasoning was: {why or '(none)'}. "
+            "context/adoption.json maps any anonymous IDs to labels. Compare context/harness/ with "
+            "context/base_harness/ and the candidates in context/pool/. Read the decisions and execution "
+            "contrasts before writing.\n",
+        ]
+    )

@@ -1,4 +1,5 @@
 """Lasso path under the paper's SimpleTES protocol: compiled C++ candidates, 17 shapes, sklearn gate [paper:§4.1]."""
+
 from __future__ import annotations
 
 import ast
@@ -9,8 +10,8 @@ import struct
 import subprocess
 import tempfile
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -25,16 +26,28 @@ EPS = 1e-2
 TOL_OBJECTIVE = 1e-6
 # the 17 search problems (n, p, generator) [paper:§4.1 "the same 17 synthetic instances as SimpleTES"]
 SIZES: tuple = (
-    (200, 100, "gaussian"), (200, 500, "gaussian"), (500, 1000, "gaussian"), (200, 2000, "gaussian"),
-    (50, 3000, "gaussian"), (2000, 500, "gaussian"), (100, 5000, "gaussian"), (1000, 500, "sparse"),
-    (500, 1000, "sparse"), (500, 1000, "dense_sol"), (500, 30, "gaussian"), (1000, 50, "gaussian"),
-    (2000, 3000, "sparse"), (500, 200, "corr_low"), (500, 500, "corr_high"), (200, 1000, "corr_low"),
+    (200, 100, "gaussian"),
+    (200, 500, "gaussian"),
+    (500, 1000, "gaussian"),
+    (200, 2000, "gaussian"),
+    (50, 3000, "gaussian"),
+    (2000, 500, "gaussian"),
+    (100, 5000, "gaussian"),
+    (1000, 500, "sparse"),
+    (500, 1000, "sparse"),
+    (500, 1000, "dense_sol"),
+    (500, 30, "gaussian"),
+    (1000, 50, "gaussian"),
+    (2000, 3000, "sparse"),
+    (500, 200, "corr_low"),
+    (500, 500, "corr_high"),
+    (200, 1000, "corr_low"),
     (1000, 1000, "corr_high"),
 )
 # the paper's six held-out datasets, in the order of its Fig. 3a table
 HELDOUT_NAMES: tuple = ("gisette", "rcv1", "dna", "leukemia", "colon", "duke")
 
-SEED_CPP = r'''
+SEED_CPP = r"""
 // Plain cyclic coordinate descent along the lambda path (warm starts, residual updates).
 #include <cstdio>
 #include <cstdint>
@@ -72,7 +85,7 @@ int main() {
     fwrite(out.data(), sizeof(double), out.size(), stdout);
     return 0;
 }
-'''
+"""
 
 
 def seed_program() -> str:
@@ -142,8 +155,12 @@ def parse_program(code: str) -> tuple[str, list[str]]:
     tree = ast.parse(code)
     found: dict = {}
     for node in tree.body:
-        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                and node.targets[0].id in ("CPP_CODE", "COMPILE_FLAGS"):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in ("CPP_CODE", "COMPILE_FLAGS")
+        ):
             found[node.targets[0].id] = ast.literal_eval(node.value)
     if not isinstance(found.get("CPP_CODE"), str):
         raise ValueError("the program must assign a string literal to CPP_CODE")
@@ -156,8 +173,14 @@ def parse_program(code: str) -> tuple[str, list[str]]:
     return found["CPP_CODE"], flags
 
 
-def compile_program(cpp: str, flags: Sequence[str], *, eigen_dir: Optional[str] = None,
-                    cache_dir: Optional[str] = None, timeout_s: float = 300.0) -> tuple[Optional[str], Optional[str]]:
+def compile_program(
+    cpp: str,
+    flags: Sequence[str],
+    *,
+    eigen_dir: str | None = None,
+    cache_dir: str | None = None,
+    timeout_s: float = 300.0,
+) -> tuple[str | None, str | None]:
     """g++ -O3 -march=native -std=c++17 [-I eigen] <flags>; cached by content. Returns (binary, error)."""
     cache = Path(cache_dir or Path(tempfile.gettempdir()) / "rsi_lasso_cpp")
     cache.mkdir(parents=True, exist_ok=True)
@@ -179,14 +202,16 @@ def compile_program(cpp: str, flags: Sequence[str], *, eigen_dir: Optional[str] 
     return str(binary), None
 
 
-def run_binary(binary: str, X: np.ndarray, y: np.ndarray, lambdas, *, timeout_s: float = 300.0,
-               threads: int = 1) -> np.ndarray:
+def run_binary(
+    binary: str, X: np.ndarray, y: np.ndarray, lambdas, *, timeout_s: float = 300.0, threads: int = 1
+) -> np.ndarray:
     """stdin: int32 n, p, K, then X (row-major), y, lambdas as float64; stdout: p*K float64, column-major."""
     X = np.ascontiguousarray(X, dtype=np.float64)
     n, p = X.shape
     lam = np.ascontiguousarray(lambdas, dtype=np.float64)
-    payload = struct.pack("iii", n, p, len(lam)) + X.tobytes() + np.ascontiguousarray(y, np.float64).tobytes() \
-        + lam.tobytes()
+    payload = (
+        struct.pack("iii", n, p, len(lam)) + X.tobytes() + np.ascontiguousarray(y, np.float64).tobytes() + lam.tobytes()
+    )
     env = {**os.environ, "OMP_NUM_THREADS": str(threads), "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
     proc = subprocess.run([binary], input=payload, capture_output=True, timeout=timeout_s, env=env)
     if proc.returncode != 0:
@@ -209,7 +234,7 @@ def timed(fn, reps: int, warmup: int = 0) -> tuple[float, object]:
     return best, out
 
 
-def load_heldout(heldout_dir: Optional[str]) -> tuple[dict, list[str]]:
+def load_heldout(heldout_dir: str | None) -> tuple[dict, list[str]]:
     """``{name: (X, y)}`` of the held-out datasets present in ``heldout_dir`` and the names missing."""
     out, missing = {}, []
     for name in HELDOUT_NAMES:
@@ -229,14 +254,28 @@ class SimpleTESLassoDomain(ProgramDomain):
     program_file = PROGRAM
     entry = "CPP_CODE"
 
-    def __init__(self, *, eigen_dir: Optional[str] = None, heldout_dir: Optional[str] = None,
-                 timing_runs: int = 3, heldout_reps: int = 5, threads: int = 1, seed: int = 0,
-                 sizes: Optional[Sequence[tuple]] = None, timeout_s: float = 300.0,
-                 cache_dir: Optional[str] = None) -> None:
-        tasks = [Task("lasso-cpp-search", "search", None, "lasso_cpp"),
-                 Task("lasso-cpp-heldout", "holdout", None, "lasso_cpp")]
-        super().__init__(TaskSuite(tasks, {"evolve": ["lasso-cpp-search"], "holdout": ["lasso-cpp-heldout"]},
-                                   name="lasso_cpp"), sandboxed=True, timeout_s=timeout_s)
+    def __init__(
+        self,
+        *,
+        eigen_dir: str | None = None,
+        heldout_dir: str | None = None,
+        timing_runs: int = 3,
+        heldout_reps: int = 5,
+        threads: int = 1,
+        seed: int = 0,
+        sizes: Sequence[tuple] | None = None,
+        timeout_s: float = 300.0,
+        cache_dir: str | None = None,
+    ) -> None:
+        tasks = [
+            Task("lasso-cpp-search", "search", None, "lasso_cpp"),
+            Task("lasso-cpp-heldout", "holdout", None, "lasso_cpp"),
+        ]
+        super().__init__(
+            TaskSuite(tasks, {"evolve": ["lasso-cpp-search"], "holdout": ["lasso-cpp-heldout"]}, name="lasso_cpp"),
+            sandboxed=True,
+            timeout_s=timeout_s,
+        )
         self.eigen_dir, self.heldout_dir = eigen_dir, heldout_dir
         self.timing_runs, self.heldout_reps, self.threads = timing_runs, heldout_reps, threads
         self.seed = seed
@@ -244,18 +283,20 @@ class SimpleTESLassoDomain(ProgramDomain):
         self.cache_dir = cache_dir
 
     def describe(self) -> str:
-        return ("Lasso regularization path, compiled: define CPP_CODE (C++17 source; Eigen is available) and "
-                "optionally COMPILE_FLAGS in solver.py. The binary reads int32 n, p, K, then X (n*p float64, "
-                "row-major), y (n) and the decreasing lambda path (K) from stdin, and writes the p*K coefficient "
-                "path (float64, column-major) to stdout, minimizing 1/(2n)||y - Xw||^2 + lambda_k ||w||_1 for "
-                f"every k. Correctness on fresh instances: F_k(w_k) <= F_k(sklearn lasso_path) + {TOL_OBJECTIVE:g} "
-                f"for every k, else score 0. Score = 1 / geometric-mean runtime (ms) over {len(self.sizes)} problem "
-                "shapes (fresh random data per timing call). Use double precision throughout.")
+        return (
+            "Lasso regularization path, compiled: define CPP_CODE (C++17 source; Eigen is available) and "
+            "optionally COMPILE_FLAGS in solver.py. The binary reads int32 n, p, K, then X (n*p float64, "
+            "row-major), y (n) and the decreasing lambda path (K) from stdin, and writes the p*K coefficient "
+            "path (float64, column-major) to stdout, minimizing 1/(2n)||y - Xw||^2 + lambda_k ||w||_1 for "
+            f"every k. Correctness on fresh instances: F_k(w_k) <= F_k(sklearn lasso_path) + {TOL_OBJECTIVE:g} "
+            f"for every k, else score 0. Score = 1 / geometric-mean runtime (ms) over {len(self.sizes)} problem "
+            "shapes (fresh random data per timing call). Use double precision throughout."
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: seed_program()})
 
-    def binary_of(self, artifact: Artifact) -> tuple[Optional[str], Optional[str]]:
+    def binary_of(self, artifact: Artifact) -> tuple[str | None, str | None]:
         code = artifact.get(PROGRAM)
         if code is None:
             return None, f"{PROGRAM} missing"
@@ -266,20 +307,26 @@ class SimpleTESLassoDomain(ProgramDomain):
         return compile_program(cpp, flags, eigen_dir=self.eigen_dir, cache_dir=self.cache_dir)
 
     def problem_seeds(self, eval_seed: int) -> list[dict]:
-        rng = np.random.RandomState((1_000_003 * int(self.seed) + int(eval_seed)) % (2 ** 31))
-        return [{"timing": [int(rng.randint(1, 2 ** 30)) for _ in range(self.timing_runs)],
-                 "correctness": int(rng.randint(1, 2 ** 30))} for _ in self.sizes]
+        rng = np.random.RandomState((1_000_003 * int(self.seed) + int(eval_seed)) % (2**31))
+        return [
+            {
+                "timing": [int(rng.randint(1, 2**30)) for _ in range(self.timing_runs)],
+                "correctness": int(rng.randint(1, 2**30)),
+            }
+            for _ in self.sizes
+        ]
 
     def evaluate_split(self, artifact: Artifact, which: str = "search", *, eval_seed: int = 0) -> EvalOutcome:
         t0 = time.time()
         binary, err = self.binary_of(artifact)
         if err is not None:
             return failure("compile_other", err[:1500], seconds=time.time() - t0)
-        solve = (lambda X, y, lam: run_binary(binary, X, y, lam, timeout_s=self.timeout_s, threads=self.threads))
+        solve = lambda X, y, lam: run_binary(binary, X, y, lam, timeout_s=self.timeout_s, threads=self.threads)
         return self.evaluate_solver(solve, which, eval_seed=eval_seed, t0=t0)
 
-    def evaluate_solver(self, solve, which: str = "search", *, eval_seed: int = 0,
-                        t0: Optional[float] = None) -> EvalOutcome:
+    def evaluate_solver(
+        self, solve, which: str = "search", *, eval_seed: int = 0, t0: float | None = None
+    ) -> EvalOutcome:
         """Grade any callable ``solve(X, y, lambdas) -> coef (p, K)`` under this protocol."""
         t0 = time.time() if t0 is None else t0
         rows = []
@@ -305,8 +352,9 @@ class SimpleTESLassoDomain(ProgramDomain):
                 for name, (X, y) in data.items():
                     alphas, ref = sklearn_path(X, y)
                     ms, coef = timed(lambda: solve(X, y, alphas), self.heldout_reps, warmup=1)
-                    rows.append({"problem": name, "ms": ms,
-                                 "gap": max_gap(X, y, np.asarray(coef, dtype=float), ref, alphas)})
+                    rows.append(
+                        {"problem": name, "ms": ms, "gap": max_gap(X, y, np.asarray(coef, dtype=float), ref, alphas)}
+                    )
             else:
                 raise ValueError(f"unknown split {which!r}")
         except subprocess.TimeoutExpired:
@@ -319,8 +367,9 @@ class SimpleTESLassoDomain(ProgramDomain):
         dt = time.time() - t0
         if not worst <= TOL_OBJECTIVE:
             bad = [r["problem"] for r in rows if not r["gap"] <= TOL_OBJECTIVE]
-            return failure("correctness", f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}",
-                           diag, dt)
+            return failure(
+                "correctness", f"objective exceeds sklearn's by {worst:.3g} > {TOL_OBJECTIVE:g} on {bad}", diag, dt
+            )
         return EvalOutcome(1.0 / gm, True, True, "ok", None, len(rows), len(rows), diag, dt)
 
     def evaluate_program(self, artifact: Artifact, *, seed: int = 0) -> EvalOutcome:
@@ -330,9 +379,23 @@ class SimpleTESLassoDomain(ProgramDomain):
         return execution(self.evaluate_split(artifact, task.input or "search", eval_seed=seed))
 
     def mock_agent(self, **kw):
-        raise NotImplementedError("lasso_cpp needs an agent that writes C++ (e.g. rsi.dream.EditorAgent over an "
-                                  "LLM); the offline mock agent works on LassoPathDomain's numpy programs")
+        raise NotImplementedError(
+            "lasso_cpp needs an agent that writes C++ (e.g. rsi.dream.EditorAgent over an "
+            "LLM); the offline mock agent works on LassoPathDomain's numpy programs"
+        )
 
 
-__all__ = ["SimpleTESLassoDomain", "SIZES", "HELDOUT_NAMES", "make_problem", "sklearn_path", "max_gap",
-           "parse_program", "compile_program", "run_binary", "seed_program", "load_heldout", "timed"]
+__all__ = [
+    "SimpleTESLassoDomain",
+    "SIZES",
+    "HELDOUT_NAMES",
+    "make_problem",
+    "sklearn_path",
+    "max_gap",
+    "parse_program",
+    "compile_program",
+    "run_binary",
+    "seed_program",
+    "load_heldout",
+    "timed",
+]

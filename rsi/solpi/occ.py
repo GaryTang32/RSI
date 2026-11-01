@@ -1,11 +1,12 @@
 """Online Context Compact (OCC): at a plan boundary, compact only when the saving repays the cache rewrite."""
+
 from __future__ import annotations
 
 import json
 import math
 import unicodedata
 from dataclasses import asdict, dataclass, replace
-from typing import Any, Optional
+from typing import Any
 
 from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, ToolSpec
 
@@ -13,10 +14,13 @@ DEFAULT_KEEP_RECENT_TOKENS = 20_000
 DEFAULT_NATIVE_SUMMARY_TOKEN_ESTIMATE = 1_000
 MINIMUM_VARIANCE_SAMPLES = 3
 SMALL_SAMPLE_SCALE = 0.5
-BOUNDARY_COMPACTION_INSTRUCTIONS = ("Preserve completed work, verification results, important decisions, and "
-                                    "remaining work.")
-POST_COMPACTION_PLAN_REMINDER = ("Online context compaction finished. The parent task is still active. "
-                                 "Before continuing work, call update_plan with a fresh plan for the remaining work.")
+BOUNDARY_COMPACTION_INSTRUCTIONS = (
+    "Preserve completed work, verification results, important decisions, and remaining work."
+)
+POST_COMPACTION_PLAN_REMINDER = (
+    "Online context compaction finished. The parent task is still active. "
+    "Before continuing work, call update_plan with a fresh plan for the remaining work."
+)
 ONLINE_STATE_ENTRY = "sol-pi-online-context-state-v1"
 MAX_PLAN_STEPS = 128
 MAX_STRING_BYTES = 16_384
@@ -34,8 +38,16 @@ class CompactionEconomics:
 DEFAULT_COMPACTION_ECONOMICS = CompactionEconomics()
 
 
-def estimate_remaining_requests(*, completed_boundary_request_counts, remaining_boundaries, scale, standard_deviation_k,
-                                context_tokens, context_window_tokens, average_context_token_increment) -> dict:
+def estimate_remaining_requests(
+    *,
+    completed_boundary_request_counts,
+    remaining_boundaries,
+    scale,
+    standard_deviation_k,
+    context_tokens,
+    context_window_tokens,
+    average_context_token_increment,
+) -> dict:
     """``economics.ts``: R = min(1 + floor(mu_lower * B_rem * scale), floor((W_win - C) / mean_delta))."""
     c = list(completed_boundary_request_counts)
     mean = sum(c) / max(1, len(c))
@@ -50,25 +62,45 @@ def estimate_remaining_requests(*, completed_boundary_request_counts, remaining_
     win = None
     if context_window_tokens is not None and (average_context_token_increment or 0) > 0:
         win = max(0, math.floor((context_window_tokens - context_tokens) / average_context_token_increment))
-    return {"completedBoundaryRequestCounts": c, "requestsPerBoundaryMean": mean,
-            "requestsPerBoundaryLowerBound": lower, "unboundedExpectedRemainingRequests": unbounded,
-            "averageContextTokenIncrement": average_context_token_increment, "windowRequestUpperBound": win,
-            "expectedRemainingRequests": unbounded if win is None else min(unbounded, win)}
+    return {
+        "completedBoundaryRequestCounts": c,
+        "requestsPerBoundaryMean": mean,
+        "requestsPerBoundaryLowerBound": lower,
+        "unboundedExpectedRemainingRequests": unbounded,
+        "averageContextTokenIncrement": average_context_token_increment,
+        "windowRequestUpperBound": win,
+        "expectedRemainingRequests": unbounded if win is None else min(unbounded, win),
+    }
 
 
-def decide_compaction(*, write_tokens, archive_tokens, memo_tokens, context_tokens, completed_boundary_request_counts,
-                      remaining_boundaries, average_context_token_increment, context_window_tokens,
-                      prior_compaction_count, carried_debt_tokens, cache_debt_repayment_tokens, cache_write_read_ratio,
-                      economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS) -> dict:
+def decide_compaction(
+    *,
+    write_tokens,
+    archive_tokens,
+    memo_tokens,
+    context_tokens,
+    completed_boundary_request_counts,
+    remaining_boundaries,
+    average_context_token_increment,
+    context_window_tokens,
+    prior_compaction_count,
+    carried_debt_tokens,
+    cache_debt_repayment_tokens,
+    cache_write_read_ratio,
+    economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS,
+) -> dict:
     """``economics.ts:decideCompaction`` with every intermediate: break-even b = W * (rho - 1) / S against R."""
     horizon = None
     if completed_boundary_request_counts is not None:
         horizon = estimate_remaining_requests(
             completed_boundary_request_counts=completed_boundary_request_counts,
-            remaining_boundaries=remaining_boundaries, scale=economics.remaining_request_scale,
-            standard_deviation_k=economics.remaining_request_stddev_k, context_tokens=context_tokens,
+            remaining_boundaries=remaining_boundaries,
+            scale=economics.remaining_request_scale,
+            standard_deviation_k=economics.remaining_request_stddev_k,
+            context_tokens=context_tokens,
             context_window_tokens=context_window_tokens,
-            average_context_token_increment=average_context_token_increment)
+            average_context_token_increment=average_context_token_increment,
+        )
     saving = archive_tokens - memo_tokens
     incr = None if cache_write_read_ratio is None else max(0.0, cache_write_read_ratio - 1)
     breakeven = (write_tokens * incr) / saving if saving > 0 and incr is not None else None
@@ -78,17 +110,24 @@ def decide_compaction(*, write_tokens, archive_tokens, memo_tokens, context_toke
         eff = None
     elif first:
         wub = horizon["windowRequestUpperBound"]
-        eff = min(horizon["expectedRemainingRequests"] * economics.first_compaction_request_scale,
-                  wub if wub is not None else math.inf)
+        eff = min(
+            horizon["expectedRemainingRequests"] * economics.first_compaction_request_scale,
+            wub if wub is not None else math.inf,
+        )
     else:
         eff = horizon["expectedRemainingRequests"]
-    window_protection = context_window_tokens is not None and \
-        context_tokens >= context_window_tokens - economics.window_reserve_tokens
+    window_protection = (
+        context_window_tokens is not None and context_tokens >= context_window_tokens - economics.window_reserve_tokens
+    )
     R = horizon["expectedRemainingRequests"] if horizon else None
     base_economic = horizon is not None and R > 0 and breakeven is not None and breakeven <= R
     first_economic = first and eff is not None and eff > 0 and breakeven is not None and breakeven <= eff
-    margin_open = (not first) and horizon is not None and breakeven is not None and \
-        breakeven * economics.subsequent_compaction_margin <= R
+    margin_open = (
+        (not first)
+        and horizon is not None
+        and breakeven is not None
+        and breakeven * economics.subsequent_compaction_margin <= R
+    )
     debt_open = (not first) and horizon is not None and combined is not None and combined <= R
     economic = first_economic if first else (base_economic and margin_open and debt_open)
     compressible = saving > 0
@@ -109,16 +148,32 @@ def decide_compaction(*, write_tokens, archive_tokens, memo_tokens, context_toke
         reason = "deferred_carried_debt"
     else:
         reason = "deferred_economic"
-    hz = horizon or {"completedBoundaryRequestCounts": None, "requestsPerBoundaryMean": None,
-                     "requestsPerBoundaryLowerBound": None, "unboundedExpectedRemainingRequests": None,
-                     "averageContextTokenIncrement": average_context_token_increment,
-                     "windowRequestUpperBound": None, "expectedRemainingRequests": None}
-    return {"writeTokens": write_tokens, "archiveTokens": archive_tokens, "memoTokens": memo_tokens,
-            "contextTokens": context_tokens, **hz, "breakevenRequests": breakeven,
-            "combinedBreakevenRequests": combined, "effectiveHorizonRequests": eff,
-            "cacheWriteReadRatio": cache_write_read_ratio, "incrementalCacheCostRatio": incr,
-            "priorCompactionCount": prior_compaction_count, "carriedDebtTokens": carried_debt_tokens,
-            "cacheDebtRepaymentTokens": cache_debt_repayment_tokens, "compact": compact, "reason": reason}
+    hz = horizon or {
+        "completedBoundaryRequestCounts": None,
+        "requestsPerBoundaryMean": None,
+        "requestsPerBoundaryLowerBound": None,
+        "unboundedExpectedRemainingRequests": None,
+        "averageContextTokenIncrement": average_context_token_increment,
+        "windowRequestUpperBound": None,
+        "expectedRemainingRequests": None,
+    }
+    return {
+        "writeTokens": write_tokens,
+        "archiveTokens": archive_tokens,
+        "memoTokens": memo_tokens,
+        "contextTokens": context_tokens,
+        **hz,
+        "breakevenRequests": breakeven,
+        "combinedBreakevenRequests": combined,
+        "effectiveHorizonRequests": eff,
+        "cacheWriteReadRatio": cache_write_read_ratio,
+        "incrementalCacheCostRatio": incr,
+        "priorCompactionCount": prior_compaction_count,
+        "carriedDebtTokens": carried_debt_tokens,
+        "cacheDebtRepaymentTokens": cache_debt_repayment_tokens,
+        "compact": compact,
+        "reason": reason,
+    }
 
 
 @dataclass(frozen=True)
@@ -130,7 +185,7 @@ class OnlineState:
     request_count: int = 0
     last_boundary_request_count: int = 0
     completed_boundary_request_counts: tuple = ()
-    last_context_tokens: Optional[int] = None
+    last_context_tokens: int | None = None
     positive_context_delta_total: float = 0.0
     positive_context_delta_count: int = 0
     native_compaction_count: int = 0
@@ -141,31 +196,57 @@ class OnlineState:
 def record_provider_request(s: OnlineState, context_tokens: int) -> OnlineState:
     delta = 0 if s.last_context_tokens is None else context_tokens - s.last_context_tokens
     debt = max(0.0, s.cache_debt_tokens - s.cache_debt_repayment_tokens)
-    return replace(s, request_count=s.request_count + 1, last_context_tokens=context_tokens,
-                   positive_context_delta_total=s.positive_context_delta_total + max(0, delta),
-                   positive_context_delta_count=s.positive_context_delta_count + (1 if delta > 0 else 0),
-                   cache_debt_tokens=debt,
-                   cache_debt_repayment_tokens=0 if debt == 0 else s.cache_debt_repayment_tokens)
+    return replace(
+        s,
+        request_count=s.request_count + 1,
+        last_context_tokens=context_tokens,
+        positive_context_delta_total=s.positive_context_delta_total + max(0, delta),
+        positive_context_delta_count=s.positive_context_delta_count + (1 if delta > 0 else 0),
+        cache_debt_tokens=debt,
+        cache_debt_repayment_tokens=0 if debt == 0 else s.cache_debt_repayment_tokens,
+    )
 
 
-def record_boundary(s: OnlineState, plan, progress: Optional[dict]) -> OnlineState:
+def record_boundary(s: OnlineState, plan, progress: dict | None) -> OnlineState:
     interval = max(0, s.request_count - s.last_boundary_request_count)
-    return replace(s, plan=tuple(plan), pending_progress=s.pending_progress + ((progress,) if progress else ()),
-                   last_boundary_request_count=s.request_count,
-                   completed_boundary_request_counts=s.completed_boundary_request_counts + (interval,))
+    return replace(
+        s,
+        plan=tuple(plan),
+        pending_progress=s.pending_progress + ((progress,) if progress else ()),
+        last_boundary_request_count=s.request_count,
+        completed_boundary_request_counts=s.completed_boundary_request_counts + (interval,),
+    )
 
 
 def record_compaction(s: OnlineState, debt_tokens: float, repayment_tokens: float) -> OnlineState:
-    return replace(s, epoch=s.epoch + 1, plan=(), pending_progress=(), last_context_tokens=None,
-                   positive_context_delta_total=0.0, positive_context_delta_count=0,
-                   native_compaction_count=s.native_compaction_count + 1, cache_debt_tokens=max(0.0, debt_tokens),
-                   cache_debt_repayment_tokens=max(0.0, repayment_tokens))
+    return replace(
+        s,
+        epoch=s.epoch + 1,
+        plan=(),
+        pending_progress=(),
+        last_context_tokens=None,
+        positive_context_delta_total=0.0,
+        positive_context_delta_count=0,
+        native_compaction_count=s.native_compaction_count + 1,
+        cache_debt_tokens=max(0.0, debt_tokens),
+        cache_debt_repayment_tokens=max(0.0, repayment_tokens),
+    )
 
 
 def record_correction(s: OnlineState) -> OnlineState:
-    return replace(s, epoch=s.epoch + 1, plan=(), pending_progress=(), last_boundary_request_count=s.request_count,
-                   completed_boundary_request_counts=(), last_context_tokens=None, positive_context_delta_total=0.0,
-                   positive_context_delta_count=0, cache_debt_tokens=0.0, cache_debt_repayment_tokens=0.0)
+    return replace(
+        s,
+        epoch=s.epoch + 1,
+        plan=(),
+        pending_progress=(),
+        last_boundary_request_count=s.request_count,
+        completed_boundary_request_counts=(),
+        last_context_tokens=None,
+        positive_context_delta_total=0.0,
+        positive_context_delta_count=0,
+        cache_debt_tokens=0.0,
+        cache_debt_repayment_tokens=0.0,
+    )
 
 
 PLAN_STATUSES = ("pending", "in_progress", "completed")
@@ -179,14 +260,19 @@ def _is_bounded_string(v: Any) -> bool:
     return isinstance(v, str) and len(v) > 0 and len(v.encode("utf-8", "surrogatepass")) <= MAX_STRING_BYTES
 
 
-def parse_plan_steps(value: Any) -> Optional[tuple]:
+def parse_plan_steps(value: Any) -> tuple | None:
     """``plan.ts:parsePlanSteps``: exactly ``{id, goal, status}`` per step with unique ids, else ``None``."""
     if not isinstance(value, list) or len(value) > MAX_PLAN_STEPS:
         return None
     out = []
     for s in value:
-        if (not isinstance(s, dict) or len(s) != 3 or not _is_bounded_string(s.get("id"))
-                or not _is_bounded_string(s.get("goal")) or s.get("status") not in PLAN_STATUSES):
+        if (
+            not isinstance(s, dict)
+            or len(s) != 3
+            or not _is_bounded_string(s.get("id"))
+            or not _is_bounded_string(s.get("goal"))
+            or s.get("status") not in PLAN_STATUSES
+        ):
             return None
         out.append({"id": s["id"], "goal": s["goal"], "status": s["status"]})
     return tuple(out) if len({st["id"] for st in out}) == len(out) else None
@@ -197,10 +283,18 @@ def js_grapheme_length(text: str) -> int:
     n, prev, joiner, ri_open = 0, "", False, False
     for ch in text:
         cp = ord(ch)
-        extend = (unicodedata.combining(ch) != 0 or unicodedata.category(ch) in ("Mn", "Me", "Mc")
-                  or 0xFE00 <= cp <= 0xFE0F or 0xE0100 <= cp <= 0xE01EF or 0x1F3FB <= cp <= 0x1F3FF
-                  or 0xE0020 <= cp <= 0xE007F or cp == 0x200D or joiner or (prev == "\r" and ch == "\n"))
-        is_ri = 0x1F1E6 <= cp <= 0x1F1FF          # regional indicators pair up
+        extend = (
+            unicodedata.combining(ch) != 0
+            or unicodedata.category(ch) in ("Mn", "Me", "Mc")
+            or 0xFE00 <= cp <= 0xFE0F
+            or 0xE0100 <= cp <= 0xE01EF
+            or 0x1F3FB <= cp <= 0x1F3FF
+            or 0xE0020 <= cp <= 0xE007F
+            or cp == 0x200D
+            or joiner
+            or (prev == "\r" and ch == "\n")
+        )
+        is_ri = 0x1F1E6 <= cp <= 0x1F1FF  # regional indicators pair up
         extend = extend or (is_ri and ri_open)
         ri_open = is_ri and not ri_open
         joiner = cp == 0x200D
@@ -238,7 +332,7 @@ def validate_update_plan_args(args: Any) -> list[str]:
                     errs.append(f"  - steps/{k}/{key}: must have between 1 and {MAX_STRING_BYTES} characters")
             if st.get("status") not in PLAN_STATUSES:
                 errs.append(f"  - steps/{k}/status: must be one of {list(PLAN_STATUSES)}")
-    if "progress" in args:                     # optional: absent is fine, null is not
+    if "progress" in args:  # optional: absent is fine, null is not
         p = args["progress"]
         if not isinstance(p, dict):
             errs.append("  - progress: must be object")
@@ -256,8 +350,9 @@ def validate_update_plan_args(args: Any) -> list[str]:
                     if not isinstance(item, str):
                         errs.append(f"  - progress/{key}/{j}: must be string")
                     elif js_grapheme_length(item) > PROGRESS_ITEM_MAX_LENGTH:
-                        errs.append(f"  - progress/{key}/{j}: must NOT have more than {PROGRESS_ITEM_MAX_LENGTH} "
-                                    f"characters")
+                        errs.append(
+                            f"  - progress/{key}/{j}: must NOT have more than {PROGRESS_ITEM_MAX_LENGTH} characters"
+                        )
     return errs
 
 
@@ -270,8 +365,10 @@ def analyze_plan_transition(prev, steps) -> tuple[list[dict], list[str]]:
         if (prior is None or prior["status"] != "completed") and st["status"] == "completed":
             completed.append(st)
         if prior is not None and prior["goal"] != st["goal"]:
-            advice.append(f"Plan step {json.dumps(st['id'], ensure_ascii=False)} changed goal; reuse an id only for "
-                          f"the same goal.")
+            advice.append(
+                f"Plan step {json.dumps(st['id'], ensure_ascii=False)} changed goal; reuse an id only for "
+                f"the same goal."
+            )
     in_progress = sum(st["status"] == "in_progress" for st in steps)
     if in_progress > 1:
         advice.append("Keep at most one plan step in_progress.")
@@ -286,15 +383,20 @@ def format_plan_snapshot(steps) -> str:
     return f'<sol-pi-plan task_status="active">{body}</sol-pi-plan>'
 
 
-def _progress(args: dict, step_id: str) -> Optional[dict]:
+def _progress(args: dict, step_id: str) -> dict | None:
     """``extension.ts:progressSummary`` of validated arguments."""
     p = args.get("progress")
     step = next((s for s in args.get("steps", []) if isinstance(s, dict) and s.get("id") == step_id), None)
     if not isinstance(p, dict) or step is None:
         return None
-    return {"stepId": step["id"], "goal": step["goal"], "filesChanged": list(p["files_changed"]),
-            "verification": list(p["verification"]), "decisions": list(p["decisions"]),
-            "nextWork": [s["goal"] for s in args.get("steps", []) if s.get("status") != "completed"]}
+    return {
+        "stepId": step["id"],
+        "goal": step["goal"],
+        "filesChanged": list(p["files_changed"]),
+        "verification": list(p["verification"]),
+        "decisions": list(p["decisions"]),
+        "nextWork": [s["goal"] for s in args.get("steps", []) if s.get("status") != "completed"],
+    }
 
 
 class OnlineContextCompact(Extension):
@@ -302,14 +404,19 @@ class OnlineContextCompact(Extension):
 
     name = "online_context_compact"
 
-    def __init__(self, cache_write_read_ratio: Optional[float] = 12.5,
-                 keep_recent_tokens: int = DEFAULT_KEEP_RECENT_TOKENS,
-                 economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS,
-                 memo_tokens: int = DEFAULT_NATIVE_SUMMARY_TOKEN_ESTIMATE, policy: str = "economic") -> None:
+    def __init__(
+        self,
+        cache_write_read_ratio: float | None = 12.5,
+        keep_recent_tokens: int = DEFAULT_KEEP_RECENT_TOKENS,
+        economics: CompactionEconomics = DEFAULT_COMPACTION_ECONOMICS,
+        memo_tokens: int = DEFAULT_NATIVE_SUMMARY_TOKEN_ESTIMATE,
+        policy: str = "economic",
+    ) -> None:
         super().__init__()
         self.policy = policy
-        if cache_write_read_ratio is not None and (not math.isfinite(cache_write_read_ratio) or
-                                                   cache_write_read_ratio < 0):
+        if cache_write_read_ratio is not None and (
+            not math.isfinite(cache_write_read_ratio) or cache_write_read_ratio < 0
+        ):
             raise ValueError("cacheWriteReadRatio must be finite and non-negative")
         if not isinstance(keep_recent_tokens, int) or keep_recent_tokens < 1:
             raise ValueError("keepRecentTokens must be a positive integer")
@@ -319,21 +426,27 @@ class OnlineContextCompact(Extension):
         self.memo = memo_tokens
         self.state = OnlineState()
         self.observed: list[Message] = []
-        self.pending_boundary: Optional[str] = None
-        self.selected: Optional[dict] = None
-        self.active_debt: Optional[tuple[float, float]] = None
+        self.pending_boundary: str | None = None
+        self.selected: dict | None = None
+        self.active_debt: tuple[float, float] | None = None
         self.decisions: list[dict] = []
 
     def register(self, rt: AgentRuntime) -> None:
         rt.keep_recent_tokens = self.keep_recent
-        rt.register_tool(ToolSpec(
-            "update_plan",
-            "Replace the complete working plan. A newly completed step becomes a safe point where SoL-Pi may compact "
-            "context if doing so is economical. Send the complete plan on every update_plan call; keep at most one "
-            "step in_progress and mark finished steps completed; when completing a step, include concise progress "
-            "evidence when available.",
-            {"steps": "[{id, goal, status: pending|in_progress|completed}]",
-             "progress": "{files_changed, verification, decisions} (optional)"}, self._update_plan))
+        rt.register_tool(
+            ToolSpec(
+                "update_plan",
+                "Replace the complete working plan. A newly completed step becomes a safe point where SoL-Pi may compact "
+                "context if doing so is economical. Send the complete plan on every update_plan call; keep at most one "
+                "step in_progress and mark finished steps completed; when completing a step, include concise progress "
+                "evidence when available.",
+                {
+                    "steps": "[{id, goal, status: pending|in_progress|completed}]",
+                    "progress": "{files_changed, verification, decisions} (optional)",
+                },
+                self._update_plan,
+            )
+        )
         rt.on("session_start", lambda r: self._restore())
         rt.on("context", self._context)
         rt.on("before_provider_request", self._before_request)
@@ -376,8 +489,12 @@ class OnlineContextCompact(Extension):
         errs = validate_update_plan_args(args)
         if errs:
             self.stats["plan_validation_error"] += 1
-            raise ToolError('Validation failed for tool "update_plan":\n' + "\n".join(errs) +
-                            "\n\nReceived arguments:\n" + json.dumps(args, indent=2, default=str))
+            raise ToolError(
+                'Validation failed for tool "update_plan":\n'
+                + "\n".join(errs)
+                + "\n\nReceived arguments:\n"
+                + json.dumps(args, indent=2, default=str)
+            )
         steps = parse_plan_steps(args.get("steps"))
         if not steps:
             raise ToolError("Plan must contain at least one valid step")
@@ -391,32 +508,54 @@ class OnlineContextCompact(Extension):
         elif list(self.state.plan) != list(steps):
             self.state = replace(self.state, plan=steps)
         self._save(rt)
-        return ToolResult("\n".join([format_plan_snapshot(steps)] + advice),
-                          details={"boundary": bool(ids), "completed_step_ids": ids,
-                                   "progress_recorded": bool(ids) and args.get("progress") is not None,
-                                   "task_status": "active", "plan": [dict(st) for st in steps]})
+        return ToolResult(
+            "\n".join([format_plan_snapshot(steps)] + advice),
+            details={
+                "boundary": bool(ids),
+                "completed_step_ids": ids,
+                "progress_recorded": bool(ids) and args.get("progress") is not None,
+                "task_status": "active",
+                "plan": [dict(st) for st in steps],
+            },
+        )
 
     def _turn_end(self, reply: Message, results: list[Message], rt: AgentRuntime) -> None:
         boundary, self.pending_boundary = self.pending_boundary, None
         if boundary is None or self.selected is not None:
             return
         tr = next((m for m in results if m.tool_call_id == boundary), None)
-        if (reply.role != "assistant" or reply.details.get("stop_reason") in ("error", "aborted")
-                or getattr(rt, "aborted", False) or tr is None or tr.is_error):
+        if (
+            reply.role != "assistant"
+            or reply.details.get("stop_reason") in ("error", "aborted")
+            or getattr(rt, "aborted", False)
+            or tr is None
+            or tr.is_error
+        ):
             return
         W = self.context_tokens(rt)
         F = math.ceil(len(rt.system_prompt.encode()) / 4)
         A = max(0, W - F - self.keep_recent)
         s = self.state
-        mean_delta = None if s.positive_context_delta_count == 0 else \
-            s.positive_context_delta_total / s.positive_context_delta_count
-        d = decide_compaction(write_tokens=W, archive_tokens=A, memo_tokens=self.memo, context_tokens=W,
-                              completed_boundary_request_counts=list(s.completed_boundary_request_counts),
-                              remaining_boundaries=sum(1 for st in s.plan if st["status"] != "completed"),
-                              average_context_token_increment=mean_delta, context_window_tokens=rt.context_window,
-                              prior_compaction_count=s.native_compaction_count, carried_debt_tokens=s.cache_debt_tokens,
-                              cache_debt_repayment_tokens=s.cache_debt_repayment_tokens,
-                              cache_write_read_ratio=self.rho, economics=self.economics)
+        mean_delta = (
+            None
+            if s.positive_context_delta_count == 0
+            else s.positive_context_delta_total / s.positive_context_delta_count
+        )
+        d = decide_compaction(
+            write_tokens=W,
+            archive_tokens=A,
+            memo_tokens=self.memo,
+            context_tokens=W,
+            completed_boundary_request_counts=list(s.completed_boundary_request_counts),
+            remaining_boundaries=sum(1 for st in s.plan if st["status"] != "completed"),
+            average_context_token_increment=mean_delta,
+            context_window_tokens=rt.context_window,
+            prior_compaction_count=s.native_compaction_count,
+            carried_debt_tokens=s.cache_debt_tokens,
+            cache_debt_repayment_tokens=s.cache_debt_repayment_tokens,
+            cache_write_read_ratio=self.rho,
+            economics=self.economics,
+        )
         if self.policy == "always":
             saving = A - self.memo > 0
             d = {**d, "compact": saving, "reason": "always" if saving else "non_positive_saving"}
@@ -432,9 +571,11 @@ class OnlineContextCompact(Extension):
         pending, self.selected = self.selected, None
         if pending is None:
             return
-        self.active_debt = (pending["writeTokens"] * (pending["incrementalCacheCostRatio"] or 0),
-                            max(0, pending["archiveTokens"] - pending["memoTokens"]))
-        if rt.compact(BOUNDARY_COMPACTION_INSTRUCTIONS) is not None:      # repays via _session_compact
+        self.active_debt = (
+            pending["writeTokens"] * (pending["incrementalCacheCostRatio"] or 0),
+            max(0, pending["archiveTokens"] - pending["memoTokens"]),
+        )
+        if rt.compact(BOUNDARY_COMPACTION_INSTRUCTIONS) is not None:  # repays via _session_compact
             self.stats["compactions"] += 1
             rt.send_hidden(POST_COMPACTION_PLAN_REMINDER, trigger_turn=True)
         self.active_debt = None

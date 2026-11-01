@@ -9,7 +9,7 @@
 ## Checklist
 
 - [ ] `pytest` passes
-- [ ] `ruff check rsi tests experiments scripts` passes
+- [ ] `ruff check` and `ruff format --check` pass
 - [ ] `python docs/skill-claims/check.py` reports `failed=0` (if the skill, a method or quoted code changed)
 - [ ] New behaviour has a test; a bug fix has a test that fails without it
 - [ ] No safeguard is weakened (locked grader, sealed splits, noise band), or the change says why

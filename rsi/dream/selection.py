@@ -1,9 +1,10 @@
 """Selecting the next deployed policy: the paper's argmax with incumbent, or a held-out, noise-margin guard."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
 
 import numpy as np
 
@@ -43,8 +44,11 @@ class Selector:
             return SelectionResult(0, "no admissible candidate: keep incumbent", vals)
         best = max(vals[i] for i in cands)
         winners = [i for i in cands if vals[i] >= best - 1e-12]
-        why = "argmax replay value (incumbent included)" if self.include_incumbent else \
-            "argmax replay value over revisions only (incumbent excluded)"
+        why = (
+            "argmax replay value (incumbent included)"
+            if self.include_incumbent
+            else "argmax replay value over revisions only (incumbent excluded)"
+        )
         return SelectionResult(0 if 0 in winners else winners[0], why, vals, {"best": best})
 
 
@@ -53,8 +57,14 @@ class GuardedSelector(Selector):
 
     name = "guarded"
 
-    def __init__(self, holdout_frac: float = 0.34, min_dev: int = 1, z: float = 2.0, margin_floor: float = 0.01,
-                 include_incumbent: bool = True) -> None:
+    def __init__(
+        self,
+        holdout_frac: float = 0.34,
+        min_dev: int = 1,
+        z: float = 2.0,
+        margin_floor: float = 0.01,
+        include_incumbent: bool = True,
+    ) -> None:
         super().__init__(include_incumbent)
         self.holdout_frac, self.min_dev, self.z, self.margin_floor = holdout_frac, min_dev, z, margin_floor
 
@@ -88,12 +98,23 @@ class GuardedSelector(Selector):
             gain_vals = (_mean(reports[top].per_world, hold), _mean(inc.per_world, hold))
         else:
             delta, gain_vals, diffs = self.margin_floor, (dev_vals[top], dev_vals[0]), []
-        winner, verdicts = select([(top, Scored(score=gain_vals[0]))], Scored(score=gain_vals[1]), MinGain(),
-                                  GateContext(delta=delta))
+        winner, verdicts = select(
+            [(top, Scored(score=gain_vals[0]))], Scored(score=gain_vals[1]), MinGain(), GateContext(delta=delta)
+        )
         if not self.include_incumbent and winner is None:
             winner = top
         idx = 0 if winner is None else int(winner)
         reason = verdicts[0][1].reason if verdicts else ""
-        return SelectionResult(idx, ("deploy " if idx else "keep incumbent: ") + f"{reason} (held-out worlds {hold})",
-                               dev_vals, {"delta": delta, "top_dev": top, "holdout": hold, "dev": dev,
-                                          "holdout_gain": gain_vals[0] - gain_vals[1], "diffs": diffs})
+        return SelectionResult(
+            idx,
+            ("deploy " if idx else "keep incumbent: ") + f"{reason} (held-out worlds {hold})",
+            dev_vals,
+            {
+                "delta": delta,
+                "top_dev": top,
+                "holdout": hold,
+                "dev": dev,
+                "holdout_gain": gain_vals[0] - gain_vals[1],
+                "diffs": diffs,
+            },
+        )

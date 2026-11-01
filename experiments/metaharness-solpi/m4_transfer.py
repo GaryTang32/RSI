@@ -1,7 +1,8 @@
 """M4 - The discovered harness transfers to unseen datasets and an unseen model (no re-search).
 
-    python experiments/metaharness-solpi/m4_transfer.py [--llm sim|claude:haiku] [--seeds N] [--quick]
+python experiments/metaharness-solpi/m4_transfer.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
+
 from __future__ import annotations
 
 import sys
@@ -27,12 +28,20 @@ def n_iterations(args) -> int:
 def job(args, seed: int) -> dict:
     """Select with MemoLM-A on search, then score it unchanged next to the baselines with MemoLM-A and -B."""
     dom = make_domain(seed=seed, scale=0.5 if args.live else 1.0)
-    res = run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"),
-              llm_propose=live_llm(args.llm) if args.live else None,
-              config=Config(iterations=n_iterations(args), k=2, seed=seed, finalize=False),
-              out_dir=fresh_dir("m4", f"s{seed}_{args.llm.replace(':', '_')}"), baselines=dom.baselines())
-    arms = {"fewshot_all": dom.seed_artifact("fewshot_all"), "no_memory": dom.seed_artifact("no_memory"),
-            "selected": res.best}
+    res = run(
+        dom,
+        dom.seed_artifact("fewshot_all"),
+        llm_task=dom.make_model("A"),
+        llm_propose=live_llm(args.llm) if args.live else None,
+        config=Config(iterations=n_iterations(args), k=2, seed=seed, finalize=False),
+        out_dir=fresh_dir("m4", f"s{seed}_{args.llm.replace(':', '_')}"),
+        baselines=dom.baselines(),
+    )
+    arms = {
+        "fewshot_all": dom.seed_artifact("fewshot_all"),
+        "no_memory": dom.seed_artifact("no_memory"),
+        "selected": res.best,
+    }
     out = {"seed": seed, "selected": res.meta["best_system"]}
     for model in ("A", "B"):
         rep = transfer_report(dom, dom.make_model(model), arms, splits=("evolve", "test", "ood"), workers=1)
@@ -58,18 +67,26 @@ def main():
     pos_ood = summ["A_ood_gain"]["mean"] > 0
     pos_b = summ["B_ood_gain"]["mean"] > 0 and summ["B_test_gain"]["mean"] > 0
     smaller = summ["A_ood_gain"]["mean"] < summ["search_gain"]["mean"]
-    verdict = (("REPRODUCED" if pos_ood and pos_b and smaller else "PARTIAL" if pos_ood or pos_b else
-                "NOT REPRODUCED")
-               + f": selected - fewshot_all gain = search {fmt(summ['search_gain'])}, unseen datasets (model A) "
-               f"{fmt(summ['A_ood_gain'])}, unseen model B test {fmt(summ['B_test_gain'])}, unseen datasets+model "
-               f"{fmt(summ['B_ood_gain'])}")
+    verdict = (
+        ("REPRODUCED" if pos_ood and pos_b and smaller else "PARTIAL" if pos_ood or pos_b else "NOT REPRODUCED")
+        + f": selected - fewshot_all gain = search {fmt(summ['search_gain'])}, unseen datasets (model A) "
+        f"{fmt(summ['A_ood_gain'])}, unseen model B test {fmt(summ['B_test_gain'])}, unseen datasets+model "
+        f"{fmt(summ['B_ood_gain'])}"
+    )
     print(table([[k, fmt(summ[k])] for k in GAINS], ["gain (selected - fewshot_all)", "mean [95% CI]"]))
     print("verdict:", verdict)
-    save("m4_transfer" + ("_live" if args.live else ""), {
-        "claim": "The selected harness transfers to unseen datasets and unseen models, with a smaller gain than on "
-                 "the search set [MH Tables 5-6]",
-        "config": {"llm": args.llm, "seeds": args.seeds, "selection_model": "MemoLM-A", "unseen_model": "MemoLM-B"},
-        "per_seed": rows, "summary": summ, "verdict": verdict}, args.out)
+    save(
+        "m4_transfer" + ("_live" if args.live else ""),
+        {
+            "claim": "The selected harness transfers to unseen datasets and unseen models, with a smaller gain than on "
+            "the search set [MH Tables 5-6]",
+            "config": {"llm": args.llm, "seeds": args.seeds, "selection_model": "MemoLM-A", "unseen_model": "MemoLM-B"},
+            "per_seed": rows,
+            "summary": summ,
+            "verdict": verdict,
+        },
+        args.out,
+    )
 
 
 if __name__ == "__main__":

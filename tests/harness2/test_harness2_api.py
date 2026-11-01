@@ -1,4 +1,5 @@
 """Budget limits, the trace, determinism, and ``rsi.improve(method="harness2")`` on AgentQA with the mock agent."""
+
 from __future__ import annotations
 
 import json
@@ -33,11 +34,11 @@ def test_global_budget_stops_between_tasks(go):
     assert res.stop_reason == "max_rounds" and len(res.trajectory) == 2
     assert len(res.meta["unprocessed"]) == res.meta["n_stream"] - 2
     res, _ = go(k=1, budget=Budget(max_rollouts=6), out="r")
-    assert res.stop_reason == "max_rollouts" and len(res.trajectory) == 2      # 4 + 4 >= 6: a started task finishes
+    assert res.stop_reason == "max_rollouts" and len(res.trajectory) == 2  # 4 + 4 >= 6: a started task finishes
 
 
 def test_spend_cap_stops_before_the_next_task_would_cross_it(go):
-    imp = RecordingImprover(cost=0.01)                       # 4 improver calls per task at k = 1 -> $0.04 per task
+    imp = RecordingImprover(cost=0.01)  # 4 improver calls per task at k = 1 -> $0.04 per task
     res, _ = go(k=1, improver=imp, max_usd=0.10)
     assert res.stop_reason == "max_usd_projected" and len(res.trajectory) == 2
     assert res.usage["_total"]["cost_usd"] <= 0.10 + 1e-9
@@ -72,8 +73,14 @@ def test_runs_are_deterministic(go):
 
 
 def test_config_validation():
-    for bad in (dict(k=0), dict(mode="tree"), dict(order="random"), dict(prompts={"nope": "x"}),
-                dict(prompts={"work": "maximise the benchmark score"}), dict(retry_invalid=-1)):
+    for bad in (
+        dict(k=0),
+        dict(mode="tree"),
+        dict(order="random"),
+        dict(prompts={"nope": "x"}),
+        dict(prompts={"work": "maximise the benchmark score"}),
+        dict(retry_invalid=-1),
+    ):
         with pytest.raises(ValueError):
             Config(**bad).validate()
     Config(prompts={"work": "Answer short questions exactly.", "yardstick": "one exact value"}).validate()
@@ -81,15 +88,21 @@ def test_config_validation():
 
 def test_rsi_improve_harness2_on_agentqa_with_the_mock_agent(suite, tmp_path):
     dom = AgentQADomain(suite)
-    res = rsi.improve(dom, method="harness2", llm_task=SimModel(suite), llm_propose=MockImprover(),
-                      config={"k": 1, "split": "holdout+ood"}, out_dir=tmp_path / "imp")
+    res = rsi.improve(
+        dom,
+        method="harness2",
+        llm_task=SimModel(suite),
+        llm_propose=MockImprover(),
+        config={"k": 1, "split": "holdout+ood"},
+        out_dir=tmp_path / "imp",
+    )
     assert res.method == "harness2" and res.best == res.baseline == dom.seed_artifact()
     assert res.stop_reason == "stream_end" and len(res.trajectory) == res.meta["n_stream"] == 8
     rep = res.meta["report"]
     assert rep["n"] == 8 and set(rep["families"]) == {"numeric", "dates", "lists", "numbertheory", "strings"}
     assert rep["submitted"][0] >= rep["base"][0]
     assert all(v is not None for v in res.meta["deliverables"].values())
-    assert res.usage["_total"]["calls"] > 0 and "editor" not in res.usage      # roles are inv/dom/composer/...
+    assert res.usage["_total"]["calls"] > 0 and "editor" not in res.usage  # roles are inv/dom/composer/...
     assert {"inv", "dom", "composer", "reflector", "task"} <= set(res.usage)
     saved = json.loads((tmp_path / "imp" / "summary.json").read_text())
     assert saved["method"] == "harness2" and saved["meta"]["report"]["n"] == 8
@@ -106,8 +119,26 @@ def test_recommend_and_describe():
 
 def test_cli_improve_offline(tmp_path, capsys):
     from rsi.cli import main
-    assert main(["improve", "--method", "harness2", "--problem", "agentqa", "--llm", "sim", "--out",
-                 str(tmp_path / "cli"), "--set", "max_tasks=3", "k=1"]) == 0
+
+    assert (
+        main(
+            [
+                "improve",
+                "--method",
+                "harness2",
+                "--problem",
+                "agentqa",
+                "--llm",
+                "sim",
+                "--out",
+                str(tmp_path / "cli"),
+                "--set",
+                "max_tasks=3",
+                "k=1",
+            ]
+        )
+        == 0
+    )
     out = capsys.readouterr().out
     assert "stream accuracy" in out and (tmp_path / "cli" / "report.json").exists()
     assert main(["recommend", "--no-grader"]) == 0 and "harness2" in capsys.readouterr().out
@@ -116,6 +147,7 @@ def test_cli_improve_offline(tmp_path, capsys):
 def test_best_of_n_uses_the_same_stream_selector_and_rollout_seeds(dom, sim, suite):
     from rsi.harness2 import best_of_n
     from rsi.harness2.api import stream_tasks
+
     tasks = stream_tasks(dom, Config(split="holdout", max_tasks=3))
     sel = RecordingImprover()
     out = best_of_n(dom, dom.seed_artifact(), llm_task=sim, llm_select=sel, n=4, tasks=tasks)
@@ -125,8 +157,7 @@ def test_best_of_n_uses_the_same_stream_selector_and_rollout_seeds(dom, sim, sui
     rolls = [e for e in dom.events if e[0] == "rollout"]
     assert all(target is None for _, _, target, _, _ in rolls)
     h2 = run(dom, dom.seed_artifact(), llm_task=sim, llm_propose=MockImprover(), config=Config(k=1), tasks=tasks)
-    assert all(a.rollouts["base1"].seed == b.rollouts["base1"].seed
-               for a, b in zip(out["records"], h2.meta["records"]))
+    assert all(a.rollouts["base1"].seed == b.rollouts["base1"].seed for a, b in zip(out["records"], h2.meta["records"]))
     assert out["report"]["n"] == 3
 
 
@@ -134,10 +165,16 @@ def test_compare_sim_quick_runs_and_reports_cis(tmp_path):
     import subprocess
     import sys
     from pathlib import Path
+
     root = Path(__file__).resolve().parents[2]
     dest = tmp_path / "cmp.json"
-    r = subprocess.run([sys.executable, str(root / "experiments/harness2/compare_sim.py"), "--quick", "--out",
-                        str(dest)], capture_output=True, text=True, timeout=300, cwd=root)
+    r = subprocess.run(
+        [sys.executable, str(root / "experiments/harness2/compare_sim.py"), "--quick", "--out", str(dest)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        cwd=root,
+    )
     assert r.returncode == 0, r.stderr[-2000:]
     d = json.loads(dest.read_text())
     assert set(d["arms"]) >= {"seed", "harness2_k1", "harness2_k3", "best_of_4", "best_of_12"}
@@ -152,6 +189,7 @@ def test_compare_sim_quick_runs_and_reports_cis(tmp_path):
 
 def test_stored_compare_sim_result_is_consistent():
     from pathlib import Path
+
     p = Path(__file__).resolve().parents[2] / "results" / "harness2" / "compare_sim.json"
     if not p.exists():
         pytest.skip("results/harness2/compare_sim.json is not in this checkout (gitignored on main)")

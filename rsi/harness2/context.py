@@ -1,9 +1,10 @@
 """Evidence as files: the ``context/`` tree of a session, rendered as ``=== context/<path> ===`` text blocks."""
+
 from __future__ import annotations
 
 import json
 import re
-from typing import Iterable, Mapping, Optional, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from ..core.artifact import Artifact
 from .records import Rollout
@@ -38,8 +39,10 @@ def clip(text: str, n: int) -> str:
 
 def rollout_md(r: Rollout, obs_trunc: int) -> str:
     ex = r.execution
-    head = (f"# rollout {r.label}\nharness: {r.tree_id[:10]}\ndelivered: {'yes' if r.delivered else 'no'}\n"
-            f"steps: {ex.steps}  tokens: {ex.tokens}\n")
+    head = (
+        f"# rollout {r.label}\nharness: {r.tree_id[:10]}\ndelivered: {'yes' if r.delivered else 'no'}\n"
+        f"steps: {ex.steps}  tokens: {ex.tokens}\n"
+    )
     err = f"\n## error\n{ex.error}\n" if ex.error else ""
     return head + err + "\n## trajectory\n" + clip(ex.trace or "(no events recorded)", obs_trunc) + "\n"
 
@@ -53,9 +56,17 @@ def _put_tree(ctx: Ctx, prefix: str, tree: Artifact) -> None:
         ctx[f"{prefix}/{name}"] = text
 
 
-def build(task_text: str, *, harness: Artifact, rollouts: Sequence[Rollout] = (),
-          pool: Sequence[tuple[str, Artifact, Optional[Rollout]]] = (), decisions: Mapping[str, str] = {},
-          library: Mapping[str, str] = {}, source: Mapping[str, str] = {}, obs_trunc: int = 50000) -> Ctx:
+def build(
+    task_text: str,
+    *,
+    harness: Artifact,
+    rollouts: Sequence[Rollout] = (),
+    pool: Sequence[tuple[str, Artifact, Rollout | None]] = (),
+    decisions: Mapping[str, str] = {},
+    library: Mapping[str, str] = {},
+    source: Mapping[str, str] = {},
+    obs_trunc: int = 50000,
+) -> Ctx:
     """The context tree of an editor or composer session."""
     ctx: Ctx = {"context/task.md": task_text}
     for name, text in source.items():
@@ -83,14 +94,23 @@ def selector_context(task_text: str, candidates: Mapping[str, str], source: Mapp
         ctx[f"context/source/{name}"] = text
     for cid, text in candidates.items():
         lines = text.count("\n") + 1
-        ctx[f"context/candidates/{cid}.md"] = (f"<!-- candidate {cid}: {len(text)} chars, {lines} lines. "
-                                               f"COMPLETE -- nothing trimmed. -->\n{text}")
+        ctx[f"context/candidates/{cid}.md"] = (
+            f"<!-- candidate {cid}: {len(text)} chars, {lines} lines. COMPLETE -- nothing trimmed. -->\n{text}"
+        )
     return ctx
 
 
-def reflector_context(task_text: str, *, adopted: Artifact, base: Artifact, rollouts: Sequence[Rollout],
-                      pool: Sequence[tuple[str, Artifact, Optional[Rollout]]], decisions: Mapping[str, str],
-                      adoption: dict, obs_trunc: int = 50000) -> Ctx:
+def reflector_context(
+    task_text: str,
+    *,
+    adopted: Artifact,
+    base: Artifact,
+    rollouts: Sequence[Rollout],
+    pool: Sequence[tuple[str, Artifact, Rollout | None]],
+    decisions: Mapping[str, str],
+    adoption: dict,
+    obs_trunc: int = 50000,
+) -> Ctx:
     """The complete improvement record D_t (no library)."""
     ctx = build(task_text, harness=adopted, rollouts=rollouts, pool=pool, decisions=decisions, obs_trunc=obs_trunc)
     _put_tree(ctx, "context/base_harness", base)
@@ -99,7 +119,7 @@ def reflector_context(task_text: str, *, adopted: Artifact, base: Artifact, roll
 
 
 def _group(path: str) -> tuple[str, str]:
-    rest = path[len("context/"):]
+    rest = path[len("context/") :]
     top, _, sub = rest.partition("/")
     return top, sub.split("/")[0].removesuffix(".md") if sub else ""
 
@@ -115,8 +135,11 @@ def layout(ctx: Iterable[str]) -> str:
     lines = []
     for top, items in groups.items():
         name = f"context/{top}" + ("" if "." in top else "/")
-        shown = f" [{', '.join(items)}]" if top in ("rollouts", "deliverables", "pool", "decisions", "candidates") \
+        shown = (
+            f" [{', '.join(items)}]"
+            if top in ("rollouts", "deliverables", "pool", "decisions", "candidates")
             else (f" [{len(items)} entries]" if items else "")
+        )
         lines.append(f"{name:<24} {DESCRIBE.get(top, '')}{shown}")
     return "\n".join(lines)
 
@@ -134,4 +157,4 @@ def parse(text: str) -> Ctx:
 def subtree(ctx: Mapping[str, str], prefix: str) -> dict[str, str]:
     """Files under ``prefix/`` with the prefix removed."""
     p = prefix.rstrip("/") + "/"
-    return {k[len(p):]: v for k, v in ctx.items() if k.startswith(p)}
+    return {k[len(p) :]: v for k, v in ctx.items() if k.startswith(p)}

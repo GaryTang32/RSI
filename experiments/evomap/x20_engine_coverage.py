@@ -1,6 +1,7 @@
 """X20 (retry round 2, P7 / P8 / P7r): do the engine's control rules, layer-3 client and success distiller fire?
 Run: python experiments/evomap/x20_engine_coverage.py [--seeds 6] [--workers 2] [--quick]
 """
+
 from __future__ import annotations
 
 import random
@@ -68,8 +69,16 @@ def instrument(ag: AgentNode, log: dict, cycle: dict) -> None:
     def dd_wrap(signals, recent):
         ev = _dicts(recent)
         res = dd_apply(signals, recent)
-        log["dedup"].append({"t": cycle["t"], "in": list(signals), "ev": ev[-10:], "out": list(res.signals),
-                             "suppressed": list(res.suppressed), "ban": res.ban_gene})
+        log["dedup"].append(
+            {
+                "t": cycle["t"],
+                "in": list(signals),
+                "ev": ev[-10:],
+                "out": list(res.signals),
+                "suppressed": list(res.suppressed),
+                "ban": res.ban_gene,
+            }
+        )
         return res
 
     def pl_wrap(recent, hub_directive=None):
@@ -83,22 +92,32 @@ def instrument(ag: AgentNode, log: dict, cycle: dict) -> None:
         good = [c for c in caps if _good(c)]
         now = store.clock.now()
         last_at = ag.distiller.last_at
-        pre = {"t": cycle["t"], "solidify_count": store.solidify_count, "n_good": len(good),
-               "succ_last10": sum(1 for c in caps[-10:] if c.outcome.get("status") == "success"),
-               "hours_since_last": None if last_at is None else (now - last_at) / 3600,
-               "genes": {g.id: list(g.validation) for g in store.genes.values()}}
+        pre = {
+            "t": cycle["t"],
+            "solidify_count": store.solidify_count,
+            "n_good": len(good),
+            "succ_last10": sum(1 for c in caps[-10:] if c.outcome.get("status") == "success"),
+            "hours_since_last": None if last_at is None else (now - last_at) / 3600,
+            "genes": {g.id: list(g.validation) for g in store.genes.values()},
+        }
         groups = defaultdict(list)
         for c in good:
             groups[c.gene].append(float(c.outcome.get("score", 0)))
         # amendment A1: source gene = argmax(2 * count + mean score) over good capsules grouped by gene
-        pre["expected_source"] = max(groups.items(), key=lambda kv: (2 * len(kv[1]) + sum(kv[1]) / len(kv[1]),
-                                                                     kv[0]))[0] if groups else None
+        pre["expected_source"] = (
+            max(groups.items(), key=lambda kv: (2 * len(kv[1]) + sum(kv[1]) / len(kv[1]), kv[0]))[0] if groups else None
+        )
         res = auto(store)
         gene = res.gene if res else None
-        pre.update({"ok": bool(res and res.ok), "reason": getattr(res, "reason", ""),
-                    "gene": gene.id if gene else None,
-                    "source": (gene.provenance or {}).get("source_gene") if gene else None,
-                    "validation": list(gene.validation) if gene else None})
+        pre.update(
+            {
+                "ok": bool(res and res.ok),
+                "reason": getattr(res, "reason", ""),
+                "gene": gene.id if gene else None,
+                "source": (gene.provenance or {}).get("source_gene") if gene else None,
+                "validation": list(gene.validation) if gene else None,
+            }
+        )
         log["distill"].append(pre)
         return res
 
@@ -108,13 +127,21 @@ def instrument(ag: AgentNode, log: dict, cycle: dict) -> None:
 def one(job) -> dict:
     seed, args = job
     from rsi.domains.geneworld import GeneWorldModel, GeneWorldProposer, WorldConfig, make_domain
+
     dom = make_domain(WorldConfig(seed=seed))
     hub = NaiveEvoMapHub(signal_analyzer=stand_in_analyzer)
     cfg = Config(mode="faithful", seed=seed, validation_hint=FAITHFUL_HINT)
     rng0 = random.Random(seed)
-    ag = AgentNode(f"x20_{seed}", dom, dom.seed_artifact(), llm_task=GeneWorldModel(rng0.gauss(-0.3, 0.5)),
-                   llm_propose=GeneWorldProposer(dom.world, 0.6, 0.3), config=cfg, hub=hub,
-                   store=LocalStore(node_id=f"x20_{seed}"))
+    ag = AgentNode(
+        f"x20_{seed}",
+        dom,
+        dom.seed_artifact(),
+        llm_task=GeneWorldModel(rng0.gauss(-0.3, 0.5)),
+        llm_propose=GeneWorldProposer(dom.world, 0.6, 0.3),
+        config=cfg,
+        hub=hub,
+        store=LocalStore(node_id=f"x20_{seed}"),
+    )
     log, cycle = defaultdict(list), {"t": 0}
     instrument(ag, log, cycle)
     tasks = dom.tasks.split("evolve")
@@ -133,10 +160,10 @@ def check(seed: int, log: dict, ag: AgentNode, policy: CommandPolicy, T: int) ->
     n_rep = ok_rep = n_emp = ok_emp = 0
     for d in log["dedup"]:
         last8 = d["ev"][-8:]
-        for s in d["suppressed"]:               # suppressed => key in >= 3 of the last 8 events
+        for s in d["suppressed"]:  # suppressed => key in >= 3 of the last 8 events
             n_sup += 1
             ok_sup += _recurrences(s, last8) >= 3
-        for s in dict.fromkeys(d["in"]):        # recall; "task:" descriptors are protected (documented deviation)
+        for s in dict.fromkeys(d["in"]):  # recall; "task:" descriptors are protected (documented deviation)
             if _recurrences(s, last8) >= 3:
                 if s.startswith("task:"):
                     n_sup_protected += 1
@@ -145,7 +172,7 @@ def check(seed: int, log: dict, ag: AgentNode, policy: CommandPolicy, T: int) ->
                 hit_sup_due += s in d["suppressed"]
         streak = _trailing(d["ev"][-10:], _failed)
         used = [g for e in last8 for g in e.get("genes_used", [])]
-        if d["ban"]:                            # ban_gene => >= 5 trailing non-empty failures, most used gene
+        if d["ban"]:  # ban_gene => >= 5 trailing non-empty failures, most used gene
             n_ban += 1
             most = Counter(used).most_common(1)
             ok_ban += streak >= 5 and most and most[0][0] == d["ban"]
@@ -169,36 +196,59 @@ def check(seed: int, log: dict, ag: AgentNode, policy: CommandPolicy, T: int) ->
             ok_pl += (d["severity"] if d["active"] else "none") == expect
     calls = ag.llm_signals.calls
     l3_ok = [c["count"] for c in calls] == list(range(1, T + 1, 5)) and all(
-        len(c["payload"]["corpus_summary"]) <= 2000 for c in calls)
+        len(c["payload"]["corpus_summary"]) <= 2000 for c in calls
+    )
     n_d = ok_d = lit_empty = 0
     for d in log["distill"]:
         if not d["ok"]:
             continue
         n_d += 1
-        trig = d["solidify_count"] % 5 == 0 or (d["succ_last10"] >= 7 and d["n_good"] >= 10 and
-                                                (d["hours_since_last"] is None or d["hours_since_last"] >= 24))
+        trig = d["solidify_count"] % 5 == 0 or (
+            d["succ_last10"] >= 7
+            and d["n_good"] >= 10
+            and (d["hours_since_last"] is None or d["hours_since_last"] >= 24)
+        )
         src = d["expected_source"]
         src_val = d["genes"].get(src, [])[:4] if src else []
         exp_val = [v for v in (src_val or ["python --test"]) if policy.check(v).ok]
         ok_d += trig and d["n_good"] >= 10 and d["source"] == src and d["validation"] == exp_val
         lit_empty += d["validation"] == []
     caps = ag.store.capsules
-    return {"seed": seed, "cycles": T, "suppression_firings": n_sup, "suppression_ok": ok_sup,
-            "ban_firings": n_ban, "ban_ok": ok_ban, "repair_loop_cases": n_rep, "repair_loop_ok": ok_rep,
-            "empty_loop_cases": n_emp, "empty_loop_ok": ok_emp, "plateau_cases": n_pl, "plateau_ok": ok_pl,
-            "plateau_active": sum(d["active"] for d in log["plateau"]),
-            "l3_calls": len(calls), "l3_ok": bool(l3_ok), "l3_signals_merged": sum(bool(c["signals"]) for c in calls),
-            "distill_calls": len(log["distill"]), "distill_firings": n_d, "distill_ok": ok_d,
-            "distill_validation_empty_literal": lit_empty,
-            "distill_not_ok_reasons": dict(Counter(d["reason"] for d in log["distill"] if not d["ok"])),
-            "failure_distilled_genes": sum(1 for g in ag.store.genes if g.startswith("gene_repair_distilled_")),
-            "solidify_count": ag.store.solidify_count, "n_genes": len(ag.store.genes),
-            "suppression_due": n_sup_due, "suppression_due_fired": hit_sup_due,
-            "suppression_due_protected": n_sup_protected, "ban_due": n_ban_due, "ban_due_fired": hit_ban_due,
-            # M11 recount from the final store itself
-            "final_distinct_good_capsules": len({c.id for c in caps.values() if _good(c)}),
-            "final_distinct_capsules": len(caps),
-            "max_n_good_seen_by_distiller": max([d["n_good"] for d in log["distill"]] or [0])}
+    return {
+        "seed": seed,
+        "cycles": T,
+        "suppression_firings": n_sup,
+        "suppression_ok": ok_sup,
+        "ban_firings": n_ban,
+        "ban_ok": ok_ban,
+        "repair_loop_cases": n_rep,
+        "repair_loop_ok": ok_rep,
+        "empty_loop_cases": n_emp,
+        "empty_loop_ok": ok_emp,
+        "plateau_cases": n_pl,
+        "plateau_ok": ok_pl,
+        "plateau_active": sum(d["active"] for d in log["plateau"]),
+        "l3_calls": len(calls),
+        "l3_ok": bool(l3_ok),
+        "l3_signals_merged": sum(bool(c["signals"]) for c in calls),
+        "distill_calls": len(log["distill"]),
+        "distill_firings": n_d,
+        "distill_ok": ok_d,
+        "distill_validation_empty_literal": lit_empty,
+        "distill_not_ok_reasons": dict(Counter(d["reason"] for d in log["distill"] if not d["ok"])),
+        "failure_distilled_genes": sum(1 for g in ag.store.genes if g.startswith("gene_repair_distilled_")),
+        "solidify_count": ag.store.solidify_count,
+        "n_genes": len(ag.store.genes),
+        "suppression_due": n_sup_due,
+        "suppression_due_fired": hit_sup_due,
+        "suppression_due_protected": n_sup_protected,
+        "ban_due": n_ban_due,
+        "ban_due_fired": hit_ban_due,
+        # M11 recount from the final store itself
+        "final_distinct_good_capsules": len({c.id for c in caps.values() if _good(c)}),
+        "final_distinct_capsules": len(caps),
+        "max_n_good_seen_by_distiller": max([d["n_good"] for d in log["distill"]] or [0]),
+    }
 
 
 def main():
@@ -210,6 +260,7 @@ def main():
 
     def full(d, n="firings"):
         return d[n] > 0 and d["rederived"] == d[n]
+
     v = {
         "suppression": {"firings": tot("suppression_firings"), "rederived": tot("suppression_ok")},
         "ban_gene": {"firings": tot("ban_firings"), "rederived": tot("ban_ok")},
@@ -217,24 +268,48 @@ def main():
         "repair_loop": {"cases": tot("repair_loop_cases"), "rederived": tot("repair_loop_ok")},
         "empty_loop": {"cases": tot("empty_loop_cases"), "rederived": tot("empty_loop_ok")},
         "layer3": {"calls": tot("l3_calls"), "all_runs_on_schedule": all(r["l3_ok"] for r in rows)},
-        "distiller": {"firings": tot("distill_firings"), "rederived": tot("distill_ok"),
-                      "runs_with_firing": sum(r["distill_firings"] > 0 for r in rows),
-                      "literal_empty_validation": tot("distill_validation_empty_literal")},
+        "distiller": {
+            "firings": tot("distill_firings"),
+            "rederived": tot("distill_ok"),
+            "runs_with_firing": sum(r["distill_firings"] > 0 for r in rows),
+            "literal_empty_validation": tot("distill_validation_empty_literal"),
+        },
     }
-    rc = v["recall"] = {"suppression": {"due": tot("suppression_due"), "fired": tot("suppression_due_fired"),
-                                        "protected_task_descriptors": tot("suppression_due_protected")},
-                        "ban_gene": {"due": tot("ban_due"), "fired": tot("ban_due_fired")},
-                        "distinct_good_capsules_per_run": [r["final_distinct_good_capsules"] for r in rows],
-                        "distinct_capsules_per_run": [r["final_distinct_capsules"] for r in rows]}
-    v["P7r_pass"] = bool(rc["suppression"]["due"] > 0 and rc["suppression"]["fired"] == rc["suppression"]["due"] and
-                         rc["ban_gene"]["due"] > 0 and rc["ban_gene"]["fired"] == rc["ban_gene"]["due"])
-    v["P7_pass"] = bool(full(v["suppression"]) and full(v["ban_gene"]) and
-                        v["plateau"]["active"] > 0 and v["plateau"]["rederived"] == v["plateau"]["cases"] and
-                        v["layer3"]["all_runs_on_schedule"])
+    rc = v["recall"] = {
+        "suppression": {
+            "due": tot("suppression_due"),
+            "fired": tot("suppression_due_fired"),
+            "protected_task_descriptors": tot("suppression_due_protected"),
+        },
+        "ban_gene": {"due": tot("ban_due"), "fired": tot("ban_due_fired")},
+        "distinct_good_capsules_per_run": [r["final_distinct_good_capsules"] for r in rows],
+        "distinct_capsules_per_run": [r["final_distinct_capsules"] for r in rows],
+    }
+    v["P7r_pass"] = bool(
+        rc["suppression"]["due"] > 0
+        and rc["suppression"]["fired"] == rc["suppression"]["due"]
+        and rc["ban_gene"]["due"] > 0
+        and rc["ban_gene"]["fired"] == rc["ban_gene"]["due"]
+    )
+    v["P7_pass"] = bool(
+        full(v["suppression"])
+        and full(v["ban_gene"])
+        and v["plateau"]["active"] > 0
+        and v["plateau"]["rederived"] == v["plateau"]["cases"]
+        and v["layer3"]["all_runs_on_schedule"]
+    )
     v["P8_pass"] = bool(v["distiller"]["runs_with_firing"] >= 4 and full(v["distiller"]))
-    out = {"config": {"seeds": args.seeds, "cycles": rows[0]["cycles"], "mode": "faithful", "domain": "geneworld",
-                      "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration"},
-           "raw": rows, "verdict": v}
+    out = {
+        "config": {
+            "seeds": args.seeds,
+            "cycles": rows[0]["cycles"],
+            "mode": "faithful",
+            "domain": "geneworld",
+            "preregistration": "docs/methods/evomap/claims-audit.md#retry-round-2-preregistration",
+        },
+        "raw": rows,
+        "verdict": v,
+    }
     save("x20_engine_coverage", out, args.out)
     for r in rows:
         print({k: r[k] for k in r if k not in ("distill_not_ok_reasons",)})

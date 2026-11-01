@@ -1,13 +1,14 @@
 """Naive (self-reported) vs safe (verified) hub: credits, ranking, adoption and quarantine."""
+
 import copy
 import random
 
 import pytest
-
 from evomap_helpers import honest_bundle, safe_hub
+
 from rsi.domains.geneworld import GeneWorldModel
 from rsi.domains.geneworld.forge import GeneWorldForge
-from rsi.evomap import CreditLedger, Gene, GDIRanker, NaiveEvoMapHub, QuarantineGate, injection_lint
+from rsi.evomap import CreditLedger, GDIRanker, Gene, NaiveEvoMapHub, QuarantineGate, injection_lint
 from rsi.evomap.population import inflate
 
 

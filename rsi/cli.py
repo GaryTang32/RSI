@@ -1,4 +1,5 @@
 """Command line: ``rsi methods | recommend | improve | inspect | experiments | experiment``."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,9 +16,17 @@ from .trace import inspect
 
 REPO = Path(__file__).resolve().parent.parent
 EXPERIMENTS = REPO / "experiments"
-EXP_DIRS = {"autoresearch": "autoresearch", "rrsi": "rrsi", "dream": "dream-rsi", "evomap": "evomap",
-            "gepa": "gepa", "metaharness": "metaharness-solpi", "solpi": "metaharness-solpi", "core": "core-qa",
-            "harness2": "harness2"}
+EXP_DIRS = {
+    "autoresearch": "autoresearch",
+    "rrsi": "rrsi",
+    "dream": "dream-rsi",
+    "evomap": "evomap",
+    "gepa": "gepa",
+    "metaharness": "metaharness-solpi",
+    "solpi": "metaharness-solpi",
+    "core": "core-qa",
+    "harness2": "harness2",
+}
 
 
 def _parse_value(v: str) -> Any:
@@ -30,13 +39,15 @@ def _parse_value(v: str) -> Any:
 def load_problem(spec: str, *, seed: int = 0):
     """``(domain, seed_artifact, offline_task_llm)`` for ``agentqa``, ``bbh``, ``bbeh`` or ``path/to/file.py:factory``."""
     if spec == "bbh":
-        from .domains.bbh import BBHDomain, BBHSimModel, make_suite as make_bbh_suite
+        from .domains.bbh import BBHDomain, BBHSimModel
+        from .domains.bbh import make_suite as make_bbh_suite
 
-        suite = make_bbh_suite(seed=seed)   # downloads the BBH files once into ~/.cache/rsi/bbh (sha256-checked)
+        suite = make_bbh_suite(seed=seed)  # downloads the BBH files once into ~/.cache/rsi/bbh (sha256-checked)
         dom = BBHDomain(suite)
         return dom, dom.seed_artifact(), BBHSimModel(suite)
     if spec == "bbeh":
-        from .domains.bbeh import BBEHDomain, BBEHSimModel, make_suite as make_bbeh_suite
+        from .domains.bbeh import BBEHDomain, BBEHSimModel
+        from .domains.bbeh import make_suite as make_bbeh_suite
 
         suite = make_bbeh_suite(seed=seed)  # downloads the BBEH files once into ~/.cache/rsi/bbeh (sha256-checked)
         dom = BBEHDomain(suite)
@@ -63,7 +74,7 @@ def load_problem(spec: str, *, seed: int = 0):
 
 def offline_proposer(method: str, problem: str):
     """Scripted offline proposer for a built-in problem, or None for the method's own default."""
-    if problem not in ("agentqa", "bbh", "bbeh"):     # bbh/bbeh run the AgentQA harness layout: same mocks
+    if problem not in ("agentqa", "bbh", "bbeh"):  # bbh/bbeh run the AgentQA harness layout: same mocks
         return None
     if method == "rrsi":
         from .rrsi.mocks import AgentQAMockLLM
@@ -86,9 +97,16 @@ def cmd_methods(a) -> int:
 
 
 def cmd_recommend(a) -> int:
-    for m, why in recommend(what_changes=a.what, must_transfer=not a.no_transfer, cost_is_bottleneck=a.cost,
-                            many_agents=a.many_agents, search_heavy=a.search, single_metric_script=a.script,
-                            prompts_only=a.prompts_only, no_grader=a.no_grader):
+    for m, why in recommend(
+        what_changes=a.what,
+        must_transfer=not a.no_transfer,
+        cost_is_bottleneck=a.cost,
+        many_agents=a.many_agents,
+        search_heavy=a.search,
+        single_metric_script=a.script,
+        prompts_only=a.prompts_only,
+        no_grader=a.no_grader,
+    ):
         print(f"{m:13s} {why}")
     return 0
 
@@ -104,19 +122,23 @@ def cmd_improve(a) -> int:
         res = improve(dom, art, method=a.method, llm_task=llm_task, llm_propose=llm_prop, config=cfg, out_dir=a.out)
     except ValueError as e:
         if offline_mode:
-            raise SystemExit(f"{a.method} has no offline proposer for {a.problem!r} ({e}). Use --propose-llm "
-                             f"claude:haiku, or run its offline experiments: rsi experiments {a.method}")
+            raise SystemExit(
+                f"{a.method} has no offline proposer for {a.problem!r} ({e}). Use --propose-llm "
+                f"claude:haiku, or run its offline experiments: rsi experiments {a.method}"
+            ) from e
         raise
     out = Path(a.out)
     res.save(out)
     print(json.dumps(res.summary(), indent=1, default=str))
-    if res.method == "harness2":   # test-time method: its evaluation is the post-hoc grade of the deliverables
+    if res.method == "harness2":  # test-time method: its evaluation is the post-hoc grade of the deliverables
         rep = res.meta.get("report")
         if rep:
             (out / "report.json").write_text(json.dumps(rep, indent=1, default=float))
-            print(f"stream accuracy: H0 base rollout {rep['base'][0]:.3f}  submitted {rep['submitted'][0]:.3f}  "
-                  f"(paired diff {rep['paired']['mean_diff']:+.3f} [{rep['paired']['lo']:+.3f}, "
-                  f"{rep['paired']['hi']:+.3f}], n={rep['n']})")
+            print(
+                f"stream accuracy: H0 base rollout {rep['base'][0]:.3f}  submitted {rep['submitted'][0]:.3f}  "
+                f"(paired diff {rep['paired']['mean_diff']:+.3f} [{rep['paired']['lo']:+.3f}, "
+                f"{rep['paired']['hi']:+.3f}], n={rep['n']})"
+            )
     elif not a.no_transfer:
         rep = transfer_report(dom, llm_task, {"seed": res.baseline, a.method: res.best}, k=a.k)
         (out / "transfer.json").write_text(json.dumps(rep, indent=1, default=float))

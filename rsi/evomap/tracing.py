@@ -1,9 +1,11 @@
 """Write-only payload helpers for the per-cycle ``rsi.trace`` events of the gene loop."""
+
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from rsi.core import Artifact
 
@@ -21,26 +23,50 @@ def library_fingerprint(genes: Sequence[Gene]) -> str:
     return hashlib.sha256(json.dumps(rows).encode()).hexdigest()[:16]
 
 
-def gene_brief(g: Optional[Gene]) -> Optional[dict]:
+def gene_brief(g: Gene | None) -> dict | None:
     if g is None:
         return None
-    return {"id": g.id, "category": g.category, "signals_match": list(g.signals_match), "summary": g.summary,
-            "strategy": list(g.strategy), "avoid": list(g.avoid), "validation": list(g.validation),
-            "provenance": g.provenance}
+    return {
+        "id": g.id,
+        "category": g.category,
+        "signals_match": list(g.signals_match),
+        "summary": g.summary,
+        "strategy": list(g.strategy),
+        "avoid": list(g.avoid),
+        "validation": list(g.validation),
+        "provenance": g.provenance,
+    }
 
 
 def trial_eval(candidate: str, split: str, task, trial, **extra: Any) -> dict:
     """``eval`` payload for one graded rollout."""
-    return {"candidate": candidate,
-            "summary": {"split": split, "S": trial.score, "C": trial.tokens, "n_tasks": 1, "k": 1,
-                        "errors": int(trial.error is not None), "missing": 0},
-            "per_task": {task.id: trial.score}, "trials": {task.id: [trial.score]},
-            "feedback": trial.feedback, "error": trial.error, **extra}
+    return {
+        "candidate": candidate,
+        "summary": {
+            "split": split,
+            "S": trial.score,
+            "C": trial.tokens,
+            "n_tasks": 1,
+            "k": 1,
+            "errors": int(trial.error is not None),
+            "missing": 0,
+        },
+        "per_task": {task.id: trial.score},
+        "trials": {task.id: [trial.score]},
+        "feedback": trial.feedback,
+        "error": trial.error,
+        **extra,
+    }
 
 
 def eval_payload(candidate: str, result, **extra: Any) -> dict:
-    return {"candidate": candidate, "summary": result.summary(), "per_task": result.task_scores(),
-            "trials": {tid: [t.score for t in trs] for tid, trs in result.trials.items()}, **extra}
+    return {
+        "candidate": candidate,
+        "summary": result.summary(),
+        "per_task": result.task_scores(),
+        "trials": {tid: [t.score for t in trs] for tid, trs in result.trials.items()},
+        **extra,
+    }
 
 
 def injected_diff(harness: Artifact, injected: Artifact) -> str:
@@ -48,5 +74,7 @@ def injected_diff(harness: Artifact, injected: Artifact) -> str:
 
 
 def validation_rows(report) -> list[dict]:
-    return [{k: (str(v)[-400:] if k in ("stdout", "stderr") else v) for k, v in row.items()}
-            for row in (report.commands or [])]
+    return [
+        {k: (str(v)[-400:] if k in ("stdout", "stderr") else v) for k, v in row.items()}
+        for row in (report.commands or [])
+    ]

@@ -1,4 +1,5 @@
 """rsi.core.stats: noise band, bootstrap CIs, paired diffs, P(better), Beta LCB, Spearman, Gini."""
+
 from __future__ import annotations
 
 import math
@@ -8,8 +9,19 @@ import numpy as np
 import pytest
 from scipy.stats import beta, spearmanr
 
-from rsi.core import (NoiseEstimate, beta_lcb, bootstrap_ci, fixed_noise, gini, noise_from_repeats, noise_from_trials,
-                      paired_diff_ci, prob_better_bootstrap, spearman, summarize_runs)
+from rsi.core import (
+    NoiseEstimate,
+    beta_lcb,
+    bootstrap_ci,
+    fixed_noise,
+    gini,
+    noise_from_repeats,
+    noise_from_trials,
+    paired_diff_ci,
+    prob_better_bootstrap,
+    spearman,
+    summarize_runs,
+)
 from rsi.core.stats import _rank, mean_se
 
 
@@ -32,7 +44,7 @@ def test_noise_from_repeats_uses_sqrt2_factor():
 def test_noise_from_trials_matches_analytic_within_task_se():
     n = 50
     ne = noise_from_trials(np.tile([0.0, 1.0], (n, 1)), reps=4000, seed=1)
-    se = math.sqrt(0.125 / n)                  # resampling trials [0, 1]: var 0.25/2 per task
+    se = math.sqrt(0.125 / n)  # resampling trials [0, 1]: var 0.25/2 per task
     assert ne.sd_null == pytest.approx(math.sqrt(2) * se, rel=0.08)
     assert ne.delta == pytest.approx(2 * math.sqrt(2) * se, rel=0.08)
     assert (ne.mode, ne.n) == ("bootstrap", n * 2)
@@ -40,7 +52,7 @@ def test_noise_from_trials_matches_analytic_within_task_se():
 
 def test_noise_from_trials_resamples_within_tasks_only():
     m = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0]])
-    assert noise_from_trials(m).delta == 0.0   # tasks differ, but each is perfectly repeatable
+    assert noise_from_trials(m).delta == 0.0  # tasks differ, but each is perfectly repeatable
 
 
 def test_noise_from_trials_deterministic_and_validates():
@@ -96,19 +108,19 @@ def test_beta_lcb_matches_scipy_and_is_monotone():
     assert beta_lcb(8, 2, q=0.1, prior=(2, 2)) == pytest.approx(beta.ppf(0.1, 10, 4))
     vals = [beta_lcb(s, 10 - s) for s in range(11)]
     assert vals == sorted(vals) and 0 < vals[0] < vals[-1] < 1
-    assert beta_lcb(80, 20) > beta_lcb(8, 2)    # more evidence at the same rate: a tighter bound
+    assert beta_lcb(80, 20) > beta_lcb(8, 2)  # more evidence at the same rate: a tighter bound
 
 
 def test_beta_lcb_normal_fallback_without_scipy(monkeypatch):
     exact = beta_lcb(60, 40)
-    monkeypatch.setitem(sys.modules, "scipy.stats", None)   # makes the scipy import fail
+    monkeypatch.setitem(sys.modules, "scipy.stats", None)  # makes the scipy import fail
     assert beta_lcb(60, 40) == pytest.approx(exact, abs=0.01)
     assert beta_lcb(0, 50) >= 0.0
 
 
 def test_spearman():
     x = [1, 2, 3, 4, 5]
-    assert spearman(x, [v ** 3 for v in x]) == pytest.approx(1.0)
+    assert spearman(x, [v**3 for v in x]) == pytest.approx(1.0)
     assert spearman(x, [-v for v in x]) == pytest.approx(-1.0)
     a, b = [1, 2, 2, 3, 5, 5, 7], [3, 1, 2, 2, 9, 4, 8]
     assert spearman(a, b) == pytest.approx(spearmanr(a, b).statistic)
@@ -121,7 +133,7 @@ def test_rank_averages_ties():
 
 def test_gini():
     assert gini([5, 5, 5, 5]) == pytest.approx(0.0)
-    assert gini([0, 0, 0, 10]) == pytest.approx(0.75)        # (n-1)/n for one holder of everything
+    assert gini([0, 0, 0, 10]) == pytest.approx(0.75)  # (n-1)/n for one holder of everything
     assert gini([3, 1, 2]) == pytest.approx(gini([1, 2, 3]))
     assert gini([]) == 0.0 and gini([0, 0]) == 0.0
     v = np.array([1.0, 2.0, 3.0, 10.0])

@@ -7,6 +7,7 @@ trials); ``<arm>.json`` is never modified. merge.py reads the sidecar when ``<ar
 
 Run:  python experiments/bbh/rescore_tokens.py --benchmark bbeh --arm seed rrsi gepa metaharness
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,6 +22,7 @@ for p in (str(ROOT), str(HERE)):
         sys.path.insert(0, p)
 
 import compare_live as cl  # noqa: E402
+
 from rsi.core import Artifact, CachedLLM, get_llm  # noqa: E402
 from rsi.domains.bbh.suite import make_suite  # noqa: E402
 
@@ -34,8 +36,7 @@ def artifact_of(arm: str, o: dict, d: Path, dom) -> Artifact:
     raise SystemExit(f"{arm}: no final harness directory (looked at final_harness.dir and {d}/runs/{arm})")
 
 
-def rescore(arm: str, d: Path, *, benchmark: str, cache_dir: Path, data_cache=None, workers: int = 8,
-            llm=None) -> dict:
+def rescore(arm: str, d: Path, *, benchmark: str, cache_dir: Path, data_cache=None, workers: int = 8, llm=None) -> dict:
     o = json.loads((d / f"{arm}.json").read_text())
     P = cl.PROFILES[benchmark]
     sig = o["suite"]
@@ -43,8 +44,9 @@ def rescore(arm: str, d: Path, *, benchmark: str, cache_dir: Path, data_cache=No
     practice, ood = fam["practice"], fam["ood"]
     if o.get("smoke"):
         practice, ood = practice[:1], ood[:1]
-    suite = make_suite(practice, ood, per_family=dict(sig["per_family"]), seed=sig["seed"], cache_dir=data_cache,
-                       benchmark=P.spec)
+    suite = make_suite(
+        practice, ood, per_family=dict(sig["per_family"]), seed=sig["seed"], cache_dir=data_cache, benchmark=P.spec
+    )
     dom = P.domain_cls(suite)
     eval_dom = cl.evomap_eval_domain(dom) if arm == "evomap" else dom
     art = artifact_of(arm, o, d, dom)
@@ -52,10 +54,19 @@ def rescore(arm: str, d: Path, *, benchmark: str, cache_dir: Path, data_cache=No
         llm = get_llm(o["model"], cache_dir=str(cache_dir))
         if not isinstance(llm, CachedLLM):
             raise SystemExit("cache-only replay needs a cached model spec")
-        llm.offline = True          # never call the model: a miss is reported, not paid for
-    out = {"arm": arm, "source": f"{arm}.json", "k": o["k"], "per_task_out_tokens": {}, "per_task_usd": {},
-           "score_mismatches": [], "missing": 0,
-           "recorded_missing": sum(int((o.get("eval") or {}).get(sp, {}).get("missing") or 0) for sp in ("holdout", "ood"))}
+        llm.offline = True  # never call the model: a miss is reported, not paid for
+    out = {
+        "arm": arm,
+        "source": f"{arm}.json",
+        "k": o["k"],
+        "per_task_out_tokens": {},
+        "per_task_usd": {},
+        "score_mismatches": [],
+        "missing": 0,
+        "recorded_missing": sum(
+            int((o.get("eval") or {}).get(sp, {}).get("missing") or 0) for sp in ("holdout", "ood")
+        ),
+    }
     for split in ("holdout", "ood"):
         r = cl.split_eval(eval_dom, llm, art, split, o["k"], workers)
         out["per_task_out_tokens"].update(r["out_tokens"])
@@ -86,10 +97,12 @@ def main(argv=None) -> int:
         bad += not ok
         (d / f"{arm}.tokens.json").write_text(json.dumps(r, indent=1))
         tok = [v for v in r["per_task_out_tokens"].values() if v is not None]
-        print(f"{arm:12s} {'ok' if ok else 'INCOMPLETE'} examples={len(tok)} "
-              f"out_tokens/answer={(sum(tok) / len(tok)) if tok else float('nan'):.0f} missing={r['missing']} "
-              f"(recorded {r['recorded_missing']}) score_mismatches={len(r['score_mismatches'])} "
-              f"cache_misses={r['cache_misses']}")
+        print(
+            f"{arm:12s} {'ok' if ok else 'INCOMPLETE'} examples={len(tok)} "
+            f"out_tokens/answer={(sum(tok) / len(tok)) if tok else float('nan'):.0f} missing={r['missing']} "
+            f"(recorded {r['recorded_missing']}) score_mismatches={len(r['score_mismatches'])} "
+            f"cache_misses={r['cache_misses']}"
+        )
     return 1 if bad else 0
 
 

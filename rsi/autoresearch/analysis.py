@@ -1,10 +1,11 @@
 """Morning report (keep rate, running best, top hits, progress.png), hidden audits and fresh-seed re-evaluation."""
+
 from __future__ import annotations
 
 import csv
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, Optional, Sequence
 
 import numpy as np
 
@@ -30,24 +31,42 @@ class Analyzer:
         self.metric = metric
 
     @classmethod
-    def from_ledger(cls, ledger: Ledger, direction: str = "min", metric: str = "val_bpb") -> "Analyzer":
-        rows = [{"exp": n.round, "status": "discard" if n.status == "rejected" else n.status, "metric": n.score,
-                 "description": n.change, "commit": n.meta.get("commit", ""), "t": n.t,
-                 "truth": n.metrics.get("truth")}
-                for n in ledger.nodes() if n.status in ("keep", "discard", "crash", "rejected")]
+    def from_ledger(cls, ledger: Ledger, direction: str = "min", metric: str = "val_bpb") -> Analyzer:
+        rows = [
+            {
+                "exp": n.round,
+                "status": "discard" if n.status == "rejected" else n.status,
+                "metric": n.score,
+                "description": n.change,
+                "commit": n.meta.get("commit", ""),
+                "t": n.t,
+                "truth": n.metrics.get("truth"),
+            }
+            for n in ledger.nodes()
+            if n.status in ("keep", "discard", "crash", "rejected")
+        ]
         return cls(rows, direction, metric)
 
     @classmethod
-    def from_results(cls, path: str | Path, direction: str = "min") -> "Analyzer":
+    def from_results(cls, path: str | Path, direction: str = "min") -> Analyzer:
         log = ResultsLog.read(path)
-        rows = [{"exp": i, "status": r.status, "metric": r.metric if r.status != "crash" else None,
-                 "description": r.description, "commit": r.commit, "t": None} for i, r in enumerate(log.rows())]
+        rows = [
+            {
+                "exp": i,
+                "status": r.status,
+                "metric": r.metric if r.status != "crash" else None,
+                "description": r.description,
+                "commit": r.commit,
+                "t": None,
+            }
+            for i, r in enumerate(log.rows())
+        ]
         return cls(rows, direction, log.metric_name)
 
     def _gain(self, prev: float, cur: float) -> float:
         return prev - cur if self.direction == "min" else cur - prev
 
-    def running_best(self) -> list[Optional[float]]:
+    def running_best(self) -> list[float | None]:
         out, best = [], None
         for r in self.rows:
             if r["status"] == "keep" and r["metric"] is not None:
@@ -62,12 +81,19 @@ class Analyzer:
             if r["status"] != "keep" or r["metric"] is None:
                 continue
             if prev is not None:
-                out.append({"exp": r["exp"], "commit": r["commit"], "description": r["description"],
-                            "delta": self._gain(prev, r["metric"]), "metric": r["metric"]})
+                out.append(
+                    {
+                        "exp": r["exp"],
+                        "commit": r["commit"],
+                        "description": r["description"],
+                        "delta": self._gain(prev, r["metric"]),
+                        "metric": r["metric"],
+                    }
+                )
             prev = r["metric"]
         return out
 
-    def summary(self, wall_s: Optional[float] = None, top: int = 10) -> dict:
+    def summary(self, wall_s: float | None = None, top: int = 10) -> dict:
         st = [r["status"] for r in self.rows]
         n_keep, n_discard, n_crash = st.count("keep"), st.count("discard"), st.count("crash")
         base = self.rows[0]["metric"] if self.rows else None
@@ -75,10 +101,14 @@ class Analyzer:
         best = rb[-1] if rb else None
         deltas = self.keep_deltas()
         out = {
-            "n_rows": len(self.rows), "n_experiments": max(len(self.rows) - 1, 0), "n_keep": n_keep,
-            "n_discard": n_discard, "n_crash": n_crash,
+            "n_rows": len(self.rows),
+            "n_experiments": max(len(self.rows) - 1, 0),
+            "n_keep": n_keep,
+            "n_discard": n_discard,
+            "n_crash": n_crash,
             "keep_rate": n_keep / (n_keep + n_discard) if (n_keep + n_discard) else float("nan"),
-            "baseline": base, "best": best,
+            "baseline": base,
+            "best": best,
             "improvement": self._gain(base, best) if base is not None and best is not None else None,
             "total_keep_delta": float(sum(d["delta"] for d in deltas)),
             "top_hits": sorted(deltas, key=lambda d: -d["delta"])[:top],
@@ -89,7 +119,7 @@ class Analyzer:
             out["experiments_per_hour"] = out["n_experiments"] / (wall_s / 3600.0)
         return out
 
-    def plot(self, path: str | Path, title: str = "autoresearch progress", margin: Optional[float] = None) -> Path:
+    def plot(self, path: str | Path, title: str = "autoresearch progress", margin: float | None = None) -> Path:
         import matplotlib
 
         matplotlib.use("Agg")
@@ -100,7 +130,7 @@ class Analyzer:
         fig, ax = plt.subplots(figsize=(11, 5))
         xs = [r["exp"] for r in rows if r["status"] == "discard"]
         ys = [r["metric"] for r in rows if r["status"] == "discard"]
-        if base is not None and ys:      # hide far-off discards so the kept curve stays readable
+        if base is not None and ys:  # hide far-off discards so the kept curve stays readable
             span = np.ptp([r["metric"] for r in rows if r["status"] == "keep"] + [base]) or abs(base) * 0.05 or 1.0
             lim = margin if margin is not None else 1.5 * span
             keep = [(x, y) for x, y in zip(xs, ys) if abs(self._gain(base, y)) <= lim or self._gain(base, y) > 0]
@@ -109,12 +139,26 @@ class Analyzer:
         kx = [r["exp"] for r in rows if r["status"] == "keep"]
         ky = [r["metric"] for r in rows if r["status"] == "keep"]
         ax.scatter(kx, ky, s=36, color="#1e8e3e", label="kept", zorder=3)
-        ax.step([r["exp"] for r in self.rows], [b if b is not None else np.nan for b in self.running_best()],
-                where="post", color="#1e8e3e", lw=1.5, label="running best", zorder=1)
+        ax.step(
+            [r["exp"] for r in self.rows],
+            [b if b is not None else np.nan for b in self.running_best()],
+            where="post",
+            color="#1e8e3e",
+            lw=1.5,
+            label="running best",
+            zorder=1,
+        )
         for r in rows:
             if r["status"] == "keep" and r["exp"] > 0:
-                ax.annotate(str(r["description"])[:38], (r["exp"], r["metric"]), fontsize=7, rotation=30,
-                            xytext=(3, 4), textcoords="offset points", color="#1e5e2e")
+                ax.annotate(
+                    str(r["description"])[:38],
+                    (r["exp"], r["metric"]),
+                    fontsize=7,
+                    rotation=30,
+                    xytext=(3, 4),
+                    textcoords="offset points",
+                    color="#1e5e2e",
+                )
         ax.set_xlabel("experiment #")
         ax.set_ylabel(f"{self.metric} ({'lower' if self.direction == 'min' else 'higher'} is better)")
         ax.set_title(f"{title}: {len(self.rows) - 1} experiments, {max(len(kx) - 1, 0)} kept improvements")
@@ -142,8 +186,9 @@ class HiddenAudit:
             out["truth"] = truth
         return out
 
-    def audit_ledger(self, ledger: Ledger, store: ArtifactStore, statuses: Sequence[str] = ("keep",),
-                     seed: int = 0) -> list[dict]:
+    def audit_ledger(
+        self, ledger: Ledger, store: ArtifactStore, statuses: Sequence[str] = ("keep",), seed: int = 0
+    ) -> list[dict]:
         nodes = [n for n in ledger.nodes() if n.status in statuses and n.artifact_id]
         pairs = _map(lambda n: (n, self.audit(store.get(n.artifact_id), seed=seed)), nodes, self.workers)
         rows = []
@@ -151,8 +196,16 @@ class HiddenAudit:
             if not aud:
                 continue
             ledger.update(n.id, meta={"audit": aud})
-            rows.append({"exp": n.round, "commit": n.meta.get("commit", ""), "status": n.status,
-                         "description": n.change, "metric": n.score, **aud})
+            rows.append(
+                {
+                    "exp": n.round,
+                    "commit": n.meta.get("commit", ""),
+                    "status": n.status,
+                    "description": n.change,
+                    "metric": n.score,
+                    **aud,
+                }
+            )
         return rows
 
     @staticmethod
@@ -164,10 +217,20 @@ class HiddenAudit:
             w = csv.writer(f, delimiter="\t", lineterminator="\n")
             w.writerow(cols + extra)
             for r in rows:
-                w.writerow([r["commit"], r["status"], r["description"],
-                            f"{r['metric']:.6f}" if r["metric"] is not None else "N/A"]
-                           + [f"{r[k]:.6f}" if isinstance(r.get(k), float) else
-                              r.get(k, "CRASH" if r.get("audit_error") else "N/A") for k in extra])
+                w.writerow(
+                    [
+                        r["commit"],
+                        r["status"],
+                        r["description"],
+                        f"{r['metric']:.6f}" if r["metric"] is not None else "N/A",
+                    ]
+                    + [
+                        f"{r[k]:.6f}"
+                        if isinstance(r.get(k), float)
+                        else r.get(k, "CRASH" if r.get("audit_error") else "N/A")
+                        for k in extra
+                    ]
+                )
         return p
 
 

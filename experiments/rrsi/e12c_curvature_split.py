@@ -2,6 +2,7 @@
 
 Run after E12b: python experiments/rrsi/e12c_curvature_split.py [--seeds 100] [--workers 2] [--T 20]
 """
+
 import json
 import shutil
 import tempfile
@@ -29,8 +30,14 @@ def one(job: dict) -> dict:
     dom = make_domain(seed=seed, policy=pols[name])
     out = Path(tempfile.mkdtemp(prefix=f"e12c_{name}_{seed}_", dir=scratch_dir()))
     t0 = time.time()
-    res = run(dom, dom.seed_artifact(), llm_propose=search_llm("sim", dom.world), config=coding_config(seed, job["T"]),
-              out_dir=out, switches=switches("full"))
+    res = run(
+        dom,
+        dom.seed_artifact(),
+        llm_propose=search_llm("sim", dom.world),
+        config=coding_config(seed, job["T"]),
+        out_dir=out,
+        switches=switches("full"),
+    )
     if res.stop_reason != "max_rounds":
         raise RuntimeError(f"run {name} seed {seed} stopped early: {res.stop_reason}")
     fr = json.loads((out / "frontier.json").read_text())
@@ -38,8 +45,9 @@ def one(job: dict) -> dict:
     h0, fin = st.get(fr["trajectory"][0]["artifact_id"]), st.get(fr["incumbent"]["artifact_id"])
     row = {"seed": seed, "policy": name, "wall_s": time.time() - t0}
     for p in POLS:
-        row[f"gain@{p}"] = (dom.world.expected(fin.files, "evolve", pols[p])["S"]
-                            - dom.world.expected(h0.files, "evolve", pols[p])["S"])
+        row[f"gain@{p}"] = (
+            dom.world.expected(fin.files, "evolve", pols[p])["S"] - dom.world.expected(h0.files, "evolve", pols[p])["S"]
+        )
     shutil.rmtree(out, ignore_errors=True)
     return row
 
@@ -54,8 +62,11 @@ def main():
     a = retry_args("E12c: link-curvature vs search split of E12b")
     e12b = json.loads(E12B.read_text())
     strengths = {n: e12b["config"]["strengths"][n] for n in POLS}
-    rows = pmap(one, [{"seed": s, "policy": n, "strengths": strengths, "T": a.T} for s in range(a.seeds) for n in POLS],
-                a.workers)
+    rows = pmap(
+        one,
+        [{"seed": s, "policy": n, "strengths": strengths, "T": a.T} for s in range(a.seeds) for n in POLS],
+        a.workers,
+    )
     by = {(r["seed"], r["policy"]): r for r in rows}
     seeds = sorted({r["seed"] for r in rows})
 
@@ -69,20 +80,33 @@ def main():
     old = {(r["seed"], r["policy"]): r["evolve_gain"] for r in e12b["rows"] if r["policy"] in POLS}
     max_dev = max(abs(by[(s, n)][f"gain@{n}"] - old[(s, n)]) for s in seeds for n in POLS if (s, n) in old)
     # curvature + search = total, exactly
-    parts = {"total (= E12b weak - strong)": ci(diff(gain("weak_p", "weak_p"), gain("strong_p", "strong_p"))),
-             "curvature (same STRONG-evolved harness)": ci(diff(gain("strong_p", "weak_p"),
-                                                                gain("strong_p", "strong_p"))),
-             "search (under WEAK_P, WEAK- minus STRONG-evolved harness)": ci(diff(gain("weak_p", "weak_p"),
-                                                                                 gain("strong_p", "weak_p"))),
-             "reported only: under STRONG_P, WEAK- minus STRONG-evolved harness":
-                 ci(diff(gain("weak_p", "strong_p"), gain("strong_p", "strong_p")))}
+    parts = {
+        "total (= E12b weak - strong)": ci(diff(gain("weak_p", "weak_p"), gain("strong_p", "strong_p"))),
+        "curvature (same STRONG-evolved harness)": ci(diff(gain("strong_p", "weak_p"), gain("strong_p", "strong_p"))),
+        "search (under WEAK_P, WEAK- minus STRONG-evolved harness)": ci(
+            diff(gain("weak_p", "weak_p"), gain("strong_p", "weak_p"))
+        ),
+        "reported only: under STRONG_P, WEAK- minus STRONG-evolved harness": ci(
+            diff(gain("weak_p", "strong_p"), gain("strong_p", "strong_p"))
+        ),
+    }
     s = parts["search (under WEAK_P, WEAK- minus STRONG-evolved harness)"]
-    outcome = ("search-attributable part exists (CI > 0)" if s["lo"] > 0 else
-               "search part negative (CI < 0)" if s["hi"] < 0 else "no search-attributable part (CI includes 0)")
-    out = {"experiment": "E12c curvature vs search split of E12b (retry round 2 review follow-up: P3b)",
-           "config": {"seeds": a.seeds, "T": a.T, "strengths": strengths, "preset": "coding (delta calibrated)"},
-           "max_abs_deviation_from_e12b_rows": max_dev, "parts": parts, "outcome": outcome,
-           "verdict_L12": "PARTIAL", "rows": rows}
+    outcome = (
+        "search-attributable part exists (CI > 0)"
+        if s["lo"] > 0
+        else "search part negative (CI < 0)"
+        if s["hi"] < 0
+        else "no search-attributable part (CI includes 0)"
+    )
+    out = {
+        "experiment": "E12c curvature vs search split of E12b (retry round 2 review follow-up: P3b)",
+        "config": {"seeds": a.seeds, "T": a.T, "strengths": strengths, "preset": "coding (delta calibrated)"},
+        "max_abs_deviation_from_e12b_rows": max_dev,
+        "parts": parts,
+        "outcome": outcome,
+        "verdict_L12": "PARTIAL",
+        "rows": rows,
+    }
     save("e12c_curvature_split", out)
     print("max dev vs e12b", max_dev)
     for k, v in parts.items():

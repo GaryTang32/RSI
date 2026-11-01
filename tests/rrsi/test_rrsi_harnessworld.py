@@ -1,11 +1,11 @@
 """HarnessWorld: determinism, ground truth, leak mechanics, split discipline, mocks."""
+
 import pytest
+from rrsi_helpers import mechanism
 
 from rsi.core import Evaluator, SealedSplitError
 from rsi.domains.harnessworld import KINDS, STRUCTURAL, WEAK, HarnessWorldMockLLM, ProposerProfile, make_domain
 from rsi.rrsi import Config, Proposer, RRSIRewriteEditor, Taxonomy
-
-from rrsi_helpers import mechanism
 
 SIZES = dict(n_evolve=30, n_holdout=30, n_ood_per_family=8)
 
@@ -72,15 +72,35 @@ def test_mock_proposer_respects_budget_reserved_and_history():
     llm = HarnessWorldMockLLM(dom.world, proposer=ProposerProfile(fill_budget_p=1.0))
     untried = ["skill", "memory"]
     out = Proposer(RRSIRewriteEditor(llm), tax, Config()).propose(
-        base, directives={"b_t": 3, "reserved_slot": True, "untried": untried,
-                          "trace_task_ids": dom.tasks.splits["evolve"][:5]},
-        budget=3, reserved=True, explore={"untried": untried}, seed=4)
+        base,
+        directives={
+            "b_t": 3,
+            "reserved_slot": True,
+            "untried": untried,
+            "trace_task_ids": dom.tasks.splits["evolve"][:5],
+        },
+        budget=3,
+        reserved=True,
+        explore={"untried": untried},
+        seed=4,
+    )
     assert out["status"] == "done" and len(out["edits"]) == 3
     assert any(e["component"] in untried for e in out["edits"])
     mids = [e["mechanism_id"] for e in out["edits"]]
-    rows = [{"t": 0, "variant": "A", "edit_id": "C1", "component": "prompt", "hypothesis": f"[{m}] x",
-             "outcome": "REJECTED", "delta_S": -0.1} for m in mids]
+    rows = [
+        {
+            "t": 0,
+            "variant": "A",
+            "edit_id": "C1",
+            "component": "prompt",
+            "hypothesis": f"[{m}] x",
+            "outcome": "REJECTED",
+            "delta_S": -0.1,
+        }
+        for m in mids
+    ]
     llm2 = HarnessWorldMockLLM(dom.world, proposer=ProposerProfile(fill_budget_p=1.0, history_compliance=1.0))
     out2 = Proposer(RRSIRewriteEditor(llm2), tax, Config()).propose(
-        base, directives={"b_t": 3, "trace_task_ids": ["hw-e-000"]}, budget=3, history_rows=rows, seed=4)
+        base, directives={"b_t": 3, "trace_task_ids": ["hw-e-000"]}, budget=3, history_rows=rows, seed=4
+    )
     assert not set(mids) & {e["mechanism_id"] for e in out2["edits"]}

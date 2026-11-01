@@ -1,9 +1,9 @@
 """Offline discovery agent for the AgentQA harness domain: each attempt adds or drops one prompting mechanism."""
+
 from __future__ import annotations
 
 import ast
 import random
-from typing import Optional
 
 from ...core.artifact import Artifact
 from ...dream.agent import AttemptContext, ParametricAgent
@@ -57,8 +57,13 @@ def build(knobs: dict) -> Artifact:
     if knobs.get("format"):
         task += "\nEnd your reply with a final line of the form 'ANSWER: <value>'."
     k = repr(dict(sorted(knobs.items())))
-    return Artifact({"harness.py": HARNESS.replace("__KNOBS__", k), "prompts/system.md": "\n".join(sys_lines) + "\n",
-                     "prompts/task.md": task + "\n"})
+    return Artifact(
+        {
+            "harness.py": HARNESS.replace("__KNOBS__", k),
+            "prompts/system.md": "\n".join(sys_lines) + "\n",
+            "prompts/task.md": task + "\n",
+        }
+    )
 
 
 def read_knobs(art: Artifact) -> dict:
@@ -71,7 +76,7 @@ def read_knobs(art: Artifact) -> dict:
         return {}
 
 
-def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
+def _mutate(parent: Artifact, rng: random.Random, ctx: AttemptContext | None):
     knobs = read_knobs(parent)
     mech = pick_mechanism(ctx, rng, MECHANISMS, 0.3)
     if mech == "simplify":

@@ -1,4 +1,5 @@
 """The policy developer ("dreaming"): rewrite the exploration-policy code from replay feedback [paper:App.B.2]."""
+
 from __future__ import annotations
 
 import ast
@@ -6,9 +7,9 @@ import difflib
 import json
 import random
 import re
+from collections.abc import Sequence
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 from ..core.critic import LeakageCritic
 from ..core.editors import Editor, RewriteEditor
@@ -26,7 +27,7 @@ class VersionRecord:
     code: str
     report: object = None  # PolicyReport on the current worlds (None until evaluated)
     change: str = ""
-    parent: Optional[int] = None
+    parent: int | None = None
     iteration: int = 0
     label: str = ""
 
@@ -52,12 +53,12 @@ class DevContext:
 
 @dataclass
 class Revision:
-    code: Optional[str]
+    code: str | None
     change: str = ""
-    parent: Optional[int] = None
+    parent: int | None = None
     usage: Usage = field(default_factory=Usage)
-    error: Optional[str] = None
-    check: Optional[CheckResult] = None
+    error: str | None = None
+    check: CheckResult | None = None
     meta: dict = field(default_factory=dict)
 
     @property
@@ -90,14 +91,21 @@ def default_beta_of(code: str, fallback: float = 0.6) -> float:
         return float(p["default_beta"])
     with suppress(SyntaxError):
         for node in ast.walk(ast.parse(code)):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
-                    and len(node.args) == 2 and isinstance(node.args[0], ast.Constant) and node.args[0].value == "beta"
-                    and isinstance(node.args[1], ast.Constant) and isinstance(node.args[1].value, (int, float))):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get"
+                and len(node.args) == 2
+                and isinstance(node.args[0], ast.Constant)
+                and node.args[0].value == "beta"
+                and isinstance(node.args[1], ast.Constant)
+                and isinstance(node.args[1].value, (int, float))
+            ):
                 return float(node.args[1].value)
     return float(fallback)
 
 
-def choose_default_beta(prior: Optional[float], manifests: Sequence[dict], sweep: Optional[dict]) -> tuple[float, str]:
+def choose_default_beta(prior: float | None, manifests: Sequence[dict], sweep: dict | None) -> tuple[float, str]:
     """Cross-cycle default-beta rule [paper:App.B.2 L2:169-188]."""
     recent = [m for m in manifests if m.get("final_best") is not None][-3:]
     if prior is None or len(recent) < 2 or not sweep or not sweep.get("points"):
@@ -105,25 +113,34 @@ def choose_default_beta(prior: Optional[float], manifests: Sequence[dict], sweep
     pts = {round(p["beta"], 6): p for p in sweep["points"]}
     cur = pts[min(pts, key=lambda b: abs(b - prior))]
     if recent[-1]["final_best"] > recent[-2]["final_best"]:
-        better = [p for b, p in pts.items() if 0 < abs(b - prior) <= 0.21
-                  and p.get("V_eq1", -9) > cur.get("V_eq1", -9) + 0.02]
+        better = [
+            p for b, p in pts.items() if 0 < abs(b - prior) <= 0.21 and p.get("V_eq1", -9) > cur.get("V_eq1", -9) + 0.02
+        ]
         if better:
             b = max(better, key=lambda p: p.get("V_eq1", -9))["beta"]
             return float(b), f"live best improving; sweep shows a clearly better nearby beta {b:g}"
         return float(prior), "live best still improving: keep the prior default"
     higher = [p for b, p in pts.items() if b > prior + 1e-9]
-    if higher and max(p["attainment"] for p in higher) > cur["attainment"] + 0.02 and \
-            min(p["probes_frac"] for p in higher) - cur["probes_frac"] < 0.35:
-        return (float(clamp(prior + 0.15, 0.0, 1.0)),
-                "live best plateaued and higher beta reaches higher attainment: raise")
+    if (
+        higher
+        and max(p["attainment"] for p in higher) > cur["attainment"] + 0.02
+        and min(p["probes_frac"] for p in higher) - cur["probes_frac"] < 0.35
+    ):
+        return (
+            float(clamp(prior + 0.15, 0.0, 1.0)),
+            "live best plateaued and higher beta reaches higher attainment: raise",
+        )
     if prior >= 0.7:
         # high-beta points add work without attainment: judged against the points above, or, at the top of the
         # grid, against the nearest point below
         no_gain_above = not higher or max(p["attainment"] for p in higher) <= cur["attainment"] + 1e-9
         lower = [p for b, p in pts.items() if b < prior - 1e-9]
         nb = max(lower, key=lambda p: p["beta"]) if lower else None
-        work_without_gain = bool(higher) or (nb is not None and cur["probes_frac"] > nb["probes_frac"] + 1e-9
-                                             and cur["attainment"] <= nb["attainment"] + 0.02)
+        work_without_gain = bool(higher) or (
+            nb is not None
+            and cur["probes_frac"] > nb["probes_frac"] + 1e-9
+            and cur["attainment"] <= nb["attainment"] + 0.02
+        )
         if no_gain_above and work_without_gain:
             return float(clamp(prior - 0.1, 0.0, 1.0)), "high default already tried through a plateau: lower"
     return 0.6, "evidence conflicts: moderately exploratory default 0.6"
@@ -138,13 +155,26 @@ class PolicyDeveloper:
 
 #: search space of the adaptive template's PARAMS (lo, hi, integer?)
 SPACE = {
-    "open_lo": (0.1, 1.0, False), "open_hi": (0.2, 1.0, False), "max_width_lo": (0.2, 1.0, False),
-    "max_width_hi": (0.3, 1.0, False), "patience_lo": (0.5, 4.0, False), "patience_hi": (1.0, 6.0, False),
-    "gain_lo": (0.0, 0.3, False), "gain_hi": (0.0, 0.2, False), "prune_lo": (0.05, 1.5, False),
-    "prune_hi": (0.1, 2.0, False), "evidence_lo": (1.0, 3.0, False), "evidence_hi": (1.0, 4.0, False),
-    "repairs_lo": (0.0, 3.0, False), "repairs_hi": (0.0, 4.0, False), "explore_on_stall": (0.0, 1.0, False),
-    "w_anchor": (0.2, 2.0, False), "w_trend": (0.0, 2.0, False), "w_depth": (0.0, 0.3, False),
-    "plan_width_step": (0, 3, True), "plan_depth_step": (0, 3, True),
+    "open_lo": (0.1, 1.0, False),
+    "open_hi": (0.2, 1.0, False),
+    "max_width_lo": (0.2, 1.0, False),
+    "max_width_hi": (0.3, 1.0, False),
+    "patience_lo": (0.5, 4.0, False),
+    "patience_hi": (1.0, 6.0, False),
+    "gain_lo": (0.0, 0.3, False),
+    "gain_hi": (0.0, 0.2, False),
+    "prune_lo": (0.05, 1.5, False),
+    "prune_hi": (0.1, 2.0, False),
+    "evidence_lo": (1.0, 3.0, False),
+    "evidence_hi": (1.0, 4.0, False),
+    "repairs_lo": (0.0, 3.0, False),
+    "repairs_hi": (0.0, 4.0, False),
+    "explore_on_stall": (0.0, 1.0, False),
+    "w_anchor": (0.2, 2.0, False),
+    "w_trend": (0.0, 2.0, False),
+    "w_depth": (0.0, 0.3, False),
+    "plan_width_step": (0, 3, True),
+    "plan_depth_step": (0, 3, True),
 }
 
 
@@ -153,8 +183,15 @@ class ParametricMutator(PolicyDeveloper):
 
     name = "mutator"
 
-    def __init__(self, *, sigma: float = 0.2, n_random: int = 2, directed: bool = True, beta_rule: bool = True,
-                 template: str = "adaptive") -> None:
+    def __init__(
+        self,
+        *,
+        sigma: float = 0.2,
+        n_random: int = 2,
+        directed: bool = True,
+        beta_rule: bool = True,
+        template: str = "adaptive",
+    ) -> None:
         self.sigma, self.n_random, self.directed, self.beta_rule = sigma, n_random, directed, beta_rule
         self.template = template
 
@@ -168,8 +205,10 @@ class ParametricMutator(PolicyDeveloper):
         else:
             code = template_code(self.template)
             params = get_params(code)
-            moves.append("rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, "
-                         "plan_grid) replaces the fixed widen/deepen schedule")
+            moves.append(
+                "rewrite: adaptive portfolio policy (prefix trajectories, dynamic batches, beta schedule, "
+                "plan_grid) replaces the fixed widen/deepen schedule"
+            )
         diag = (base.report.diagnostics if base.report is not None else {}) or {}
         p = dict(params)
 
@@ -212,20 +251,37 @@ class ParametricMutator(PolicyDeveloper):
             prior = float(params.get("default_beta", 0.6))
             sweep = getattr(base.report, "sweep", None) if base.report is not None else None
             if sweep is None:
-                sweep = next((h.report.sweep for h in reversed(ctx.history)
-                              if h.report is not None and getattr(h.report, "sweep", None)), None)
+                sweep = next(
+                    (
+                        h.report.sweep
+                        for h in reversed(ctx.history)
+                        if h.report is not None and getattr(h.report, "sweep", None)
+                    ),
+                    None,
+                )
             b, why = choose_default_beta(prior, ctx.manifests, sweep)
             if abs(b - prior) > 1e-9:
                 p["default_beta"] = round(b, 3)
                 moves.append(f"default beta {prior:g} -> {b:g} ({why})")
         changed = {k: [params.get(k), p[k]] for k in p if params.get(k) != p[k]}
-        return Revision(set_params(code, dict(p)), "; ".join(moves) or "no-op", base.index,
-                        meta={"base_label": base.label, "base_value": base.value, "feedback": dict(diag),
-                              "moves": moves, "params_changed": changed})
+        return Revision(
+            set_params(code, dict(p)),
+            "; ".join(moves) or "no-op",
+            base.index,
+            meta={
+                "base_label": base.label,
+                "base_value": base.value,
+                "feedback": dict(diag),
+                "moves": moves,
+                "params_changed": changed,
+            },
+        )
 
 
-DEVELOPER_SYSTEM = ("You are a careful controller-development engineer. You write deterministic, prefix-only "
-                    "exploration policies in Python. You never solve the scientific task itself.")
+DEVELOPER_SYSTEM = (
+    "You are a careful controller-development engineer. You write deterministic, prefix-only "
+    "exploration policies in Python. You never solve the scientific task itself."
+)
 
 
 class LLMPolicyDeveloper(PolicyDeveloper):
@@ -233,9 +289,20 @@ class LLMPolicyDeveloper(PolicyDeveloper):
 
     name = "llm"
 
-    def __init__(self, editor: Editor | LLM, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
-                 max_history: Optional[int] = None, max_trace_rows: Optional[int] = None, repair_rounds: int = 1,
-                 role: str = "developer", leakage_check: bool = True, max_context_chars: int = 400_000) -> None:
+    def __init__(
+        self,
+        editor: Editor | LLM,
+        *,
+        beta1: float = 0.01,
+        beta2: float = 0.005,
+        lam: float = 0.1,
+        max_history: int | None = None,
+        max_trace_rows: int | None = None,
+        repair_rounds: int = 1,
+        role: str = "developer",
+        leakage_check: bool = True,
+        max_context_chars: int = 400_000,
+    ) -> None:
         # a single-completion editor gets every context file inline (the core default would cut old history)
         self.editor = RewriteEditor(editor, max_context_chars=max_context_chars) if isinstance(editor, LLM) else editor
         self.beta1, self.beta2, self.lam = beta1, beta2, lam
@@ -253,7 +320,7 @@ class LLMPolicyDeveloper(PolicyDeveloper):
         by_index = {v.index: v for v in list(ctx.history) + list(ctx.versions)}  # this phase's reports win
         versions = sorted(by_index.values(), key=lambda v: v.index, reverse=True)
         if self.max_history is not None:
-            kept = versions[:self.max_history]
+            kept = versions[: self.max_history]
             versions = kept + ([base] if base.index not in {v.index for v in kept} else [])
         for v in versions:
             d = f"history/r{v.index:04d}_{v.label or 'v'}"
@@ -276,8 +343,15 @@ class LLMPolicyDeveloper(PolicyDeveloper):
 
     def revise(self, ctx: DevContext, *, seed: int = 0) -> Revision:
         base = base_version(ctx)
-        instructions = developer_prompt(ctx.objective, ctx.W, beta1=self.beta1, beta2=self.beta2, lam=self.lam,
-                                        trace_rows=self.max_trace_rows, base=ctx.base)
+        instructions = developer_prompt(
+            ctx.objective,
+            ctx.W,
+            beta1=self.beta1,
+            beta2=self.beta2,
+            lam=self.lam,
+            trace_rows=self.max_trace_rows,
+            base=ctx.base,
+        )
         files = self.context_files(ctx, base)
         art = policy_artifact(base.code)
         usage = Usage()
@@ -287,18 +361,38 @@ class LLMPolicyDeveloper(PolicyDeveloper):
         for attempt in range(self.repair_rounds + 1):
             prompt = instructions
             if errors:
-                prompt += ("\n\n## Your previous edit was rejected\n" + "\n".join(f"- {e}" for e in errors)
-                           + "\nFix these problems and return the complete corrected method.py.")
-            prop = self.editor.edit(art, prompt, context=files, editable=[POLICY_FILE], system=DEVELOPER_SYSTEM,
-                                    seed=seed * 10 + attempt, role=self.role)
+                prompt += (
+                    "\n\n## Your previous edit was rejected\n"
+                    + "\n".join(f"- {e}" for e in errors)
+                    + "\nFix these problems and return the complete corrected method.py."
+                )
+            prop = self.editor.edit(
+                art,
+                prompt,
+                context=files,
+                editable=[POLICY_FILE],
+                system=DEVELOPER_SYSTEM,
+                seed=seed * 10 + attempt,
+                role=self.role,
+            )
             usage = usage + prop.usage
             try:
-                shown = self.editor.build_prompt(art, prompt, files, [POLICY_FILE]) \
-                    if hasattr(self.editor, "build_prompt") else prompt
+                shown = (
+                    self.editor.build_prompt(art, prompt, files, [POLICY_FILE])
+                    if hasattr(self.editor, "build_prompt")
+                    else prompt
+                )
             except Exception:  # noqa: BLE001 - auditing must never break a revision
                 shown = prompt
-            call = {"attempt": attempt, "prompt": shown, "reply": prop.raw, "change": prop.change,
-                    "hypothesis": prop.hypothesis, "error": prop.error, "base_code": art[POLICY_FILE]}
+            call = {
+                "attempt": attempt,
+                "prompt": shown,
+                "reply": prop.raw,
+                "change": prop.change,
+                "hypothesis": prop.hypothesis,
+                "error": prop.error,
+                "base_code": art[POLICY_FILE],
+            }
             calls.append(call)
             if not prop.ok:
                 errors = [prop.error or "no effective change"]
@@ -313,16 +407,37 @@ class LLMPolicyDeveloper(PolicyDeveloper):
             if chk.ok and not hits:
                 # a repaired revision keeps its first attempt's claim: the repair header only describes the fix
                 first = next((c.get("change") for c in calls if c.get("change")), "") if attempt else ""
-                change = (f"{first} [repaired: {prop.change}]" if first and first != prop.change
-                          else (prop.change or "llm revision"))
-                return Revision(code, change, base.index, usage, None, chk,
-                                {"hypothesis": prop.hypothesis[:1000], "repairs": attempt, "calls": calls,
-                                 "context_files": {k: len(v) for k, v in files.items()}})
+                change = (
+                    f"{first} [repaired: {prop.change}]"
+                    if first and first != prop.change
+                    else (prop.change or "llm revision")
+                )
+                return Revision(
+                    code,
+                    change,
+                    base.index,
+                    usage,
+                    None,
+                    chk,
+                    {
+                        "hypothesis": prop.hypothesis[:1000],
+                        "repairs": attempt,
+                        "calls": calls,
+                        "context_files": {k: len(v) for k, v in files.items()},
+                    },
+                )
             errors = chk.errors + [f"code copies trace-specific data: {h!r}" for h in hits]
             seen.extend(errors)
             art = policy_artifact(code)
-        return Revision(None, "rejected", base.index, usage, "; ".join(dict.fromkeys(seen))[:800], None,
-                        {"calls": calls, "context_files": {k: len(v) for k, v in files.items()}})
+        return Revision(
+            None,
+            "rejected",
+            base.index,
+            usage,
+            "; ".join(dict.fromkeys(seen))[:800],
+            None,
+            {"calls": calls, "context_files": {k: len(v) for k, v in files.items()}},
+        )
 
 
 def mock_developer_llm(seed: int = 0) -> MockLLM:
@@ -332,10 +447,17 @@ def mock_developer_llm(seed: int = 0) -> MockLLM:
     def respond(prompt: str, system, s, i) -> str:
         m = re.search(r"=== FILE: method\.py ===\n(.*?)(?=\n=== FILE:|\nEditable files|\Z)", prompt, re.S)
         code = m.group(1) if m else template_code("adaptive")
-        rev = mut.revise(DevContext(0, [VersionRecord(0, code)], [], [], "", "eq1", 4, first_in_phase=False),
-                         seed=(s or 0) + i + seed)
-        header = json.dumps({"change": rev.change[:200], "hypothesis": "retune thresholds from replay feedback",
-                             "components": ["policy"]})
+        rev = mut.revise(
+            DevContext(0, [VersionRecord(0, code)], [], [], "", "eq1", 4, first_in_phase=False),
+            seed=(s or 0) + i + seed,
+        )
+        header = json.dumps(
+            {
+                "change": rev.change[:200],
+                "hypothesis": "retune thresholds from replay feedback",
+                "components": ["policy"],
+            }
+        )
         return f"```json\n{header}\n```\n=== FILE: method.py ===\n{rev.code}"
 
     return MockLLM(respond, name="mock-developer")

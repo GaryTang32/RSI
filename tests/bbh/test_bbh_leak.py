@@ -1,4 +1,5 @@
 """Static leak check of final harnesses against the evolve examples."""
+
 from __future__ import annotations
 
 from rsi.core import Artifact
@@ -6,8 +7,12 @@ from rsi.domains.bbh import BBHDomain, leak_check, make_suite
 
 
 def _suite(kw):
-    return make_suite(["dyck_languages", "word_sorting", "date_understanding"], ["navigate"],
-                      per_family={"evolve": 4, "holdout": 2, "ood": 2}, **kw)
+    return make_suite(
+        ["dyck_languages", "word_sorting", "date_understanding"],
+        ["navigate"],
+        per_family={"evolve": 4, "holdout": 2, "ood": 2},
+        **kw,
+    )
 
 
 def _with(text: str) -> Artifact:
@@ -27,7 +32,7 @@ def test_a_specific_40_char_substring_of_an_evolve_question_fails(kw):
     snippet = q.input[5:45]
     r = leak_check(_with(f"Remember: {snippet}"), s)
     assert not r["passed"] and r["hits"][0]["kind"] == "question" and r["hits"][0]["task"] == q.id
-    assert leak_check(_with(f"Remember: {q.input[5:44]}"), s)["passed"]           # 39 chars: below the window
+    assert leak_check(_with(f"Remember: {q.input[5:44]}"), s)["passed"]  # 39 chars: below the window
 
 
 def test_family_boilerplate_shared_by_evolve_questions_is_not_a_leak(kw):
@@ -44,7 +49,7 @@ def test_a_full_non_generic_evolve_target_fails_but_generic_tokens_do_not(kw):
     assert not r["passed"] and any(h["kind"] == "target" and h["task"] == ws.id for h in r["hits"])
     dy = next(t for t in s.split("evolve") if t.family == "dyck_languages")
     assert not leak_check(_with(f"e.g. ANSWER: {dy.target}"), s)["passed"]
-    assert leak_check(_with(f"e.g. ( [ {dy.target} ]"), s)["passed"]           # glued to more brackets: not standalone
+    assert leak_check(_with(f"e.g. ( [ {dy.target} ]"), s)["passed"]  # glued to more brackets: not standalone
     assert leak_check(_with("Answer with (A), True, Yes, valid or a number such as 42."), s)["passed"]
 
 

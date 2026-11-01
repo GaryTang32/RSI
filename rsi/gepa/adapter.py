@@ -1,11 +1,13 @@
 """GEPA adapter over any :class:`rsi.core.Domain` (``gepa/core/adapter.py:GEPAAdapter``)."""
+
 from __future__ import annotations
 
 import re
 import warnings
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Protocol, Sequence
+from typing import Any, Protocol
 
 from ..core.artifact import Artifact
 from ..core.domain import Domain, Trial
@@ -22,38 +24,44 @@ class EvalBatch:
     task_ids: list[str]
     outputs: list[Any]
     scores: list[float]
-    trajectories: Optional[list[Trial]] = None
-    objective_scores: Optional[list[dict]] = None
+    trajectories: list[Trial] | None = None
+    objective_scores: list[dict] | None = None
     num_metric_calls: int = 0
     seeds: list[int] = field(default_factory=list)
-    n_infra: int = 0                       # infra failures left after retries
-    n_errors: int = 0                      # execution errors (graded 0), infra excluded
-    first_error: Optional[str] = None
-    trials: Optional[list[Trial]] = None   # every trial, for the audit trace only
+    n_infra: int = 0  # infra failures left after retries
+    n_errors: int = 0  # execution errors (graded 0), infra excluded
+    first_error: str | None = None
+    trials: list[Trial] | None = None  # every trial, for the audit trace only
 
 
 def is_infra_error(trial: Trial) -> bool:
     return bool(trial.error) and str(trial.error).startswith("infra:")
 
 
-def resolve_splits(domain: Domain, train_split: str = "evolve", val_split: Optional[str] = "val",
-                   *, warn: bool = True) -> tuple[str, Optional[str]]:
+def resolve_splits(
+    domain: Domain, train_split: str = "evolve", val_split: str | None = "val", *, warn: bool = True
+) -> tuple[str, str | None]:
     """``(D_train split, D_pareto split or None)``; None means D_pareto = D_train (warned: it overfits)."""
     splits = domain.tasks.splits
     tr = train_split if splits.get(train_split) else ("train" if splits.get("train") else train_split)
     vs = val_split if (val_split and splits.get(val_split)) else None
     if val_split and vs is None and warn:
-        warnings.warn(f"domain {getattr(domain, 'name', '?')!r} has no non-empty {val_split!r} split: "
-                      f"D_pareto = D_train ({tr!r}); pass val_split=None to silence", stacklevel=3)
+        warnings.warn(
+            f"domain {getattr(domain, 'name', '?')!r} has no non-empty {val_split!r} split: "
+            f"D_pareto = D_train ({tr!r}); pass val_split=None to silence",
+            stacklevel=3,
+        )
     return tr, vs
 
 
 class GEPAAdapter(Protocol):
-    def evaluate(self, task_ids: Sequence[str], candidate: Artifact, capture_traces: bool,
-                 seeds: Sequence[int]) -> EvalBatch: ...
+    def evaluate(
+        self, task_ids: Sequence[str], candidate: Artifact, capture_traces: bool, seeds: Sequence[int]
+    ) -> EvalBatch: ...
 
-    def make_reflective_dataset(self, candidate: Artifact, batch: EvalBatch,
-                                components: Sequence[str]) -> dict[str, list[dict]]: ...
+    def make_reflective_dataset(
+        self, candidate: Artifact, batch: EvalBatch, components: Sequence[str]
+    ) -> dict[str, list[dict]]: ...
 
 
 def _fmt(x: Any) -> str:
@@ -71,10 +79,19 @@ class DomainAdapter:
     ``reflective_record(task, trial, component)`` replaces the default record.
     """
 
-    def __init__(self, domain: Domain, llm_task: Optional[LLM] = None, *, workers: int = 1,
-                 feedback: str = "full", max_trace_chars: int = 3000, cache_dir: Optional[str] = None,
-                 record_fn: Optional[Callable[[Task, Trial, str], dict]] = None,
-                 objective_fn: Optional[Callable[[Task, Trial], dict]] = None, infra_retries: int = 2) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        llm_task: LLM | None = None,
+        *,
+        workers: int = 1,
+        feedback: str = "full",
+        max_trace_chars: int = 3000,
+        cache_dir: str | None = None,
+        record_fn: Callable[[Task, Trial, str], dict] | None = None,
+        objective_fn: Callable[[Task, Trial], dict] | None = None,
+        infra_retries: int = 2,
+    ) -> None:
         if feedback not in FEEDBACK_MODES:
             raise ValueError(f"feedback must be one of {FEEDBACK_MODES}")
         self.domain = domain
@@ -93,8 +110,9 @@ class DomainAdapter:
     def ids(self, split: str) -> list[str]:
         return [t.id for t in self.domain.tasks.split(split)]
 
-    def evaluate(self, task_ids: Sequence[str], candidate: Artifact, capture_traces: bool,
-                 seeds: Sequence[int]) -> EvalBatch:
+    def evaluate(
+        self, task_ids: Sequence[str], candidate: Artifact, capture_traces: bool, seeds: Sequence[int]
+    ) -> EvalBatch:
         tasks = [self.domain.tasks.get(t) for t in task_ids]
         bad = [t.id for t in tasks if t.id not in self._allowed]
         if bad:
@@ -105,7 +123,7 @@ class DomainAdapter:
                 trials = list(ex.map(lambda j: self.evaluator.run_one(candidate, j[0], j[1]), jobs))
         else:
             trials = [self.evaluator.run_one(candidate, t, s) for t, s in jobs]
-        for _ in range(self.infra_retries):          # the Evaluator does not cache infra failures
+        for _ in range(self.infra_retries):  # the Evaluator does not cache infra failures
             bad_j = [j for j, tr in enumerate(trials) if is_infra_error(tr)]
             if not bad_j:
                 break
@@ -118,24 +136,37 @@ class DomainAdapter:
         elif any("objectives" in (tr.meta or {}) for tr in trials):
             objs = [dict((tr.meta or {}).get("objectives", {})) for tr in trials]
         errs = [str(tr.error) for tr in trials if tr.error and not is_infra_error(tr)]
-        return EvalBatch(list(task_ids), [tr.output for tr in trials], [float(tr.score) for tr in trials],
-                         trials if capture_traces else None, objs, len(jobs), list(seeds),
-                         sum(1 for tr in trials if is_infra_error(tr)), len(errs), errs[0] if errs else None,
-                         trials)
+        return EvalBatch(
+            list(task_ids),
+            [tr.output for tr in trials],
+            [float(tr.score) for tr in trials],
+            trials if capture_traces else None,
+            objs,
+            len(jobs),
+            list(seeds),
+            sum(1 for tr in trials if is_infra_error(tr)),
+            len(errs),
+            errs[0] if errs else None,
+            trials,
+        )
 
     def default_record(self, task: Task, trial: Trial) -> dict:
         out = _fmt(trial.output) if not trial.error else f"(execution error) {trial.error}"
         if trial.trace and self.feedback != "none":
-            tr = trial.trace if len(trial.trace) <= self.max_trace_chars else \
-                trial.trace[: self.max_trace_chars] + "\n...[trace truncated]"
+            tr = (
+                trial.trace
+                if len(trial.trace) <= self.max_trace_chars
+                else trial.trace[: self.max_trace_chars] + "\n...[trace truncated]"
+            )
             out = f"{out}\n\nExecution trace:\n{tr}"
         fb = f"Score: {trial.score:.3g}."
         if trial.feedback:
             fb += " " + trial.feedback
         return {"Inputs": _fmt(task.input), "Generated Outputs": out, "Feedback": fb}
 
-    def make_reflective_dataset(self, candidate: Artifact, batch: EvalBatch,
-                                components: Sequence[str]) -> dict[str, list[dict]]:
+    def make_reflective_dataset(
+        self, candidate: Artifact, batch: EvalBatch, components: Sequence[str]
+    ) -> dict[str, list[dict]]:
         assert batch.trajectories is not None, "reflective dataset needs capture_traces=True"
         out: dict[str, list[dict]] = {}
         for comp in components:

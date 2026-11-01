@@ -18,21 +18,28 @@ and ``\\boxed{}``, strip quotes and trailing periods, lower-case). Then, by the 
             dropped) equal the target's, after an optional lead-in ("the answer is", "sorted list:") or a label
             ending in ``:``. A word list with extra words in front is wrong (no suffix match).
 """
+
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ..agentqa.domain import extract_answer, normalize
 
 _CHOICE = re.compile(r"\(([A-Z])\)")
-BINARY_PAIRS: tuple[frozenset, ...] = (frozenset({"true", "false"}), frozenset({"yes", "no"}),
-                                       frozenset({"valid", "invalid"}))
+BINARY_PAIRS: tuple[frozenset, ...] = (
+    frozenset({"true", "false"}),
+    frozenset({"yes", "no"}),
+    frozenset({"valid", "invalid"}),
+)
 _BRACKETS = set("()[]{}<>")
 _NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
-_NUM_WORDS = {w: i for i, w in enumerate(
-    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
-    "seventeen eighteen nineteen twenty".split())}
+_NUM_WORDS = {
+    w: i
+    for i, w in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen "
+        "seventeen eighteen nineteen twenty".split()
+    )
+}
 _NEGATION = re.compile(r"\b(?:not|never|neither|nor)\b|n't\b")
 _OPTION_LINE = re.compile(r"^\s*\(([A-Z])\)\s*(.*?)\s*$", re.M)
 
@@ -56,12 +63,12 @@ def parse_options(question: str) -> dict[str, str]:
     return {m.group(1).lower(): normalize(m.group(2)) for m in _OPTION_LINE.finditer(str(question or ""))}
 
 
-def _choice_letter(ans: str, question: Optional[str]) -> Optional[str]:
+def _choice_letter(ans: str, question: str | None) -> str | None:
     letters = set(re.findall(r"\(([a-z])\)", ans))
     if len(letters) == 1:
         return letters.pop()
     if letters:
-        return None                     # several options named: a hedge, never credited
+        return None  # several options named: a hedge, never credited
     m = re.fullmatch(r"(?:(?:the\s+)?(?:final\s+)?(?:answer|option|choice)\s*(?:is)?\s*:?\s*)?([a-z])\s*[).:]?", ans)
     if m:
         return m.group(1)
@@ -76,7 +83,7 @@ def _binary_ok(tgt: str, ans: str) -> bool:
     pair = next(p for p in BINARY_PAIRS if tgt in p)
     words = re.findall(r"[a-z']+", ans)
     if words and words[0] in pair and not (pair - {words[0]}) & set(words):
-        return words[0] == tgt          # "no, fidel does not tell the truth": the leading word answers, no hedge
+        return words[0] == tgt  # "no, fidel does not tell the truth": the leading word answers, no hedge
     named = {w for w in words if w in pair}
     return named == {tgt} and len(words) <= 8 and not _NEGATION.search(ans)
 
@@ -92,7 +99,7 @@ def _number_ok(tgt: str, ans: str) -> bool:
     return bool(words) and _NUM_WORDS[words[-1]] == int(tgt)
 
 
-def _dyck_ok(tgt: str, ans: str, question: Optional[str]) -> bool:
+def _dyck_ok(tgt: str, ans: str, question: str | None) -> bool:
     m = re.search(r"[\s()\[\]{}<>]+$", ans)
     got = re.sub(r"\s", "", m.group(0)) if m else ""
     want = re.sub(r"\s", "", tgt)
@@ -109,7 +116,9 @@ def _tokens(s: str) -> list[str]:
     return re.sub(r"[\[\]\"',;]", " ", s).split()
 
 
-_LEAD_IN = re.compile(r"^(?:so\s+)?(?:the\s+)?(?:final\s+)?(?:answer|sorted\s+(?:list|words|order))\s*(?:is\b)?\s*:?\s*")
+_LEAD_IN = re.compile(
+    r"^(?:so\s+)?(?:the\s+)?(?:final\s+)?(?:answer|sorted\s+(?:list|words|order))\s*(?:is\b)?\s*:?\s*"
+)
 
 
 def _text_ok(tgt: str, ans: str) -> bool:
@@ -124,7 +133,7 @@ def _text_ok(tgt: str, ans: str) -> bool:
     return False
 
 
-def grade_answer(target: str, answer: str, question: Optional[str] = None) -> bool:
+def grade_answer(target: str, answer: str, question: str | None = None) -> bool:
     """Is the extracted ``answer`` text correct for ``target``? (``question`` resolves option texts.)"""
     tgt = normalize(target)
     ans = normalize(answer)
@@ -140,11 +149,11 @@ def grade_answer(target: str, answer: str, question: Optional[str] = None) -> bo
         return _dyck_ok(tgt, ans, question)
     opt = [k for k, v in parse_options(question or "").items() if v == tgt]
     if len(opt) == 1 and _choice_letter(ans, question) == opt[0]:
-        return True                     # a few targets (ruin_names) are the option text, not its letter
+        return True  # a few targets (ruin_names) are the option text, not its letter
     return _text_ok(str(target), ans)
 
 
-def is_correct(target: str, output: str, question: Optional[str] = None) -> bool:
+def is_correct(target: str, output: str, question: str | None = None) -> bool:
     """Grade a harness output: extract the final answer, then :func:`grade_answer`."""
     return grade_answer(str(target), extract_answer(str(output)), question)
 

@@ -1,4 +1,5 @@
 """PrefixGuard and policy runners: policy code sees only the revealed prefix, each episode in a fresh namespace."""
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,6 @@ import types
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from ..core.sandbox import SAFE_ENV_KEYS
 from . import policy_api
@@ -39,17 +39,23 @@ class PrefixGuard:
         legal_set = set(legal)
         # meta of every legal and every revealed cell, never of an unrevealed illegal one [App.B.2 L2:53-55]
         meta = {c: self.q.meta(c).to_dict() for c in list(legal) + [c for c in self.q.observed() if c not in legal_set]}
-        return {"legal_actions": legal, "legal_roots": self.q.legal_roots(), "opened": self.q.opened_branches(),
-                "meta": meta, "baseline_score": self.q.baseline_score, "max_parallelism": self.q.max_parallelism,
-                "done": self.q.is_done(), "round": self.q.k}
+        return {
+            "legal_actions": legal,
+            "legal_roots": self.q.legal_roots(),
+            "opened": self.q.opened_branches(),
+            "meta": meta,
+            "baseline_score": self.q.baseline_score,
+            "max_parallelism": self.q.max_parallelism,
+            "done": self.q.is_done(),
+            "round": self.q.k,
+        }
 
     def handle(self, op: str, **kw) -> dict:
         self.n_requests += 1
         if op == "reset":
             if self.q.k > 0 or self.q.N > 0:
                 # a reset after probing would let a policy explore, remember and walk straight to the best cell
-                self.violations.append("reset() after probing (an episode may only be reset before its "
-                                       "first probe)")
+                self.violations.append("reset() after probing (an episode may only be reset before its first probe)")
                 return {"reset_denied": True, **self.state()}
             self.q.reset()
             return {"reset": True, **self.state()}
@@ -70,8 +76,8 @@ class PrefixGuard:
 
 @dataclass
 class SolveOutcome:
-    result: Optional[SimResult]
-    error: Optional[str] = None  # policy exception / timeout / crash
+    result: SimResult | None
+    error: str | None = None  # policy exception / timeout / crash
     violations: list[str] = field(default_factory=list)
     batch_errors: list[str] = field(default_factory=list)
     cpu_s: float = 0.0
@@ -120,7 +126,7 @@ class InProcessSession(_Session):
     def __init__(self, code: str) -> None:
         self.code = code
         self._cls = None
-        self.load_error: Optional[str] = None
+        self.load_error: str | None = None
         self._used = False
         self.episodes = 0
         self._load()
@@ -132,14 +138,14 @@ class InProcessSession(_Session):
             self._cls, self.load_error = None, f"{type(e).__name__}: {e}"
         self._used = False
 
-    def begin_episode(self) -> Optional[str]:
+    def begin_episode(self) -> str | None:
         """Start an episode in a fresh module namespace (reloaded only if the current one was used)."""
         if self._used:
             self._load()
         self.episodes += 1
         return self.load_error
 
-    def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
+    def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[GridPlan | None, str | None]:
         if self._cls is None:
             return None, self.load_error
         self._used = True
@@ -154,8 +160,9 @@ class InProcessSession(_Session):
         except Exception as e:  # noqa: BLE001
             return None, f"plan_grid returned an invalid plan: {e}"
 
-    def solve(self, config: dict, question, *, budget: Optional[int] = None, strict: bool = True,
-              unguarded: bool = False) -> SolveOutcome:
+    def solve(
+        self, config: dict, question, *, budget: int | None = None, strict: bool = True, unguarded: bool = False
+    ) -> SolveOutcome:
         if self._cls is None:
             return SolveOutcome(None, self.load_error)
         self._used = True
@@ -179,7 +186,7 @@ class InProcessSession(_Session):
         return SolveOutcome(res, err, list(guard.violations), list(guard.batch_errors), cpu)
 
 
-_CHILD = r'''
+_CHILD = r"""
 import json, os, sys, traceback, resource
 _proto = os.fdopen(os.dup(1), "w")
 os.dup2(2, 1)
@@ -256,7 +263,7 @@ while True:
             os._exit(0)
     _, status = os.waitpid(pid, 0)
     send({"closed": True, "status": status})
-'''
+"""
 
 
 def _preexec(cpu_s: int, mem_mb: int):
@@ -265,6 +272,7 @@ def _preexec(cpu_s: int, mem_mb: int):
         resource.setrlimit(resource.RLIMIT_CPU, (cpu_s, cpu_s + 5))
         b = mem_mb * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (b, b))
+
     return apply
 
 
@@ -279,8 +287,8 @@ class SubprocessSession(_Session):
         (self.dir / "method.py").write_text(code)
         shutil.copy(API_PATH, self.dir / "policy_api.py")
         (self.dir / "_child.py").write_text(_CHILD)
-        self.proc: Optional[subprocess.Popen] = None
-        self.load_error: Optional[str] = None
+        self.proc: subprocess.Popen | None = None
+        self.load_error: str | None = None
         self._buf = b""
         self._episode = False
         self.episodes = 0
@@ -290,12 +298,26 @@ class SubprocessSession(_Session):
         # no inherited PYTHON* variable, but a FIXED hash seed so set iteration order (and so the chosen batch) is
         # the same in every process; "-s -P" isolates like "-I" without "-E", which would ignore PYTHONHASHSEED
         env = {k: os.environ[k] for k in SAFE_ENV_KEYS if k in os.environ and not k.startswith("PYTHON")}
-        env.update({"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "PYTHONDONTWRITEBYTECODE": "1",
-                    "PYTHONHASHSEED": "0", "PYTHONNOUSERSITE": "1"})
+        env.update(
+            {
+                "OMP_NUM_THREADS": "1",
+                "OPENBLAS_NUM_THREADS": "1",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONHASHSEED": "0",
+                "PYTHONNOUSERSITE": "1",
+            }
+        )
         self._err = open(self.dir / "stderr.txt", "wb")
-        self.proc = subprocess.Popen([sys.executable, "-s", "-P", "_child.py"], cwd=self.dir, env=env,
-                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._err, bufsize=0,
-                                     preexec_fn=_preexec(self.cpu_s, self.mem_mb))
+        self.proc = subprocess.Popen(
+            [sys.executable, "-s", "-P", "_child.py"],
+            cwd=self.dir,
+            env=env,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self._err,
+            bufsize=0,
+            preexec_fn=_preexec(self.cpu_s, self.mem_mb),
+        )
         self._buf = b""
         self._episode = False
         msg = self._recv(self.timeout_s)
@@ -323,7 +345,7 @@ class SubprocessSession(_Session):
         self.proc.stdin.write((json.dumps(obj, default=float) + "\n").encode())
         self.proc.stdin.flush()
 
-    def _recv(self, timeout: float) -> Optional[dict]:
+    def _recv(self, timeout: float) -> dict | None:
         assert self.proc is not None and self.proc.stdout is not None
         fd = self.proc.stdout.fileno()
         deadline = time.time() + timeout
@@ -346,7 +368,7 @@ class SubprocessSession(_Session):
             self._start()
         return self.proc is not None
 
-    def _request(self, cmd: str) -> Optional[dict]:
+    def _request(self, cmd: str) -> dict | None:
         try:
             self._send({"cmd": cmd})
             return self._recv(self.timeout_s)
@@ -361,7 +383,7 @@ class SubprocessSession(_Session):
                 self._kill()
         self._episode = False
 
-    def begin_episode(self) -> Optional[str]:
+    def begin_episode(self) -> str | None:
         """End the current episode (its forked process exits) and fork a fresh one."""
         if not self._ensure():
             return self.load_error
@@ -376,13 +398,13 @@ class SubprocessSession(_Session):
         self.episodes += 1
         return None
 
-    def _ready(self) -> Optional[str]:
+    def _ready(self) -> str | None:
         """An open episode to talk to (one is started if none is open)."""
         if not self._ensure():
             return self.load_error or "policy process failed to start"
         return None if self._episode else self.begin_episode()
 
-    def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[Optional[GridPlan], Optional[str]]:
+    def plan_grid(self, config: dict, context: GridPlanningContext) -> tuple[GridPlan | None, str | None]:
         err = self._ready()
         if err:
             return None, err
@@ -401,8 +423,9 @@ class SubprocessSession(_Session):
         except Exception as e:  # noqa: BLE001
             return None, f"invalid plan: {e}"
 
-    def solve(self, config: dict, question, *, budget: Optional[int] = None, strict: bool = True,
-              unguarded: bool = False) -> SolveOutcome:
+    def solve(
+        self, config: dict, question, *, budget: int | None = None, strict: bool = True, unguarded: bool = False
+    ) -> SolveOutcome:
         if unguarded:
             raise ValueError("the subprocess sandbox cannot run a policy unguarded")
         err = self._ready()
@@ -418,16 +441,26 @@ class SubprocessSession(_Session):
             policy_s += time.time() - w0
             if msg is None:
                 self._kill()
-                return SolveOutcome(None, f"policy timed out after {self.timeout_s}s or died: {self._stderr_tail(300)}",
-                                    guard.violations, guard.batch_errors, policy_s)
+                return SolveOutcome(
+                    None,
+                    f"policy timed out after {self.timeout_s}s or died: {self._stderr_tail(300)}",
+                    guard.violations,
+                    guard.batch_errors,
+                    policy_s,
+                )
             if "req" in msg:
                 op = msg.pop("req")
                 self._send({"resp": json.loads(json.dumps(guard.handle(op, **msg), default=float))})
                 continue
             if "closed" in msg:  # the episode's process died (e.g. its CPU limit): a policy crash
                 self._episode = False
-                return SolveOutcome(None, f"policy episode process died (status {msg.get('status')}): "
-                                          f"{self._stderr_tail(300)}", guard.violations, guard.batch_errors, policy_s)
+                return SolveOutcome(
+                    None,
+                    f"policy episode process died (status {msg.get('status')}): {self._stderr_tail(300)}",
+                    guard.violations,
+                    guard.batch_errors,
+                    policy_s,
+                )
             if "result" in msg:
                 res = SimResult.from_dict(msg["result"]) if isinstance(msg["result"], dict) else SimResult()
                 return SolveOutcome(res, None, guard.violations, guard.batch_errors, policy_s)
@@ -435,8 +468,13 @@ class SubprocessSession(_Session):
                 return SolveOutcome(None, None, guard.violations or [msg["violation"]], guard.batch_errors, policy_s)
             if "batch_error" in msg:
                 return SolveOutcome(None, None, guard.violations, guard.batch_errors or [msg["batch_error"]], policy_s)
-            return SolveOutcome(None, msg.get("exception") or msg.get("fatal") or "unknown child reply",
-                                guard.violations, guard.batch_errors, policy_s)
+            return SolveOutcome(
+                None,
+                msg.get("exception") or msg.get("fatal") or "unknown child reply",
+                guard.violations,
+                guard.batch_errors,
+                policy_s,
+            )
 
     def close(self) -> None:
         if self.proc is not None:

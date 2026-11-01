@@ -1,29 +1,31 @@
 """Distillation of capsules (and failures) into genes, and the leakage audit (spec §3.7, §4.14, §6.4)."""
+
 from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, Sequence
 
 from rsi.core import LeakageCritic
 
 from .assets import CATEGORIES, Gene
 from .hashing import sha256_text
-from .prompts import (DISTILL_PROMPT, DISTILL_SYSTEM, DISTILL_VALIDATION_FAITHFUL, DISTILL_VALIDATION_SAFE,
-                      parse_gene)
+from .prompts import DISTILL_PROMPT, DISTILL_SYSTEM, DISTILL_VALIDATION_FAITHFUL, DISTILL_VALIDATION_SAFE, parse_gene
 from .validation import CommandPolicy
 
-GENERIC_STEPS = ["Identify the failing behaviour from the signals and the public checks.",
-                 "Apply the smallest change that addresses the root cause.",
-                 "Re-run the validation commands and compare against the expected behaviour.",
-                 "Record what worked and what to avoid next time."]
+GENERIC_STEPS = [
+    "Identify the failing behaviour from the signals and the public checks.",
+    "Apply the smallest change that addresses the root cause.",
+    "Re-run the validation commands and compare against the expected behaviour.",
+    "Record what worked and what to avoid next time.",
+]
 
 
 @dataclass
 class DistillResult:
     ok: bool
-    gene: Optional[Gene] = None
+    gene: Gene | None = None
     reason: str = ""
     errors: list[str] = field(default_factory=list)
 
@@ -34,9 +36,19 @@ class Distiller:
     The heuristic's fallback validation ``python --test`` (port of ``node --test``) is dropped by the command
     allowlist, so such genes ship with an empty validation list, as in Evolver."""
 
-    def __init__(self, *, mode: str = "faithful", every: int = 5, min_capsules: int = 10, min_score: float = 0.7,
-                 interval_h: float = 24.0, failure_min: int = 5, failure_interval_h: float = 12.0,
-                 fallback_validation: Sequence[str] = ("python --test",), command_policy=None) -> None:
+    def __init__(
+        self,
+        *,
+        mode: str = "faithful",
+        every: int = 5,
+        min_capsules: int = 10,
+        min_score: float = 0.7,
+        interval_h: float = 24.0,
+        failure_min: int = 5,
+        failure_interval_h: float = 12.0,
+        fallback_validation: Sequence[str] = ("python --test",),
+        command_policy=None,
+    ) -> None:
         self.mode = mode
         self.every = every
         self.min_capsules = min_capsules
@@ -48,11 +60,11 @@ class Distiller:
         if command_policy is None:
             command_policy = CommandPolicy.faithful() if mode == "faithful" else CommandPolicy.safe()
         self.policy = command_policy
-        self.last_at: Optional[float] = None
-        self.last_hash: Optional[str] = None
-        self.last_fail_at: Optional[float] = None
-        self.last_fail_hash: Optional[str] = None
-        self.last_failure_result: Optional[DistillResult] = None
+        self.last_at: float | None = None
+        self.last_hash: str | None = None
+        self.last_fail_at: float | None = None
+        self.last_fail_hash: str | None = None
+        self.last_failure_result: DistillResult | None = None
 
     def auto_trigger(self, store) -> bool:
         return store.solidify_count > 0 and self.every > 0 and store.solidify_count % self.every == 0
@@ -72,7 +84,7 @@ class Distiller:
             return False
         return len(store.failed_capsules) >= self.failure_min
 
-    def maybe_distill(self, store, *, llm=None, failures: bool = False) -> Optional[DistillResult]:
+    def maybe_distill(self, store, *, llm=None, failures: bool = False) -> DistillResult | None:
         """After a successful solidify: success distiller (LLM fallback), then optionally the failure distiller.
 
         Returns the success distiller's result; the failure distiller's is kept in ``last_failure_result``."""
@@ -88,8 +100,11 @@ class Distiller:
 
     def auto_distill(self, store) -> DistillResult:
         """Group good capsules by gene, pick argmax(2*count + mean score), build ``gene_distilled_<src>``."""
-        good = [c for c in store.capsules.values()
-                if c.outcome.get("status") == "success" and float(c.outcome.get("score", 1.0)) >= self.min_score]
+        good = [
+            c
+            for c in store.capsules.values()
+            if c.outcome.get("status") == "success" and float(c.outcome.get("score", 1.0)) >= self.min_score
+        ]
         if len(good) < self.min_capsules:
             return DistillResult(False, reason=f"only {len(good)} good capsules (< {self.min_capsules})")
         h = sha256_text("|".join(sorted(c.asset_id or c.id for c in good)))
@@ -98,8 +113,10 @@ class Distiller:
         groups: dict[str, list] = defaultdict(list)
         for c in good:
             groups[c.gene].append(c)
-        gid, caps = max(groups.items(), key=lambda kv: (2 * len(kv[1]) + sum(c.outcome.get("score", 0) for c in kv[1])
-                                                       / len(kv[1]), kv[0]))
+        gid, caps = max(
+            groups.items(),
+            key=lambda kv: (2 * len(kv[1]) + sum(c.outcome.get("score", 0) for c in kv[1]) / len(kv[1]), kv[0]),
+        )
         src = store.genes.get(gid)
         tagged = ("problem:", "area:")
         trig = Counter(t for c in caps for t in c.trigger if not t.startswith(tagged))
@@ -109,12 +126,21 @@ class Distiller:
         val = list(src.validation[:4]) if src is not None and src.validation else list(self.fallback_validation)
         if self.mode == "safe":  # never introduce a non-discriminative fallback
             val = [v for v in val if "--version" not in v] or ([] if src is None else list(src.validation[:4]))
-        g = Gene(id="gene_distilled_" + re.sub(r"^gene_", "", gid), category=src.category if src else "optimize",
-                 signals_match=sm, strategy=strategy, avoid=list(src.avoid[:3]) if src else [],
-                 summary=caps[0].summary, constraints={"max_files": min(12, src.max_files if src else 12),
-                                                       "forbidden_paths": [".git", "node_modules"]},
-                 validation=val, provenance={"kind": "distilled", "source_gene": gid, "n_capsules": len(caps)},
-                 parent=src.asset_id if src else None)
+        g = Gene(
+            id="gene_distilled_" + re.sub(r"^gene_", "", gid),
+            category=src.category if src else "optimize",
+            signals_match=sm,
+            strategy=strategy,
+            avoid=list(src.avoid[:3]) if src else [],
+            summary=caps[0].summary,
+            constraints={
+                "max_files": min(12, src.max_files if src else 12),
+                "forbidden_paths": [".git", "node_modules"],
+            },
+            validation=val,
+            provenance={"kind": "distilled", "source_gene": gid, "n_capsules": len(caps)},
+            parent=src.asset_id if src else None,
+        )
         r = self.validate_synth(g, store.genes.values())
         if r.ok:
             self.last_hash = h
@@ -128,11 +154,13 @@ class Distiller:
         caps = [c for c in store.capsules.values() if c.outcome.get("status") == "success"][-10:]
         if not caps:
             return DistillResult(False, reason="no capsules")
-        body = "\n".join(f"- gene={c.gene} trigger={c.trigger[:6]} summary={c.summary[:160]} "
-                         f"strategy={c.strategy[:4]}" for c in caps)
+        body = "\n".join(
+            f"- gene={c.gene} trigger={c.trigger[:6]} summary={c.summary[:160]} strategy={c.strategy[:4]}" for c in caps
+        )
         rule = DISTILL_VALIDATION_SAFE if self.mode == "safe" else DISTILL_VALIDATION_FAITHFUL
-        resp = llm.complete(DISTILL_PROMPT.format(validation_rule=rule, capsules=body), system=DISTILL_SYSTEM,
-                            role="distiller")
+        resp = llm.complete(
+            DISTILL_PROMPT.format(validation_rule=rule, capsules=body), system=DISTILL_SYSTEM, role="distiller"
+        )
         g = parse_gene(resp.text, default_id="gene_distilled_llm")
         if g is None:
             return DistillResult(False, reason="unparseable distiller reply")
@@ -169,25 +197,36 @@ class Distiller:
         sm = list(dict.fromkeys(sm + learn)) or ["error", "constraint_violation"]
         viol = [v for v, _ in Counter(v for fc in grp for v in fc.get("constraint_violations", [])).most_common(3)]
         summary = f"Prevents repeated failure: {reason}" + (f" (guards against: {', '.join(viol)})" if viol else "")
-        steps = ["GUARD: Check preconditions before making changes -- verify blast radius estimate is within limits.",
-                 "GUARD: Validate that target files are not in forbidden_paths before editing.",
-                 "APPLY: Make the smallest possible change to address the signal, favoring single-file patches.",
-                 "VERIFY: Run validation commands immediately after the change.",
-                 "ROLLBACK: If validation fails, revert all changes before proceeding."]
+        steps = [
+            "GUARD: Check preconditions before making changes -- verify blast radius estimate is within limits.",
+            "GUARD: Validate that target files are not in forbidden_paths before editing.",
+            "APPLY: Make the smallest possible change to address the signal, favoring single-file patches.",
+            "VERIFY: Run validation commands immediately after the change.",
+            "ROLLBACK: If validation fails, revert all changes before proceeding.",
+        ]
         if viol:
-            steps.insert(2, f"GUARD: Previous failures involved \"{', '.join(viol)}\" -- add explicit checks to "
-                            "prevent recurrence.")
-        g = Gene(id="gene_repair_distilled_" + re.sub(r"[^a-z0-9]+", "_", reason.lower())[:40].strip("_"),
-                 category="repair", signals_match=sm, strategy=steps, summary=summary[:200],
-                 preconditions=[f"Repeated failure pattern detected in recent capsules ({len(grp)} occurrences)"],
-                 constraints={"max_files": 8, "forbidden_paths": [".git", "node_modules"]},
-                 validation=["python --test"], provenance={"kind": "distilled", "from": "failures", "reason": reason})
+            steps.insert(
+                2,
+                f'GUARD: Previous failures involved "{", ".join(viol)}" -- add explicit checks to prevent recurrence.',
+            )
+        g = Gene(
+            id="gene_repair_distilled_" + re.sub(r"[^a-z0-9]+", "_", reason.lower())[:40].strip("_"),
+            category="repair",
+            signals_match=sm,
+            strategy=steps,
+            summary=summary[:200],
+            preconditions=[f"Repeated failure pattern detected in recent capsules ({len(grp)} occurrences)"],
+            constraints={"max_files": 8, "forbidden_paths": [".git", "node_modules"]},
+            validation=["python --test"],
+            provenance={"kind": "distilled", "from": "failures", "reason": reason},
+        )
         r = self.validate_synth(g, store.genes.values())
         if r.ok:
             self.last_fail_at, self.last_fail_hash = now, h
             store.upsert_gene(r.gene)
-            store.distiller_log.append({"at": store.clock.iso(), "gene": r.gene.id, "source": "failures",
-                                        "n": len(grp)})
+            store.distiller_log.append(
+                {"at": store.clock.iso(), "gene": r.gene.id, "source": "failures", "n": len(grp)}
+            )
         return r
 
     def validate_synth(self, g: Gene, genes: Iterable[Gene]) -> DistillResult:
@@ -204,7 +243,7 @@ class Distiller:
         prefix = "gene_repair_distilled_" if g.id.startswith("gene_repair_distilled_") else "gene_distilled_"
         if not g.id.startswith(prefix):
             g.id = prefix + re.sub(r"^gene_", "", g.id)
-        suffix = re.sub(r"\d+", "", g.id[len(prefix):]).strip("_-")
+        suffix = re.sub(r"\d+", "", g.id[len(prefix) :]).strip("_-")
         if len(suffix) < 6:
             g.id = prefix + (suffix + "_" + sha256_text(g.text())[:8]).strip("_")
         if len(g.summary) < 10:
@@ -232,12 +271,80 @@ class Distiller:
 _NUM = re.compile(r"-?\d+(?:\.\d+)?")
 _QUOTED = re.compile(r"['\"]([^'\"]{2,64})['\"]")
 _STRUCT = re.compile(r"(?<![A-Za-z0-9_./\\-])[A-Za-z0-9][A-Za-z0-9_./\\-]{1,80}(?![A-Za-z0-9_./\\-])")
-AUDIT_STOP = {"the", "and", "for", "with", "that", "this", "from", "into", "your", "you", "are", "not", "use", "using",
-              "must", "should", "will", "can", "may", "any", "all", "each", "one", "two", "given", "input", "output",
-              "value", "values", "result", "results", "return", "returns", "function", "code", "task", "tasks", "test",
-              "tests", "assert", "import", "def", "class", "self", "true", "false", "none", "print", "data", "list",
-              "dict", "string", "str", "int", "float", "bool", "file", "path", "line", "answer", "solution",
-              "python", "run", "expected", "actual", "case", "example", "number", "set", "get", "name", "format"}
+AUDIT_STOP = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "that",
+    "this",
+    "from",
+    "into",
+    "your",
+    "you",
+    "are",
+    "not",
+    "use",
+    "using",
+    "must",
+    "should",
+    "will",
+    "can",
+    "may",
+    "any",
+    "all",
+    "each",
+    "one",
+    "two",
+    "given",
+    "input",
+    "output",
+    "value",
+    "values",
+    "result",
+    "results",
+    "return",
+    "returns",
+    "function",
+    "code",
+    "task",
+    "tasks",
+    "test",
+    "tests",
+    "assert",
+    "import",
+    "def",
+    "class",
+    "self",
+    "true",
+    "false",
+    "none",
+    "print",
+    "data",
+    "list",
+    "dict",
+    "string",
+    "str",
+    "int",
+    "float",
+    "bool",
+    "file",
+    "path",
+    "line",
+    "answer",
+    "solution",
+    "python",
+    "run",
+    "expected",
+    "actual",
+    "case",
+    "example",
+    "number",
+    "set",
+    "get",
+    "name",
+    "format",
+}
 
 
 def _trivial_number(t: str) -> bool:
@@ -268,7 +375,7 @@ def hard_tokens(text: str, bare: bool = False) -> set[str]:
 
 @dataclass
 class LeakageReport:
-    leaks: list[tuple[str, str]] = field(default_factory=list)      # (token, location)
+    leaks: list[tuple[str, str]] = field(default_factory=list)  # (token, location)
     redacted: int = 0
     critic_hits: list[str] = field(default_factory=list)
 

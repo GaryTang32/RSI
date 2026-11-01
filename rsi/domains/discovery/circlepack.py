@@ -1,9 +1,9 @@
 """Circle packing, n = 26 in the unit square: maximize the sum of radii [paper:App.A]; best known 2.635983."""
+
 from __future__ import annotations
 
 import ast
 import random
-from typing import Optional
 
 import numpy as np
 
@@ -153,10 +153,12 @@ class CirclePackingDomain(ProgramDomain):
         self.n, self.tol = n, tol
 
     def describe(self) -> str:
-        return (f"Circle packing: write pack.py whose pack() returns {self.n} circles [[x, y, r], ...] inside the unit "
-                "square (r <= x <= 1-r, r <= y <= 1-r) with no overlaps ((xi-xj)^2+(yi-yj)^2 >= (ri+rj)^2), "
-                f"maximizing the sum of radii (best known for n=26: {BEST_KNOWN}). Violations (tolerance "
-                f"{self.tol:g}) score 0. numpy and scipy are available; runtime <= 60 s.")
+        return (
+            f"Circle packing: write pack.py whose pack() returns {self.n} circles [[x, y, r], ...] inside the unit "
+            "square (r <= x <= 1-r, r <= y <= 1-r) with no overlaps ((xi-xj)^2+(yi-yj)^2 >= (ri+rj)^2), "
+            f"maximizing the sum of radii (best known for n=26: {BEST_KNOWN}). Violations (tolerance "
+            f"{self.tol:g}) score 0. numpy and scipy are available; runtime <= 60 s."
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: program(SEED_ROWS)})
@@ -181,8 +183,16 @@ class CirclePackingDomain(ProgramDomain):
         if gap.min() < -tol:
             return failure("constraint", f"overlap of {-gap.min():.2e}")
         s = float(r.sum())
-        return EvalOutcome(s, True, True, "ok", None, 1, 1, {"sum_r": s, "gap_to_best_known": BEST_KNOWN - s,
-                                                            "centers": [[float(a), float(b)] for a, b in zip(x, y)]})
+        return EvalOutcome(
+            s,
+            True,
+            True,
+            "ok",
+            None,
+            1,
+            1,
+            {"sum_r": s, "gap_to_best_known": BEST_KNOWN - s, "centers": [[float(a), float(b)] for a, b in zip(x, y)]},
+        )
 
     def mock_agent(self, **kw) -> ParametricAgent:
         return ParametricAgent(_mutate, name="circlepack-mock", **kw)
@@ -194,11 +204,19 @@ def _parse(code: str):
     return rows, init
 
 
-PATTERNS = ([5, 5, 6, 5, 5], [6, 5, 5, 5, 5], [5, 6, 5, 6, 4], [4, 5, 4, 5, 4, 4], [6, 7, 6, 7], [5, 5, 5, 5, 6],
-            [4, 4, 5, 4, 5, 4], [6, 6, 7, 7])
+PATTERNS = (
+    [5, 5, 6, 5, 5],
+    [6, 5, 5, 5, 5],
+    [5, 6, 5, 6, 4],
+    [4, 5, 4, 5, 4, 4],
+    [6, 7, 6, 7],
+    [5, 5, 5, 5, 6],
+    [4, 4, 5, 4, 5, 4],
+    [6, 6, 7, 7],
+)
 
 
-def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
+def _mutate(parent: Artifact, rng: random.Random, ctx: AttemptContext | None):
     rows, init = _parse(parent[PROGRAM])
     init = parent_measured(ctx, "centers", init)  # resume from the parent's measured packing
     mech = (ctx.direction.get("direction") if ctx and ctx.direction else None) or rng.choice(MECHANISMS)
@@ -206,11 +224,13 @@ def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext])
         mech = rng.choice(("jitter", "polish", "shake"))  # a branch re-initialises only once
     elif ctx and ctx.attempt > 0 and rng.random() < 0.2:
         mech = rng.choice(MECHANISMS[1:])
-    params = {"rows": {"rows": list(rng.choice(PATTERNS)), "jitter": rng.choice([0.005, 0.01, 0.02])},
-              "jitter": {"sigma": rng.choice([0.01, 0.02, 0.04])},
-              "polish": {"sigma": rng.choice([0.001, 0.003, 0.006])},
-              "relocate": {"k": rng.choice([1, 2, 3])},
-              "shake": {"k": rng.choice([4, 6, 9]), "sigma": rng.choice([0.05, 0.1])}}[mech]
-    stage = [mech, params, rng.randrange(10 ** 6)]
+    params = {
+        "rows": {"rows": list(rng.choice(PATTERNS)), "jitter": rng.choice([0.005, 0.01, 0.02])},
+        "jitter": {"sigma": rng.choice([0.01, 0.02, 0.04])},
+        "polish": {"sigma": rng.choice([0.001, 0.003, 0.006])},
+        "relocate": {"k": rng.choice([1, 2, 3])},
+        "shake": {"k": rng.choice([4, 6, 9]), "sigma": rng.choice([0.05, 0.1])},
+    }[mech]
+    stage = [mech, params, rng.randrange(10**6)]
     text = f"# {mech} {params}\n\nMechanism: {mech}; resumes the parent's packing."
     return Artifact({PROGRAM: program(rows, init, stage)}), text

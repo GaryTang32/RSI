@@ -1,4 +1,5 @@
 """Paths and helpers shared by the live demo scripts (importing it puts the checkout's ``rsi`` on the path)."""
+
 from __future__ import annotations
 
 import json
@@ -25,10 +26,15 @@ def per_arm(rep: dict, key: str = "S") -> dict:
 
 def traces_identical(src: Path, out: Path) -> dict:
     """Byte-compare every candidate's execution traces between a recorded run and its replay."""
+
     def traces(d: Path) -> dict:
         return {p.relative_to(d): p.read_bytes() for p in (d / "store" / "candidates").glob("*/eval/*/traces/*")}
 
     a, b = traces(src), traces(out)
     # the replay writes every trace afresh, so a trace only it has means the recorded run lost one
-    return {"files": len(a), "identical": sum(1 for k in a if b.get(k) == a[k]),
-            "missing_in_replay": len(set(a) - set(b)), "extra_in_replay": len(set(b) - set(a))}
+    return {
+        "files": len(a),
+        "identical": sum(1 for k in a if b.get(k) == a[k]),
+        "missing_in_replay": len(set(a) - set(b)),
+        "extra_in_replay": len(set(b) - set(a)),
+    }

@@ -1,13 +1,14 @@
 """Editors turn instructions and an artifact into a scope-guarded :class:`Proposal` (rewrite call or coding agent)."""
+
 from __future__ import annotations
 
 import fnmatch
 import json
 import shutil
 import tempfile
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Mapping, Optional, Sequence
 
 from .artifact import Artifact, is_safe_relpath, parse_file_blocks
 from .llm import LLM, ClaudeCLI, Usage, extract_json
@@ -27,14 +28,14 @@ Files you do not list stay unchanged. To delete a file, emit `=== FILE: <path> =
 
 @dataclass
 class Proposal:
-    artifact: Optional[Artifact]
+    artifact: Artifact | None
     change: str = ""
     hypothesis: str = ""
     components: list[str] = field(default_factory=list)
     raw: str = ""
     usage: Usage = field(default_factory=Usage)
-    error: Optional[str] = None
-    blocked_files: list[str] = field(default_factory=list)   # scope-guard rejections
+    error: str | None = None
+    blocked_files: list[str] = field(default_factory=list)  # scope-guard rejections
     meta: dict = field(default_factory=dict)
 
     @property
@@ -42,11 +43,11 @@ class Proposal:
         return self.error is None and self.artifact is not None
 
 
-def _allowed(name: str, editable: Optional[Sequence[str]]) -> bool:
+def _allowed(name: str, editable: Sequence[str] | None) -> bool:
     return editable is None or any(fnmatch.fnmatch(name, pat) for pat in editable)
 
 
-def apply_scope(base: Artifact, updates: Mapping[str, Optional[str]], editable: Optional[Sequence[str]]):
+def apply_scope(base: Artifact, updates: Mapping[str, str | None], editable: Sequence[str] | None):
     """``(new_artifact, blocked_names)``: apply only updates matching ``editable`` globs with safe relative names."""
     allowed, blocked = {}, []
     for name, text in updates.items():
@@ -66,9 +67,17 @@ def _header_fields(header: object) -> tuple[str, str, list[str]]:
 
 
 class Editor:
-    def edit(self, artifact: Artifact, instructions: str, *, context: Optional[Mapping[str, str]] = None,
-             editable: Optional[Sequence[str]] = None, system: Optional[str] = None, seed: Optional[int] = None,
-             role: str = "proposer") -> Proposal:  # pragma: no cover
+    def edit(
+        self,
+        artifact: Artifact,
+        instructions: str,
+        *,
+        context: Mapping[str, str] | None = None,
+        editable: Sequence[str] | None = None,
+        system: str | None = None,
+        seed: int | None = None,
+        role: str = "proposer",
+    ) -> Proposal:  # pragma: no cover
         raise NotImplementedError
 
 
@@ -98,7 +107,7 @@ class RewriteEditor(Editor):
         return parse_proposal(artifact, resp.text, editable, resp.usage)
 
 
-def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Optional[Usage] = None) -> Proposal:
+def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Usage | None = None) -> Proposal:
     """Parse an :data:`EDIT_FORMAT` reply; ``error`` is set when there are no file blocks or no effective change."""
     text = text or ""
     try:
@@ -109,12 +118,24 @@ def parse_proposal(artifact: Artifact, text: str, editable=None, usage: Optional
         header = {}
     updates = {k: (None if v.strip() == "<<DELETE>>" else v) for k, v in parse_file_blocks(text).items()}
     if not updates:
-        return Proposal(None, raw=text, usage=usage or Usage(), error="no file blocks in reply",
-                        change=str(header.get("change", "")))
+        return Proposal(
+            None,
+            raw=text,
+            usage=usage or Usage(),
+            error="no file blocks in reply",
+            change=str(header.get("change", "")),
+        )
     new, blocked = apply_scope(artifact, updates, editable)
     change, hypothesis, comps = _header_fields(header)
-    prop = Proposal(new, change=change, hypothesis=hypothesis, components=comps, raw=text, usage=usage or Usage(),
-                    blocked_files=blocked)
+    prop = Proposal(
+        new,
+        change=change,
+        hypothesis=hypothesis,
+        components=comps,
+        raw=text,
+        usage=usage or Usage(),
+        blocked_files=blocked,
+    )
     if new == artifact:
         prop.error = "no effective change" + (f" (blocked edits to {blocked})" if blocked else "")
     return prop
@@ -130,8 +151,13 @@ Read-only context (history, traces, scores) is in the `_context/` directory; do 
 class AgentEditor(Editor):
     """Headless coding agent in a scratch copy; ``context`` files go read-only under ``_context/``."""
 
-    def __init__(self, cli: ClaudeCLI, tools: Sequence[str] = ("Read", "Edit", "Write", "Glob", "Grep"),
-                 timeout_s: float = 900.0, keep_dirs: bool = False) -> None:
+    def __init__(
+        self,
+        cli: ClaudeCLI,
+        tools: Sequence[str] = ("Read", "Edit", "Write", "Glob", "Grep"),
+        timeout_s: float = 900.0,
+        keep_dirs: bool = False,
+    ) -> None:
         self.cli = cli
         self.tools = tuple(tools)
         self.timeout_s = timeout_s
@@ -144,15 +170,21 @@ class AgentEditor(Editor):
             artifact.to_dir(work)
             ctx_dir = work / "_context"
             for name, text in (context or {}).items():
-                if not is_safe_relpath(str(name)):   # "../harness.py" would overwrite the artifact itself
+                if not is_safe_relpath(str(name)):  # "../harness.py" would overwrite the artifact itself
                     skipped_context.append(str(name))
                     continue
                 p = ctx_dir / name
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(text)
             scope = f"\nYou may only edit files matching {list(editable)}.\n" if editable is not None else ""
-            resp = self.cli.run_agent(instructions.strip() + "\n" + scope + AGENT_SUFFIX, cwd=str(work), system=system,
-                                      tools=self.tools, timeout_s=self.timeout_s, role=role)
+            resp = self.cli.run_agent(
+                instructions.strip() + "\n" + scope + AGENT_SUFFIX,
+                cwd=str(work),
+                system=system,
+                tools=self.tools,
+                timeout_s=self.timeout_s,
+                role=role,
+            )
             header: object = {}
             hp = work / "_proposal.json"
             if hp.exists():
@@ -166,10 +198,17 @@ class AgentEditor(Editor):
             after = Artifact.from_dir(work)
             new, blocked = apply_scope(artifact, {n: after.get(n) for n in artifact.changed_files(after)}, editable)
             change, hypothesis, comps = _header_fields(header)
-            prop = Proposal(new, change=change, hypothesis=hypothesis, components=comps, raw=resp.text,
-                            usage=resp.usage, blocked_files=blocked,
-                            error=None if resp.ok else f"agent error: {resp.error}",
-                            meta={"workdir": str(work)} if self.keep_dirs else {})
+            prop = Proposal(
+                new,
+                change=change,
+                hypothesis=hypothesis,
+                components=comps,
+                raw=resp.text,
+                usage=resp.usage,
+                blocked_files=blocked,
+                error=None if resp.ok else f"agent error: {resp.error}",
+                meta={"workdir": str(work)} if self.keep_dirs else {},
+            )
             if skipped_context:
                 prop.meta["skipped_context"] = skipped_context
             if prop.error is None and new == artifact:

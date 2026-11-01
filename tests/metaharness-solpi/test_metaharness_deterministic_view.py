@@ -1,4 +1,5 @@
 """The proposer's history view must not depend on wall-clock time or the hash seed (so cached runs replay)."""
+
 import json
 import os
 import subprocess
@@ -34,13 +35,21 @@ def two_runs(tmp_path_factory) -> list[ExperienceStore]:
     for k in (1, 2):
         dom = make_domain(seed=0)
         d = tmp_path_factory.mktemp(f"run{k}")
-        run(dom, dom.seed_artifact("fewshot_all"), llm_task=dom.make_model("A"), llm_propose=None,
-            config=Config(iterations=2, k=2, seed=0), out_dir=d, baselines=dom.baselines())
+        run(
+            dom,
+            dom.seed_artifact("fewshot_all"),
+            llm_task=dom.make_model("A"),
+            llm_propose=None,
+            config=Config(iterations=2, k=2, seed=0),
+            out_dir=d,
+            baselines=dom.baselines(),
+        )
         stores.append(ExperienceStore(d / "store"))
         time.sleep(0.05)
     return stores
 
 
+@pytest.mark.slow
 def test_two_identical_runs_render_the_same_proposer_view(two_runs):
     a, b = (st.view("full", strip_volatile=True) for st in two_runs)
     assert a.keys() == b.keys()
@@ -71,13 +80,15 @@ def test_config_default_is_deterministic():
     assert Config().deterministic_view is True
 
 
+@pytest.mark.slow
 def test_view_is_identical_across_processes_with_different_hash_seeds(tmp_path):
     views = []
     for seed in ("1", "987"):
         out = tmp_path / f"h{seed}"
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(ROOT)}
-        subprocess.run([sys.executable, "-c", _VIEW_SCRIPT, str(out)], env=env, check=True, capture_output=True,
-                       timeout=300)
+        subprocess.run(
+            [sys.executable, "-c", _VIEW_SCRIPT, str(out)], env=env, check=True, capture_output=True, timeout=300
+        )
         views.append(json.loads((out / "view.json").read_text()))
     assert views[0] == views[1]
 

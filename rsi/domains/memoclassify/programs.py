@@ -1,4 +1,5 @@
 """Memory-system genomes for the offline MockProposer: rendering to ``memory.py``, mechanism moves, trace diagnosis."""
+
 from __future__ import annotations
 
 import ast
@@ -6,72 +7,118 @@ import json
 import pprint
 import re
 from collections import Counter
-from typing import Any, Optional
+from typing import Any
 
 DEFAULT_GENOME: dict[str, Any] = {
-    "prompt": "json",            # A: json | answer_line
-    "label_list": False,         # A: prime the prompt with every label seen so far
-    "store": "all",              # B: all | errors_first | per_label_cap
-    "cap": 6,                    # D: max stored examples per label (per_label_cap)
-    "select": "all",             # C: all | recent | topk | topk_coverage | contrastive
-    "k": 16,                     # D: examples retrieved (topk*, recent)
-    "char_budget": 30000,        # D: max characters of demonstrations
-    "notes": False,              # F: per-label keyword notes (compressed memory)
+    "prompt": "json",  # A: json | answer_line
+    "label_list": False,  # A: prime the prompt with every label seen so far
+    "store": "all",  # B: all | errors_first | per_label_cap
+    "cap": 6,  # D: max stored examples per label (per_label_cap)
+    "select": "all",  # C: all | recent | topk | topk_coverage | contrastive
+    "k": 16,  # D: examples retrieved (topk*, recent)
+    "char_budget": 30000,  # D: max characters of demonstrations
+    "notes": False,  # F: per-label keyword notes (compressed memory)
     "note_words": 5,
-    "learn": "always",           # E: always | errors_only
-    "demo_chars": 0,             # D: truncate each demonstration to this many characters (0 = full)
-    "lookup": {},                # hard-coded answers (overfitting; never generic)
+    "learn": "always",  # E: always | errors_only
+    "demo_chars": 0,  # D: truncate each demonstration to this many characters (0 = full)
+    "lookup": {},  # hard-coded answers (overfitting; never generic)
 }
 
 #: mechanism moves: name -> (changes, axis, hypothesis)
 MOVES: dict[str, tuple[dict, str, str]] = {
-    "retrieve_topk": ({"select": "topk", "k": 16, "char_budget": 6000}, "C",
-                      "Showing only the demonstrations most similar to the query keeps the prompt inside the model's "
-                      "effective context and removes distracting examples, raising accuracy at lower context."),
-    "coverage": ({"select": "topk_coverage", "k": 12, "char_budget": 7000}, "C",
-                 "Adding one demonstration of every label not yet retrieved lets the model answer labels that "
-                 "similarity search missed."),
-    "label_list": ({"label_list": True}, "A",
-                   "Listing every label seen so far lets the model name labels without a retrieved example."),
-    "contrastive": ({"select": "contrastive", "k": 12, "char_budget": 7000}, "C",
-                    "Adding demonstrations of the labels most often confused with the top retrieved labels (learned "
-                    "from online errors) helps the model separate near-duplicates."),
-    "notes": ({"notes": True, "note_words": 5}, "F",
-              "Distilling each label into its most distinctive words gives the model a compact description of "
-              "every label at small context cost."),
-    "notes_only": ({"notes": True, "note_words": 6, "select": "topk", "k": 4, "char_budget": 1500,
-                    "label_list": False}, "F",
-                   "Keyword notes for every label plus a handful of nearest demonstrations should match the full "
-                   "demonstration set at a fraction of the context."),
-    "per_label_cap": ({"store": "per_label_cap", "cap": 4}, "B",
-                      "Keeping only the most recent few examples per label balances the memory and bounds context."),
-    "errors_first": ({"store": "errors_first"}, "B",
-                     "Storing mistakes preferentially concentrates memory on hard examples."),
-    "answer_line": ({"prompt": "answer_line"}, "A",
-                    "A plain 'Answer: <label>' format is easier to follow than JSON."),
-    "learn_errors_only": ({"learn": "errors_only"}, "E",
-                          "Learning only from mistakes avoids storing redundant easy examples."),
-    "recent_window": ({"select": "recent", "k": 40, "char_budget": 9000}, "C",
-                      "A recency window adapts to drift in the stream."),
+    "retrieve_topk": (
+        {"select": "topk", "k": 16, "char_budget": 6000},
+        "C",
+        "Showing only the demonstrations most similar to the query keeps the prompt inside the model's "
+        "effective context and removes distracting examples, raising accuracy at lower context.",
+    ),
+    "coverage": (
+        {"select": "topk_coverage", "k": 12, "char_budget": 7000},
+        "C",
+        "Adding one demonstration of every label not yet retrieved lets the model answer labels that "
+        "similarity search missed.",
+    ),
+    "label_list": (
+        {"label_list": True},
+        "A",
+        "Listing every label seen so far lets the model name labels without a retrieved example.",
+    ),
+    "contrastive": (
+        {"select": "contrastive", "k": 12, "char_budget": 7000},
+        "C",
+        "Adding demonstrations of the labels most often confused with the top retrieved labels (learned "
+        "from online errors) helps the model separate near-duplicates.",
+    ),
+    "notes": (
+        {"notes": True, "note_words": 5},
+        "F",
+        "Distilling each label into its most distinctive words gives the model a compact description of "
+        "every label at small context cost.",
+    ),
+    "notes_only": (
+        {"notes": True, "note_words": 6, "select": "topk", "k": 4, "char_budget": 1500, "label_list": False},
+        "F",
+        "Keyword notes for every label plus a handful of nearest demonstrations should match the full "
+        "demonstration set at a fraction of the context.",
+    ),
+    "per_label_cap": (
+        {"store": "per_label_cap", "cap": 4},
+        "B",
+        "Keeping only the most recent few examples per label balances the memory and bounds context.",
+    ),
+    "errors_first": (
+        {"store": "errors_first"},
+        "B",
+        "Storing mistakes preferentially concentrates memory on hard examples.",
+    ),
+    "answer_line": ({"prompt": "answer_line"}, "A", "A plain 'Answer: <label>' format is easier to follow than JSON."),
+    "learn_errors_only": (
+        {"learn": "errors_only"},
+        "E",
+        "Learning only from mistakes avoids storing redundant easy examples.",
+    ),
+    "recent_window": (
+        {"select": "recent", "k": 40, "char_budget": 9000},
+        "C",
+        "A recency window adapts to drift in the stream.",
+    ),
     # plausible-sounding mechanisms that do not help in this world (most edits don't)
-    "truncate_demos": ({"demo_chars": 45}, "D",
-                       "Shortening every demonstration to its opening words keeps the gist at a fraction of the "
-                       "context."),
-    "recent_only": ({"select": "recent", "k": 12, "char_budget": 3000}, "C",
-                    "The most recent examples are the most relevant for an online stream."),
-    "few_demos": ({"select": "topk", "k": 3, "char_budget": 1200}, "C",
-                  "Three nearest demonstrations are enough; more only distract the model."),
-    "one_per_label": ({"store": "per_label_cap", "cap": 1}, "B",
-                      "One canonical example per label is a cleaner memory than many noisy ones."),
-    "errors_only_recent": ({"learn": "errors_only", "select": "recent", "k": 20, "char_budget": 4000}, "E",
-                           "Remembering only recent mistakes focuses the prompt on what the model gets wrong."),
+    "truncate_demos": (
+        {"demo_chars": 45},
+        "D",
+        "Shortening every demonstration to its opening words keeps the gist at a fraction of the context.",
+    ),
+    "recent_only": (
+        {"select": "recent", "k": 12, "char_budget": 3000},
+        "C",
+        "The most recent examples are the most relevant for an online stream.",
+    ),
+    "few_demos": (
+        {"select": "topk", "k": 3, "char_budget": 1200},
+        "C",
+        "Three nearest demonstrations are enough; more only distract the model.",
+    ),
+    "one_per_label": (
+        {"store": "per_label_cap", "cap": 1},
+        "B",
+        "One canonical example per label is a cleaner memory than many noisy ones.",
+    ),
+    "errors_only_recent": (
+        {"learn": "errors_only", "select": "recent", "k": 20, "char_budget": 4000},
+        "E",
+        "Remembering only recent mistakes focuses the prompt on what the model gets wrong.",
+    ),
 }
 
 #: parameter variants: what an uninformed proposer tries most often (and what almost always ties or regresses)
 PARAM_MOVES: dict[str, tuple[dict, str, str]] = {
     f"param_{key}_{val}": ({key: val}, "D", f"Tuning {key} to {val} should balance recall and prompt length.")
-    for key, vals in (("k", (6, 10, 24, 32)), ("char_budget", (2500, 4500, 9000, 14000)),
-                      ("note_words", (3, 8)), ("cap", (2, 10)))
+    for key, vals in (
+        ("k", (6, 10, 24, 32)),
+        ("char_budget", (2500, 4500, 9000, 14000)),
+        ("note_words", (3, 8)),
+        ("cap", (2, 10)),
+    )
     for val in vals
 }
 ALL_MOVES = {**MOVES, **PARAM_MOVES}
@@ -261,7 +308,7 @@ def render(genome: dict) -> str:
     return _TEMPLATE.format(doc=describe_genome(g), config=pprint.pformat(g, width=100, sort_dicts=True))
 
 
-def read_config(source: str) -> Optional[dict]:
+def read_config(source: str) -> dict | None:
     """The literal value of a top-level ``CONFIG = {...}`` assignment (None if absent)."""
     try:
         tree = ast.parse(source or "")
@@ -277,7 +324,7 @@ def read_config(source: str) -> Optional[dict]:
     return None
 
 
-def parse(source: str) -> Optional[dict]:
+def parse(source: str) -> dict | None:
     """Read the CONFIG literal back from a program (None for foreign code)."""
     g = read_config(source)
     return {**DEFAULT_GENOME, **g} if g is not None else None
@@ -347,21 +394,37 @@ def diagnose(traces: dict[str, str], budget_hint: int = DEFAULT_BUDGET_HINT) -> 
         short = [r for r in evals if (r.get("prompt_len") or 0) <= budget_hint]
         acc_short = sum(r["ok"] for r in short) / len(short) if short else acc_long
         w = len(long) / n * (1.0 + max(0.0, acc_short - acc_long))
-        out.append(("retrieve_topk", 1.5 * w, f"{len(long)}/{n} prompts longer than {budget_hint} chars "
-                                               f"(acc {acc_long:.2f} vs {acc_short:.2f} on short prompts)"))
+        out.append(
+            (
+                "retrieve_topk",
+                1.5 * w,
+                f"{len(long)}/{n} prompts longer than {budget_hint} chars "
+                f"(acc {acc_long:.2f} vs {acc_short:.2f} on short prompts)",
+            )
+        )
     with_prompt = [r for r in errs if _step_prompt(r)]
     missing = [r for r in with_prompt if r["tgt"] not in _step_prompt(r)]
     if with_prompt:
         frac = len(missing) / len(with_prompt)
         if frac > 0.15:
-            out.append(("label_list", 1.2 * frac, f"target label absent from the prompt in {len(missing)}/"
-                                                   f"{len(with_prompt)} inspected errors"))
+            out.append(
+                (
+                    "label_list",
+                    1.2 * frac,
+                    f"target label absent from the prompt in {len(missing)}/{len(with_prompt)} inspected errors",
+                )
+            )
             out.append(("coverage", 1.0 * frac, "retrieval misses the gold label's demonstrations"))
     pairs = Counter(tuple(sorted((r["pred"], r["tgt"]))) for r in errs if r.get("pred"))
     rec = sum(c for c in pairs.values() if c >= 2)
     if errs and rec / len(errs) > 0.15:
-        out.append(("contrastive", 1.3 * rec / len(errs), f"{rec}/{len(errs)} errors are recurring label confusions "
-                                                          f"(e.g. {pairs.most_common(1)[0][0]})"))
+        out.append(
+            (
+                "contrastive",
+                1.3 * rec / len(errs),
+                f"{rec}/{len(errs)} errors are recurring label confusions (e.g. {pairs.most_common(1)[0][0]})",
+            )
+        )
     bad = [r for r in errs if "-" not in str(r.get("pred", ""))]
     if errs and len(bad) / len(errs) > 0.3:
         out.append(("label_list", 1.0 * len(bad) / len(errs), f"{len(bad)} predictions are not label names"))
@@ -387,11 +450,15 @@ def summarize(traces: dict[str, str]) -> str:
     errs = [r for r in evals if not r.get("ok")]
     plen = sum(r.get("prompt_len") or 0 for r in evals) / n
     common = Counter(r.get("pred") for r in errs).most_common(1)
-    lines = [f"The system answered {n - len(errs)} of {n} evaluation examples correctly.",
-             f"Average prompt length was about {int(plen / 1000)}k characters."]
+    lines = [
+        f"The system answered {n - len(errs)} of {n} evaluation examples correctly.",
+        f"Average prompt length was about {int(plen / 1000)}k characters.",
+    ]
     if common and common[0][1] >= 3:
-        lines.append(f"The most frequent wrong answer was {common[0][0]!r} ({common[0][1]} times), which suggests "
-                     f"some label confusion.")
+        lines.append(
+            f"The most frequent wrong answer was {common[0][0]!r} ({common[0][1]} times), which suggests "
+            f"some label confusion."
+        )
     return " ".join(lines)
 
 

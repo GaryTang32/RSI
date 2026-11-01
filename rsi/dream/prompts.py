@@ -1,7 +1,6 @@
 """Prompts of the LLM policy developer: Listing 2 verbatim [paper:App.B.2 L2:1-273] plus framework notes."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from .lint import ALLOWED_IMPORTS
 from .policy import POLICY_FILE
@@ -331,20 +330,41 @@ promising probes, but batch independent promising probes whenever possible."""
 
 def objective_text(objective: str, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1) -> str:
     """The objective paragraph of Listing 2 (L2:12-22) for the objective used for selection."""
-    if objective in ("pareto", "v2"):   # L2:12-22 is v2's Eq. 1 written for the developer
+    if objective in ("pareto", "v2"):  # L2:12-22 is v2's Eq. 1 written for the developer
         return PARETO_OBJECTIVE.format(lam=lam)
     return EQ1_OBJECTIVE.format(beta1=beta1, beta2=beta2, lam=lam)
 
 
-def developer_prompt(objective: str, W: int, *, beta1: float = 0.01, beta2: float = 0.005, lam: float = 0.1,
-                     trace_rows: Optional[int] = None, method_file: str = POLICY_FILE, history_dir: str = "history",
-                     trace_pool: str = "trace_pool", base: str = "strongest") -> str:
+def developer_prompt(
+    objective: str,
+    W: int,
+    *,
+    beta1: float = 0.01,
+    beta2: float = 0.005,
+    lam: float = 0.1,
+    trace_rows: int | None = None,
+    method_file: str = POLICY_FILE,
+    history_dir: str = "history",
+    trace_pool: str = "trace_pool",
+    base: str = "strongest",
+) -> str:
     """Listing 2 with runtime paths and the objective paragraph filled in, plus the framework notes."""
-    body = DEVELOPER_PROMPT.format(method_file=method_file, history_dir=history_dir, trace_pool=trace_pool,
-                                   objective_text=objective_text(objective, beta1, beta2, lam))
-    notes = FRAMEWORK_NOTES.format(history_dir=history_dir, trace_pool=trace_pool, W=W,
-                                   trace_rows="all" if trace_rows is None else f"at most {trace_rows}",
-                                   base_desc=("the latest version of this phase, pi^m: revise it into pi^(m+1)"
-                                              if base == "latest" else "the strongest so far"),
-                                   imports=", ".join(sorted(i for i in ALLOWED_IMPORTS if i != "__future__")))
+    body = DEVELOPER_PROMPT.format(
+        method_file=method_file,
+        history_dir=history_dir,
+        trace_pool=trace_pool,
+        objective_text=objective_text(objective, beta1, beta2, lam),
+    )
+    notes = FRAMEWORK_NOTES.format(
+        history_dir=history_dir,
+        trace_pool=trace_pool,
+        W=W,
+        trace_rows="all" if trace_rows is None else f"at most {trace_rows}",
+        base_desc=(
+            "the latest version of this phase, pi^m: revise it into pi^(m+1)"
+            if base == "latest"
+            else "the strongest so far"
+        ),
+        imports=", ".join(sorted(i for i in ALLOWED_IMPORTS if i != "__future__")),
+    )
     return body + notes

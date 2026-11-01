@@ -1,4 +1,5 @@
 """rsi.domains.agentqa.generators: splits, determinism, RNG streams, answers re-derived from the question text."""
+
 from __future__ import annotations
 
 import ast
@@ -31,7 +32,7 @@ def _ints(s: str) -> list[int]:
 
 
 def _solve_list(q: str) -> str | None:
-    xs = ast.literal_eval(q[q.index("["):])
+    xs = ast.literal_eval(q[q.index("[") :])
     if "divisible by 3" in q:
         return str(sum(x for x in xs if x % 3 == 0))
     if "second largest distinct" in q:
@@ -106,7 +107,7 @@ def test_every_family_answer_is_exact(family):
         assert isinstance(q, str) and isinstance(a, str) and isinstance(ents, list)
         assert solve(q) == a, (family, q[:120], a)
         kinds.add(q[:18])
-    assert len(kinds) >= 2                                   # several question kinds per family
+    assert len(kinds) >= 2  # several question kinds per family
 
 
 def test_units_rounding_is_half_up():
@@ -124,7 +125,7 @@ def test_units_rounding_is_half_up():
 def test_make_suite_default_structure():
     s = make_suite(dedupe=False)
     assert {k: len(v) for k, v in s.splits.items()} == {"evolve": 20, "holdout": 20, "ood": 24, "smoke": 2}
-    assert len(make_suite().splits["holdout"]) == 19          # default drops the duplicated holdout question
+    assert len(make_suite().splits["holdout"]) == 19  # default drops the duplicated holdout question
     assert s.families("evolve") == ["numeric"] and s.families("holdout") == ["numeric"]
     assert s.families("ood") == ["dates", "lists", "numbertheory", "strings"]
     assert s.splits["smoke"] == s.splits["evolve"][:2]
@@ -139,16 +140,24 @@ def test_make_suite_default_structure():
 
 
 def test_make_suite_options():
-    s = make_suite(n_evolve=6, n_holdout=0, n_ood_per_family=2, practice_families=("arith", "units"),
-                   ood_families=("dates",), n_val=4, seed=5)
+    s = make_suite(
+        n_evolve=6,
+        n_holdout=0,
+        n_ood_per_family=2,
+        practice_families=("arith", "units"),
+        ood_families=("dates",),
+        n_val=4,
+        seed=5,
+    )
     assert [s.get(i).family for i in s.splits["evolve"]] == ["arith", "units"] * 3
     assert len(s.splits["val"]) == 4 and s.splits["holdout"] == [] and len(s.splits["ood"]) == 2
     assert not s.is_sealed("val")
 
 
 def _fingerprint(s) -> str:
-    return hashlib.sha256(json.dumps([[t.id, t.input, t.target] for t in s.tasks.values()] +
-                                     [s.splits], sort_keys=True).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps([[t.id, t.input, t.target] for t in s.tasks.values()] + [s.splits], sort_keys=True).encode()
+    ).hexdigest()
 
 
 def test_make_suite_deterministic_and_seeded():
@@ -160,13 +169,14 @@ def test_make_suite_deterministic_and_seeded():
 def test_splits_use_independent_rng_streams():
     base = make_suite()
     grown = make_suite(n_evolve=30, n_holdout=5, n_ood_per_family=8, n_val=3)
-    for tid in base.splits["evolve"] + grown.splits["holdout"] + base.splits["ood"]:   # evolve: a prefix
+    for tid in base.splits["evolve"] + grown.splits["holdout"] + base.splits["ood"]:  # evolve: a prefix
         assert grown.get(tid).input == base.get(tid).input
 
 
 def test_default_suite_overlap_and_decontaminate():
     """Factorial digit sums have only 46 questions: raw seed 0 repeats an evolve question in holdout and seed 1
     one inside evolve; make_suite decontaminates by default."""
+
     def overlap(s):
         ev = [s.tasks[t].input for t in s.splits["evolve"]]
         ho = {s.tasks[t].input for t in s.splits["holdout"]}
@@ -190,9 +200,11 @@ def test_default_suite_overlap_and_decontaminate():
 
 def test_make_suite_stable_across_processes(checkout_python):
     """String-seeded RNGs must not depend on PYTHONHASHSEED."""
-    code = ("import json, hashlib\n"
-            "from rsi.domains.agentqa import make_suite\n"
-            "s = make_suite()\n"
-            "print(hashlib.sha256(json.dumps([[t.id, t.input, t.target] for t in s.tasks.values()] + [s.splits], "
-            "sort_keys=True).encode()).hexdigest())")
+    code = (
+        "import json, hashlib\n"
+        "from rsi.domains.agentqa import make_suite\n"
+        "s = make_suite()\n"
+        "print(hashlib.sha256(json.dumps([[t.id, t.input, t.target] for t in s.tasks.values()] + [s.splits], "
+        "sort_keys=True).encode()).hexdigest())"
+    )
     assert checkout_python(code, env={"PYTHONHASHSEED": "12345"}).stdout.strip() == _fingerprint(make_suite())

@@ -1,11 +1,12 @@
 """Improver sessions over text: editor/composer stages (retry once, then inherit), selector and reflector."""
+
 from __future__ import annotations
 
 import hashlib
 import random
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Optional, Sequence
 
 from ..core.artifact import Artifact, parse_file_blocks
 from ..core.llm import LLM, LLMResponse, extract_tag
@@ -36,9 +37,9 @@ class Session:
     max_text_chars: int = 24000
     seed: int = 0
     calls: int = 0
-    transport_attempts: int = 2     # TRANSPORT_ATTEMPTS [code proposer.py]; no back-off sleep here
+    transport_attempts: int = 2  # TRANSPORT_ATTEMPTS [code proposer.py]; no back-off sleep here
 
-    def ask(self, prompt: str, *, role: str, where: str, attempts: Optional[int] = None) -> LLMResponse:
+    def ask(self, prompt: str, *, role: str, where: str, attempts: int | None = None) -> LLMResponse:
         """The single choke point to an improver: every prompt is screened for grader verdicts first.
 
         A transport failure (``resp.ok`` false) is retried up to ``transport_attempts`` times in total."""
@@ -70,8 +71,12 @@ def parse_edit(reply: str, start: Artifact, pool: Mapping[str, Artifact], editab
         base = pool[adopted]
     updates = {k: (None if v.strip() == "<<DELETE>>" else v) for k, v in parse_file_blocks(body).items()}
     if bad := off_surface(list(updates), editable):
-        return None, adopted, notes or reply, (f"files off the editable surface were written: {bad[:6]}; editable "
-                                               f"paths match {list(editable)}")
+        return (
+            None,
+            adopted,
+            notes or reply,
+            (f"files off the editable surface were written: {bad[:6]}; editable paths match {list(editable)}"),
+        )
     return base.with_files(updates), adopted, notes if notes is not None else (reply or ""), None
 
 
@@ -81,8 +86,17 @@ def _with_harness(ctx: Mapping[str, str], tree: Artifact) -> dict[str, str]:
     return out
 
 
-def run_stage(s: Session, *, label: str, role: str, prompt: str, ctx: Mapping[str, str], start: Artifact,
-              fallback: Artifact, pool: Mapping[str, Artifact] = {}) -> Stage:
+def run_stage(
+    s: Session,
+    *,
+    label: str,
+    role: str,
+    prompt: str,
+    ctx: Mapping[str, str],
+    start: Artifact,
+    fallback: Artifact,
+    pool: Mapping[str, Artifact] = {},
+) -> Stage:
     """Up to ``1 + retry_invalid`` attempts; an invalid or failed proposal inherits ``fallback``."""
     st = Stage(label=label, role=role)
     mission = prompt + "\n" + P.MISSION.format(layout=C.layout(ctx))
@@ -123,21 +137,46 @@ def _anon(i: int) -> str:
     return out
 
 
-def select(s: Session, rec: TaskRecord, finals: Sequence[str], *, task_text: str, source: Mapping[str, str],
-           attempts: int, slots: Mapping[str, str], obs_trunc: int,
-           mode_token: Optional[str] = None) -> tuple[dict, Optional[Stage]]:
+def select(
+    s: Session,
+    rec: TaskRecord,
+    finals: Sequence[str],
+    *,
+    task_text: str,
+    source: Mapping[str, str],
+    attempts: int,
+    slots: Mapping[str, str],
+    obs_trunc: int,
+    mode_token: str | None = None,
+) -> tuple[dict, Stage | None]:
     """``(selection, stage)``: trivial at k = 1, else one anonymised deliverable-only selector session."""
     delivered = [lab for lab in finals if rec.rollouts[lab].delivered]
-    sel = {"pool": list(finals), "dropped": [lab for lab in finals if lab not in delivered], "ids": {},
-           "evidence": "deliverable", "fallback": False, "error": None}
+    sel = {
+        "pool": list(finals),
+        "dropped": [lab for lab in finals if lab not in delivered],
+        "ids": {},
+        "evidence": "deliverable",
+        "fallback": False,
+        "error": None,
+    }
     if len(finals) == 1:
         ok = bool(delivered)
-        return {**sel, "chosen": finals[0], "why": TRIVIAL, "ok": ok,
-                "error": None if ok else "no candidate produced an artifact (finals-only pool has no base fallback)"
-                }, None
+        return {
+            **sel,
+            "chosen": finals[0],
+            "why": TRIVIAL,
+            "ok": ok,
+            "error": None if ok else "no candidate produced an artifact (finals-only pool has no base fallback)",
+        }, None
     if not delivered:
-        return {**sel, "chosen": sorted(finals)[0], "why": "", "ok": False, "fallback": True,
-                "error": "no candidate produced an artifact (finals-only pool has no base fallback)"}, None
+        return {
+            **sel,
+            "chosen": sorted(finals)[0],
+            "why": "",
+            "ok": False,
+            "fallback": True,
+            "error": "no candidate produced an artifact (finals-only pool has no base fallback)",
+        }, None
     ids = anon_ids(rec.task_id, rec.k, mode_token or rec.mode, delivered)
     cands = {cid: C.produced_md(rec.rollouts[lab], obs_trunc) for cid, lab in ids.items()}
     text = P.select(len(ids), list(ids), slots=slots) + "\n" + C.render(C.selector_context(task_text, cands, source))
@@ -156,8 +195,15 @@ def select(s: Session, rec: TaskRecord, finals: Sequence[str], *, task_text: str
         return {**sel, "ids": ids, "chosen": ids[m[-1]], "why": why, "ok": True}, st
     st.error = f"selector failed: {'transport: ' + str(resp.error) if resp and not resp.ok else 'no valid choice'}"
     st.fell_back = True
-    return {**sel, "ids": ids, "chosen": sorted(delivered)[0], "why": why, "ok": True, "fallback": True,
-            "error": st.error}, st
+    return {
+        **sel,
+        "ids": ids,
+        "chosen": sorted(delivered)[0],
+        "why": why,
+        "ok": True,
+        "fallback": True,
+        "error": st.error,
+    }, st
 
 
 def parse_experience(reply: str) -> dict:
@@ -173,13 +219,29 @@ def parse_experience(reply: str) -> dict:
     return exp if all(exp.get(k) for k in EXP_KEYS[:3]) else {}
 
 
-def reflect(s: Session, rec: TaskRecord, *, task_text: str, rollouts: Sequence[Rollout],
-            pool: Sequence[tuple[str, Artifact, Optional[Rollout]]], decisions: Mapping[str, str],
-            slots: Mapping[str, str], obs_trunc: int) -> tuple[dict, Stage]:
+def reflect(
+    s: Session,
+    rec: TaskRecord,
+    *,
+    task_text: str,
+    rollouts: Sequence[Rollout],
+    pool: Sequence[tuple[str, Artifact, Rollout | None]],
+    decisions: Mapping[str, str],
+    slots: Mapping[str, str],
+    obs_trunc: int,
+) -> tuple[dict, Stage]:
     sel = rec.selection
     adoption = {"chosen_label": rec.adopted, "candidate_ids": sel.get("ids", {}), "reason": sel.get("why", "")}
-    ctx = C.reflector_context(task_text, adopted=rec.adopted_tree, base=rec.base_tree, rollouts=rollouts, pool=pool,
-                              decisions=decisions, adoption=adoption, obs_trunc=obs_trunc)
+    ctx = C.reflector_context(
+        task_text,
+        adopted=rec.adopted_tree,
+        base=rec.base_tree,
+        rollouts=rollouts,
+        pool=pool,
+        decisions=decisions,
+        adoption=adoption,
+        obs_trunc=obs_trunc,
+    )
     text = P.experience(rec.adopted, sel.get("why", ""), slots=slots) + "\n" + C.render(ctx) + END
     st = Stage(label="reflect", role="reflector", prompt=text, attempts=1)
     resp = s.ask(text, role="reflector", where="reflector")

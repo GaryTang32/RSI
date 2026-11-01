@@ -2,17 +2,33 @@
 
 Run: python experiments/gepa/e5_minibatch.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
+
 from __future__ import annotations
 
 from _common import RESULTS, by_seed, ci_err, fmt, parse_args, pool_map, pyplot, reflection_llm, save, summarize
+
 from rsi.domains.ruleworld import make_domain
 from rsi.gepa import Config, gate_errors, run
 
-ARMS = {"b=1": dict(minibatch_size=1), "b=3": dict(minibatch_size=3), "b=5": dict(minibatch_size=5),
-        "b=10": dict(minibatch_size=10), "b=3,>=": dict(minibatch_size=3, acceptance="improvement_or_equal"),
-        "b=3,margin0.1": dict(minibatch_size=3, acceptance="noise_margin", noise_margin=0.1)}
-METRICS = ("final_test", "val_share", "minibatch_share", "false_accept_rate", "false_reject_rate", "accept_rate",
-           "iterations", "proposals", "accepted")
+ARMS = {
+    "b=1": dict(minibatch_size=1),
+    "b=3": dict(minibatch_size=3),
+    "b=5": dict(minibatch_size=5),
+    "b=10": dict(minibatch_size=10),
+    "b=3,>=": dict(minibatch_size=3, acceptance="improvement_or_equal"),
+    "b=3,margin0.1": dict(minibatch_size=3, acceptance="noise_margin", noise_margin=0.1),
+}
+METRICS = (
+    "final_test",
+    "val_share",
+    "minibatch_share",
+    "false_accept_rate",
+    "false_reject_rate",
+    "accept_rate",
+    "iterations",
+    "proposals",
+    "accepted",
+)
 
 
 def job(spec):
@@ -28,23 +44,39 @@ def job(spec):
     def cb(event, payload):
         if event in ("candidate_accepted", "candidate_rejected"):
             parent = payload["engine"].state.candidates[payload["parent"]]
-            events.append({"accepted": event == "candidate_accepted",
-                           "true_gain": truth(payload["child"]) - truth(parent)})
+            events.append(
+                {"accepted": event == "candidate_accepted", "true_gain": truth(payload["child"]) - truth(parent)}
+            )
 
-    res = run(d, d.seed_artifact(), llm_propose=reflection_llm(llm, d.world),
-              config=Config(max_metric_calls=B, seed=seed, **ARMS[arm]), callbacks=[cb])
+    res = run(
+        d,
+        d.seed_artifact(),
+        llm_propose=reflection_llm(llm, d.world),
+        config=Config(max_metric_calls=B, seed=seed, **ARMS[arm]),
+        callbacks=[cb],
+    )
     ph, tot = res.meta["rollouts_by_phase"], res.meta["rollouts"]
-    return {"arm": arm, "seed": seed, "final_test": d.expected(res.best, "test"),
-            "val_share": (ph["seed_val"] + ph["val_reflective"] + ph["val_merge"]) / tot,
-            "minibatch_share": (ph["minibatch_parent"] + ph["minibatch_child"]) / tot, "phases": ph,
-            "iterations": res.meta["iterations"], "proposals": res.meta["n_proposals"],
-            "accepted": res.meta["n_accepted"], **gate_errors(events)}
+    return {
+        "arm": arm,
+        "seed": seed,
+        "final_test": d.expected(res.best, "test"),
+        "val_share": (ph["seed_val"] + ph["val_reflective"] + ph["val_merge"]) / tot,
+        "minibatch_share": (ph["minibatch_parent"] + ph["minibatch_child"]) / tot,
+        "phases": ph,
+        "iterations": res.meta["iterations"],
+        "proposals": res.meta["n_proposals"],
+        "accepted": res.meta["n_accepted"],
+        **gate_errors(events),
+    }
 
 
 def plot(summ: dict, arms: list[str], B: int) -> None:
     fig, axes = pyplot().subplots(1, 3, figsize=(12, 3.6))
-    for ax, m, lab in zip(axes, ("final_test", "val_share", "false_accept_rate"),
-                          ("true test score", "validation share of rollouts", "false-accept rate")):
+    for ax, m, lab in zip(
+        axes,
+        ("final_test", "val_share", "false_accept_rate"),
+        ("true test score", "validation share of rollouts", "false-accept rate"),
+    ):
         st = [summ[k][m] for k in arms]
         ax.bar(range(len(arms)), [s["mean"] for s in st], yerr=ci_err(st), capsize=3)
         ax.set_xticks(range(len(arms)))
@@ -68,21 +100,30 @@ def main():
     fa_mono = len(fa) > 1 and all(x >= y - 0.02 for x, y in zip(list(fa.values()), list(fa.values())[1:]))
     s3 = summ["b=3"]
     ge = summ.get("b=3,>=")
-    out = {"experiment": "E5 minibatch gate", "llm": a.llm, "config": {"budget": B, "seeds": a.seeds, "arms": ARMS},
-           "summary": summ, "best_b_for_budget": best_b, "raw": rows,
-           "verdict": (f"b=3: validation share of rollouts {fmt(s3['val_share'])} (claim '> 50%': "
-                       f"{'REPRODUCED' if s3['val_share']['mean'] > 0.5 else 'NOT reproduced'}); "
-                       "false-accept rate by b: "
-                       + ", ".join(f"{k} {v:.2f}" for k, v in fa.items())
-                       + (f" ({'decreasing with b' if fa_mono else 'not monotone in b'})" if len(fa) > 1 else "")
-                       + "; false-reject rates: "
-                       + ", ".join(f"{k} {summ[k]['false_reject_rate']['mean']:.2f}" for k in fa)
-                       + f"; iterations at B={B}: " + ", ".join(f"{k} {summ[k]['iterations']['mean']:.0f}" for k in fa)
-                       + f". Best b for this budget: {best_b} ({fmt(summ[best_b]['final_test'])}). "
-                       f">= acceptance: test {fmt(ge['final_test']) if ge else '-'}, "
-                       f"false-accept {ge['false_accept_rate']['mean'] if ge else float('nan'):.2f}; "
-                       f"noise margin 0.1: test "
-                       f"{fmt(summ['b=3,margin0.1']['final_test']) if 'b=3,margin0.1' in summ else '-'}.")}
+    out = {
+        "experiment": "E5 minibatch gate",
+        "llm": a.llm,
+        "config": {"budget": B, "seeds": a.seeds, "arms": ARMS},
+        "summary": summ,
+        "best_b_for_budget": best_b,
+        "raw": rows,
+        "verdict": (
+            f"b=3: validation share of rollouts {fmt(s3['val_share'])} (claim '> 50%': "
+            f"{'REPRODUCED' if s3['val_share']['mean'] > 0.5 else 'NOT reproduced'}); "
+            "false-accept rate by b: "
+            + ", ".join(f"{k} {v:.2f}" for k, v in fa.items())
+            + (f" ({'decreasing with b' if fa_mono else 'not monotone in b'})" if len(fa) > 1 else "")
+            + "; false-reject rates: "
+            + ", ".join(f"{k} {summ[k]['false_reject_rate']['mean']:.2f}" for k in fa)
+            + f"; iterations at B={B}: "
+            + ", ".join(f"{k} {summ[k]['iterations']['mean']:.0f}" for k in fa)
+            + f". Best b for this budget: {best_b} ({fmt(summ[best_b]['final_test'])}). "
+            f">= acceptance: test {fmt(ge['final_test']) if ge else '-'}, "
+            f"false-accept {ge['false_accept_rate']['mean'] if ge else float('nan'):.2f}; "
+            f"noise margin 0.1: test "
+            f"{fmt(summ['b=3,margin0.1']['final_test']) if 'b=3,margin0.1' in summ else '-'}."
+        ),
+    }
     save("e5_minibatch", out, a.out)
     plot(summ, arms, B)
     print(out["verdict"])

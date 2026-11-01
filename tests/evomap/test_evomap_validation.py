@@ -1,4 +1,5 @@
 """Run trace and shadow monitor: write-only, every cycle traced, sealed splits kept from the agent."""
+
 from __future__ import annotations
 
 import json
@@ -6,8 +7,8 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
-
 from evomap_helpers import HINT, katas_population
+
 from rsi.core import Execution, GateContext, MockLLM, Scored, SealedSplitError
 from rsi.domains.katas import KataMockProposer, KatasDomain, KataSimSolver, seed_harness
 from rsi.domains.katas.katas import KATA_BY_ID
@@ -24,9 +25,15 @@ def _decisions(res):
 
 
 def _hub_state(hub):
-    return [(rec.gene.id, rec.status, (rec.hub_report or {}).get("U_LCB"),
-             [(r["consumer"], r["outcome"], r["counted"]) for r in rec.adoptions])
-            for rec in (hub.records[a] for a in hub.order)]
+    return [
+        (
+            rec.gene.id,
+            rec.status,
+            (rec.hub_report or {}).get("U_LCB"),
+            [(r["consumer"], r["outcome"], r["counted"]) for r in rec.adoptions],
+        )
+        for rec in (hub.records[a] for a in hub.order)
+    ]
 
 
 @pytest.mark.parametrize("trace, monitor", [(False, False), (True, False)], ids=["plain", "trace_only"])
@@ -69,8 +76,14 @@ def test_monitor_numbers_never_reach_the_agent(tmp_path):
     dom = KatasDomain(scheme="audit")
     with pytest.raises(SealedSplitError):
         dom.tasks.split("holdout")
-    res = run(dom, seed_harness(), llm_task=KataSimSolver(0.0), llm_propose=KataMockProposer(0.7),
-              config=Config(cycles=4, validation_hint=HINT, trace_baseline_k=1), out_dir=tmp_path)
+    res = run(
+        dom,
+        seed_harness(),
+        llm_task=KataSimSolver(0.0),
+        llm_propose=KataMockProposer(0.7),
+        config=Config(cycles=4, validation_hint=HINT, trace_baseline_k=1),
+        out_dir=tmp_path,
+    )
     agent_meta = json.dumps({k: v for k, v in res.meta.items() if k != "agent"}, default=str)
     mon = [e for e in load_trace(tmp_path) if e["kind"] == "monitor"]
     assert mon and "holdout" in mon[0]["data"]["sealed"]
@@ -110,6 +123,11 @@ def test_cycle_tokens_not_double_counted_with_one_llm():
         return (writer if "STRATEGY GENE" in p else solver).complete(p, system=s, seed=seed).text
 
     one = MockLLM(respond, name="one")
-    res = run(KatasDomain(scheme="audit"), seed_harness(), llm_task=one, llm_propose=one,
-              config=Config(cycles=5, validation_hint=HINT, trace=False))
+    res = run(
+        KatasDomain(scheme="audit"),
+        seed_harness(),
+        llm_task=one,
+        llm_propose=one,
+        config=Config(cycles=5, validation_hint=HINT, trace=False),
+    )
     assert sum(r["tokens"] for r in res.trajectory) <= one.meter.snapshot()["_total"]["total_tokens"]

@@ -1,4 +1,5 @@
 """Regression tests for the claims-audit fixes (docs/methods/autoresearch/claims-audit.md, section 3a)."""
+
 import importlib.util
 import re
 import subprocess
@@ -8,11 +9,27 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from autoresearch_helpers import context, quiet
-from rsi.autoresearch import (AutoresearchLoop, Config, KeepContext, LLMResearchAgent, MockResearchAgent, ProgramSpec,
-                              ResearchAgent, ResearchTask, ResultsLog, RunBudget, RunOutcome, Samples, ScopeGuard,
-                              StrictKeep, UpstreamKeep, make_keep_rule, text_edit)
+
+from rsi.autoresearch import (
+    AutoresearchLoop,
+    Config,
+    KeepContext,
+    LLMResearchAgent,
+    MockResearchAgent,
+    ProgramSpec,
+    ResearchAgent,
+    ResearchTask,
+    ResultsLog,
+    RunBudget,
+    RunOutcome,
+    Samples,
+    ScopeGuard,
+    StrictKeep,
+    UpstreamKeep,
+    make_keep_rule,
+    text_edit,
+)
 from rsi.autoresearch.guard import AGENT_FIX_KINDS
 from rsi.autoresearch.parallel import ParallelAutoresearchLoop
 from rsi.core import Artifact
@@ -105,10 +122,20 @@ def test_upstream_keep_is_the_default_and_weighs_code_size():
 
 
 def test_simplification_at_equal_bpb_is_kept_by_default(tinylm_tokens, tmp_path):
-    simp = text_edit("simplify", "neutral", "train.py", "    smooth_loss = 0.9 * smooth_loss + 0.1 * loss\n", "",
-                     "delete unused smooth_loss EMA (simplification)")
-    AutoresearchLoop(tinylm_tokens, MockResearchAgent([simp], schedule=["simplify"]),
-                     cfg(max_experiments=1, persist=True), out_dir=tmp_path / "simp").run()
+    simp = text_edit(
+        "simplify",
+        "neutral",
+        "train.py",
+        "    smooth_loss = 0.9 * smooth_loss + 0.1 * loss\n",
+        "",
+        "delete unused smooth_loss EMA (simplification)",
+    )
+    AutoresearchLoop(
+        tinylm_tokens,
+        MockResearchAgent([simp], schedule=["simplify"]),
+        cfg(max_experiments=1, persist=True),
+        out_dir=tmp_path / "simp",
+    ).run()
     log = ResultsLog.read(tmp_path / "simp" / "results.tsv").rows()
     assert log[1].metric == log[0].metric and log[1].status == "keep"
 
@@ -127,11 +154,20 @@ def test_upstream_keep_memory_soft_constraint():
 
 
 def test_memory_blowup_is_discarded_in_a_real_run(tinylm_tokens, tmp_path):
-    ballast = text_edit("ballast", "helpful", "train.py", "LR = 0.003\n",
-                        "LR = 0.006\n_ballast = np.ones((5000, 5000))  # 0.2 GB, unused\n_ballast += 1.0\n",
-                        "LR x2 (+ unused buffer)")
-    loop = AutoresearchLoop(tinylm_tokens, MockResearchAgent([ballast], schedule=["ballast"]),
-                            cfg(max_experiments=1), out_dir=tmp_path / "ballast")
+    ballast = text_edit(
+        "ballast",
+        "helpful",
+        "train.py",
+        "LR = 0.003\n",
+        "LR = 0.006\n_ballast = np.ones((5000, 5000))  # 0.2 GB, unused\n_ballast += 1.0\n",
+        "LR x2 (+ unused buffer)",
+    )
+    loop = AutoresearchLoop(
+        tinylm_tokens,
+        MockResearchAgent([ballast], schedule=["ballast"]),
+        cfg(max_experiments=1),
+        out_dir=tmp_path / "ballast",
+    )
     loop.run()
     log = loop.results.rows()
     assert log[1].metric < log[0].metric  # a real gain ...
@@ -179,15 +215,24 @@ def test_tinylm_summary_block_matches_upstream(tinylm_data):
     task = TinyLMTask(budget_s=2.0, data_root=tinylm_data)
     o = task.run(task.seed_artifact(), seed=0, mode="faithful")
     keys = [line.split(":")[0] for line in o.log.split("---\n", 1)[1].strip().splitlines()]
-    assert keys == ["val_bpb", "training_seconds", "total_seconds", "peak_vram_mb", "mfu_percent", "total_tokens_M",
-                    "num_steps", "num_params_M", "depth"]
+    assert keys == [
+        "val_bpb",
+        "training_seconds",
+        "total_seconds",
+        "peak_vram_mb",
+        "mfu_percent",
+        "total_tokens_M",
+        "num_steps",
+        "num_params_M",
+        "depth",
+    ]
     assert abs(o.summary["training_seconds"] - 2.0) <= 0.1  # the budgeted tau, warm-up excluded
     assert o.summary["mfu_percent"] > 0 and o.summary["total_tokens_M"] > 0
 
 
 def test_next_batch_fetch_is_inside_the_timed_step():
     src = (DOMAIN_DIR / "train.py").read_text()
-    loop = src[src.index("while batch is not None:"):]
+    loop = src[src.index("while batch is not None:") :]
     t0, fetch = loop.index("t0 = time.time()"), loop.index("batch = next(batches, None)")
     assert t0 < fetch < loop.index("dt = time.time() - t0")
 
@@ -197,8 +242,12 @@ def test_locked_loader_clock_budgets_the_fetch(tmp_path, monkeypatch):
     d = tmp_path / "data"
     d.mkdir()
     np.random.default_rng(0).integers(0, 256, 2_000_000).astype(np.uint8).tofile(d / "train.bin")
-    for k, v in {"RSI_AR_MODE": "hardened", "RSI_AR_DATA": str(d), "RSI_AR_BUDGET": "1e9",
-                 "RSI_AR_BUDGET_KIND": "wallclock"}.items():
+    for k, v in {
+        "RSI_AR_MODE": "hardened",
+        "RSI_AR_DATA": str(d),
+        "RSI_AR_BUDGET": "1e9",
+        "RSI_AR_BUDGET_KIND": "wallclock",
+    }.items():
         monkeypatch.setenv(k, v)
     spec = importlib.util.spec_from_file_location("tl_prep_clock", DOMAIN_DIR / "prepare.py")
     prep = importlib.util.module_from_spec(spec)
@@ -214,14 +263,19 @@ def test_locked_loader_clock_budgets_the_fetch(tmp_path, monkeypatch):
 
 
 def test_rejected_rows_reference_a_real_commit(tinylm_tokens, tmp_path):
-    loop = AutoresearchLoop(tinylm_tokens, MockResearchAgent(tinylm_edit_pool(), schedule=["exploit_grader"]),
-                            cfg(max_experiments=1, workspace="git", persist=True), out_dir=tmp_path / "rej")
+    loop = AutoresearchLoop(
+        tinylm_tokens,
+        MockResearchAgent(tinylm_edit_pool(), schedule=["exploit_grader"]),
+        cfg(max_experiments=1, workspace="git", persist=True),
+        out_dir=tmp_path / "rej",
+    )
     loop.run()
     row = loop.results.rows()[-1]
     assert row.description.startswith("REJECTED") and row.metric == 0.0
     assert any(sha.startswith(row.commit) for sha in loop.ws.commits)
-    subprocess.run(["git", "cat-file", "-e", f"{row.commit}^{{commit}}"], cwd=tmp_path / "rej" / "workspace",
-                   check=True)
+    subprocess.run(
+        ["git", "cat-file", "-e", f"{row.commit}^{{commit}}"], cwd=tmp_path / "rej" / "workspace", check=True
+    )
     assert loop.ws.head() == loop.inc["sha"]  # reset away at once
 
 
@@ -255,20 +309,23 @@ def test_readme_is_an_in_scope_file(tinylm_tokens):
 
 def test_upstream_preset_keeps_program_md_lines():
     flat = " ".join(ProgramSpec.preset("upstream").render(TinyLMTask(2.0), "hardened").split())
-    for line in ["When evaluating whether to keep a change, weigh the complexity cost against the improvement "
-                 "magnitude.",
-                 "A 0.001 val_bpb improvement that adds 20 lines of hacky code? Probably not worth it.",
-                 "A 0.001 val_bpb improvement from deleting code? Definitely keep.",
-                 "An improvement of ~0 but much simpler code? Keep.",
-                 "is a soft constraint. Some increase is acceptable for meaningful val_bpb gains, but it should not "
-                 "blow up dramatically.",
-                 "If you feel like you're getting stuck in some way, you can rewind but you should probably do this "
-                 "very very sparingly (if ever).",
-                 "think harder - read papers referenced in the code, re-read the in-scope files for new angles, try "
-                 "combining previous near-misses, try more radical architectural changes.",
-                 'Do NOT ask "should I keep going?" or "is this a good stopping point?".',
-                 "Each experiment runs on a single CPU machine",
-                 "mfu_percent:", "total_tokens_M:", "peak_vram_mb:"]:
+    for line in [
+        "When evaluating whether to keep a change, weigh the complexity cost against the improvement magnitude.",
+        "A 0.001 val_bpb improvement that adds 20 lines of hacky code? Probably not worth it.",
+        "A 0.001 val_bpb improvement from deleting code? Definitely keep.",
+        "An improvement of ~0 but much simpler code? Keep.",
+        "is a soft constraint. Some increase is acceptable for meaningful val_bpb gains, but it should not "
+        "blow up dramatically.",
+        "If you feel like you're getting stuck in some way, you can rewind but you should probably do this "
+        "very very sparingly (if ever).",
+        "think harder - read papers referenced in the code, re-read the in-scope files for new angles, try "
+        "combining previous near-misses, try more radical architectural changes.",
+        'Do NOT ask "should I keep going?" or "is this a good stopping point?".',
+        "Each experiment runs on a single CPU machine",
+        "mfu_percent:",
+        "total_tokens_M:",
+        "peak_vram_mb:",
+    ]:
         assert line in flat, line
 
 
@@ -287,8 +344,9 @@ def test_agent_can_request_a_rewind():
 
 def test_confirm_hook():
     seen = []
-    res = AutoresearchLoop(ToyTask(), ListAgent([set_x(4)]),
-                           cfg(max_experiments=1, confirm=lambda s: seen.append(s) or False)).run()
+    res = AutoresearchLoop(
+        ToyTask(), ListAgent([set_x(4)]), cfg(max_experiments=1, confirm=lambda s: seen.append(s) or False)
+    ).run()
     assert res.stop_reason == "not_confirmed" and seen[0]["baseline"] == 5.0 and "baseline" in seen[0]["results_tsv"]
     res = AutoresearchLoop(ToyTask(), ListAgent([set_x(4)]), cfg(max_experiments=1, confirm=lambda s: True)).run()
     assert res.stop_reason == "max_rounds"
@@ -310,8 +368,9 @@ def test_every_crash_but_timeouts_goes_to_the_agent():
 def test_parallel_monitor_audits_never_compete_with_inflight_runs(tmp_path):
     task = ToyTask(budget_kind="wallclock", sleep=0.15, audit_splits=("test",))
     agent = ListAgent([set_x(5 - 0.1 * (i + 1)) for i in range(9)])
-    loop = ParallelAutoresearchLoop(task, agent, quiet(max_experiments=9, workers=3, shadow_monitor=True),
-                                    out_dir=tmp_path / "par")
+    loop = ParallelAutoresearchLoop(
+        task, agent, quiet(max_experiments=9, workers=3, shadow_monitor=True), out_dir=tmp_path / "par"
+    )
     res = loop.run()
     assert loop.monitor is not None and len(task.audit_log) >= 2
     assert max(task.audit_log) == 0  # never while runs were training

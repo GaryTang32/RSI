@@ -6,15 +6,36 @@ code / repo-doc / skill-ref rows are checked against this repo. paper rows need 
 ``DIR/<method>/`` (default ``docs/skill-claims/corpus``, not committed; see sources.json and README.md);
 without them those rows are reported as skipped.
 """
-import argparse, hashlib, json, re, sys, unicodedata
+
+import argparse
+import hashlib
+import json
+import re
+import sys
+import unicodedata
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 METHODS = ["general", "rrsi", "metaharness", "solpi", "gepa", "autoresearch", "dream", "evomap", "harness2"]
 KINDS = {"paper", "code", "repo-doc", "absent", "skill-ref"}
-TR = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-",
-                    "−": "-", " ": " ", " ": " ", " ": " ", "­": "", "`": "'", "′": "'"})
+TR = str.maketrans(
+    {
+        "‘": "'",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        " ": " ",
+        " ": " ",
+        " ": " ",
+        "­": "",
+        "`": "'",
+        "′": "'",
+    }
+)
 
 
 def norm(s):
@@ -69,7 +90,9 @@ def main():
         rows, bad, sk = check(m, a.corpus, cache)
         fixed = sum(r["verdict"] == "fixed" for r in rows)
         total, failed, skipped = total + len(rows), failed + len(bad), skipped + sk
-        print(f"{m:13s} rows={len(rows):4d} verified={len(rows) - len(bad) - sk:4d} skipped={sk:4d} corrected={fixed:3d}")
+        print(
+            f"{m:13s} rows={len(rows):4d} verified={len(rows) - len(bad) - sk:4d} skipped={sk:4d} corrected={fixed:3d}"
+        )
         for b in bad:
             print("   FAIL", *b)
     print(f"TOTAL rows={total} verified={total - failed - skipped} skipped={skipped} failed={failed}")

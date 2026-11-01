@@ -1,11 +1,11 @@
 """GEPA search state (``gepa/core/state.py:GEPAState``) with exact, deterministic resume."""
+
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore
@@ -38,9 +38,9 @@ class SearchState:
     def __init__(self, components: list[str], frontier_type: str = "instance") -> None:
         self.components = list(components)
         self.candidates: list[Artifact] = []
-        self.parents: list[list[Optional[int]]] = []
+        self.parents: list[list[int | None]] = []
         self.val_scores: list[dict[str, float]] = []
-        self.obj_scores: list[Optional[dict]] = []
+        self.obj_scores: list[dict | None] = []
         self.rr: list[int] = []
         self.kinds: list[str] = []
         self.discovery_evals: list[int] = []
@@ -51,14 +51,21 @@ class SearchState:
         self.trace: list[dict] = []
         self.n_proposals = 0
         self.n_reflection_calls = 0
-        self.best_history: list[tuple[int, int]] = []   # (rollouts, best idx) after every change
-        self.extra: dict = {}                           # rng / sampler / merge / selector / usage snapshots
+        self.best_history: list[tuple[int, int]] = []  # (rollouts, best idx) after every change
+        self.extra: dict = {}  # rng / sampler / merge / selector / usage snapshots
 
     def agg_scores(self) -> list[float]:
         return [sum(v.values()) / len(v) if v else float("-inf") for v in self.val_scores]
 
-    def add_candidate(self, cand: Artifact, parents: list[Optional[int]], val_scores: dict[str, float],
-                      obj_scores: Optional[dict], kind: str, evals_before: int) -> tuple[int, dict]:
+    def add_candidate(
+        self,
+        cand: Artifact,
+        parents: list[int | None],
+        val_scores: dict[str, float],
+        obj_scores: dict | None,
+        kind: str,
+        evals_before: int,
+    ) -> tuple[int, dict]:
         idx = len(self.candidates)
         self.candidates.append(cand)
         self.parents.append(list(parents))
@@ -89,22 +96,33 @@ class SearchState:
             d += 1
         return d
 
-    def to_json(self, store: Optional[ArtifactStore] = None) -> dict:
+    def to_json(self, store: ArtifactStore | None = None) -> dict:
         if store is not None:
             for c in self.candidates:
                 store.put(c)
         return {
-            "version": 1, "components": self.components, "i": self.i,
+            "version": 1,
+            "components": self.components,
+            "i": self.i,
             "candidates": [c.id if store is not None else c.to_json() for c in self.candidates],
-            "parents": self.parents, "val_scores": self.val_scores, "obj_scores": self.obj_scores, "rr": self.rr,
-            "kinds": self.kinds, "discovery_evals": self.discovery_evals, "discovery_iter": self.discovery_iter,
-            "frontier": self.frontier.to_json(), "rollouts_by_phase": self.counter.by_phase, "trace": self.trace,
-            "n_proposals": self.n_proposals, "n_reflection_calls": self.n_reflection_calls,
-            "best_history": self.best_history, "extra": self.extra,
+            "parents": self.parents,
+            "val_scores": self.val_scores,
+            "obj_scores": self.obj_scores,
+            "rr": self.rr,
+            "kinds": self.kinds,
+            "discovery_evals": self.discovery_evals,
+            "discovery_iter": self.discovery_iter,
+            "frontier": self.frontier.to_json(),
+            "rollouts_by_phase": self.counter.by_phase,
+            "trace": self.trace,
+            "n_proposals": self.n_proposals,
+            "n_reflection_calls": self.n_reflection_calls,
+            "best_history": self.best_history,
+            "extra": self.extra,
         }
 
     @classmethod
-    def from_json(cls, d: dict, store: Optional[ArtifactStore] = None) -> "SearchState":
+    def from_json(cls, d: dict, store: ArtifactStore | None = None) -> SearchState:
         st = cls(d["components"], d["frontier"]["frontier_type"])
         st.i = int(d["i"])
         st.candidates = [store.get(x) if isinstance(x, str) else Artifact.from_json(x) for x in d["candidates"]]
@@ -127,17 +145,27 @@ class SearchState:
         os.replace(tmp, run_dir / "state.json")
 
     @classmethod
-    def load(cls, run_dir: Path, store: ArtifactStore) -> Optional["SearchState"]:
+    def load(cls, run_dir: Path, store: ArtifactStore) -> SearchState | None:
         p = Path(run_dir) / "state.json"
         return cls.from_json(json.loads(p.read_text()), store) if p.exists() else None
 
     def candidates_table(self) -> list[dict]:
         agg = self.agg_scores()
         front = self.frontier.mapping()
-        return [{"idx": k, "artifact_id": c.id, "parents": self.parents[k], "kind": self.kinds[k],
-                 "val_mean": agg[k], "frontier_wins": sum(1 for v in front.values() if k in v),
-                 "rollouts_at_discovery": self.discovery_evals[k], "iteration": self.discovery_iter[k],
-                 "depth": self.depth(k)} for k, c in enumerate(self.candidates)]
+        return [
+            {
+                "idx": k,
+                "artifact_id": c.id,
+                "parents": self.parents[k],
+                "kind": self.kinds[k],
+                "val_mean": agg[k],
+                "frontier_wins": sum(1 for v in front.values() if k in v),
+                "rollouts_at_discovery": self.discovery_evals[k],
+                "iteration": self.discovery_iter[k],
+                "depth": self.depth(k),
+            }
+            for k, c in enumerate(self.candidates)
+        ]
 
 
 def _jsonable(x):

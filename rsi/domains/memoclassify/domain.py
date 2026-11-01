@@ -1,4 +1,5 @@
 """MemoClassify domain: online text classification where the harness (``memory.py``) is a memory system."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,7 +7,7 @@ import json
 import re
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
@@ -25,15 +26,22 @@ def normalize_label(s: Any) -> str:
 
 def load_memory_class(source: str):
     """Exec a candidate ``memory.py`` and return its MemorySystem subclass."""
-    ns: dict[str, Any] = {"MemorySystem": MemorySystem, "extract_json_field": extract_json_field,
-                          "__name__": "memory_candidate"}
+    ns: dict[str, Any] = {
+        "MemorySystem": MemorySystem,
+        "extract_json_field": extract_json_field,
+        "__name__": "memory_candidate",
+    }
     exec(compile(source, "memory.py", "exec"), ns)  # noqa: S102 - the harness code is the artifact
     cls = ns.get("Memory")
     if isinstance(cls, type) and issubclass(cls, MemorySystem):
         return cls
     for v in ns.values():
-        if isinstance(v, type) and issubclass(v, MemorySystem) and v is not MemorySystem and \
-                v.__module__ == "memory_candidate":
+        if (
+            isinstance(v, type)
+            and issubclass(v, MemorySystem)
+            and v is not MemorySystem
+            and v.__module__ == "memory_candidate"
+        ):
             return v
     raise TypeError("memory.py defines no MemorySystem subclass (expected class Memory)")
 
@@ -47,8 +55,15 @@ def _md5(text: str) -> str:
 
 
 def _call_records(calls: list[dict]) -> list[dict]:
-    return [{"prompt": c["prompt"], "response": c["response"], "prompt_len": len(c["prompt"]),
-             "prompt_hash": _md5(c["prompt"])} for c in calls]
+    return [
+        {
+            "prompt": c["prompt"],
+            "response": c["response"],
+            "prompt_len": len(c["prompt"]),
+            "prompt_hash": _md5(c["prompt"]),
+        }
+        for c in calls
+    ]
 
 
 def _last_info(calls: list[dict]) -> dict:
@@ -71,10 +86,20 @@ class MemoClassifyDomain(Domain):
     components = {"memory": ["memory.py"], "prompt": ["memory.py"], "retrieval": ["memory.py"]}
     structural_components = ("memory",)
 
-    def __init__(self, search: Optional[list[ClassDataset]] = None, ood: Optional[list[ClassDataset]] = None, *,
-                 seed: int = 0, scale: float = 1.0, leaky: bool = False, mode: str = "online", batch_size: int = 1,
-                 trace_prompts: str = "errors", trace_detail: str = "full",
-                 max_wall_s: float = DEFAULT_MAX_WALL_S) -> None:
+    def __init__(
+        self,
+        search: list[ClassDataset] | None = None,
+        ood: list[ClassDataset] | None = None,
+        *,
+        seed: int = 0,
+        scale: float = 1.0,
+        leaky: bool = False,
+        mode: str = "online",
+        batch_size: int = 1,
+        trace_prompts: str = "errors",
+        trace_detail: str = "full",
+        max_wall_s: float = DEFAULT_MAX_WALL_S,
+    ) -> None:
         if trace_detail not in ("full", "compact"):
             raise ValueError("trace_detail must be 'full' or 'compact'")
         if search is None or ood is None:
@@ -84,9 +109,9 @@ class MemoClassifyDomain(Domain):
         self.search = list(search)
         self.ood = list(ood)
         self.datasets = {d.name: d for d in self.search + self.ood}
-        self.mode = mode                            # online (paper) | offline (learn with prediction = label)
+        self.mode = mode  # online (paper) | offline (learn with prediction = label)
         self.batch_size = batch_size
-        self.trace_prompts = trace_prompts          # compact traces only: "errors" | "all" | "none"
+        self.trace_prompts = trace_prompts  # compact traces only: "errors" | "all" | "none"
         self.trace_detail = trace_detail
         self.max_wall_s = max_wall_s
         tasks, splits = [], {"evolve": [], "test": [], "ood": []}
@@ -147,19 +172,19 @@ class MemoClassifyDomain(Domain):
                 terms.add(ex.text.split(": ", 1)[-1][:32])
         return sorted(terms)
 
-    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM]) -> Execution:
+    def execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None) -> Execution:
         state: dict[str, Any] = {}
         try:
             ex = self._execute(artifact, task, seed=seed, llm=llm, state=state)
         except Exception:  # noqa: BLE001
-            if "infra" in state:                   # a backend failure, not the harness's fault
+            if "infra" in state:  # a backend failure, not the harness's fault
                 return Execution(error=state["infra"], steps=state.get("calls", 0))
             raise
-        if "infra" in state:     # the candidate swallowed a backend failure: a missing trial, not a wrong answer
+        if "infra" in state:  # the candidate swallowed a backend failure: a missing trial, not a wrong answer
             return Execution(error=state["infra"], trace=ex.trace, tokens=ex.tokens, steps=ex.steps)
         return ex
 
-    def _execute(self, artifact: Artifact, task: Task, *, seed: int, llm: Optional[LLM], state: dict) -> Execution:
+    def _execute(self, artifact: Artifact, task: Task, *, seed: int, llm: LLM | None, state: dict) -> Execution:
         """The release's ``inner_loop.py``: stream train through predict -> learn_from_batch, then predict the part."""
         if llm is None:
             llm = self.make_model("A")
@@ -186,7 +211,7 @@ class MemoClassifyDomain(Domain):
             resp = llm.complete(prompt, seed=seed * 100003 + i, role="task")
             if not resp.ok:
                 msg = f"infra: llm backend error: {resp.error}"
-                state.setdefault("infra", msg)     # remembered even if the candidate swallows the exception
+                state.setdefault("infra", msg)  # remembered even if the candidate swallows the exception
                 raise RuntimeError(msg)
             with lock:
                 rec["response"] = resp.text
@@ -203,14 +228,22 @@ class MemoClassifyDomain(Domain):
                 return list(state["cur"])
 
         mem = load_memory_class(src)(call)
-        records: list[dict] = [{"type": "meta", "dataset": ds.name, "part": part, "mode": self.mode,
-                                "n_train": len(ds.train), "n_eval": len(ds.part(part)),
-                                "trace_detail": self.trace_detail}]
+        records: list[dict] = [
+            {
+                "type": "meta",
+                "dataset": ds.name,
+                "part": part,
+                "mode": self.mode,
+                "n_train": len(ds.train),
+                "n_eval": len(ds.part(part)),
+                "trace_detail": self.trace_detail,
+            }
+        ]
         n_train = len(ds.train)
-        ckpt_steps = {0, n_train - 1} if n_train else set()   # the release's default checkpoint steps
+        ckpt_steps = {0, n_train - 1} if n_train else set()  # the release's default checkpoint steps
         train_ok = 0
         for b in range(0, n_train, self.batch_size):
-            batch = ds.train[b:b + self.batch_size]
+            batch = ds.train[b : b + self.batch_size]
             results = []
             for j, ex in enumerate(batch):
                 if self.mode == "online":
@@ -220,35 +253,57 @@ class MemoClassifyDomain(Domain):
                     ok = normalize_label(pred) == ex.label
                     train_ok += ok
                     info = _last_info(calls)
-                    rec = {"type": "step", "phase": "train", "step": b + j, "input_preview": ex.text[:200],
-                           "pred": str(pred)[:120], "tgt": ex.label, "ok": bool(ok),
-                           "prompt_len": info["prompt_len"], "prompt_hash": info["prompt_hash"]}
+                    rec = {
+                        "type": "step",
+                        "phase": "train",
+                        "step": b + j,
+                        "input_preview": ex.text[:200],
+                        "pred": str(pred)[:120],
+                        "tgt": ex.label,
+                        "ok": bool(ok),
+                        "prompt_len": info["prompt_len"],
+                        "prompt_hash": info["prompt_hash"],
+                    }
                     if full:
                         rec.update(n_calls=len(calls), calls=_call_records(calls))
                     records.append(rec)
                 else:
                     pred, meta, ok = ex.label, {}, True
-                results.append({"input": ex.text, "prediction": pred, "ground_truth": ex.label, "was_correct": ok,
-                                "metadata": meta if isinstance(meta, dict) else {}})
+                results.append(
+                    {
+                        "input": ex.text,
+                        "prediction": pred,
+                        "ground_truth": ex.label,
+                        "was_correct": ok,
+                        "metadata": meta if isinstance(meta, dict) else {},
+                    }
+                )
             begin_step()
             mem.learn_from_batch(results)
             if full:
                 calls = step_calls()
                 last = b + len(batch) - 1
                 st = _state_text(mem)
-                lrec = {"type": "learn", "step": last, "batch_size": len(batch), "memory_state_chars": len(st),
-                        "n_calls": len(calls)}
-                if calls:                              # model calls made while learning
+                lrec = {
+                    "type": "learn",
+                    "step": last,
+                    "batch_size": len(batch),
+                    "memory_state_chars": len(st),
+                    "n_calls": len(calls),
+                }
+                if calls:  # model calls made while learning
                     lrec["calls"] = _call_records(calls)
                 records.append(lrec)
                 for s_ in sorted(ckpt_steps):
                     if b <= s_ <= last:
-                        records.append({"type": "checkpoint", "step": s_, "memory_state": st,
-                                        "memory_state_chars": len(st)})
+                        records.append(
+                            {"type": "checkpoint", "step": s_, "memory_state": st, "memory_state_chars": len(st)}
+                        )
         mem_state = _state_text(mem)
         if not full:
-            records.append({"type": "checkpoint", "memory_state": mem_state[:3000],
-                            "memory_state_chars": len(mem_state)})
+            records.append(
+                {"type": "checkpoint", "memory_state": mem_state[:3000], "memory_state_chars": len(mem_state)}
+            )
         preds, ctx, ctx_last = [], [], []
         n_err_prompts = 0
         for i, ex in enumerate(ds.part(part)):
@@ -263,9 +318,19 @@ class MemoClassifyDomain(Domain):
             ctx_last.append(c_last)
             ok = normalize_label(pred) == ex.label
             preds.append(str(pred))
-            rec = {"type": "eval_step", "step": i, "input_preview": ex.text[:200], "pred": str(pred)[:120],
-                   "tgt": ex.label, "ok": bool(ok), "prompt_len": plen, "context_chars": c,
-                   "context_chars_last_call": c_last, "n_calls": len(calls), "prompt_hash": info["prompt_hash"]}
+            rec = {
+                "type": "eval_step",
+                "step": i,
+                "input_preview": ex.text[:200],
+                "pred": str(pred)[:120],
+                "tgt": ex.label,
+                "ok": bool(ok),
+                "prompt_len": plen,
+                "context_chars": c,
+                "context_chars_last_call": c_last,
+                "n_calls": len(calls),
+                "prompt_hash": info["prompt_hash"],
+            }
             if full:
                 rec["calls"] = _call_records(calls)
             else:
@@ -275,17 +340,32 @@ class MemoClassifyDomain(Domain):
                     n_err_prompts += 1
             records.append(rec)
         n_eval = max(1, len(preds))
-        done = {"type": "done", "train_acc": train_ok / max(1, n_train) if self.mode == "online" else None,
-                "eval_acc": sum(r["ok"] for r in records if r["type"] == "eval_step") / n_eval,
-                "memory_context_chars": sum(ctx) / n_eval, "memory_context_chars_last_call": sum(ctx_last) / n_eval,
-                "llm_calls": state["calls"]}
-        records.append(done)   # wall-clock time goes in meta, not the trace: proposers see traces verbatim
-        return Execution(output=preds, trace="\n".join(json.dumps(r) for r in records), tokens=state["tokens"],
-                         cost_usd=state["usd"], steps=state["calls"],
-                         meta={"context_chars": sum(ctx) / n_eval, "context_chars_last_call": sum(ctx_last) / n_eval,
-                               "llm_calls": state["calls"], "train_acc": done["train_acc"],
-                               "memory_state_chars": len(mem_state), "dataset": ds.name, "part": part,
-                               "runtime_seconds": round(time.time() - t0, 3)})
+        done = {
+            "type": "done",
+            "train_acc": train_ok / max(1, n_train) if self.mode == "online" else None,
+            "eval_acc": sum(r["ok"] for r in records if r["type"] == "eval_step") / n_eval,
+            "memory_context_chars": sum(ctx) / n_eval,
+            "memory_context_chars_last_call": sum(ctx_last) / n_eval,
+            "llm_calls": state["calls"],
+        }
+        records.append(done)  # wall-clock time goes in meta, not the trace: proposers see traces verbatim
+        return Execution(
+            output=preds,
+            trace="\n".join(json.dumps(r) for r in records),
+            tokens=state["tokens"],
+            cost_usd=state["usd"],
+            steps=state["calls"],
+            meta={
+                "context_chars": sum(ctx) / n_eval,
+                "context_chars_last_call": sum(ctx_last) / n_eval,
+                "llm_calls": state["calls"],
+                "train_acc": done["train_acc"],
+                "memory_state_chars": len(mem_state),
+                "dataset": ds.name,
+                "part": part,
+                "runtime_seconds": round(time.time() - t0, 3),
+            },
+        )
 
     def grade(self, task: Task, execution: Execution) -> tuple[float, str]:
         ds = self.datasets[task.input["dataset"]]
@@ -296,12 +376,11 @@ class MemoClassifyDomain(Domain):
         fb = f"accuracy {correct}/{len(gold)}" + (("; errors: " + "; ".join(errs)) if errs else "")
         return correct / max(1, len(gold)), fb
 
-    def smoke(self, artifact: Artifact, llm: Optional[LLM] = None) -> Optional[str]:
+    def smoke(self, artifact: Artifact, llm: LLM | None = None) -> str | None:
         return validate_memory(artifact, self, llm)
 
 
-def validate_memory(artifact: Artifact, domain: MemoClassifyDomain, llm: Optional[LLM] = None,
-                    n: int = 3) -> Optional[str]:
+def validate_memory(artifact: Artifact, domain: MemoClassifyDomain, llm: LLM | None = None, n: int = 3) -> str | None:
     """Pre-evaluation check (paper App. D): cold predict, learn, predict, state round trip; an error or None."""
     src = artifact.get("memory.py")
     if src is None:
@@ -315,8 +394,18 @@ def validate_memory(artifact: Artifact, domain: MemoClassifyDomain, llm: Optiona
             ans, meta = mem.predict(ex.text)
             if not isinstance(ans, str) or not isinstance(meta, dict):
                 return "predict must return (str, dict)"
-        mem.learn_from_batch([{"input": ex.text, "prediction": ex.label, "ground_truth": ex.label,
-                               "was_correct": True, "metadata": {}} for ex in ds.train[:n]])
+        mem.learn_from_batch(
+            [
+                {
+                    "input": ex.text,
+                    "prediction": ex.label,
+                    "ground_truth": ex.label,
+                    "was_correct": True,
+                    "metadata": {},
+                }
+                for ex in ds.train[:n]
+            ]
+        )
         mem.predict(ds.val[0].text if ds.val else ds.train[0].text)
         st = mem.get_state()
         if not isinstance(st, str):

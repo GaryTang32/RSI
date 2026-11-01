@@ -1,8 +1,9 @@
 """Alg. 2 (selection): noise floor, cost rule and guards as :class:`rsi.core.Gate` objects; argmax admissible S'."""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
 
 from ..core.gates import AllOf, CostRule, Gate, GateContext, Scored, Verdict, select
 from .components import Taxonomy
@@ -14,10 +15,10 @@ from .switches import RegularizerSwitches
 class Candidate:
     variant: str
     edits: list[dict]
-    ev: Optional[Measurement] = None
-    diff_path: Optional[str] = None
-    artifact_id: Optional[str] = None
-    gate_failure: Optional[str] = None      # critic_reject / smoke_fail / eval_invalid / no_proposal
+    ev: Measurement | None = None
+    diff_path: str | None = None
+    artifact_id: str | None = None
+    gate_failure: str | None = None  # critic_reject / smoke_fail / eval_invalid / no_proposal
     detail: str = ""
     mechanism: str = ""
 
@@ -31,10 +32,10 @@ class Decision:
     variant: str
     admissible: bool
     reason: str
-    S: Optional[float] = None
-    C: Optional[float] = None
-    delta_S: Optional[float] = None
-    delta_C: Optional[float] = None
+    S: float | None = None
+    C: float | None = None
+    delta_S: float | None = None
+    delta_C: float | None = None
     novelty: int = 0
     guards: list = field(default_factory=list)
 
@@ -57,8 +58,9 @@ class RRSINoiseFloor(Gate):
     def check(self, cand, inc, ctx):
         floor = self._reference(inc, ctx) - ctx.delta
         ok = cand.score >= floor - self.tie_eps
-        return Verdict(ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} {self.symbol}-delta={floor:.4f}",
-                       {"floor": floor})
+        return Verdict(
+            ok, f"S'={cand.score:.4f} {'>=' if ok else '<'} {self.symbol}-delta={floor:.4f}", {"floor": floor}
+        )
 
 
 class IncumbentFloor(RRSINoiseFloor):
@@ -74,8 +76,18 @@ class IncumbentFloor(RRSINoiseFloor):
 class RRSICostRule(CostRule):
     """Alg. 2 line 5; ``above_band=False`` admits any cost, ``in_band`` is shaped | strict | reject | admit."""
 
-    def __init__(self, beta0=0.10, beta1=40.0, w_s=100.0, w_c=15.0, w_n=0.5, *, above_band: bool = True,
-                 in_band: str = "shaped", tie_eps: float = 0.0) -> None:
+    def __init__(
+        self,
+        beta0=0.10,
+        beta1=40.0,
+        w_s=100.0,
+        w_c=15.0,
+        w_n=0.5,
+        *,
+        above_band: bool = True,
+        in_band: str = "shaped",
+        tie_eps: float = 0.0,
+    ) -> None:
         super().__init__(beta0, beta1, w_s, w_c, w_n, within_band=in_band != "reject")
         self.above_band = above_band
         self.in_band = in_band
@@ -118,8 +130,12 @@ class GreedyImprovement(Gate):
         return Verdict(ok, f"gain {gain:+.4f} {'>' if ok else '<='} 0.0", {"gain": gain})
 
 
-REASON_PREFIX = {"noise_floor": "below noise-adjusted floor", "incumbent_floor": "below incumbent-relative floor",
-                 "cost_rule": "cost rule failed", "strict_improvement": "not better than the incumbent"}
+REASON_PREFIX = {
+    "noise_floor": "below noise-adjusted floor",
+    "incumbent_floor": "below incumbent-relative floor",
+    "cost_rule": "cost rule failed",
+    "strict_improvement": "not better than the incumbent",
+}
 
 
 def _prefix(g: Gate) -> str:
@@ -132,7 +148,7 @@ def _eps(cfg) -> float:
     return float(getattr(cfg, "tie_eps", 0.0) or 0.0)
 
 
-def build_gates(cfg, switches: Optional[RegularizerSwitches] = None, guards: Sequence[Gate] = ()) -> list[Gate]:
+def build_gates(cfg, switches: RegularizerSwitches | None = None, guards: Sequence[Gate] = ()) -> list[Gate]:
     """Alg. 2 admissibility under ``switches`` as an ordered list of gates."""
     sw = switches or RegularizerSwitches.full()
     eps = _eps(cfg)
@@ -145,8 +161,18 @@ def build_gates(cfg, switches: Optional[RegularizerSwitches] = None, guards: Seq
         gates.append(RRSINoiseFloor(eps))
     elif sw.floor == "S_t":
         gates.append(IncumbentFloor(eps))
-    gates.append(RRSICostRule(cfg.beta0, cfg.beta1, cfg.w_s, cfg.w_c, cfg.w_n, above_band=sw.cost_rule,
-                              in_band=sw.within_band, tie_eps=eps))
+    gates.append(
+        RRSICostRule(
+            cfg.beta0,
+            cfg.beta1,
+            cfg.w_s,
+            cfg.w_c,
+            cfg.w_n,
+            above_band=sw.cost_rule,
+            in_band=sw.within_band,
+            tie_eps=eps,
+        )
+    )
     if sw.domain_guards:
         for g in guards:
             g.is_domain_guard = True
@@ -157,13 +183,24 @@ def build_gates(cfg, switches: Optional[RegularizerSwitches] = None, guards: Seq
 def cost_rule(delta_S: float, delta_C: float, nov: int, delta: float, cfg) -> tuple[bool, str]:
     """c of Alg. 2 line 5 (the code's signature)."""
     g = RRSICostRule(cfg.beta0, cfg.beta1, cfg.w_s, cfg.w_c, cfg.w_n, tie_eps=_eps(cfg))
-    v = g.check(Scored(score=delta_S, cost=1.0 + delta_C, novelty=nov), Scored(score=0.0, cost=1.0),
-                GateContext(delta=delta))
+    v = g.check(
+        Scored(score=delta_S, cost=1.0 + delta_C, novelty=nov), Scored(score=0.0, cost=1.0), GateContext(delta=delta)
+    )
     return v.accept, v.reason
 
 
-def judge(cand: Candidate, incumbent: Measurement, S_star: float, delta: float, cfg, incumbent_counts: dict,
-          gates: Optional[Sequence[Gate]] = None, *, taxonomy: Optional[Taxonomy] = None, t: int = 0) -> Decision:
+def judge(
+    cand: Candidate,
+    incumbent: Measurement,
+    S_star: float,
+    delta: float,
+    cfg,
+    incumbent_counts: dict,
+    gates: Sequence[Gate] | None = None,
+    *,
+    taxonomy: Taxonomy | None = None,
+    t: int = 0,
+) -> Decision:
     """Gate failure first, then the admissibility gates in order (first failing gate gives the reason)."""
     ev = cand.ev
     if ev is None:
@@ -171,8 +208,16 @@ def judge(cand: Candidate, incumbent: Measurement, S_star: float, delta: float, 
     tax = taxonomy or Taxonomy()
     gates = build_gates(cfg) if gates is None else gates
     nov = tax.novelty(cand.components, incumbent_counts)
-    d = Decision(cand.variant, False, "", S=ev.S, C=ev.C, delta_S=ev.S - incumbent.S,
-                 delta_C=relative_cost_change(ev.C, incumbent.C), novelty=nov)
+    d = Decision(
+        cand.variant,
+        False,
+        "",
+        S=ev.S,
+        C=ev.C,
+        delta_S=ev.S - incumbent.S,
+        delta_C=relative_cost_change(ev.C, incumbent.C),
+        novelty=nov,
+    )
     c_sc, i_sc = ev.as_scored(nov), incumbent.as_scored()
     ctx = GateContext(best_score=S_star, delta=delta, round=t)
     passed = []
@@ -191,9 +236,18 @@ def judge(cand: Candidate, incumbent: Measurement, S_star: float, delta: float, 
     return d
 
 
-def select_round(cands: Sequence[Candidate], incumbent: Measurement, S_star: float, delta: float, cfg,
-                 incumbent_counts: dict, gates: Optional[Sequence[Gate]] = None, *,
-                 taxonomy: Optional[Taxonomy] = None, t: int = 0) -> tuple[Optional[Candidate], list[Decision]]:
+def select_round(
+    cands: Sequence[Candidate],
+    incumbent: Measurement,
+    S_star: float,
+    delta: float,
+    cfg,
+    incumbent_counts: dict,
+    gates: Sequence[Gate] | None = None,
+    *,
+    taxonomy: Taxonomy | None = None,
+    t: int = 0,
+) -> tuple[Candidate | None, list[Decision]]:
     """Judge every candidate; winner = argmax S' over admissible ones (first on ties)."""
     gates = build_gates(cfg) if gates is None else list(gates)
     tax = taxonomy or Taxonomy()

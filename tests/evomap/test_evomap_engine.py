@@ -1,13 +1,30 @@
 """Local engine: signals, memory graph, selection, validation, solidify and distillation."""
+
 import math
 import random
 
 import pytest
-
 from evomap_helpers import distill_store
-from rsi.evomap import (Clock, CommandPolicy, Distiller, Gene, GeneScorer, GeneSelector, InProcessExecutor,
-                        LeakageAuditor, MemoryGraph, Mutation, SignalDeduper, ValidationRunner, VacuityDetector,
-                        composite_score, drift_intensity, make_mutants, match_pattern)
+
+from rsi.evomap import (
+    Clock,
+    CommandPolicy,
+    Distiller,
+    Gene,
+    GeneScorer,
+    GeneSelector,
+    InProcessExecutor,
+    LeakageAuditor,
+    MemoryGraph,
+    Mutation,
+    SignalDeduper,
+    VacuityDetector,
+    ValidationRunner,
+    composite_score,
+    drift_intensity,
+    make_mutants,
+    match_pattern,
+)
 from rsi.evomap.memory import Advice, Outcome, OutcomeInferrer
 from rsi.evomap.signals import PlateauDetector, RegexSignalExtractor
 from rsi.evomap.solidify import blast_radius, classify_failure_mode
@@ -24,16 +41,31 @@ def test_pattern_matching():
 def test_regex_extractor_and_dedup_rules():
     sig = RegexSignalExtractor().extract_text("Traceback\nValueError: bad value\nrequest timed out")
     assert "log_error" in sig and any(s.startswith("errsig:") for s in sig) and "perf_bottleneck" in sig
-    ev = [{"signals": ["log_error", "task:x"], "intent": "repair", "genes_used": ["gene_bad"],
-           "blast_radius": {"files": 1, "lines": 3}, "outcome": {"status": "failed", "score": 0.2}} for _ in range(6)]
+    ev = [
+        {
+            "signals": ["log_error", "task:x"],
+            "intent": "repair",
+            "genes_used": ["gene_bad"],
+            "blast_radius": {"files": 1, "lines": 3},
+            "outcome": {"status": "failed", "score": 0.2},
+        }
+        for _ in range(6)
+    ]
     r = SignalDeduper().apply(["log_error", "task:x"], ev)
     assert "log_error" not in r.signals and "task:x" in r.signals  # suppressed; the task descriptor is protected
-    assert {"force_innovation_after_repair_loop", "failure_loop_detected", "ban_gene:gene_bad",
-            "plateau_pivot_required", "high_failure_ratio"} <= set(r.signals)
-    empty = [{"signals": [], "blast_radius": {"files": 0, "lines": 0},
-              "outcome": {"status": "success", "score": .8}}] * 5
-    assert {"force_steady_state", "evolution_saturation", "explore_opportunity",
-            "empty_cycle_loop_detected"} <= set(SignalDeduper().apply(["task:y"], empty).signals)
+    assert {
+        "force_innovation_after_repair_loop",
+        "failure_loop_detected",
+        "ban_gene:gene_bad",
+        "plateau_pivot_required",
+        "high_failure_ratio",
+    } <= set(r.signals)
+    empty = [
+        {"signals": [], "blast_radius": {"files": 0, "lines": 0}, "outcome": {"status": "success", "score": 0.8}}
+    ] * 5
+    assert {"force_steady_state", "evolution_saturation", "explore_opportunity", "empty_cycle_loop_detected"} <= set(
+        SignalDeduper().apply(["task:y"], empty).signals
+    )
     pl = PlateauDetector().override([{"outcome": {"status": "failed"}}] * 10)
     assert pl.active and pl.severity == "required"
 
@@ -127,14 +159,25 @@ def test_command_policy_and_runner_modes():
 def test_vacuity_detector_lint_and_discriminative():
     vd = VacuityDetector(ValidationRunner(CommandPolicy.safe(), InProcessExecutor(), mode="safe"))
     before = {"mod.py": "def f(x):\n    return x + 1\n", "check.py": "from mod import f\nassert f(2) == 4\n"}
-    after = {"mod.py": "def f(x):\n    return x + 2\n", "check.py": before["check.py"],
-             "smoke.py": "print('ok')\n", "weak.py": "import mod\nassert hasattr(mod, 'f')\n",
-             "const.py": "assert True\n"}
+    after = {
+        "mod.py": "def f(x):\n    return x + 2\n",
+        "check.py": before["check.py"],
+        "smoke.py": "print('ok')\n",
+        "weak.py": "import mod\nassert hasattr(mod, 'f')\n",
+        "const.py": "assert True\n",
+    }
     assert not vd.verdict(["python check.py"], before, after).vacuous
-    lint = vd.lint(["python --version", "python smoke.py", "python const.py", "python gone.py", "echo ok",
-                    "python -c 'x'"], after)
-    assert list(map(tuple, lint.values())) == [("info_only",), ("print_only",), ("constant_assert",),
-                                                ("missing_script",), ("shell_noop",), ("eval_flag",)]
+    lint = vd.lint(
+        ["python --version", "python smoke.py", "python const.py", "python gone.py", "echo ok", "python -c 'x'"], after
+    )
+    assert list(map(tuple, lint.values())) == [
+        ("info_only",),
+        ("print_only",),
+        ("constant_assert",),
+        ("missing_script",),
+        ("shell_noop",),
+        ("eval_flag",),
+    ]
     assert vd.lint([], after) == {"": ["empty_list"]}
     w = vd.verdict(["python weak.py"], before, after)
     assert w.vacuous and "passes_before_change" in w.reasons and not w.lint["python weak.py"]
@@ -144,10 +187,19 @@ def test_vacuity_detector_lint_and_discriminative():
 
 
 def test_composite_score_spec_examples():
-    g = Gene(id="gene_named", signals_match=["a"], strategy=["s"],
-             constraints={"max_files": 12, "forbidden_paths": [".git"]})
-    kw = dict(n_signals=1, gene=g, mutation=Mutation(id="m", category="repair"), blast={"files": 1, "lines": 5},
-              max_files=12, estimate=None, n_violations=0, n_protocol=0)
+    g = Gene(
+        id="gene_named", signals_match=["a"], strategy=["s"], constraints={"max_files": 12, "forbidden_paths": [".git"]}
+    )
+    kw = dict(
+        n_signals=1,
+        gene=g,
+        mutation=Mutation(id="m", category="repair"),
+        blast={"files": 1, "lines": 5},
+        max_files=12,
+        estimate=None,
+        n_violations=0,
+        n_protocol=0,
+    )
     ok = ValidationResult(True, None, n_run=1, n_passed=1)
     assert composite_score(validation=ok, **kw) == pytest.approx(0.94)  # spec §4.10 worked example
     skipped = ValidationResult(True, None, n_run=0)

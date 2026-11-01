@@ -1,16 +1,25 @@
 """The open-world guard: no grade, rubric or score reaches the loop; grading is possible only after it ends."""
+
 from __future__ import annotations
 
 import dataclasses
 import re
-from typing import Any, Iterable, Mapping, Optional
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from ..core.domain import Domain
 from ..core.tasks import Task
 
 #: grader-verdict markers of the reference code [code context.py::GRADER_VERDICT_MARKERS]
-SPEC_MARKERS = ("deterministic_eval_summary", "deterministic_eval_result", "judge_scope_and_deterministic_status",
-                "Judge findings on the rendered result", '"passed_count"', '"pass_rate"', '"test_pass_rate"')
+SPEC_MARKERS = (
+    "deterministic_eval_summary",
+    "deterministic_eval_result",
+    "judge_scope_and_deterministic_status",
+    "Judge findings on the rendered result",
+    '"passed_count"',
+    '"pass_rate"',
+    '"test_pass_rate"',
+)
 #: keys of rsi's graded records (Trial, EvalResult, transfer reports)
 RSI_MARKERS = ('"task_scores"', '"family_scores"', '"vs_reference"', '"unseen_mean"', '"failure_score"')
 _GRADED_KEY = re.compile(r'"(score|scores|mean_score)"\s*:')
@@ -30,13 +39,13 @@ class GraderLeak(OpenWorldViolation):
     """A grader verdict, score or rubric marker was found in text bound for an improver (a leak, never widened)."""
 
 
-def markers_for(domain: Optional[Domain]) -> tuple[str, ...]:
+def markers_for(domain: Domain | None) -> tuple[str, ...]:
     hook = getattr(domain, "grader_verdict_markers", None)
     extra = tuple(hook()) if callable(hook) else ()
     return SPEC_MARKERS + RSI_MARKERS + tuple(m for m in extra if m)
 
 
-def find_marker(text: str, markers: Iterable[str]) -> Optional[str]:
+def find_marker(text: str, markers: Iterable[str]) -> str | None:
     """The first grader-verdict marker in ``text``, or None."""
     text = str(text or "")
     hit = next((m for m in markers if m in text), None)
@@ -51,7 +60,7 @@ def check_text(text: str, markers: Iterable[str], where: str) -> None:
         raise GraderLeak(f"grader-verdict marker {hit!r} in {where}: this is a leak, not a false positive to widen")
 
 
-def screen_tree(files: Mapping[str, Optional[str]], markers: Iterable[str], where: str) -> None:
+def screen_tree(files: Mapping[str, str | None], markers: Iterable[str], where: str) -> None:
     """Screen file names and contents of a harness tree or library entry."""
     markers = tuple(markers)
     for name, text in files.items():
@@ -69,8 +78,11 @@ def open_task(task: Task, strip: bool = True) -> Task:
 
 def _refuse(name: str):
     def refused(*a: Any, **kw: Any):
-        raise GraderAccessError(f"domain.{name}() was called inside the Harness² open-world loop; grading is only "
-                                "allowed after it ends (posthoc_report)")
+        raise GraderAccessError(
+            f"domain.{name}() was called inside the Harness² open-world loop; grading is only "
+            "allowed after it ends (posthoc_report)"
+        )
+
     return refused
 
 
@@ -83,7 +95,7 @@ class OpenWorld:
         self._saved: dict[str, Any] = {}
         self.active = False
 
-    def __enter__(self) -> "OpenWorld":
+    def __enter__(self) -> OpenWorld:
         own = vars(self.domain)
         for name in GRADER_METHODS:
             if callable(getattr(self.domain, name, None)):
@@ -104,7 +116,7 @@ class OpenWorld:
     def check(self, text: str, where: str) -> None:
         check_text(text, self.markers, where)
 
-    def screen(self, files: Mapping[str, Optional[str]], where: str) -> None:
+    def screen(self, files: Mapping[str, str | None], where: str) -> None:
         screen_tree(files, self.markers, where)
 
 

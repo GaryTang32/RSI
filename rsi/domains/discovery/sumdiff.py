@@ -1,10 +1,10 @@
 """Sum-difference sets: maximize Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) [paper:App.A]."""
+
 from __future__ import annotations
 
 import json
 import math
 import random
-from typing import Optional
 
 import numpy as np
 
@@ -161,17 +161,20 @@ class SumDiffDomain(ProgramDomain):
     program_file = PROGRAM
     entry = "construct"
 
-    def __init__(self, *, max_size: int = 400, max_span: int = 20000, sandboxed: bool = True,
-                 timeout_s: float = 30.0) -> None:
+    def __init__(
+        self, *, max_size: int = 400, max_span: int = 20000, sandboxed: bool = True, timeout_s: float = 30.0
+    ) -> None:
         super().__init__(sandboxed=sandboxed, timeout_s=timeout_s)
         self.max_size, self.max_span = max_size, max_span
 
     def describe(self) -> str:
-        return ("Sum-difference problem: write construct.py whose construct() returns a finite set A of distinct "
-                "integers maximizing Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) (higher is better; > 1 means more "
-                f"sums than differences). Constraints: 2 <= |A| <= {self.max_size}, "
-                f"max(A) - min(A) <= {self.max_span}, "
-                "runtime <= 30 s. Invalid output scores 0.")
+        return (
+            "Sum-difference problem: write construct.py whose construct() returns a finite set A of distinct "
+            "integers maximizing Gamma(A) = log(|A+A|/|A|) / log(|A-A|/|A|) (higher is better; > 1 means more "
+            f"sums than differences). Constraints: 2 <= |A| <= {self.max_size}, "
+            f"max(A) - min(A) <= {self.max_span}, "
+            "runtime <= 30 s. Invalid output scores 0."
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: program(SEED_SET, [])})
@@ -180,8 +183,9 @@ class SumDiffDomain(ProgramDomain):
         return list(MECHANISMS)
 
     def check(self, output, *, seed: int = 0) -> EvalOutcome:
-        if not isinstance(output, list) or not all(isinstance(v, (int, float)) and float(v).is_integer()
-                                                    for v in output):
+        if not isinstance(output, list) or not all(
+            isinstance(v, (int, float)) and float(v).is_integer() for v in output
+        ):
             return failure("correctness", "construct() must return a list of integers")
         A = sorted({int(v) for v in output})
         if len(A) != len(output):
@@ -203,15 +207,17 @@ def _parse(code: str) -> tuple[list, list]:
     return init, stages
 
 
-def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext]):
+def _mutate(parent: Artifact, rng: random.Random, ctx: AttemptContext | None):
     init, stages = _parse(parent[PROGRAM])
     mech = pick_mechanism(ctx, rng, MECHANISMS, 0.25)
     # a modest amount of search per attempt, so progress spans several rounds
-    params = {"hill": {"iters": rng.choice([15, 30, 45])}, "anneal": {"iters": rng.choice([20, 40]),
-                                                                       "t0": rng.choice([0.01, 0.02, 0.05])},
-              "window": {"width": rng.choice([3, 4, 5])}, "fringe": {"tries": rng.choice([5, 10]),
-                                                                     "k": rng.choice([3, 4, 6])},
-              "grow": {"tries": rng.choice([8, 15])}}[mech]
-    stages = stages + [[mech, params, rng.randrange(10 ** 6)]]
+    params = {
+        "hill": {"iters": rng.choice([15, 30, 45])},
+        "anneal": {"iters": rng.choice([20, 40]), "t0": rng.choice([0.01, 0.02, 0.05])},
+        "window": {"width": rng.choice([3, 4, 5])},
+        "fringe": {"tries": rng.choice([5, 10]), "k": rng.choice([3, 4, 6])},
+        "grow": {"tries": rng.choice([8, 15])},
+    }[mech]
+    stages = stages + [[mech, params, rng.randrange(10**6)]]
     text = f"# apply {mech} {params}\n\nMechanism: {mech}; builds on the parent's construction ({len(stages)} stages)."
     return Artifact({PROGRAM: program(init, stages)}), text

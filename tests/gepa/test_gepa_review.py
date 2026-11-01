@@ -1,16 +1,36 @@
 """Adversarial-review tests for rsi.gepa: genericity on a brand-new inline domain, API edge cases, review fixes."""
+
 import random
 import warnings
 
 import pytest
 
 from rsi.core import LLM, Artifact, Execution, FunctionDomain, LLMResponse, Task, TaskSuite, Usage
-from rsi.gepa import (Config, FewShotConfig, GenericReflectionLM, ParetoSelector, RLConfig, optimize, run,
-                      run_best_of_n, run_fewshot, run_scalar_rl, run_score_only)
+from rsi.gepa import (
+    Config,
+    FewShotConfig,
+    GenericReflectionLM,
+    ParetoSelector,
+    RLConfig,
+    optimize,
+    run,
+    run_best_of_n,
+    run_fewshot,
+    run_scalar_rl,
+    run_score_only,
+)
 
 # A unit-conversion assistant: units.txt must state "1 <unit> = <k> <base>"; the grader names the missing fact.
-FACTS = {"inch": ("cm", 2.54), "foot": ("cm", 30.48), "mile": ("km", 1.609), "pound": ("kg", 0.4536),
-         "ounce": ("g", 28.35), "gallon": ("l", 3.785), "yard": ("m", 0.9144), "acre": ("m2", 4047.0)}
+FACTS = {
+    "inch": ("cm", 2.54),
+    "foot": ("cm", 30.48),
+    "mile": ("km", 1.609),
+    "pound": ("kg", 0.4536),
+    "ounce": ("g", 28.35),
+    "gallon": ("l", 3.785),
+    "yard": ("m", 0.9144),
+    "acre": ("m2", 4047.0),
+}
 SEED = Artifact({"units.txt": "Convert the quantity to the base unit.\n", "executor.py": "# frozen\n"})
 
 
@@ -30,8 +50,11 @@ def _execute(artifact, task, seed, llm):
     for line in text.splitlines():
         if f"1 {u} = " in line:
             k = float(line.split(f"1 {u} = ")[1].split()[0])
-            return Execution(output=round(task.input["qty"] * k, 3), trace=f"used fact: {line}",
-                             meta={"objectives": {"correct": 1.0, "brevity": 1.0 / (1 + len(text.splitlines()))}})
+            return Execution(
+                output=round(task.input["qty"] * k, 3),
+                trace=f"used fact: {line}",
+                meta={"objectives": {"correct": 1.0, "brevity": 1.0 / (1 + len(text.splitlines()))}},
+            )
     return Execution(output=None, trace=f"no fact for {u}", meta={"objectives": {"correct": 0.0, "brevity": 1.0}})
 
 
@@ -52,17 +75,24 @@ def unit_domain(train_name: str = "evolve", with_val: bool = True) -> FunctionDo
 
 
 def _run(d, B: int, llm=None, *, selector=None, out_dir=None, report_splits=(), **cfg):
-    return run(d, SEED, llm_propose=llm or GenericReflectionLM(), config=Config(max_metric_calls=B, **cfg),
-               selector=selector, out_dir=out_dir, report_splits=report_splits)
+    return run(
+        d,
+        SEED,
+        llm_propose=llm or GenericReflectionLM(),
+        config=Config(max_metric_calls=B, **cfg),
+        selector=selector,
+        out_dir=out_dir,
+        report_splits=report_splits,
+    )
 
 
 def test_generic_function_domain_improves_and_keeps_frozen_files():
     res = _run(unit_domain(), 400, GenericReflectionLM(max_new=2), report_splits=("test",))
-    assert res.meta["components"] == ["units.txt"]                       # *.py is frozen by default
+    assert res.meta["components"] == ["units.txt"]  # *.py is frozen by default
     assert res.best["executor.py"] == SEED["executor.py"]
     assert res.meta["best_val"] > res.meta["seed_val"]
     rep = res.meta["report"]["splits"]["test"]
-    assert rep["best"]["S"] > rep["seed"]["S"] + 0.5                    # lessons generalise to the sealed split
+    assert rep["best"]["S"] > rep["seed"]["S"] + 0.5  # lessons generalise to the sealed split
     assert res.usage["reflection"]["calls"] == res.meta["n_reflection_calls"] > 0
     lin = res.ledger.lineage(f"c{res.state.best_idx()}")
     assert lin[0].id == "c0" and lin[-1].artifact_id == res.best.id
@@ -75,17 +105,28 @@ def test_generic_domain_without_val_split_and_train_named_train():
     assert res.meta["splits"] == {"train": "train", "val": "train"}
     assert res.meta["n_val"] == res.meta["n_train"] == 12
     with warnings.catch_warnings():
-        warnings.simplefilter("error")                                   # explicit multi-task mode: no warning
-        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")   # tested elsewhere
+        warnings.simplefilter("error")  # explicit multi-task mode: no warning
+        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")  # tested elsewhere
         _run(d, 100, val_split=None)
 
 
-@pytest.mark.parametrize("kw", [dict(candidate_selection="current_best"), dict(candidate_selection="beam_search"),
-                                dict(candidate_selection="epsilon_greedy"), dict(candidate_selection="top_k_pareto"),
-                                dict(frontier_type="hybrid"), dict(frontier_type="objective"),
-                                dict(frontier_type="cartesian"), dict(use_merge=True),
-                                dict(acceptance="noise_margin", noise_margin=0.05), dict(budget_mode="hard"),
-                                dict(cache_evaluation=True, use_merge=True), dict(feedback="score_only")])
+@pytest.mark.parametrize(
+    "kw",
+    [
+        dict(candidate_selection="current_best"),
+        dict(candidate_selection="beam_search"),
+        dict(candidate_selection="epsilon_greedy"),
+        dict(candidate_selection="top_k_pareto"),
+        dict(frontier_type="hybrid"),
+        dict(frontier_type="objective"),
+        dict(frontier_type="cartesian"),
+        dict(use_merge=True),
+        dict(acceptance="noise_margin", noise_margin=0.05),
+        dict(budget_mode="hard"),
+        dict(cache_evaluation=True, use_merge=True),
+        dict(feedback="score_only"),
+    ],
+)
 def test_every_option_runs_on_a_new_domain(kw):
     res = _run(unit_domain(), 250, **kw)
     assert res.meta["rollouts"] >= 250 or res.stop_reason.startswith("max_metric_calls")
@@ -182,8 +223,12 @@ def test_optimize_without_valset_is_explicit_multitask_mode():
 
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")   # tested elsewhere
-        res = optimize({"p.md": "start"}, ["alpha", "beta", "gamma"], metric=metric,
-                       llm_propose=GenericReflectionLM(max_new=3),
-                       config=Config(max_metric_calls=60, train_split="train"))
+        warnings.filterwarnings("ignore", message="GEPA: the keep rule has no noise band")  # tested elsewhere
+        res = optimize(
+            {"p.md": "start"},
+            ["alpha", "beta", "gamma"],
+            metric=metric,
+            llm_propose=GenericReflectionLM(max_new=3),
+            config=Config(max_metric_calls=60, train_split="train"),
+        )
     assert res.meta["splits"] == {"train": "evolve", "val": "evolve"} and res.meta["best_val"] == 1.0

@@ -1,8 +1,9 @@
 """Per-instance Pareto frontier and set-cover pruning (ports of ``gepa/gepa_utils.py``, fronts visited sorted)."""
+
 from __future__ import annotations
 
 import random
-from typing import Hashable, Mapping, Optional, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 
 FRONTIER_TYPES = ("instance", "objective", "hybrid", "cartesian")
 
@@ -20,8 +21,9 @@ def _frequencies(front_map: Mapping[Hashable, set[int]], fronts: Mapping[Hashabl
     return freq
 
 
-def remove_dominated_programs(front_map: Mapping[Hashable, set[int]],
-                              scores: Optional[Mapping[int, float] | Sequence[float]] = None) -> dict:
+def remove_dominated_programs(
+    front_map: Mapping[Hashable, set[int]], scores: Mapping[int, float] | Sequence[float] | None = None
+) -> dict:
     """Prune dominated programs from every front, lowest aggregate score first."""
     programs = list(_frequencies(front_map, front_map))
     score_of = {p: 1.0 if scores is None else float(scores[p]) for p in programs}
@@ -68,8 +70,9 @@ class FrontierTracker:
         self.best: dict[str, float] = {}
         self.progs: dict[str, set[int]] = {}
 
-    def _keys(self, val_scores: Mapping[str, float],
-              obj_scores: Optional[Mapping[str, Mapping[str, float]]]) -> list[tuple[str, float]]:
+    def _keys(
+        self, val_scores: Mapping[str, float], obj_scores: Mapping[str, Mapping[str, float]] | None
+    ) -> list[tuple[str, float]]:
         ft = self.frontier_type
         out = []
         if ft in ("instance", "hybrid") or (ft == "cartesian" and not obj_scores):
@@ -82,13 +85,16 @@ class FrontierTracker:
             out += [(f"c:{vid}|{n}", float(v)) for vid, d in obj_scores.items() for n, v in d.items()]
         return out
 
-    def update(self, idx: int, val_scores: Mapping[str, float],
-               obj_scores: Optional[Mapping[str, Mapping[str, float]]] = None) -> dict:
+    def update(
+        self, idx: int, val_scores: Mapping[str, float], obj_scores: Mapping[str, Mapping[str, float]] | None = None
+    ) -> dict:
         """Add program ``idx``; returns ``{"won": [...], "tied": [...], "displaced": {key: [...]}}``."""
         delta = {"won": [], "tied": [], "displaced": {}}
         if self.frontier_type == "objective" and not any(obj_scores.values() if obj_scores else ()):
-            raise ValueError("frontier_type='objective' needs objective scores from the evaluator "
-                             "(Trial.meta['objectives'] or DomainAdapter(objective_fn=...))")
+            raise ValueError(
+                "frontier_type='objective' needs objective scores from the evaluator "
+                "(Trial.meta['objectives'] or DomainAdapter(objective_fn=...))"
+            )
         for key, s in self._keys(val_scores, obj_scores):
             prev = self.best.get(key)
             if prev is None or s > prev:
@@ -109,11 +115,14 @@ class FrontierTracker:
         return sorted({p for v in self.progs.values() for p in v})
 
     def to_json(self) -> dict:
-        return {"frontier_type": self.frontier_type, "best": self.best,
-                "progs": {k: sorted(v) for k, v in self.progs.items()}}
+        return {
+            "frontier_type": self.frontier_type,
+            "best": self.best,
+            "progs": {k: sorted(v) for k, v in self.progs.items()},
+        }
 
     @classmethod
-    def from_json(cls, d: dict) -> "FrontierTracker":
+    def from_json(cls, d: dict) -> FrontierTracker:
         f = cls(d["frontier_type"])
         f.best = {k: float(v) for k, v in d["best"].items()}
         f.progs = {k: set(v) for k, v in d["progs"].items()}

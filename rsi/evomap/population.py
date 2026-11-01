@@ -3,17 +3,19 @@
 Kinds: ``honest`` (full cycles), ``inflator`` (honest content, inflated claims), ``freerider`` (never publishes),
 ``farmer`` (mass-publishes vacuous variants) and ``poisoner`` (harmful genes with discriminative-looking proof).
 """
+
 from __future__ import annotations
 
 import copy
 import random
 from collections import Counter, defaultdict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Optional, Protocol, Sequence
+from typing import Protocol
 
 import numpy as np
 
-from rsi.core import Artifact, Domain, LLM
+from rsi.core import LLM, Artifact, Domain
 
 from .agent import AgentNode, Behavior
 from .assets import Capsule, Clock, EvolutionEvent, Gene
@@ -32,11 +34,11 @@ class AgentSpec:
     kind: str = "honest"
     ability: float = 0.0
     insight: float = 0.5
-    cluster: Optional[str] = None
+    cluster: str | None = None
     farm_rate: int = 5
-    classes: Optional[list] = None          # task families this agent meets (None = all)
+    classes: list | None = None  # task families this agent meets (None = all)
     tasks_per_epoch: int = 1
-    config: Optional[Config] = None         # per-agent override
+    config: Config | None = None  # per-agent override
 
 
 class InflatorBehavior(Behavior):
@@ -51,9 +53,16 @@ class FreeriderBehavior(Behavior):
     publishes = False
 
 
-def inflate(bundle: Bundle, *, files: int = 1, lines: int = 20, confidence: float = 0.99, streak: int = 5,
-            score: float = 0.99,
-            fields: Sequence[str] = ("blast", "confidence", "streak", "score", "report")) -> Bundle:
+def inflate(
+    bundle: Bundle,
+    *,
+    files: int = 1,
+    lines: int = 20,
+    confidence: float = 0.99,
+    streak: int = 5,
+    score: float = 0.99,
+    fields: Sequence[str] = ("blast", "confidence", "streak", "score", "report"),
+) -> Bundle:
     """Rewrite a bundle's claimed metadata and re-stamp the capsule id so it still verifies."""
     b = copy.deepcopy(bundle)
     c = b.capsule or {}
@@ -74,24 +83,50 @@ def inflate(bundle: Bundle, *, files: int = 1, lines: int = 20, confidence: floa
     return b
 
 
-def forged_bundle(g: Gene, author: str, n: int, summary: str, before: dict, after: dict, claims: dict, report: dict,
-                  **capsule_extra) -> Bundle:
+def forged_bundle(
+    g: Gene, author: str, n: int, summary: str, before: dict, after: dict, claims: dict, report: dict, **capsule_extra
+) -> Bundle:
     """Stamp ``g`` and wrap it with a capsule and event carrying the ``claims`` metadata (adversary forges)."""
     g.stamp()
     blast = {"files": claims["files"], "lines": claims["lines"]}
     outcome = {"status": "success", "score": claims["score"]}
-    cap = Capsule(id=f"capsule_{author}_{n:06d}", gene=g.id, trigger=list(g.signals_match), summary=summary,
-                  confidence=claims["confidence"], blast_radius=blast, outcome=outcome,
-                  success_streak=claims["streak"], content="\n".join(g.strategy), diff=diff_text(before, after),
-                  strategy=list(g.strategy),
-                  execution_trace=[{"step": 1, "stage": "build", "cmd": "apply", "exit": 0},
-                                   {"step": 2, "stage": "validate", "cmd": (g.validation or ["-"])[0], "exit": 0}],
-                  **capsule_extra).stamp()
-    ev = EvolutionEvent(id=f"evt_{author}_{n:06d}", intent="repair", signals=list(g.signals_match), genes_used=[g.id],
-                        mutation_id=f"mut_{n}", capsule_id=cap.id, blast_radius=dict(blast),
-                        outcome=dict(outcome)).stamp()
-    return Bundle(gene=g.to_dict(), capsule=cap.to_dict(), event=ev.to_dict(), report=report, pre_state=before,
-                  post_state=after, meta={"author": author, "forged": True})
+    cap = Capsule(
+        id=f"capsule_{author}_{n:06d}",
+        gene=g.id,
+        trigger=list(g.signals_match),
+        summary=summary,
+        confidence=claims["confidence"],
+        blast_radius=blast,
+        outcome=outcome,
+        success_streak=claims["streak"],
+        content="\n".join(g.strategy),
+        diff=diff_text(before, after),
+        strategy=list(g.strategy),
+        execution_trace=[
+            {"step": 1, "stage": "build", "cmd": "apply", "exit": 0},
+            {"step": 2, "stage": "validate", "cmd": (g.validation or ["-"])[0], "exit": 0},
+        ],
+        **capsule_extra,
+    ).stamp()
+    ev = EvolutionEvent(
+        id=f"evt_{author}_{n:06d}",
+        intent="repair",
+        signals=list(g.signals_match),
+        genes_used=[g.id],
+        mutation_id=f"mut_{n}",
+        capsule_id=cap.id,
+        blast_radius=dict(blast),
+        outcome=dict(outcome),
+    ).stamp()
+    return Bundle(
+        gene=g.to_dict(),
+        capsule=cap.to_dict(),
+        event=ev.to_dict(),
+        report=report,
+        pre_state=before,
+        post_state=after,
+        meta={"author": author, "forged": True},
+    )
 
 
 class Forge(Protocol):
@@ -103,11 +138,23 @@ class Forge(Protocol):
 
 
 class PopulationSimulator:
-    def __init__(self, domain: Domain, harness: Artifact, hub, specs: Sequence[AgentSpec], *,
-                 config: Config, model_factory: Callable[[AgentSpec], LLM],
-                 proposer_factory: Optional[Callable[[AgentSpec], LLM]] = None, forge: Optional[Forge] = None,
-                 truth: Optional[Callable[[Gene], float]] = None, injector: Optional[Injector] = None,
-                 seed: int = 0, clock_step_s: float = 3600.0, bounties=None) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        harness: Artifact,
+        hub,
+        specs: Sequence[AgentSpec],
+        *,
+        config: Config,
+        model_factory: Callable[[AgentSpec], LLM],
+        proposer_factory: Callable[[AgentSpec], LLM] | None = None,
+        forge: Forge | None = None,
+        truth: Callable[[Gene], float] | None = None,
+        injector: Injector | None = None,
+        seed: int = 0,
+        clock_step_s: float = 3600.0,
+        bounties=None,
+    ) -> None:
         self.domain, self.harness, self.hub = domain, harness, hub
         self.specs = list(specs)
         self.config = config
@@ -118,7 +165,7 @@ class PopulationSimulator:
         self.tasks = domain.tasks.split(config.split)
         self.agents: dict[str, AgentNode] = {}
         self.models: dict[str, LLM] = {}
-        self.proposers: dict[str, Optional[LLM]] = {}
+        self.proposers: dict[str, LLM | None] = {}
         self.clock = Clock(step_s=clock_step_s)
         for sp in self.specs:
             if sp.kind in ("farmer", "poisoner"):
@@ -131,16 +178,29 @@ class PopulationSimulator:
             cfg = copy.deepcopy(sp.config or config)
             cfg.seed = seed
             self.models[sp.name], self.proposers[sp.name] = model, prop
-            self.agents[sp.name] = AgentNode(sp.name, domain, harness, llm_task=model, llm_propose=prop, config=cfg,
-                                             store=LocalStore(node_id=sp.name, clock=self.clock), hub=hub,
-                                             injector=injector, behavior=beh, cluster=sp.cluster)
+            self.agents[sp.name] = AgentNode(
+                sp.name,
+                domain,
+                harness,
+                llm_task=model,
+                llm_propose=prop,
+                config=cfg,
+                store=LocalStore(node_id=sp.name, clock=self.clock),
+                hub=hub,
+                injector=injector,
+                behavior=beh,
+                cluster=sp.cluster,
+            )
         self.cycles: list[dict] = []
         self.epochs: list[dict] = []
-        self.bounties = bounties            # optional economy.BountyDriver (X19)
+        self.bounties = bounties  # optional economy.BountyDriver (X19)
 
     def _bounty_solvers(self) -> tuple:
-        return tuple(k for k in getattr(self.bounties, "claimant_kinds", ("honest", "inflator"))
-                     if k not in ("farmer", "poisoner"))
+        return tuple(
+            k
+            for k in getattr(self.bounties, "claimant_kinds", ("honest", "inflator"))
+            if k not in ("farmer", "poisoner")
+        )
 
     def _task(self, sp: AgentSpec, rng: random.Random):
         return rng.choice([t for t in self.tasks if sp.classes is None or t.family in sp.classes])
@@ -201,9 +261,12 @@ class PopulationSimulator:
         by = defaultdict(list)
         for r in rows:
             by[r["kind"]].append(r["task_success"])
-        return {"epoch": ep, "solve_rate": float(np.mean([r["task_success"] for r in rows])) if rows else float("nan"),
-                "by_kind": {k: float(np.mean(v)) for k, v in by.items()},
-                "n_published": len(self.hub.order) if self.hub is not None else 0}
+        return {
+            "epoch": ep,
+            "solve_rate": float(np.mean([r["task_success"] for r in rows])) if rows else float("nan"),
+            "by_kind": {k: float(np.mean(v)) for k, v in by.items()},
+            "n_published": len(self.hub.order) if self.hub is not None else 0,
+        }
 
     def hub_metrics(self) -> dict:
         return ReuseMetrics(truth=self.truth, agents=[sp.name for sp in self.specs]).compute(self.hub)
@@ -223,7 +286,7 @@ class PopulationSimulator:
             return 0
         return sum(1 for ag in self.agents.values() for g in ag.store.genes.values() if self.forge.is_poisoned(g))
 
-    def _from_hub(self, g: Gene, owner: Optional[str] = None) -> bool:
+    def _from_hub(self, g: Gene, owner: str | None = None) -> bool:
         """A stored gene from the hub: promoted from quarantine, parented on a hub asset, or authored by another."""
         prov = g.provenance or {}
         if prov.get("kind") == "external":
@@ -247,19 +310,27 @@ class PopulationSimulator:
         rows = [r for r in self.cycles if "task_success" in r]
         kinds = Counter(sp.kind for sp in self.specs)
         split = self.poisoned_in_stores_split()
-        out = {"n_agents": len(self.specs), "kinds": dict(kinds), "n_cycles": len(rows),
-               "solve_rate": float(np.mean([r["task_success"] for r in rows])) if rows else float("nan"),
-               "solve_rate_by_kind": {k: float(np.mean([r["task_success"] for r in rows if r["kind"] == k]))
-                                      for k in kinds if any(r["kind"] == k for r in rows)},
-               "tokens_per_solve": float(sum(r["tokens"] for r in rows) / max(1, sum(r["task_success"] for r in rows))),
-               "proposer_calls": int(sum(ag.proposer_calls for ag in self.agents.values())),
-               "hub_gene_cycles": int(sum(1 for r in rows if r["source"] == "hub")),
-               "poisoned_cycles": int(sum(1 for r in rows if r.get("gene_poisoned"))),
-               "poisoned_in_stores": self.poisoned_in_stores(),
-               "poisoned_in_stores_hub": split["hub"], "poisoned_in_stores_self": split["self"],
-               "quarantined": int(sum(ag.n_quarantined for ag in self.agents.values())),
-               "quarantine_rejected": int(sum(ag.n_quarantine_rejected for ag in self.agents.values())),
-               "epochs": self.epochs}
+        out = {
+            "n_agents": len(self.specs),
+            "kinds": dict(kinds),
+            "n_cycles": len(rows),
+            "solve_rate": float(np.mean([r["task_success"] for r in rows])) if rows else float("nan"),
+            "solve_rate_by_kind": {
+                k: float(np.mean([r["task_success"] for r in rows if r["kind"] == k]))
+                for k in kinds
+                if any(r["kind"] == k for r in rows)
+            },
+            "tokens_per_solve": float(sum(r["tokens"] for r in rows) / max(1, sum(r["task_success"] for r in rows))),
+            "proposer_calls": int(sum(ag.proposer_calls for ag in self.agents.values())),
+            "hub_gene_cycles": int(sum(1 for r in rows if r["source"] == "hub")),
+            "poisoned_cycles": int(sum(1 for r in rows if r.get("gene_poisoned"))),
+            "poisoned_in_stores": self.poisoned_in_stores(),
+            "poisoned_in_stores_hub": split["hub"],
+            "poisoned_in_stores_self": split["self"],
+            "quarantined": int(sum(ag.n_quarantined for ag in self.agents.values())),
+            "quarantine_rejected": int(sum(ag.n_quarantine_rejected for ag in self.agents.values())),
+            "epochs": self.epochs,
+        }
         upl = [r["gene_true_uplift"] for r in rows if r.get("source") == "hub" and "gene_true_uplift" in r]
         out["hub_gene_true_uplift"] = float(np.mean(upl)) if upl else float("nan")
         if self.hub is not None:

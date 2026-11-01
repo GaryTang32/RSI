@@ -1,4 +1,5 @@
 """Opt-in ports of the released code's multi-turn JSON protocols: the action proposer and the agentic analyst."""
+
 from __future__ import annotations
 
 import json
@@ -6,17 +7,16 @@ import posixpath
 import re
 import subprocess
 import tempfile
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Callable, Optional
 
 from ..core.artifact import Artifact
 from ..core.llm import LLM, Usage
 from .analyst import DIGEST_MAX_CHARS, DIGEST_PARALLELISM, render_trace, task_row
 from .components import Taxonomy
 
-JSON_SUFFIX = ("\n\nOutput ONLY a single valid JSON object. No prose before or "
-               "after, no markdown fences.")
+JSON_SUFFIX = "\n\nOutput ONLY a single valid JSON object. No prose before or after, no markdown fences."
 
 
 def ref_extract_json(text: str) -> str:
@@ -31,7 +31,7 @@ def ref_extract_json(text: str) -> str:
             t = t[start:]
     for open_, close in ("{}", "[]"):
         if t and t[0] == open_ and not t.endswith(close) and close in t:
-            t = t[:t.rfind(close) + 1]
+            t = t[: t.rfind(close) + 1]
     return t
 
 
@@ -39,9 +39,17 @@ class GenerateError(RuntimeError):
     """The backend failed (the code's ``generate`` raises)."""
 
 
-def generate(llm: LLM, prompt: str, *, system: Optional[str] = None, json_only: bool = False,
-             cache_prefix: Optional[str] = None, seed: int = 0, role: str = "default",
-             usage: Optional[list] = None) -> str:
+def generate(
+    llm: LLM,
+    prompt: str,
+    *,
+    system: str | None = None,
+    json_only: bool = False,
+    cache_prefix: str | None = None,
+    seed: int = 0,
+    role: str = "default",
+    usage: list | None = None,
+) -> str:
     """The code's ``llm.generate``: JSON-only suffix on the system prompt, the JSON span of the reply."""
     sys_prompt = (system or "") + (JSON_SUFFIX if json_only else "")
     full = (cache_prefix + "\n\n" + prompt) if cache_prefix else prompt
@@ -53,7 +61,7 @@ def generate(llm: LLM, prompt: str, *, system: Optional[str] = None, json_only: 
     return ref_extract_json(resp.text) if json_only else resp.text
 
 
-def _action(raw: str, cut: int, bad_json: str, non_object: str) -> tuple[Optional[dict], str]:
+def _action(raw: str, cut: int, bad_json: str, non_object: str) -> tuple[dict | None, str]:
     """The reply's action object (first dict of a list), else None and the transcript's error line."""
     try:
         act = json.loads(raw)
@@ -163,7 +171,7 @@ class MemWorkspace:
     def _safe(self, rel: str) -> str:
         rel = str(rel).lstrip("/")
         if rel == self.root or rel.startswith(self.root + "/"):
-            rel = rel[len(self.root):].lstrip("/")
+            rel = rel[len(self.root) :].lstrip("/")
         norm = posixpath.normpath(rel) if rel else "."
         if norm == ".." or norm.startswith("../") or norm.startswith("/"):
             raise ValueError(f"path escapes harness dir: {rel}")
@@ -203,12 +211,12 @@ class MemWorkspace:
         return f"OK: created {rel}"
 
     def dump(self) -> str:
-        return "\n\n".join(f"===== FILE: {p} =====\n{self.files[p]}" for p in self._visible()
-                           if posixpath.splitext(p)[1] in self.exts)
+        return "\n\n".join(
+            f"===== FILE: {p} =====\n{self.files[p]}" for p in self._visible() if posixpath.splitext(p)[1] in self.exts
+        )
 
 
-def list_traces_text(traces: dict, task_means: dict, findings: list,
-                     row: Callable = None) -> str:
+def list_traces_text(traces: dict, task_means: dict, findings: list, row: Callable = None) -> str:
     """The code's ``_list_traces``: one row per trace, lowest mean first, with the digests' modes."""
     row = row or task_row
     modes_by_task: dict = {}
@@ -224,8 +232,7 @@ def list_traces_text(traces: dict, task_means: dict, findings: list,
     return "\n".join(r for _, r in sorted(rows, key=lambda x: x[0])) or "ERROR: no traces available"
 
 
-def read_trace_text(traces: dict, task_id, from_step, to_step, cache: dict, detail: bool,
-                    render: Callable) -> str:
+def read_trace_text(traces: dict, task_id, from_step, to_step, cache: dict, detail: bool, render: Callable) -> str:
     """The code's ``_read_trace``: a rendered trajectory or a step range of it (grading always kept)."""
     task_id = str(task_id)
     rec = traces.get(task_id)
@@ -237,8 +244,8 @@ def read_trace_text(traces: dict, task_id, from_step, to_step, cache: dict, deta
     rendered = cache[key]
     if from_step is None and to_step is None:
         return rendered[:TRACE_READ_CAP] + (
-            f"\n...[capped at {TRACE_READ_CAP} chars; use from_step/to_step]"
-            if len(rendered) > TRACE_READ_CAP else "")
+            f"\n...[capped at {TRACE_READ_CAP} chars; use from_step/to_step]" if len(rendered) > TRACE_READ_CAP else ""
+        )
     lo, hi = int(from_step or 0), int(to_step or 10**9)
     keep, in_grades = [], False
     for line in rendered.splitlines():
@@ -251,91 +258,145 @@ def read_trace_text(traces: dict, task_id, from_step, to_step, cache: dict, deta
     return out[:TRACE_READ_CAP] + (f"\n...[capped at {TRACE_READ_CAP} chars]" if len(out) > TRACE_READ_CAP else "")
 
 
-def build_proposer_context(*, ws: MemWorkspace, report: dict, history_rows: list, budget: int, explore: dict,
-                           reserved: bool, prune_set: list, findings: list, scoreboard: list, variant_brief: str,
-                           repair_brief: Optional[dict]) -> str:
+def build_proposer_context(
+    *,
+    ws: MemWorkspace,
+    report: dict,
+    history_rows: list,
+    budget: int,
+    explore: dict,
+    reserved: bool,
+    prune_set: list,
+    findings: list,
+    scoreboard: list,
+    variant_brief: str,
+    repair_brief: dict | None,
+) -> str:
     """The code's ROUND CONTEXT, section by section."""
     explore_text = explore.get("text", "")
     if reserved:
-        explore_text += ("\n\nRESERVED EXPLORATION SLOT: this variant holds one. At "
-                         "least one of your edits MUST be on a never-exercised "
-                         f"component from: {explore.get('untried')}.")
-    prune_text = (json.dumps(prune_set, ensure_ascii=False, indent=1) if prune_set else "(none)")
-    return "\n\n".join([
-        *(["=== THIS VARIANT'S BRIEF ===", variant_brief] if variant_brief else []),
-        "=== EDIT HISTORY L_t (every measured edit: component, hypothesis, "
-        "Delta S, Delta C, accepted). A rejected mechanism is negative evidence; "
-        "do not redraw it unchanged. An accepted one carries the gain it "
-        "produced; refine what has known credit, not what merely preceded a "
-        "rise. ===",
-        json.dumps(history_rows, ensure_ascii=False, indent=1),
-        "=== ATTRIBUTION SCOREBOARD (how past edits' predictions fared; "
-        "unpredicted_regressions are tasks an edit likely broke) ===",
-        json.dumps(scoreboard or [], ensure_ascii=False, indent=1),
-        "=== EXPLORATION DIRECTIVES E_t ===", explore_text,
-        "=== COMPONENTS TO PRUNE B_t (exercised, no strictly improving edit in "
-        "the recent window; remove the accepted machinery listed, it has "
-        "stopped earning its place) ===", prune_text,
-        "=== THREE-LENS ANALYSIS REPORT F_t (failure modes ranked; capability "
-        "gaps often need tool/plumbing fixes; success_habits are behaviors "
-        "your change MUST NOT break) ===",
-        json.dumps(report, ensure_ascii=False, indent=1),
-        "=== PER-TASK DIGESTS (evidence anchors; use read_trace for raw evidence) ===",
-        json.dumps(findings or [], ensure_ascii=False, indent=1),
-        "=== CURRENT HARNESS SOURCE H_t ===", ws.dump(),
-        "=== THIS ROUND'S EDIT BUDGET b_t ===",
-        f"You may ship AT MOST {budget} independent edit(s) in this candidate "
-        f"(the budget anneals over the run: early rounds explore, late rounds "
-        f"make single attributable changes). Ship fewer if the evidence "
-        f"supports fewer.",
-        "=== TASK ===",
-        ("REPAIR ROUND: your previous edits for this candidate are already in "
-         "the working tree (reflected in CURRENT HARNESS SOURCE above). The "
-         "reviewer raised the objections below. Fix ONLY what the objections "
-         "require (remove leaked content, split or re-declare edits, wire up "
-         "dead code, or delete the offending part) with minimal additional "
-         "edits, then call done again with the corrected edits array.\n\n"
-         "=== REVIEWER OBJECTIONS ===\n"
-         + json.dumps(repair_brief, ensure_ascii=False, indent=1) + "\nFirst action:")
-        if repair_brief else
-        "Address the highest-impact failure modes / capability gaps within your "
-        "edit budget. Implement via the JSON actions, then call done with the "
-        "edits array. First action:",
-    ])
+        explore_text += (
+            "\n\nRESERVED EXPLORATION SLOT: this variant holds one. At "
+            "least one of your edits MUST be on a never-exercised "
+            f"component from: {explore.get('untried')}."
+        )
+    prune_text = json.dumps(prune_set, ensure_ascii=False, indent=1) if prune_set else "(none)"
+    return "\n\n".join(
+        [
+            *(["=== THIS VARIANT'S BRIEF ===", variant_brief] if variant_brief else []),
+            "=== EDIT HISTORY L_t (every measured edit: component, hypothesis, "
+            "Delta S, Delta C, accepted). A rejected mechanism is negative evidence; "
+            "do not redraw it unchanged. An accepted one carries the gain it "
+            "produced; refine what has known credit, not what merely preceded a "
+            "rise. ===",
+            json.dumps(history_rows, ensure_ascii=False, indent=1),
+            "=== ATTRIBUTION SCOREBOARD (how past edits' predictions fared; "
+            "unpredicted_regressions are tasks an edit likely broke) ===",
+            json.dumps(scoreboard or [], ensure_ascii=False, indent=1),
+            "=== EXPLORATION DIRECTIVES E_t ===",
+            explore_text,
+            "=== COMPONENTS TO PRUNE B_t (exercised, no strictly improving edit in "
+            "the recent window; remove the accepted machinery listed, it has "
+            "stopped earning its place) ===",
+            prune_text,
+            "=== THREE-LENS ANALYSIS REPORT F_t (failure modes ranked; capability "
+            "gaps often need tool/plumbing fixes; success_habits are behaviors "
+            "your change MUST NOT break) ===",
+            json.dumps(report, ensure_ascii=False, indent=1),
+            "=== PER-TASK DIGESTS (evidence anchors; use read_trace for raw evidence) ===",
+            json.dumps(findings or [], ensure_ascii=False, indent=1),
+            "=== CURRENT HARNESS SOURCE H_t ===",
+            ws.dump(),
+            "=== THIS ROUND'S EDIT BUDGET b_t ===",
+            f"You may ship AT MOST {budget} independent edit(s) in this candidate "
+            f"(the budget anneals over the run: early rounds explore, late rounds "
+            f"make single attributable changes). Ship fewer if the evidence "
+            f"supports fewer.",
+            "=== TASK ===",
+            (
+                "REPAIR ROUND: your previous edits for this candidate are already in "
+                "the working tree (reflected in CURRENT HARNESS SOURCE above). The "
+                "reviewer raised the objections below. Fix ONLY what the objections "
+                "require (remove leaked content, split or re-declare edits, wire up "
+                "dead code, or delete the offending part) with minimal additional "
+                "edits, then call done again with the corrected edits array.\n\n"
+                "=== REVIEWER OBJECTIONS ===\n"
+                + json.dumps(repair_brief, ensure_ascii=False, indent=1)
+                + "\nFirst action:"
+            )
+            if repair_brief
+            else "Address the highest-impact failure modes / capability gaps within your "
+            "edit budget. Implement via the JSON actions, then call done with the "
+            "edits array. First action:",
+        ]
+    )
 
 
-def _done_problems(edits: list, budget: int, K: list, reserved: bool, untried: Optional[list]) -> list[str]:
+def _done_problems(edits: list, budget: int, K: list, reserved: bool, untried: list | None) -> list[str]:
     """The code's done() checks; they bounce the reply only once a file was changed."""
     problems = [] if edits else ["edits array is empty"]
     if len(edits) > budget:
         problems.append(f"{len(edits)} edits exceed the budget b_t = {budget}")
     for e in edits:
-        miss = [f for f in ("id", "component", "hypothesis", "targets_mode",
-                            "predicted_affected", "retroactive_check") if not e.get(f)]
+        miss = [
+            f
+            for f in ("id", "component", "hypothesis", "targets_mode", "predicted_affected", "retroactive_check")
+            if not e.get(f)
+        ]
         if miss:
             problems.append(f"edit {e.get('id', '?')} missing {miss}")
         if e.get("component") and str(e["component"]).lower() not in K:
             problems.append(f"edit {e.get('id')} component {e['component']!r} not in {K}")
     if reserved and untried and edits and not any(str(e.get("component", "")).lower() in untried for e in edits):
-        problems.append("this variant holds a RESERVED EXPLORATION SLOT: at "
-                        "least one edit must be on a never-exercised "
-                        f"component from {untried}")
+        problems.append(
+            "this variant holds a RESERVED EXPLORATION SLOT: at "
+            "least one edit must be on a never-exercised "
+            f"component from {untried}"
+        )
     return problems
 
 
-def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, context: str, budget: int,
-                     reserved: bool, explore: dict, K: list, traces: dict, task_means: dict, findings: list,
-                     render: Callable, seed: int = 0, role: str = "proposer", usage: Optional[list] = None,
-                     turns: Optional[list] = None) -> dict:
+def run_json_actions(
+    llm: LLM,
+    *,
+    ws: MemWorkspace,
+    system: str,
+    stable: str,
+    context: str,
+    budget: int,
+    reserved: bool,
+    explore: dict,
+    K: list,
+    traces: dict,
+    task_means: dict,
+    findings: list,
+    render: Callable,
+    seed: int = 0,
+    role: str = "proposer",
+    usage: list | None = None,
+    turns: list | None = None,
+) -> dict:
     """The code's proposer loop (``rrsi/propose.py::propose`` after the context is built)."""
     render_cache: dict = {}
     log, transcript, n_edits, aborts_left = [], "", 0, 3
     for turn in range(MAX_TURNS):
-        prompt = ("=== ROUND CONTEXT ===\n" + context
-                  + "\n\n=== INTERACTION LOG ===\n" + transcript
-                  + "\nReply with exactly one JSON action object.")
-        raw = generate(llm, prompt, system=system, json_only=True, cache_prefix=stable,
-                       seed=seed * 1000 + turn, role=role, usage=usage)
+        prompt = (
+            "=== ROUND CONTEXT ===\n"
+            + context
+            + "\n\n=== INTERACTION LOG ===\n"
+            + transcript
+            + "\nReply with exactly one JSON action object."
+        )
+        raw = generate(
+            llm,
+            prompt,
+            system=system,
+            json_only=True,
+            cache_prefix=stable,
+            seed=seed * 1000 + turn,
+            role=role,
+            usage=usage,
+        )
         if turns is not None:
             turns.append({"turn": turn, "prompt": prompt, "reply": raw})
         act, err = _action(raw, 500, "not valid JSON", "")
@@ -343,35 +404,49 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
             transcript += err
             continue
         a = act.get("action")
-        log.append(act if a in ("done", "abort") else
-                   {k: (v if len(str(v)) < 200 else str(v)[:200] + "...") for k, v in act.items()})
+        log.append(
+            act
+            if a in ("done", "abort")
+            else {k: (v if len(str(v)) < 200 else str(v)[:200] + "...") for k, v in act.items()}
+        )
         if a == "done":
             edits = act.get("edits") or act.get("candidates") or []
             if n_edits == 0 and edits:
-                transcript += ("\n[you] done\n[result] ERROR: you declared edits but "
-                               "made ZERO file changes. Implement them with "
-                               "edit_file/write_file, then call done.")
+                transcript += (
+                    "\n[you] done\n[result] ERROR: you declared edits but "
+                    "made ZERO file changes. Implement them with "
+                    "edit_file/write_file, then call done."
+                )
                 continue
             problems = _done_problems(edits, budget, K, reserved, explore.get("untried"))
             if problems and n_edits > 0:
-                transcript += (f"\n[you] done\n[result] ERROR: {problems}. Call done "
-                               f"again fixed (drop or merge edits if over budget; "
-                               f"add the required edit if a slot is reserved).")
+                transcript += (
+                    f"\n[you] done\n[result] ERROR: {problems}. Call done "
+                    f"again fixed (drop or merge edits if over budget; "
+                    f"add the required edit if a slot is reserved)."
+                )
                 continue
             for e in edits:
                 e["component"] = str(e.get("component", "")).lower()
                 e.setdefault("mechanism", e.get("hypothesis"))
-            return {"status": "done", "summary": act.get("summary"), "edits": edits,
-                    "mechanism": act.get("summary") or "; ".join(str(e.get("hypothesis")) for e in edits)[:200],
-                    "targets_mode": ", ".join(str(e.get("targets_mode")) for e in edits)[:200],
-                    "n_edits": n_edits, "log": log}
+            return {
+                "status": "done",
+                "summary": act.get("summary"),
+                "edits": edits,
+                "mechanism": act.get("summary") or "; ".join(str(e.get("hypothesis")) for e in edits)[:200],
+                "targets_mode": ", ".join(str(e.get("targets_mode")) for e in edits)[:200],
+                "n_edits": n_edits,
+                "log": log,
+            }
         if a == "abort":
             if aborts_left > 0:
                 aborts_left -= 1
-                transcript += ("\n[you] abort\n[result] ERROR: there is no abort action. "
-                               "Pick the most defensible mechanism you can build "
-                               "within the hard rules, implement it, and call done. "
-                               "A rejection is data; an abort is not.")
+                transcript += (
+                    "\n[you] abort\n[result] ERROR: there is no abort action. "
+                    "Pick the most defensible mechanism you can build "
+                    "within the hard rules, implement it, and call done. "
+                    "A rejection is data; an abort is not."
+                )
                 continue
             return {"status": "abort", "reason": act.get("reason"), "edits": [], "n_edits": n_edits, "log": log}
         try:
@@ -382,14 +457,24 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
             elif a == "list_traces":
                 result = list_traces_text(traces, task_means, findings or [])
             elif a == "read_trace":
-                result = read_trace_text(traces, act.get("task_id", ""), act.get("from_step"), act.get("to_step"),
-                                         render_cache, act.get("detail", False), render)
+                result = read_trace_text(
+                    traces,
+                    act.get("task_id", ""),
+                    act.get("from_step"),
+                    act.get("to_step"),
+                    render_cache,
+                    act.get("detail", False),
+                    render,
+                )
             elif a in ("edit_file", "write_file"):
                 if n_edits >= MAX_EDITS:
                     result = "ERROR: edit budget exhausted; call done"
                 else:
-                    result = ws.edit(act["path"], act["old"], act["new"]) if a == "edit_file" \
+                    result = (
+                        ws.edit(act["path"], act["old"], act["new"])
+                        if a == "edit_file"
                         else ws.write(act["path"], act["content"])
+                    )
                     n_edits += result.startswith("OK")
             else:
                 result = f"ERROR: unknown action {a}"
@@ -403,33 +488,67 @@ def run_json_actions(llm: LLM, *, ws: MemWorkspace, system: str, stable: str, co
 class JsonActionProposer:
     """Drop-in :class:`~rsi.rrsi.propose.Proposer` running the code's JSON action protocol in memory."""
 
-    def __init__(self, llm: LLM, taxonomy: Taxonomy, cfg, *, domain_brief: str = "",
-                 constitution: tuple[str, str] = ("", ""), source_exts=DEFAULT_SOURCE_EXTS) -> None:
+    def __init__(
+        self,
+        llm: LLM,
+        taxonomy: Taxonomy,
+        cfg,
+        *,
+        domain_brief: str = "",
+        constitution: tuple[str, str] = ("", ""),
+        source_exts=DEFAULT_SOURCE_EXTS,
+    ) -> None:
         self.llm = llm
         self.tax = taxonomy
         self.cfg = cfg
         self.system = PROPOSER_SYSTEM_TMPL.format(domain_brief=domain_brief, components=" | ".join(taxonomy.K))
         skill_md, patterns_md = constitution
-        self.stable = "\n\n".join(["=== CONSTITUTION (SKILL.md) ===", skill_md,
-                                   "=== PATTERN LIBRARY (PATTERNS.md) ===", patterns_md])
+        self.stable = "\n\n".join(
+            ["=== CONSTITUTION (SKILL.md) ===", skill_md, "=== PATTERN LIBRARY (PATTERNS.md) ===", patterns_md]
+        )
         self.source_exts = tuple(source_exts)
 
-    def propose(self, base: Artifact, *, working: Optional[Artifact] = None, directives: Optional[dict] = None,
-                variant_brief: str = "", history_rows: Optional[list] = None, scoreboard: Optional[list] = None,
-                explore: Optional[dict] = None, reserved: bool = False, prune_set: Optional[list] = None,
-                report: Optional[dict] = None, budget: int = 1, digests: Optional[list] = None,
-                traces_text: str = "", repair_brief: Optional[dict] = None, seed: int = 0, capture: bool = False,
-                traces: Optional[dict] = None, task_means: Optional[dict] = None,
-                task_inputs: Optional[dict] = None) -> dict:
+    def propose(
+        self,
+        base: Artifact,
+        *,
+        working: Artifact | None = None,
+        directives: dict | None = None,
+        variant_brief: str = "",
+        history_rows: list | None = None,
+        scoreboard: list | None = None,
+        explore: dict | None = None,
+        reserved: bool = False,
+        prune_set: list | None = None,
+        report: dict | None = None,
+        budget: int = 1,
+        digests: list | None = None,
+        traces_text: str = "",
+        repair_brief: dict | None = None,
+        seed: int = 0,
+        capture: bool = False,
+        traces: dict | None = None,
+        task_means: dict | None = None,
+        task_inputs: dict | None = None,
+    ) -> dict:
         explore = explore or {}
         working = working or base
         ws = MemWorkspace(working.files, self.source_exts)
         traces = traces or {}
         task_inputs = task_inputs or {}
-        context = build_proposer_context(ws=ws, report=report or {}, history_rows=history_rows or [], budget=budget,
-                                         explore=explore, reserved=reserved, prune_set=prune_set or [],
-                                         findings=digests or [], scoreboard=scoreboard or [],
-                                         variant_brief=variant_brief, repair_brief=repair_brief)
+        context = build_proposer_context(
+            ws=ws,
+            report=report or {},
+            history_rows=history_rows or [],
+            budget=budget,
+            explore=explore,
+            reserved=reserved,
+            prune_set=prune_set or [],
+            findings=digests or [],
+            scoreboard=scoreboard or [],
+            variant_brief=variant_brief,
+            repair_brief=repair_brief,
+        )
 
         def render(rec, detail):
             return render_trace(rec, task_inputs.get(rec.get("task_id")), cap=TRACE_READ_CAP if detail else 6000)
@@ -437,17 +556,43 @@ class JsonActionProposer:
         usage: list = []
         turns: list = []
         try:
-            res = run_json_actions(self.llm, ws=ws, system=self.system, stable=self.stable, context=context,
-                                   budget=budget, reserved=reserved, explore=explore, K=list(self.tax.K),
-                                   traces=traces, task_means=task_means or {}, findings=digests or [],
-                                   render=render, seed=seed, usage=usage, turns=turns)
+            res = run_json_actions(
+                self.llm,
+                ws=ws,
+                system=self.system,
+                stable=self.stable,
+                context=context,
+                budget=budget,
+                reserved=reserved,
+                explore=explore,
+                K=list(self.tax.K),
+                traces=traces,
+                task_means=task_means or {},
+                findings=digests or [],
+                render=render,
+                seed=seed,
+                usage=usage,
+                turns=turns,
+            )
         except GenerateError as e:
-            return {"status": "error", "reason": f"llm error: {e}", "edits": [], "n_changes": 0, "artifact": None,
-                    "log": [], "usage": sum(usage, Usage()), **({"turns": turns} if capture else {})}
+            return {
+                "status": "error",
+                "reason": f"llm error: {e}",
+                "edits": [],
+                "n_changes": 0,
+                "artifact": None,
+                "log": [],
+                "usage": sum(usage, Usage()),
+                **({"turns": turns} if capture else {}),
+            }
         new_art = working.with_files({p: ws.files.get(p) for p in set(working.files) | set(ws.files)})
         n_changes = len(base.changed_files(new_art))
-        res.update(n_changes=n_changes, artifact=new_art if (res["status"] == "done" and n_changes) else None,
-                   usage=sum(usage, Usage()), protocol="json_actions")
+        res.update(
+            n_changes=n_changes,
+            artifact=new_art if (res["status"] == "done" and n_changes) else None,
+            usage=sum(usage, Usage()),
+            protocol="json_actions",
+        )
         if res["status"] == "done":
             for e in res["edits"]:
                 e["component"] = self.tax.canonical(e.get("component", ""), strip=False)
@@ -455,8 +600,13 @@ class JsonActionProposer:
             for tr in turns:
                 tr.update(artifact=None, outcome="json action", declared_edits=[], n_changes=None)
             if turns:
-                turns[-1].update(artifact=new_art, n_changes=n_changes, outcome=res["status"],
-                                 summary=res.get("summary"), declared_edits=[dict(e) for e in res["edits"]])
+                turns[-1].update(
+                    artifact=new_art,
+                    n_changes=n_changes,
+                    outcome=res["status"],
+                    summary=res.get("summary"),
+                    declared_edits=[dict(e) for e in res["edits"]],
+                )
             res["turns"] = turns
         return res
 
@@ -484,10 +634,28 @@ SCHEMAS = {
              "where_shown": "step range"}],
  "risk_if_removed": "which habit is load-bearing and what breaks without it"}""",
 }
-ALLOWED_BASH = {"grep", "egrep", "head", "tail", "wc", "cat", "ls", "find",
-                "cut", "sort", "uniq", "awk", "jq", "sed", "tr", "paste"}
-DENY_BASH = re.compile(r"(>>?|`|\$\(|sed\s+[^|]*-i|\brm\b|\bmv\b|\bcp\b|"
-                       r"\btee\b|\btouch\b|\bmkdir\b|\bchmod\b|\bpython)")
+ALLOWED_BASH = {
+    "grep",
+    "egrep",
+    "head",
+    "tail",
+    "wc",
+    "cat",
+    "ls",
+    "find",
+    "cut",
+    "sort",
+    "uniq",
+    "awk",
+    "jq",
+    "sed",
+    "tr",
+    "paste",
+}
+DENY_BASH = re.compile(
+    r"(>>?|`|\$\(|sed\s+[^|]*-i|\brm\b|\bmv\b|\bcp\b|"
+    r"\btee\b|\btouch\b|\bmkdir\b|\bchmod\b|\bpython)"
+)
 
 # rrsi/digester.py::SYSTEM_TMPL, verbatim
 DIGESTER_SYSTEM_TMPL = """You are a trajectory digester: a read-only investigator that
@@ -599,7 +767,7 @@ def _read_file(root: Path, rel: str, offset, limit) -> str:
     lines = p.read_text().splitlines()
     lo = max(0, (offset or 1) - 1)
     hi = lo + (limit or 400)
-    body = "\n".join(f"{i+1}: {l}" for i, l in enumerate(lines[lo:hi], start=lo))
+    body = "\n".join(f"{i + 1}: {l}" for i, l in enumerate(lines[lo:hi], start=lo))
     return body + (f"\n...[file has {len(lines)} lines]" if hi < len(lines) else "")
 
 
@@ -621,23 +789,34 @@ def _grep(root: Path, pattern: str, rel: str, max_hits: int) -> str:
     return "\n".join(out) if out else "(no matches)"
 
 
-def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brief: str,
-                questions: Optional[list] = None, seed: int = 0, usage: Optional[list] = None,
-                calls: Optional[list] = None) -> dict:
+def digest_task(
+    llm: LLM,
+    traces_dir: Path,
+    task_id: str,
+    lens: str,
+    domain_brief: str,
+    questions: list | None = None,
+    seed: int = 0,
+    usage: list | None = None,
+    calls: list | None = None,
+) -> dict:
     """The code's ``digest_task``: one read-only digester agent over one rendered trace."""
     lens = lens if lens in SCHEMAS else "failure"
     focus = ""
     if questions:
         focus = "Specific questions from the analyst you MUST answer:\n" + "\n".join(f"- {q}" for q in questions[:5])
-    system = DIGESTER_SYSTEM_TMPL.format(lens=lens, focus=focus, cap=DIGEST_MAX_CHARS, schema=SCHEMAS[lens],
-                                         domain_brief=domain_brief)
+    system = DIGESTER_SYSTEM_TMPL.format(
+        lens=lens, focus=focus, cap=DIGEST_MAX_CHARS, schema=SCHEMAS[lens], domain_brief=domain_brief
+    )
     transcript = f"Assigned trace: {task_id}.txt\nFirst action:"
     for turn in range(DIGESTER_MAX_TURNS):
-        raw = generate(llm, transcript, system=system, json_only=True, seed=seed * 100 + turn, role="digester",
-                       usage=usage)
+        raw = generate(
+            llm, transcript, system=system, json_only=True, seed=seed * 100 + turn, role="digester", usage=usage
+        )
         if calls is not None:
-            calls.append({"role": "digester", "task_id": task_id, "lens": lens, "turn": turn, "prompt": transcript,
-                          "reply": raw})
+            calls.append(
+                {"role": "digester", "task_id": task_id, "lens": lens, "turn": turn, "prompt": transcript, "reply": raw}
+            )
         act, err = _action(raw, 300, "invalid JSON", ", not a list or value")
         if act is None:
             transcript += err
@@ -647,9 +826,11 @@ def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brie
             digest = act.get("digest") or {}
             blob = json.dumps(digest, ensure_ascii=False)
             if len(blob) > DIGEST_MAX_CHARS:
-                transcript += (f"\n[you] return ({len(blob)} chars)\n[result] "
-                               f"ERROR: digest is {len(blob)} chars, cap is "
-                               f"{DIGEST_MAX_CHARS}. Shorten and return again.")
+                transcript += (
+                    f"\n[you] return ({len(blob)} chars)\n[result] "
+                    f"ERROR: digest is {len(blob)} chars, cap is "
+                    f"{DIGEST_MAX_CHARS}. Shorten and return again."
+                )
                 continue
             digest.setdefault("task_id", task_id)
             digest.setdefault("lens", lens)
@@ -664,19 +845,21 @@ def digest_task(llm: LLM, traces_dir: Path, task_id: str, lens: str, domain_brie
             elif a == "bash":
                 cmd = act.get("cmd", "")
                 if not _bash_ok(cmd):
-                    result = ("ERROR: command rejected (read-only shell; allowed: "
-                              "grep/head/tail/awk/jq/sed/wc/cat/ls/find/cut/sort/"
-                              "uniq/tr; no redirection)")
+                    result = (
+                        "ERROR: command rejected (read-only shell; allowed: "
+                        "grep/head/tail/awk/jq/sed/wc/cat/ls/find/cut/sort/"
+                        "uniq/tr; no redirection)"
+                    )
                 else:
-                    r = subprocess.run(cmd, shell=True, cwd=traces_dir, capture_output=True, text=True,
-                                       timeout=BASH_TIMEOUT)
+                    r = subprocess.run(
+                        cmd, shell=True, cwd=traces_dir, capture_output=True, text=True, timeout=BASH_TIMEOUT
+                    )
                     result = (r.stdout or "") + (r.stderr or "")
             else:
                 result = f"ERROR: unknown action {a}"
         except Exception as e:  # noqa: BLE001
             result = f"ERROR: {e}"
-        transcript += (f"\n[you] {json.dumps(act)[:600]}\n"
-                       f"[result] {str(result)[:TOOL_OUT_CAP]}")
+        transcript += f"\n[you] {json.dumps(act)[:600]}\n[result] {str(result)[:TOOL_OUT_CAP]}"
     return {"task_id": task_id, "lens": lens, "error": "digester hit max turns without returning"}
 
 
@@ -685,16 +868,24 @@ class AgenticAnalyst:
 
     mode = "agentic"
 
-    def __init__(self, llm: LLM, *, domain_brief: str = "", digester_brief: Optional[str] = None,
-                 workers: int = DIGEST_PARALLELISM) -> None:
+    def __init__(
+        self, llm: LLM, *, domain_brief: str = "", digester_brief: str | None = None, workers: int = DIGEST_PARALLELISM
+    ) -> None:
         self.llm = llm
         self.domain_brief = domain_brief
         self.digester_brief = digester_brief if digester_brief is not None else domain_brief
         self.workers = workers
         self.last_calls: list[dict] = []
 
-    def analyze(self, traces: dict, meas, task_inputs: Optional[dict] = None, prior: Optional[dict] = None,
-                seed: int = 0, workdir: Optional[Path] = None) -> tuple[dict, list[dict]]:
+    def analyze(
+        self,
+        traces: dict,
+        meas,
+        task_inputs: dict | None = None,
+        prior: dict | None = None,
+        seed: int = 0,
+        workdir: Path | None = None,
+    ) -> tuple[dict, list[dict]]:
         task_inputs = task_inputs or {}
         prior = prior or {}
         self.last_calls = []
@@ -711,30 +902,50 @@ class AgenticAnalyst:
         digests_dir = Path(workdir) / "analysis" / "digests"
         digests_dir.mkdir(parents=True, exist_ok=True)
         means = meas.task_means() if hasattr(meas, "task_means") else dict(meas or {})
-        table = "\n".join(r for _, r in sorted(((means.get(t, 0.0), task_row(t, rec, means.get(t)))
-                                                for t, rec in traces.items()), key=lambda x: x[0]))
+        table = "\n".join(
+            r
+            for _, r in sorted(
+                ((means.get(t, 0.0), task_row(t, rec, means.get(t))) for t, rec in traces.items()), key=lambda x: x[0]
+            )
+        )
         system = ANALYST_SYSTEM_TMPL.format(domain_brief=self.domain_brief)
-        context = "\n\n".join([
-            "=== TASK TABLE (one rendered trace per task; lowest scores first) ===", table,
-            "=== PRIOR FAILURE-MODE NAMES (for stable naming) ===",
-            json.dumps([{"mode": m.get("mode"), "description": m.get("description")}
-                        for m in (prior.get("failure_modes") or [])], ensure_ascii=False, indent=1),
-            "=== PRIOR SUCCESS-HABIT NAMES (for stable naming) ===",
-            json.dumps([{"habit": h.get("habit"), "description": h.get("description")}
-                        for h in (prior.get("success_habits") or [])], ensure_ascii=False, indent=1),
-            "=== TASK ===",
-            "Dispatch digesters, then produce the report. First action:",
-        ])
+        context = "\n\n".join(
+            [
+                "=== TASK TABLE (one rendered trace per task; lowest scores first) ===",
+                table,
+                "=== PRIOR FAILURE-MODE NAMES (for stable naming) ===",
+                json.dumps(
+                    [
+                        {"mode": m.get("mode"), "description": m.get("description")}
+                        for m in (prior.get("failure_modes") or [])
+                    ],
+                    ensure_ascii=False,
+                    indent=1,
+                ),
+                "=== PRIOR SUCCESS-HABIT NAMES (for stable naming) ===",
+                json.dumps(
+                    [
+                        {"habit": h.get("habit"), "description": h.get("description")}
+                        for h in (prior.get("success_habits") or [])
+                    ],
+                    ensure_ascii=False,
+                    indent=1,
+                ),
+                "=== TASK ===",
+                "Dispatch digesters, then produce the report. First action:",
+            ]
+        )
         usage: list = []
         transcript, n_digests, n_calls = "", 0, 0
         report = None
         for turn in range(ANALYST_MAX_TURNS):
-            prompt = (context + "\n\n=== INTERACTION LOG ===\n" + transcript
-                      + "\nReply with exactly one JSON action object.")
-            raw = generate(self.llm, prompt, system=system, json_only=True, seed=seed * 1000 + turn, role="analyst",
-                           usage=usage)
-            self.last_calls.append({"role": "analyst", "turn": turn, "system": system, "prompt": prompt,
-                                    "reply": raw})
+            prompt = (
+                context + "\n\n=== INTERACTION LOG ===\n" + transcript + "\nReply with exactly one JSON action object."
+            )
+            raw = generate(
+                self.llm, prompt, system=system, json_only=True, seed=seed * 1000 + turn, role="analyst", usage=usage
+            )
+            self.last_calls.append({"role": "analyst", "turn": turn, "system": system, "prompt": prompt, "reply": raw})
             act, err = _action(raw, 300, "invalid JSON", "")
             if act is None:
                 transcript += err
@@ -757,12 +968,22 @@ class AgenticAnalyst:
                 def run(ir):
                     i, r = ir
                     calls: list = []
-                    d = digest_task(self.llm, rendered_dir, r["task_id"], r.get("lens", "failure"),
-                                    self.digester_brief, r.get("questions"), seed=base_seed + i, usage=usage,
-                                    calls=calls)
+                    d = digest_task(
+                        self.llm,
+                        rendered_dir,
+                        r["task_id"],
+                        r.get("lens", "failure"),
+                        self.digester_brief,
+                        r.get("questions"),
+                        seed=base_seed + i,
+                        usage=usage,
+                        calls=calls,
+                    )
                     (digests_dir / f"{r['task_id']}_{r.get('lens', 'failure')}.json").write_text(
-                        json.dumps(d, ensure_ascii=False, indent=1))
+                        json.dumps(d, ensure_ascii=False, indent=1)
+                    )
                     return d, calls
+
                 with ThreadPoolExecutor(max_workers=max(1, self.workers)) as ex:
                     outs = list(ex.map(run, list(enumerate(valid))))
                 digests = [d for d, _ in outs]
@@ -776,8 +997,13 @@ class AgenticAnalyst:
             else:
                 transcript += f"\n[you] {json.dumps(act)[:300]}\n[result] ERROR: unknown action {a}"
         if report is None:
-            report = {"failure_modes": [], "capability_gaps": [], "success_habits": [],
-                      "error": "analyst hit max turns", "n_digests": n_digests}
+            report = {
+                "failure_modes": [],
+                "capability_gaps": [],
+                "success_habits": [],
+                "error": "analyst hit max turns",
+                "n_digests": n_digests,
+            }
         report["analyst"] = "agentic"
         all_digests = [json.loads(p.read_text()) for p in sorted(digests_dir.glob("*.json"))]
         self.last_usage = sum(usage, Usage())
@@ -786,6 +1012,18 @@ class AgenticAnalyst:
         return report, all_digests
 
 
-__all__ = ["JsonActionProposer", "AgenticAnalyst", "MemWorkspace", "digest_task", "run_json_actions",
-           "build_proposer_context", "generate", "ref_extract_json", "PROPOSER_SYSTEM_TMPL",
-           "DIGESTER_SYSTEM_TMPL", "ANALYST_SYSTEM_TMPL", "JSON_SUFFIX", "GenerateError"]
+__all__ = [
+    "JsonActionProposer",
+    "AgenticAnalyst",
+    "MemWorkspace",
+    "digest_task",
+    "run_json_actions",
+    "build_proposer_context",
+    "generate",
+    "ref_extract_json",
+    "PROPOSER_SYSTEM_TMPL",
+    "DIGESTER_SYSTEM_TMPL",
+    "ANALYST_SYSTEM_TMPL",
+    "JSON_SUFFIX",
+    "GenerateError",
+]

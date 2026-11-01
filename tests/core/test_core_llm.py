@@ -1,5 +1,6 @@
 """rsi.core.llm: usage metering, MockLLM, CachedLLM, get_llm, ClaudeCLI against a fake ``claude`` executable, and the
 text-parsing helpers."""
+
 from __future__ import annotations
 
 import json
@@ -10,8 +11,20 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 import rsi.core.llm as llm_mod
-from rsi.core import (LLM, CachedLLM, ClaudeCLI, LLMResponse, MockLLM, Usage, UsageMeter, extract_code,
-                      extract_code_blocks, extract_json, extract_tag, get_llm)
+from rsi.core import (
+    LLM,
+    CachedLLM,
+    ClaudeCLI,
+    LLMResponse,
+    MockLLM,
+    Usage,
+    UsageMeter,
+    extract_code,
+    extract_code_blocks,
+    extract_json,
+    extract_tag,
+    get_llm,
+)
 from rsi.core.llm import estimate_tokens, resolve_model
 
 
@@ -75,7 +88,7 @@ def test_mock_llm_default_and_responder_arguments():
     assert [c["reply"] for c in m.calls] == [r0.text, r1.text]
     snap = m.meter.snapshot()
     assert snap["task"]["calls"] == 1 and snap["proposer"]["calls"] == 1
-    assert r0.usage.input_tokens == estimate_tokens("s" + "p")     # estimated from text, so cost rules see tokens
+    assert r0.usage.input_tokens == estimate_tokens("s" + "p")  # estimated from text, so cost rules see tokens
     assert r0.usage.output_tokens == estimate_tokens(r0.text)
 
 
@@ -114,7 +127,7 @@ def test_cached_llm_miss_then_hit(tmp_path):
     assert snap["task"]["calls"] == 1 and snap["task"]["cost_usd"] == pytest.approx(0.5)
     assert snap["task:cached"]["calls"] == 0 and snap["task:cached"]["cost_usd"] == 0.0
     assert snap["task:cached"]["output_tokens"] == r1.usage.output_tokens
-    assert c.meter.total().cost_usd == pytest.approx(0.5) and c.meter.total().calls == 1   # real spend only
+    assert c.meter.total().cost_usd == pytest.approx(0.5) and c.meter.total().calls == 1  # real spend only
     assert c.saved.total().cost_usd == pytest.approx(0.5)
 
 
@@ -133,9 +146,9 @@ def test_cached_llm_key_components(tmp_path):
     c.complete("p", seed=1)
     c.complete("p", seed=0, system="sys")
     c.complete("p", seed=0, max_tokens=5)
-    assert len(inner.calls) == 4                 # seed, system prompt and max_tokens are all part of the key
+    assert len(inner.calls) == 4  # seed, system prompt and max_tokens are all part of the key
     other = _Priced()
-    other.name = "other-model"                   # and so is the inner backend's name
+    other.name = "other-model"  # and so is the inner backend's name
     CachedLLM(other, tmp_path).complete("p", seed=0)
     assert len(other.calls) == 1
 
@@ -151,13 +164,13 @@ def test_cached_llm_does_not_cache_errors(tmp_path):
 
 def test_cached_llm_journal_lists_only_the_entries_it_wrote(tmp_path):
     inner, cache, j = _Priced(), tmp_path / ".cache_run", tmp_path / "run" / "cache_writes.txt"
-    CachedLLM(_Priced(), cache).complete("old", seed=0)          # written by someone else, before
+    CachedLLM(_Priced(), cache).complete("old", seed=0)  # written by someone else, before
     c = CachedLLM(inner, cache, journal=j)
-    c.complete("old", seed=0)                                    # a hit: not this object's write
+    c.complete("old", seed=0)  # a hit: not this object's write
     c.complete("new", seed=0)
     c.complete("new", seed=1)
     inner.fail = True
-    c.complete("failed", seed=0)                                 # not cached, so not listed
+    c.complete("failed", seed=0)  # not cached, so not listed
     keys = [c._key(p, None, None, s).stem for p, s in (("new", 0), ("new", 1))]
     assert j.read_text().splitlines() == [f".cache_run/{k}" for k in keys]
     assert CachedLLM(_Priced(), cache).journal is None
@@ -168,7 +181,7 @@ def test_cached_llm_corrupt_entry_is_a_miss(tmp_path):
     c = CachedLLM(inner, tmp_path)
     c.complete("p", seed=0)
     path = c._key("p", None, None, 0)
-    path.write_text('{"text": "trunc')        # e.g. a crash mid-write by an older version
+    path.write_text('{"text": "trunc')  # e.g. a crash mid-write by an older version
     r = c.complete("p", seed=0)
     assert r.ok and r.text == "reply to p #0" and len(inner.calls) == 2
     assert json.loads(path.read_text())["text"] == "reply to p #0"
@@ -176,7 +189,7 @@ def test_cached_llm_corrupt_entry_is_a_miss(tmp_path):
 
 def test_cached_llm_concurrent_writers_same_key(tmp_path):
     c = CachedLLM(MockLLM(lambda p, s, seed, i: "R" * 2000), tmp_path)
-    _in_threads(8, lambda: [c.complete(f"prompt {k}", seed=0) for k in range(60)])   # raises on any error
+    _in_threads(8, lambda: [c.complete(f"prompt {k}", seed=0) for k in range(60)])  # raises on any error
     assert not list(tmp_path.rglob("*.tmp"))
     assert c.hits + c.misses == 480
 
@@ -199,7 +212,7 @@ def test_base_llm_is_abstract():
         LLM().complete("x")
 
 
-FAKE_CLAUDE = r'''
+FAKE_CLAUDE = r"""
 import json, os, sys, time
 from pathlib import Path
 prompt = sys.stdin.read()
@@ -235,7 +248,7 @@ elif mode == "garbage":
     print("this is not json"); print("boom", file=sys.stderr); sys.exit(1)
 elif mode == "sleep":
     time.sleep(30)
-'''
+"""
 
 
 @pytest.fixture
@@ -260,13 +273,13 @@ def test_claude_cli_parses_usage_and_cost(fake_claude):
     cli = ClaudeCLI("haiku", executable=exe, retries=1)
     r = cli.complete("hello", system="be brief", role="task")
     assert r.ok and r.text == "fake reply" and r.model == resolve_model("haiku")
-    assert r.usage.input_tokens == 16 and r.usage.output_tokens == 3      # cache read/creation tokens are input
+    assert r.usage.input_tokens == 16 and r.usage.output_tokens == 3  # cache read/creation tokens are input
     assert r.usage.cost_usd == pytest.approx(0.0012) and r.usage.calls == 1
     assert cli.meter.snapshot()["task"]["cost_usd"] == pytest.approx(0.0012)
     argv = calls()[0]["argv"]
     assert argv[0] == "-p" and _flag(argv, "--model") == resolve_model("haiku")
     assert _flag(argv, "--system-prompt") == "be brief"
-    assert _flag(argv, "--tools") == ""                 # plain completions get no tools
+    assert _flag(argv, "--tools") == ""  # plain completions get no tools
     assert "--no-session-persistence" in argv and "--strict-mcp-config" in argv
     assert calls()[0]["prompt"] == "hello"
 
@@ -281,7 +294,7 @@ def test_claude_cli_list_output_and_errors(fake_claude):
     r = cli.complete("@@mode garbage")
     assert not r.ok and "boom" in r.error
     n_before = len(calls())
-    assert cli.complete("@@mode flaky").ok            # retried after one failure
+    assert cli.complete("@@mode flaky").ok  # retried after one failure
     assert len(calls()) - n_before == 2
 
 
@@ -305,25 +318,26 @@ def test_claude_cli_run_agent_command(fake_claude, tmp_path):
 
 
 def test_extract_code_blocks_and_code():
-    text = ("intro\n```python\nx = 1\n```\nmid\n```js\nlet y = 2;\n```\n```\nplain\n```\n"
-            "```python title\nlonger = 2\n```")
+    text = (
+        "intro\n```python\nx = 1\n```\nmid\n```js\nlet y = 2;\n```\n```\nplain\n```\n```python title\nlonger = 2\n```"
+    )
     assert extract_code_blocks(text) == ["x = 1\n", "let y = 2;\n", "plain\n", "longer = 2\n"]
     assert extract_code_blocks(text, "PYTHON") == ["x = 1\n", "longer = 2\n"]
-    assert extract_code(text) == "longer = 2\n"                   # longest python block
-    assert extract_code("```\nonly\n```") == "only\n"             # falls back to any fence
+    assert extract_code(text) == "longer = 2\n"  # longest python block
+    assert extract_code("```\nonly\n```") == "only\n"  # falls back to any fence
     assert extract_code("no fences") is None
     assert extract_code_blocks(None) == []
 
 
 def test_extract_json_variants():
     assert extract_json('```json\n{"a": 1}\n```') == {"a": 1}
-    assert extract_json('text ```\n[1, 2]\n``` more') == [1, 2]
+    assert extract_json("text ```\n[1, 2]\n``` more") == [1, 2]
     assert extract_json('prefix {"a": {"b": "}"}, "c": [1]} suffix') == {"a": {"b": "}"}, "c": [1]}
     assert extract_json('escaped {"q": "say \\"hi\\" {"} end') == {"q": 'say "hi" {'}
     assert extract_json("list only: [1, 2, 3]") == [1, 2, 3]
-    assert extract_json('steps [1] then {"verdict": "accept"}') == {"verdict": "accept"}   # objects over arrays
-    assert extract_json('{not json} and {"ok": true}') == {"ok": True}                    # a broken one is skipped
-    assert extract_json('```\n42\n```\n{"a": 1}') == {"a": 1}     # a fenced scalar does not shadow an object
+    assert extract_json('steps [1] then {"verdict": "accept"}') == {"verdict": "accept"}  # objects over arrays
+    assert extract_json('{not json} and {"ok": true}') == {"ok": True}  # a broken one is skipped
+    assert extract_json('```\n42\n```\n{"a": 1}') == {"a": 1}  # a fenced scalar does not shadow an object
     assert extract_json("```\n42\n```") == 42
     for bad in ("nothing here", None):
         with pytest.raises(ValueError):

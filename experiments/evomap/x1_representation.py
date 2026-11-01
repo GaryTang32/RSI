@@ -1,32 +1,46 @@
 """X1-X3: how experience should be represented and combined (Strategy Genes paper [snip:SG][sec:mpx]).
 Run: python experiments/evomap/x1_representation.py [--llm sim|claude:haiku] [--seeds K] [--quick]
 """
+
 from __future__ import annotations
 
-from _common import cached_llm, fmt, live, paired, parse_args, save, summarize
-
 import numpy as np
+from _common import cached_llm, fmt, live, paired, parse_args, save, summarize
 
 from rsi.core import Evaluator
 from rsi.core.llm import estimate_tokens
-from rsi.domains.katas import (CLASS_GENES, COMPLEMENTARY_GENES, CONFLICTING_GENES, FAILURE_LOGS, KATAS,
-                               KataSimSolver, KatasDomain, seed_harness)
+from rsi.domains.katas import (
+    CLASS_GENES,
+    COMPLEMENTARY_GENES,
+    CONFLICTING_GENES,
+    FAILURE_LOGS,
+    KATAS,
+    KatasDomain,
+    KataSimSolver,
+    seed_harness,
+)
 from rsi.evomap import render_gene, render_skill
 from rsi.evomap.prompts import truncate_tokens
 
 FULL_CARD = ("keywords", "summary", "strategy", "avoid")
 STRATEGY = ("keywords", "summary", "strategy")
-CARD_PARTS = {"gene": FULL_CARD, "keywords_only": ("keywords",), "keywords_summary": ("keywords", "summary"),
-              "keywords_summary_strategy": STRATEGY, "avoid_only": ("keywords", "avoid")}
+CARD_PARTS = {
+    "gene": FULL_CARD,
+    "keywords_only": ("keywords",),
+    "keywords_summary": ("keywords", "summary"),
+    "keywords_summary_strategy": STRATEGY,
+    "avoid_only": ("keywords", "avoid"),
+}
 SECOND_GENE = {"two_complementary": COMPLEMENTARY_GENES, "two_conflicting": CONFLICTING_GENES}
-GROUPS = {"X1": ["none", "gene", "skill", "skill_fragment", "keywords_only", "keywords_summary",
-                 "keywords_summary_strategy"],
-          "X2": ["none", "keywords_summary_strategy", "avoid_only", "gene", "strategy_appended_log"],
-          "X3": ["gene", "two_complementary", "two_conflicting"]}
+GROUPS = {
+    "X1": ["none", "gene", "skill", "skill_fragment", "keywords_only", "keywords_summary", "keywords_summary_strategy"],
+    "X2": ["none", "keywords_summary_strategy", "avoid_only", "gene", "strategy_appended_log"],
+    "X3": ["gene", "two_complementary", "two_conflicting"],
+}
 
 
 def card(g, parts=FULL_CARD, **kw) -> str:
-    return render_gene(g, parts, show_id=False, **kw)   # ids can carry content; keep ablations clean
+    return render_gene(g, parts, show_id=False, **kw)  # ids can carry content; keep ablations clean
 
 
 def arm_texts(arm: str, cls: str) -> dict:
@@ -74,12 +88,23 @@ def main():
     summ = {a: {**summarize([res[a][i] for i in ids]), "injected_tokens": toks[a]} for a in arms}
     vs_none = {a: paired([res["none"][i] for i in ids], [res[a][i] for i in ids]) for a in arms if a != "none"}
     vs_gene = {a: paired([res["gene"][i] for i in ids], [res[a][i] for i in ids]) for a in arms if a != "gene"}
-    out = {"config": {"llm": args.llm, "k": k, "n_katas": len(katas),
-                      "solver": "KataSimSolver (knobs)" if not live(args) else args.llm, "groups": GROUPS},
-           "per_task": res, "summary": summ, "paired_vs_none": vs_none, "paired_vs_gene": vs_gene}
+    out = {
+        "config": {
+            "llm": args.llm,
+            "k": k,
+            "n_katas": len(katas),
+            "solver": "KataSimSolver (knobs)" if not live(args) else args.llm,
+            "groups": GROUPS,
+        },
+        "per_task": res,
+        "summary": summ,
+        "paired_vs_none": vs_none,
+        "paired_vs_gene": vs_gene,
+    }
     m = {a: summ[a]["mean"] for a in arms}
     out["verdict"] = {
-        "X1_gene_ge_none": m["gene"] >= m["none"], "X1_gene_gt_skill": m["gene"] > m["skill"],
+        "X1_gene_ge_none": m["gene"] >= m["none"],
+        "X1_gene_gt_skill": m["gene"] > m["skill"],
         "X1_gene_gt_matched_fragment": m["gene"] > m["skill_fragment"],
         "X1_progressive": [m["keywords_only"], m["keywords_summary"], m["keywords_summary_strategy"]],
         "X2_avoid_only_ge_appended_log": m["avoid_only"] >= m["strategy_appended_log"],
@@ -90,11 +115,15 @@ def main():
         "paper_skill_below_none (49.9 < 51.0)": m["skill"] < m["none"],
         "paper_gene_above_none_and_skill (54.0)": m["gene"] > m["none"] and m["gene"] > m["skill"],
         "direction_matches_paper": m["skill"] < m["none"] < m["gene"],
-        "note": ("offline: the solver's response to guidance is a set of knobs, so these directions restate the knobs."
-                 " Only Gene > Skill matches the paper; the knobs give Skill >> none, the OPPOSITE sign to the"
-                 " paper's Skill (49.9) < none (51.0), so the paper's central claim that documentation-style guidance"
-                 " does not help is contradicted by the simulator, not supported. Run with --llm claude:haiku on a"
-                 " task set with headroom for evidence") if not live(args) else "live model",
+        "note": (
+            "offline: the solver's response to guidance is a set of knobs, so these directions restate the knobs."
+            " Only Gene > Skill matches the paper; the knobs give Skill >> none, the OPPOSITE sign to the"
+            " paper's Skill (49.9) < none (51.0), so the paper's central claim that documentation-style guidance"
+            " does not help is contradicted by the simulator, not supported. Run with --llm claude:haiku on a"
+            " task set with headroom for evidence"
+        )
+        if not live(args)
+        else "live model",
     }
     save("x1_representation" + ("" if not live(args) else "_live"), out, args.out)
     for a in arms:

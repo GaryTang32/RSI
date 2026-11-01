@@ -1,7 +1,8 @@
 """Write-only tracing helpers: shadow audits of new incumbents and the per-run ``eval`` payload."""
+
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ..core.artifact import Artifact
 
@@ -19,22 +20,30 @@ class TaskAuditMonitor:
     def splits(self) -> list[str]:
         return list(getattr(self.task, "audit_splits", ()) or ())
 
-    def observe(self, tracer, round: int, name: str, artifact: Artifact,
-                decision_score: Optional[float] = None) -> None:
+    def observe(self, tracer, round: int, name: str, artifact: Artifact, decision_score: float | None = None) -> None:
         if artifact.id in self.seen:
             return
         self.seen.add(artifact.id)
         aud = dict(self.task.audit(artifact, seed=self.seed) or {})
         self.cache[artifact.id] = dict(aud)
         truth = self.task.truth(artifact)
-        sealed: dict[str, Any] = {s: {"S": float(aud[s])} for s in self.splits
-                                  if s in aud and isinstance(aud[s], (int, float))}
+        sealed: dict[str, Any] = {
+            s: {"S": float(aud[s])} for s in self.splits if s in aud and isinstance(aud[s], (int, float))
+        }
         if truth is not None:
             sealed["truth"] = {"S": float(truth)}
         extra = {k: v for k, v in aud.items() if k not in sealed}
-        tracer.event("monitor", round, version=name, artifact=artifact.short_id, decision_score=decision_score,
-                     sealed=sealed, audit_extra=extra, metric_direction=getattr(self.task, "direction", "?"),
-                     note="shadow audit on hidden splits - never shown to the loop")
+        tracer.event(
+            "monitor",
+            round,
+            version=name,
+            artifact=artifact.short_id,
+            decision_score=decision_score,
+            sealed=sealed,
+            audit_extra=extra,
+            metric_direction=getattr(self.task, "direction", "?"),
+            note="shadow audit on hidden splits - never shown to the loop",
+        )
 
 
 class CachedAuditTask:
@@ -74,9 +83,17 @@ def make_monitor(task, *, seed: int = 0):
 def outcome_json(outcome, max_log: int = 1500) -> dict:
     if outcome is None:
         return {}
-    d = {"metric": outcome.metric, "memory_gb": outcome.memory_gb, "wall_s": round(outcome.wall_s, 3),
-         "seed": outcome.seed, "crashed": outcome.crashed, "crash_reason": outcome.crash_reason,
-         "killed": outcome.killed, "over_budget": outcome.over_budget, "summary_lines": outcome.summary}
+    d = {
+        "metric": outcome.metric,
+        "memory_gb": outcome.memory_gb,
+        "wall_s": round(outcome.wall_s, 3),
+        "seed": outcome.seed,
+        "crashed": outcome.crashed,
+        "crash_reason": outcome.crash_reason,
+        "killed": outcome.killed,
+        "over_budget": outcome.over_budget,
+        "summary_lines": outcome.summary,
+    }
     rec = getattr(outcome, "record", None)
     if rec:
         d["record"] = {k: v for k, v in rec.items() if k != "audit"}

@@ -1,4 +1,5 @@
 """ClaudeCLI stops the process on an account usage limit when RSI_EXIT_ON_USAGE_LIMIT is set."""
+
 import json
 import subprocess
 import sys
@@ -18,6 +19,7 @@ def test_usage_limit_exits_75(tmp_path):
     """)
     run = lambda env: subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
     import os
+
     base = {k: v for k, v in os.environ.items() if k != "RSI_EXIT_ON_USAGE_LIMIT"}
     assert run({**base, "RSI_EXIT_ON_USAGE_LIMIT": "1"}).returncode == 75
     off = run(base)

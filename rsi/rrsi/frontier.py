@@ -1,9 +1,9 @@
 """Frontier state (``frontier.json``: incumbent, S*, trajectory) and atomic JSON helpers."""
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 
 class Frontier:
@@ -34,7 +34,7 @@ def read_json(path: str | Path, default=None):
     return json.loads(p.read_text()) if p.exists() else default
 
 
-def write_json(path: str | Path, obj, indent: Optional[int] = 1) -> None:
+def write_json(path: str | Path, obj, indent: int | None = 1) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".tmp")

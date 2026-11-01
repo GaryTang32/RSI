@@ -1,4 +1,5 @@
 """Pre-evaluation checks: interface validation (fork-isolated smoke) and the optional leakage screen."""
+
 from __future__ import annotations
 
 import ast
@@ -11,21 +12,19 @@ import threading
 import time
 import traceback
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 from ..core import sandbox as _sandbox
 from ..core.artifact import Artifact
 from ..core.critic import LeakageCritic
 from ..core.llm import Usage
 
-try:   # the C function sets the mask before running pending handlers (signal's wrapper may run them first)
+try:  # the C function sets the mask before running pending handlers (signal's wrapper may run them first)
     from _signal import pthread_sigmask as _c_sigmask
 except ImportError:  # pragma: no cover - platforms without it never fork here
     _c_sigmask = None
 
 #: the pilot's UNIVERSAL_FORBIDDEN adapted to this store layout
-UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier",
-                       "/solution")
+UNIVERSAL_FORBIDDEN = ("results/", "test.json", "finalized.json", "frontier.json", "/tests", "verifier", "/solution")
 
 
 @dataclass
@@ -56,7 +55,7 @@ class InterfaceValidator:
         # All signals are blocked across the fork, so the child gets none until its own handlers are set. In the
         # parent the pipe and pid are stored, and the write end popped and closed, with no bytecode in between,
         # so a stop signal handled at any point leaves a cleanup that is idempotent and retried until done.
-        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])   # the current mask; a pending signal raises here, first
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])  # the current mask; a pending signal raises here, first
         fds: list[int] = []
         pids: list[int] = []
         done, err, deadline = False, None, 0.0
@@ -66,13 +65,13 @@ class InterfaceValidator:
             # extend() stores what the call returns from C, before any bytecode could run a signal handler
             fds.extend(itertools.chain.from_iterable(itertools.starmap(os.pipe, [()])))
             pids.extend(itertools.starmap(os.fork, [()]))
-            if pids[0] == 0:                                  # child
+            if pids[0] == 0:  # child
                 try:
                     self._child(domain, artifact, llm, fds[0], fds[1], mask)
                 finally:
                     os._exit(1)
-            _pop_close(fds)                                   # the write end
-            _c_sigmask(signal.SIG_SETMASK, mask)   # sets the mask, then runs what is pending
+            _pop_close(fds)  # the write end
+            _c_sigmask(signal.SIG_SETMASK, mask)  # sets the mask, then runs what is pending
             r = fds[0]
             deadline = time.monotonic() + self.timeout_s
             while not done:
@@ -83,15 +82,15 @@ class InterfaceValidator:
                 if not ready:
                     break
                 chunk = os.read(r, 1 << 16)
-                if not chunk:                             # child exited (or died) without "done"
+                if not chunk:  # child exited (or died) without "done"
                     break
                 buf += chunk
                 while len(buf) >= 8 and len(buf) >= 8 + int.from_bytes(buf[:8], "big"):
                     n = int.from_bytes(buf[:8], "big")
-                    msg, buf = pickle.loads(buf[8:8 + n]), buf[8 + n:]
-                    if msg[0] == "usage":                 # ("usage", meter index, role, usage dict)
+                    msg, buf = pickle.loads(buf[8 : 8 + n]), buf[8 + n :]
+                    if msg[0] == "usage":  # ("usage", meter index, role, usage dict)
                         _apply_one(llm, msg[1], msg[2], msg[3])
-                    elif msg[0] == "call":                # ("call", +1 started | -1 finished)
+                    elif msg[0] == "call":  # ("call", +1 started | -1 finished)
                         inflight[0] = inflight.get(0, 0) + msg[1]
                     elif msg[0] == "done":
                         done, err = True, msg[1]
@@ -131,7 +130,7 @@ class InterfaceValidator:
             os.close(r)
             signal.signal(signal.SIGTERM, on_signal)
             signal.signal(signal.SIGINT, on_signal)
-            signal.pthread_sigmask(signal.SIG_SETMASK, mask)   # a signal held since the fork arrives now
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)  # a signal held since the fork arrives now
             lock = threading.Lock()
 
             def send(msg) -> None:
@@ -183,10 +182,11 @@ def _child_exit() -> None:
 
 def _stop_child(pid: int, grace_s: float = 2.0) -> None:
     """SIGTERM a smoke child until it exits; after ``grace_s`` kill its sandboxes and SIGKILL it."""
+
     def reaped() -> bool:
         try:
             return bool(os.waitpid(pid, os.WNOHANG)[0])
-        except ChildProcessError:                  # reaped already, by an earlier (interrupted) stop
+        except ChildProcessError:  # reaped already, by an earlier (interrupted) stop
             return True
 
     end, resend = time.monotonic() + grace_s, 0.0
@@ -202,7 +202,7 @@ def _stop_child(pid: int, grace_s: float = 2.0) -> None:
             except ChildProcessError:
                 pass
             return
-        if time.monotonic() >= resend:   # again now and then: one may have landed before the child could act on it
+        if time.monotonic() >= resend:  # again now and then: one may have landed before the child could act on it
             try:
                 os.kill(pid, signal.SIGTERM)
             except ProcessLookupError:
@@ -233,7 +233,7 @@ def _stream_usage(llm, send) -> None:
             send(("usage", _i, role, asdict(usage)))
 
         try:
-            m.add = add                               # the child's copy only (fork), never the parent's
+            m.add = add  # the child's copy only (fork), never the parent's
         except AttributeError:
             pass
     if llm is not None and hasattr(llm, "complete"):
@@ -265,20 +265,24 @@ class LeakageScreen:
     forbidden: list[str] = field(default_factory=list)
     universal: tuple[str, ...] = UNIVERSAL_FORBIDDEN
     max_literal_strings: int = 25
-    llm: Optional[object] = None
+    llm: object | None = None
     domain_brief: str = ""
     n_screened: int = 0
     n_rejected: int = 0
 
     def __post_init__(self) -> None:
-        self.critic = LeakageCritic(terms=list(self.forbidden) + list(self.universal), llm=self.llm,
-                                    domain_brief=self.domain_brief, min_term_len=4)
+        self.critic = LeakageCritic(
+            terms=list(self.forbidden) + list(self.universal),
+            llm=self.llm,
+            domain_brief=self.domain_brief,
+            min_term_len=4,
+        )
 
     @classmethod
-    def for_domain(cls, domain, llm=None) -> "LeakageScreen":
+    def for_domain(cls, domain, llm=None) -> LeakageScreen:
         return cls(forbidden=list(domain.leakage_terms("evolve")), llm=llm, domain_brief=domain.describe())
 
-    def check(self, artifact: Artifact, base: Optional[Artifact] = None) -> Optional[str]:
+    def check(self, artifact: Artifact, base: Artifact | None = None) -> str | None:
         """Return a rejection reason or None."""
         self.n_screened += 1
         v = self.critic.screen((base or Artifact({})).diff(artifact))

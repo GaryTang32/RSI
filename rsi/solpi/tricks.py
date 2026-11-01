@@ -1,4 +1,5 @@
 """Negative controls for the SoL-Pi protocol: environment-specific tricks, do-less shortcuts, duds, family M."""
+
 from __future__ import annotations
 
 import re
@@ -19,14 +20,15 @@ class TailTrim(Extension):
         rt.on("tool_result", self._on)
 
     def _keep(self, lines: list[str]) -> list[str]:
-        return lines[-self.lines:]
+        return lines[-self.lines :]
 
     def _on(self, ev: ToolResultEvent, rt: AgentRuntime):
         if ev.call.name != "bash" or len(ev.result.content.encode()) <= self.min_bytes:
             return None
         self.stats["trimmed"] += 1
-        return ToolResult("\n".join(self._keep(ev.result.content.splitlines())), ev.result.is_error,
-                          dict(ev.result.details))
+        return ToolResult(
+            "\n".join(self._keep(ev.result.content.splitlines())), ev.result.is_error, dict(ev.result.details)
+        )
 
 
 class HeadTrim(TailTrim):
@@ -60,8 +62,10 @@ class NoVerify(Extension):
     """Do-less shortcut: tell the agent not to re-run checks after edits."""
 
     name = "no_verify"
-    DIRECTIVE = "[directive:no_verify] Efficiency rule: do not re-run tests or checks after edits; finish as soon as " \
-                "the fixes are written."
+    DIRECTIVE = (
+        "[directive:no_verify] Efficiency rule: do not re-run tests or checks after edits; finish as soon as "
+        "the fixes are written."
+    )
 
     def register(self, rt: AgentRuntime) -> None:
         rt.system_prompt = rt.system_prompt + "\n" + self.DIRECTIVE
@@ -111,8 +115,10 @@ class FailBeforePassAfter(Extension):
     """M12 directive: judge each fix by a check that fails before it and passes after it."""
 
     name = "fail_before_pass_after"
-    DIRECTIVE = ("[directive:fail_before_pass_after] Judge every fix with a check that fails before the fix and "
-                 "passes after it; report both outcomes.")
+    DIRECTIVE = (
+        "[directive:fail_before_pass_after] Judge every fix with a check that fails before the fix and "
+        "passes after it; report both outcomes."
+    )
 
     def register(self, rt: AgentRuntime) -> None:
         rt.system_prompt = rt.system_prompt + "\n" + self.DIRECTIVE

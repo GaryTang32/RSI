@@ -1,4 +1,5 @@
 """Unified API, CLI and trace/inspector (offline)."""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +10,7 @@ import rsi
 from rsi.api import METHODS, make_config, method_module, recommend
 from rsi.cli import main as cli_main
 from rsi.core import Evaluator
+from rsi.core.tasks import SealedSplitError
 from rsi.domains.agentqa import AgentQADomain, SimModel, make_suite
 from rsi.rrsi.mocks import AgentQAMockLLM
 from rsi.trace import RunTracer, ShadowMonitor, inspect, load_trace, monitor_table, render_markdown
@@ -46,8 +48,12 @@ def test_cli_methods_and_improve(tmp_path, capsys):
     assert cli_main(["methods"]) == 0
     assert "rrsi" in capsys.readouterr().out
     out = tmp_path / "run"
-    assert cli_main(["improve", "--method", "rrsi", "--problem", "agentqa", "--llm", "sim", "--out", str(out),
-                     "--set", "T=2"]) == 0
+    assert (
+        cli_main(
+            ["improve", "--method", "rrsi", "--problem", "agentqa", "--llm", "sim", "--out", str(out), "--set", "T=2"]
+        )
+        == 0
+    )
     assert (out / "transfer.json").exists() and (out / "summary.json").exists()
     assert set(json.loads((out / "transfer.json").read_text())["splits"]) >= {"evolve", "holdout", "ood"}
 
@@ -72,7 +78,7 @@ def test_tracer_monitor_and_inspector(tmp_path):
     tr.gate(1, "c1", True, "ok", math={"dS": 0.1})
     tr.decision(1, kept="c1", incumbent_before="H0", incumbent_after="c1")
     tr.kept(1, "c1", new, decision_score=0.5)
-    tr.kept(1, "c1", new, decision_score=0.5)          # same artifact: monitored once
+    tr.kept(1, "c1", new, decision_score=0.5)  # same artifact: monitored once
     events = load_trace(tmp_path)
     assert [e["kind"] for e in events].count("monitor") == 1
     rows = monitor_table(events)
@@ -80,7 +86,7 @@ def test_tracer_monitor_and_inspector(tmp_path):
     md = render_markdown(events)
     assert "Round 1" in md and "Shadow monitor" in md and "format line" in md
     assert inspect(tmp_path).endswith("TRACE.md")
-    with pytest.raises(Exception):                     # the loop's own evaluator still refuses sealed splits
+    with pytest.raises(SealedSplitError):  # the loop's own evaluator still refuses sealed splits
         ev.evaluate(seed, "holdout")
 
 

@@ -1,4 +1,5 @@
 """Stage-B audit regressions for GEPA: the infra-outage stopper and the independent stage-B replay."""
+
 import functools
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def test_sustained_outage_stops_the_run(agentqa):
     res = agentqa(_outage)
     assert res.stop_reason == "infra_outage"
     assert [e.get("event") for e in res.state.trace][-3:] == ["skip_infra_error"] * 3
-    assert res.meta["rollouts"] < 400                  # the rest of the budget is not burnt on a dead backend
+    assert res.meta["rollouts"] < 400  # the rest of the budget is not burnt on a dead backend
     old = agentqa(_outage, max_consecutive_infra_failures=None)
     assert old.stop_reason == "max_metric_calls" and old.meta["rollouts"] >= 400
     assert sum(e.get("event") == "skip_infra_error" for e in old.state.trace) > 10
@@ -51,15 +52,19 @@ def test_outage_stopper_is_only_a_safety_net(agentqa):
     b = agentqa(max_metric_calls=120, max_consecutive_infra_failures=None)
     assert a.stop_reason == b.stop_reason == "max_metric_calls"
     assert a.trajectory == b.trajectory and a.best.id == b.best.id
-    with pytest.raises(ValueError):                    # it never counts as the run's stop condition
+    with pytest.raises(ValueError):  # it never counts as the run's stop condition
         agentqa(max_metric_calls=None)
 
 
 def test_outage_stopper_counts_reflection_llm_errors():
     class Eng:
         class state:
-            trace = [{"event": "accepted"}, {"event": "no_proposal", "rejected_outputs": {"a": "llm error: limit"}},
-                     {"event": "skip_infra_error"}, {"event": "skip_infra_error"}]
+            trace = [
+                {"event": "accepted"},
+                {"event": "no_proposal", "rejected_outputs": {"a": "llm error: limit"}},
+                {"event": "skip_infra_error"},
+                {"event": "skip_infra_error"},
+            ]
 
     assert ConsecutiveInfraFailures(3)(Eng) == "infra_outage"
     Eng.state.trace[1] = {"event": "no_proposal", "rejected_outputs": {"a": "unparseable"}}
@@ -70,11 +75,17 @@ def test_outage_stopper_counts_reflection_llm_errors():
 def test_stageb_replay_reproduces_every_step(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(EXPERIMENTS))
     import validate_gepa_stageb as sb
+
     if not sb.HAVE_REF:
         pytest.skip("reference gepa-ai/gepa sources not available")
     d = make_domain(seed=0, feedback="rich")
-    run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world),
-        config=Config(max_metric_calls=700, seed=0, use_merge=True), out_dir=tmp_path / "rw")
+    run(
+        d,
+        d.seed_artifact(),
+        llm_propose=RuleWorldReflectionLM(d.world),
+        config=Config(max_metric_calls=700, seed=0, use_merge=True),
+        out_dir=tmp_path / "rw",
+    )
     a = sb.audit("ruleworld_merge_offline", tmp_path / "rw")
     bad = {k: v for k, v in a["checks"].items() if v.split("/")[0] != v.split("/")[1]}
     assert not bad, bad

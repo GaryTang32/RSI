@@ -1,4 +1,5 @@
 """Validation: command policy, executors, the validation runner and the vacuity detector (spec §4.9, §9.2)."""
+
 from __future__ import annotations
 
 import ast
@@ -13,10 +14,10 @@ import sys
 import tempfile
 import threading
 import types
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Sequence
 
 from .assets import ValidationReport
 
@@ -34,7 +35,7 @@ class PolicyCheck:
     ok: bool
     reason: str = ""
     argv: list[str] = field(default_factory=list)
-    script: Optional[str] = None
+    script: str | None = None
     info_only: bool = False
 
 
@@ -43,18 +44,22 @@ class CommandPolicy:
     """No shell, an allowlisted executable, no eval-style flags, and a relative script argument unless info-only."""
 
     executables: tuple = ("python", "python3")
-    blocked_flags: dict = field(default_factory=lambda: {
-        "python": ("-c", "-i", "-m", "-X", "-W"), "python3": ("-c", "-i", "-m", "-X", "-W"),
-        "pytest": ("-p", "-c", "--pyargs", "--rootdir", "--confcutdir")})
-    internal: tuple = ()          # in-process commands handled by the runner (e.g. "rsi-taskcheck")
+    blocked_flags: dict = field(
+        default_factory=lambda: {
+            "python": ("-c", "-i", "-m", "-X", "-W"),
+            "python3": ("-c", "-i", "-m", "-X", "-W"),
+            "pytest": ("-p", "-c", "--pyargs", "--rootdir", "--confcutdir"),
+        }
+    )
+    internal: tuple = ()  # in-process commands handled by the runner (e.g. "rsi-taskcheck")
 
     @classmethod
-    def faithful(cls) -> "CommandPolicy":
+    def faithful(cls) -> CommandPolicy:
         """Port of Evolver's node-only allowlist."""
         return cls(executables=("python", "python3"))
 
     @classmethod
-    def safe(cls, internal: Sequence[str] = ("rsi-taskcheck",)) -> "CommandPolicy":
+    def safe(cls, internal: Sequence[str] = ("rsi-taskcheck",)) -> CommandPolicy:
         return cls(executables=("python", "python3", "pytest"), internal=tuple(internal))
 
     def check(self, cmd: str) -> PolicyCheck:
@@ -144,8 +149,25 @@ class SubprocessExecutor(_MemoExecutor):
         return out
 
 
-_SAFE_IMPORTS = {"math", "re", "json", "sys", "os", "string", "collections", "itertools", "functools", "datetime",
-                 "unicodedata", "decimal", "fractions", "random", "time", "typing", "dataclasses"}
+_SAFE_IMPORTS = {
+    "math",
+    "re",
+    "json",
+    "sys",
+    "os",
+    "string",
+    "collections",
+    "itertools",
+    "functools",
+    "datetime",
+    "unicodedata",
+    "decimal",
+    "fractions",
+    "random",
+    "time",
+    "typing",
+    "dataclasses",
+}
 
 
 class InProcessExecutor(_MemoExecutor):
@@ -209,7 +231,7 @@ class InProcessExecutor(_MemoExecutor):
 
 @dataclass
 class ValidationResult:
-    ok: bool                         # the runner's verdict (faithful: empty / all skipped = ok)
+    ok: bool  # the runner's verdict (faithful: empty / all skipped = ok)
     report: ValidationReport
     n_run: int = 0
     n_passed: int = 0
@@ -227,9 +249,15 @@ class ValidationResult:
 class ValidationRunner:
     """``faithful``: missing scripts skipped, empty list ok, 2 retries; ``safe``: no skips, an empty list fails."""
 
-    def __init__(self, policy: Optional[CommandPolicy] = None, executor: Optional[Callable] = None, *,
-                 mode: str = "faithful", retries: Optional[int] = None,
-                 internal: Optional[dict[str, Callable]] = None) -> None:
+    def __init__(
+        self,
+        policy: CommandPolicy | None = None,
+        executor: Callable | None = None,
+        *,
+        mode: str = "faithful",
+        retries: int | None = None,
+        internal: dict[str, Callable] | None = None,
+    ) -> None:
         self.mode = mode
         self.policy = policy or (CommandPolicy.faithful() if mode == "faithful" else CommandPolicy.safe())
         self.executor = executor or SubprocessExecutor()
@@ -237,8 +265,16 @@ class ValidationRunner:
         self.internal = dict(internal or {})
         self._n = 0
 
-    def run(self, specs: Sequence[str], files: Mapping[str, str], *, gene_id: str = "", context=None,
-            signer: str = "local", report_id: Optional[str] = None) -> ValidationResult:
+    def run(
+        self,
+        specs: Sequence[str],
+        files: Mapping[str, str],
+        *,
+        gene_id: str = "",
+        context=None,
+        signer: str = "local",
+        report_id: str | None = None,
+    ) -> ValidationResult:
         self._n += 1
         rows: list[dict] = []
         ok, blocked = True, False
@@ -249,8 +285,16 @@ class ValidationRunner:
         for cmd in specs:
             pc = self.policy.check(cmd)
             if not pc.ok:
-                rows.append({"command": cmd, "ok": False, "exit": None, "blocked": True, "stdout": "",
-                             "stderr": f"BLOCKED: {pc.reason}"})
+                rows.append(
+                    {
+                        "command": cmd,
+                        "ok": False,
+                        "exit": None,
+                        "blocked": True,
+                        "stdout": "",
+                        "stderr": f"BLOCKED: {pc.reason}",
+                    }
+                )
                 ok, blocked = False, True
                 n_run += 1
                 break
@@ -259,8 +303,16 @@ class ValidationRunner:
                 res = ExecOutcome(code, out)
             else:
                 if pc.script and pc.script not in files and self.mode == "faithful":
-                    rows.append({"command": cmd, "ok": True, "exit": None, "skipped": True, "stdout": "",
-                                 "stderr": "Skipping validation command (script not in repoRoot)"})
+                    rows.append(
+                        {
+                            "command": cmd,
+                            "ok": True,
+                            "exit": None,
+                            "skipped": True,
+                            "stdout": "",
+                            "stderr": "Skipping validation command (script not in repoRoot)",
+                        }
+                    )
                     n_skip += 1
                     continue
                 res = self.executor(pc.argv, files)
@@ -270,15 +322,28 @@ class ValidationRunner:
                     res = self.executor(pc.argv, files)
             n_run += 1
             good = res.exit == 0
-            rows.append({"command": cmd, "ok": good, "exit": res.exit, "stdout": res.stdout[-4000:],
-                         "stderr": res.stderr[-4000:]})
+            rows.append(
+                {
+                    "command": cmd,
+                    "ok": good,
+                    "exit": res.exit,
+                    "stdout": res.stdout[-4000:],
+                    "stderr": res.stderr[-4000:],
+                }
+            )
             if not good:
                 ok = False
-                break          # first failure stops the run
+                break  # first failure stops the run
             n_pass += 1
         overall = bool(n_run) and all(r.get("ok") for r in rows if not r.get("skipped"))
-        rep = ValidationReport(id=report_id or f"vr_{gene_id or 'x'}_{self._n:06d}", gene_id=gene_id, commands=rows,
-                               overall_ok=overall, signer=signer, meta={"runner_mode": self.mode, "runner_ok": ok})
+        rep = ValidationReport(
+            id=report_id or f"vr_{gene_id or 'x'}_{self._n:06d}",
+            gene_id=gene_id,
+            commands=rows,
+            overall_ok=overall,
+            signer=signer,
+            meta={"runner_mode": self.mode, "runner_ok": ok},
+        )
         return ValidationResult(ok, rep.stamp(), n_run, n_pass, n_skip, blocked)
 
 
@@ -316,7 +381,7 @@ def _script_findings(src: str) -> list[str]:
 class DiscriminativeResult:
     pass_before: bool
     pass_after: bool
-    kill_rate: Optional[float] = None
+    kill_rate: float | None = None
     n_mutants: int = 0
 
     @property
@@ -324,29 +389,49 @@ class DiscriminativeResult:
         return self.pass_after and not self.pass_before
 
     def to_dict(self) -> dict:
-        return {"pass_before": self.pass_before, "pass_after": self.pass_after, "discriminative": self.discriminative,
-                "kill_rate": self.kill_rate, "n_mutants": self.n_mutants}
+        return {
+            "pass_before": self.pass_before,
+            "pass_after": self.pass_after,
+            "discriminative": self.discriminative,
+            "kill_rate": self.kill_rate,
+            "n_mutants": self.n_mutants,
+        }
 
 
 @dataclass
 class VacuityVerdict:
     vacuous: bool
     reasons: list[str] = field(default_factory=list)
-    lint: dict = field(default_factory=dict)          # command -> findings
-    discriminative: Optional[DiscriminativeResult] = None
+    lint: dict = field(default_factory=dict)  # command -> findings
+    discriminative: DiscriminativeResult | None = None
 
     def to_dict(self) -> dict:
-        return {"vacuous": self.vacuous, "reasons": self.reasons, "lint": self.lint,
-                "discriminative": self.discriminative.to_dict() if self.discriminative else None}
+        return {
+            "vacuous": self.vacuous,
+            "reasons": self.reasons,
+            "lint": self.lint,
+            "discriminative": self.discriminative.to_dict() if self.discriminative else None,
+        }
 
 
-_MUT_OPS = [(r"\+", "-"), (r"(?<![<>=!])-(?!=)", "+"), (r"<=", "<"), (r">=", ">"), (r"(?<![<>=!])<(?!=)", "<="),
-            (r"(?<![<>=!])>(?!=)", ">="), (r"==", "!="), (r"!=", "=="), (r"\bTrue\b", "False"), (r"\bFalse\b", "True"),
-            (r"\breturn\s+(?!None\b)(.+)$", "return None")]
+_MUT_OPS = [
+    (r"\+", "-"),
+    (r"(?<![<>=!])-(?!=)", "+"),
+    (r"<=", "<"),
+    (r">=", ">"),
+    (r"(?<![<>=!])<(?!=)", "<="),
+    (r"(?<![<>=!])>(?!=)", ">="),
+    (r"==", "!="),
+    (r"!=", "=="),
+    (r"\bTrue\b", "False"),
+    (r"\bFalse\b", "True"),
+    (r"\breturn\s+(?!None\b)(.+)$", "return None"),
+]
 
 
-def make_mutants(before: Mapping[str, str], after: Mapping[str, str], max_n: int = 6,
-                 exclude: Sequence[str] = ()) -> list[dict[str, str]]:
+def make_mutants(
+    before: Mapping[str, str], after: Mapping[str, str], max_n: int = 6, exclude: Sequence[str] = ()
+) -> list[dict[str, str]]:
     """Mutants of the changed lines of ``after``'s Python files, skipping ``exclude`` (the check scripts)."""
     out: list[dict[str, str]] = []
     seen = set()
@@ -362,7 +447,7 @@ def make_mutants(before: Mapping[str, str], after: Mapping[str, str], max_n: int
                 new = re.sub(pat, rep, line, count=1)
                 if new != line and (name, i, new) not in seen:
                     seen.add((name, i, new))
-                    out.append({**after, name: "\n".join([*lines[:i], new, *lines[i + 1:]]) + "\n"})
+                    out.append({**after, name: "\n".join([*lines[:i], new, *lines[i + 1 :]]) + "\n"})
                     if len(out) >= max_n:
                         return out
     return out
@@ -371,8 +456,14 @@ def make_mutants(before: Mapping[str, str], after: Mapping[str, str], max_n: int
 class VacuityDetector:
     """Static lint plus the discriminative check ``V(W1) = pass and V(W0) = fail`` (+ mutation kill rate)."""
 
-    def __init__(self, runner: Optional[ValidationRunner] = None, *, lint_policy: str = "any",
-                 min_kill_rate: float = 0.0, n_mutants: int = 6) -> None:
+    def __init__(
+        self,
+        runner: ValidationRunner | None = None,
+        *,
+        lint_policy: str = "any",
+        min_kill_rate: float = 0.0,
+        n_mutants: int = 6,
+    ) -> None:
         self.runner = runner or ValidationRunner(mode="safe")
         self.lint_policy = lint_policy
         self.min_kill_rate = min_kill_rate
@@ -419,8 +510,15 @@ class VacuityDetector:
                 w0[pc.script] = after[pc.script]
         return w0
 
-    def discriminate(self, specs: Sequence[str], before: Mapping[str, str], after: Mapping[str, str], *,
-                     mutants: bool = True, context=None) -> DiscriminativeResult:
+    def discriminate(
+        self,
+        specs: Sequence[str],
+        before: Mapping[str, str],
+        after: Mapping[str, str],
+        *,
+        mutants: bool = True,
+        context=None,
+    ) -> DiscriminativeResult:
         before = self.with_tests(specs, before, after)
         # W0 is also "without the gene" for internal task checks that read the gene from the context
         ctx0 = {**context, "gene": None} if isinstance(context, dict) else context
@@ -435,9 +533,17 @@ class VacuityDetector:
                 res.kill_rate, res.n_mutants = killed / len(ms), len(ms)
         return res
 
-    def verdict(self, specs: Sequence[str], before: Mapping[str, str], after: Mapping[str, str], *,
-                use_lint: bool = True, use_discriminative: bool = True, mutants: bool = True,
-                context=None) -> VacuityVerdict:
+    def verdict(
+        self,
+        specs: Sequence[str],
+        before: Mapping[str, str],
+        after: Mapping[str, str],
+        *,
+        use_lint: bool = True,
+        use_discriminative: bool = True,
+        mutants: bool = True,
+        context=None,
+    ) -> VacuityVerdict:
         reasons: list[str] = []
         lint: dict = {}
         if use_lint:

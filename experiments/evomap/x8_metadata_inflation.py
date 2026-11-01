@@ -1,21 +1,40 @@
 """X8: GDI is manipulable through self-reported metadata (blast radius dominates); SafeHub's rank is not.
 Run: python experiments/evomap/x8_metadata_inflation.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
+
 from __future__ import annotations
 
 import copy
 import random
 
-from _common import (DEFAULT_MIX, agent_config, live, make_hub, make_world, mean_or_nan, parse_args, pmap,
-                     population_specs, print_stats, save, simulator, summarize_columns)
-
 import numpy as np
+from _common import (
+    DEFAULT_MIX,
+    agent_config,
+    live,
+    make_hub,
+    make_world,
+    mean_or_nan,
+    parse_args,
+    pmap,
+    population_specs,
+    print_stats,
+    save,
+    simulator,
+    summarize_columns,
+)
 
 from rsi.evomap import AssetRecord, Gene
 from rsi.evomap.population import inflate
 
-FIELDS = {"blast": ("blast",), "confidence": ("confidence",), "streak": ("streak",), "score": ("score",),
-          "report": ("report",), "all": ("blast", "confidence", "streak", "score", "report")}
+FIELDS = {
+    "blast": ("blast",),
+    "confidence": ("confidence",),
+    "streak": ("streak",),
+    "score": ("score",),
+    "report": ("report",),
+    "all": ("blast", "confidence", "streak", "score", "report"),
+}
 
 
 def grow(world, hub_kind: str, seed: int, n: int, epochs: int):
@@ -37,12 +56,14 @@ def honest_records(sim, hub, rng: random.Random, k: int = 40) -> list[AssetRecor
             if g.id in caps and not g.id.startswith("gene_auto_"):
                 b = ag.make_bundle(g, caps[g.id], None, {"overall_ok": True}, {}, {})
                 c = b.capsule
-                c["blast_radius"] = {"files": 1 + int(rng.expovariate(1 / 2.0)),
-                                     "lines": max(5, int(rng.lognormvariate(np.log(80), 0.8)))}
+                c["blast_radius"] = {
+                    "files": 1 + int(rng.expovariate(1 / 2.0)),
+                    "lines": max(5, int(rng.lognormvariate(np.log(80), 0.8))),
+                }
                 c["confidence"] = round(rng.uniform(0.6, 0.95), 2)
                 c["success_streak"] = 1 + int(rng.expovariate(1 / 0.7))
                 c["outcome"] = {"status": "success", "score": round(rng.uniform(0.7, 0.95), 2)}
-                if all(o.asset_id != b.gene.get("asset_id") for o in out):   # one record per gene content
+                if all(o.asset_id != b.gene.get("asset_id") for o in out):  # one record per gene content
                     out.append(AssetRecord(b.gene.get("asset_id"), b, name, "promoted", hub.epoch))
     rng.shuffle(out)
     return out[:k]
@@ -84,8 +105,10 @@ def naive_gdi(world, seed: int, n: int, epochs: int) -> tuple[dict, int]:
     out["gdi_optimal"] = mean_or_nan([a for a, _ in deg])
     out["gdi_optimal_blast_degraded"] = mean_or_nan([b for _, b in deg])
     comp = [hub.ranker.components(r, hub.epoch) for r in served]
-    out["intrinsic_var_share"] = float(np.var([0.35 * c["I"] for c in comp]) /
-                                       max(1e-12, np.var([hub.ranker.score(r, hub.epoch) / 100 for r in served])))
+    out["intrinsic_var_share"] = float(
+        np.var([0.35 * c["I"] for c in comp])
+        / max(1e-12, np.var([hub.ranker.score(r, hub.epoch) / 100 for r in served]))
+    )
     return out, len(honest)
 
 
@@ -101,7 +124,7 @@ def safehub_rank(world, seed: int, n: int, epochs: int) -> tuple[dict, int]:
             d_rank.append(sh.rank_score(inflated(r, fields=fields)) - s0)
             b = inflate(r.bundle, fields=fields)
             g = Gene.from_dict(b.gene)
-            g.id = g.id + "_inflated"          # evades the exact-duplicate check
+            g.id = g.id + "_inflated"  # evades the exact-duplicate check
             b.gene = g.stamp().to_dict()
             resub.append(sh.publish(b, "x8_inflator").status)
         out[f"safe_drank_{f}"] = float(np.mean(np.abs(d_rank))) if d_rank else float("nan")
@@ -125,17 +148,23 @@ def main():
     gd = {f: summ[f"gdi_dpct_{f}"]["mean"] for f in FIELDS if f != "all"}
     largest = max(gd, key=lambda f: gd[f] if gd[f] is not None else -1)
     safe_n = summ["safe_drank_all"]["n"]
-    out = {"config": {"llm": args.llm, "seeds": args.seeds, "fields": FIELDS}, "raw": rows, "summary": summ,
-           "verdict": {"gdi_moved_by_inflation": summ["gdi_dpct_all"]["lo"] > 0,
-                       "largest_single_lever": largest,
-                       "blast_is_largest_lever": largest == "blast",
-                       "blast_degradation_drop": [summ["gdi_optimal"]["mean"],
-                                                  summ["gdi_optimal_blast_degraded"]["mean"]],
-                       "safehub_rank_unchanged": all(summ[f"safe_drank_{f}"]["mean"] == 0 for f in FIELDS)
-                       if safe_n else None,
-                       "safehub_resubmissions_never_gain_rank":
-                           all(summ[f"safe_resubmit_new_rank_share_{f}"]["mean"] == 0 for f in FIELDS)
-                           if safe_n else None}}
+    out = {
+        "config": {"llm": args.llm, "seeds": args.seeds, "fields": FIELDS},
+        "raw": rows,
+        "summary": summ,
+        "verdict": {
+            "gdi_moved_by_inflation": summ["gdi_dpct_all"]["lo"] > 0,
+            "largest_single_lever": largest,
+            "blast_is_largest_lever": largest == "blast",
+            "blast_degradation_drop": [summ["gdi_optimal"]["mean"], summ["gdi_optimal_blast_degraded"]["mean"]],
+            "safehub_rank_unchanged": all(summ[f"safe_drank_{f}"]["mean"] == 0 for f in FIELDS) if safe_n else None,
+            "safehub_resubmissions_never_gain_rank": all(
+                summ[f"safe_resubmit_new_rank_share_{f}"]["mean"] == 0 for f in FIELDS
+            )
+            if safe_n
+            else None,
+        },
+    }
     save("x8_metadata_inflation", out, args.out)
     print_stats(summ, 40)
     print("verdict:", out["verdict"])

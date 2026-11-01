@@ -1,4 +1,5 @@
 """Helpers shared by the Meta-Harness experiments (M1-M10); the SoL-Pi scripts do not use this file."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,6 @@ import shutil
 from pathlib import Path
 
 import numpy as np
-
 from _common import RESULTS
 
 
@@ -21,11 +21,18 @@ def session_stats(store) -> dict:
     rows = []
     for p in sorted(store.sessions_dir().glob("iter*/meta.json")):
         m = json.loads(p.read_text())
-        rows.append({"read": m.get("n_files_read", 0), "scanned": m.get("n_files_scanned", 0),
-                     "traces": (m.get("files_read_by_kind") or {}).get("traces", 0),
-                     "trace_cands": len({f.split("/")[1] for f in m.get("files_read", []) if "/traces/" in f}),
-                     "view_chars": m.get("view_chars", 0), "read_chars": m.get("read_chars", 0),
-                     "scanned_chars": m.get("scanned_chars", 0), "reports": len(m.get("reports_written", []))})
+        rows.append(
+            {
+                "read": m.get("n_files_read", 0),
+                "scanned": m.get("n_files_scanned", 0),
+                "traces": (m.get("files_read_by_kind") or {}).get("traces", 0),
+                "trace_cands": len({f.split("/")[1] for f in m.get("files_read", []) if "/traces/" in f}),
+                "view_chars": m.get("view_chars", 0),
+                "read_chars": m.get("read_chars", 0),
+                "scanned_chars": m.get("scanned_chars", 0),
+                "reports": len(m.get("reports_written", [])),
+            }
+        )
     if not rows:
         return {}
     return {f"{k}_per_iter": float(np.mean([r[k] for r in rows])) for k in rows[0]}

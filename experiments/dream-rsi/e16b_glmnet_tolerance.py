@@ -1,7 +1,8 @@
 """E16b: R glmnet at thresholds that pass the 1e-6 gate vs the App. C solver's E16 time (does not change Q13).
 
-    python experiments/dream-rsi/e16b_glmnet_tolerance.py --heldout <dir> --rscript <Rscript>
+python experiments/dream-rsi/e16b_glmnet_tolerance.py --heldout <dir> --rscript <Rscript>
 """
+
 import argparse
 import json
 import math
@@ -9,6 +10,7 @@ import time
 from pathlib import Path
 
 from e16_lasso_paper_solvers import RESULTS, glmnet_r
+
 from rsi.domains.discovery.lasso_cpp import load_heldout, max_gap, sklearn_path
 
 THRESH = (1e-7, 1e-9, 1e-11, 1e-13)
@@ -34,11 +36,18 @@ def main():
         ok = [r for r in rows if r["passes_gate"]]
         best = min(ok, key=lambda r: r["ms"]) if ok else None
         appc = e16[name]["dream_appC"]["ms"]
-        out[name] = {"settings": rows, "fastest_passing": best, "appC_ms_pass1": appc,
-                     "appC_faster_than_fastest_passing_glmnet": (appc < best["ms"]) if best else None}
-    res = {"experiment": "e16b_glmnet_tolerance", "created": time.strftime("%Y-%m-%d %H:%M:%S"),
-           "results": out,
-           "appC_faster_on": [n for n, r in out.items() if r["appC_faster_than_fastest_passing_glmnet"]]}
+        out[name] = {
+            "settings": rows,
+            "fastest_passing": best,
+            "appC_ms_pass1": appc,
+            "appC_faster_than_fastest_passing_glmnet": (appc < best["ms"]) if best else None,
+        }
+    res = {
+        "experiment": "e16b_glmnet_tolerance",
+        "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "results": out,
+        "appC_faster_on": [n for n, r in out.items() if r["appC_faster_than_fastest_passing_glmnet"]],
+    }
     (RESULTS / "e16b_glmnet_tolerance.json").write_text(json.dumps(res, indent=1, default=float))
     print(json.dumps({n: (r["fastest_passing"], r["appC_ms_pass1"]) for n, r in out.items()}, default=str))
 

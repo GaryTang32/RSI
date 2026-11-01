@@ -3,17 +3,18 @@
 ``faithful``: success = constraints ok AND validation ok AND no protocol violation. ``safe`` also requires a
 non-vacuous validation and, with ``require_task_success``, a solved own task (spec §3.6, §4.8, §4.10, §4.12).
 """
+
 from __future__ import annotations
 
 import difflib
 import fnmatch
 import math
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Mapping, Optional, Sequence
 
 from .assets import Capsule, EvolutionEvent, Gene, Mutation, PersonalityState
-from .validation import ValidationResult, ValidationRunner, VacuityDetector, VacuityVerdict
+from .validation import VacuityDetector, VacuityVerdict, ValidationResult, ValidationRunner
 
 HARD_CAP_FILES = 60
 HARD_CAP_LINES = 20000
@@ -51,13 +52,19 @@ def diff_text(before: Mapping[str, str], after: Mapping[str, str], max_chars: in
     for name in sorted(set(before) | set(after)):
         a, b = before.get(name), after.get(name)
         if a != b:
-            chunks.extend(difflib.unified_diff((a or "").splitlines(keepends=True),
-                                               (b or "").splitlines(keepends=True), f"a/{name}", f"b/{name}", n=1))
+            chunks.extend(
+                difflib.unified_diff(
+                    (a or "").splitlines(keepends=True),
+                    (b or "").splitlines(keepends=True),
+                    f"a/{name}",
+                    f"b/{name}",
+                    n=1,
+                )
+            )
     return "".join(chunks)[:max_chars]
 
 
-def blast_radius(before: Mapping[str, str], after: Mapping[str, str],
-                 policy: Optional[CountedFilePolicy] = None) -> dict:
+def blast_radius(before: Mapping[str, str], after: Mapping[str, str], policy: CountedFilePolicy | None = None) -> dict:
     """{files, lines, changed, counted}: lines added + deleted on counted files."""
     policy = policy or CountedFilePolicy()
     changed = sorted(n for n in set(before) | set(after) if before.get(n) != after.get(n))
@@ -65,8 +72,11 @@ def blast_radius(before: Mapping[str, str], after: Mapping[str, str],
     lines = 0
     for n in counted:
         a, b = (before.get(n) or "").splitlines(), (after.get(n) or "").splitlines()
-        lines += sum(1 for ln in difflib.unified_diff(a, b, n=0, lineterm="")
-                     if ln.startswith(("+", "-")) and not ln.startswith(("+++", "---")))
+        lines += sum(
+            1
+            for ln in difflib.unified_diff(a, b, n=0, lineterm="")
+            if ln.startswith(("+", "-")) and not ln.startswith(("+++", "---"))
+        )
     return {"files": len(counted), "lines": lines, "changed": changed, "counted": counted}
 
 
@@ -83,15 +93,21 @@ def _under(path: str, roots: Sequence[str]) -> bool:
 
 
 class ConstraintChecker:
-    def __init__(self, *, protected_paths: Sequence[str] = (), critical_files: Sequence[str] = (),
-                 default_max_files: int = 20) -> None:
+    def __init__(
+        self, *, protected_paths: Sequence[str] = (), critical_files: Sequence[str] = (), default_max_files: int = 20
+    ) -> None:
         self.protected_paths = tuple(protected_paths)
         self.critical_files = tuple(critical_files)
         self.default_max_files = default_max_files
 
-    def check(self, gene: Optional[Gene], blast: dict, estimate: Optional[dict] = None,
-              before: Optional[Mapping[str, str]] = None,
-              after: Optional[Mapping[str, str]] = None) -> ConstraintResult:
+    def check(
+        self,
+        gene: Gene | None,
+        blast: dict,
+        estimate: dict | None = None,
+        before: Mapping[str, str] | None = None,
+        after: Mapping[str, str] | None = None,
+    ) -> ConstraintResult:
         v, w = [], []
         files, lines = blast.get("files", 0), blast.get("lines", 0)
         if files > HARD_CAP_FILES or lines > HARD_CAP_LINES:
@@ -127,10 +143,21 @@ class ConstraintChecker:
         return ConstraintResult(not v, v, w, blast)
 
 
-def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[Mutation], blast: dict,
-                    max_files: Optional[int], estimate: Optional[dict], n_violations: int, validation: ValidationResult,
-                    n_protocol: int, canary_failed: bool = False, hollow: bool = False,
-                    estimate_key: str = "files_changed") -> float:
+def composite_score(
+    *,
+    n_signals: int,
+    gene: Gene | None,
+    mutation: Mutation | None,
+    blast: dict,
+    max_files: int | None,
+    estimate: dict | None,
+    n_violations: int,
+    validation: ValidationResult,
+    n_protocol: int,
+    canary_failed: bool = False,
+    hollow: bool = False,
+    estimate_key: str = "files_changed",
+) -> float:
     """§4.10: .05 signal + .10 selection + .05 mutation + .15 blast + .25 constraint + .25 validation + .10 protocol
     + .05 canary, rounded like JS ``Math.round(s*100)/100``.
 
@@ -166,7 +193,7 @@ def composite_score(*, n_signals: int, gene: Optional[Gene], mutation: Optional[
     val = validation.component
     prot = max(0.0, 1 - 0.3 * n_protocol)
     can = 0.0 if canary_failed else 1.0
-    s = .05 * sig + .10 * sel + .05 * mut + .15 * bc + .25 * cons + .25 * val + .10 * prot + .05 * can
+    s = 0.05 * sig + 0.10 * sel + 0.05 * mut + 0.15 * bc + 0.25 * cons + 0.25 * val + 0.10 * prot + 0.05 * can
     return max(0.0, min(1.0, js_round2(s)))
 
 
@@ -180,8 +207,13 @@ def js_round2(x: float) -> float:
 HARD_RX = re.compile(r"HARD CAP BREACH|CRITICAL_FILE_|critical_path_modified|forbidden_path touched|ethics:")
 
 
-def classify_failure_mode(violations: Sequence[str], protocol: Sequence[str], validation_ok: bool,
-                          canary_failed: bool = False, extra: Sequence[str] = ()) -> tuple[str, str, bool]:
+def classify_failure_mode(
+    violations: Sequence[str],
+    protocol: Sequence[str],
+    validation_ok: bool,
+    canary_failed: bool = False,
+    extra: Sequence[str] = (),
+) -> tuple[str, str, bool]:
     """(mode, reason_class, retryable). Safe-mode ``extra`` failures (vacuous validation, missed own task) are
     soft and retryable: they are validation or stochastic outcome checks, not constraint violations (§4.12)."""
     if any(HARD_RX.search(v) for v in violations):
@@ -209,8 +241,9 @@ def apply_epigenetic_marks(gene: Gene, env: str, success: bool, now_s: float, cr
             m["reason"] = reason
             break
     else:
-        marks.append({"context": env, "boost": 0.1 if success else -0.1, "reason": reason,
-                      "created_at": created_at, "t": now_s})
+        marks.append(
+            {"context": env, "boost": 0.1 if success else -0.1, "reason": reason, "created_at": created_at, "t": now_s}
+        )
     gene.epigenetic_marks = marks[-10:]
 
 
@@ -220,23 +253,23 @@ class RunState:
 
     run_id: str
     signals: list[str]
-    gene: Optional[Gene]
-    mutation: Optional[Mutation]
+    gene: Gene | None
+    mutation: Mutation | None
     personality: PersonalityState
     before: dict
     after: dict
-    parent_event_id: Optional[str] = None
-    capsule: Optional[Capsule] = None
-    estimate: Optional[dict] = None
+    parent_event_id: str | None = None
+    capsule: Capsule | None = None
+    estimate: dict | None = None
     source_type: str = "generated"
-    reused_asset_id: Optional[str] = None
+    reused_asset_id: str | None = None
     personality_known: bool = False
-    intent: Optional[str] = None
+    intent: str | None = None
     summary: str = ""
     task_id: str = ""
-    task_success: Optional[bool] = None     # graded on the agent's own decision task
-    hidden_score: Optional[float] = None    # measurement only; never read by the keep rule
-    derivation_tokens: Optional[dict] = None
+    task_success: bool | None = None  # graded on the agent's own decision task
+    hidden_score: float | None = None  # measurement only; never read by the keep rule
+    derivation_tokens: dict | None = None
     env: str = "sim/py3.11"
     validation_context: object = None
 
@@ -246,16 +279,16 @@ class SolidifyResult:
     success: bool
     score: float
     event: EvolutionEvent
-    capsule: Optional[Capsule]
+    capsule: Capsule | None
     validation: ValidationResult
     constraints: ConstraintResult
     protocol_violations: list[str]
-    failure_mode: Optional[tuple] = None
-    failed_capsule: Optional[dict] = None
+    failure_mode: tuple | None = None
+    failed_capsule: dict | None = None
     rolled_back: bool = False
-    git_rollback: Optional[str] = None       # "stash" | "hard" when a GitWorkspace was rolled back
-    git_removed: Optional[dict] = None       # untracked files created in the cycle and removed
-    vacuity: Optional[VacuityVerdict] = None
+    git_rollback: str | None = None  # "stash" | "hard" when a GitWorkspace was rolled back
+    git_removed: dict | None = None  # untracked files created in the cycle and removed
+    vacuity: VacuityVerdict | None = None
     eligible_to_broadcast: bool = False
     publishable: bool = False
 
@@ -280,10 +313,20 @@ def _protocol_violations(rs: RunState) -> list[str]:
 
 
 class Solidifier:
-    def __init__(self, store, runner: ValidationRunner, *, mode: str = "faithful",
-                 constraints: Optional[ConstraintChecker] = None, counted: Optional[CountedFilePolicy] = None,
-                 vacuity: Optional[VacuityDetector] = None, require_task_success: bool = True,
-                 rollback: str = "stash", estimate_drift_penalty: bool = False, workspace=None) -> None:
+    def __init__(
+        self,
+        store,
+        runner: ValidationRunner,
+        *,
+        mode: str = "faithful",
+        constraints: ConstraintChecker | None = None,
+        counted: CountedFilePolicy | None = None,
+        vacuity: VacuityDetector | None = None,
+        require_task_success: bool = True,
+        rollback: str = "stash",
+        estimate_drift_penalty: bool = False,
+        workspace=None,
+    ) -> None:
         self.store = store
         # optional GitWorkspace: mirrors ``after`` into a real tree, measures blast via git, rolls back via git
         self.workspace = workspace
@@ -324,10 +367,19 @@ class Solidifier:
                 extra_fail.append("task_check_failed")
         success = cc.ok and val.ok and not pv and not extra_fail
         hollow = any(v.startswith("hollow_commit") for v in cc.violations)
-        score = composite_score(n_signals=len(rs.signals), gene=gene, mutation=mut, blast=blast,
-                                max_files=gene.max_files if gene else 12, estimate=rs.estimate,
-                                n_violations=len(cc.violations), validation=val, n_protocol=len(pv), hollow=hollow,
-                                estimate_key="files" if self.estimate_drift_penalty else "files_changed")
+        score = composite_score(
+            n_signals=len(rs.signals),
+            gene=gene,
+            mutation=mut,
+            blast=blast,
+            max_files=gene.max_files if gene else 12,
+            estimate=rs.estimate,
+            n_violations=len(cc.violations),
+            validation=val,
+            n_protocol=len(pv),
+            hollow=hollow,
+            estimate_key="files" if self.estimate_drift_penalty else "files_changed",
+        )
         fm = None if success else classify_failure_mode(cc.violations, pv, val.ok, extra=extra_fail)
         vr = val.report
         if vac is not None:
@@ -336,30 +388,49 @@ class Solidifier:
         ev_id = st.new_id("evt")
         capsule = self._capsule(rs, blast, vr, score) if success else None
         parent = rs.parent_event_id if rs.parent_event_id is not None else st.last_event_id()
-        event = EvolutionEvent(id=ev_id, parent=parent,
-                               intent=mut.category if mut else "repair", signals=list(rs.signals),
-                               genes_used=[gene.id] if gene else [], mutation_id=mut.id if mut else "",
-                               personality_state=pers.to_dict() if pers else None,
-                               blast_radius={"files": blast["files"], "lines": blast["lines"]},
-                               outcome={"status": "success" if success else "failed", "score": score},
-                               capsule_id=capsule.id if capsule else None, source_type=rs.source_type,
-                               reused_asset_id=rs.reused_asset_id, validation_report_id=vr.id,
-                               env_fingerprint={"context": rs.env},
-                               meta={"run_id": rs.run_id, "task_id": rs.task_id, "violations": cc.violations,
-                                     "protocol_violations": pv, "extra_failures": extra_fail,
-                                     "validation_ok": val.ok, "n_validation_run": val.n_run,
-                                     "n_validation_skipped": val.n_skipped, "hidden_score": rs.hidden_score,
-                                     "failure_mode": list(fm) if fm else None, "solidify_mode": self.mode,
-                                     "gene_library_version": st.gene_library_version()})
+        event = EvolutionEvent(
+            id=ev_id,
+            parent=parent,
+            intent=mut.category if mut else "repair",
+            signals=list(rs.signals),
+            genes_used=[gene.id] if gene else [],
+            mutation_id=mut.id if mut else "",
+            personality_state=pers.to_dict() if pers else None,
+            blast_radius={"files": blast["files"], "lines": blast["lines"]},
+            outcome={"status": "success" if success else "failed", "score": score},
+            capsule_id=capsule.id if capsule else None,
+            source_type=rs.source_type,
+            reused_asset_id=rs.reused_asset_id,
+            validation_report_id=vr.id,
+            env_fingerprint={"context": rs.env},
+            meta={
+                "run_id": rs.run_id,
+                "task_id": rs.task_id,
+                "violations": cc.violations,
+                "protocol_violations": pv,
+                "extra_failures": extra_fail,
+                "validation_ok": val.ok,
+                "n_validation_run": val.n_run,
+                "n_validation_skipped": val.n_skipped,
+                "hidden_score": rs.hidden_score,
+                "failure_mode": list(fm) if fm else None,
+                "solidify_mode": self.mode,
+                "gene_library_version": st.gene_library_version(),
+            },
+        )
         res = SolidifyResult(success, score, event, capsule, val, cc, pv, fm, vacuity=vac)
         if dry_run:
             return res
         if not success and blast["changed"]:
-            res.failed_capsule = {"id": st.new_id("failed_capsule"), "gene": gene.id if gene else None,
-                                  "trigger": list(rs.signals[:8]), "diff_snapshot": diff_text(rs.before, rs.after),
-                                  "failure_reason": (cc.violations + pv + extra_fail +
-                                                     ([] if val.ok else ["validation_failed"]))[:6],
-                                  "learning_signals": list(rs.signals[:8]), "constraint_violations": cc.violations}
+            res.failed_capsule = {
+                "id": st.new_id("failed_capsule"),
+                "gene": gene.id if gene else None,
+                "trigger": list(rs.signals[:8]),
+                "diff_snapshot": diff_text(rs.before, rs.after),
+                "failure_reason": (cc.violations + pv + extra_fail + ([] if val.ok else ["validation_failed"]))[:6],
+                "learning_signals": list(rs.signals[:8]),
+                "constraint_violations": cc.violations,
+            }
             st.append_failed_capsule(res.failed_capsule)
         if not success and self.rollback != "none":
             res.rolled_back = True
@@ -373,8 +444,9 @@ class Solidifier:
         if capsule is not None:
             capsule.success_streak = st.success_streak(capsule.id)
             safe_blast = blast["files"] <= A2A_MAX_FILES and blast["lines"] <= A2A_MAX_LINES
-            res.eligible_to_broadcast = (safe_blast and score >= BROADCAST_SCORE
-                                         and capsule.success_streak >= BROADCAST_STREAK)
+            res.eligible_to_broadcast = (
+                safe_blast and score >= BROADCAST_SCORE and capsule.success_streak >= BROADCAST_STREAK
+            )
             capsule.a2a = {"eligible_to_broadcast": res.eligible_to_broadcast}
             res.publishable = res.eligible_to_broadcast and score >= MIN_PUBLISH_SCORE and rs.source_type != "reused"
             st.upsert_capsule(capsule)
@@ -383,38 +455,67 @@ class Solidifier:
     def _capsule(self, rs: RunState, blast: dict, vr, score: float) -> Capsule:
         st, gene, mut = self.store, rs.gene, rs.mutation
         cap_id = rs.capsule.id if rs.capsule is not None else st.new_id("capsule")
-        trace = [{"step": 1, "stage": "build", "cmd": f"apply -- {blast['files']} file(s), {blast['lines']} line(s)",
-                  "exit": 0}]
+        trace = [
+            {
+                "step": 1,
+                "stage": "build",
+                "cmd": f"apply -- {blast['files']} file(s), {blast['lines']} line(s)",
+                "exit": 0,
+            }
+        ]
         for row in vr.commands:
             if not row.get("skipped"):
-                trace.append({"step": len(trace) + 1, "stage": "validate", "cmd": row.get("command", ""),
-                              "exit": 0 if row.get("ok") else 1, "stdout_tail": str(row.get("stdout", ""))[-300:]})
-        return Capsule(id=cap_id, gene=gene.id if gene else "none",
-                       trigger=list(rs.capsule.trigger) if rs.capsule is not None else list(rs.signals[:8]),
-                       summary=rs.summary or f"{mut.category if mut else 'repair'} via "
-                                             f"{gene.id if gene else 'no gene'} on {rs.task_id}",
-                       confidence=score, blast_radius={"files": blast["files"], "lines": blast["lines"]},
-                       outcome={"status": "success", "score": score}, success_reason="validation passed",
-                       source_type=rs.source_type, reused_asset_id=rs.reused_asset_id,
-                       content=("\n".join(gene.strategy) if gene else rs.summary)[:CONTENT_MAX],
-                       diff=diff_text(rs.before, rs.after), strategy=list(gene.strategy) if gene else [],
-                       execution_trace=trace, derivation_tokens=rs.derivation_tokens,
-                       env_fingerprint={"context": rs.env}, gene_library_version=st.gene_library_version())
+                trace.append(
+                    {
+                        "step": len(trace) + 1,
+                        "stage": "validate",
+                        "cmd": row.get("command", ""),
+                        "exit": 0 if row.get("ok") else 1,
+                        "stdout_tail": str(row.get("stdout", ""))[-300:],
+                    }
+                )
+        return Capsule(
+            id=cap_id,
+            gene=gene.id if gene else "none",
+            trigger=list(rs.capsule.trigger) if rs.capsule is not None else list(rs.signals[:8]),
+            summary=rs.summary
+            or f"{mut.category if mut else 'repair'} via {gene.id if gene else 'no gene'} on {rs.task_id}",
+            confidence=score,
+            blast_radius={"files": blast["files"], "lines": blast["lines"]},
+            outcome={"status": "success", "score": score},
+            success_reason="validation passed",
+            source_type=rs.source_type,
+            reused_asset_id=rs.reused_asset_id,
+            content=("\n".join(gene.strategy) if gene else rs.summary)[:CONTENT_MAX],
+            diff=diff_text(rs.before, rs.after),
+            strategy=list(gene.strategy) if gene else [],
+            execution_trace=trace,
+            derivation_tokens=rs.derivation_tokens,
+            env_fingerprint={"context": rs.env},
+            gene_library_version=st.gene_library_version(),
+        )
 
-    def _learn(self, gene: Gene, rs: RunState, success: bool, fm: Optional[tuple], clock) -> None:
+    def _learn(self, gene: Gene, rs: RunState, success: bool, fm: tuple | None, clock) -> None:
         """Gene learning: history entry, widened signals on success, anti-pattern on failure, epigenetic mark."""
         learn = [s for s in rs.signals if s.startswith(("problem:", "area:"))] or list(rs.signals)
-        entry = {"at": clock.iso(), "outcome": "success" if success else "failed",
-                 "mode": fm[0] if fm else "none", "reason_class": fm[1] if fm else "ok",
-                 "retryable": fm[2] if fm else True, "learning_signals": learn[:12]}
+        entry = {
+            "at": clock.iso(),
+            "outcome": "success" if success else "failed",
+            "mode": fm[0] if fm else "none",
+            "reason_class": fm[1] if fm else "ok",
+            "retryable": fm[2] if fm else True,
+            "learning_signals": learn[:12],
+        }
         gene.learning_history = (gene.learning_history + [entry])[-20:]
         if success:
             for s in rs.signals:
                 if s.startswith(("problem:", "area:")) and s not in gene.signals_match:
                     gene.signals_match.append(s)
         else:
-            gene.anti_patterns = (gene.anti_patterns + [{"at": clock.iso(), "mode": fm[0], "reason_class": fm[1],
-                                                         "learning_signals": learn[:8]}])[-12:]
+            gene.anti_patterns = (
+                gene.anti_patterns
+                + [{"at": clock.iso(), "mode": fm[0], "reason_class": fm[1], "learning_signals": learn[:8]}]
+            )[-12:]
         apply_epigenetic_marks(gene, rs.env, success, clock.now(), clock.iso())
         if self.store.has_gene(gene.id):
             self.store.upsert_gene(gene)

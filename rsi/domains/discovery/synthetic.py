@@ -1,11 +1,11 @@
 """Synthetic discovery worlds with known dynamics, for ground-truth checks of replay (spec §9.2 Track A)."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import random
 from dataclasses import asdict, dataclass
-from typing import Optional
 
 from ...core.artifact import Artifact
 from ...core.domain import Domain, Execution
@@ -60,8 +60,9 @@ class SyntheticWorld:
     def __init__(self, cfg: SyntheticConfig) -> None:
         self.cfg = cfg
         self.directions = [f"d{i}" for i in range(cfg.n_directions)]
-        self.richness = {d: _rng(cfg.seed, "rich", d).uniform(cfg.richness_lo, cfg.richness_hi)
-                         for d in self.directions}
+        self.richness = {
+            d: _rng(cfg.seed, "rich", d).uniform(cfg.richness_lo, cfg.richness_hi) for d in self.directions
+        }
 
     def r_eff(self, d: str, lineage: dict) -> float:
         return self.richness.get(d, 0.3) * self.cfg.depletion ** int(lineage.get(d, 0))
@@ -69,8 +70,14 @@ class SyntheticWorld:
     def branch(self, round_index: int, branch: int, direction: str, q_root: float, lineage: dict) -> dict:
         rng = _rng(self.cfg.seed, "branch", round_index, branch)
         r = self.r_eff(direction, lineage)
-        w = {"steady": 0.30 * r + 0.05, "late": 0.15 * r + 0.05, "plateau": 0.20, "flat": 0.30 * (1 - r) + 0.05,
-             "hardfail": 0.10, "repairable": 0.12}
+        w = {
+            "steady": 0.30 * r + 0.05,
+            "late": 0.15 * r + 0.05,
+            "plateau": 0.20,
+            "flat": 0.30 * (1 - r) + 0.05,
+            "hardfail": 0.10,
+            "repairable": 0.12,
+        }
         x, acc, kind = rng.random() * sum(w.values()), 0.0, "flat"
         for k in TYPES:
             acc += w[k]
@@ -81,12 +88,14 @@ class SyntheticWorld:
         G = self.cfg.gain_scale * max(0.0, 1.0 - q_root) * r * u
         return {"type": kind, "G": G, "direction": direction, "r_eff": r}
 
-    def outcome(self, round_index: int, branch: int, attempt: int, br: dict, q_root: float,
-                n_siblings: int = 0) -> tuple[Optional[float], str]:
+    def outcome(
+        self, round_index: int, branch: int, attempt: int, br: dict, q_root: float, n_siblings: int = 0
+    ) -> tuple[float | None, str]:
         rng = _rng(self.cfg.seed, "attempt", round_index, branch, attempt)
         kind = br["type"]
         p_fail = {"hardfail": self.cfg.p_fail_hard, "repairable": self.cfg.p_fail_repairable}.get(
-            kind, self.cfg.p_fail_other)
+            kind, self.cfg.p_fail_other
+        )
         f, z = rng.random(), rng.gauss(0.0, 1.0)
         if f < p_fail:
             if kind == "hardfail":
@@ -127,14 +136,23 @@ class SyntheticAgent(DiscoveryAgent):
         q, fc = self.world.outcome(ctx.round, ctx.branch, ctx.attempt, br, q_root, n_siblings=len(ctx.siblings))
         child_lineage = dict(lineage)
         child_lineage[direction] = child_lineage.get(direction, 0) + 1
-        state = {"quality": q if q is not None else float(parent.get("quality", q_root)), "ok": fc == "ok",
-                 "fail_class": fc, "root_quality": q_root, "root_lineage": lineage, "lineage": child_lineage,
-                 "branch": br, "round": ctx.round, "attempt": ctx.attempt}
+        state = {
+            "quality": q if q is not None else float(parent.get("quality", q_root)),
+            "ok": fc == "ok",
+            "fail_class": fc,
+            "root_quality": q_root,
+            "root_lineage": lineage,
+            "lineage": child_lineage,
+            "branch": br,
+            "round": ctx.round,
+            "attempt": ctx.attempt,
+        }
         prop = f"apply mechanism {direction} (attempt {ctx.attempt})"
         if ctx.direction.get("advised"):
             prop += " (direction chosen following written guidance)"
-        return AgentAttempt(Artifact({STATE: json.dumps(state, sort_keys=True)}), prop,
-                            Usage(1, self.tokens_per_call, 0, 0.0, 0.0))
+        return AgentAttempt(
+            Artifact({STATE: json.dumps(state, sort_keys=True)}), prop, Usage(1, self.tokens_per_call, 0, 0.0, 0.0)
+        )
 
 
 class SyntheticDomain(Domain):
@@ -142,19 +160,22 @@ class SyntheticDomain(Domain):
 
     name = "synthetic"
 
-    def __init__(self, cfg: Optional[SyntheticConfig] = None) -> None:
+    def __init__(self, cfg: SyntheticConfig | None = None) -> None:
         t = Task("synthetic-instance", None, None, family="synthetic")
         super().__init__(TaskSuite([t], {"evolve": [t.id]}, name="synthetic"))
         self.cfg = cfg or SyntheticConfig()
         self.world = SyntheticWorld(self.cfg)
 
     def describe(self) -> str:
-        return ("Synthetic discovery world: a program has a quality in [0,1]; mechanisms (directions) differ in "
-                "hidden richness and deplete once used.")
+        return (
+            "Synthetic discovery world: a program has a quality in [0,1]; mechanisms (directions) differ in "
+            "hidden richness and deplete once used."
+        )
 
     def seed_artifact(self) -> Artifact:
-        return Artifact({STATE: json.dumps({"quality": self.cfg.q0, "ok": True, "fail_class": "ok",
-                                            "lineage": {}}, sort_keys=True)})
+        return Artifact(
+            {STATE: json.dumps({"quality": self.cfg.q0, "ok": True, "fail_class": "ok", "lineage": {}}, sort_keys=True)}
+        )
 
     def directions(self) -> list[str]:
         return list(self.world.directions)
@@ -178,24 +199,29 @@ class SyntheticDomain(Domain):
 
     def grade(self, task, execution):
         o = execution.output or {}
-        return (float(o.get("score") or 0.0), o.get("error") or "") if o.get("fail_class") == "ok" else \
-            (0.0, str(o.get("error")))
+        return (
+            (float(o.get("score") or 0.0), o.get("error") or "")
+            if o.get("fail_class") == "ok"
+            else (0.0, str(o.get("error")))
+        )
 
     def as_task(self) -> DiscoveryTask:
         return ProgramTask(self, "synthetic")
 
-    def branch_params(self, round_index: int, branch: int, direction: str, q_root: float,
-                      lineage: Optional[dict] = None) -> dict:
+    def branch_params(
+        self, round_index: int, branch: int, direction: str, q_root: float, lineage: dict | None = None
+    ) -> dict:
         return self.world.branch(round_index, branch, direction, q_root, lineage or {})
 
-    def truth_for_tree(self, tree, depth: Optional[int] = None, lineage: Optional[dict] = None) -> dict[int, float]:
+    def truth_for_tree(self, tree, depth: int | None = None, lineage: dict | None = None) -> dict[int, float]:
         """Expected best score within ``depth`` of every branch of a tree recorded in this world."""
         rnd = int(tree.meta.get("round", 1))
         d = tree.trace_refine_count if depth is None else depth
         out = {}
         for b in tree.branches():
-            direction = (tree.branch_tags.get(b, {}).get("direction")
-                         or self.world.directions[b % len(self.world.directions)])
+            direction = (
+                tree.branch_tags.get(b, {}).get("direction") or self.world.directions[b % len(self.world.directions)]
+            )
             br = self.branch_params(rnd, b, direction, tree.root_score, lineage)
             out[b] = tree.root_score + self.world.ground_truth(br, d)
         return out

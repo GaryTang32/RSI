@@ -1,4 +1,5 @@
 """Annealed L0 edit budget b_t = ceil(b_min + (b_max - b_min) * (1 + cos(pi t / T)) / 2), Eq. (anneal)."""
+
 from __future__ import annotations
 
 import math

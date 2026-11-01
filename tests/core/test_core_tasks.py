@@ -1,5 +1,8 @@
 """rsi.core.tasks: Task, TaskSuite splits, sealing discipline, from_tasks, persistence."""
+
 from __future__ import annotations
+
+import dataclasses
 
 import pytest
 
@@ -14,8 +17,18 @@ def _tasks(n=10, fams=("a", "b")):
 
 
 def _suite():
-    return TaskSuite(_tasks(10), {"evolve": ["t0", "t1", "t2"], "val": ["t3"], "holdout": ["t4", "t5"],
-                                  "ood": ["t6", "t7"], "test": ["t8"], "smoke": ["t0"]}, name="s")
+    return TaskSuite(
+        _tasks(10),
+        {
+            "evolve": ["t0", "t1", "t2"],
+            "val": ["t3"],
+            "holdout": ["t4", "t5"],
+            "ood": ["t6", "t7"],
+            "test": ["t8"],
+            "smoke": ["t0"],
+        },
+        name="s",
+    )
 
 
 def _ids(suite):
@@ -27,7 +40,7 @@ def test_task_json_roundtrip_and_hash_ignores_meta():
     assert Task.from_json(t.to_json()) == t
     assert Task.from_json({"id": "x", "input": 1}).family == "default"
     assert hash(Task("i", 1, 2, "f", {"a": 1})) == hash(Task("i", 1, 2, "f", {"b": 2}))
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         t.id = "other"
 
 
@@ -59,7 +72,7 @@ def test_sealed_splits_raise_until_unsealed():
     with pytest.raises(SealedSplitError):
         s.split("evolve")
     assert not s.is_sealed("not-a-split")
-    s.unseal()                                        # no names: unseal everything
+    s.unseal()  # no names: unseal everything
     assert s.split("ood") and s.split("test") and s.split("evolve")
 
 
@@ -83,15 +96,15 @@ def test_jsonl_roundtrip_reseals(tmp_path):
     s2 = TaskSuite.from_jsonl(p)
     assert s2.name == "s" and s2.splits == s.splits
     assert s2.tasks == s.tasks and s2.get("t1").meta == {"entities": ["E1"]}
-    with pytest.raises(SealedSplitError):              # sealing is a property of the split role
+    with pytest.raises(SealedSplitError):  # sealing is a property of the split role
         s2.split("holdout")
 
 
 def test_from_tasks_fractions_partition_and_determinism():
     ts = _tasks(101)
     s = TaskSuite.from_tasks(ts, fractions=FRACTIONS, seed=3)
-    assert _ids(s) == sorted(t.id for t in ts)          # every task in exactly one split
-    assert [len(s.splits[k]) for k in ("evolve", "holdout", "test")] == [50, 30, 21]   # remainder goes last
+    assert _ids(s) == sorted(t.id for t in ts)  # every task in exactly one split
+    assert [len(s.splits[k]) for k in ("evolve", "holdout", "test")] == [50, 30, 21]  # remainder goes last
     assert TaskSuite.from_tasks(ts, fractions=FRACTIONS, seed=3).splits == s.splits
     assert TaskSuite.from_tasks(ts, fractions=FRACTIONS, seed=4).splits != s.splits
     assert s.is_sealed("holdout") and s.is_sealed("test") and not s.is_sealed("evolve")

@@ -5,6 +5,7 @@ editors (Propose), one rollout per candidate (Probe), composers that merge/adopt
 (Compose), an anonymised deliverable-only selector at k > 1, then a reflector whose supported lesson enters a
 per-domain library of adopted harnesses that later tasks read. See docs/methods/harness2/.
 """
+
 from .api import StreamViolation, TaskStream, domain_of, eval_split, merged_usage, posthoc_report, run, stream_order
 from .baselines import best_of_n
 from .config import MODES, SLOTS, Config
@@ -14,8 +15,34 @@ from .loop import BudgetExceeded, TaskBudget, TaskRunner
 from .mocks import MockComposer, MockEditor, MockImprover, MockReflector, MockSelector
 from .records import Rollout, Stage, TaskRecord
 
-__all__ = ["Config", "MODES", "SLOTS", "run", "posthoc_report", "best_of_n", "TaskStream", "StreamViolation",
-           "domain_of", "eval_split", "stream_order", "merged_usage", "OpenWorld", "OpenWorldViolation",
-           "GraderAccessError", "GraderLeak", "open_task", "Library", "TaskRunner", "TaskBudget", "BudgetExceeded",
-           "MockImprover", "MockEditor", "MockComposer", "MockSelector", "MockReflector", "Rollout", "Stage",
-           "TaskRecord"]
+__all__ = [
+    "Config",
+    "MODES",
+    "SLOTS",
+    "run",
+    "posthoc_report",
+    "best_of_n",
+    "TaskStream",
+    "StreamViolation",
+    "domain_of",
+    "eval_split",
+    "stream_order",
+    "merged_usage",
+    "OpenWorld",
+    "OpenWorldViolation",
+    "GraderAccessError",
+    "GraderLeak",
+    "open_task",
+    "Library",
+    "TaskRunner",
+    "TaskBudget",
+    "BudgetExceeded",
+    "MockImprover",
+    "MockEditor",
+    "MockComposer",
+    "MockSelector",
+    "MockReflector",
+    "Rollout",
+    "Stage",
+    "TaskRecord",
+]

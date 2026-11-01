@@ -1,4 +1,5 @@
 """The autoresearch loop: propose, scope-check, run, keep or reset; logged to results.tsv and a Ledger."""
+
 from __future__ import annotations
 
 import json
@@ -6,9 +7,10 @@ import shutil
 import tempfile
 import time
 import warnings
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -18,6 +20,7 @@ from ..core.editors import Proposal, RewriteEditor
 from ..core.ledger import ArtifactStore, Ledger, Node, new_id
 from ..core.llm import LLM, ClaudeCLI
 from ..core.run import Budget, ImprovementResult
+from ..trace import RunTracer
 from .agent import AgentContext, LLMResearchAgent, MockResearchAgent, ResearchAgent
 from .analysis import Analyzer, HiddenAudit, Reeval
 from .guard import AGENT_FIX_KINDS, BudgetEnforcer, CrashPolicy, ScopeGuard, added_lines, matches
@@ -26,49 +29,48 @@ from .program import ProgramSpec
 from .results import ResultsLog, Workspace
 from .task import DomainResearchTask, ResearchTask, RunOutcome
 from .tracing import CachedAuditTask, make_monitor, outcome_json
-from ..trace import RunTracer
 
-NOISE_BLIND_RULES = ("upstream", "strict", "simplicity")   # keep any gain on one run
+NOISE_BLIND_RULES = ("upstream", "strict", "simplicity")  # keep any gain on one run
 
 
 @dataclass
 class Config:
     """Run configuration: upstream keep rule and ~one night of experiments, with hardened isolation on."""
 
-    max_experiments: Optional[int] = 100        # experiments after the baseline
-    max_runs: Optional[int] = None               # training runs incl. baseline, repeats and fixes
-    max_wall_s: Optional[float] = None
-    max_usd: Optional[float] = None
-    stop_dir: Optional[str] = None               # a STOP file here halts the loop (default: out_dir)
-    mode: str = "hardened"                       # "faithful" | "hardened"
-    keep_rule: Any = "upstream"                  # preset name (see make_keep_rule), KeepRule or Gate
+    max_experiments: int | None = 100  # experiments after the baseline
+    max_runs: int | None = None  # training runs incl. baseline, repeats and fixes
+    max_wall_s: float | None = None
+    max_usd: float | None = None
+    stop_dir: str | None = None  # a STOP file here halts the loop (default: out_dir)
+    mode: str = "hardened"  # "faithful" | "hardened"
+    keep_rule: Any = "upstream"  # preset name (see make_keep_rule), KeepRule or Gate
     keep_kwargs: dict = field(default_factory=dict)
-    program: str = "upstream"                    # preset name or path to program.md (re-read every experiment)
+    program: str = "upstream"  # preset name or path to program.md (re-read every experiment)
     tag: str = "run"
-    run_seed: int = 0                            # pinned framework seed for every run
+    run_seed: int = 0  # pinned framework seed for every run
     max_fix_attempts: int = 3
-    crash_fix: str = "agent"                     # "agent": all crashes but timeouts/violations | "trivial": typo-class
+    crash_fix: str = "agent"  # "agent": all crashes but timeouts/violations | "trivial": typo-class
     max_propose_attempts: int = 3
-    max_consecutive_invalid: Optional[int] = None  # None: never stop on empty turns
-    history_rows: Optional[int] = None           # results.tsv rows shown to the agent (None: the whole file)
-    confirm: Optional[Any] = None                # callable(setup_summary) -> bool, called after the baseline
-    noise_runs: int = 0                          # NoiseCalibrator re-runs of the baseline
-    val_resample_every: Optional[int] = None     # ablation: new validation epoch every M experiments
-    hidden_audit: bool = True                    # post-hoc audit of every keep
+    max_consecutive_invalid: int | None = None  # None: never stop on empty turns
+    history_rows: int | None = None  # results.tsv rows shown to the agent (None: the whole file)
+    confirm: Any | None = None  # callable(setup_summary) -> bool, called after the baseline
+    noise_runs: int = 0  # NoiseCalibrator re-runs of the baseline
+    val_resample_every: int | None = None  # ablation: new validation epoch every M experiments
+    hidden_audit: bool = True  # post-hoc audit of every keep
     audit_discards: bool = False
-    reeval_seeds: int = 0                        # post-hoc fresh-seed re-runs of baseline and final best
+    reeval_seeds: int = 0  # post-hoc fresh-seed re-runs of baseline and final best
     reeval_seed_base: int = 10_000
     reeval_mode: str = "hardened"
-    workers: int = 1                             # >1: ParallelAutoresearchLoop
-    executor: str = "local"                      # "local" | "slurm" (fake SLURM) for workers > 1
-    workspace: str = "memory"                    # "memory" | "git"
+    workers: int = 1  # >1: ParallelAutoresearchLoop
+    executor: str = "local"  # "local" | "slurm" (fake SLURM) for workers > 1
+    workspace: str = "memory"  # "memory" | "git"
     persist: bool = True
-    overwrite: bool = False                      # reuse an out_dir that holds an earlier run
+    overwrite: bool = False  # reuse an out_dir that holds an earlier run
     plot: bool = True
-    trace: bool = True                           # trace.jsonl when out_dir is given
-    shadow_monitor: bool = True                  # write-only hidden-split audit of each new incumbent
-    trace_max_text: int = 40000                  # per-field clip in trace.jsonl
-    seed: int = 0                                # agent-side RNG seed
+    trace: bool = True  # trace.jsonl when out_dir is given
+    shadow_monitor: bool = True  # write-only hidden-split audit of each new incumbent
+    trace_max_text: int = 40000  # per-field clip in trace.jsonl
+    seed: int = 0  # agent-side RNG seed
 
     def to_json(self) -> dict:
         d = asdict(self)
@@ -81,10 +83,19 @@ class AutoresearchLoop:
 
     method = "autoresearch"
 
-    def __init__(self, task: ResearchTask, agent: ResearchAgent, config: Optional[Config] = None, *,
-                 keep_rule: Optional[KeepRule] = None, program: Optional[ProgramSpec] = None,
-                 out_dir: Optional[str | Path] = None, llms: Sequence[Optional[LLM]] = (),
-                 seed_artifact: Optional[Artifact] = None, executor=None) -> None:
+    def __init__(
+        self,
+        task: ResearchTask,
+        agent: ResearchAgent,
+        config: Config | None = None,
+        *,
+        keep_rule: KeepRule | None = None,
+        program: ProgramSpec | None = None,
+        out_dir: str | Path | None = None,
+        llms: Sequence[LLM | None] = (),
+        seed_artifact: Artifact | None = None,
+        executor=None,
+    ) -> None:
         self.task, self.agent = task, agent
         self.cfg = config or Config()
         if self.cfg.mode not in ("faithful", "hardened"):
@@ -99,30 +110,52 @@ class AutoresearchLoop:
         p = self.cfg.persist
         if p and (self.out / "ledger.jsonl").exists():
             if not self.cfg.overwrite:
-                raise FileExistsError(f"{self.out} already holds a run (ledger.jsonl); a run must be fresh "
-                                      "(upstream: the branch must not exist). "
-                                      "Use a new out_dir or Config(overwrite=True).")
-            for name in ("ledger.jsonl", "results.tsv", "groundtruth_all.tsv", "summary.json", "trajectory.json",
-                         "trace.jsonl", "TRACE.md"):
+                raise FileExistsError(
+                    f"{self.out} already holds a run (ledger.jsonl); a run must be fresh "
+                    "(upstream: the branch must not exist). "
+                    "Use a new out_dir or Config(overwrite=True)."
+                )
+            for name in (
+                "ledger.jsonl",
+                "results.tsv",
+                "groundtruth_all.tsv",
+                "summary.json",
+                "trajectory.json",
+                "trace.jsonl",
+                "TRACE.md",
+            ):
                 (self.out / name).unlink(missing_ok=True)
             shutil.rmtree(self.out / "logs", ignore_errors=True)
             shutil.rmtree(self.out / "workspace", ignore_errors=True)
         self.ledger = Ledger(self.out / "ledger.jsonl" if p else None)
         self.store = ArtifactStore(self.out / "artifacts")
-        self.results = ResultsLog(self.out / "results.tsv" if p else None, metric_name=task.metric,
-                                  memory_decimals=getattr(task, "memory_decimals", 1))
-        self.ws = Workspace(self.store, backend=self.cfg.workspace,
-                            root=self.out / "workspace" if self.cfg.workspace == "git" else None)
-        self.guard = ScopeGuard(task.editable_paths, task.locked_paths, sealed=task.sealed_files(),
-                                tamper=getattr(task, "tamper_patterns", ()))
+        self.results = ResultsLog(
+            self.out / "results.tsv" if p else None,
+            metric_name=task.metric,
+            memory_decimals=getattr(task, "memory_decimals", 1),
+        )
+        self.ws = Workspace(
+            self.store, backend=self.cfg.workspace, root=self.out / "workspace" if self.cfg.workspace == "git" else None
+        )
+        self.guard = ScopeGuard(
+            task.editable_paths,
+            task.locked_paths,
+            sealed=task.sealed_files(),
+            tamper=getattr(task, "tamper_patterns", ()),
+        )
         self.enforcer = BudgetEnforcer(task.budget)
         if self.cfg.crash_fix not in ("agent", "trivial"):
             raise ValueError("crash_fix must be 'agent' or 'trivial'")
-        self.policy = CrashPolicy(self.cfg.max_fix_attempts,
-                                  fix_kinds=AGENT_FIX_KINDS if self.cfg.crash_fix == "agent" else ("trivial",))
-        self.budget = Budget(max_rounds=self.cfg.max_experiments, max_rollouts=self.cfg.max_runs,
-                             max_wall_s=self.cfg.max_wall_s, max_usd=self.cfg.max_usd,
-                             stop_dir=self.cfg.stop_dir or str(self.out))
+        self.policy = CrashPolicy(
+            self.cfg.max_fix_attempts, fix_kinds=AGENT_FIX_KINDS if self.cfg.crash_fix == "agent" else ("trivial",)
+        )
+        self.budget = Budget(
+            max_rounds=self.cfg.max_experiments,
+            max_rollouts=self.cfg.max_runs,
+            max_wall_s=self.cfg.max_wall_s,
+            max_usd=self.cfg.max_usd,
+            stop_dir=self.cfg.stop_dir or str(self.out),
+        )
         self.llms = [l for l in llms if l is not None]
         self.executor = executor
         self.seed_art = seed_artifact
@@ -135,15 +168,18 @@ class AutoresearchLoop:
         self.stop_reason = ""
         self.t0 = time.time()
         self.counters = {"rejected": 0, "duplicate": 0, "invalid": 0, "fix_attempts": 0, "fixed": 0, "rewinds": 0}
-        self.tracer = RunTracer(self.out if (out_dir is not None and self.cfg.trace) else None, self.method,
-                                max_text=self.cfg.trace_max_text)
+        self.tracer = RunTracer(
+            self.out if (out_dir is not None and self.cfg.trace) else None,
+            self.method,
+            max_text=self.cfg.trace_max_text,
+        )
         self.monitor = None
-        self._monitor_wall = self._monitor_usd = 0.0          # time / $ spent by the shadow monitor
+        self._monitor_wall = self._monitor_usd = 0.0  # time / $ spent by the shadow monitor
         if self.tracer.enabled and self.cfg.shadow_monitor:
             self.monitor = make_monitor(task, seed=self.cfg.run_seed)
             self.tracer.monitor = self.monitor
 
-    def _log_path(self, name: str) -> Optional[str]:
+    def _log_path(self, name: str) -> str | None:
         return str(self.out / "logs" / f"{name}.log") if self.cfg.persist else None
 
     def _run(self, artifact: Artifact, seed: int, name: str) -> RunOutcome:
@@ -164,7 +200,7 @@ class AutoresearchLoop:
         """Spend counted against ``max_usd``: everything but the shadow monitor."""
         return self.usd() - self._monitor_usd
 
-    def _kept(self, round: int, name: str, art: Artifact, score: Optional[float]) -> None:
+    def _kept(self, round: int, name: str, art: Artifact, score: float | None) -> None:
         """``tracer.kept`` whose shadow-audit time and spend do not count against the loop's budgets."""
         if self.monitor is None:
             self.tracer.kept(round, name, art, score)
@@ -191,7 +227,7 @@ class AutoresearchLoop:
             rem += sum(code(l) for l in added_lines(after, before))
         return add, rem
 
-    def best_value(self) -> Optional[float]:
+    def best_value(self) -> float | None:
         vals = [s.mean for _, s in self.keeps]
         if not vals:
             return None
@@ -209,34 +245,63 @@ class AutoresearchLoop:
         self._maybe_reload_program()
         notes = ""
         if self.n_invalid_streak:
-            notes = (f"Your last {self.n_invalid_streak} turn(s) produced no runnable experiment (no change, an "
-                     "invalid reply or an exact repeat). NEVER STOP: think harder - read papers referenced in the "
-                     "code, re-read the in-scope files for new angles, try combining previous near-misses, try more "
-                     "radical architectural changes.")
+            notes = (
+                f"Your last {self.n_invalid_streak} turn(s) produced no runnable experiment (no change, an "
+                "invalid reply or an exact repeat). NEVER STOP: think harder - read papers referenced in the "
+                "code, re-read the in-scope files for new angles, try combining previous near-misses, try more "
+                "radical architectural changes."
+            )
         return AgentContext(
-            program=self.program.render(self.task, self.cfg.mode), artifact=self.inc["artifact"],
-            editable=self.task.editable_paths, locked=self.task.locked_paths,
-            results_tsv=self.results.text(last=self.cfg.history_rows), git_log=self.ws.log_text(10_000),
-            task_brief=self.task.describe(), metric=self.task.metric, direction=self.task.direction,
-            best=self.best_value(), experiment=self.n_rounds, seed=self.cfg.seed, notes=notes)
+            program=self.program.render(self.task, self.cfg.mode),
+            artifact=self.inc["artifact"],
+            editable=self.task.editable_paths,
+            locked=self.task.locked_paths,
+            results_tsv=self.results.text(last=self.cfg.history_rows),
+            git_log=self.ws.log_text(10_000),
+            task_brief=self.task.describe(),
+            metric=self.task.metric,
+            direction=self.task.direction,
+            best=self.best_value(),
+            experiment=self.n_rounds,
+            seed=self.cfg.seed,
+            notes=notes,
+        )
 
     def _state(self) -> dict:
         inc = self.inc or {}
         smp = inc.get("samples")
-        return {"experiment": self.n_rounds, "n_experiments": self.n_experiments, "n_runs": self.n_runs,
-                "incumbent": {"commit": str(inc.get("sha", ""))[:7], "node": inc.get("node"),
-                              "artifact": inc["artifact"].short_id if inc.get("artifact") is not None else None,
-                              "values": list(smp.values) if smp is not None else None,
-                              "mean": smp.mean if smp is not None else None},
-                "best": self.best_value(), "n_keeps": len(self.keeps), "invalid_streak": self.n_invalid_streak,
-                "counters": dict(self.counters), "crash_kinds": dict(self.policy.counts),
-                "val_epoch": self.val_epoch, "program_version": self.program.version,
-                "results_rows": len(self.results.rows()),
-                "branch_len": len(self.ws.log(10_000)), "resets": self.ws.n_resets,
-                "budget": {"max_experiments": self.cfg.max_experiments, "max_runs": self.cfg.max_runs,
-                           "max_wall_s": self.cfg.max_wall_s, "max_usd": self.cfg.max_usd,
-                           "wall_s": round(time.time() - self.t0, 2), "usd": round(self.usd(), 6),
-                           "monitor_wall_s": round(self._monitor_wall, 2), "monitor_usd": round(self._monitor_usd, 6)}}
+        return {
+            "experiment": self.n_rounds,
+            "n_experiments": self.n_experiments,
+            "n_runs": self.n_runs,
+            "incumbent": {
+                "commit": str(inc.get("sha", ""))[:7],
+                "node": inc.get("node"),
+                "artifact": inc["artifact"].short_id if inc.get("artifact") is not None else None,
+                "values": list(smp.values) if smp is not None else None,
+                "mean": smp.mean if smp is not None else None,
+            },
+            "best": self.best_value(),
+            "n_keeps": len(self.keeps),
+            "invalid_streak": self.n_invalid_streak,
+            "counters": dict(self.counters),
+            "crash_kinds": dict(self.policy.counts),
+            "val_epoch": self.val_epoch,
+            "program_version": self.program.version,
+            "results_rows": len(self.results.rows()),
+            "branch_len": len(self.ws.log(10_000)),
+            "resets": self.ws.n_resets,
+            "budget": {
+                "max_experiments": self.cfg.max_experiments,
+                "max_runs": self.cfg.max_runs,
+                "max_wall_s": self.cfg.max_wall_s,
+                "max_usd": self.cfg.max_usd,
+                "wall_s": round(time.time() - self.t0, 2),
+                "usd": round(self.usd(), 6),
+                "monitor_wall_s": round(self._monitor_wall, 2),
+                "monitor_usd": round(self._monitor_usd, 6),
+            },
+        }
 
     def _trace_proposal(self, cand_name: str, parent: Artifact, prop: Proposal, attempt: int, stage: str) -> None:
         if not self.tracer.enabled:
@@ -244,77 +309,166 @@ class AutoresearchLoop:
         meta = dict(prop.meta or {})
         prompt = meta.pop("prompt", "")
         if not prompt and not hasattr(self.agent, "editor"):
-            prompt = (f"(scripted agent {getattr(self.agent, 'name', '?')}: no LLM prompt; policy="
-                      f"{getattr(self.agent, 'policy', '?')})")
+            prompt = (
+                f"(scripted agent {getattr(self.agent, 'name', '?')}: no LLM prompt; policy="
+                f"{getattr(self.agent, 'policy', '?')})"
+            )
         diff = parent.diff(prop.artifact) if prop.artifact is not None else ""
-        self.tracer.proposal(self.n_rounds, cand_name, parent=parent.short_id, prompt=prompt, reply=prop.raw or "",
-                             parent_commit=str(self.inc.get("sha", ""))[:7],
-                             change=prop.change, hypothesis=prop.hypothesis, components=prop.components, diff=diff,
-                             error=prop.error, attempt=attempt, stage=stage, edit=meta.get("edit"),
-                             edit_kind=meta.get("kind"), blocked_files=list(prop.blocked_files or []),
-                             sanitized=meta.get("sanitized"),
-                             artifact=prop.artifact.short_id if prop.artifact is not None else None,
-                             identical_to_parent=(prop.artifact == parent) if prop.artifact is not None else None,
-                             usage=prop.usage.to_dict() if hasattr(prop.usage, "to_dict") else str(prop.usage))
+        self.tracer.proposal(
+            self.n_rounds,
+            cand_name,
+            parent=parent.short_id,
+            prompt=prompt,
+            reply=prop.raw or "",
+            parent_commit=str(self.inc.get("sha", ""))[:7],
+            change=prop.change,
+            hypothesis=prop.hypothesis,
+            components=prop.components,
+            diff=diff,
+            error=prop.error,
+            attempt=attempt,
+            stage=stage,
+            edit=meta.get("edit"),
+            edit_kind=meta.get("kind"),
+            blocked_files=list(prop.blocked_files or []),
+            sanitized=meta.get("sanitized"),
+            artifact=prop.artifact.short_id if prop.artifact is not None else None,
+            identical_to_parent=(prop.artifact == parent) if prop.artifact is not None else None,
+            usage=prop.usage.to_dict() if hasattr(prop.usage, "to_dict") else str(prop.usage),
+        )
 
     def _trace_eval(self, name: str, outcome: RunOutcome, role: str) -> None:
         if not self.tracer.enabled:
             return
-        split = (getattr(self.task, "split", "val") if isinstance(self.task, DomainResearchTask)
-                 else f"val ({self.task.metric}, {self.cfg.mode})")
-        self.tracer.event("eval", self.n_rounds, candidate=name, role=role,
-                          summary={"split": split, "S": outcome.metric, "C": outcome.memory_gb,
-                                   "errors": outcome.crash_reason, "missing": None},
-                          per_task=(outcome.meta or {}).get("per_task") or {}, trials={"run": [outcome.metric]},
-                          run=outcome_json(outcome))
+        split = (
+            getattr(self.task, "split", "val")
+            if isinstance(self.task, DomainResearchTask)
+            else f"val ({self.task.metric}, {self.cfg.mode})"
+        )
+        self.tracer.event(
+            "eval",
+            self.n_rounds,
+            candidate=name,
+            role=role,
+            summary={
+                "split": split,
+                "S": outcome.metric,
+                "C": outcome.memory_gb,
+                "errors": outcome.crash_reason,
+                "missing": None,
+            },
+            per_task=(outcome.meta or {}).get("per_task") or {},
+            trials={"run": [outcome.metric]},
+            run=outcome_json(outcome),
+        )
 
     def _trace_decision(self, node: Node, before: dict, why: str) -> None:
         if not self.tracer.enabled:
             return
-        row = self.results.text(last=1).strip().splitlines()[-1] \
-            if node.status in ("keep", "discard", "crash", "rejected") else "(no results.tsv row)"
-        self.tracer.decision(self.n_rounds, kept=node.id if node.status == "keep" else None,
-                             incumbent_before=str(before.get("sha", ""))[:7],
-                             incumbent_after=str(self.inc.get("sha", ""))[:7], why=why, status=node.status,
-                             description=node.change, metric=node.score, results_tsv_row=row,
-                             samples=node.metrics.get("samples"))
+        row = (
+            self.results.text(last=1).strip().splitlines()[-1]
+            if node.status in ("keep", "discard", "crash", "rejected")
+            else "(no results.tsv row)"
+        )
+        self.tracer.decision(
+            self.n_rounds,
+            kept=node.id if node.status == "keep" else None,
+            incumbent_before=str(before.get("sha", ""))[:7],
+            incumbent_after=str(self.inc.get("sha", ""))[:7],
+            why=why,
+            status=node.status,
+            description=node.change,
+            metric=node.score,
+            results_tsv_row=row,
+            samples=node.metrics.get("samples"),
+        )
         self.tracer.event("state", self.n_rounds, **self._state())
 
-    def _record(self, *, art: Artifact, desc: str, status: str, samples: Optional[Samples],
-                outcome: Optional[RunOutcome], commit: str, ledger_status: Optional[str] = None,
-                kind: str = "candidate", verdict=None, meta: Optional[dict] = None, tsv: bool = True) -> Node:
+    def _record(
+        self,
+        *,
+        art: Artifact,
+        desc: str,
+        status: str,
+        samples: Samples | None,
+        outcome: RunOutcome | None,
+        commit: str,
+        ledger_status: str | None = None,
+        kind: str = "candidate",
+        verdict=None,
+        meta: dict | None = None,
+        tsv: bool = True,
+    ) -> Node:
         metric = samples.mean if samples is not None and status != "crash" else None
         mem = samples.memory_gb if samples is not None else 0.0
         if tsv:
             self.results.append(commit, metric, mem, status, desc)
         parent = self.inc.get("node")
         base_art = self.inc.get("artifact")
-        m = {"memory_gb": mem, "wall_s": round(outcome.wall_s, 3) if outcome else 0.0,
-             "samples": list(samples.values) if samples else [], "val_epoch": self.val_epoch}
+        m = {
+            "memory_gb": mem,
+            "wall_s": round(outcome.wall_s, 3) if outcome else 0.0,
+            "samples": list(samples.values) if samples else [],
+            "val_epoch": self.val_epoch,
+        }
         truth = self.task.truth(art)
         if truth is not None:
             m["truth"] = truth
-        node = Node(id=new_id("exp"), parent=parent, round=self.n_rounds, kind=kind,
-                    status=ledger_status or status, score=metric, cost=mem, change=desc, artifact_id=art.id,
-                    diff=(base_art.diff(art)[:20000] if base_art is not None else ""), metrics=m,
-                    meta={"commit": commit, "program_version": self.program.version, "keep_rule": self.keep.name,
-                          "mode": self.cfg.mode, "verdict": (verdict.reason if verdict is not None else None),
-                          "verdict_details": (verdict.details if verdict is not None else None),
-                          "crash_reason": outcome.crash_reason if outcome else None,
-                          "summary": outcome.summary if outcome else None, **(meta or {})})
+        node = Node(
+            id=new_id("exp"),
+            parent=parent,
+            round=self.n_rounds,
+            kind=kind,
+            status=ledger_status or status,
+            score=metric,
+            cost=mem,
+            change=desc,
+            artifact_id=art.id,
+            diff=(base_art.diff(art)[:20000] if base_art is not None else ""),
+            metrics=m,
+            meta={
+                "commit": commit,
+                "program_version": self.program.version,
+                "keep_rule": self.keep.name,
+                "mode": self.cfg.mode,
+                "verdict": (verdict.reason if verdict is not None else None),
+                "verdict_details": (verdict.details if verdict is not None else None),
+                "crash_reason": outcome.crash_reason if outcome else None,
+                "summary": outcome.summary if outcome else None,
+                **(meta or {}),
+            },
+        )
         self.store.put(art)
         self.ledger.add(node)
         best = self.best_value()
-        self.trajectory.append({"exp": self.n_rounds, "status": node.status, "metric": metric, "best": best,
-                                "description": desc, "commit": commit, "wall_s": m["wall_s"],
-                                "t": round(time.time() - self.t0, 3), "kind": (meta or {}).get("edit_kind"),
-                                "truth": truth, "samples": m["samples"]})
+        self.trajectory.append(
+            {
+                "exp": self.n_rounds,
+                "status": node.status,
+                "metric": metric,
+                "best": best,
+                "description": desc,
+                "commit": commit,
+                "wall_s": m["wall_s"],
+                "t": round(time.time() - self.t0, 3),
+                "kind": (meta or {}).get("edit_kind"),
+                "truth": truth,
+                "samples": m["samples"],
+            }
+        )
         return node
 
     def _run_config(self, **extra) -> dict:
-        return {"config": self.cfg.to_json(), "task": self.task.name, "metric": self.task.metric,
-                "direction": self.task.direction, "budget": self.task.budget.to_json(),
-                "keep_rule": self.keep.to_json(), "agent": getattr(self.agent, "name", "agent"), **extra}
+        return {
+            "config": self.cfg.to_json(),
+            "task": self.task.name,
+            "metric": self.task.metric,
+            "direction": self.task.direction,
+            "budget": self.task.budget.to_json(),
+            "keep_rule": self.keep.to_json(),
+            "agent": getattr(self.agent, "name", "agent"),
+            **extra,
+        }
 
     def setup(self) -> None:
         self.task.prepare()
@@ -325,16 +479,24 @@ class AutoresearchLoop:
         if self.cfg.persist:
             if self._program_path is None:
                 self.program.save(self.out / "program.md")
-            (self.out / "config.json").write_text(json.dumps(
-                self._run_config(program_version=self.program.version), indent=1, default=str))
+            (self.out / "config.json").write_text(
+                json.dumps(self._run_config(program_version=self.program.version), indent=1, default=str)
+            )
         if self.tracer.enabled:
-            self.tracer.event("run_start", None, seed=base.short_id, seed_artifact_id=base.id,
-                              seed_files={k: len(v.splitlines()) for k, v in base.files.items()},
-                              config=self._run_config(editable=list(self.task.editable_paths),
-                                                      locked=list(self.task.locked_paths),
-                                                      program_version=self.program.version,
-                                                      monitor=type(self.monitor).__name__ if self.monitor else None),
-                              program_md=self.program.render(self.task, self.cfg.mode))
+            self.tracer.event(
+                "run_start",
+                None,
+                seed=base.short_id,
+                seed_artifact_id=base.id,
+                seed_files={k: len(v.splitlines()) for k, v in base.files.items()},
+                config=self._run_config(
+                    editable=list(self.task.editable_paths),
+                    locked=list(self.task.locked_paths),
+                    program_version=self.program.version,
+                    monitor=type(self.monitor).__name__ if self.monitor else None,
+                ),
+                program_md=self.program.render(self.task, self.cfg.mode),
+            )
 
     def _ask_fix(self, ctx: AgentContext, art: Artifact, desc: str, outcome: RunOutcome):
         """The agent's fix (or None) and the reply to trace (a GIVE_UP reply too)."""
@@ -351,8 +513,9 @@ class AutoresearchLoop:
             attempts += 1
             fixed, shown = self._ask_fix(self.context(), art, "baseline", o)
             if self.tracer.enabled and shown is not None:
-                self._trace_proposal(f"{name}_fix{attempts}", art, shown, attempts,
-                                     f"fix ({self.policy.kind(o)} crash of the baseline)")
+                self._trace_proposal(
+                    f"{name}_fix{attempts}", art, shown, attempts, f"fix ({self.policy.kind(o)} crash of the baseline)"
+                )
             if fixed is None or not fixed.ok:
                 break
             if self.cfg.mode == "hardened" and self.guard.check(art, fixed.artifact):
@@ -381,37 +544,68 @@ class AutoresearchLoop:
                 raise RuntimeError(f"baseline run crashed (after fix attempts): {o.crash_reason}\n{o.tail(30)}")
             vals.append(o.metric)
         samples = Samples(vals, memory_gb=outs[-1].memory_gb, loc=self._editable_loc(art), artifact_id=art.id)
-        node = self._record(art=art, desc="baseline", status="keep", samples=samples, outcome=outs[-1],
-                            commit=self.inc["sha"][:7], kind="baseline")
+        node = self._record(
+            art=art,
+            desc="baseline",
+            status="keep",
+            samples=samples,
+            outcome=outs[-1],
+            commit=self.inc["sha"][:7],
+            kind="baseline",
+        )
         self.inc.update(node=node.id, samples=samples)
         self.keeps.append((node.id, samples))
         self.seen[art.id] = node.id
         self.trajectory[-1]["best"] = self.best_value()
         if self.tracer.enabled:
-            self.tracer.event("baseline", 0, candidate="baseline", commit=self.inc["sha"][:7],
-                              summary={"S": samples.mean, "C": samples.memory_gb, "n_tasks": None,
-                                       "k": len(vals), "metric": self.task.metric},
-                              trials={"runs": vals}, per_task=(outs[-1].meta or {}).get("per_task") or {},
-                              results_tsv_row=self.results.text(last=1).strip().splitlines()[-1])
+            self.tracer.event(
+                "baseline",
+                0,
+                candidate="baseline",
+                commit=self.inc["sha"][:7],
+                summary={
+                    "S": samples.mean,
+                    "C": samples.memory_gb,
+                    "n_tasks": None,
+                    "k": len(vals),
+                    "metric": self.task.metric,
+                },
+                trials={"runs": vals},
+                per_task=(outs[-1].meta or {}).get("per_task") or {},
+                results_tsv_row=self.results.text(last=1).strip().splitlines()[-1],
+            )
             self._kept(0, "baseline", art, samples.mean)
         if self.cfg.noise_runs:
-            extra = [self._run(art, self.cfg.run_seed + 100 + i, f"noise_{i}").metric
-                     for i in range(self.cfg.noise_runs)]
+            extra = [
+                self._run(art, self.cfg.run_seed + 100 + i, f"noise_{i}").metric for i in range(self.cfg.noise_runs)
+            ]
             extra = [v for v in extra if v is not None] + vals[:1]
             if len(extra) >= 2:
                 self.noise = NoiseCalibrator(len(extra)).estimate(extra)
                 self.ledger.update(node.id, meta={"noise": self.noise.to_json(), "noise_runs": extra})
-                self.tracer.event("noise", 0, delta=self.noise.delta, mode=getattr(self.noise, "mode", "repeat"),
-                                  z=getattr(self.noise, "z", None), values=extra,
-                                  detail="NoiseCalibrator over baseline re-runs (fresh run seeds)")
+                self.tracer.event(
+                    "noise",
+                    0,
+                    delta=self.noise.delta,
+                    mode=getattr(self.noise, "mode", "repeat"),
+                    z=getattr(self.noise, "z", None),
+                    values=extra,
+                    detail="NoiseCalibrator over baseline re-runs (fresh run seeds)",
+                )
         if self.tracer.enabled:
             self.tracer.event("state", 0, **self._state())
         return node
 
     def rewind(self, commit: str) -> None:
         """Move the branch tip back to an earlier kept commit."""
-        node = next((n for n in reversed(self.ledger.nodes()) if n.status == "keep"
-                     and str(n.meta.get("commit", "")).startswith(commit[:7])), None)
+        node = next(
+            (
+                n
+                for n in reversed(self.ledger.nodes())
+                if n.status == "keep" and str(n.meta.get("commit", "")).startswith(commit[:7])
+            ),
+            None,
+        )
         if node is None:
             raise KeyError(f"no kept commit {commit!r}")
         sha = next(c.sha for c in self.ws.commits.values() if c.sha.startswith(node.meta["commit"]))
@@ -434,12 +628,15 @@ class AutoresearchLoop:
         """Switch to a new validation epoch and re-score the incumbent on it."""
         self.val_epoch += 1
         art = self.inc["artifact"]
-        vals = [self._run(art, s, f"rescore_{self.val_epoch}_{i}").metric for i, s in
-                enumerate(self._seeds(self.keep.repeats))]
+        vals = [
+            self._run(art, s, f"rescore_{self.val_epoch}_{i}").metric
+            for i, s in enumerate(self._seeds(self.keep.repeats))
+        ]
         vals = [v for v in vals if v is not None]
         if vals:
-            samples = Samples(vals, memory_gb=self.inc["samples"].memory_gb, loc=self.inc["samples"].loc,
-                              artifact_id=art.id)
+            samples = Samples(
+                vals, memory_gb=self.inc["samples"].memory_gb, loc=self.inc["samples"].loc, artifact_id=art.id
+            )
             self.inc["samples"] = samples
             self.keeps = [(self.inc["node"], samples)]
             self.ledger.update(self.inc["node"], meta={f"rescore_epoch_{self.val_epoch}": vals})
@@ -459,10 +656,15 @@ class AutoresearchLoop:
         before = dict(self.inc)
         if self.tracer.enabled:
             self.tracer.event("round_start", self.n_rounds, **self._state())
-            self.tracer.event("analysis", self.n_rounds,
-                              text=("(autoresearch has no separate analysis step; this is what the agent reads)\n"
-                                    f"best {self.task.metric} so far: {ctx.best}\n--- results.tsv (tail) ---\n"
-                                    f"{ctx.results_tsv}\n--- git log (kept chain) ---\n{ctx.git_log}"))
+            self.tracer.event(
+                "analysis",
+                self.n_rounds,
+                text=(
+                    "(autoresearch has no separate analysis step; this is what the agent reads)\n"
+                    f"best {self.task.metric} so far: {ctx.best}\n--- results.tsv (tail) ---\n"
+                    f"{ctx.results_tsv}\n--- git log (kept chain) ---\n{ctx.git_log}"
+                ),
+            )
         prop = self._propose(ctx)
         inc_art: Artifact = self.inc["artifact"]
         target = (prop.meta or {}).get("rewind")
@@ -474,27 +676,48 @@ class AutoresearchLoop:
             else:
                 self.n_invalid_streak = 0
                 self.counters["rewinds"] += 1
-                self._skip(before, f"agent rewound the branch to {str(self.inc['sha'])[:7]}",
-                           parent=before.get("node"), kind="candidate", status="rewind", change=f"REWIND {target}",
-                           meta={"rewound_to": self.inc["node"]})
+                self._skip(
+                    before,
+                    f"agent rewound the branch to {str(self.inc['sha'])[:7]}",
+                    parent=before.get("node"),
+                    kind="candidate",
+                    status="rewind",
+                    change=f"REWIND {target}",
+                    meta={"rewound_to": self.inc["node"]},
+                )
                 return None
         if not prop.ok or prop.artifact == inc_art:
             self.counters["invalid"] += 1
             self.n_invalid_streak += 1
-            self._skip(before, f"invalid proposal ({prop.error or 'no effective change'}); "
-                               "nothing run, incumbent unchanged",
-                       parent=self.inc["node"], kind="candidate", status="invalid", change=prop.change or "",
-                       meta={"error": prop.error})
+            self._skip(
+                before,
+                f"invalid proposal ({prop.error or 'no effective change'}); nothing run, incumbent unchanged",
+                parent=self.inc["node"],
+                kind="candidate",
+                status="invalid",
+                change=prop.change or "",
+                meta={"error": prop.error},
+            )
             return None
         self.n_invalid_streak = 0
         cand, desc = prop.artifact, (prop.change or "(no description)")
-        emeta = {"edit_kind": prop.meta.get("kind"), "edit": prop.meta.get("edit"), "hypothesis": prop.hypothesis,
-                 "components": prop.components}
+        emeta = {
+            "edit_kind": prop.meta.get("kind"),
+            "edit": prop.meta.get("edit"),
+            "hypothesis": prop.hypothesis,
+            "components": prop.components,
+        }
         if self.cfg.mode == "hardened":
             viol = self.guard.check(inc_art, cand)
             if self.tracer.enabled:
-                self.tracer.event("critic", self.n_rounds, candidate=f"exp{self.n_rounds:04d}", accept=not viol,
-                                  stage="hardened ScopeGuard (pre-run)", objections=[str(v) for v in viol])
+                self.tracer.event(
+                    "critic",
+                    self.n_rounds,
+                    candidate=f"exp{self.n_rounds:04d}",
+                    accept=not viol,
+                    stage="hardened ScopeGuard (pre-run)",
+                    objections=[str(v) for v in viol],
+                )
             if viol:
                 self.counters["rejected"] += 1
                 self.n_experiments += 1
@@ -502,22 +725,35 @@ class AutoresearchLoop:
                 # a real commit, reset at once, so the row's commit id resolves
                 rsha = self.ws.commit(cand, rdesc)
                 self.ws.reset_to(self.inc["sha"])
-                node = self._record(art=cand, desc=rdesc, status="discard", samples=None, outcome=None,
-                                    commit=rsha[:7], ledger_status="rejected",
-                                    meta={**emeta, "violations": [str(v) for v in viol]})
+                node = self._record(
+                    art=cand,
+                    desc=rdesc,
+                    status="discard",
+                    samples=None,
+                    outcome=None,
+                    commit=rsha[:7],
+                    ledger_status="rejected",
+                    meta={**emeta, "violations": [str(v) for v in viol]},
+                )
                 self._trace_decision(node, before, "scope guard rejected the edit before running; logged as discard")
                 return None
         if self.keep.never_repeat and cand.id in self.seen:
             self.counters["duplicate"] += 1
             self.n_invalid_streak += 1
-            self._skip(before, f"identical file already scored ({self.seen[cand.id]}); not re-run",
-                       parent=self.inc["node"], status="duplicate", change=desc, artifact_id=cand.id,
-                       meta={**emeta, "same_as": self.seen[cand.id]})
+            self._skip(
+                before,
+                f"identical file already scored ({self.seen[cand.id]}); not re-run",
+                parent=self.inc["node"],
+                status="duplicate",
+                change=desc,
+                artifact_id=cand.id,
+                meta={**emeta, "same_as": self.seen[cand.id]},
+            )
             return None
         self.seen[cand.id] = "pending"
         return ctx, cand, desc, emeta
 
-    def step(self) -> Optional[Node]:
+    def step(self) -> Node | None:
         """One experiment; the ledger node, or None if the turn produced nothing."""
         nxt = self._next_candidate()
         if nxt is None:
@@ -530,8 +766,17 @@ class AutoresearchLoop:
         self._trace_eval(name, outcome, "experiment")
         return self._settle(ctx, cand, desc, sha, outcome, emeta, name, committed=True)
 
-    def _settle(self, ctx: AgentContext, cand: Artifact, desc: str, sha: str, outcome: RunOutcome, emeta: dict,
-                name: str, committed: bool = True) -> Node:
+    def _settle(
+        self,
+        ctx: AgentContext,
+        cand: Artifact,
+        desc: str,
+        sha: str,
+        outcome: RunOutcome,
+        emeta: dict,
+        name: str,
+        committed: bool = True,
+    ) -> Node:
         """Crash fixes, extra runs, keep decision, logging; ``committed``: the candidate is HEAD."""
         seeds = self._seeds(self.keep.repeats)
         kind = self.policy.kind(outcome)
@@ -544,15 +789,25 @@ class AutoresearchLoop:
                 if shown is not None:
                     self._trace_proposal(f"{name}_fix{attempts}", cand, shown, attempts, f"fix ({kind} crash)")
                 else:
-                    self.tracer.event("note", self.n_rounds, text=f"fix attempt {attempts} for {kind} crash: agent "
-                                      "gave up / no fix available", candidate=name)
+                    self.tracer.event(
+                        "note",
+                        self.n_rounds,
+                        text=f"fix attempt {attempts} for {kind} crash: agent gave up / no fix available",
+                        candidate=name,
+                    )
             if fixed is None or not fixed.ok:
                 break
             if self.cfg.mode == "hardened":
                 viol = self.guard.check(ctx.artifact, fixed.artifact)
                 if self.tracer.enabled:
-                    self.tracer.event("critic", self.n_rounds, candidate=f"{name}_fix{attempts}", accept=not viol,
-                                      stage="hardened ScopeGuard (fix)", objections=[str(v) for v in viol])
+                    self.tracer.event(
+                        "critic",
+                        self.n_rounds,
+                        candidate=f"{name}_fix{attempts}",
+                        accept=not viol,
+                        stage="hardened ScopeGuard (fix)",
+                        objections=[str(v) for v in viol],
+                    )
                 if viol:
                     break
             cand = fixed.artifact
@@ -563,17 +818,27 @@ class AutoresearchLoop:
             kind = self.policy.kind(outcome)
             if not outcome.crashed:
                 self.counters["fixed"] += 1
-        emeta.update({"fix_attempts": attempts, "crash_kind": kind if outcome.crashed else None,
-                      "budget_event": self.enforcer.classify(outcome)})
+        emeta.update(
+            {
+                "fix_attempts": attempts,
+                "crash_kind": kind if outcome.crashed else None,
+                "budget_event": self.enforcer.classify(outcome),
+            }
+        )
         if outcome.crashed:
             self.policy.record(kind)
             if committed:
                 self.ws.reset_to(self.inc["sha"])
-            node = self._record(art=cand, desc=desc, status="crash", samples=None, outcome=outcome,
-                                commit=sha[:7], meta=emeta)
+            node = self._record(
+                art=cand, desc=desc, status="crash", samples=None, outcome=outcome, commit=sha[:7], meta=emeta
+            )
             self.seen[cand.id] = node.id
-            self._trace_decision(node, before, f"crash ({kind}: {outcome.crash_reason}) after {attempts} fix "
-                                               "attempt(s); branch reset to the incumbent")
+            self._trace_decision(
+                node,
+                before,
+                f"crash ({kind}: {outcome.crash_reason}) after {attempts} fix "
+                "attempt(s); branch reset to the incumbent",
+            )
             return node
         vals, outs = [outcome.metric], [outcome]
         ref = self.keep.reference(self.inc["samples"], [s for _, s in self.keeps], self.task.direction)
@@ -588,12 +853,21 @@ class AutoresearchLoop:
                     emeta["crash_kind"] = self.policy.kind(o)
                     break
                 vals.append(o.metric)
-        samples = Samples(vals, memory_gb=float(np.max([o.memory_gb for o in outs])),
-                          loc=self._editable_loc(cand), artifact_id=cand.id)
+        samples = Samples(
+            vals,
+            memory_gb=float(np.max([o.memory_gb for o in outs])),
+            loc=self._editable_loc(cand),
+            artifact_id=cand.id,
+        )
         add, rem = self._diff_counts(self.inc["artifact"], cand)
-        kctx = KeepContext(direction=self.task.direction, best=self.best_value(),
-                           delta=self.noise.delta if self.noise else 0.0, experiment=self.n_rounds,
-                           lines_added=add, lines_removed=rem)
+        kctx = KeepContext(
+            direction=self.task.direction,
+            best=self.best_value(),
+            delta=self.noise.delta if self.noise else 0.0,
+            experiment=self.n_rounds,
+            lines_added=add,
+            lines_removed=rem,
+        )
         verdict = None
         if status_override:
             status = status_override
@@ -605,17 +879,31 @@ class AutoresearchLoop:
             status = "keep" if verdict.accept else "discard"
         if self.tracer.enabled:
             sign = 1.0 if self.task.direction == "min" else -1.0
-            math_ = {"rule": self.keep.name, "direction": self.task.direction, "cand_values": list(vals),
-                     "cand_mean": samples.mean, "ref_values": list(ref.values), "ref_mean": ref.mean,
-                     "gain(ref-cand, sign-adjusted)": sign * (ref.mean - samples.mean),
-                     "min_gain": getattr(getattr(self.keep, "gate", None), "min_gain", None),
-                     "tie_eps": 1e-9, "running_best": kctx.best, "noise_delta": kctx.delta,
-                     "lines_added": add, "lines_removed": rem, "repeats_required": self.keep.repeats,
-                     "early_reject": bool(emeta.get("early_reject")), "status_override": status_override,
-                     "over_budget": outcome.over_budget,
-                     "verdict_details": verdict.details if verdict is not None else None}
-            reason = verdict.reason if verdict is not None else (
-                status_override or "early reject: first run no better than the reference")
+            math_ = {
+                "rule": self.keep.name,
+                "direction": self.task.direction,
+                "cand_values": list(vals),
+                "cand_mean": samples.mean,
+                "ref_values": list(ref.values),
+                "ref_mean": ref.mean,
+                "gain(ref-cand, sign-adjusted)": sign * (ref.mean - samples.mean),
+                "min_gain": getattr(getattr(self.keep, "gate", None), "min_gain", None),
+                "tie_eps": 1e-9,
+                "running_best": kctx.best,
+                "noise_delta": kctx.delta,
+                "lines_added": add,
+                "lines_removed": rem,
+                "repeats_required": self.keep.repeats,
+                "early_reject": bool(emeta.get("early_reject")),
+                "status_override": status_override,
+                "over_budget": outcome.over_budget,
+                "verdict_details": verdict.details if verdict is not None else None,
+            }
+            reason = (
+                verdict.reason
+                if verdict is not None
+                else (status_override or "early reject: first run no better than the reference")
+            )
             self.tracer.gate(self.n_rounds, name, status == "keep" and not outcome.over_budget, reason, math_)
         if status == "keep" and outcome.over_budget:
             status = "discard"
@@ -623,8 +911,16 @@ class AutoresearchLoop:
         if status == "keep":
             if not committed:
                 sha = self.ws.commit(cand, desc)
-            node = self._record(art=cand, desc=desc, status="keep", samples=samples, outcome=outcome,
-                                commit=sha[:7], verdict=verdict, meta=emeta)
+            node = self._record(
+                art=cand,
+                desc=desc,
+                status="keep",
+                samples=samples,
+                outcome=outcome,
+                commit=sha[:7],
+                verdict=verdict,
+                meta=emeta,
+            )
             self.inc = {"sha": sha, "artifact": cand, "node": node.id, "samples": samples}
             self.keeps.append((node.id, samples))
             reason = verdict.reason if verdict is not None else ""
@@ -633,13 +929,20 @@ class AutoresearchLoop:
         else:
             if committed:
                 self.ws.reset_to(self.inc["sha"])
-            node = self._record(art=cand, desc=desc, status=status, samples=samples if status != "crash" else None,
-                                outcome=outcome, commit=sha[:7], verdict=verdict, meta=emeta)
+            node = self._record(
+                art=cand,
+                desc=desc,
+                status=status,
+                samples=samples if status != "crash" else None,
+                outcome=outcome,
+                commit=sha[:7],
+                verdict=verdict,
+                meta=emeta,
+            )
             why = verdict.reason if verdict is not None else (status_override or "early reject (first run no better)")
             if verdict is not None and verdict.accept and outcome.over_budget:
                 why = f"rule accepted ({verdict.reason}) but the run was over budget"
-            self._trace_decision(node, before, f"{status}: {why}; "
-                                               f"git reset to {str(self.inc.get('sha', ''))[:7]}")
+            self._trace_decision(node, before, f"{status}: {why}; git reset to {str(self.inc.get('sha', ''))[:7]}")
         self.seen[cand.id] = node.id
         return node
 
@@ -648,7 +951,7 @@ class AutoresearchLoop:
         task = self.task
         cache = getattr(self.monitor, "cache", None)
         if cache:
-            task = CachedAuditTask(self.task, cache)      # same seed: reuse the shadow audits
+            task = CachedAuditTask(self.task, cache)  # same seed: reuse the shadow audits
         rows = HiddenAudit(task).audit_ledger(self.ledger, self.store, statuses=statuses, seed=self.cfg.run_seed)
         if self.cfg.persist and rows:
             HiddenAudit.write_tsv(rows, self.out / "groundtruth_all.tsv", self.task.metric)
@@ -675,13 +978,20 @@ class AutoresearchLoop:
         if self.cfg.confirm is None:
             return True
         base = self.inc.get("samples")
-        summary = {"branch": self.ws.branch, "task": self.task.name, "metric": self.task.metric,
-                   "baseline": base.mean if base is not None else None, "budget": self.task.budget.to_json(),
-                   "mode": self.cfg.mode, "keep_rule": self.keep.name, "program_version": self.program.version,
-                   "results_tsv": self.results.text()}
+        summary = {
+            "branch": self.ws.branch,
+            "task": self.task.name,
+            "metric": self.task.metric,
+            "baseline": base.mean if base is not None else None,
+            "budget": self.task.budget.to_json(),
+            "mode": self.cfg.mode,
+            "keep_rule": self.keep.name,
+            "program_version": self.program.version,
+            "results_tsv": self.results.text(),
+        }
         return bool(self.cfg.confirm(summary))
 
-    def _stop_check(self) -> Optional[str]:
+    def _stop_check(self) -> str | None:
         why = self.budget.exhausted(rounds=self.n_rounds, rollouts=self.n_runs, usd=self.budget_usd())
         return why or ("agent_failed" if self._agent_failed() else None)
 
@@ -698,15 +1008,26 @@ class AutoresearchLoop:
 
     def finish(self) -> ImprovementResult:
         wall = time.time() - self.t0
-        meta: dict = {"results_tsv": str(self.out / "results.tsv") if self.cfg.persist else None,
-                      "counters": dict(self.counters), "crash_kinds": dict(self.policy.counts),
-                      "scope": {"checked": self.guard.n_checked, "rejected": self.guard.n_rejected},
-                      "budget_events": {"killed": self.enforcer.n_killed, "over_budget": self.enforcer.n_over},
-                      "programs": dict(self.programs), "n_experiments": self.n_experiments, "n_runs": self.n_runs,
-                      "wall_s": wall, "noise": self.noise.to_json() if self.noise else None,
-                      "workspace": {"branch": self.ws.branch, "head": self.ws.head()[:7], "resets": self.ws.n_resets,
-                                    "rewinds": self.ws.n_rewinds},
-                      "final_samples": list(self.inc["samples"].values), "val_epochs": self.val_epoch}
+        meta: dict = {
+            "results_tsv": str(self.out / "results.tsv") if self.cfg.persist else None,
+            "counters": dict(self.counters),
+            "crash_kinds": dict(self.policy.counts),
+            "scope": {"checked": self.guard.n_checked, "rejected": self.guard.n_rejected},
+            "budget_events": {"killed": self.enforcer.n_killed, "over_budget": self.enforcer.n_over},
+            "programs": dict(self.programs),
+            "n_experiments": self.n_experiments,
+            "n_runs": self.n_runs,
+            "wall_s": wall,
+            "noise": self.noise.to_json() if self.noise else None,
+            "workspace": {
+                "branch": self.ws.branch,
+                "head": self.ws.head()[:7],
+                "resets": self.ws.n_resets,
+                "rewinds": self.ws.n_rewinds,
+            },
+            "final_samples": list(self.inc["samples"].values),
+            "val_epochs": self.val_epoch,
+        }
         an = Analyzer.from_ledger(self.ledger, self.task.direction, metric=self.task.metric)
         meta["analysis"] = an.summary(wall_s=wall)
         if self.cfg.plot and self.cfg.persist:
@@ -720,21 +1041,43 @@ class AutoresearchLoop:
             meta["reeval"] = self.reeval()
         usage = {f"{l.name}:{k}": v for l in self.llms for k, v in l.meter.snapshot().items()}
         totals = [l.meter.total() for l in self.llms]
-        usage["_total"] = {"calls": sum(t.calls for t in totals), "input_tokens": sum(t.input_tokens for t in totals),
-                           "output_tokens": sum(t.output_tokens for t in totals),
-                           "cost_usd": sum((t.cost_usd for t in totals), 0.0)}
-        res = ImprovementResult(method=self.method, baseline=self.ws.artifact(self.ws.log(10_000)[-1].sha),
-                                best=self.inc["artifact"], ledger=self.ledger, trajectory=self.trajectory,
-                                usage=usage, stop_reason=self.stop_reason, out_dir=str(self.out), meta=meta)
+        usage["_total"] = {
+            "calls": sum(t.calls for t in totals),
+            "input_tokens": sum(t.input_tokens for t in totals),
+            "output_tokens": sum(t.output_tokens for t in totals),
+            "cost_usd": sum((t.cost_usd for t in totals), 0.0),
+        }
+        res = ImprovementResult(
+            method=self.method,
+            baseline=self.ws.artifact(self.ws.log(10_000)[-1].sha),
+            best=self.inc["artifact"],
+            ledger=self.ledger,
+            trajectory=self.trajectory,
+            usage=usage,
+            stop_reason=self.stop_reason,
+            out_dir=str(self.out),
+            meta=meta,
+        )
         if self.tracer.enabled:
             base_nodes = [n for n in self.ledger.nodes() if n.kind == "baseline"]
-            self.tracer.event("run_end", None, stop_reason=self.stop_reason, n_experiments=self.n_experiments,
-                              n_rounds=self.n_rounds, n_runs=self.n_runs, wall_s=round(wall, 2),
-                              baseline_metric=base_nodes[0].score if base_nodes else None,
-                              final_metric=self.inc["samples"].mean, final_commit=self.inc["sha"][:7],
-                              counters=dict(self.counters), crash_kinds=dict(self.policy.counts),
-                              analysis=meta.get("analysis"), audit=meta.get("audit"), reeval=meta.get("reeval"),
-                              usage=usage.get("_total"))
+            self.tracer.event(
+                "run_end",
+                None,
+                stop_reason=self.stop_reason,
+                n_experiments=self.n_experiments,
+                n_rounds=self.n_rounds,
+                n_runs=self.n_runs,
+                wall_s=round(wall, 2),
+                baseline_metric=base_nodes[0].score if base_nodes else None,
+                final_metric=self.inc["samples"].mean,
+                final_commit=self.inc["sha"][:7],
+                counters=dict(self.counters),
+                crash_kinds=dict(self.policy.counts),
+                analysis=meta.get("analysis"),
+                audit=meta.get("audit"),
+                reeval=meta.get("reeval"),
+                usage=usage.get("_total"),
+            )
         if self.cfg.persist:
             (self.out / "summary.json").write_text(json.dumps({**res.summary(), "meta": meta}, indent=1, default=str))
             (self.out / "trajectory.json").write_text(json.dumps(self.trajectory, indent=1, default=float))
@@ -742,8 +1085,9 @@ class AutoresearchLoop:
         return res
 
 
-def make_agent(task: ResearchTask, llm_propose: Optional[LLM], *, editor: str = "rewrite", seed: int = 0,
-               **mock_kw) -> ResearchAgent:
+def make_agent(
+    task: ResearchTask, llm_propose: LLM | None, *, editor: str = "rewrite", seed: int = 0, **mock_kw
+) -> ResearchAgent:
     """LLMResearchAgent over RewriteEditor (or AgentEditor for ``editor="agent"``), else MockResearchAgent."""
     if llm_propose is None:
         pool = task.mock_edit_pool()
@@ -764,17 +1108,27 @@ def agent_llms(agent: ResearchAgent) -> list[LLM]:
     """The LLM backends an agent meters its calls on (``RewriteEditor.llm`` or the inner ``AgentEditor.cli``)."""
     ed = getattr(agent, "editor", None)
     out = [getattr(ed, "llm", None), getattr(ed, "cli", None)] if ed is not None else []
-    for sub in ("proposer", "fixer"):                    # composite agents
+    for sub in ("proposer", "fixer"):  # composite agents
         if getattr(agent, sub, None) is not None and getattr(agent, sub) is not agent:
             out += agent_llms(getattr(agent, sub))
     return [l for l in out if isinstance(l, LLM)]
 
 
-def run(domain_or_task, seed_artifact: Optional[Artifact] = None, *, llm_task: Optional[LLM] = None,
-        llm_propose: Optional[LLM] = None, config: Optional[Config] = None, out_dir: Optional[str | Path] = None,
-        agent: Optional[ResearchAgent] = None, keep_rule: Optional[KeepRule] = None,
-        program: Optional[ProgramSpec] = None, editor: str = "rewrite", mock: Optional[dict] = None,
-        task_kwargs: Optional[dict] = None) -> ImprovementResult:
+def run(
+    domain_or_task,
+    seed_artifact: Artifact | None = None,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM | None = None,
+    config: Config | None = None,
+    out_dir: str | Path | None = None,
+    agent: ResearchAgent | None = None,
+    keep_rule: KeepRule | None = None,
+    program: ProgramSpec | None = None,
+    editor: str = "rewrite",
+    mock: dict | None = None,
+    task_kwargs: dict | None = None,
+) -> ImprovementResult:
     """Run on a ResearchTask or a Domain; ``llm_propose=None`` uses MockResearchAgent (kwargs in ``mock``)."""
     cfg = config or Config()
     if isinstance(domain_or_task, Domain):
@@ -783,19 +1137,23 @@ def run(domain_or_task, seed_artifact: Optional[Artifact] = None, *, llm_task: O
         task = domain_or_task
     ag = agent or make_agent(task, llm_propose, editor=editor, seed=cfg.seed, **(mock or {}))
     # meter every backend exactly once
-    llms: list[Optional[LLM]] = agent_llms(ag) or [llm_propose]
+    llms: list[LLM | None] = agent_llms(ag) or [llm_propose]
     if isinstance(task, DomainResearchTask) and llm_task is not None and all(llm_task is not l for l in llms):
         llms.append(llm_task)
     if cfg.workers > 1:
         from .parallel import ParallelAutoresearchLoop
 
-        loop = ParallelAutoresearchLoop(task, ag, cfg, keep_rule=keep_rule, program=program, out_dir=out_dir,
-                                        llms=llms, seed_artifact=seed_artifact)
+        loop = ParallelAutoresearchLoop(
+            task, ag, cfg, keep_rule=keep_rule, program=program, out_dir=out_dir, llms=llms, seed_artifact=seed_artifact
+        )
     else:
-        loop = AutoresearchLoop(task, ag, cfg, keep_rule=keep_rule, program=program, out_dir=out_dir, llms=llms,
-                                seed_artifact=seed_artifact)
+        loop = AutoresearchLoop(
+            task, ag, cfg, keep_rule=keep_rule, program=program, out_dir=out_dir, llms=llms, seed_artifact=seed_artifact
+        )
     if loop.keep.name in NOISE_BLIND_RULES:
-        warnings.warn(f"autoresearch: keep rule {loop.keep.name!r} keeps any improvement on one run, including luck; "
-                      "pass keep_rule='rigor' (or a Gate) and noise_runs >= 2 to require a gain beyond the noise",
-                      stacklevel=2)
+        warnings.warn(
+            f"autoresearch: keep rule {loop.keep.name!r} keeps any improvement on one run, including luck; "
+            "pass keep_rule='rigor' (or a Gate) and noise_runs >= 2 to require a gain beyond the noise",
+            stacklevel=2,
+        )
     return loop.run()

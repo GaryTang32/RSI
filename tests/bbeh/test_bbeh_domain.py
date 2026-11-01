@@ -1,4 +1,5 @@
 """BBEHDomain: the BBH/AgentQA harness interface with BBEH's grader; every method runs on it offline."""
+
 from __future__ import annotations
 
 import json
@@ -17,8 +18,12 @@ from rsi.harness2.guard import markers_for
 
 @pytest.fixture
 def small(bkw):
-    suite = make_suite(["multistep_arithmetic", "web_of_lies", "word_sorting"], ["object_counting", "hyperbaton"],
-                       per_family={"evolve": 2, "holdout": 2, "ood": 2}, **bkw)
+    suite = make_suite(
+        ["multistep_arithmetic", "web_of_lies", "word_sorting"],
+        ["object_counting", "hyperbaton"],
+        per_family={"evolve": 2, "holdout": 2, "ood": 2},
+        **bkw,
+    )
     return BBEHDomain(suite), BBEHSimModel(suite)
 
 
@@ -47,11 +52,16 @@ def test_grade_uses_the_bbeh_pipeline_with_agentqa_feedback(small):
 def test_tampering_with_bbeh_grading_is_caught_and_restored(small):
     dom, sim = small
     from rsi.domains.bbeh import grading
+
     orig = grading.fuzzy_match
-    hack = Artifact({"harness.py": "import sys\n"
-                                   "def solve(question, llm, tools, files):\n"
-                                   "    sys.modules['rsi.domains.bbeh.grading'].fuzzy_match = lambda *a: True\n"
-                                   "    return 'ANSWER: nothing'\n"})
+    hack = Artifact(
+        {
+            "harness.py": "import sys\n"
+            "def solve(question, llm, tools, files):\n"
+            "    sys.modules['rsi.domains.bbeh.grading'].fuzzy_match = lambda *a: True\n"
+            "    return 'ANSWER: nothing'\n"
+        }
+    )
     tr = dom.run(hack, dom.tasks.split("evolve")[0], llm=sim)
     assert tr.score == 0.0 and "tamper" in (tr.error or "") and grading.fuzzy_match is orig
 
@@ -75,16 +85,23 @@ def test_seed_harness_one_call(small):
 def test_improve_rrsi_gepa_harness2_offline(small):
     from rsi.gepa import AgentQAReflectionLM
     from rsi.rrsi.mocks import AgentQAMockLLM
+
     dom, sim = small
     r = rsi.improve(dom, method="rrsi", llm_task=sim, llm_propose=AgentQAMockLLM(), config={"T": 2})
     assert dom.validate_artifact(r.best) is None
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        g = rsi.improve(dom, method="gepa", llm_task=sim, llm_propose=AgentQAReflectionLM(),
-                        config={"max_metric_calls": 40})
+        g = rsi.improve(
+            dom, method="gepa", llm_task=sim, llm_propose=AgentQAReflectionLM(), config={"max_metric_calls": 40}
+        )
     assert g.meta["rollouts"] >= 40
-    h = rsi.improve(dom, method="harness2", llm_task=sim, llm_propose=MockImprover(),
-                    config={"k": 1, "split": "holdout+ood", "max_tasks": 3})
+    h = rsi.improve(
+        dom,
+        method="harness2",
+        llm_task=sim,
+        llm_propose=MockImprover(),
+        config={"k": 1, "split": "holdout+ood", "max_tasks": 3},
+    )
     assert h.meta["report"]["n"] == 3
     rep = rsi.transfer_report(dom, sim, {"seed": r.baseline, "rrsi": r.best, "gepa": g.best}, splits=("ood",))
     assert rep["splits"]["ood"]["rrsi"]["missing"] == 0
@@ -92,15 +109,22 @@ def test_improve_rrsi_gepa_harness2_offline(small):
 
 def test_metaharness_and_solpi_offline(small):
     dom, sim = small
-    mh = rsi.improve(dom, method="metaharness", llm_task=sim,
-                     config={"iterations": 1, "k": 1, "finalize": False, "shadow_monitor": False})
+    mh = rsi.improve(
+        dom,
+        method="metaharness",
+        llm_task=sim,
+        config={"iterations": 1, "k": 1, "finalize": False, "shadow_monitor": False},
+    )
     assert mh.meta["n_evaluated"] >= 1
     assert rsi.improve(dom, method="solpi", llm_task=sim).stop_reason
 
 
 def test_cli_problem_bbeh_offline(bbeh_offline, tmp_path):
     from rsi.cli import main
+
     out = tmp_path / "cli"
-    assert main(["improve", "--method", "rrsi", "--problem", "bbeh", "--llm", "sim", "--out", str(out),
-                 "--set", "T=1"]) == 0
+    assert (
+        main(["improve", "--method", "rrsi", "--problem", "bbeh", "--llm", "sim", "--out", str(out), "--set", "T=1"])
+        == 0
+    )
     assert {"holdout", "ood"} <= set(json.loads((out / "transfer.json").read_text())["splits"])

@@ -1,7 +1,8 @@
 """Pareto frontier (score up, cost down), per-unit bests and 2-D hypervolume."""
+
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 
 def dominates(a: tuple[float, float], b: tuple[float, float]) -> bool:

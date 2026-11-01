@@ -1,12 +1,13 @@
 """Scripted offline RRSI proposer + critic for AgentQA: generic, costly, harmful, null and leaky harness ideas."""
+
 from __future__ import annotations
 
 import hashlib
 import json
 import random
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 from ..core.llm import MockLLM
 from .propose import parse_sections
@@ -15,51 +16,70 @@ IDEA = re.compile(r"\[(aq:[a-z_]+)\]")
 FORMAT_LINE = "End your reply with a final line of the form 'ANSWER: <value>'."
 STEP_LINE = "Think step by step before answering."
 VERIFY_LINE = "Double-check your arithmetic before giving the final answer."
-PERSONA = ("You are a meticulous senior analyst. " + " ".join(
+PERSONA = "You are a meticulous senior analyst. " + " ".join(
     f"Guideline {i}: consider every assumption, restate the constraints, weigh alternative readings of the question, "
-    f"and explain the reasoning in full sentences before settling on an answer." for i in range(1, 13)))
+    f"and explain the reasoning in full sentences before settling on an answer."
+    for i in range(1, 13)
+)
 SKILL_TEXT = "When a question involves computation, write Python code that computes the answer."
 
 
 def render_harness(base: str = "direct", lookup: bool = False, checker: bool = False) -> str:
     """harness.py composed from the mock's idea state."""
-    lines = ['"""Evolved harness."""', "import re", "", "", "def solve(question, llm, tools, files):",
-             '    system = files.get("prompts/system.md", "")',
-             '    prompt = files["prompts/task.md"].replace("{question}", question)']
+    lines = [
+        '"""Evolved harness."""',
+        "import re",
+        "",
+        "",
+        "def solve(question, llm, tools, files):",
+        '    system = files.get("prompts/system.md", "")',
+        '    prompt = files["prompts/task.md"].replace("{question}", question)',
+    ]
     if lookup:
-        lines += ["    # [rrsi:lookup] answers remembered from practice",
-                  "    import json as _json",
-                  '    for _k, _v in _json.loads(files.get("memory/answers.json", "{}")).items():',
-                  "        if _k in question:",
-                  '            return "ANSWER: " + _v']
+        lines += [
+            "    # [rrsi:lookup] answers remembered from practice",
+            "    import json as _json",
+            '    for _k, _v in _json.loads(files.get("memory/answers.json", "{}")).items():',
+            "        if _k in question:",
+            '            return "ANSWER: " + _v',
+        ]
     if base == "tool":
-        lines += ["    # [rrsi:tool] compute with the Python tool, then report its output",
-                  '    reply = llm(prompt + "\\n\\nWrite python code that prints the final answer, '
-                  'in a ```python block.",'
-                  " system=system)",
-                  '    blocks = re.findall(r"```python\\n(.*?)```", reply, re.S)',
-                  "    if blocks:",
-                  "        out = tools.python(blocks[-1]).strip()",
-                  "        if out:",
-                  '            reply = llm("Question: " + question + "\\nTool output: " + out.splitlines()[0]'
-                  ' + "\\nReply with a final line ANSWER: <value>.", system=system)']
+        lines += [
+            "    # [rrsi:tool] compute with the Python tool, then report its output",
+            '    reply = llm(prompt + "\\n\\nWrite python code that prints the final answer, '
+            'in a ```python block.",'
+            " system=system)",
+            '    blocks = re.findall(r"```python\\n(.*?)```", reply, re.S)',
+            "    if blocks:",
+            "        out = tools.python(blocks[-1]).strip()",
+            "        if out:",
+            '            reply = llm("Question: " + question + "\\nTool output: " + out.splitlines()[0]'
+            ' + "\\nReply with a final line ANSWER: <value>.", system=system)',
+        ]
     elif base == "sc3":
-        lines += ["    # [rrsi:sc3] three samples, majority vote on the final line",
-                  "    finals = []",
-                  "    for _ in range(3):",
-                  "        r = llm(prompt, system=system)",
-                  "        ls = [l for l in r.strip().splitlines() if l.strip()]",
-                  "        finals.append(ls[-1] if ls else '')",
-                  "    reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)"]
+        lines += [
+            "    # [rrsi:sc3] three samples, majority vote on the final line",
+            "    finals = []",
+            "    for _ in range(3):",
+            "        r = llm(prompt, system=system)",
+            "        ls = [l for l in r.strip().splitlines() if l.strip()]",
+            "        finals.append(ls[-1] if ls else '')",
+            "    reply = max(finals, key=finals.count)  # ties -> earliest sample (deterministic)",
+        ]
     else:
         lines += ["    reply = llm(prompt, system=system)"]
     if checker:
-        lines += ["    # [rrsi:checker] one bounded verification sub-call",
-                  '    guide = files.get("agents/checker.md", "")',
-                  '    reply = llm(guide + "\\nQuestion: " + question + "\\nDraft answer: " + reply.strip()[-300:] +'
-                  ' "\\nVerify the draft and give a final line ANSWER: <value>.", system=system)']
-    lines += ["    lines = [line for line in reply.strip().splitlines() if line.strip()]",
-              '    return lines[-1] if lines else ""', ""]
+        lines += [
+            "    # [rrsi:checker] one bounded verification sub-call",
+            '    guide = files.get("agents/checker.md", "")',
+            '    reply = llm(guide + "\\nQuestion: " + question + "\\nDraft answer: " + reply.strip()[-300:] +'
+            ' "\\nVerify the draft and give a final line ANSWER: <value>.", system=system)',
+        ]
+    lines += [
+        "    lines = [line for line in reply.strip().splitlines() if line.strip()]",
+        '    return lines[-1] if lines else ""',
+        "",
+    ]
     return "\n".join(lines)
 
 
@@ -82,12 +102,12 @@ class Idea:
     component: str
     kind: str
     title: str
-    apply: Callable[[dict, dict], Optional[dict]]      # (files, ctx) -> updates or None if not applicable
-    revert: Optional[Callable[[dict], Optional[dict]]] = None
+    apply: Callable[[dict, dict], dict | None]  # (files, ctx) -> updates or None if not applicable
+    revert: Callable[[dict], dict | None] | None = None
     weight: float = 1.0
 
 
-def _harness_update(files: dict, **changes) -> Optional[dict]:
+def _harness_update(files: dict, **changes) -> dict | None:
     st = harness_state(files.get("harness.py", ""))
     new = dict(st, **changes)
     if new == st:
@@ -103,6 +123,7 @@ def _prompt_idea(path: str, line: str):
     def revert(files):
         cur = files.get(path, "")
         return {path: _remove(cur, line)} if line in cur else None
+
     return apply, revert
 
 
@@ -118,8 +139,10 @@ def _lookup(files, ctx):
 def _skill(files, ctx):
     if "skills/python.md" in files:
         return None
-    return {"skills/python.md": SKILL_TEXT + "\n", "prompts/system.md": _append(files.get("prompts/system.md", ""),
-                                                                               SKILL_TEXT)}
+    return {
+        "skills/python.md": SKILL_TEXT + "\n",
+        "prompts/system.md": _append(files.get("prompts/system.md", ""), SKILL_TEXT),
+    }
 
 
 def _unskill(files):
@@ -142,26 +165,65 @@ def default_ideas() -> list[Idea]:
     va, vr = _prompt_idea("prompts/system.md", VERIFY_LINE)
     pa, pr = _prompt_idea("prompts/system.md", PERSONA)
     return [
-        Idea("aq:python_tool", "control_flow", "generic", "Compute with the Python tool and report its output",
-             lambda f, c: _harness_update(f, base="tool"), lambda f: _harness_update(f, base="direct")),
+        Idea(
+            "aq:python_tool",
+            "control_flow",
+            "generic",
+            "Compute with the Python tool and report its output",
+            lambda f, c: _harness_update(f, base="tool"),
+            lambda f: _harness_update(f, base="direct"),
+        ),
         Idea("aq:answer_format", "prompt", "generic", "State the final-answer format", fa, fr),
         Idea("aq:step_by_step", "prompt", "generic", "Ask for step-by-step reasoning", sa, sr),
         Idea("aq:verify", "prompt", "generic", "Ask to double-check before answering", va, vr),
         Idea("aq:persona", "prompt", "costly", "Detailed analyst persona", pa, pr),
-        Idea("aq:self_consistency", "control_flow", "costly", "Three samples with a majority vote",
-             lambda f, c: None if harness_state(f.get("harness.py", ""))["base"] != "direct"
-             else _harness_update(f, base="sc3"), lambda f: _harness_update(f, base="direct")),
-        Idea("aq:checker", "subagent", "costly", "Bounded checker sub-call", _checker,
-             lambda f: (lambda u: dict(u, **{"agents/checker.md": None}) if u else None)(
-                 _harness_update(f, checker=False))),
+        Idea(
+            "aq:self_consistency",
+            "control_flow",
+            "costly",
+            "Three samples with a majority vote",
+            lambda f, c: (
+                None if harness_state(f.get("harness.py", ""))["base"] != "direct" else _harness_update(f, base="sc3")
+            ),
+            lambda f: _harness_update(f, base="direct"),
+        ),
+        Idea(
+            "aq:checker",
+            "subagent",
+            "costly",
+            "Bounded checker sub-call",
+            _checker,
+            lambda f: (lambda u: dict(u, **{"agents/checker.md": None}) if u else None)(
+                _harness_update(f, checker=False)
+            ),
+        ),
         Idea("aq:python_skill", "skill", "harmful", "Skill card: write Python for computations", _skill, _unskill),
-        Idea("aq:null_reword", "prompt", "null", "Reword the system prompt",
-             lambda f, c: {"prompts/system.md": f.get("prompts/system.md", "").replace(
-                 "You are a helpful assistant.", "You are a helpful and precise assistant.")}
-             if "You are a helpful assistant." in f.get("prompts/system.md", "") else None),
-        Idea("aq:answer_lookup", "memory", "leak", "Remember answers seen during practice", _lookup,
-             lambda f: (lambda u: dict(u, **{"memory/answers.json": None}) if u else None)(
-                 _harness_update(f, lookup=False)), weight=1.5),
+        Idea(
+            "aq:null_reword",
+            "prompt",
+            "null",
+            "Reword the system prompt",
+            lambda f, c: (
+                {
+                    "prompts/system.md": f.get("prompts/system.md", "").replace(
+                        "You are a helpful assistant.", "You are a helpful and precise assistant."
+                    )
+                }
+                if "You are a helpful assistant." in f.get("prompts/system.md", "")
+                else None
+            ),
+        ),
+        Idea(
+            "aq:answer_lookup",
+            "memory",
+            "leak",
+            "Remember answers seen during practice",
+            _lookup,
+            lambda f: (lambda u: dict(u, **{"memory/answers.json": None}) if u else None)(
+                _harness_update(f, lookup=False)
+            ),
+            weight=1.5,
+        ),
     ]
 
 
@@ -170,7 +232,7 @@ class AgentQAMockProfile:
     fill_budget_p: float = 0.5
     respect_history: bool = True
     prune_p: float = 0.4
-    catch_rate: float = 1.0          # LLM critic on lookup tables that pass the denylist
+    catch_rate: float = 1.0  # LLM critic on lookup tables that pass the denylist
     weights: dict = field(default_factory=dict)
 
 
@@ -181,8 +243,9 @@ def _rng(*parts) -> random.Random:
 class AgentQAMockLLM(MockLLM):
     """Scripted proposer + critic; never bundles two ideas that rewrite the same ``solve()`` field."""
 
-    def __init__(self, profile: Optional[AgentQAMockProfile] = None, ideas: Optional[list[Idea]] = None,
-                 name: str = "agentqa-mock") -> None:
+    def __init__(
+        self, profile: AgentQAMockProfile | None = None, ideas: list[Idea] | None = None, name: str = "agentqa-mock"
+    ) -> None:
         self.profile = profile or AgentQAMockProfile()
         self.ideas = {i.id: i for i in (ideas or default_ideas())}
         super().__init__(self._respond, name=name)
@@ -193,10 +256,18 @@ class AgentQAMockLLM(MockLLM):
             return self._propose(prompt, seed)
         if "strict reviewer of harness" in s:
             added = "\n".join(l for l in prompt.split("=== DIFF ===")[-1].splitlines() if l.startswith("+"))
-            if "memory/answers.json" in prompt and '": "' in added \
-                    and _rng("c", seed).random() < self.profile.catch_rate:
-                return json.dumps({"verdict": "reject", "reasons": ["[aq:answer_lookup] LEAKAGE: persists answers "
-                                                                    "keyed by practice questions"], "risk_notes": []})
+            if (
+                "memory/answers.json" in prompt
+                and '": "' in added
+                and _rng("c", seed).random() < self.profile.catch_rate
+            ):
+                return json.dumps(
+                    {
+                        "verdict": "reject",
+                        "reasons": ["[aq:answer_lookup] LEAKAGE: persists answers keyed by practice questions"],
+                        "risk_notes": [],
+                    }
+                )
             return json.dumps({"verdict": "accept", "reasons": [], "risk_notes": []})
         return "{}"
 
@@ -238,8 +309,11 @@ class AgentQAMockLLM(MockLLM):
                 files_upd.update(u or {})
             keep = [self.ideas[x] for x in dict.fromkeys(declared) if x in self.ideas and x not in flagged]
             if not keep:
-                pool = [i for i in self.ideas.values() if i.kind != "leak" and i.id not in avoid
-                        and i.apply(files, ctx) is not None]
+                pool = [
+                    i
+                    for i in self.ideas.values()
+                    if i.kind != "leak" and i.id not in avoid and i.apply(files, ctx) is not None
+                ]
                 if pool:
                     keep = [rng.choice(pool)]
                     files_upd.update(keep[0].apply({**files, **{k: v for k, v in files_upd.items() if v}}, ctx) or {})
@@ -247,15 +321,18 @@ class AgentQAMockLLM(MockLLM):
         n = budget if rng.random() < self.profile.fill_budget_p else rng.randint(1, budget)
         chosen: list[tuple[Idea, bool]] = []
         prune_text = sec.get("components_to_prune", "")
-        prunable = [x for x in dict.fromkeys(IDEA.findall(prune_text)) if x in self.ideas
-                    and self.ideas[x].revert and self.ideas[x].revert(files)]
+        prunable = [
+            x
+            for x in dict.fromkeys(IDEA.findall(prune_text))
+            if x in self.ideas and self.ideas[x].revert and self.ideas[x].revert(files)
+        ]
         if prunable and rng.random() < self.profile.prune_p:
             chosen.append((self.ideas[rng.choice(prunable)], True))
         untried = d.get("untried") or []
         want_reserved = bool(d.get("reserved_slot")) and untried
         cur = dict(files)
         updates: dict = {}
-        claimed: set = set()            # harness.py fields already changed by this candidate
+        claimed: set = set()  # harness.py fields already changed by this candidate
 
         def _fields(before: dict, upd: dict) -> set:
             if "harness.py" not in upd or upd["harness.py"] is None:
@@ -268,8 +345,7 @@ class AgentQAMockLLM(MockLLM):
             for i in self.ideas.values():
                 if i.id in skip or any(i.id == c.id for c, _ in chosen):
                     continue
-                if want_reserved and i.component not in untried and not any(c.component in untried
-                                                                            for c, _ in chosen):
+                if want_reserved and i.component not in untried and not any(c.component in untried for c, _ in chosen):
                     continue
                 u = i.apply(cur, ctx)
                 if u is not None and not (_fields(cur, u) & claimed):
@@ -282,7 +358,7 @@ class AgentQAMockLLM(MockLLM):
             updates.update(u)
             cur = {k: v for k, v in {**cur, **u}.items() if v is not None}
         while len(chosen) < n:
-            pool = _pool(avoid) or (_pool(set()) if not chosen else [])   # nothing new: revisit refuted ideas
+            pool = _pool(avoid) or (_pool(set()) if not chosen else [])  # nothing new: revisit refuted ideas
             if not pool:
                 break
             w = [self.profile.weights.get(i.id, i.weight) for i in pool]
@@ -297,12 +373,20 @@ class AgentQAMockLLM(MockLLM):
     def _reply(self, chosen, updates: dict, trace_ids) -> str:
         edits = []
         for j, (idea, prune) in enumerate(chosen):
-            edits.append({"id": f"C{j + 1}", "component": idea.component,
-                          "hypothesis": (f"prune: [{idea.id}] {idea.title}" if prune else f"[{idea.id}] {idea.title}"),
-                          "targets_mode": "wrong final answers", "why_not_lower_lever": "n/a",
-                          "trigger_condition": "every question", "predicted_affected": trace_ids,
-                          "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing "
-                                               "paths; (transfer) task-agnostic", "regression_risk": "tokens"})
+            edits.append(
+                {
+                    "id": f"C{j + 1}",
+                    "component": idea.component,
+                    "hypothesis": (f"prune: [{idea.id}] {idea.title}" if prune else f"[{idea.id}] {idea.title}"),
+                    "targets_mode": "wrong final answers",
+                    "why_not_lower_lever": "n/a",
+                    "trigger_condition": "every question",
+                    "predicted_affected": trace_ids,
+                    "retroactive_check": "(corrective) fixes cited failures; (preservative) keeps passing "
+                    "paths; (transfer) task-agnostic",
+                    "regression_risk": "tokens",
+                }
+            )
         header = {"action": "done", "summary": "; ".join(e["hypothesis"] for e in edits), "edits": edits}
         blocks = "\n".join(f"=== FILE: {p} ===\n{'<<DELETE>>' if t is None else t}" for p, t in updates.items())
         return "```json\n" + json.dumps(header) + "\n```\n" + blocks

@@ -12,6 +12,7 @@ The functions below marked "port" are a line-by-line Python port of that file, w
 Copyright 2025 Google LLC and licensed under the Apache License, Version 2.0
 (http://www.apache.org/licenses/LICENSE-2.0); it was read as text and re-typed here, never imported or executed.
 """
+
 from __future__ import annotations
 
 import re
@@ -38,6 +39,7 @@ def answer_text(output: str) -> str:
 
 
 # ----- port of bbeh/evaluate.py (Apache 2.0, Google LLC) -----------------------------------------------------------
+
 
 def strip_latex(response: str) -> str:  # port
     if response.startswith("$") and response.endswith("$"):
@@ -103,6 +105,7 @@ def preprocess_reference(reference: str) -> str:  # port
 
 def evaluate_correctness(sample: str, reference: str) -> bool:  # port
     return fuzzy_match(preprocess_sample(sample), preprocess_reference(reference))
+
 
 # ----- end of port -------------------------------------------------------------------------------------------------
 

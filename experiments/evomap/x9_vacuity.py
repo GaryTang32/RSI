@@ -1,19 +1,33 @@
 """X9: verifiable execution stops vacuous validation (VacuityDetector precision / recall).
 Run: python experiments/evomap/x9_vacuity.py [--llm sim|claude:haiku] [--quick]
 """
+
 from __future__ import annotations
 
+import numpy as np
 from _common import FAITHFUL_HINT, SAFE_HINT, cached_llm, live, parse_args, save
 
-import numpy as np
-
 from rsi.core.stats import bootstrap_ci
-from rsi.evomap import (CommandPolicy, InProcessExecutor, SubprocessExecutor, ValidationRunner, VacuityDetector,
-                        parse_gene)
+from rsi.evomap import (
+    CommandPolicy,
+    InProcessExecutor,
+    SubprocessExecutor,
+    VacuityDetector,
+    ValidationRunner,
+    parse_gene,
+)
 from rsi.evomap.prompts import GENE_WRITER_SYSTEM, gene_writer_prompt
 
-KINDS = ("version", "print_only", "constant_assert", "weak_assert", "missing_script", "empty", "eval_flag",
-         "shell_echo")
+KINDS = (
+    "version",
+    "print_only",
+    "constant_assert",
+    "weak_assert",
+    "missing_script",
+    "empty",
+    "eval_flag",
+    "shell_echo",
+)
 DOMAINS = ("geneworld", "katas")
 DETECTORS = ("evolver_local_runner", "naive_hub_empty_dir", "lint_only", "discriminative_only", "combined")
 KATA_SHELL_KINDS = {"eval_flag": (["python -c \"print('ok')\""], {}), "shell_echo": (["echo ok"], {})}
@@ -22,6 +36,7 @@ KATA_SHELL_KINDS = {"eval_flag": (["python -c \"print('ok')\""], {}), "shell_ech
 def geneworld_items() -> list[tuple]:
     """(domain, item, kind, validation, workspace before, workspace after): one real and every vacuous kind."""
     from rsi.domains.geneworld import make_domain
+
     w = make_domain().world
     items = []
     for cl in w.classes:
@@ -37,9 +52,10 @@ def geneworld_items() -> list[tuple]:
 def katas_items(quick: bool) -> list[tuple]:
     from rsi.domains.katas import KATAS, KatasDomain
     from rsi.domains.katas.forge import VACUOUS
+
     dom = KatasDomain()
     items = []
-    for k in (KATAS[::3] if quick else KATAS):
+    for k in KATAS[::3] if quick else KATAS:
         before = dom.pre_workspace(dom.tasks.get(k.id))
         after = {**before, "solution.py": k.correct}
         items.append(("katas", k.id, "real", ["python smoke_test.py"], before, after))
@@ -69,15 +85,22 @@ def prf(pred, truth) -> dict:
     tp, fp, fn = int((pred & truth).sum()), int((pred & ~truth).sum()), int((~pred & truth).sum())
     real = ~truth
     r_ci = bootstrap_ci(pred[truth].astype(float), reps=2000) if truth.any() else (float("nan"),) * 3
-    return {"precision": tp / (tp + fp) if tp + fp else float("nan"),
-            "recall": tp / (tp + fn) if tp + fn else float("nan"), "recall_ci": [r_ci[1], r_ci[2]],
-            "false_reject_rate": float(pred[real].mean()) if real.any() else float("nan"),
-            "tp": tp, "fp": fp, "fn": fn, "n": int(len(pred))}
+    return {
+        "precision": tp / (tp + fp) if tp + fp else float("nan"),
+        "recall": tp / (tp + fn) if tp + fn else float("nan"),
+        "recall_ci": [r_ci[1], r_ci[2]],
+        "false_reject_rate": float(pred[real].mean()) if real.any() else float("nan"),
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "n": int(len(pred)),
+    }
 
 
 def live_genes(args) -> list[dict]:
     """Detector verdicts on validations a live model writes per kata class under the faithful and the safe prompt."""
     from rsi.domains.katas import CLASSES, KATAS, KatasDomain
+
     llm = cached_llm(args.llm)
     dom = KatasDomain()
     out = []
@@ -87,8 +110,12 @@ def live_genes(args) -> list[dict]:
         before = dom.pre_workspace(t)
         after = {**before, "solution.py": k.correct}
         for regime, hint in (("faithful", FAITHFUL_HINT), ("safe", SAFE_HINT)):
-            p = gene_writer_prompt([f"task:{cls}"], dom.public_text(t), "public tests: 2/2 passed; hidden: FAILED",
-                                   validation_hint=hint + " The workspace contains solution.py and smoke_test.py.")
+            p = gene_writer_prompt(
+                [f"task:{cls}"],
+                dom.public_text(t),
+                "public tests: 2/2 passed; hidden: FAILED",
+                validation_hint=hint + " The workspace contains solution.py and smoke_test.py.",
+            )
             g = parse_gene(llm.complete(p, system=GENE_WRITER_SYSTEM, seed=0, role="proposer").text)
             val = g.validation if g else []
             det = {name: bool(f(val, before, after)) for name, f in detectors("katas").items()}
@@ -107,15 +134,24 @@ def main():
         for name, f in det.items():
             pred = [bool(f(v, b, a)) for (_, _, _, v, b, a) in its]
             res.setdefault(dom, {})[name] = prf(pred, truth)
-            rows += [{"domain": d, "item": tid, "kind": kind, "detector": name, "flagged": p}
-                     for (d, tid, kind, _, _, _), p in zip(its, pred)]
+            rows += [
+                {"domain": d, "item": tid, "kind": kind, "detector": name, "flagged": p}
+                for (d, tid, kind, _, _, _), p in zip(its, pred)
+            ]
 
     def flag_rate(*key):
         return float(np.mean([r["flagged"] for r in rows if (r["domain"], r["kind"], r["detector"]) == key]))
-    by_kind = {dom: {kind: {det: flag_rate(dom, kind, det) for det in DETECTORS} for kind in ("real",) + KINDS}
-               for dom in DOMAINS}
-    out = {"config": {"llm": args.llm, "kinds": KINDS, "quick": args.quick}, "summary": res,
-           "flag_rate_by_kind": by_kind, "raw": rows}
+
+    by_kind = {
+        dom: {kind: {det: flag_rate(dom, kind, det) for det in DETECTORS} for kind in ("real",) + KINDS}
+        for dom in DOMAINS
+    }
+    out = {
+        "config": {"llm": args.llm, "kinds": KINDS, "quick": args.quick},
+        "summary": res,
+        "flag_rate_by_kind": by_kind,
+        "raw": rows,
+    }
     comb = [res[d]["combined"] for d in res]
     out["verdict"] = {
         "combined_recall_ge_0.99": all(c["recall"] >= 0.99 for c in comb),
@@ -123,7 +159,8 @@ def main():
         "evolver_runner_accepts_most_vacuous": all(res[d]["evolver_local_runner"]["recall"] < 0.5 for d in res),
         "empty_dir_validator_accepts_version_and_rejects_real": all(
             by_kind[d]["version"]["naive_hub_empty_dir"] == 0 and by_kind[d]["real"]["naive_hub_empty_dir"] == 1
-            for d in by_kind),
+            for d in by_kind
+        ),
         "lint_alone_misses_weak_assert": all(by_kind[d]["weak_assert"]["lint_only"] == 0 for d in by_kind),
     }
     if live(args):
@@ -132,8 +169,10 @@ def main():
     for d in res:
         print(f"== {d}")
         for name, m in res[d].items():
-            print(f"  {name:22s} precision {m['precision']:.3f} recall {m['recall']:.3f} false-reject "
-                  f"{m['false_reject_rate']:.3f} (n={m['n']})")
+            print(
+                f"  {name:22s} precision {m['precision']:.3f} recall {m['recall']:.3f} false-reject "
+                f"{m['false_reject_rate']:.3f} (n={m['n']})"
+            )
     print("verdict:", out["verdict"])
 
 

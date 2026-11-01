@@ -1,10 +1,10 @@
 """Autocorrelation inequalities on step functions [paper:App.A Problem 4]; default ``phi3`` = Table 1 [inferred]."""
+
 from __future__ import annotations
 
 import ast
 import json
 import random
-from typing import Optional
 
 import numpy as np
 
@@ -159,8 +159,11 @@ def construct():
 
 
 def program(variant: str, init: list, stage) -> str:
-    return (TEMPLATE.replace("__VARIANT__", variant).replace("__INIT__", json.dumps([float(x) for x in init]))
-            .replace("__STAGE__", repr(stage) if stage is not None else "None"))
+    return (
+        TEMPLATE.replace("__VARIANT__", variant)
+        .replace("__INIT__", json.dumps([float(x) for x in init]))
+        .replace("__STAGE__", repr(stage) if stage is not None else "None")
+    )
 
 
 def objectives(h) -> dict:
@@ -184,8 +187,9 @@ class AutocorrelationDomain(ProgramDomain):
     program_file = PROGRAM
     entry = "construct"
 
-    def __init__(self, variant: str = "phi3", *, max_n: int = 2000, sandboxed: bool = True,
-                 timeout_s: float = 60.0) -> None:
+    def __init__(
+        self, variant: str = "phi3", *, max_n: int = 2000, sandboxed: bool = True, timeout_s: float = 60.0
+    ) -> None:
         if variant not in VARIANTS:
             raise ValueError(f"variant must be one of {VARIANTS}")
         super().__init__(sandboxed=sandboxed, timeout_s=timeout_s)
@@ -193,17 +197,24 @@ class AutocorrelationDomain(ProgramDomain):
         self.name = f"autocorr_{variant}"
 
     def describe(self) -> str:
-        what = {"phi1": "a NON-NEGATIVE f minimising Phi1(f) = max_t (f*f)(t)",
-                "phi2": "a NON-NEGATIVE f maximising Phi2(f) = ||f*f||_2^2 / (||f*f||_1 ||f*f||_inf)",
-                "phi3": "a (possibly signed) f minimising Phi3(f) = max_t |(f*f)(t)|"}[self.variant]
-        sign = "score = Phi2 (higher is better)" if self.variant == "phi2" else \
-            f"score = -{self.variant.capitalize()} (higher score = lower {self.variant.capitalize()})"
-        return (f"Autocorrelation inequality ({self.variant}): write construct.py whose construct() returns the "
-                f"heights h_0..h_(n-1) of a step function f with n equal steps on [-1/4, 1/4] (2 <= n <= "
-                f"{self.max_n}); f is rescaled to integral 1 and (f*f)(t) = int f(t-x) f(x) dx. Find {what}. The "
-                f"evaluator computes the objective exactly from the discrete autoconvolution; {sign}. Best "
-                f"published value: {BEST_KNOWN[self.variant]}. Runtime <= {self.timeout_s:.0f} s; invalid output "
-                "scores 0 with a failure class.")
+        what = {
+            "phi1": "a NON-NEGATIVE f minimising Phi1(f) = max_t (f*f)(t)",
+            "phi2": "a NON-NEGATIVE f maximising Phi2(f) = ||f*f||_2^2 / (||f*f||_1 ||f*f||_inf)",
+            "phi3": "a (possibly signed) f minimising Phi3(f) = max_t |(f*f)(t)|",
+        }[self.variant]
+        sign = (
+            "score = Phi2 (higher is better)"
+            if self.variant == "phi2"
+            else f"score = -{self.variant.capitalize()} (higher score = lower {self.variant.capitalize()})"
+        )
+        return (
+            f"Autocorrelation inequality ({self.variant}): write construct.py whose construct() returns the "
+            f"heights h_0..h_(n-1) of a step function f with n equal steps on [-1/4, 1/4] (2 <= n <= "
+            f"{self.max_n}); f is rescaled to integral 1 and (f*f)(t) = int f(t-x) f(x) dx. Find {what}. The "
+            f"evaluator computes the objective exactly from the discrete autoconvolution; {sign}. Best "
+            f"published value: {BEST_KNOWN[self.variant]}. Runtime <= {self.timeout_s:.0f} s; invalid output "
+            "scores 0 with a failure class."
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact({PROGRAM: program(self.variant, [1.0] * SEED_N, None)})
@@ -225,9 +236,21 @@ class AutocorrelationDomain(ProgramDomain):
         obj = objectives(h)
         val = obj[self.variant]
         score = val if self.variant == "phi2" else -val
-        return EvalOutcome(score, True, True, "ok", None, 1, 1,
-                           {self.variant: val, "n": int(h.size), "best_known": BEST_KNOWN[self.variant],
-                            "heights": [float(x) for x in h]})
+        return EvalOutcome(
+            score,
+            True,
+            True,
+            "ok",
+            None,
+            1,
+            1,
+            {
+                self.variant: val,
+                "n": int(h.size),
+                "best_known": BEST_KNOWN[self.variant],
+                "heights": [float(x) for x in h],
+            },
+        )
 
     def mock_agent(self, **kw) -> ParametricAgent:
         variant = self.variant
@@ -238,18 +261,18 @@ class AutocorrelationDomain(ProgramDomain):
         return ParametricAgent(mutate, name=f"autocorr-{variant}-mock", **kw)
 
 
-def _mutate(parent: Artifact, rng: random.Random, ctx: Optional[AttemptContext], variant: str):
+def _mutate(parent: Artifact, rng: random.Random, ctx: AttemptContext | None, variant: str):
     init = ast.literal_eval(parent[PROGRAM].split("INIT = ", 1)[1].split("\n", 1)[0])
     init = parent_measured(ctx, "heights", init)  # resume from the parent's measured function
     mech = pick_mechanism(ctx, rng, MECHANISMS, 0.25)
-    params = {"coord": {"iters": rng.choice([40, 80]), "scale": rng.choice([0.2, 0.4])},
-              "gradient": {"steps": rng.choice([8, 15]), "lr": rng.choice([0.02, 0.05]),
-                           "tau": rng.choice([30.0, 80.0])},
-              "smooth": {"width": rng.choice([3, 5]), "steps": rng.choice([6, 12])},
-              "upsample": {"steps": rng.choice([6, 12]), "noise": rng.choice([0.01, 0.05])},
-              "shake": {"frac": rng.choice([0.15, 0.3]), "sigma": rng.choice([0.2, 0.5]),
-                        "steps": rng.choice([6, 12])}}[mech]
-    stage = [mech, params, rng.randrange(10 ** 6)]
+    params = {
+        "coord": {"iters": rng.choice([40, 80]), "scale": rng.choice([0.2, 0.4])},
+        "gradient": {"steps": rng.choice([8, 15]), "lr": rng.choice([0.02, 0.05]), "tau": rng.choice([30.0, 80.0])},
+        "smooth": {"width": rng.choice([3, 5]), "steps": rng.choice([6, 12])},
+        "upsample": {"steps": rng.choice([6, 12]), "noise": rng.choice([0.01, 0.05])},
+        "shake": {"frac": rng.choice([0.15, 0.3]), "sigma": rng.choice([0.2, 0.5]), "steps": rng.choice([6, 12])},
+    }[mech]
+    stage = [mech, params, rng.randrange(10**6)]
     text = f"# {mech} {params}\n\nMechanism: {mech}; resumes the parent's measured function ({len(init)} steps)."
     return Artifact({PROGRAM: program(variant, init, stage)}), text
 

@@ -1,4 +1,5 @@
 """Dream-RSI loop: replay fidelity to the recorded rollout, logging, selection, developers and baselines."""
+
 import json
 
 import numpy as np
@@ -6,22 +7,40 @@ import pytest
 
 from rsi.core import Ledger, MockLLM, RewriteEditor
 from rsi.domains.discovery import SumDiffDomain, SyntheticConfig, SyntheticDomain
-from rsi.dream import (Config, DevContext, DiscoveryTree, GuardedSelector, LLMPolicyDeveloper, MockGuidanceSummarizer,
-                       ParametricMutator, PolicyReport, ReplayEvaluator, Selector, VersionRecord, choose_default_beta,
-                       code_of, mock_developer_llm, parallel_refine, run, template_code)
+from rsi.dream import (
+    Config,
+    DevContext,
+    DiscoveryTree,
+    GuardedSelector,
+    LLMPolicyDeveloper,
+    MockGuidanceSummarizer,
+    ParametricMutator,
+    PolicyReport,
+    ReplayEvaluator,
+    Selector,
+    VersionRecord,
+    choose_default_beta,
+    code_of,
+    mock_developer_llm,
+    parallel_refine,
+    run,
+    template_code,
+)
 
 
 def small_cfg(**kw) -> Config:
-    return Config(**{"rounds": 3, "W": 3, "branch_count": 4, "refine_count": 3, "M": 3, "sandbox": "inprocess",
-                     "seed": 3, **kw})
+    return Config(
+        **{"rounds": 3, "W": 3, "branch_count": 4, "refine_count": 3, "M": 3, "sandbox": "inprocess", "seed": 3, **kw}
+    )
 
 
 def report(vals: list[float]) -> PolicyReport:
     return PolicyReport("p", "", "eq1", float(np.mean(vals)), list(vals), [])
 
 
-@pytest.mark.parametrize("policy_name,root_mode", [("parallel_refine", "earliest"), ("adaptive", "addressable"),
-                                                   ("adaptive", "earliest")])
+@pytest.mark.parametrize(
+    "policy_name,root_mode", [("parallel_refine", "earliest"), ("adaptive", "addressable"), ("adaptive", "earliest")]
+)
 def test_replay_of_recording_policy_reproduces_online_rollout(policy_name, root_mode):
     """Invariant (a): same revealed set, N, k, per-round batches and best score."""
     code = template_code(policy_name)
@@ -42,9 +61,16 @@ def test_dream_run_logs_everything_and_selection_is_safe(tmp_path):
     assert len(rows) == 2
     for r in rows:  # invariant (c): V^{m*} >= V^0 on replay
         assert r["delta_vs_incumbent"] >= -1e-12 and len(r["values"]) == 4
-    for rel in ("discovery.jsonl", "policies.jsonl", "trajectory.json", "final_policy/method.py",
-                "trace_pool/iter01/tree.json", "trace_pool/iter01/live_cycle_manifest.json",
-                "history/baseline/method.py", "history/r0000_initial/method.py"):
+    for rel in (
+        "discovery.jsonl",
+        "policies.jsonl",
+        "trajectory.json",
+        "final_policy/method.py",
+        "trace_pool/iter01/tree.json",
+        "trace_pool/iter01/live_cycle_manifest.json",
+        "history/baseline/method.py",
+        "history/r0000_initial/method.py",
+    ):
         assert (out / rel).exists(), rel
     traces = list(out.glob("history/r*/proposal_results/policy_execution_traces.jsonl"))
     assert list(out.glob("history/r*/proposal_results/beta_sweep.json")) and traces
@@ -74,8 +100,12 @@ def test_llm_developer_path_offline():
     assert len(values) == 3 and all(v > -1 for v in values)
     assert res.usage["_cost"]["developer_calls"] == 2
     prompt = llm.calls[0]["prompt"]
-    for phrase in ("prefix-only exploration policy", "history/baseline/method.py", "policy_execution_traces.jsonl",
-                   "live_cycle_manifest.json"):
+    for phrase in (
+        "prefix-only exploration policy",
+        "history/baseline/method.py",
+        "policy_execution_traces.jsonl",
+        "live_cycle_manifest.json",
+    ):
         assert phrase in prompt
 
 
@@ -92,8 +122,12 @@ def test_mutator_rewrites_params_and_default_beta_rule():
     ctx = DevContext(1, [VersionRecord(0, code_of(parallel_refine()))], [], [], code_of(parallel_refine()), "eq1", 3)
     rev = ParametricMutator().revise(ctx, seed=1)
     assert rev.ok and "PARAMS" in rev.code and "rewrite" in rev.change
-    sweep = {"points": [{"beta": 0.6, "attainment": 0.7, "probes_frac": 0.4, "V_eq1": 0.5},
-                        {"beta": 0.8, "attainment": 0.9, "probes_frac": 0.5, "V_eq1": 0.55}]}
+    sweep = {
+        "points": [
+            {"beta": 0.6, "attainment": 0.7, "probes_frac": 0.4, "V_eq1": 0.5},
+            {"beta": 0.8, "attainment": 0.9, "probes_frac": 0.5, "V_eq1": 0.55},
+        ]
+    }
     plateau, improving = [{"final_best": 1.0}, {"final_best": 1.0}], [{"final_best": 1.0}, {"final_best": 1.2}]
     b, why = choose_default_beta(0.6, plateau, sweep)
     assert b == pytest.approx(0.75) and "raise" in why

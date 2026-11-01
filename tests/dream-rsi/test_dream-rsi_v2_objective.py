@@ -1,4 +1,5 @@
 """The default replay objective is paper v2's Eq. 1: per-world hypervolume over the rho sweep minus lambda * k*/n."""
+
 import pytest
 
 from rsi.domains.discovery import SyntheticConfig, SyntheticDomain
@@ -6,16 +7,17 @@ from rsi.dream import Config, DreamRSILoop, EpisodeResult, HypervolumeObjective,
 
 
 def _ep(N: int, k: int, best: float, beta: float, world: str = "w", size: int = 10, **kw) -> EpisodeResult:
-    return EpisodeResult(world, beta, {}, {}, False, N, k, [N // max(1, k)] * k if k else [], best, 0.0, 1.0, size, 4,
-                         **kw)
+    return EpisodeResult(
+        world, beta, {}, {}, False, N, k, [N // max(1, k)] * k if k else [], best, 0.0, 1.0, size, 4, **kw
+    )
 
 
 def test_world_value_is_the_hypervolume_minus_the_parallelism_penalty():
     obj = HypervolumeObjective(lam=0.1)
     # rho sweep on one world (B = 10): (n, a) = (0, 0), (2, 0.5), (5, 0.9), (10, 0.9) -> frontier (2, .5), (5, .9)
     eps = [_ep(0, 0, None, 0.0), _ep(2, 1, 0.5, 0.25), _ep(5, 2, 0.9, 0.5), _ep(10, 5, 0.9, 1.0)]
-    hv = (0.5 - 0) * (10 - 2) / 10 + (0.9 - 0.5) * (10 - 5) / 10            # paper §3, a_0 = 0
-    penalty = (1 / 2 + 2 / 5 + 5 / 10) / 4                                  # zero-call replay adds 0
+    hv = (0.5 - 0) * (10 - 2) / 10 + (0.9 - 0.5) * (10 - 5) / 10  # paper §3, a_0 = 0
+    penalty = (1 / 2 + 2 / 5 + 5 / 10) / 4  # zero-call replay adds 0
     assert obj.world_value(eps) == pytest.approx(hv - 0.1 * penalty)
 
 
@@ -42,9 +44,11 @@ def test_config_defaults_to_v2_with_the_paper_rho_grid():
 
 
 def test_a_default_run_selects_versions_by_the_v2_objective():
-    res = run(SyntheticDomain(SyntheticConfig(seed=4)),
-              config=Config(rounds=3, W=3, branch_count=4, refine_count=3, M=3, sandbox="inprocess", seed=3))
+    res = run(
+        SyntheticDomain(SyntheticConfig(seed=4)),
+        config=Config(rounds=3, W=3, branch_count=4, refine_count=3, M=3, sandbox="inprocess", seed=3),
+    )
     phases = [r["dream"] for r in res.trajectory if r.get("dream")]
     assert res.meta["config"]["objective"] == "v2" and phases
-    for p in phases:   # the selected version is the argmax of the v2 values, incumbent included
+    for p in phases:  # the selected version is the argmax of the v2 values, incumbent included
         assert p["values"][p["selected"]] == max(p["values"])

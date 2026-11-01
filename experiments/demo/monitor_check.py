@@ -1,7 +1,8 @@
 """Replay every shadow-monitor reading of the reported AgentQA runs offline and compare it with the trace.
 
-    python experiments/demo/monitor_check.py [RUN ...]   # writes <run>/monitor_check.json, exits 1 on a difference
+python experiments/demo/monitor_check.py [RUN ...]   # writes <run>/monitor_check.json, exits 1 on a difference
 """
+
 from __future__ import annotations
 
 import json
@@ -16,8 +17,11 @@ from rsi.trace import load_trace
 
 #: run directory -> its LLM cache (both under demo/runs)
 RUNS = {
-    "metaharness": ".cache_metaharness", "metaharness_hard": ".cache_metaharness_hard", "rrsi": ".cache_rrsi",
-    "rrsi_hard": ".cache_rrsi_hard", "metaharness_a": "_archive/.cache_metaharness_before_fix",
+    "metaharness": ".cache_metaharness",
+    "metaharness_hard": ".cache_metaharness_hard",
+    "rrsi": ".cache_rrsi",
+    "rrsi_hard": ".cache_rrsi_hard",
+    "metaharness_a": "_archive/.cache_metaharness_before_fix",
     "_archive/metaharness_before_fix": "_archive/.cache_metaharness_before_fix",
     "_archive/metaharness_fix_v1": "_archive/.cache_metaharness_fix_v1",
     "_archive/metaharness_fix_v2": "_archive/.cache_metaharness_fix_v2",
@@ -50,13 +54,34 @@ def check(run: str) -> dict:
         art = artifact(d, data["version"], data["artifact"])
         for split, rec in data["sealed"].items():
             r = ev.evaluate(art, split, 1)
-            rows.append({"version": data["version"], "split": split, "recorded": rec["S"], "replayed": r.score,
-                         "missing": r.n_missing, "matches": abs(r.score - rec["S"]) < 1e-9 and not r.n_missing})
-    out = {"run": run, "readings": len(rows), "matches": all(r["matches"] for r in rows) and llm.misses == 0,
-           "cache_hits": llm.hits, "cache_misses": llm.misses, "rows": rows}
+            rows.append(
+                {
+                    "version": data["version"],
+                    "split": split,
+                    "recorded": rec["S"],
+                    "replayed": r.score,
+                    "missing": r.n_missing,
+                    "matches": abs(r.score - rec["S"]) < 1e-9 and not r.n_missing,
+                }
+            )
+    out = {
+        "run": run,
+        "readings": len(rows),
+        "matches": all(r["matches"] for r in rows) and llm.misses == 0,
+        "cache_hits": llm.hits,
+        "cache_misses": llm.misses,
+        "rows": rows,
+    }
     (d / "monitor_check.json").write_text(json.dumps(out, indent=1))
-    print(f"{run:34s} {len(rows)} readings", "match" if out["matches"] else "DIFFER", "hits", llm.hits,
-          "misses", llm.misses, flush=True)
+    print(
+        f"{run:34s} {len(rows)} readings",
+        "match" if out["matches"] else "DIFFER",
+        "hits",
+        llm.hits,
+        "misses",
+        llm.misses,
+        flush=True,
+    )
     return out
 
 

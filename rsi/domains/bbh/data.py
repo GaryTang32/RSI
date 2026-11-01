@@ -10,6 +10,7 @@ The machinery is shared with other benchmarks of the same shape (BBEH, :mod:`rsi
 :class:`Benchmark` spec: task names, file layout, manifest, cache location and suite defaults. Every function takes
 ``benchmark=`` and defaults to :data:`BBH`.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,23 +18,43 @@ import json
 import os
 import tempfile
 import urllib.request
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Mapping, Optional, Sequence
 
 MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 
 #: the 27 BBH tasks (Suzgun et al. 2022)
 TASKS: tuple[str, ...] = (
-    "boolean_expressions", "causal_judgement", "date_understanding", "disambiguation_qa", "dyck_languages",
-    "formal_fallacies", "geometric_shapes", "hyperbaton", "logical_deduction_three_objects",
-    "logical_deduction_five_objects", "logical_deduction_seven_objects", "movie_recommendation",
-    "multistep_arithmetic_two", "navigate", "object_counting", "penguins_in_a_table",
-    "reasoning_about_colored_objects", "ruin_names", "salient_translation_error_detection", "snarks",
-    "sports_understanding", "temporal_sequences", "tracking_shuffled_objects_three_objects",
-    "tracking_shuffled_objects_five_objects", "tracking_shuffled_objects_seven_objects", "web_of_lies",
-    "word_sorting")
+    "boolean_expressions",
+    "causal_judgement",
+    "date_understanding",
+    "disambiguation_qa",
+    "dyck_languages",
+    "formal_fallacies",
+    "geometric_shapes",
+    "hyperbaton",
+    "logical_deduction_three_objects",
+    "logical_deduction_five_objects",
+    "logical_deduction_seven_objects",
+    "movie_recommendation",
+    "multistep_arithmetic_two",
+    "navigate",
+    "object_counting",
+    "penguins_in_a_table",
+    "reasoning_about_colored_objects",
+    "ruin_names",
+    "salient_translation_error_detection",
+    "snarks",
+    "sports_understanding",
+    "temporal_sequences",
+    "tracking_shuffled_objects_three_objects",
+    "tracking_shuffled_objects_five_objects",
+    "tracking_shuffled_objects_seven_objects",
+    "web_of_lies",
+    "word_sorting",
+)
 
 Fetch = Callable[[str], bytes]
 
@@ -44,11 +65,11 @@ class Benchmark:
 
     name: str
     tasks: tuple[str, ...]
-    examples_path: str                          # relpath template with {task}
-    manifest: Callable[[], dict]                # the committed manifest (looked up at call time)
+    examples_path: str  # relpath template with {task}
+    manifest: Callable[[], dict]  # the committed manifest (looked up at call time)
     cache_env: str
     cache_subdir: str
-    cot_path: Optional[str] = None              # relpath template of official few-shot CoT prompts, if published
+    cot_path: str | None = None  # relpath template of official few-shot CoT prompts, if published
     default_practice: tuple[str, ...] = ()
     default_ood: tuple[str, ...] = ()
     default_per_family: dict = field(default_factory=dict)
@@ -75,22 +96,22 @@ def _default_manifest() -> dict:
 
 
 def _bbh_manifest() -> dict:
-    return _default_manifest()          # module-level lookup at call time (tests patch _default_manifest)
+    return _default_manifest()  # module-level lookup at call time (tests patch _default_manifest)
 
 
-def load_manifest(benchmark: Optional[Benchmark] = None) -> dict:
+def load_manifest(benchmark: Benchmark | None = None) -> dict:
     """The committed manifest: ``{"commit", "url_template", "files": {relpath: sha256}, ...}`` (a copy)."""
     m = (benchmark or BBH).manifest()
     return {**m, "files": dict(m["files"])}
 
 
-def default_cache_dir(benchmark: Optional[Benchmark] = None) -> Path:
+def default_cache_dir(benchmark: Benchmark | None = None) -> Path:
     b = benchmark or BBH
     env = os.environ.get(b.cache_env)
     return Path(env).expanduser() if env else Path.home() / ".cache" / "rsi" / b.cache_subdir
 
 
-def resolve_cache_dir(cache_dir: Optional[str | Path] = None, benchmark: Optional[Benchmark] = None) -> Path:
+def resolve_cache_dir(cache_dir: str | Path | None = None, benchmark: Benchmark | None = None) -> Path:
     return Path(cache_dir).expanduser() if cache_dir else default_cache_dir(benchmark)
 
 
@@ -109,8 +130,15 @@ def urllib_fetch(url: str, timeout_s: float = 60.0) -> bytes:
         return r.read()
 
 
-def fetch_file(rel: str, *, cache_dir: Optional[str | Path] = None, manifest: Optional[Mapping] = None,
-               fetch: Optional[Fetch] = None, download: bool = True, benchmark: Optional[Benchmark] = None) -> bytes:
+def fetch_file(
+    rel: str,
+    *,
+    cache_dir: str | Path | None = None,
+    manifest: Mapping | None = None,
+    fetch: Fetch | None = None,
+    download: bool = True,
+    benchmark: Benchmark | None = None,
+) -> bytes:
     """Verified bytes of ``rel`` (e.g. ``"bbh/navigate.json"``), downloading it once into the cache if needed.
 
     A cached file with the wrong hash is re-downloaded (when ``download``); a download with the wrong hash is never
@@ -130,8 +158,10 @@ def fetch_file(rel: str, *, cache_dir: Optional[str | Path] = None, manifest: Op
             return data
         stale = got
         if not download:
-            raise BBHChecksumError(f"cached {path} has sha256 {got[:16]}..., manifest says {want[:16]}...; delete it "
-                                   "or allow a download to replace it")
+            raise BBHChecksumError(
+                f"cached {path} has sha256 {got[:16]}..., manifest says {want[:16]}...; delete it "
+                "or allow a download to replace it"
+            )
     if not download:
         raise BBHDataError(f"{b.name.upper()} file {rel} is not cached in {root} and downloads are disabled")
     url = _url(rel, man)
@@ -145,8 +175,10 @@ def fetch_file(rel: str, *, cache_dir: Optional[str | Path] = None, manifest: Op
         ) from e
     got = sha256_bytes(data)
     if got != want:
-        raise BBHChecksumError(f"downloaded {url} has sha256 {got[:16]}..., manifest says {want[:16]}... "
-                               f"(cached copy {'also wrong' if stale else 'absent'}); refusing to use it")
+        raise BBHChecksumError(
+            f"downloaded {url} has sha256 {got[:16]}..., manifest says {want[:16]}... "
+            f"(cached copy {'also wrong' if stale else 'absent'}); refusing to use it"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
     with os.fdopen(fd, "wb") as f:
@@ -160,7 +192,7 @@ def _check_task(name: str, b: Benchmark) -> None:
         raise KeyError(f"unknown {b.name.upper()} task {name!r}; choose from {list(b.tasks)}")
 
 
-def load_examples(task: str, *, benchmark: Optional[Benchmark] = None, **kw) -> list[dict]:
+def load_examples(task: str, *, benchmark: Benchmark | None = None, **kw) -> list[dict]:
     """``[{"input": str, "target": str}, ...]`` of one task, in file order (``kw`` go to :func:`fetch_file`)."""
     b = benchmark or BBH
     _check_task(task, b)
@@ -171,25 +203,27 @@ def load_examples(task: str, *, benchmark: Optional[Benchmark] = None, **kw) -> 
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         raise BBHDataError(f"{rel} is not valid JSON: {e}") from e
     ex = doc.get("examples") if isinstance(doc, dict) else None
-    if not isinstance(ex, list) or not all(isinstance(e, dict) and isinstance(e.get("input"), str)
-                                           and isinstance(e.get("target"), str) for e in ex):
+    if not isinstance(ex, list) or not all(
+        isinstance(e, dict) and isinstance(e.get("input"), str) and isinstance(e.get("target"), str) for e in ex
+    ):
         raise BBHDataError(f"{rel} does not hold examples of {{'input': str, 'target': str}}")
     return [{"input": e["input"], "target": e["target"]} for e in ex]
 
 
-def load_cot_prompt(task: str, *, benchmark: Optional[Benchmark] = None, **kw) -> str:
+def load_cot_prompt(task: str, *, benchmark: Benchmark | None = None, **kw) -> str:
     """The official 3-shot CoT prompt of ``task``: description + exemplars, without the canary header."""
     b = benchmark or BBH
     if not b.cot_path:
-        raise BBHDataError(f"{b.name.upper()} publishes no official CoT prompts: the cot3 reference is unavailable "
-                           f"for {b.name}")
+        raise BBHDataError(
+            f"{b.name.upper()} publishes no official CoT prompts: the cot3 reference is unavailable for {b.name}"
+        )
     _check_task(task, b)
     text = fetch_file(b.cot_path.format(task=task), benchmark=b, **kw).decode("utf-8")
     head, sep, rest = text.partition("\n-----\n")
     return (rest if sep else text).strip()
 
 
-def ensure_all(*, include_cot: bool = True, benchmark: Optional[Benchmark] = None, **kw) -> list[str]:
+def ensure_all(*, include_cot: bool = True, benchmark: Benchmark | None = None, **kw) -> list[str]:
     """Download (once) and verify every file of the manifest; returns the relpaths checked."""
     b = benchmark or BBH
     man = kw.get("manifest") if kw.get("manifest") is not None else b.manifest()
@@ -201,11 +235,31 @@ def ensure_all(*, include_cot: bool = True, benchmark: Optional[Benchmark] = Non
 
 #: BIG-Bench Hard (Suzgun et al. 2022): defaults justified in :mod:`.suite`
 BBH = Benchmark(
-    name="bbh", tasks=TASKS, examples_path="bbh/{task}.json", manifest=_bbh_manifest, cache_env="RSI_BBH_CACHE",
-    cache_subdir="bbh", cot_path="cot-prompts/{task}.txt",
-    default_practice=("multistep_arithmetic_two", "word_sorting", "dyck_languages", "logical_deduction_five_objects",
-                      "tracking_shuffled_objects_five_objects", "date_understanding"),
-    default_ood=("navigate", "object_counting", "temporal_sequences", "geometric_shapes", "penguins_in_a_table",
-                 "web_of_lies"),
-    default_per_family={"evolve": 6, "val": 0, "holdout": 10, "ood": 10}, pilot_per_family=10,
-    pilot_seed="bbh-pilot-v1", pilot_band=(0.15, 0.85))
+    name="bbh",
+    tasks=TASKS,
+    examples_path="bbh/{task}.json",
+    manifest=_bbh_manifest,
+    cache_env="RSI_BBH_CACHE",
+    cache_subdir="bbh",
+    cot_path="cot-prompts/{task}.txt",
+    default_practice=(
+        "multistep_arithmetic_two",
+        "word_sorting",
+        "dyck_languages",
+        "logical_deduction_five_objects",
+        "tracking_shuffled_objects_five_objects",
+        "date_understanding",
+    ),
+    default_ood=(
+        "navigate",
+        "object_counting",
+        "temporal_sequences",
+        "geometric_shapes",
+        "penguins_in_a_table",
+        "web_of_lies",
+    ),
+    default_per_family={"evolve": 6, "val": 0, "holdout": 10, "ood": 10},
+    pilot_per_family=10,
+    pilot_seed="bbh-pilot-v1",
+    pilot_band=(0.15, 0.85),
+)

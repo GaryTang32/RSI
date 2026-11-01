@@ -1,4 +1,5 @@
 """Sandbox output must not carry the random scratch-directory path (it reaches model prompts via tracebacks)."""
+
 from rsi.core.sandbox import SCRATCH_PLACEHOLDER, call_function, run_python
 
 
@@ -21,12 +22,14 @@ def test_call_function_errors_are_stable():
 
 def test_symlinked_scratch_is_replaced_whatever_the_hash_seed(checkout_python):
     # macOS /tmp -> /private/tmp: the longer real path must be replaced first, in an order independent of set iteration
-    code = ("from rsi.core import sandbox\n"
-            "from rsi.core.sandbox import RunResult, _stable_paths\n"
-            "sandbox.os.path.realpath = lambda p: '/private' + p\n"
-            "rr = _stable_paths(RunResult(1, '', 'File \"/private/tmp/rsi_sbx_k3/_rsi_main.py\"', 0.0, False), "
-            "'/tmp/rsi_sbx_k3')\n"
-            "print(rr.stderr)\n")
+    code = (
+        "from rsi.core import sandbox\n"
+        "from rsi.core.sandbox import RunResult, _stable_paths\n"
+        "sandbox.os.path.realpath = lambda p: '/private' + p\n"
+        "rr = _stable_paths(RunResult(1, '', 'File \"/private/tmp/rsi_sbx_k3/_rsi_main.py\"', 0.0, False), "
+        "'/tmp/rsi_sbx_k3')\n"
+        "print(rr.stderr)\n"
+    )
     outs = {checkout_python(code, env={"PYTHONHASHSEED": str(seed)}).stdout.strip() for seed in range(8)}
     assert outs == {f'File "{SCRATCH_PLACEHOLDER}/_rsi_main.py"'}
 
@@ -35,5 +38,5 @@ def test_set_order_in_sandbox_output_is_stable():
     code = "print({'red', 'green', 'blue', 'white', 'yellow', 'cyan', 'magenta'})"
     assert len({run_python(code, timeout_s=20).stdout for _ in range(4)}) == 1
     hash_seed = "import os; print(os.environ['PYTHONHASHSEED'])"
-    assert run_python(hash_seed, timeout_s=20).stdout.strip() == "0"      # the default unless the caller sets it
+    assert run_python(hash_seed, timeout_s=20).stdout.strip() == "0"  # the default unless the caller sets it
     assert run_python(hash_seed, timeout_s=20, env={"PYTHONHASHSEED": "7"}).stdout.strip() == "7"

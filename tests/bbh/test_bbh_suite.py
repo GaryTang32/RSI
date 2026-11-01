@@ -1,4 +1,5 @@
 """BBH suites: sizes, determinism, disjoint splits (pilot included), unseen OOD families, families.json."""
+
 from __future__ import annotations
 
 import json
@@ -7,8 +8,15 @@ from pathlib import Path
 import pytest
 
 from rsi.core import SealedSplitError
-from rsi.domains.bbh import (DEFAULT_OOD, DEFAULT_PRACTICE, PILOT_CANDIDATES, load_families, make_pilot_suite,
-                             make_suite, suggest_families)
+from rsi.domains.bbh import (
+    DEFAULT_OOD,
+    DEFAULT_PRACTICE,
+    PILOT_CANDIDATES,
+    load_families,
+    make_pilot_suite,
+    make_suite,
+    suggest_families,
+)
 from rsi.domains.bbh.suite import sibling_group
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -33,8 +41,9 @@ def test_default_sizes_and_families(kw):
 
 
 def test_per_family_counts_are_configurable(kw):
-    s = make_suite(DEFAULT_PRACTICE[:2], DEFAULT_OOD[:3], per_family={"evolve": 4, "val": 2, "holdout": 3, "ood": 3},
-                   **kw)
+    s = make_suite(
+        DEFAULT_PRACTICE[:2], DEFAULT_OOD[:3], per_family={"evolve": 4, "val": 2, "holdout": 3, "ood": 3}, **kw
+    )
     assert [len(s.splits[x]) for x in ("evolve", "val", "holdout", "ood")] == [8, 4, 6, 9]
     with pytest.raises(ValueError, match="remain after the pilot reserve"):
         make_suite(per_family={"evolve": 20}, **kw)
@@ -50,7 +59,9 @@ def test_deterministic_and_seeded(kw):
     a, b, c = make_suite(seed=0, **kw), make_suite(seed=0, **kw), make_suite(seed=1, **kw)
     for split in ("evolve", "holdout", "ood"):
         assert _ids(a, split) == _ids(b, split)
-        assert [t.input for t in a.split(split, allow_sealed=True)] == [t.input for t in b.split(split, allow_sealed=True)]
+        assert [t.input for t in a.split(split, allow_sealed=True)] == [
+            t.input for t in b.split(split, allow_sealed=True)
+        ]
     assert _ids(a, "evolve") != _ids(c, "evolve")
 
 
@@ -75,8 +86,11 @@ def test_pilot_pool_is_fixed_and_independent_of_the_suite_seed(kw):
     assert set(a.splits["pilot"]) <= set(b.splits["pilot"])
     for seed in (0, 3):
         s = make_suite(["word_sorting"], ["navigate"], seed=seed, **kw)
-        used = {(t.family, t.meta["bbh_index"]) for split in ("evolve", "holdout", "ood")
-                for t in s.split(split, allow_sealed=True)}
+        used = {
+            (t.family, t.meta["bbh_index"])
+            for split in ("evolve", "holdout", "ood")
+            for t in s.split(split, allow_sealed=True)
+        }
         assert not used & {(t.family, t.meta["bbh_index"]) for t in a.split("pilot")}
 
 
@@ -101,8 +115,16 @@ def test_families_file_drives_make_suite(kw, tmp_path):
 
 
 def test_suggest_families_drops_ceiling_and_keeps_siblings_together():
-    acc = {"a": 0.5, "b": 0.45, "c": 0.95, "d": 0.05, "logical_deduction_three_objects": 0.55,
-           "logical_deduction_five_objects": 0.5, "e": 0.6, "f": 0.4}
+    acc = {
+        "a": 0.5,
+        "b": 0.45,
+        "c": 0.95,
+        "d": 0.05,
+        "logical_deduction_three_objects": 0.55,
+        "logical_deduction_five_objects": 0.5,
+        "e": 0.6,
+        "f": 0.4,
+    }
     sug = suggest_families(acc, n_practice=2, n_ood=2)
     assert {"c", "d"} == set(sug["excluded_floor_or_ceiling"])
     picked = sug["practice"] + sug["ood"]

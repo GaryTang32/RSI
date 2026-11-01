@@ -2,6 +2,7 @@
 
 Usage: python experiments/metaharness-solpi/sp_validate.py [solpi_agentworld_offline | solpi_agentworld_live_r5]
 """
+
 from __future__ import annotations
 
 import json
@@ -9,8 +10,10 @@ import sys
 import time
 
 import validate_metaharness_solpi as V
+
 from rsi.domains.agentworld import MockAgentLLM, make_domain
-from rsi.solpi import Config, GateSpec, LLMReviewer, run as sp_run
+from rsi.solpi import Config, GateSpec, LLMReviewer
+from rsi.solpi import run as sp_run
 from rsi.trace import inspect
 
 OFFLINE_SETUP = (
@@ -22,7 +25,8 @@ OFFLINE_SETUP = (
     "Oracle Analysis ranks them and the top n_lineages = 10 get rollouts. Proposer = LibraryProposer, reviewer = "
     "SmokeReviewer. Predeclared aggregate dual gate: score AND solved rate within 2% (relative) AND tokens or cost "
     "saving > 2%; lineages sweep their variants and freeze the nondominated best-eta one; firewall on holdout; "
-    "compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood.")
+    "compose survivors. n_lineages 10, max_iters 4, ralph_max 3, k 1. Shadow monitor on holdout + ood."
+)
 LIVE_SETUP = (
     "AgentWorld seed 0, small: evolve 3 x 3 training families, holdout 3 x 2, ood 3 x 2 held-out families. Base = "
     "untouched harness. Agent backend = MockAgentLLM('A') (offline). Two free-form ideas (no registry mechanism): "
@@ -30,7 +34,8 @@ LIVE_SETUP = (
     "LLM contract review) are claude haiku behind a FRESH CachedLLM; haiku writes each mechanism as a Python "
     "extension against the runtime hook API. Aggregate dual gate (score AND solved within 2%, efficiency > 2%), "
     "sweep (a lineage keeps iterating after a pass and freezes its nondominated best-eta variant), firewall on "
-    "holdout. n_lineages 2, max_iters 2, ralph_max 2, review_max 2 (r4's configuration under the fixed defaults).")
+    "holdout. n_lineages 2, max_iters 2, ralph_max 2, review_max 2 (r4's configuration under the fixed defaults)."
+)
 
 
 def sweep_walk_check(rows: list[dict]) -> tuple[str, list[str]]:
@@ -72,19 +77,37 @@ def run(name: str) -> dict:
     elif name == "solpi_agentworld_live_r5":
         dom = make_domain(seed=0, n_train=3, n_accept=3, n_final=3, n_test=0)
         llm, cache = V.fresh_llm(name)
-        cfg = Config(gate=GateSpec(mode="aggregate"), n_lineages=2, max_iters=2, ralph_max=2, workers=2,
-                     shadow_monitor=True)
-        res = sp_run(dom, dom.seed_artifact(), llm_task=agent, llm_propose=llm, config=cfg, out_dir=out,
-                     ideas=V.live_ideas(), reviewer=LLMReviewer(llm, dom, agent))
+        cfg = Config(
+            gate=GateSpec(mode="aggregate"), n_lineages=2, max_iters=2, ralph_max=2, workers=2, shadow_monitor=True
+        )
+        res = sp_run(
+            dom,
+            dom.seed_artifact(),
+            llm_task=agent,
+            llm_propose=llm,
+            config=cfg,
+            out_dir=out,
+            ideas=V.live_ideas(),
+            reviewer=LLMReviewer(llm, dom, agent),
+        )
         setup = LIVE_SETUP
     else:
         raise SystemExit(f"unknown run {name!r}")
-    report = V.sp_report(name, setup, time.time() - t0, dom, agent, res, llm, cache,
-                         generated_by="experiments/metaharness-solpi/sp_validate.py (post claims-audit fixes)")
+    report = V.sp_report(
+        name,
+        setup,
+        time.time() - t0,
+        dom,
+        agent,
+        res,
+        llm,
+        cache,
+        generated_by="experiments/metaharness-solpi/sp_validate.py (post claims-audit fixes)",
+    )
     V.write_json(out / "report.json", report)
     inspect(out)
     audit = V.audit_sp(out, res, name)
-    if name == "solpi_agentworld_offline":          # the stage-A walk rule predates the sweep default
+    if name == "solpi_agentworld_offline":  # the stage-A walk rule predates the sweep default
         audit["checks"]["variant_walk_rule"], walk_problems = sweep_walk_check(audit["rows"])
         audit["problems"] = [p for p in audit["problems"] if not p.startswith("variant_walk_rule")] + walk_problems
         audit["all_passed"] = all(a == b for a, b in (c.split("/") for c in audit["checks"].values()))

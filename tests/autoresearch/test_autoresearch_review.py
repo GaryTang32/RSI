@@ -1,12 +1,25 @@
 """A second new domain (JSON config, noisy, no seed_artifact hook) and regressions for metering, git and the hub."""
+
 import json
 import random
 
 import pytest
-
 from autoresearch_helpers import kept, needs_git, quiet, rows
-from rsi.autoresearch import (Config, DomainResearchTask, LandscapeTask, LLMResearchAgent, MockResearchAgent,
-                              ScriptedEdit, Workspace, agent_llms, landscape_edit_pool, make_agent, run, scripted_llm)
+
+from rsi.autoresearch import (
+    Config,
+    DomainResearchTask,
+    LandscapeTask,
+    LLMResearchAgent,
+    MockResearchAgent,
+    ScriptedEdit,
+    Workspace,
+    agent_llms,
+    landscape_edit_pool,
+    make_agent,
+    run,
+    scripted_llm,
+)
 from rsi.autoresearch.hub import CollaborativeLoop, SharedHub
 from rsi.core import Artifact, ArtifactStore, CachedLLM, ClaudeCLI, FunctionDomain, RewriteEditor, Task, TaskSuite
 
@@ -16,8 +29,9 @@ def _router_domain():
     tasks = [Task(f"n{i}", i, "big" if i >= 60 else "small", family="mid" if i < 90 else "tail") for i in range(100)]
     ids = [t.id for t in tasks if t.family == "mid"]
     random.Random(0).shuffle(ids)
-    suite = TaskSuite(tasks, {"evolve": ids[:30], "holdout": ids[30:], "ood": [f"n{i}" for i in range(90, 100)]},
-                      name="router")
+    suite = TaskSuite(
+        tasks, {"evolve": ids[:30], "holdout": ids[30:], "ood": [f"n{i}" for i in range(90, 100)]}, name="router"
+    )
 
     def execute(art, task, seed, llm):
         cfg = json.loads(art["router.json"])
@@ -40,8 +54,10 @@ def _router_domain():
 
         return apply
 
-    pool = [ScriptedEdit(name, "unknown", move(delta), group="threshold")
-            for name, delta in [("up10", 10), ("down10", -10), ("up5", 5), ("down5", -5)]]
+    pool = [
+        ScriptedEdit(name, "unknown", move(delta), group="threshold")
+        for name, delta in [("up10", 10), ("down10", -10), ("up5", 5), ("down5", -5)]
+    ]
     seed_art = Artifact({"router.json": json.dumps({"threshold": 20, "labels": ["small", "big"]})})
     return FunctionDomain(suite, execute, grade, name="router"), seed_art, pool
 
@@ -53,8 +69,14 @@ def test_second_new_domain_llm_path_and_variants(tmp_path):
     with pytest.raises(ValueError, match="mock edit pool"):  # neither an agent nor an LLM
         run(dom, seed_art, config=Config(max_experiments=1, plot=False, persist=False))
     llm = scripted_llm(pool, seed=3)
-    res = run(dom, seed_art, llm_propose=llm, out_dir=tmp_path / "llm", task_kwargs={"k": 2},
-              config=Config(max_experiments=8, keep_rule="rigor", plot=False, reeval_seeds=2))
+    res = run(
+        dom,
+        seed_art,
+        llm_propose=llm,
+        out_dir=tmp_path / "llm",
+        task_kwargs={"k": 2},
+        config=Config(max_experiments=8, keep_rule="rigor", plot=False, reeval_seeds=2),
+    )
     log = rows(res)
     assert log[0].description == "baseline" and {r.status for r in log} <= {"keep", "discard"}
     assert res.meta["analysis"]["best"] > res.meta["analysis"]["baseline"] + 0.2  # 20 -> ~60 is learnt
@@ -66,8 +88,13 @@ def test_second_new_domain_llm_path_and_variants(tmp_path):
     assert res.usage["_total"]["calls"] >= 8 and "scripted-researcher:researcher" in res.usage
     assert "router.json" in llm.calls[0]["prompt"] and "results.tsv" in llm.calls[0]["prompt"]
     for name, kw in {"parallel": dict(workers=2), "resample": dict(val_resample_every=3)}.items():
-        r = run(dom, seed_art, agent=MockResearchAgent(pool, seed=1), out_dir=tmp_path / name,
-                config=quiet(max_experiments=6, **kw))
+        r = run(
+            dom,
+            seed_art,
+            agent=MockResearchAgent(pool, seed=1),
+            out_dir=tmp_path / name,
+            config=quiet(max_experiments=6, **kw),
+        )
         assert r.meta["analysis"]["best"] >= r.meta["analysis"]["baseline"], name
     assert r.meta["val_epochs"] == 1  # the resample run
 
@@ -84,8 +111,12 @@ def test_second_new_domain_deterministic():
 
 def test_user_supplied_and_agent_editor_llms_are_metered(tmp_path):
     dom, seed_art, pool = _router_domain()
-    res = run(dom, seed_art, agent=LLMResearchAgent(RewriteEditor(scripted_llm(pool, seed=0))),
-              config=quiet(max_experiments=3, persist=False))
+    res = run(
+        dom,
+        seed_art,
+        agent=LLMResearchAgent(RewriteEditor(scripted_llm(pool, seed=0))),
+        config=quiet(max_experiments=3, persist=False),
+    )
     assert res.usage["_total"]["calls"] >= 3
     cli = ClaudeCLI("haiku")  # constructed, never called
     agent = make_agent(DomainResearchTask(dom, seed_artifact=seed_art), CachedLLM(cli, tmp_path / "c"), editor="agent")
@@ -107,8 +138,14 @@ def test_git_workspace_mirrors_nested_files(tmp_path):
 
 def test_collaborative_loop_publishes_a_hypothesis_every_time(tmp_path):
     hub = SharedHub(tmp_path / "hub", metric="val_loss", verify_delay=0)
-    loop = CollaborativeLoop(LandscapeTask(), MockResearchAgent(landscape_edit_pool(), seed=0, crash_rate=0.3),
-                             quiet(max_experiments=6), out_dir=tmp_path / "a", hub=hub, agent_id="a0")
+    loop = CollaborativeLoop(
+        LandscapeTask(),
+        MockResearchAgent(landscape_edit_pool(), seed=0, crash_rate=0.3),
+        quiet(max_experiments=6),
+        out_dir=tmp_path / "a",
+        hub=hub,
+        agent_id="a0",
+    )
     loop.run()
     results = [v for _, v in hub.items("results")]
     titles = [v["title"] for _, v in hub.items("hypotheses")]

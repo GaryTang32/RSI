@@ -1,4 +1,5 @@
 """experiments/bbeh: every arm runs offline with the mock LLMs; cot3 is refused; merge builds the table."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -9,9 +10,34 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SMALL = ["--evolve", "2", "--holdout", "2", "--ood", "2", "--n-sub", "4", "--rrsi-T", "1", "--gepa-B", "20",
-         "--mh-iterations", "1", "--workers", "2", "--ar-experiments", "2", "--solpi-lineages", "2",
-         "--dream-rounds", "2", "--dream-branches", "1", "--evomap-cycles", "4"]
+SMALL = [
+    "--evolve",
+    "2",
+    "--holdout",
+    "2",
+    "--ood",
+    "2",
+    "--n-sub",
+    "4",
+    "--rrsi-T",
+    "1",
+    "--gepa-B",
+    "20",
+    "--mh-iterations",
+    "1",
+    "--workers",
+    "2",
+    "--ar-experiments",
+    "2",
+    "--solpi-lineages",
+    "2",
+    "--dream-rounds",
+    "2",
+    "--dream-branches",
+    "1",
+    "--evomap-cycles",
+    "4",
+]
 
 
 def _load(name: str, rel: str):
@@ -23,7 +49,9 @@ def _load(name: str, rel: str):
 
 @pytest.fixture
 def exp(bbeh_offline):
-    return _load("bbeh_cl_test", "experiments/bbeh/compare_live.py"), _load("bbeh_merge_test", "experiments/bbeh/merge.py")
+    return _load("bbeh_cl_test", "experiments/bbeh/compare_live.py"), _load(
+        "bbeh_merge_test", "experiments/bbeh/merge.py"
+    )
 
 
 def test_offline_dry_run_of_every_arm_then_merge(exp, tmp_path):
@@ -31,8 +59,9 @@ def test_offline_dry_run_of_every_arm_then_merge(exp, tmp_path):
     assert "cot3" not in cl.ARMS and len(cl.ARMS) == 11
     assert cl.main(["--arm", "all", "--offline", "--out-dir", str(tmp_path), *SMALL]) == 0
     res = {a: json.loads((tmp_path / f"{a}.json").read_text()) for a in cl.ARMS}
-    assert all(r["status"] == "ok" and r["benchmark"] == "bbeh" for r in res.values()), \
-        {a: (r["status"], r.get("error")) for a, r in res.items()}
+    assert all(r["status"] == "ok" and r["benchmark"] == "bbeh" for r in res.values()), {
+        a: (r["status"], r.get("error")) for a, r in res.items()
+    }
     assert not (tmp_path / "cot3.json").exists()
     for a in ("seed", "rrsi", "gepa", "metaharness", "autoresearch", "solpi", "dream", "evomap"):
         assert len(res[a]["per_task"]) == 24 and res[a]["k"] == 2
@@ -55,8 +84,18 @@ def test_cot3_is_refused_with_a_clear_error(exp):
 def test_bbeh_defaults_and_subsample(exp, tmp_path):
     cl, _ = exp
     a = cl.parse_args(["--arm", "seed", "--offline"])
-    assert (a.evolve, a.holdout, a.ood, a.k, a.n_sub, a.rrsi_T, a.gepa_B, a.mh_iterations, a.mh_k,
-            a.mh_session_usd) == (4, 10, 10, 2, 36, 4, 150, 3, 2, 0.75)
+    assert (
+        a.evolve,
+        a.holdout,
+        a.ood,
+        a.k,
+        a.n_sub,
+        a.rrsi_T,
+        a.gepa_B,
+        a.mh_iterations,
+        a.mh_k,
+        a.mh_session_usd,
+    ) == (4, 10, 10, 2, 36, 4, 150, 3, 2, 0.75)
     assert (a.llm_timeout, a.llm_retries) == (900.0, 2)
     assert a.out_dir.parts[-2:] == ("bbeh", "offline") and a.families.endswith("experiments/bbeh/families.json")
     _, suite = cl.build_suite(a)

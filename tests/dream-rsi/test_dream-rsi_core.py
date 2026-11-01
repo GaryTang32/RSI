@@ -1,13 +1,33 @@
 """Dream-RSI core: discovery trees, replay semantics, guard, objectives and the overview demo."""
+
 import json
 
 import pytest
 
 from rsi.core import Ledger, Node
-from rsi.dream import (DEMO_EXPECTED, BatchError, Config, DiscoveryNode, DiscoveryTree, Eq1Objective, GridPlan,
-                       GuardViolation, ParetoSweepObjective, PrefixGuard, QuestionProxy, ReplayEvaluator,
-                       ReplayQuestion, adaptive, code_of, demo_tree, parallel_refine, rules, run_demo, static_check,
-                       template_code)
+from rsi.dream import (
+    DEMO_EXPECTED,
+    BatchError,
+    Config,
+    DiscoveryNode,
+    DiscoveryTree,
+    Eq1Objective,
+    GridPlan,
+    GuardViolation,
+    ParetoSweepObjective,
+    PrefixGuard,
+    QuestionProxy,
+    ReplayEvaluator,
+    ReplayQuestion,
+    adaptive,
+    code_of,
+    demo_tree,
+    parallel_refine,
+    rules,
+    run_demo,
+    static_check,
+    template_code,
+)
 from rsi.dream.guard import InProcessRunner, SubprocessRunner
 from rsi.dream.tree import ROOT_ID, cell_id
 
@@ -19,11 +39,18 @@ def chain_tree(scores_by_branch: list[list[float]], order: list[int] | None = No
     """One chain per branch; ``order`` is the creation order of the branches' first cells."""
     order = order or range(len(scores_by_branch))
     first_seq = {b: i + 1 for i, b in enumerate(order)}
-    nodes = [DiscoveryNode(cell_id(b, a), cell_id(b, a - 1) if a else ROOT_ID, b, a,
-                           100 * (b + 1) + a if a else first_seq[b], s)
-             for b in order for a, s in enumerate(scores_by_branch[b])]
-    return DiscoveryTree(DiscoveryNode(ROOT_ID, None, score=0.0), nodes,
-                         branch_tags={b: {"direction": f"d{b}"} for b in range(len(scores_by_branch))})
+    nodes = [
+        DiscoveryNode(
+            cell_id(b, a), cell_id(b, a - 1) if a else ROOT_ID, b, a, 100 * (b + 1) + a if a else first_seq[b], s
+        )
+        for b in order
+        for a, s in enumerate(scores_by_branch[b])
+    ]
+    return DiscoveryTree(
+        DiscoveryNode(ROOT_ID, None, score=0.0),
+        nodes,
+        branch_tags={b: {"direction": f"d{b}"} for b in range(len(scores_by_branch))},
+    )
 
 
 def cells(observations) -> list[str]:
@@ -125,7 +152,9 @@ def test_sandbox_cannot_open_files(tmp_path):
     secret.write_text("{}")
     code = template_code("parallel_refine").replace(
         "    def solve(self, question, budget=None):\n",
-        f"    def solve(self, question, budget=None):\n        open({str(secret)!r}).read()\n", 1)
+        f"    def solve(self, question, budget=None):\n        open({str(secret)!r}).read()\n",
+        1,
+    )
     ev = ReplayEvaluator(W=2, fallback=(2, 1), runner=SubprocessRunner(timeout_s=20))
     error = ev.evaluate(code, [chain_tree([[0.1, 0.2], [0.3, 0.4]])]).episodes[0].error
     assert error and ("Errno" in error or "Error" in error)
@@ -136,9 +165,11 @@ def test_static_check():
     bad = static_check(template_code("oracle"))
     assert not bad.ok and any("best_so_far" in e for e in bad.errors)
     refine = template_code("parallel_refine")
-    for code, word in ((refine.replace("def plan_grid", "def _plan_grid"), "plan_grid"),
-                       ("import os\n" + template_code("adaptive"), "import"),
-                       (refine.replace("        return GridPlan(", "        return None\n        GridPlan("), "None")):
+    for code, word in (
+        (refine.replace("def plan_grid", "def _plan_grid"), "plan_grid"),
+        ("import os\n" + template_code("adaptive"), "import"),
+        (refine.replace("        return GridPlan(", "        return None\n        GridPlan("), "None"),
+    ):
         assert any(word in e for e in static_check(code).errors)
 
 
@@ -152,7 +183,8 @@ def test_normalized_eq1_and_pareto_sweep():
     ns = [p["N"] for p in sorted(sw["points"], key=lambda p: p["beta"])]
     assert ns == sorted(ns)  # a higher beta never probes less
     full = ReplayEvaluator(Eq1Objective(), W=3, fallback=(3, 2), runner="inprocess").evaluate(
-        code_of(parallel_refine()), [tree])
+        code_of(parallel_refine()), [tree]
+    )
     assert full.episodes[0].attainment == 1.0
     assert full.value == pytest.approx(1.0 - 0.01 * 9 + 0.005 * 3)
 
@@ -160,8 +192,10 @@ def test_normalized_eq1_and_pareto_sweep():
 def test_no_reward_for_out_of_support_plans():
     tree = chain_tree([[0.1, 0.5], [0.3, 0.31]])
     deep = code_of(rules(plan_w=2, plan_r=6))
-    clip, nore, dflt = (ReplayEvaluator(obj, W=2, runner="inprocess").evaluate(deep, [tree])
-                        for obj in (Eq1Objective(support="clip"), Eq1Objective(support="no_reward"), Eq1Objective()))
+    clip, nore, dflt = (
+        ReplayEvaluator(obj, W=2, runner="inprocess").evaluate(deep, [tree])
+        for obj in (Eq1Objective(support="clip"), Eq1Objective(support="no_reward"), Eq1Objective())
+    )
     assert clip.episodes[0].out_of_support and clip.value > nore.value
     # Listing 2: an out-of-support plan "cannot earn replay reward"
     assert Eq1Objective().support == Config().support == "no_reward" and dflt.value == pytest.approx(nore.value)
@@ -169,9 +203,13 @@ def test_no_reward_for_out_of_support_plans():
 
 def test_tree_json_roundtrip_and_ledger_conversion(tmp_path):
     led = Ledger()
-    for node in (Node("base", None, score=0.2, kind="baseline"), Node("c1", "base", score=0.3),
-                 Node("c2", "c1", score=0.35), Node("c3", "c1", score=0.5),
-                 Node("c4", "base", score=None, status="crash")):
+    for node in (
+        Node("base", None, score=0.2, kind="baseline"),
+        Node("c1", "base", score=0.3),
+        Node("c2", "c1", score=0.35),
+        Node("c3", "c1", score=0.5),
+        Node("c4", "base", score=None, status="crash"),
+    ):
         led.add(node)
     tree = DiscoveryTree.from_ledger(led)
     assert tree.size == 4 and tree.root_score == 0.2

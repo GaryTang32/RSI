@@ -1,9 +1,10 @@
 """Bit-exact port of the overview page's "overfitting trap" simulator (plain vs guarded keep rule)."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 ROUNDS = 60
 RUNS = 200
@@ -47,9 +48,14 @@ class ToyResult:
     finals: dict = field(default_factory=dict)
 
     def last(self) -> dict:
-        return {"plain_practice": self.plain_ev[-1], "plain_unseen": self.plain_ho[-1],
-                "guarded_practice": self.reg_ev[-1], "guarded_unseen": self.reg_ho[-1],
-                "changes_kept_plain": self.acc_plain, "changes_kept_guarded": self.acc_reg}
+        return {
+            "plain_practice": self.plain_ev[-1],
+            "plain_unseen": self.plain_ho[-1],
+            "guarded_practice": self.reg_ev[-1],
+            "guarded_unseen": self.reg_ho[-1],
+            "changes_kept_plain": self.acc_plain,
+            "changes_kept_guarded": self.acc_reg,
+        }
 
     def verdict(self) -> str:
         if self.reg_ho[-1] > self.plain_ho[-1]:
@@ -57,8 +63,16 @@ class ToyResult:
         return "At these settings the plain loop transfers as well or better. Try more tricks or more noise."
 
 
-def simulate(p_trick: float = 0.35, sigma: float = 0.02, catch_rate: float = 0.8, *, rounds: int = ROUNDS,
-             runs: int = RUNS, band_z: float = 0.5, critic: bool = True) -> ToyResult:
+def simulate(
+    p_trick: float = 0.35,
+    sigma: float = 0.02,
+    catch_rate: float = 0.8,
+    *,
+    rounds: int = ROUNDS,
+    runs: int = RUNS,
+    band_z: float = 0.5,
+    critic: bool = True,
+) -> ToyResult:
     """The demo's simulator with its slider defaults; ``critic=False`` still draws the critic stream."""
     plain_ev = [0.0] * (rounds + 1)
     plain_ho = [0.0] * (rounds + 1)
@@ -66,9 +80,16 @@ def simulate(p_trick: float = 0.35, sigma: float = 0.02, catch_rate: float = 0.8
     reg_ho = [0.0] * (rounds + 1)
     band = band_z * sigma * math.sqrt(2.0)
     acc_plain = acc_reg = 0
-    finals: dict[str, list[float]] = {"plain_practice": [], "plain_unseen": [], "guarded_practice": [],
-                                      "guarded_unseen": [], "kept_plain": [], "kept_guarded": [],
-                                      "tricks_kept_plain": [], "tricks_kept_guarded": []}
+    finals: dict[str, list[float]] = {
+        "plain_practice": [],
+        "plain_unseen": [],
+        "guarded_practice": [],
+        "guarded_unseen": [],
+        "kept_plain": [],
+        "kept_guarded": [],
+        "tricks_kept_plain": [],
+        "tricks_kept_guarded": [],
+    }
     for s in range(1, runs + 1):
         rp, ra = mulberry32(s * 101 + 7), mulberry32(s * 7 + 1)
         rb, rc = mulberry32(s * 13 + 5), mulberry32(s * 29 + 3)
@@ -103,8 +124,12 @@ def simulate(p_trick: float = 0.35, sigma: float = 0.02, catch_rate: float = 0.8
             plain_ho[i + 1] += ph
             reg_ev[i + 1] += re_
             reg_ho[i + 1] += rh
-        for key, val in (("plain_practice", pe), ("plain_unseen", ph), ("guarded_practice", re_),
-                         ("guarded_unseen", rh)):
+        for key, val in (
+            ("plain_practice", pe),
+            ("plain_unseen", ph),
+            ("guarded_practice", re_),
+            ("guarded_unseen", rh),
+        ):
             finals[key].append(val * 100.0)
         finals["kept_plain"].append(kp)
         finals["kept_guarded"].append(kr)
@@ -114,11 +139,10 @@ def simulate(p_trick: float = 0.35, sigma: float = 0.02, catch_rate: float = 0.8
     def avg(a: list[float]) -> list[float]:
         return [(v / runs) * 100.0 for v in a]
 
-    return ToyResult(avg(plain_ev), avg(plain_ho), avg(reg_ev), avg(reg_ho), acc_plain / runs, acc_reg / runs,
-                     finals)
+    return ToyResult(avg(plain_ev), avg(plain_ho), avg(reg_ev), avg(reg_ho), acc_plain / runs, acc_reg / runs, finals)
 
 
-def sweep(grid: dict[str, list[float]], base: Optional[dict] = None, **kw) -> list[dict]:
+def sweep(grid: dict[str, list[float]], base: dict | None = None, **kw) -> list[dict]:
     """One-factor sweeps around ``base`` (defaults to the page's sliders)."""
     base = dict(base or {"p_trick": 0.35, "sigma": 0.02, "catch_rate": 0.8})
     rows = []
@@ -126,6 +150,13 @@ def sweep(grid: dict[str, list[float]], base: Optional[dict] = None, **kw) -> li
         for v in values:
             params = {**base, name: v}
             r = simulate(**params, **kw)
-            rows.append({"factor": name, "value": v, **params, **r.last(),
-                         "guarded_transfers_better": r.reg_ho[-1] > r.plain_ho[-1]})
+            rows.append(
+                {
+                    "factor": name,
+                    "value": v,
+                    **params,
+                    **r.last(),
+                    "guarded_transfers_better": r.reg_ho[-1] > r.plain_ho[-1],
+                }
+            )
     return rows

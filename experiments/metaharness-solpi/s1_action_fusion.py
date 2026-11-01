@@ -2,22 +2,45 @@
 
 Usage: python experiments/metaharness-solpi/s1_action_fusion.py [--llm sim|claude:haiku] [--seeds N] [--quick]
 """
+
 from __future__ import annotations
 
 from functools import partial
 
 import numpy as np
-
 from _agentworld import agg, backend, backends, domain, rel, trial_rows
 from _common import fmt, paired, parse_args, pool_map, save, summarize, table
-from rsi.solpi import (THEN_RUN_FAILED, THEN_RUN_SKIPPED, THEN_RUN_SUCCEEDED, ActionFusion, AgentRuntime, Message,
-                       PRICES, TokenMeter, ToolCall, builtin_tools)
+
+from rsi.solpi import (
+    PRICES,
+    THEN_RUN_FAILED,
+    THEN_RUN_SKIPPED,
+    THEN_RUN_SUCCEEDED,
+    ActionFusion,
+    AgentRuntime,
+    Message,
+    TokenMeter,
+    ToolCall,
+    builtin_tools,
+)
 from rsi.solpi.runtime import ToolResult
 
-REPORTED = ("oracle_adjacent_share", "oracle_predicted_request_reduction", "measured_request_reduction",
-            "token_reduction", "cost_reduction", "fused_calls_per_task", "share_tasks_triggered")
-TABLED = ("oracle_adjacent_share", "measured_request_reduction", "token_reduction", "cost_reduction",
-          "fused_calls_per_task")
+REPORTED = (
+    "oracle_adjacent_share",
+    "oracle_predicted_request_reduction",
+    "measured_request_reduction",
+    "token_reduction",
+    "cost_reduction",
+    "fused_calls_per_task",
+    "share_tasks_triggered",
+)
+TABLED = (
+    "oracle_adjacent_share",
+    "measured_request_reduction",
+    "token_reduction",
+    "cost_reduction",
+    "fused_calls_per_task",
+)
 
 
 def job(args, spec):
@@ -32,16 +55,25 @@ def job(args, spec):
     trans = [r["oracle"].get("transitions", 0) for r in base]
     fused = [r["triggers"].get("action_fusion", {}).get("fused", 0) for r in af]
     families = sorted({r["family"] for r in base})
-    return {"seed": seed, "backend": prof, "base": b, "af": a,
-            "paired_score": [(x["score"], y["score"]) for x, y in zip(base, af)],
-            "paired_requests": [(x["requests"], y["requests"]) for x, y in zip(base, af)],
-            "oracle_adjacent_share": float(np.sum(adj) / max(1, np.sum(trans))),
-            "oracle_predicted_request_reduction": float(np.sum(adj) / max(1, sum(r["requests"] for r in base))),
-            "measured_request_reduction": -rel(b, a, "requests"), "token_reduction": -rel(b, a, "tokens"),
-            "cost_reduction": -rel(b, a, "cost"), "fused_calls_per_task": float(np.mean(fused)),
-            "share_tasks_triggered": float(np.mean([f > 0 for f in fused])),
-            "by_family": {f: {"base": agg([r for r in base if r["family"] == f]),
-                              "af": agg([r for r in af if r["family"] == f])} for f in families}}
+    return {
+        "seed": seed,
+        "backend": prof,
+        "base": b,
+        "af": a,
+        "paired_score": [(x["score"], y["score"]) for x, y in zip(base, af)],
+        "paired_requests": [(x["requests"], y["requests"]) for x, y in zip(base, af)],
+        "oracle_adjacent_share": float(np.sum(adj) / max(1, np.sum(trans))),
+        "oracle_predicted_request_reduction": float(np.sum(adj) / max(1, sum(r["requests"] for r in base))),
+        "measured_request_reduction": -rel(b, a, "requests"),
+        "token_reduction": -rel(b, a, "tokens"),
+        "cost_reduction": -rel(b, a, "cost"),
+        "fused_calls_per_task": float(np.mean(fused)),
+        "share_tasks_triggered": float(np.mean([f > 0 for f in fused])),
+        "by_family": {
+            f: {"base": agg([r for r in base if r["family"] == f]), "af": agg([r for r in af if r["family"] == f])}
+            for f in families
+        },
+    }
 
 
 class _Env:
@@ -91,7 +123,8 @@ SAFETY_CASES = {
     "interleaved_write_skips": (_edit("X = 1", "X = 2"), lambda rt, p: rt.env.files.__setitem__(p, "X = 7\n")),
     "failed_mutation_not_run": (_edit("NOPE", "Y"), None),
     "nonzero_exit_keeps_edit": (_edit("X = 1", "X = 3", "pytest fail"), None),
-    "success": (_edit("X = 1", "X = 4"), None)}
+    "success": (_edit("X = 1", "X = 4"), None),
+}
 
 
 def safety_checks() -> dict:
@@ -104,14 +137,24 @@ def safety_checks() -> dict:
         rt.add_extension(ActionFusion(yield_hook=hook))
         rt.run("t")
         res = [m for m in rt.history if m.role == "tool"][0]
-        out[name] = {"marker": next((mk for mk in (THEN_RUN_SUCCEEDED, THEN_RUN_FAILED, THEN_RUN_SKIPPED)
-                                     if mk in res.content), None), "command_ran": bool(env.ran),
-                     "file": env.files["a.py"].strip(), "is_error": res.is_error}
+        out[name] = {
+            "marker": next(
+                (mk for mk in (THEN_RUN_SUCCEEDED, THEN_RUN_FAILED, THEN_RUN_SKIPPED) if mk in res.content), None
+            ),
+            "command_ran": bool(env.ran),
+            "file": env.files["a.py"].strip(),
+            "is_error": res.is_error,
+        }
     interleaved, failed, nonzero, success = out.values()
-    out["all_pass"] = (interleaved["marker"] == THEN_RUN_SKIPPED and not interleaved["command_ran"]
-                       and failed["marker"] == THEN_RUN_SKIPPED and not failed["command_ran"]
-                       and nonzero["file"] == "X = 3" and nonzero["marker"] == THEN_RUN_FAILED
-                       and success["marker"] == THEN_RUN_SUCCEEDED)
+    out["all_pass"] = (
+        interleaved["marker"] == THEN_RUN_SKIPPED
+        and not interleaved["command_ran"]
+        and failed["marker"] == THEN_RUN_SKIPPED
+        and not failed["command_ran"]
+        and nonzero["file"] == "X = 3"
+        and nonzero["marker"] == THEN_RUN_FAILED
+        and success["marker"] == THEN_RUN_SUCCEEDED
+    )
     return out
 
 
@@ -132,22 +175,38 @@ def main():
     close = abs(measured - predicted) <= max(0.05, 0.5 * predicted)
     unchanged = sc.get("lo", -1) <= 0 <= sc.get("hi", 1) or sc.get("mean_diff", -1) >= -0.01
     fewer = a["measured_request_reduction"]["lo"] > 0 and a["token_reduction"]["lo"] > 0
-    verdict = (("REPRODUCED" if fewer and unchanged and safety["all_pass"] else "PARTIAL")
-               + f": requests {-100 * measured:+.1f}% (oracle-predicted {-100 * predicted:+.1f}%"
-               + f"{' - close' if close else ''}), tokens {-100 * a['token_reduction']['mean']:+.1f}%, cost "
-               + f"{-100 * a['cost_reduction']['mean']:+.1f}%, success change "
-               + f"{sc.get('mean_diff', float('nan')):+.3f}; safety checks {'pass' if safety['all_pass'] else 'FAIL'}")
+    verdict = (
+        ("REPRODUCED" if fewer and unchanged and safety["all_pass"] else "PARTIAL")
+        + f": requests {-100 * measured:+.1f}% (oracle-predicted {-100 * predicted:+.1f}%"
+        + f"{' - close' if close else ''}), tokens {-100 * a['token_reduction']['mean']:+.1f}%, cost "
+        + f"{-100 * a['cost_reduction']['mean']:+.1f}%, success change "
+        + f"{sc.get('mean_diff', float('nan')):+.3f}; safety checks {'pass' if safety['all_pass'] else 'FAIL'}"
+    )
     if "B" in summ:
-        verdict += (f"; backend B uptake {summ['B']['fused_calls_per_task']['mean']:.1f} vs A "
-                    f"{a['fused_calls_per_task']['mean']:.1f} fused calls/task")
-    print(table([[p] + [fmt(summ[p][k], 3) for k in TABLED] for p in profs],
-                ["backend", "oracle adj share", "requests -%", "tokens -%", "cost -%", "fused/task"]))
+        verdict += (
+            f"; backend B uptake {summ['B']['fused_calls_per_task']['mean']:.1f} vs A "
+            f"{a['fused_calls_per_task']['mean']:.1f} fused calls/task"
+        )
+    print(
+        table(
+            [[p] + [fmt(summ[p][k], 3) for k in TABLED] for p in profs],
+            ["backend", "oracle adj share", "requests -%", "tokens -%", "cost -%", "fused/task"],
+        )
+    )
     print("verdict:", verdict)
-    save("s1_action_fusion" + ("_live" if args.live else ""), {
-        "claim": "Action Fusion removes the decision-free turn between an edit and its check; success unchanged; "
-                 "hash guard + skip semantics [SoL-Pi code/blog]",
-        "config": {"llm": args.llm, "seeds": args.seeds, "backends": profs}, "per_seed": rows, "summary": summ,
-        "safety_checks": safety, "verdict": verdict}, args.out)
+    save(
+        "s1_action_fusion" + ("_live" if args.live else ""),
+        {
+            "claim": "Action Fusion removes the decision-free turn between an edit and its check; success unchanged; "
+            "hash guard + skip semantics [SoL-Pi code/blog]",
+            "config": {"llm": args.llm, "seeds": args.seeds, "backends": profs},
+            "per_seed": rows,
+            "summary": summ,
+            "safety_checks": safety,
+            "verdict": verdict,
+        },
+        args.out,
+    )
 
 
 if __name__ == "__main__":

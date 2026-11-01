@@ -1,4 +1,5 @@
 """Generic proposer constitution (SKILL.md, PATTERNS.md) stating only the rules active under the switches."""
+
 from __future__ import annotations
 
 from .switches import RegularizerSwitches
@@ -173,8 +174,12 @@ def default_constitution(cfg, taxonomy, switches=None) -> tuple[str, str]:
     if _is_full_proposal(sw):
         parts.append(PROPOSAL_FULL)
     else:
-        items = [BUDGET_ANNEAL if sw.budget_anneal else BUDGET_CONST, HIST.get(sw.history_conditioning, ""),
-                 EXPLORE if sw.stall_exploration else "", PRUNE if sw.prune_directives else ""]
+        items = [
+            BUDGET_ANNEAL if sw.budget_anneal else BUDGET_CONST,
+            HIST.get(sw.history_conditioning, ""),
+            EXPLORE if sw.stall_exploration else "",
+            PRUNE if sw.prune_directives else "",
+        ]
         parts.append("\nWhat you are shown and how much you may bundle:\n\n" + "".join(x for x in items if x))
     parts.append(RULES)
     return "".join(parts), PATTERNS_MD

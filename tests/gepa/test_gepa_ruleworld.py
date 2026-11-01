@@ -1,4 +1,5 @@
 """RuleWorld domain (GEPA Tier-1 simulator): semantics, ground truth, feedback levels, mock LM."""
+
 import numpy as np
 
 from rsi.core import Artifact
@@ -14,14 +15,19 @@ def test_analytic_expectation_matches_simulation():
     asp = w.aspects_of("triage")
     ex = w.examples[d.tasks.splits["evolve"][0]]
     # a messy prompt: general, contradictory and conditioned rules, plus a demo carrying a fact
-    files["prompts/triage.md"] = "\n".join([
-        files["prompts/triage.md"].rstrip(),
-        w.rule_text(asp[0], w.aspects[asp[0]].codes[0]),
-        w.rule_text(asp[1], w.aspects[asp[1]].codes[0]),
-        w.rule_text(asp[1], w.aspects[asp[1]].codes[1]),
-        w.rule_text(asp[2], w.aspects[asp[2]].codes[1], [w.families[0]]),
-        d.demo_text(d.tasks.get(ex.id), None, "prompts/triage.md"),
-    ]) + "\n"
+    files["prompts/triage.md"] = (
+        "\n".join(
+            [
+                files["prompts/triage.md"].rstrip(),
+                w.rule_text(asp[0], w.aspects[asp[0]].codes[0]),
+                w.rule_text(asp[1], w.aspects[asp[1]].codes[0]),
+                w.rule_text(asp[1], w.aspects[asp[1]].codes[1]),
+                w.rule_text(asp[2], w.aspects[asp[2]].codes[1], [w.families[0]]),
+                d.demo_text(d.tasks.get(ex.id), None, "prompts/triage.md"),
+            ]
+        )
+        + "\n"
+    )
     art, ids = Artifact(files), d.tasks.splits["val"][:15]
     exp = w.expected(files, ids)
     sims = [np.mean([d.run(art, d.tasks.get(i), seed=s).score for i in ids]) for s in range(400)]
@@ -43,8 +49,9 @@ def test_rule_semantics_conditioned_contradiction_fact():
     ex = next(e for e in w.examples.values() if conf in e.aspects and e.family == "government")
     view = w.parse_module("\n".join([w.rule_text(conf, x.codes[0]), w.rule_text(conf, x.codes[1], ["government"])]))
     assert w.outcome_dist(view, ex, conf) == ([(x.codes[1], 1.0)], "conditioned rule")
-    dist, why = w.outcome_dist(w.parse_module(w.rule_text(conf, x.codes[0]) + "\n" + w.rule_text(conf, x.codes[1])),
-                               ex, conf)
+    dist, why = w.outcome_dist(
+        w.parse_module(w.rule_text(conf, x.codes[0]) + "\n" + w.rule_text(conf, x.codes[1])), ex, conf
+    )
     assert len(dist) == 2 and "contradictory" in why
     fact = w.parse_module(f"Ticket {ex.ticket}: {conf}: {ex.target[conf]}")
     assert w.outcome_dist(fact, ex, conf)[0] == [(ex.target[conf], 1.0)]

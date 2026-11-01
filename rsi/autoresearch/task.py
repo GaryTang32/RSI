@@ -1,4 +1,5 @@
 """Research tasks: editable/locked files, a fixed per-experiment budget, and how one run yields one metric."""
+
 from __future__ import annotations
 
 import fcntl
@@ -12,9 +13,10 @@ import tempfile
 import threading
 import time
 import traceback
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence
+from typing import Any
 
 from ..core.artifact import Artifact
 from ..core.domain import Domain
@@ -35,9 +37,9 @@ class RunBudget:
     kind: str = "wallclock"
     amount: float = 25.0
     warmup_excluded_steps: int = 11
-    kill_after: Optional[float] = None      # hard kill; default 2 * amount + slack_s
+    kill_after: float | None = None  # hard kill; default 2 * amount + slack_s
     slack_s: float = 5.0
-    mem_mb: Optional[int] = 4096
+    mem_mb: int | None = 4096
 
     def hard_timeout(self) -> float:
         if self.kill_after is not None:
@@ -47,25 +49,30 @@ class RunBudget:
         return 600.0
 
     def to_json(self) -> dict:
-        return {"kind": self.kind, "amount": self.amount, "warmup_excluded_steps": self.warmup_excluded_steps,
-                "kill_after": self.hard_timeout(), "mem_mb": self.mem_mb}
+        return {
+            "kind": self.kind,
+            "amount": self.amount,
+            "warmup_excluded_steps": self.warmup_excluded_steps,
+            "kill_after": self.hard_timeout(),
+            "mem_mb": self.mem_mb,
+        }
 
 
 @dataclass
 class RunOutcome:
     """One experiment run; ``metric is None`` means crash."""
 
-    metric: Optional[float]
+    metric: float | None
     log: str = ""
-    summary: Optional[dict] = None
+    summary: dict | None = None
     memory_gb: float = 0.0
     wall_s: float = 0.0
     returncode: int = 0
     killed: bool = False
-    crash_reason: Optional[str] = None
+    crash_reason: str | None = None
     over_budget: bool = False
-    record: dict = field(default_factory=dict)      # framework-owned result record (hardened)
-    log_path: Optional[str] = None
+    record: dict = field(default_factory=dict)  # framework-owned result record (hardened)
+    log_path: str | None = None
     seed: int = 0
     meta: dict = field(default_factory=dict)
 
@@ -77,13 +84,22 @@ class RunOutcome:
         return "\n".join(self.log.strip().splitlines()[-n:])
 
     def to_json(self) -> dict:
-        return {"metric": self.metric, "memory_gb": self.memory_gb, "wall_s": round(self.wall_s, 3),
-                "returncode": self.returncode, "killed": self.killed, "crash_reason": self.crash_reason,
-                "over_budget": self.over_budget, "summary": self.summary, "record": self.record, "seed": self.seed,
-                "log_path": self.log_path}
+        return {
+            "metric": self.metric,
+            "memory_gb": self.memory_gb,
+            "wall_s": round(self.wall_s, 3),
+            "returncode": self.returncode,
+            "killed": self.killed,
+            "crash_reason": self.crash_reason,
+            "over_budget": self.over_budget,
+            "summary": self.summary,
+            "record": self.record,
+            "seed": self.seed,
+            "log_path": self.log_path,
+        }
 
 
-def parse_summary(log: str, required: Optional[str] = None) -> Optional[dict]:
+def parse_summary(log: str, required: str | None = None) -> dict | None:
     """Parse ``key: value`` summary lines; None when ``required`` is given but absent (a crash)."""
     out: dict[str, Any] = {}
     for k, v in _LINE.findall(log or ""):
@@ -112,7 +128,7 @@ def report(**metrics):
 '''
 
 
-def untampered(rec: dict) -> Optional[str]:
+def untampered(rec: dict) -> str | None:
     """Record check: the locked evaluator found no in-process tampering."""
     bad = rec.get("tampered") or []
     return f"locked evaluator tampered in-process: {', '.join(map(str, bad[:6]))}" if bad else None
@@ -129,7 +145,7 @@ def build_once(prepare_py: Path, module: str, builder: str, root: Path) -> dict:
         return getattr(mod, builder)(str(root))
 
 
-def write_log(log_path: Optional[str], log: str) -> None:
+def write_log(log_path: str | None, log: str) -> None:
     if log_path:
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         Path(log_path).write_text(log)
@@ -140,7 +156,7 @@ class ResearchTask:
 
     name: str = "task"
     metric: str = "score"
-    direction: str = "max"                         # "min" | "max"
+    direction: str = "max"  # "min" | "max"
     editable_paths: tuple[str, ...] = ("**",)
     locked_paths: tuple[str, ...] = ()
     memory_key: str = "peak_mem_mb"
@@ -153,8 +169,15 @@ class ResearchTask:
     def seed_artifact(self) -> Artifact:
         raise NotImplementedError
 
-    def run(self, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path: Optional[str] = None,
-            val_epoch: int = 0) -> RunOutcome:
+    def run(
+        self,
+        artifact: Artifact,
+        *,
+        seed: int = 0,
+        mode: str = "hardened",
+        log_path: str | None = None,
+        val_epoch: int = 0,
+    ) -> RunOutcome:
         raise NotImplementedError
 
     def prepare(self) -> None:
@@ -178,14 +201,14 @@ class ResearchTask:
     def mock_edit_pool(self) -> list:
         return []
 
-    def truth(self, artifact: Artifact) -> Optional[float]:
+    def truth(self, artifact: Artifact) -> float | None:
         """Noise-free quality, for synthetic tasks only."""
         return None
 
     def better(self, a: float, b: float) -> bool:
         return a < b if self.direction == "min" else a > b
 
-    def memory_gb(self, summary: Optional[dict], record: Optional[dict] = None) -> float:
+    def memory_gb(self, summary: dict | None, record: dict | None = None) -> float:
         mb = (record or {}).get(self.memory_key)
         if mb is None and summary:
             mb = summary.get(self.memory_key)
@@ -198,13 +221,27 @@ class ResearchTask:
 class ScriptResearchTask(ResearchTask):
     """Files run as a subprocess in a fresh working directory; ``data_dirs`` maps mode -> ``RSI_AR_DATA``."""
 
-    def __init__(self, name: str, files: Mapping[str, str], *, metric: str, direction: str,
-                 editable_paths: Sequence[str] = ("train.py",), locked_paths: Sequence[str] = ("prepare.py",),
-                 run_cmd: Sequence[str] = ("python", "train.py"), budget: Optional[RunBudget] = None,
-                 memory_key: str = "peak_mem_mb", data_dirs: Optional[Mapping[str, str]] = None,
-                 env: Optional[Mapping[str, str]] = None, description: str = "",
-                 record_checks: Sequence[Callable[[dict], Optional[str]]] = (), keep_workdirs: bool = False,
-                 tamper_patterns: Sequence[str] = (), default_tamper: bool = True, memory_decimals: int = 1) -> None:
+    def __init__(
+        self,
+        name: str,
+        files: Mapping[str, str],
+        *,
+        metric: str,
+        direction: str,
+        editable_paths: Sequence[str] = ("train.py",),
+        locked_paths: Sequence[str] = ("prepare.py",),
+        run_cmd: Sequence[str] = ("python", "train.py"),
+        budget: RunBudget | None = None,
+        memory_key: str = "peak_mem_mb",
+        data_dirs: Mapping[str, str] | None = None,
+        env: Mapping[str, str] | None = None,
+        description: str = "",
+        record_checks: Sequence[Callable[[dict], str | None]] = (),
+        keep_workdirs: bool = False,
+        tamper_patterns: Sequence[str] = (),
+        default_tamper: bool = True,
+        memory_decimals: int = 1,
+    ) -> None:
         self.name = name
         self._files = dict(files)
         self.metric = metric
@@ -221,8 +258,9 @@ class ScriptResearchTask(ResearchTask):
         self._description = description
         self.record_checks = list(record_checks)
         self.keep_workdirs = keep_workdirs
-        self.tamper_patterns = tuple((default_tamper_patterns(self.locked_paths) if default_tamper else [])
-                                     + list(tamper_patterns))
+        self.tamper_patterns = tuple(
+            (default_tamper_patterns(self.locked_paths) if default_tamper else []) + list(tamper_patterns)
+        )
 
     def seed_artifact(self) -> Artifact:
         return Artifact(self._files)
@@ -234,8 +272,13 @@ class ScriptResearchTask(ResearchTask):
         return self._description or super().describe()
 
     def _env(self, mode: str, seed: int, result_file: str, val_epoch: int) -> dict[str, str]:
-        env = {"RSI_AR_MODE": mode, "RSI_AR_RUN_SEED": str(int(seed)), "RSI_AR_BUDGET_KIND": self.budget.kind,
-               "RSI_AR_BUDGET": repr(float(self.budget.amount)), "RSI_AR_VAL_EPOCH": str(int(val_epoch))}
+        env = {
+            "RSI_AR_MODE": mode,
+            "RSI_AR_RUN_SEED": str(int(seed)),
+            "RSI_AR_BUDGET_KIND": self.budget.kind,
+            "RSI_AR_BUDGET": repr(float(self.budget.amount)),
+            "RSI_AR_VAL_EPOCH": str(int(val_epoch)),
+        }
         dd = self.data_dirs.get(mode) or self.data_dirs.get("faithful")
         if dd:
             env["RSI_AR_DATA"] = str(dd)
@@ -244,8 +287,15 @@ class ScriptResearchTask(ResearchTask):
         env.update(self.env)
         return env
 
-    def run(self, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path: Optional[str] = None,
-            val_epoch: int = 0) -> RunOutcome:
+    def run(
+        self,
+        artifact: Artifact,
+        *,
+        seed: int = 0,
+        mode: str = "hardened",
+        log_path: str | None = None,
+        val_epoch: int = 0,
+    ) -> RunOutcome:
         work = Path(tempfile.mkdtemp(prefix=f"rsi_ar_{self.name}_"))
         side = Path(tempfile.mkdtemp(prefix="rsi_ar_rec_"))
         guard = ScopeGuard(self.editable_paths, self.locked_paths, sealed=self.sealed_files())
@@ -261,12 +311,24 @@ class ScriptResearchTask(ResearchTask):
                     return RunOutcome(None, log="", crash_reason=f"locked files differ from sealed copy: {bad}")
             result_file = str(side / "result.json")
             cmd = [sys.executable if c == "python" else c for c in self.run_cmd]
-            rr = run_cmd(cmd, cwd=work, timeout_s=self.budget.hard_timeout(), mem_mb=self.budget.mem_mb,
-                         env=self._env(mode, seed, result_file, val_epoch))
+            rr = run_cmd(
+                cmd,
+                cwd=work,
+                timeout_s=self.budget.hard_timeout(),
+                mem_mb=self.budget.mem_mb,
+                env=self._env(mode, seed, result_file, val_epoch),
+            )
             log = rr.stdout + (("\n" + rr.stderr) if rr.stderr.strip() else "")
             write_log(log_path, log)
-            out = RunOutcome(None, log=log, wall_s=rr.wall_s, returncode=rr.returncode, killed=rr.timed_out,
-                             log_path=log_path, seed=seed)
+            out = RunOutcome(
+                None,
+                log=log,
+                wall_s=rr.wall_s,
+                returncode=rr.returncode,
+                killed=rr.timed_out,
+                log_path=log_path,
+                seed=seed,
+            )
             out.summary = parse_summary(log)
             if mode != "faithful":
                 tampered = guard.locked_hashes_ok(work)
@@ -306,7 +368,7 @@ class ScriptResearchTask(ResearchTask):
             if flags and mode != "audit":
                 out.crash_reason = flags[0]
                 return
-            if flags:                      # audit: score it anyway and report the violations
+            if flags:  # audit: score it anyway and report the violations
                 out.meta["audit_flags"] = flags
         if not isinstance(v, (int, float)) or not math.isfinite(float(v)):
             out.crash_reason = _NAN_CRASH if _FAIL.search(out.log) else f"no '{self.metric}:' line in the log"
@@ -333,11 +395,22 @@ class ScriptResearchTask(ResearchTask):
 class DomainResearchTask(ResearchTask):
     """Any Domain: one experiment is one fixed-size evaluation on ``split``; ``kill_after`` is soft."""
 
-    def __init__(self, domain: Domain, llm: Optional[LLM] = None, *, seed_artifact: Optional[Artifact] = None,
-                 split: str = "evolve", k: int = 1, workers: int = 4, editable_paths: Sequence[str] = ("**",),
-                 locked_paths: Sequence[str] = (), kill_after: float = 1800.0,
-                 audit_splits: Sequence[str] = ("holdout", "ood"), crash_error_rate: float = 1.0,
-                 name: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        llm: LLM | None = None,
+        *,
+        seed_artifact: Artifact | None = None,
+        split: str = "evolve",
+        k: int = 1,
+        workers: int = 4,
+        editable_paths: Sequence[str] = ("**",),
+        locked_paths: Sequence[str] = (),
+        kill_after: float = 1800.0,
+        audit_splits: Sequence[str] = ("holdout", "ood"),
+        crash_error_rate: float = 1.0,
+        name: str | None = None,
+    ) -> None:
         self.domain = domain
         self.llm = llm
         self._seed = seed_artifact
@@ -368,8 +441,9 @@ class DomainResearchTask(ResearchTask):
         return self.domain.describe()
 
     def _evaluate(self, artifact: Artifact, split: str, seed: int, allow_sealed: bool = False):
-        ev = Evaluator(self.domain, self.llm, workers=self.workers, allow_sealed=allow_sealed,
-                       seed_offset=int(seed) * 1000)
+        ev = Evaluator(
+            self.domain, self.llm, workers=self.workers, allow_sealed=allow_sealed, seed_offset=int(seed) * 1000
+        )
         box: dict = {}
 
         def work():
@@ -385,24 +459,49 @@ class DomainResearchTask(ResearchTask):
             return None, f"killed: evaluation exceeded kill_after={self.budget.hard_timeout():.0f}s"
         return box.get("res"), box.get("err")
 
-    def run(self, artifact: Artifact, *, seed: int = 0, mode: str = "hardened", log_path: Optional[str] = None,
-            val_epoch: int = 0) -> RunOutcome:
+    def run(
+        self,
+        artifact: Artifact,
+        *,
+        seed: int = 0,
+        mode: str = "hardened",
+        log_path: str | None = None,
+        val_epoch: int = 0,
+    ) -> RunOutcome:
         t0 = time.time()
         res, err = self._evaluate(artifact, self.split, seed + 7919 * val_epoch)
         wall = time.time() - t0
         if res is None:
-            out = RunOutcome(None, log=err or "", wall_s=wall, killed=bool(err and err.startswith("killed")),
-                             crash_reason=(err or "").splitlines()[0] if err else "evaluation failed", seed=seed)
+            out = RunOutcome(
+                None,
+                log=err or "",
+                wall_s=wall,
+                killed=bool(err and err.startswith("killed")),
+                crash_reason=(err or "").splitlines()[0] if err else "evaluation failed",
+                seed=seed,
+            )
         else:
             errs = [t for trs in res.trials.values() for t in trs if t.error]
             lines = [f"[trial {t.task_id} seed {t.seed}] error: {t.error}\n{(t.trace or '')[-800:]}" for t in errs[:3]]
-            lines += ["---", f"score:            {res.score:.6f}", f"cost_tokens:      {res.cost:.1f}",
-                      f"steps:            {res.steps:.2f}", f"error_rate:       {res.error_rate:.3f}",
-                      f"n_trials:         {res.n_trials}", f"training_seconds: {wall:.1f}",
-                      f"peak_mem_mb:      0.0"]
+            lines += [
+                "---",
+                f"score:            {res.score:.6f}",
+                f"cost_tokens:      {res.cost:.1f}",
+                f"steps:            {res.steps:.2f}",
+                f"error_rate:       {res.error_rate:.3f}",
+                f"n_trials:         {res.n_trials}",
+                f"training_seconds: {wall:.1f}",
+                "peak_mem_mb:      0.0",
+            ]
             log = "\n".join(lines) + "\n"
-            out = RunOutcome(None, log=log, summary=parse_summary(log), wall_s=wall, seed=seed,
-                             meta={"cost": res.cost, "error_rate": res.error_rate, "per_task": res.task_scores()})
+            out = RunOutcome(
+                None,
+                log=log,
+                summary=parse_summary(log),
+                wall_s=wall,
+                seed=seed,
+                meta={"cost": res.cost, "error_rate": res.error_rate, "per_task": res.task_scores()},
+            )
             if res.error_rate >= self.crash_error_rate and res.n_trials:
                 first = errs[0].error if errs else "?"
                 out.crash_reason = f"every trial errored: {first}"

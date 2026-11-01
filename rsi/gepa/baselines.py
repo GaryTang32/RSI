@@ -1,10 +1,11 @@
 """Equal-rollout-budget baselines: ScoreOnlyReflection, BestOfN, FewShotDemoOptimizer (MIPRO-lite)."""
+
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Optional, Sequence
 
 import numpy as np
 
@@ -22,7 +23,7 @@ from .reflection import ReflectionProposer, parse_fenced, reflection_seed, rollo
 from .strategies import EpochShuffledBatchSampler
 
 
-def _splits(domain: Domain, train: str, val: Optional[str]) -> tuple[list[str], list[str]]:
+def _splits(domain: Domain, train: str, val: str | None) -> tuple[list[str], list[str]]:
     trn, vs = resolve_splits(domain, train, val)
     tr = [t.id for t in domain.tasks.split(trn)]
     if not tr:
@@ -30,17 +31,38 @@ def _splits(domain: Domain, train: str, val: Optional[str]) -> tuple[list[str], 
     return tr, ([t.id for t in domain.tasks.split(vs)] if vs else list(tr))
 
 
-def run_score_only(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-                   llm_propose: Optional[LLM] = None, config: Optional[Config] = None, **kw) -> ImprovementResult:
+def run_score_only(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM | None = None,
+    config: Config | None = None,
+    **kw,
+) -> ImprovementResult:
     """GEPA with the grader's feedback text removed from the reflective dataset (the ASI ablation)."""
     cfg = replace(config or Config(), feedback="score_only")
-    return run(domain, seed_artifact, llm_task=llm_task, llm_propose=llm_propose, config=cfg,
-               method="score_only_reflection", **kw)
+    return run(
+        domain,
+        seed_artifact,
+        llm_task=llm_task,
+        llm_propose=llm_propose,
+        config=cfg,
+        method="score_only_reflection",
+        **kw,
+    )
 
 
-def run_best_of_n(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-                  llm_propose: LLM, config: Optional[Config] = None, components: Optional[Sequence[str]] = None,
-                  out_dir: Optional[str | Path] = None) -> ImprovementResult:
+def run_best_of_n(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM,
+    config: Config | None = None,
+    components: Sequence[str] | None = None,
+    out_dir: str | Path | None = None,
+) -> ImprovementResult:
     """N independent reflective rewrites of the seed, each scored on all of D_pareto; |V| + N (b + |V|) <= B."""
     cfg = config or Config()
     comps = list(components or cfg.components or default_components(domain, seed_artifact))
@@ -72,15 +94,32 @@ def run_best_of_n(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional
         child = seed_artifact.with_files(res.new_texts)
         v = val_score(child)
         ok = v > best_v
-        ledger.add(Node(f"c{n}", "c0", round=n, kind="rewrite", status="accepted" if ok else "discard", score=v,
-                        artifact_id=child.id))
+        ledger.add(
+            Node(
+                f"c{n}",
+                "c0",
+                round=n,
+                kind="rewrite",
+                status="accepted" if ok else "discard",
+                score=v,
+                artifact_id=child.id,
+            )
+        )
         if ok:
             best, best_v = child, v
             arts[child.id] = child
         traj.append({"i": n, "rollouts": rollouts, "best_val": best_v, "best_id": best.id})
-    out = ImprovementResult("best_of_n", seed_artifact, best, ledger, traj, llm_usage(llm_task, llm_propose),
-                            "max_metric_calls", str(out_dir) if out_dir else None,
-                            {"rollouts": rollouts, "n_rewrites": n, "best_val": best_v})
+    out = ImprovementResult(
+        "best_of_n",
+        seed_artifact,
+        best,
+        ledger,
+        traj,
+        llm_usage(llm_task, llm_propose),
+        "max_metric_calls",
+        str(out_dir) if out_dir else None,
+        {"rollouts": rollouts, "n_rewrites": n, "best_val": best_v},
+    )
     out.artifacts = arts
     return out
 
@@ -102,9 +141,14 @@ Tip: {tip}
 
 Write a new, improved instruction for this module that would help it produce correct outputs for inputs like these. Provide the new instruction within ``` blocks."""
 
-TIPS = ["Be concise.", "Be specific about the rules the outputs follow.", "Describe the task clearly.",
-        "Include general rules you can infer from the examples.", "Keep what already works.",
-        "Think about edge cases."]
+TIPS = [
+    "Be concise.",
+    "Be specific about the rules the outputs follow.",
+    "Describe the task clearly.",
+    "Include general rules you can infer from the examples.",
+    "Keep what already works.",
+    "Think about edge cases.",
+]
 
 
 @dataclass
@@ -112,19 +156,19 @@ class FewShotConfig:
     """MIPROv2-lite: demo sets + grounded instruction proposals, searched TPE-style on validation minibatches."""
 
     max_metric_calls: int = 1500
-    n_instructions: int = 6          # per component (index 0 = the seed instruction)
-    n_demo_sets: int = 6             # per component (index 0 = no demos)
+    n_instructions: int = 6  # per component (index 0 = the seed instruction)
+    n_demo_sets: int = 6  # per component (index 0 = no demos)
     max_demos: int = 4
-    labeled_demos: bool = True       # also use gold (input, target) pairs from the train split
-    bootstrap: bool = True           # keep the seed's perfect train traces as demos
+    labeled_demos: bool = True  # also use gold (input, target) pairs from the train split
+    bootstrap: bool = True  # keep the seed's perfect train traces as demos
     max_bootstrap: int = 30
     n_proposal_examples: int = 5
     minibatch_size: int = 25
     full_eval_every: int = 5
-    explore_trials: int = 6          # random trials before exploitation
+    explore_trials: int = 6  # random trials before exploitation
     temperature: float = 0.1
     train_split: str = "evolve"
-    val_split: Optional[str] = "val"
+    val_split: str | None = "val"
     seed: int = 0
     val_seed: int = 0
 
@@ -147,9 +191,17 @@ def _demo(domain: Domain, task, output, comp: str) -> str:
 class FewShotDemoOptimizer:
     """MIPRO-lite baseline (instruction + few-shot demo optimization)."""
 
-    def __init__(self, domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None,
-                 llm_propose: LLM, config: Optional[FewShotConfig] = None,
-                 components: Optional[Sequence[str]] = None, out_dir: Optional[str | Path] = None) -> None:
+    def __init__(
+        self,
+        domain: Domain,
+        seed_artifact: Artifact,
+        *,
+        llm_task: LLM | None = None,
+        llm_propose: LLM,
+        config: FewShotConfig | None = None,
+        components: Sequence[str] | None = None,
+        out_dir: str | Path | None = None,
+    ) -> None:
         self.cfg = cfg = config or FewShotConfig()
         self.domain, self.seed = domain, seed_artifact
         self.llm_task, self.llm_propose = llm_task, llm_propose
@@ -197,10 +249,15 @@ class FewShotDemoOptimizer:
         cands = [self.seed.get(c, "")]
         for k in range(cfg.n_instructions - 1):
             shown = self.rng.sample(self.train, min(cfg.n_proposal_examples, len(self.train)))
-            ex = "\n\n".join(f"Input: {dom.tasks.get(t).input}\nCorrect output: {_gold(dom, dom.tasks.get(t), c)}"
-                             for t in shown)
-            prompt = GROUNDED_TEMPLATE.format(current=self.seed.get(c, "").rstrip("\n"), examples=ex,
-                                              description=dom.describe(), tip=TIPS[k % len(TIPS)])
+            ex = "\n\n".join(
+                f"Input: {dom.tasks.get(t).input}\nCorrect output: {_gold(dom, dom.tasks.get(t), c)}" for t in shown
+            )
+            prompt = GROUNDED_TEMPLATE.format(
+                current=self.seed.get(c, "").rstrip("\n"),
+                examples=ex,
+                description=dom.describe(),
+                tip=TIPS[k % len(TIPS)],
+            )
             resp = self.llm_propose.complete(prompt, seed=reflection_seed(cfg.seed, k, c), role="proposer")
             text, _ = parse_fenced(resp.text) if resp.ok else (None, None)
             if text:
@@ -242,14 +299,26 @@ class FewShotDemoOptimizer:
                 if t <= cfg.explore_trials or not trials:
                     choice[c] = (self.rng.randrange(len(self.instructions[c])), self.rng.randrange(cfg.n_demo_sets))
                 else:
-                    choice[c] = (self._pick(trials, c, 0, len(self.instructions[c])),
-                                 self._pick(trials, c, 1, cfg.n_demo_sets))
+                    choice[c] = (
+                        self._pick(trials, c, 0, len(self.instructions[c])),
+                        self._pick(trials, c, 1, cfg.n_demo_sets),
+                    )
             art = self.build(choice)
             s = self._mean_score(art, self.rng.sample(self.val, mb))
             trials.append((choice, s))
             arts[art.id] = art
-            self.ledger.add(Node(f"t{t}", "c0", round=t, kind="config_trial", status="minibatch", score=s,
-                                 artifact_id=art.id, meta={"choice": {c: list(v) for c, v in choice.items()}}))
+            self.ledger.add(
+                Node(
+                    f"t{t}",
+                    "c0",
+                    round=t,
+                    kind="config_trial",
+                    status="minibatch",
+                    score=s,
+                    artifact_id=art.id,
+                    meta={"choice": {c: list(v) for c, v in choice.items()}},
+                )
+            )
             if t % cfg.full_eval_every:
                 continue
             agg: dict[str, list] = {}
@@ -261,12 +330,24 @@ class FewShotDemoOptimizer:
                 if v > best_v:
                     best_art, best_v = arts[cand_id], v
             traj.append({"trial": t, "rollouts": self.rollouts, "best_val": best_v, "best_id": best_art.id})
-        res = ImprovementResult("fewshot_mipro_lite", self.seed, best_art, self.ledger, traj,
-                                llm_usage(self.llm_task, self.llm_propose), "max_metric_calls",
-                                str(self.out_dir) if self.out_dir else None,
-                                {"config": cfg.to_json(), "rollouts": self.rollouts, "trials": t, "best_val": best_v,
-                                 "n_instructions": {c: len(v) for c, v in self.instructions.items()},
-                                 "demo_pool": len(pool)})
+        res = ImprovementResult(
+            "fewshot_mipro_lite",
+            self.seed,
+            best_art,
+            self.ledger,
+            traj,
+            llm_usage(self.llm_task, self.llm_propose),
+            "max_metric_calls",
+            str(self.out_dir) if self.out_dir else None,
+            {
+                "config": cfg.to_json(),
+                "rollouts": self.rollouts,
+                "trials": t,
+                "best_val": best_v,
+                "n_instructions": {c: len(v) for c, v in self.instructions.items()},
+                "demo_pool": len(pool),
+            },
+        )
         res.artifacts = {k: v for k, v in arts.items() if k in full}
         return res
 
@@ -280,8 +361,22 @@ class FewShotDemoOptimizer:
         return int(self.rng.choices(range(n), weights=w.tolist())[0])
 
 
-def run_fewshot(domain: Domain, seed_artifact: Artifact, *, llm_task: Optional[LLM] = None, llm_propose: LLM,
-                config: Optional[FewShotConfig] = None, components: Optional[Sequence[str]] = None,
-                out_dir: Optional[str | Path] = None) -> ImprovementResult:
-    return FewShotDemoOptimizer(domain, seed_artifact, llm_task=llm_task, llm_propose=llm_propose, config=config,
-                                components=components, out_dir=out_dir).run()
+def run_fewshot(
+    domain: Domain,
+    seed_artifact: Artifact,
+    *,
+    llm_task: LLM | None = None,
+    llm_propose: LLM,
+    config: FewShotConfig | None = None,
+    components: Sequence[str] | None = None,
+    out_dir: str | Path | None = None,
+) -> ImprovementResult:
+    return FewShotDemoOptimizer(
+        domain,
+        seed_artifact,
+        llm_task=llm_task,
+        llm_propose=llm_propose,
+        config=config,
+        components=components,
+        out_dir=out_dir,
+    ).run()

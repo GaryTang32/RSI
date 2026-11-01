@@ -1,4 +1,5 @@
 """Claims-audit retry 2: developer base version, Pareto ratio attainment, the C++ Lasso domain and the E11 grid."""
+
 import shutil
 from types import SimpleNamespace
 
@@ -7,26 +8,41 @@ import pytest
 
 from rsi.core import Artifact
 from rsi.domains.discovery import SimpleTESLassoDomain, SyntheticConfig, SyntheticDomain
-from rsi.domains.discovery.lasso_cpp import (SIZES, compile_program, load_heldout, make_problem, parse_program,
-                                             seed_program)
+from rsi.domains.discovery.lasso_cpp import (
+    SIZES,
+    compile_program,
+    load_heldout,
+    make_problem,
+    parse_program,
+    seed_program,
+)
 from rsi.dream import Config, DreamRSILoop, EpisodeResult, ParametricMutator, ParetoSweepObjective, run, template_code
-from rsi.dream.developer import (DevContext, LLMPolicyDeveloper, VersionRecord, base_version, developer_prompt,
-                                 mock_developer_llm)
+from rsi.dream.developer import (
+    DevContext,
+    LLMPolicyDeveloper,
+    VersionRecord,
+    base_version,
+    developer_prompt,
+    mock_developer_llm,
+)
 
 needs_gxx = pytest.mark.skipif(shutil.which("g++") is None, reason="needs g++")
 
 
 def _report(value: float) -> SimpleNamespace:
     """The ``PolicyReport`` fields the developers read."""
-    return SimpleNamespace(value=value, diagnostics={}, sweep=None, summary=lambda: {"value": value},
-                           traces_jsonl=lambda rows=None: "")
+    return SimpleNamespace(
+        value=value, diagnostics={}, sweep=None, summary=lambda: {"value": value}, traces_jsonl=lambda rows=None: ""
+    )
 
 
 def _versions() -> tuple[VersionRecord, VersionRecord, VersionRecord]:
     code = template_code("adaptive")
-    return (VersionRecord(3, code, _report(0.9), label="strong"),
-            VersionRecord(5, code.replace("0.6", "0.61", 1), _report(0.5), label="newer"),
-            VersionRecord(6, "", None, label="rejected"))
+    return (
+        VersionRecord(3, code, _report(0.9), label="strong"),
+        VersionRecord(5, code.replace("0.6", "0.61", 1), _report(0.5), label="newer"),
+        VersionRecord(6, "", None, label="rejected"),
+    )
 
 
 def test_developer_base_latest_revises_pi_m_not_the_strongest_version():
@@ -58,9 +74,21 @@ def test_loop_passes_the_developer_base_to_every_revision():
             seen.append((ctx.base, base_version(ctx).index, ctx.versions[-1].index))
             return super().revise(ctx, seed=seed)
 
-    run(SyntheticDomain(SyntheticConfig(seed=5)),
-        config=Config(rounds=2, W=4, branch_count=4, refine_count=3, M=4, sandbox="inprocess", trace=False,
-                      agent_workers=1, developer_base="latest"), developer=Recording())
+    run(
+        SyntheticDomain(SyntheticConfig(seed=5)),
+        config=Config(
+            rounds=2,
+            W=4,
+            branch_count=4,
+            refine_count=3,
+            M=4,
+            sandbox="inprocess",
+            trace=False,
+            agent_workers=1,
+            developer_base="latest",
+        ),
+        developer=Recording(),
+    )
     assert len(seen) == 3 and all(b == "latest" for b, _, _ in seen)
     assert all(base == newest for _, base, newest in seen)  # pi^m -> pi^(m+1): start from the newest version
 
@@ -84,15 +112,23 @@ def test_pareto_ratio_attainment_follows_the_unpublished_draft():
 
 def test_config_routes_the_pareto_attainment_to_the_replay_objective():
     dom = SyntheticDomain(SyntheticConfig(seed=1))
-    loop = DreamRSILoop(dom.as_task(), dom.mock_agent(),
-                        config=Config(objective="pareto", pareto_attainment="ratio", sandbox="inprocess", trace=False))
+    loop = DreamRSILoop(
+        dom.as_task(),
+        dom.mock_agent(),
+        config=Config(objective="pareto", pareto_attainment="ratio", sandbox="inprocess", trace=False),
+    )
     assert loop.replay.objective.attainment_mode == "ratio"
 
 
 def test_lasso_cpp_problem_shapes_and_determinism():
     assert len(SIZES) == 17
-    for n, p, gen in [(20, 30, "gaussian"), (15, 40, "sparse"), (20, 10, "dense_sol"), (25, 12, "corr_low"),
-                      (25, 12, "corr_high")]:
+    for n, p, gen in [
+        (20, 30, "gaussian"),
+        (15, 40, "sparse"),
+        (20, 10, "dense_sol"),
+        (25, 12, "corr_low"),
+        (25, 12, "corr_high"),
+    ]:
         X, y = make_problem(n, p, gen, 7)
         X2, y2 = make_problem(n, p, gen, 7)
         assert X.shape == (n, p) and y.shape == (n,)
@@ -105,8 +141,10 @@ def test_lasso_cpp_programs_are_read_as_literals_never_executed(tmp_path):
     marker = tmp_path / "ran.txt"
     code = f"import pathlib\npathlib.Path({str(marker)!r}).write_text('x')\nCPP_CODE = 'int main(){{}}'\n"
     assert parse_program(code) == ("int main(){}", []) and not marker.exists()
-    for bad in ("CPP_CODE = open('x').read()\n",  # not a literal
-                "CPP_CODE = ''\nCOMPILE_FLAGS = ['-o', '/tmp/x']\n"):  # a flag outside the allow-list
+    for bad in (
+        "CPP_CODE = open('x').read()\n",  # not a literal
+        "CPP_CODE = ''\nCOMPILE_FLAGS = ['-o', '/tmp/x']\n",
+    ):  # a flag outside the allow-list
         with pytest.raises(ValueError):
             parse_program(bad)
     assert parse_program(seed_program())[1] == []
@@ -114,8 +152,11 @@ def test_lasso_cpp_programs_are_read_as_literals_never_executed(tmp_path):
 
 @needs_gxx
 def test_lasso_cpp_grades_compiled_solvers(tmp_path):
-    dom = SimpleTESLassoDomain(sizes=[(30, 20, "gaussian"), (20, 40, "corr_low"), (40, 30, "sparse")],
-                               cache_dir=str(tmp_path / "bin"), timing_runs=1)
+    dom = SimpleTESLassoDomain(
+        sizes=[(30, 20, "gaussian"), (20, 40, "corr_low"), (40, 30, "sparse")],
+        cache_dir=str(tmp_path / "bin"),
+        timing_runs=1,
+    )
     ok = dom.evaluate_program(dom.seed_artifact())
     assert ok.fail_class == "ok" and ok.score > 0
     assert ok.diagnostics["max_gap"] <= 1e-6 and len(ok.diagnostics["problems"]) == 3
@@ -135,8 +176,12 @@ def test_lasso_cpp_grades_compiled_solvers(tmp_path):
     ev = ho.evaluate_split(ho.seed_artifact(), "holdout")
     assert ev.fail_class == "ok" and [r["problem"] for r in ev.diagnostics["problems"]] == ["dna"]
     assert "rcv1" in ev.diagnostics["missing"]
-    assert SimpleTESLassoDomain(heldout_dir=str(tmp_path / "none")).evaluate_split(
-        dom.seed_artifact(), "holdout").fail_class == "env_error"
+    assert (
+        SimpleTESLassoDomain(heldout_dir=str(tmp_path / "none"))
+        .evaluate_split(dom.seed_artifact(), "holdout")
+        .fail_class
+        == "env_error"
+    )
 
 
 def test_lasso_cpp_has_no_offline_mock_agent():

@@ -1,10 +1,10 @@
 """``program.md``: the human-owned, versioned research strategy the agent reads every experiment."""
+
 from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 UPSTREAM = """\
 # autoresearch
@@ -101,7 +101,7 @@ class ProgramSpec:
 
     text: str
     label: str = "upstream"
-    parent: Optional[str] = None
+    parent: str | None = None
     author: str = "human"
 
     @property
@@ -109,20 +109,20 @@ class ProgramSpec:
         return hashlib.sha1(self.text.encode()).hexdigest()[:7]
 
     @classmethod
-    def preset(cls, name: str = "upstream") -> "ProgramSpec":
+    def preset(cls, name: str = "upstream") -> ProgramSpec:
         if name not in PRESETS:
             raise ValueError(f"unknown program preset {name!r}; choose from {sorted(PRESETS)}")
         return cls(PRESETS[name], label=name)
 
     @classmethod
-    def load(cls, spec: str) -> "ProgramSpec":
+    def load(cls, spec: str) -> ProgramSpec:
         """A preset name or a path to a program.md file."""
         if spec in PRESETS:
             return cls.preset(spec)
         p = Path(spec)
         return cls(p.read_text(), label=p.name)
 
-    def edit(self, new_text: str, *, author: str = "human", label: Optional[str] = None) -> "ProgramSpec":
+    def edit(self, new_text: str, *, author: str = "human", label: str | None = None) -> ProgramSpec:
         return ProgramSpec(new_text, label=label or self.label, parent=self.version, author=author)
 
     def save(self, path: str | Path) -> Path:
@@ -134,8 +134,10 @@ class ProgramSpec:
     def render(self, task, mode: str = "hardened") -> str:
         b = task.budget
         if b.kind == "wallclock":
-            budget = (f"{b.amount:g} seconds of training wall-clock time; "
-                      f"the first {b.warmup_excluded_steps} steps are not counted")
+            budget = (
+                f"{b.amount:g} seconds of training wall-clock time; "
+                f"the first {b.warmup_excluded_steps} steps are not counted"
+            )
         elif b.kind == "tokens":
             budget = f"{b.amount:g} training bytes/tokens served by the locked dataloader"
         elif b.kind == "ceiling":
@@ -150,22 +152,28 @@ class ProgramSpec:
         locked = ", ".join(f"`{p}`" for p in task.locked_paths) or "the grader (it lives outside the artifact)"
         contract = (task.contract(mode) or "").strip()
         if mode != "faithful" and getattr(task, "tamper_patterns", ()):
-            contract += ("\n- Do not reach into the grader: no environment variables starting with `RSI_AR_`, no "
-                         "private names of the locked files, no assignments to (or in-place mutation of) their "
-                         "attributes, no aliasing or dynamic re-import of them, no patching of library modules "
-                         "(numpy, math, time, ...), no hidden data. Edits whose new lines do any of this are rejected "
-                         "without running, and the locked evaluator also checks its own integrity.")
+            contract += (
+                "\n- Do not reach into the grader: no environment variables starting with `RSI_AR_`, no "
+                "private names of the locked files, no assignments to (or in-place mutation of) their "
+                "attributes, no aliasing or dynamic re-import of them, no patching of library modules "
+                "(numpy, math, time, ...), no hidden data. Edits whose new lines do any of this are rejected "
+                "without running, and the locked evaluator also checks its own integrity."
+            )
         if contract.strip():
             contract = "## Interface contract\n" + contract.strip() + "\n"
         repl = {
-            "budget": budget, "run_cmd": getattr(task, "run_command", "") or "the task's run command",
-            "editable": editable, "locked": locked, "metric": task.metric,
+            "budget": budget,
+            "run_cmd": getattr(task, "run_command", "") or "the task's run command",
+            "editable": editable,
+            "locked": locked,
+            "metric": task.metric,
             "goal": "lowest" if task.direction == "min" else "highest",
             "direction": "lower is better" if task.direction == "min" else "higher is better",
             "contract": contract,
             "hardware": getattr(task, "hardware", "") or "a single machine",
             "summary_example": (":\n\n```\n" + task.summary_example.strip("\n") + "\n```\n")
-            if getattr(task, "summary_example", "") else ".\n",
+            if getattr(task, "summary_example", "")
+            else ".\n",
         }
         out = self.text
         for k, v in repl.items():

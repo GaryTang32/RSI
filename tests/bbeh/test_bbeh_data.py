@@ -1,12 +1,12 @@
 """BBEH loader: the BBH machinery with BBEH's pinned manifest, cache location and file layout."""
+
 from __future__ import annotations
 
 import re
 
 import pytest
 
-from rsi.domains.bbeh import (BBEH, TASKS, BBHDataError, default_cache_dir, ensure_all, load_examples,
-                              load_manifest)
+from rsi.domains.bbeh import BBEH, TASKS, BBHDataError, default_cache_dir, ensure_all, load_examples, load_manifest
 from rsi.domains.bbh import data as bbh_data
 from rsi.domains.bbh.domain import cot3_artifact
 
@@ -36,6 +36,7 @@ def test_downloads_once_into_the_upstream_layout(bbeh_env, tmp_path):
 def test_offline_with_empty_cache_names_the_bbeh_fix(bbeh_env, tmp_path):
     def offline(url):
         raise OSError("Network is unreachable")
+
     with pytest.raises(BBHDataError) as e:
         load_examples("linguini", cache_dir=tmp_path, manifest=bbeh_env.manifest, fetch=offline)
     assert "BBEH file" in str(e.value) and "RSI_BBEH_CACHE" in str(e.value) and "rsi/domains/bbeh" in str(e.value)
@@ -48,7 +49,7 @@ def test_cache_dir_env_and_default(monkeypatch, tmp_path):
     assert default_cache_dir() == tmp_path / "b"
     monkeypatch.delenv("RSI_BBEH_CACHE")
     assert default_cache_dir().parts[-3:] == (".cache", "rsi", "bbeh")
-    assert bbh_data.default_cache_dir().parts[-1] == "bbh"          # BBH keeps its own
+    assert bbh_data.default_cache_dir().parts[-1] == "bbh"  # BBH keeps its own
 
 
 def test_no_cot_prompts_for_bbeh(bkw):

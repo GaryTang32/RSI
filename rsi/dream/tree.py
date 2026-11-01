@@ -1,11 +1,12 @@
 """Discovery trees: a root plus chains (branches) of recorded attempts, cell ``b{b}.a{a}`` [paper:§3]."""
+
 from __future__ import annotations
 
 import json
 from collections import deque
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Optional
 
 from ..core.artifact import Artifact
 from ..core.ledger import ArtifactStore, Ledger, Node
@@ -26,19 +27,19 @@ def parse_cell(cid: str) -> tuple[int, int]:
 @dataclass
 class DiscoveryNode:
     id: str
-    parent_id: Optional[str]
+    parent_id: str | None
     branch: int = -1
     attempt: int = -1
     seq: int = 0
-    score: Optional[float] = None
+    score: float | None = None
     evaluated: bool = True
     valid: bool = True
     fail_class: str = "ok"
-    error: Optional[str] = None
-    n_valid: Optional[int] = None
-    n_total: Optional[int] = None
+    error: str | None = None
+    n_valid: int | None = None
+    n_total: int | None = None
     round: int = 0  # online decision round that created it (1-based; root 0)
-    artifact_id: Optional[str] = None
+    artifact_id: str | None = None
     proposal: str = ""
     diagnostics: dict = field(default_factory=dict)
     cost: dict = field(default_factory=dict)
@@ -52,15 +53,22 @@ class DiscoveryNode:
         return asdict(self)
 
     @classmethod
-    def from_json(cls, d: dict) -> "DiscoveryNode":
+    def from_json(cls, d: dict) -> DiscoveryNode:
         return cls(**{k: d[k] for k in cls.__dataclass_fields__ if k in d})
 
 
 class DiscoveryTree:
     """A recorded search (= one replay world). Larger scores are better."""
 
-    def __init__(self, root: DiscoveryNode, nodes: Iterable[DiscoveryNode] = (), *,
-                 branch_tags: Optional[dict] = None, world_id: str = "world", meta: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        root: DiscoveryNode,
+        nodes: Iterable[DiscoveryNode] = (),
+        *,
+        branch_tags: dict | None = None,
+        world_id: str = "world",
+        meta: dict | None = None,
+    ) -> None:
         root.id = ROOT_ID
         self.root = root
         self.world_id = world_id
@@ -105,7 +113,7 @@ class DiscoveryTree:
         """Branches in creation order of their first cell (the paper's 'earliest-created child of r')."""
         return [b for b, ns in sorted(self.branches().items(), key=lambda kv: kv[1][0].seq)]
 
-    def cell(self, branch: int, attempt: int) -> Optional[DiscoveryNode]:
+    def cell(self, branch: int, attempt: int) -> DiscoveryNode | None:
         return self._nodes.get(cell_id(branch, attempt))
 
     @property
@@ -138,20 +146,43 @@ class DiscoveryTree:
     def observation(self, node: DiscoveryNode) -> Observation:
         parent = self._nodes.get(node.parent_id) if node.parent_id else None
         base = self.root.score
-        dp = float(node.score) - float(parent.score) \
-            if node.score is not None and parent is not None and parent.score is not None else None
+        dp = (
+            float(node.score) - float(parent.score)
+            if node.score is not None and parent is not None and parent.score is not None
+            else None
+        )
         db = float(node.score) - float(base) if node.score is not None and base is not None else None
-        return Observation(node.id, node.branch, node.attempt, node.score, node.evaluated, node.valid,
-                           node.fail_class, node.error, db, dp, node.n_valid, node.n_total, node.parent_id)
+        return Observation(
+            node.id,
+            node.branch,
+            node.attempt,
+            node.score,
+            node.evaluated,
+            node.valid,
+            node.fail_class,
+            node.error,
+            db,
+            dp,
+            node.n_valid,
+            node.n_total,
+            node.parent_id,
+        )
 
-    def cell_meta(self, branch: int, attempt: int, *, with_tags: bool = True, seq: Optional[int] = None) -> CellMeta:
+    def cell_meta(self, branch: int, attempt: int, *, with_tags: bool = True, seq: int | None = None) -> CellMeta:
         n = self.cell(branch, attempt)
         parent = n.parent_id if n is not None else (ROOT_ID if attempt == 0 else cell_id(branch, attempt - 1))
-        return CellMeta(cell_id(branch, attempt), branch, attempt, parent, seq,
-                        dict(self.branch_tags.get(branch, {})) if with_tags else {})
+        return CellMeta(
+            cell_id(branch, attempt),
+            branch,
+            attempt,
+            parent,
+            seq,
+            dict(self.branch_tags.get(branch, {})) if with_tags else {},
+        )
 
-    def render_grid(self, reveal_round: Optional[dict[str, int]] = None, labels: Optional[dict[int, str]] = None,
-                    fmt: str = "{:.2f}") -> str:
+    def render_grid(
+        self, reveal_round: dict[str, int] | None = None, labels: dict[int, str] | None = None, fmt: str = "{:.2f}"
+    ) -> str:
         """Rows = branches, columns = attempts; each cell shows its score and the round it was revealed (or --)."""
         width = self.trace_refine_count + 1
         lines = ["branch   " + " ".join(f"{('attempt ' + str(a + 1)):>11}" for a in range(width))]
@@ -173,14 +204,23 @@ class DiscoveryTree:
         return "\n".join(lines)
 
     def to_json(self) -> dict:
-        return {"world_id": self.world_id, "meta": self.meta,
-                "branch_tags": {str(k): v for k, v in self.branch_tags.items()},
-                "root": self.root.to_json(), "nodes": [n.to_json() for n in self.non_root()]}
+        return {
+            "world_id": self.world_id,
+            "meta": self.meta,
+            "branch_tags": {str(k): v for k, v in self.branch_tags.items()},
+            "root": self.root.to_json(),
+            "nodes": [n.to_json() for n in self.non_root()],
+        }
 
     @classmethod
-    def from_json(cls, d: dict) -> "DiscoveryTree":
-        return cls(DiscoveryNode.from_json(d["root"]), [DiscoveryNode.from_json(n) for n in d.get("nodes", [])],
-                   branch_tags=d.get("branch_tags"), world_id=d.get("world_id", "world"), meta=d.get("meta"))
+    def from_json(cls, d: dict) -> DiscoveryTree:
+        return cls(
+            DiscoveryNode.from_json(d["root"]),
+            [DiscoveryNode.from_json(n) for n in d.get("nodes", [])],
+            branch_tags=d.get("branch_tags"),
+            world_id=d.get("world_id", "world"),
+            meta=d.get("meta"),
+        )
 
     def save(self, path: str | Path) -> Path:
         p = Path(path)
@@ -191,33 +231,58 @@ class DiscoveryTree:
         return p
 
     @classmethod
-    def load(cls, path: str | Path) -> "DiscoveryTree":
+    def load(cls, path: str | Path) -> DiscoveryTree:
         return cls.from_json(json.loads(Path(path).read_text()))
 
-    def to_ledger(self, ledger: Optional[Ledger] = None, *, prefix: str = "", round_offset: int = 0) -> Ledger:
+    def to_ledger(self, ledger: Ledger | None = None, *, prefix: str = "", round_offset: int = 0) -> Ledger:
         """Every node as a ledger ``Node`` (kind ``attempt``; root ``baseline``)."""
         led = ledger if ledger is not None else Ledger()
         for n in self.nodes():
             is_root = n.id == ROOT_ID
-            led.add(Node(id=f"{prefix}{n.id}", parent=f"{prefix}{n.parent_id}" if n.parent_id else None,
-                         round=n.round + round_offset, kind="baseline" if is_root else "attempt",
-                         status="ok" if n.success else (n.fail_class or "crash"), score=n.score,
-                         cost=float(n.cost.get("calls", 0.0 if is_root else 1.0)),
-                         change=(n.proposal or "").splitlines()[0][:200] if n.proposal else "",
-                         artifact_id=n.artifact_id,
-                         metrics={"branch": n.branch, "attempt": n.attempt, "seq": n.seq},
-                         meta={"world": self.world_id, "fail_class": n.fail_class, "error": n.error,
-                               "evaluated": n.evaluated, "valid": n.valid, "tags": n.tags,
-                               "n_valid": n.n_valid, "n_total": n.n_total,
-                               **({"tree_meta": _plain(self.meta),
-                                   "branch_tags": {str(k): v for k, v in self.branch_tags.items()}}
-                                  if is_root else {})}))
+            led.add(
+                Node(
+                    id=f"{prefix}{n.id}",
+                    parent=f"{prefix}{n.parent_id}" if n.parent_id else None,
+                    round=n.round + round_offset,
+                    kind="baseline" if is_root else "attempt",
+                    status="ok" if n.success else (n.fail_class or "crash"),
+                    score=n.score,
+                    cost=float(n.cost.get("calls", 0.0 if is_root else 1.0)),
+                    change=(n.proposal or "").splitlines()[0][:200] if n.proposal else "",
+                    artifact_id=n.artifact_id,
+                    metrics={"branch": n.branch, "attempt": n.attempt, "seq": n.seq},
+                    meta={
+                        "world": self.world_id,
+                        "fail_class": n.fail_class,
+                        "error": n.error,
+                        "evaluated": n.evaluated,
+                        "valid": n.valid,
+                        "tags": n.tags,
+                        "n_valid": n.n_valid,
+                        "n_total": n.n_total,
+                        **(
+                            {
+                                "tree_meta": _plain(self.meta),
+                                "branch_tags": {str(k): v for k, v in self.branch_tags.items()},
+                            }
+                            if is_root
+                            else {}
+                        ),
+                    },
+                )
+            )
         return led
 
     @classmethod
-    def from_ledger(cls, ledger: Ledger, *, lower_is_better: bool = False,
-                    score_fn: Optional[Callable[[Node], Optional[float]]] = None,
-                    world_id: str = "ledger", include: Optional[Callable[[Node], bool]] = None) -> "DiscoveryTree":
+    def from_ledger(
+        cls,
+        ledger: Ledger,
+        *,
+        lower_is_better: bool = False,
+        score_fn: Callable[[Node], float | None] | None = None,
+        world_id: str = "ledger",
+        include: Callable[[Node], bool] | None = None,
+    ) -> DiscoveryTree:
         """Any method's ledger as a replay world: first-child chains are branches, later children fork new ones."""
         nodes = [n for n in ledger.nodes() if include is None or include(n)]
         ids = {n.id for n in nodes}
@@ -226,11 +291,11 @@ class DiscoveryTree:
         if native is not None:
             return native
 
-        def sc(n: Node) -> Optional[float]:
+        def sc(n: Node) -> float | None:
             v = score_fn(n) if score_fn else n.score
             return None if v is None else sign * float(v)
 
-        kids: dict[Optional[str], list[Node]] = {}
+        kids: dict[str | None, list[Node]] = {}
         for n in nodes:
             kids.setdefault(n.parent if n.parent in ids else None, []).append(n)
         for v in kids.values():
@@ -240,8 +305,15 @@ class DiscoveryTree:
             raise ValueError("ledger has no nodes")
         if len(tops) == 1:
             r = tops[0]
-            root = DiscoveryNode(ROOT_ID, None, score=sc(r), round=r.round, artifact_id=r.artifact_id,
-                                 proposal=r.change, tags={"ledger_id": r.id})
+            root = DiscoveryNode(
+                ROOT_ID,
+                None,
+                score=sc(r),
+                round=r.round,
+                artifact_id=r.artifact_id,
+                proposal=r.change,
+                tags={"ledger_id": r.id},
+            )
             starts = [(ROOT_ID, c) for c in kids.get(r.id, [])]
             ledger_to_cell = {r.id: ROOT_ID}
         else:  # several parentless nodes: a synthetic root with the lowest of their scores
@@ -256,17 +328,29 @@ class DiscoveryTree:
             b += 1
             if parent_cell != ROOT_ID:
                 tree.branch_tags[b] = {"fork_of": parent_cell}
-            cur: Optional[Node] = first
+            cur: Node | None = first
             prev_cell, a = parent_cell, 0
             while cur is not None:
                 s = sc(cur)
                 ok_status = cur.status not in ("crash", "rejected", "error", "timeout") and s is not None
-                node = DiscoveryNode(cell_id(b, a), prev_cell, b, a, seq, s, evaluated=s is not None, valid=ok_status,
-                                     fail_class="ok" if ok_status else ("rejected" if s is None else "compile_other"),
-                                     error=None if ok_status else f"status={cur.status}", round=cur.round,
-                                     artifact_id=cur.artifact_id, proposal=cur.change or "",
-                                     diagnostics={"ledger_id": cur.id, "status": cur.status},
-                                     cost={"calls": 1.0}, tags={"kind": cur.kind})
+                node = DiscoveryNode(
+                    cell_id(b, a),
+                    prev_cell,
+                    b,
+                    a,
+                    seq,
+                    s,
+                    evaluated=s is not None,
+                    valid=ok_status,
+                    fail_class="ok" if ok_status else ("rejected" if s is None else "compile_other"),
+                    error=None if ok_status else f"status={cur.status}",
+                    round=cur.round,
+                    artifact_id=cur.artifact_id,
+                    proposal=cur.change or "",
+                    diagnostics={"ledger_id": cur.id, "status": cur.status},
+                    cost={"calls": 1.0},
+                    tags={"kind": cur.kind},
+                )
                 tree.add(node)
                 ledger_to_cell[cur.id] = node.id
                 seq += 1
@@ -277,7 +361,7 @@ class DiscoveryTree:
         return tree
 
     @classmethod
-    def _from_native(cls, nodes: list, world_id: str) -> Optional["DiscoveryTree"]:
+    def _from_native(cls, nodes: list, world_id: str) -> DiscoveryTree | None:
         """Exact inverse of :meth:`to_ledger`; None when the ledger was written by another method."""
         roots = [n for n in nodes if n.kind == "baseline" and "tree_meta" in (n.meta or {})]
         if len(roots) != 1:
@@ -287,21 +371,50 @@ class DiscoveryTree:
         if not all({"branch", "attempt"} <= set(n.metrics or {}) for n in rest):
             return None
         prefix = r.id[: -len(ROOT_ID)] if r.id.endswith(ROOT_ID) else ""
-        root = DiscoveryNode(ROOT_ID, None, score=r.score, round=0, artifact_id=r.artifact_id, proposal=r.change,
-                             fail_class=r.meta.get("fail_class", "ok"), error=r.meta.get("error"),
-                             n_valid=r.meta.get("n_valid"), n_total=r.meta.get("n_total"))
-        tree = cls(root, world_id=world_id, meta=dict(r.meta.get("tree_meta") or {}),
-                   branch_tags=r.meta.get("branch_tags") or {})
+        root = DiscoveryNode(
+            ROOT_ID,
+            None,
+            score=r.score,
+            round=0,
+            artifact_id=r.artifact_id,
+            proposal=r.change,
+            fail_class=r.meta.get("fail_class", "ok"),
+            error=r.meta.get("error"),
+            n_valid=r.meta.get("n_valid"),
+            n_total=r.meta.get("n_total"),
+        )
+        tree = cls(
+            root,
+            world_id=world_id,
+            meta=dict(r.meta.get("tree_meta") or {}),
+            branch_tags=r.meta.get("branch_tags") or {},
+        )
         try:
             for n in sorted(rest, key=lambda n: int(n.metrics.get("seq", n.seq))):
                 b, a = int(n.metrics["branch"]), int(n.metrics["attempt"])
-                parent = n.parent[len(prefix):] if n.parent and n.parent.startswith(prefix) else n.parent
-                tree.add(DiscoveryNode(cell_id(b, a), parent, b, a, int(n.metrics.get("seq", n.seq)), n.score,
-                                       bool(n.meta.get("evaluated", True)), bool(n.meta.get("valid", True)),
-                                       n.meta.get("fail_class", "ok"), n.meta.get("error"), n.meta.get("n_valid"),
-                                       n.meta.get("n_total"), n.round,
-                                       n.artifact_id, n.change, {}, {"calls": float(n.cost or 1.0)},
-                                       dict(n.meta.get("tags") or {})))
+                parent = n.parent[len(prefix) :] if n.parent and n.parent.startswith(prefix) else n.parent
+                tree.add(
+                    DiscoveryNode(
+                        cell_id(b, a),
+                        parent,
+                        b,
+                        a,
+                        int(n.metrics.get("seq", n.seq)),
+                        n.score,
+                        bool(n.meta.get("evaluated", True)),
+                        bool(n.meta.get("valid", True)),
+                        n.meta.get("fail_class", "ok"),
+                        n.meta.get("error"),
+                        n.meta.get("n_valid"),
+                        n.meta.get("n_total"),
+                        n.round,
+                        n.artifact_id,
+                        n.change,
+                        {},
+                        {"calls": float(n.cost or 1.0)},
+                        dict(n.meta.get("tags") or {}),
+                    )
+                )
         except (KeyError, ValueError):
             return None
         tree.meta.setdefault("source", "ledger:native")
@@ -318,7 +431,7 @@ def _plain(d: dict) -> dict:
 class SnapshotStore:
     """Content-addressed workspace snapshots (in memory, plus an ``ArtifactStore`` when ``root`` is given)."""
 
-    def __init__(self, root: Optional[str | Path] = None) -> None:
+    def __init__(self, root: str | Path | None = None) -> None:
         self.store = ArtifactStore(root) if root else None
         self._mem: dict[str, Artifact] = {}
 

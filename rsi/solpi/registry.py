@@ -1,18 +1,19 @@
 """Mechanism registry: a harness artifact (``harness.json``, ``extensions/<name>.py``) -> ordered extensions."""
+
 from __future__ import annotations
 
 import json
 import math
 from collections import Counter
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .fusion import ActionFusion
 from .obspack import ObservationPack
 from .occ import OnlineContextCompact
 from .reducer import DeterministicReducer, EvidencePreservingReducer, LLMReducer, MockReducer
 from .runtime import AgentRuntime, Extension, Message, ToolError, ToolResult, ToolSpec
-from .tricks import CostAttribution, FailBeforePassAfter, HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, \
-    TurnCap
+from .tricks import CostAttribution, FailBeforePassAfter, HeadTrim, NoVerify, PromptSlim, PytestQuiet, TailTrim, TurnCap
 
 # SoL-Pi's registration order: OCC observes the context after the other mechanisms
 ORDER = ("action_fusion", "observation_pack", "evidence_preserving_reducer", "online_context_compact")
@@ -20,7 +21,7 @@ GENERAL = ORDER
 TRICKS = ("tail_trim", "head_trim", "pytest_quiet")
 DO_LESS = ("no_verify", "turn_cap")
 DUDS = ("prompt_slim",)
-EVALUATION = ("cost_attribution", "fail_before_pass_after")     # family M (improvement & evaluation)
+EVALUATION = ("cost_attribution", "fail_before_pass_after")  # family M (improvement & evaluation)
 
 
 def _reducer(cfg: dict, ctx: dict):
@@ -36,8 +37,11 @@ def _reducer(cfg: dict, ctx: dict):
 
 
 def _obspack(c: dict) -> ObservationPack:
-    op = ObservationPack(full_sends=int(c.get("full_sends", 2)), excerpt_bytes=int(c.get("excerpt_bytes", 1024)),
-                         head_frac=float(c.get("head_frac", 0.5)))
+    op = ObservationPack(
+        full_sends=int(c.get("full_sends", 2)),
+        excerpt_bytes=int(c.get("excerpt_bytes", 1024)),
+        head_frac=float(c.get("head_frac", 0.5)),
+    )
     op.fail_store = bool(c.get("fail_store", False))
     return op
 
@@ -47,7 +51,8 @@ MECHANISMS: dict[str, Callable[[dict, dict], Extension]] = {
     "observation_pack": lambda c, x: _obspack(c),
     "evidence_preserving_reducer": lambda c, x: EvidencePreservingReducer(_reducer(c, x)),
     "online_context_compact": lambda c, x: OnlineContextCompact(
-        cache_write_read_ratio=c.get("cache_write_read_ratio", 12.5), policy=c.get("policy", "economic")),
+        cache_write_read_ratio=c.get("cache_write_read_ratio", 12.5), policy=c.get("policy", "economic")
+    ),
     "tail_trim": lambda c, x: TailTrim(int(c.get("lines", 40))),
     "head_trim": lambda c, x: HeadTrim(int(c.get("lines", 60))),
     "pytest_quiet": lambda c, x: PytestQuiet(),
@@ -70,9 +75,15 @@ class FunctionExtension(Extension):
 
 def load_code_extension(name: str, source: str, config: dict) -> Extension:
     """Exec an ``extensions/<name>.py`` defining ``MECHANISM`` or ``register(rt, config)``, runtime API pre-imported."""
-    ns: dict[str, Any] = {"Extension": Extension, "ToolSpec": ToolSpec, "ToolResult": ToolResult,
-                          "ToolError": ToolError, "Message": Message, "AgentRuntime": AgentRuntime,
-                          "__name__": f"solpi_ext_{name}"}
+    ns: dict[str, Any] = {
+        "Extension": Extension,
+        "ToolSpec": ToolSpec,
+        "ToolResult": ToolResult,
+        "ToolError": ToolError,
+        "Message": Message,
+        "AgentRuntime": AgentRuntime,
+        "__name__": f"solpi_ext_{name}",
+    }
     exec(compile(source, f"extensions/{name}.py", "exec"), ns)  # noqa: S102 - mechanism code is the artifact
     mech = ns.get("MECHANISM")
     if isinstance(mech, type) and callable(getattr(mech, "register", None)):
@@ -100,7 +111,7 @@ def harness_config(files: dict[str, str]) -> dict:
     return json.loads(raw) if raw else {"extensions": {}}
 
 
-def build_extensions(files: dict[str, str], ctx: Optional[dict] = None) -> list[Extension]:
+def build_extensions(files: dict[str, str], ctx: dict | None = None) -> list[Extension]:
     ctx = ctx or {}
     exts = harness_config(files).get("extensions", {}) or {}
     out = []
@@ -115,8 +126,9 @@ def build_extensions(files: dict[str, str], ctx: Optional[dict] = None) -> list[
     return out
 
 
-def with_mechanism(files: dict[str, str], name: str, params: Optional[dict] = None,
-                   code: Optional[str] = None) -> dict[str, str]:
+def with_mechanism(
+    files: dict[str, str], name: str, params: dict | None = None, code: str | None = None
+) -> dict[str, str]:
     """Files of a harness with one more mechanism enabled."""
     cfg = harness_config(files)
     cfg.setdefault("extensions", {})[name] = params or {}
@@ -127,12 +139,26 @@ def with_mechanism(files: dict[str, str], name: str, params: Optional[dict] = No
     return out
 
 
-SOLPI_KEYS = {"version", "actionFusion", "observationPack", "evidencePreservingReducer",
-              "evidencePreservingReducerProvider", "evidencePreservingReducerModel", "onlineContextCompact",
-              "cacheWriteReadRatio"}
-SOLPI_DEFAULTS = {"version": 1, "actionFusion": False, "observationPack": False, "evidencePreservingReducer": False,
-                  "evidencePreservingReducerProvider": "openai-codex", "evidencePreservingReducerModel": "gpt-5.6-luna",
-                  "onlineContextCompact": False, "cacheWriteReadRatio": 12.5}
+SOLPI_KEYS = {
+    "version",
+    "actionFusion",
+    "observationPack",
+    "evidencePreservingReducer",
+    "evidencePreservingReducerProvider",
+    "evidencePreservingReducerModel",
+    "onlineContextCompact",
+    "cacheWriteReadRatio",
+}
+SOLPI_DEFAULTS = {
+    "version": 1,
+    "actionFusion": False,
+    "observationPack": False,
+    "evidencePreservingReducer": False,
+    "evidencePreservingReducerProvider": "openai-codex",
+    "evidencePreservingReducerModel": "gpt-5.6-luna",
+    "onlineContextCompact": False,
+    "cacheWriteReadRatio": 12.5,
+}
 
 
 def parse_solpi_config(d: dict) -> dict:
@@ -158,8 +184,10 @@ def parse_solpi_config(d: dict) -> dict:
     if c["observationPack"]:
         exts["observation_pack"] = {}
     if c["evidencePreservingReducer"]:
-        exts["evidence_preserving_reducer"] = {"provider": c["evidencePreservingReducerProvider"],
-                                               "model": c["evidencePreservingReducerModel"]}
+        exts["evidence_preserving_reducer"] = {
+            "provider": c["evidencePreservingReducerProvider"],
+            "model": c["evidencePreservingReducerModel"],
+        }
     if c["onlineContextCompact"]:
         exts["online_context_compact"] = {"cache_write_read_ratio": c["cacheWriteReadRatio"]}
     return {"extensions": exts}

@@ -1,4 +1,5 @@
 """The overview's replay demo (3 branches x 5 attempts, W = 3) on the real replay machinery (spec §9.1 g)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,8 +17,13 @@ DEMO_BRANCHES = {
 DEMO_W = 3
 DEMO_EXPECTED = {"all": 0.575, "focus": 0.611, "stop": 0.475}
 DEMO_ROUNDS = {  # the demo's hard-coded reveal schedules, [branch, attempt] per round
-    "all": [[[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]], [[0, 2], [1, 2], [2, 2]], [[0, 3], [1, 3], [2, 3]],
-            [[0, 4], [1, 4], [2, 4]]],
+    "all": [
+        [[0, 0], [1, 0], [2, 0]],
+        [[0, 1], [1, 1], [2, 1]],
+        [[0, 2], [1, 2], [2, 2]],
+        [[0, 3], [1, 3], [2, 3]],
+        [[0, 4], [1, 4], [2, 4]],
+    ],
     "focus": [[[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]], [[0, 2], [2, 2]], [[0, 3], [2, 3]], [[2, 4]]],
     "stop": [[[0, 0], [1, 0], [2, 0]], [[0, 1], [1, 1], [2, 1]]],
 }
@@ -27,10 +33,25 @@ LABELS = {"all": "Refine everything", "focus": "Drop the flat branch", "stop": "
 def demo_tree() -> DiscoveryTree:
     """Root (score 0) + three chains, created in round-robin order."""
     names = list(DEMO_BRANCHES)
-    nodes = [DiscoveryNode(cell_id(b, a), ROOT_ID if a == 0 else cell_id(b, a - 1), b, a, a * len(names) + b + 1,
-                           DEMO_BRANCHES[name][a], round=a + 1) for a in range(5) for b, name in enumerate(names)]
-    return DiscoveryTree(DiscoveryNode(ROOT_ID, None, score=0.0), nodes,
-                         branch_tags={b: {"name": n} for b, n in enumerate(names)}, world_id="demo")
+    nodes = [
+        DiscoveryNode(
+            cell_id(b, a),
+            ROOT_ID if a == 0 else cell_id(b, a - 1),
+            b,
+            a,
+            a * len(names) + b + 1,
+            DEMO_BRANCHES[name][a],
+            round=a + 1,
+        )
+        for a in range(5)
+        for b, name in enumerate(names)
+    ]
+    return DiscoveryTree(
+        DiscoveryNode(ROOT_ID, None, score=0.0),
+        nodes,
+        branch_tags={b: {"name": n} for b, n in enumerate(names)},
+        world_id="demo",
+    )
 
 
 def demo_policies() -> dict[str, str]:
@@ -58,8 +79,9 @@ class DemoRow:
 
 def run_demo(beta1: float = 0.010, beta2: float = 0.005, runner="inprocess") -> list[DemoRow]:
     tree = demo_tree()
-    ev = ReplayEvaluator(Eq1Objective(beta1=beta1, beta2=beta2, normalize=False), W=DEMO_W, fallback=(3, 4),
-                         runner=runner)
+    ev = ReplayEvaluator(
+        Eq1Objective(beta1=beta1, beta2=beta2, normalize=False), W=DEMO_W, fallback=(3, 4), runner=runner
+    )
     rows = []
     for key, code in demo_policies().items():
         rep = ev.evaluate(code, [tree], label=key)
@@ -70,8 +92,11 @@ def run_demo(beta1: float = 0.010, beta2: float = 0.005, runner="inprocess") -> 
 
 def render_demo(rows: list[DemoRow], beta1: float = 0.010, beta2: float = 0.005) -> str:
     tree = demo_tree()
-    out = [f"Replay demo: 3 branches x 5 attempts, W={DEMO_W}, beta1={beta1:.3f}, beta2={beta2:.3f}", "",
-           f"{'Strategy':<22}{'Best':>6}{'Attempts':>10}{'Rounds':>8}{'Score':>8}"]
+    out = [
+        f"Replay demo: 3 branches x 5 attempts, W={DEMO_W}, beta1={beta1:.3f}, beta2={beta2:.3f}",
+        "",
+        f"{'Strategy':<22}{'Best':>6}{'Attempts':>10}{'Rounds':>8}{'Score':>8}",
+    ]
     out += [f"{r.label:<22}{r.best:>6.2f}{r.attempts:>10d}{r.rounds:>8d}{r.score:>8.3f}" for r in rows]
     out.append(f"\nWith these settings, “{max(rows, key=lambda r: r.score).label}” scores highest.")
     for r in rows:

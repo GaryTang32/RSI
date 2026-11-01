@@ -1,4 +1,5 @@
 """GEPA engine end-to-end (offline, deterministic): budget, acceptance, merge, resume, sealed splits and APIs."""
+
 import json
 
 import pytest
@@ -20,7 +21,7 @@ def test_budget_identity_and_overshoot(ruleworld_run):
     accepted = _events(res).count("accepted")
     assert st.counter.total == V + b * parent_evals + b * child_evals + V * accepted
     assert st.counter.by_phase["val_reflective"] == V * accepted
-    assert 700 <= st.counter.total < 700 + 2 * b + V          # soft cap: overshoot from the between-iteration check
+    assert 700 <= st.counter.total < 700 + 2 * b + V  # soft cap: overshoot from the between-iteration check
     assert res.meta["rollouts_by_phase"]["seed_val"] == V
 
 
@@ -57,8 +58,12 @@ def test_skip_perfect_and_saturation_returns_seed():
     res = run(d, oracle, llm_propose=RuleWorldReflectionLM(d.world), config=Config(max_metric_calls=300))
     assert res.best == oracle and res.meta["n_accepted"] == 0
     assert all(e["event"] == "skip_perfect" for e in res.state.trace)
-    res2 = run(d, oracle, llm_propose=RuleWorldReflectionLM(d.world),
-               config=Config(max_metric_calls=300, skip_perfect_score=False))
+    res2 = run(
+        d,
+        oracle,
+        llm_propose=RuleWorldReflectionLM(d.world),
+        config=Config(max_metric_calls=300, skip_perfect_score=False),
+    )
     assert res2.best == oracle and res2.meta["n_accepted"] == 0 and res2.meta["n_proposals"] > 0
 
 
@@ -74,7 +79,7 @@ def test_merge_soft_cap_can_exceed_and_hard_cap_holds(ruleworld_run):
         n_merged.append(len(merged))
         _, hard = ruleworld_run(s, 2500, use_merge=True, max_merge_invocations=1, merge_cap_mode="hard")
         assert hard.meta["n_merges_accepted"] <= 1
-    assert max(n_merged) > 1          # reference soft cap: accepted merges can exceed max_merge_invocations
+    assert max(n_merged) > 1  # reference soft cap: accepted merges can exceed max_merge_invocations
 
 
 def _ledger_without_time(res) -> list[dict]:
@@ -133,8 +138,11 @@ def test_score_only_strips_feedback_text():
 
 
 def test_quick_start_optimize_on_new_problem():
-    rules = {"date": "Write dates as YYYY-MM-DD.", "money": "Write money with two decimals.",
-             "name": "Write names in Title Case."}
+    rules = {
+        "date": "Write dates as YYYY-MM-DD.",
+        "money": "Write money with two decimals.",
+        "name": "Write names in Title Case.",
+    }
 
     def metric(cand, ex):
         ok = [k for k in ex["needs"] if rules[k] in cand["instructions.md"]]
@@ -142,8 +150,15 @@ def test_quick_start_optimize_on_new_problem():
         return len(ok) / len(ex["needs"]), fb, f"formatted with {len(ok)} of {len(ex['needs'])} conventions"
 
     data = [{"needs": ["date", "money"]}, {"needs": ["name"]}, {"needs": ["money", "name"]}, {"needs": ["date"]}] * 3
-    res = optimize({"instructions.md": "Format the record."}, data[:6], data[6:], metric=metric,
-                   llm_propose=GenericReflectionLM(), config=Config(max_metric_calls=200), testset=data[:4])
+    res = optimize(
+        {"instructions.md": "Format the record."},
+        data[:6],
+        data[6:],
+        metric=metric,
+        llm_propose=GenericReflectionLM(),
+        config=Config(max_metric_calls=200),
+        testset=data[:4],
+    )
     assert res.meta["best_val"] == 1.0
     assert res.meta["report"]["splits"]["test"]["best"]["S"] == 1.0
 
@@ -151,15 +166,20 @@ def test_quick_start_optimize_on_new_problem():
 def test_agentqa_two_module_harness_improves(agentqa_run):
     res = agentqa_run(max_metric_calls=70, workers=4)
     assert res.meta["components"] == ["prompts/reporter.md", "prompts/solver.md"]
-    assert res.best["harness.py"] == two_module_harness()["harness.py"]         # control flow stays frozen
+    assert res.best["harness.py"] == two_module_harness()["harness.py"]  # control flow stays frozen
     assert res.meta["best_val"] >= res.meta["seed_val"]
     assert res.usage["reflection"]["calls"] >= 1 and res.usage["task"]["calls"] > 0
 
 
 def test_optional_leakage_critic_blocks_ticket_copies_before_evaluation():
     d = make_domain(seed=0)
-    res = run(d, d.seed_artifact(), llm_propose=RuleWorldReflectionLM(d.world, ReflectionProfile(q_copy=0.8)),
-              config=Config(max_metric_calls=600), critic=LeakageCritic(d.leakage_terms("evolve")))
+    res = run(
+        d,
+        d.seed_artifact(),
+        llm_propose=RuleWorldReflectionLM(d.world, ReflectionProfile(q_copy=0.8)),
+        config=Config(max_metric_calls=600),
+        critic=LeakageCritic(d.leakage_terms("evolve")),
+    )
     n_rejected = _events(res).count("critic_rejected")
     assert n_rejected > 0 and sum(n.status == "critic_rejected" for n in res.ledger.nodes()) == n_rejected
-    assert d.world.count_facts(res.best.files) == 0          # no ticket-specific line survived
+    assert d.world.count_facts(res.best.files) == 0  # no ticket-specific line survived
