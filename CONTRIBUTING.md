@@ -11,6 +11,7 @@ git clone https://github.com/GaryTang32/RSI && cd RSI
 python -m venv .venv && source .venv/bin/activate        # Python 3.11+
 pip install -e ".[science,dev]"
 pytest                                                   # offline and deterministic, ~7 min
+pytest -m "not slow"                                     # the quick subset while you work
 ```
 
 Tests never call a real model: `pytest` deselects the `live` marker. To run the live checks against a real model
@@ -19,7 +20,9 @@ Tests never call a real model: `pytest` deselects the `live` marker. To run the 
 ## Before you open a pull request
 
 - `pytest` passes.
-- `ruff check rsi tests experiments` passes.
+- `ruff check` and `ruff format --check` pass on `rsi tests experiments scripts docs/skill-claims` (or install the
+  hooks once: `pip install pre-commit && pre-commit install`). Do not reformat the artifact files listed under
+  `extend-exclude` in `pyproject.toml`: models read them as text and their hashes identify recorded runs.
 - `python docs/skill-claims/check.py` reports `failed=0` if you touched the skill, a method or code the skill quotes.
 - New behaviour has a test. Bug fixes have a test that fails without the fix.
 - User-facing changes are listed under "Unreleased" in [`CHANGELOG.md`](CHANGELOG.md).
