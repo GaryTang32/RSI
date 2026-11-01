@@ -21,9 +21,9 @@ TRAIN = (DOMAIN_DIR / "train.py").read_text()
 PREPARE = (DOMAIN_DIR / "prepare.py").read_text()
 
 
-def test_val_reuse_variant_scores_the_other_window_on_the_same_weights():
+def test_val_reuse_variant_scores_the_other_window_on_the_same_weights(tinylm_data):
     import r2_val_reuse_tinylm as x4
-    task = x4.ValReuseTask(sel_epoch=0, budget_s=0.3)
+    task = x4.ValReuseTask(sel_epoch=0, budget_s=0.3, data_root=tinylm_data)
     art = task.seed_artifact()
     task.env = {"RSI_AR_VAL_ALT_EPOCH": "0"}  # alt == selection window: reproduces val_bpb exactly
     out = task.run(art, seed=0, mode="hardened")
@@ -124,10 +124,10 @@ def test_x7_divergence_aware_counts_nan_runs_as_failed_transfers():
     assert not math.isnan(o["transfer_ratio_failures_as_zero"])
 
 
-def test_x4c_windows_variant_scores_four_disjoint_windows_and_selects_one():
+def test_x4c_windows_variant_scores_four_disjoint_windows_and_selects_one(tinylm_data):
     import r2_val_reuse_windows as x4c
     assert x4c.variant_prepare().replace(x4c._WIN, "") == PREPARE and 'if _CONST["MODE"] == "audit"' in x4c._WIN
-    task = x4c.WindowsTask("T1", budget_s=0.3)
+    task = x4c.WindowsTask("T1", budget_s=0.3, data_root=tinylm_data)
     out = task.run(task.seed_artifact(), seed=0, mode="hardened")
     w = task.scored[-1]["windows"]
     assert set(w) == {"V0", "V1", "T0", "T1"} and len({round(v, 9) for v in w.values()}) == 4
