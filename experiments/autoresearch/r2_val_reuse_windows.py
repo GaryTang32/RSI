@@ -2,7 +2,7 @@
 
 Usage: python experiments/autoresearch/r2_val_reuse_windows.py --only 8,9,... (resumable nights) | --analyze
 """
-from _common import SCRATCH, cached_json, claim, hardened_audit, insert_audit_code, scored_keeps, write  # noqa: I001
+from _common import SCRATCH, cached_json, claim, hardened_audit, insert_audit_code, require_windows, scored_keeps, write  # noqa: I001
 
 import argparse
 import json
@@ -56,6 +56,7 @@ class WindowsTask(TinyLMTask):
         files = {"prepare.py": variant_prepare(), "train.py": (DOMAIN_DIR / "train.py").read_text(),
                  "README.md": (DOMAIN_DIR / "README.md").read_text()}
         super().__init__(budget_s=budget_s, files=files, data_root=data_root)
+        require_windows(self, {"val": 2, "test_iid": 2})
         assert sel in WINDOWS
         self.sel = sel
         self.env = {"RSI_AR_SEL_WINDOW": sel}
