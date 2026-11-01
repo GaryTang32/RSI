@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below, and cite the papers of the methods you use
+  (listed in the README under "Papers this builds on").
+type: software
+title: "RSI: Recursive Self-Improvement Agent Skills"
+abstract: >-
+  Eight recursive self-improvement methods (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap,
+  Harness²) rebuilt from their papers as tested code on one guarded propose-measure-keep loop, with a Claude Code skill
+  that applies them to a user's own prompts, agent harness or training script.
+authors:
+  - name: "GaryTang32"
+repository-code: "https://github.com/GaryTang32/RSI"
+url: "https://github.com/GaryTang32/RSI"
+license: MIT
+version: "0.1.0"
+date-released: "2026-11-01"
+keywords:
+  - recursive self-improvement
+  - prompt optimization
+  - agent harness
+  - large language models
+  - claude code
+  - agent skills

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,9 +7,30 @@ name = "rsi"
 version = "0.1.0"
 description = "Recursive Self-Improvement Agent Skills: eight RSI papers (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap, Harness²) turned into tested code and agent skills on one guarded propose-measure-keep loop."
 readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
 dependencies = ["numpy>=1.24"]
+authors = [{ name = "GaryTang32" }]
+keywords = ["recursive self-improvement", "prompt optimization", "agent harness", "llm", "claude", "claude code",
+            "agent skills", "gepa", "autoresearch"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/GaryTang32/RSI"
+Source = "https://github.com/GaryTang32/RSI"
+Issues = "https://github.com/GaryTang32/RSI/issues"
+Changelog = "https://github.com/GaryTang32/RSI/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 science = ["scipy>=1.10", "scikit-learn>=1.3", "matplotlib>=3.7"]
@@ -33,3 +54,12 @@ markers = [
     "slow: takes more than a few seconds",
 ]
 addopts = "-m 'not live'"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["docs/skill-claims/corpus"]
+
+[tool.ruff.lint]
+# errors that are bugs: syntax errors, undefined names, invalid comparisons and statements
+select = ["E9", "F63", "F7", "F82"]
