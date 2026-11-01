@@ -140,7 +140,38 @@ def improve(
     cache_dir: str | None = None,
     **kwargs: Any,
 ) -> ImprovementResult:
-    """Run one technique on ``domain``; LLMs may be spec strings, ``kwargs`` go to the method's ``run``."""
+    """Run one technique on ``domain``; LLMs may be spec strings, ``kwargs`` go to the method's ``run``.
+
+    Args:
+        domain: the problem: its tasks (with sealed ``holdout``/``ood`` splits), how to run an artifact on a task, and
+            how to grade the result.
+        seed_artifact: the starting prompt, harness or script. Defaults to ``domain.seed_artifact()``.
+        method: one of ``rsi.METHODS``: ``rrsi``, ``gepa``, ``autoresearch``, ``metaharness``, ``solpi``, ``dream``,
+            ``evomap``, ``harness2``. ``rsi.recommend()`` suggests one.
+        llm_task: the model the artifact runs on, as an ``LLM`` or a spec string: ``"claude:haiku"`` (the ``claude``
+            CLI), ``"api:sonnet"`` (``ANTHROPIC_API_KEY``) or an offline simulator/mock.
+        llm_propose: the model that proposes changes (same forms as ``llm_task``).
+        config: the method's ``Config``, or a mapping of its fields (e.g. ``{"T": 6}`` for RRSI).
+        out_dir: where the run writes its ledger and trace (``rsi inspect <out_dir>`` renders it); also makes most
+            methods resumable.
+        cache_dir: cache model replies here, so an interrupted run resumes and a finished one replays for free.
+        **kwargs: passed to the method's ``run``.
+
+    Returns:
+        An ``ImprovementResult``: ``baseline`` and ``best`` artifacts, the per-round ``trajectory``, model ``usage``
+        and the ``stop_reason``. ``best`` can equal ``baseline``: "no change beat the noise band" is a valid result.
+
+    Example:
+        ```python
+        import rsi
+        from rsi.domains.agentqa import AgentQADomain
+
+        dom = AgentQADomain()
+        res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="claude:haiku",
+                          config={"T": 6}, out_dir="runs/rrsi", cache_dir=".rsi_cache/agentqa")
+        report = rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2)
+        ```
+    """
     mod = method_module(method)
     if seed_artifact is None:
         seed_fn = getattr(domain, "seed_artifact", None)
@@ -172,7 +203,22 @@ def recommend(
     """Rank methods for a problem description as ``[(method, reason), ...]``.
 
     ``no_grader``: open-ended tasks with no grader, labels or score; only Harness² applies (every other method
-    keeps or ranks candidates by a grade)."""
+    keeps or ranks candidates by a grade).
+
+    Args:
+        what_changes: what the loop may edit: ``"harness"``/``"agent"``, ``"prompts"``, ``"script"``/``"training"``/
+            ``"code-file"`` or ``"strategy"``/``"search"``.
+        must_transfer: gains must hold on tasks the loop never sees (favours RRSI over Meta-Harness).
+        cost_is_bottleneck: tokens or dollars matter as much as accuracy (adds SoL-Pi).
+        many_agents: several agents should share what they learn (adds EvoMap).
+        search_heavy: the artifact is a search policy (adds Dream-RSI).
+        single_metric_script: one editable file and one metric (adds autoresearch).
+        prompts_only: only prompt text may change (adds GEPA).
+        no_grader: there is no grader, label or score at all (Harness² only).
+
+    Returns:
+        ``(method, reason)`` pairs, most suitable first; RRSI when nothing else fits.
+    """
     if no_grader:
         return [
             (

@@ -1,0 +1,14 @@
+{
+  "name": "rsi",
+  "owner": { "name": "GaryTang32", "url": "https://github.com/GaryTang32" },
+  "description": "The rsi-improve skill: recursive self-improvement loops for your own prompts, harnesses and scripts.",
+  "plugins": [
+    {
+      "name": "rsi",
+      "source": "./",
+      "description": "Recursive self-improvement skill (rsi-improve) backed by the rsi Python package.",
+      "category": "development",
+      "tags": ["self-improvement", "prompt-optimization", "evaluation"]
+    }
+  ]
+}

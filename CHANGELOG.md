@@ -10,6 +10,16 @@ Before 1.0, minor versions may change the API.
 - The codebase is formatted and linted with ruff (CI checks both); a pre-commit config runs the same checks.
 - Slow tests are marked, so `pytest -m "not slow"` gives a quick local subset.
 
+### Added
+- Claude Code plugin: `/plugin install rsi --marketplace GaryTang32/RSI` installs the skill as `/rsi:rsi-improve`.
+- Documentation site (MkDocs Material) with getting started, methodology, every method's docs, the benchmarks, the
+  evidence, an API reference and the chart gallery; built on every PR and published to GitHub Pages from `main`.
+- Docstrings with arguments, returns and examples for `rsi.improve`, `rsi.recommend`, `transfer_report`,
+  `ImprovementResult`, `FunctionDomain` and `TaskSuite.from_tasks`.
+- Release workflow can publish to PyPI through trusted publishing (off until configured).
+- `scripts/check_versions.py` keeps the version in `pyproject.toml`, the plugin manifest, `CITATION.cff` and the
+  changelog in step (run in CI and on release).
+
 ### Fixed
 - SoL-Pi's `Run` no longer shares one mutable default `Config` across calls.
 

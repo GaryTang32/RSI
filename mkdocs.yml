@@ -1,0 +1,144 @@
+site_name: "RSI: Recursive Self-Improvement Agent Skills"
+site_description: >-
+  Eight recursive self-improvement methods rebuilt from their papers on one guarded loop, and a Claude Code skill that
+  applies them to your own prompts, agent harness or training script.
+site_url: https://garytang32.github.io/RSI/
+repo_url: https://github.com/GaryTang32/RSI
+repo_name: GaryTang32/RSI
+edit_uri: edit/main/docs/
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+exclude_docs: |
+  _hooks.py
+  __pycache__/
+  README.md
+  skill-claims/*.py
+  skill-claims/corpus/
+
+hooks:
+  - docs/_hooks.py
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_root_heading: true
+            show_source: false
+            members_order: source
+            docstring_style: google
+            show_signature_annotations: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+validation:
+  links:
+    not_found: info
+    unrecognized_links: info
+    absolute_links: info
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Install and use: getting-started.md
+      - Prerequisites: prerequisites.md
+      - The Claude Code skill: skill.md
+  - Methodology:
+      - The guarded loop: methodology.md
+      - RSI 101: guide/RSI-101.md
+      - Architecture: guide/ARCHITECTURE.md
+      - Shared core: core/implementation.md
+  - Methods:
+      - RRSI:
+          - methods/rrsi/README.md
+          - Paper spec: methods/rrsi/paper-spec.md
+          - Implementation: methods/rrsi/implementation.md
+          - Claims audit: methods/rrsi/claims-audit.md
+      - GEPA:
+          - methods/gepa/README.md
+          - Paper spec: methods/gepa/paper-spec.md
+          - Implementation: methods/gepa/implementation.md
+          - Claims audit: methods/gepa/claims-audit.md
+      - autoresearch:
+          - methods/autoresearch/README.md
+          - Spec: methods/autoresearch/paper-spec.md
+          - Implementation: methods/autoresearch/implementation.md
+          - Claims audit: methods/autoresearch/claims-audit.md
+      - Meta-Harness and SoL-Pi:
+          - methods/metaharness-solpi/README.md
+          - Paper spec: methods/metaharness-solpi/paper-spec.md
+          - Implementation: methods/metaharness-solpi/implementation.md
+          - Claims audit (Meta-Harness): methods/metaharness-solpi/claims-audit-metaharness.md
+          - Claims audit (SoL-Pi): methods/metaharness-solpi/claims-audit-solpi.md
+      - Dream-RSI:
+          - methods/dream-rsi/README.md
+          - Paper spec: methods/dream-rsi/paper-spec.md
+          - Implementation: methods/dream-rsi/implementation.md
+          - Claims audit: methods/dream-rsi/claims-audit.md
+      - EvoMap:
+          - methods/evomap/README.md
+          - Paper spec: methods/evomap/paper-spec.md
+          - Implementation: methods/evomap/implementation.md
+          - Claims audit: methods/evomap/claims-audit.md
+      - Harness²:
+          - methods/harness2/README.md
+          - Paper spec: methods/harness2/paper-spec.md
+          - Implementation: methods/harness2/implementation.md
+  - Benchmarks: benchmarks.md
+  - Evidence:
+      - Paper claims audit: reports/claims-summary.md
+      - Skill claim ledger: skill-claims/README.md
+      - Chart gallery: gallery.md
+  - API reference: api.md
+  - Project:
+      - Contributing: contributing.md
+      - Changelog: changelog.md
+      - Security: security.md
+      - Code of conduct: code-of-conduct.md
+      - Citing: citing.md

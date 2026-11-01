@@ -50,6 +50,11 @@ class Budget:
 
 @dataclass
 class ImprovementResult:
+    """What a method returns: the starting and best artifacts, one trajectory row per round, and usage.
+
+    ``best`` is the artifact the method would deploy; it is ``baseline`` when no change was kept. Score both with
+    ``transfer_report`` to see whether a kept change holds on tasks the loop never saw."""
+
     method: str
     baseline: Artifact
     best: Artifact
@@ -113,7 +118,26 @@ def transfer_report(
     cache_dir: str | None = None,
     seed_offset: int = 0,
 ) -> dict[str, Any]:
-    """Report-only step: score each arm unchanged on every split, paired against ``reference``."""
+    """Report-only step: score each arm unchanged on every split, paired against ``reference``.
+
+    This is where the sealed ``holdout`` and ``ood`` splits are read, after the loop has finished.
+
+    Args:
+        domain: the domain the arms were improved on.
+        llm: the task model (the same one the loop used).
+        arms: name -> artifact, e.g. ``{"seed": res.baseline, "rrsi": res.best}``.
+        splits: splits to score; missing ones are skipped.
+        k: trials per task; use 2 or more so the paired interval reflects run-to-run noise.
+        workers: parallel evaluations.
+        reference: the arm the others are compared with (default: the first).
+        cache_dir: cache model replies here.
+        seed_offset: 0 repeats the loop's trial seeds (with a cache, a free replay); e.g. 100 re-scores afresh.
+
+    Returns:
+        ``{"splits": {split: {arm: {"S", "C", "steps", "families", "missing", "tasks", "vs_reference"}}},
+        "unseen_mean": {arm: mean score over holdout and ood}, ...}``. ``vs_reference`` is a paired bootstrap
+        interval of the difference against ``reference``.
+    """
     # loops use seeds from 0: offset 0 repeats (with a cached LLM, replays) their samples, e.g. 100 re-scores afresh
     ev = Evaluator(domain, llm, workers=workers, allow_sealed=True, cache_dir=cache_dir, seed_offset=seed_offset)
     reference = reference or next(iter(arms))
