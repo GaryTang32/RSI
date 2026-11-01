@@ -168,7 +168,28 @@ class Domain:
 
 
 class FunctionDomain(Domain):
-    """A Domain from ``execute_fn(artifact, task, seed, llm)`` and ``grade_fn(task, output) -> score | (score, fb)``."""
+    """A Domain from ``execute_fn(artifact, task, seed, llm)`` and ``grade_fn(task, output) -> score | (score, fb)``.
+
+    The quickest way to wrap your own problem: ``execute_fn`` runs the artifact (e.g. fills a prompt and calls
+    ``llm``) and returns the output or an ``Execution``; ``grade_fn`` returns a score, or ``(score, feedback)`` where
+    the feedback text helps reflective methods such as GEPA and RRSI. Keep the grader outside the artifact.
+
+    Example:
+        ```python
+        from rsi.core import Artifact, FunctionDomain, Task, TaskSuite
+
+        tasks = [Task(f"t{i}", q, a, family=f) for i, (q, a, f) in enumerate(rows)]
+        suite = TaskSuite.from_tasks(tasks, fractions={"evolve": 0.6, "holdout": 0.4}, by_family={"ood": ["other"]})
+        dom = FunctionDomain(
+            suite,
+            execute_fn=lambda art, task, seed, llm: llm.complete(
+                art.files["prompt.md"].format(question=task.input), seed=seed
+            ).text,
+            grade_fn=lambda task, out: float(out.strip() == task.target),
+        )
+        seed = Artifact({"prompt.md": "Answer briefly: {question}"})
+        ```
+    """
 
     def __init__(
         self,

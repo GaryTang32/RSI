@@ -100,7 +100,16 @@ class TaskSuite:
         by_family: dict[str, list[str]] | None = None,
         name: str = "suite",
     ) -> TaskSuite:
-        """Put whole families in splits (``by_family={"ood": ["dates"]}``), then divide the rest by ``fractions``."""
+        """Put whole families in splits (``by_family={"ood": ["dates"]}``), then divide the rest by ``fractions``.
+
+        Args:
+            tasks: every task, each with a ``family``.
+            fractions: split name -> share of the remaining tasks, e.g. ``{"evolve": 0.5, "holdout": 0.5}``. The loop
+                sees only the decision splits (``evolve``); ``holdout``, ``ood`` and ``test`` are sealed.
+            seed: shuffling seed (the split is deterministic for a given seed).
+            by_family: split name -> families that go to that split whole, e.g. an unseen-kind ``ood`` split.
+            name: suite name.
+        """
         rng = random.Random(seed)
         splits: dict[str, list[str]] = {}
         pool = list(tasks)

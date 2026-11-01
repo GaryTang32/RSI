@@ -13,7 +13,7 @@ to your prompts, agent harness or training script, and keep only the changes tha
   <img alt="skill claims verified" src="https://img.shields.io/badge/skill%20claims%20verified-2%2C410-2f5d8a">
 </p>
 
-<p align="center"><a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-and-use-the-skill">Install and use</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
+<p align="center"><a href="https://garytang32.github.io/RSI/">Docs site</a> · <a href="#1-what-this-repo-is">What it is</a> · <a href="#2-methodology">Methodology</a> · <a href="#3-install-and-use-the-skill">Install and use</a> · <a href="#4-prerequisites">Prerequisites</a> · <a href="#results-with-a-real-model">Results</a> · <a href="#choose-a-method">Methods</a> · <a href="#how-each-method-works">How they work</a> · <a href="#bring-your-own-problem">Your problem</a> · <a href="#how-we-know-it-works">Verification</a> · <a href="demo/gallery.html">66 charts</a> · <a href="docs/guide/RSI-101.md">RSI 101</a></p>
 
 ---
 
@@ -31,6 +31,8 @@ recursive self-improvement (RSI) papers into tools you can use on your own task:
   ([475 claims audited](docs/reports/claims-summary.md)).
 
 ## 2. Methodology
+
+<!-- --8<-- [start:methodology] -->
 
 **From paper to skill.** Each paper (for autoresearch, the upstream repo) is read in full and rebuilt as code on a shared
 core, with the paper's defaults and every place our code differs written down. The skill's description of each method
@@ -70,7 +72,11 @@ is weak. In that case the skill says so first ("no change beat the noise band; t
 tried and why each was rejected, instead of presenting a lucky score as a gain. When a change is kept, the transfer
 report shows whether it holds on tasks the loop never saw.
 
+<!-- --8<-- [end:methodology] -->
+
 ## 3. Install and use the skill
+
+<!-- --8<-- [start:install] -->
 
 **Install.** Clone the repo and install the package:
 ```bash
@@ -79,7 +85,9 @@ pip install -e ".[science,dev]"        # or, without cloning: pip install "rsi @
 ```
 
 **Add the skill to Claude Code.**
-- In this repo: run `claude` in the clone. Claude Code loads `.claude/skills/` automatically.
+- As a plugin (any project): in Claude Code run `/plugin install rsi --marketplace GaryTang32/RSI`, or
+  `/plugin marketplace add GaryTang32/RSI` then `/plugin install rsi@rsi`. The skill is then `/rsi:rsi-improve`.
+- In this repo: run `claude` in the clone. Claude Code loads `.claude/skills/` automatically (`/rsi-improve`).
 - In another project: copy the skill, either for every project or for one:
   ```bash
   cp -r RSI/.claude/skills/rsi-improve ~/.claude/skills/            # every project
@@ -87,11 +95,14 @@ pip install -e ".[science,dev]"        # or, without cloning: pip install "rsi @
   ```
 
 **Use it.** Describe the goal ("self-improve my agent's prompts", "run autoresearch on train.py") or type
-`/rsi-improve`. The skill checks the setup first and asks only about what it cannot find: whether to install the
-package, which model runs the loop, a spend limit, and where runs and the cache go. It then helps you wrap your task
-(an artifact to change, tasks, a grader), measures the noise, picks a method and runs it.
+`/rsi-improve` (`/rsi:rsi-improve` when installed as a plugin). The skill checks the setup first and asks only about
+what it cannot find: whether to install the package, which model runs the loop, a spend limit, and where runs and the
+cache go. It then helps you wrap your task (an artifact to change, tasks, a grader), measures the noise, picks a
+method and runs it.
 
-**Try it without Claude Code.** The same loop from the command line or Python:
+**Try it without Claude Code.** [`examples/`](examples/README.md) has three short scripts that run offline in under a
+minute: a prompt improved on your own CSV of labelled examples (GEPA), an agent harness (RRSI), and a training script
+(autoresearch). The same loop from the command line or Python:
 ```bash
 rsi methods                                                                  # what each method does
 rsi improve --method rrsi --problem agentqa --llm sim --out runs/rrsi-sim    # offline, ~10 s, no API key
@@ -110,7 +121,11 @@ res = rsi.improve(dom, method="rrsi", llm_task="claude:haiku", llm_propose="clau
 print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baseline, "rrsi": res.best}, k=2))
 ```
 
+<!-- --8<-- [end:install] -->
+
 ## 4. Prerequisites
+
+<!-- --8<-- [start:prerequisites] -->
 
 | Need | For | Notes |
 |---|---|---|
@@ -121,6 +136,8 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 | &nbsp;&nbsp;`ANTHROPIC_API_KEY` and `pip install -e ".[api]"` | `api:<model>` | billed per token |
 | Your problem in three parts | using it on your own task | an artifact the loop may change (prompts, a harness, a script); about 20 practice tasks plus held-out tasks it never sees; a grader that does not depend on the artifact, ideally deterministic |
 | A spend limit and some patience | live runs | the skill measures the cost of one call before a run; long runs on hard tasks take hours and can stop at a usage limit, then resume from the cache |
+
+<!-- --8<-- [end:prerequisites] -->
 
 ## Results with a real model
 
@@ -411,7 +428,8 @@ first use, never redistributed.
 
 Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers setup, tests and the rules that keep
 results trustworthy; please also read the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately as
-described in [`SECURITY.md`](SECURITY.md). Changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
+described in [`SECURITY.md`](SECURITY.md). Changes are listed in [`CHANGELOG.md`](CHANGELOG.md); what comes next, with
+good first issues, is in [`ROADMAP.md`](ROADMAP.md). For questions, see [`SUPPORT.md`](.github/SUPPORT.md).
 
 ## Citing
 

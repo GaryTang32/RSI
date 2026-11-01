@@ -1,0 +1,31 @@
+text,label
+I was charged twice for my order last week,billing
+Please send me the invoice for March,billing
+When will my refund arrive?,billing
+The subscription price went up without notice,billing
+My payment was declined but the money left my bank,billing
+Can I get a refund for the unused months?,billing
+Why is there a charge from you on my card?,billing
+I need a copy of my latest invoice for taxes,billing
+The app crashes every time I open the camera,technical
+I get an error 500 when I upload a file,technical
+There is a bug in the export button,technical
+The screen freezes after the latest update,technical
+Everything is very slow since yesterday,technical
+The app crashes on start on my tablet,technical
+Syncing fails with an unknown error,technical
+I forgot my password and the reset link expired,account
+I cannot login with my new phone,account
+How do I change the username on my profile?,account
+Please delete my profile and all my data,account
+My password stopped working this morning,account
+I want to update the email on my profile,account
+My parcel has not been delivered yet,shipping
+The tracking number does not work,shipping
+The courier left the package at the wrong house,shipping
+My delivery is three days late,shipping
+Can I change the delivery address for my parcel?,shipping
+The package arrived damaged,shipping
+Where is my stuff? It has been two weeks,shipping
+Someone else seems to be using my account,account
+You took money from me again!,billing

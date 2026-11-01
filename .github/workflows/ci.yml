@@ -40,8 +40,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install "ruff==0.16.9"
-      - run: ruff check rsi tests experiments scripts docs/skill-claims   # rules in pyproject.toml [tool.ruff]
-      - run: ruff format --check rsi tests experiments scripts docs/skill-claims
+      - run: python scripts/check_versions.py
+      - run: ruff check rsi tests experiments scripts docs/skill-claims examples   # rules in pyproject.toml [tool.ruff]
+      - run: ruff format --check rsi tests experiments scripts docs/skill-claims examples
 
   package:
     name: build and install

@@ -1,0 +1,23 @@
+{
+  "name": "rsi",
+  "version": "0.1.0",
+  "description": "Apply recursive self-improvement methods (RRSI, GEPA, autoresearch, Meta-Harness, SoL-Pi, Dream-RSI, EvoMap, Harness²) to your own prompts, agent harness or training script, with a locked grader, a measured noise band and held-out evaluation.",
+  "author": {
+    "name": "GaryTang32",
+    "url": "https://github.com/GaryTang32"
+  },
+  "homepage": "https://github.com/GaryTang32/RSI",
+  "repository": "https://github.com/GaryTang32/RSI",
+  "license": "MIT",
+  "keywords": [
+    "self-improvement",
+    "prompt-optimization",
+    "agent-harness",
+    "gepa",
+    "autoresearch",
+    "evaluation"
+  ],
+  "skills": [
+    "./.claude/skills/"
+  ]
+}

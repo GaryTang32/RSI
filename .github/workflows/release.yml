@@ -23,9 +23,33 @@ jobs:
         run: |
           v=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != pyproject version $v"; exit 1; }
+      - run: python scripts/check_versions.py
       - run: python -m build
       - run: python scripts/check_package.py dist/*.whl
       - run: python scripts/release_notes.py "${GITHUB_REF_NAME#v}" > notes.md
       - run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # Off until PyPI trusted publishing is set up: on pypi.org add a trusted publisher for this repository, workflow
+  # release.yml, environment "pypi"; then set the repository variable PUBLISH_TO_PYPI to "true".
+  pypi:
+    if: vars.PUBLISH_TO_PYPI == 'true'
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/rsi/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
