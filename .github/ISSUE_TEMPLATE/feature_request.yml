@@ -1,0 +1,20 @@
+name: Feature or method request
+description: Suggest an improvement, a new domain, or a new RSI paper to add.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The problem or use case, not only the proposed solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you would like to see. For a new method, link the paper or code and say what it adds over the existing eight.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

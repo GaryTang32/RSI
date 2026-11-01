@@ -5,7 +5,8 @@ Eight methods, each rebuilt from its paper as tested code plus a Claude Code ski
 to your prompts, agent harness or training script, and keep only the changes that prove themselves on tasks the loop never saw.</b></p>
 
 <p align="center">
-  <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-3776ab">
+  <a href="https://github.com/GaryTang32/RSI/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/GaryTang32/RSI/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2e7d4f">
   <img alt="methods" src="https://img.shields.io/badge/methods-8-6f42c1">
   <img alt="paper claims audited" src="https://img.shields.io/badge/paper%20claims%20audited-475-b8860b">
@@ -113,7 +114,7 @@ print(rsi.transfer_report(dom, rsi.get_llm("claude:haiku"), {"seed": res.baselin
 
 | Need | For | Notes |
 |---|---|---|
-| Python 3.10+ and `pip` | everything | the package needs only `numpy`; `[science]` adds scipy, scikit-learn and matplotlib for some domains |
+| Python 3.11+ and `pip` | everything | the package needs only `numpy`; `[science]` adds scipy, scikit-learn and matplotlib for some domains |
 | [Claude Code](https://claude.com/claude-code) | the skill | CLI, desktop, IDE or web |
 | A model for live runs, one of: | running a loop for real | not needed for the offline simulator (`--llm sim`) |
 | &nbsp;&nbsp;the `claude` CLI, logged in | `claude:<model>` | uses your Claude plan and counts toward its usage limits |
@@ -385,5 +386,36 @@ Recorded output (`results/`, `validation/`, `demo/runs/`) lives on the
 - Live results above use 6-12 tasks per split; most intervals are wide.
 - Some per-method docs (`docs/methods/evomap`, `docs/methods/dream-rsi`) still describe earlier paper versions.
   The skill's method references are checked against the current ones.
+
+## Papers this builds on
+
+Each method here is a reimplementation; the ideas and results belong to their authors. Please cite the papers of the
+methods you use.
+
+| Method | Source |
+|---|---|
+| RRSI | Xia et al., *Regularized Recursive Self-Improvement of Agent Harnesses*, [arXiv:2609.24972](https://arxiv.org/abs/2609.24972) |
+| GEPA | Agrawal et al., *GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning*, ICLR 2026, [arXiv:2507.19457](https://arxiv.org/abs/2507.19457) |
+| autoresearch | Karpathy, [`karpathy/autoresearch`](https://github.com/karpathy/autoresearch) (repository; no paper) |
+| Meta-Harness | Lee et al., *Meta-Harness: End-to-End Optimization of Model Harnesses*, [arXiv:2603.28052](https://arxiv.org/abs/2603.28052) |
+| SoL-Pi | Liu, Ye et al., *SoL-Pi: Recursively Scaling Auto-Research Loops for Efficient Agent Harness*, [arXiv:2609.20519](https://arxiv.org/abs/2609.20519) |
+| Dream-RSI | Zheng, Wu, Zhang et al., *Dream-RSI: Recursive Self-Improvement through Evolving Worlds*, [arXiv:2609.14858](https://arxiv.org/abs/2609.14858) |
+| EvoMap | Wang, Ren, Zhang, *From Procedural Skills to Strategy Genes: Towards Experience-Driven Test-Time Evolution*, [arXiv:2604.15097](https://arxiv.org/abs/2604.15097); with [`EvoMap/evolver`](https://github.com/EvoMap/evolver) |
+| Harness² | Xu et al., *Harness²: Recursive Agent Harnessing for an Open World*, [arXiv:2610.14224](https://arxiv.org/abs/2610.14224) |
+
+The benchmark domains use [BIG-Bench Hard](https://github.com/suzgunmirac/BIG-Bench-Hard) (MIT) and
+[BIG-Bench Extra Hard](https://github.com/google-deepmind/bbeh) (CC-BY 4.0 data, Apache 2.0 code); both are downloaded on
+first use, never redistributed.
+
+## Contributing
+
+Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers setup, tests and the rules that keep
+results trustworthy; please also read the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately as
+described in [`SECURITY.md`](SECURITY.md). Changes are listed in [`CHANGELOG.md`](CHANGELOG.md).
+
+## Citing
+
+If this software helps your work, cite it with [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button
+gives BibTeX), together with the papers above.
 
 MIT licensed.

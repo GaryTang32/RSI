@@ -21,6 +21,24 @@ SCRATCH = Path(os.environ.get("RSI_AR_SCRATCH", "/tmp/rsi_autoresearch_runs"))
 CONST_RE = re.compile(r"^([A-Z_][A-Z0-9_]*)(\s*=\s*)([^#\n]+?)(\s*(#.*)?)$", re.M)
 
 
+WINDOW_BYTES = 32768  # tinylm's EVAL_BYTES: one scored window
+
+
+def require_windows(task, splits: dict) -> None:
+    """Refuse a tinylm corpus whose splits cannot hold the requested disjoint scoring windows.
+
+    The corpus is built from the installed Python's standard-library docstrings, so its size depends on the Python
+    build. Window k starts at k * WINDOW_BYTES; past the end of a split the offset would wrap and the "disjoint"
+    windows would silently overlap. ``splits`` maps a split name to the number of windows it must hold."""
+    task.prepare()
+    sizes = json.loads((Path(task.root) / "manifest.json").read_text())["splits"]
+    short = {s: sizes[s]["bytes"] for s, n in splits.items() if sizes[s]["bytes"] < n * WINDOW_BYTES + 1}
+    if short:
+        need = {s: n * WINDOW_BYTES + 1 for s, n in splits.items()}
+        raise ValueError(f"tinylm corpus too small for disjoint windows: {short} bytes, need {need} "
+                         f"(this Python's standard library yields a smaller corpus)")
+
+
 def parser(description: str, seeds: int = 3) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description)
     ap.add_argument("--llm", default="sim",
